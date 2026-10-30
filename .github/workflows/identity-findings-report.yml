@@ -79,6 +79,8 @@ jobs:
         needs: [ plan ]
         outputs:
             overdue: ${{ steps.report.outputs.overdue }}
+            alert: ${{ steps.report.outputs.alert }}
+            found: ${{ steps.report.outputs.found }}
         runs-on: ubuntu-26.04
         timeout-minutes: 10
         permissions:
@@ -100,7 +102,9 @@ jobs:
                   OWNER: ${{ github.repository_owner }}
               run: |
                   git show HEAD:test/resources/fixtures/identity-judgements.tsv > "$RUNNER_TEMP/identity-judgements.tsv"
-                  python3 scripts/ci/identity_findings_report.py --run "$RECORDING" --assignee "$OWNER" --judgements "$RUNNER_TEMP/identity-judgements.tsv" --work "$RUNNER_TEMP/identity-findings"
+                  # exit 2 -- no recording to report, or an issue gh could not read or write -- is an ALERT
+                  # (scripts/ci/alert-step.sh): the recording's failure or Forgejo's, never a red run of this report
+                  scripts/ci/alert-step.sh 2 -- python3 scripts/ci/identity_findings_report.py --run "$RECORDING" --assignee "$OWNER" --judgements "$RUNNER_TEMP/identity-judgements.tsv" --work "$RUNNER_TEMP/identity-findings"
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
@@ -133,3 +137,5 @@ jobs:
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
                   overdue: ${{ needs.findings.outputs.overdue }}
+                  alert: ${{ needs.findings.outputs.alert }}
+                  found: ${{ needs.findings.outputs.found }}

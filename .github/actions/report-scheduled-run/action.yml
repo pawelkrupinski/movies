@@ -16,6 +16,17 @@ inputs:
       without a red run; scripts/ci/scheduled-failure-issue.sh `overdue`)
     required: false
     default: 'false'
+  alert:
+    description: >-
+      'true' when the run passed but found a third party's or a backlog's problem (a vendor down, a quota spent,
+      untriaged findings): no regression of ours, so no red run -- one issue, its body refreshed while it lasts, closed
+      by the next clean run (scripts/ci/scheduled-failure-issue.sh `alert`)
+    required: false
+    default: 'false'
+  found:
+    description: What the alert found, one line, for the issue's body.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -26,9 +37,12 @@ runs:
             GH_REPO: ${{ github.repository }}
             FAILED: ${{ inputs.failed }}
             OVERDUE: ${{ inputs.overdue }}
+            ALERT: ${{ inputs.alert }}
+            FOUND: ${{ inputs.found }}
             WORKFLOW: ${{ github.workflow }}
             RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             OWNER: ${{ github.repository_owner }}
         run: |
-            if [ "$FAILED" = "true" ]; then verdict=failed; elif [ "$OVERDUE" = "true" ]; then verdict=overdue; else verdict=recovered; fi
-            "$GITHUB_WORKSPACE/scripts/ci/scheduled-failure-issue.sh" "$verdict" "$WORKFLOW" "$RUN_URL" "$OWNER"
+            if [ "$FAILED" = "true" ]; then verdict=failed; elif [ "$OVERDUE" = "true" ]; then verdict=overdue
+            elif [ "$ALERT" = "true" ]; then verdict=alert; else verdict=recovered; fi
+            "$GITHUB_WORKSPACE/scripts/ci/scheduled-failure-issue.sh" "$verdict" "$WORKFLOW" "$RUN_URL" "$OWNER" "$FOUND"

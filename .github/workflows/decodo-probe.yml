@@ -4,6 +4,12 @@ name: Decodo probe
 # worker/src/main/resources/residential-proxy.properties and prints one line per port
 # (scripts/ci/decodo-probe.py): exit 0 when at least one port reached the origin, 1 when none did,
 # 2 on missing credentials, both verdicts as ::error:: annotations. agentctl keys on this workflow's name.
+#
+# BOTH ARE ALERTS, NOT RED RUNS (ci-failures-2026-10-30, recommendation 2): Decodo's outage of 10-27/28 turned this
+# workflow red 21 times in a row, every 30 minutes, for a vendor's account only the owner could act on, and each red was
+# a fixer dispatch candidate. scripts/ci/alert-step.sh keeps the run green and hands the report job `alert`: one issue,
+# its body refreshed while the outage lasts, closed by the next probe that reaches the origin. The probe's own
+# self-test still fails red: that is our code.
 
 on:
     schedule:
@@ -17,6 +23,9 @@ jobs:
     probe:
         runs-on: ubuntu-26.04
         timeout-minutes: 5
+        outputs:
+            alert: ${{ steps.probe.outputs.alert }}
+            found: ${{ steps.probe.outputs.found }}
         steps:
             # No `\r` progress lines: they shift Forgejo's per-step log slices, so `agentctl ci-why` (run 2307) showed
             # the checkout's output where the probe's verdict should have been.
@@ -28,10 +37,11 @@ jobs:
               run: python3 scripts/ci/decodo_probe_test.py
 
             - name: Probe every Decodo port
+              id: probe
               env:
                   DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
                   DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
-              run: python3 scripts/ci/decodo-probe.py
+              run: scripts/ci/alert-step.sh 1,2 -- python3 scripts/ci/decodo-probe.py
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
@@ -57,3 +67,5 @@ jobs:
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+                  alert: ${{ needs.probe.outputs.alert }}
+                  found: ${{ needs.probe.outputs.found }}

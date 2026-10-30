@@ -17,7 +17,7 @@ class RecordingPreflightWiringSpec extends AnyFlatSpec with Matchers {
 
   "the recording's preflight job" should "probe both keys with the recording preflight" in {
     val preflight = RepoFile.withoutComments(jobs("preflight"))
-    preflight should include("run: scripts/ci/recording-preflight.sh")
+    preflight should include("run: scripts/ci/alert-step.sh 1 -- scripts/ci/recording-preflight.sh")
     preflight should include("OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}")
     preflight should include("TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}")
   }

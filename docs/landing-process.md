@@ -210,6 +210,12 @@ identity-slice's old-ref compile, on each push to main touching their paths). Th
 `ci-why` outside the gate; they close no push. The same tests run before landing, in the hook's `scripttests` and
 `oldrefs` checks, for every change touching them.
 
+**A third party's or a backlog's problem is an alert, not a red run**: the Decodo probe, security headers (an origin
+never reached), the recording's key preflight, the findings report and CI staleness run their live step through
+`scripts/ci/alert-step.sh`. Their third-party exits keep the run green and file ONE owner issue
+(`report-scheduled-run`'s `alert`), refreshed while it lasts and closed by the next clean run; nothing is dispatched.
+Their self-tests, and any other failure, still fail red.
+
 `WATCH RED` names a run that contains your commit, not proof that your commit broke it: read the summary. If it is
 yours, fix forward at once with a `Fixes-Red: <run>` trailer (stage 5). `--no-watch` exits at `LANDED` (scripts).
 

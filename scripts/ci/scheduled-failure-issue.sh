@@ -14,17 +14,25 @@
 # lateness is a task, not a regression: the owner, 2026-10-27, "CI red should mean only a
 # regression"): it opens or comments the same way, and the next pass with nothing overdue closes it.
 #
+# ALERT is the same issue for a run that found a THIRD PARTY's or a BACKLOG's problem -- a vendor down, a quota spent,
+# untriaged findings piling up -- which no commit of ours made or can mend (ci-failures-2026-10-30, recommendation 2:
+# the Decodo probe went red 21 times in a row for an outage only the owner could act on). The run stays green; the issue
+# opens once, its body is REFRESHED (no comment, no new notification) while the condition lasts, and the next clean run
+# closes it -- the probe that raised it clears it.
+#
 # Usage (needs GH_TOKEN with `issues: write` and GH_REPO=<owner>/<repo>):
 #   scheduled-failure-issue.sh failed   "<workflow name>" "<run url>" "<assignee>"
 #   scheduled-failure-issue.sh overdue  "<workflow name>" "<run url>" "<assignee>"
+#   scheduled-failure-issue.sh alert    "<workflow name>" "<run url>" "<assignee>" ["<what it found>"]
 #   scheduled-failure-issue.sh recovered "<workflow name>" "<run url>"
 # Tested by scripts/ci/scheduled-failure-issue-test.sh against a stub `gh`.
 set -euo pipefail
 
-verdict="${1:?failed|overdue|recovered}"
+verdict="${1:?failed|overdue|alert|recovered}"
 workflow="${2:?workflow name}"
 run_url="${3:?run url}"
 assignee="${4:-}"
+found="${5:-}"
 title="Scheduled workflow failing: $workflow"
 
 . "$(dirname "${BASH_SOURCE[0]}")/open-issue.sh"
@@ -39,6 +47,17 @@ case "$verdict" in
 "The scheduled workflow **$workflow** passed, but found work past its deadline: $run_url (its log's warnings name it). Not a regression, so not a red run.
 
 This issue stays open until a run finds nothing overdue, which closes it. Opened by \`scripts/ci/scheduled-failure-issue.sh\`."
+    fi
+    ;;
+  alert)
+    [ -n "$found" ] || found="see the run's warnings"
+    body="The workflow **$workflow** found a problem that is not a regression of ours (a third party's, or a backlog): $found.
+
+Latest run: $run_url (refreshed while it lasts). The run itself is green: nothing a commit made or can mend, so no red build and no fixer. This issue closes itself at the next run that finds nothing. Opened by \`scripts/ci/scheduled-failure-issue.sh\`."
+    if [ -n "$open_issue" ]; then
+      gh issue edit "$open_issue" --body "$body"
+    else
+      gh issue create --title "$title" ${assignee:+--assignee "$assignee"} --body "$body"
     fi
     ;;
   failed)
@@ -57,7 +76,7 @@ This issue stays open until the workflow next passes on its schedule, which clos
     fi
     ;;
   *)
-    echo "unknown verdict '$verdict' (failed|overdue|recovered)" >&2
+    echo "unknown verdict '$verdict' (failed|overdue|alert|recovered)" >&2
     exit 2
     ;;
 esac

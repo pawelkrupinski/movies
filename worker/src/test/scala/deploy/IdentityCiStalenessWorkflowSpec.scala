@@ -20,7 +20,7 @@ class IdentityCiStalenessWorkflowSpec extends AnyFlatSpec with Matchers {
     val steps = check.linesIterator.map(_.trim).filter(_.startsWith("- ")).toSeq
     RepoFile.positionOf(steps, "Self-test the checker") should be < RepoFile.positionOf(steps, "Is the identity CI stale?")
     RepoFile.step(workflow, "Self-test the checker") should include("run: bash scripts/ci/identity-ci-staleness-test.sh")
-    RepoFile.step(workflow, "Is the identity CI stale?") should include("run: scripts/ci/identity-ci-staleness.sh")
+    RepoFile.step(workflow, "Is the identity CI stale?") should include("run: scripts/ci/alert-step.sh 1 -- scripts/ci/identity-ci-staleness.sh")
   }
 
   // The coverage verdict asks whether a run's commit descends from the newest pipeline commit,

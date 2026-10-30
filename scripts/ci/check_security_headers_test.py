@@ -6,6 +6,8 @@ being able to fail is caught on the run that would otherwise have passed on it.
 
 Run: python3 scripts/ci/check_security_headers_test.py
 """
+import contextlib
+import io
 import os
 import ssl
 import sys
@@ -269,6 +271,58 @@ class DirectThenProxyTest(unittest.TestCase):
         error = urllib.error.HTTPError("https://kinowo.net/api/me", 500, "Server Error", {}, None)
         self.assertEqual(self._fetch(error, proxy), (500, []))
         self.assertEqual(proxy.requests, [])
+
+
+class ThirdPartyIsAnAlert(unittest.TestCase):
+    """ci-failures-2026-10-30: Decodo dark turned this workflow red for 14 h, a third party's outage, not our headers.
+    An origin never reached exits UNREACHED (3: an alert, the run green); a header the origin answered wrongly exits 1."""
+
+    class Answers:
+        def __init__(self, by_path):
+            self.by_path = by_path
+
+        def open(self, request, timeout):
+            outcome = next(v for k, v in self.by_path.items() if request.full_url.endswith(k))
+            if isinstance(outcome, BaseException):
+                raise outcome
+            return ProxyFailures.Response(*outcome)
+
+    GOOD = {"/api/me": (401, [("strict-transport-security", "max-age=31536000")]),
+            "/hidden-films/x": (204, [("strict-transport-security", "max-age=31536000")]),
+            "/auth/google/start": (303, SESSION_SECURE)}
+
+    def _main(self, answers):
+        saved = check._opener
+        check._opener = lambda: self.Answers(answers)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                code = check.main(["check", "kinowo.net"])
+            return code, out.getvalue()
+        finally:
+            check._opener = saved
+
+    def test_every_answer_right_passes(self):
+        self.assertEqual(self._main(self.GOOD)[0], 0)
+
+    def test_an_unreachable_origin_is_an_alert_not_a_failure(self):
+        dark = urllib.error.URLError(OSError("Connection refused"))
+        code, out = self._main(dict(self.GOOD, **{"/api/me": dark}))
+        self.assertEqual(code, check.UNREACHED, out)
+        self.assertIn("UNREACHED", out)
+
+    def test_a_challenge_in_the_origins_place_is_an_alert(self):
+        challenge = urllib.error.HTTPError("https://kinowo.net/api/me", 403, "Forbidden", {"cf-mitigated": "challenge"}, None)
+        self.assertEqual(self._main(dict(self.GOOD, **{"/api/me": challenge}))[0], check.UNREACHED)
+
+    def test_a_header_regression_still_fails_whatever_else_was_unreached(self):
+        credentialed = (401, API_ME_CREDENTIALED)
+        dark = urllib.error.URLError(OSError("Connection refused"))
+        code, out = self._main(dict(self.GOOD, **{"/api/me": credentialed, "/auth/google/start": dark}))
+        self.assertEqual(code, 1, out)
+
+    def test_an_origin_error_status_is_ours_and_fails(self):
+        error = urllib.error.HTTPError("https://kinowo.net/api/me", 500, "Server Error", {}, None)
+        self.assertEqual(self._main(dict(self.GOOD, **{"/api/me": error}))[0], 1)
 
 
 class EdgeKeyTest(unittest.TestCase):

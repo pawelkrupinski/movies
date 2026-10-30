@@ -20,6 +20,11 @@ name: Security headers (live)
 # (infra/bin/cloudflare-ci-edge-allow). Run #2239 (2026-10-27) is why: Decodo's account went dark
 # and a proxy-only check of our own headers went red with it. The checker still FAILS on a
 # challenge from either path rather than passing a page that is not ours.
+#
+# AN ORIGIN NEVER REACHED IS AN ALERT, NOT A RED RUN (ci-failures-2026-10-30, recommendation 2): the checker exits 3
+# when every failure is a request the origin never answered (no connection, the proxy dark, a challenge), and
+# scripts/ci/alert-step.sh keeps the run green and hands the report job `alert`. A header the origin answered wrongly
+# still exits 1 and fails the run: that is our code.
 
 on:
     schedule:
@@ -37,6 +42,7 @@ on:
             - 'worker/src/main/resources/residential-proxy.properties'
             - 'scripts/ci/scheduled-failure-issue*.sh'
             - 'scripts/ci/open-issue.sh'
+            - 'scripts/ci/alert-step.sh'
             - '.github/actions/report-scheduled-run/**'
 
 permissions:
@@ -49,6 +55,9 @@ jobs:
         # whole pool timing out is 7 x 30 s, and the job must outlive it to name the proxy. The
         # pool is only reached when a direct request is refused.
         timeout-minutes: 10
+        outputs:
+            alert: ${{ steps.headers.outputs.alert }}
+            found: ${{ steps.headers.outputs.found }}
         steps:
             - uses: actions/checkout@v5
 
@@ -64,12 +73,13 @@ jobs:
               run: bash scripts/ci/scheduled-failure-issue-test.sh
 
             - name: Check kinowo.net and showtimes.cc
+              id: headers
               env:
                   EDGE_CHECK_KEY: ${{ secrets.EDGE_CHECK_KEY }}
                   DECODO_PROXY_USER: ${{ secrets.DECODO_PROXY_USER }}
                   DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
                   REQUIRE_SECURE_SESSION_COOKIE: ${{ vars.REQUIRE_SECURE_SESSION_COOKIE }}
-              run: python3 scripts/ci/check-security-headers.py
+              run: scripts/ci/alert-step.sh 3 -- python3 scripts/ci/check-security-headers.py
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
@@ -100,3 +110,5 @@ jobs:
             - uses: ./.github/actions/report-scheduled-run
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
+                  alert: ${{ needs.check.outputs.alert }}
+                  found: ${{ needs.check.outputs.found }}

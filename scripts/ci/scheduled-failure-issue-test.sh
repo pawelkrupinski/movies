@@ -49,6 +49,14 @@ check "overdue work opens the same issue, on a green run" \
 check "...and comments on it while it is open" \
   "issue comment 7 --body Still overdue: https://run/7" \
   "$(run 7 overdue "OG cards" "https://run/7" pawelkrupinski)"
+check "an alert opens the same issue, on a green run" \
+  "issue create --title Scheduled workflow failing: Decodo prob" \
+  "$(run "" alert "Decodo probe" "https://run/8" pawelkrupinski "0/7 ports" | head -n 1)"
+check "...and refreshes its body while it is open, no comment" \
+  "issue edit 7 --body The workflow **Decodo probe** found a pr" \
+  "$(run 7 alert "Decodo probe" "https://run/9" pawelkrupinski "0/7 ports" | head -n 1)"
+check "...naming what it found and the latest run" "1 1" \
+  "$(grep -c '0/7 ports' "$stub_dir/log") $(grep -c 'https://run/9' "$stub_dir/log")"
 check "a pass closes the open issue" \
   "issue close 7 --comment Passed again: https://run/3" \
   "$(run 7 recovered "OG cards" "https://run/3")"

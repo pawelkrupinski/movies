@@ -29,6 +29,8 @@ jobs:
         timeout-minutes: 5
         outputs:
             overdue: ${{ steps.staleness.outputs.overdue }}
+            alert: ${{ steps.staleness.outputs.alert }}
+            found: ${{ steps.staleness.outputs.found }}
         permissions:
             contents: read
             actions: read
@@ -51,7 +53,9 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-              run: scripts/ci/identity-ci-staleness.sh
+              # A checker that cannot read the runs (gh, git or jq failed: Forgejo's API, not our code) is an ALERT
+              # (scripts/ci/alert-step.sh), never a red run; its self-test above still fails red.
+              run: scripts/ci/alert-step.sh 1 -- scripts/ci/identity-ci-staleness.sh
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
@@ -83,3 +87,5 @@ jobs:
               with:
                   failed: ${{ contains(needs.*.result, 'failure') }}
                   overdue: ${{ needs.check.outputs.overdue }}
+                  alert: ${{ needs.check.outputs.alert }}
+                  found: ${{ needs.check.outputs.found }}

@@ -44,7 +44,14 @@ while reaching the proxy) now moves the request to the next port, and the dead p
 the rest of the run; only when every port has failed does the check report `proxy unavailable
 (Decodo ...)` with each port's error -- still a failure, since nothing about the origin was checked.
 
+A THIRD PARTY'S FAILURE IS AN ALERT, NOT A RED RUN (ci-failures-2026-10-30, recommendation 2). A request the origin
+never answered -- no connection, the proxy pool dark, a Cloudflare challenge (`cf-mitigated`) -- says nothing about our
+headers, so it is no regression of ours: when every failure is of that kind the check exits 3 (UNREACHED), which the
+workflow turns into an alert (one tracked issue, refreshed while it lasts, closed by the next clean run) and a green
+run. Any header the origin DID answer wrongly exits 1 as before: that is our code.
+
 Usage: check-security-headers.py [host ...]     (default: kinowo.net showtimes.cc)
+Exit: 0 every check passed; 1 a header regression (ours); 3 only unreached origins (a third party's: an alert).
 The pure `evaluate_*` functions are unit-tested offline by check_security_headers_test.py.
 """
 import os
@@ -78,6 +85,14 @@ def reachability_failures(what, status, expected, headers):
     return ["%s: got HTTP %s, expected %s%s -- not the origin's answer, so nothing else about it "
             "can be checked" % (what, status, "/".join(map(str, sorted(expected))),
                                 " (cf-mitigated: %s)" % mitigated[0] if mitigated else "")]
+
+
+def unreached(status, headers):
+    """Whether the origin never answered: no connection, the proxy pool dark, or a Cloudflare challenge in its place."""
+    return not isinstance(status, int) or bool(header(headers, "cf-mitigated"))
+
+
+UNREACHED = 3
 
 
 def hsts_failures(what, headers):
@@ -255,36 +270,58 @@ def fetch(opener, method, url, headers):
 
 
 def check_host(opener, host, require_secure):
+    """(failures, warnings, unreached): a request the origin never answered goes to `unreached`, judged no further."""
     origin = {"Origin": FOREIGN_ORIGIN}
-    failures, warnings = [], []
+    failures, warnings, missed = [], [], []
+
+    def answered(what, status, expected, headers):
+        if status not in expected and unreached(status, headers):
+            missed.extend(reachability_failures(what, status, expected, headers))
+            return False
+        return True
+
+    what = "%s GET /api/me" % host
     status, headers = fetch(opener, "GET", "https://%s/api/me" % host, origin)
-    failures += evaluate_cors("%s GET /api/me" % host, status, {401}, headers)
+    if answered(what, status, {401}, headers):
+        failures += evaluate_cors(what, status, {401}, headers)
+    what = "%s OPTIONS /api/me/… (preflight)" % host
     status, headers = fetch(opener, "OPTIONS", "https://%s/api/me/pl/hidden-films/x" % host,
                             dict(origin, **{"Access-Control-Request-Method": "PUT"}))
-    failures += evaluate_cors("%s OPTIONS /api/me/… (preflight)" % host, status, {200, 204}, headers)
+    if answered(what, status, {200, 204}, headers):
+        failures += evaluate_cors(what, status, {200, 204}, headers)
+    what = "%s GET /auth/google/start" % host
     status, headers = fetch(opener, "GET", "https://%s/auth/google/start" % host, {})
-    session_failures, session_warnings = evaluate_session_cookie(
-        "%s GET /auth/google/start" % host, status, headers, require_secure)
-    return failures + session_failures, warnings + session_warnings
+    if answered(what, status, {303}, headers):
+        session_failures, session_warnings = evaluate_session_cookie(what, status, headers, require_secure)
+        failures += session_failures
+        warnings += session_warnings
+    return failures, warnings, missed
 
 
 def main(argv):
     hosts = argv[1:] or HOSTS
     require_secure = os.environ.get("REQUIRE_SECURE_SESSION_COOKIE", "").strip().lower() == "true"
     opener = _opener()
-    failures, warnings = [], []
+    failures, warnings, missed = [], [], []
     for host in hosts:
-        host_failures, host_warnings = check_host(opener, host, require_secure)
+        host_failures, host_warnings, host_missed = check_host(opener, host, require_secure)
         failures += host_failures
         warnings += host_warnings
+        missed += host_missed
     for warning in warnings:
         print("::warning::%s (REQUIRE_SECURE_SESSION_COOKIE is not set, so this is not enforced)" % warning)
     for failure in failures:
         print("::error::%s" % failure)
-    if not failures:
-        print("ok  %s: no credentialed CORS for a foreign origin, HSTS >= 1 year%s"
-              % (", ".join(hosts), ", Secure session cookie" if require_secure else ""))
-    return 1 if failures else 0
+    for miss in missed:
+        print("::warning::UNREACHED %s" % miss)
+    if failures:
+        return 1
+    if missed:
+        print("ALERT: %d request(s) never reached the origin (a third party's failure, not a header regression)" % len(missed))
+        return UNREACHED
+    print("ok  %s: no credentialed CORS for a foreign origin, HSTS >= 1 year%s"
+          % (", ".join(hosts), ", Secure session cookie" if require_secure else ""))
+    return 0
 
 
 if __name__ == "__main__":
