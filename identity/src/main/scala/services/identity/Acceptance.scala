@@ -224,7 +224,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
 
   /** The first of `rules` to accept, with its name. */
   private[identity] def firstOf(ranked: Seq[Scored], rules: Seq[Rule]): Option[(Accepted, String)] =
-    rules.iterator.filterNot(rule => RuleAblation.disables("accept:" + rule.name)).map(rule => rule.accepts(ranked).map(_ -> rule.name)).collectFirst { case Right(taken) => taken }
+    rules.iterator.filterNot(rule => Acceptance.ablated(rule.name)).map(rule => rule.accepts(ranked).map(_ -> rule.name)).collectFirst { case Right(taken) => taken }
 
   /** Why each rule a node may be taken by alone refused it: `(rule, the first condition that stopped it)`. */
   def refusals(ranked: Seq[Scored]): Seq[DecisionTrace.Refusal] =
@@ -258,7 +258,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     takenBy(ranked, keep = { case ((taken, _), rule) => rule == "imdb-suggested" || !outweighedBySuggestion(ranked, taken) })(
-      relayOrBroadcastSeasonRecord(ranked).filterNot { case (_, rule) => RuleAblation.disables("accept:" + rule) }.orElse(firstOf(ranked, aloneRules)))
+      relayOrBroadcastSeasonRecord(ranked).filterNot { case (_, rule) => Acceptance.ablated(rule) }.orElse(firstOf(ranked, aloneRules)))
 
   /** Does an undenied film only IMDb's suggestion reached ([[Scored.suggestedOnly]], which only the IMDb rule may take),
    *  that another venue's listing of the title corroborates, weigh at least as much on the evidence as `taken`? Then the
@@ -377,7 +377,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     // spellings took the Met's 2014 staging by a pooled rule after the alone path ruled it another broadcast. Never
     // stage-production pooled: one member's stated year is not the cluster's broadcast — it took UK Aldeburgh's
     // "Royal Ballet: The Nutcracker" [2025] as the 2025/26 record, and split Savoy Worksop's "MET:Manon" off the Met's
-    takenBy(ranked)(broadcastSeasonRecord(ranked).map(_ -> "season-record").filterNot(_ => RuleAblation.disables("accept:season-record"))
+    takenBy(ranked)(broadcastSeasonRecord(ranked).map(_ -> "season-record").filterNot(_ => Acceptance.ablated("season-record"))
       .orElse(firstOf(Acceptance.tieBroken(ranked), pooledRules)))
 
   /** What both ways of taking a film share: nothing for a bill of several works; the season's production when there is
@@ -387,7 +387,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] def takenBy(ranked: Seq[Scored], keep: ((Accepted, String)) => Boolean = _ => true)
                      (rules: => Option[(Accepted, String)]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
-    else seasonProduction(ranked).filterNot(_ => RuleAblation.disables("accept:season-production")).map(_.map(_ -> "season-production")).getOrElse(rules).filter(keep).filter(_._1._1.untaken.isEmpty)
+    else seasonProduction(ranked).filterNot(_ => Acceptance.ablated("season-production")).map(_.map(_ -> "season-production")).getOrElse(rules).filter(keep).filter(_._1._1.untaken.isEmpty)
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale
@@ -479,6 +479,9 @@ private[identity] object Acceptance {
     val forms  = scored.candidate.film.forms.map(_.wordSet)
     titles.iterator.flatMap(title => forms.iterator.map(form => (title intersect form).size.toDouble / title.size)).maxOption.getOrElse(0.0)
   }
+
+  /** Is the acceptance rule called `rule` switched off for an ablation run ([[RuleAblation]], as `accept:<rule>`)? */
+  def ablated(rule: String): Boolean = RuleAblation.disables("accept:" + rule)
 
   /** The rule a node's alone acceptance (`aloneNamed`'s answer) took `film` by, if it took that film. */
   def ruleTaking(taken: Option[(Accepted, String)], film: Int): Option[String] =
