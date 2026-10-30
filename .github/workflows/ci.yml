@@ -36,7 +36,7 @@ env:
 
 # Pipeline shape:
 #
-#   test × 4 (worker ×3, rest) ─────┐
+#   test × 5 (heavy ×2, worker-identity, worker, rest) + script-tests ─┐
 #   integration-test × 2 ───────────┤
 #   e2e × 3 shards (+stage, eslint) ┤  (all independent; every shipping job in
 #   mobile-local-server (iOS+And) ──┤   main.yml `needs` this whole workflow)
@@ -58,7 +58,7 @@ env:
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 4 test + 2 integration + 2 e2e + 1 mobile + 7 page-tests.
+# Current split: 5 test + 1 script-tests + 2 integration + 2 e2e + 1 mobile + 7 page-tests.
 # Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
@@ -298,8 +298,8 @@ jobs:
                   include_passed: false
 
             # EVERY BUDGET FIGURE THIS ROW MEASURED (tools.costs.PerformanceBudget.Report): `scripts/adopt-ci-budgets <run>`
-            # sets PerformanceBudgets' `measured` from them, CI's Linux JVM figures rather than a laptop's. Unforked specs write
-            # the root target/, forked ones their module's. Red rows too: a budget out of its band is what it reads.
+            # sets PerformanceBudgets' `measured` from them, CI's Linux JVM figures rather than a laptop's. Every spec writes the
+            # root target/ (project/ForkedTests runs each fork there); */target/ only catches a stray one. Red rows too: a budget out of its band is what it reads.
             - name: Upload the performance budget figures
               if: ${{ !cancelled() }}
               uses: actions/upload-artifact@v6
