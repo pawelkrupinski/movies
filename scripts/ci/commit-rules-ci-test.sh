@@ -66,7 +66,7 @@ mkdir -p "$old/identity/src/main/scala/services/identity"; echo rule > "$old/ide
 scratch_git "$old" add -A; scratch_git "$old" commit -qm "$(printf 'before the rules\n\nFixes-Red: 2473')"
 cp "$REPO_ROOT/scripts/ci/commit-rules-ci.sh" "$REPO_ROOT/scripts/ci/commit_rules.py" "$old/scripts/ci/"
 scratch_git "$old" add -A; scratch_git "$old" commit -qm "the rules on CI"
-oldci() { (cd "$old" && ungit; KINOWO_GH="$work/bin/gh" bash scripts/ci/commit-rules-ci.sh "$@" > "$work/out" 2>&1; echo $?); }
+oldci() { (cd "$old" && ungit; KINOWO_GH="$work/bin/gh" bash scripts/ci/commit-rules-ci.sh > "$work/out" 2>&1; echo $?); }
 check "a green run older than the rules on CI judges from the commit that added them" "0 1" \
     "$(GREEN=$green oldci) $(grep -c 'predates the rules on CI' "$work/out")"
 echo again >> "$old/identity/src/main/scala/services/identity/FeedLink.scala"
