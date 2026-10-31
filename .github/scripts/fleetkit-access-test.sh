@@ -13,7 +13,9 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 script="$REPO_ROOT/.github/scripts/fleetkit-access.sh"
 
-HOME="$work/home" FLEETKIT_DEPLOY_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
+# Each case names its forge: the runner's own GITHUB_SERVER_URL (https://github.com on github.com) would otherwise
+# leak into the Forgejo case, and both shapes are asserted on either forge.
+HOME="$work/home" GITHUB_SERVER_URL=http://forgejo.internal:3000 FLEETKIT_DEPLOY_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
 fake
 -----END OPENSSH PRIVATE KEY-----" bash "$script" >/dev/null 2>&1
 check "a key writes the alias" "0" "$?"
@@ -41,7 +43,7 @@ check "...as git" "git" "$(ghfield User)"
 check "...pinned to GitHub's ed25519 host key, under the bare name ssh looks port 22 up by" "github.com ssh-ed25519" "$(cut -d' ' -f1,2 "$work/gh/.ssh/fleetkit_known_hosts")"
 check "...and only that algorithm" "ssh-ed25519" "$(ghfield HostKeyAlgorithms)"
 
-HOME="$work/empty" FLEETKIT_DEPLOY_KEY="" bash "$script" >/dev/null 2>"$work/err"
+HOME="$work/empty" GITHUB_SERVER_URL=http://forgejo.internal:3000 FLEETKIT_DEPLOY_KEY="" bash "$script" >/dev/null 2>"$work/err"
 check "an empty secret fails" "1" "$?"
 check "and says which secret" "yes" "$(grep -q 'FLEETKIT_DEPLOY_KEY is empty' "$work/err" && echo yes || echo no)"
 check "and writes no alias" "no" "$([ -e "$work/empty/.ssh/config" ] && echo yes || echo no)"
