@@ -114,8 +114,12 @@ object PerformanceBudgets {
    *  waits on every quiet tick (9.35 MB: 4.4 MB of `QuestionMemory` reads, read only once the memory marks).
    *  5.33 -> 3.98 MB on 2026-10-30 with agree-or-none (aed6950bb): Main's e2e row measured 3.98-4.13 on every run since
    *  (#2617..#2647, 3.98 on run 3932, adopted), 5.21 / 5.85 before; locally 5.32 with its src/main reverted, 4.35 with
-   *  it. Still no venue slot built (`QuietProjectionSlotsBuilt`). */
-  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(3.98))
+   *  it. Still no venue slot built (`QuietProjectionSlotsBuilt`).
+   *  3.98 -> 5.02 MB on 2026-10-31, agree-or-none removed (identity-flips-structural step 6, the owner: decide from the
+   *  inputs as they stand): a deliberate trade, the fixture's clusters whose records its recording never files serving a
+   *  provisional film the stage reads, as before aed6950bb. Main's e2e row on github.com printed 5.02 (run 41234591191);
+   *  locally 4.35 on its parent d9261accb, 5.34 with the step's model commit alone and 5.31 at the step's tip. */
+  val QuietProjectionTick = bytes("quiet identity projection tick", measured = mb(5.02))
   /** The whole tick: 34.1 -> 36.1 MB, re-measured 2026-10-24 (35.92 / 36.71 / 36.07 locally on quiet-tick-alloc's
    *  3ef51dd60; Main's e2e row printed 35.01 on ff779d962 — CI's Linux JVM runs ~3% under a Mac's here). */
   val WholeProjectionTick = bytes("whole identity projection tick, nothing moved", measured = mb(36.1))
