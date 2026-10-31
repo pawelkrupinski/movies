@@ -49,10 +49,10 @@ class CiRowScopeSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "scope" should "answer in seconds, on the caller's lane, through the classifier" in {
+  "scope" should "answer in seconds, on a hosted runner, through the classifier" in {
     val scope = code(jobs("scope"))
     scope should contain("timeout-minutes: 5")
-    scope should contain("runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}")
+    scope should contain("runs-on: ubuntu-26.04")
     scope should contain("actions: read")
     scope should contain("run: scripts/ci/ci-row-scope.sh --outputs")
     Seq("e2e", "pages", "browsers").foreach(o => scope should contain(s"$o: $${{ steps.scope.outputs.$o }}"))

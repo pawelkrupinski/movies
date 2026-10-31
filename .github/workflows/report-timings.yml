@@ -8,15 +8,6 @@ name: Report run timings
 # `workflow_call.secrets` block, which made this file invalid there on every event.
 on:
     workflow_call:
-        # THE CALLER'S TIER (infra forgejo.nix `ciTiers`): off github.com, Main passes `main-lane` so its jobs never
-        # queue behind dispatched experiments on the shared ubuntu runner, and a measurement or gate workflow its own
-        # label. Empty (a check-tier caller, and github.com) keeps the ubuntu-* label each job names below. RunnerClassSpec.
-        inputs:
-            lane:
-                description: The runner label for every job here; empty for the job's own ubuntu-* label.
-                required: false
-                type: string
-                default: ''
 
 permissions:
     actions: read
@@ -28,7 +19,7 @@ jobs:
     # so beside a workflow's own scheduled-run `report` this row read `report-1`.
     report:
         name: report (timings)
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
             # The workflows too: each job's `timeout-minutes` goes out beside its time (ci_timings.py `workflow_ceilings`).

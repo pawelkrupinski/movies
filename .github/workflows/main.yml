@@ -67,9 +67,6 @@ permissions:
 jobs:
     ci:
         uses: ./.github/workflows/ci.yml
-        # Off github.com, on the production lane (RunnerClassSpec).
-        with:
-            lane: ''
         secrets: inherit
         # ci.yml's jobs post JUnit check-runs, and its `image-*` jobs push this commit's SHA-tagged
         # images; a called workflow can only narrow its caller's token, never widen it.
@@ -551,8 +548,6 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        with:
-            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.

@@ -97,9 +97,6 @@ jobs:
             by-country: ${{ steps.requests.outputs.by-country }}
             head-sha: ${{ steps.requests.outputs.head-sha }}
             red-run:  ${{ steps.requests.outputs.red-run }}
-            # The bisect rows' runner, evaluated HERE: their matrix reads this job's outputs, so Forgejo re-parses them
-            # with these outputs and no `github` -- a `github.server_url` read there is empty (WorkflowPlanSpec).
-            runner: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         steps:
             - uses: actions/checkout@v5
               with:
@@ -149,7 +146,8 @@ jobs:
             # row is skipped by the `if:` above, as github.com skips the whole job. (ConvergenceBisectEmptyPlanSpec)
             matrix:
                 country: ${{ fromJson(needs.plan.outputs.countries != '[]' && needs.plan.outputs.countries || '["none"]') }}
-        runs-on: ${{ needs.plan.outputs.runner }}
+        # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ubuntu-22.04
         # Above everything the script may spend, so its own cap is what stops it and the
         # verdict it has so far still reaches the summary: up to two replays before bisecting
         # (the red commit when only the full leg failed, and the last green one under this
@@ -295,8 +293,6 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        with:
-            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.

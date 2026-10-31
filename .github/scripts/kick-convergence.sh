@@ -59,8 +59,7 @@ dispatch() {
     reuse=$(reuse_hint "$1")
     case $reuse in *[!0-9]*) reuse="" ;; esac
     [ -z "$reuse" ] || echo "$1: run $reuse ran this tree's whole suite -- dispatching it as reuse-run=$reuse (the run's preflight checks it)"
-    # main's convergence takes the gate tier (identity-model-convergence.yml's `tier` input; RunnerClassSpec)
-    dispatch_workflow "$1" "$ref" -f tier=gate-lane ${reuse:+-f reuse-run="$reuse"} || { echo "::error::could not dispatch $1"; failed=1; }
+    dispatch_workflow "$1" "$ref" ${reuse:+-f reuse-run="$reuse"} || { echo "::error::could not dispatch $1"; failed=1; }
 }
 
 for workflow in "$@"; do

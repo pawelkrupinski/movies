@@ -14,15 +14,6 @@ name: CI
 # which `needs: ci`.
 on:
     workflow_call:
-        # THE CALLER'S TIER (infra forgejo.nix `ciTiers`): off github.com, Main passes `main-lane` so its jobs never
-        # queue behind dispatched experiments on the shared ubuntu runner, and a measurement or gate workflow its own
-        # label. Empty (a check-tier caller, and github.com) keeps the ubuntu-* label each job names below. RunnerClassSpec.
-        inputs:
-            lane:
-                description: The runner label for every job here; empty for the job's own ubuntu-* label.
-                required: false
-                type: string
-                default: ''
 
 # WHERE IMAGES GO: registry.kinowo.net (infra/nix/modules/roles/registry.nix), the registry Flux's
 # ImageRepositories scan (FluxImageAutomationSpec), pushed as `ci` with the REGISTRY_PASSWORD secret
@@ -103,7 +94,7 @@ jobs:
     # pre-push red gate reads. FAILS OPEN: no base, a PR run, a dispatch, an unreadable runs list or a failed fetch runs
     # every row, and so does this job failing (the rows test `!= 'false'`). CiRowScopeSpec.
     scope:
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
@@ -155,7 +146,7 @@ jobs:
                     - { shard: worker-identity, cmd: testUnitWorker, suites: identity }
                     - { shard: worker,          cmd: testUnitWorkerAndWeb, suites: rest }
                     - { shard: rest,            cmd: testUnitRest }
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         # The worker rows' suite filter (build.sbt `workerRowSettings`); empty on `rest`, which runs no worker suite.
         env:
@@ -329,7 +320,7 @@ jobs:
                 include:
                     - { row: identity }
                     - { row: rest }
-        runs-on: ${{ inputs.lane || 'ubuntu-22.04' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         # Every sbt step of the row sees the same filter.
         env:
@@ -502,7 +493,7 @@ jobs:
                       browsers: webkit
                       label: webkit-behaviour-2-2
                       runs: 'webkit-iphone-13 ; @agnostic ; axe-core ; 2/2'
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:
             contents: read
@@ -575,7 +566,7 @@ jobs:
                       runs: |
                           chromium-galaxy-s10 ; @agnostic ; axe-core ;
                           chrome-desktop ; ; axe-core|@agnostic ;
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:
             contents: read
@@ -616,7 +607,7 @@ jobs:
         needs: scope
         # The public pages, booted from the read-model snapshot: inert for identity's code (ci-row-scope.sh browsers).
         if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
-        runs-on: ${{ inputs.lane || 'ubuntu-22.04' }}
+        runs-on: ubuntu-22.04
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:
             contents: read
@@ -803,7 +794,7 @@ jobs:
                 include:
                     - { shard: corpus,   cmd: e2eCorpus }
                     - { shard: rest,     cmd: e2eRest }
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:
             contents: read
@@ -1035,7 +1026,7 @@ jobs:
         name: commit rules
         needs: scope
         if: ${{ !cancelled() }}
-        runs-on: ${{ inputs.lane || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:
             contents: read

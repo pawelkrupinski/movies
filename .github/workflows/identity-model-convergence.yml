@@ -40,15 +40,7 @@ on:
                 type: string
                 default: ''
             runner:
-                description: The runner label every leg runs on (country-convergence-leg.yml), e.g. ubuntu-24.04-arm. Empty for the run's tier.
-                required: false
-                type: string
-                default: ''
-            tier:
-                description: >-
-                    The ci-runner tier label this run's jobs take: Main's kick-convergence passes gate-lane; empty is a
-                    measurement's, measure. An input, not github.ref -- Forgejo evaluates a dispatched run's runs-on
-                    before github.ref is set (runs 1697, 1720, 1724 asked main's convergence onto measure).
+                description: The runner label every leg runs on (country-convergence-leg.yml), e.g. ubuntu-24.04-arm. Empty for ubuntu-22.04.
                 required: false
                 type: string
                 default: ''
@@ -167,19 +159,11 @@ jobs:
             takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
             takes-skip: ${{ steps.legs.outputs.takes-skip }}
             drift-twice: ${{ steps.legs.outputs.drift-twice }}
-            # The legs' runner, evaluated HERE: Forgejo expands the matrix `leg` call only once this job is done, and
-            # that re-parse hands its `with:` this job's outputs and nothing else -- `inputs` and `github` read empty
-            # there, which sent main's legs to `measure` (run 2783, 2026-10-26; RunnerClassSpec). The run's tier off
-            # github.com unless a dispatch names a runner: main's own runs gate every push, so `gate-lane`; a
-            # measurement's, `measure`.
+            # The legs' runner: ubuntu-22.04 unless a dispatch names one.
             runner: ${{ inputs.runner || 'ubuntu-22.04' }}
             # THE REST OF THE PLAN (WorkflowPlanSpec): every later job's decision, evaluated here too, as expressions so
-            # they are set however this job ends. A `runs-on` read of one falls back to a label both forges have.
-            tier: ubuntu-26.04
-            timings-lane: ''
+            # they are set however this job ends.
             on-main: ${{ github.ref == 'refs/heads/main' }}
-            # github.com's hosted runners (16 GB VMs): the legs' `with:` reads this, never github.server_url.
-            hosted: true
         steps:
             # Blobless history: the reuse check keys commits by their trees and walks back to main's takes base.
             - uses: actions/checkout@v5
@@ -342,9 +326,9 @@ jobs:
             # on a 16 GB runner. The United States (10g heap) only on its convergence, next-day and takes rows, with a
             # 0.5 GB cache: at most 2.0 GB of data there, 14.2 of the 17.2 GB cap at peak, and 2-4 GB less written to
             # the host's disk per row; its order rows stay on disk (`mongo-tmpfs-order`; runs 1258/1276).
-            # github.com's hosted runners are 16 GB VMs, not ci-runner's 17.2 GB cgroups beside a page cache of their own: the
-            # United States' 10g heap keeps Mongo's data on disk there, ~2-3 GB of RAM back (github-return-plan 3.4, 2c).
-            mongo-tmpfs:                   ${{ (needs.preflight.outputs.hosted != 'true' || matrix.code != 'us') && matrix.mongo-tmpfs || '' }}
+            # github.com's hosted runners are 16 GB VMs: the United States' 10g heap keeps Mongo's data on disk there,
+            # ~2-3 GB of RAM back (github-return-plan 3.4, 2c).
+            mongo-tmpfs:                   ${{ matrix.code != 'us' && matrix.mongo-tmpfs || '' }}
             mongo-cache-gb:                ${{ matrix.mongo-cache-gb || '2' }}
             mongo-tmpfs-order:             ${{ matrix.mongo-tmpfs-order || 'true' }}
             # Replay the pinned pair and nothing else: the verdict a bisect can trust.
@@ -388,7 +372,7 @@ jobs:
     request-bisect:
         needs: [ preflight, leg ]
         if: ${{ !cancelled() && needs.leg.result == 'failure' && needs.preflight.outputs.on-main == 'true' }}
-        runs-on: ${{ needs.preflight.outputs.tier || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: write
@@ -409,7 +393,7 @@ jobs:
         name: verdict complete
         needs: [ preflight, leg ]
         if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' }}
-        runs-on: ${{ needs.preflight.outputs.tier || 'ubuntu-26.04' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
@@ -447,8 +431,6 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        with:
-            lane: ${{ needs.preflight.outputs.timings-lane }}
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.

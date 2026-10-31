@@ -50,14 +50,8 @@ jobs:
             actions: read
         outputs:
             run: ${{ steps.upstream.outputs.run }}
-            # SHARDS: one country a job on github.com's hosted runners (16 GB, 6 h a job: the five countries in one job
-            # ran up to ~5 h on ci-runner's measure tier), all five in one job on Forgejo, as before.
+            # SHARDS: one country a job on github.com's hosted runners (16 GB, 6 h a job).
             shards: ${{ steps.shards.outputs.shards }}
-            # The compare rows' runner and ceiling, evaluated HERE: their matrix reads this job's outputs, so Forgejo
-            # re-parses them with these outputs and nothing else (WorkflowPlanSpec).
-            runner: ubuntu-22.04
-            ceiling: 350
-            hosted: true
         steps:
             - uses: actions/checkout@v5
               with:
@@ -74,22 +68,17 @@ jobs:
               shell: bash
               env:
                   COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
-                  HOSTED: true
               run: |
                   set -euo pipefail
-                  if [ "$HOSTED" = true ]; then
-                      echo "shards=$(tr ',' '\n' <<< "$COUNTRIES" | jq -Rnc '[inputs | select(length > 0)]')" >> "$GITHUB_OUTPUT"
-                  else
-                      echo "shards=$(jq -nc --arg c "$COUNTRIES" '[$c]')" >> "$GITHUB_OUTPUT"
-                  fi
+                  echo "shards=$(tr ',' '\n' <<< "$COUNTRIES" | jq -Rnc '[inputs | select(length > 0)]')" >> "$GITHUB_OUTPUT"
 
     compare:
         needs: [plan]
         if: needs.plan.outputs.run != ''
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
-        runs-on: ${{ needs.plan.outputs.runner || 'ubuntu-22.04' }}
-        # github.com caps a job at 6 h: one country's shard there, the whole set on Forgejo.
-        timeout-minutes: ${{ fromJSON(needs.plan.outputs.ceiling || '350') }}
+        runs-on: ubuntu-22.04
+        # github.com caps a job at 6 h: one country's shard.
+        timeout-minutes: 350
         strategy:
             fail-fast: false
             matrix:
@@ -101,7 +90,7 @@ jobs:
             # THE ROW'S CEILING, in its log, for the timings reporter (ci_timings.py `CEILING_LINE`): the job's expression.
             - name: Report the row's ceiling
               shell: bash
-              run: echo "ci-job-ceiling ${{ fromJSON(needs.plan.outputs.ceiling || '350') }} minutes"
+              run: echo "ci-job-ceiling 350 minutes"
             - uses: actions/checkout@v5
             - uses: ./.github/actions/free-disk
             - name: Lay out the recording
@@ -128,8 +117,8 @@ jobs:
               shell: bash
               env:
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
-                  # 16 GB hosted runners also hold mongod and the page cache: 10 GB of heap there, 11 on ci-runner.
-                  SBT_OPTS: ${{ needs.plan.outputs.hosted == 'true' && '-Xmx10g' || '-Xmx11g' }}
+                  # 16 GB hosted runners also hold mongod and the page cache: 10 GB of heap.
+                  SBT_OPTS: -Xmx10g
                   COUNTRIES: ${{ matrix.countries }}
               run: |
                   set -uo pipefail
@@ -154,7 +143,7 @@ jobs:
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: identity-lean-whole${{ needs.plan.outputs.hosted == 'true' && format('-{0}', matrix.countries) || '' }}
+                  name: identity-lean-whole-${{ matrix.countries }}
                   path: ${{ runner.temp }}/identity-lean-whole/
                   retention-days: 30
             - uses: ./.github/actions/runner-peaks
@@ -167,7 +156,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        with:
-            lane: ''
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit

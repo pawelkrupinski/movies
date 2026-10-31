@@ -91,12 +91,12 @@ reuse_args() { # <finder's answer> [suite] -> the dispatch's arguments
   FOUND=$1 SUITE=${2:-Identity model convergence} CONVERGENCE_REUSE_FINDER="$work/finder" kick "$pipeline" > /dev/null
   cat "$work/dispatch-args"
 }
-check "a run the finder names goes out as reuse-run" "workflow run Identity model convergence --ref main -f tier=gate-lane -f reuse-run=2821" \
+check "a run the finder names goes out as reuse-run" "workflow run Identity model convergence --ref main -f reuse-run=2821" \
   "$(reuse_args 2821)"
-check "no run found: the plain dispatch" "workflow run Identity model convergence --ref main -f tier=gate-lane" "$(reuse_args "")"
-check "an answer that is no run id: the plain dispatch" "workflow run Identity model convergence --ref main -f tier=gate-lane" \
+check "no run found: the plain dispatch" "workflow run Identity model convergence --ref main" "$(reuse_args "")"
+check "an answer that is no run id: the plain dispatch" "workflow run Identity model convergence --ref main" \
   "$(reuse_args "2821 -f takes-only=true")"
-check "another suite is never handed a reuse-run" "workflow run Country convergence --ref main -f tier=gate-lane" \
+check "another suite is never handed a reuse-run" "workflow run Country convergence --ref main" \
   "$(reuse_args 2821 "Country convergence")"
 printf '#!/usr/bin/env bash\nexit 1\n' > "$work/broken-matcher"; chmod +x "$work/broken-matcher"
 check "a diff that cannot be matched is not 'nothing changed': dispatched" "Country convergence" "$(kick "$docs" "$work/broken-matcher")"

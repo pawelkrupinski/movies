@@ -31,7 +31,7 @@ mkdir -p "$work/bin" "$work/logs"
 cat > "$work/bin/ci-run" <<'STUB'
 #!/usr/bin/env bash
 out="" cmd=""
-while [ "$#" -gt 0 ]; do case "$1" in --out) out=$2; shift 2 ;; --tier) echo "$2" >> "$LOGS/tiers"; shift 2 ;; --) shift; cmd="$*"; break ;; *) shift ;; esac; done
+while [ "$#" -gt 0 ]; do case "$1" in --out) out=$2; shift 2 ;; --) shift; cmd="$*"; break ;; *) shift ;; esac; done
 echo "$cmd" >> "$LOGS/commands"
 case "$cmd" in testOnly*) g=unit ;; worker/IntegrationTest*) g=it ;; *FilmSchedule*) g=e2e-corpus ;; *) g=e2e-rest ;; esac
 [ -f "$LOGS/$g.unreachable" ] && { cat "$LOGS/$g.unreachable" >&2; exit 2; }
@@ -77,19 +77,17 @@ has() { grep -qF -- "$1" "$work/out" && echo true || echo false; }
 check "every group passing and the measure LANDABLE is LANDABLE" "0" "$(landing --head "$code" --base "$base")"
 check "...the verdict last" "LANDABLE" "$(tail -1 "$work/out")"
 check "...the measure asked for the footprint when eligible, the full measure otherwise (identity-measure's own fallback)" \
-  "--head $code --base $base --tier landing --footprint" "$(cat "$work/logs/measure-args")"
+  "--head $code --base $base --footprint" "$(cat "$work/logs/measure-args")"
 check "...and every group Main's rows run for a resolver change, e2e included" "4" "$(wc -l < "$work/logs/commands" | tr -d ' ')"
 check "...the unit group naming the identity specs Main runs" "true" \
   "$(grep -q '^testOnly services.identity.\* services.titlerules.\* scripts.\* tools.DocCommentPlacementSpec tools.HardClusterRatchetSpec$' "$work/logs/commands" && echo true || echo false)"
 check "...the hard-cluster convergence among them" "true" \
   "$(grep -q 'integration.HardClusterConvergenceIntegrationSpec' "$work/logs/commands" && echo true || echo false)"
-check "...every group's run in the check tier, a landing check blocking work (RunnerClassSpec); the convergence on landing" "ubuntu-24.04" \
-  "$(sort -u "$work/logs/tiers")"
 
 rm -f "$work/logs/commands"
 check "a judgements-only change skips the e2e rows, as Main's scope does" "0 2" \
   "$(landing --head "$judged" --base "$code") $(wc -l < "$work/logs/commands" | tr -d ' ')"
-check "--full asks the full measure, over the whole suite" "--head $judged --base $code --tier landing --full" "$(landing --head "$judged" --base "$code" --full > /dev/null; cat "$work/logs/measure-args")"
+check "--full asks the full measure, over the whole suite" "--head $judged --base $code --full" "$(landing --head "$judged" --base "$code" --full > /dev/null; cat "$work/logs/measure-args")"
 check "--footprint-only asks only the footprint" "true" \
   "$(landing --head "$judged" --base "$code" --footprint-only > /dev/null; grep -q -- '--footprint-only' "$work/logs/measure-args" && echo true || echo false)"
 check "--no-cache reaches the measure" "true" \
@@ -152,10 +150,10 @@ check "...saying why, in identity-ci-run's words" "true" \
 rm -f "$work/logs/e2e-corpus.unreachable"
 check "--no-measure and --no-specs together is a usage error" "2" "$(landing --no-measure --no-specs)"
 
-# THE DRIFT GROUP: a change to a drift path (.github/identity-drift-paths.txt) runs identity-drift-ci on the landing tier
+# THE DRIFT GROUP: a change to a drift path (.github/identity-drift-paths.txt) runs identity-drift-ci
 rm -f "$work/logs/drift-args"
 check "a resolver change runs the drift group: every takes-drift row, drift-only, on landing, held against main's" "0 true" \
-  "$(landing --head "$code" --base "$base") $(grep -q -- "--head $code --against main --tier landing --out " "$work/logs/drift-args" && echo true || echo false)"
+  "$(landing --head "$code" --base "$base") $(grep -q -- "--head $code --against main --out " "$work/logs/drift-args" && echo true || echo false)"
 check "...its verdict a line of the check's" "true" "$(has '  drift       DRIFT CLEAN')"
 check "a red drift row is BLOCKED, naming it" "1 true" \
   "$(DRIFT=1 landing --head "$code" --base "$base") $(has '- drift: DRIFT RED: takes-drift-2 (germany)')"

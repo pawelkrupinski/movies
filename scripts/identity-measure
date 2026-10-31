@@ -15,7 +15,7 @@
 # usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
 #                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait | --wait] [--full] [--fresh] [--json]
 #                                 [--timeout <minutes>] [--all-countries] [--all-recordings | --one-recording] [--plan]
-#                                 [--footprint [--traces DIR] | --footprint-only [--traces DIR]] [--no-cache] [--tier LABEL]
+#                                 [--footprint [--traces DIR] | --footprint-only [--traces DIR]] [--no-cache]
 #        scripts/identity-measure --sweep
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait | --wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first); --head names it too
@@ -44,8 +44,6 @@
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
 #   --fresh        dispatch even when an earlier measurement of the same change answers it (below; the result cache too)
 #   --no-cache     neither answer from THE RESULT CACHE (below) nor store in it: measure afresh
-#   --tier         the ci-runner tier label the run's jobs take (the workflow's `tier` input): identity-landing-check
-#                  passes the check tier, since a landing check blocks work; default empty, a measurement's `measure`
 #   --sweep        delete the orphaned measure/ branches on origin (below) and exit; opt-in only, never run by a measurement
 #   --take-paths   print the paths a reuse treats as able to move a take (matches.sh dialect) and exit
 #   --json         machine output (scripts/identity_measure.py --json)
@@ -147,7 +145,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
 ref="" base="" recording="" keep="" nowait="" wait_eta="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
-all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces="" no_cache="" tier=""
+all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces="" no_cache=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
@@ -170,7 +168,6 @@ while [ "$#" -gt 0 ]; do
     --traces) footprint_traces=$2; shift ;;
     --no-store) no_store=1 fresh=1 ;;
     --no-cache) no_cache=1 ;;
-    --tier) tier=$2; shift ;;
     --sweep) sweep=1 ;;
     --json) json=1 ;;
     --run) run=$2; shift ;;
@@ -594,7 +591,7 @@ fan_out() {
     say "measuring over recording ${rec} too ($on), in parallel"
     logs+=("$dir/$rec") 
     "$0" --head "$commit" --base "$base" ${rec:+$( [ "$rec" = pinned ] || echo "--recording $rec")} --countries "$on" --one-recording \
-      ${json:+--json} ${tier:+--tier "$tier"} --timeout "$timeout_min" > "$dir/$rec" 2>&1 &
+      ${json:+--json} --timeout "$timeout_min" > "$dir/$rec" 2>&1 &
     pids+=($!)
   done <<< "$2"
   for i in "${!pids[@]}"; do
@@ -839,7 +836,6 @@ dispatch() { # → measured_run
   [ -z "$recording" ] || only+=(-f recording="$recording")
   [ -z "$named_countries" ] || only+=(-f takes-countries="$named_countries")
   [ -z "$no_store" ] || only+=(-f takes-no-store=true)
-  [ -z "$tier" ] || only+=(-f tier="$tier")
   say "dispatching (attempt $attempts)"
   dispatched_at=$(date +%s)
   identity_dispatch_measure "$workflow" "$branch" "$push" "identity-measure ${commit:0:9} against ${base:0:9}" \

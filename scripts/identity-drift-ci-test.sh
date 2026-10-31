@@ -80,8 +80,8 @@ echo completed > "$work/state/status-900"
 artifact 3726 de 2 0 1 37
 artifact 900 de 2 0 1 37
 drift red --for-red 2517
-check "--for-red <number>: the red's drift rows alone, on the red's OWN seed, dispatched drift-only on the landing tier" \
-  "true" "$(grep -q -- '-f drift-only=true -f tier=landing -f takes-countries=de -f drift-seeds=,37$' "$work/state/dispatches" && echo true || echo false)"
+check "--for-red <number>: the red's drift rows alone, on the red's OWN seed, dispatched drift-only" \
+  "true" "$(grep -q -- '-f drift-only=true -f takes-countries=de -f drift-seeds=,37$' "$work/state/dispatches" && echo true || echo false)"
 check "...a row no better than the red's own is a refuted fix: DRIFT RED, exit 1" \
   "1 DRIFT RED: no better than run 2517: takes-drift-2 (germany): 1 -> 1 open" "$(cat "$work/red.rc") $(tail -1 "$work/red.out")"
 check "...naming the row's verdict and its report's lines" "true" \

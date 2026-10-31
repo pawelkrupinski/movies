@@ -42,8 +42,6 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-              # Main's run, so main's tier, as Main's kick passes it (RunnerClassSpec): without it the run asked for
-              # `measure`, and as main's lane's newest it replaced the push's gate-lane run (run 2829, 2026-10-26).
               # drift-twice: every drift seed replayed twice and the TSVs diffed -- a replay that is no function of its
               # inputs (1c1cf9789: green in run 3145, red in 3154 on the same seed) fails here, not as a red on a push. A
               # day whose full run is a push's already in flight checks no determinism: the next day's does.
@@ -53,7 +51,7 @@ jobs:
                       echo "run $IN_FLIGHT_RUN of ${GITHUB_SHA:0:9} is already queued or running: it is today's full run"
                       exit 0
                   fi
-                  gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow -f tier=gate-lane -f drift-twice=true
+                  gh workflow run identity-model-convergence.yml --ref main -f takes-skip=shadow -f drift-twice=true
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:

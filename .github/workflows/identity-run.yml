@@ -35,13 +35,6 @@ on:
                 required: false
                 default: '8g'
                 type: string
-            tier:
-                description: >-
-                    The ci-runner tier label this run's jobs take: identity-landing-check passes the check tier's
-                    ubuntu-24.04 (a landing check blocks work); empty is a measurement's, measure. (RunnerClassSpec)
-                required: false
-                default: ''
-                type: string
 # Every branch's runs in a lane of their own off main (a measurement's form; identity-ci-run pushes a measure/ branch per
 # run): runs side by side, none replaced. Keyed by the branch, never github.run_id, which Forgejo leaves empty when it
 # evaluates `concurrency:`. On Forgejo a dispatch
@@ -61,11 +54,7 @@ jobs:
         # The longest green run took 162 min (run 965, five countries); the mean is 10. CiRowTimeoutSpec.
         timeout-minutes: 200
         # THE PLAN (WorkflowPlanSpec): this run's root, so the one job that reads `inputs` and `github` whole; the jobs
-        # after it read its outputs. Expressions only, so they are set however the job ends. A job asking `runs-on` an
-        # output falls back to a label both forges have, in case this one never ran.
-        outputs:
-            tier: ubuntu-26.04
-            timings-lane: ''
+        # after it read its outputs.
         permissions:
             contents: read
             actions: read
@@ -135,7 +124,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        with:
-            lane: ${{ needs.run.outputs.timings-lane }}
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit

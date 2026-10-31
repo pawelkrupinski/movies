@@ -75,11 +75,5 @@ check "a push the remote rejects is no run" "2" "$(cat "$work/rejected.rc")"
 check "...and says why, in the remote's words" "true" \
   "$(grep -qE '^identity-ci-run: could not push measure/[^ ]+: remote rejected \(unable to migrate objects to permanent storage\)$' "$work/rejected.err" && echo true || echo false)"
 
-check "a plain run asks no tier: its workflow's default, measure" "false" \
-  "$(grep -q -- '-f tier=' "$work/dispatches" && echo true || echo false)"
-rm -f "$work/dispatches"
-ci_run tiered --tier ubuntu-24.04
-check "--tier is the workflow's tier input (identity-landing-check's check tier)" "true" \
-  "$(grep -q -- '-f heap=8g -f tier=ubuntu-24.04$' "$work/dispatches" && echo true || echo false)"
 
 spec_summary

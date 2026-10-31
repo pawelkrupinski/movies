@@ -72,7 +72,6 @@ jobs:
             countries: ${{ steps.countries.outputs.countries }}
             recording: ${{ inputs.recording }}
             runner: ubuntu-22.04
-            hosted: true
         steps:
             - uses: actions/checkout@v5
               with:
@@ -136,7 +135,7 @@ jobs:
             next-day-command:              ${{ matrix.next-day || '' }}
             heap:                          ${{ matrix.heap }}
             # The United States' Mongo on disk on github.com's 16 GB VMs (identity-model-convergence.yml's note).
-            mongo-tmpfs:                   ${{ (needs.preflight.outputs.hosted != 'true' || matrix.code != 'us') && matrix.mongo-tmpfs || '' }}
+            mongo-tmpfs:                   ${{ matrix.code != 'us' && matrix.mongo-tmpfs || '' }}
             mongo-cache-gb:                ${{ matrix.mongo-cache-gb || '2' }}
             mongo-tmpfs-order:             ${{ matrix.mongo-tmpfs-order || 'true' }}
             mode:                          hermetic
@@ -161,5 +160,3 @@ jobs:
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
         secrets: inherit
-        with:
-            lane: ''

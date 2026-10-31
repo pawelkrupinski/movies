@@ -195,8 +195,6 @@ check "...dispatched as the workflow's recording input" "true" \
   "$(grep -q -- '-f takes-only=true -f recording=528 -f takes-countries=pl' "$work/stub/dispatch" && echo true || echo false)"
 check "...and never answered by an earlier measurement over the pinned pair" "0|true" \
   "$(KEEP_CACHE=1 measure landable --countries pl >/dev/null; KEEP_CACHE=1 measure landable --recording 528 --countries pl)|$([ -f "$work/stub/dispatch" ] && echo true || echo false)"
-check "--tier names the run's ci-runner tier (identity-landing-check's check tier)" "0|true" \
-  "$(measure landable --countries pl --fresh --tier ubuntu-24.04)|$(grep -q -- '-f takes-countries=pl -f tier=ubuntu-24.04$' "$work/stub/dispatch" && echo true || echo false)"
 check "a recording is a run id" "2" "$(measure landable --recording latest)"
 check "a country no tool knows is a usage error" "2" "$(measure landable --countries pl,xx)"
 check "a takes download that fails once is asked again, not the end of the measurement" "0" "$(DOWNLOAD_BLIPS=1 measure landable --countries pl)"

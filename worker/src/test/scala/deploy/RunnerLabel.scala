@@ -11,9 +11,7 @@ package deploy
 object RunnerLabel {
 
   val GitHub  = "https://github.com"
-  val Forgejo = "https://forgejo.internal"
   val Main    = "refs/heads/main"
-  val Branch  = "refs/heads/measure/agent/0000000-test"
 
   /** Where a workflow runs: the forge (`github.server_url`), the ref, the inputs a caller passed, and the outputs of
    *  the jobs it needs, keyed `<job>.<name>`. */

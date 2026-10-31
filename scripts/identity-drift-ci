@@ -5,11 +5,11 @@
 #
 # Why (docs: convergence-failures-2026-10-29, §5 Tier 2 and §7.2): main's full suite gives a drift verdict ~48 minutes
 # after a push (red) or ~80 (green), and only once the commit is on main; fixers' "fixes" were refuted there, one after
-# another. This dispatches Identity model convergence with `drift-only` (10 rows, not 37) on the `landing` tier, so one
+# another. This dispatches Identity model convergence with `drift-only` (10 rows, not 37), so one
 # red row is judged in ~12-16 minutes and all ten in ~25-40, before the push.
 #
 # usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,us,es] [--seeds S1,S2|S1|,S2|both]
-#                                  [--for-red <run> | --against <run>|main] [--tier LABEL] [--timeout <minutes>]
+#                                  [--for-red <run> | --against <run>|main] [--timeout <minutes>]
 #                                  [--out DIR] [--no-wait]
 #        scripts/identity-drift-ci --run <run id> [--out DIR]
 #   <commit>     default HEAD (committed only; a commit whose workflows predate drift-only gets main's .github/ and
@@ -33,7 +33,6 @@
 #                What a NEW OR TIGHTENED CHECK must show to land (scripts/ci/commit_rules.py's rule): it finds
 #                nothing main's run does not, every finding at birth on its allow-list as TEMPORARY. And what
 #                identity-landing-check asks of a change while main is red on drift
-#   --tier       the ci-runner tier label (default `landing`: ci-runner's own check-tier runner, 6 slots)
 #   --timeout    minutes to wait for the rows (default 75: the drift step's own ceiling)
 #   --no-wait    dispatch, print the run id, exit 0; collect with --run
 #   --run        collect an existing drift-only run
@@ -66,7 +65,7 @@ workflow=identity-model-convergence.yml
 say() { echo "identity-drift-ci: $*" >&2; }
 progress() { [ -z "${KINOWO_PROGRESS_FILE:-}" ] || date +%s >> "$KINOWO_PROGRESS_FILE" 2> /dev/null || true; }
 
-ref=HEAD seeds=both for_red="" against="" tier=landing timeout_min=75 out="" nowait="" run=""
+ref=HEAD seeds=both for_red="" against="" timeout_min=75 out="" nowait="" run=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --head) flag_value "$@"; ref=$2; shift ;;
@@ -74,7 +73,6 @@ while [ "$#" -gt 0 ]; do
     --seeds) flag_value "$@"; seeds=$2; shift ;;
     --for-red) flag_value "$@"; for_red=${2#\#}; shift ;;
     --against) flag_value "$@"; against=${2#\#}; shift ;;
-    --tier) flag_value "$@"; tier=$2; shift ;;
     --timeout) flag_value "$@"; timeout_min=$2; shift ;;
     --out) flag_value "$@"; out=$2; shift ;;
     --no-wait) nowait=1 ;;
@@ -222,7 +220,7 @@ if [ -z "$run" ]; then
   branch=$(identity_measure_branch "$commit" drift)
   say "commit $(git log --oneline -1 "$commit" | cut -c1-100)"
   identity_push_measure_branch "$remote" "$push" "$branch" || { delete_branch; die "could not push $branch: $MEASURE_PUSH_ERROR"; }
-  only=(-f drift-only=true -f tier="$tier")
+  only=(-f drift-only=true)
   [ -z "$countries" ] || only+=(-f takes-countries="$(tr ' ' ',' <<< "$countries")")
   [ -z "$pins" ] || only+=(-f drift-seeds="$pins")
   dispatched_at=$SECONDS
@@ -230,7 +228,7 @@ if [ -z "$run" ]; then
     "identity-drift-ci ${for_red:+--for-red $for_red }${against:+--against $against }${commit:0:9}" "${only[@]}" \
     || { [[ "$IDENTITY_DISPATCH_ERROR" == dispatched* ]] || delete_branch; die "$IDENTITY_DISPATCH_ERROR"; }
   run=$DISPATCHED_RUN
-  say "run $run on $branch: drift-only, $(expected_rows | wc -l | tr -d ' ') row(s) on $tier ($(expected_rows | tr '\n' ',' | sed 's/,$//'))"
+  say "run $run on $branch: drift-only, $(expected_rows | wc -l | tr -d ' ') row(s) ($(expected_rows | tr '\n' ',' | sed 's/,$//'))"
   if [ -n "$nowait" ]; then say "not waiting: collect with  scripts/identity-drift-ci --run $run"; echo "$run"; exit 0; fi
 fi
 

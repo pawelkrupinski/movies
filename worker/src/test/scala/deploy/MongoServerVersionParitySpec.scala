@@ -62,10 +62,7 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
    *  Main run (38781236870) died there. Since the 2026-10-25 image ubuntu-24.04 boots one too (github.com Main
    *  41182034274: both integration rows). Until production's release starts on that kernel, every job that starts
    *  the pinned mongod runs on ubuntu-22.04 (kernel 6.8) ON GITHUB.COM: its `runs-on:` evaluated there (RunnerLabel),
-   *  or, for a job running on `${{ inputs.runner }}`, that input's default and every caller's `runner:` evaluated there.
-   *  Off github.com every label -- ubuntu-*, and each tier's (RunnerClassSpec) -- is one job image on ci-runner's
-   *  kernel, so `${{ inputs.lane || github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'ubuntu-24.04' }}`
-   *  and `... && 'ubuntu-22.04' || 'measure'` pass. */
+   *  or, for a job running on `${{ inputs.runner }}`, that input's default and every caller's `runner:` evaluated there. */
   private val MongoStarts  = Seq("scripts/ci/start-mongo-replset.sh", "./.github/actions/convergence-setup")
   private val MongoRunner  = "ubuntu-22.04"
   private val OnGitHub     = RunnerLabel.Context(RunnerLabel.GitHub, RunnerLabel.Main)

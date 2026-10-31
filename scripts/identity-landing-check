@@ -38,7 +38,7 @@
 #
 # THE DRIFT GROUP: the incremental = whole replay -- every `takes-drift-1|2 (<country>)` row of main's convergence run,
 # the step behind 28 of 36 red convergence runs in the week to 2026-10-29 -- as scripts/identity-drift-ci's drift-only
-# run on ci-runner's `landing` tier (~25-40 min for all ten rows), beside the measure and the specs. On by default when
+# run (~25-40 min for all ten rows), beside the measure and the specs. On by default when
 # the change touches a path in .github/identity-drift-paths.txt (the resolver, worker/src/main, the title rules, the
 # replay harness, the flip predicate, the allow-lists); --full runs it anyway inside the whole suite, so not again.
 # Each row is held against main's newest decided run (identity-drift-ci --against main): a row worse than main's -- more
@@ -54,15 +54,6 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/tool-conventions.sh
 . "$here/tool-conventions.sh"
 DIE_STATUS=2
-# A LANDING CHECK BLOCKS WORK, so its CI runs take the CHECK tier (ci-runner's ci-check slice, CPUWeight 300), not the
-# measurements' `measure` (CPUWeight 100), where on 2026-10-26 they queued for hours behind bisects and ablations.
-# ubuntu-24.04, where mongod starts (MongoServerVersionParitySpec). Passed to identity-ci-run and identity-measure as
-# --tier, their workflows' `tier` input (RunnerClassSpec reads both here).
-# THE CONVERGENCE RUN TAKES `landing`, ci-runner's own 3-slot check-tier runner (infra forgejo.nix `landing`,
-# 2026-10-26), not ubuntu-24.04: a --full run is 22 rows, which filled the check tier's slots. Forgejo 15 ignores
-# `strategy.max-parallel`, so that runner's capacity is the cap on how many rows run at once. The same job image.
-landing_tier=ubuntu-24.04
-landing_convergence_tier=landing
 ref=HEAD base="" mode=footprint local="" measure=1 specs=1 no_cache="" drift=auto
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -118,7 +109,7 @@ run_group() {
     if [ "$name" = it ]; then (cd "$(git rev-parse --show-toplevel)" && "$here/it-local.sh" "$command") > "$dir/sbt.log" 2>&1
     else "$here/sbt-warm" "$command" > "$dir/sbt.log" 2>&1; fi
   else
-    "${IDENTITY_LANDING_CI_RUN:-$here/identity-ci-run}" --head "$commit" --tier "$landing_tier" --out "$dir/run" -- "$command" > "$dir/ci-run.log" 2>&1
+    "${IDENTITY_LANDING_CI_RUN:-$here/identity-ci-run}" --head "$commit" --out "$dir/run" -- "$command" > "$dir/ci-run.log" 2>&1
     # the artifact's sbt.log (identity-run.yml tees it); a run that never made one is no answer
     [ ! -f "$dir/run/sbt.log" ] || cp "$dir/run/sbt.log" "$dir/sbt.log"
   fi
@@ -151,8 +142,8 @@ fi
 
 pids=()
 if [ -n "$drift" ]; then
-  say "drift: identity-drift-ci (every takes-drift row, drift-only, on ci-runner's $landing_convergence_tier tier)"
-  "${IDENTITY_LANDING_DRIFT:-$here/identity-drift-ci}" --head "$commit" --against main --tier "$landing_convergence_tier" --out "$out/drift/run" \
+  say "drift: identity-drift-ci (every takes-drift row, drift-only)"
+  "${IDENTITY_LANDING_DRIFT:-$here/identity-drift-ci}" --head "$commit" --against main --out "$out/drift/run" \
     > "$out/drift.txt" 2> "$out/drift.log" &
   drift_pid=$!
 fi
@@ -167,10 +158,10 @@ if [ -n "$specs" ]; then
   fi
 fi
 if [ -n "$measure" ]; then
-  flags=(--head "$commit" --base "$base" --tier "$landing_convergence_tier")
+  flags=(--head "$commit" --base "$base")
   case $mode in footprint) flags+=(--footprint) ;; footprint-only) flags+=(--footprint-only) ;; full) flags+=(--full) ;; esac
   [ -z "$no_cache" ] || flags+=(--no-cache)
-  say "measure: identity-measure ${flags[*]:6}"
+  say "measure: identity-measure ${flags[*]:4}"
   "${IDENTITY_LANDING_MEASURE:-$here/identity-measure}" "${flags[@]}" > "$out/measure.txt" 2> "$out/measure.log" &
   measure_pid=$!
 fi

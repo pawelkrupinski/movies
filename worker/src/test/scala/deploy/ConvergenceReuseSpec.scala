@@ -18,9 +18,7 @@ class ConvergenceReuseSpec extends AnyFlatSpec with Matchers {
   private def suite = RepoFile.read(".github/workflows/identity-model-convergence.yml")
   private def leg   = RepoFile.read(".github/workflows/country-convergence-leg.yml")
 
-  // Forgejo expands the matrix `leg` call only once preflight is done and hands its `with:` that job's outputs and nothing
-  // else (RunnerClassSpec): from 2026-10-23 every `inputs.<name>` there read empty -- every takes-only measurement ran the
-  // whole suite and every takes-base was dropped. The reuse facts are the preflight's outputs, so they are what the legs ran.
+  // The reuse facts are the preflight's outputs (the run's plan, WorkflowPlanSpec), so they are what the legs ran.
   "main's legs" should "read every input through the preflight's outputs" in {
     val call = RepoFile.withoutComments(RepoFile.block(RepoFile.jobs(suite)("leg"), "with"))
     call should not include "inputs."
