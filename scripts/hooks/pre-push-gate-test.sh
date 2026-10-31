@@ -127,9 +127,9 @@ check "Forgejo: an https remote with credentials reads its host, without them" "
 # agentctl's forge switch (github-return W7): a range from a bare sha reads the forge it names, through its remote
 scratch_git "$grepo" remote add forgejo "$fjremote"
 check "forge = forgejo (agentctl's switch): a range from a bare sha reads Forgejo through the forgejo remote" "1 1" \
-  "$(KINOWO_FORGE= AGENTCTL_FORGE=forgejo FORGEJO_API_TOKEN=envtoken FJ_IMC="[$fjred]" GH_FAILS=1 push "$gbase..$plain") $(grep -c 'RED on main: run 38520439037 (failure) http://forgejo' "$gate/err")"
+  "$(KINOWO_FORGE='' AGENTCTL_FORGE=forgejo FORGEJO_API_TOKEN=envtoken FJ_IMC="[$fjred]" GH_FAILS=1 push "$gbase..$plain") $(grep -c 'RED on main: run 38520439037 (failure) http://forgejo' "$gate/err")"
 check "...and with no switch set it reads gh, as before" "1 1" \
-  "$(KINOWO_FORGE= AGENTCTL_FORGE= AGENTCTL_CONFIG=- GH_IMC="[$red]" FJ_FAILS=1 push "$gbase..$plain") $(grep -c 'run 38520439037 (failure) https://x/' "$gate/err")"
+  "$(KINOWO_FORGE='' AGENTCTL_FORGE='' AGENTCTL_CONFIG=- GH_IMC="[$red]" FJ_FAILS=1 push "$gbase..$plain") $(grep -c 'run 38520439037 (failure) https://x/' "$gate/err")"
 scratch_git "$grepo" remote remove forgejo
 check "a GitHub remote still reads gh, not Forgejo" "1 1" \
   "$(GH_IMC="[$red]" FJ_FAILS=1 PREPUSH_REMOTE_URL=git@github.com:pawelkrupinski/movies.git push "$gbase..$plain") $(grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) https://x/' "$gate/err")"
