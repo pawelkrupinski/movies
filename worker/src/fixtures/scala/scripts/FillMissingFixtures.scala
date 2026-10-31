@@ -74,8 +74,7 @@ object FillMissingFixtures {
     // it asked each service (tools.CiHttpCalls).
     val calls = new services.metrics.WorkerHttpMetrics(Seq(country.code), new io.prometheus.metrics.model.registry.PrometheusRegistry())
     tools.CiHttpCalls.track(calls)
-    // Under the runner's shared rate permits where it names a service, as a recording's wire is (tools.RatePermits).
-    val wire = tools.RatePermits.over(new RealHttpFetch(tls = tls), tools.RatePermits.from(configuration.ratePermitService))
+    val wire = new RealHttpFetch(tls = tls)
     val live: HttpFetch = new tools.CountingHttpFetch(MissingFixtureFill.route(paced(wire), proxy),
       calls.recorderFor(country.code, "fill"))
     val fill = new MissingFixtureFill(

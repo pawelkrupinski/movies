@@ -177,8 +177,6 @@ final case class ConvergenceScrapesUri(value: String) extends AnyVal
 final case class ConvergenceScrapesDatabaseName(value: String) extends AnyVal
 /** `GITHUB_STEP_SUMMARY` — the file a CI step's markdown summary is appended to. */
 final case class StepSummaryFile(value: Path) extends AnyVal
-/** `FORGEJO_RATE_PERMITS` — the base URL of the CI runner's shared per-service rate-permit service. */
-final case class RatePermitService(value: String) extends AnyVal
 /** `KINOWO_HARD_CLUSTERS_COUNTRIES` — the countries a hard-cluster run is narrowed to. */
 final case class HardClusterCountries(value: Set[models.Country]) extends AnyVal
 /** `KINOWO_HARD_CLUSTERS_DUMP` (`1` or `true`) — print every hard-cluster pass's films. */
