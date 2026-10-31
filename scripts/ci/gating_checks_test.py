@@ -99,6 +99,18 @@ class Lint(unittest.TestCase):
         self.write(".github/workflows/main.yml", MAIN.replace("'main-lane'", "'new-tier'"))
         self.assertIn("runner label 'new-tier' has no proven", " ".join(g.lint(self.root)))
 
+    def test_a_label_only_github_com_picks_may_stay_unproven(self):
+        picked = "${{ inputs.lane || github.server_url == 'https://github.com' && 'gh-only' || 'ubuntu-26.04' }}"
+        self.write(".github/workflows/ci.yml", CI.replace("${{ inputs.lane || 'ubuntu-26.04' }}", picked))
+        self.assertIn("runner label 'gh-only' has no proven", " ".join(g.lint(self.root)))
+        self.write(".github/gating-checks.tsv", REGISTRY + "label\t-\tgh-only\tunproven\tgithub.com's; owner: ci\n")
+        self.assertEqual(g.lint(self.root), [])
+
+    def test_a_label_forgejo_can_pick_still_needs_a_proven_row(self):
+        self.write(".github/workflows/main.yml", MAIN.replace("'main-lane'", "'new-tier'"))
+        self.write(".github/gating-checks.tsv", REGISTRY + "label\t-\tnew-tier\tunproven\tborn today; owner: ci\n")
+        self.assertIn("runner label 'new-tier' has no proven", " ".join(g.lint(self.root)))
+
     def test_a_new_gate_workflow_needs_a_proven_row(self):
         self.write("scripts/hooks/pre-push", HOOK.replace('"identity-model-convergence.yml")', '"identity-model-convergence.yml" "recording.yml")'))
         self.assertIn("recording.yml gates pushes", " ".join(g.lint(self.root)))

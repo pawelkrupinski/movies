@@ -39,6 +39,16 @@ git cat-file -e "$base^{commit}" 2>/dev/null \
     || { echo "::error title=commit rules::no commit $base to judge from"; exit 2; }
 git merge-base --is-ancestor "$base" HEAD || { echo "commit-rules-ci: $base is no ancestor of HEAD: nothing to judge"; exit 0; }
 
+# THE FLOOR: the commit that put these rules on CI (the one that added this script). Commits before it were never
+# judged here -- the pre-push hook alone held them, and some broke a rule it later grew -- so a base older than it (a
+# forge whose newest green Main run predates it: github.com's was 2026-10-16, 1392 commits back, run 41182034274)
+# starts at the floor instead. Every commit since CI judged them is still judged, on either forge.
+floor=$(git log --format=%H -1 --diff-filter=A -- scripts/ci/commit-rules-ci.sh 2>/dev/null)
+if [ -n "$floor" ] && [ "$floor" != "$(git rev-parse "$base^{commit}")" ] && git merge-base --is-ancestor "$base" "$floor"; then
+    echo "commit-rules-ci: ${base:0:9} predates the rules on CI: judging from ${floor:0:9}, the commit that added them"
+    base=$floor
+fi
+
 echo "commit rules over ${base:0:9}..$(git rev-parse --short=9 HEAD) ($(git rev-list --count "$base..HEAD") commit(s))"
 rc=0
 for set in allowlists driftguards; do

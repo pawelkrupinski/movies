@@ -32,6 +32,7 @@ job	main.yml	e2e (rest)	2722
 job	main.yml	report (timings)	aggregate
 label	-	main-lane	2722
 label	-	ubuntu-24.04	2722
+label	-	ubuntu-22.04	unproven	github.com's mongod runner (kernel 6.8; 24.04/26.04 boot 6.19-7.0.x, which mongod 8.3 refuses); Forgejo never runs it; owner: W4 (github return)
 label	-	ubuntu-26.04	2722
 job	main.yml	publish-web	2718
 job	main.yml	image-worker	2718

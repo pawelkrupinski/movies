@@ -54,6 +54,8 @@ EXPR = re.compile(r"\$\{\{.*?\}\}")
 CALL = re.compile(r"^\s+uses:\s*\./\.github/workflows/(\S+\.ya?ml)\s*$", re.M)
 LABEL_LINE = re.compile(r"^\s+(runs-on|lane|runner):\s*(.+)$")
 QUOTED = re.compile(r"'([^']+)'")
+# A label github.com alone picks: `github.server_url == 'https://github.com' && '<label>'`.
+GITHUB_PICK = re.compile(r"github\.server_url == 'https://github\.com' && '([^']+)'")
 
 
 def load(path: str) -> list[dict]:
@@ -128,21 +130,31 @@ def workflow_globs(root: str, file: str, seen: frozenset = frozenset()) -> list[
     return globs
 
 
-def workflow_labels(root: str, file: str, seen: frozenset = frozenset()) -> set[str]:
+def workflow_labels(root: str, file: str, seen: frozenset = frozenset(), github_only: bool = False) -> set[str]:
+    """Every runner label the workflow (and what it calls) can ask for; with github_only, those only github.com's
+    branch of an expression picks (`github.server_url == 'https://github.com' && '<label>'`) and no other place names."""
     text = open(os.path.join(root, ".github/workflows", file)).read()
-    labels = set()
+    labels, picked = set(), set()
     for line in jobs_block(text):
         m = LABEL_LINE.match(line)
         if m:
             value = m.group(2).split(" #")[0].strip()
             if "${{" in value:
-                labels |= {q for q in QUOTED.findall(value) if q != "https://github.com"}
+                quoted = [q for q in QUOTED.findall(value) if q != "https://github.com"]
+                github = GITHUB_PICK.findall(value)
+                picked |= set(github)
+                rest = list(quoted)
+                for g in github:
+                    rest.remove(g)
+                labels |= set(rest)
             elif value:
                 labels.add(value.strip("'\""))
     for call in CALL.findall(text):
         if call not in seen:
-            labels |= workflow_labels(root, call, seen | {file})
-    return labels
+            theirs = workflow_labels(root, call, seen | {file}, github_only=True)
+            picked |= theirs
+            labels |= workflow_labels(root, call, seen | {file}) - theirs
+    return picked - labels if github_only else labels | picked
 
 
 def hook_gate_files(root: str) -> list[str]:
@@ -185,9 +197,14 @@ def lint(root: str) -> list[str]:
         for r in named:
             if not any(fnmatch.fnmatchcase(r["name"], g) for g in globs):
                 problems.append(f"{file}: row {r['name']!r} names no job the workflow runs: remove it")
+        # A label only github.com's branch picks runs no job on the forge whose run numbers prove rows here (Forgejo,
+        # until the cut-over): it needs a row, and may stay `unproven` (owner and why) until github.com proves it.
+        github_only = workflow_labels(root, file, github_only=True)
         for label in sorted(workflow_labels(root, file)):
-            if not any(r["kind"] == "label" and r["name"] == label and is_proven(r) for r in rows):
-                problems.append(f"{file}: runner label {label!r} has no proven `label` row: a new tier gates only after a green run on it")
+            row = [r for r in rows if r["kind"] == "label" and r["name"] == label]
+            if any(is_proven(r) for r in row) or (label in github_only and any(r["proven"] == "unproven" for r in row)):
+                continue
+            problems.append(f"{file}: runner label {label!r} has no proven `label` row: a new tier gates only after a green run on it")
     return problems
 
 
