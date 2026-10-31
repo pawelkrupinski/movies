@@ -148,11 +148,28 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val stage = if (decision.members.isEmpty) Set.empty[Question] else {
       val id = keyOf(decision)
       waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps) ++
+        // a correction standing unread -- the apply's budget spent, or stored and trusted at boot -- while an answer its
+        // receipt read was filed otherwise since: served as last decided, pending on its re-read (P3, a budget decides
+        // how soon, never what: PL "Lalka" stood on 1001 after a restart, its families' answers since naming 1002)
+        held.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.reads.iterator.collect {
+          case (read, was) if readNow(read).exists(_ != was) => read
+          // a question it asked and read unanswered, not given up on: settled past, pending (P1)
+          case (read @ Dependency.Asked(question), _) if !givenUp(question) => read
+        }.flatMap {
+          case Dependency.Answer(question)       => Some(question)
+          case Dependency.Attempted(question)    => Some(question)
+          case Dependency.Lookup(_, _, question) => Some(question)
+          case Dependency.Asked(question)        => Some(question)
+          case _                                 => None
+        }.toSet) ++
         takeWaits.get(id).filter(w => Option(digested.get(decision)).forall(_.digest == w.listings)).fold(Set.empty[Question])(_.gaps) ++
         // a settled verdict's questions no family answered yet, unless given up on: asked on every pass, read again once
         // answered (PL "SEVENTEEN World Tour 'NEW_'": settled to none past a failed ask, filled by IMDb once it filed)
         Option(digested.get(decision)).flatMap(d => held.get(id).filter(_.listings == d.digest)).fold(Set.empty[Question])(v =>
-          v.reads.iterator.collect { case (Dependency.Answer(q), Dependency.Unanswered) => q }.filterNot(givenUp).toSet)
+          v.reads.iterator.collect {
+            case (Dependency.Answer(q), Dependency.Unanswered) => q
+            case (Dependency.Asked(q), _)                      => q
+          }.filterNot(givenUp).toSet)
     }
     decision.outcome match {
       case taken: services.identity.TakeOutcome.Taken => if (stage.isEmpty) taken else services.identity.TakeOutcome.Pending(stage)
