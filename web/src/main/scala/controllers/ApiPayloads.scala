@@ -23,7 +23,10 @@ case class ApiFilm(
   ageRating: Option[String],
   ratings: ApiRatings,
   countries: Seq[String], directors: Seq[String], cast: Seq[String],
-  showings: Seq[ApiDayShowings]
+  showings: Seq[ApiDayShowings],
+  // Some(true) while the film's identity is provisional (`ResolvedMovie.provisional`: the take decided on the inputs as
+  // they stand, an answer it reads not filed yet); omitted otherwise.
+  provisional: Option[Boolean] = None
 )
 
 /** Detail-only payload for `GET /api/details`: the heavy text (synopsis) and
@@ -120,7 +123,8 @@ object ApiFilm {
           label   = CardFormat.date(date, fs.asOf, language),
           cinemas = cinemas.map(cinemaShowingsOf(_, cinemaUrlMap))
         )
-      }
+      },
+      provisional      = Option.when(resolved.provisional)(true)
     )
   }
 

@@ -10,8 +10,10 @@ enum ClusterId {
 }
 
 /** A cluster: its listings published now, the TMDB film the resolver matched them to, and — for none — the fallback source's
- *  film it took instead ([[ResolverDecision.fallback]]). */
-final case class Cluster(members: Set[ListingKey], film: Option[Int], fallback: Option[ResolverDecision.Fallback] = None)
+ *  film it took instead ([[ResolverDecision.fallback]]). `provisional`: one of its decisions is Pending ([[TakeOutcome]]):
+ *  its take is the decision on the inputs as they stand while an answer it reads is not filed, served marked so (step 6). */
+final case class Cluster(members: Set[ListingKey], film: Option[Int], fallback: Option[ResolverDecision.Fallback] = None,
+                         provisional: Boolean = false)
 
 /** What a projection reads off the whole listing set, the resolution and the stored films before it drafts any film
  *  ([[IdentityProjectionPlan.index]]): every listing by key, each listing's previous film (`previousOf` — the film whose

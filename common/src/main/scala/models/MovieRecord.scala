@@ -87,7 +87,13 @@ case class MovieRecord(
   // written before this existed) degrades to "unknown" rather than failing the
   // decode: a REQUIRED field here would kill the whole batch. Defaulted and last
   // for the same reason. None on a row that has never resolved.
-  tmdbBasis:         Option[String] = None
+  tmdbBasis:         Option[String] = None,
+
+  // Whether `tmdbId` is PROVISIONAL: the identity model's take is Pending (`TakeOutcome.Pending`), decided on the
+  // inputs as they stand while an answer it reads -- a search, a venue page, a record -- is not filed yet. A flag on
+  // the take served, never an earlier take held in its place (identity-flips-structural step 6, the owner 2026-10-31).
+  // Some(true) or absent; defaulted and last, like `tmdbBasis`, so every older row decodes as decided.
+  tmdbProvisional:   Option[Boolean] = None
 ) {
   def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
   def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")

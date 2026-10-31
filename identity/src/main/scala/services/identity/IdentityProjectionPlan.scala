@@ -208,10 +208,12 @@ object IdentityProjectionPlan {
 
   /** Cluster `id` of `decisions`, over the listings `published`: none when it publishes none. */
   def clusterOf(id: ClusterId, decisions: Seq[ResolverDecision], published: ListingKey => Boolean): Option[Cluster] = {
-    val members = decisions.iterator.flatMap(_.members).filter(published).toSet
+    val members     = decisions.iterator.flatMap(_.members).filter(published).toSet
+    // a decision of its published listings Pending: the take served provisionally (step 6)
+    val provisional = decisions.exists(d => d.awaits.nonEmpty && d.members.exists(published))
     Option.when(members.nonEmpty)(id match {
-      case ClusterId.Matched(film) => Cluster(members, Some(film))
-      case _                       => Cluster(members, None, decisions.iterator.flatMap(_.fallback).nextOption())
+      case ClusterId.Matched(film) => Cluster(members, Some(film), provisional = provisional)
+      case _                       => Cluster(members, None, decisions.iterator.flatMap(_.fallback).nextOption(), provisional)
     })
   }
 

@@ -74,7 +74,11 @@ case class ResolvedMovie(
   // source's original title (TMDB's native, IMDb's and Filmweb's, which romanise it the way the
   // language does: "Toki o Kakeru Shōjo", "Khers nist") and TMDB's English title. Never the shown
   // title again. Defaulted + last, like the fields above, so legacy documents decode to none.
-  searchTitles:       Seq[String]         = Seq.empty
+  searchTitles:       Seq[String]         = Seq.empty,
+  // The film's identity is PROVISIONAL: the identity model's take is Pending -- decided on the inputs as they stand
+  // while an answer it reads is not filed yet (`MovieRecord.tmdbProvisional`). The card and the API mark it; the film
+  // shown is the take as decided now, never an earlier one. Defaulted + last, so legacy documents decode as decided.
+  provisional:        Boolean             = false
 ) {
   /** Readable alias for the Mongo `_id`. */
   def id: String = _id

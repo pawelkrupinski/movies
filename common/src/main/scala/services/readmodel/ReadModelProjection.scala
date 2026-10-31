@@ -84,7 +84,8 @@ object ReadModelProjection {
       ratings            = ratingsFor(r, title),
       weightedRating     = r.weightedRating,
       ageRating          = r.ageRating,
-      searchTitles       = searchTitlesOf(r, title)
+      searchTitles       = searchTitlesOf(r, title),
+      provisional        = r.tmdbProvisional.contains(true)
     )
   }
 

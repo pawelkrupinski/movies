@@ -68,6 +68,8 @@ case class StoredMovieDto(
   // `Source.displayName` like `sourceData`. Optional so legacy documents decode
   // to None → empty map; omitted when empty to keep documents lean.
   retainedSynopses:  Option[Map[String, String]],
+  // `MovieRecord.tmdbProvisional`: Some(true) while the take is Pending, absent otherwise (legacy rows decode as None).
+  tmdbProvisional:   Option[Boolean],
   // The only timestamp. A `slotsUpdatedAt` marker used to sit beside it — stamped by a
   // slots-only patch that had to touch `movies` while `movie_slots` had no cursor of its
   // own — and prod documents still carry it; the codec skips a field it does not name
@@ -111,6 +113,7 @@ object StoredMovieDto {
       sourceData        = Some(r.data.map { case (s, sd) => s.displayName -> sd }),
       retainedSynopses  = Option.when(r.retainedSynopses.nonEmpty)(
                             r.retainedSynopses.map { case (s, v) => s.displayName -> v }),
+      tmdbProvisional   = r.tmdbProvisional.filter(identity),
       updatedAt         = updatedAt
     )
 
@@ -124,6 +127,7 @@ object StoredMovieDto {
       rottenTomatoes    = dto.rottenTomatoes,
       tmdbId            = dto.tmdbId,
       tmdbBasis         = dto.tmdbBasis,
+      tmdbProvisional   = dto.tmdbProvisional.filter(identity),
       wikidataId        = dto.wikidataId,
       metacriticUrl     = dto.metacriticUrl,
       rottenTomatoesUrl = dto.rottenTomatoesUrl,

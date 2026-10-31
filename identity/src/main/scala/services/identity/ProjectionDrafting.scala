@@ -29,6 +29,7 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
 
   // 2. Ids by overlap.
   private val filmOf   = clusters.toMap
+  private val provisionalOf = within.clusters.iterator.map(c => c.members -> c.provisional).toMap
   private val assigned = IdAssigner.assign(numbered, clusters.map(_._1), covered.nextCounter)
   private def previousIdOf(c: Long): Option[String] = Option.when(c < covered.nextCounter)(covered.filmIdOf(c)).flatten
 
@@ -156,6 +157,9 @@ private[identity] final class ProjectionDrafting(index: ProjectionIndex, scope: 
     val record = held.copy(
       tmdbId        = film,
       tmdbAttempt   = Option.when(film.isEmpty)(ResolverAttempt),
+      // its take Pending -- the decision on the inputs as they stand, an answer it reads not filed yet: served marked
+      // provisional, never held to an earlier take (step 6, the owner 2026-10-31)
+      tmdbProvisional = Option.when(provisionalOf.getOrElse(members, false))(true),
       // The one exception, still carried: the title its first draft read, while it is the same film. It decides no
       // take, only what the IMDb id resolver searches for a film TMDB links no IMDb id for — and that id, kept with the
       // film, would move with it ("Samson i Dalila" (2026) is found as its first listing's "Opera-samson i dalila", not

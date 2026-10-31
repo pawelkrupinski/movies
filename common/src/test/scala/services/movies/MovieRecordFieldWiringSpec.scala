@@ -58,6 +58,7 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     rottenTomatoes    = Some(91),
     tmdbId            = Some(424242),
     tmdbBasis         = Some("DirectorWalk"),
+    tmdbProvisional   = Some(true),
     wikidataId        = Some("Q42"),
     metacriticUrl     = Some("https://www.metacritic.com/movie/test"),
     rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/test"),

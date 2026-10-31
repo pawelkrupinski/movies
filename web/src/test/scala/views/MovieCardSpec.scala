@@ -20,7 +20,16 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     views.html._movieCard(movie, poster.flatMap(controllers.WebHref.of), resolved.fallbackPosterUrls.flatMap(controllers.WebHref.of),
       resolved, FilmHref.slugOf(movie.title))(Html("")).body
 
-  "_movieCard" should "render a 'Brak plakatu' placeholder when the poster URL is missing" in {
+  // Step 6 (the owner, 2026-10-31): a film whose identity take is Pending is shown as decided on the inputs as they
+  // stand, marked provisional -- a flag, never an earlier take.
+  "_movieCard" should "mark a film whose identity is provisional, and only such a film" in {
+    val provisional = TestReadModel.resolved("Karuppu", None, MovieRecord(tmdbId = Some(1069112), tmdbProvisional = Some(true)))
+    provisional.provisional shouldBe true
+    card(None, provisional) should include ("<div class=\"card\" data-provisional=\"true\">")
+    card(None, emptyResolved) should not include "data-provisional"
+  }
+
+  it should "render a 'Brak plakatu' placeholder when the poster URL is missing" in {
     val rendered = card(None, emptyResolved)
     rendered                          should include ("Brak plakatu")
     rendered                          should include ("class=\"no-poster\"")

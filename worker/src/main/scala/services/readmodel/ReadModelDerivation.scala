@@ -70,7 +70,10 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("cab16a08fb4b51ac"), DerivationScope.Cards),
     // A card carries the curated spellings of its title the search matches (`ResolvedMovie.searchTitles`: the
     // sources' original titles and TMDB's English one).
-    Derivation(DerivationVersion("93a1264d51df13fa"), DerivationScope.Cards))
+    Derivation(DerivationVersion("93a1264d51df13fa"), DerivationScope.Cards),
+    // A card says whether its film's identity is provisional (`ResolvedMovie.provisional`: the take Pending, decided on
+    // the inputs as they stand while an answer it reads is not filed yet; identity-flips-structural step 6).
+    Derivation(DerivationVersion("ac8a94f7a60569ff"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

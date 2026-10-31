@@ -477,6 +477,29 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.announced should have size 3 // announced once, not again by a projection that changes nothing
   }
 
+  // Step 6 (the owner, 2026-10-31): a take Pending -- decided on the inputs as they stand, an answer it reads not filed
+  // yet -- is served as decided and marked provisional on the film the site serves; filed, the mark goes.
+  "A film whose take is Pending" should "be written with its take, marked provisional, the mark gone once it is decided" in {
+    var pending = true
+    val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      val decisions = r.resolution.decisions.zipWithIndex.map { case (d, i) =>
+        val lalka = d.members.exists(_.rawTitle == "Lalka")
+        ResolverDecision(d.members, Some(500 + i), 0.9, ResolverDecision.Basis.OwnMatch, Nil,
+          awaits = if (lalka && pending) Set(Question.FilmRecord(500 + i)) else Set.empty)() }
+      r.copy(resolution = r.resolution.copy(decisions = decisions))
+    }
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, matched)
+    w.scrape(programme)
+    w.projection.tick()
+    def provisional = w.repository.findAll().map(f => f.title -> f.record.tmdbProvisional).toMap
+    provisional shouldBe Map("Lalka" -> Some(true), "Obcy" -> None, "Diuna" -> None)
+    w.repository.findAll().find(_.title == "Lalka").flatMap(_.record.tmdbId) should not be empty   // served all the same
+
+    pending = false
+    w.projection.tick(whole = true)
+    provisional.values.toSet shouldBe Set(None)
+  }
+
   // the owner (2026-10-26): a deploy's backfill of the stored verdicts, a budget an apply at a time, goes on by itself —
   // it read on only as scrapes and answers came, or at the hourly reconcile
   "A projection whose agreement left a backlog" should "not be settled, so it is tried again" in {
