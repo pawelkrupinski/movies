@@ -187,6 +187,10 @@ object IdentitySlice {
     // the lookups a newer ref added, which no wrapper here overrides (an overview's words): the recording's, as the
     // capture's fill read them
     val lookups: IdentityLookups = OlderRefs.passing(classOf[IdentityLookups], asking, recorded, OlderRefs.NewerLookups)
+    /** The filed IMDb finds read ([[filedFind]]): a drift slice keeps them as it keeps every other filed answer it read. */
+    val findsRead = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
+    /** Prod's filed find of `imdb`, read noted. */
+    def filedFind(imdb: String): Option[Option[Int]] = { val found = filed.finds.get(imdb); found.foreach(findsRead.put(imdb, _)); found }
     val families: Seq[VoterFamily] = UnmatchedClusters.familiesOf(country)
     val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
       new WikiFamily(new services.enrichment.WikidataClient(fetch), country.language.getLanguage),

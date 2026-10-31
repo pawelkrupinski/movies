@@ -54,13 +54,15 @@ import scala.util.control.NonFatal
  * one in the unit suite). `--widen` with `--recording` (and `--families`) is the cut's second half
  * (`scripts/identity-slice <cc> SELECTOR --emit-drift-slice`): each answer the incremental sequence reads that the slice
  * lacks — a cluster at boot holding fewer listings asks otherwise than the whole resolve the slice was cut by — read
- * from the recording and kept in the slice.
+ * from the recording and kept in the slice, again until the slice replayed alone lacks nothing and finds what it finds
+ * with the recording behind it ([[cut]]: CLOSED, else the cut fails).
  *
  * {{{
  *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]
  *   IdentityDrift <cc> --slice DIR [--widen --recording DIR [--families CAPTURE]] [--seeds N | --seed S] [--allow TSV] [--flips-allow TSV] [--out DIR]
  * }}}
- * Exit: 0 no divergence nor flip beyond the allow-lists, 1 divergences or flips, 2 usage, 3 a slice lacks answers.
+ * Exit: 0 no divergence nor flip beyond the allow-lists, 1 divergences or flips, 2 usage, 3 a slice lacks answers, 4 a cut
+ * (`--slice --widen`) not closed ([[cut]]).
  */
 object IdentityDrift {
   import IdentitySlice.{Reads, Recording, filmOf}
@@ -260,7 +262,7 @@ object IdentityDrift {
     }
     def unreachable: Set[(VoterFamily, String)] = failures.asScala.filter(_._2 >= tools.AgreementQuestionRounds.Attempts).keySet.toSet
     def tmdbOf(imdb: String): Answer[Option[Int]] = found(imdb).fold(reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {
-      case Answer.Unknown => reads.filed.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(found => Answer.Known(found))
+      case Answer.Unknown => reads.filedFind(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(found => Answer.Known(found))
       case known          => known
     })(Answer.Known(_))
     def stage(lookups: IdentityLookups, verdicts: services.identity.agreement.AgreementVerdicts, budgets: Boolean,
@@ -604,21 +606,21 @@ object IdentityDrift {
 
   /** One drift slice replayed (`test/resources/fixtures/drift-slices/<cc>/<name>/`, cut by `scripts/identity-slice
    *  --emit-drift-slice`): its listings — core and context — and its own HTTP answers and filed answers alone. Cutting it
-   *  (`widenFrom`: the recording opened, with prod's filed answers), what the slice lacks is read from the recording,
-   *  each family answer the stages read from the filed ones noted, and [[keep]] writes both into the slice. */
-  final class SliceRun(dir: Path, widenFrom: Option[(IdentitySlice.Recording, tools.FiledAnswers)] = None) {
+   *  (`widenFrom`: the recording's fetch, with prod's filed answers), what the slice lacks is read from the recording,
+   *  each filed answer the stages read — family answers, IMDb finds, TMDB searches, records and venue pages — noted, and
+   *  [[keep]] writes both into the slice. [[cut]] repeats that until the slice is CLOSED. */
+  final class SliceRun(dir: Path, widenFrom: Option[SliceRun.Widen] = None) {
     val slice: IdentitySlice.Slice = IdentitySlice.readSlice(dir)
-    private val opened    = widenFrom.map { case (recording, filed) => IdentitySlice.openRecording(recording, filed) }
-    private val noting    = opened.map(r => new tools.SliceHttp.Noting(r.fetch, () => r.leaf.metOnThread))
+    private val noting    = widenFrom.map(w => new tools.SliceHttp.Noting(w.fetch, w.metOnThread))
     val replaying         = new tools.SliceHttp.Replaying(slice.http, noting)
-    private val filed     = widenFrom.fold(slice.filed)(_._2)
+    private val filed     = widenFrom.fold(slice.filed)(_.filed)
     private val notings   = new java.util.concurrent.ConcurrentLinkedQueue[tools.FiledAnswers.Noting]
-    private val lookups   = new java.util.concurrent.ConcurrentLinkedQueue[tools.FiledAnswers.Lookups]
+    private val reads     = new java.util.concurrent.ConcurrentLinkedQueue[Reads]
     val listings: Seq[Listing] = (slice.core ++ slice.context).sortBy(_.sortKey)
     def readsAt(clock: java.time.Clock): Reads = {
-      val reads = new Reads(slice.country, replaying, replaying.gaps, clock, filed, tools.ProdState.none)
-      reads.filedLookups.foreach(lookups.add)
-      reads
+      val made = new Reads(slice.country, replaying, replaying.gaps, clock, filed, tools.ProdState.none)
+      reads.add(made)
+      made
     }
     val filedDocs: FiledDocs = f => { val n = new tools.FiledAnswers.Noting(f); notings.add(n); n }
     def run(seeds: Seq[Int], gate: Int): Findings = replay(slice.country, listings, slice.recordedAt, seeds, gate, readsAt, filedDocs, leaveOne = true)
@@ -627,12 +629,57 @@ object IdentityDrift {
     /** The slice with what this run read beside it — the recording's answers it lacked, the filed answers read — written back. */
     def keep(): Unit = {
       val families = notings.asScala.flatMap(_.read.asScala).toMap
-      val read     = lookups.asScala.foldLeft(tools.FiledAnswers.read(filed, families, Map.empty, None)) { (sofar, l) =>
+      val finds    = reads.asScala.flatMap(_.findsRead.asScala).toMap
+      val read     = reads.asScala.flatMap(_.filedLookups).foldLeft(tools.FiledAnswers.read(filed, families, finds, None)) { (sofar, l) =>
         tools.FiledAnswers.merge(sofar, tools.FiledAnswers.read(filed, Map.empty, Map.empty, Some(l)))
       }
       val kept = tools.FiledAnswers.merge(slice.filed, read)
       IdentitySlice.writeSlice(dir, slice.copy(http = slice.http ++ replaying.widened, filed = kept.copy(source = slice.filed.source)))
     }
+  }
+
+  object SliceRun {
+    /** Where a cut reads what its slice lacks: the recording's fetch (`metOnThread` telling its gaps) and prod's filed answers. */
+    final case class Widen(fetch: tools.HttpFetch, metOnThread: () => Long, filed: tools.FiledAnswers)
+    object Widen {
+      def of(recording: Recording, filed: tools.FiledAnswers): Widen = {
+        val opened = IdentitySlice.openRecording(recording, filed)
+        Widen(opened.fetch, () => opened.leaf.metOnThread, filed)
+      }
+    }
+  }
+
+  /** A cut's verdict: the slice replayed from its own answers alone (`alone`, the requests it `lacking`) against the same
+   *  listings replayed with the recording and prod's filed answers behind it (`widened`) — the slice CLOSED when it lacks
+   *  nothing and the two find the same divergences and flips. A slice is then green exactly when its listings' replay
+   *  over everything the recording holds is: no red (or green) of the cut's own. */
+  final case class Cut(rounds: Int, widened: Findings, alone: Findings, lacking: Seq[String]) {
+    def differences: Seq[String] = {
+      // by film, not prose: a take's explanation names what it read, which the two read through other stores
+      def lines(f: Findings) = f.divergences.map(d => s"divergence ${d.key.venue} | ${d.key.rawTitle}: whole ${d.whole.film}, incremental " +
+        s"${d.incremental.film} [${d.checkpoint}, seed ${d.seed}]").toSet ++
+        f.flips.map { case (seed, flip) => s"flip ${flip.key.venue} | ${flip.key.rawTitle}: ${flip.films} [seed $seed]" }
+      val (w, a) = (lines(widened), lines(alone))
+      (w -- a).toSeq.sorted.map(l => s"only with the recording: $l") ++ (a -- w).toSeq.sorted.map(l => s"only in the slice: $l")
+    }
+    def closed: Boolean = lacking.isEmpty && differences.isEmpty
+  }
+
+  /** Cuts the slice in `dir` CLOSED: replays it with `widen` behind it and keeps everything that read (the transitive
+   *  closure of what its listings' resolution asks — searches, records, venue pages, the families' answers, finds, fills),
+   *  then replays it alone; again, from what it holds now, while the replay alone lacks a request or finds otherwise, at
+   *  most `rounds` times. The last round's verdict: a [[Cut]] not [[Cut.closed]] fails the cut. */
+  def cut(dir: Path, seeds: Seq[Int], gate: Int, widen: SliceRun.Widen, rounds: Int = 3): Cut = {
+    def round(n: Int): Cut = {
+      val widening = new SliceRun(dir, Some(widen))
+      val widened  = widening.run(seeds, gate)
+      widening.keep()
+      System.err.println(s"[identity-drift] cut round $n: the slice kept ${widening.replaying.widened.size} answer(s) read from the recording")
+      val alone    = new SliceRun(dir)
+      val verdict  = Cut(n, widened, alone.run(seeds, gate), alone.lacking)
+      if (verdict.closed || n >= rounds) verdict else round(n + 1)
+    }
+    round(1)
   }
 
   def main(args: Array[String]): Unit = {
@@ -648,12 +695,20 @@ object IdentityDrift {
     val (listings, findings, lacking) = o.slice match {
       case Some(dir) =>
         if (o.widen && o.recording.isEmpty) usage("--widen reads what the slice lacks from --recording DIR")
-        val run = new SliceRun(dir, Option.when(o.widen)(Recording(o.recording.get, country) -> filedOf(o.families)))
+        val run = new SliceRun(dir)
         if (run.slice.country != country) usage(s"the slice $dir is ${run.slice.country.code}'s, not ${country.code}'s")
         System.err.println(s"[identity-drift] ${country.code} slice $dir: ${run.listings.size} listings, ${run.slice.http.size} answers")
-        val found = run.run(seeds, o.gate)
-        if (o.widen) { run.keep(); System.err.println(s"[identity-drift] the slice kept ${run.replaying.widened.size} answer(s) read from the recording") }
-        (run.listings, found, run.lacking)
+        if (o.widen) {
+          val verdict = cut(dir, seeds, o.gate, SliceRun.Widen.of(Recording(o.recording.get, country), filedOf(o.families)))
+          if (!verdict.closed) {
+            println(s"## CUT NOT CLOSED after ${verdict.rounds} round(s): the slice replayed alone lacks ${verdict.lacking.size} request(s) and " +
+              s"finds ${verdict.differences.size} thing(s) otherwise than with the recording behind it -- its red or green would be the cut's")
+            (verdict.lacking.take(20).map(l => s"  lacks $l") ++ verdict.differences.take(20).map(d => s"  $d")).foreach(println)
+            sys.exit(4)
+          }
+          System.err.println(s"[identity-drift] the cut is closed in ${verdict.rounds} round(s): the slice alone replays as the recording does")
+          (run.listings, verdict.alone, verdict.lacking)
+        } else (run.listings, run.run(seeds, o.gate), run.lacking)
       case None =>
         val root      = o.recording.getOrElse(usage("--recording DIR (a recording's test/resources/fixtures)"))
         val recording = Recording(root, country)

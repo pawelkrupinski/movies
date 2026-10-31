@@ -15,7 +15,7 @@ import java.time.{Clock, Duration, Instant, ZoneOffset}
 /** The drift replay's queue asks what production's asker asks: a family question whose answer was filed and is fresh is
  *  not asked of the recording's sites again — read again, the recording's answer replaced the one filed, which the whole
  *  resolve reads (PL "LALKA / DOLLY", seed 2, run 3154). */
-class IdentityDriftSpec extends AnyFlatSpec with Matchers {
+class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
   private val question = VoterFamily.RottenTomatoes -> "title|Lalka Dolly"
   private val id       = FamilyAnswerStore.questionId(question._1, question._2)
 
@@ -261,5 +261,64 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
     replay.filed("the fallback's record filed", Set.empty, Set(-181874839))
     replay.flips.flips.map(_.line) shouldBe empty
     replay.takes(title).values.toSet shouldBe Set("imdb:tt47657111")
+  }
+
+  // A SLICE IS GREEN EXACTLY WHEN ITS LISTINGS' REPLAY OVER THE RECORDING IS (the owner, 2026-10-31): the UK "Alice" and
+  // "Swan Lake" slices, cut short of what their replay asks (54 requests), replayed red at Halstead and Woodbridge where
+  // the country's replay was clean -- a red of the cut's. The cut is now CLOSED (IdentityDrift.cut) or it fails.
+
+  /** `source`'s slice cut SHORT into a scratch directory: half its HTTP answers and every filed answer gone. */
+  private def cutShort(source: String): (Path, IdentitySlice.Slice) = {
+    val original = IdentitySlice.readSlice(Path.of(source))
+    val dir      = tempDirectory("drift-slice-cut")
+    val http     = original.http.toSeq.sortBy(_._1.render).zipWithIndex.collect { case (note, i) if i % 2 == 0 => note }.toMap
+    IdentitySlice.writeSlice(dir, original.copy(http = http, filed = tools.FiledAnswers.of(original.country).copy(source = original.filed.source)))
+    dir -> original
+  }
+
+  /** The whole of `original` as the recording a cut widens from: its HTTP answers and its filed ones. */
+  private def recordingOf(original: IdentitySlice.Slice): IdentityDrift.SliceRun.Widen = {
+    val recording = new tools.SliceHttp.Replaying(original.http)
+    IdentityDrift.SliceRun.Widen(recording, () => recording.metOnThread, original.filed)
+  }
+
+  "a drift slice's cut" should "close: what the slice lacks read from the recording until, alone, it lacks nothing and finds what the recording finds" in {
+    val (dir, original) = cutShort("test/resources/fixtures/drift-slices/de/werkstattkino-camouflage-07fb3fab")
+    val short = new IdentityDrift.SliceRun(dir)
+    short.run(Seq(1), IdentityDrift.Options().gate)
+    short.lacking should not be empty
+    val cut = IdentityDrift.cut(dir, Seq(1, 2), IdentityDrift.Options().gate, recordingOf(original))
+    withClue(cut.differences.mkString("\n"))(cut.closed shouldBe true)
+    cut.lacking shouldBe empty
+    // what the slice keeps is what its replay reads: the filed family answers came back with the HTTP ones
+    IdentitySlice.readSlice(dir).filed.families.keySet should not be empty
+    IdentitySlice.readSlice(dir).filed.families.keySet.subsetOf(original.filed.families.keySet) shouldBe true
+  }
+
+  it should "not be closed while the slice alone lacks a request, or finds a divergence or flip the recording's replay does not" in {
+    val none  = IdentityDrift.Findings(Nil, Nil)
+    val take  = IdentityDrift.Take("tmdb:1702782", "Broadcast", "")
+    val key   = services.movies.ListingKey.parse("N\u0000Empire Theatre Halstead\u0000https://empire-theatre.co.uk/f=545975\u0000Swan Lake").get
+    val red   = IdentityDrift.Findings(Seq(IdentityDrift.Divergence("uk", 3, "settled", key, take, IdentityDrift.Take("none", "absent", ""))), Nil)
+    IdentityDrift.Cut(1, none, none, Nil).closed shouldBe true
+    IdentityDrift.Cut(1, none, none, Seq("GET https://v3.sg.media-imdb.com/suggestion/m/Manon.json")).closed shouldBe false
+    val cutRed = IdentityDrift.Cut(1, none, red, Nil)
+    cutRed.closed shouldBe false
+    cutRed.differences shouldBe Seq("only in the slice: divergence Empire Theatre Halstead | Swan Lake: whole tmdb:1702782, incremental none [settled, seed 3]")
+    // the same red on both sides is the listings' own, which the slice holds: closed
+    IdentityDrift.Cut(1, red, red, Nil).closed shouldBe true
+  }
+
+  "a drift replay's filed IMDb find" should "be read noted, so the slice cut by it keeps it" in {
+    val country = models.Country.all.find(_.code == "uk").get
+    val filed   = tools.FiledAnswers.of(country)
+    val withFind = filed.copy(capture = filed.capture.copy(finds = Map("tt0048561" -> Some(18148))))
+    val replaying = new tools.SliceHttp.Replaying(Map.empty)
+    val reads   = new IdentitySlice.Reads(country, replaying, replaying.gaps, Clock.fixed(Instant.parse("2026-10-20T13:36:30Z"), ZoneOffset.UTC),
+      withFind, tools.ProdState.none)
+    val clock   = new MutableClock(Instant.parse("2026-10-20T13:36:30Z"))
+    val answers = new IdentityDrift.Answers(reads, new InMemoryTmdbDocuments, clock, _ => None)
+    answers.tmdbOf("tt0048561") shouldBe Answer.Known(Some(18148))
+    reads.findsRead.get("tt0048561") shouldBe Some(18148)
   }
 }
