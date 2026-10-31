@@ -50,6 +50,21 @@ check "--fast-only judges no red gate and runs no path check but sbt (scripttest
 check "a batch push with PREPUSH_REUSE_FAST=1 reuses the fast pass: nothing runs, said once" "0 7 1" \
   "$(reuse_push "$rbase..$fast_head" PREPUSH_REUSE_FAST=1) $(grep -c "the waiting batch's fast check passed" "$gate/err")"
 check "...an ordinary push of it runs its checks" "0 8" "$(reuse_push "$rbase..$fast_head")"
+# A REMOTE PASS: agentctl pushes a change its checks passed in CI with PREPUSH_REMOTE_RUN=<run id>; the run stands
+# for the checks only when GitHub says it is precommit-check.yml, a success, on exactly the pushed commit
+remote_head="$(commit_paths "a change checked in CI" -- scripts/z.sh)"
+gh_check_run() { printf '{"id":%s,"path":".github/workflows/%s","conclusion":"%s","head_sha":"%s"}' "$1" "$2" "$3" "$4"; }
+remote_push() { reuse_push "$rbase..$remote_head" PREPUSH_NO_REUSE=1 GH_MAIN="[$green]" GH_IMC="[$green]" PREPUSH_REMOTE_RUN=55 "$@"; }
+check "a push whose remote run GitHub confirms (precommit-check.yml, success, this commit) runs no check here" "0 8 1" \
+  "$(remote_push STUB_RUN="$(gh_check_run 55 precommit-check.yml success "$remote_head")") $(grep -c 'passed in CI' "$gate/err")"
+vouches() { echo "$1 $(grep -c 'does not vouch' "$gate/err")"; }
+check "...a failed run: every check runs here, said" "0 9 1" \
+  "$(vouches "$(remote_push STUB_RUN="$(gh_check_run 55 precommit-check.yml failure "$remote_head")")")"
+check "...another workflow's success: the same" "0 10 1" \
+  "$(vouches "$(remote_push STUB_RUN="$(gh_check_run 55 main.yml success "$remote_head")")")"
+check "...a success on another commit: the same" "0 11 1" \
+  "$(vouches "$(remote_push STUB_RUN="$(gh_check_run 55 precommit-check.yml success "$rbase")")")"
+check "...GitHub not answering: the same" "0 12 1" "$(vouches "$(remote_push STUB_RUN='not json')")"
 head -7 "$reuse/runs" > "$reuse/runs.kept" && mv "$reuse/runs.kept" "$reuse/runs"  # the counts below start from 7
 scratch_git "$grepo" reset -q --hard "$docs_only"
 # A hook that differs by one byte: a copy beside the helpers it sources, a comment appended.

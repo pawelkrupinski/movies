@@ -844,6 +844,24 @@ if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUS
         exit 0
     fi
 fi
+# A REMOTE PASS (agentctl's remote checks: under memory or CPU pressure a queued change's checks run in CI,
+# .github/workflows/precommit-check.yml on a check/<entry> branch): the push to main carries PREPUSH_REMOTE_RUN=<run id>,
+# and that run stands for this hook's checks only once GitHub says it is a precommit-check.yml run that SUCCEEDED on
+# exactly the commit pushed. Anything else -- another workflow, a failure, a run still going, another commit, gh
+# silent -- and every check runs here. The red gate ran above.
+remote_pass() { # <run id> -> 0 when GitHub vouches for it
+    local said
+    said="$(bounded "$GhSeconds" gh api "repos/{owner}/{repo}/actions/runs/$1" \
+        --jq '"\(.path) \(.conclusion) \(.head_sha)"' 2>/dev/null)" || return 1
+    [ "$said" = ".github/workflows/precommit-check.yml success $head_sha" ]
+}
+if [ -n "${PREPUSH_REMOTE_RUN:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ "$to_main" = 1 ]; then
+    if remote_pass "$PREPUSH_REMOTE_RUN"; then
+        log "the checks passed in CI for ${head_sha:0:10} (precommit-check.yml run $PREPUSH_REMOTE_RUN, confirmed with GitHub): not run again here" >&2
+        exit 0
+    fi
+    warn "PREPUSH_REMOTE_RUN=$PREPUSH_REMOTE_RUN does not vouch for ${head_sha:0:10} (GitHub: not a successful precommit-check.yml run of it): every check runs here"
+fi
 if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ]; then
     reuse_key="$(compute_reuse_key)" || reuse_key=""
     if [ -n "$reuse_key" ] && [ -f "$reuse_dir/$reuse_key" ]; then

@@ -6,7 +6,8 @@ name: Pre-commit check
 # (the pre-push hook checks nothing for a check/ branch: a run's ref, never landed), this run runs THE SAME HOOK over it
 # -- `scripts/hooks/pre-push --checks-only <merge-base with main>..HEAD`: the path-selected checks, the basic tests and
 # the touched areas' tests, the red gate left to the push to main -- and agentctl reads the verdict, deletes the branch
-# and pushes to main.
+# and pushes to main with PREPUSH_REMOTE_RUN=<this run's id>, which the hook takes for its checks only once GitHub
+# confirms that this workflow succeeded on that very commit.
 on:
     push:
         branches: ['check/**']
