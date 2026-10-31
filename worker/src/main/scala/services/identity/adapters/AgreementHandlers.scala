@@ -75,7 +75,7 @@ object AgreementQuestions {
    *  breaker: a timeout or a refused connection names none). Lower-cased, as the host breakers name it
    *  ([[HostRecovery]] releases a host's failures by that name). */
   def hostOf(failure: Throwable, requested: Option[String] = None): Option[String] = {
-    def urlHost(url: String) = scala.util.Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_))
+    def urlHost(url: String) = tools.UrlHost.of(url)
     def named(e: Throwable, depth: Int): Option[String] = e match {
       case null                          => None
       case status: HttpStatusException   => urlHost(status.url)

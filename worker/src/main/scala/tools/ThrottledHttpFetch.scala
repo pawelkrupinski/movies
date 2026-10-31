@@ -1,10 +1,7 @@
 package tools
 
-import java.util.Locale
-
 import play.api.Logging
 
-import java.net.URI
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration._
@@ -84,8 +81,7 @@ class ThrottledHttpFetch(
   // emit one summary per host per `summaryInterval`.
   private val stats = new ConcurrentHashMap[String, HostCallStats]()
 
-  private def hostOf(url: String): Option[String] =
-    scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT))
+  private def hostOf(url: String): Option[String] = UrlHost.of(url)
 
   /** Count one call (and whether it drew a 429) and, once per `summaryInterval`,
    *  log that host's clean-rate. Summarising on the request path rather than from

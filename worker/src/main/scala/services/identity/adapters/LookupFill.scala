@@ -92,7 +92,7 @@ final class LookupFillLiveFetch(fetch: HttpFetch, budget: LookupFillBudget) exte
 object LookupFillLiveFetch {
   /** Lower-cased, as the host breakers and the question memory name it. */
   def hostOf(url: String): String =
-    scala.util.Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_)).getOrElse(url.takeWhile(_ != '?')).toLowerCase(java.util.Locale.ROOT)
+    tools.UrlHost.of(url).getOrElse(url.takeWhile(_ != '?').toLowerCase(java.util.Locale.ROOT))
 
   /** The service asking us to slow down, or not answering: a 429, a 5xx, an open breaker, a
    *  network-level failure. */

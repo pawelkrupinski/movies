@@ -234,8 +234,8 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 }
 
 object StoredTmdbLookups {
-  /** How many of a name's people the walk tries: `TmdbClient`'s own bound. */
-  val MaxPersonCandidates = 4
+  /** How many of a name's people the walk tries: [[clients.TmdbClient]]'s own bound. */
+  val MaxPersonCandidates: Int = clients.TmdbClient.MaxPersonCandidates
 
   private final case class Held(document: Option[BsonDocument])
 

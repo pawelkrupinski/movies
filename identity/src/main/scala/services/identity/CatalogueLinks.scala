@@ -1,8 +1,5 @@
 package services.identity
 
-import java.net.URI
-import java.util.Locale
-import scala.util.Try
 import scala.util.matching.Regex
 
 /** A venue client's film pages that link their film in other catalogues: the hosts its pages live on and the catalogues
@@ -33,5 +30,5 @@ object CatalogueLinks {
 
   /** The declaration covering `page`'s host, if any of `pages` does. */
   def pagesOf(page: String, pages: Seq[CatalogueLinkPages]): Option[CatalogueLinkPages] =
-    Try(Option(URI.create(page.trim).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT)).flatMap(host => pages.find(_.hosts(host)))
+    tools.UrlHost.of(page.trim).flatMap(host => pages.find(_.hosts(host)))
 }

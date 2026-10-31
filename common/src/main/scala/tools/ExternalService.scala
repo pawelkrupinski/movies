@@ -1,7 +1,5 @@
 package tools
 
-import scala.util.Try
-
 /**
  * The external service an outbound request reaches, as a stable metric label value — the
  * `service` label of `kinowo_worker_http_total`, and the names CI's recording legs report their
@@ -51,6 +49,5 @@ object ExternalService {
 
   /** The named service `url`'s host belongs to, if any. */
   def ofUrl(url: String): Option[String] =
-    Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_)).map(_.toLowerCase(java.util.Locale.ROOT))
-      .flatMap(host => byDomain.collectFirst { case (domain, service) if host == domain || host.endsWith("." + domain) => service })
+    UrlHost.of(url).flatMap(host => byDomain.collectFirst { case (domain, service) if host == domain || host.endsWith("." + domain) => service })
 }

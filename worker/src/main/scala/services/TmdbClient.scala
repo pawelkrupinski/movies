@@ -398,7 +398,7 @@ object TmdbClient {
    *  covers the observed failures (a credit-less duplicate or an alias ranked
    *  above the real person); the rest is headroom that still bounds the extra
    *  credit fetches a common name like "John Smith" would otherwise cost. */
-  private[clients] val MaxPersonCandidates = 4
+  val MaxPersonCandidates = 4
 
   val ApiBase = "https://api.themoviedb.org/3"
   // TMDB's CDN-served poster path. w500 is the largest "good" size for our

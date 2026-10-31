@@ -2,8 +2,6 @@ package tools
 
 import play.api.Logging
 
-import java.net.URI
-import java.util.Locale
 import scala.concurrent.duration._
 
 /**
@@ -37,8 +35,7 @@ final class PacedHttpFetch(delegate: HttpFetch, pace: FleetHostPace, intervalFor
                            paceName: String = "the pace")
     extends ForwardingHttpFetch with Logging {
 
-  private def hostOf(url: String): Option[String] =
-    scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT))
+  private def hostOf(url: String): Option[String] = UrlHost.of(url)
 
   /** Take this host's next slot and park until it comes round — or, past the horizon, turn the request back. */
   protected def around[T](url: String)(call: HttpFetch => T): T = {

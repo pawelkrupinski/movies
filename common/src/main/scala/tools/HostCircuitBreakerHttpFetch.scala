@@ -1,10 +1,7 @@
 package tools
 
-import java.util.Locale
-
 import play.api.Logging
 
-import java.net.URI
 import java.time.{Duration => JDuration, Instant}
 import java.util.concurrent.{CompletableFuture, CompletionException, ConcurrentHashMap}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
@@ -97,8 +94,7 @@ class HostCircuitBreakerHttpFetch(
     breakers.asScala.collect { case (host, b) if b.openUntil.isDefined => host }.toSeq.sorted
   meter.watchHosts(() => unrecoveredHosts)
 
-  private def hostOf(url: String): Option[String] =
-    scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT))
+  private def hostOf(url: String): Option[String] = UrlHost.of(url)
 
   /** Millis until this host's open breaker goes half-open, or 0 if it isn't open. */
   private[tools] def openRemainingMillis(host: String): Long =
