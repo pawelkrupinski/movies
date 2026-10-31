@@ -382,3 +382,43 @@ Divergences and flips are 0 in all 9 rows that ran. UK seed 2 and the US converg
 their fixture release (infra). The catalogue kind is rare: US 324 / 329 and 80 / 81 differ, every one a catalogue id
 still unmapped while the take stood on another film. The final takes, against the base d9261accb (takes-only run
 41226362802), moved nowhere: lost 0, changed 0 and gained 0 in pl, de, uk, us and es.
+
+## 2026-10-31: settled only once every question is answered or given up on (the owner's decision, identity design)
+
+The owner, 2026-10-31: a take counts as SETTLED only when every question it depends on is answered or given up on
+(retries exhausted). Until now production settled a take once every question had been asked once, even if one failed
+and sat in its retry backoff. A retry that then succeeded (a TMDB 5xx, a 429) moved a settled take, which showed up as
+flips and drift.
+
+- **The rule.** Step 5 already typed such takes Pending behind the stage's `givenUp`, which defaulted to "everything
+  given up on". Production now hands the stage `QuestionMemory.givenUp`. A question counts as given up on when it is
+  answered, durably unanswered, or has failed its kind's `QuestionPolicies.giveUpFailures` times in a row. Posters and
+  model records keep their own count of 8. Every other kind uses `SettleGiveUpFailures`, also 8: about 16 hours of
+  failing at 5 min doubling to 6 h. A kind with no give-up of its own is still asked on its backoff after that, but no
+  take waits on it any more.
+- **Every harness says what it gives up on.** `AgreementStageComposition.Sources.givenUp` has no default. The drift
+  replay gives up on a family question once it is unreachable (`AgreementQuestionRounds.Attempts`, 3) or answered.
+  The capture, the dumps and the arrival-order specs give up on everything, as before.
+- **Properties.** IncrementalWholeEquivalenceSpec properties 1–4 stay green under the rule. The new case shows the rule
+  is what keeps property 1 green: when a failure in its backoff is read as given up on, some history decides a take
+  before its answer lands and moves it afterwards. QuestionMemorySpec holds the give-up itself: in backoff, then given
+  up after 8 failures, and counted afresh after an answer.
+
+**Measured** (drift-only convergence on github.com: the rule is run 41236536434, the old rule on the same code is
+41236549266, with only the replay's `givenUp` forced to "everything"). Both runs are DRIFT CLEAN in all 10 rows. The
+cost is the Pending added over step 6's own, per country (seeds 1 / 2):
+
+| country | mean Pending per projection, rule vs old | listings ever Pending, extra | still Pending at the end, extra |
+|---|---|---|---|
+| PL | 6794 vs 6787 / 6822 vs 6812 (+7 / +10) | +2 / +1 | 0 |
+| DE | 2715 vs 2685 / 2772 vs 2742 (+30 / +30) | +19 / +16 | 0 |
+| UK | 17411 vs 17401 / 17264 vs 17254 (+10 / +9) | +1 / +1 | 0 |
+| ES | 2679 vs 2676 / 2541 vs 2537 (+2 / +4) | +2 / +1 | 0 |
+| US | 39709 vs 39709 / 40427 vs 40427 (0) | 0 | 0 |
+
+- **Duration.** The extra Pending lasts until the question is filed or given up on: at most 3 failed rounds in the
+  replay. The stretch percentiles (p50 5–25 projections, p90 7–28) do not move, so step 6's waits dominate them. In
+  production the bound is the give-up count: at most ~16 h for a question that keeps failing, and one backoff step
+  (5–20 min) for a transient failure that answers on its retry.
+- **Effect on served takes.** None: a Pending take is still served as decided on the inputs as they stand, marked
+  provisional (step 6). The rule only stops such a take from counting as settled before its retry.
