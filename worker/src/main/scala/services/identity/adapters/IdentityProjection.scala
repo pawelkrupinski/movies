@@ -536,8 +536,7 @@ object IdentityProjection {
   /** What of a film moved from `was` to `now`, briefly: its own fields (by name), and the sources whose slots differ
    *  ([[LeanRecords.slotsEqual]]), the first few named, else its key — what a drift line names each film it missed by. */
   private[identity] def moved(was: MovieRecord, now: MovieRecord): String = {
-    val fields  = was.productElementNames.zip(was.productIterator.zip(now.productIterator))
-      .collect { case (name, (a, b)) if name != "data" && a != b => name }.toSeq
+    val fields  = differing(was, now, Set("data"))
     val sources = (was.data.keySet ++ now.data.keySet).toSeq.filterNot(s => (was.data.get(s), now.data.get(s)) match {
       case (Some(a), Some(b)) => LeanRecords.slotsEqual(a, b)
       case _                  => false
@@ -551,14 +550,17 @@ object IdentityProjection {
   private[identity] def rebuilt(lean: MovieRecord, built: MovieRecord): String = {
     val slots = lean.data.toSeq.flatMap { case (source, was) =>
       built.data.get(source).filterNot(LeanRecords.slotsEqual(was, _)).map { now =>
-        val fields = was.productElementNames.zip(was.productIterator.zip(now.productIterator)).collect {
-          case (name, (a, b)) if !Set("showtimes", "showtimesDigest", "showtimeStartMinutes")(name) && a != b => name
-        }.toSeq ++ Option.when(services.movies.ShowtimesDigest.slotDigest(was) != services.movies.ShowtimesDigest.slotDigest(now))("showtimes")
+        val fields = differing(was, now, Set("showtimes", "showtimesDigest", "showtimeStartMinutes")) ++ Option.when(services.movies.ShowtimesDigest.slotDigest(was) != services.movies.ShowtimesDigest.slotDigest(now))("showtimes")
         s"$source: ${fields.mkString(" ")}"
       }
     }.sorted
     (slots.take(3) ++ Option.when(slots.size > 3)(s"+${slots.size - 3} slots")).mkString("; ")
   }
+
+  /** The names of the fields `was` and `now` (one case class) differ in, `skipped` aside, in declaration order. */
+  private def differing(was: Product, now: Product, skipped: Set[String]): Seq[String] =
+    was.productElementNames.zip(was.productIterator.zip(now.productIterator))
+      .collect { case (name, (a, b)) if !skipped(name) && a != b => name }.toSeq
 
   /** Whether `record` names a TMDB film whose details — its cross-reference ids among them — TMDB has not given yet. */
   private[identity] def awaitsDetails(record: MovieRecord): Boolean = record.tmdbId.isDefined && !record.data.contains(models.Tmdb)
