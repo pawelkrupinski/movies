@@ -262,3 +262,20 @@ cinema in the country", and "update the details when it comes back".
 - **Result.** Drift is clean on all 10 rows with the receipt signal. The measure moves no take in any country
   (31d296369; the later commits touch the replay alone). The baseline is EMPTY.
 
+
+## 2026-10-31: drift slices cut closed (the owner: a slice holds everything its listings depend on)
+
+- **The cut.** `IdentityDrift.cut` replays the slice with the recording and prod's filed answers behind it, and keeps
+  everything read. It then replays the slice alone, and repeats while the slice alone lacks a request or finds a
+  divergence or flip the recording-backed replay does not. A cut that does not close fails (`CUT NOT CLOSED`). The
+  filed IMDb finds were read unnoted and never kept. All committed slices are now closed and lack nothing.
+- **Alice is not a cut artefact any more.** Cut closed (504 listings), it replays clean on 12 seeds. It is committed.
+  With the receipt signal reverted, it replays the old red again (seed 7, "changed with its inputs unchanged at 9
+  scrape"), so it has teeth. The old cut's red was that flip, fixed by the receipt signal.
+- **Swan Lake is not a cut artefact either.** Cut closed (455 listings, recording 573), it replays red on seed 3 only:
+  Halstead "Swan Lake" and Woodbridge "Swan Lake (2027)" are incremental none (Vetoed) where the whole resolve takes
+  1702782 (Broadcast), at `settled` and `tick-1`. The fresh stage after `deploy-1` takes it again. The slice alone and
+  the recording-backed replay find the same red: it is these listings' own incremental = whole divergence. The
+  country's replay runs seeds 1 and 2 only, so it never plays this sequence. Not committed. The closed slice is kept
+  in `~/.cache/kinowo-identity/drift-slices-open/uk/halstead-swan-lake-64d7a829`, and replays in ~10 s:
+  `IdentityDrift uk --slice <dir> --seed 3`.
