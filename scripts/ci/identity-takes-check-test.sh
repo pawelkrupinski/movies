@@ -76,6 +76,22 @@ code=0; HISTORY_HANGS="$work/hung" IDENTITY_TAKES_GH_TIMEOUT=1 run || code=$?
 check "a history read that hangs is cut off by its bound, and stops the check, leaving no gh running" "2 0" \
   "$code $(spec_still_running "$work/hung")"
 
+# github.com's history floor (.github/github-takes-history-floor): the history query keeps only statuses at or after it;
+# Forgejo asks with none; a floor that is no ISO time stops the check.
+cat > "$work/bin/gh-recording" <<EOF2
+#!/usr/bin/env bash
+printf '%s\\n' "\$*" >> "$work/gh-args"
+exec "$work/bin/gh-history-stub" "\$@"
+EOF2
+cp "$work/bin/gh" "$work/bin/gh-history-stub"; mv "$work/bin/gh-recording" "$work/bin/gh"; chmod +x "$work/bin/gh"
+: > "$work/gh-args"; (GITHUB_SERVER_URL=https://github.com TAKES_HISTORY_FLOOR=2026-10-31T15:00:00Z run || true)
+check "github.com asks only for statuses since its floor" 1 "$(grep -c '>= "2026-10-31T15:00:00Z")' "$work/gh-args")"
+: > "$work/gh-args"; (GITHUB_SERVER_URL=https://forgejo.example TAKES_HISTORY_FLOOR=2026-10-31T15:00:00Z run || true)
+check "...and Forgejo reads no floor" 1 "$(grep -c '>= "")' "$work/gh-args")"
+code=0; (GITHUB_SERVER_URL=https://github.com TAKES_HISTORY_FLOOR=yesterday; export GITHUB_SERVER_URL TAKES_HISTORY_FLOOR; run) || code=$?
+check "a floor that is no ISO time stops the check" 2 "$code"
+mv "$work/bin/gh-history-stub" "$work/bin/gh"
+
 # Run 38533191835 was dispatched with takes-base=c2974e3aa: a fetch asks for a FULL object name, so every leg failed to
 # fetch it -- and passed. A short base is expanded through the API; one naming no commit, or one the fetch cannot reach,
 # stops the check (exit 2, which the leg posts as `error` and fails on), saying why in verdict.txt.

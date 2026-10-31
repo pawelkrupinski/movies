@@ -88,6 +88,18 @@ identity_paths=(geodata/src/main common/src/main identity/src/main scrapers/src/
                 worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala worker/src/it/scala/IdentityShadow.scala testkit/src/main
                 build.sbt project)
 
+# THE HISTORY FLOOR (github.com only): a status older than .github/github-takes-history-floor counts as none. github.com's
+# checks stopped on 2026-10-16 (the suspension) and came back in shadow on 2026-10-31 while Forgejo judged every commit
+# between, so the newest green github.com status was 1,429 commits back (run 41209071921: every takes row failed on
+# moves Forgejo had accepted one commit at a time). Past the floor github.com picks its base as a check that never ran
+# would -- the head's parent -- until its own statuses take over. Forgejo reads no floor. TAKES_HISTORY_FLOOR overrides.
+history_floor=""
+if [ "${GITHUB_SERVER_URL:-}" = "https://github.com" ]; then
+  history_floor=${TAKES_HISTORY_FLOOR-$(grep -vE '^\s*(#|$)' "$here/.github/github-takes-history-floor" 2>/dev/null | head -1)}
+fi
+[ -z "$history_floor" ] || [[ "$history_floor" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]{8}Z$ ]] \
+  || { echo "::error::identity takes ($cc): the history floor is an ISO time like 2026-10-31T15:00:00Z, not $history_floor"; exit 2; }
+
 # One page of the head's history before it, a line a commit: `<sha> <state of $context, or -> <parent sha>`, then
 # `NEXT <cursor>` when there is more. GraphQL hands a commit's statuses with it: a page is one call, not 100.
 history_page() { # [cursor]
@@ -96,9 +108,9 @@ history_page() { # [cursor]
     ${1:+-f cursor="$1"} -f query="query(\$owner: String!, \$name: String!, \$expr: String!${1:+, \$cursor: String}) {
       repository(owner: \$owner, name: \$name) { object(expression: \$expr) { ... on Commit {
         history(first: 100$after) { pageInfo { hasNextPage endCursor }
-          nodes { oid parents(first: 1) { nodes { oid } } status { contexts { context state } } } } } } } }" \
+          nodes { oid parents(first: 1) { nodes { oid } } status { contexts { context state createdAt } } } } } } } }" \
     --jq ".data.repository.object.history | (.nodes[] | .oid + \" \" +
-            ([(.status.contexts // [])[] | select(.context == \"$context\") | .state][0] // \"-\") + \" \" +
+            ([(.status.contexts // [])[] | select(.context == \"$context\" and (.createdAt // \"\") >= \"$history_floor\") | .state][0] // \"-\") + \" \" +
             (.parents.nodes[0].oid // \"-\")),
           (if .pageInfo.hasNextPage then \"NEXT \" + .pageInfo.endCursor else empty end)"
 }

@@ -1,0 +1,4 @@
+# THE TAKES CHECK'S HISTORY FLOOR ON GITHUB.COM (scripts/ci/identity-takes-check.sh). A commit status older than this
+# time counts as none when github.com picks the takes base: github.com's checks stopped on 2026-10-16 and came back in
+# shadow on 2026-10-31, while Forgejo judged the 1,429 commits between. Forgejo never reads this file.
+2026-10-31T15:00:00Z
