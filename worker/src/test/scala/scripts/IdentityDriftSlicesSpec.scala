@@ -41,6 +41,13 @@ class IdentityDriftSlicesSpec extends AnyFlatSpec with Matchers {
     slices should not be empty
   }
 
+  "A drift slice's seeds" should "be the twelve every slice replays, and the red seeds beyond them its seeds file names" in {
+    val dir = tools.TempDirectories.create("drift-slice-seeds")
+    seedsOf(dir) shouldBe Seeds
+    Files.writeString(dir.resolve("seeds"), "# found red on convergence #549\n29\n3\n")
+    seedsOf(dir) shouldBe Seeds :+ 29
+  }
+
   slices.foreach { dir =>
     "A drift slice" should s"replay incremental = whole with no divergence nor flip beyond the allow-lists: ${fixtures.relativize(dir)}" in {
       val outcome = found(dir).get
@@ -80,7 +87,16 @@ object IdentityDriftSlicesSpec {
 
   def replayed(dir: Path): Outcome = {
     val run = new IdentityDrift.SliceRun(dir)
-    Outcome(run.slice.country.code, quietly(run.run(Seeds, Gate)), run.lacking)
+    Outcome(run.slice.country.code, quietly(run.run(seedsOf(dir), Gate)), run.lacking)
+  }
+
+  /** The seeds `dir`'s slice replays: [[Seeds]], and the seeds beyond them it was found red on, one a line in its `seeds`
+   *  file (a rotating seed of the convergence legs runs to 64): a red seed stays held once its slice is committed. */
+  def seedsOf(dir: Path): Seq[Int] = {
+    val file  = dir.resolve("seeds")
+    val extra = if (!Files.exists(file)) Nil
+                else Files.readAllLines(file).asScala.toSeq.map(_.trim).filter(l => l.nonEmpty && !l.startsWith("#")).map(_.toInt)
+    (Seeds ++ extra).distinct
   }
 
   /** The replay's progress lines, kept off the suite's output. */
