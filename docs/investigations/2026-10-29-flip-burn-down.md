@@ -235,3 +235,30 @@ cinema in the country", and "update the details when it comes back".
 - **Tests.** IdentityModelServiceSpec covers a listing kept while another venue bills its title, updated when it comes
   back with changed details, and dropped with the last.
 - **The baseline is empty:** the four class-D rows are removed, and the drift gate fails every flip again.
+
+### Class D follow-up: a kept listing keeps its days
+
+- **Showings versus days.** The model's input holds no showing (time, screen, booking), only the DAYS a listing screens
+  on. Those days are facts: they date the broadcast a relay screens.
+- **Days dropped.** The first cut dropped the days too. In the full drift rows (run for 2dc6b7cce), UK "Royal Ballet and
+  Opera: Tosca", "Alice's Adventures in Wonderland" and "ROMEO AND JULIET" then flipped 11 times: a kept bare
+  listing joined the 2024/25 staging while its venue was away, and came back to the 2026/27 one.
+- **Season only.** Keeping the season alone (`ScreeningDays.ofSeason`, run 4209) left the same 11 flips.
+- **Companions tried and dropped.** Matching kept listings by the cluster they left beside, as well as by title, broke
+  the Titans slice. It added a cross-title read that the replay's inputs-moved signal does not see.
+- **The rule now:** a kept listing is held whole. The showings drop from the cinema data the site serves, not from the
+  facts the model reads.
+- **Not a class-D flip.** The cut Alice slice (UK, 503 listings, 54 requests missing) replays red at Halstead and
+  Woodbridge with retention OFF too: the broadcast take "changed with its inputs unchanged at 9 scrape". It is a slice
+  artefact, like the open Swan Lake one, so it is not committed.
+- **Film and stage-cluster signals, tried and dropped.** With whole kept listings, DE "Titans" (CinemaxX Dammtor,
+  Raschplatz, Regensburg) went from none to tmdb:869152 at a scrape read as "inputs unchanged". Marking moved inputs
+  by the films the moved listings were taken as, and by their stage clusters, did not clear it (runs 4272, 4278).
+- **Inline filings are filings.** Nothing of Titans moved at step 13. A diagnostic run (4281) showed the answer store moving 8265 -> 8446 under that scrape: its apply filed, by
+  an inline ask, the answer the fill read. The replay now also compares each listing's stage verdict RECEIPT
+  (`StoredVerdict.reads`, answer by answer). A receipt moving is an input moving. A take moving under the same receipt
+  is still a flip. This is the receipt predicate of the structural plan's property 7. The receipt holds the verdict's
+  listings digest too, so it also covers a stage cluster gaining or losing a listing.
+- **Result.** Drift is clean on all 10 rows with the receipt signal. The measure moves no take in any country
+  (31d296369; the later commits touch the replay alone). The baseline is EMPTY.
+
