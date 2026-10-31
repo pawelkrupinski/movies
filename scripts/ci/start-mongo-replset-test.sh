@@ -18,7 +18,8 @@ cat > "$stub_dir/docker" <<'STUB'
 printf '%s\n' "$*" >> "$STUB_LOG"
 case "$1" in
   run|logs) exit 0 ;;
-  pull) [ "${STUB_MIRROR:-up}" = down ] && [[ "$*" == *mirror.gcr.io* ]] && exit 1; exit 0 ;;
+  pull) [ "${STUB_MIRROR:-up}" = down ] && [[ "$*" == *mirror.gcr.io* ]] && exit 1
+        [ "${STUB_MIRROR:-up}" = stalls ] && [[ "$*" == *mirror.gcr.io* ]] && exec sleep 600; exit 0 ;;
   info) [ -n "${STUB_DAEMON_MIRROR:-}" ] && echo "$STUB_DAEMON_MIRROR"; exit 0 ;;
   login) cat > "$STUB_LOGIN"; exit 0 ;;
 esac
@@ -61,6 +62,10 @@ check "...running Docker Hub's image" "1" "$(grep -c -- ' docker.io/library/mong
 check "...logged in as the CI account" "1" "$(grep -c -- '^login -u ci-user --password-stdin$' "$STUB_LOG")"
 check "...the token handed over on stdin" "s3cret" "$(cat "$STUB_LOGIN")"
 check "...and never on a command line" "0" "$(grep -c s3cret "$STUB_LOG")"
+check "a mirror whose pull stalls falls back to Docker Hub within its bound (run 41216580092)" "0" \
+  "$(STUB_MIRROR=stalls MONGO_PULL_SECONDS=1 start healthy)"
+check "...running Docker Hub's image" "1" "$(grep -c -- ' docker.io/library/mongo:[0-9.]* --replSet' "$STUB_LOG")"
+check "...saying the mirror stalled" "1" "$(grep -c 'stalled past 1s' "$stub_dir/out")"
 check "with no Docker Hub token the fallback still pulls, anonymously" "0" "$(STUB_MIRROR=down start healthy)"
 check "...without a login" "0" "$(grep -c '^login' "$STUB_LOG")"
 check "a daemon with a Docker Hub mirror of its own pulls Docker Hub's name, through that mirror" "1" \

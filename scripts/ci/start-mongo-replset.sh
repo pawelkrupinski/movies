@@ -109,20 +109,31 @@ storage=()
 [ -n "${MONGO_TMPFS:-}" ] && storage=(--tmpfs "/data/db:rw,size=${MONGO_TMPFS}")
 image=mirror.gcr.io/library/mongo:8.3.13
 hub_image=docker.io/library/mongo:8.3.13
+# EVERY PULL IS BOUNDED, and a stalled one falls through to the next source like a refused one. github.com convergence
+# 41216580092, `takes-drift-1 (united-states)`: the pull from mirror.gcr.io hung -- this script printed nothing for 9
+# minutes, so the leg's 240 s wait for it failed -- while the same image came down in 24-75 s on every other leg of
+# the run. A pull is ~300 MB: MONGO_PULL_SECONDS (default 120) is several times a slow one, not a race with a good one.
+pull() {
+    echo "pulling $1 (at most ${MONGO_PULL_SECONDS:-120}s)"
+    timeout -k 10 "${MONGO_PULL_SECONDS:-120}" docker pull -q "$1"
+    local status=$?
+    [ "$status" -eq 124 ] && echo "::warning::the pull of $1 stalled past ${MONGO_PULL_SECONDS:-120}s"
+    return "$status"
+}
 # A DOCKER HUB MIRROR OF THE DAEMON'S OWN comes first: on the Forgejo runners each job's dockerd is
 # pointed at a pull-through cache on the CI host (infra's forgejo-registry-mirror), which serves Docker
 # Hub's name from local disk instead of the 19-27 s internet pull every job made (2026-10-22). Only a
 # Docker Hub name goes through a daemon's mirror; GitHub's runners have none and skip this.
 if [ -n "$(docker info --format '{{range .RegistryConfig.Mirrors}}{{.}} {{end}}' 2>/dev/null)" ] &&
-    docker pull -q "$hub_image"; then
+    pull "$hub_image"; then
     image="$hub_image"
-elif ! docker pull -q "$image"; then
-    echo "::warning::$image refused the pull; falling back to Docker Hub"
+elif ! pull "$image"; then
+    echo "::warning::$image refused or stalled the pull; falling back to Docker Hub"
     image="$hub_image"
     if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
         printf '%s' "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin || true
     fi
-    docker pull -q "$image" || exit 1
+    pull "$image" || exit 1
 fi
 docker run -d --name mongo --network host ${storage[@]+"${storage[@]}"} "$image" --replSet rs0 "$@" || exit 1
 wait_for "reachable" is_up || exit 1
