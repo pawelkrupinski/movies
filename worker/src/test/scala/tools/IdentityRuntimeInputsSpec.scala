@@ -182,6 +182,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
       "clock"       -> Read("the year it reads is in the receipt (YearRead)"),
       "stored"      -> Read("the verdicts: the cache this key keeps"),
       "changes"     -> Inert("which answers were filed: when to read a receipt again, never what it decides"),
+      "givenUp"     -> Inert("what the typed outcome reads a settled question as -- given up on or still pending; no verdict reads it"),
       "attemptsMarked" -> Inert("how many attempts were marked: when to read the receipts again"),
       "ask"         -> Inert("asking"), "askNow" -> Inert("asking, inline"), "metrics" -> Inert("metrics"),
       "keyStore"    -> Inert("names: no verdict is found by its key"),
