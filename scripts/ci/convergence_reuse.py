@@ -233,6 +233,29 @@ def inputs_unlike_main(inputs, order_phases):
 # ── the judgement ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 
+def jobs_by_name(jobs):
+    """A run's jobs by the name Forgejo gives them: a reusable call's inner job is `takes (poland)` there, beside its
+    caller `leg (poland)`, while github.com names it `leg (poland) / takes (poland)` and lists no caller job. Both
+    spellings read alike: the inner name, and each caller as the worst of its rows (success only if every row
+    succeeded), unless the run lists the caller itself."""
+    out, callers = {}, {}
+    for j in jobs:
+        name = j.get("name") or ""
+        caller, sep, inner = name.partition(" / ")
+        if sep:
+            out.setdefault(inner, j)
+            callers.setdefault(caller, []).append(j)
+        else:
+            out[name] = j
+    for caller, rows in callers.items():
+        if caller not in out:
+            done = all(r.get("status") == "completed" for r in rows)
+            ok = done and all(r.get("conclusion") in ("success", "skipped") for r in rows)
+            out[caller] = {"name": caller, "status": "completed" if done else "in_progress",
+                           "conclusion": ("success" if ok else "failure") if done else None}
+    return out
+
+
 def judge(source_run, jobs, facts, mine):
     """Why the source run's verdict does NOT hold for this commit; empty when it does.
 
@@ -262,7 +285,7 @@ def judge(source_run, jobs, facts, mine):
         why.append(f"the source's legs: {reason}")
     for reason in inputs_unlike_main(mine["inputs"], mine["order_phases"]):
         why.append(f"this run: {reason}")
-    result = {j.get("name"): j for j in jobs}
+    result = jobs_by_name(jobs)
     callers = sorted({re.sub(r"^[^(]*", "leg ", r) for r in mine["expected_rows"]})
     for name in list(mine["expected_rows"]) + callers:
         job = result.get(name)
@@ -296,7 +319,7 @@ def incomplete(jobs, rows, reused_from="", inputs=None, order_phases="both"):
     # row it skips the diff of still runs and decides, on its own proof; nor the order phases, no takes row)
     why = [f"this run's legs: {reason}" for reason in inputs_unlike_main(inputs, order_phases)
            if reason.startswith(("takes-only", "drift-only", "takes-countries", "recording"))] if inputs is not None else []
-    result = {j.get("name"): j for j in jobs}
+    result = jobs_by_name(jobs)
     for name in rows:
         if not name.startswith(tuple(f"{p} (" for p in VERDICT_PHASES)):
             continue

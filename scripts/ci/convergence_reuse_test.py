@@ -307,6 +307,20 @@ class NoFalseGreen(unittest.TestCase):
         jobs = [dict(j, conclusion="skipped") if j["name"].startswith("next-day") else j for j in green_jobs()]
         self.assertEqual(reuse.incomplete(jobs, ROWS), [])
 
+    def test_github_com_names_a_called_row_after_its_caller(self):
+        # github.com: `leg (poland) / takes (poland)`, and no caller job (run 41215027020's verdict read every row absent)
+        jobs = [dict(j, name=f"leg {j['name'][j['name'].index('('):]} / {j['name']}") if j["name"] in ROWS else j
+                for j in green_jobs() if not j["name"].startswith("leg ")]
+        self.assertEqual(reuse.incomplete(jobs, ROWS), [])
+        jobs = [dict(j, conclusion="skipped") if j["name"].endswith("/ takes (united-kingdom)") else j for j in jobs]
+        self.assertEqual(len(reuse.incomplete(jobs, ROWS)), 1)
+
+    def test_github_com_callers_take_their_worst_row(self):
+        jobs = [{"name": "leg (poland) / takes (poland)", "status": "completed", "conclusion": "success"},
+                {"name": "leg (poland) / convergence (poland)", "status": "completed", "conclusion": "failure"}]
+        self.assertEqual(reuse.jobs_by_name(jobs)["leg (poland)"]["conclusion"], "failure")
+        self.assertEqual(reuse.jobs_by_name(jobs)["takes (poland)"]["conclusion"], "success")
+
     def test_a_proven_reuse_is_complete_with_every_row_skipped(self):
         jobs = [dict(j, conclusion="skipped") for j in green_jobs()]
         self.assertEqual(reuse.incomplete(jobs, ROWS, reused_from="2821"), [])
