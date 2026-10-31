@@ -279,3 +279,23 @@ cinema in the country", and "update the details when it comes back".
   country's replay runs seeds 1 and 2 only, so it never plays this sequence. Not committed. The closed slice is kept
   in `~/.cache/kinowo-identity/drift-slices-open/uk/halstead-swan-lake-64d7a829`, and replays in ~10 s:
   `IdentityDrift uk --slice <dir> --seed 3`.
+
+## 2026-10-31: Swan Lake's seed-3 red was the replay's, not the stage's: TMDB filings unannounced
+
+- **Root cause.** At the fill the stage read Halstead's candidate searches blind (`AgreementCandidates.candidatesOf`,
+  `blindAt` = the answers' version) and keeps a blind read while that version stands. In the worker every TMDB filing
+  is published on the answer feed (`TmdbStore.updateAll`), and the family store moves the stage's version for a search a
+  kept verdict or the last apply read, or a find or record it waits on (`FamilyAnswerStore.agreementKeyOf`, wired by
+  `IdentityProjectionWiring.agreementStage`). The replay's `Gate` filed the model's searches and records unannounced and
+  wired no stage to the feed, so the version moved only on a family filing. In the slice no family answer was filed
+  from the fill to settle, and the blind read (no candidates, so no broadcast take) stood until a deploy's fresh stage.
+- **Fix (harness, 5bb668f72).** The replay announces each filing under the TMDB store's key and wires each new stage as
+  the live one is. No resolver or stage code moves. The slice is committed and replays clean on 12 seeds, and is red on
+  seed 3 with the announcement off.
+- **What the faithful replay shows.** The Cosi slice now flips on seed 11. Fishguard "Cosi Fan Tutte" goes none ->
+  1702775 (Broadcast, step 8, Pending on record 455831) -> 299734 (PooledMatch once Halstead's listing joins, step 9,
+  Pending on an IMDb search and 455831) -> 1702775 (Corrected, step 12, the search filed). A whole resolve of the step-9
+  inputs takes 299734 too, so this is class A: an interim input. The flip predicate counts a film served Pending, while
+  the structural properties read it as "pending". That is identity design: either the stage serves none while a
+  correction it cannot read yet is pending (agree or none), or the predicate skips a Pending film as it skips a Pending
+  none. It is baselined at the tightened check's birth (`New-Check:`). The corpus rows replay clean.

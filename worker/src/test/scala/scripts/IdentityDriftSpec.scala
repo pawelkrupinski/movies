@@ -54,6 +54,24 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     IdentityDrift.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(question, unfiled)
   }
 
+  "the replay's fill" should "announce its TMDB filings as the worker's TMDB store does: the stage's version moves for a search it read or a record it waits on" in {
+    import services.identity.{Dependency, Question}
+    val store   = new FamilyAnswerStore(new InMemoryTmdbDocuments, new MutableClock(Instant.parse("2026-10-30T12:00:00Z")))
+    val keys    = IdentityDrift.filingKeys(AnswersChanged(Set(CandidateQuery.Title("Swan Lake")), Set(1702782)), "en")
+    keys.size shouldBe 2
+    all(keys.map(TmdbStore.isKey)) shouldBe true
+    // nothing read nor waited on: a take-up's thousands of filings move no version
+    val before = store.version
+    keys.foreach(store.noteFiled)
+    store.version shouldBe before
+    // UK Swan Lake, seed 3: the stage read Halstead's searches blind, and kept that read while its version stood -- the
+    // fill filed them unannounced, and the broadcast take waited for a deploy's fresh stage
+    store.readBy(_ == Dependency.QueryFiled)
+    store.awaitedBy(_ == Question.Record(1702782))
+    keys.foreach(store.noteFiled)
+    store.version shouldBe before + 2
+  }
+
   "a listing's inputs" should "move with its model cluster's members, and at a step that moved listings with the model's take of it" in {
     val lalka = IdentityDrift.ModelCluster(members = 17, film = "tmdb:1321666")
     IdentityDrift.inputsMoved(Some(lalka), Some(lalka.copy(members = 18)), listingsMoved = false) shouldBe true

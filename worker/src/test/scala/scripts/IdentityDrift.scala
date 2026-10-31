@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.bson.BsonDocument
 import services.identity._
-import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, PosterAnswerStore, PosterHashing, TmdbDocuments, TmdbKind}
+import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, PosterAnswerStore, PosterHashing, TmdbDocuments, TmdbKind, TmdbStore}
 import services.identity.agreement.{AgreementStage, AgreementStageComposition, VoterFamily}
 import services.movies.ListingKey
 import tools.{CatalogueFill, IdentityJudgements, MutableClock, UnmatchedClusters}
@@ -216,6 +216,13 @@ object IdentityDrift {
     def pending: Boolean = !queries.isEmpty || !films.isEmpty || !details.isEmpty
   }
 
+  /** The feed keys production's TMDB store announces `changed`'s searches and records under ([[TmdbStore.keyOf]]). What
+   *  the agreement stage's version counts of them is the family store's say ([[FamilyAnswerStore.agreementKeyOf]]), as in
+   *  production; a venue page's announcement is no agreement key, and moves it in neither. */
+  def filingKeys(changed: AnswersChanged, language: String): Seq[String] =
+    changed.queries.toSeq.map(q => TmdbStore.keyOf(TmdbKind.Query, TmdbStore.questionId(language, q))).sorted ++
+      changed.films.toSeq.sorted.map(f => TmdbStore.keyOf(TmdbKind.Film, f.toString))
+
   /** The family answers filed so far: a [[Share]] of the capture's family questions not filed until [[release]]d (a
    *  poster's hash or a catalogue answer is never held — the recording cannot hash it again as prod did). */
   final class GatedDocuments(inner: TmdbDocuments, share: Share) extends TmdbDocuments {
@@ -393,7 +400,14 @@ object IdentityDrift {
     private val inputs   = inputsOf(reads)
     private def newModel() = inputs.incremental(gate, reads.normalizer, families, code = rules, IdentityTraceSink.Discard)
     var model: IncrementalResolver = newModel()
-    private def newStage() = answers.stage(gate, verdicts, budgets = true, keys, askNow = answers.inline(releaseFamily))
+    /** A stage wired to the answer feed as the worker wires the live one (IdentityProjectionWiring.agreementStage): the
+     *  TMDB finds and records it waits on, and the records and searches it read, move its answers' version when filed. */
+    private def newStage() = {
+      val made = answers.stage(gate, verdicts, budgets = true, keys, askNow = answers.inline(releaseFamily))
+      answers.store.awaitedBy(question => made.wanted.contains(question))
+      answers.store.readBy(made.reads)
+      made
+    }
     var stage: AgreementStage = newStage()
     /** The intake's listings by key: what a projection hands the stage. */
     var held: Map[ListingKey, Listing] = Map.empty
@@ -476,7 +490,15 @@ object IdentityDrift {
       held ++= left.kept.map(l => l.key -> l); retained ++= left.kept.map(_.key)
       model.batch(seen = left.kept, gone = left.dropped)
     }
-    def filled(fraction: Double, rng: scala.util.Random): Unit = { event("fill"); model.batch(answered = gate.release(fraction, rng)) }
+    def filled(fraction: Double, rng: scala.util.Random): Unit = { event("fill"); model.batch(answered = filed(gate.release(fraction, rng))) }
+    /** `changed` filed as production's fill files it: each answer announced on the feed the TMDB store publishes to --
+     *  the stage's version moving for a search or record it read or waits on, as the live stage's wiring has it -- before
+     *  the model is told. Unannounced, a search the stage read blind stayed blind while the version stood: UK Swan Lake,
+     *  seed 3, Halstead's broadcast take none from the fill to a deploy's fresh stage. */
+    private def filed(changed: AnswersChanged): AnswersChanged = {
+      filingKeys(changed, reads.country.language.getLanguage).foreach(answers.store.noteFiled)
+      changed
+    }
     def answered(): Unit = { event("answer"); answers.answer(stage, releaseFamily) }
     /** A deploy: the model and the stage made anew from their stores; `outrule` — a deploy changing the rules. */
     def deploy(outrule: Boolean): Unit = {
@@ -490,7 +512,7 @@ object IdentityDrift {
     /** Every answer filed, and the stage asked until it settles. */
     def settled(): Resolution = {
       gate.open = true; docs.openAll(answers.store.noteFiled)
-      model.batch(answered = gate.release(1.0, new scala.util.Random(0)))
+      model.batch(answered = filed(gate.release(1.0, new scala.util.Random(0))))
       settle(stage, () => { event("settle"); project(checkpoint = "settled") }, answers, clock, releaseFamily)
     }
   }

@@ -8,3 +8,4 @@
 # THE END STATE IS AUTOMATIC: with no row left, every flip fails -- the strict gate. Divergences have no baseline.
 # Owner: the convergence red's fixer. A newborn check's own findings go TEMPORARY on identity-flips-allow.tsv instead.
 country	seed	venue	rawTitle	takes	firstSeen	owner	note
+uk	11	Theatr Gwaun Fishguard	Cosi Fan Tutte	none -> tmdb:1702775 -> tmdb:299734 -> tmdb:1702775	2026-10-31	flip-fixer	drift harness announces TMDB filings (5bb668f72): Pending interim takes 1702775 (Broadcast, record 455831 pending) -> 299734 (PooledMatch, a search and 455831 pending) -> 1702775 (Corrected); class A, identity design: back to a film it left
