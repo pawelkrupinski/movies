@@ -88,6 +88,17 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
     every(Budget.Unlimited)(_.monotoneUnderFiling()) shouldBe empty
   }
 
+  // P2, P3 (identity-flips-structural-2026-10-30, property 2): the same filings in another order come to the same
+  // outcomes -- each listing's, in every prefix, Pending or that one (property 1 per order, and the ends equal)
+  it should "come to the same takes whatever order the same answers are filed in" in {
+    IndependentCases.flatMap(for { (label, make) <- cases; seed <- Seeds } yield (label, make, seed)) { case (label, make, seed) =>
+      val ends = (0L to 2L).map(order => new History(make(seed), seed, Budget.Unlimited, order).filingOutcomes().view.mapValues(_.last).toMap)
+      val orders = (0L to 2L).flatMap(order => new History(make(seed), seed, Budget.Unlimited, order).monotoneUnderFiling().map(v => s"order $order: $v"))
+      orders.headOption.orElse(ends.head.collectFirst { case (key, end) if ends.tail.exists(_.get(key).exists(_ != end)) =>
+        s"seed $seed, ${key.venue} | ${key.rawTitle}: ${ends.map(_.getOrElse(key, "-")).mkString(" / ")} in orders 0 / 1 / 2" }).map(s"$label: " + _)
+    } shouldBe empty
+  }
+
   // P3 (identity-flips-structural-2026-10-30, property 3): a budget decides how soon, never what -- at every step of the
   // same history, a listing's outcome under production's correction budget is the unbounded one's, or Pending: never
   // another decided value (Chichester x2, Cosi, Hamlet, Rocky Horror, La Fanciulla, E4 were each such a take)
@@ -158,7 +169,8 @@ object IncrementalWholeEquivalenceSpec {
       val families = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map { family =>
         family -> corpus.films.filter(_ => rnd.nextInt(10) < 7).map { film =>
           val ids = (if (family == VoterFamily.Filmweb) Map.empty else Map("imdb" -> imdbOf(film))) ++ film.tmdbId.map("tmdb" -> _.toString)
-          s"${family.label}-${film.id}" -> SourceRecord(IdentityMeasures.Film(film.title, None, Nil, Some(film.year), Some(film.runtime),
+          // IMDb's records are filed under their IMDb id, as production's are; the rest under their own
+          (if (family == VoterFamily.Imdb) imdbOf(film) else s"${family.label}-${film.id}") -> SourceRecord(IdentityMeasures.Film(film.title, None, Nil, Some(film.year), Some(film.runtime),
             Some(Seq(film.director)), None, None), ids)
         }.toMap
       }.toMap
@@ -213,7 +225,7 @@ object IncrementalWholeEquivalenceSpec {
    * before they are filed, or for good. The clock crosses into a new year at round [[NewYear]]. Everything is a function
    * of the seed, the question and the round: the world keeps no history, so a whole resolve reads what is filed now.
    */
-  final class World(seed: Long, of: Case) {
+  final class World(seed: Long, of: Case, order: Long = 0) {
     var round = 0
     /** The clock kept in its first year whatever the round: a history of filings alone, the year no input that moves. */
     var yearHeld = false
@@ -222,7 +234,8 @@ object IncrementalWholeEquivalenceSpec {
      *  model's every take waits on: a cluster with one of them unanswered is never the stage's to read. */
     def filedAt(question: String): Int = roll("filed", question, 20) match {
       case n if n < 11                              => 0
-      case n if n < 19 || question.startsWith("tmdb|") => 1 + n % Final
+      // filed late: at a round its text fixes -- or, in another filing ORDER, at another (property 2): the same filings
+      case n if n < 19 || question.startsWith("tmdb|") => if (order == 0) 1 + n % Final else 1 + roll(s"order$order", question, Final)
       case _                                        => Int.MaxValue
     }
     def filed(question: String): Boolean = round >= filedAt(question)
@@ -287,8 +300,8 @@ object IncrementalWholeEquivalenceSpec {
   }
 
   /** One random history over a case: the incremental path driven event by event, and the whole resolve. */
-  final class History(of: Case, seed: Long, budget: Budget) {
-    private val world    = new World(seed, of)
+  final class History(of: Case, seed: Long, budget: Budget, order: Long = 0) {
+    private val world    = new World(seed, of, order)
     private val rnd      = new Random(seed * 7919)
     private val held     = mutable.LinkedHashMap.empty[ListingKey, Listing]
     /** The listings that left whose facts are kept ([[services.identity.ListingRetention]]). */
@@ -384,6 +397,13 @@ object IncrementalWholeEquivalenceSpec {
      *  only refines: Pending* then one decided value (a film, or no film). Never one decided value then another, nor a
      *  decided value then Pending: a decision made before an answer it reads was filed. */
     def monotoneUnderFiling(): Option[String] = {
+      val outcomes = filingOutcomes()
+      def refines(seq: Vector[String]): Boolean = seq.dropWhile(_ == "pending").distinct.sizeIs <= 1 && !seq.dropWhile(_ == "pending").contains("pending")
+      outcomes.collectFirst { case (key, seq) if !refines(seq) => s"seed $seed, ${key.venue} | ${key.rawTitle}: ${seq.mkString(" -> ")}" }
+    }
+
+    /** Every listing held, then only filings, the year held: each listing's outcome in the whole resolve at each round. */
+    def filingOutcomes(): collection.Map[ListingKey, Vector[String]] = {
       val all = pending.dequeueAll(_ => true)
       all.foreach(listing => held(listing.key) = listing)
       world.yearHeld = true                                              // only filings: the year is an input, kept
@@ -403,8 +423,7 @@ object IncrementalWholeEquivalenceSpec {
       }
       record()
       while (world.round < Final) { world.round += 1; record() }
-      def refines(seq: Vector[String]): Boolean = seq.dropWhile(_ == "pending").distinct.sizeIs <= 1 && !seq.dropWhile(_ == "pending").contains("pending")
-      outcomes.collectFirst { case (key, seq) if !refines(seq) => s"seed $seed, ${key.venue} | ${key.rawTitle}: ${seq.mkString(" -> ")}" }
+      outcomes
     }
 
     /** One event of the history, the stage applied after it, and each listing's outcome then: a film, "none", or
