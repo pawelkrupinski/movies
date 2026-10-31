@@ -76,9 +76,10 @@ if [ -e /proc/self/environ ] && command -v setsid > /dev/null; then
   # mid-exec then (its environ reads empty) or starts a moment later (Tool self-tests #2866). Here the step's shell
   # answers TERM by starting one a second later: after that first look, before the group is gone. It answers the reap's
   # later TERMs with a no-op (bash would start the trap over) and its waits carry no mark, so those end only the daemon.
+  # The step's body hangs on a `wait` for a sleep that never ends on its own, which the TERM interrupts to run the trap.
   : > "$work/child"
   late=$(step "trap \"trap : TERM; env -u BOUNDED_STEP sleep 1; setsid bash -c 'while :; do sleep 1; done' '$work' & echo \\\$! > '$work/child'; env -u BOUNDED_STEP sleep 0.5; exit 0\" TERM
-echo started > '$work/late'; while :; do sleep 1; done")
+echo started > '$work/late'; sleep 86400 & wait \$!")
   bash --noprofile --norc -eo pipefail "$late" > /dev/null 2>&1 &
   wait_until "the late step started" '[ -s "$work/late" ] && [ "$(records)" = 1 ]'
   bash "$REPO_ROOT/scripts/ci/bounded-step.sh" --reap > /dev/null 2>&1
