@@ -89,8 +89,7 @@ if [ "$seeds" != both ]; then
 fi
 [ -z "$for_red" ] || [ -z "$against" ] || usage_error "--for-red and --against each name the baseline: one of them"
 countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || countries=$(selected_countries_csv)
-remote=${IDENTITY_MEASURE_REMOTE:-}
-[ -n "$remote" ] || remote=origin
+remote=${IDENTITY_MEASURE_REMOTE:-origin}
 
 csv_add() { [[ ",$1," == *",$2,"* ]] && echo "$1" || echo "${1:+$1,}$2"; } # <csv> <item>
 

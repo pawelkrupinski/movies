@@ -47,8 +47,7 @@ For the build-time alerts (infra/nix/files/monitoring/rules/ci-build-times.rules
   started between -- a commit SHA would be a label of its own per run.
 - `kinowo_ci_run_seconds{measure="runner_wait"}` is how long the run's first job waited for a runner once nothing
   else held it back: from the run's creation, or from the end of the same workflow's run on its branch it queued
-  behind (Main runs one at a time), to its first job's start. `queued` counts from `run_started_at`, which Forgejo
-  sets as the run leaves its concurrency queue: a Main run's reads seconds there, whatever it waited.
+  behind (Main runs one at a time), to its first job's start.
 
 Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push]
       (by hand, too: re-pushing a finished run backfills it)
@@ -78,7 +77,7 @@ SERVICE_NAME = "kinowo-ci"
 PHASE_LOG_MIN_SECONDS = 60
 # What an expression `timeout-minutes` came to, echoed by its job (country-convergence-leg.yml); see the header.
 CEILING_LINE = re.compile(r"ci-job-ceiling ([0-9]+) minutes")
-# github.com's ceiling for a job that names none (Forgejo's runner caps every job at its own `timeout`, 3h by default).
+# github.com's ceiling for a job that names none.
 DEFAULT_TIMEOUT_MINUTES = 360
 EXPRESSION = re.compile(r"\$\{\{.*?\}\}")
 WORKFLOWS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".github", "workflows")
@@ -423,8 +422,7 @@ def handle(github, run, args, out=sys.stdout):
     jobs = collect(github.jobs(run["id"]), github.log, workflow_ceilings(run.get("path") or ""))
     report(run, jobs, out)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
-    # Forgejo discards a job summary, and warns of each: the report above, in the log, is what it keeps.
-    if summary and os.environ.get("GITHUB_SERVER_URL", "https://github.com") == "https://github.com":
+    if summary:
         with open(summary, "a", encoding="utf-8") as handle_:
             handle_.write(summary_markdown(run, jobs))
     try:

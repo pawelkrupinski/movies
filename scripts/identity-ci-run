@@ -49,8 +49,7 @@ fi
 [ -z "$recording" ] || [[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording takes a run id or prod-latest, not $recording"
 [ -n "$command" ] || usage_error "no command: put the sbt command after --"
 say() { echo "identity-ci-run: $*" >&2; }
-remote=${IDENTITY_MEASURE_REMOTE:-}
-[ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
+remote=${IDENTITY_MEASURE_REMOTE:-origin}
 commit=$(git rev-parse --verify -q "$head^{commit}") || die "no commit $head"
 [ "$head" = HEAD ] && [ -n "$(git status --porcelain --untracked-files=no)" ] && say "WARNING: uncommitted changes are not run -- only $commit"
 

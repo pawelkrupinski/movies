@@ -29,8 +29,7 @@ if ! git -C "$repo_root" tag -f "$tag" "$sha" >/dev/null 2>&1; then
   warn "could not create tag $tag locally — not pushing"
   exit 0
 fi
-# Forgejo's remote, where main and the mobile-* tags live since GitHub's suspension (`origin` still
-# names GitHub): the same name as RELEASE_REMOTE in infra/version-dashboard/src/config.ts.
-remote=forgejo
+# The same remote as RELEASE_REMOTE in infra/version-dashboard/src/config.ts.
+remote=origin
 git -C "$repo_root" push -f "$remote" "$tag" >/dev/null 2>&1 \
   || warn "could not push tag $tag — push it manually: git push -f $remote $tag"

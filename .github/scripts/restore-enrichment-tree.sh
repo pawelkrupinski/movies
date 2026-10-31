@@ -37,21 +37,6 @@ ASSET="${KINOWO_CONVERGENCE_TREE_ASSET:-enrichment-$code.tar.*}"
 archives="$stage.archive"
 mkdir -p "$archives" "$stage"
 
-# ci-runner's RECORDING CACHE first, for a replay (scripts/ci/recording-cache.sh): the host unpacked this asset once,
-# read-only, for every job, so this row neither downloads nor writes it -- convergence-setup's unpack lays an overlay over
-# it instead (the path it leaves in $stage.cached). A RECORDING extends its working tree, so it always unpacks its own.
-# Anything short of a tree in hand (github.com, a host runner, the service down) unpacks it here, as before.
-rm -f "$stage.cached"
-if [ "$mode" != "record" ] && cached=$("$here/../../scripts/ci/recording-cache.sh" tree "$TAG" "$ASSET"); then
-    echo "$cached" > "$stage.cached"
-    echo "enrichment tree $ASSET from release $TAG, unpacked once on the host at $cached"
-    if [ -n "${KINOWO_CONVERGENCE_FILL_ASSETS:-}" ]; then
-        read -ra fills <<< "$KINOWO_CONVERGENCE_FILL_ASSETS"
-        "$here/convergence-fill.sh" unpack "$stage" "${fills[@]}"
-    fi
-    exit $?
-fi
-
 # Only gh's own "no assets match" means the release lacks the tree (gh_download's 3). Any other failure — a
 # network blip, a 5xx, an expired token — is a read that did not happen, not an empty release: a recording
 # that took it for one would fetch every lookup live and publish that over the tree it never read. gh_download

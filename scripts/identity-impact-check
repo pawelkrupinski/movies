@@ -7,7 +7,7 @@ never leaves out a test that could fail. Two ways, each in a checkout of its own
               selection made of it, then EVERY test of the identity set run on it. SOUND when every class that failed
               is a selected one, and every selected country-scoped spec (tools.CountryScope) passes over the countries
               the selection left out; VACUOUS (said, not failed) when nothing failed.
-  replay      the last -n commits of --ref (default forgejo/main) that touched an identity path, oldest first, each
+  replay      the last -n commits of --ref (default origin/main) that touched an identity path, oldest first, each
               against its parent: the selection made at the commit (the tooling laid over it: identity-impact.sbt,
               project/TestImpact.scala, scripts/ci/identity_impact.py), then the identity set's tests the selection
               LEFT OUT run at the commit, and -- only where one fails -- at its parent. SOUND when no left-out test's
@@ -320,7 +320,7 @@ def main(argv):
     ap.add_argument("--tree", default=os.path.expanduser("~/.cache/kinowo-identity/impact-check"))
     ap.add_argument("--only", default="")
     ap.add_argument("-n", type=int, default=50)
-    ap.add_argument("--ref", default="forgejo/main")
+    ap.add_argument("--ref", default="origin/main")
     ap.add_argument("--from", dest="start", type=int, default=0, help="resume a replay at its N-th commit (0-based)")
     a = ap.parse_args(argv)
     out = a.tree + ".results"  # beside the checkout: a reset cleans its untracked files

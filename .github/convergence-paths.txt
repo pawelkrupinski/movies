@@ -72,7 +72,6 @@ scripts/ci/takes-skip-gate.sh
 scripts/ci/takes-skip-proof.sh
 .github/order-independence-paths.txt
 scripts/ci/in-background.sh
-scripts/ci/recording-cache.sh
 scripts/ci/cgroup-sampler.sh
 scripts/ci/cpu-sampler.sh
 scripts/ci/mongo-top.sh

@@ -80,27 +80,4 @@ status="$(restore broken record "$work/enrichment-uk-broken.tar.zst")"
 check "an archive that will not unpack fails, and not as a missing pin" "true" \
   "$([ "$status" -ne 0 ] && [ "$status" -ne 3 ] && echo true || echo false)"
 
-# ci-runner's recording cache: the host has unpacked the tree (scripts/ci/recording-cache.sh), so a replay downloads and
-# unpacks nothing of it -- only the fills, into the stage, for convergence-setup to lay over the overlay it mounts.
-digest=$(printf '%064d' 7)
-mkdir -p "$work/cache-mount/$digest/test/resources/fixtures/enrichment-uk"
-cat > "$work/bin/curl" <<'STUB'
-#!/usr/bin/env bash
-printf '{"digest": "%s", "asset": "a", "hit": true}' "$STUB_DIGEST"
-STUB
-chmod +x "$work/bin/curl"
-cached() {
-  STUB_DIGEST="${STUB_DIGEST:-$digest}" FORGEJO_RECORDING_CACHE=http://cache FORGEJO_RECORDING_CACHE_DIR="$work/cache-mount" GH_TOKEN=t \
-    GITHUB_REPOSITORY=o/movies STUB_FILL="$work/fill-uk-1-2.tar.zst" KINOWO_CONVERGENCE_FILL_ASSETS="fill-uk-1-2.tar.zst" \
-    restore "$@"
-}
-check "a tree the host's recording cache holds is not downloaded or unpacked by the job" "0:$work/cache-mount/$digest:false" \
-  "$(cached cache hermetic "$work/enrichment-uk.tar.zst"):$(cat "$work/stage-cache.cached" 2>/dev/null):$([ -e "$work/stage-cache/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" ] && echo true || echo false)"
-check "...but its pair's fills still are, into the stage, to lay over it" "filled" \
-  "$(cat "$work/stage-cache/test/resources/fixtures/enrichment-uk/www.flicks.co.uk/movie" 2>/dev/null)"
-check "a recording extends its working tree, so it unpacks its own whatever the cache holds" "0:absent:recorded" \
-  "$(cached cache-record record "$work/enrichment-uk.tar.zst"):$([ -e "$work/stage-cache-record.cached" ] && echo present || echo absent):$(cat "$work/stage-cache-record/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
-check "a cache that cannot answer is a job that unpacks the tree itself" "0:absent:recorded" \
-  "$(STUB_DIGEST=nonsense cached cache-down hermetic "$work/enrichment-uk.tar.zst"):$([ -e "$work/stage-cache-down.cached" ] && echo present || echo absent):$(cat "$work/stage-cache-down/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
-
 spec_summary

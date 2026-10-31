@@ -267,7 +267,7 @@ class RunnerWaitTest(unittest.TestCase):
 
 
 class SummaryTest(unittest.TestCase):
-    """The job summary is written where it is read: GitHub keeps it, Forgejo discards it and warns of each."""
+    """The job summary is written."""
 
     class Github:
         def workflow_name(self, _):
@@ -290,9 +290,6 @@ class SummaryTest(unittest.TestCase):
 
     def test_github_gets_the_summary(self):
         self.assertIn("united-kingdom / convergence", self.summary_on("https://github.com"))
-
-    def test_forgejo_gets_none(self):
-        self.assertEqual("", self.summary_on("http://forgejo.internal:3000"))
 
 
 class ConclusionTest(unittest.TestCase):

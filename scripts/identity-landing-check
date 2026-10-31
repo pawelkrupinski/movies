@@ -74,8 +74,7 @@ while [ "$#" -gt 0 ]; do
 done
 [ -n "$measure$specs" ] || usage_error "--no-measure and --no-specs leave nothing to check"
 say() { echo "identity-landing-check: $*" >&2; }
-remote=${IDENTITY_MEASURE_REMOTE:-}
-[ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
+remote=${IDENTITY_MEASURE_REMOTE:-origin}
 commit=$(git rev-parse --verify -q "$ref^{commit}") || die "no commit $ref"
 [ "$ref" = HEAD ] && [ -n "$(git status --porcelain --untracked-files=no)" ] && say "WARNING: uncommitted changes are not checked -- only ${commit:0:9}"
 if [ -z "$base" ]; then
