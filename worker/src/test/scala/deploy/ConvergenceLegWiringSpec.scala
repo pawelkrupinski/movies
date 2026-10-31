@@ -449,7 +449,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
-      """phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '["takes-drift-1"]' || inputs.drift-seeds == '2' && '["takes-drift-2"]' || """ +
+      """phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || """ +
+        """inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || """ +
         """'["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """(inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', """ +
         """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}""")
@@ -457,11 +458,17 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
 
   /** THE INCREMENTAL = WHOLE GATE, ONE SEED A ROW (2026-10-26): the takes row ran the takes check and then both drift seeds,
    *  30-55 minutes on main (runs 2683-2809) against a 55-minute ceiling. Each seed is a `takes-drift-<seed>` row of its
-   *  own beside the check, a takes-only measurement running none. */
+   *  own beside the check, a takes-only measurement running none. ROTATING SEEDS (the owner, 2026-10-31): the row's
+   *  seed is its run's (scripts/ci/drift_seeds.py) or a dispatch's pin, never the row number, and a red names it. */
   "the incremental = whole gate" should "replay each seed in a row of its own, never in the takes check's row" in {
     val drift = RepoFile.step(leg, "Check that the incremental state ends where a whole resolve does")
     drift should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}")
-    drift should include("DRIFT_SEED: ${{ matrix.phase == 'takes-drift-1' && '1' || '2' }}")
+    drift should include("DRIFT_PINS: ${{ format('{0},{1}', inputs.drift-seed-1, inputs.drift-seed-2) }}")
+    drift should include("""DRIFT_SEED=$(python3 scripts/ci/drift_seeds.py seed --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS" --run-number "$GITHUB_RUN_NUMBER")""")
+    withClue("a red names its seed, in the ::error ci-why reads and the leg's commit status: ") {
+      drift should include("::error title=identity drift (${{ inputs.code }}, seed $DRIFT_SEED)::")
+      drift should include("""> "$RUNNER_TEMP/leg-verdict-why"""")
+    }
     leg should include("name: identity-drift-${{ inputs.code }}-${{ matrix.phase }}")
     RepoFile.read("scripts/ci/identity-drift-check.sh") should include("""[ -n "${DRIFT_SEED:-}" ] && seeds=(--seed "$DRIFT_SEED")""")
   }

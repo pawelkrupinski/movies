@@ -6,6 +6,7 @@ has a case here that fails without it.
     python3 scripts/ci/convergence_reuse_test.py
 """
 import copy
+import json
 import os
 import re
 import subprocess
@@ -183,6 +184,64 @@ class InputsTest(unittest.TestCase):
                                  "INPUT_DRIFT_ONLY": "true"})
         self.assertEqual((legs["takes-only"], legs["profile"], legs["takes-skip"], legs["drift-only"], legs["drift-seeds"]),
                          ("true", "false", "shadow", "true", ""))
+
+
+class RotatingSeedsTest(unittest.TestCase):
+    """ROTATING SEEDS (drift_seeds.py): the legs are handed the run's two takes-drift seeds, or a dispatch's pins; a reuse
+    carries the SOURCE's seeds by name, never this run's as if equal."""
+
+    def run_inputs(self, env):
+        out = os.path.join(tempfile.mkdtemp(), "legs.json")
+        res = subprocess.run([sys.executable, os.path.join(ROOT, "scripts/ci/convergence_reuse.py"), "inputs"],
+                             env=dict(os.environ, LEG_INPUTS_FILE=out, GITHUB_STEP_SUMMARY="", **env),
+                             capture_output=True, text=True)
+        lines = dict(line.split("=", 1) for line in res.stdout.splitlines() if "=" in line)
+        if not os.path.exists(out):
+            return res.returncode, lines, None
+        with open(out) as f:
+            return res.returncode, lines, json.load(f)
+
+    def test_main_hands_the_legs_its_runs_rotating_pair(self):
+        code, lines, legs = self.run_inputs({"GITHUB_RUN_NUMBER": "2"})
+        self.assertEqual((code, lines["drift-seed-1"], lines["drift-seed-2"]), (0, "3", "4"))
+        self.assertEqual((legs["drift-seed-1"], legs["drift-seed-2"]), ("3", "4"))
+        # the seeds are no input main lacks: main's own run is main's suite
+        self.assertEqual(reuse.inputs_unlike_main(legs, "both"), [])
+
+    def test_a_drift_only_dispatch_pins_one_row(self):
+        code, lines, _ = self.run_inputs({"GITHUB_RUN_NUMBER": "2", "INPUT_DRIFT_ONLY": "true", "INPUT_DRIFT_SEEDS": ",37"})
+        self.assertEqual((code, lines["drift-seed-1"], lines["drift-seed-2"]), (0, "", "37"))
+
+    def test_malformed_pins_stop_the_run(self):
+        self.assertEqual(self.run_inputs({"GITHUB_RUN_NUMBER": "2", "INPUT_DRIFT_SEEDS": "x"})[0], 2)
+
+    def test_the_legs_row_expression_picks_the_pinned_row(self):
+        self.assertIn("inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '[\"takes-drift-2\"]'",
+                      reuse.PHASES_EXPRESSION)
+
+    def test_a_runs_seeds_by_its_facts(self):
+        self.assertEqual(reuse.seeds_of(dict(MAIN_INPUTS, **{"drift-seed-1": "37", "drift-seed-2": "38"})), "37,38")
+        # a run from before the rotation replayed 1 and 2
+        self.assertEqual(reuse.seeds_of(dict(MAIN_INPUTS)), "1,2")
+
+    def test_a_reusing_runs_facts_name_no_seed_of_its_own(self):
+        tmp = tempfile.mkdtemp()
+        legs = os.path.join(tmp, "legs.json")
+        with open(legs, "w") as f:
+            json.dump(dict(MAIN_INPUTS, **{"drift-seed-1": "3", "drift-seed-2": "4"}), f)
+        saved = (reuse.workflow_at, reuse.key, reuse.pairs)
+        reuse.workflow_at, reuse.key, reuse.pairs = (lambda sha: WORKFLOW), (lambda sha: "k" * 64), (lambda wf: dict(PAIRS))
+        try:
+            import contextlib
+            import io
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                reuse.cmd_facts({"sha": "a" * 40, "inputs": legs, "reused-from": "2821"})
+            facts = json.loads(out.getvalue())
+        finally:
+            reuse.workflow_at, reuse.key, reuse.pairs = saved
+        self.assertNotIn("drift-seed-1", facts["inputs"])
+        self.assertEqual(facts["drift_seeds_from"], "2821")
 
 
 SCRATCH_GIT = os.path.join(ROOT, "scripts/scratch-git.sh")

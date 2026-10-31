@@ -67,12 +67,14 @@ on:
                 description: >-
                     Run only each leg's takes-drift rows (the incremental = whole replay, scripts/ci/identity-drift-check.sh)
                     -- the pre-land drift check: 10 rows, not 37. takes-countries narrows the
-                    countries, drift-seeds the seeds. Never a reuse source for main's full verdict.
+                    countries, drift-seeds pins the seeds. Never a reuse source for main's full verdict.
                 required: false
                 type: boolean
                 default: false
             drift-seeds:
-                description: A drift-only run's seeds -- 1, 2, or empty for both (`takes-drift-<seed>` rows).
+                description: >-
+                    Pin the takes-drift rows' seeds -- `S1,S2`, or `S1,` / `,S2` for one row of a drift-only run (a bare `S`
+                    is `S,`). Empty -- the run number's rotating pair (scripts/ci/drift_seeds.py). Never main's suite.
                 required: false
                 type: string
                 default: ''
@@ -159,6 +161,10 @@ jobs:
             takes-only: ${{ steps.legs.outputs.takes-only }}
             drift-only: ${{ steps.legs.outputs.drift-only }}
             drift-seeds: ${{ steps.legs.outputs.drift-seeds }}
+            # ROTATING SEEDS (scripts/ci/drift_seeds.py): the seed each takes-drift row replays -- this run's rotating pair,
+            # or the dispatch's pins (a row left out of a drift-only run: empty). In the reuse facts beside the inputs.
+            drift-seed-1: ${{ steps.legs.outputs.drift-seed-1 }}
+            drift-seed-2: ${{ steps.legs.outputs.drift-seed-2 }}
             recording: ${{ steps.legs.outputs.recording }}
             takes-countries: ${{ steps.legs.outputs.takes-countries }}
             takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
@@ -203,6 +209,7 @@ jobs:
                   INPUT_TAKES_NO_STORE: ${{ inputs.takes-no-store }}
                   INPUT_TAKES_SKIP: ${{ inputs.takes-skip }}
                   INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}
+              # (GITHUB_RUN_NUMBER, the runner's own: the rotating drift seeds' run -- a rerun of it replays the same pair)
               run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
             - name: Secrets present
               env:
@@ -357,7 +364,8 @@ jobs:
             takes-countries:               ${{ needs.preflight.outputs.takes-countries }}
             # Only the takes-drift rows (scripts/identity-drift-ci): the incremental = whole replay, before a land.
             drift-only:                    ${{ needs.preflight.outputs.drift-only == 'true' }}
-            drift-seeds:                   ${{ needs.preflight.outputs.drift-seeds }}
+            drift-seed-1:                  ${{ needs.preflight.outputs.drift-seed-1 }}
+            drift-seed-2:                  ${{ needs.preflight.outputs.drift-seed-2 }}
             takes-no-store:                ${{ needs.preflight.outputs.takes-no-store == 'true' }}
             # The skip gate's mode (a push's kick dispatches with none: shadow). The daily full run (convergence-daily.yml)
             # always passes shadow, so whatever main's pushes do, one run a day takes every take in full.
@@ -398,7 +406,7 @@ jobs:
               run: gh workflow run convergence-bisect.yml --ref main -f suite="$SUITE" -f run-id="$RUN_ID"
 
     # NO FALSE GREEN (scripts/ci/convergence_reuse.py `complete`; convergence-failures 2026-10-29, G7): a run on main is
-    # green for THE GATE only when every `takes` and `takes-drift-<seed>` row of every country ran to a verdict, or the
+    # green for THE GATE only when every `takes` and `takes-drift-1` / `takes-drift-2` row of every country ran to a verdict, or the
     # preflight proved a reuse (`reused-from`). Run 1747 went green with its takes rows skipped and split one 18-hour red
     # episode in two. A row skipped, cancelled or missing fails this job -- and with it the run: no verdict is no green.
     verdict-complete:

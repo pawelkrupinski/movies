@@ -26,6 +26,11 @@
 #     "base <sha> vs head <sha>"); main's would take the newest commit before this one whose check passed (the takes
 #     check's pick_base). Same commit, or the same key.
 #   - THIS RUN asks for main's suite itself: its own inputs pass the same test.
+#   - THE DRIFT SEEDS ARE THE SOURCE'S (rotating seeds, scripts/ci/drift_seeds.py): the source's takes-drift rows replayed
+#     ITS run's pair, not this run's -- a reuse is the verdict of the seeds that ran, never of this run's as if equal.
+#     The source's facts name them (`drift-seed-1`/`-2` in its inputs; a run from before the rotation replayed 1 and 2),
+#     `verify` prints them (`drift-seeds-judged=S1,S2`) and says them in the summary, and this run's facts name no seed
+#     of its own (it judged none: `drift_seeds_from` names the source).
 #
 # usage:
 #   convergence_reuse.py key [REV]                      the key of REV (default HEAD)
@@ -67,6 +72,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import drift_seeds  # noqa: E402
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 PATHS_FILE = ".github/convergence-paths.txt"
@@ -77,8 +85,8 @@ FACTS_NAME = "facts.json"
 # The leg's own expansion of a country into rows (country-convergence-leg.yml's `phase:` matrix). expected_rows() models
 # exactly this; ConvergenceReuseSpec fails the moment the leg's expression is anything else.
 PHASES_EXPRESSION = (
-    "${{ fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '[\"takes-drift-1\"]' || "
-    "inputs.drift-seeds == '2' && '[\"takes-drift-2\"]' || '[\"takes-drift-1\",\"takes-drift-2\"]') || "
+    "${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '[\"takes-drift-2\"]' || "
+    "inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '[\"takes-drift-1\"]' || '[\"takes-drift-1\",\"takes-drift-2\"]') || "
     "inputs.takes-only && '[\"takes\",\"takes-base\"]' || format('[\"convergence\"{0}{1}{2}]', "
     "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',\"order-independence-p01\"' || "
     "',\"order-independence-p01\",\"order-independence-p12\"') || ',\"order-independence\"') || '', "
@@ -208,6 +216,24 @@ def leg_inputs(env):
             value = "true" if value.lower() == "true" else "false"
         out[name] = value or default
     return out
+
+
+SEED_KEYS = ("drift-seed-1", "drift-seed-2")
+
+
+def run_seeds(env, inputs):
+    """This run's two takes-drift seeds (drift_seeds.resolve): the run number's rotation, or the dispatch's pins."""
+    one, two = drift_seeds.resolve(int(env.get("GITHUB_RUN_NUMBER") or 1), inputs.get("drift-seeds", ""),
+                                   inputs.get("drift-only") == "true")
+    return {"drift-seed-1": str(one or ""), "drift-seed-2": str(two or "")}
+
+
+def seeds_of(inputs):
+    """`S1,S2`: the seeds a run's takes-drift rows replayed, as its facts' inputs name them; a run from before the rotation
+    names none and replayed seeds 1 and 2."""
+    if not any(k in (inputs or {}) for k in SEED_KEYS):
+        return "1,2"
+    return ",".join(str((inputs or {}).get(k, "")) for k in SEED_KEYS)
 
 
 def inputs_unlike_main(inputs, order_phases):
@@ -488,8 +514,16 @@ def read_json(path):
 
 def cmd_inputs(_):
     inputs = leg_inputs(os.environ)
+    try:
+        inputs.update(run_seeds(os.environ, inputs))
+    except ValueError as e:
+        print(f"::error title=drift seeds::{e}", file=sys.stderr)
+        return 2
     for name, value in inputs.items():
         print(f"{name}={value}")
+    summary([f"Takes-drift seeds this run: takes-drift-1 replays seed {inputs['drift-seed-1'] or '(none)'}, takes-drift-2 "
+             f"seed {inputs['drift-seed-2'] or '(none)'} (run #{os.environ.get('GITHUB_RUN_NUMBER', '?')}"
+             f"{', pinned ' + repr(inputs['drift-seeds']) if inputs['drift-seeds'] else ', rotating'}; scripts/ci/drift_seeds.py)"])
     if os.environ.get("LEG_INPUTS_FILE"):
         with open(os.environ["LEG_INPUTS_FILE"], "w") as f:
             json.dump(inputs, f, sort_keys=True)
@@ -502,6 +536,10 @@ def cmd_facts(opts):
     facts = {"version": 1, "run_id": os.environ.get("GITHUB_RUN_ID", ""), "sha": opts["sha"], "key": key(opts["sha"]),
              "inputs": inputs, "order_phases": opts.get("order-phases", "both"),
              "reused_from": opts.get("reused-from", "")}
+    if facts["reused_from"]:
+        # a reusing run judged no seed of its own: the verdict it carries is the source's seeds' (seeds_of the source)
+        facts["inputs"] = {k: v for k, v in inputs.items() if k not in SEED_KEYS}
+        facts["drift_seeds_from"] = facts["reused_from"]
     try:
         facts["pairs"] = {} if inputs.get("recording") else pairs(workflow)
     except Unproven as e:
@@ -548,7 +586,8 @@ def cmd_verify(opts):
         mine = {"key": key(sha), "pairs": pairs(workflow), "inputs": read_json(opts["inputs"]),
                 "order_phases": opts.get("order-phases", "both"), "expected_rows": expected_rows(workflow),
                 "takes_bases": bases}
-        why = judge(run, run_jobs(run_id), run_facts(run_id), mine)
+        source_facts = run_facts(run_id)
+        why = judge(run, run_jobs(run_id), source_facts, mine)
     except (Unproven, subprocess.CalledProcessError, OSError, ValueError, KeyError) as e:
         why = [f"could not check: {e}"]
     if why:
@@ -562,10 +601,14 @@ def cmd_verify(opts):
         except Unproven as e:
             print(f"::warning::could not copy run {run_id}'s statuses onto {sha[:9]}: {e}", file=sys.stderr)
     url = run.get("html_url") or run_id
+    theirs, own = seeds_of((source_facts or {}).get("inputs")), seeds_of(mine["inputs"])
     summary([f"### Reused run {run_id}'s verdict ({url})", "",
              f"Run {run_id} ran every row this run would over the same tree (key {mine['key'][:12]}), pairs, inputs and "
-             f"takes bases, at {str(run.get('head_sha'))[:9]}, and every row passed: no leg runs here."])
+             f"takes bases, at {str(run.get('head_sha'))[:9]}, and every row passed: no leg runs here.", "",
+             f"Its takes-drift rows replayed seeds {theirs} (its run's): the drift verdict reused is those seeds', not this "
+             f"run's own rotation ({own}), which no row replayed."])
     print(f"reused-from={run_id}")
+    print(f"drift-seeds-judged={theirs}")
     return 0
 
 

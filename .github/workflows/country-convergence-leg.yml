@@ -264,16 +264,25 @@ on:
                 required: false
                 type: boolean
                 default: false
-            # Only the `takes-drift-<seed>` rows: scripts/identity-drift-ci's pre-land drift check (identity-model-convergence.yml's
-            # `drift-only`), the incremental = whole replay without the convergence, order, next-day and takes rows. Like
-            # takes-only it honours `takes-countries`; `drift-seeds` picks 1, 2 or (empty) both. False on every dispatch Main makes.
+            # Only the `takes-drift-1` / `takes-drift-2` rows: scripts/identity-drift-ci's pre-land drift check
+            # (identity-model-convergence.yml's `drift-only`), the incremental = whole replay without the convergence, order,
+            # next-day and takes rows. Like takes-only it honours `takes-countries`; a drift-only leg runs the row whose
+            # `drift-seed-<row>` is set (both when both are, or neither). False on every dispatch Main makes.
             drift-only:
                 description: Run only the takes-drift rows (a hermetic leg's).
                 required: false
                 type: boolean
                 default: false
-            drift-seeds:
-                description: A drift-only leg's seeds -- 1, 2, or empty for both.
+            # ROTATING SEEDS (scripts/ci/drift_seeds.py): the seed each takes-drift row replays -- the caller's run's
+            # rotation, or a dispatch's pins. The row NAMES stay `takes-drift-1` / `takes-drift-2`; the seed is in the
+            # step's ::error title, verdict.txt, the summary and the leg's status. Empty: the run number's rotation.
+            drift-seed-1:
+                description: The seed the takes-drift-1 row replays (empty -- the run's rotation, scripts/ci/drift_seeds.py).
+                required: false
+                type: string
+                default: ''
+            drift-seed-2:
+                description: The seed the takes-drift-2 row replays (empty -- the run's rotation, scripts/ci/drift_seeds.py).
                 required: false
                 type: string
                 default: ''
@@ -370,7 +379,7 @@ jobs:
     # THE RUN — one PHASE per row: `convergence` for every country, plus `order-independence` (or its two split
     # rows) for a corpus whose replays no longer fit beside the boot, plus `next-day` for a leg its next-day test keeps
     # past 10 minutes, plus `takes` (the identity takes check) and `takes-drift-1` / `takes-drift-2` (the incremental =
-    # whole gate, a seed each) in every hermetic leg. No row runs the sample (see the header).
+    # whole gate, a seed each: the run's rotating pair, scripts/ci/drift_seeds.py) in every hermetic leg. No row runs the sample (see the header).
     #
     # A ROW rather than a job of its own, because "a job that exists only sometimes" is
     # not something GitHub can express. A job carrying `if: inputs.order-command != ''`
@@ -406,7 +415,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '["takes-drift-1"]' || inputs.drift-seeds == '2' && '["takes-drift-2"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}
+                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -1024,24 +1033,36 @@ jobs:
             # on the shrink-only baseline (identity-flips-baseline.tsv) or a check's TEMPORARY birth row. A property of
             # one commit, not a base-vs-head move: red means this code drifts. Main's rows and drift-only runs
             # (scripts/identity-drift-ci), not a takes-only measurement's (its phases are takes and takes-base).
-            # ONE SEED A ROW (`takes-drift-<seed>`), beside the takes check rather than after it: in the takes row the check
-            # and the two seeds ran in turn, 30-55 minutes on main (runs 2683-2809), the 55-minute ceiling cancelling
-            # half of them.
+            # ONE SEED A ROW (`takes-drift-1` / `takes-drift-2`), beside the takes check rather than after it: in the takes
+            # row the check and the two seeds ran in turn, 30-55 minutes on main (runs 2683-2809), the 55-minute ceiling
+            # cancelling half of them. ROTATING SEEDS (the owner, 2026-10-31; scripts/ci/drift_seeds.py): the row's seed is
+            # the run's -- seeds 1 and 2 alone let UK Swan Lake's seed-3 and Cosi's seed-11 flips through -- so a red NAMES
+            # its seed: the ::error title, verdict.txt, the summary and the leg's commit status (leg-verdict-why), with
+            # its one-line reproducer and the drift slice of a red listing that has one. The job name stays.
             - name: Check that the incremental state ends where a whole resolve does
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}
               shell: bash
               timeout-minutes: ${{ inputs.drift-twice && 140 || 75 }}
               env:
                   HEAP: ${{ inputs.heap }}
-                  DRIFT_SEED: ${{ matrix.phase == 'takes-drift-1' && '1' || '2' }}
+                  DRIFT_ROW: ${{ matrix.phase }}
+                  DRIFT_PINS: ${{ format('{0},{1}', inputs.drift-seed-1, inputs.drift-seed-2) }}
                   DRIFT_TWICE: ${{ inputs.drift-twice }}
               run: |
                   . scripts/ci/bounded-step.sh
+                  DRIFT_SEED=$(python3 scripts/ci/drift_seeds.py seed --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS" --run-number "$GITHUB_RUN_NUMBER") \
+                      || { echo "::error title=identity drift (${{ inputs.code }})::no seed for $DRIFT_ROW from pins '$DRIFT_PINS' -- nothing was judged"; exit 2; }
+                  export DRIFT_SEED
+                  echo "$DRIFT_ROW (${{ inputs.code }}) replays seed $DRIFT_SEED (run #$GITHUB_RUN_NUMBER, pins '$DRIFT_PINS')"
                   code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
+                  repro=$(cat "$RUNNER_TEMP/identity-drift/reproduce.txt" 2>/dev/null || echo "IdentityDrift ${{ inputs.code }} --seed $DRIFT_SEED")
                   case $code in
                       0) ;;
-                      1) echo "::error title=identity drift (${{ inputs.code }})::$(cat "$RUNNER_TEMP/identity-drift/verdict.txt" 2>/dev/null || echo 'divergences or flips beyond the allow-lists') -- each named in the step log" ;;
-                      *) echo "::error title=identity drift (${{ inputs.code }})::the drift replay could not run, so nothing was judged -- see the step log" ;;
+                      1) verdict=$(cat "$RUNNER_TEMP/identity-drift/verdict.txt" 2>/dev/null || echo 'divergences or flips beyond the allow-lists')
+                         echo "seed $DRIFT_SEED: $verdict -- reproduce: $repro" > "$RUNNER_TEMP/leg-verdict-why"
+                         echo "::error title=identity drift (${{ inputs.code }}, seed $DRIFT_SEED)::$verdict -- each named in the step log; reproduce: $repro" ;;
+                      *) echo "seed $DRIFT_SEED: the drift replay could not run" > "$RUNNER_TEMP/leg-verdict-why"
+                         echo "::error title=identity drift (${{ inputs.code }}, seed $DRIFT_SEED)::the drift replay could not run, so nothing was judged -- see the step log" ;;
                   esac
                   exit "$code"
             # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).

@@ -31,7 +31,9 @@ convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire.
   #2527 (run 3757): UK "Rose (2023)" at Duke of York's and Queen's Film Theatre, seed 1.
 - The drift check (`scripts/ci/identity-drift-check.sh`, `IdentityDrift --flips-baseline`) passes a baselined
   listing's flips, saying "N known flip(s) remaining" as a ::warning and in the step summary; fails every other flip;
-  and names a baselined flip that no longer occurs in a seed the row names "remove its row".
+  and names a baselined flip that no longer occurs in a seed the row names "remove its row". A baseline row covers its
+  listing on ANY seed: the legs' seeds rotate (`scripts/ci/drift_seeds.py`, below), so "remove its row" is said only by
+  a run that replays the row's own seed.
 - The baseline ONLY SHRINKS: `scripts/ci/commit_rules.py` refuses any added row, whatever the commit's trailers;
   a commit fixing a flip removes its row.
 - **The end state is automatic**: with no row left, every flip fails — the strict gate.
@@ -54,7 +56,9 @@ convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire.
   answer the incremental sequence reads, and `scripts.IdentityDriftSlicesSpec` replays every slice through that
   sequence on 12 seeds in the unit suite (Tier 1 of the drift gate; `IdentityDrift --slice`, at least one listing
   leaving and returning). The fix's push carries the slice, or `Drift-Slice: none -- <why>` when the red has no
-  listing (a CI script, a timeout).
+  listing (a CI script, a timeout). **The legs' seeds rotate** (the owner, 2026-10-31): `takes-drift-1` / `-2`
+  replay their run's pair of 1..64 (`scripts/ci/drift_seeds.py`), a red names its seed and reproducer, and a red seed
+  found anywhere becomes a committed slice — `docs/design/identity-slice.md`, "A red seed becomes a slice".
 - **The harness carries its self-test**: a change to IdentityDrift, IdentityLiveDrift, TakeFlips or
   identity-drift-check.sh comes with a capture-replay case in the same commit — IdentityDriftSpec,
   CorrectionFlipReplaySpec, TakeFlipsSpec, identity-drift-check-test.sh — proving the replay does what the worker does

@@ -6,6 +6,7 @@
 # (scripts/ci/commit_rules.py). The flip and drift gates were both born red (9bb54c1a4, a2c684f80): 15 red runs.
 # The `.github/actions/changed-paths/matches.sh` dialect: `dir/**`, or an exact path.
 scripts/ci/identity-drift-check.sh
+scripts/ci/drift_seeds.py
 worker/src/test/scala/scripts/IdentityDrift.scala
 identity/src/main/scala/services/identity/TakeFlips.scala
 test/resources/fixtures/identity-drift-allow.tsv

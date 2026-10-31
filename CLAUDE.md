@@ -339,7 +339,9 @@ reds were changes `identity-measure` alone had called LANDABLE. Nothing requires
   "remove its row"; every other flip fails. The file ONLY SHRINKS (`scripts/ci/commit_rules.py`, no override): a
   fix removes its row; empty, every flip fails — the strict gate. Divergences have no baseline. Details:
   `docs/design/identity-no-drift.md`, "Known flips".
-- **A drift or flip red** (the convergence `takes-drift-<seed>` rows, `scripts/ci/identity-drift-check.sh`) is fixed in
+- **A drift or flip red** (the convergence `takes-drift-1|2` rows, `scripts/ci/identity-drift-check.sh`; each row
+  replays its RUN's rotating seed of 1..64, `scripts/ci/drift_seeds.py`, and a red names it with its reproducer
+  `IdentityDrift <cc> --seed N`; a red seed is cut into a drift slice: `docs/design/identity-slice.md`) is fixed in
   the incremental STATE that diverges (a lag, a budget, queue order, a cache, a restart key), never by a new resolver
   rule: a rule change is identity design, measured on the full corpus in every country (the owner, 2026-10-29); a
   `Fixes-Red:` commit touching rule code needs `Identity-Design: <doc>`. Known flips: the baseline above. The red is

@@ -13,7 +13,7 @@ printf '\033[36m▸\033[0m identity-drift-check.sh\n'
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/repo/scripts/ci" "$work/repo/test/resources/fixtures/corpus" "$work/bin"
-cp "$REPO_ROOT/scripts/ci/identity-drift-check.sh" "$work/repo/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/identity-drift-check.sh" "$REPO_ROOT/scripts/ci/drift_seeds.py" "$work/repo/scripts/ci/"
 # sbt as the replay leaves it: the report on stdout, the TSV under --out, and IdentityDrift's exit
 cat > "$work/bin/sbt" <<'EOF'
 #!/usr/bin/env bash
@@ -25,6 +25,7 @@ mkdir -p "$out"; printf 'country\tseed\n' > "$out/drift-pl.tsv"
 # FAKE_VARY: a replay whose flips differ from run to run (a counter beside the out dir)
 n=$(( $(cat "$out/../runs" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$out/../runs"
 if [ -n "${FAKE_VARY:-}" ]; then printf 'country\tseed\nuk\t2\trun %s\n' "$n" > "$out/flips-pl.tsv"; else printf 'country\tseed\n' > "$out/flips-pl.tsv"; fi
+[ -z "${FAKE_FLIP_ROW:-}" ] || printf 'country\tseed\tvenue\trawTitle\tfilms\treasons\ttakes\npl\t37\tRiverside\tThe Stranger\ta\tb\tc\n' > "$out/flips-pl.tsv"
 echo "## pl: 10804 listings, 2 seed(s), $FAKE_FOUND divergence(s) (1 listings), $FAKE_ALLOWED allow-listed, in 191s"
 [ "$FAKE_FOUND" -gt 0 ] && echo "  1 listing(s)  deploy: incremental-only take (whole BelowThreshold, incremental Agreed)"
 [ "${FAKE_FLIPS:-0}" = none ] && exit 0
@@ -48,13 +49,13 @@ check "no recorded corpus to replay: no verdict" "2" "$(FAKE_FOUND=0 FAKE_ALLOWE
 touch "$work/repo/test/resources/fixtures/corpus/cinema-scrapes-pl.json.gz"
 check "no divergence passes" "0" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 run)"
 check "divergences the allow-list does not name fail" "1" "$(FAKE_FOUND=3 FAKE_ALLOWED=0 run)"
-check "...and the verdict names them" "3 divergence(s) from a whole resolve and 0 flip(s) on the way, beyond the allow-lists and 0 known flip(s)" "$(cat "$work/out/verdict.txt")"
+check "...and the verdict names them" "3 divergence(s) from a whole resolve and 0 flip(s) on the way, beyond the allow-lists and 0 known flip(s) -- seed 1-2" "$(cat "$work/out/verdict.txt")"
 check "...and the report names their class" "1" "$(grep -c 'incremental-only take' "$work/out/report.txt")"
 check "divergences the allow-list names all pass" "0" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 run)"
 check "a replay that never reported is no verdict" "2" "$(FAKE_REPORT=none run)"
 check "flips the flips allow-list does not name fail" "1" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=2 run)"
 check "...and the report names the listing and its takes" "1" "$(grep -c 'The Stranger: tmdb:1429348' "$work/out/report.txt")"
-check "...and the verdict names flips, not divergences" "0 divergence(s) from a whole resolve and 2 flip(s) on the way, beyond the allow-lists and 0 known flip(s)" \
+check "...and the verdict names flips, not divergences" "0 divergence(s) from a whole resolve and 2 flip(s) on the way, beyond the allow-lists and 0 known flip(s) -- seed 1-2" \
   "$(cat "$work/out/verdict.txt")"
 check "flips fail beside allowed divergences too" "1" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 FAKE_FLIPS=1 run)"
 check "flips the flips allow-list names pass" "0" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=1 FAKE_FLIPS_ALLOWED=1 run)"
@@ -63,10 +64,23 @@ FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
 check "both seeds by default" "--seeds 2" "$(cat "$work/out.seeds")"
 DRIFT_SEED=2 FAKE_FOUND=0 FAKE_ALLOWED=0 run > /dev/null
 check "a row's one seed alone" "--seed 2" "$(cat "$work/out.seeds")"
+# ROTATING SEEDS: a row's seed is the run's (scripts/ci/drift_seeds.py), so a red names it -- the verdict, the seed file
+# identity-drift-ci reads, and a one-line reproducer naming the drift slice of a red listing that has one
+mkdir -p "$work/repo/test/resources/fixtures/drift-slices/pl/riverside-stranger-1"
+python3 -c 'import gzip,json,sys; json.dump({"country":"pl","core":["N\0Riverside\0https://x\0The Stranger"],"context":[]}, gzip.open(sys.argv[1],"wt"))' \
+  "$work/repo/test/resources/fixtures/drift-slices/pl/riverside-stranger-1/slice.json.gz"
+check "a red rotating seed fails" "1" "$(DRIFT_SEED=37 FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=1 FAKE_FLIP_ROW=1 run)"
+check "...its verdict naming the seed" "1" "$(grep -c ' -- seed 37$' "$work/out/verdict.txt")"
+check "...the seed file naming it for identity-drift-ci" "37" "$(cat "$work/out/seed")"
+check "...a one-line reproducer, with the red listing's drift slice" \
+  "IdentityDrift pl --seed 37; slice: IdentityDrift pl --slice test/resources/fixtures/drift-slices/pl/riverside-stranger-1 --seed 37" \
+  "$(cat "$work/out/reproduce.txt")"
+check "...said in the log" "1" "$(grep -c '^identity drift (pl): seed 37 is red -- reproduce: IdentityDrift pl --seed 37' "$work/stdout")"
+check "a green seed says no red" "0 0" "$(DRIFT_SEED=38 FAKE_FOUND=0 FAKE_ALLOWED=0 run) $(grep -c 'is red' "$work/stdout")"
 
 check "known flips pass" "0" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=2 FAKE_KNOWN=2 run)"
 check "...said loudly as a warning" "1" "$(grep -c '::warning title=identity drift (pl)::2 known flip(s) remaining' "$work/stdout")"
-check "...and the verdict counts no open flip" "0 divergence(s) from a whole resolve and 0 flip(s) on the way, beyond the allow-lists and 2 known flip(s)" \
+check "...and the verdict counts no open flip" "0 divergence(s) from a whole resolve and 0 flip(s) on the way, beyond the allow-lists and 2 known flip(s) -- seed 1-2" \
   "$(cat "$work/out/verdict.txt")"
 check "a new flip beside known ones fails" "1" "$(FAKE_FOUND=0 FAKE_ALLOWED=0 FAKE_FLIPS=3 FAKE_KNOWN=2 run)"
 check "...its verdict naming the one new flip" "1" "$(grep -c ' and 1 flip(s) on the way' "$work/out/verdict.txt")"

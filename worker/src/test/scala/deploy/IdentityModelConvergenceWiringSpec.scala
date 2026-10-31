@@ -171,9 +171,13 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.jobs(workflow)("preflight") should include("INPUT_DRIFT_ONLY: ${{ inputs.drift-only }}")
     val call = RepoFile.jobs(workflow)("leg")
     call should include("drift-only:                    ${{ needs.preflight.outputs.drift-only == 'true' }}")
-    call should include("drift-seeds:                   ${{ needs.preflight.outputs.drift-seeds }}")
+    // ROTATING SEEDS (scripts/ci/drift_seeds.py): each row's seed, the run's rotation or the dispatch's pins
+    outputs should include("drift-seed-1: ${{ steps.legs.outputs.drift-seed-1 }}")
+    outputs should include("drift-seed-2: ${{ steps.legs.outputs.drift-seed-2 }}")
+    call should include("drift-seed-1:                  ${{ needs.preflight.outputs.drift-seed-1 }}")
+    call should include("drift-seed-2:                  ${{ needs.preflight.outputs.drift-seed-2 }}")
     val rows = RepoFile.block(leg, "convergence")
-    rows should include("""fromJson(inputs.drift-only && (inputs.drift-seeds == '1' && '["takes-drift-1"]'""")
+    rows should include("""fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]'""")
     rows should include("(!(inputs.takes-only || inputs.drift-only) || inputs.takes-countries == ''")
   }
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# THE INCREMENTAL = WHOLE GATE, for one country in its hermetic `takes-drift-<seed>` rows: replay production's incremental
-# identity sequence (scripts.IdentityDrift: boot with answers missing, ticks, new scrapes, re-scrapes, listings leaving
-# and returning, deploys with and without a rules change, through the stores' own BSON) over the pinned recording the
-# row laid, and fail on any listing whose take at a checkpoint differs from a whole resolve of the same listings --
+# THE INCREMENTAL = WHOLE GATE, for one country in its hermetic `takes-drift-1` / `takes-drift-2` rows (each on the
+# run's rotating seed, scripts/ci/drift_seeds.py): replay production's incremental identity sequence
+# (scripts.IdentityDrift: boot with answers missing, ticks, new scrapes, re-scrapes, listings leaving and returning,
+# deploys with and without a rules change, through the stores' own BSON) over the pinned recording the row laid,
+# and fail on any listing whose take at a checkpoint differs from a whole resolve of the same listings --
 # unless test/resources/fixtures/identity-drift-allow.tsv names it, with its reason. And on any FLIP: a listing whose served
 # take, recorded at every projection of the replay, goes back to a film it left, changes more than once, or changes where
 # none of its deciding inputs did (services.identity.TakeFlips: prod's `kinowo_identity_listing_flips`, which an end-state
@@ -21,10 +22,14 @@
 #        time into <out>/again and fail when the two runs' drift and flips TSVs differ -- the replay must be a function of
 #        its inputs (commit 1c1cf9789 was green in run 3145 and red in run 3154 on seed 2);
 #        HEAP (sbt -Xmx, default 6g), DRIFT_SEEDS (default 2), DRIFT_SEED (that one seed alone, in place of DRIFT_SEEDS:
-#        a leg's `takes-drift-<seed>` row each replays one, side by side -- in turn the two were 20-54 minutes of the
-#        takes row, run 2809), GITHUB_STEP_SUMMARY (optional)
+#        a leg's `takes-drift-1` / `takes-drift-2` row each replays one, side by side -- in turn the two were 20-54
+#        minutes of the takes row, run 2809 -- the run's ROTATING seed, scripts/ci/drift_seeds.py), GITHUB_STEP_SUMMARY
+#        (optional)
 # Writes <out>/drift-<cc>.tsv (every divergence, allowed ones included), <out>/flips-<cc>.tsv (every flip),
-# <out>/report.txt, and <out>/verdict.txt: one line naming what the replay found beyond the allow-lists, divergences and
+# <out>/seed (the seed(s) replayed: `N`, or `1-N` under DRIFT_SEEDS -- scripts/identity-drift-ci reads a red's seed
+# there), <out>/reproduce.txt (the red's one-line local reproducer: `IdentityDrift <cc> --seed N`, and the drift slice
+# of each listing in the TSVs that has one -- the seconds-fast replay), <out>/report.txt,
+# and <out>/verdict.txt: one line naming what the replay found beyond the allow-lists, divergences and
 # flips apart -- what the row's ::error says (a step summary is discarded on Forgejo; and run 3509's rows failed on flips
 # alone, 0 divergences, under a title saying the state "ends elsewhere than a whole resolve", which three fixers chased).
 # KNOWN FLIPS (test/resources/fixtures/identity-flips-baseline.tsv) pass, each run saying "N known flip(s) remaining" as a
@@ -36,11 +41,12 @@ set -uo pipefail
 cc=${1:?country code}
 out=${2:?out dir}
 heap=${HEAP:-6g}
-seeds=(--seeds "${DRIFT_SEEDS:-2}")
-[ -n "${DRIFT_SEED:-}" ] && seeds=(--seed "$DRIFT_SEED")
+seeds=(--seeds "${DRIFT_SEEDS:-2}") seed_said="1-${DRIFT_SEEDS:-2}"
+[ -n "${DRIFT_SEED:-}" ] && seeds=(--seed "$DRIFT_SEED") seed_said=$DRIFT_SEED
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 fixtures="$here/test/resources/fixtures"
 mkdir -p "$out"
+echo "$seed_said" > "$out/seed"
 
 [ -f "$fixtures/corpus/cinema-scrapes-$cc.json.gz" ] || { echo "identity drift ($cc): no recorded corpus in $fixtures/corpus" >&2; exit 2; }
 # replay <dir>: the replay's TSVs and sbt.log into <dir>; its exit in $code
@@ -57,7 +63,7 @@ grep -E '^## |^  [0-9]+ listing|^      ' "$out/sbt.log" > "$out/report.txt"
 [ -f "$out/drift-$cc.tsv" ] || { tail -40 "$out/sbt.log" >&2; echo "identity drift ($cc): the replay wrote nothing" >&2; exit 2; }
 cat "$out/report.txt"
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-  { echo "### identity drift ($cc): incremental vs whole on the pinned recording"; echo '```'; cat "$out/report.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+  { echo "### identity drift ($cc, seed $seed_said): incremental vs whole on the pinned recording"; echo '```'; cat "$out/report.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 fi
 # The verdict is the report's own line (`## <cc>: … N divergence(s) … M allow-listed`): sbt's exit cannot tell the tool's
 # verdict (sys.exit 1) from a failed build.
@@ -86,7 +92,21 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -n "$known_line" ]; then
 fi
 open_divergences=$((found - allowed))
 open_flips=$((flipped - flips_allowed - known))
-echo "$open_divergences divergence(s) from a whole resolve and $open_flips flip(s) on the way, beyond the allow-lists and $known known flip(s)" > "$out/verdict.txt"
+echo "$open_divergences divergence(s) from a whole resolve and $open_flips flip(s) on the way, beyond the allow-lists and $known known flip(s) -- seed $seed_said" > "$out/verdict.txt"
+# THE RED'S REPRODUCER (rotating seeds: a red names its seed): the whole replay of this seed, and the drift slice of each
+# listing it found that has one -- seconds on the laptop. A red seed without a slice is cut into one
+# (docs/design/identity-slice.md, "A red seed becomes a slice").
+repro="IdentityDrift $cc --seed ${DRIFT_SEED:-${seed_said#1-}}"
+[ -n "${DRIFT_SEED:-}" ] || repro="IdentityDrift $cc --seeds ${DRIFT_SEEDS:-2}"
+slice_list=$(python3 "$here/scripts/ci/drift_seeds.py" slices "$cc" "$fixtures" "$out/drift-$cc.tsv" "$out/flips-$cc.tsv" 2> /dev/null || true)
+while IFS= read -r slice; do
+  [ -n "$slice" ] && repro="$repro; slice: IdentityDrift $cc --slice ${slice#"$here"/} ${seeds[*]}"
+done <<< "$slice_list"
+echo "$repro" > "$out/reproduce.txt"
+if [ $((open_divergences + open_flips)) -gt 0 ]; then
+  echo "identity drift ($cc): seed $seed_said is red -- reproduce: $repro"
+  [ -z "${GITHUB_STEP_SUMMARY:-}" ] || echo "**seed $seed_said is red** -- reproduce: \`$repro\`" >> "$GITHUB_STEP_SUMMARY"
+fi
 if [ "${DRIFT_TWICE:-false}" = true ]; then
   mkdir -p "$out/again"
   replay "$out/again"
