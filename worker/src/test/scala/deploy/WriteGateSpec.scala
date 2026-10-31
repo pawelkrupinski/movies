@@ -81,6 +81,26 @@ class WriteGateSpec extends AnyFlatSpec with Matchers {
     ).filterNot(p => RepoFile.withoutComments(RepoFile.read(p)).contains("ci-writes.sh")) shouldBe empty
   }
 
+  // The owner, 2026-10-31: github.com's convergence must not lean on fills copied over from Forgejo (convergence
+  // 41209071921, red on github.com only). Its legs publish their own fixture data in shadow -- and nothing else does.
+  "the one shadow exception" should "be a convergence leg's fixture data in convergence-fixtures: never a pin, pointer or tree" in {
+    val gate = RepoFile.read("scripts/ci/ci-writes.sh")
+    gate should include("CI_SHADOW_DATA_RELEASE=convergence-fixtures")
+    val data = """CI_SHADOW_DATA_ASSET='([^']+)'""".r.findFirstMatchIn(gate).map(_.group(1).r)
+      .getOrElse(fail("scripts/ci/ci-writes.sh names no CI_SHADOW_DATA_ASSET"))
+    Seq("fill-de-573-41209071921-1-convergence.tar.zst", "fill-pl-573-4433-1.tar.zst", "refetch-uk-573-41209071921-1.tsv",
+      "refused-us-573-4433-2.tsv").filterNot(data.matches) shouldBe empty
+    Seq("prod-latest-de.txt", "hermetic-de.txt", "corpus-green-de.txt", "pin-de.txt", "enrichment-de-573.tar.zst",
+      "takes-final-de-abc.gz", "measure-result-x.json", "recording-health-de.json", "scrapes-de.tar.gz",
+      "identity-overlay-de-573.tar.gz", "fill-de-573-1-convergence.tar.zst").filter(data.matches) shouldBe empty
+    // gh-release.sh is its one reader: no other writer gets the exception
+    val readers = (RepoFile.listed("scripts/ci")(_.getName.endsWith(".sh")).map(f => s"scripts/ci/${f.getName}") ++
+      RepoFile.listed(".github/scripts")(_.getName.endsWith(".sh")).map(f => s".github/scripts/${f.getName}"))
+      .filterNot(p => p == "scripts/ci/ci-writes.sh" || p.endsWith("-test.sh"))
+      .filter(p => RepoFile.withoutComments(RepoFile.read(p)).contains("ci_writes_shadow_data"))
+    readers shouldBe Seq("scripts/ci/gh-release.sh")
+  }
+
   "the metric pushes" should "be shadow-gated" in {
     RepoFile.read(".github/actions/report-timings/action.yml") should include("scripts/ci/ci-writes.sh\" || push=")
     RepoFile.read(".github/workflows/identity-live-drift.yml") should include(s"$Gate && '--push'")

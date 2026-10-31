@@ -49,6 +49,15 @@ class PlanTest(unittest.TestCase):
         [p] = cr.plan_release(rel(("a", 1)), {"a": 1, "old": 4}, with_caches=False, prune=True)
         self.assertEqual(p.final_count(), 1)
 
+    def test_github_com_own_fixture_data_is_kept_not_stale(self):
+        have = {"a": 1, "fill-de-573-41209071921-1-convergence.tar.zst": 9, "refused-uk-573-41209071921-1.tsv": 1,
+                "fill-de-573-4200-1-convergence.tar.zst": 9, "prod-latest-de.txt": 1}
+        [p] = cr.plan_release(rel(("a", 1)), have, with_caches=False, prune=True)
+        self.assertEqual(p.own, ["fill-de-573-41209071921-1-convergence.tar.zst", "refused-uk-573-41209071921-1.tsv"])
+        # a Forgejo-named fill or a pointer Forgejo no longer has is still stale
+        self.assertEqual(p.stale, ["fill-de-573-4200-1-convergence.tar.zst", "prod-latest-de.txt"])
+        self.assertEqual(p.final_count(), 3)
+
     def test_the_overflow_past_the_limit_goes_to_part_releases(self):
         r = rel(*[(f"f{i:02}", 1) for i in range(7)])
         plans = cr.plan_release(r, {"old": 1}, with_caches=False, prune=False, limit=3)

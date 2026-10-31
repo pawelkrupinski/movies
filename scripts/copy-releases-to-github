@@ -50,6 +50,10 @@ from dataclasses import dataclass, field
 HERE = os.path.dirname(os.path.abspath(__file__))
 GITHUB_ASSET_LIMIT = 1000
 GITHUB_ASSET_MAX_BYTES = 2 * 1024 ** 3 - 1
+# A github.com convergence leg's OWN fixture data (scripts/ci/ci-writes.sh, the one shadow exception): its fills and
+# refetch/refused lists carry github.com's run id, 11 digits against Forgejo's 4, so Forgejo never has them. They are
+# github.com's own, never stale: --prune keeps them.
+GITHUB_OWN_DATA = re.compile(r"^(fill-[a-z]{2}-[0-9]+-[0-9]{9,}-[0-9]+(-[a-z]+)?\.tar\.zst|(refetch|refused)-[a-z]{2}-[0-9]+-[0-9]{9,}-[0-9]+(-[a-z]+)?\.tsv)$")
 CACHE_ASSET = re.compile(r"^(takes-(trace|tracex|shape|gaps|final|decisions)-[a-z]{2}-.*\.gz|measure-result-.*\.json)$")
 
 
@@ -91,10 +95,11 @@ class Plan:
     too_large: list        # Asset over github.com's 2 GiB asset limit
     stale: list            # names on github.com only
     prune: bool
+    own: list = field(default_factory=list)  # github.com's own fixture data (GITHUB_OWN_DATA): kept, never stale
 
     def final_count(self) -> int:
         kept_stale = 0 if self.prune else len(self.stale)
-        return len(self.present) + len(self.upload) + kept_stale
+        return len(self.present) + len(self.upload) + kept_stale + len(self.own)
 
 
 def plan_release(source: Release, target_assets: dict | None, with_caches: bool, prune: bool,
@@ -111,12 +116,13 @@ def plan_release(source: Release, target_assets: dict | None, with_caches: bool,
         else:
             wanted.append(a)
     wanted_names = {a.name for a in wanted} | {a.name for a in caches} | {a.name for a in too_large}
-    stale = sorted(n for n in have if n not in wanted_names)
+    own = sorted(n for n in have if n not in wanted_names and GITHUB_OWN_DATA.match(n))
+    stale = sorted(n for n in have if n not in wanted_names and n not in own)
     present = [a.name for a in wanted if have.get(a.name) == a.size]
     upload = [a for a in wanted if have.get(a.name) != a.size]
-    first = Plan(source.tag, source, target_assets is None, upload, present, caches, too_large, stale, prune)
+    first = Plan(source.tag, source, target_assets is None, upload, present, caches, too_large, stale, prune, own)
     plans = [first]
-    room = limit - (len(present) + (0 if prune else len(stale)))
+    room = limit - (len(present) + len(own) + (0 if prune else len(stale)))
     if len(upload) > room:
         # Keep what is already there; the overflow of new uploads moves to part releases, in name order.
         first.upload, overflow = upload[:max(room, 0)], upload[max(room, 0):]

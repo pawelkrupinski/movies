@@ -30,6 +30,26 @@ shadow() { : > "$work/calls"; env -u CI_ROLE PATH="$work/bin:$PATH" GITHUB_SERVE
 check "gh-release.sh: an upload is skipped in shadow" "" "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" upload t f --clobber)"
 check "gh-release.sh: a delete-asset is skipped in shadow" "" "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" delete-asset t f -y)"
 check "gh-release.sh: a view still reads in shadow" "gh release view t" "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" view t)"
+# The one exception: a convergence leg's fixture data in convergence-fixtures (fills, refetch and refused lists).
+check "gh-release.sh: a leg's fill is published in shadow" "gh release upload convergence-fixtures fill-upload/fill-de-573-41209071921-1-convergence.tar.zst" \
+    "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" upload convergence-fixtures fill-upload/fill-de-573-41209071921-1-convergence.tar.zst)"
+check "...and its refetch and refused lists" "2" \
+    "$(shadow bash -c "bash '$REPO_ROOT/scripts/ci/gh-release.sh' upload convergence-fixtures refetch-upload/refetch-pl-573-41209071921-1.tsv; bash '$REPO_ROOT/scripts/ci/gh-release.sh' upload convergence-fixtures refused-uk-573-41209071921-1.tsv" | grep -c 'gh release upload')"
+check "...and an old list pruned" "gh release delete-asset convergence-fixtures refused-uk-573-4433-1.tsv -y" \
+    "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" delete-asset convergence-fixtures refused-uk-573-4433-1.tsv -y)"
+for pointer in prod-latest-de.txt hermetic-de.txt corpus-green-de.txt pin-de.txt enrichment-de-573.tar.zst \
+        takes-final-de-abc.gz recording-health-de.json fill-de-573-1-convergence.tar.zst "fill-de-573-41209071921-1-convergence.tar.zst.sh"; do
+    check "gh-release.sh: $pointer stays unwritten in shadow" "" \
+        "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" upload convergence-fixtures "$pointer" --clobber)"
+done
+check "gh-release.sh: fixture data with a pointer beside it stays unwritten" "" \
+    "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" upload convergence-fixtures fill-de-573-41209071921-1-convergence.tar.zst prod-latest-de.txt)"
+check "gh-release.sh: fixture data in another release stays unwritten" "" \
+    "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" upload identity-recordings fill-de-573-41209071921-1-convergence.tar.zst)"
+check "gh-release.sh: creating or editing the release stays unwritten" "" \
+    "$(shadow bash -c "bash '$REPO_ROOT/scripts/ci/gh-release.sh' create convergence-fixtures; bash '$REPO_ROOT/scripts/ci/gh-release.sh' edit convergence-fixtures --notes x; bash '$REPO_ROOT/scripts/ci/gh-release.sh' delete convergence-fixtures -y")"
+check "gh-release.sh: an upload naming no asset stays unwritten" "" \
+    "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" upload convergence-fixtures --clobber)"
 check "scheduled-failure-issue.sh opens no issue in shadow" "" "$(shadow bash "$REPO_ROOT/scripts/ci/scheduled-failure-issue.sh" failed W https://x/run o)"
 touch "$work/report"
 check "bot-branch-ready.sh opens no issue in shadow" "" "$(shadow env GH_REPO=o/r bash "$REPO_ROOT/scripts/ci/bot-branch-ready.sh" b T "$work/report" https://x/run)"
