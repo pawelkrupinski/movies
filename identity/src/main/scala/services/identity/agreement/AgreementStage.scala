@@ -95,6 +95,11 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                            private[agreement] val backfillPerApply: Int = AgreementStage.BackfillPerApply,
                            private[agreement] val askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never,
                            private[agreement] val attempted: Question => Boolean = _ => false,
+                           /** A question attempted and given up on for good (the question memory's durable non-answer, or
+                            *  its give-up after its failures in a row): absent, not pending. One failed and in its backoff
+                            *  is attempted -- the settle rule decides without it -- but still pending (P1): what
+                            *  [[outcomeOf]] types a settled take by. By default every attempted question is given up on. */
+                           private[agreement] val givenUp: Question => Boolean = _ => true,
                            private[agreement] val attemptsMarked: Option[() => Long] = None,
                            private[agreement] val keyStore: AgreementKeys = new InMemoryAgreementKeys,
                            private[agreement] val pressed: () => Boolean = () => false,
@@ -143,7 +148,11 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val stage = if (decision.members.isEmpty) Set.empty[Question] else {
       val id = keyOf(decision)
       waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps) ++
-        takeWaits.get(id).filter(w => Option(digested.get(decision)).forall(_.digest == w.listings)).fold(Set.empty[Question])(_.gaps)
+        takeWaits.get(id).filter(w => Option(digested.get(decision)).forall(_.digest == w.listings)).fold(Set.empty[Question])(_.gaps) ++
+        // a settled verdict's questions no family answered yet, unless given up on: asked on every pass, read again once
+        // answered (PL "SEVENTEEN World Tour 'NEW_'": settled to none past a failed ask, filled by IMDb once it filed)
+        Option(digested.get(decision)).flatMap(d => held.get(id).filter(_.listings == d.digest)).fold(Set.empty[Question])(v =>
+          v.reads.iterator.collect { case (Dependency.Answer(q), Dependency.Unanswered) => q }.filterNot(givenUp).toSet)
     }
     decision.outcome match {
       case taken: services.identity.TakeOutcome.Taken => if (stage.isEmpty) taken else services.identity.TakeOutcome.Pending(stage)
