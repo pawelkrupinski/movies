@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-<seed> (<country>)` rows -- "Check that the incremental state ends
+# THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-1|2 (<country>)` rows -- "Check that the incremental state ends
 # where a whole resolve does" (scripts/ci/identity-drift-check.sh), the step behind 28 of 36 red convergence runs in the
 # week to 2026-10-29 -- run on ci-runner BEFORE the commit lands, and nothing else of the convergence suite.
 #
@@ -8,16 +8,20 @@
 # another. This dispatches Identity model convergence with `drift-only` (10 rows, not 37) on the `landing` tier, so one
 # red row is judged in ~12-16 minutes and all ten in ~25-40, before the push.
 #
-# usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,us,es] [--seeds 1|2|both]
+# usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,us,es] [--seeds S1,S2|S1|,S2|both]
 #                                  [--for-red <run> | --against <run>|main] [--tier LABEL] [--timeout <minutes>]
 #                                  [--out DIR] [--no-wait]
 #        scripts/identity-drift-ci --run <run id> [--out DIR]
 #   <commit>     default HEAD (committed only; a commit whose workflows predate drift-only gets main's .github/ and
 #                scripts/ci/ laid over it, as identity-measure does)
 #   --countries  the countries whose drift rows run (the workflow's takes-countries); default all five
-#   --seeds      1, 2 or both (default both)
-#   --for-red    only the rows a red convergence run failed: its failed `takes-drift-<seed> (<country>)` jobs name the
-#                countries and seeds (a run id, or the run's number as its URL shows it). A red with no failed drift row
+#   --seeds      the seeds the rows replay (ROTATING SEEDS, scripts/ci/drift_seeds.py: a row's seed is its run's, not its
+#                number): `S1,S2` both rows, `S1` (= `S1,`) row 1 alone, `,S2` row 2 alone; `both` (the default) both
+#                rows on the dispatched run's own rotating pair. --for-red and --against pin their baseline run's seeds
+#                themselves, so a row is only ever held against the same seed
+#   --for-red    only the rows a red convergence run failed: its failed `takes-drift-1|2 (<country>)` jobs name the
+#                countries and rows, the red run's own seeds the seeds they replay (its rows' `seed` artifact files; a run
+#                from before the rotation replayed seeds 1 and 2) (a run id, or the run's number as its URL shows it). A red with no failed drift row
 #                has nothing to judge here: exit 0, said so. A FIX MAY BE PARTIAL (5df3295bd cleared PL's flips while DE
 #                seed 2's stayed): each row still red is held against the red run's own verdict.txt for it -- open
 #                divergences plus flips beyond the allow-lists. Fewer in some row and more in none is PROGRESS (exit 0,
@@ -81,7 +85,10 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
-case $seeds in 1|2|both) ;; *) usage_error "--seeds takes 1, 2 or both, not $seeds" ;; esac
+pins=""
+if [ "$seeds" != both ]; then
+  pins=$(python3 "$here/ci/drift_seeds.py" pins "$seeds" 2> /dev/null) || usage_error "--seeds takes S1,S2, S1, ,S2 or both, not $seeds"
+fi
 [ -z "$for_red" ] || [ -z "$against" ] || usage_error "--for-red and --against each name the baseline: one of them"
 countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || countries=$(selected_countries_csv)
 remote=${IDENTITY_MEASURE_REMOTE:-}
@@ -89,6 +96,34 @@ remote=${IDENTITY_MEASURE_REMOTE:-}
 
 csv_add() { [[ ",$1," == *",$2,"* ]] && echo "$1" || echo "${1:+$1,}$2"; } # <csv> <item>
 
+# base_root: the baseline runs' artifacts, downloaded once (their seeds before the dispatch, their verdicts after)
+base_root=$(mktemp -d "${TMPDIR:-/tmp}/identity-drift-ci.XXXXXX")
+trap 'rm -rf "$base_root"' EXIT
+# base_download <run id>: the run's identity-drift artifacts into $base_root/base-<id> (once)
+base_download() {
+  [ -d "$base_root/base-$1" ] && return 0
+  mkdir -p "$base_root/base-$1"
+  gh_download "$DISPATCH_GH_TIMEOUT" run download "$1" --pattern 'identity-drift-*' --dir "$base_root/base-$1" > /dev/null \
+    || say "could not download run $1's identity-drift artifacts"
+}
+# row_seed <run id> <row 1|2> -> the seed that row of the run replayed: its artifacts' `seed` file; a run whose artifacts
+# name none predates the rotation (row N replayed seed N); a run with no artifacts left, its run number's rotation
+row_seed() {
+  local seed number
+  base_download "$1"
+  seed=$(cat "$base_root/base-$1"/identity-drift-*-takes-drift-"$2"/seed 2> /dev/null | head -1)
+  if [ -n "$seed" ]; then echo "$seed"; return; fi
+  if compgen -G "$base_root/base-$1/identity-drift-*-takes-drift-*" > /dev/null; then echo "$2"; return; fi
+  number=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$1" --json number --jq .number) || return 1
+  python3 "$here/ci/drift_seeds.py" seed --row "$2" --run-number "$number"
+}
+# pins_of <run id> <rows> -> `S1,S2` for the run's rows named (1, 2 or `1 2`), the others' sides empty
+pins_of() {
+  local id=$1 one="" two=""
+  case " $2 " in *" 1 "*) one=$(row_seed "$id" 1) || return 1 ;; esac
+  case " $2 " in *" 2 "*) two=$(row_seed "$id" 2) || return 1 ;; esac
+  echo "$one,$two"
+}
 # drift_jobs <run id> -> "<name>\t<status>\t<conclusion>" for each takes-drift row of the run (none yet: nothing)
 drift_jobs() {
   identity_gh "$DISPATCH_GH_TIMEOUT" run view "$1" --json jobs \
@@ -115,14 +150,17 @@ if [ -n "$for_red" ]; then
     echo "DRIFT CLEAN (nothing to judge)"
     exit 0
   fi
-  seen_seeds="" countries=""
+  seen_rows="" countries=""
   while IFS= read -r row; do
-    seed=${row#takes-drift-}; seed=${seed%% *}
+    n=${row#takes-drift-}; n=${n%% *}
     country=${row#*(}; country=${country%)}
-    seen_seeds=$(csv_add "$seen_seeds" "$seed"); countries=$(csv_add "$countries" "$(identity_country_code "$country")")
+    seen_rows=$(csv_add "$seen_rows" "$n"); countries=$(csv_add "$countries" "$(identity_country_code "$country")")
   done <<< "$red_rows"
-  case $seen_seeds in 1) seeds=1 ;; 2) seeds=2 ;; *) seeds=both ;; esac
-  say "run $for_red's red drift rows: $(tr '\n' ',' <<< "$red_rows" | sed 's/,$//') -> countries $countries, seeds $seeds"
+  # the red's OWN seeds, pinned: a row is held against the seed it failed on, never another (rotating seeds)
+  first_red=${red_ids# }; first_red=${first_red%% *}
+  pins=$(pins_of "$first_red" "${seen_rows//,/ }") || die "could not tell which seeds run $for_red's drift rows replayed"
+  seeds=$pins
+  say "run $for_red's red drift rows: $(tr '\n' ',' <<< "$red_rows" | sed 's/,$//') -> countries $countries, seeds $pins (the red's own)"
 fi
 
 # ── the baseline every row is held against: the red's (--for-red) or the named run's (--against) ─────────────────────
@@ -142,15 +180,20 @@ if [ -n "$against" ]; then
     base_ids=$against
   fi
   base_label="run $base_ids"
-  say "every row held against $base_label${against:+ ($against)}"
+  # the baseline's own seeds, pinned (unless --seeds named rows): the rows replay what it replayed, never as if equal
+  want_rows="1 2"; [ -z "$pins" ] || want_rows=$(sed -E 's/^([^,]*),(.*)$/\1:\2/' <<< "$pins" | awk -F: '{ if ($1 != "") printf "1 "; if ($2 != "") printf "2" }')
+  pins=$(pins_of "$base_ids" "$want_rows") || die "could not tell which seeds $base_label's drift rows replayed"
+  seeds=$pins
+  say "every row held against $base_label${against:+ ($against)}, on its seeds $pins"
 fi
 
-# the rows this run must judge, `takes-drift-<seed> (<country>)` a line
+# the rows this run must judge, `takes-drift-<row> (<country>)` a line: both, or the rows the pins name
 expected_rows() {
-  local cc s
+  local cc r
   for cc in ${countries:-pl de uk es us}; do
-    for s in 1 2; do
-      { [ "$seeds" = both ] || [ "$seeds" = "$s" ]; } && echo "takes-drift-$s ($(identity_country_name "$cc"))"
+    for r in 1 2; do
+      { [ -z "$pins" ] || { [ "$r" = 1 ] && [ -n "${pins%%,*}" ]; } || { [ "$r" = 2 ] && [ -n "${pins#*,}" ]; }; } \
+        && echo "takes-drift-$r ($(identity_country_name "$cc"))"
     done
   done
 }
@@ -179,7 +222,7 @@ if [ -z "$run" ]; then
   identity_push_measure_branch "$remote" "$push" "$branch" || { delete_branch; die "could not push $branch: $MEASURE_PUSH_ERROR"; }
   only=(-f drift-only=true -f tier="$tier")
   [ -z "$countries" ] || only+=(-f takes-countries="$(tr ' ' ',' <<< "$countries")")
-  [ "$seeds" = both ] || only+=(-f drift-seeds="$seeds")
+  [ -z "$pins" ] || only+=(-f drift-seeds="$pins")
   dispatched_at=$SECONDS
   identity_dispatch_measure "$workflow" "$branch" "$push" \
     "identity-drift-ci ${for_red:+--for-red $for_red }${against:+--against $against }${commit:0:9}" "${only[@]}" \
@@ -229,10 +272,9 @@ open_findings() {
 # the baseline's own verdict per row (--for-red, --against): its job's conclusion, and its artifact when it failed
 base_rows=""
 for id in $base_ids; do
-  mkdir -p "$out/base-$id"
   base_rows+=$(drift_jobs "$id" | sed "s/\$/	$id/")$'\n' || say "could not read baseline run $id's jobs"
-  gh_download "$DISPATCH_GH_TIMEOUT" run download "$id" --pattern 'identity-drift-*' --dir "$out/base-$id" > /dev/null \
-    || say "could not download baseline run $id's identity-drift artifacts"
+  base_download "$id"
+  cp -R "$base_root/base-$id" "$out/base-$id"
 done
 # was_open <row name> <artifact dir name> -> the baseline's open findings for the row: 0 where its job passed, its
 # verdict's count where it failed, nothing where unknown
@@ -250,9 +292,11 @@ while IFS=$'\t' read -r name _ conclusion; do
   [ -z "$expected" ] || grep -qxF "$name" <<< "$expected" || continue
   # --run: the countries a drift-only dispatch left out show as skipped rows, which judge nothing
   [ -n "$expected" ] || [ "$conclusion" != skipped ] || continue
-  seed=${name#takes-drift-}; seed=${seed%% *}; country=${name#*(}; country=${country%)}
-  dir="$out/identity-drift-$(identity_country_code "$country")-takes-drift-$seed"
-  echo "$name: $conclusion -- $(cat "$dir/verdict.txt" 2> /dev/null || echo 'no verdict.txt')"
+  row=${name#takes-drift-}; row=${row%% *}; country=${name#*(}; country=${country%)}
+  dir="$out/identity-drift-$(identity_country_code "$country")-takes-drift-$row"
+  seed=$(cat "$dir/seed" 2> /dev/null || echo '?')
+  echo "$name [seed $seed]: $conclusion -- $(cat "$dir/verdict.txt" 2> /dev/null || echo 'no verdict.txt')"
+  [ "$conclusion" != failure ] || [ ! -f "$dir/reproduce.txt" ] || echo "    reproduce: $(cat "$dir/reproduce.txt")"
   [ ! -f "$dir/report.txt" ] || grep -E '^## |^  [0-9]+ listing|^      ' "$dir/report.txt" | head -40 | sed 's/^/    /'
   case $conclusion in success) ;; failure) red+=("$name") ;; *) unjudged+=("$name ($conclusion)") ;; esac
   if [ -n "$base_ids" ] && { [ "$conclusion" = failure ] || [ "$conclusion" = success ]; }; then

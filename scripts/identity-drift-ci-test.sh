@@ -39,7 +39,9 @@ case "\$1 \$2" in
   "run list")
     if [[ " \$* " == *" --event "* ]]; then out < "\$state/runs-dispatched.json"; else out < "\$state/runs.json"; fi ;;
   "run view")
-    if [[ " \$* " == *" jobs"* ]]; then out < "\$state/jobs-\$3.json"; else printf '{"status": "%s"}' "\$(cat "\$state/status-\$3")" | out; fi ;;
+    if [[ " \$* " == *" jobs"* ]]; then out < "\$state/jobs-\$3.json"
+    elif [[ " \$* " == *" number"* ]]; then printf '{"number": %s}' "\$(cat "\$state/number-\$3")" | out
+    else printf '{"status": "%s"}' "\$(cat "\$state/status-\$3")" | out; fi ;;
   "run download")
     dir=""; p=""; for a in "\$@"; do [ "\$p" = --dir ] && dir=\$a; p=\$a; done
     for d in "\$state"/artifacts-"\$3"/*; do [ -d "\$d" ] && cp -R "\$d" "\$dir/"; done ;;
@@ -61,9 +63,11 @@ jobs() { # <run id> <name:status:conclusion>...
     for j in "$@"; do IFS=: read -r n s c <<< "$j"; [ -n "$first" ] || printf ','; first=""; printf '{"name": "%s", "status": "%s", "conclusion": "%s"}' "$n" "$s" "$c"; done
     printf ']}'; } > "$work/state/jobs-$id.json"
 }
-artifact() { # <run id> <cc> <seed> <open divergences> <open flips>: the row's artifact as identity-drift-check.sh leaves it
+artifact() { # <run id> <cc> <row> <open divergences> <open flips> [seed]: the row's artifact as identity-drift-check.sh
+  # leaves it -- a `seed` file since the rotating seeds; none, a run from before them (row N replayed seed N)
   local dir="$work/state/artifacts-$1/identity-drift-$2-takes-drift-$3"
   rm -rf "$dir"; mkdir -p "$dir"
+  [ -z "${6:-}" ] || { echo "$6" > "$dir/seed"; echo "IdentityDrift $2 --seed $6" > "$dir/reproduce.txt"; }
   echo "$4 divergence(s) from a whole resolve and $5 flip(s) on the way, beyond the allow-lists" > "$dir/verdict.txt"
   printf '## %s: 1 divergence(s), 0 allow-listed\n      Cinema|Film  a -> b\n' "$2" > "$dir/report.txt"
 }
@@ -73,15 +77,16 @@ echo '[{"databaseId": 3726, "number": 2517, "status": "completed"}, {"databaseId
 jobs 3726 "takes-drift-2 (germany):completed:failure" "takes-drift-1 (united-kingdom):completed:success" "leg (germany):completed:failure"
 jobs 900 "takes-drift-2 (germany):completed:failure"
 echo completed > "$work/state/status-900"
-artifact 3726 de 2 0 1
-artifact 900 de 2 0 1
+artifact 3726 de 2 0 1 37
+artifact 900 de 2 0 1 37
 drift red --for-red 2517
-check "--for-red <number>: the red's drift rows alone, dispatched drift-only on the landing tier" \
-  "true" "$(grep -q -- '-f drift-only=true -f tier=landing -f takes-countries=de -f drift-seeds=2$' "$work/state/dispatches" && echo true || echo false)"
+check "--for-red <number>: the red's drift rows alone, on the red's OWN seed, dispatched drift-only on the landing tier" \
+  "true" "$(grep -q -- '-f drift-only=true -f tier=landing -f takes-countries=de -f drift-seeds=,37$' "$work/state/dispatches" && echo true || echo false)"
 check "...a row no better than the red's own is a refuted fix: DRIFT RED, exit 1" \
   "1 DRIFT RED: no better than run 2517: takes-drift-2 (germany): 1 -> 1 open" "$(cat "$work/red.rc") $(tail -1 "$work/red.out")"
 check "...naming the row's verdict and its report's lines" "true" \
-  "$(grep -q '^takes-drift-2 (germany): failure -- 0 divergence(s) from a whole resolve and 1 flip(s)' "$work/red.out" && grep -q 'Cinema|Film' "$work/red.out" && echo true || echo false)"
+  "$(grep -q '^takes-drift-2 (germany) \[seed 37\]: failure -- 0 divergence(s) from a whole resolve and 1 flip(s)' "$work/red.out" && grep -q 'Cinema|Film' "$work/red.out" && echo true || echo false)"
+check "...and its one-line reproducer" "1" "$(grep -c '^    reproduce: IdentityDrift de --seed 37$' "$work/red.out")"
 check "...pushed as a measure/ branch the run deletes" "1" "$(scratch_git "$origin" for-each-ref refs/heads/measure | wc -l | tr -d ' ')"
 
 rm -f "$work/state/dispatches"
@@ -102,9 +107,12 @@ check "a partial fix is DRIFT PROGRESS, exit 0, naming what moved and what stays
 artifact 900 de 2 1 2
 drift worse --for-red 3726
 check "...but one row worse refutes it, whatever else got better" "1" "$(cat "$work/worse.rc")"
-rm -rf "$work/state/artifacts-3726"
+rm -rf "$work/state/artifacts-3726" "$work/state/dispatches"
+echo 2517 > "$work/state/number-3726"
 drift nobase --for-red 3726
 check "a red row with no baseline to hold it against is no verdict, exit 2" "2" "$(cat "$work/nobase.rc")"
+check "...its seeds, no artifact left to name them, its run number's rotation (#2517: 41 and 42)" "true" \
+  "$(grep -q -- '-f drift-seeds=41,42$' "$work/state/dispatches" && echo true || echo false)"
 
 # --against main: A CHECK'S BIRTH LANDS ONLY IF IT FINDS NOTHING MAIN'S RUN DOES NOT (commit_rules.py's rule), and an
 # identity change while main is red is held to "no worse". Main's newest decided run with drift rows is 3726.
@@ -114,7 +122,10 @@ artifact 3726 de 2 0 2
 jobs 900 "takes-drift-1 (germany):completed:success" "takes-drift-2 (germany):completed:failure" \
   "takes-drift-1 (united-kingdom):completed:failure" "takes-drift-2 (united-kingdom):completed:success"
 artifact 900 de 2 0 2; artifact 900 uk 1 0 3
+rm -f "$work/state/dispatches"
 drift born --against main --countries de,uk
+check "--against main: the rows replay main's run's own seeds (a run from before the rotation: 1 and 2)" "true" \
+  "$(grep -q -- '-f drift-seeds=1,2$' "$work/state/dispatches" && echo true || echo false)"
 check "--against main: a row red where main's was green is worse -- a born-red gate is refused, exit 1" \
   "1 DRIFT RED: worse than run 3726: takes-drift-1 (united-kingdom): 0 -> 3 open" "$(cat "$work/born.rc") $(tail -1 "$work/born.out")"
 jobs 900 "takes-drift-1 (germany):completed:success" "takes-drift-2 (germany):completed:failure" \
@@ -136,7 +147,8 @@ check "...and nothing dispatched" "false" "$([ -f "$work/state/dispatches" ] && 
 jobs 900 "takes-drift-1 (poland):completed:success" "takes-drift-1 (spain):completed:cancelled"
 drift partial --countries pl,es --seeds 1
 check "--countries/--seeds are the dispatch's takes-countries and drift-seeds" "true" \
-  "$(grep -q -- '-f takes-countries=pl,es -f drift-seeds=1$' "$work/state/dispatches" && echo true || echo false)"
+  "$(grep -q -- '-f takes-countries=pl,es -f drift-seeds=1,$' "$work/state/dispatches" && echo true || echo false)"
+check "--seeds that are no seeds: a usage error, exit 2" "2" "$(drift badseeds --seeds x; cat "$work/badseeds.rc")"
 check "...a row that did not pass or fail is NO VERDICT, exit 2" "2" "$(cat "$work/partial.rc")"
 check "...naming it" "true" "$(tail -1 "$work/partial.out" | grep -q 'takes-drift-1 (spain) (cancelled)' && echo true || echo false)"
 

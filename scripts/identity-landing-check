@@ -36,7 +36,7 @@
 #   e2e-rest    `e2e (rest)`'s identity specs: SearchQueryMarkers,  } this change (scripts/ci/ci-row-scope.sh e2e):
 #               IdentityCutoverEndToEnd                          } judgements and identity tests alone do not
 #
-# THE DRIFT GROUP: the incremental = whole replay -- every `takes-drift-<seed> (<country>)` row of main's convergence run,
+# THE DRIFT GROUP: the incremental = whole replay -- every `takes-drift-1|2 (<country>)` row of main's convergence run,
 # the step behind 28 of 36 red convergence runs in the week to 2026-10-29 -- as scripts/identity-drift-ci's drift-only
 # run on ci-runner's `landing` tier (~25-40 min for all ten rows), beside the measure and the specs. On by default when
 # the change touches a path in .github/identity-drift-paths.txt (the resolver, worker/src/main, the title rules, the

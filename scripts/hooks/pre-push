@@ -55,7 +55,7 @@
 #                 Playwright rows CI runs (scripts/page-tests-local: Chromium and WebKit, ~11 min warm)
 #   `identitydrift` scripts/identity-drift-ci --for-red <run>, on a push to main whose commits carry `Fixes-Red: <run>` (and no
 #                 `Red-Unrelated:`) and touch a drift path (.github/identity-drift-paths.txt): the red's own failed
-#                 `takes-drift-<seed> (<country>)` rows, run drift-only on ci-runner's `landing` tier, ~12-16 min. A
+#                 `takes-drift-1|2 (<country>)` rows, run drift-only on ci-runner's `landing` tier, ~12-16 min. A
 #                 fix no better than the red in any row, or worse in one, refuses the push (a partial fix lands): a
 #                 "fix" for a drift red is judged on the red's rows before it lands, not ~48 min after on main
 #                 (convergence-failures-2026-10-29 §7.2: two refuted fixes, 52 fixer launches).
