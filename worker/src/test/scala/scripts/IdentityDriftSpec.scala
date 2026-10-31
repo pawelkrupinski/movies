@@ -27,6 +27,23 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     docs -> new FamilyAnswerStore(docs, clock)
   }
 
+  // Step 6's price (the owner, 2026-10-31): a Pending take is served as decided on the inputs as they stand; the replay
+  // counts, by the kind of input it awaited, how often that provisional take differs from the whole resolve's final one.
+  "the pending tally" should "count each provisional take under every kind it awaited, and those differing from the final" in {
+    import services.movies.ListingKey
+    val rose: ListingKey = ListingKey.Published("QFT", "Rose (2023)", None, Nil)
+    val ties: ListingKey = ListingKey.Published("Chichester", "The Ties That Bind Us", None, Nil)
+    val reference = Map(rose -> IdentityDrift.Take("tmdb:901251", "OwnMatch", ""), ties -> IdentityDrift.Take("tmdb:1460982", "OwnMatch", ""))
+    val tally = IdentityDrift.PendingTally.of(Seq(
+      IdentityDrift.PendingServed(rose, "tmdb:1069112", Set("pool-record", "search")),
+      IdentityDrift.PendingServed(rose, "tmdb:901251", Set("pool-record")),
+      IdentityDrift.PendingServed(ties, "none", Set("page"))), reference)
+    tally.byKind shouldBe Map("pool-record" -> (2, 1), "search" -> (1, 1), "page" -> (1, 1))
+    tally.all shouldBe (3, 2)
+    (tally + tally).all shouldBe (6, 4)
+    tally.lines.last should include("any")
+  }
+
   "asks" should "release a held answer rather than ask for it" in {
     val clock         = new MutableClock(Instant.parse("2026-10-20T13:26:32Z"))
     val (docs, store) = filed(clock)

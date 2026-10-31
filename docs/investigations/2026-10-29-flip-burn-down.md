@@ -299,3 +299,54 @@ cinema in the country", and "update the details when it comes back".
   the structural properties read it as "pending". That is identity design: either the stage serves none while a
   correction it cannot read yet is pending (agree or none), or the predicate skips a Pending film as it skips a Pending
   none. It is baselined at the tightened check's birth (`New-Check:`). The corpus rows replay clean.
+
+## 2026-10-31: step 6, Pending inputs through the normal decision (the owner's decision, identity design)
+
+The owner, 2026-10-31: route Pending inputs through the normal decision step. Decide from the inputs as they stand, with
+unanswered questions treated as unknown. NEVER substitute a previous take: no stickiness, and a whole resolve and the
+incremental one must agree. Mark Pending takes as provisional in the served UI and API: a flag, not a frozen old take.
+This replaces the structural plan's `Readings.decide` (agree-or-none generalised) and its display-policy options.
+
+**What changed, per input kind.**
+
+- **Pool records (TMDB's and the fallback's).** AGREE OR NONE (2026-10-29) is gone from `FamilyScope`. A film whose
+  record is not filed yet is in the pool as its hits carry it, its record's facts unknown. The take is the same decision as
+  on any other input, and it is Pending on the record. UK "Rose (2023)" now serves the parade's hit provisionally until the
+  parade's record denies it, then Oplev's film. The same goes for the fallback scope: US "Parkway Drive: Home".
+- **Searches.** A no-match's fallback film is no longer withheld while a search is unanswered (`ResolverDecisions`), and
+  the stage reads a no-match whose searches are open as it reads any other (`AgreementStage.decide`'s `unanswered > 0`
+  guard is gone). A fallback taken is Pending on what it still reads.
+- **Venue pages.** A new listing whose venue page is unread is no longer held out of the model for up to an hour
+  (`IdentityModelService.admit`, `PageWait.limit` removed). Its page is asked for once, the listing is decided on the
+  title alone meanwhile, and it is Pending on the page until it is read, which re-resolves its family.
+- **The stage's own waits (posters, finds, broadcast records, family questions).** These are unchanged. They serve the
+  model's decision on the inputs as they stand, typed Pending.
+
+**The flip check and the drift replay.** A Pending step is provisional and is not a take, whatever it serves: TakeFlips
+skips it, and an incremental take served Pending is no divergence. A provisional take decided on the same film is recorded,
+so A -> B (provisional) -> B -> A still flips. The price is measured, not failed: `IdentityDrift` prints and writes
+`pending-<cc>.tsv`. For each kind of input awaited, it counts the listing-projections served Pending, and how many of
+them served another film than the whole resolve's final take.
+
+**Served.** `AgreementStage.typed` gives each served decision the `awaits` its outcome has, the stage's waits included.
+The projection marks a film whose cluster is Pending with `MovieRecord.tmdbProvisional`. That becomes
+`ResolvedMovie.provisional`, the card's `data-provisional="true"` and the repertoire API's `"provisional": true`, which is
+omitted when the take is decided.
+
+**Properties (IncrementalWholeEquivalenceSpec).**
+
+- Equality with the whole resolve at every step now covers the provisional film, and it is not vacuous: histories serve
+  films while Pending.
+- Property 1 (monotone under filing) sees a provisional film, then the decided one.
+- Property 4 (relabelling) now compares every round, not only the end: the same rounds are decided, with the image films,
+  and the same rounds are Pending.
+- What a Pending take serves is not compared under relabelling. Seed 7's Kino Apollo "Faust 2 (2026)" shows why: there
+  are two listings of one title, and which one joins the 2025 film's cluster follows the order of ids. That is a grouping
+  tie for the tie audit (plan step 7), and it shows only while the take is Pending.
+- **Tried and dropped:** a rule taking no film for an exact top tie with a pending record fixed two such seeds. It was
+  itself a pending-only rule, against the owner's decision, so a provisional tie is broken as a decided one is
+  (`Acceptance.tieBroken`).
+
+**Still serving an earlier take (not changed here).** A stored correction that stands unread under the apply's budget is
+served as last decided while it is Pending on its re-read (`AgreementStage.outcomeOf`'s `held` clause; plan step 8). It
+is the one remaining place a previous take is served.

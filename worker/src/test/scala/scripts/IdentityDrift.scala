@@ -106,6 +106,50 @@ object IdentityDrift {
 
   /** One listing's take: its film (`tmdb:<id>`, `<source>:<id>` or `none`), the basis, and the decision's last line. */
   final case class Take(film: String, basis: String, why: String)
+
+  /** The kind of input a Pending take awaits, as the pending tally counts it: a TMDB search, a venue page, a record of a
+   *  film the family's pool weighs, a person, or one of the stage's own questions (a family's, TMDB's find of an IMDb id, a
+   *  record the stage reads again, a poster, a catalogue id). */
+  def kindOf(question: Question): String = question match {
+    case Question.Candidate(_)  => "search"
+    case Question.VenuePage(_)  => "page"
+    case Question.FilmRecord(_) => "pool-record"
+    case Question.Person(_)     => "person"
+    case Question.Family(_, _)  => "family"
+    case Question.Find(_)       => "find"
+    case Question.Record(_)     => "stage-record"
+    case Question.Poster(_)     => "poster"
+    case Question.Catalogue(_)  => "catalogue"
+  }
+  /** A listing served Pending at one projection: the film it was served provisionally, and the kinds it awaited. */
+  final case class PendingServed(key: ListingKey, film: String, kinds: Set[String])
+  /** Per kind of awaited input: how many listing-projections were served Pending awaiting it, and how many of those served
+   *  another film than the whole resolve's final take -- the price of serving the decision on the inputs as they stand
+   *  (step 6). `all` counts each listing-projection once, whatever it awaits. */
+  final case class PendingTally(byKind: Map[String, (Int, Int)], all: (Int, Int)) {
+    def +(other: PendingTally): PendingTally = PendingTally(
+      (byKind.keySet ++ other.byKind.keySet).iterator.map { k =>
+        val (a, b) = (byKind.getOrElse(k, (0, 0)), other.byKind.getOrElse(k, (0, 0))); k -> (a._1 + b._1, a._2 + b._2) }.toMap,
+      (all._1 + other.all._1, all._2 + other.all._2))
+    def lines: Seq[String] = {
+      def row(name: String, n: (Int, Int)) = f"$name%-13s ${n._1}%8d ${n._2}%8d ${if (n._1 == 0) 0.0 else 100.0 * n._2 / n._1}%6.1f%%"
+      f"${"kind"}%-13s ${"pending"}%8s ${"differ"}%8s ${"share"}%7s" +: (byKind.toSeq.sortBy(-_._2._1).map(row.tupled) :+ row("any", all))
+    }
+  }
+  object PendingTally {
+    val Empty: PendingTally = PendingTally(Map.empty, (0, 0))
+    /** `served` against the final takes `reference`: each listing-projection counted under every kind it awaited. */
+    def of(served: Iterable[PendingServed], reference: Map[ListingKey, Take]): PendingTally = {
+      val byKind = scala.collection.mutable.HashMap.empty[String, (Int, Int)]
+      var all = (0, 0)
+      served.foreach { p =>
+        val differs = if (reference.get(p.key).fold(TakeFlips.NoFilm)(_.film) != p.film) 1 else 0
+        all = (all._1 + 1, all._2 + differs)
+        p.kinds.foreach(k => byKind.updateWith(k)(n => Some(n.fold((1, differs))(n => (n._1 + 1, n._2 + differs)))))
+      }
+      PendingTally(byKind.toMap, all)
+    }
+  }
   /** The listings a model's decisions take no film for YET ([[TakeOutcome.Pending]]): what [[TakeFlips]] does not count as a
    *  take left. */
   def pendingOf(decisions: Iterable[ResolverDecision]): Set[ListingKey] =
@@ -430,6 +474,8 @@ object IdentityDrift {
     /** One projection: the stage over the model's decisions now, every listing's take recorded ([[flips]]). */
     /** The listings the last projection served Pending. */
     var lastPending: Set[ListingKey] = Set.empty
+    /** Every listing served Pending at a projection, with its provisional film and what it awaited. */
+    val pendingServed = scala.collection.mutable.ArrayBuffer.empty[PendingServed]
     def project(republished: Iterable[ListingKey] = Nil, checkpoint: String = ""): Resolution = {
       clock.advance(Duration.ofMinutes(5))
       val started = tools.Stopwatch.start()
@@ -445,14 +491,21 @@ object IdentityDrift {
       val step     = s"$projections ${if (events.isEmpty) "re-apply" else events.distinct.mkString("+")}${if (checkpoint.isEmpty) "" else s" ($checkpoint)"}"
       // the served take's outcome, typed (`AgreementStage.outcomeOf`): no film YET -- the model's or the stage's awaits
       // named -- is no take left (TakeFlips); never read off the explanation's prose
-      val pending = r.decisions.iterator.filter(d => stage.outcomeOf(d).isInstanceOf[TakeOutcome.Pending]).flatMap(_.members).toSet
+      val awaiting = r.decisions.iterator.flatMap(d => stage.outcomeOf(d) match {
+        case TakeOutcome.Pending(awaits) => val kinds = awaits.map(kindOf); d.members.iterator.map(_ -> kinds)
+        case _                           => Iterator.empty
+      }).toMap
+      val pending = awaiting.keySet
       lastPending = pending
+      val served  = takesOf(r)
+      // each provisional take, for the pending tally: how often it differs from the final one, by what it awaits
+      pendingServed ++= awaiting.iterator.map { case (key, kinds) => PendingServed(key, served.get(key).fold(TakeFlips.NoFilm)(_.film), kinds) }
       // each listing's receipt: what its stage verdict read, answer by answer -- an answer filed inline at a scrape (another
       // cluster's ask, or its own) moves it as a filing step does (DE "Titans", drift 4281: filled at a scrape whose apply
       // filed the answer its fill read)
       val receipts   = verdicts.all().iterator.map(v => v.id -> receiptOf(v)).toMap
       val receiptNow = r.decisions.iterator.flatMap(d => { val receipt = receipts.get(stage.keyOf(d)); d.members.iterator.map(_ -> receipt) }).toMap
-      flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
+      flips.record(step, served.iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
         key => answered || inputsMoved(clusters.get(key), now.get(key), scraped) ||
           // a title's venues moved: what reads the title across the corpus (the stage's venues.current fill) read new input
           held.get(key).exists(listing => movedTitles(ListingRetention.titleOf(listing, reads.normalizer))) ||
@@ -546,7 +599,8 @@ object IdentityDrift {
 
   /** One seed's sequence: each checkpoint's resolution, named, and the listings whose take flip-flopped on the way. */
   /** Each checkpoint's resolution with the listings its served take leaves Pending ([[TakeOutcome.Pending]]), and the flips. */
-  final case class Replay(checkpoints: Seq[(String, Resolution, Set[ListingKey])], flips: Seq[TakeFlips.Flip])
+  final case class Replay(checkpoints: Seq[(String, Resolution, Set[ListingKey])], flips: Seq[TakeFlips.Flip],
+                          pendingServed: Seq[PendingServed] = Nil)
   def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock, filedDocs: FiledDocs = Noted,
                /** At least one booted listing leaves and returns: a drift slice's few listings, where [[Leave]] would send
                 *  none away — and a sibling's run ending is what moved DE Werkstattkino's "CAMOUFLAGE" (#2473, ecedac9aa). */
@@ -587,14 +641,14 @@ object IdentityDrift {
       checkpoints += { val r = w.project(checkpoint = s"deploy-$run"); (s"deploy-$run", r, w.lastPending) }
       checkpoints += { val r = rescrape(s"after-deploy-$run"); (s"after-deploy-$run", r, w.lastPending) }
     }
-    Replay(checkpoints.result(), w.flips.flips)
+    Replay(checkpoints.result(), w.flips.flips, w.pendingServed.toSeq)
   }
 
   /** What one replay found, over every seed: each divergence from the whole resolve, and each flip by its seed. */
-  final case class Findings(divergences: Seq[Divergence], flips: Seq[(Int, TakeFlips.Flip)]) {
+  final case class Findings(divergences: Seq[Divergence], flips: Seq[(Int, TakeFlips.Flip)], pending: PendingTally = PendingTally.Empty) {
     /** The divergences no `allowed` row names, and the flips no `flipsAllowed` row does: what fails the gate. */
     def open(country: String, allowed: Seq[Allowed], flipsAllowed: Seq[FlipAllowed]): Findings =
-      Findings(divergences.filterNot(d => allowed.exists(_.covers(d))), flips.filterNot { case (_, f) => flipsAllowed.exists(_.covers(country, f)) })
+      Findings(divergences.filterNot(d => allowed.exists(_.covers(d))), flips.filterNot { case (_, f) => flipsAllowed.exists(_.covers(country, f)) }, pending)
     def isEmpty: Boolean = divergences.isEmpty && flips.isEmpty
   }
 
@@ -605,6 +659,7 @@ object IdentityDrift {
              readsAt: java.time.Clock => Reads, filedDocs: FiledDocs = Noted, leaveOne: Boolean = false,
              wholeTakes: (Int, Map[ListingKey, Take]) => Unit = (_, _) => ()): Findings = {
     val flips = Seq.newBuilder[(Int, TakeFlips.Flip)]
+    var tally = PendingTally.Empty
     val divergences = seeds.flatMap { seed =>
       val clock  = new MutableClock(recordedAt)
       val replay = sequence(readsAt(clock), listings, seed.toLong, gate, clock, filedDocs, leaveOne)
@@ -614,16 +669,18 @@ object IdentityDrift {
       val wholeReads = readsAt(wholeClock)
       val reference  = takesOf(whole(wholeReads, listings, wholeClock, WholeLookups.recorded(wholeReads), filedDocs = filedDocs))
       wholeTakes(seed, reference)
+      tally = tally + PendingTally.of(replay.pendingServed, reference)
       replay.checkpoints.flatMap { case (name, resolution, pending) =>
         val now = takesOf(resolution)
         listings.map(_.key).flatMap { key =>
           val (a, b) = (reference.getOrElse(key, Take("none", "absent", "")), now.getOrElse(key, Take("none", "absent", "")))
-          // an incremental take Pending -- no film YET, its awaits named -- is below every decided one (P1): no divergence
-          Option.when(a.film != b.film && !(b.film == TakeFlips.NoFilm && pending(key)))(Divergence(country.code, seed.toLong, name, key, a, b))
+          // an incremental take Pending -- its awaits named, its film or none the decision on the inputs as they stand -- is
+          // provisional (P1, step 6): no divergence; how often it differs from the final take is the pending tally
+          Option.when(a.film != b.film && !pending(key))(Divergence(country.code, seed.toLong, name, key, a, b))
         }
       }
     }
-    Findings(divergences, flips.result())
+    Findings(divergences, flips.result(), tally)
   }
 
   /** One drift slice replayed (`test/resources/fixtures/drift-slices/<cc>/<name>/`, cut by `scripts/identity-slice
@@ -763,6 +820,11 @@ object IdentityDrift {
       Seq(country.code, seed.toString, f.key.venue, f.key.rawTitle, f.films, f.reasons.mkString("; "), f.takes.map(_.line).mkString(" -> "))
         .map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
     }).mkString("", "\n", "\n"))
+    // step 6's price: how often a provisional (Pending) take differed from the final one, by the kind of input it awaited
+    println(s"## ${country.code} pending takes vs the final take, by awaited input (listing-projections, all seeds):")
+    findings.pending.lines.foreach(line => println(s"      $line"))
+    Files.writeString(o.out.resolve(s"pending-${country.code}.tsv"), ("kind\tpending\tdiffer" +: (findings.pending.byKind.toSeq.sortBy(_._1) :+
+      ("any" -> findings.pending.all)).map { case (k, (n, d)) => s"$k\t$n\t$d" }).mkString("", "\n", "\n"))
     val verdict = flipVerdict(country.code, open.flips, baseline, seeds)
     println(s"## ${country.code} flips: ${flipped.size} flip(s) (${flipped.map(_._2.key).distinct.size} listings), ${flipped.size - open.flips.size} allow-listed, " +
       s"${verdict.known.size} known")

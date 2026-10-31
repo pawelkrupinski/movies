@@ -77,4 +77,29 @@ class TakeFlipsSpec extends AnyFlatSpec with Matchers {
       ("2 deploy", Map(stranger -> TakeFlips.Served("none", "BelowThreshold", pending = true)), Set.empty),
       ("3 re-apply", Map(stranger -> own(1429348)), Set(stranger))).flips shouldBe empty
   }
+
+  // Step 6 (the owner, 2026-10-31): a Pending take is the decision on the inputs as they stand -- a film or none -- served
+  // provisionally, never a previous take. Provisional, it is no take: UK flicks.co.uk "Rose (2023)" serves the parade's
+  // hit while the parade's record is pending, and Oplev's film once the record denies the parade.
+  private def provisional(id: Int) = TakeFlips.Served(s"tmdb:$id", "OwnMatch: own match", pending = true)
+
+  "a provisional film served while an answer was pending, between two decided takes of one film" should "be no flip" in {
+    replay(("1 boot", Map(stranger -> own(901251)), Set.empty),
+      ("2 fill", Map(stranger -> provisional(1069112)), Set(stranger)),
+      ("3 answer", Map(stranger -> own(901251)), Set(stranger))).flips shouldBe empty
+  }
+
+  "a provisional take decided as it stood, at a step none of its inputs moved" should "be no change" in {
+    replay(("1 boot", Map(stranger -> provisional(1069112)), Set.empty),
+      ("2 re-apply", Map(stranger -> own(1069112)), Set.empty)).flips shouldBe empty
+  }
+
+  "a take left for a provisional film that is then decided, and given back" should "flip: the decided film was left" in {
+    val flips = replay(("1 boot", Map(stranger -> own(1)), Set.empty),
+      ("2 fill", Map(stranger -> provisional(2)), Set(stranger)),
+      ("3 answer", Map(stranger -> own(2)), Set(stranger)),
+      ("4 scrape", Map(stranger -> own(1)), Set(stranger))).flips
+    flips.map(_.reasons) shouldBe Seq(Seq("back to a film it left"))
+    flips.head.films shouldBe "tmdb:1 -> tmdb:2 -> tmdb:2 -> tmdb:1"
+  }
 }
