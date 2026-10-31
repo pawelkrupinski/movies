@@ -81,6 +81,13 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
     withClue("histories where a listing flipped, the whole resolve's way: ") { flipped.get should be > 0 }
   }
 
+  // P2 (identity-flips-structural-2026-10-30, property 1): the whole resolve itself, as answers are only filed, decides a
+  // listing once and never again otherwise -- a decision made before an answer it reads is filed is a flip a whole
+  // resolve makes too, which the flip property above cannot see (UK "Rose (2023)")
+  it should "refine each take as answers are only filed: no film yet, then one decided value" in {
+    every(Budget.Unlimited)(_.monotoneUnderFiling()) shouldBe empty
+  }
+
   "its cases" should "reach the stage's takes — agreed, filled, corrected — and the model's matches" in {
     val bases = cases.flatMap { case (_, make) => Seeds.take(8).flatMap(seed => takes(new History(make(seed), seed, Budget.Unlimited).wholeAtEnd()).map(_._4)) }.toSet
     bases should contain allOf (ResolverDecision.Basis.Agreed, ResolverDecision.Basis.Filled, ResolverDecision.Basis.Corrected, ResolverDecision.Basis.OwnMatch)
@@ -189,6 +196,8 @@ object IncrementalWholeEquivalenceSpec {
    */
   final class World(seed: Long, of: Case) {
     var round = 0
+    /** The clock kept in its first year whatever the round: a history of filings alone, the year no input that moves. */
+    var yearHeld = false
     private def roll(salt: String, question: String, n: Int): Int = (MurmurHash3.stringHash(s"$seed|$salt|$question") & 0x7fffffff) % n
     /** The round `question` is filed at: 0 for most, a later one for some, never for a few — but TMDB's, which the
      *  model's every take waits on: a cluster with one of them unanswered is never the stage's to read. */
@@ -208,7 +217,7 @@ object IncrementalWholeEquivalenceSpec {
     val clock: java.time.Clock = new java.time.Clock {
       def getZone: java.time.ZoneId = java.time.ZoneOffset.UTC
       override def withZone(zone: java.time.ZoneId): java.time.Clock = this
-      def instant(): java.time.Instant = java.time.Instant.parse(if (round >= NewYear) "2027-01-01T12:00:00Z" else "2026-12-31T12:00:00Z")
+      def instant(): java.time.Instant = java.time.Instant.parse(if (round >= NewYear && !yearHeld) "2027-01-01T12:00:00Z" else "2026-12-31T12:00:00Z")
     }
 
     /** TMDB, as the model and the stage read it: the case's, each question a gap until filed. */
@@ -248,8 +257,14 @@ object IncrementalWholeEquivalenceSpec {
       def film(tmdbId: Int): Answer[Seq[PosterHash]]     = gated(AgreementStage.PosterQuestion.Film(tmdbId))(of.filmPosters.getOrElse(tmdbId, Nil))
     }
 
-    /** The question memory: a question attempted, by the id its outcome is kept under. */
+    /** Given up on: asked and failed for good -- the memory's give-up after its failures in a row -- never filed. One that
+     *  failed a round before its filing is in its backoff then: pending, not absent (P1). */
+    def givenUp(question: String): Boolean = filedAt(question) == Int.MaxValue && attempted(question)
+    /** The question memory as the stage reads it: attempted -- answered, given up on, or failed and in its backoff -- by
+     *  the id its outcome is kept under; the settle rule decides without an attempted one. */
     val tried: Question => Boolean = question => question.id.exists(attempted)
+    /** ...and given up on: absent, where one in its backoff is pending (P1). */
+    val gaveUp: Question => Boolean = question => question.id.exists(givenUp)
   }
 
   /** One random history over a case: the incremental path driven event by event, and the whole resolve. */
@@ -275,7 +290,7 @@ object IncrementalWholeEquivalenceSpec {
     private def newStage(stored: AgreementVerdicts, keyStore: AgreementKeys, perApply: Int) =
       new AgreementStage(world.families, world.lookups, normalizer, IdentityCalibration.resolver, world.tmdbOf, stored, clock = world.clock,
         posters = world.posters, tmdb = Some(world.lookups), identities = Seq(VoterFamily.Wiki), rules = of.rules, correctionsPerApply = perApply,
-        attempted = world.tried, keyStore = keyStore)
+        attempted = world.tried, givenUp = world.gaveUp, keyStore = keyStore)
     private var model = newModel()
     private var stage = newStage(verdicts, keys, budget.perApply)
     private def listingOf(key: ListingKey) = held.get(key)
@@ -343,6 +358,34 @@ object IncrementalWholeEquivalenceSpec {
       if (pending.nonEmpty) { val rest = pending.dequeueAll(_ => true); rest.foreach(l => held(l.key) = l); retained --= rest.map(_.key); model.batch(seen = rest) }
       while (world.round < Final) nextRound()
       "finish"
+    }
+
+    /** P2, monotone under filing (identity-flips-structural-2026-10-30, property 1): every listing held from the start,
+     *  then only filings -- no listing leaving, no answer changing -- and each listing's outcome in the whole resolve itself
+     *  only refines: Pending* then one decided value (a film, or no film). Never one decided value then another, nor a
+     *  decided value then Pending: a decision made before an answer it reads was filed. */
+    def monotoneUnderFiling(): Option[String] = {
+      val all = pending.dequeueAll(_ => true)
+      all.foreach(listing => held(listing.key) = listing)
+      world.yearHeld = true                                              // only filings: the year is an input, kept
+      val outcomes = mutable.LinkedHashMap.empty[ListingKey, Vector[String]]
+      def record(): Unit = {
+        val resolution = IdentityResolver.resolveWith(held.values, world.lookups, normalizer, calibration, IdentityResolver.Mutation.None,
+          decorations = TitleDecorations.None)
+        val fresh = newStage(new InMemoryAgreementVerdicts, new InMemoryAgreementKeys, Int.MaxValue)
+        fresh.apply(resolution, listingOf, world.round).decisions.foreach { d =>
+          val outcome = fresh.outcomeOf(d) match {
+            case services.identity.TakeOutcome.Pending(_) => "pending"
+            case services.identity.TakeOutcome.Taken(film) => film
+            case services.identity.TakeOutcome.NoFilm(_)   => "none"
+          }
+          d.members.foreach(key => outcomes(key) = outcomes.getOrElse(key, Vector.empty) :+ outcome)
+        }
+      }
+      record()
+      while (world.round < Final) { world.round += 1; record() }
+      def refines(seq: Vector[String]): Boolean = seq.dropWhile(_ == "pending").distinct.sizeIs <= 1 && !seq.dropWhile(_ == "pending").contains("pending")
+      outcomes.collectFirst { case (key, seq) if !refines(seq) => s"seed $seed, ${key.venue} | ${key.rawTitle}: ${seq.mkString(" -> ")}" }
     }
 
     /** After every event, the incremental take of the inputs equals the whole resolve's of the same inputs. */
