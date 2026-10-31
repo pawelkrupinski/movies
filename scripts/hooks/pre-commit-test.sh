@@ -35,5 +35,15 @@ before="$(head_of "$wt")"
 echo c >> "$wt/a.txt"; scratch_git "$wt" commit -qam "in the worktree"
 check "a commit in a linked worktree goes through" 1 "$([ "$(head_of "$wt")" != "$before" ] && echo 1 || echo 0)"
 
+# The generated convergence paths: a workflow the commit makes run a new helper gets the helper listed, in that commit.
+mkdir -p "$wt/scripts/ci" "$wt/.github/workflows" "$wt/.github/scripts"
+cp "$REPO_ROOT/scripts/ci/convergence_paths.py" "$wt/scripts/ci/"
+printf '# paths\nworker/src/main/**\n' > "$wt/.github/convergence-paths.txt"
+printf 'jobs:\n  x:\n    steps:\n      - run: .github/scripts/leg-helper.sh\n' > "$wt/.github/workflows/identity-model-convergence.yml"
+: > "$wt/.github/workflows/country-convergence-leg.yml"; : > "$wt/.github/scripts/leg-helper.sh"
+scratch_git "$wt" add -f .github scripts/ci/convergence_paths.py; scratch_git "$wt" commit -qm "a leg runs a new helper"
+check "a commit making a leg run a new helper lists it, in the same commit" 1 \
+  "$(scratch_git "$wt" show HEAD:.github/convergence-paths.txt | grep -cx '.github/scripts/leg-helper.sh')"
+
 if [ "$fails" -ne 0 ]; then echo "pre-commit: $fails failed"; exit 1; fi
 echo "pre-commit: all checks passed"

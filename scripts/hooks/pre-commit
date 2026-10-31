@@ -10,7 +10,16 @@ set -euo pipefail
 [ -n "${ALLOW_ROOT_COMMIT:-}" ] && exit 0
 git_dir="$(cd "$(git rev-parse --git-dir)" && pwd -P)"
 common_dir="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"
-[ "$git_dir" != "$common_dir" ] && exit 0 # a linked worktree: commit away
+if [ "$git_dir" != "$common_dir" ]; then # a linked worktree: commit away, with the generated lists current
+  # GENERATED LISTS: .github/convergence-paths.txt's generated block (scripts/ci/convergence_paths.py) is rewritten
+  # from the workflows being committed and added to the commit, so a helper a leg starts to run is listed with it.
+  top="$(git rev-parse --show-toplevel)"
+  if [ -f "$top/scripts/ci/convergence_paths.py" ] && [ -f "$top/.github/convergence-paths.txt" ]; then
+    (cd "$top" && python3 scripts/ci/convergence_paths.py --write >&2 && git add .github/convergence-paths.txt) || {
+      echo "pre-commit: scripts/ci/convergence_paths.py --write failed" >&2; exit 1; }
+  fi
+  exit 0
+fi
 
 cat >&2 <<EOF
 pre-commit: refusing to commit in the ROOT checkout ($(git rev-parse --show-toplevel)).

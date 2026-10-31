@@ -141,40 +141,13 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
     required.filterNot(covered) shouldBe empty
   }
 
-  // A leg's verdict is also what its CI plumbing makes of it: the composite actions that
-  // restore its inputs and publish its pair, the scripts that post its status. Every
-  // repository file the convergence workflows run — `uses: ./…` and every `scripts/…` or
-  // `.github/…` path they name, transitively — is listed, or named below as running only
-  // after the verdict is in.
+  // A leg's verdict is also what its CI plumbing makes of it: every repository file the convergence workflows run is
+  // in the paths file's GENERATED block (scripts/ci/convergence_paths.py, rewritten by the pre-commit hook), or listed
+  // by hand. A block left stale -- a commit made without the hook -- fails here.
   it should "list every repository file the convergence workflows run" in {
-    val afterTheVerdict = Set(
-      ".github/actions/convergence-bisect-request/action.yml", // asks for a bisect of a red run
-      ".github/actions/hard-clusters-ratchet/action.yml",     // turns a red leg's findings into seeds
-      ".github/actions/report-timings/action.yml",            // reports the run's step timings
-      ".github/workflows/report-timings.yml",                 // ...as the run's last job, `timings`
-      "scripts/ci/ci_http_calls.py",                          // reports the external services a job called
-    )
-    // Read as data, not run: the paths list names every file above, and the reuse check (convergence_reuse.py) keys a
-    // commit by it -- what IT names is held by this test, not run by the workflows.
-    val readAsData = Set(".github/convergence-paths.txt")
-    val Reference = """(?:\./)?((?:\.github|scripts)/[\w./-]*\w)""".r
-    def referencedBy(file: String): Set[String] =
-      RepoFile.read(file).linesIterator.filterNot(_.trim.startsWith("#"))
-        .flatMap(l => Reference.findAllMatchIn(l).map(_.group(1))).toSet
-        .flatMap { ref =>
-          val action = Paths.get(ref, "action.yml")
-          if (Files.isRegularFile(Paths.get(ref))) Set(ref)
-          else if (Files.isRegularFile(action)) Set(action.toString)
-          else Set.empty
-        }
-    val roots = Set(".github/workflows/identity-model-convergence.yml", ".github/workflows/country-convergence-leg.yml")
-    val run = Iterator.iterate((roots, roots)) { case (seen, frontier) =>
-      val next = (frontier -- afterTheVerdict -- readAsData).flatMap(referencedBy) -- seen
-      (seen ++ next, next)
-    }.dropWhile(_._2.nonEmpty).next()._1
-
-    run should contain(".github/actions/convergence-setup/action.yml")
-    (run -- afterTheVerdict).toSeq.sorted.filterNot(covered) shouldBe empty
+    val out    = new StringBuilder
+    val status = Seq("python3", "scripts/ci/convergence_paths.py", "--check").!(ProcessLogger(l => out.append(l).append('\n'), l => out.append(l).append('\n')))
+    withClue(out.toString)(status shouldBe 0)
   }
 
   // A leg's takes check and hard-cluster ratchet run Scala tools that live outside src/main; their flags, outputs and
