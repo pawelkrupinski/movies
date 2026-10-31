@@ -110,7 +110,7 @@ jobs:
             # IP, and TMDB and IMDb limit per IP -- six legs at once, each pacing only itself, drew ~70k 429s (run
             # 322). The `forgejo-recording` runner sets FORGEJO_RATE_PERMITS, and every leg's live wire asks that one
             # permit service before each request (tools.RatePermits). github.com keeps the leg's default runner.
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'forgejo-recording' }}
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'forgejo-recording' }}
             # Germany's recording ran out of its 4g twice off github.com, in GC thrash from ~20 min into the suite
             # (runs 322, 408); 8g still fits the runner beside mongod (ConvergenceRunnerMemorySpec). Empty on
             # github.com, which keeps the row's own heap.

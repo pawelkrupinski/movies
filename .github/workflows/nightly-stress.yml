@@ -50,7 +50,7 @@ jobs:
             fail-fast: false
             matrix:
                 half: ${{ fromJSON(github.server_url == 'https://github.com' && '[1, 2]' || '[1]') }}
-        runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'ubuntu-24.04' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         # ~25s an iteration for the in-JVM set measured locally, the Mongo set more; 50 of both
         # fit well inside this, and a hung harness still stops.
         timeout-minutes: 180

@@ -56,7 +56,7 @@ jobs:
             shards: ${{ steps.shards.outputs.shards }}
             # The compare rows' runner and ceiling, evaluated HERE: their matrix reads this job's outputs, so Forgejo
             # re-parses them with these outputs and nothing else (WorkflowPlanSpec).
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }}
             ceiling: ${{ github.server_url == 'https://github.com' && 350 || 600 }}
             hosted: ${{ github.server_url == 'https://github.com' }}
         steps:
@@ -87,8 +87,8 @@ jobs:
     compare:
         needs: [plan]
         if: needs.plan.outputs.run != ''
-        # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
-        runs-on: ${{ needs.plan.outputs.runner || 'ubuntu-24.04' }}
+        # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ${{ needs.plan.outputs.runner || 'ubuntu-22.04' }}
         # github.com caps a job at 6 h: one country's shard there, the whole set on Forgejo.
         timeout-minutes: ${{ fromJSON(needs.plan.outputs.ceiling || '350') }}
         strategy:

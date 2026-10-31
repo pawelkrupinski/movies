@@ -117,7 +117,7 @@ jobs:
     refit:
         needs: [ measure ]
         if: ${{ !cancelled() && (needs.measure.result == 'success' || needs.measure.result == 'skipped') }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         timeout-minutes: 150
         steps:
             # main's tip, not the triggering commit: a long run can see main gain a

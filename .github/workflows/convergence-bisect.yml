@@ -100,7 +100,7 @@ jobs:
             red-run:  ${{ steps.requests.outputs.red-run }}
             # The bisect rows' runner, evaluated HERE: their matrix reads this job's outputs, so Forgejo re-parses them
             # with these outputs and no `github` -- a `github.server_url` read there is empty (WorkflowPlanSpec).
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }} # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         steps:
             - uses: actions/checkout@v5
               with:

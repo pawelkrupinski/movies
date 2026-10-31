@@ -74,7 +74,7 @@ jobs:
         outputs:
             countries: ${{ steps.countries.outputs.countries }}
             recording: ${{ inputs.recording }}
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'forgejo-recording' }}
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'forgejo-recording' }}
             hosted: ${{ github.server_url == 'https://github.com' }}
         steps:
             - uses: actions/checkout@v5

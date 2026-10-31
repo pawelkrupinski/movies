@@ -58,8 +58,8 @@ permissions:
 jobs:
     run:
         name: run
-        # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
+        # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || inputs.tier || 'measure' }}
         # The longest green run took 162 min (run 965, five countries); the mean is 10. CiRowTimeoutSpec.
         timeout-minutes: 200
         # THE PLAN (WorkflowPlanSpec): this run's root, so the one job that reads `inputs` and `github` whole; the jobs

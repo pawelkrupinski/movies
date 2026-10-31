@@ -57,15 +57,17 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** mongod 8.3 refuses to start on Linux 6.19 and newer ("Linux kernel versions 6.19 and newer has a
-   *  known incompatibility", SERVER-121912), and the ubuntu-26.04 runner boots 7.0 — its first Main run
-   *  (38781236870) died there. Until production's release starts on that kernel, every job that starts
-   *  the pinned mongod stays on ubuntu-24.04 (kernel 6.17) ON GITHUB.COM: its `runs-on:` evaluated there (RunnerLabel),
+  /** mongod 8.3 refuses to start on Linux 6.19 through 7.0.13 ("Linux kernel versions 6.19 and newer has a
+   *  known incompatibility", SERVER-121912; TCMalloc's rseq use), and the ubuntu-26.04 runner boots 7.0 — its first
+   *  Main run (38781236870) died there. Since the 2026-10-25 image ubuntu-24.04 boots one too (github.com Main
+   *  41182034274: both integration rows). Until production's release starts on that kernel, every job that starts
+   *  the pinned mongod runs on ubuntu-22.04 (kernel 6.8) ON GITHUB.COM: its `runs-on:` evaluated there (RunnerLabel),
    *  or, for a job running on `${{ inputs.runner }}`, that input's default and every caller's `runner:` evaluated there.
    *  Off github.com every label -- ubuntu-*, and each tier's (RunnerClassSpec) -- is one job image on ci-runner's
-   *  kernel, so `${{ inputs.lane || 'ubuntu-24.04' }}` and `... && 'ubuntu-24.04' || 'measure'` pass. */
+   *  kernel, so `${{ inputs.lane || github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'ubuntu-24.04' }}`
+   *  and `... && 'ubuntu-22.04' || 'measure'` pass. */
   private val MongoStarts  = Seq("scripts/ci/start-mongo-replset.sh", "./.github/actions/convergence-setup")
-  private val MongoRunner  = "ubuntu-24.04"
+  private val MongoRunner  = "ubuntu-22.04"
   private val OnGitHub     = RunnerLabel.Context(RunnerLabel.GitHub, RunnerLabel.Main)
 
   /** A `runs-on` that reads its plan job's output (WorkflowPlanSpec) is that output's expression, as the plan declares it. */
@@ -99,7 +101,7 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
       .filterNot(_.contains("needs."))
       .map(RunnerLabel(_, OnGitHub)).toSeq
 
-    withClue(s"mongod $productionVersion will not start on kernel 6.19+ (ubuntu-26.04): ") {
+    withClue(s"mongod $productionVersion will not start on kernels 6.19-7.0.13 (ubuntu-24.04, ubuntu-26.04): ") {
       wrong shouldBe empty
       fallbacks should not be empty
       all(fallbacks) shouldBe MongoRunner

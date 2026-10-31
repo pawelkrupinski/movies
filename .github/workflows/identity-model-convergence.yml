@@ -169,7 +169,7 @@ jobs:
             # there, which sent main's legs to `measure` (run 2783, 2026-10-26; RunnerClassSpec). The run's tier off
             # github.com unless a dispatch names a runner: main's own runs gate every push, so `gate-lane`; a
             # measurement's, `measure`.
-            runner: ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-24.04' || inputs.tier || 'measure' }}
+            runner: ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-22.04' || inputs.tier || 'measure' }}
             # THE REST OF THE PLAN (WorkflowPlanSpec): every later job's decision, evaluated here too, as expressions so
             # they are set however this job ends. A `runs-on` read of one falls back to a label both forges have.
             tier: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}

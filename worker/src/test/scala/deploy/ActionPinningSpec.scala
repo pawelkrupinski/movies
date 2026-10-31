@@ -64,14 +64,17 @@ class ActionPinningSpec extends AnyFlatSpec with Matchers {
   private val SetupSwiftUbuntus = Set("20.04", "22.04", "24.04")
 
   "every job installing Swift via setup-swift" should "run on an Ubuntu setup-swift supports" in {
-    // `ubuntu-24.04`, or ci.yml's `${{ inputs.lane || 'ubuntu-24.04' }}`, whose lane is Forgejo-only (RunnerClassSpec).
-    val RunsOn = """runs-on:\s*(?:\$\{\{ inputs\.lane \|\| ')?ubuntu-(\d\d\.\d\d)[\s']""".r
+    // `ubuntu-24.04`, or ci.yml's `${{ inputs.lane || github.server_url == 'https://github.com' && 'ubuntu-22.04' ||
+    // 'ubuntu-24.04' }}`, whose lane is Forgejo-only (RunnerClassSpec): every Ubuntu its `runs-on:` can pick is supported.
+    val RunsOn  = """(?m)^\s*runs-on:(.*)$""".r
+    val Version = """ubuntu-(\d\d\.\d\d)""".r
     val unsupported = for {
       file        <- RepoFile.workflows()
       (name, job) <- RepoFile.jobs(RepoFile.read(file.getPath))
       code         = RepoFile.withoutComments(job)
       if code.contains("swift-actions/setup-swift@")
-      if !RunsOn.findFirstMatchIn(code).exists(m => SetupSwiftUbuntus(m.group(1)))
+      versions     = RunsOn.findFirstMatchIn(code).toSeq.flatMap(m => Version.findAllMatchIn(m.group(1).split(" #")(0)).map(_.group(1)))
+      if versions.isEmpty || !versions.forall(SetupSwiftUbuntus)
     } yield s"${file.getName}: $name"
 
     withClue(s"setup-swift@v2 runs only on Ubuntu ${SetupSwiftUbuntus.toSeq.sorted.mkString(" / ")}: ") {

@@ -345,7 +345,7 @@ jobs:
         name: heavy rows
         needs: [ plan ]
         if: ${{ needs.plan.outputs.heavy != '' }}
-        runs-on: ubuntu-24.04
+        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
         timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5
