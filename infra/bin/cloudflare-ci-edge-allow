@@ -16,7 +16,7 @@
 #
 # Steps, each skipped when already done:
 #   1. EDGE_CHECK_KEY: a fresh random value into the `movies` vault (never argv, never printed);
-#   2. it into the Forgejo Actions secret EDGE_CHECK_KEY (infra/bin/push-gh-secrets --forgejo);
+#   2. it into the GitHub Actions secret EDGE_CHECK_KEY (infra/bin/push-gh-secrets);
 #   3. per zone: the custom rule `ci-runner-edge-key` (first in the zone's custom rules), then the IP Access
 #      Rule allowing 162.55.0.154;
 #   4. verify on ci-runner: without the key 403 (blocked, NOT `cf-mitigated: challenge`), with it 401.
@@ -39,7 +39,7 @@ if ! secrets list movies | awk '{print $1}' | grep -qx EDGE_CHECK_KEY; then
 fi
 
 if (( dry )); then "$here/push-gh-secrets" --dry-run EDGE_CHECK_KEY
-else FORGEJO_TOKEN="$(secrets get movies FORGEJO_API_TOKEN)" "$here/push-gh-secrets" --forgejo EDGE_CHECK_KEY
+else "$here/push-gh-secrets" EDGE_CHECK_KEY
 fi
 
 keys=(CLOUDFLARE_API_TOKEN EDGE_CHECK_KEY)

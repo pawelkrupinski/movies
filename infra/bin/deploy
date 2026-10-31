@@ -9,7 +9,7 @@
 
 WHY THIS EXISTS (2026-10-23). Every deploy needed a hand-made command, and each kind went wrong:
   * a STALE CHECKOUT rolled ci-runner back (a run 8 commits behind main stopped a runner, killing
-    its jobs). This refuses a checkout behind forgejo main before anything else; `--allow-stale`
+    its jobs). This refuses a checkout behind origin main before anything else; `--allow-stale`
     is the deliberate-rollback override.
   * monitoring-1's BARE IP binds a restricted forced-command key, so `ssh <ip>` is not a shell. This
     uses the ssh alias named like the host when `ssh -G` shows one, and checks every remote reply
@@ -91,22 +91,22 @@ def staleness_verdict(behind: int, ahead: int, dirty: bool) -> tuple[bool, str]:
     """(ok, message). Behind main is refused: deploying it rolls the host back. Ahead (an unpushed
     fix being tried) and dirty are allowed and SAID, because the revision on the host will say so."""
     if behind > 0:
-        return False, (f"this checkout is {behind} commit(s) behind forgejo main: deploying it would "
-                       "roll the host back. `git pull --ff-only forgejo main` first "
+        return False, (f"this checkout is {behind} commit(s) behind origin main: deploying it would "
+                       "roll the host back. `git pull --ff-only origin main` first "
                        "(or --allow-stale for a deliberate rollback).")
     notes = []
     if ahead:
-        notes.append(f"{ahead} commit(s) ahead of forgejo main (not pushed)")
+        notes.append(f"{ahead} commit(s) ahead of origin main (not pushed)")
     if dirty:
         notes.append("uncommitted changes (the revision will be a -dirty one)")
-    return True, "checkout: " + ("; ".join(notes) if notes else "at forgejo main")
+    return True, "checkout: " + ("; ".join(notes) if notes else "at origin main")
 
 
 def check_checkout(allow_stale: bool) -> str:
-    if run(["git", "fetch", "-q", "forgejo", "main"], check=False, timeout=300).returncode != 0:
+    if run(["git", "fetch", "-q", "origin", "main"], check=False, timeout=300).returncode != 0:
         if allow_stale:
             return "checkout: NOT checked (fetch failed, --allow-stale)"
-        raise Refused("could not fetch forgejo main to check this checkout is current")
+        raise Refused("could not fetch origin main to check this checkout is current")
     behind = int(run(["git", "rev-list", "--count", "HEAD..FETCH_HEAD"]).stdout.strip())
     ahead = int(run(["git", "rev-list", "--count", "FETCH_HEAD..HEAD"]).stdout.strip())
     dirty = bool(run(["git", "status", "--porcelain", "--untracked-files=no", "."]).stdout.strip())
@@ -609,7 +609,7 @@ def main(argv=None) -> int:
                         help="ci-runner: use bin/forgejo-bootstrap's rsync + nixos-rebuild path even "
                              "when CI staged this tree (it is the fallback when CI has not)")
     parser.add_argument("--allow-stale", action="store_true",
-                        help="deploy a checkout behind forgejo main (a deliberate rollback)")
+                        help="deploy a checkout behind origin main (a deliberate rollback)")
     parser.add_argument("--list", action="store_true", help="list the hosts this flake declares")
     args = parser.parse_args(argv)
     os.chdir(REPO)

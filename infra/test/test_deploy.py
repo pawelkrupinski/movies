@@ -41,7 +41,7 @@ class Staleness(unittest.TestCase):
         self.assertFalse(deploy.staleness_verdict(behind=1, ahead=3, dirty=True)[0])
 
     def test_at_main_is_fine(self):
-        self.assertEqual(deploy.staleness_verdict(0, 0, False), (True, "checkout: at forgejo main"))
+        self.assertEqual(deploy.staleness_verdict(0, 0, False), (True, "checkout: at origin main"))
 
     def test_ahead_and_dirty_are_allowed_and_said(self):
         ok, message = deploy.staleness_verdict(0, 2, True)
@@ -169,7 +169,7 @@ class Rendering(unittest.TestCase):
         facts = deploy.parse_probe(PROBE_OUT)
         text = deploy.render_preview("ci-runner", "pawel@10.1.0.3", facts,
                                      deploy.parse_dry_activate(DRY), "/nix/store/ddd", "def",
-                                     "checkout: at forgejo main", "bootstrap")
+                                     "checkout: at origin main", "bootstrap")
         self.assertIn("runner drains           gitea-runner-ubuntu.service", text)
         self.assertIn("finishes its running jobs", text)
         self.assertIn("vswitch-watchdog.timer (active)", text)
