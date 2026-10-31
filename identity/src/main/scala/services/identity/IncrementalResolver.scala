@@ -79,16 +79,19 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
    *  landed together — resolving a family they all touch once, not once per event, a bounded batch at a time. */
   def batch(seen: Seq[Listing] = Nil, gone: Seq[ListingKey] = Nil, answered: AnswersChanged = AnswersChanged.Empty): Unit = {
     val left    = gone.filter(isHeld)
+    // two listings under one key in a batch: the one a whole resolve keeps, the smallest by the total order
+    // ([[Listing.distinct]]) — never the last to arrive
+    val arriving = IncrementalResolver.onePerKey(seen)
     left.foreach(release)
     // A listing whose detail page was answered anew is seen again: its evidence may have moved —
     // also when its venue re-published it unchanged in the same batch, which alone would not.
     // (A listing that left in this batch is released already, so it is held no more.)
     val redetailed = answered.details.flatMap(heldListing)
-    val fresh      = seen.filterNot(listing => heldListing(listing.key).contains(listing))
+    val fresh      = arriving.filterNot(listing => heldListing(listing.key).contains(listing))
     // An equal listing re-published with another poster, other screening days or names resolves nothing again, but is
     // held in its place, under the held key object its families name: the stages after the model read those fields
     // off the model's listings (`listings`, which the projection's own listings adopt).
-    seen.foreach(listing => byKey.get(listing.key).foreach { keyed =>
+    arriving.foreach(listing => byKey.get(listing.key).foreach { keyed =>
       val held = keyed.listing
       if (held != null && (held ne listing) && held == listing && Listing.movedOutsideEquality(held, listing))
         keyed.listing = listing.copy(key = held.key)
@@ -107,7 +110,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
    *  whose family changed while the model was not running, or that no stored family holds — is
    *  resolved anew, a title-key component at a time. What moved while it was down is exactly what
    *  those checks find, so a restart needs no replay of what it missed. */
-  def restore(listings: Seq[Listing]): Unit = {
+  def restore(taken: Seq[Listing]): Unit = {
+    val listings = IncrementalResolver.onePerKey(taken)
     listings.foreach(hold)
     clock.context(corpus.seen(listings))
     // Families decided under other rules stand for nothing: every one is re-resolved.
@@ -325,6 +329,12 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
 }
 
 object IncrementalResolver {
+
+  /** `listings` with one listing per key, the one a whole resolve keeps ([[Listing.distinct]]), in their order: as given
+   *  when no key repeats, the common case. */
+  private[identity] def onePerKey(listings: Seq[Listing]): Seq[Listing] =
+    if (listings.iterator.map(_.key).distinct.size == listings.size) listings
+    else { val kept = Listing.distinct(listings).toSet; listings.filter(kept).distinctBy(_.key) }
   /** One listing key's entry: the listing held (null once released) and its family (-1 for none). */
   private final class Keyed { var listing: Listing = null; var family: Int = -1 }
 
