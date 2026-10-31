@@ -12,7 +12,6 @@ import services.tasks.{EnrichDetailsTasks, InMemoryTaskQueue}
 import services.venuepages.{InMemoryVenuePageStore, VenuePage, VenuePageKey}
 
 import java.time.Instant
-import scala.concurrent.duration._
 
 /** How long a cut-over country's new listing waits for its venue page: a page that carries its identity
  *  (a deferring venue) until it is read or gone; a display-only page only until it has been tried once —
@@ -29,7 +28,7 @@ class VenuePageWaitSpec extends AnyFlatSpec with Matchers {
     val pages     = new InMemoryVenuePageStore
     val index     = new VenuePageIndex(pages)
     val freshness = new InMemoryFreshnessStore
-    val pageWait  = new VenuePageWait(Seq(enricher), index, new InMemoryTaskQueue, freshness, 1.hour, _root_.tools.SpecClock.Pinned)
+    val pageWait  = new VenuePageWait(Seq(enricher), index, new InMemoryTaskQueue, freshness, _root_.tools.SpecClock.Pinned)
     def attempted(): Unit = freshness.markFresh(EnrichDetailsTasks.pageAttempted("kino-apollo", Page), FreshnessKind.DetailEnrich, now)
     def read(): Unit = { pages.put(VenuePage(VenuePageKey("kino-apollo", Page), VenuePage.Read(FilmDetail()), now)); index.pageRead("kino-apollo", Page); index.settle() }
   }

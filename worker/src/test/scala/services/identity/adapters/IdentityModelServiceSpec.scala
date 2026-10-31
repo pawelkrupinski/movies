@@ -347,7 +347,6 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val failingPages = new PageWait {
       def awaiting(listing: Listing): Boolean = if (drainFail) { drainFail = false; throw new IllegalStateException("drain broke") } else false
       def request(listing: Listing): Unit = ()
-      val limit: FiniteDuration = 1.hour
     }
     val service = new IdentityModelService(
       () => { val n = built.incrementAndGet(); if (brokenAt(n)) throw new IllegalStateException("store unreachable")
@@ -371,7 +370,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     } finally scheduler.shutdownNow()
   }
 
-  // ── a new listing waits for its venue page (a cut-over country) ─────────────────────────────
+  // ── a new listing's venue page is asked for, and the listing decided meanwhile (a cut-over country) ────────
 
   /** Which listings' pages are unread, and the pages asked for: what a cut-over country's VenuePageWait
    *  answers from venue_pages and the task queue. */
@@ -380,50 +379,34 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val requested = scala.collection.mutable.ArrayBuffer.empty[ListingKey]
     def awaiting(listing: Listing): Boolean = unread(listing.key)
     def request(listing: Listing): Unit = { requested += listing.key; () }
-    val limit: FiniteDuration = 1.hour
   }
   private def ticking = new tools.MutableClock(java.time.Instant.parse("2026-10-01T10:00:00Z"))
-  private def waiting(world: World, pages: Pages, clock: java.time.Clock) = new IdentityModelService(
+  private def paging(world: World, pages: Pages, clock: java.time.Clock) = new IdentityModelService(
     () => new IncrementalResolver(new TrackedLookups(world.lookups, world.reads), normalizer, calibration, store = world.store),
     world.reads, () => listingsOf(world.scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(),
     pageWait = pages, clock = clock)
   private def held(service: IdentityModelService) = service.peek(10.seconds).get.resolution.decisions.flatMap(_.listings).toSet
 
-  "a new listing whose venue page is unread" should "wait for the page, asked for once, and be taken in once it is read" in {
+  // Step 6 (the owner, 2026-10-31): decide from the inputs as they stand. A new listing waited out of the model for its
+  // page up to an hour, shown with no film meanwhile; it is taken in at once, its page asked for once.
+  "a new listing whose venue page is unread" should "be taken in at once, its page asked for once" in {
     val (world, pages, clock) = (new World, new Pages, ticking)
-    val service = waiting(world, pages, clock)
+    val service = paging(world, pages, clock)
     service.takeUp()
     val lalka = movie(Multikino, "Lalka", Some(2025))
     pages.unread = listingsOf(Map(Multikino -> Seq(lalka))).map(_.key).toSet
     world.scrape(service, Multikino, Seq(lalka))
-    service.drain()
-    held(service) shouldBe empty
-    pages.requested.toSeq shouldBe pages.unread.toSeq
-    service.drain()
-    pages.requested.size shouldBe 1                                      // asked once, not every drain
-
-    pages.unread = Set.empty                                             // the page was read
-    service.drain()
-    held(service) shouldBe pages.requested.toSet
-  }
-
-  it should "be taken in after the limit even if its page is never read" in {
-    val (world, pages, clock) = (new World, new Pages, ticking)
-    val service = waiting(world, pages, clock)
-    service.takeUp()
-    val lalka = movie(Multikino, "Lalka", Some(2025))
-    pages.unread = listingsOf(Map(Multikino -> Seq(lalka))).map(_.key).toSet
-    world.scrape(service, Multikino, Seq(lalka))
-    service.drain()
-    held(service) shouldBe empty
-    clock.advanceSeconds(61 * 60)
     service.drain()
     held(service) shouldBe pages.unread
+    pages.requested.toSeq shouldBe pages.unread.toSeq
+    world.scrape(service, Multikino, Seq(lalka))
+    service.drain()
+    pages.requested.size shouldBe 1                                      // asked once, not every drain
   }
 
-  it should "never hold back a listing the model already holds, and be forgotten when its venue stops listing it" in {
+  it should "not have its page asked for again once the model holds it, and leave with its venue's listing" in {
     val (world, pages, clock) = (new World, new Pages, ticking)
-    val service = waiting(world, pages, clock)
+    val service = paging(world, pages, clock)
     service.takeUp()
     val lalka   = movie(Multikino, "Lalka", Some(2025))
     val matilda = movie(Multikino, "Matilda")
@@ -431,12 +414,13 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     service.drain()
     val lalkaKey = listingsOf(Map(Multikino -> Seq(lalka))).map(_.key).toSet
     held(service) shouldBe lalkaKey
-    // Its page is re-asked later (a refresh): the model keeps it, and holds back only the newcomer.
+    // Its page is re-asked later (a refresh): the model keeps it, and asks only the newcomer's page.
     pages.unread = listingsOf(Map(Multikino -> Seq(lalka, matilda))).map(_.key).toSet
     world.scrape(service, Multikino, Seq(lalka, matilda))
     service.drain()
-    held(service) shouldBe lalkaKey
-    // Matilda leaves before its page is read: nothing of it is ever taken in.
+    held(service) shouldBe pages.unread
+    pages.requested.toSet shouldBe pages.unread -- lalkaKey
+    // Matilda leaves before its page is read: it goes as any listing its venue stops billing.
     world.scrape(service, Multikino, Seq(lalka))
     service.drain()
     pages.unread = Set.empty

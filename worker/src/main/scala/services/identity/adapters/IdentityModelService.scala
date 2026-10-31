@@ -69,7 +69,7 @@ final class IdentityModelService(
    *  (`VenuePageIndex.settle`), so the drain that follows takes them in. One that throws is logged, and
    *  the drain goes on: it must leave what it could not read for its next run. */
   beforeDrain: () => Unit = () => (),
-  /** Which new listings wait for their venue page before they are taken in (a cut-over country). */
+  /** Which new listings' venue pages are unread, each asked for once as it is taken in (a cut-over country). */
   pageWait:   PageWait = PageWait.Never,
   /** Told each time the model is taken up — at boot, and a take-up retried after one failed: the first moment a
    *  projection of it can run (the boot's, which every projection on scrapes waits for). On the model's thread. */
@@ -80,10 +80,6 @@ final class IdentityModelService(
   history:    IdentityHistory = IdentityHistory.Discard,
   build:      String = ""
 ) extends Logging {
-
-  // New listings waiting for their venue page, by venue, with when each began to wait. Touched only on
-  // the model's thread (`drain`).
-  private val waiting = scala.collection.mutable.HashMap.empty[String, Map[services.movies.ListingKey, (Listing, java.time.Instant)]]
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
   private val observations = new ConcurrentHashMap[String, ObservationReads.Change]()
@@ -178,14 +174,13 @@ final class IdentityModelService(
     ()
   }
 
-  /** A drain, then the one deadline it leaves, if any: a failed take-up's retry, the first waiting listing's
-   *  `pageWait.limit`, or — a settle of announced pages failed — another try one `settle` on. */
+  /** A drain, then the one deadline it leaves, if any: a failed take-up's retry, or — a settle of announced pages
+   *  failed — another try one `settle` on. */
   private def drainAndReschedule(): Unit = {
     tick()
     val takeUpRetry = if (model.isEmpty) retryAt else scala.None
-    val pageLimit   = waiting.valuesIterator.flatMap(_.valuesIterator.map(_._2)).minOption.map(_.plusMillis(pageWait.limit.toMillis))
     val settleRetry = Option.when(settleFailed)(clock.instant().plusMillis(settle.toMillis))
-    (takeUpRetry ++ pageLimit ++ settleRetry).minOption.foreach(at => wakeAfter(Some(at)))
+    (takeUpRetry ++ settleRetry).minOption.foreach(at => wakeAfter(Some(at)))
   }
   @volatile private var settleFailed = false
 
@@ -226,11 +221,11 @@ final class IdentityModelService(
     }
     val scraped = venues.keySet.asScala.toSeq.flatMap(venue => Option(venues.remove(venue)).map(venue -> _))
     val changes = observations.keySet.asScala.toSeq.flatMap(key => Option(observations.remove(key)).map(key -> _)).toMap
-    val (admitted, released) = admit(engine, scraped)
-    Option.when(scraped.nonEmpty || changes.nonEmpty || released.nonEmpty) {
+    admit(engine, scraped)
+    Option.when(scraped.nonEmpty || changes.nonEmpty) {
       val started = tools.Stopwatch.start()
       val before  = engine.familiesResolved
-      val scrapedSeen = admitted.flatMap(_._2) ++ released
+      val scrapedSeen = scraped.flatMap(_._2)
       val leaving     = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
       // a listing leaving loses its showings, its facts kept while a present listing of the country bills its title; one
       // back replaces what was kept of it (ListingRetention, the owner's lifetime of identity facts)
@@ -290,28 +285,14 @@ final class IdentityModelService(
       history.append(moved ++ left)
     }
 
-  /** Each scraped venue's listings the model takes in now — all but a NEW one whose venue page is unread
-   *  (`pageWait`), which waits, its page asked for once — and the waiting listings released this drain:
-   *  their page answered, or `pageWait.limit` passed. A waiting listing its venue no longer lists is
-   *  forgotten; one the model already holds never waits. */
-  private def admit(engine: IncrementalResolver, scraped: Seq[(String, Seq[Listing])]): (Seq[(String, Seq[Listing])], Seq[Listing]) = {
-    val now = clock.instant()
-    val admitted = scraped.map { case (venue, listings) =>
-      val before        = waiting.getOrElse(venue, Map.empty)
-      val (wait, take)  = listings.partition(l => !engine.heldAt(venue).contains(l.key) && pageWait.awaiting(l))
-      val stillWaiting  = wait.map(l => l.key -> (l, before.get(l.key).fold(now)(_._2))).toMap
-      wait.filterNot(l => before.contains(l.key)).foreach(pageWait.request)
-      if (stillWaiting.isEmpty) waiting.remove(venue) else waiting(venue) = stillWaiting
-      venue -> take
+  /** A NEW listing whose venue page is unread (`pageWait`) has its page asked for, once, and is taken in at once like any
+   *  other: decided on its inputs as they stand -- the page read meanwhile as no detail at all -- and Pending on the page
+   *  ([[ResolverDecision.awaits]]) until it is read, which re-resolves its family (step 6, the owner 2026-10-31: no take
+   *  held back while a question is open; it waited out of the model up to an hour before, shown with no film). */
+  private def admit(engine: IncrementalResolver, scraped: Seq[(String, Seq[Listing])]): Unit =
+    scraped.foreach { case (venue, listings) =>
+      listings.filter(l => !engine.heldAt(venue).contains(l.key) && pageWait.awaiting(l)).foreach(pageWait.request)
     }
-    val deadline = now.minusMillis(pageWait.limit.toMillis)
-    val released = waiting.toSeq.flatMap { case (venue, held) =>
-      val (go, stay) = held.partition { case (_, (l, since)) => !pageWait.awaiting(l) || !since.isAfter(deadline) }
-      if (stay.isEmpty) waiting.remove(venue) else waiting(venue) = stay
-      go.values.map(_._1)
-    }
-    (admitted, released)
-  }
 
   /** Take up the model the store kept, over the archive's listings; what queued meanwhile follows. */
   def takeUp(): Unit = {

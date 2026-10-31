@@ -182,10 +182,9 @@ class WorkerWiring(
       batched    = onModelBatch,
       reading    = () => tracked.fold("")(_.render),
       beforeDrain = () => venuePageIndex.settle(),
-      // A new listing waits for its venue page, read into venue_pages by a ReadVenuePage task, so
-      // its first resolve has the page's facts.
-      pageWait   = new services.identity.adapters.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore,
-                     WorkerWiring.VenuePageWaitLimit, clock),
+      // A new listing's unread venue page is asked for, read into venue_pages by a ReadVenuePage task; the listing is
+      // decided meanwhile, Pending on the page, and decided again once it is read.
+      pageWait   = new services.identity.adapters.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore, clock),
       takenUp    = () => identityModelTakenUp(),
       clock      = clock,
       history    = identityHistory,
@@ -611,8 +610,6 @@ object WorkerWiring {
   /** How long the identity model lets events gather before one drain takes them together: a venue
    *  scraped twice, or a family several venues touch, in that window is resolved once. */
   val IdentityModelSettle: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "seconds")
-  /** How long a cut-over country's new listing waits for its venue page before it is taken in without it. */
-  val VenuePageWaitLimit: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(1, "hour")
   /** Questions the model's prefetch keeps in flight: 64 fill a coalesced read's batch about eight
    *  times as full as the eight platform threads that each held a connection. */
   val IdentityPrefetchThreads = 64
