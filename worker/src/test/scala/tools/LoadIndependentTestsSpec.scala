@@ -49,8 +49,6 @@ class LoadIndependentTestsSpec extends AnyFlatSpec with Matchers {
   private val Allowlist: Map[String, String] = Map(
     "web/src/page/scala/tools/CdpProxyAuthSpec.scala: (System.nanoTime() / 1000000 - t0) should be < 15000L" ->
       "a real Chrome's HTTPS proxy-auth round trip: a broken challenge answer retries until Chrome gives up; 15 s tells the two apart",
-    "worker/src/it/scala/services/MongoAuthenticateOnceIntegrationSpec.scala: (System.nanoTime() - started).nanos should be < 10.seconds" ->
-      cutShort("the driver's 60 s server selection", "10 s"),
     "worker/src/it/scala/deploy/FixtureServerBootSpec.scala: withClue(\"the relaunch waited out the ceiling instead of noticing the exit: \")(elapsedSeconds should be < 30.0)" ->
       cutShort("the boot script's ceiling", "30 s"),
     "worker/src/it/scala/deploy/FixtureServerBootSpec.scala: withClue(\"a dead process should be noticed on the next poll, not at the ceiling: \")(elapsedSeconds should be < 30.0)" ->
