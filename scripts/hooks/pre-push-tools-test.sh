@@ -51,7 +51,7 @@ rm -rf "$known"
 # ── A CHECK'S TOOL MISSING BLOCKS THE PUSH, WITH THE FIX: never a silent skip ───────────────────────────────────────
 # 2026-10-21: an agent's push, sbt off its PATH, skipped the sbt check ("sbt not installed — SKIPPED") and landed
 # unchecked. A local tool missing is fixed locally, so the push fails and says how (user, 2026-10-21); only an external
-# service unreachable (the red gate's Forgejo API, the GitOps clone) stays a warning.
+# service unreachable (the GitOps clone) stays a warning.
 printf '\033[36m▸\033[0m pre-push: a missing tool blocks the push, with the fix\n'
 # $PATH with <tool>... gone: a directory holding one is replaced by links to its other commands.
 path_without() { # <tool>...
@@ -121,15 +121,13 @@ code="$(cd "$grepo" && all_green spec_bounded env PREPUSH_SKIP="${pathchecks/das
   PREPUSH_STALL_SECONDS=2 KINOWO_STALL_POLL_SECONDS=1 KINOWO_STALL_CPU_CENTIS=10 \
   bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$thung" >/dev/null 2>"$gate/err"; echo $?)"
 check "...while a check busy past the bound passes" "0 0" "$code $(grep -c 'STALLED' "$gate/err")"
-# The red gate: its TOOLS missing block like any check's; Forgejo itself unreachable blocks a production push too.
+# The red gate: its TOOLS missing block like any check's; GitHub itself unreachable blocks a production push too.
 scratch_git "$grepo" reset -q --hard "$oldrefs_base"; tplain="$(commit_paths "a production change" -- web/src/main/scala/A.scala)"
 gate_push() { (cd "$grepo" && PREPUSH_SKIP="$pathchecks" "$@" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$tplain" \
   >/dev/null 2>"$gate/err"); echo $?; }
-check "jq missing on a Forgejo push: the red gate BLOCKS, with the fix" "1 1" \
-  "$(gate_push env PATH="$(path_without jq)" PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'brew install jq' "$gate/err")"
 check "gh missing on a GitHub push: the red gate BLOCKS, with the fix" "1 1" \
   "$(gate_push env PATH="$(path_without gh)") $(grep -c 'brew install gh' "$gate/err")"
-check "...Forgejo unreachable: the gate unread, a production push is refused" "1 1" \
-  "$(gate_push env FJ_FAILS=1 GH_FAILS=1 PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=t) $(grep -c 'red-build gate UNREAD' "$gate/err")"
+check "...GitHub unreachable: the gate unread, a production push is refused" "1 1" \
+  "$(gate_push env GH_FAILS=1) $(grep -c 'red-build gate UNREAD' "$gate/err")"
 
 spec_summary

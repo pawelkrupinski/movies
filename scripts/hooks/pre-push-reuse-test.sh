@@ -50,22 +50,6 @@ check "--fast-only judges no red gate and runs no path check but sbt (scripttest
 check "a batch push with PREPUSH_REUSE_FAST=1 reuses the fast pass: nothing runs, said once" "0 7 1" \
   "$(reuse_push "$rbase..$fast_head" PREPUSH_REUSE_FAST=1) $(grep -c "the waiting batch's fast check passed" "$gate/err")"
 check "...an ordinary push of it runs its checks" "0 8" "$(reuse_push "$rbase..$fast_head")"
-# A REMOTE PASS: agentctl pushes a change its checks passed on ci-runner with PREPUSH_REMOTE_RUN=<run id>; the run stands
-# for the checks only when Forgejo says it is precommit-check.yml, a success, on exactly the pushed commit
-remote_head="$(commit_paths "a change checked on ci-runner" -- scripts/z.sh)"
-fj_check_run() { printf '{"id":%s,"workflow_id":"%s","status":"%s","commit_sha":"%s"}' "$1" "$2" "$3" "$4"; }
-remote_push() { reuse_push "$rbase..$remote_head" PREPUSH_NO_REUSE=1 PREPUSH_REMOTE_URL="$fjremote" FORGEJO_API_TOKEN=envtoken \
-  FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" PREPUSH_REMOTE_RUN=55 "$@"; }
-check "a push whose remote run Forgejo confirms (precommit-check.yml, success, this commit) runs no check here" "0 8 1" \
-  "$(remote_push FJ_RUN="$(fj_check_run 55 precommit-check.yml success "$remote_head")") $(grep -c 'passed on ci-runner' "$gate/err")"
-vouches() { echo "$1 $(grep -c 'does not vouch' "$gate/err")"; }
-check "...a failed run: every check runs here, said" "0 9 1" \
-  "$(vouches "$(remote_push FJ_RUN="$(fj_check_run 55 precommit-check.yml failure "$remote_head")")")"
-check "...another workflow's success: the same" "0 10 1" \
-  "$(vouches "$(remote_push FJ_RUN="$(fj_check_run 55 main.yml success "$remote_head")")")"
-check "...a success on another commit: the same" "0 11 1" \
-  "$(vouches "$(remote_push FJ_RUN="$(fj_check_run 55 precommit-check.yml success "$rbase")")")"
-check "...Forgejo not answering: the same" "0 12 1" "$(vouches "$(remote_push FJ_FAILS=1)")"
 head -7 "$reuse/runs" > "$reuse/runs.kept" && mv "$reuse/runs.kept" "$reuse/runs"  # the counts below start from 7
 scratch_git "$grepo" reset -q --hard "$docs_only"
 # A hook that differs by one byte: a copy beside the helpers it sources, a comment appended.
@@ -88,31 +72,31 @@ HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$docs_only" >/dev/
 mutated="$(commit_paths "a tree the mutant has not seen" -- scripts/z.sh)"
 check "...and it reuses a changed tree, which the check above refuses" "0 12" \
   "$(HOOK="$reuse/hook/scripts/hooks/pre-push" reuse_push "$rbase..$mutated")"
-# CHECK FIRST: git opens the push's connection before the hook runs, and a long hook outlives it (the Forgejo tunnel
-# restarting under load, 2026-10-23). A dry run of `<remote>/main..HEAD` reads that remote's runs, as the push to it
-# will, so the push that follows reuses its pass and holds the connection for seconds.
-scratch_git "$grepo" remote add fj "$fjremote"
-scratch_git "$grepo" update-ref refs/remotes/fj/main "$rbase"
+# CHECK FIRST: git opens the push's connection before the hook runs, and a long hook outlives it (2026-10-23). A dry
+# run of `<remote>/main..HEAD` is keyed like the push to it, so the push that follows reuses its pass and holds the
+# connection for seconds.
+ghremote=git@github.com:pawelkrupinski/movies.git
+scratch_git "$grepo" remote add or "$ghremote"
+scratch_git "$grepo" update-ref refs/remotes/or/main "$rbase"
 checkfirst="$(commit_paths "a change checked before its push" -- scripts/z.sh)"
-fjgreens() { GH_FAILS=1 SECRETS_STATE=unlocked FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" FJ_REC="[$fjgreen]" "$@"; }
-check "a dry run of fj/main..HEAD runs the checks, reading Forgejo's runs, not gh's" "0 13 0" \
-  "$(fjgreens reuse_push "fj/main..$checkfirst") $(grep -c 'HTTP 502' "$gate/err")"
+greens() { GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" "$@"; }
+check "a dry run of or/main..HEAD runs the checks" "0 13" "$(greens reuse_push "or/main..$checkfirst")"
 out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$checkfirst" "$rbase" \
-        | fjgreens env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cache" PREPUSH_SKIP="${pathchecks/scripttests/}" \
-          STUB_RUNS="$reuse/runs" PREPUSH_FLOOR_BASH="$gate/no-such-bash" bash "$REPO_ROOT/scripts/hooks/pre-push" fj "$fjremote" 2>&1)"; code=$?
-check "...and the push to fj that follows reuses that pass: nothing runs again" "0 13 1" \
+        | greens env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cache" PREPUSH_SKIP="${pathchecks/scripttests/}" \
+          STUB_RUNS="$reuse/runs" PREPUSH_FLOOR_BASH="$gate/no-such-bash" bash "$REPO_ROOT/scripts/hooks/pre-push" or "$ghremote" 2>&1)"; code=$?
+check "...and the push to or that follows reuses that pass: nothing runs again" "0 13 1" \
   "$code $(cat "$reuse/runs" | wc -l | tr -d ' ') $(printf '%s\n' "$out" | grep -c 'reused, not run again')"
 # A hook that ran long says the connection git opened before it may be gone, and how to re-push cheaply; a quick one,
 # and a dry run (no connection), do not.
 long_push() { # <threshold seconds> <local sha> -> the warning's count
   (cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$2" "$rbase" \
-    | fjgreens env PREPUSH_LONG_SECONDS="$1" PREPUSH_SKIP="${pathchecks/scripttests/}" STUB_RUNS="$reuse/runs" \
-      PREPUSH_FLOOR_BASH="$gate/no-such-bash" bash "$REPO_ROOT/scripts/hooks/pre-push" fj "$fjremote" 2>&1) \
-    | grep -c 'with the push.s connection open .*run the same git push again.*scripts/hooks/pre-push --range fj/main..HEAD'; }
+    | greens env PREPUSH_LONG_SECONDS="$1" PREPUSH_SKIP="${pathchecks/scripttests/}" STUB_RUNS="$reuse/runs" \
+      PREPUSH_FLOOR_BASH="$gate/no-such-bash" bash "$REPO_ROOT/scripts/hooks/pre-push" or "$ghremote" 2>&1) \
+    | grep -c 'with the push.s connection open .*run the same git push again.*scripts/hooks/pre-push --range or/main..HEAD'; }
 check "a push whose hook ran past PREPUSH_LONG_SECONDS says to re-push, and to check first next time" "1" "$(long_push 0 "$checkfirst")"
 check "...a quick one does not" "0" "$(long_push 3600 "$checkfirst")"
 check "...nor does a dry run, which holds no connection" "0 0" \
-  "$(fjgreens reuse_push "fj/main..$checkfirst" PREPUSH_NO_REUSE=1 PREPUSH_LONG_SECONDS=0 | cut -d' ' -f1) $(grep -c 'run the same git push again' "$gate/err")"
+  "$(greens reuse_push "or/main..$checkfirst" PREPUSH_NO_REUSE=1 PREPUSH_LONG_SECONDS=0 | cut -d' ' -f1) $(grep -c 'run the same git push again' "$gate/err")"
 rm -rf "$gate"
 
 spec_summary

@@ -15,8 +15,8 @@
 #                 .github/, .claude/, CLAUDE.md, build.sbt, project/ or */src/test|it/ (`--lint-plan`, ~30 s warm),
 #                 every other repo-reading lint spec: all deploy/ specs and the No*/*Lint* source lints, bar the
 #                 ones listed at lint_plan that boot a server -- those reading the GitOps manifests too, once
-#                 infra/bin/fetch-gitops has put them in place (Forgejo, else GitHub; neither reachable: the push
-#                 BLOCKED, never checked against stale manifests); `lintspecs` skips just those -- and,
+#                 infra/bin/fetch-gitops has put them in place (GitHub unreachable: the push BLOCKED, never
+#                 checked against stale manifests); `lintspecs` skips just those -- and,
 #                 ahead of them in that same run, the Test/It/Page configs of every module the push
 #                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
 #                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
@@ -106,9 +106,7 @@
 # landed while Identity model convergence was red: 3f11e2cc3's wrong switches hid behind a DE red for six
 # hours, and three gates and label batches each turned it red again. One `gh run list` a workflow, each
 # bounded and tried $PREPUSH_GATE_ATTEMPTS (3) times; gh, curl or jq NOT INSTALLED blocks, as any missing tool does
-# (BYPASS below). A push to a Forgejo remote (ssh://forgejo-git/…, since GitHub suspended the account 2026-10-19) reads
-# Forgejo's actions runs API instead, by curl, with $FORGEJO_API_TOKEN or the token in the `movies` vault when it is
-# already unlocked (the repository is private: anonymous reads answer 404).
+# (BYPASS below).
 # THE GATE FAILS CLOSED: a gate it cannot read -- no token, an API error, no answer in time -- may be red, so a push with
 # a production commit in it is REFUSED, saying how to hand the hook the token; a tools-only push lands, as it would
 # while red. 2026-10-27 08:05Z: a gate skipped for want of a token let agentctl's waiting processor push onto a red Main.
@@ -142,11 +140,11 @@
 # A MISSING LOCAL TOOL BLOCKS THE PUSH, saying how to fix it -- never a skip (user, 2026-10-21: an agent's push, sbt off
 # its PATH, skipped the sbt check and landed unchecked). sbt and a java that runs (sbt, oldrefs), shellcheck,
 # actionlint, npm (eslint), python3 (drift, dashboards, judgements) and the drift's timezonefinder, gh (judgements; the
-# red gate on a GitHub push), curl and jq (the red gate on a Forgejo push); the red gate unread blocks a production
+# red gate); the red gate unread blocks a production
 # push (THE GATE FAILS CLOSED, above). What stays a WARNING is what lies outside
 # this machine's install: an external service unreachable (a served-takes download) and a Docker or Xcode that is not RUNNING/selected (scripttests --linux, ios: CI runs
 # both). Not the GitOps manifests: their fetch failing BLOCKS (the checkout left behind is stale, and specs passed or
-# failed against it; a push needs Forgejo anyway).
+# failed against it).
 #
 # INSTALL: scripts/install-hooks.sh (sets core.hooksPath=scripts/hooks, which every worktree of
 # this clone shares; the path is relative, so each worktree runs its own checkout's hook).
@@ -537,56 +535,12 @@ need_jvm() { # <check>
 # COMPLETED Identity model convergence run on main -- running, queued and cancelled runs say nothing. Verify scrape
 # recording no longer gates (`agentctl ci-why` lists its red, and any other, as information only).
 GatingWorkflows=("Main" "Identity model convergence")
-# The same workflows by file: Forgejo's runs API filters on the workflow file, not its name.
+# The same workflows by file (gating_checks.py's registry keys on it).
 GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml")
 GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 # Each workflow's verdict is asked this many times, $PREPUSH_GATE_RETRY_SECONDS apart, before it counts as unread.
 GateAttempts="${PREPUSH_GATE_ATTEMPTS:-3}"
 GateRetrySeconds="${PREPUSH_GATE_RETRY_SECONDS:-2}"
-
-# Where the push goes decides whose runs are read (GitHub suspended the account on 2026-10-19; main's CI runs on Forgejo
-# since): a Forgejo remote (ssh://forgejo-git/…, a forgejo.* host) reads Forgejo's actions API, anything else GitHub's
-# through gh. git hands the hook the push URL as $2; a --range dry run takes $PREPUSH_REMOTE_URL, else the push URL of
-# the remote its base names (`forgejo/main..HEAD` reads Forgejo, as `git push forgejo` will), else GitHub. So a dry run
-# of `<remote>/main..HEAD` is keyed like the push that follows it, which then REUSES its pass (CHECK FIRST, below).
-remote_url=""
-case "${1:-}" in
-    --range|--checks-only|--fast-only)
-        remote_url="${PREPUSH_REMOTE_URL:-}"
-        range_base="${2:-}"; range_base="${range_base%%..*}"
-        case "$range_base" in
-            */*) [ -z "$remote_url" ] && remote_url="$(git remote get-url --push "${range_base%%/*}" 2>/dev/null || true)" ;;
-        esac ;;
-    *)       remote_url="${2:-}" ;;
-esac
-# THE CONFIGURED FORGE (github-return plan W7): a range whose base names no remote (`<sha>..HEAD`) reads the forge
-# agentctl's switch names (scripts/forge-gh --configured: KINOWO_FORGE, $AGENTCTL_FORGE or agentctl.toml's `forge`),
-# through that forge's remote -- forgejo or origin. No switch set: as before (GitHub's gh).
-if [ -z "$remote_url" ]; then
-    case "$(bounded 10 python3 "$(dirname "${BASH_SOURCE[0]}")/../forge-gh" --configured 2>/dev/null)" in
-        forgejo) remote_url="$(git remote get-url --push forgejo 2>/dev/null || true)" ;;
-        github)  remote_url="$(git remote get-url --push origin 2>/dev/null || true)" ;;
-    esac
-fi
-is_forgejo_url() { # <url>
-    case "$1" in
-        ssh://forgejo-git/*|forgejo-git:*|*://forgejo.*|*://forgejo:*|*://*@forgejo.*|*@localhost:2222*|*://localhost:2222/*) return 0 ;;
-    esac
-    return 1
-}
-# `<api base> <owner>/<repo>` of a Forgejo remote. The ssh alias has no web side: its API is the laptop tunnel's
-# http://forgejo.internal:3000 ($PREPUSH_FORGEJO_URL overrides).
-forgejo_api_for() { # <url>
-    local url="$1" web path
-    case "$url" in
-        http://*|https://*) web="$(printf '%s' "$url" | sed -E 's#^(https?://)([^@/]*@)?([^/]+)/.*#\1\3#')"
-                            path="$(printf '%s' "$url" | sed -E 's#^https?://[^/]+/##')" ;;
-        *://*)              web="http://forgejo.internal:3000"; path="$(printf '%s' "$url" | sed -E 's#^[a-z+]+://[^/]+/##')" ;;
-        *)                  web="http://forgejo.internal:3000"; path="${url#*:}" ;;
-    esac
-    path="${path%.git}"; path="${path%/}"
-    printf '%s/api/v1 %s\n' "${PREPUSH_FORGEJO_URL:-$web}" "$path"
-}
 
 # `<conclusion> <run id> <url>` of a workflow's newest decided run on main (success or a failure of any kind; cancelled,
 # skipped and unfinished runs say nothing), empty when it has none; non-zero when gh cannot answer in time.
@@ -595,36 +549,6 @@ newest_verdict() { # <workflow name>
         gh run list --workflow "$1" --branch main --limit 30 --json databaseId,status,conclusion,url \
         --jq '[.[] | select(.status == "completed" and (.conclusion | IN("cancelled", "skipped", "neutral", "") | not))][0] // empty
               | "\(.conclusion) \(.databaseId) \(.url)"'
-}
-
-# The same off Forgejo's GET /repos/{owner}/{repo}/actions/runs: a run's one `status` is its verdict once decided
-# (success, failure; cancelled, skipped, running, waiting and blocked say nothing). The run id is the run's number in
-# its URL (…/actions/runs/<n>), the one a Fixes-Red: trailer names. The token, when there is one, goes to curl on
-# stdin, never in its argv. Non-zero (curl's or HTTP's error on stderr) when Forgejo cannot answer in time.
-newest_verdict_forgejo() { # <api base> <owner/repo> <workflow file>
-    local body code
-    body="$(mktemp)"
-    code="$(printf '%s' "${forgejo_token:+header = \"Authorization: token $forgejo_token\"}" \
-        | bounded "$GhSeconds" curl -sS --config - -o "$body" -w '%{http_code}' \
-            "$1/repos/$2/actions/runs?workflow_id=$3&ref=refs/heads/main&limit=30")" \
-        || { local rc=$?; rm -f "$body"; return "$rc"; }
-    if [ "$code" != 200 ]; then
-        echo "HTTP $code" >&2
-        rm -f "$body"; return 1
-    fi
-    jq -r '[(.workflow_runs // [])[] | select(.status | IN("success", "failure"))][0] // empty
-           | "\(.status) \(.index_in_repo) \(.html_url) \(.id)"' "$body"
-    local rc=$?; rm -f "$body"; return "$rc"
-}
-
-# Forgejo's token on the laptop: $FORGEJO_API_TOKEN when the environment has it, else read from the Touch ID vault —
-# only while `movies` is already unlocked, so a push never raises a Touch ID prompt. Never written anywhere.
-forgejo_token=""
-read_forgejo_token() {
-    if [ -n "${FORGEJO_API_TOKEN:-}" ]; then forgejo_token="$FORGEJO_API_TOKEN"; return 0; fi
-    command -v secrets >/dev/null || return 1
-    [ "$(bounded 5 secrets status movies)" = unlocked ] || return 1
-    forgejo_token="$(bounded 5 secrets get movies FORGEJO_API_TOKEN)" && [ -n "$forgejo_token" ]
 }
 
 # A production path: what reaches a running pod or a fleet host. Everything else — scripts/, docs/, .claude/, the
@@ -653,14 +577,12 @@ production_commits() { # <range>...
     done
 }
 
-# <workflow index>'s newest verdict off this push's forge (newest_verdict / newest_verdict_forgejo), asked up to
+# <workflow index>'s newest verdict (newest_verdict), asked up to
 # $GateAttempts times; the last attempt's error on stderr, and its status (124: cut off) when every attempt failed.
 read_verdict() { # <workflow index>
     local attempt rc=0
     for ((attempt = 1; attempt <= GateAttempts; attempt++)); do
-        if [ "$forge" = Forgejo ]; then newest_verdict_forgejo "$api" "$repo" "${GatingWorkflowFiles[$1]}" && return 0
-        else newest_verdict "${GatingWorkflows[$1]}" && return 0
-        fi
+        newest_verdict "${GatingWorkflows[$1]}" && return 0
         rc=$?
         [ "$attempt" -lt "$GateAttempts" ] && sleep "$GateRetrySeconds"
     done
@@ -672,7 +594,7 @@ read_verdict() { # <workflow index>
 # them -- prints why and succeeds. Anything else, the registry or the run's jobs unreadable included, fails: the red gates.
 unproven_only() { # <workflow index> <run id>
     [ -f scripts/ci/gating_checks.py ] && [ -f .github/gating-checks.tsv ] || return 1
-    FORGEJO_API_TOKEN="${forgejo_token:-${FORGEJO_API_TOKEN:-}}" bounded "$GhSeconds" \
+    bounded "$GhSeconds" \
         python3 scripts/ci/gating_checks.py report-only --workflow-file "${GatingWorkflowFiles[$1]}" --run "$2" 2>/dev/null
 }
 
@@ -680,19 +602,8 @@ unproven_only() { # <workflow index> <run id>
 # production path names one of the red runs in a `Fixes-Red: <run id>` trailer -- and while the gate cannot be read
 # at all, unless no pushed commit touches a production path (THE GATE FAILS CLOSED, above). <range>... the pushed commits.
 check_redgate() {
-    local workflow verdict conclusion id url api_id reds="" commit fixes ok bad=0 r errors i forge=gh api="" repo="" unread="" prod rc
-    if is_forgejo_url "$remote_url"; then
-        forge=Forgejo
-        need redgate curl "brew install curl" || return 1
-        need redgate jq "brew install jq" || return 1
-        read -r api repo <<< "$(forgejo_api_for "$remote_url")"
-        # Never a Touch ID prompt on a push: the vault is read only while it is already unlocked.
-        read_forgejo_token || { unread="no Forgejo token (\$FORGEJO_API_TOKEN unset; vault 'movies' locked)"; gate_state="no-token"; }
-    else
-        need redgate gh "brew install gh" || return 1
-    fi
-    # The tools the gate runs (gating_checks.py through scripts/forge-gh) read the same forge as the gate.
-    if [ "$forge" = Forgejo ]; then export KINOWO_FORGE=forgejo; else export KINOWO_FORGE=github; fi
+    local workflow verdict conclusion id url reds="" commit fixes ok bad=0 r errors i unread="" prod rc
+    need redgate gh "brew install gh" || return 1
     if [ -z "$unread" ]; then
         # gh's stderr kept apart from its answer: a warning beside a green verdict would otherwise be read as the verdict.
         errors="$(mktemp)"
@@ -700,24 +611,22 @@ check_redgate() {
             workflow="${GatingWorkflows[$i]}"
             verdict="$(read_verdict "$i" 2>"$errors")" || {
                 rc=$?
-                if [ "$rc" = 124 ]; then warn "$forge did not answer $workflow's verdict within ${GhSeconds}s ($GateAttempts attempts): cut off"
-                else warn "could not read $workflow's verdict from $forge ($(head -n 1 "$errors")) in $GateAttempts attempts"
+                if [ "$rc" = 124 ]; then warn "gh did not answer $workflow's verdict within ${GhSeconds}s ($GateAttempts attempts): cut off"
+                else warn "could not read $workflow's verdict from gh ($(head -n 1 "$errors")) in $GateAttempts attempts"
                 fi
                 unread="${unread:+$unread; }$workflow's verdict unread"
                 gate_state="$gate_state $i:unread"
                 continue
             }
             [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
-            read -r conclusion id url api_id <<< "$verdict"
+            read -r conclusion id url <<< "$verdict"
             gate_state="$gate_state $i:$conclusion:$id"
-            if [ "$conclusion" != success ] && only="$(unproven_only "$i" "${api_id:-$id}")"; then
+            if [ "$conclusion" != success ] && only="$(unproven_only "$i" "$id")"; then
                 warn "$workflow's run $id is red only in checks no green run has proven yet: it REPORTS, it does not gate ($only; .github/gating-checks.tsv)"
                 gate_state="$gate_state:report-only"
             elif [ "$conclusion" != success ]; then
-                # On Forgejo a run has two ids: its number in the URL and the API's run id (the one scripts/forge-gh and the
-                # artifact registry use). A Fixes-Red: naming either declares the fix.
-                reds="$reds $id${api_id:+ $api_id}"
-                warn "$workflow is RED on main: run $id ($conclusion) $url${api_id:+ (run id $api_id)}"
+                reds="$reds $id"
+                warn "$workflow is RED on main: run $id ($conclusion) $url"
             fi
         done
         rm -f "$errors"
@@ -730,14 +639,7 @@ check_redgate() {
         fi
         warn "red-build gate UNREAD ($unread): the push is REFUSED -- a gate that cannot be read may be red, and"
         warn "production commits land only on a green (or Fixes-Red:) main: $(printf '%s\n' "$prod" | cut -c1-9 | tr '\n' ' ')"
-        if [ "$gate_state" = no-token ]; then
-            warn "Give the hook Forgejo's token: \`secrets unlock movies\` (the hook reads the vault only while it is unlocked,"
-            warn "never prompting; \`eval \"\$(~/bin/agentctl env --print)\"\` says whether it is), or export FORGEJO_API_TOKEN."
-            warn "agentctl land hands the token to the processes it starts (its waiting processor among them): a push from"
-            warn "one of them without it means the vault was locked when land started -- unlock it and land again."
-        else
-            warn "Forgejo/GitHub did not answer: check the tunnel (\`~/bin/agentctl env --check\`) and push again."
-        fi
+        warn "GitHub did not answer: check the network and \`gh auth status\`, then push again."
         return 1
     fi
     [ -z "$reds" ] && return 0
@@ -807,7 +709,7 @@ else
     # caught it by luck). agentctl refuses a push that returns files to an older main. Where agentctl is not installed
     # (CI, another machine), nothing changes.
     if [ "$to_main" = 1 ] && [ -x "$HOME/bin/agentctl" ]; then
-        printf '%s' "$pushed" | "$HOME/bin/agentctl" prepush-check --hook "${1:-forgejo}" "${2:-}" || exit 1
+        printf '%s' "$pushed" | "$HOME/bin/agentctl" prepush-check --hook "${1:-origin}" "${2:-}" || exit 1
     fi
 fi
 if [ "${#ranges[@]}" -eq 0 ]; then
@@ -941,30 +843,6 @@ if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUS
         log "the waiting batch's fast check passed for tree $(git rev-parse --short "$head_sha^{tree}") on this base $(cat "$reuse_dir/$fast_key"): reused (each change passed its own full checks before it joined)" >&2
         exit 0
     fi
-fi
-# A REMOTE PASS (agentctl's remote checks: under memory or CPU pressure a queued change's checks run on ci-runner's check
-# tier, .github/workflows/precommit-check.yml on a check/<entry> branch): the push to main carries
-# PREPUSH_REMOTE_RUN=<run id>, and that run stands for this hook's checks only once Forgejo says it is a
-# precommit-check.yml run that SUCCEEDED on exactly the commit pushed. Anything else -- another workflow, a failure, a
-# run still going, another commit, no token, Forgejo silent -- and every check runs here. The red gate ran above.
-remote_pass() { # <run id> -> 0 when Forgejo vouches for it
-    local api repo body code said
-    is_forgejo_url "$remote_url" && read_forgejo_token || return 1
-    read -r api repo <<< "$(forgejo_api_for "$remote_url")"
-    body="$(mktemp)"
-    code="$(printf '%s' "header = \"Authorization: token $forgejo_token\"" \
-        | bounded "$GhSeconds" curl -sS --config - -o "$body" -w '%{http_code}' "$api/repos/$repo/actions/runs/$1")" \
-        || { rm -f "$body"; return 1; }
-    said="$(jq -r '"\(.workflow_id) \(.status) \(.commit_sha)"' "$body" 2>/dev/null)"
-    rm -f "$body"
-    [ "$code" = 200 ] && [ "$said" = "precommit-check.yml success $head_sha" ]
-}
-if [ -n "${PREPUSH_REMOTE_RUN:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ "$to_main" = 1 ]; then
-    if remote_pass "$PREPUSH_REMOTE_RUN"; then
-        log "the checks passed on ci-runner for ${head_sha:0:10} (precommit-check.yml run $PREPUSH_REMOTE_RUN, confirmed with Forgejo): not run again here" >&2
-        exit 0
-    fi
-    warn "PREPUSH_REMOTE_RUN=$PREPUSH_REMOTE_RUN does not vouch for ${head_sha:0:10} (Forgejo: not a successful precommit-check.yml run of it): every check runs here"
 fi
 if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ]; then
     reuse_key="$(compute_reuse_key)" || reuse_key=""
@@ -1100,7 +978,7 @@ check_sbt() {
     compiles=($(printf '%s\n' "$changed" | compile_plan))
     local lints module tests=() gitops_stale=0
     # The specs reading the GitOps manifests join the lints once infra/bin/fetch-gitops has put them in this checkout
-    # (Forgejo, else GitHub). The fetch failing BLOCKS the push: the checkout left behind is stale, and the local clone
+    # (from GitHub). The fetch failing BLOCKS the push: the checkout left behind is stale, and the local clone
     # the script once fell back to went stale with GitHub (2026-10-19) -- a spec then failed on a probe movies-gitops
     # 24a5162 had already fixed. The specs needing them stay out of this run; the rest still run, for their verdicts.
     if printf '%s\n' "$changed" | reads_repo && ! skipped lintspecs && [ -x infra/bin/fetch-gitops ]; then
@@ -1109,7 +987,7 @@ check_sbt() {
         else
             gitops_stale=1
             sed 's/^/    /' "$tmp/fetch-gitops.log" | tail -8 >&2
-            warn "GitOps manifests STALE: infra/bin/fetch-gitops could not fetch movies-gitops main, so the push is BLOCKED. Fix: the Forgejo tunnel (launchctl kickstart -k gui/\$(id -u)/net.bitcashier.forgejo-tunnel), then push again (or PREPUSH_SKIP=lintspecs, named in your report)."
+            warn "GitOps manifests STALE: infra/bin/fetch-gitops could not fetch movies-gitops main, so the push is BLOCKED. Fix: the network to github.com, then push again (or PREPUSH_SKIP=lintspecs, named in your report)."
         fi
     fi
     lints="$(printf '%s\n' "$changed" | lint_plan)"
@@ -1484,9 +1362,8 @@ fi
 if [ -n "$known" ]; then log "all clear but main's own known red:$known ($((SECONDS - started))s)"
 else log "all clear ($((SECONDS - started))s)"; fi
 # CHECK FIRST: git opens the push's ssh connection BEFORE it runs this hook and sends the pack only after it, so a long
-# hook holds that connection idle. To Forgejo it rides the laptop's launchd ssh tunnel (net.bitcashier.forgejo-tunnel,
-# `ssh -N forgejo-tunnel`); when the tunnel drops (its own keepalives missed under a load of 100+, a network change) and
-# launchd restarts it, every connection forwarded through it dies with it: on 2026-10-23 pushes whose hook ran 20-76 min printed "all clear"
+# hook holds that connection idle, and a connection held that long can die (a network change, keepalives missed under
+# load): on 2026-10-23 pushes whose hook ran 20-76 min printed "all clear"
 # and then "Connection to localhost closed by remote host" / "Broken pipe" / "unexpected disconnect while reading
 # sideband packet". Nothing here can keep that connection; the re-push can be fast instead: this pass is stored (THE
 # REUSE), so the same push again skips the checks.

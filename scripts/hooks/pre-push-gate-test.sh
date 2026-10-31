@@ -62,94 +62,36 @@ code="$(cd "$grepo" && GH_HANGS="$hung" PREPUSH_GH_SECONDS=1 PREPUSH_SKIP="$path
          spec_bounded bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?)"
 check "gh hanging is cut off by its bound for each workflow, said out loud, and refuses a production push" "1 2 0" \
   "$code $(grep -c "gh did not answer .* within 1s (3 attempts): cut off" "$gate/err") $(spec_still_running "$hung")"
-check "Forgejo: every workflow green, the push lands, gh unread" "0 0" \
-  "$(FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" FJ_REC="[$fjgreen]" fjpush "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
-check "Forgejo: a red Identity model convergence refuses an undeclared commit" "1" "$(FJ_IMC="[$fjred,$fjgreen]" fjpush "$gbase..$plain")"
-check "...naming the red run by its number in the run's URL" "1" \
-  "$(grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) http://forgejo.internal:3000/pawelkrupinski/movies/actions/runs/38520439037' "$gate/err")"
-check "Forgejo: a red Main refuses it too" "1" "$(FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
-check "Forgejo: a red verify of the nightly recording no longer refuses it" "0" \
-  "$(FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" FJ_REC="[$fjred]" fjpush "$gbase..$plain")"
-check "Forgejo: a commit naming the red run in Fixes-Red: lands" "0" "$(FJ_IMC="[$fjred]" fjpush "$gbase..$fixing")"
-check "Forgejo: a commit naming the red run by its API run id (forge-gh's) lands too" "0" \
-  "$(FJ_IMC="[$fjred]" fjpush "$fixing..$fixing_by_id")"
-check "...and names both ids when it refuses" "1" "$(FJ_IMC="[$fjred]" fjpush "$gbase..$plain" >/dev/null; grep -c 'runs/38520439037 (run id 38520440037)' "$gate/err")"
-check "Forgejo: a running or cancelled newest run says nothing: the decided one before it counts" "1 0" \
-  "$(FJ_IMC="[$fjrunning,$fjcancelled,$fjred,$fjgreen]" fjpush "$gbase..$plain") $(FJ_IMC="[$fjcancelled,$fjgreen,$fjred]" fjpush "$gbase..$plain")"
-check "Forgejo: tools-only commits land while red" "0" "$(FJ_IMC="[$fjred]" fjpush "$plain..$tools")"
 # A CHECK GATES ONLY ONCE IT HAS BEEN GREEN: a red run whose failed jobs are all unproven in .github/gating-checks.tsv
-# (scripts/ci/gating_checks.py, its jobs read through scripts/forge-gh, stubbed here) reports and holds no push
+# (scripts/ci/gating_checks.py, its jobs read through `gh run view`, stubbed here) reports and holds no push
 mkdir -p "$grepo/scripts/ci" "$grepo/.github"
 cp "$REPO_ROOT/scripts/ci/gating_checks.py" "$grepo/scripts/ci/"
 printf 'kind\tworkflow\tname\tproven\tnote\njob\tmain.yml\ttest (a)\t5\njob\tmain.yml\tci\taggregate\njob\tmain.yml\tnew check\tunproven\tborn today; owner: x\n' > "$grepo/.github/gating-checks.tsv"
-printf '#!/bin/sh\nprintf "%%s" "$STUB_JOBS"\n' > "$grepo/scripts/forge-gh"; chmod +x "$grepo/scripts/forge-gh"
 unproven='{"jobs":[{"name":"new check","conclusion":"failure"},{"name":"ci","conclusion":"failure"},{"name":"test (a)","conclusion":"success"}]}'
 proven='{"jobs":[{"name":"test (a)","conclusion":"failure"},{"name":"new check","conclusion":"failure"}]}'
-check "Forgejo: a Main red only in an unproven check and its aggregate holds no push, said" "0 1" \
-  "$(STUB_JOBS="$unproven" FJ_MAIN="[$fjred]" fjpush "$gbase..$plain") $(grep -c 'red only in checks no green run has proven yet' "$gate/err")"
-check "...a red in a proven check refuses it as ever" "1" "$(STUB_JOBS="$proven" FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
-check "...and so does a run whose jobs cannot be read" "1" "$(STUB_JOBS="not json" FJ_MAIN="[$fjred]" fjpush "$gbase..$plain")"
-rm -rf "$grepo/scripts/ci/gating_checks.py" "$grepo/.github/gating-checks.tsv" "$grepo/scripts/forge-gh"
-check "Forgejo: PREPUSH_SKIP=redgate bypasses it" "0" "$(FJ_IMC="[$fjred]" PREPUSH_SKIP=redgate fjpush "$gbase..$plain")"
-rm -f "$gate/argv" "$gate/config"
-FJ_ARGV="$gate/argv" FJ_CONFIG="$gate/config" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain" >/dev/null
-check "Forgejo: the vault's token is sent as a header on stdin, never in curl's argv" "2 0" \
-  "$(grep -c '^header = "Authorization: token vaulttoken"$' "$gate/config") $(grep -c vaulttoken "$gate/argv")"
-check "Forgejo: \$FORGEJO_API_TOKEN, when set, is used without the vault" "1 0" \
-  "$(rm -f "$gate/gets"; SECRETS_GETS="$gate/gets" FORGEJO_API_TOKEN=envtoken FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ')"
-rm -f "$gate/gets"
+check "a Main red only in an unproven check and its aggregate holds no push, said" "0 1" \
+  "$(STUB_JOBS="$unproven" GH_MAIN="[$red]" push "$gbase..$plain") $(grep -c 'red only in checks no green run has proven yet' "$gate/err")"
+check "...a red in a proven check refuses it as ever" "1" "$(STUB_JOBS="$proven" GH_MAIN="[$red]" push "$gbase..$plain")"
+check "...and so does a run whose jobs cannot be read" "1" "$(STUB_JOBS="not json" GH_MAIN="[$red]" push "$gbase..$plain")"
+rm -rf "$grepo/scripts/ci/gating_checks.py" "$grepo/.github/gating-checks.tsv"
 # THE GATE FAILS CLOSED (2026-10-27 08:05Z: a gate skipped for want of a token let agentctl's waiting processor push onto
-# a red Main): unread -- no token, an API error, no answer -- refuses a production push; a tools-only one still lands.
-check "Forgejo: the vault locked is never unlocked (no Touch ID on a push): no token REFUSES a production push" "1 0 1 0" \
-  "$(SECRETS_GETS="$gate/gets" SECRETS_STATE=locked FJ_IMC="[$fjgreen]" FJ_MAIN="[$fjgreen]" fjpush "$gbase..$plain") $(cat "$gate/gets" 2>/dev/null | wc -l | tr -d ' ') $(grep -c 'red-build gate UNREAD (no Forgejo token.*REFUSED' "$gate/err") $(grep -c 'SKIPPED' "$gate/err")"
-check "...saying how to hand the hook the token, and that agentctl hands it to its processes" "1 1 1" \
-  "$(grep -c 'secrets unlock movies' "$gate/err") $(grep -c 'agentctl env --print' "$gate/err") $(grep -c 'agentctl land hands the token to the processes it starts' "$gate/err")"
-check "...naming the production commit it refuses" "1" "$(grep -c "production commits land only on a green.*${plain:0:9}" "$gate/err")"
-check "Forgejo: no token, a tools-only push lands, said out loud" "0 1" \
-  "$(SECRETS_STATE=locked fjpush "$plain..$tools") $(grep -c 'red-build gate UNREAD (no Forgejo token.*every pushed commit is tools-only' "$gate/err")"
-rm -f "$gate/argv"
-check "Forgejo: an API error is asked 3 times a workflow, said for each, and REFUSES a production push" "1 2 6 1" \
-  "$(FJ_ARGV="$gate/argv" FJ_FAILS=1 FORGEJO_API_TOKEN=envtoken fjpush "$gbase..$plain") $(grep -c 'from Forgejo (curl: (7).* in 3 attempts' "$gate/err") $(wc -l < "$gate/argv" | tr -d ' ') $(grep -c 'red-build gate UNREAD.*REFUSED' "$gate/err")"
-check "...while a tools-only push lands" "0" "$(FJ_FAILS=1 FORGEJO_API_TOKEN=envtoken fjpush "$plain..$tools")"
-check "Forgejo: a failure that a retry answers is no failure: green read, the push lands" "0 0" \
-  "$(FJ_FAILS_ONCE="$gate/failed-once" FORGEJO_API_TOKEN=envtoken FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain") $(grep -c 'UNREAD' "$gate/err")"
-rm -f "$gate/failed-once"
-check "Forgejo: a gate read red (token in the environment, as agentctl hands it) refuses a production push" "1 1" \
-  "$(FORGEJO_API_TOKEN=envtoken FJ_MAIN="[$fjred]" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain") $(grep -c 'Main is RED on main' "$gate/err")"
-check "Forgejo: a gate read green (token in the environment) lets it land" "0 0" \
-  "$(FORGEJO_API_TOKEN=envtoken FJ_MAIN="[$fjgreen]" FJ_IMC="[$fjgreen]" fjpush "$gbase..$plain") $(grep -c 'RED on main\|UNREAD' "$gate/err")"
-check "Forgejo: an HTTP refusal is said for each workflow, and refuses a production push" "1 2" \
-  "$(FJ_EXPECT_BASE=http://elsewhere FJ_IMC="[$fjred]" fjpush "$gbase..$plain") $(grep -c 'from Forgejo (HTTP 404)' "$gate/err")"
-check "Forgejo: an http remote's own host is read" "1" \
-  "$(FJ_EXPECT_BASE=http://forgejo.internal:3000/api/v1/repos/pawelkrupinski/movies FJ_IMC="[$fjred]" fjremote=http://forgejo.internal:3000/pawelkrupinski/movies.git fjpush "$gbase..$plain")"
-check "Forgejo: an https remote with credentials reads its host, without them" "1" \
-  "$(FJ_EXPECT_BASE=https://forgejo.example.org/api/v1/repos/o/r FJ_IMC="[$fjred]" fjremote=https://u:p@forgejo.example.org/o/r.git fjpush "$gbase..$plain")"
-# agentctl's forge switch (github-return W7): a range from a bare sha reads the forge it names, through its remote
-scratch_git "$grepo" remote add forgejo "$fjremote"
-check "forge = forgejo (agentctl's switch): a range from a bare sha reads Forgejo through the forgejo remote" "1 1" \
-  "$(KINOWO_FORGE='' AGENTCTL_FORGE=forgejo FORGEJO_API_TOKEN=envtoken FJ_IMC="[$fjred]" GH_FAILS=1 push "$gbase..$plain") $(grep -c 'RED on main: run 38520439037 (failure) http://forgejo' "$gate/err")"
-check "...and with no switch set it reads gh, as before" "1 1" \
-  "$(KINOWO_FORGE='' AGENTCTL_FORGE='' AGENTCTL_CONFIG=- GH_IMC="[$red]" FJ_FAILS=1 push "$gbase..$plain") $(grep -c 'run 38520439037 (failure) https://x/' "$gate/err")"
-scratch_git "$grepo" remote remove forgejo
-check "a GitHub remote still reads gh, not Forgejo" "1 1" \
-  "$(GH_IMC="[$red]" FJ_FAILS=1 PREPUSH_REMOTE_URL=git@github.com:pawelkrupinski/movies.git push "$gbase..$plain") $(grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) https://x/' "$gate/err")"
-out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$plain" "$gbase" \
-        | FJ_IMC="[$fjred]" GH_FAILS=1 SECRETS_STATE=unlocked PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo "$fjremote" 2>&1)"; code=$?
-check "a real push to a Forgejo remote is gated by Forgejo's runs, from the URL git hands the hook" "1 1" \
-  "$code $(printf '%s\n' "$out" | grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) http://forgejo')"
+# a red Main): unread -- an API error, no answer -- refuses a production push; a tools-only one still lands.
+check "gh failing refuses a production push, naming the commit it refuses" "1 1" \
+  "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c "production commits land only on a green.*${plain:0:9}" "$gate/err")"
+check "...while a tools-only push lands" "0" "$(GH_FAILS=1 push "$plain..$tools")"
 out="$(cd "$grepo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a push to another branch than main is not gated" "0 0" "$code $(printf '%s\n' "$out" | grep -c 'RED on main')"
 out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/measure/u/abc-1 %s\n' "$plain" 0000000000000000000000000000000000000000 \
-        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo url 2>&1)"; code=$?
+        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a measurement's measure/ branch alone is checked for nothing: it never lands" "0 1" \
   "$code $(printf '%s\n' "$out" | grep -c "measure/ or check/ branch: a CI run's ref")"
 out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/check/20261027-1200-movies-wt-x-3 %s\n' "$plain" 0000000000000000000000000000000000000000 \
-        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo url 2>&1)"; code=$?
+        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "...nor is a remote check's check/ branch: its run checks it on ci-runner" "0 1" \
   "$code $(printf '%s\n' "$out" | grep -c "measure/ or check/ branch: a CI run's ref")"
 out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/land/20261028-1200-movies-wt-x-3 %s\n' "$plain" 0000000000000000000000000000000000000000 \
-        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" forgejo url 2>&1)"; code=$?
+        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "...nor is a submitted change's land/ ref: the reconciler checks it (agentctl, design step 14)" "0 1" \
   "$code $(printf '%s\n' "$out" | grep -c "measure/ or check/ branch: a CI run's ref")"
 out="$(cd "$grepo" && printf 'refs/heads/m %s refs/heads/measure/u/abc-1 %s\nrefs/heads/main %s refs/heads/main %s\n' "$plain" 0000000000000000000000000000000000000000 "$plain" "$gbase" \

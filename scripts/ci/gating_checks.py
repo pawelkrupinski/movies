@@ -185,8 +185,7 @@ def report_only(rows: list[dict], file: str, jobs: list[dict]) -> tuple[bool, st
 
 
 def run_jobs(run: str) -> list[dict]:
-    here = os.path.dirname(os.path.abspath(__file__))
-    out = subprocess.run([os.path.join(here, "..", "forge-gh"), "run", "view", run, "--json", "jobs"],
+    out = subprocess.run(["gh", "run", "view", run, "--json", "jobs"],
                          check=True, capture_output=True, text=True, timeout=60).stdout
     return json.loads(out).get("jobs", [])
 

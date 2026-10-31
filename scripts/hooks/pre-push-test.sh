@@ -216,8 +216,8 @@ if command -v shellcheck >/dev/null; then
     "worker/Test/compile worker/It/compile e2e/Test/compile" \
     "$(grep -E '^[a-z0-9]+/[A-Za-z]+/compile$' "$scratch/sbt-args" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
   check "...ahead of the lints, which still run" "1" "$(grep -c 'worker/Test/testOnly' "$scratch/sbt-args" 2>/dev/null)"
-  # The specs reading the GitOps manifests run once infra/bin/fetch-gitops has put them in place; when it cannot (Forgejo
-  # and GitHub unreachable), the push is blocked, never checked against a stale checkout.
+  # The specs reading the GitOps manifests run once infra/bin/fetch-gitops has put them in place; when it cannot (GitHub
+  # unreachable), the push is blocked, never checked against a stale checkout.
   mkdir -p "$repo/worker/src/test/scala/deploy" "$repo/infra/bin"
   echo 'class NodeCpuBudgetSpec' > "$repo/worker/src/test/scala/deploy/NodeCpuBudgetSpec.scala"
   printf '#!/usr/bin/env bash\necho "$KINOWO_GITOPS_DEST" > "%s/gitops-dest"\n' "$scratch" > "$repo/infra/bin/fetch-gitops"
