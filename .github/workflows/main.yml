@@ -312,10 +312,13 @@ jobs:
             cancel-in-progress: false
 
         steps:
-            # Only so the local Grafana action below is on disk.
+            # Only so the local Grafana action below is on disk, with scripts/ci: its mark.sh sources
+            # scripts/ci/ci-writes.sh and fails without it (Main #2939).
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: .github
+                  sparse-checkout: |
+                      .github
+                      scripts/ci
 
             - name: Compute an orderable image tag
               id: tag
@@ -465,10 +468,13 @@ jobs:
             cancel-in-progress: false
 
         steps:
-            # Only so the local Grafana action below is on disk.
+            # Only so the local Grafana action below is on disk, with scripts/ci: its mark.sh sources
+            # scripts/ci/ci-writes.sh and fails without it (Main #2939).
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: .github
+                  sparse-checkout: |
+                      .github
+                      scripts/ci
 
             - name: Compute an orderable image tag
               id: tag

@@ -45,4 +45,35 @@ mkdir -p "$work/alone"; cp "$REPO_ROOT/scripts/ci/gh-release.sh" "$work/alone/"
 check "gh-release.sh without ci-writes.sh beside it fails, writing nothing" "2 " \
     "$(: > "$work/calls"; env PATH="$work/bin:$PATH" CI_ROLE=primary bash "$work/alone/gh-release.sh" upload t f > /dev/null 2>&1; echo "$? $(cat "$work/calls")")"
 
+# A sparse checkout that runs a local writer action checks out its helper too: Main #2939's publish-web and
+# publish-worker checked out `.github` alone, so mark-grafana-deploy failed on the missing ci-writes.sh.
+# Prints `<workflow> <job>` for every job using such an action whose sparse list holds neither scripts nor scripts/ci.
+sparse_without_helper() {
+    awk '
+        function flush() { if (job != "" && sparse && uses && !helper) print FILENAME " " job; job = ""; sparse = uses = helper = inlist = 0 }
+        FNR == 1 { flush(); injobs = 0 }
+        /^jobs:/ { injobs = 1; next }
+        injobs && /^    [A-Za-z0-9_-]+:[ \t]*$/ { flush(); job = $1; sub(/:$/, "", job); next }
+        job == "" { next }
+        /uses: \.\/\.github\/actions\/(mark-grafana-deploy|drop-bot-branch)/ { uses = 1 }
+        /sparse-checkout:/ {
+            sparse = 1; v = $0; sub(/.*sparse-checkout:[ \t]*/, "", v)
+            if (v == "|") { inlist = 1; next }
+            if (v == "scripts" || v == "scripts/ci") helper = 1
+            next
+        }
+        inlist {
+            v = $0; gsub(/^[ \t]+|[ \t]+$/, "", v)
+            if (v ~ /^[A-Za-z0-9_.\/-]+$/) { if (v == "scripts" || v == "scripts/ci") helper = 1; next }
+            inlist = 0
+        }
+        END { flush() }
+    ' "$@"
+}
+check "every sparse checkout running a writer action checks out scripts/ci/ci-writes.sh" "" \
+    "$(sparse_without_helper "$REPO_ROOT"/.github/workflows/*.yml)"
+printf 'jobs:\n    publish:\n        steps:\n            - uses: actions/checkout@v5\n              with:\n                  sparse-checkout: .github\n            - uses: ./.github/actions/mark-grafana-deploy\n' > "$work/bad.yml"
+check "the sparse-checkout check catches a writer job with .github alone" "$work/bad.yml publish" \
+    "$(sparse_without_helper "$work/bad.yml")"
+
 spec_summary
