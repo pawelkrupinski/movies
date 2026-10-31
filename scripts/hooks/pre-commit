@@ -11,12 +11,17 @@ set -euo pipefail
 git_dir="$(cd "$(git rev-parse --git-dir)" && pwd -P)"
 common_dir="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"
 if [ "$git_dir" != "$common_dir" ]; then # a linked worktree: commit away, with the generated lists current
-  # GENERATED LISTS: .github/convergence-paths.txt's generated block (scripts/ci/convergence_paths.py) is rewritten
+  # GENERATED LISTS, added to the commit: .github/convergence-paths.txt's generated block (scripts/ci/convergence_paths.py) is rewritten
   # from the workflows being committed and added to the commit, so a helper a leg starts to run is listed with it.
   top="$(git rev-parse --show-toplevel)"
   if [ -f "$top/scripts/ci/convergence_paths.py" ] && [ -f "$top/.github/convergence-paths.txt" ]; then
     (cd "$top" && python3 scripts/ci/convergence_paths.py --write >&2 && git add .github/convergence-paths.txt) || {
       echo "pre-commit: scripts/ci/convergence_paths.py --write failed" >&2; exit 1; }
+  fi
+  # ...and .github/gating-checks.tsv's job rows follow the gate workflows (scripts/ci/gating_checks.py sync).
+  if [ -f "$top/scripts/ci/gating_checks.py" ] && [ -f "$top/.github/gating-checks.tsv" ]; then
+    (cd "$top" && python3 scripts/ci/gating_checks.py sync && git add .github/gating-checks.tsv) || {
+      echo "pre-commit: scripts/ci/gating_checks.py sync failed" >&2; exit 1; }
   fi
   exit 0
 fi

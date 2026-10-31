@@ -25,10 +25,14 @@ reads: a gate workflow, and a job in one (a reusable workflow's included: they r
     every row names a job that exists, and every gate workflow the hook reads is a proven `workflow` row. A new job or
     gate workflow therefore lands
     WITH its row, as `unproven`; RegistryCoverage runs it in the unit rows and the hook's `newchecks` check.
+  - `sync` makes the job rows follow the workflows: a job with no row gets one, `unproven` (its owner: --owner, else
+    git's user.name), and a row naming no job goes. scripts/hooks/pre-commit runs it, so a new job lands WITH its row
+    and nobody edits the registry by hand for it; `lint` still fails a registry the hook did not see.
   - `prove --run <run id>` records a green gate run: every job that ran green in it and is unproven or
     missing gets that run's number. Run it after the first green run of a new check, and commit the registry.
 
 usage: gating_checks.py lint [--root DIR]
+       gating_checks.py sync [--root DIR] [--owner NAME]
        gating_checks.py report-only --workflow-file F (--run RUN_ID | --jobs-json FILE)
        gating_checks.py prove --workflow-file F (--run RUN_ID --number N | --jobs-json FILE --number N)
 Exit: lint 0 clean / 1 problems; report-only 0 when the run's red is report-only, 1 when it gates, 2 unreadable.
@@ -206,6 +210,28 @@ def prove(rows: list[dict], file: str, jobs: list[dict], number: str) -> list[st
     return changed
 
 
+def sync(root: str, owner: str) -> list[str]:
+    """Add an unproven row for every gate job with none, drop every row naming no job; the changes, as lines."""
+    path = os.path.join(root, REGISTRY)
+    rows = load(path)
+    changed = []
+    for file in GATE_WORKFLOWS:
+        globs = workflow_globs(root, file)
+        named = [r for r in rows if r["kind"] == "job" and r["workflow"] == file]
+        for r in named:
+            if not any(fnmatch.fnmatchcase(r["name"], g) for g in globs):
+                rows.remove(r)
+                changed.append(f"- {file}: {r['name']}")
+        for g in dict.fromkeys(globs):
+            if not any(fnmatch.fnmatchcase(r["name"], g) for r in named):
+                rows.append({"kind": "job", "workflow": file, "name": g, "proven": "unproven",
+                             "note": f"added by gating_checks.py sync; owner: {owner}"})
+                changed.append(f"+ {file}: {g}")
+    if changed:
+        save(path, rows)
+    return changed
+
+
 def main(argv: list[str]) -> int:
     args = {"--root": "."}
     cmd, rest = (argv[0], argv[1:]) if argv else ("", [])
@@ -215,6 +241,12 @@ def main(argv: list[str]) -> int:
             return 2
         args[rest[0]], rest = rest[1], rest[2:]
     root = args["--root"]
+    if cmd == "sync":
+        owner = args.get("--owner") or subprocess.run(["git", "-C", root, "config", "user.name"], capture_output=True,
+                                                        text=True).stdout.strip() or os.environ.get("USER", "unknown")
+        for line in sync(root, owner):
+            print(f"gating-checks: {line}", file=sys.stderr)
+        return 0
     if cmd == "lint":
         problems = lint(root)
         for p in problems:

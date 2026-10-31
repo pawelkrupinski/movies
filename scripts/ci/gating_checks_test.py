@@ -153,6 +153,36 @@ class ReportOnly(unittest.TestCase):
             self.assertEqual(run(), 2)
 
 
+class Sync(unittest.TestCase):
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        for path, text in ((".github/workflows/main.yml", MAIN), (".github/workflows/ci.yml", CI),
+                           (".github/workflows/identity-model-convergence.yml", CONV), ("scripts/hooks/pre-push", HOOK),
+                           (".github/gating-checks.tsv", REGISTRY)):
+            full = os.path.join(self.root, path)
+            os.makedirs(os.path.dirname(full), exist_ok=True)
+            with open(full, "w") as f:
+                f.write(text)
+
+    def test_a_new_job_gets_an_unproven_row_and_a_vanished_one_loses_its_row(self):
+        with open(os.path.join(self.root, ".github/gating-checks.tsv"), "a") as f:
+            f.write("job\tmain.yml\tgone job\t2700\n")
+        with open(os.path.join(self.root, ".github/workflows/main.yml"), "a") as f:
+            f.write("    newjob:\n        runs-on: x\n")
+        self.assertNotEqual(g.lint(self.root), [])
+        changed = g.sync(self.root, "pat")
+        self.assertIn("+ main.yml: newjob", changed)
+        self.assertIn("- main.yml: gone job", changed)
+        self.assertEqual(g.lint(self.root), [])
+        row = [r for r in g.load(os.path.join(self.root, ".github/gating-checks.tsv")) if r["name"] == "newjob"][0]
+        self.assertEqual((row["proven"], row["note"]), ("unproven", "added by gating_checks.py sync; owner: pat"))
+
+    def test_an_up_to_date_registry_is_left_alone(self):
+        before = open(os.path.join(self.root, ".github/gating-checks.tsv")).read()
+        self.assertEqual(g.sync(self.root, "pat"), [])
+        self.assertEqual(open(os.path.join(self.root, ".github/gating-checks.tsv")).read(), before)
+
+
 class Prove(unittest.TestCase):
     def test_a_green_run_proves_its_unproven_and_missing_jobs(self):
         with tempfile.NamedTemporaryFile("w", suffix=".tsv", delete=False) as f:
