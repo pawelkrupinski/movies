@@ -135,20 +135,22 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  the stage still waits on something ([[ResolverDecision.awaits]], [[waitingOn]]: a verdict's or a correction's
    *  questions unanswered, a fill's TMDB answers), NoFilm when nothing is. Read, never stored: the served decision stays
    *  the object the projection diffs by. */
-  def outcomeOf(decision: ResolverDecision): services.identity.TakeOutcome = decision.outcome match {
-    case taken: services.identity.TakeOutcome.Taken => taken
-    case model =>
-      // every question its verdict and correction still lack -- an attempted one too: the settle rule decides without an
-      // answer whose ask failed (`tried`), but a failure in its backoff is still pending, not absent (P1). Served as the
-      // settle rule serves it; typed as what it is. PL "Siostry (1972)", "Zemsta", UK "Hocus Pocus" (drift 4161): Agreed ->
-      // none, decided without a family answer whose ask had failed -> Agreed once it was filed
-      val stage = if (decision.members.isEmpty) Set.empty[Question] else {
-        val id = keyOf(decision)
-        waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps) ++
-          takeWaits.get(id).filter(w => Option(digested.get(decision)).forall(_.digest == w.listings)).fold(Set.empty[Question])(_.gaps)
-      }
-      if (stage.isEmpty) model else services.identity.TakeOutcome.Pending(decision.awaits ++ stage)
+  def outcomeOf(decision: ResolverDecision): services.identity.TakeOutcome = {
+    // every question its verdict, its take and its correction still lack -- an attempted one too: the settle rule decides
+    // without an answer whose ask failed (`tried`), but a failure in its backoff is still pending, not absent (P1). Served as
+    // the stage serves it; typed as what it is. A film taken while its correction still waits is Pending too: the
+    // correction may move it (the property "refine each take as answers are only filed": Lalka 1001 -> 1002)
+    val stage = if (decision.members.isEmpty) Set.empty[Question] else {
+      val id = keyOf(decision)
+      waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps) ++
+        takeWaits.get(id).filter(w => Option(digested.get(decision)).forall(_.digest == w.listings)).fold(Set.empty[Question])(_.gaps)
+    }
+    decision.outcome match {
+      case taken: services.identity.TakeOutcome.Taken => if (stage.isEmpty) taken else services.identity.TakeOutcome.Pending(stage)
+      case model                                  => if (stage.isEmpty) model else services.identity.TakeOutcome.Pending(decision.awaits ++ stage)
+    }
   }
+
 
   /** `decision`'s cluster key ([[StableNames]]) as the last apply left it: of a model decision it was handed, or of what
    *  it took one as. Read off maps no apply changes once built, from any thread, allocating nothing; a decision no apply
@@ -524,7 +526,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
           def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, asking)
           // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
           verdict.fold(decision) { v =>
-            lazy val unagreed = AgreementStage.Unagreed(decision, id, digest, listings, v, distances)
+            lazy val unagreed = AgreementStage.Unagreed(decision, id, digest, listings, v, distances, asking)
+            // a cluster no take took a film for while one of them waits on a question -- a find, a poster, a broadcast's
+            // record -- is pending on it, as an agreed take is (PL "SEVENTEEN World Tour": filled by IMDb once TMDB's find
+            // of its id was filed, read as no film before it; the property "refine each take as answers are only filed")
+            def waited(fell: ResolverDecision): ResolverDecision = {
+              if ((fell eq decision) && asking.nonEmpty) takeWaits(id) = AgreementStage.Waiting(digest, asking.toSet)
+              fell
+            }
             pieceOf(v, listings).fold(
             v.agreed.fold[AgreementStage.Take[ResolverDecision]](AgreementStage.Take.Untaken)(taken(decision, _, asking, distances,
               film => synopsisAgainst(id, digest, listings, film))) match {
@@ -534,14 +543,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
                 takeOf(AgreementStage.BroadcastTake, unagreed, pass).getOrElse(agreed)
               case AgreementStage.Take.Taken(agreed) => agreed
               case AgreementStage.Take.Pending       => takeWaits(id) = AgreementStage.Waiting(digest, asking.toSet); decision
-              case AgreementStage.Take.Vetoed        => pass.posterVetoed += 1; fellThrough(unagreed, pass)
+              case AgreementStage.Take.Vetoed        => pass.posterVetoed += 1; waited(fellThrough(unagreed, pass))
               // the venue's synopsis naming a namesake's description says why, where nothing else takes one
               case AgreementStage.Take.Refused(why)  =>
-                val fell = fellThrough(unagreed, pass)
+                val fell = waited(fellThrough(unagreed, pass))
                 if (fell eq decision) taking(decision)(decision.basis, why) else fell
               // the guard that refused the film the families would agree on says why, where nothing else takes one
               case AgreementStage.Take.Untaken       =>
-                val fell = fellThrough(unagreed, pass)
+                val fell = waited(fellThrough(unagreed, pass))
                 v.refused.filter(_ => fell eq decision).fold(fell)(why => taking(decision)(decision.basis, why))
             })(line => taking(decision)(decision.basis, line))
           }.tap(_ => pass.asked ++= asking)
@@ -658,10 +667,10 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  every question it waits on. */
   private[agreement] val takes: Map[String, (AgreementStage.Unagreed, AgreementStage.Pass) => Option[ResolverDecision]] = Map(
     AgreementStage.PosterVoteTake -> ((u, _) => voted(u.decision, u.distances(None))),
-    AgreementStage.BroadcastTake  -> ((u, asks) => broadcast(u.decision, u.id, u.digest, u.listings, asks.version, asks.asked)),
-    AgreementStage.FillTake       -> ((u, asks) => filledTake(u.decision, u.verdict, asks.asked, u.distances,
+    AgreementStage.BroadcastTake  -> ((u, asks) => broadcast(u.decision, u.id, u.digest, u.listings, asks.version, u.asking)),
+    AgreementStage.FillTake       -> ((u, _) => filledTake(u.decision, u.verdict, u.asking, u.distances,
       film => synopsisAgainst(u.id, u.digest, u.listings, film))),
-    AgreementStage.CatalogueTake  -> ((u, asks) => catalogued(u.decision, u.listings, asks.asked)))
+    AgreementStage.CatalogueTake  -> ((u, _) => catalogued(u.decision, u.listings, u.asking)))
   private[agreement] def takeOf(rule: String, untaken: AgreementStage.Unagreed, asks: AgreementStage.Pass): Option[ResolverDecision] = takes(rule)(untaken, asks)
   private[agreement] val fallThrough = AgreementStage.FallThrough.map(takes)
   /** The first of [[AgreementStage.FallThrough]] to take a film for the cluster, else the cluster as the model left it. */
@@ -1039,7 +1048,7 @@ object AgreementStage {
   /** A model no-match the families' agreement took no film for, as the takes read it: its cluster id, listings and their
    *  digest, the families' verdict, and its venue posters' distances to its candidates (and to `also`). */
   private[agreement] final case class Unagreed(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], verdict: StoredVerdict,
-                                   distances: Distances)
+                                   distances: Distances, asking: mutable.Set[Question] = mutable.Set.empty)
   /** A cluster's venue posters' distances to its candidates and to the film given (an agreed or filled one): what a take
    *  is screened by ([[AgreementTakes.screened]]). `Unknown` while a poster is not hashed. */
   private[agreement] type Distances = Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]
