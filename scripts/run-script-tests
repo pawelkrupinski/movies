@@ -12,7 +12,8 @@
 #   scripts/run-script-tests --linux [<names>]     # the selected tests in an ubuntu-26.04 container, as CI runs
 #                                                  # them (default: those --changed origin/main selects); Docker
 #
-# Options: --jobs N (8 at once), --timeout S (600 s a test), --root DIR (the checkout; this script's own),
+# Options: --jobs N (8 at once), --stall S (a test ended after 300 s without progress), --timeout S (a wall-clock
+# ceiling on each test; none by default), --root DIR (the checkout; this script's own),
 # --bash PATH (each .sh test run by it, and first on the PATH as `bash`, so the tools it starts through their
 # `#!/usr/bin/env bash` and every `bash -c` run by it too).
 #
@@ -26,10 +27,18 @@
 # self-test at all; any other tag (`own-job`, ...) for one a workflow runs by name where its toolchain
 # is (ScriptSelfTestsRunInCiSpec holds those to it). `--tag <tag>` runs them; `--all` lists everything.
 #
-# Each test runs from the checkout's root, `bash` for .sh and `python3` for .py, stdin closed, under
-# its own timeout (tool-conventions.sh's `bounded`: the test's whole process group ended, and a
-# Ctrl-C reaching it, which GNU timeout's own process group would not). The table names each
-# PASS / FAIL / TIMEOUT with its seconds; a failure's last lines follow.
+# Each test runs from the checkout's root, `bash` for .sh and `python3` for .py, stdin closed, in a
+# process group of its own (tool-conventions.sh's `bounded`: the whole group ended, and a Ctrl-C
+# reaching it, which GNU timeout's own process group would not).
+#
+# A NO-PROGRESS BOUND, NOT A WALL CLOCK (scripts/stall-watch.sh): a test is ended, STALLED, once it has
+# gone --stall seconds with no output, no CPU in its processes and none of them runnable, and its log
+# says what the group was stuck on (scripts/stall-report.sh). A test that is working is never cut short
+# however long a loaded machine makes it: Tool self-tests #2857 ran four of them (identity-takes-check,
+# pre-push, pre-push-tools, identity-measure; 115-450 s on a quiet runner) under a load of 160 and cut
+# each, passing case after passing case, at the 600 s a test it had then. --timeout S adds a wall-clock
+# ceiling for a caller that wants one; CI's is the job's own timeout. The table names each PASS / FAIL /
+# STALLED / TIMEOUT with its seconds; a failure's last lines follow.
 # Exit: 0 all passed (or none selected by --changed), 1 any failed or a filter matched nothing,
 # 2 a --changed base that is no commit, 64 usage. Bash 3.2 (macOS /bin/bash): no wait -n, no maps.
 set -uo pipefail
@@ -46,7 +55,8 @@ PythonFloor="3.9"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 stall_report="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-report.sh" # this script's own, whatever --root
-jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" test_bash="" linux=0 filters=()
+stall_watch="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/stall-watch.sh"
+jobs=8 timeout_s=0 stall_s=300 list=0 all=0 tag="" changed_base="" test_bash="" linux=0 filters=()
 usage() { usage_from_header "${BASH_SOURCE[0]}" >&2; exit 64; }
 # A caller's mistake exits 64 here (above), not tool-conventions.sh's 2: flag_value's missing value too.
 usage_error() { echo "run-script-tests: $*" >&2; usage; }
@@ -54,6 +64,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --jobs) flag_value "$@"; jobs="$2"; shift ;;
     --timeout) flag_value "$@"; timeout_s="$2"; shift ;;
+    --stall) flag_value "$@"; stall_s="$2"; shift ;;
     --root) flag_value "$@"; root="$(cd "$2" && pwd)" || exit 64; shift ;;
     --list) list=1 ;;
     --all) all=1 ;;
@@ -270,7 +281,7 @@ run_on_linux() {
   { [ -z "$git_common" ] || git_metadata_tar "$git_common" "$git_dir"; } |
     "$docker" run --rm -i --user "$(id -u):$(id -g)" -e HOME=/tmp -e TERM=dumb -e RUN_SCRIPT_TESTS_LOG_DIR="$log_dir" "${mounts[@]}" -w "$root" "$image" \
       bash -c '[ -z "$0" ] || tar -xf - -C "$0" || exit 2; exec "$@" < /dev/null' "$git_common" \
-      bash scripts/run-script-tests --jobs "$jobs" --timeout "$timeout_s" ${tag:+--tag "$tag"} "${selected[@]}"
+      bash scripts/run-script-tests --jobs "$jobs" --timeout "$timeout_s" --stall "$stall_s" ${tag:+--tag "$tag"} "${selected[@]}"
 }
 
 work="$(mktemp -d)"
@@ -323,12 +334,26 @@ fi
 run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
   local i="$1" path="$2" start=$SECONDS code interpreter=bash
   case "$path" in *.py) interpreter=python3 ;; esac
-  # a test that times out says what it was stuck on, in its own log (the report's tail shows it)
-  BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null > "$work/$i.log" 2>&1
+  # a test that stalls (or outlasts a --timeout) says what it was stuck on, in its own log (the report's tail shows it)
+  # (appended to, as the watch below appends its report: neither writes over the other)
+  : > "$work/$i.log"
+  BOUNDED_ON_TIMEOUT="$stall_report" bounded "$timeout_s" "$interpreter" "$path" < /dev/null >> "$work/$i.log" 2>&1 &
+  local test_pid=$! watch_pid
+  # the no-progress bound: its log written counts as progress; a stall says what the test's group was stuck on, in its
+  # log, and ends the group. Run by this script's own bash: a --bash under test runs the tests only.
+  # shellcheck disable=SC2094 # the watch only reads the log's time, and appends to it
+  KINOWO_STALL_POLL_SECONDS="${KINOWO_STALL_POLL_SECONDS:-$(stall_poll)}" KINOWO_STALL_GROUPS=1 \
+    "$BASH" "$stall_watch" watch "$test_pid" "$stall_s" "$path" "$work/$i.stalled" "$work/$i.log" < /dev/null 2>> "$work/$i.log" &
+  watch_pid=$!
+  wait "$test_pid"
   code=$?
+  kill "$watch_pid" 2> /dev/null; wait "$watch_pid" 2> /dev/null
   echo "$((SECONDS - start))" > "$work/$i.seconds"
   echo "$code" > "$work/$i.rc"
 }
+
+# how often the no-progress bound looks: a tenth of it, 1-30 s
+stall_poll() { local p=$((stall_s / 10)); [ "$p" -lt 1 ] && p=1; [ "$p" -gt 30 ] && p=30; echo "$p"; }
 
 paths=()
 while IFS="$(printf '\t')" read -r path _; do paths+=("$path"); done < "$work/selected"
@@ -341,7 +366,8 @@ report() { # <index>
   local i="$1" code secs status
   code="$(cat "$work/$i.rc")"; secs="$(cat "$work/$i.seconds")"
   if [ "$code" = 0 ]; then status=PASS
-  elif [ "$code" = 124 ] || [ "$code" = 137 ] || [ "$secs" -ge "$timeout_s" ]; then status=TIMEOUT
+  elif [ -s "$work/$i.stalled" ]; then status=STALLED
+  elif [ "$code" = 124 ] || [ "$code" = 137 ]; then status=TIMEOUT
   else status=FAIL
   fi
   printf '%-7s %4ss  %s\n' "$status" "$secs" "${paths[$i]}" >> "$work/table"

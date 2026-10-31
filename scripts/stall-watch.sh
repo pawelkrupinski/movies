@@ -14,6 +14,10 @@
 #       <seconds> without any: it appends <label> to
 #       <stalled file>, prints `STALLED: <label> (no progress for <seconds>s)` on stderr, and ends the descendants (TERM,
 #       KILL 10 s later). It ends itself when <root pid> does; its caller kills it once the step is done.
+#       KINOWO_STALL_GROUPS=1: the step runs in process groups of its own, under the root's (run-script-tests: each test
+#       under tool-conventions.sh's `bounded`): a stall first says what each of those groups was stuck on
+#       (scripts/stall-report.sh, on stderr), then ends their processes alone, never the root's own group -- whose
+#       `bounded` then returns the step's status as for any other end.
 #   . scripts/stall-watch.sh          the helpers: stall_tree_pids <pid>, stall_cpu_centis [<pid>...],
 #                                     stall_any_runnable [<pid>...]
 #
@@ -67,7 +71,7 @@ _stall_newer() { [ -n "$1" ] && [ -e "$1" ] && [ "$1" -nt "$2" ]; }
 stall_watch() { # <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]
   local root=$1 bound=$2 label=$3 stalled=$4 progress=${5:-} dir=${6:-}
   local poll=${KINOWO_STALL_POLL_SECONDS:-30} need=${KINOWO_STALL_CPU_CENTIS:-100}
-  local mark quiet=0 last now mine pids p q moved
+  local mark quiet=0 last now mine pids p q moved own g groups
   mark=$(mktemp "${TMPDIR:-/tmp}/stall-mark.XXXXXX") || return 1
   local nap=""
   # ended at once, mid-poll: a trap waits for a foreground `sleep` to end, so the poll sleeps in the background (each
@@ -95,6 +99,14 @@ stall_watch() { # <root pid> <seconds> <label> <stalled file> [<progress file>] 
     [ "$quiet" -ge "$bound" ] || continue
     echo "$label" >> "$stalled"
     echo "STALLED: $label (no progress for ${quiet}s: no CPU in its processes, no output, no progress mark)" >&2
+    if [ "${KINOWO_STALL_GROUPS:-}" = 1 ] && [ -n "$pids" ]; then
+      own=$(ps -o pgid= -p "$root" 2> /dev/null | tr -d ' ')
+      # shellcheck disable=SC2086 # one pid per word
+      groups=$(ps -o pid=,pgid= -p "$(echo $pids | tr ' ' ',')" 2> /dev/null | awk -v own="$own" '$2 != own { print $2 }' | sort -u)
+      # shellcheck disable=SC2086
+      pids=$(ps -o pid=,pgid= -p "$(echo $pids | tr ' ' ',')" 2> /dev/null | awk -v own="$own" '$2 != own { print $1 }' | tr '\n' ' ')
+      for g in $groups; do bash "$(dirname "${BASH_SOURCE[0]}")/stall-report.sh" "$g"; done
+    fi
     # shellcheck disable=SC2086
     [ -n "$pids" ] && kill -TERM $pids 2> /dev/null
     for _ in $(seq 1 20); do

@@ -109,7 +109,23 @@ put scripts/slow-test.sh "echo \$\$ >> '$work/hung'; exec sleep 86400"
 code="$(run --timeout 1 slow-test)"
 check "a hung test is cut off at its timeout and fails" "1" "$code"
 check "...reported as a timeout, and not left running" "1 0" "$(grep -c '^TIMEOUT .*slow-test' "$work/out") $(spec_still_running "$work/hung")"
+
+# The no-progress bound (Tool self-tests #2857: four tests, passing case after case under a load of 160, cut at a 600 s
+# wall clock). A hung test -- no output, no CPU, nothing runnable -- is ended at --stall and reported STALLED, saying
+# what its process group was stuck on; one still working past --stall is never cut, however long it takes.
+: > "$work/hung"
+code="$(KINOWO_STALL_POLL_SECONDS=1 run --stall 2 slow-test)"
+check "a test making no progress is ended at its stall bound and fails" "1" "$code"
+check "...reported as STALLED, with the stall report, and not left running" "1 1 0" \
+  "$(grep -c '^STALLED .*slow-test' "$work/out") $(grep -c 'stall report: process group' "$work/out") $(spec_still_running "$work/hung")"
 rm "$tree/scripts/slow-test.sh"
+# busy: a line, then a wait on what the line's writer hands it, over and over -- progress at every poll, for longer
+# than the bound (its count, not a clock, ends it)
+# shellcheck disable=SC2016 # expanded by the fake test, not here
+put scripts/busy-test.sh 'for n in $(seq 1 30); do echo "case $n"; sleep 0.2; done'
+check "a test still making progress past its stall bound passes" "0" "$(KINOWO_STALL_POLL_SECONDS=1 run --stall 2 busy-test)"
+check "...as PASS" "1" "$(grep -c '^PASS .*busy-test' "$work/out")"
+rm "$tree/scripts/busy-test.sh"
 
 # The pool: never more than --jobs tests at once. Each records how many were running while it ran.
 mkdir -p "$work/running"
@@ -169,7 +185,7 @@ linux() { : > "$work/docker-calls"
 check "--linux runs the selected tests in a container" "0" "$(linux scripts/ci/b_test.py)"
 check "...the checkout mounted read-only at its own path, as this user, not root" "1 1" \
   "$(grep -c -- "^run .*-v $tree:$tree:ro" "$work/docker-calls") $(grep -c -- "--user $(id -u):$(id -g)" "$work/docker-calls")"
-check "...naming exactly the tests selected here" "1" "$(grep -c 'run-script-tests --jobs 8 --timeout 600 scripts/ci/b_test.py$' "$work/docker-calls")"
+check "...naming exactly the tests selected here" "1" "$(grep -c 'run-script-tests --jobs 8 --timeout 0 --stall 300 scripts/ci/b_test.py$' "$work/docker-calls")"
 check "...from an ubuntu image pulled from mirror.gcr.io" "1" "$(grep -c 'kinowo-script-tests:' "$work/docker-calls" | grep -c .)"
 # its git metadata a snapshot, unpacked into a tmpfs at the git dir's own path, only the objects mounted live: a host git
 # rewriting the shared .git/config (lock and rename) made it read as missing in there for most of the next second
