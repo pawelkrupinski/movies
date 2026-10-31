@@ -198,6 +198,23 @@ final class LookupFill(
     val outcomes = tools.HttpPath.within(tools.HttpPath.Fill)(
       asked.queries.toSeq.sorted.map(q => Question.Candidate(q) -> outcome(lookups.candidates(q))) ++
         asked.films.toSeq.sorted.map(id => Question.FilmRecord(id) -> outcome(lookups.film(id))))
+    remember(outcomes, budget)
+    renew(lookups, client, budget)
+    // each host's round on its own: one host down says nothing of another's health
+    budget.hosts.foreach { case (host, (answered, failed, deferred)) => memory.roundEnded(answered, failed, deferred, host) }
+    current = Some(if (budget.paceOverloaded) at.halved else IdentityLookupFillRate((at.perMinute * 2).min(rate.perMinute)))
+    val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
+      budget.backedOff, at)
+    metrics.round(r)
+    ticks.completed(LookupFill.Tick, window.value)
+    logger.info(s"identity lookup fill: asked ${r.asked} (${r.answered} answered, ${r.failed} failed), deferred ${r.deferred} " +
+      s"at ${at.perMinute}/min${if (r.backedOff) s" — backed off ${budget.overloadedHosts.toSeq.sorted.mkString(", ")}" else ""}")
+    r
+  }
+
+  /** What the round's asks came to, into the question memory: the unanswered remembered, a run of failures ended by an
+   *  answer, each failure marked against its host -- and a record whose reads keep failing filed absent. */
+  private def remember(outcomes: Seq[(Question, (LookupFill.Asked, Option[String]))], budget: LookupFillBudget): Unit = {
     memory.unanswered(outcomes.collect { case (question, (LookupFill.Asked.Unanswered, _)) => question })
     // an answer ends a run of failures: else a record that failed seven rounds, then answered, was given up on at its
     // next failed read a month on (QuestionPolicies.RecordGiveUpFailures counts failures IN A ROW)
@@ -214,26 +231,16 @@ final class LookupFill(
         normalizer.recordAbsent(id)
       case _ => ()
     }
-    // Then, with what the allowance has left, what has aged (`QuestionRenewals`) — through the same live fetch: the
-    // questions first, then the records and people TMDB last gave a month ago, what its changes may never have named. A
-    // record or person that failed is named again by the next scan.
+  }
+
+  /** With what the allowance has left, the aged questions, records and people asked again ([[QuestionRenewals]]). */
+  private def renew(lookups: TmdbIdentityLookups, client: TmdbClient, budget: LookupFillBudget): Unit =
     tools.HttpPath.within(tools.HttpPath.Refresh)(renewals().iterator.takeWhile(_ => budget.remaining > 0).foreach {
       case Question.Candidate(query) => lookups.candidates(query)
       case Question.FilmRecord(id)   => try client.identityRecord(id) catch { case NonFatal(_) => () }
       case Question.Person(id)       => try client.personDirectorCredits(id) catch { case NonFatal(_) => () }
       case _                         => ()
     })
-    // each host's round on its own: one host down says nothing of another's health
-    budget.hosts.foreach { case (host, (answered, failed, deferred)) => memory.roundEnded(answered, failed, deferred, host) }
-    current = Some(if (budget.paceOverloaded) at.halved else IdentityLookupFillRate((at.perMinute * 2).min(rate.perMinute)))
-    val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
-      budget.backedOff, at)
-    metrics.round(r)
-    ticks.completed(LookupFill.Tick, window.value)
-    logger.info(s"identity lookup fill: asked ${r.asked} (${r.answered} answered, ${r.failed} failed), deferred ${r.deferred} " +
-      s"at ${at.perMinute}/min${if (r.backedOff) s" — backed off ${budget.overloadedHosts.toSeq.sorted.mkString(", ")}" else ""}")
-    r
-  }
 
   /** The fill's own claimed schedule: [[start]] every `interval`, first after `initialDelay`, on the replica that wins
    *  the window's claim. It records only that it started: [[round]] completes the tick, not the hand-off. */
