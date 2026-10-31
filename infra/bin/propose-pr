@@ -8,10 +8,9 @@
 # .github/workflows/nix-update.yml: infra/bin/nix-update's output as branch nix-update/all here, and
 # infra/bin/image_pins.py --gitops-out's as branch image-pins/all in pawelkrupinski/movies-gitops.
 #
-# AS ci-bot, NOT AS THE JOB: Forgejo fires no `pull_request` workflows for a PR the job token opens,
-# so the checks a reviewer needs would never run. The token is SCALA_STEWARD_TOKEN, the one
-# scala-steward.yml opens its PRs with (ci-bot, minted by bitcashier/infra's bin/forgejo-bootstrap;
-# write through team pawelkrupinski/steward, which must hold every repository it proposes to).
+# WITH THE SYNC BOT APP'S TOKEN, NOT THE JOB'S: github.com fires no `pull_request` workflows for a PR the
+# job's GITHUB_TOKEN opens, so the checks a reviewer needs would never run. nix-update.yml mints it
+# (actions/create-github-app-token) for every repository it proposes to.
 #
 # THE BRANCH IS REBUILT FROM main EVERY WEEK AND FORCE-PUSHED, so an open PR always shows this
 # week's change against today's main -- UNLESS someone else has pushed to it (to drop an upgrade,
@@ -34,9 +33,9 @@ done
 out="$(cd "${1:?${usage}}" && pwd)"
 cd "${checkout}"
 : "${branch:?${usage}}" "${repo:?${usage} (or \$GITHUB_REPOSITORY)}"
-: "${PROPOSE_TOKEN:?PROPOSE_TOKEN is not set (secrets.SCALA_STEWARD_TOKEN, the ci-bot token)}"
+: "${PROPOSE_TOKEN:?PROPOSE_TOKEN is not set (the Sync Bot App token nix-update.yml mints)}"
 server="${GITHUB_SERVER_URL:?}"
-bot_email="ci-bot@forgejo.internal"
+bot_email="ci-bot@kinowo.invalid"
 summary="${GITHUB_STEP_SUMMARY:-/dev/null}"
 
 if [ ! -s "${out}/changes.patch" ]; then
@@ -48,11 +47,14 @@ fi
 # GIT_CONFIG_* environment.
 auth_curl() { curl -K <(printf 'header = "Authorization: token %s"\n' "${PROPOSE_TOKEN}") "$@"; }
 auth_git() {
-  GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader GIT_CONFIG_VALUE_0="Authorization: token ${PROPOSE_TOKEN}" \
+  # github.com's git endpoint takes basic auth (x-access-token:<token>, as actions/checkout sends), not a `token`
+  # header; the REST API below takes `Authorization: token`.
+  GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=http.extraHeader \
+    GIT_CONFIG_VALUE_0="Authorization: basic $(printf 'x-access-token:%s' "${PROPOSE_TOKEN}" | base64 | tr -d '\n')" \
     git "$@"
 }
 remote="${server}/${repo}.git"
-api="${server}/api/v1/repos/${repo}"
+api="${GITHUB_API_URL:-https://api.github.com}/repos/${repo}"
 
 # ls-remote first, so "no such branch" (the first week, or after a merge) is told apart from a
 # failed read, which must stop the run rather than read as "nothing to protect". An assignment, not
@@ -99,7 +101,7 @@ echo "pushed ${branch} ($(git rev-parse --short HEAD))"
 
 title="$(head -n1 "${out}/title")"
 body_json="$(jq -n --arg title "${title}" --rawfile body "${out}/body.md" '{title: $title, body: $body}')"
-number="$(auth_curl -fsS "${api}/pulls?state=open&limit=50" |
+number="$(auth_curl -fsS "${api}/pulls?state=open&per_page=50" |
   jq -r --arg b "${branch}" 'map(select(.head.ref == $b)) | first | .number // empty')"
 if [ -n "${number}" ]; then
   auth_curl -fsS -o /dev/null -X PATCH -H 'Content-Type: application/json' \
@@ -110,4 +112,4 @@ else
     auth_curl -fsS -X POST -H 'Content-Type: application/json' --data-binary @- "${api}/pulls" | jq -r .number)"
   echo "opened PR #${number}: ${title}" | tee -a "${summary}"
 fi
-echo "${server}/${repo}/pulls/${number}" | tee -a "${summary}"
+echo "${server}/${repo}/pull/${number}" | tee -a "${summary}"

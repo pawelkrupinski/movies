@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # infra/bin/propose-pr's offline self-test: a bare repository stands in for the forge's git (a global
 # `url.insteadOf` sends the http remote to it, so the script's own auth_git is untouched) and a fake
-# Forgejo pulls API on a local port records what it is asked. Proves: the first run pushes the branch
+# pulls API on a local port records what it is asked. Proves: the first run pushes the branch
 # as ci-bot and opens the PR against main; the next updates that PR in place; a branch carrying
 # someone else's commit is left alone; a shallow checkout (fetch-gitops' depth 1) is no false alarm;
 # a branch list that cannot be read fails the run instead of overwriting the branch;
@@ -89,19 +89,19 @@ echo "Image pins: tool v1.2.0" >"${tmp}/out/title"
 echo "the body" >"${tmp}/out/body.md"
 
 propose() {
-  env -u GITHUB_ACTIONS GITHUB_SERVER_URL="${server}" GITHUB_REPOSITORY=other/repo PROPOSE_TOKEN=s3cret \
+  env -u GITHUB_ACTIONS GITHUB_SERVER_URL="${server}" GITHUB_API_URL="${server}" GITHUB_REPOSITORY=other/repo PROPOSE_TOKEN=s3cret \
     "${here}/propose-pr" -C "${tmp}/checkout" --repo "${repo}" --branch image-pins/all "${tmp}/out"
 }
 remote_branch() { scratch_git "${tmp}/forge/${repo}.git" "$@"; }
 
 # 1. first run: branch pushed as ci-bot on top of main, PR opened against main, the token on a header only
 propose >"${tmp}/run1" || fail "first run: $(cat "${tmp}/run1")"
-[ "$(remote_branch log -1 --format=%ae image-pins/all)" = ci-bot@forgejo.internal ] || fail "the branch is not ci-bot's"
+[ "$(remote_branch log -1 --format=%ae image-pins/all)" = ci-bot@kinowo.invalid ] || fail "the branch is not ci-bot's"
 [ "$(remote_branch rev-parse image-pins/all~1)" = "$(remote_branch rev-parse main)" ] || fail "the branch is not main + one"
 remote_branch show image-pins/all:app.yaml | grep -qx 'image: acme/tool:v1.2.0' || fail "the patch is not on the branch"
 post="$(grep '"POST"' "${tmp}/calls.log")" || fail "no PR opened"
 python3 -c 'import json,sys; c=json.loads(sys.argv[1]); b=c["body"]
-assert c["path"] == "/api/v1/repos/acme/gitops/pulls", c["path"]
+assert c["path"] == "/repos/acme/gitops/pulls", c["path"]
 assert (b["head"], b["base"], b["title"], b["body"]) == ("image-pins/all", "main", "Image pins: tool v1.2.0", "the body\n"), b
 assert c["auth"] == "token s3cret", c["auth"]' "${post}" || fail "the PR was opened wrong"
 grep -q "opened PR #7" "${tmp}/run1" || fail "first run did not say it opened the PR"
@@ -115,7 +115,7 @@ clone_checkout
 propose >"${tmp}/run2" || fail "second run: $(cat "${tmp}/run2")"
 grep -q "updated PR #7" "${tmp}/run2" || fail "second run did not update PR #7: $(cat "${tmp}/run2")"
 [ "$(grep -c '"POST"' "${tmp}/calls.log")" = 1 ] || fail "second run opened another PR"
-grep '"PATCH"' "${tmp}/calls.log" | grep -q '/api/v1/repos/acme/gitops/pulls/7' || fail "second run patched no PR"
+grep '"PATCH"' "${tmp}/calls.log" | grep -q '/repos/acme/gitops/pulls/7' || fail "second run patched no PR"
 [ "$(remote_branch rev-parse image-pins/all~1)" = "$(remote_branch rev-parse main)" ] || fail "second run did not rebuild on main"
 
 # 3. someone else's commit on the branch: left alone, nothing pushed
