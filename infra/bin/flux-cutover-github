@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# Cut the kinowo cluster's Flux back from the self-hosted Forgejo to github.com -- the reverse of
+# infra/bin/flux-cutover-forgejo (github-return plan, Phase 3, cut-over step C7).
+#
+# movies-gitops' branch `flux-github` points the GitRepositories `movies` (flux/gotk-sync.yaml,
+# applied by hand) and `movies-write` (image-automation/automation.yaml, reconciled) at
+# ssh://git@github.com/pawelkrupinski/movies-gitops.git with secretRef flux-git-read / flux-git-write.
+# That commit must be on GITHUB's main before this runs (and never on Forgejo's: Flux reading Forgejo
+# would move movies-write before its keys exist). This script then supplies the keys and applies the
+# change out of band, as the Forgejo cut-over did:
+#
+#   0. preflight (read-only): gh is logged in; GitHub's main has every commit of Forgejo's main (the
+#      image automation's tag commits included) and its two manifests name the GitHub URL;
+#   1. builds known_hosts with ssh-keyscan of github.com run on k3s-worker-1 (the cluster's own view),
+#      and refuses keys whose fingerprints GitHub's /meta does not publish;
+#   2. generates a read and a write ed25519 deploy key in a temp dir (removed on exit);
+#   3. registers them on pawelkrupinski/movies-gitops (`gh repo deploy-key add`, the write one with
+#      --allow-write), titles stamped with the run's UTC time, beside any earlier flux key -- which is
+#      removed only after step 4 hands Flux the new keys (the GitHub-era "flux-image-automation
+#      2026-10-09" key included), so a run that dies half way leaves Flux's current key working;
+#   4. creates/updates Secrets flux-system/flux-git-read and flux-git-write (identity, identity.pub,
+#      known_hosts) by `kubectl apply -f -` on the k3s server, values over stdin;
+#   5. applies flux/gotk-sync.yaml from GitHub's main and points `movies-write` there too;
+#   6. requests a reconcile and prints the state.
+#
+# DRY RUN BY DEFAULT: without --apply it runs step 0 (GitHub and local git reads only; nothing on the
+# cluster) and prints what steps 1-6 would do, including the deploy keys it would remove. --apply
+# does it. Re-running --apply is harmless: fresh keys replace both deploy keys and the Secrets.
+#
+# ROLLBACK: infra/bin/flux-cutover-forgejo (mints Forgejo keys again; Forgejo's own deploy keys are
+# left registered here).
+#
+# Needs: gh logged in as the owner (repo admin on movies-gitops), ~/projects/movies-gitops with remotes
+# `forgejo` and `origin`, ssh to monitoring-1 and k3s-worker-1 (--apply only), jq, ssh-keygen.
+#
+#   infra/bin/flux-cutover-github            # dry run
+#   infra/bin/flux-cutover-github --apply
+set -euo pipefail
+
+apply=0
+case "${1:-}" in
+  --apply) apply=1 ;;
+  "" | --dry-run) ;;
+  -h | --help) sed -n '2,/^set -euo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+  *) echo "usage: $0 [--dry-run | --apply]" >&2; exit 2 ;;
+esac
+
+server="${K8S_SERVER_HOST:-monitoring-1}"   # k3s server; kubectl runs there
+scanner="${KEYSCAN_HOST:-k3s-worker-1}"     # a cluster node: known_hosts as the cluster sees github.com
+owner=pawelkrupinski
+repo=movies-gitops
+slug="$owner/$repo"
+gitops="${GITOPS_CLONE:-$HOME/projects/movies-gitops}"
+git_url="ssh://git@github.com/${slug}.git"
+read_title="flux-git-read (kinowo k3s)"
+write_title="flux-git-write (kinowo k3s)"
+
+for tool in gh jq ssh ssh-keygen git; do
+  command -v "$tool" >/dev/null || { echo "missing: $tool" >&2; exit 1; }
+done
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+kube() { ssh -o BatchMode=yes "$server" "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml; $1"; }
+would() { echo "  would: $*"; }
+raw() { gh api -H 'Accept: application/vnd.github.raw' "repos/$slug/contents/$1?ref=main"; }
+
+echo "== 0. preflight ($([ "$apply" = 1 ] && echo APPLY || echo 'dry run: nothing changes'))"
+gh auth status -h github.com >/dev/null 2>&1 || { echo "gh is not logged in to github.com: gh auth login" >&2; exit 1; }
+gh api "repos/$slug" --jq '"  repo \(.full_name) (private: \(.private)), default branch \(.default_branch)"'
+git -C "$gitops" fetch -q forgejo main
+git -C "$gitops" fetch -q origin main
+fj=$(git -C "$gitops" rev-parse forgejo/main)
+gh_main=$(git -C "$gitops" rev-parse origin/main)
+echo "  Forgejo main $fj, GitHub main $gh_main"
+git -C "$gitops" merge-base --is-ancestor "$fj" "$gh_main" || {
+  echo "GitHub's main lacks Forgejo's main $fj (the image automation's commits?): bring it over first --" >&2
+  echo "  git -C $gitops rebase forgejo/main flux-github && git -C $gitops push origin flux-github:main" >&2
+  exit 1; }
+gotk_sync=$(raw flux/gotk-sync.yaml)
+automation=$(raw image-automation/automation.yaml)
+for f in gotk_sync automation; do
+  grep -qF "url: $git_url" <<<"${!f}" || {
+    echo "GitHub main's $f manifest does not point at $git_url -- push movies-gitops' flux-github branch to origin main first" >&2
+    exit 1; }
+done
+grep -qF "name: flux-git-read" <<<"$gotk_sync" || { echo "GitHub main's flux/gotk-sync.yaml has no secretRef flux-git-read" >&2; exit 1; }
+grep -qF "name: flux-git-write" <<<"$automation" || { echo "GitHub main's automation.yaml has no secretRef flux-git-write" >&2; exit 1; }
+echo "  GitHub main's manifests point at $git_url"
+# Every flux key there now: removed after step 4 (the GitHub-era write key from 2026-10-09 among them).
+old_keys=$(gh repo deploy-key list -R "$slug" --json id,title,readOnly \
+  --jq '.[] | select(.title | startswith("flux-")) | "\(.id)\t\(.title)\t(read_only \(.readOnly // "unknown"))"')
+if [ -n "$old_keys" ]; then
+  echo "  deploy keys removed after the Secrets carry the new ones:"
+  sed 's/^/    /' <<<"$old_keys"
+else
+  echo "  no earlier flux deploy keys"
+fi
+
+echo "== 1. known_hosts (ssh-keyscan github.com on $scanner)"
+if [ "$apply" = 1 ]; then
+  known_hosts=$(ssh -o BatchMode=yes "$scanner" "ssh-keyscan -t ed25519,ecdsa,rsa github.com 2>/dev/null" | grep -v '^#' || true)
+  grep -q '^github.com ' <<<"$known_hosts" || { echo "ssh-keyscan from $scanner returned no host keys for github.com" >&2; exit 1; }
+  published=$(gh api meta --jq '.ssh_key_fingerprints | .[]')
+  while read -r line; do
+    fp=$(ssh-keygen -lf - <<<"$line" | awk '{print $2}' | sed 's/^SHA256://')
+    grep -qxF "$fp" <<<"$published" || { echo "github.com host key $fp (from $scanner) is not one GitHub publishes" >&2; exit 1; }
+    echo "  $(awk '{print $2}' <<<"$line") SHA256:$fp (matches api.github.com/meta)"
+  done <<<"$known_hosts"
+  printf '%s\n' "$known_hosts" >"$work/known_hosts"
+else
+  would "ssh $scanner ssh-keyscan github.com, each key checked against gh api meta's ssh_key_fingerprints"
+fi
+
+echo "== 2. generate deploy keys"
+for kind in read write; do
+  ssh-keygen -q -t ed25519 -N '' -C "flux-git-$kind@kinowo-k3s" -f "$work/$kind" </dev/null
+  echo "  $kind: $(ssh-keygen -lf "$work/$kind.pub" | awk '{print $2}')"
+done
+
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+echo "== 3. register deploy keys on $slug"
+if [ "$apply" = 1 ]; then
+  gh repo deploy-key add "$work/read.pub" -R "$slug" -t "$read_title $stamp"
+  gh repo deploy-key add "$work/write.pub" -R "$slug" -t "$write_title $stamp" --allow-write
+else
+  would "gh repo deploy-key add read.pub  -R $slug -t '$read_title $stamp'"
+  would "gh repo deploy-key add write.pub -R $slug -t '$write_title $stamp' --allow-write"
+fi
+
+echo "== 4. Secrets flux-system/flux-git-read and flux-git-write"
+for kind in read write; do
+  if [ "$apply" = 1 ]; then
+    jq -n --arg name "flux-git-$kind" \
+      --rawfile id "$work/$kind" --rawfile pub "$work/$kind.pub" --rawfile kh "$work/known_hosts" \
+      '{apiVersion: "v1", kind: "Secret", type: "Opaque",
+        metadata: {name: $name, namespace: "flux-system"},
+        data: {identity: ($id | @base64), "identity.pub": ($pub | @base64), known_hosts: ($kh | @base64)}}' |
+      kube "kubectl apply -f -" | sed 's/^/  /'
+  else
+    would "kubectl apply Secret flux-system/flux-git-$kind (identity, identity.pub, known_hosts) on $server, over stdin"
+  fi
+done
+
+echo "== 3b. remove the deploy keys the Secrets no longer hold"
+while IFS=$'\t' read -r id title _; do
+  [ -n "$id" ] || continue
+  if [ "$apply" = 1 ]; then
+    gh repo deploy-key delete "$id" -R "$slug"
+    echo "  removed $title (id $id)"
+  else
+    would "gh repo deploy-key delete $id -R $slug   # $title"
+  fi
+done <<<"$old_keys"
+
+echo "== 5. GitRepositories"
+if [ "$apply" = 1 ]; then
+  current=$(kube "kubectl -n flux-system get gitrepository movies -o jsonpath='{.spec.url} {.spec.secretRef.name}'")
+  if [[ "$current" == "$git_url flux-git-read" ]]; then
+    echo "  movies already on GitHub"
+  else
+    echo "  movies is '$current' -- applying flux/gotk-sync.yaml from GitHub main"
+    printf '%s\n' "$gotk_sync" | kube "kubectl apply -f -" | sed 's/^/  /'
+  fi
+  # movies-write is applied by the image-automation Kustomization, which sets the same value once
+  # `movies` fetches from GitHub; patching it now saves a reconcile round.
+  jq -cn --arg u "$git_url" '{spec: {url: $u, secretRef: {name: "flux-git-write"}}}' |
+    kube "kubectl -n flux-system patch gitrepository movies-write --type merge --patch-file /dev/stdin" | sed 's/^/  /'
+else
+  would "kubectl apply GitHub main's flux/gotk-sync.yaml (movies -> $git_url) unless movies already reads it"
+  would "kubectl patch gitrepository movies-write: url $git_url, secretRef flux-git-write"
+fi
+
+echo "== 6. reconcile"
+if [ "$apply" = 1 ]; then
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  kube "kubectl -n flux-system annotate --overwrite gitrepository/movies gitrepository/movies-write reconcile.fluxcd.io/requestedAt=$now" | sed 's/^/  /'
+  kube "kubectl -n flux-system wait gitrepository/movies gitrepository/movies-write --for=condition=Ready --timeout=120s" | sed 's/^/  /' ||
+    echo "  sources not Ready within 120s -- see the status below; rollback: infra/bin/flux-cutover-forgejo"
+  kube "kubectl -n flux-system annotate --overwrite kustomization --all reconcile.fluxcd.io/requestedAt=$now" >/dev/null
+  kube "kubectl -n flux-system annotate --overwrite imageupdateautomation/movies reconcile.fluxcd.io/requestedAt=$now" >/dev/null
+  echo
+  kube "kubectl -n flux-system get gitrepositories,kustomizations"
+  echo
+  kube "kubectl -n flux-system get imagerepositories,imagepolicies,imageupdateautomations"
+  echo
+  echo "Re-check: ssh $server 'KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl -n flux-system get gitrepositories,kustomizations,imageupdateautomations'"
+else
+  would "annotate movies, movies-write, every Kustomization and imageupdateautomation/movies for a reconcile; wait 120 s for Ready"
+  echo
+  echo "Dry run: nothing changed. Run again with --apply."
+fi
