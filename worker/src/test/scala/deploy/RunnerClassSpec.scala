@@ -58,7 +58,8 @@ class RunnerClassSpec extends AnyFlatSpec with Matchers {
     "android.yml", "archive-recording.yml", "branch-ci.yml", "convergence-daily.yml", "country-fixture-artifact.yml",
     "discover-cinemas.yml", "filmweb-diff.yml", "identity-ci-staleness.yml", "identity-findings-report.yml", "ios.yml",
     "nightly-stress.yml", "nix-update.yml", "precommit-check.yml", "prune-actions-caches.yml", "retire-venues.yml",
-    "roster-audit.yml", "scala-steward.yml", "security-headers.yml", "decodo-probe.yml", "tool-self-tests.yml"
+    "renovate.yml", "roster-audit.yml", "scala-steward.yml", "security-headers.yml", "decodo-probe.yml",
+    "tool-self-tests.yml"
   ).map(_ -> always(Check)) ++ Seq(
     "convergence-bisect.yml", "convergence-fill.yml", "decoration-discovery.yml", "identity-capture.yml",
     "identity-decorations.yml", "identity-lean-whole.yml", "identity-live-drift.yml", "identity-refit.yml",

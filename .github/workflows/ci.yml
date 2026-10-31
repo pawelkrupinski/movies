@@ -161,8 +161,8 @@ jobs:
         # The worker rows' suite filter (build.sbt `workerRowSettings`); empty on `rest`, which runs no worker suite.
         env:
             WORKER_ROW: ${{ matrix.suites }}
-        # `checks: write` is unused on Forgejo (action-junit-report only annotates
-        # failures there), kept as its callers grant it.
+        # `checks: write` so action-junit-report can post the failure check-run + summary on github.com
+        # (Forgejo has neither: it only annotates there).
         permissions:
             contents: read
             checks: write
@@ -291,9 +291,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
+                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+                  # failures are only annotated on the run there.
+                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  job_summary: ${{ github.server_url == 'https://github.com' }}
+                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: unit tests (${{ matrix.shard }})
                   include_passed: false
@@ -404,9 +406,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
+                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+                  # failures are only annotated on the run there.
+                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  job_summary: ${{ github.server_url == 'https://github.com' }}
+                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'target/test-reports/it/**/*.xml'
                   check_name: integration tests (${{ matrix.row }})
                   include_passed: false
@@ -668,7 +672,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: never  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: ${{ github.server_url == 'https://github.com' && 'always' || 'never' }}  # Forgejo discards job summaries, and warns of each
 
             # Collect the background compile started above. Build BEFORE booting,
             # as its own step, so the boot's ceiling only has to cover booting.
@@ -735,9 +739,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
+                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+                  # failures are only annotated on the run there.
+                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  job_summary: ${{ github.server_url == 'https://github.com' }}
+                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   # SwiftPM writes `<base>.xml` (XCTest) and
                   # `<base>-swift-testing.xml` (swift-testing); glob both.
                   report_paths: 'ios-localserver*.xml'
@@ -748,9 +754,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
+                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+                  # failures are only annotated on the run there.
+                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  job_summary: ${{ github.server_url == 'https://github.com' }}
+                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
                   check_name: Android LocalServer
                   include_passed: false
@@ -905,9 +913,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
+                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+                  # failures are only annotated on the run there.
+                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  job_summary: ${{ github.server_url == 'https://github.com' }}
+                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: e2e tests (${{ matrix.shard }})
                   include_passed: false

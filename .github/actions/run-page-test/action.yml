@@ -249,9 +249,11 @@ runs:
       if: always() && inputs.kind == 'chrome'
       uses: mikepenz/action-junit-report@v5
       with:
-        # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-        annotate_only: true
-        job_summary: false
+        # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+        # failures are only annotated on the run there.
+        annotate_only: ${{ github.server_url != 'https://github.com' }}
+        job_summary: ${{ github.server_url == 'https://github.com' }}
+        detailed_summary: ${{ github.server_url == 'https://github.com' }}
         report_paths: 'target/test-reports/page/**/*.xml'
         check_name: page tests (chrome)
         include_passed: false
@@ -358,9 +360,11 @@ runs:
       if: always() && inputs.kind == 'playwright'
       uses: mikepenz/action-junit-report@v5
       with:
-        # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-        annotate_only: true
-        job_summary: false
+        # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+        # failures are only annotated on the run there.
+        annotate_only: ${{ github.server_url != 'https://github.com' }}
+        job_summary: ${{ github.server_url == 'https://github.com' }}
+        detailed_summary: ${{ github.server_url == 'https://github.com' }}
         # Glob, not a fixed name: a row may have run several invocations, and
         # the axe-core audit writes its own file that must stay out of the
         # blocking check.

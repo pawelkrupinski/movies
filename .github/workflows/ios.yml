@@ -33,8 +33,8 @@ concurrency:
     group: ios-${{ github.ref }}
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# `checks: write` is unused on Forgejo (action-junit-report only annotates
-# failures there); `contents: read` for checkout. All jobs are same-repo.
+# `checks: write` so action-junit-report posts its check-run + summary on github.com (Forgejo has neither: it
+# only annotates there); `contents: read` for checkout. All jobs are same-repo.
 permissions:
     contents: read
     checks: write
@@ -109,9 +109,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
+                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+                  # failures are only annotated on the run there.
+                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  job_summary: ${{ github.server_url == 'https://github.com' }}
+                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'ios-unit*.xml'
                   check_name: iOS unit/integration
                   include_passed: false
@@ -198,9 +200,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
+                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+                  # failures are only annotated on the run there.
+                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  job_summary: ${{ github.server_url == 'https://github.com' }}
+                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'xcuitest.xml'
                   check_name: iOS XCUITest
                   include_passed: false
@@ -232,9 +236,11 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # Forgejo has neither check runs nor job summaries: failures are annotated on the run instead.
-                  annotate_only: true
-                  job_summary: false
+                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
+                  # failures are only annotated on the run there.
+                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  job_summary: ${{ github.server_url == 'https://github.com' }}
+                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'ios-macos*.xml'
                   check_name: iOS SPM (macOS)
                   include_passed: false
