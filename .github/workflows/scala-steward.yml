@@ -37,32 +37,19 @@ env:
 
 jobs:
     scala-steward:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ubuntu-26.04
         name: Scala Steward
         steps:
             - uses: actions/create-github-app-token@v3
-              if: github.server_url == 'https://github.com'
               id: app-token
               with:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
                   private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
 
             - name: Scala Steward
-              if: github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary'
               uses: scala-steward-org/scala-steward-action@v2
               with:
                   github-token: ${{ steps.app-token.outputs.token }}
-                  author-name: Paweł Krupiński
-                  author-email: pawel.krupinski@gmail.com
-
-            - name: Scala Steward (Forgejo)
-              if: github.server_url != 'https://github.com'
-              uses: scala-steward-org/scala-steward-action@v2
-              with:
-                  github-token: ${{ secrets.SCALA_STEWARD_TOKEN }}
-                  github-api-url: ${{ github.server_url }}/api/v1
-                  other-args: --forge-type gitea
                   author-name: Paweł Krupiński
                   author-email: pawel.krupinski@gmail.com
 

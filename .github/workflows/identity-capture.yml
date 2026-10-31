@@ -35,8 +35,7 @@ name: Identity capture
 # Secrets (all existing repo secrets): MONGO_CI_SSH_KEY + MONGO_CI_SSH_HOST_KEY (the tunnel, as
 # record-scrape-fixtures.yml), TMDB_API_KEY (the live gaps), SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY
 # (the "Kinowo Sync Bot" App, as decoration-discovery.yml: it pushes the branch, and opens the PR so
-# Branch CI runs on it) -- on github.com only. ON FORGEJO there is no App and no PR: the job's own token
-# pushes the branch, and a green one is named to the owner in an issue (scripts/ci/bot-branch-ready.sh). This bot's PR is the third of three sanctioned exceptions to "no PRs" (with
+# Branch CI runs on it) This bot's PR is the third of three sanctioned exceptions to "no PRs" (with
 # decoration-discovery.yml and identity-refit.yml): land it by fast-forwarding main after review.
 
 on:
@@ -65,8 +64,7 @@ env:
 jobs:
     # Seconds, first: every secret the jobs below read is set. (PreflightWiringSpec)
     preflight:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         # THE PLAN (WorkflowPlanSpec): the other jobs' decisions, evaluated where `inputs` and `github` are whole.
         outputs:
@@ -81,10 +79,7 @@ jobs:
                   MONGO_CI_SSH_HOST_KEY: ${{ secrets.MONGO_CI_SSH_HOST_KEY }}
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh MONGO_CI_SSH_KEY MONGO_CI_SSH_HOST_KEY TMDB_API_KEY
-            # The Sync Bot App is github.com's alone: on Forgejo the job's own token pushes the branch (run 2915 went
-            # red asking Forgejo for these; BotBranchOnForgejoSpec).
             - name: App secrets present
-              if: github.server_url == 'https://github.com'
               env:
                   SYNC_PR_APP_ID: ${{ secrets.SYNC_PR_APP_ID }}
                   SYNC_PR_APP_PRIVATE_KEY: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
@@ -94,7 +89,7 @@ jobs:
         name: capture (${{ matrix.code }})
         needs: [ preflight ]
         if: ${{ needs.preflight.outputs.capture == 'true' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         timeout-minutes: 300
         permissions:
             contents: read
@@ -165,7 +160,7 @@ jobs:
     publish:
         needs: [ preflight, capture ]
         if: ${{ always() && !cancelled() && needs.preflight.result == 'success' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 30
         permissions:
             contents: write
@@ -178,7 +173,6 @@ jobs:
             # On github.com the App's token pushes the branch (checkout keeps it as the push credential)
             # and opens the PR, so Branch CI runs on it. Forgejo has no App: the job's own token pushes.
             - uses: actions/create-github-app-token@v3
-              if: github.server_url == 'https://github.com'
               id: app-token
               with:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
@@ -291,11 +285,11 @@ jobs:
 
             # A recapture creates the branch afresh; `open-pr` fast-forwards it by the re-baseline.
             - name: Publish the chore/identity-capture branch
-              if: steps.changed.outputs.changed == 'true' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')
+              if: steps.changed.outputs.changed == 'true'
               run: git push origin "HEAD:refs/heads/$BRANCH"
 
             - name: Open the PR when the ratchet is green
-              if: github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary' && steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
+              if: steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
               env:
                   GH_TOKEN: ${{ steps.app-token.outputs.token }}
                   GH_REPO: ${{ github.repository }}
@@ -308,18 +302,6 @@ jobs:
                           --title 'Identity capture: refreshed unmatched-cluster fixture' \
                           --body-file identity-capture-report.md
                   fi
-
-            # Forgejo has no PRs (and movies takes none): a green branch is named to the owner in an issue instead.
-            - name: Name the green branch to the owner (Forgejo)
-              if: github.server_url != 'https://github.com' && steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
-              env:
-                  GH_TOKEN: ${{ github.token }}
-                  GH_REPO: ${{ github.repository }}
-                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-                  OWNER: ${{ github.repository_owner }}
-              run: |
-                  scripts/ci/bot-branch-ready.sh "$BRANCH" 'Identity capture: refreshed unmatched-cluster fixture' \
-                      identity-capture-report.md "$RUN_URL" "$OWNER"
 
             - name: Say why there is no PR
               if: steps.ratchet.outputs.green != 'true'
@@ -334,7 +316,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -346,7 +328,7 @@ jobs:
         name: report (scheduled run)
         needs: [ preflight, capture, publish, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

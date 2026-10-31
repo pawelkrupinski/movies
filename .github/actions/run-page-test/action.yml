@@ -253,8 +253,8 @@ runs:
         # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
         # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
         annotate_only: true
-        job_summary: ${{ github.server_url == 'https://github.com' }}
-        detailed_summary: ${{ github.server_url == 'https://github.com' }}
+        job_summary: true
+        detailed_summary: true
         report_paths: 'target/test-reports/page/**/*.xml'
         check_name: page tests (chrome)
         include_passed: false
@@ -303,7 +303,7 @@ runs:
         # each test shorter, so the row that carries the most tests is sharded
         # instead (ci.yml's `pw behaviour 1/2, 2/2`): a second container is a second
         # share of the CPU. PlaywrightWorkerBudgetSpec.
-        PW_WORKERS: ${{ inputs.browsers == 'webkit' && '1' || github.server_url != 'https://github.com' && '5' || '' }}
+        PW_WORKERS: ${{ inputs.browsers == 'webkit' && '1' || '' }}
       run: |
         cd page-tests-playwright
         # `set -f` so the shell never glob-expands a project pattern
@@ -365,8 +365,8 @@ runs:
         # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
         # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
         annotate_only: true
-        job_summary: ${{ github.server_url == 'https://github.com' }}
-        detailed_summary: ${{ github.server_url == 'https://github.com' }}
+        job_summary: true
+        detailed_summary: true
         # Glob, not a fixed name: a row may have run several invocations, and
         # the axe-core audit writes its own file that must stay out of the
         # blocking check.

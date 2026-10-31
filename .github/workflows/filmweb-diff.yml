@@ -27,7 +27,6 @@ env:
 
 jobs:
     filmweb-diff:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ubuntu-26.04
         steps:
             - uses: actions/checkout@v5

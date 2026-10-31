@@ -244,8 +244,8 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
   "Main" should "dispatch the convergence suites through the gate, not unconditionally" in {
     val kickJob = RepoFile.block(RepoFile.read(".github/workflows/main.yml"), "kick-convergence")
     kickJob should include(".github/scripts/kick-convergence.sh")
-    // Full history: `0` on github.com, a depth past the shallow root on Forgejo (see `gates`).
-    kickJob should include("fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}")
+    // Full history.
+    kickJob should include("fetch-depth: 0")
     kickJob.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n") should not include "gh workflow run"
   }
 }

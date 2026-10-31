@@ -50,8 +50,7 @@ jobs:
     # `script:`, or this run's id. The legs read it through `env:`, never `${{ }}` in a
     # script body -- see OrderIndependenceSeedSpec.
     seed:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         outputs:
             seed: ${{ steps.pick.outputs.seed }}
@@ -68,7 +67,7 @@ jobs:
     scala:
         name: scala (${{ matrix.order }})
         needs: seed
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 105
         strategy:
             fail-fast: false
@@ -116,7 +115,7 @@ jobs:
 
     android:
         needs: seed
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 45
         defaults:
             run:
@@ -140,7 +139,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: ${{ github.server_url == 'https://github.com' && 'always' || 'never' }}  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: always  # Forgejo discards job summaries, and warns of each
 
             - name: Robolectric tests, classes and methods in a seeded order
               env:
@@ -163,7 +162,7 @@ jobs:
 
     android-instrumented:
         needs: seed
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 120
         defaults:
             run:
@@ -189,7 +188,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: ${{ github.server_url == 'https://github.com' && 'always' || 'never' }}  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: always  # Forgejo discards job summaries, and warns of each
 
             - name: Enable KVM
               # The script lives at the repo root; this job's run steps default to android/.
@@ -259,8 +258,7 @@ jobs:
         # macOS legs: github.com's hosted macOS only. Forgejo has no macOS runner, and it evaluates a job's
         # `if` only once a runner takes the job, so a macos-latest job there waits forever and holds the run
         # (and its timings/report) open. There it goes to a Linux runner instead, which skips it on the `if`.
-        if: github.server_url == 'https://github.com'
-        runs-on: ${{ github.server_url == 'https://github.com' && 'macos-latest' || 'measure' }}
+        runs-on: macos-latest
         timeout-minutes: 105
         steps:
             - uses: actions/checkout@v5
@@ -299,8 +297,7 @@ jobs:
         # macOS legs: github.com's hosted macOS only. Forgejo has no macOS runner, and it evaluates a job's
         # `if` only once a runner takes the job, so a macos-latest job there waits forever and holds the run
         # (and its timings/report) open. There it goes to a Linux runner instead, which skips it on the `if`.
-        if: ${{ (github.server_url == 'https://github.com') && (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'macos-latest' || 'measure' }}
+        runs-on: macos-latest
         timeout-minutes: 150
         steps:
             - uses: actions/checkout@v5
@@ -395,7 +392,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -407,7 +404,7 @@ jobs:
         name: report (scheduled run)
         needs: [seed, scala, android, android-instrumented, swift, ios, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

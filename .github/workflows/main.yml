@@ -70,7 +70,7 @@ jobs:
         uses: ./.github/workflows/ci.yml
         # Off github.com, on the production lane (RunnerClassSpec).
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'main-lane' || '' }}
+            lane: ''
         secrets: inherit
         # ci.yml's jobs post JUnit check-runs, and its `image-*` jobs push this commit's SHA-tagged
         # images; a called workflow can only narrow its caller's token, never widen it.
@@ -109,7 +109,7 @@ jobs:
     # here: the Grafana marker's are optional by design (mark-grafana-deploy skips without them), and
     # nothing else in this workflow reads one beyond what ci.yml's own jobs check.
     gates:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         # EACH TIER'S GATE, answered here at t=0 rather than inside its build job after ci, so both
         # builds start the moment ci is green. A marker that moves between t=0 and ci's end can only
@@ -128,7 +128,7 @@ jobs:
             # every commit the server has and records the root as the client's own shallow line.
             - uses: actions/checkout@v5
               with:
-                  fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}
+                  fetch-depth: 0
                   filter: blob:none
             - name: What is the web tier actually running?
               id: base-web
@@ -235,7 +235,7 @@ jobs:
         needs: gates
         # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
         if: ${{ !cancelled() }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
+        runs-on: ubuntu-26.04
         # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
         timeout-minutes: 40
@@ -247,7 +247,7 @@ jobs:
             # suite's newest run, which can be several pushes back. The Forgejo depth: see `gates`.
             - uses: actions/checkout@v5
               with:
-                  fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}
+                  fetch-depth: 0
                   filter: blob:none
             # Both convergence suites — the pipeline's and the identity model's — on the same
             # gate: only for a push that can change a verdict (`.github/convergence-paths.txt`),
@@ -294,8 +294,8 @@ jobs:
     publish-web:
         needs: [ci, gates]
         # SHADOW: a registry tag Flux image automation follows is a DEPLOY (scripts/ci/ci-writes.sh, WriteGateSpec).
-        if: needs.gates.outputs.web-changed == 'true' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
+        if: needs.gates.outputs.web-changed == 'true'
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
 
         permissions:
@@ -406,7 +406,7 @@ jobs:
     image-worker:
         needs: [ci, gates]
         if: needs.gates.outputs.worker-changed == 'true'
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 30
         permissions:
             contents: read
@@ -433,7 +433,6 @@ jobs:
                   path: stage
 
             - uses: docker/login-action@v3
-              if: (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary') # shadow builds without pushing (build-image.sh)
               with:
                   registry: ${{ env.REGISTRY_HOST }}
                   username: ${{ env.REGISTRY_USER }}
@@ -450,8 +449,8 @@ jobs:
     publish-worker:
         needs: [ci, gates, image-worker]
         # SHADOW: a registry tag Flux image automation follows is a DEPLOY (scripts/ci/ci-writes.sh, WriteGateSpec).
-        if: needs.gates.outputs.worker-changed == 'true' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'main-lane' }}
+        if: needs.gates.outputs.worker-changed == 'true'
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
 
         permissions:
@@ -558,7 +557,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'main-lane' || '' }}
+            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.

@@ -59,7 +59,6 @@ jobs:
     # -- a branch recording pins nothing anyone replays -- or none named (the backstop): the newest successful one on
     # main, whatever its age, since its findings are still the newest there are to triage. Red only when there is none.
     plan:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:

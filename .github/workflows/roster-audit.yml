@@ -40,7 +40,6 @@ env:
 
 jobs:
     roster-audit:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         outputs:
             overdue: ${{ steps.audit.outputs.overdue }}
         runs-on: ubuntu-26.04

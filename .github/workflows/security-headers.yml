@@ -54,7 +54,6 @@ env:
 
 jobs:
     check:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ubuntu-26.04
         # A dead Decodo port is tried once and retired (check-security-headers.py, ProxyPool): the
         # whole pool timing out is 7 x 30 s, and the job must outlive it to name the proxy. The

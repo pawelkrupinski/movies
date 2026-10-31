@@ -63,7 +63,7 @@ jobs:
     # Seconds, before any leg takes a runner: which countries the recording holds complete, and that each one's
     # corpus and tree are there (convergence-preflight.sh, the identity lane's check for a named recording).
     preflight:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'forgejo-recording' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
@@ -74,8 +74,8 @@ jobs:
         outputs:
             countries: ${{ steps.countries.outputs.countries }}
             recording: ${{ inputs.recording }}
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'forgejo-recording' }}
-            hosted: ${{ github.server_url == 'https://github.com' }}
+            runner: ubuntu-22.04
+            hosted: true
         steps:
             - uses: actions/checkout@v5
               with:
@@ -165,4 +165,4 @@ jobs:
         # every event). `inherit` reads the same on github.com and declares nothing.
         secrets: inherit
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'forgejo-recording' || '' }}
+            lane: ''

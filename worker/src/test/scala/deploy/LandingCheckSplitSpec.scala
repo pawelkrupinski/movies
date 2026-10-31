@@ -32,7 +32,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     heavy should include("PREPUSH_HEAVY_ROWS=1 PREPUSH_ONLY=\"$ROWS\"")
     heavy should not include "matrix"
     heavy should include("scripts/ci/start-mongo-replset.sh")
-    heavy should include("runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'ubuntu-24.04' }}")
+    heavy should include("runs-on: ubuntu-22.04")
   }
 
   "the heavy rows" should "run Main's own commands" in {

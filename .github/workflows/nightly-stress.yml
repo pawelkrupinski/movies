@@ -42,15 +42,14 @@ env:
 
 jobs:
     races:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         # TWO HALVES ON GITHUB.COM: the 50 iterations ran into this job's 180-minute cap on ci-runner already, and a hosted
         # 4-core runner is no faster -- 2 x 25 there, each well inside it; one job of all 50 on Forgejo, as before.
-        name: races${{ github.server_url == 'https://github.com' && format(' ({0}/2)', matrix.half) || '' }}
+        name: races${{ format(' ({0}/2)', matrix.half) || '' }}
         strategy:
             fail-fast: false
             matrix:
-                half: ${{ fromJSON(github.server_url == 'https://github.com' && '[1, 2]' || '[1]') }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'ubuntu-24.04' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+                half: [1, 2]
+        runs-on: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         # ~25s an iteration for the in-JVM set measured locally, the Mongo set more; 50 of both
         # fit well inside this, and a hung harness still stops.
         timeout-minutes: 180
@@ -75,7 +74,7 @@ jobs:
             - name: Race harnesses, many times over
               env:
                   ITERATIONS: ${{ inputs.iterations || '50' }}
-                  HALVES: ${{ github.server_url == 'https://github.com' && '2' || '1' }}
+                  HALVES: 2
                   MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB: kinowo
               run: |
@@ -88,12 +87,11 @@ jobs:
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: stress-races${{ github.server_url == 'https://github.com' && format('-{0}', matrix.half) || '' }}
+                  name: stress-races${{ format('-{0}', matrix.half) || '' }}
                   path: target/stress-races
                   if-no-files-found: ignore
 
     webkit-phones:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         name: webkit phones x5 (${{ matrix.shard }})
         strategy:
             fail-fast: false
@@ -119,7 +117,7 @@ jobs:
                   # On Forgejo the four shards share one ci-runner host with every other job; at the
                   # action's 5 workers each, run 414's WebKit loads took ~10s (load average 130+), so
                   # the stress rows run 3. Nothing is appended on github.com.
-                  extra-args: --repeat-each 5 ${{ github.server_url != 'https://github.com' && '--workers 3' || '' }}
+                  extra-args: --repeat-each 5
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:

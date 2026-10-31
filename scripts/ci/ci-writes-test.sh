@@ -52,7 +52,6 @@ check "gh-release.sh: an upload naming no asset stays unwritten" "" \
     "$(shadow bash "$REPO_ROOT/scripts/ci/gh-release.sh" upload convergence-fixtures --clobber)"
 check "scheduled-failure-issue.sh opens no issue in shadow" "" "$(shadow bash "$REPO_ROOT/scripts/ci/scheduled-failure-issue.sh" failed W https://x/run o)"
 touch "$work/report"
-check "bot-branch-ready.sh opens no issue in shadow" "" "$(shadow env GH_REPO=o/r bash "$REPO_ROOT/scripts/ci/bot-branch-ready.sh" b T "$work/report" https://x/run)"
 check "publish-rolling-release.sh publishes nothing in shadow" "" "$(shadow env GITHUB_REPOSITORY=o/r GITHUB_SHA=abc bash "$REPO_ROOT/scripts/ci/publish-rolling-release.sh" t T N f)"
 check "build-image.sh still builds in shadow, with --load, not --push" "1 0" \
     "$(shadow bash "$REPO_ROOT/scripts/ci/build-image.sh" worker r/w abc > /dev/null; echo "$(grep -c -- 'buildx build .*--load' "$work/calls") $(grep -c -- '--push' "$work/calls")")"

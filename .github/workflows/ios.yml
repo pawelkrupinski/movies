@@ -56,35 +56,6 @@ jobs:
         runs-on: ubuntu-26.04
         container: mirror.gcr.io/library/swift:6.2
         steps:
-            # Forgejo's runner (act) runs JavaScript actions with the CONTAINER's `node`, and the swift
-            # image has none (github.com's runner mounts its own), so checkout failed with exit 127.
-            - name: Install Node for JavaScript actions (Forgejo)
-              if: ${{ github.server_url != 'https://github.com' }}
-              run: |
-                  command -v node && exit 0
-                  apt-get update -qq && apt-get install -y -qq --no-install-recommends curl ca-certificates >/dev/null
-                  # Verify the tarball against the release's SHASUMS256.txt before unpacking, and retry
-                  # (bounded) on a transient download failure or checksum mismatch.
-                  NODE_DIST="${NODE_DIST:-https://nodejs.org/dist/v24.11.1}"
-                  NODE_TGZ=node-v24.11.1-linux-x64.tar.gz
-                  NODE_PREFIX="${NODE_PREFIX:-/usr/local}"
-                  tmp="$(mktemp -d)"
-                  ok=
-                  for attempt in 1 2 3 4; do
-                      if curl -fsSL --retry 3 --retry-all-errors -o "$tmp/SHASUMS256.txt" "$NODE_DIST/SHASUMS256.txt" \
-                          && curl -fsSL --retry 3 --retry-all-errors -o "$tmp/$NODE_TGZ" "$NODE_DIST/$NODE_TGZ" \
-                          && grep -E "^[0-9a-f]{64}  $NODE_TGZ\$" "$tmp/SHASUMS256.txt" > "$tmp/expected" \
-                          && (cd "$tmp" && sha256sum -c expected); then
-                          ok=1
-                          break
-                      fi
-                      echo "Node download/verify attempt $attempt failed" >&2
-                      sleep $((attempt * 5))
-                  done
-                  [ -n "$ok" ] || { echo "::error::Node tarball failed checksum verification after 4 attempts" >&2; exit 1; }
-                  tar -xzf "$tmp/$NODE_TGZ" -C "$NODE_PREFIX" --strip-components=1
-                  rm -rf "$tmp"
-                  "$NODE_PREFIX/bin/node" --version
 
             - uses: actions/checkout@v5
 
@@ -113,8 +84,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'ios-unit*.xml'
                   check_name: iOS unit/integration
                   include_passed: false
@@ -123,8 +94,7 @@ jobs:
     ui-tests:
         # Forgejo has no macOS runner: there the job would wait forever and hold the run open. Forgejo
         # evaluates a job's `if` on the runner that picks it up, so it is handed to a Linux one to skip it.
-        runs-on: ${{ github.server_url == 'https://github.com' && 'macos-latest' || 'ubuntu-26.04' }}
-        if: ${{ github.server_url == 'https://github.com' }}
+        runs-on: macos-latest
         # Build ~2 min + XCUITest step (bounded below) + SPM ~2 min.
         timeout-minutes: 75
         steps:
@@ -205,8 +175,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'xcuitest.xml'
                   check_name: iOS XCUITest
                   include_passed: false
@@ -242,8 +212,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'ios-macos*.xml'
                   check_name: iOS SPM (macOS)
                   include_passed: false

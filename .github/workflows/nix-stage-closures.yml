@@ -149,12 +149,12 @@ jobs:
   # defined"), or a module that does not parse.
   evaluate:
     name: nix-evaluate
-    runs-on: ${{ github.server_url != 'https://github.com' && (github.ref == 'refs/heads/main' || github.ref == 'main') && 'main-lane' || 'ubuntu-26.04' }}
+    runs-on: ubuntu-26.04
     # THE PLAN (WorkflowPlanSpec): the run's root, so the one job that reads the ref and the event whole; `stage` and
     # `timings` read these. `stage` is the staging guard below, evaluated here.
     outputs:
-      lane: ${{ github.server_url != 'https://github.com' && (github.ref == 'refs/heads/main' || github.ref == 'main') && 'main-lane' || 'ubuntu-26.04' }}
-      timings-lane: ${{ github.server_url != 'https://github.com' && (github.ref == 'refs/heads/main' || github.ref == 'main') && 'main-lane' || '' }}
+      lane: ubuntu-26.04
+      timings-lane: ''
       stage: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
@@ -170,7 +170,6 @@ jobs:
       # github.com's hosted runners start with an empty nix: keep the flake inputs' fetcher cache (nixpkgs and the
       # rest, keyed by the lock) between runs. ci-runner's jobs share a host nix store instead.
       - name: Cache the flake inputs (github.com)
-        if: github.server_url == 'https://github.com'
         uses: actions/cache@v5
         with:
           path: ~/.cache/nix
@@ -342,7 +341,7 @@ jobs:
     # && github.ref == 'refs/heads/main'`; an evaluate that did not succeed stages nothing either way.)
     # SHADOW: auto-apply ACTIVATES a staged pin, whichever forge staged it -- the most dangerous write there is
     # (github-return-plan 2026-10-30, 3.1; scripts/ci/ci-writes.sh, WriteGateSpec).
-    if: needs.evaluate.outputs.stage == 'true' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')
+    if: needs.evaluate.outputs.stage == 'true'
     # STAGING WAITS FOR EVALUATION. While nothing activated on its own, staging was harmless
     # whatever a check said -- a copied closure nobody switches to is inert. It is no longer inert.
     needs: [ evaluate ]
@@ -358,7 +357,7 @@ jobs:
       # has instead -- the same form main.yml uses.
       - uses: actions/checkout@v4
         with:
-          fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}
+          fetch-depth: 0
 
       - uses: cachix/install-nix-action@v27
         with:

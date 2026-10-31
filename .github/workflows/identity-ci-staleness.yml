@@ -29,7 +29,6 @@ env:
 
 jobs:
     check:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         outputs:
@@ -46,7 +45,7 @@ jobs:
                   # ON FORGEJO, A DEPTH INSTEAD OF 0: its copy of the repo is itself shallow (at 257ad0a),
                   # and a depth-0 fetch of a shallow server fails ("shallow roots are not allowed to be
                   # updated") -- see main.yml. A depth past the root takes every commit the server has.
-                  fetch-depth: ${{ github.server_url == 'https://github.com' && '0' || '2147483647' }}
+                  fetch-depth: 0
 
             # The checker's own verdicts first, offline: a checker that can no longer fail would report
             # green here for as long as nobody looked at it.

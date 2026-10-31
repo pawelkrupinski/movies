@@ -30,9 +30,7 @@ name: Discover UK cinemas
 # so Branch CI runs on it — a PR opened with the default GITHUB_TOKEN never fires
 # `pull_request`. A fixed branch means a rerun replaces the open PR; a week with no
 # new venues produces no diff and therefore no PR (the report still lands in the
-# run summary so retirement candidates stay visible). ON FORGEJO there is no App
-# and movies takes no PRs: the job pushes the branch with its own token and opens
-# an owner-assigned issue with the report (.github/actions/publish-bot-branch).
+# run summary so retirement candidates stay visible).
 
 on:
     workflow_dispatch:
@@ -52,7 +50,6 @@ env:
 
 jobs:
     discover-cinemas:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
         runs-on: ubuntu-26.04
         timeout-minutes: 30
         steps:
@@ -60,7 +57,6 @@ jobs:
             # so the PR fires `pull_request` and Branch CI runs on it. Same secrets
             # as scala-steward.yml — see that file's header.
             - uses: actions/create-github-app-token@v3
-              if: github.server_url == 'https://github.com'
               id: app-token
               with:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
@@ -160,7 +156,6 @@ jobs:
             # the commit to the two source files; the report is the body only (not
             # committed). No diff ⇒ no PR.
             - name: Open discovery PR
-              if: github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary'
               uses: peter-evans/create-pull-request@v6
               with:
                   token: ${{ steps.app-token.outputs.token }}
@@ -181,30 +176,6 @@ jobs:
                       ios/Kinowo/catalog-seed.json
                   commit-message: 'chore: wire newly-discovered UK cinemas from Flicks'
                   title: 'chore: wire newly-discovered UK cinemas'
-                  body-path: discovery-report.md
-
-            # Forgejo has no App and no PRs: the branch is pushed with the job's token and named to the owner in an
-            # issue (.github/actions/publish-bot-branch, BotBranchOnForgejoSpec).
-            - name: Publish the discovery branch (Forgejo)
-              if: github.server_url != 'https://github.com'
-              uses: ./.github/actions/publish-bot-branch
-              with:
-                  branch: chore/discover-cinemas
-                  add-paths: |
-                      data/uk/roster.json
-                      common/src/main/scala/models/UkRosterData.scala
-                      scrapers/src/main/scala/services/cinemas/uk/UkSourcesData.scala
-                      geodata/src/main/scala/models/VenueTowns.scala
-                      common/src/main/scala/models/UkPages.scala
-                      data/uk/venues.json
-                      data/uk/towns.json
-                      data/uk/pages.json
-                      android/app/src/main/java/pl/kinowo/model/City.kt
-                      ios/Kinowo/Models/City.swift
-                      android/app/src/main/assets/catalog-seed.json
-                      ios/Kinowo/catalog-seed.json
-                  commit-message: 'chore: wire newly-discovered UK cinemas from Flicks'
-                  title: 'Newly-discovered UK cinemas'
                   body-path: discovery-report.md
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.

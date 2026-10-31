@@ -51,7 +51,7 @@ jobs:
     # THE PLAN: which recording to compare (.github/actions/upstream-run, UpstreamRunSpec). A recording off main, or one that failed, is not prod's
     # moment: the newest successful one on main stands in for it, and none newer than 48 h is red.
     plan:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
@@ -72,7 +72,7 @@ jobs:
 
     compare:
         needs: [plan]
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 300
         permissions:
             contents: read
@@ -117,7 +117,7 @@ jobs:
               env:
                   GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
                   GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
-              run: python3 scripts/ci/identity_live_drift.py "$RUNNER_TEMP/identity-live-drift" ${{ (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary') && '--push' || '' }}
+              run: python3 scripts/ci/identity_live_drift.py "$RUNNER_TEMP/identity-live-drift" --push
             - uses: actions/upload-artifact@v6
               if: always()
               with:
@@ -135,6 +135,6 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit

@@ -212,7 +212,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: ${{ github.server_url == 'https://github.com' && 'always' || 'never' }}  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: always  # Forgejo discards job summaries, and warns of each
 
             # Pure-bash helper tests for the store-screenshot / store-graphics
             # scripts: the country→locale→label lookups a capture depends on.
@@ -264,8 +264,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
                   check_name: Android unit tests
                   include_passed: false
@@ -473,7 +473,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: ${{ github.server_url == 'https://github.com' && 'always' || 'never' }}  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: always  # Forgejo discards job summaries, and warns of each
 
             # Hardware acceleration: without KVM the x86_64 emulator falls back
             # to software emulation and does not boot inside the timeout.

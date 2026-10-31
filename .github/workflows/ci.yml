@@ -295,8 +295,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: unit tests (${{ matrix.shard }})
                   include_passed: false
@@ -330,7 +330,7 @@ jobs:
                 include:
                     - { row: identity }
                     - { row: rest }
-        runs-on: ${{ inputs.lane || github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'ubuntu-24.04' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ${{ inputs.lane || 'ubuntu-22.04' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         # Every sbt step of the row sees the same filter.
         env:
@@ -411,8 +411,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'target/test-reports/it/**/*.xml'
                   check_name: integration tests (${{ matrix.row }})
                   include_passed: false
@@ -617,7 +617,7 @@ jobs:
         needs: scope
         # The public pages, booted from the read-model snapshot: inert for identity's code (ci-row-scope.sh browsers).
         if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
-        runs-on: ${{ inputs.lane || github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'ubuntu-24.04' }}
+        runs-on: ${{ inputs.lane || 'ubuntu-22.04' }}
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:
             contents: read
@@ -674,7 +674,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: ${{ github.server_url == 'https://github.com' && 'always' || 'never' }}  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: always  # Forgejo discards job summaries, and warns of each
 
             # Collect the background compile started above. Build BEFORE booting,
             # as its own step, so the boot's ceiling only has to cover booting.
@@ -745,8 +745,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   # SwiftPM writes `<base>.xml` (XCTest) and
                   # `<base>-swift-testing.xml` (swift-testing); glob both.
                   report_paths: 'ios-localserver*.xml'
@@ -761,8 +761,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
                   check_name: Android LocalServer
                   include_passed: false
@@ -881,7 +881,7 @@ jobs:
               # `stage/`, the only path .dockerignore lets through.
               run: cp -R web/target/universal/stage stage
 
-            - if: matrix.shard == 'corpus' && !github.event.pull_request && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary') # shadow builds without pushing (build-image.sh)
+            - if: matrix.shard == 'corpus' && !github.event.pull_request # shadow builds without pushing (build-image.sh)
               uses: docker/login-action@v3
               with:
                   registry: ${{ env.REGISTRY_HOST }}
@@ -921,8 +921,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: e2e tests (${{ matrix.shard }})
                   include_passed: false

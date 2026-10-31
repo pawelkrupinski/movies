@@ -9,8 +9,7 @@
 # Placeholders in `command`: {cc} the country, {fixtures} the laid pair's test/resources/fixtures, {corpus} its corpus/,
 # {out} the directory uploaded ({out} is per country when the command names {cc}).
 #
-# Dispatch-only, from a measure/ branch scripts/identity-ci-run pushes: every run in a lane of its own, and on Forgejo the
-# run deletes that branch as its last job (identity-model-convergence.yml's drop-measure-branch, the same reason).
+# Dispatch-only, from a measure/ branch scripts/identity-ci-run pushes: every run in a lane of its own.
 #
 name: Identity run
 run-name: identity run ${{ inputs.recording }} ${{ inputs.countries }}
@@ -59,16 +58,15 @@ jobs:
     run:
         name: run
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || inputs.tier || 'measure' }}
+        runs-on: ubuntu-22.04
         # The longest green run took 162 min (run 965, five countries); the mean is 10. CiRowTimeoutSpec.
         timeout-minutes: 200
         # THE PLAN (WorkflowPlanSpec): this run's root, so the one job that reads `inputs` and `github` whole; the jobs
         # after it read its outputs. Expressions only, so they are set however the job ends. A job asking `runs-on` an
         # output falls back to a label both forges have, in case this one never ran.
         outputs:
-            tier: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
-            timings-lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
-            drop-branch: ${{ startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
+            tier: ubuntu-26.04
+            timings-lane: ''
         permissions:
             contents: read
             actions: read
@@ -142,26 +140,3 @@ jobs:
             lane: ${{ needs.run.outputs.timings-lane }}
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit
-    # The run's own measure/ branch, deleted last (Forgejo only: no API cancels a run there; identity-model-convergence.yml)
-    drop-measure-branch:
-        needs: [ run, timings ]
-        if: ${{ always() && needs.run.outputs.drop-branch == 'true' }}
-        runs-on: ${{ needs.run.outputs.tier || 'ubuntu-26.04' }}
-        timeout-minutes: 5
-        permissions:
-            contents: write
-        steps:
-            - name: Delete this run's measure branch
-              env:
-                  TOKEN: ${{ github.token }}
-                  API: ${{ github.api_url }}
-                  REPO: ${{ github.repository }}
-                  BRANCH: ${{ github.ref_name }}
-              run: |
-                  code=$(curl -sS -o "$RUNNER_TEMP/drop.json" -w '%{http_code}' -X DELETE -H "Authorization: token $TOKEN" \
-                      "$API/repos/$REPO/branches/$BRANCH") || code=000
-                  case "$code" in
-                      204) echo "deleted $BRANCH" ;;
-                      404) echo "$BRANCH is gone already" ;;
-                      *) echo "::warning::could not delete $BRANCH (HTTP $code): $(head -c 300 "$RUNNER_TEMP/drop.json" 2>/dev/null)"; exit 1 ;;
-                  esac

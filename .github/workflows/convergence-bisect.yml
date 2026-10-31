@@ -71,7 +71,7 @@ jobs:
     # rather than hours into a leg. OMDB_API_KEY is left out: the legs read it, but it is not a repository secret and they run without it. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -86,7 +86,7 @@ jobs:
     # so its CONCLUSION is not read: the requests are the gate, since only a red hermetic leg on
     # main leaves one.
     plan:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -100,7 +100,7 @@ jobs:
             red-run:  ${{ steps.requests.outputs.red-run }}
             # The bisect rows' runner, evaluated HERE: their matrix reads this job's outputs, so Forgejo re-parses them
             # with these outputs and no `github` -- a `github.server_url` read there is empty (WorkflowPlanSpec).
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+            runner: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         steps:
             - uses: actions/checkout@v5
               with:
@@ -257,8 +257,8 @@ jobs:
     tell:
         needs: [plan, bisect]
         # SHADOW: a commit comment is a write (scripts/ci/ci-writes.sh, WriteGateSpec).
-        if: ${{ !cancelled() && needs.bisect.result != 'skipped' && (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary') }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        if: ${{ !cancelled() && needs.bisect.result != 'skipped' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: write
@@ -298,7 +298,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.

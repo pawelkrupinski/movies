@@ -44,8 +44,7 @@ env:
 
 jobs:
     discover:
-        if: (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) # shadow: no scheduled run on github.com (WriteGateSpec)
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 120
         steps:
             # main's tip, not the triggering commit: a long run can see main gain a
@@ -162,7 +161,7 @@ jobs:
             # A fresh branch off main every run, never a force-push over a stale one --
             # see .github/actions/drop-bot-branch.
             - uses: actions/create-github-app-token@v3
-              if: github.server_url == 'https://github.com' && steps.changed.outputs.kept == 'true'
+              if: steps.changed.outputs.kept == 'true'
               id: app-token
               with:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
@@ -175,7 +174,7 @@ jobs:
                   token: ${{ steps.app-token.outputs.token || github.token }}
 
             - name: Open the discovery PR
-              if: github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary' && steps.changed.outputs.kept == 'true'
+              if: steps.changed.outputs.kept == 'true'
               uses: peter-evans/create-pull-request@v6
               with:
                   token: ${{ steps.app-token.outputs.token }}
@@ -189,21 +188,6 @@ jobs:
                   title: 'Decoration discovery: new search-strip title rules'
                   body-path: decoration-report.md
 
-            # Forgejo has no App and no PRs: the branch is pushed with the job's token and named to the owner in an
-            # issue (.github/actions/publish-bot-branch, BotBranchOnForgejoSpec).
-            - name: Publish the discovery branch (Forgejo)
-              if: github.server_url != 'https://github.com' && steps.changed.outputs.kept == 'true'
-              uses: ./.github/actions/publish-bot-branch
-              with:
-                  branch: chore/decoration-discovery
-                  add-paths: |
-                      common/src/main/resources/title-rules.tsv
-                      test/resources/fixtures/title-rules/golden.jsonl
-                      test/resources/fixtures/08-06-2026/*
-                  commit-message: 'Strip the venue decorations the weekly discovery measured: a right take each, none wrong or switched'
-                  title: 'New search-strip title rules'
-                  body-path: decoration-report.md
-
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
         needs: [ discover ]
@@ -213,7 +197,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -225,7 +209,7 @@ jobs:
         name: report (scheduled run)
         needs: [ discover, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

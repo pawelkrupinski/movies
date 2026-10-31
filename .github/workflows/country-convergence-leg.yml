@@ -916,7 +916,7 @@ jobs:
               env:
                   GRAFANA_URL: ${{ secrets.GRAFANA_URL || 'https://grafana.kinowo.net' }}
                   GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
-              run: python3 scripts/ci/ci_http_calls.py --country "${{ inputs.code }}" --row "${{ matrix.phase }}" ${{ (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary') && '--push' || '' }} || true
+              run: python3 scripts/ci/ci_http_calls.py --country "${{ inputs.code }}" --row "${{ matrix.phase }}" --push || true
 
             - name: Upload the suite's CPU profile
               if: always() && inputs.profile && !startsWith(matrix.phase, 'takes')
@@ -943,8 +943,8 @@ jobs:
                   # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
                   # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
                   annotate_only: true
-                  job_summary: ${{ github.server_url == 'https://github.com' }}
-                  detailed_summary: ${{ github.server_url == 'https://github.com' }}
+                  job_summary: true
+                  detailed_summary: true
                   report_paths: 'target/test-reports/unit/**/*.xml'
                   check_name: ${{ matrix.phase }} (${{ inputs.country }})
                   include_passed: true

@@ -119,19 +119,9 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     jobs("leg") should include("needs: [ preflight ]\n")
   }
 
-  /** A measurement's measure/ branch is deleted by its own run, last, and only on Forgejo (which cannot cancel a run
-   *  through its API, so the laptop's clean-up cannot be trusted to outlive it); never a branch of anyone else. */
-  it should "delete a measurement's own measure/ branch as its last job, on Forgejo only" in {
-    val drop = RepoFile.jobs(workflow)("drop-measure-branch")
-    drop should include("if: ${{ always() && needs.preflight.outputs.drop-branch == 'true' }}")
-    RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs") should include(
-      "drop-branch: ${{ startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}")
-    drop should include("BRANCH: ${{ github.ref_name }}")
-  }
-
   /** A red hermetic leg on main asks the bisect which commit did it — a replay that does not move. */
   it should "request a bisect for a red hermetic leg, and carry no scheduled-failure report (it has no schedule)" in {
-    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "verdict-complete", "timings", "drop-measure-branch")
+    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "verdict-complete", "timings")
     val requests = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("convergence-bisect-request") => cond }.toSeq
     requests should not be empty
     requests.foreach(_ should include("inputs.mode == 'hermetic'"))

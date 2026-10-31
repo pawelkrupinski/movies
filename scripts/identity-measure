@@ -93,10 +93,8 @@
 #
 # THE BRANCH. The workflow runs a commit only from a ref, so the commit is pushed as `measure/<user>/<short sha>-<random>`
 # -- the one kind of branch push this repository allows besides main, ONLY to run a build. The pre-push hook checks
-# nothing on a measure/ ref (it never lands), so the push needs no --no-verify. On github.com it is deleted at the end:
-# success, failure, Ctrl-C (which also cancels the run) alike. On Forgejo, which has no API to cancel a run, the RUN
-# deletes it as its last job (identity-model-convergence.yml's drop-measure-branch): a Ctrl-C after the dispatch leaves
-# the run going and the branch to it; before the dispatch, the script deletes it itself. A commit
+# nothing on a measure/ ref (it never lands), so the push needs no --no-verify. It is deleted at the end:
+# success, failure, Ctrl-C (which also cancels the run) alike. A commit
 # whose workflows predate the takes-only dispatch gets main's .github/ and scripts/ci/ laid over it in a commit of
 # its own (no identity path: the check diffs only identity code, so the measured code is the commit's).
 #
@@ -465,8 +463,8 @@ find_measurement() {
 }
 
 # THE TAKES ROWS, NOT THE RUN (2026-10-22). The verdict is the takes rows' artifacts, uploaded as each row ends; the run's
-# tail -- request-bisect, timings, drop-measure-branch -- is a job hop apiece, each queued behind every other run's work
-# for a runner, and on Forgejo it added 32 minutes to run 790's 52 (takes done at +96 of its 129). So the wait ends at
+# tail -- request-bisect, timings -- is a job hop apiece, each queued behind every other run's work
+# for a runner (on the old self-hosted CI it added 32 minutes to run 790's 52). So the wait ends at
 # whichever comes first: every measured country's takes row done, or the run done (cancelled included). The jobs come
 # from `run view --json jobs` (github.com: "<country> / takes"); Forgejo serves no run's jobs, but posts each job's
 # result on the commit as a status, "Identity model convergence / takes (<country>)", whose link is the run's -- by its id

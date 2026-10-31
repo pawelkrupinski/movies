@@ -41,7 +41,7 @@ env:
 jobs:
     repeat:
         name: page tests x${{ inputs.repeat-each }} (${{ inputs.projects }})
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 90
         permissions:
             contents: read
@@ -65,6 +65,6 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`, not secrets by name: Forgejo 15 refuses a `workflow_call.secrets` block.
         secrets: inherit

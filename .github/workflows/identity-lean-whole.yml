@@ -44,7 +44,7 @@ jobs:
     # THE PLAN: which recording to measure (.github/actions/upstream-run, UpstreamRunSpec). A recording off main, or one that failed, records nothing the
     # measurements replay, and an older one would only repeat its own measurement: `skip`, an empty run and no compare.
     plan:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
@@ -56,9 +56,9 @@ jobs:
             shards: ${{ steps.shards.outputs.shards }}
             # The compare rows' runner and ceiling, evaluated HERE: their matrix reads this job's outputs, so Forgejo
             # re-parses them with these outputs and nothing else (WorkflowPlanSpec).
-            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }}
-            ceiling: ${{ github.server_url == 'https://github.com' && 350 || 600 }}
-            hosted: ${{ github.server_url == 'https://github.com' }}
+            runner: ubuntu-22.04
+            ceiling: 350
+            hosted: true
         steps:
             - uses: actions/checkout@v5
               with:
@@ -75,7 +75,7 @@ jobs:
               shell: bash
               env:
                   COUNTRIES: ${{ inputs.countries || 'pl,de,uk,us,es' }}
-                  HOSTED: ${{ github.server_url == 'https://github.com' }}
+                  HOSTED: true
               run: |
                   set -euo pipefail
                   if [ "$HOSTED" = true ]; then
@@ -169,6 +169,6 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit

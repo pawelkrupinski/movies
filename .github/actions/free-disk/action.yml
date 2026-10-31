@@ -10,7 +10,7 @@ description: >-
 runs:
     using: composite
     steps:
-        - if: github.server_url == 'https://github.com' && runner.os == 'Linux'
+        - if: runner.os == 'Linux'
           shell: bash
           run: |
               set -uo pipefail

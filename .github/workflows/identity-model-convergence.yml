@@ -139,7 +139,7 @@ jobs:
     # had dropped, or a country with no pin). The ONLY job in front of the legs: one runner wait, not two (a second one
     # cost measure run 968 12.6 minutes of queue on 2026-10-22). (IdentityModelConvergenceWiringSpec)
     preflight:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
@@ -175,15 +175,14 @@ jobs:
             # there, which sent main's legs to `measure` (run 2783, 2026-10-26; RunnerClassSpec). The run's tier off
             # github.com unless a dispatch names a runner: main's own runs gate every push, so `gate-lane`; a
             # measurement's, `measure`.
-            runner: ${{ inputs.runner || github.server_url == 'https://github.com' && 'ubuntu-22.04' || inputs.tier || 'measure' }}
+            runner: ${{ inputs.runner || 'ubuntu-22.04' }}
             # THE REST OF THE PLAN (WorkflowPlanSpec): every later job's decision, evaluated here too, as expressions so
             # they are set however this job ends. A `runs-on` read of one falls back to a label both forges have.
-            tier: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
-            timings-lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
+            tier: ubuntu-26.04
+            timings-lane: ''
             on-main: ${{ github.ref == 'refs/heads/main' }}
             # github.com's hosted runners (16 GB VMs): the legs' `with:` reads this, never github.server_url.
-            hosted: ${{ github.server_url == 'https://github.com' }}
-            drop-branch: ${{ startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
+            hosted: true
         steps:
             # Blobless history: the reuse check keys commits by their trees and walks back to main's takes base.
             - uses: actions/checkout@v5
@@ -457,30 +456,3 @@ jobs:
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
         secrets: inherit
-
-    # A MEASUREMENT'S BRANCH IS THE RUN'S TO DROP (Forgejo): scripts/identity-measure pushes `measure/<user>/<sha>-<rand>`
-    # only so this run has a ref to run from. Forgejo has no API to cancel a run, so a measurement interrupted on the
-    # laptop cannot stop it, and the branch must outlive the laptop's wait: the run deletes it as its LAST job, whatever
-    # the rows concluded. github.com keeps the script's own clean-up (it can cancel there).
-    drop-measure-branch:
-        needs: [ preflight, leg, request-bisect, timings ]
-        if: ${{ always() && needs.preflight.outputs.drop-branch == 'true' }}
-        runs-on: ${{ needs.preflight.outputs.tier || 'ubuntu-26.04' }}
-        timeout-minutes: 5
-        permissions:
-            contents: write
-        steps:
-            - name: Delete this run's measure branch
-              env:
-                  TOKEN: ${{ github.token }}
-                  API: ${{ github.api_url }}
-                  REPO: ${{ github.repository }}
-                  BRANCH: ${{ github.ref_name }}
-              run: |
-                  code=$(curl -sS -o "$RUNNER_TEMP/drop.json" -w '%{http_code}' -X DELETE -H "Authorization: token $TOKEN" \
-                      "$API/repos/$REPO/branches/$BRANCH") || code=000
-                  case "$code" in
-                      204) echo "deleted $BRANCH" ;;
-                      404) echo "$BRANCH is gone already (the measuring script deleted it)" ;;
-                      *) echo "::warning::could not delete $BRANCH (HTTP $code): $(head -c 300 "$RUNNER_TEMP/drop.json" 2>/dev/null)"; exit 1 ;;
-                  esac

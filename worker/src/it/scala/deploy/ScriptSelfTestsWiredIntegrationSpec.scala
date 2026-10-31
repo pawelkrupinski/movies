@@ -16,7 +16,6 @@ class ScriptSelfTestsWiredIntegrationSpec extends AnyFlatSpec with Matchers {
   /** Each self-test, and the unit wiring spec that leans on it. */
   private val Wired: Seq[(String, String)] = Seq(
     "scripts/ci/prune-actions-caches-test.sh"                -> "ActionsCachePruneWiringSpec: the prune script's own spec",
-    "scripts/ci/bot-branch-ready-test.sh"                    -> "BotBranchOnForgejoSpec: the Forgejo publish names the branch to its owner",
     ".github/scripts/convergence-fill-test.sh"               -> "ConvergenceFillWiringSpec: the fill's release script",
     ".github/scripts/convergence-findings-summary-test.sh"   -> "ConvergenceLegWiringSpec: the findings summary never cut by an early-closing head",
     "scripts/ci/stop-stray-sbt-test.sh"                      -> "ConvergenceLegWiringSpec, IdentitySliceOldRefGateSpec: a timed-out step's JVMs ended",

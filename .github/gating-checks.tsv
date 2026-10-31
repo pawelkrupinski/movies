@@ -71,4 +71,3 @@ job	identity-model-convergence.yml	timings	aggregate
 job	identity-model-convergence.yml	report (timings)	aggregate
 job	main.yml	commit rules	2855
 job	identity-model-convergence.yml	request-bisect	unproven	runs only after a red leg; owner: convergence; proven by its first green run
-job	identity-model-convergence.yml	drop-measure-branch	unproven	runs only on measure/ branches, never on main; owner: convergence

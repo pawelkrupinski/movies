@@ -55,13 +55,13 @@ env:
 jobs:
     # The countries asked for, as the fill's matrix — only the five that have a convergence leg.
     countries:
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 2
         outputs:
             codes: ${{ steps.codes.outputs.codes }}
             # The fill rows' runner, evaluated HERE: their matrix reads this job's outputs, so Forgejo re-parses them
             # with these outputs and no `github` -- a `github.server_url` read there is empty (WorkflowPlanSpec).
-            fill-runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+            fill-runs-on: ubuntu-26.04
         steps:
             - id: codes
               env:
@@ -113,7 +113,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.

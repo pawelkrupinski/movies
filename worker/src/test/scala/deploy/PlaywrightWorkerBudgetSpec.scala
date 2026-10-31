@@ -14,7 +14,6 @@ import org.scalatest.matchers.should.Matchers
  * 2, p50 9.7s and a 37.8s timeout (#1862). More rows, not more workers, are what buy WebKit CPU (ci.yml's shards).
  */
 class PlaywrightWorkerBudgetSpec extends AnyFlatSpec with Matchers {
-  private val BudgetCpus = 4
 
   private lazy val action = RepoFile.read(".github/actions/run-page-test/action.yml")
   private lazy val ciYml  = RepoFile.read(".github/workflows/ci.yml")
@@ -35,8 +34,8 @@ class PlaywrightWorkerBudgetSpec extends AnyFlatSpec with Matchers {
     workersFor("inputs.browsers == 'webkit'") shouldBe 1
   }
 
-  it should "give any other row no more than Playwright's own CI default, 125% of the budget" in {
-    workersFor("github.server_url != 'https://github.com'") should be <= BudgetCpus * 5 / 4
+  it should "leave any other row at Playwright's own CI default (no override)" in {
+    workersExpr should endWith("|| '' }}")
   }
 
   /** The action matches `browsers` exactly, so a WebKit row that installs a second engine would fall back to 5. */

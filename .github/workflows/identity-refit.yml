@@ -80,8 +80,8 @@ jobs:
     # on Thursday 05:00 UTC, well inside the 20-runner budget (CiRunnerBudgetSpec). At the triggering commit: the refit
     # job merges them only if main has not moved what they measured (below).
     measure:
-        if: ${{ (github.event_name == 'schedule' || inputs.sharded) && (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }} # no Mongo here: the kernel is no matter
+        if: (github.event_name == 'schedule' || inputs.sharded)
+        runs-on: ubuntu-26.04 # no Mongo here: the kernel is no matter
         timeout-minutes: 60
         strategy:
             fail-fast: true
@@ -117,7 +117,7 @@ jobs:
     refit:
         needs: [ measure ]
         if: ${{ !cancelled() && (needs.measure.result == 'success' || needs.measure.result == 'skipped') }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         timeout-minutes: 150
         steps:
             # main's tip, not the triggering commit: a long run can see main gain a
@@ -218,7 +218,7 @@ jobs:
             # A fresh branch off main every run, never a force-push over a stale one --
             # see .github/actions/drop-bot-branch.
             - uses: actions/create-github-app-token@v3
-              if: github.server_url == 'https://github.com' && steps.changed.outputs.kept == 'true'
+              if: steps.changed.outputs.kept == 'true'
               id: app-token
               with:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
@@ -231,7 +231,7 @@ jobs:
                   token: ${{ steps.app-token.outputs.token || github.token }}
 
             - name: Open the refit PR
-              if: github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary' && steps.changed.outputs.kept == 'true'
+              if: steps.changed.outputs.kept == 'true'
               uses: peter-evans/create-pull-request@v6
               with:
                   token: ${{ steps.app-token.outputs.token }}
@@ -244,20 +244,6 @@ jobs:
                   title: 'Identity refit: re-tuned weights and thresholds'
                   body-path: identity-refit-report.md
 
-            # Forgejo has no App and no PRs: the branch is pushed with the job's token and named to the owner in an
-            # issue (.github/actions/publish-bot-branch, BotBranchOnForgejoSpec).
-            - name: Publish the refit branch (Forgejo)
-              if: github.server_url != 'https://github.com' && steps.changed.outputs.kept == 'true'
-              uses: ./.github/actions/publish-bot-branch
-              with:
-                  branch: chore/identity-refit
-                  add-paths: |
-                      identity/src/main/resources/identity-weights.json
-                      test/resources/fixtures/08-06-2026/*
-                  commit-message: 'Re-tune the identity rules the weekly refit measured: right takes gained, none wrong, switched or lost'
-                  title: 'Re-tuned identity weights and thresholds'
-                  body-path: identity-refit-report.md
-
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
         needs: [ measure, refit ]
@@ -267,7 +253,7 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
         # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
         # every event). `inherit` reads the same on github.com and declares nothing.
@@ -279,7 +265,7 @@ jobs:
         name: report (scheduled run)
         needs: [ measure, refit, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || 'measure' }}
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

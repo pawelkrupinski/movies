@@ -56,7 +56,7 @@ jobs:
     ablate:
         name: ablate
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }}
+        runs-on: ubuntu-22.04
         # SHORT ROWS: a runner drain waits for its longest job (runs 850, 1050 held the ubuntu runner for hours). One
         # recording and one round fit in ~25 minutes; the default two do not (#2400: ~60). The ablation stops itself at
         # its --deadline-minutes, keeping its state and every configuration it resolved for the next dispatch's
@@ -204,7 +204,7 @@ jobs:
         name: collect
         needs: [ ablate ]
         if: ${{ !cancelled() }}
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-22.04' || 'measure' }}
+        runs-on: ubuntu-22.04
         timeout-minutes: 20
         permissions:
             contents: read
@@ -243,6 +243,6 @@ jobs:
             contents: read
         uses: ./.github/workflows/report-timings.yml
         with:
-            lane: ${{ github.server_url != 'https://github.com' && 'measure' || '' }}
+            lane: ''
         # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
         secrets: inherit
