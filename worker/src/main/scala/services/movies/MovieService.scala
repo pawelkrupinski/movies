@@ -145,6 +145,8 @@ class MovieService(
       // filmography confirmed — which is how five wrong resolutions survived weeks
       // in prod on rows that had since acquired the hints to correct them.
       tmdbBasis         = basis.map(_.toString).orElse(existing.tmdbBasis),
+      // whether the identity take it resolved is provisional is the projection's, which hands it the record to complete
+      tmdbProvisional   = existing.tmdbProvisional,
       wikidataId        = externalIds.wikidataId.orElse(if (sameFilm) existing.wikidataId else None),
       metacriticUrl     = ifSameFilm(existing.metacriticUrl),
       rottenTomatoesUrl = ifSameFilm(existing.rottenTomatoesUrl),

@@ -121,7 +121,7 @@
     "ageRating" : "12",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f02aa5c9cc1aa9a5",
     "title" : "Kicia Kocia w podróży",
@@ -397,7 +397,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ "Dinti de lapte", "Milk Teeth" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f052e269dbe364f3",
     "title" : "Narwana miłość",
@@ -951,7 +951,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "رویاشهر", "Dreamland" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f0cf765d7b11c25d",
     "title" : "Marsupilami",
@@ -2073,7 +2073,7 @@
     "ageRating" : "18",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f1b699ca1d9ccd6e",
     "title" : "Filmy z lektorem - The Last Showgirl",
@@ -8691,7 +8691,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Ostatni dzień lata", "The Last Day of Summer" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f606ae498f4ef8d5~ostatnidzienlata",
     "title" : "Ostatni dzień lata",
@@ -8715,7 +8715,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "The Last Day of Summer" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f606ae498f4ef8d5~ostatnidzienlataponiedzialkizkonwickimpisarzscenarzystarezyser",
     "title" : "Ostatni dzień lata | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser",
@@ -8740,7 +8740,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Ostatni dzień lata", "The Last Day of Summer" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f606ae498f4ef8d5~wtorkidlasenioraostatnidzienlataseanszprelekcja",
     "title" : "Wtorki dla Seniora: Ostatni dzień lata (seans z prelekcją)",
@@ -8765,7 +8765,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Ostatni dzień lata", "The Last Day of Summer" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f611c715c97e752e",
     "title" : "Klasyki SFR vol.3",
@@ -9404,7 +9404,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Bigger Picture" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f68a73e60eb72c1d",
     "title" : "Dobry chłopiec",
@@ -11384,7 +11384,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Olifantje in het bos", "Twinkle Twinkle Little Elephant" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f80762e374979efc",
     "title" : "Przez całą noc, Toute une nuit",
@@ -12808,7 +12808,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "What Ever Happened to Baby Jane?" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f8ee73bdb92b4ce9",
     "title" : "Babystar",
@@ -14554,7 +14554,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f98baf1af9d76e84",
     "title" : "DKF Zamek: Wilcze dzieci",
@@ -15221,7 +15221,7 @@
     "ageRating" : "16",
     "shareCardPending" : false,
     "searchTitles" : [ "All the President's Men" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f9e0da758b689257",
     "title" : "Okno na podwórze",
@@ -15276,7 +15276,7 @@
     "ageRating" : "12",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "f9f1af111064ef3f",
     "title" : "Księżniczka Mononoke (wersja z napisami)",
@@ -18669,7 +18669,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Pociągi", "Trains" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "fc00e2237bab744f~pociagi",
     "title" : "Pociągi",
@@ -18693,7 +18693,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Trains" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "fc094be0b91c6a47",
     "title" : "Pasażer Andrzej Munk",
@@ -21806,7 +21806,7 @@
     "ageRating" : "13",
     "shareCardPending" : false,
     "searchTitles" : [ "Bert sabbar allt" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "fe0402184603b922",
     "title" : "Przytul mnie - zestaw VI",
@@ -23372,7 +23372,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "ff24fca48a88a966",
     "title" : "Ród Smoka - premiera pierwszego odcinka 3. Sezonu w kinach Helios",
@@ -24484,7 +24484,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "The Servant" ],
-    "provisional" : false
+    "provisional" : true
   }, {
     "_id" : "ffb6e357a6c2cbe9",
     "title" : "Nienasyceni",

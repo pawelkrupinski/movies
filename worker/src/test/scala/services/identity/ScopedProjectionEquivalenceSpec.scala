@@ -57,6 +57,8 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
     private val defaultGroup = scala.collection.mutable.Map.empty[String, Int]
     val groupOf  = scala.collection.mutable.Map.empty[ListingKey, Int]
     val filmOf   = scala.collection.mutable.Map.empty[Int, Option[Int]]
+    /** The groups whose take awaits an answer (`ResolverDecision.awaits`): served provisional (step 6). */
+    var pending  = Set.empty[Int]
     var tick     = 0
     /** Whether TMDB fails one film in four (by film and tick); a film whose details failed is drafted again each tick. */
     var failing  = true
@@ -95,7 +97,8 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
       val decisions = listings.distinctBy(_.key).groupBy(group).toSeq.map { case (g, ls) =>
         val film = filmOf(g)
         val decided = ResolverDecision(ls.map(_.key).sorted, film, 0.9,
-          if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.NoCandidate, Nil)()
+          if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.NoCandidate, Nil,
+          awaits = if (pending(g)) Set(Question.FilmRecord(g)) else Set.empty)()
         if (film.isEmpty) linkOf.get(g).fold(decided)(_(decided)) else decided
       }.sortBy(_.members.head)(using ListingKey.ordering)
       Some(IdentityProjection.Resolved(Resolution(decisions, listings.size, decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap,
@@ -255,6 +258,8 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
           case 5 if s.filmOf.nonEmpty =>
             // The resolver matches a group to another film, or to none.
             val g = s.filmOf.keys.toSeq.sorted.apply(rng.nextInt(s.filmOf.size)); s.filmOf(g) = s.pickFilm()
+            // ... its take awaiting an answer, or decided (step 6: a film marked provisional while it awaits one)
+            s.pending = if (rng.nextBoolean()) s.pending + g else s.pending - g
             if (s.linked) s.linkOf(g) = s.pickLinks()
           case 6 if !fresh =>
             // Another writer changes a stored film — each change drawn once, so both worlds take the same write: one a whole
