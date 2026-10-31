@@ -5,8 +5,6 @@ import play.api.Logging
 
 import java.time.{Clock, LocalDate, ZoneId}
 import java.util.concurrent.Executor
-import java.util.concurrent.atomic.AtomicReference
-import scala.util.control.NonFatal
 
 /**
  * The live resolve's SUSPECT TAKES ([[SuspectTakes]]), counted per signal over each WRITTEN projection of the whole corpus:
@@ -32,26 +30,16 @@ final class SuspectTakeCount(venues: IdentityLookups, records: Seq[Int] => Map[I
                              report: Map[SuspectTakes.Signal, Int] => Unit, runner: Executor, pressed: () => Boolean,
                              judgements: TakeJudgements.Index = TakeJudgements.Index.Empty, reportWrong: Int => Unit = _ => ()) extends Logging {
 
-  /** The latest submission waiting: what to count, and the log fields of the projection that submitted it. */
-  private val waiting = new AtomicReference[Option[(Resolution, Seq[Listing], Map[String, String])]](None)
   /** The decisions and listings (their hashes) last counted over: a count of the same is the same. */
   private var countedOver = Option.empty[(Int, Int)]
+  private val counting = new OffThreadCount[(Resolution, Seq[Listing])]("identity suspect takes", logger, runner, pressed)(
+    { case (resolution, listings) =>
+      val over = (resolution.decisions.##, listings.##)
+      if (!countedOver.contains(over)) { apply(resolution, listings); countedOver = Some(over) }
+    })
 
   /** Count `resolution`'s suspect takes among `listings` on `runner`, once it is free. */
-  def submit(resolution: Resolution, listings: Seq[Listing]): Unit =
-    if (waiting.getAndSet(Some((resolution, listings, tools.LogFields.current()))).isEmpty) runner.execute(() => countWaiting())
-
-  private def countWaiting(): Unit = synchronized {
-    waiting.getAndSet(None).foreach { case (resolution, listings, fields) => tools.LogFields.carrying(fields) {
-      if (pressed()) logger.info("identity suspect takes: not counted, the heap is near its limit; the next projection of the corpus counts")
-      else {
-        val over = (resolution.decisions.##, listings.##)
-        if (!countedOver.contains(over))
-          try { apply(resolution, listings); countedOver = Some(over) }
-          catch { case NonFatal(e) => logger.warn("identity suspect takes: counting failed", e) }
-      }
-    } }
-  }
+  def submit(resolution: Resolution, listings: Seq[Listing]): Unit = counting.submit((resolution, listings))
 
   /** Count `resolution`'s suspect takes among `listings` (every listing it decided) and report them, on this thread. */
   def apply(resolution: Resolution, listings: Seq[Listing]): Unit = {

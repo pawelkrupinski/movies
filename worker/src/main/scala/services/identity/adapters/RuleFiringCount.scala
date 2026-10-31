@@ -5,9 +5,7 @@ import play.api.Logging
 import services.movies.TitleNormalizer
 
 import java.util.concurrent.Executor
-import java.util.concurrent.atomic.AtomicReference
 import scala.collection.mutable
-import scala.util.control.NonFatal
 
 /**
  * How often each RULE fires on the live listings, counted over each WRITTEN projection of the whole corpus: per rule id,
@@ -28,21 +26,13 @@ import scala.util.control.NonFatal
 final class RuleFiringCount(normalizer: TitleNormalizer, report: (Map[String, Int], Int) => Unit, runner: Executor,
                             pressed: () => Boolean) extends Logging {
 
-  private val waiting = new AtomicReference[Option[(Resolution, Seq[Listing], Map[String, String])]](None)
+  private val counting = new OffThreadCount[(Resolution, Seq[Listing])]("identity rule firings", logger, runner, pressed)(
+    { case (resolution, listings) => apply(resolution, listings) })
   /** Each live listing's title rules, by venue and raw title, as the last count read them. */
   private var titleRules = Map.empty[(String, String), Seq[String]]
 
   /** Count `resolution`'s rule firings among `listings` on `runner`, once it is free. */
-  def submit(resolution: Resolution, listings: Seq[Listing]): Unit =
-    if (waiting.getAndSet(Some((resolution, listings, tools.LogFields.current()))).isEmpty) runner.execute(() => countWaiting())
-
-  private def countWaiting(): Unit = synchronized {
-    waiting.getAndSet(None).foreach { case (resolution, listings, fields) => tools.LogFields.carrying(fields) {
-      if (pressed()) logger.info("identity rule firings: not counted, the heap is near its limit; the next projection of the corpus counts")
-      else try apply(resolution, listings)
-      catch { case NonFatal(e) => logger.warn("identity rule firings: counting failed", e) }
-    } }
-  }
+  def submit(resolution: Resolution, listings: Seq[Listing]): Unit = counting.submit((resolution, listings))
 
   /** Count `resolution`'s rule firings among `listings` (every listing it decided) and report them, on this thread. */
   def apply(resolution: Resolution, listings: Seq[Listing]): Unit = synchronized {
