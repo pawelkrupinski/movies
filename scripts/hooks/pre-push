@@ -559,6 +559,15 @@ case "${1:-}" in
         esac ;;
     *)       remote_url="${2:-}" ;;
 esac
+# THE CONFIGURED FORGE (github-return plan W7): a range whose base names no remote (`<sha>..HEAD`) reads the forge
+# agentctl's switch names (scripts/forge-gh --configured: KINOWO_FORGE, $AGENTCTL_FORGE or agentctl.toml's `forge`),
+# through that forge's remote -- forgejo or origin. No switch set: as before (GitHub's gh).
+if [ -z "$remote_url" ]; then
+    case "$(bounded 10 python3 "$(dirname "${BASH_SOURCE[0]}")/../forge-gh" --configured 2>/dev/null)" in
+        forgejo) remote_url="$(git remote get-url --push forgejo 2>/dev/null || true)" ;;
+        github)  remote_url="$(git remote get-url --push origin 2>/dev/null || true)" ;;
+    esac
+fi
 is_forgejo_url() { # <url>
     case "$1" in
         ssh://forgejo-git/*|forgejo-git:*|*://forgejo.*|*://forgejo:*|*://*@forgejo.*|*@localhost:2222*|*://localhost:2222/*) return 0 ;;
@@ -682,6 +691,8 @@ check_redgate() {
     else
         need redgate gh "brew install gh" || return 1
     fi
+    # The tools the gate runs (gating_checks.py through scripts/forge-gh) read the same forge as the gate.
+    if [ "$forge" = Forgejo ]; then export KINOWO_FORGE=forgejo; else export KINOWO_FORGE=github; fi
     if [ -z "$unread" ]; then
         # gh's stderr kept apart from its answer: a warning beside a green verdict would otherwise be read as the verdict.
         errors="$(mktemp)"

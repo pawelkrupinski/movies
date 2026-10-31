@@ -7,6 +7,9 @@ Forgejo since. Every laptop tool that finds a run, an artifact or a release asse
 
   `forge-gh --which` prints which (github or forgejo), for a caller that acts on it.
   KINOWO_FORGE=github|forgejo   -> that forge
+  else agentctl's switch        -> $AGENTCTL_FORGE or `forge` in agentctl.toml (the cut-over to GitHub flips it once
+                                   for agentctl and every laptop tool); `forge-gh --configured` prints what a switch
+                                   names, or an empty line
   inside a CI job ($GITHUB_ACTIONS) -> the job's own gh (on Forgejo that is the job image's shim): exec'd as is
   otherwise                     -> Forgejo when this checkout has a Forgejo remote (ssh://forgejo-git/..., a forgejo.*
                                    host, localhost:2222 -- the pre-push hook's is_forgejo_url), else GitHub
@@ -81,12 +84,43 @@ def is_forgejo_url(url: str) -> bool:
     return bool(FORGEJO_URL_RE.match(url.strip()))
 
 
+def agentctl_forge(env=os.environ) -> str:
+    """The laptop's ONE forge switch, agentctl's (github-return plan §4.4 C6): $AGENTCTL_FORGE, else `forge` in
+    agentctl.toml ($AGENTCTL_CONFIG, else /etc/agentctl/agentctl.toml then ~/.config/agentctl/agentctl.toml, the later
+    winning, as agentctl reads them; files only under the env's own HOME). Empty when nothing sets it."""
+    if env.get("AGENTCTL_FORGE"):
+        return env["AGENTCTL_FORGE"].strip().lower()
+    if env.get("AGENTCTL_CONFIG"):
+        files = [] if env["AGENTCTL_CONFIG"] == "-" else [env["AGENTCTL_CONFIG"]]
+    else:
+        home = env.get("HOME")
+        files = ["/etc/agentctl/agentctl.toml"] + ([os.path.join(home, ".config", "agentctl", "agentctl.toml")] if home else [])
+    found = ""
+    try:
+        import tomllib
+    except ImportError:
+        return ""
+    for path in files:
+        try:
+            with open(path, "rb") as f:
+                found = str(tomllib.load(f).get("forge") or found).strip().lower()
+        except (OSError, ValueError):
+            continue
+    return found
+
+
+def configured_forge(env=os.environ) -> str:
+    """The forge a switch names (KINOWO_FORGE, else agentctl's), or "" when none does."""
+    chosen = env.get("KINOWO_FORGE", "") or agentctl_forge(env)
+    if chosen and chosen not in ("github", "forgejo"):
+        raise Fail(f"KINOWO_FORGE / AGENTCTL_FORGE / agentctl.toml forge = {chosen}: github or forgejo", 2)
+    return chosen
+
+
 def forge(env=os.environ, remotes=None) -> str:
-    chosen = env.get("KINOWO_FORGE", "")
-    if chosen in ("github", "forgejo"):
-        return chosen
+    chosen = configured_forge(env)
     if chosen:
-        raise Fail(f"KINOWO_FORGE={chosen}: github or forgejo", 2)
+        return chosen
     if env.get("GITHUB_ACTIONS") == "true":
         return "github"
     if remotes is None:
@@ -575,6 +609,9 @@ def main(argv=None) -> int:
     try:
         if argv == ["--which"]:  # the forge this checkout reads, for a caller that acts on it (the identity-measure tool)
             print(forge())
+            return 0
+        if argv == ["--configured"]:  # the forge a switch names, or an empty line (the pre-push gate's default)
+            print(configured_forge())
             return 0
         if forge() == "github":
             os.execvp("gh", ["gh"] + argv)

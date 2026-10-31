@@ -190,6 +190,28 @@ class ForgeGhTest(unittest.TestCase):
         self.assertEqual("forgejo", forge_gh.forge({"KINOWO_FORGE": "forgejo"}, []))
         self.assertEqual("github", forge_gh.forge({"GITHUB_ACTIONS": "true"}, forgejo))
 
+    def test_agentctls_switch_picks_the_forge_when_kinowo_forge_does_not(self):
+        forgejo = ["ssh://forgejo-git/p/movies.git"]
+        self.assertEqual("github", forge_gh.forge({"AGENTCTL_FORGE": "github"}, forgejo))
+        self.assertEqual("forgejo", forge_gh.forge({"KINOWO_FORGE": "forgejo", "AGENTCTL_FORGE": "github"}, []))
+        toml = os.path.join(self.work, "agentctl.toml")
+        with open(toml, "w") as f:
+            f.write('forge = "github"\n')
+        self.assertEqual("github", forge_gh.forge({"AGENTCTL_CONFIG": toml}, forgejo))
+        os.makedirs(os.path.join(self.work, "home", ".config", "agentctl"))
+        with open(os.path.join(self.work, "home", ".config", "agentctl", "agentctl.toml"), "w") as f:
+            f.write('forge = "github"\n')
+        self.assertEqual("github", forge_gh.forge({"HOME": os.path.join(self.work, "home")}, forgejo))
+        self.assertEqual("", forge_gh.configured_forge({}))
+        with self.assertRaises(forge_gh.Fail):
+            forge_gh.forge({"AGENTCTL_FORGE": "gitlab"}, forgejo)
+
+    def test_configured_names_only_what_a_switch_names(self):
+        env = {k: v for k, v in self.env.items() if k not in ("KINOWO_FORGE", "AGENTCTL_FORGE")}
+        env.update(AGENTCTL_CONFIG="-")
+        self.assertEqual("\n", self.gh("--configured", env=env).stdout)
+        self.assertEqual("github\n", self.gh("--configured", env=dict(env, AGENTCTL_FORGE="github")).stdout)
+
     def test_on_github_it_is_gh_itself(self):
         os.makedirs(f"{self.work}/bin")
         with open(f"{self.work}/bin/gh", "w") as f:

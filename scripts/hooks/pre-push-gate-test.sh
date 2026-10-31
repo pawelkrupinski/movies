@@ -124,6 +124,13 @@ check "Forgejo: an http remote's own host is read" "1" \
   "$(FJ_EXPECT_BASE=http://forgejo.internal:3000/api/v1/repos/pawelkrupinski/movies FJ_IMC="[$fjred]" fjremote=http://forgejo.internal:3000/pawelkrupinski/movies.git fjpush "$gbase..$plain")"
 check "Forgejo: an https remote with credentials reads its host, without them" "1" \
   "$(FJ_EXPECT_BASE=https://forgejo.example.org/api/v1/repos/o/r FJ_IMC="[$fjred]" fjremote=https://u:p@forgejo.example.org/o/r.git fjpush "$gbase..$plain")"
+# agentctl's forge switch (github-return W7): a range from a bare sha reads the forge it names, through its remote
+scratch_git "$grepo" remote add forgejo "$fjremote"
+check "forge = forgejo (agentctl's switch): a range from a bare sha reads Forgejo through the forgejo remote" "1 1" \
+  "$(KINOWO_FORGE= AGENTCTL_FORGE=forgejo FORGEJO_API_TOKEN=envtoken FJ_IMC="[$fjred]" GH_FAILS=1 push "$gbase..$plain") $(grep -c 'RED on main: run 38520439037 (failure) http://forgejo' "$gate/err")"
+check "...and with no switch set it reads gh, as before" "1 1" \
+  "$(KINOWO_FORGE= AGENTCTL_FORGE= AGENTCTL_CONFIG=- GH_IMC="[$red]" FJ_FAILS=1 push "$gbase..$plain") $(grep -c 'run 38520439037 (failure) https://x/' "$gate/err")"
+scratch_git "$grepo" remote remove forgejo
 check "a GitHub remote still reads gh, not Forgejo" "1 1" \
   "$(GH_IMC="[$red]" FJ_FAILS=1 PREPUSH_REMOTE_URL=git@github.com:pawelkrupinski/movies.git push "$gbase..$plain") $(grep -c 'Identity model convergence is RED on main: run 38520439037 (failure) https://x/' "$gate/err")"
 out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$plain" "$gbase" \
