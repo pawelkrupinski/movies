@@ -32,8 +32,7 @@ set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 gh_optional="$repo/scripts/ci/gh-optional.sh"
-# gh, or Forgejo's API from a laptop checkout of a Forgejo remote (scripts/forge-gh; a CI job runs its own gh)
-KINOWO_GH=${KINOWO_GH:-$repo/scripts/forge-gh}
+KINOWO_GH=${KINOWO_GH:-gh}
 
 pinned() {
   local code="$1" dir marker present line corpus recorded tree

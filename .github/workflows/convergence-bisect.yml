@@ -103,7 +103,7 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  # Not scripts/ci alone: gh-optional.sh sources ../tool-conventions.sh (gh_download), whose gh is ../forge-gh.
+                  # Not scripts/ci alone: gh-optional.sh sources ../tool-conventions.sh (gh_download).
                   sparse-checkout: scripts
             - id: requests
               env:

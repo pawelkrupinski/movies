@@ -9,7 +9,7 @@
 # This dispatches that check, and only that check (`takes-only`), for one commit, then classifies its moves
 # (scripts/identity_measure.py) and prints LANDABLE or NOT LANDABLE.
 #
-# THE DEFAULT WAY TO MEASURE (2026-10-21): it runs on ci-runner (Forgejo CI), not on the laptop. scripts/identity-measure-local
+# THE DEFAULT WAY TO MEASURE (2026-10-21): it runs on CI, not on the laptop. scripts/identity-measure-local
 # is the fallback, run only under the heavy-run slot wrapper. Typical wall time: ~25-40 minutes, most of it the takes rows.
 #
 # usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
@@ -36,7 +36,7 @@
 #   --footprint-only  the same, but exit 3 where --footprint would measure in full (nothing dispatched)
 #   --traces DIR   the base's traces from DIR (<cc>.jsonl.gz: a resolve's and a ratchet's --trace files, concatenated)
 #                  in place of the release's: a base no takes check stored one for, traced by scripts/identity-ci-run
-#   --keep-branch  leave the temporary branch on the remote (on Forgejo the run drops it anyway, below)
+#   --keep-branch  leave the temporary branch on the remote
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
 #   --wait         say the run's id and an ETA (the median wall time of the workflow's recent measure/ runs), then wait
 #                  with ~/bin/agentctl wait's backoff -- 60 s, x1.5, at most 5 min (IDENTITY_MEASURE_WAIT_FIRST seconds
@@ -88,8 +88,7 @@
 # With --no-wait only the first is dispatched; collecting it with --run says which recordings a cross-country change
 # still needs.
 #
-# THE REMOTE. IDENTITY_MEASURE_REMOTE, else `forgejo` when the clone has one (CI's forge since GitHub suspended the account
-# on 2026-10-19), else origin. Every gh call goes through scripts/forge-gh, Forgejo's API on a Forgejo checkout.
+# THE REMOTE. IDENTITY_MEASURE_REMOTE, else origin.
 #
 # THE BRANCH. The workflow runs a commit only from a ref, so the commit is pushed as `measure/<user>/<short sha>-<random>`
 # -- the one kind of branch push this repository allows besides main, ONLY to run a build. The pre-push hook checks
@@ -201,12 +200,8 @@ DIE_STATUS=2
 # must not hold the measurement (and its branch) forever.
 . "$here/ci/dispatch.sh"
 export DISPATCH_GH_TIMEOUT=${IDENTITY_MEASURE_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_MEASURE_POLL:-30}
-export DISPATCH_GH=$KINOWO_GH # scripts/forge-gh: Forgejo's API on a Forgejo checkout
-remote=${IDENTITY_MEASURE_REMOTE:-}
-[ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
-# Forgejo cannot cancel a run through its API, so its run drops its own branch (THE BRANCH above)
-run_drops_branch=""
-[ "$("$KINOWO_GH" --which 2> /dev/null)" = forgejo ] && run_drops_branch=1
+export DISPATCH_GH=$KINOWO_GH
+remote=${IDENTITY_MEASURE_REMOTE:-origin}
 
 branch="" measured_run="" finished="" scratch=""
 delete_branch() {
@@ -220,11 +215,7 @@ cleanup() {
   trap '' INT TERM
   [ -z "$scratch" ] || rm -rf "$scratch"
   # Ctrl-C mid-run: the run would replay a branch about to vanish -- cancel it first.
-  if [ -n "$measured_run" ] && [ -z "$finished" ] && [ -n "$run_drops_branch" ]; then
-    # Forgejo: no API cancels a run, and the run deletes its own branch when it ends
-    say "run $measured_run goes on (Forgejo has no API to cancel it; cancel it in the web UI if it should not) and deletes $branch when it ends"
-    branch=""
-  elif [ -n "$measured_run" ] && [ -z "$finished" ]; then
+  if [ -n "$measured_run" ] && [ -z "$finished" ]; then
     say "cancelling run $measured_run"
     identity_gh "$DISPATCH_GH_TIMEOUT" run cancel "$measured_run" > /dev/null || say "could not cancel run $measured_run -- cancel it by hand"
   fi
@@ -466,23 +457,13 @@ find_measurement() {
 # tail -- request-bisect, timings -- is a job hop apiece, each queued behind every other run's work
 # for a runner (on the old self-hosted CI it added 32 minutes to run 790's 52). So the wait ends at
 # whichever comes first: every measured country's takes row done, or the run done (cancelled included). The jobs come
-# from `run view --json jobs` (github.com: "<country> / takes"); Forgejo serves no run's jobs, but posts each job's
-# result on the commit as a status, "Identity model convergence / takes (<country>)", whose link is the run's -- by its id
-# (.../actions/runs/968), where the run's own url names its number (.../runs/435).
-# Only where the RUN drops its own branch (Forgejo, run_drops_branch): on github.com this script deletes the branch at exit,
-# which would pull it from under the run's tail. IDENTITY_MEASURE_EARLY_COLLECT=1|0 overrides (the self-test).
-early_collect=${IDENTITY_MEASURE_EARLY_COLLECT:-$run_drops_branch}
+# from `run view --json jobs` ("<country> / takes"). Off by default: this script deletes the branch at exit, which
+# would pull it from under the run's tail. IDENTITY_MEASURE_EARLY_COLLECT=1 turns it on (the self-test).
+early_collect=${IDENTITY_MEASURE_EARLY_COLLECT:-}
 [ "$early_collect" = 0 ] && early_collect=""
 takes_rows_done() { # <run id> <sha>: every measured country's takes row has ended
-  local id=$1 sha=$2 rows url slug cc state
+  local id=$1 rows cc state
   rows=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq '(.jobs // [])[] | [.name, .status] | @tsv') || return 1
-  if [ -z "$rows" ]; then
-    url=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json url --jq .url) || return 1
-    slug=${url%/actions/runs/*}; slug=${slug#*://*/}
-    rows=$(identity_gh "$DISPATCH_GH_TIMEOUT" api "repos/$slug/commits/$sha/statuses?limit=100" \
-      --jq ".[] | select(.target_url == \"$url\" or (.target_url | endswith(\"/actions/runs/$id\"))) | [(.context | sub(\"^Identity model convergence / \"; \"\")), (.status // .state)] | @tsv") || return 1
-    rows=$(sed -E 's/^takes \(([a-z-]+)\)/\1 \/ takes/' <<< "$rows")
-  fi
   for cc in ${countries//,/ }; do
     state=$(awk -F'\t' -v n="$(identity_country_name "$cc") / takes" '$1 == n { print $2; exit }' <<< "$rows")
     case $state in completed|success|failure|error|cancelled|skipped) ;; *) return 1 ;; esac
@@ -522,7 +503,7 @@ if [ -n "$run" ]; then
   fi
   case "$run_branch" in measure/*) branch=$run_branch ;; esac
   # its takes rows ended, the run's tail still reads the branch, and its last job deletes it
-  if [ "${RUN_CONCLUSION:-}" = takes-done ]; then say "run $run: every takes row has ended -- collecting now"; [ -z "$run_drops_branch" ] || branch=""; fi
+  if [ "${RUN_CONCLUSION:-}" = takes-done ]; then say "run $run: every takes row has ended -- collecting now"; fi
   collect "$run" "$run_sha" checkout
   verdict=$?
   # A takes-only measure run is stored for reuse: its base from the artifact, its head the commit (not main's CI laid
@@ -895,7 +876,6 @@ done
 finished=1
 if [ "$conclusion" = takes-done ]; then say "run $measured_run: every takes row has ended -- collecting now, the run's tail goes on without us"
   # its tail still reads the branch, and its last job deletes it
-  [ -z "$run_drops_branch" ] || branch=""
 else say "run $measured_run: $conclusion"; fi
 collect "$measured_run" "$commit"
 verdict=$?

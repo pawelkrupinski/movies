@@ -31,8 +31,7 @@
 #   KINOWO_IDENTITY_CACHE           -> the cache every identity tool shares (default ~/.cache/kinowo-identity)
 #   KINOWO_GH_REPO                  -> the GitHub repository every gh call names with -R ($KINOWO_REPO, default
 #        pawelkrupinski/movies: a test points it elsewhere)
-#   KINOWO_GH                       -> what every gh call runs: scripts/forge-gh (gh, or Forgejo's API on a Forgejo
-#        checkout -- its header says which forms it translates)
+#   KINOWO_GH                       -> what every gh call runs (default gh; a spec points it at a stub)
 #   die / usage_error <message...>  -> exit 1 (DIE_STATUS) for a runtime failure, 2 for a caller's mistake (below)
 #   country_flag / selected_countries_csv -> `--country cc[,cc]` and `--countries a,b`, one parser (below)
 #   flag_value "$@"                 -> a usage_error when the flag in $1 has no value after it (below)
@@ -49,13 +48,8 @@ KINOWO_IDENTITY_CACHE=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
 export KINOWO_IDENTITY_CACHE
 # shellcheck disable=SC2034 # read by the tools that source this
 KINOWO_GH_REPO=${KINOWO_REPO:-pawelkrupinski/movies}
-# The `gh` every tool runs: scripts/forge-gh, which is gh on GitHub and Forgejo's API on a checkout with a Forgejo remote
-# (GitHub suspended the account 2026-10-19; KINOWO_FORGE=github|forgejo overrides). $KINOWO_GH overrides it whole; a
-# checkout without it (a sparse one holding this file alone) runs gh.
-if [ -z "${KINOWO_GH:-}" ]; then
-  KINOWO_GH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/forge-gh
-  [ -x "$KINOWO_GH" ] || KINOWO_GH=gh
-fi
+# The `gh` every tool runs: gh, unless $KINOWO_GH names another.
+KINOWO_GH=${KINOWO_GH:-gh}
 
 local_mongo_port() { echo "${LOCAL_MIRROR_PORT:-28017}"; }
 local_mongo_uri() { echo "mongodb://127.0.0.1:$(local_mongo_port)/${1:-}?directConnection=true"; }

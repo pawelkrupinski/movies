@@ -7,7 +7,7 @@ description: >
   it succeeded on main, else the newest successful run on main, said as a warning (scripts/ci/upstream_run.py holds the
   rule and its history). Only this action reads `github.event.workflow_run`.
 
-  The caller checks out this action, scripts/ci and scripts/forge-gh first (WorkflowScriptsRunnableSpec), and its job
+  The caller checks out this action and scripts/ci first (WorkflowScriptsRunnableSpec), and its job
   has `actions: read`.
 
 inputs:

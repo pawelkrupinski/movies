@@ -74,8 +74,8 @@ def tsv_files(where: str) -> list[str]:
 
 
 def download(run: str, repo: str | None, into: str) -> None:
-    """The run's budget artifacts into `into`, through scripts/forge-gh (GitHub's gh, or Forgejo's artifact registry)."""
-    cmd = [os.environ.get("KINOWO_GH", os.path.join(HERE, "forge-gh")), "run", "download", run, "-p", ARTIFACTS, "-D", into]
+    """The run's budget artifacts into `into`, through gh ($KINOWO_GH)."""
+    cmd = [os.environ.get("KINOWO_GH", "gh"), "run", "download", run, "-p", ARTIFACTS, "-D", into]
     if repo:
         cmd += ["-R", repo]
     subprocess.run(cmd, check=True)

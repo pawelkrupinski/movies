@@ -123,5 +123,4 @@ scripts/ci/identity_judgements.py
 # every Bash tool shares (bounded).
 scripts/identity-tools.sh
 scripts/tool-conventions.sh
-scripts/forge-gh
 test/resources/fixtures/identity-judgements.tsv

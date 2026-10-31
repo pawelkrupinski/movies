@@ -18,7 +18,7 @@ repo="$work/repo" um="$work/repo/test/resources/fixtures/identity-unmatched"
 judgements="$work/repo/test/resources/fixtures/identity-judgements.tsv"
 mkdir -p "$repo/scripts/ci" "$um" "$work/bin" "$repo/scripts/local-mirror"
 cp "$REPO_ROOT/scripts/label-lookup" "$repo/scripts/"
-cp "$REPO_ROOT/scripts/local-mirror/freshness" "$repo/scripts/local-mirror/"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/forge-gh" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/local-mirror/freshness" "$repo/scripts/local-mirror/"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/"
 cp "$REPO_ROOT"/scripts/ci/identity_*.py "$repo/scripts/ci/"  # the tool and every shared module it imports
 
 row() { # country venue rawTitle film verdict [state scope reason evidence]

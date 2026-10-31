@@ -5,7 +5,7 @@
 # (twice on 2026-10-24).
 #
 #   scripts/adopt-ci-budgets <run id>        the run's `performance-budgets-*` artifacts (ci.yml's unit, it, e2e and
-#                                            chrome page rows upload them; scripts/forge-gh fetches them from either forge)
+#                                            chrome page rows upload them; gh fetches them)
 #   scripts/adopt-ci-budgets <dir | .tsv>    performance-budgets.tsv files already on disk (a local run's target/)
 #
 #   --out-of-band  also adopt a figure outside its budget's band (a red check): only for a deliberate trade, never a

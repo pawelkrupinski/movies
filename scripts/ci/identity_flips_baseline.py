@@ -67,7 +67,7 @@ def render(rows: list[list[str]]) -> str:
 
 
 def gh(*args: str) -> str:
-    tool = os.environ.get("KINOWO_GH") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "forge-gh")
+    tool = os.environ.get("KINOWO_GH") or "gh"
     return subprocess.run([tool, *args], check=True, capture_output=True, text=True, timeout=300).stdout
 
 

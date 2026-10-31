@@ -17,7 +17,7 @@
 #   --out      where the `identity-run` artifact lands (default target/identity-ci-run/<run>)
 #   --tier     the ci-runner tier label the run's jobs take (identity-run.yml's `tier` input): identity-landing-check
 #              passes the check tier, since a landing check blocks work; default empty, a measurement's `measure`
-#   --no-wait  dispatch, print the run, exit; fetch later with  scripts/forge-gh run download <run> -n identity-run -D DIR
+#   --no-wait  dispatch, print the run, exit; fetch later with  gh run download <run> -n identity-run -D DIR
 #
 # Typical wall time: ~5 min of setup (recording download, sbt) plus the command. Exit: the run's own (0 success, 1 not),
 # 2 when it could not be made.

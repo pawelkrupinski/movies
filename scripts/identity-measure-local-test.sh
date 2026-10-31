@@ -14,7 +14,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 repo="$work/repo"
 mkdir -p "$repo/scripts/ci" "$repo/test/resources/fixtures"
-cp "$REPO_ROOT/scripts/identity-measure-local" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/forge-gh" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/identity-measure-local" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/"
 # it-local.sh: logs each sbt command, and writes what each would ("--out DIR --full CC", "--measure --out DIR")
 cat > "$repo/scripts/it-local.sh" <<'STUB'
 #!/usr/bin/env bash

@@ -17,7 +17,7 @@ unset GITHUB_STEP_SUMMARY MONGODB_URI TMDB_API_KEY
 # a repository holding the script, its stubbed neighbours and the files it reads, and a worktree of it to run in
 repo="$work/repo"
 mkdir -p "$repo/scripts" "$repo/identity/src/main/resources" "$repo/test/resources/fixtures/08-06-2026" "$work/bin"
-cp "$REPO_ROOT/scripts/identity-refit" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/forge-gh" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/identity-refit" "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/"
 echo '{"version":"v1"}' > "$repo/identity/src/main/resources/identity-weights.json"
 echo 'film A' > "$repo/test/resources/fixtures/08-06-2026/expected-schedules.txt"
 printf 'target/\n' > "$repo/.gitignore"

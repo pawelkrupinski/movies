@@ -23,7 +23,7 @@ import ShellCommands.{Reference, Use}
  *  - a local action or reusable workflow a job `uses: ./...` is in the index;
  *  - a workflow step that `uses: ./...` comes after a checkout of this repository into the workspace whose
  *    sparse-checkout, if it has one, holds that action: the runner reads the action from the workspace, and 35cdcaac6
- *    put `./.github/actions/upstream-run` after a sparse checkout of scripts/ci and scripts/forge-gh only ("no files
+ *    put `./.github/actions/upstream-run` after a sparse checkout of scripts/ci and one script only ("no files
  *    found after reading paths: action.yml", Identity findings report #2049);
  *  - a sparse checkout is git's cone mode, listing directories of this repository: actions/checkout's non-cone mode
  *    appends its patterns to `.git/info/sparse-checkout` and makes no `.git/info/` for it, which only the runner's
@@ -65,7 +65,7 @@ class WorkflowScriptsRunnableSpec extends AnyFlatSpec with Matchers {
         |          with:
         |              sparse-checkout: |
         |                  scripts/ci
-        |                  scripts/forge-gh
+        |                  scripts/tool-conventions.sh
         |                  .github/*-paths.txt
         |                  /scripts
         |              sparse-checkout-cone-mode: false
@@ -86,9 +86,9 @@ class WorkflowScriptsRunnableSpec extends AnyFlatSpec with Matchers {
         |        - uses: actions/checkout@v5
         |""".stripMargin
     sparseCheckoutProblems("ci.yml (job)", job, Set("scripts", "scripts/ci")) shouldBe Seq(
-      "ci.yml (job): a non-cone sparse checkout (scripts/ci, scripts/forge-gh, .github/*-paths.txt, /scripts), which " +
+      "ci.yml (job): a non-cone sparse checkout (scripts/ci, scripts/tool-conventions.sh, .github/*-paths.txt, /scripts), which " +
         "needs .git/info from the runner's git template: leave sparse-checkout-cone-mode out",
-      "ci.yml (job): its sparse checkout lists scripts/forge-gh, no directory of this repository (cone mode takes directories)",
+      "ci.yml (job): its sparse checkout lists scripts/tool-conventions.sh, no directory of this repository (cone mode takes directories)",
       "ci.yml (job): its sparse checkout lists .github/*-paths.txt, no directory of this repository (cone mode takes directories)",
       "ci.yml (job): its sparse checkout lists /scripts, no directory of this repository (cone mode takes directories)",
       "ci.yml (job): a non-cone sparse checkout (docs), which needs .git/info from the runner's git template: leave " +
@@ -106,7 +106,7 @@ class WorkflowScriptsRunnableSpec extends AnyFlatSpec with Matchers {
         |                  .github/actions/upstream-run
         |""".stripMargin)
     // What `git sparse-checkout set scripts/ci .github/actions/upstream-run` checks out, and what it leaves out.
-    Seq("scripts/ci/ci-row-scope.sh", "scripts/forge-gh", ".github/convergence-paths.txt", "build.sbt",
+    Seq("scripts/ci/ci-row-scope.sh", "scripts/tool-conventions.sh", ".github/convergence-paths.txt", "build.sbt",
       ".github/actions/upstream-run/action.yml").filterNot(checkoutHolds(sparse, _)) shouldBe empty
     Seq("scripts/hooks/pre-push", ".github/workflows/ci.yml", ".github/actions/report-timings/action.yml")
       .filter(checkoutHolds(sparse, _)) shouldBe empty

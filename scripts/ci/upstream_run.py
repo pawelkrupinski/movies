@@ -20,7 +20,7 @@ The rule, one for all:
 - no run named and no trigger (a scheduled backstop) takes the newest successful run on main, as a fallback.
 
 Prints the run id on stdout (empty when skipped); every reason on stderr, as a GitHub annotation. Lists runs through
-scripts/forge-gh (gh on GitHub, Forgejo's API on a Forgejo checkout), or $KINOWO_GH.
+gh, or $KINOWO_GH.
 
 Run:  python3 scripts/ci/upstream_run.py --workflow NAME [--trigger RUN] [--conclusion C --branch B] [--repo O/R]
                                          [--max-age-hours 48] [--on-fallback newest|skip]
@@ -91,7 +91,7 @@ def main(argv=None, now=None, listing=None):
         print("::error::the upstream run is a run id, not %r" % args.trigger, file=sys.stderr)
         return 1
     now = now or datetime.datetime.now(datetime.timezone.utc)
-    gh = os.environ.get("KINOWO_GH") or str(Path(__file__).resolve().parent.parent / "forge-gh")
+    gh = os.environ.get("KINOWO_GH") or "gh"
     as_is = taken_as_is(args.trigger, args.conclusion, args.branch)
     needs_listing = not as_is and not (args.trigger and args.on_fallback == "skip")
     runs = (listing or (lambda: successful_runs(args.workflow, args.repo, gh)))() if needs_listing else []

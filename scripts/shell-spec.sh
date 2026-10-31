@@ -30,11 +30,8 @@
 # gov), whose tickets and evictions are the real Mac's.
 export KINOWO_MEMORY_GATE=${KINOWO_MEMORY_GATE:-0} KINOWO_JVM_SLOTS=${KINOWO_JVM_SLOTS:-0} KINOWO_JVM_CPUS=${KINOWO_JVM_CPUS:-0}
 export KINOWO_GOVERNOR=${KINOWO_GOVERNOR:-0}
-# A spec stubs `gh` on the PATH: scripts/forge-gh would read this checkout's Forgejo remote and ask Forgejo's API
-# instead, so every spec is on GitHub's side of it unless it asks for the other (forge-gh's own spec does).
-export KINOWO_FORGE=${KINOWO_FORGE:-github}
-# ...and a release download asks that stub, never github.com's public asset URL, which gh_download takes by default on a
-# github.com runner (tool-conventions.sh): a spec there would otherwise fetch the real release's asset
+# A release download asks the spec's stub `gh`, never github.com's public asset URL, which gh_download takes by default
+# on a github.com runner (tool-conventions.sh): a spec there would otherwise fetch the real release's asset
 export GH_DOWNLOAD_PUBLIC=${GH_DOWNLOAD_PUBLIC:-0}
 # ...and a spec tests its own checkout's gate, never the root checkout's it would otherwise follow
 export KINOWO_JVM_GATE_FOLLOW_MAIN=${KINOWO_JVM_GATE_FOLLOW_MAIN:-0}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unit tests for adopt_ci_budgets.py (scripts/adopt-ci-budgets): a run's figures read from its TSV files, each ratchet
 set to its median in the unit the file writes it in, a figure out of its band left unless --out-of-band, ceilings and
-operation counts never touched, and a run id fetched through a stub `forge-gh`. The last test runs the wrapper.
+operation counts never touched, and a run id fetched through a stub `gh`. The last test runs the wrapper.
 
     python3 scripts/adopt_ci_budgets_test.py
 """
@@ -106,8 +106,8 @@ class AdoptTest(unittest.TestCase):
         self.assertEqual((code, src), (0, SOURCE))
         self.assertIn("kb(1040) -> kb(1000)", out)
 
-    def test_a_run_id_is_fetched_through_forge_gh(self):
-        stub = os.path.join(self.dir, "forge-gh")
+    def test_a_run_id_is_fetched_through_gh(self):
+        stub = os.path.join(self.dir, "gh")
         log = os.path.join(self.dir, "calls")
         figures = row("landing render", 1000 * KB, 1040 * KB).replace("\t", "\\t").rstrip("\n")
         with open(stub, "w") as f:

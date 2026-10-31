@@ -90,7 +90,6 @@ jobs:
                       scripts/title-trace
                       scripts/identity-tools.sh
                       scripts/tool-conventions.sh
-                      scripts/forge-gh
                       scripts/identity-slice-old-ref-test.sh
                       .github/actions/setup-sbt-build/**
                       .github/workflows/tool-self-tests.yml
