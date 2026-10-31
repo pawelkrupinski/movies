@@ -291,9 +291,10 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
-                  # failures are only annotated on the run there.
-                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  # Annotations and a detailed job summary, never a check run: creating one spends GitHub API requests
+                  # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
+                  # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
+                  annotate_only: true
                   job_summary: ${{ github.server_url == 'https://github.com' }}
                   detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'target/test-reports/unit/**/*.xml'
@@ -406,9 +407,10 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
-                  # failures are only annotated on the run there.
-                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  # Annotations and a detailed job summary, never a check run: creating one spends GitHub API requests
+                  # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
+                  # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
+                  annotate_only: true
                   job_summary: ${{ github.server_url == 'https://github.com' }}
                   detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'target/test-reports/it/**/*.xml'
@@ -739,9 +741,10 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
-                  # failures are only annotated on the run there.
-                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  # Annotations and a detailed job summary, never a check run: creating one spends GitHub API requests
+                  # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
+                  # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
+                  annotate_only: true
                   job_summary: ${{ github.server_url == 'https://github.com' }}
                   detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   # SwiftPM writes `<base>.xml` (XCTest) and
@@ -754,9 +757,10 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
-                  # failures are only annotated on the run there.
-                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  # Annotations and a detailed job summary, never a check run: creating one spends GitHub API requests
+                  # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
+                  # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
+                  annotate_only: true
                   job_summary: ${{ github.server_url == 'https://github.com' }}
                   detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'android/app/build/test-results/testDebugUnitTest/*.xml'
@@ -913,9 +917,10 @@ jobs:
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
-                  # github.com: a check run and a detailed job summary, as before the move; Forgejo has neither, so
-                  # failures are only annotated on the run there.
-                  annotate_only: ${{ github.server_url != 'https://github.com' }}
+                  # Annotations and a detailed job summary, never a check run: creating one spends GitHub API requests
+                  # from the repository's shared GITHUB_TOKEN budget, and Main #2035's report step failed on 'API rate
+                  # limit exceeded for installation'. The suite step's exit code grades the tests; neither of these needs the API.
+                  annotate_only: true
                   job_summary: ${{ github.server_url == 'https://github.com' }}
                   detailed_summary: ${{ github.server_url == 'https://github.com' }}
                   report_paths: 'target/test-reports/unit/**/*.xml'
