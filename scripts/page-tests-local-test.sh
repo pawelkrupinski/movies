@@ -5,14 +5,14 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
-t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
-export CALLS="$t/calls" FIXTURE_POLL_SECONDS=0
+t=$(mktemp -d); trap 'xargs kill 2>/dev/null < "$t/served"; rm -rf "$t"' EXIT
+export CALLS="$t/calls" SERVED="$t/served" FIXTURE_POLL_SECONDS=0
 # sbt-warm: --serve writes the port file named in its command and serves until killed; --stop is recorded
 cat > "$t/sbt-warm" <<'STUB'
 #!/usr/bin/env bash
 case "$1" in
   --stop) echo "sbt-warm --stop" >> "$CALLS"; exit 0 ;;
-  --serve) echo "sbt-warm --serve $2" >> "$CALLS"; port_file=${2##* }; echo 4321 > "$port_file"; exec sleep 300 ;;
+  --serve) echo "sbt-warm --serve $2" >> "$CALLS"; echo $$ >> "$SERVED"; port_file=${2##* }; echo 4321 > "$port_file"; exec sleep 300 ;;
 esac
 STUB
 cat > "$t/npx" <<'STUB'
@@ -40,7 +40,11 @@ check "CI's chromium rows: three phones, the @agnostic set once, chrome-desktop;
   "$(grep -c "chromium-galaxy-s25\*.*--grep-invert axe-core|@agnostic" "$CALLS") $(grep -c 'chromium-galaxy-s10 --grep @agnostic' "$CALLS") $(grep -c 'project chrome-desktop' "$CALLS") $(grep '^npx' "$CALLS" | grep -vc 'grep-invert.*axe-core')"
 check "the WebKit row runs one worker" "1" "$(grep -c 'webkit-desktop.*workers=1' "$CALLS")"
 check "the server is stopped afterwards" "1" "$(grep -c 'sbt-warm --stop' "$CALLS")"
-check "no serving process is left" "0" "$(pgrep -f "$t/sbt-warm --serve" | wc -l | tr -d ' ')"
+# by pid: the stub execs `sleep`, so its command line no longer names it. The stop runs from the trap, after the
+# script cd'd into page-tests-playwright: with repo-relative paths it found no fixture-server.sh and left every
+# server serving (landing check run 4421: ".github/scripts/fixture-server.sh: No such file or directory").
+alive_servers() { local n=0 pid; while read -r pid; do kill -0 "$pid" 2>/dev/null && n=$((n + 1)); done < "$SERVED"; echo "$n"; }
+check "no serving process is left" "0" "$(alive_servers)"
 
 : > "$CALLS"
 bash "$REPO_ROOT/scripts/page-tests-local" chromium >/dev/null 2>&1
@@ -50,7 +54,7 @@ check "chromium runs the Chromium rows only" "3 0" "$(grep -c '^npx' "$CALLS") $
 out=$(NPX_FAILS=chrome-desktop bash "$REPO_ROOT/scripts/page-tests-local" 2>&1); code=$?
 check "a failing row fails the run, names the row, and the rows after it still run" "1 1 1" \
   "$code $(printf '%s\n' "$out" | grep -c '==> chrome desktop FAILED') $(grep -c webkit-desktop "$CALLS")"
-check "...and stops the server" "1" "$(grep -c 'sbt-warm --stop' "$CALLS")"
+check "...and stops the server" "1 0" "$(grep -c 'sbt-warm --stop' "$CALLS") $(alive_servers)"
 check "off CI it installs, warms and pins nothing" "0 0" "$(grep -c '^install\|^node' "$CALLS") $(grep '^npx' "$CALLS" | grep -c 'workers=5')"
 : > "$CALLS"
 CI=true bash "$REPO_ROOT/scripts/page-tests-local" chromium >/dev/null 2>&1

@@ -26,7 +26,11 @@ npx=${PAGE_TESTS_NPX:-npx}
 npm=${PAGE_TESTS_NPM:-npm}
 
 state=$(mktemp -d)
+# From the root: the trap runs wherever the script stood when it ended -- inside page-tests-playwright, where the
+# repo-relative paths found nothing and every run left its fixture server and the kept sbt server serving (landing
+# check run 4421: ".github/scripts/fixture-server.sh: No such file or directory").
 stop() {
+    cd "$root"
     .github/scripts/fixture-server.sh stop "$state" || true
     "$sbt_warm" --stop >/dev/null 2>&1 || true
     rm -rf "$state"
