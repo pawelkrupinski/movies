@@ -138,6 +138,19 @@ drift short --against main --countries de,uk
 check "...a requested row that never ran is no verdict, exit 2" "2" "$(cat "$work/short.rc")"
 check "--for-red and --against together is a usage error" "2" "$(drift both --for-red 3726 --against main; cat "$work/both.rc")"
 
+# github.com names a leg's row `leg (germany) / takes-drift-1 (germany)`: a recorded payload (run 41250027249), de and uk red
+cp "$REPO_ROOT/scripts/ci/testdata/github-drift-run-41250027249-jobs.json" "$work/state/jobs-41250027249.json"
+echo completed > "$work/state/status-41250027249"
+echo 2600 > "$work/state/number-41250027249"
+echo '[{"databaseId": 41250027249, "number": 2600, "status": "completed"}]' > "$work/state/runs.json"
+drift ghrun --run 41250027249
+check "--run on github.com's nested job names finds the de/uk rows (not 'nothing to judge'), DRIFT RED, exit 1" \
+  "1 DRIFT RED: takes-drift-1 (germany) takes-drift-2 (united-kingdom)" "$(cat "$work/ghrun.rc") $(tail -1 "$work/ghrun.out")"
+rm -f "$work/state/dispatches"
+drift ghred --for-red 41250027249
+check "--for-red on it names its failed rows' countries and seeds" "true" \
+  "$(grep -q 'red drift rows: takes-drift-1 (germany),takes-drift-2 (united-kingdom) -> countries de,uk' "$work/ghred.err" && echo true || echo false)"
+
 rm -f "$work/state/dispatches"
 jobs 3700 "convergence (poland):completed:failure" "takes-drift-1 (poland):completed:success"
 drift none --for-red 2500

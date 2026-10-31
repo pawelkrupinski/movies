@@ -92,7 +92,7 @@ fi
 [ -z "$for_red" ] || [ -z "$against" ] || usage_error "--for-red and --against each name the baseline: one of them"
 countries=""; [ "${#SELECTED_COUNTRIES[@]}" -eq 0 ] || countries=$(selected_countries_csv)
 remote=${IDENTITY_MEASURE_REMOTE:-}
-[ -n "$remote" ] || { git remote get-url forgejo > /dev/null 2>&1 && remote=forgejo; } || remote=origin
+[ -n "$remote" ] || remote=origin
 
 csv_add() { [[ ",$1," == *",$2,"* ]] && echo "$1" || echo "${1:+$1,}$2"; } # <csv> <item>
 
@@ -126,8 +126,10 @@ pins_of() {
 }
 # drift_jobs <run id> -> "<name>\t<status>\t<conclusion>" for each takes-drift row of the run (none yet: nothing)
 drift_jobs() {
-  identity_gh "$DISPATCH_GH_TIMEOUT" run view "$1" --json jobs \
-    --jq '(.jobs // [])[] | select(.name | test("^takes-drift-[12] \\(")) | [.name, .status, (.conclusion // "")] | @tsv'
+  # (github.com names a leg's row `leg (germany) / takes-drift-1 (germany)`: convergence_reuse.py's jobs_by_name reads it)
+  local json
+  json=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$1" --json jobs) || return 1
+  python3 "$here/ci/convergence_reuse.py" drift-rows <<< "$json" | grep -v '^$' || true
 }
 
 # ── --for-red: the rows a red failed ─────────────────────────────────────────────────────────────────────────────

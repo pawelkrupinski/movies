@@ -100,7 +100,7 @@ FIND_RUNS = 30
 FIND_HOURS = 24
 
 
-USAGE = "usage: convergence_reuse.py key|inputs|facts|verify|find|complete|expected-rows|judge ... (see the header)"
+USAGE = "usage: convergence_reuse.py key|inputs|facts|verify|find|complete|drift-rows|expected-rows|judge ... (see the header)"
 
 
 class Unproven(Exception):
@@ -260,10 +260,10 @@ def inputs_unlike_main(inputs, order_phases):
 
 
 def jobs_by_name(jobs):
-    """A run's jobs by the name Forgejo gives them: a reusable call's inner job is `takes (poland)` there, beside its
-    caller `leg (poland)`, while github.com names it `leg (poland) / takes (poland)` and lists no caller job. Both
-    spellings read alike: the inner name, and each caller as the worst of its rows (success only if every row
-    succeeded), unless the run lists the caller itself."""
+    """A run's jobs by their own name: github.com names a reusable call's inner job `leg (poland) / takes (poland)` and
+    lists no caller job. This reads the inner name (`takes (poland)`), and each caller (`leg (poland)`) as the worst of
+    its rows (success only if every row succeeded), unless the run lists the caller itself. The one reader of job names:
+    the verdict (`complete`, `judge`) and scripts/identity-drift-ci (`drift-rows`) both go through it."""
     out, callers = {}, {}
     for j in jobs:
         name = j.get("name") or ""
@@ -280,6 +280,15 @@ def jobs_by_name(jobs):
             out[caller] = {"name": caller, "status": "completed" if done else "in_progress",
                            "conclusion": ("success" if ok else "failure") if done else None}
     return out
+
+
+DRIFT_ROW = re.compile(r"^takes-drift-[12] \(")
+
+
+def drift_rows(jobs):
+    """`name\tstatus\tconclusion` lines for each takes-drift row of a run's jobs, read through jobs_by_name."""
+    return [f"{name}\t{j.get('status') or ''}\t{j.get('conclusion') or ''}"
+            for name, j in jobs_by_name(jobs).items() if DRIFT_ROW.match(name)]
 
 
 def judge(source_run, jobs, facts, mine):
@@ -664,6 +673,9 @@ def main(argv):
         mine = read_json(opts["mine"])
         mine["takes_bases"] = {c: tuple(b) for c, b in (mine.get("takes_bases") or {}).items()}
         print("\n".join(judge(read_json(opts["run"]), read_json(opts["jobs"]), facts, mine)))
+        return 0
+    if command == "drift-rows":  # stdin: `gh run view --json jobs`
+        print("\n".join(drift_rows((json.load(sys.stdin) or {}).get("jobs") or [])))
         return 0
     if command == "phases-expression":
         print(PHASES_EXPRESSION)

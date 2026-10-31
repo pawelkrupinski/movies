@@ -380,6 +380,14 @@ class NoFalseGreen(unittest.TestCase):
         self.assertEqual(reuse.jobs_by_name(jobs)["leg (poland)"]["conclusion"], "failure")
         self.assertEqual(reuse.jobs_by_name(jobs)["takes (poland)"]["conclusion"], "success")
 
+    def test_drift_rows_of_a_recorded_github_com_run(self):
+        """Run 41250027249 (a drift-only dispatch): github.com's `leg (germany) / takes-drift-1 (germany)` rows."""
+        with open(os.path.join(ROOT, "scripts/ci/testdata/github-drift-run-41250027249-jobs.json")) as f:
+            jobs = json.load(f)["jobs"]
+        self.assertEqual(sorted(reuse.drift_rows(jobs)), [
+            "takes-drift-1 (germany)\tcompleted\tfailure", "takes-drift-1 (united-kingdom)\tcompleted\tsuccess",
+            "takes-drift-2 (germany)\tcompleted\tsuccess", "takes-drift-2 (united-kingdom)\tcompleted\tfailure"])
+
     def test_a_proven_reuse_is_complete_with_every_row_skipped(self):
         jobs = [dict(j, conclusion="skipped") for j in green_jobs()]
         self.assertEqual(reuse.incomplete(jobs, ROWS, reused_from="2821"), [])
