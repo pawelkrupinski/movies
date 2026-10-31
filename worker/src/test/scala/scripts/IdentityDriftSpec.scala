@@ -44,6 +44,33 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     tally.lines.last should include("any")
   }
 
+  // The settle rule (the owner, 2026-10-31): a take settles only once every question it depends on is answered or given
+  // up on. The replay gives a family question up as unreachable, as the worker's memory gives one up after its failures
+  // in a row; one failed fewer times is in its backoff, and the take is Pending.
+  "the replay's give-up" should "give a question up once answered, never failed or unreachable -- never in its backoff" in {
+    IdentityDrift.givenUp(answered = false, failures = None) shouldBe true
+    IdentityDrift.givenUp(answered = true, failures = Some(1)) shouldBe true
+    (1 until tools.AgreementQuestionRounds.Attempts).foreach(n => IdentityDrift.givenUp(answered = false, failures = Some(n)) shouldBe false)
+    IdentityDrift.givenUp(answered = false, failures = Some(tools.AgreementQuestionRounds.Attempts)) shouldBe true
+  }
+
+  // ...and what it costs: how many listings each projection serves Pending, and for how long each stays so.
+  "the pending spans" should "count the listings Pending at each projection and time each stretch, decided or still open" in {
+    import services.movies.ListingKey
+    val (a, b) = (ListingKey.Published("QFT", "Rose (2023)", None, Nil), ListingKey.Published("Chichester", "Hamlet", None, Nil))
+    val start  = Instant.parse("2026-10-31T12:00:00Z")
+    val spans  = new IdentityDrift.PendingSpans
+    spans.record(1, start, 2, Set(a, b))
+    spans.record(2, start.plusSeconds(300), 2, Set(b))
+    spans.record(3, start.plusSeconds(600), 2, Set(b))
+    val summary = spans.summary
+    summary.counts shouldBe Seq((2, 2), (1, 2), (1, 2))
+    summary.decided shouldBe Seq((1, 5L))                     // a: Pending one projection, 5 minutes
+    summary.open shouldBe Seq((3, 10L))                       // b: Pending from the first to the last
+    summary.listings shouldBe 2
+    summary.line should (include("peak 2 of 2") and include("1 still Pending at the end"))
+  }
+
   "asks" should "release a held answer rather than ask for it" in {
     val clock         = new MutableClock(Instant.parse("2026-10-20T13:26:32Z"))
     val (docs, store) = filed(clock)

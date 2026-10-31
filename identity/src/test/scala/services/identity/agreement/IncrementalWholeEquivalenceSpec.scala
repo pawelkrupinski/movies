@@ -101,6 +101,18 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
     withClue("a film served while Pending, in some history: ") { provisional shouldBe true }
   }
 
+  // The settle rule (the owner, 2026-10-31): a take is settled only once every question it depends on is answered or given
+  // up on (retries exhausted) -- not once each was asked, one failed and in its retry backoff included. Property 1 above
+  // holds the rule; with every attempted question read as given up on, as production did, some history decides a take
+  // before a retried answer lands and moves it after (TMDB's 5xx and 429s, as flips and drift)
+  it should "settle no take past a question still in its retry backoff: decided before its answer is a move after" in {
+    val moved = IndependentCases.flatMap(for { (label, make) <- cases; seed <- Seeds } yield (label, make, seed)) { case (label, make, seed) =>
+      new History(make(seed), seed, Budget.Unlimited, everythingGivenUp = true).monotoneUnderFiling().map(s"$label: " + _)
+    }
+    withClue("histories where reading a failure in its backoff as given up on decided a take before its answer: ") { moved should not be empty }
+    every(Budget.Unlimited)(_.monotoneUnderFiling()) shouldBe empty
+  }
+
   // P2, P3 (identity-flips-structural-2026-10-30, property 2): the same filings in another order come to the same
   // outcomes -- each listing's, in every prefix, Pending or that one (property 1 per order, and the ends equal)
   it should "come to the same takes whatever order the same answers are filed in" in {
@@ -347,7 +359,10 @@ object IncrementalWholeEquivalenceSpec {
   }
 
   /** One random history over a case: the incremental path driven event by event, and the whole resolve. */
-  final class History(of: Case, seed: Long, budget: Budget, order: Long = 0, canonical: String => String = identity) {
+  final class History(of: Case, seed: Long, budget: Budget, order: Long = 0, canonical: String => String = identity,
+                      /** The settle rule before the owner's 2026-10-31 decision: every attempted question given up on, a
+                       *  failure in its backoff included -- what property 1 holds the rule against. */
+                      everythingGivenUp: Boolean = false) {
     private val world    = new World(seed, of, order, canonical)
     private val rnd      = new Random(seed * 7919)
     private val held     = mutable.LinkedHashMap.empty[ListingKey, Listing]
@@ -369,7 +384,7 @@ object IncrementalWholeEquivalenceSpec {
     private def newStage(stored: AgreementVerdicts, keyStore: AgreementKeys, perApply: Int) =
       new AgreementStage(world.families, world.lookups, normalizer, IdentityCalibration.resolver, world.tmdbOf, stored, clock = world.clock,
         posters = world.posters, tmdb = Some(world.lookups), identities = Seq(VoterFamily.Wiki), rules = of.rules, correctionsPerApply = perApply,
-        attempted = world.tried, givenUp = world.gaveUp, keyStore = keyStore)
+        attempted = world.tried, givenUp = if (everythingGivenUp) _ => true else world.gaveUp, keyStore = keyStore)
     private var model = newModel()
     private var stage = newStage(verdicts, keys, budget.perApply)
     private def listingOf(key: ListingKey) = held.get(key)

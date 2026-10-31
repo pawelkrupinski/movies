@@ -291,6 +291,12 @@ object IdentityDrift {
 
   // ── the agreement's answers: the families, the posters, the catalogue ────────────────────
 
+  /** The replay's give-up of a family question, as production's memory's (`QuestionMemory.givenUp`): answered, never
+   *  failed, or failed [[tools.AgreementQuestionRounds.Attempts]] times -- unreachable. One failed fewer times is in its
+   *  backoff, and a take settled past it is Pending (the owner, 2026-10-31). */
+  def givenUp(answered: Boolean, failures: Option[Int]): Boolean =
+    answered || failures.forall(_ >= tools.AgreementQuestionRounds.Attempts)
+
   /** What one stage reads its answers from, and how its open questions get answered: the capture's filed answers first,
    *  the recording's sites for the rest — as identity-slice's `agree` reads them. */
   final class Answers(reads: Reads, docs: TmdbDocuments, clock: java.time.Clock,
@@ -302,6 +308,8 @@ object IdentityDrift {
     private val hashing = new PosterHashing(new services.sharecards.EgressPosterDownload(reads.fetch), new services.sharecards.VipsPosterShrinker(binary = None),
       id => reads.tmdb.posters(id, also = Seq("en")), reads.country.language.getLanguage)
     private val failures = new ConcurrentHashMap[(VoterFamily, String), Integer]()
+    /** The family questions an ask of this replay filed: answered, given up on by nothing. */
+    private val answered = ConcurrentHashMap.newKeySet[(VoterFamily, String)]()
     /** How many attempts were marked: production's memory's marks (`QuestionMemory.marks`), which the stage reads to
      *  tell an attempt since its last apply. */
     private val marks = new java.util.concurrent.atomic.AtomicLong
@@ -310,6 +318,13 @@ object IdentityDrift {
     def attempted(question: Question): Boolean = question match {
       case Question.Family(family, asked) => failures.containsKey((family, asked))
       case _                              => false
+    }
+    /** Answered or given up on, as production's memory reads it (`QuestionMemory.givenUp`): a family question that
+     *  failed fewer than [[tools.AgreementQuestionRounds.Attempts]] times in a row is in its backoff, and a take settled
+     *  past it is Pending until it is filed or unreachable (the owner, 2026-10-31). */
+    def givenUp(question: Question): Boolean = question match {
+      case Question.Family(family, asked) => IdentityDrift.givenUp(answered.contains((family, asked)), Option(failures.get((family, asked))).map(_.intValue))
+      case _                              => true
     }
     def unreachable: Set[(VoterFamily, String)] = failures.asScala.filter(_._2 >= tools.AgreementQuestionRounds.Attempts).keySet.toSet
     def tmdbOf(imdb: String): Answer[Option[Int]] = found(imdb).fold(reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {
@@ -323,7 +338,7 @@ object IdentityDrift {
         venuePages = lookups, tmdb = lookups, tmdbOf = tmdbOf, stored = verdicts, clock = clock, normalizer = reads.normalizer,
         identities = modules.wiring.IdentityProjectionWiring.identities(reads.country.code),
         listedOn = modules.wiring.IdentityProjectionWiring.listedOn(reads.country.code), changes = store, posters = posters,
-        catalogue = catalogue.answers, attempted = attempted, attemptsMarked = Some(() => marks.get), keys = keys),
+        catalogue = catalogue.answers, attempted = attempted, givenUp = givenUp, attemptsMarked = Some(() => marks.get), keys = keys),
         AgreementStageComposition.Effects(askNow = askNow), overrides = if (budgets) Set.empty else Set(AgreementStageComposition.Override.Unbudgeted))
     /** The family questions the stage's last apply left open, none given up as unreachable. */
     def askable(stage: AgreementStage): Set[(VoterFamily, String)] =
@@ -350,7 +365,7 @@ object IdentityDrift {
       file(asks(store, (Question.families(questions) -- unreachable).toSeq.sortBy { case (f, q) => (f.ordinal, q) }, release))
     private def file(open: Seq[(VoterFamily, String)]): Unit =
       tools.ConcurrentAsks.inLanes(open.groupBy(_._1).values, 4) { case question @ (family, asked) =>
-        try { AgreementQuestions.file(store, family, reads.sources(family), asked); () }
+        try { AgreementQuestions.file(store, family, reads.sources(family), asked); answered.add(question); () }
         catch { case NonFatal(_) => failures.merge(question, 1, (a, b) => a + b); marks.incrementAndGet(); () }
       }
   }
@@ -476,6 +491,8 @@ object IdentityDrift {
     var lastPending: Set[ListingKey] = Set.empty
     /** Every listing served Pending at a projection, with its provisional film and what it awaited. */
     val pendingServed = scala.collection.mutable.ArrayBuffer.empty[PendingServed]
+    /** How many listings each projection served Pending, and for how long each stayed so ([[PendingSpans]]). */
+    val pendingSpans = new PendingSpans
     def project(republished: Iterable[ListingKey] = Nil, checkpoint: String = ""): Resolution = {
       clock.advance(Duration.ofMinutes(5))
       val started = tools.Stopwatch.start()
@@ -497,6 +514,7 @@ object IdentityDrift {
       }).toMap
       val pending = awaiting.keySet
       lastPending = pending
+      pendingSpans.record(projections, clock.instant(), held.size, pending)
       val served  = takesOf(r)
       // each provisional take, for the pending tally: how often it differs from the final one, by what it awaits
       pendingServed ++= awaiting.iterator.map { case (key, kinds) => PendingServed(key, served.get(key).fold(TakeFlips.NoFilm)(_.film), kinds) }
@@ -600,7 +618,47 @@ object IdentityDrift {
   /** One seed's sequence: each checkpoint's resolution, named, and the listings whose take flip-flopped on the way. */
   /** Each checkpoint's resolution with the listings its served take leaves Pending ([[TakeOutcome.Pending]]), and the flips. */
   final case class Replay(checkpoints: Seq[(String, Resolution, Set[ListingKey])], flips: Seq[TakeFlips.Flip],
-                          pendingServed: Seq[PendingServed] = Nil)
+                          pendingServed: Seq[PendingServed] = Nil, spans: PendingSpans.Summary = PendingSpans.Summary.empty)
+
+  /** Each listing's stretches served Pending ([[TakeOutcome.Pending]]) over a replay's projections: how many are Pending
+   *  at once, and how long -- in projections and in the replay clock's minutes -- each stretch lasted before its take
+   *  was decided, or stayed Pending to the end. What the settle rule's give-up costs (the owner, 2026-10-31: a take settles
+   *  only once every question it depends on is answered or given up on). */
+  final class PendingSpans {
+    private val open   = scala.collection.mutable.HashMap.empty[ListingKey, (Int, java.time.Instant)]
+    private val closed = Seq.newBuilder[(Int, Long)]
+    private val counts = Seq.newBuilder[(Int, Int)]
+    private val ever   = scala.collection.mutable.HashSet.empty[ListingKey]
+    private var last   = (0, java.time.Instant.EPOCH)
+    def record(projection: Int, at: java.time.Instant, listings: Int, pending: Set[ListingKey]): Unit = {
+      open.keySet.diff(pending).toSeq.foreach { key =>
+        val (from, since) = open.remove(key).get
+        closed += ((projection - from, java.time.Duration.between(since, at).toMinutes))
+      }
+      pending.foreach(key => if (!open.contains(key)) open(key) = (projection, at))
+      ever ++= pending
+      counts += ((pending.size, listings))
+      last = (projection, at)
+    }
+    def summary: PendingSpans.Summary = PendingSpans.Summary(counts.result(), closed.result(),
+      open.valuesIterator.map { case (from, since) => (last._1 - from + 1, java.time.Duration.between(since, last._2).toMinutes) }.toSeq, ever.size)
+  }
+  object PendingSpans {
+    /** `counts`: (Pending, listings held) at each projection; `decided`: each stretch that ended, (projections, minutes);
+     *  `open`: each still Pending at the last projection; `listings`: how many were ever Pending. */
+    final case class Summary(counts: Seq[(Int, Int)], decided: Seq[(Int, Long)], open: Seq[(Int, Long)], listings: Int) {
+      def line: String = {
+        def pct(xs: Seq[Long], p: Double) = if (xs.isEmpty) "-" else xs.sorted.apply(math.min(xs.size - 1, (xs.size * p).toInt)).toString
+        val peak = counts.maxByOption(_._1).getOrElse((0, 0))
+        f"pending at projection: peak ${peak._1} of ${peak._2}, mean ${if (counts.isEmpty) 0.0 else counts.map(_._1).sum.toDouble / counts.size}%.1f, " +
+          s"last ${counts.lastOption.fold(0)(_._1)}; $listings listing(s) ever Pending; ${decided.size} stretch(es) decided, " +
+          s"projections p50 ${pct(decided.map(_._1.toLong), 0.5)} p90 ${pct(decided.map(_._1.toLong), 0.9)} max ${pct(decided.map(_._1.toLong), 1.0)}, " +
+          s"minutes p50 ${pct(decided.map(_._2), 0.5)} p90 ${pct(decided.map(_._2), 0.9)} max ${pct(decided.map(_._2), 1.0)}; " +
+          s"${open.size} still Pending at the end (longest ${pct(open.map(_._1.toLong), 1.0)} projections, ${pct(open.map(_._2), 1.0)} min)"
+      }
+    }
+    object Summary { val empty: Summary = Summary(Nil, Nil, Nil, 0) }
+  }
   def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock, filedDocs: FiledDocs = Noted,
                /** At least one booted listing leaves and returns: a drift slice's few listings, where [[Leave]] would send
                 *  none away — and a sibling's run ending is what moved DE Werkstattkino's "CAMOUFLAGE" (#2473, ecedac9aa). */
@@ -641,14 +699,16 @@ object IdentityDrift {
       checkpoints += { val r = w.project(checkpoint = s"deploy-$run"); (s"deploy-$run", r, w.lastPending) }
       checkpoints += { val r = rescrape(s"after-deploy-$run"); (s"after-deploy-$run", r, w.lastPending) }
     }
-    Replay(checkpoints.result(), w.flips.flips, w.pendingServed.toSeq)
+    Replay(checkpoints.result(), w.flips.flips, w.pendingServed.toSeq, w.pendingSpans.summary)
   }
 
   /** What one replay found, over every seed: each divergence from the whole resolve, and each flip by its seed. */
-  final case class Findings(divergences: Seq[Divergence], flips: Seq[(Int, TakeFlips.Flip)], pending: PendingTally = PendingTally.Empty) {
+  final case class Findings(divergences: Seq[Divergence], flips: Seq[(Int, TakeFlips.Flip)], pending: PendingTally = PendingTally.Empty,
+                            /** Each seed's Pending stretches ([[PendingSpans]]). */
+                            spans: Seq[(Int, PendingSpans.Summary)] = Nil) {
     /** The divergences no `allowed` row names, and the flips no `flipsAllowed` row does: what fails the gate. */
     def open(country: String, allowed: Seq[Allowed], flipsAllowed: Seq[FlipAllowed]): Findings =
-      Findings(divergences.filterNot(d => allowed.exists(_.covers(d))), flips.filterNot { case (_, f) => flipsAllowed.exists(_.covers(country, f)) }, pending)
+      Findings(divergences.filterNot(d => allowed.exists(_.covers(d))), flips.filterNot { case (_, f) => flipsAllowed.exists(_.covers(country, f)) }, pending, spans)
     def isEmpty: Boolean = divergences.isEmpty && flips.isEmpty
   }
 
@@ -660,10 +720,12 @@ object IdentityDrift {
              wholeTakes: (Int, Map[ListingKey, Take]) => Unit = (_, _) => ()): Findings = {
     val flips = Seq.newBuilder[(Int, TakeFlips.Flip)]
     var tally = PendingTally.Empty
+    val spans = Seq.newBuilder[(Int, PendingSpans.Summary)]
     val divergences = seeds.flatMap { seed =>
       val clock  = new MutableClock(recordedAt)
       val replay = sequence(readsAt(clock), listings, seed.toLong, gate, clock, filedDocs, leaveOne)
       flips ++= replay.flips.map(seed -> _)
+      spans += seed -> replay.spans
       // the whole resolve at the sequence's last moment: the same answers' ages, the same year
       val wholeClock = new MutableClock(clock.instant())
       val wholeReads = readsAt(wholeClock)
@@ -680,7 +742,7 @@ object IdentityDrift {
         }
       }
     }
-    Findings(divergences, flips.result(), tally)
+    Findings(divergences, flips.result(), tally, spans.result())
   }
 
   /** One drift slice replayed (`test/resources/fixtures/drift-slices/<cc>/<name>/`, cut by `scripts/identity-slice
@@ -823,6 +885,8 @@ object IdentityDrift {
     // step 6's price: how often a provisional (Pending) take differed from the final one, by the kind of input it awaited
     println(s"## ${country.code} pending takes vs the final take, by awaited input (listing-projections, all seeds):")
     findings.pending.lines.foreach(line => println(s"      $line"))
+    // the settle rule's price (the owner, 2026-10-31): how many listings stay Pending, and how long
+    findings.spans.foreach { case (seed, summary) => println(s"## ${country.code} pending [seed $seed]: ${summary.line}") }
     Files.writeString(o.out.resolve(s"pending-${country.code}.tsv"), ("kind\tpending\tdiffer" +: (findings.pending.byKind.toSeq.sortBy(_._1) :+
       ("any" -> findings.pending.all)).map { case (k, (n, d)) => s"$k\t$n\t$d" }).mkString("", "\n", "\n"))
     val verdict = flipVerdict(country.code, open.flips, baseline, seeds)
