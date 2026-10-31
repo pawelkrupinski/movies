@@ -132,6 +132,41 @@ correction now waits, as a fill read blind does. Over all five countries, two se
 new questions were unanswered) did not reproduce as a settled divergence on the recording — the nightly production
 check is what watches them.
 
+## A red seed becomes a slice
+
+THE DRIFT GATE HAS TWO TIERS (the owner, 2026-10-31):
+
+- **The fast gate: the committed drift slices, seeds 1–12, on every run.** `scripts.IdentityDriftSlicesSpec` (the unit
+  suite's worker rows) replays every slice under `test/resources/fixtures/drift-slices/<cc>/<name>/` through the
+  incremental sequence on seeds 1 to 12, each from its own answers alone, and fails naming the slice, the seed and the
+  one line that replays just that:
+  `sbt "worker/Test/runMain scripts.IdentityDrift <cc> --slice test/resources/fixtures/drift-slices/<cc>/<name> --seed N"`.
+- **The wide net: the convergence legs' `takes-drift-1` / `takes-drift-2` rows, on ROTATING seeds.** Each row replays the
+  whole pinned recording on its run's seed (`scripts/ci/drift_seeds.py`: run N replays seeds `2(N-1) mod 64 + 1` and the
+  one after it, so every seed of 1..64 is replayed within 32 runs, and a rerun of a run replays the same two). Seeds 1
+  and 2 alone let UK "Swan Lake" (red on seed 3 only) and a Cosi/Fishguard flip (seed 11 only) through; slices replaying
+  seeds 1–12 found both. The job names stay; a red names its seed in the ::error title (`identity drift (de, seed 37)`),
+  `verdict.txt`, the step summary and the leg's commit status, with its reproducer —
+  `IdentityDrift de --seed 37` (`scripts/ci/identity-drift-check.sh` locally with `DRIFT_SEED=37`, or on CI:
+  `scripts/identity-drift-ci --countries de --seeds 37`), and the drift slice of each red listing that already has one.
+  `scripts/identity-drift-ci --for-red <run>` replays the red run's own seeds, `--against main` main's run's: a row is
+  only ever held against the same seed.
+
+**A red seed found anywhere is cut into a slice and committed**, so the fast gate covers it on every run from then on —
+never left to the rotation to come round again in 32 runs:
+
+1. Name the listing from the red (the step log's divergence or flip line: `venue | raw title`).
+2. Cut it, with this checkout's code: `scripts/identity-slice <cc> --venue "<venue>" --title "<raw title>"
+   --emit-drift-slice` — the listing, its families and corpus context and every answer the replay reads (cut closed:
+   round after round until it lacks none), into `test/resources/fixtures/drift-slices/<cc>/<name>/`.
+3. Check it reproduces BEFORE the fix: `sbt "worker/testOnly scripts.IdentityDriftSlicesSpec"` fails on it, naming a
+   seed of 1–12. A slice is a few listings, not the corpus, so the corpus's red seed is not the slice's: the slice's 12
+   seeds are what hold it. A slice that replays clean on all 12 does not pin the red: say so in the fix's commit (the
+   red's seed and the corpus reproducer), and widen the cut (more context) until it does.
+4. Commit the slice with the fix (`scripts/ci/commit_rules.py`'s driftguards refuse a drift red's `Fixes-Red:` without
+   it, or `Drift-Slice: none -- <why>`). After the fix every slice passes on every seed; the slice stays, a regression
+   test.
+
 ## Faithfulness, and what it does not cover
 
 The slice is faithful when its take equals the whole leg's. Where it is not, the harness says which: the leg's

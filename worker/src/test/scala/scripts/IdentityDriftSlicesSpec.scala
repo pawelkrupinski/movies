@@ -9,7 +9,7 @@ import scala.util.Try
 
 /**
  * TIER 1 OF THE DRIFT GATE: every listing that ever diverged or flipped in the incremental = whole replay
- * (scripts/ci/identity-drift-check.sh, the convergence legs' `takes-drift-<seed>` rows) is a committed drift slice —
+ * (scripts/ci/identity-drift-check.sh, the convergence legs' `takes-drift-1|2` rows, each on its run's rotating seed) is a committed drift slice —
  * `test/resources/fixtures/drift-slices/<cc>/<name>/`, cut by `scripts/identity-slice <cc> SELECTOR --emit-drift-slice`:
  * the listing, its families and corpus context, and every answer the incremental sequence reads. Each is replayed
  * here through production's incremental sequence ([[IdentityDrift.SliceRun]]: boot with answers missing, ticks,
@@ -48,10 +48,12 @@ class IdentityDriftSlicesSpec extends AnyFlatSpec with Matchers {
       // something new still replays the slice, deterministically; cutting it again brings the answer in
       if (outcome.lacking.nonEmpty) info(s"${outcome.lacking.size} request(s) the slice lacks, read as unknown (scripts/identity-slice --emit-drift-slice cuts it again)")
       val open = outcome.findings.open(outcome.country, allowed, flipsOk)
+      // each red names its slice and seed, and the one line that replays just that (seconds)
+      def again(seed: Long) = s"reproduce: ${reproducer(outcome.country, fixtures.relativize(dir), seed)}"
       withClue("divergences from the whole resolve: ")(open.divergences.map(d => s"${d.key.venue} | ${d.key.rawTitle}: whole ${d.whole.film}, " +
-        s"incremental ${d.incremental.film} [${d.checkpoint}, seed ${d.seed}]").distinct shouldBe empty)
+        s"incremental ${d.incremental.film} [${d.checkpoint}, seed ${d.seed}; ${again(d.seed)}]").distinct shouldBe empty)
       withClue("flips: ")(open.flips.filterNot { case (_, f) => baselined.exists(_.covers(outcome.country, f)) }
-        .map { case (seed, f) => s"${f.line} [seed $seed]" }.distinct shouldBe empty)
+        .map { case (seed, f) => s"${f.line} [seed $seed; ${again(seed.toLong)}]" }.distinct shouldBe empty)
     }
   }
 }
@@ -66,6 +68,10 @@ object IdentityDriftSlicesSpec {
   val Gate: Int = IdentityDrift.Options().gate
 
   final case class Outcome(country: String, findings: IdentityDrift.Findings, lacking: Seq[String])
+
+  /** The one line that replays one slice on one seed: what a red of this spec names. */
+  def reproducer(country: String, slice: Path, seed: Long): String =
+    s"""sbt "worker/Test/runMain scripts.IdentityDrift $country --slice test/resources/fixtures/$slice --seed $seed""""
 
   /** Every directory under `root` holding a slice. */
   def sliceDirs(root: Path): Seq[Path] =
