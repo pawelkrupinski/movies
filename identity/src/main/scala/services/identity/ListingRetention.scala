@@ -1,6 +1,7 @@
 package services.identity
 
 import services.movies.{ListingKey, TitleNormalizer}
+import services.resolution.SearchTitles
 
 /**
  * How long a listing's IDENTITY FACTS live (the owner, 2026-10-30, identity design: "Drop showings, keep movie details
@@ -17,8 +18,8 @@ import services.movies.{ListingKey, TitleNormalizer}
  * "Madoka Magica - Der Film: Rebellion" keeps Filmhaus (Langerringen)'s dated facts while Filmhaus is away, and stays on
  * the 2013 film (drift slices: Madoka, CinemaxX "Titans", Hasetor "Scott & Lila").
  *
- * "Its film" is read by its title (the model's `t:` key, [[TitleNormalizer.sanitize]]): known before any resolve, so the
- * rule needs no take to decide what a take reads.
+ * "Its film" is read by its normalized title ([[titleOf]]): known before any resolve, so the rule needs no take to decide
+ * what a take reads.
  */
 object ListingRetention {
 
@@ -26,8 +27,16 @@ object ListingRetention {
    *  not kept, and the ones kept before whose title no present listing bills any more. */
   final case class Left(kept: Seq[Listing], dropped: Seq[ListingKey])
 
-  /** The title a listing is kept by. */
-  def titleOf(listing: Listing, normalizer: TitleNormalizer): String = normalizer.sanitize(listing.title)
+  /** The title a listing is kept by: its normalized title, read off the listing alone -- the title it is searched under
+   *  (`TitleNormalizer.searchQuery`: case, programme banners, format and edition tags such as OmU, OV, 3D, IMAX), without
+   *  a trailing parenthetical (`SearchTitles.withoutTrailingParenthesis`: a year, "(GLOBALE)", "(OmU)"), sanitized. DE
+   *  Filmhaus Kino Koeln's "BLACK WATER (2025)" is kept while Kinocenter Giessen bills "Black Water (GLOBALE)": kept by its
+   *  sanitized title alone it went and came back with the order Giessen's answers arrived in (drift slice, seed 29). Never
+   *  by a take: what a take reads cannot be decided by a take. */
+  def titleOf(listing: Listing, normalizer: TitleNormalizer): String = {
+    val normalized = normalizer.sanitize(SearchTitles.withoutTrailingParenthesis(normalizer.searchQuery(listing.title)))
+    if (normalized.nonEmpty) normalized else normalizer.sanitize(listing.title)
+  }
 
   /** A listing as kept: whole. The model's input holds no showing (time, screen, booking), only the DAYS a listing
    *  screens on, and those are facts of it: they date the broadcast a relay screens (UK "Royal Ballet and Opera: Alice's

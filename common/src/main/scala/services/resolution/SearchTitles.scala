@@ -67,7 +67,7 @@ object SearchTitles {
         case _ => None
       }
       val bannerParts     = afterBanner(": ").toSeq
-      val noTrailingParen = TrailingParenthesis.matcher(t).replaceAll("").trim
+      val noTrailingParen = withoutTrailingParenthesis(t)
       (Seq(t) ++ pipeParts ++ dashParts ++ bannerParts :+ noTrailingParen)
     }
     (Seq(title) ++ originalTitle.toSeq ++ extraTitles)
@@ -75,6 +75,10 @@ object SearchTitles {
       .flatMap(deDecorate)
       .map(_.trim).filter(_.nonEmpty).distinct
   }
+
+  /** `title` without its trailing parenthetical: "Ojczyzna (pokaz przedpremierowy)" is "Ojczyzna", "Black Water (GLOBALE)"
+   *  "Black Water" -- one of [[candidates]]' de-decorated forms. */
+  def withoutTrailingParenthesis(title: String): String = TrailingParenthesis.matcher(title).replaceAll("").trim
 
   /** The subset of [[candidates]] that are the row's own titles exactly as
    *  reported — `title`, `originalTitle` and `extraTitles`, none of them split
