@@ -202,7 +202,7 @@ LINUX_ROOT="$work/wt" linux scripts/ci/b_test.py > /dev/null
 check "...from a worktree, the clone's metadata and the worktree's own" "config worktrees/wt/HEAD worktrees/wt/commondir worktrees/wt/gitdir" \
   "$(tar -tf "$work/docker-stdin" | grep -x -e config -e 'worktrees/wt/[a-zA-Z]*' | grep -v -e index -e ORIG_HEAD | paste -sd' ' -)"
 scratch_git "$tree" worktree remove --force "$work/wt"
-# a checkout borrowing objects (ci-runner's git mirror, by objects/info/alternates) reads them in the container too
+# a checkout borrowing objects (a git mirror, by objects/info/alternates) reads them in the container too
 scratch_repo "$work/mirror.git" --bare
 mirror_objects="$(cd "$work/mirror.git/objects" && pwd -P)"
 echo "$mirror_objects" > "$tree/.git/objects/info/alternates"

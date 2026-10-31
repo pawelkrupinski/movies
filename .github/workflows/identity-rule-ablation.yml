@@ -1,7 +1,7 @@
 #
 # RULE ABLATION on CI: which identity and title rules move takes when switched off (scripts/identity-rule-ablation),
 # over the recordings named, off the laptop. Each `ablate` row bisects its own share of the first round's batches
-# (`--shard I/N`, two rows so the sweep leaves ci-runner's other slots free) over every recording, one after another; `collect` merges the rows' settled rules into one report.
+# (`--shard I/N`, two rows so the sweep leaves other slots free) over every recording, one after another; `collect` merges the rows' settled rules into one report.
 # Dispatch-only; the report comes back as an artifact (identity-rule-ablation), never pushed.
 #
 name: Identity rule ablation
@@ -13,7 +13,7 @@ on:
             recordings:
                 description: The `Record scrape fixtures` runs to replay, comma-separated.
                 required: false
-                # 573 and 528: the recordings this forge holds (38713274617 is github.com-era; Forgejo never had it).
+                # 573 and 528: the recordings this forge holds.
                 default: '573,528'
                 type: string
             kinds:
@@ -43,8 +43,7 @@ concurrency:
 
 env:
     FIXTURE_RELEASE_TAG: convergence-fixtures
-    # ONE row, a round or so at a time: six bisecting rows held every ubuntu slot on ci-runner for hours (run 805), and a
-    # runner drain (every ci-runner deploy) waits for its longest job (run 1050 held one for ~2h). A sweep is a chain of
+    # ONE row, a round or so at a time: six bisecting rows held every ubuntu slot for hours (run 805). A sweep is a chain of
     # short dispatches instead, each resuming the last one's state (`resume-run`, `rounds`).
     SHARDS: '1'
 
@@ -241,5 +240,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

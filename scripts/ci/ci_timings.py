@@ -175,7 +175,7 @@ def workflow_ceilings(path, root=WORKFLOWS, seen=()):
 def ceiling_of(name, ceilings):
     """A job's ceiling in minutes, from the most specific pattern its name matches: `leg (poland)` is the caller row
     `leg (${{ matrix.country }})`, not the callee's `${{ matrix.phase }} (${{ inputs.country }})`. GitHub prefixes a
-    called job with its caller's name (`poland / takes (poland)`); Forgejo does not."""
+    called job with its caller's name (`poland / takes (poland)`)."""
     matching = [(length, ceiling) for pattern, length, ceiling in ceilings
                 if pattern.fullmatch(name) or pattern.fullmatch(name.split(" / ")[-1])]
     return max(matching, key=lambda match: match[0])[1] if matching else None

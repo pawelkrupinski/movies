@@ -39,8 +39,8 @@
 # (repo secrets; a fork's PR has none and pulls anonymously), so the pull counts against that
 # account's limit instead of the shared IP's. The token goes to `docker login` on stdin, never argv.
 #
-# NATIVE WHERE THE JOB IMAGE BAKES IT: the Forgejo job image carries this very release's mongod and mongosh, copied out
-# of the mongo image, at MONGO_NATIVE_HOME (/opt/mongodb/<version>; infra nix/files/forgejo-job-image). There it runs on
+# NATIVE WHERE THE JOB IMAGE BAKES IT: a job image may carry this very release's mongod and mongosh, copied out
+# of the mongo image, at MONGO_NATIVE_HOME (/opt/mongodb/<version>). There it runs on
 # the job's own localhost with the same flags -- no image pulled into the job's empty dockerd and no layers unpacked: 8 s
 # of a convergence row's setup on average, 28 s at p90 (2026-10-23). Its data in /data/db (a tmpfs there for
 # MONGO_TMPFS), its log at MONGO_NATIVE_LOG. It leaves a marker naming its home, which scripts/ci/mongo-exec.sh reads to
@@ -120,9 +120,9 @@ pull() {
     [ "$status" -eq 124 ] && echo "::warning::the pull of $1 stalled past ${MONGO_PULL_SECONDS:-120}s"
     return "$status"
 }
-# A DOCKER HUB MIRROR OF THE DAEMON'S OWN comes first: on the Forgejo runners each job's dockerd is
-# pointed at a pull-through cache on the CI host (infra's forgejo-registry-mirror), which serves Docker
-# Hub's name from local disk instead of the 19-27 s internet pull every job made (2026-10-22). Only a
+# A DOCKER HUB MIRROR OF THE DAEMON'S OWN comes first: a job's dockerd may be
+# pointed at a pull-through cache, which serves Docker
+# Hub's name from local disk instead of an internet pull. Only a
 # Docker Hub name goes through a daemon's mirror; GitHub's runners have none and skip this.
 if [ -n "$(docker info --format '{{range .RegistryConfig.Mirrors}}{{.}} {{end}}' 2>/dev/null)" ] &&
     pull "$hub_image"; then

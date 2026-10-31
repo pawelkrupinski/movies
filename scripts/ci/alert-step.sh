@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ALERT, NOT RED: run a check whose failure of a given kind is a THIRD PARTY's or a BACKLOG's -- a vendor down, a quota
-# or key refused, an upstream run with nothing to report, a checker that cannot read Forgejo -- and turn that kind into
+# or key refused, an upstream run with nothing to report, a checker that cannot read the forge -- and turn that kind into
 # an ALERT: the step (and the run) stays green, and `alert=true` plus `found=<its first ::error::/::warning:: line>` go
 # to $GITHUB_OUTPUT for the workflow's report job (.github/actions/report-scheduled-run `alert`: one tracked issue,
 # refreshed while it lasts, closed by the next clean run). Any other non-zero exit is the check's own failure -- a

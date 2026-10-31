@@ -104,7 +104,7 @@ jobs:
               run: |
                   git show HEAD:test/resources/fixtures/identity-judgements.tsv > "$RUNNER_TEMP/identity-judgements.tsv"
                   # exit 2 -- no recording to report, or an issue gh could not read or write -- is an ALERT
-                  # (scripts/ci/alert-step.sh): the recording's failure or Forgejo's, never a red run of this report
+                  # (scripts/ci/alert-step.sh): the recording's failure or the forge's, never a red run of this report
                   scripts/ci/alert-step.sh 2 -- python3 scripts/ci/identity_findings_report.py --run "$RECORDING" --assignee "$OWNER" --judgements "$RUNNER_TEMP/identity-judgements.tsv" --work "$RUNNER_TEMP/identity-findings"
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
@@ -115,9 +115,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --

@@ -27,7 +27,7 @@ import ShellCommands.{Reference, Use}
  *    found after reading paths: action.yml", Identity findings report #2049);
  *  - a sparse checkout is git's cone mode, listing directories of this repository: actions/checkout's non-cone mode
  *    appends its patterns to `.git/info/sparse-checkout` and makes no `.git/info/` for it, which only the runner's
- *    `git init` template provides. ci-runner's had none on the morning of 2026-10-23 (until infra 756c9fde), and a
+ *    `git init` template provides. One runner's had none on the morning of 2026-10-23, and a
  *    non-cone checkout died "ENOENT: no such file or directory, open '.../.git/info/sparse-checkout'" (Archive
  *    recording #823's `report (timings)`). Cone mode runs `git sparse-checkout set`, which makes the directory itself. It takes
  *    directories only -- a pattern (a `*-paths.txt` glob) fails the checkout, a file is read as a directory -- and

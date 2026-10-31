@@ -5,9 +5,8 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * NOTHING SHIPS AFTER A RED ci: once a Main test row or the tier gates fail, main.yml builds and publishes nothing
- * (2026-10-22). `image-worker` used to hang off `gates` alone and start beside ci; on Forgejo's `main-lane` it then
- * queued behind the remaining ci rows and ran after a red row anyway (run 1351: the worker image built minutes after
- * `test (worker)` failed).
+ * (2026-10-22). `image-worker` used to hang off `gates` alone and start beside ci, and could run after a red row
+ * (run 1351: the worker image built minutes after `test (worker)` failed).
  *
  * Every job but `gates` (t=0), `timings` (`!cancelled()`: it reports red runs too) and `kick-convergence` needs `ci`
  * and `gates`, directly or through a job that does, and carries no status function in its `if:`, so the implicit

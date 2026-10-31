@@ -61,7 +61,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name (Forgejo 15 refuses a workflow_call `secrets:` block).
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --

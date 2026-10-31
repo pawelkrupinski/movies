@@ -5,11 +5,9 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * Only main saves a large cache family: sbt's compiled classes (each module's `target/scala-*`) and its dependency
- * cache (`~/.ivy2/cache`, `~/.cache/coursier`). Every other ref restores and never saves. ci-runner's
- * cache server has no size cap and keeps an unused entry 7 days; a measure or landing run's entries are
- * read by nobody after it, and a save of a key another job already saved is a second copy its GC drops
- * an hour later (164 GB of those in the six days to 2026-10-26, when the cache filled the runner's
- * root array). A step that can save one of those paths must say
+ * cache (`~/.ivy2/cache`, `~/.cache/coursier`). Every other ref restores and never saves. A measure
+ * or landing run's entries are read by nobody after it, and a save of a key another job already saved is a second
+ * copy. A step that can save one of those paths must say
  * `github.ref == 'refs/heads/main'` in its `if:`; restoring (`actions/cache/restore`) is free.
  */
 class CacheSavePolicySpec extends AnyFlatSpec with Matchers {

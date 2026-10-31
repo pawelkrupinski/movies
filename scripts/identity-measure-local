@@ -46,7 +46,7 @@
 # it"; the model rows bound what is served.
 #
 # What it does not do that CI does: read the base from the commit statuses, reuse a stored base, run the corpus-shape
-# specs. A FALLBACK ONLY (the user, 2026-10-21: heavy work runs on ci-runner): measure with scripts/identity-measure
+# specs. A FALLBACK ONLY (the user, 2026-10-21: heavy work runs on CI): measure with scripts/identity-measure
 # (--recording RUN for the same recording), and run this only for what that cannot do, under the agents' shared
 # 3-slot heavy-run wrapper. scripts/identity-measure is the verdict of record. AND ITS REPLAY IS NOT CI'S ON A MAC: a
 # recording's tree holds paths that differ only by case (PL 528: 450+, e.g. suggestion/l/Lalka.json beside lalka.json),

@@ -31,7 +31,7 @@
 # rescraped — so a divergence found in one run could not be re-examined in the
 # next. A recorded fixture makes a failing corpus keepable.
 #
-# CAPTURE ONLY (docs/forgejo-ci.md, "Capture, then verify"). This run goes red only when the capture
+# CAPTURE ONLY ("Capture, then verify"). This run goes red only when the capture
 # itself failed -- the corpus could not be read, a country's boot never completed, an origin refused most
 # of the recording -- never on what its suites assert: a recording's suite runs with live fallback, so
 # its asserts are no verdict on code (country-convergence-leg.yml, `continue-on-error` in record mode).
@@ -94,20 +94,16 @@ jobs:
         runs-on: ubuntu-26.04
         timeout-minutes: 5
         # THE PLAN: every decision the other jobs make, evaluated HERE, where `inputs` and `github` are whole, and read
-        # by them as outputs (WorkflowPlanSpec). The legs' matrix call reads them through `with:`, which Forgejo then
-        # re-parses with these outputs and nothing else -- an `inputs.` or `github.` read there is empty.
+        # by them as outputs (WorkflowPlanSpec). The legs' matrix call reads them through `with:`.
         outputs:
             # Every scheduled run records the resolver's query set too (a schedule has no inputs, so it cannot read
             # the dispatch default): the gate is kept met, not met once.
             identity-lookups: ${{ github.event_name == 'schedule' || inputs.identity-lookups == true }}
             # Off on the cron (a schedule has no inputs): nightlies become prod-latest, not the hermetic pair.
             pin-hermetic: ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}
-            # ONE RATE BUDGET FOR ALL LEGS OFF github.com: Forgejo's runners (CI since the GitHub suspension) share one
-            # IP, and TMDB and IMDb limit per IP -- six legs at once, each pacing only itself, drew ~70k 429s (run
-            # 322). The `forgejo-recording` runner sets FORGEJO_RATE_PERMITS, and every leg's live wire asks that one
-            # permit service before each request (tools.RatePermits). github.com keeps the leg's default runner.
+            # github.com keeps the leg's default runner.
             runner: ubuntu-22.04
-            # Germany's recording ran out of its 4g twice off github.com, in GC thrash from ~20 min into the suite
+            # Germany's recording ran out of its 4g twice, in GC thrash from ~20 min into the suite
             # (runs 322, 408); 8g still fits the runner beside mongod (ConvergenceRunnerMemorySpec). Empty on
             # github.com, which keeps the row's own heap.
             germany-heap: ''
@@ -173,8 +169,7 @@ jobs:
             fail-fast: false
             matrix:
                 # EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
-                # value: Forgejo (CI since the GitHub suspension) evaluates a reusable call's `with:` strictly
-                # and refuses `matrix.<key>` a row lacks -- github.com reads it as null. Same values either way.
+                # value.
                 include:
                     # The US first: the longest leg (run 37111868620: 11.8 min against the next 9.0) and
                     # so the critical path. Matrix rows are queued in this order, and when runners are
@@ -253,9 +248,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --

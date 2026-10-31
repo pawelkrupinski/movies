@@ -18,7 +18,7 @@
 #
 # Needs `gh` signed in. KINOWO_REPO (default pawelkrupinski/movies) and FIXTURE_RELEASE_TAG (default
 # convergence-fixtures) name where the recording lives. A recording the convergence release no longer holds (it keeps
-# the newest five pairs), or one recorded on github.com (Forgejo has no run, so no artifact, by that id: 38713274617),
+# the newest five pairs), or one recorded on a forge that no longer holds it (no run, so no artifact, by that id: 38713274617),
 # is read from the ARCHIVE release instead (RECORDING_ARCHIVE_TAG, default identity-recordings): its tree under the
 # same name, and its corpus as scrapes-<cc>-<run>.tar.*, which is asked first (absent, the run's artifact is read). Archives are zstd or gzip; each is unpacked by
 # its magic bytes (.github/scripts/unpack-fixture-archive.sh). Downloads are kept in <dest>/archive.

@@ -150,7 +150,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   // scripts/identity-drift-ci's pre-land check (convergence-failures-2026-10-29 §7.2): the takes-drift rows alone. The
-  // matrix re-parse hands the leg's `with:` the preflight's outputs and nothing else, and Forgejo's dispatch booleans are
+  // matrix re-parse hands the leg's `with:` the preflight's outputs and nothing else, and a dispatch's booleans may be
   // strings, so the input travels as takes-only does: an output of the preflight, compared with 'true' in the call.
   it should "run only the takes-drift rows on a drift-only dispatch, handed on as takes-only is" in {
     RepoFile.block(workflow, "on") should include("drift-only:")

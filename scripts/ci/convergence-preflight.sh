@@ -58,7 +58,7 @@ archived() { # <glob>
 }
 
 # artifacts <run>: the run's unexpired artifact names into $work/artifacts-<run>. Exit 0 read, 3 the forge answered
-# the run does not exist (a github.com-era run on Forgejo), 1 any other failure.
+# the run does not exist, 1 any other failure.
 artifacts() {
     [ -f "$work/artifacts-$1" ] && return 0
     [ -f "$work/status-$1" ] && return "$(cat "$work/status-$1")"

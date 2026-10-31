@@ -5,7 +5,7 @@
 # BOTH on main, always. Off main (an agent's branch; a measure/ branch runs no order row at all) ONE, but only when the
 # ref's change from main is KNOWN and touches nothing .github/order-independence-paths.txt lists -- what can make the
 # films depend on arrival order. Anything else is `both`: a read that fails or hangs, an answer that is not a file
-# list, a list Forgejo may have cut short (its diff stops at 100 files), a path list that cannot be read.
+# list, a list the forge may have cut short, a path list that cannot be read.
 #
 # THE TRADE-OFF (also in identity-model-convergence.yml's leg comment): `one` compares two arrival orders where `both`
 # compares three, so an order dependence that shows only between passes 1 and 2 goes unseen on that branch -- until

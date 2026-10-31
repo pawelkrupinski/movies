@@ -49,9 +49,7 @@ class ConvergenceConcurrencyConfigSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // keyed by the branch, never the run: Forgejo evaluates `concurrency:` before the run has an id, so `github.run_id` is
-  // empty there and every measurement fell into one lane, ~35 runs queued behind each other (2026-10-21); each
-  // measure/ branch is a run's own
+  // keyed by the branch, never the run; each measure/ branch is a run's own
   it should "key main's lane on nothing that varies per run, and give every other branch a lane of its own" in {
     Files.foreach { path =>
       val group = concurrencyOf(path).linesIterator.find(_.trim.startsWith("group:")).getOrElse("").trim

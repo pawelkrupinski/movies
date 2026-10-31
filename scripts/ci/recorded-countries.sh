@@ -5,7 +5,7 @@
 #
 #   recorded-countries.sh <run> [<codes>]     # <codes> default pl,de,uk,es,us; an empty <codes> is the default too
 #
-# WHY. Capture and verify are separate verdicts (docs/forgejo-ci.md, "Capture, then verify"): a country the capture left
+# WHY. Capture and verify are separate verdicts ("Capture, then verify"): a country the capture left
 # incomplete is the capture's red, so the verify run judges only the countries this names, and the recorder dispatches
 # no verify when it names none. Exit 1 (saying why) when the release cannot be read: an unread release is no evidence
 # that nothing was captured.

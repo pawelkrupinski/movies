@@ -2,9 +2,8 @@
 # bounded-step.sh: a step with its own `timeout-minutes` runs as a process group this script can end, so what it leaves
 # running when it times out is ended before anything else reads the workspace.
 #
-# Why: Forgejo's runner (act) does not end a step that outlives its `timeout-minutes` -- it gives up on the step's
-# `docker exec`, logs "context deadline exceeded", and goes on to the next step while the step's processes run on in
-# the job container. Convergence run #1880 (2026-10-26): a fill step's sbt went on compiling past its 5 minutes and
+# Why: a runner may go on to the next step when a step outlives its `timeout-minutes` while the step's processes run on
+# in the job container. Convergence run #1880 (2026-10-26): a fill step's sbt went on compiling past its 5 minutes and
 # raced the suite's sbt into one classes directory. scripts/ci/stop-stray-sbt.sh ends stray JVMs; this ends ANY
 # process tree a timed-out step left, whatever it runs (a tunnel, a capture, xcodebuild, a python refit).
 #

@@ -4,9 +4,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Every `sbt/setup-sbt` call names the sbt runner the Forgejo job image already carries.
+ * Every `sbt/setup-sbt` call names the sbt runner the job image already carries.
  *
- * The image (infra `nix/files/forgejo-job-image/Dockerfile`, `SBT_RUNNER_URL`) bakes the runner into the tool cache,
+ * The image (`SBT_RUNNER_URL`) bakes the runner into the tool cache,
  * where setup-sbt looks first: found there, the action restores and downloads nothing. Unpinned, the action asks for
  * its own default, and when `@v1` moved that default to 2.0.11 every sbt job of every workflow missed the baked 2.0.10
  * and fetched the tarball again: 4.5 s of a `test` row's setup and 11.5 s of a convergence leg's (jobs 25777 and 25817,

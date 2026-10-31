@@ -6,7 +6,7 @@
 # For the LANDING recordings every identity measure is judged on (528 and 573, 2026-10-20): once archived, a leg,
 # identity-measure and identity-slice replay them from the archive alone when the rolling release or the artifact is
 # gone -- restore-enrichment-tree.sh, convergence-setup.sh `corpus`, convergence-preflight.sh and
-# scripts/identity-fetch-recording.sh all fall back to it. On ci-runner, beside Forgejo: the ~1 GB a recording weighs
+# scripts/identity-fetch-recording.sh all fall back to it. On CI: the ~1 GB a recording weighs
 # never crosses the laptop's tunnel (an upload from the laptop broke it, 2026-10-23).
 #
 # Idempotent: an asset the archive already holds at the source's size is left alone, so a re-run finishes a partial one.

@@ -3,7 +3,7 @@
 # runs of ONE commit at once (identity-landing-check's groups, beside its identity-measure) push their measure/
 # branches one at a time, never together, and a push the remote rejects names the remote's reason.
 #
-# Why one at a time (2026-10-23): Forgejo took two of four concurrent pushes of the same new commit as "unable to migrate
+# Why one at a time (2026-10-23): the remote took two of four concurrent pushes of the same new commit as "unable to migrate
 # objects to permanent storage" -- receive-packs of the same objects (100+, so kept as a pack) write the same
 # pack-<hash>.keep with different contents (each its own pid), and the second one's quarantine cannot move in. A push
 # after the first finds the commit on the remote already and sends no objects at all.
@@ -33,7 +33,7 @@ mkdir -p "$work/bin" "$work/pushes/active"
 # noting a dispatch's arguments
 printf '#!/usr/bin/env bash\n[ "$1 $2" != "workflow run" ] || echo "$*" >> "%s/dispatches"\nexit 1\n' "$work" > "$work/bin/gh"
 # git: the real one, but a measure/ push says when another push was under way meanwhile (an overlap), or -- with
-# $REJECT -- is rejected the way Forgejo rejected the racing ones
+# $REJECT -- is rejected the way the remote rejected the racing ones
 real_git=$(command -v git)
 cat > "$work/bin/git" <<STUB
 #!/usr/bin/env bash

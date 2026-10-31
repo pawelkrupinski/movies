@@ -17,8 +17,8 @@ on:
 
 # WHERE IMAGES GO: registry.kinowo.net (infra/nix/modules/roles/registry.nix), the registry Flux's
 # ImageRepositories scan (FluxImageAutomationSpec), pushed as `ci` with the REGISTRY_PASSWORD secret
-# (infra/k8s-secrets/github-secrets.map). Fixed here, not in repository variables: those existed only on
-# the self-hosted Forgejo, and after the 2026-10-31 cut-over github.com fell back to ghcr.io and logged in
+# (infra/k8s-secrets/github-secrets.map). Fixed here, not in repository variables: those were set on
+# one forge only, and github.com fell back to ghcr.io and logged in
 # there as the pushing actor with registry.kinowo.net's password -- `denied` (Main #2030).
 env:
     IMAGE_REPO: registry.kinowo.net
@@ -151,8 +151,7 @@ jobs:
         # The worker rows' suite filter (build.sbt `workerRowSettings`); empty on `rest`, which runs no worker suite.
         env:
             WORKER_ROW: ${{ matrix.suites }}
-        # `checks: write` so action-junit-report can post the failure check-run + summary on github.com
-        # (Forgejo has neither: it only annotates there).
+        # `checks: write` so action-junit-report can post the failure check-run + summary on github.com.
         permissions:
             contents: read
             checks: write
@@ -176,7 +175,7 @@ jobs:
             # would go stale silently, which is the failure this repository keeps having to design
             # away. No credential -- the config repo is public, like this one -- so a plain anonymous
             # clone rather than actions/checkout, which sends the job's token and asks the API for the
-            # default branch: on Forgejo (CI since the GitHub suspension) that token reaches only THIS
+            # default branch: that token reaches only THIS
             # repository, and the lookup fails "The target couldn't be found" even for a public one.
             - if: matrix.shard == 'worker'
               name: Check out the gitops manifests (movies-gitops main, anonymously)
@@ -421,13 +420,12 @@ jobs:
                   if-no-files-found: ignore
                   retention-days: 14
 
-    # DISPATCH ORDER. Forgejo hands a free runner the waiting job with the oldest `updated`, then the lowest id
-    # (models/actions/task.go GetAvailableJobsForRunner), and creates a workflow's jobs in this file's order. The
+    # DISPATCH ORDER. A free runner takes the waiting jobs in this file's order. The
     # needs-less rows above wait from t=0 and take the slots first; the `needs: scope` rows all turn waiting the
     # moment scope ends, and then go in the order they are written here. So the longest of them come first: the
     # page-test rows (safari ~6 min, chrome / stable ~6.5), then mobile and the e2e shards (3-4.5). Written the
     # other way round, safari queued behind everything and ended last in 174 of 204 Main runs to 2026-10-26.
-    # (Matrix rows are created sorted by their values, not in `include:` order: jobparser getMatrixes.) CiDispatchOrderSpec.
+    # (Matrix rows are created sorted by their values, not in `include:` order.) CiDispatchOrderSpec.
     page-tests-safari:
         name: page tests (safari / ${{ matrix.variant }})
         needs: scope
@@ -637,8 +635,8 @@ jobs:
               run: |
                   nohup bash -c 'sbt web/PageTest/compile > /tmp/compile.log 2>&1; echo $? > /tmp/compile.status' &
 
-            # The exact version the Forgejo job image bakes into the tool cache (infra forgejo-job-image/Dockerfile,
-            # SWIFT_DIR), so setup-swift finds it instead of a 47 s download; '6.2' resolved to this already.
+            # The exact version, so setup-swift finds it
+            # instead of a 47 s download; '6.2' resolved to this already.
             - uses: swift-actions/setup-swift@v2
               with:
                   swift-version: '6.2.1'
@@ -664,7 +662,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: always  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: always
 
             # Collect the background compile started above. Build BEFORE booting,
             # as its own step, so the boot's ceiling only has to cover booting.
@@ -863,9 +861,8 @@ jobs:
             # `rest` row finished too and then queued for a runner: it ended at 5.5 min on run 38810289586, after
             # every ci row. Here it costs this row ~1 min and no runner. Never on a PR run.
             # `!github.event.pull_request`, not `github.event_name != 'pull_request'`: this is a reusable
-            # workflow, and Forgejo (CI since the GitHub suspension) reports a reusable workflow's
-            # event_name as `workflow_call`, so the name test let PR runs push images. The caller's event
-            # payload carries `pull_request` on a PR run on both platforms.
+            # workflow. The caller's event
+            # payload carries `pull_request` on a PR run.
             - name: Lay the staged web dist where the Dockerfile's whitelisted context sees it
               if: matrix.shard == 'corpus' && !github.event.pull_request
               # `stage/`, the only path .dockerignore lets through.

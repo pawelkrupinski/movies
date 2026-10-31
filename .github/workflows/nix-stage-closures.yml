@@ -163,7 +163,7 @@ jobs:
             experimental-features = nix-command flakes
 
       # github.com's hosted runners start with an empty nix: keep the flake inputs' fetcher cache (nixpkgs and the
-      # rest, keyed by the lock) between runs. ci-runner's jobs share a host nix store instead.
+      # rest, keyed by the lock) between runs.
       - name: Cache the flake inputs (github.com)
         uses: actions/cache@v5
         with:
@@ -344,10 +344,6 @@ jobs:
       # each closure with the commit it was built from -- and a shallow clone can leave nix unable
       # to resolve that revision, which silently turns every host's `revision` label into the
       # "tree was not a git checkout" sentinel.
-      #
-      # On Forgejo the server's own copy is shallow before 257ad0a, so `fetch-depth: 0` (an unshallow
-      # fetch) dies with "Could not read <sha>"; a depth past the root takes every commit the server
-      # has instead -- the same form main.yml uses.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -435,7 +431,5 @@ jobs:
       actions: read
       contents: read
     uses: ./.github/workflows/report-timings.yml
-    # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-    # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-    # every event). `inherit` reads the same on github.com and declares nothing.
+    # `inherit`: report-timings.yml declares no secrets.
     secrets: inherit

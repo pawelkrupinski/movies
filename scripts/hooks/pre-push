@@ -55,7 +55,7 @@
 #                 Playwright rows CI runs (scripts/page-tests-local: Chromium and WebKit, ~11 min warm)
 #   `identitydrift` scripts/identity-drift-ci --for-red <run>, on a push to main whose commits carry `Fixes-Red: <run>` (and no
 #                 `Red-Unrelated:`) and touch a drift path (.github/identity-drift-paths.txt): the red's own failed
-#                 `takes-drift-1|2 (<country>)` rows, run drift-only on ci-runner's `landing` tier, ~12-16 min. A
+#                 `takes-drift-1|2 (<country>)` rows, run drift-only on CI, ~12-16 min. A
 #                 fix no better than the red in any row, or worse in one, refuses the push (a partial fix lands): a
 #                 "fix" for a drift red is judged on the red's rows before it lands, not ~48 min after on main
 #                 (convergence-failures-2026-10-29 §7.2: two refuted fixes, 52 fixer launches).
@@ -526,7 +526,7 @@ need_jvm() { # <check>
 }
 
 # ── Red builds gate the push ────────────────────────────────────────────────────────────────────
-# The nightly data's verdict is VERIFY's, never the capture's (docs/forgejo-ci.md, "Capture, then verify"): Record scrape
+# The nightly data's verdict is VERIFY's, never the capture's ("Capture, then verify"): Record scrape
 # fixtures goes red when it could not scrape or record a country -- a fact about the night, not about any push -- and is
 # watched by its own issue and identity-ci-staleness's recording-stale; Verify scrape recording replays what it captured,
 # hermetically, and goes red when the code does not hold on it.
@@ -685,7 +685,7 @@ to_main=0
 # commit's identity takes from: it never lands, nothing merges it, and its run deletes it. The checks below guard what
 # main's CI will build, so a push of measure/ refs alone checks nothing -- what the commit becomes on main is checked
 # when it is pushed there. Any other ref in the same push is checked as ever. A CHECK BRANCH (agentctl's remote checks,
-# `check/<entry>`) is the same: pushed only for .github/workflows/precommit-check.yml to run these checks on ci-runner,
+# `check/<entry>`) is the same: pushed only for .github/workflows/precommit-check.yml to run these checks on CI,
 # deleted after its run, never landed.
 measure_only="" other=""
 checks_only="" fast_only=""

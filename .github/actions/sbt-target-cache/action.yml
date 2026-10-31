@@ -36,11 +36,8 @@ inputs:
     required: false
     default: 'false'
 # ONLY MAIN SAVES. Every other ref (measure/*, a landing check's batch, a lane run) restores and never
-# saves: Forgejo's cache server has no size cap and keeps an unused entry 7 days. A measure or landing
-# run's entries are read by nobody after it, and a save of a key another job already saved is a second
-# copy its GC drops an hour later -- 164 GB of those in the six days to 2026-10-26, when the cache filled
-# ci-runner's root array (FilesystemSpaceLow). ci-runner also holds the cache to a byte budget, least
-# recently used out first. (CacheSavePolicySpec)
+# saves. A measure or landing run's entries are read by nobody after it, and a save of a key another job
+# already saved is a second copy. (CacheSavePolicySpec)
 runs:
   using: composite
   steps:

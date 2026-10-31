@@ -99,7 +99,7 @@ check "keeping the newest five pairs of either compressor, and only their fills 
   "$(assets)"
 
 # A country's first pin, its release holding no fill, refetch or refused list at all: the prune's grep finds nothing,
-# which under pipefail failed the step after the pin was written (record run 161, Spain, on Forgejo).
+# which under pipefail failed the step after the pin was written (record run 161, Spain).
 rm -f "$work/release"/*
 : > "$work/release/enrichment-es-161.tar.zst"
 check "a first pin, with no fills to prune, passes" "0" "$(run env KINOWO_PINNED_TREE=enrichment-es-161.tar.zst \

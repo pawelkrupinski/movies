@@ -159,5 +159,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not secrets by name: Forgejo 15 refuses a `workflow_call.secrets` block.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

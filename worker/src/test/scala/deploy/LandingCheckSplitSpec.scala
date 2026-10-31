@@ -19,7 +19,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     }
     // the old refs from the trees Main keeps: cold, they pushed the rest past its 80 minutes (run 4083)
     jobs("check-oldrefs") should include("KINOWO_IDENTITY_CACHE: ${{ runner.temp }}/kinowo-identity")
-    // beside the rest on the check tier its WebKit rows starved and ran out of the 80 minutes (run 4059)
+    // beside the rest its WebKit rows starved and ran out of the 80 minutes (run 4059)
     jobs("check-page") should include("needs: [ check, check-oldrefs, heavy ]")
   }
 

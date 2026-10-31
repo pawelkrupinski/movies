@@ -71,8 +71,7 @@ jobs:
 
     fill:
         needs: [ countries ]
-        # No `name:`: github.com and Forgejo both name each row `fill (<code>)` off its one matrix key -- Forgejo appends a
-        # matrix computed from `needs` even to a named row, so naming it `fill (<code>)` read `fill (de) (de)`.
+        # No `name:`: github.com names each row `fill (<code>)` off its one matrix key.
         strategy:
             fail-fast: false
             matrix:
@@ -106,7 +105,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

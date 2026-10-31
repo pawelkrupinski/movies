@@ -30,7 +30,7 @@
 # there), <out>/reproduce.txt (the red's one-line local reproducer: `IdentityDrift <cc> --seed N`, and the drift slice
 # of each listing in the TSVs that has one -- the seconds-fast replay), <out>/report.txt,
 # and <out>/verdict.txt: one line naming what the replay found beyond the allow-lists, divergences and
-# flips apart -- what the row's ::error says (a step summary is discarded on Forgejo; and run 3509's rows failed on flips
+# flips apart -- what the row's ::error says (run 3509's rows failed on flips
 # alone, 0 divergences, under a title saying the state "ends elsewhere than a whole resolve", which three fixers chased).
 # KNOWN FLIPS (test/resources/fixtures/identity-flips-baseline.tsv) pass, each run saying "N known flip(s) remaining" as a
 # ::warning and in the step summary, and naming a baselined flip that is gone "remove its row"; a NEW flip fails. The

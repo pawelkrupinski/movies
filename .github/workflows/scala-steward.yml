@@ -23,11 +23,6 @@ on:
 # the default GITHUB_TOKEN never does. The App mints a fresh token per run; the
 # personal access token this used before expired silently on 2026-09-28 and
 # every run 401'd from then on.
-#
-# ON FORGEJO there is no GitHub App: the same action runs with --forge-type gitea against Forgejo's API
-# as the ci-bot user (SCALA_STEWARD_TOKEN, minted by infra's bin/forgejo-bootstrap; ci-bot has write on
-# this repository only, team pawelkrupinski/steward). A PR opened with a user token fires pull_request
-# CI there too.
 permissions:
     contents: read
 
@@ -58,9 +53,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --

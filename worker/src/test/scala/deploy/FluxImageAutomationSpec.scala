@@ -32,7 +32,7 @@ class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
   private val Apps = Seq("web", "worker")
 
   /** The `image:` line of each tier's base Deployment, whichever registry it names
-   *  (ghcr.io until the GitHub suspension, registry.kinowo.net since). */
+   *  (ghcr.io once, registry.kinowo.net since). */
   private def imageLine(app: String): String = {
     val path = s"infra/kubernetes/$app/base/all.yaml"
     RepoFile
@@ -128,9 +128,8 @@ class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
     automation should include("[skip ci]")
   }
 
-  // ghcr.io went with the GitHub suspension (2026-10-18): a policy still scanning it never sees a new tag again, and
-  // Flux only says so as an ImageRepository that is not Ready. filmowo's sat on its 2026-10-10 image, FluxObjectNotReady
-  // firing, until its CI moved to Forgejo.
+  // A policy still scanning ghcr.io never sees a new tag again, and Flux only says so as an ImageRepository that is not
+  // Ready (FluxObjectNotReady firing).
   "every ImageRepository" should "scan our own registry, the one CI publishes to, never ghcr.io" in {
     val images = automation.linesIterator.map(_.trim).filter(_.startsWith("image: ")).map(_.stripPrefix("image: ").trim).toSeq
     images should not be empty

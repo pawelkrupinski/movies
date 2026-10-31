@@ -71,7 +71,7 @@ class WorkflowScriptsRunnableIntegrationSpec extends AnyFlatSpec with Matchers w
   }
 
   // Why every sparse checkout is cone mode: actions/checkout sets one up after `git init` and its fetch, before checking
-  // anything out, in the .git the runner's template made -- ci-runner's had no info/ on 2026-10-23 (Archive recording
+  // anything out, in the .git the runner's template made -- one runner's had no info/ on 2026-10-23 (Archive recording
   // #823). The default template makes info/exclude, so the scratch repository drops it to stand in for that one.
   "a sparse checkout" should "set up in cone mode in a repository with no .git/info" in {
     val repo = new ScratchGitRepository(tempDirectory)

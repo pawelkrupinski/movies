@@ -91,8 +91,7 @@ jobs:
             actions: read
         outputs:
             requests: ${{ steps.requests.outputs.requests }}
-            # The matrix is the countries alone, each request looked up by its country: Forgejo appends a matrix
-            # computed from `needs` to the row's name, so a matrix of whole requests read `bisect (germany) (map[...])`.
+            # The matrix is the countries alone, each request looked up by its country.
             countries:  ${{ steps.requests.outputs.countries }}
             by-country: ${{ steps.requests.outputs.by-country }}
             head-sha: ${{ steps.requests.outputs.head-sha }}
@@ -135,15 +134,13 @@ jobs:
                       echo "by-country=$(jq -c 'map({(.country): .}) | add // {}' <<<"${requests:-[]}")"
                   } >> "$GITHUB_OUTPUT"
 
-    # No `name:`: both github.com and Forgejo name each row `bisect (<country>)` off its one matrix key.
+    # No `name:`: github.com names each row `bisect (<country>)` off its one matrix key.
     bisect:
         needs: [plan, preflight]
         if: needs.plan.outputs.requests != '[]' && needs.plan.outputs.requests != ''
         strategy:
             fail-fast: false
-            # Never empty: Forgejo expands the matrix before judging `if:`, and a matrix of no row DELETES the job,
-            # leaving `tell` and `timings` blocked forever on a need that no longer exists (run 273). The placeholder
-            # row is skipped by the `if:` above, as github.com skips the whole job. (ConvergenceBisectEmptyPlanSpec)
+            # Never empty: the placeholder row is skipped by the `if:` above. (ConvergenceBisectEmptyPlanSpec)
             matrix:
                 country: ${{ fromJson(needs.plan.outputs.countries != '[]' && needs.plan.outputs.countries || '["none"]') }}
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
@@ -293,7 +290,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

@@ -8,7 +8,7 @@ class RegistryNameSpec extends AnyFlatSpec with Matchers {
   private lazy val workflows = RepoFile.listed(".github/workflows")(_.getName.endsWith(".yml"))
     .map(f => f.getName -> RepoFile.read(s".github/workflows/${f.getName}"))
 
-  // Main #2030 (2026-10-31): the registry came from repository variables that existed only on Forgejo, with ghcr.io as
+  // Main #2030 (2026-10-31): the registry came from repository variables that existed only on one forge, with ghcr.io as
   // the fallback. When github.com turned primary it logged in to ghcr.io with registry.kinowo.net's password --
   // `denied` -- and the e2e corpus row never built the image. A registry must never hang on a variable being set: every
   // workflow that logs in to a registry names registry.kinowo.net (the one Flux scans) itself, with its own password.

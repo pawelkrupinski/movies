@@ -108,8 +108,7 @@ on:
 # run from any other branch -- a measurement (scripts/identity-measure's measure/*), an agent's own branch -- runs in a
 # lane of its OWN, keyed by the branch (a measurement pushes a measure/ branch per run): it replaces nothing and waits
 # for nothing but runners (2026-10-15: five agents' measurements queued behind each other for about an hour each).
-# Never by github.run_id: Forgejo evaluates `concurrency:` before the run has an id, so it is empty there and every
-# measurement shared one lane (2026-10-21: ~35 queued behind each other).
+# Never by github.run_id.
 # Every workflow's group follows one convention, written down in WorkflowConcurrencyConventionSpec.
 concurrency:
     group: identity-model-convergence${{ github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '' }}
@@ -278,21 +277,13 @@ jobs:
     # runner for 55 minutes, not 2.5-6 hours.
     leg:
         needs: [ preflight ]
-        # `leg (<country>)`, as record-scrape-fixtures.yml's `enrichment (<country>)`: Forgejo shows this caller as a row of
-        # its own beside the leg's `<phase> (<country>)` rows, where a bare country hid what it was.
+        # `leg (<country>)`, as record-scrape-fixtures.yml's `enrichment (<country>)`.
         name: leg (${{ matrix.country }})
         strategy:
             fail-fast: false
             matrix:
-                # ROW ORDER IS NOT THIS ORDER: Forgejo creates a matrix's jobs sorted by name -- `leg (germany)` first, then
-                # each leg's rows alphabetically, convergence ... takes, takes-drift-1, takes-drift-2 (run 3656's job ids) --
-                # and a runner takes the oldest waiting job. Listing the UK or the drift rows first changes nothing (tried
-                # 2026-10-29, run 3758); starting them first would take a rename, or the runner capacity (the owner's infra).
-                # LOWERCASE KEYS: Forgejo lowercases the name a `matrix.<key>` read looks up but not the
-                # matrix's own keys, so a camelCase key read in a reusable call's `with:` is "missing" there.
                 # EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
-                # value: Forgejo (CI since the GitHub suspension) evaluates a reusable call's `with:` strictly
-                # and refuses `matrix.<key>` a row lacks -- github.com reads it as null. Same values either way.
+                # value.
                 include:
                     - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
                     - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 55, suite: 30, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
@@ -333,11 +324,11 @@ jobs:
             mongo-tmpfs-order:             ${{ matrix.mongo-tmpfs-order || 'true' }}
             # Replay the pinned pair and nothing else: the verdict a bisect can trust.
             mode:                          hermetic
-            # `== 'true'` too: Forgejo hands a dispatch's boolean inputs over as STRINGS ("true"), and "true" == true is
+            # `== 'true'` too: the preflight's outputs are STRINGS ("true"), and "true" == true is
             # false in an expression -- every takes-only measurement ran the whole suite (run 786, 2026-10-21).
             profile:                       ${{ needs.preflight.outputs.profile == 'true' }}
             jvm-options:                   ${{ needs.preflight.outputs.jvm-options }}
-            # The preflight's choice (its `runner` output): this `with:` cannot read `inputs` or `github` on Forgejo.
+            # The preflight's choice (its `runner` output).
             runner:                        ${{ needs.preflight.outputs.runner }}
             takes-base:                    ${{ needs.preflight.outputs.takes-base }}
             takes-only:                    ${{ needs.preflight.outputs.takes-only == 'true' }}
@@ -431,7 +422,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 /**
  * A hung CI row is cut at a bound set from what the rows really take, not at the runner's default 360 minutes.
  *
- * Measured over every Main and branch-CI run to 2026-10-26 (the Forgejo DB's ~6.5 days): the longest GREEN ci.yml row
+ * Measured over every Main and branch-CI run to 2026-10-26: the longest GREEN ci.yml row
  * took 31 min (`test (worker-identity)`, 1857 s; p99 of every row under 21 min), while a hung `integration-test (rest)`
  * held its runner 59 min before failing. And `identity-run`'s longest green job ran 162 min (run 965, a five-country
  * command whose own step took 9515 s), so its bound stays above that rather than at the ~45 min its mean (10 min)
@@ -14,7 +14,7 @@ import org.scalatest.matchers.should.Matchers
  *
  * The rule ablation's `ablate` row (identity-rule-ablation.yml): its longest green ablation step took 1416 s (run 560)
  * and its longest green job 1699 s (run 525), against a 30-minute job bound -- so Identity rule ablation #2376, under a
- * loaded ci-runner, was cut at 1613 s into the step. And a JOB timeout cancels the `if: always()` upload of the row's
+ * loaded runner, was cut at 1613 s into the step. And a JOB timeout cancels the `if: always()` upload of the row's
  * state too, so the round it resolved was lost with its log. So the step carries its own bound (bounded-step.sh), above
  * its longest green run, and the job's leaves the layout before it and the reap and upload after it room to run.
  */

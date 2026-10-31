@@ -2,7 +2,7 @@
 # shellcheck disable=SC2034 # the fixture's variables are read by the specs that source it
 # THE SHARED HARNESS of the pre-push hook's self-tests (sourced, never run on its own): the stub gh,
 # the scratch root, and the red gate's fixture. The hook's spec was one ~1,070-line file that ran ~2-5 min on a laptop
-# and past run-script-tests' 600 s on a loaded ci-runner (precommit-check run 3813, load 175, 2026-10-29): its sections
+# and past run-script-tests' 600 s on a loaded CI host (precommit-check run 3813, load 175, 2026-10-29): its sections
 # are four specs now, run side by side with the same assertions -- pre-push-test.sh (the plans, the areas, the drift
 # check, hooksPath), pre-push-gate-test.sh (the red gate, script tests, old refs), pre-push-tools-test.sh (the
 # known-red baseline, a missing tool, a stall) and pre-push-reuse-test.sh (the reuse) -- each sourcing this file.

@@ -4,11 +4,9 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * ci.yml's `needs: scope` rows are written longest first, because that is the order Forgejo starts them in.
+ * ci.yml's `needs: scope` rows are written longest first, because that is the order they start in.
  *
- * A free runner gets the waiting job with the oldest `updated`, then the lowest id (forgejo models/actions/task.go,
- * GetAvailableJobsForRunner), and a workflow's jobs get their ids in file order (jobparser keeps the `jobs:` order;
- * only a matrix's rows are re-sorted, by their values). The needs-less rows wait from t=0 and take Main's slots first;
+ * A free runner gets the waiting job with the oldest `updated`, then the lowest id, and a workflow's jobs get their ids in file order (only a matrix's rows are re-sorted, by their values). The needs-less rows wait from t=0 and take Main's slots first;
  * every `needs: scope` row turns waiting in the same moment, when scope ends, so among them the file order decides.
  * With the page tests written last, the three safari rows queued behind mobile, both e2e shards and chrome, and a
  * safari row was the last ci row to end in 174 of 204 Main runs to 2026-10-26, starting 13.5-18 min in.

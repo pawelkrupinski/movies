@@ -82,7 +82,7 @@ runs:
     # 37150307201 vs 37153677455: Poland's take-up 165 → 250 CPU-s while US convergence stayed at
     # ~240). Printed first so a slow leg can be told from a slow machine at a glance.
     # github.com's hosted runners: ~14 GB of disk until the unused toolchains go, and the peaks sampler
-    # (.github/actions/free-disk; a no-op on ci-runner).
+    # (.github/actions/free-disk).
     - uses: ./.github/actions/free-disk
 
     - name: Name the runner's CPU

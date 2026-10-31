@@ -224,7 +224,7 @@ class ProxyFailures(unittest.TestCase):
 
 class DirectThenProxyTest(unittest.TestCase):
     """Run #2239 on (2026-10-27): Decodo dark, so the proxy-only check failed for a third party's
-    reason. Direct (ci-runner, IP Access Allow + the edge key) answers first; only a direct answer
+    reason. Direct (IP Access Allow + the edge key) answers first; only a direct answer
     that is not the origin's goes to the proxy, and the proxy's answer -- a challenge included --
     is the verdict."""
 
@@ -326,7 +326,7 @@ class ThirdPartyIsAnAlert(unittest.TestCase):
 
 
 class EdgeKeyTest(unittest.TestCase):
-    """The edge key rides on every request (the custom rule blocks ci-runner without it), and never
+    """The edge key rides on every request (the custom rule blocks the address without it), and never
     reaches a log line."""
 
     def setUp(self):

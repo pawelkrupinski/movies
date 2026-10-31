@@ -28,8 +28,8 @@ jobs:
             alert: ${{ steps.probe.outputs.alert }}
             found: ${{ steps.probe.outputs.found }}
         steps:
-            # No `\r` progress lines: they shift Forgejo's per-step log slices, so `agentctl ci-why` (run 2307) showed
-            # the checkout's output where the probe's verdict should have been.
+            # No `\r` progress lines: `agentctl ci-why` (run 2307) showed the checkout's output where the probe's
+            # verdict should have been.
             - uses: actions/checkout@v5
               with:
                   show-progress: false

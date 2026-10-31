@@ -8,14 +8,13 @@ on:
     workflow_dispatch:
 
 # ONE RUNNING, ONE PENDING; NEVER CANCELLED (2026-10-22). A push's run finishes and publishes; a newer
-# push queues behind it, and a newer push replaces it while it waits (github.com does this itself; so does
-# our patched Forgejo, whose stock 15 queued the group FIFO: infra docs/forgejo-actions.md). So under a
+# push queues behind it, and a newer push replaces it while it waits (github.com does this itself). So under a
 # burst of pushes the run in flight still lands, and the next run covers every
 # push since -- the tier gates measure from the deployed MARKER, so a skipped push's commits stay inside
 # the next run's interval.
 #
 # It used to cancel the run in flight (`cancel-in-progress: true`), for GitHub Free's 20-job budget.
-# With ~10 agents pushing to the self-hosted Forgejo that meant 39 of 51 runs on 2026-10-21 were
+# With ~10 agents pushing that meant 39 of 51 runs on 2026-10-21 were
 # cancelled (906 runner-minutes thrown away) and only 8 completed: builds and deploys rarely landed.
 # The job-level `publish-*` lanes stay as a second guard against two publishes racing a tag.
 # (WorkflowConcurrencyConventionSpec)
@@ -25,8 +24,8 @@ concurrency:
 
 # WHERE IMAGES GO: registry.kinowo.net (infra/nix/modules/roles/registry.nix), the registry Flux's
 # ImageRepositories scan (FluxImageAutomationSpec), pushed as `ci` with the REGISTRY_PASSWORD secret
-# (infra/k8s-secrets/github-secrets.map). Fixed here, not in repository variables: those existed only on
-# the self-hosted Forgejo, and after the 2026-10-31 cut-over github.com fell back to ghcr.io and logged in
+# (infra/k8s-secrets/github-secrets.map). Fixed here, not in repository variables: those were set on
+# one forge only, and github.com fell back to ghcr.io and logged in
 # there as the pushing actor with registry.kinowo.net's password -- `denied` (Main #2030).
 env:
     IMAGE_REPO: registry.kinowo.net
@@ -116,12 +115,6 @@ jobs:
         steps:
             # Full history, BLOBLESS — the tier gates below diff against each tier's last DEPLOYED
             # commit, which a shallow checkout would not have; commits and trees only.
-            # ON FORGEJO, A DEPTH INSTEAD OF 0: the Forgejo copy of the repo is itself shallow (at
-            # 257ad0a), and a depth-0 blobless fetch of a shallow server loops — the client rejects
-            # the server's shallow root ("shallow roots are not allowed to be updated"), its
-            # promisor lazy-fetches it, and the recursion spins until `cannot exec 'remote-http':
-            # Argument list too long` or the job's timeout (run #83). A depth past the root takes
-            # every commit the server has and records the root as the client's own shallow line.
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
@@ -240,7 +233,7 @@ jobs:
             contents: read
         steps:
             # Full history, BLOBLESS: the gate diffs this push against the head of each
-            # suite's newest run, which can be several pushes back. The Forgejo depth: see `gates`.
+            # suite's newest run, which can be several pushes back.
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
@@ -390,7 +383,7 @@ jobs:
     # THE WORKER IMAGE, BUILT AND AOT-TRAINED ONCE ci IS GREEN — and OUTSIDE ci, so `publish-web` (which
     # `needs: ci`) never waits for the ~5 min training: only `publish-worker` needs this job. Until
     # 2026-10-22 it started beside ci and waited for the dist ci's `e2e (corpus)` row uploads, so a red
-    # test row still built (and on the one-runner Forgejo `main-lane` queued) a worker image for nobody;
+    # test row still built a worker image for nobody;
     # now it needs `ci` and a red run skips it (MainAfterRedCiSpec). SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys
     # a SHA tag; `publish-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`)
     # only once ci is green and the tier's paths changed (DeployImageReuseSpec).
@@ -548,7 +541,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

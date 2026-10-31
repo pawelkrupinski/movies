@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # ANY sbt COMMAND OVER A CACHED RECORDING, ON CI: .github/workflows/identity-run.yml at a commit of yours, off the laptop
-# (the user's rule, 2026-10-21: measurements, ablations, simulations and replay sweeps run on ci-runner). The CI twin of
+# (the user's rule, 2026-10-21: measurements, ablations, simulations and replay sweeps run on CI). The CI twin of
 # a local `scripts/it-local.sh 'worker/IntegrationTest/runMain …'` over a laid recording.
 #
 #   scripts/identity-ci-run [--recording RUN|prod-latest] [--countries pl,de] [--head REF] [--heap 8g] [--out DIR] [--no-wait]
@@ -63,7 +63,7 @@ fi
 
 branch=$(identity_measure_branch "$commit")
 dispatched=""
-# Before the dispatch the branch is ours to delete; after it, the run's (Forgejo cannot cancel a run through its API).
+# Before the dispatch the branch is ours to delete; after it, the run's.
 trap '[ -n "$dispatched" ] || bounded 120 git push -q "$remote" --delete "refs/heads/$branch" 2> /dev/null || true' EXIT
 # One measure/ push at a time on this machine (identity-landing-check runs one of these per group, at once)
 identity_push_measure_branch "$remote" "$push" "$branch" || die "could not push $branch: $MEASURE_PUSH_ERROR"

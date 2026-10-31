@@ -554,8 +554,8 @@ footprint() { # <base> <head> -> the countries the change can move a take in, in
 }
 csv_and() { local a out="" ; for a in ${1//,/ }; do [[ ",$2," == *",$a,"* ]] && out+="${out:+,}$a"; done; echo "$out"; } # <a> <b>: a ∩ b
 # holds_of <run> -> the countries whose corpus the recording run holds (its scrape-fixtures-<cc> artifacts), read from the
-# forge; fails when they cannot be read. A run of github.com's era (e.g. 38713274617) is on no Forgejo: it holds nothing
-# there, and every leg replaying it failed "the pinned pair has expired" (runs 884-893, 2026-10-21).
+# forge; fails when they cannot be read. A run this forge never recorded (e.g. 38713274617) holds nothing,
+# and every leg replaying it failed "the pinned pair has expired" (runs 884-893, 2026-10-21).
 repo_slug() { git remote get-url "$remote" | sed -E 's#\.git$##; s#^.*[:/]([^/:]+/[^/]+)$#\1#'; }
 holds_of() {
   local names cc out=""
@@ -569,7 +569,7 @@ holds_of() {
 }
 # The other recordings: "<run> <the countries it holds>" lines, the pinned pair (or --recording) left out. A spec's
 # `:<countries>` names what it holds; without one it is read from the forge (every country when it cannot be read), and
-# a recording holding none is left out, said. IDENTITY_MEASURE_RECORDINGS: what is on Forgejo since the suspension --
+# a recording holding none is left out, said. IDENTITY_MEASURE_RECORDINGS: what this forge holds --
 # 528 (2026-10-20, all five; the pinned pair is 573).
 other_recordings() {
   local spec rec holds

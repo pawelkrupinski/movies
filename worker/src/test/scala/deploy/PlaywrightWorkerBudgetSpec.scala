@@ -5,13 +5,10 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * How many Playwright workers a page-test row starts, against the 4 CPUs a job is budgeted (a hosted runner's 4
- * vCPUs; on the ci-runner the JVMs' ActiveProcessorCount=4). The container itself sees the whole 32-core host, so
- * `PW_WORKERS` in `.github/actions/run-page-test` is the only thing sizing it.
+ * vCPUs). `PW_WORKERS` in `.github/actions/run-page-test` is the only thing sizing it.
  *
  * WebKit gets one worker. Its workers are each a WebProcess, a NetworkProcess and the test runner, beside the fixture
- * server's JVM, and since the ci-runner shared CPU by tier (2026-10-25) a busy host leaves a Main job container about
- * one core. At 5 workers a WebKit test's p50 went 4.4s -> 17-21s and its max past the 30s timeout (#1838, #1843); at
- * 2, p50 9.7s and a 37.8s timeout (#1862). More rows, not more workers, are what buy WebKit CPU (ci.yml's shards).
+ * server's JVM. More rows, not more workers, are what buy WebKit CPU (ci.yml's shards).
  */
 class PlaywrightWorkerBudgetSpec extends AnyFlatSpec with Matchers {
 

@@ -14,8 +14,6 @@ import org.scalatest.matchers.should.Matchers
  */
 class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
   private val MainOnly = "github.ref == 'refs/heads/main'"
-  // Forgejo starts a SCHEDULED run with the bare branch name as its ref: under the refs/heads/main test alone, no
-  // nightly recording published its tree from 2026-10-20 to 10-23 (runs 647, 985, 1578).
   private val MainOrForgejoSchedule = "(github.ref == 'refs/heads/main' || github.ref == 'main')"
   private lazy val action = RepoFile.read(".github/actions/convergence-publish/action.yml")
 

@@ -77,7 +77,7 @@ check "a history read that hangs is cut off by its bound, and stops the check, l
   "$code $(spec_still_running "$work/hung")"
 
 # github.com's history floor (.github/github-takes-history-floor): the history query keeps only statuses at or after it;
-# Forgejo asks with none; a floor that is no ISO time stops the check.
+# a floor that is no ISO time stops the check.
 cat > "$work/bin/gh-recording" <<EOF2
 #!/usr/bin/env bash
 printf '%s\\n' "\$*" >> "$work/gh-args"

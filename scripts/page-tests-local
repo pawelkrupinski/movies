@@ -50,7 +50,7 @@ cd page-tests-playwright
 # ON CI (precommit-check.yml's remote checks): the job image has none of Playwright's browsers, and its Node sees the
 # host's 32 cores behind a 4-CPU quota. Run 3342 failed every Chromium test in milliseconds (no browser); with the
 # browsers but 40 workers (playwright.config.ts's 125%) the load passed 170 and 16 tests timed out (diag run 3353).
-# So: the browsers and their system libraries, CI's worker figure (run-page-test's PW_WORKERS on Forgejo, unless the
+# So: the browsers and their system libraries, CI's worker figure (run-page-test's PW_WORKERS, unless the
 # caller set one), and one warm render per engine before any test's clock starts (warm-browsers.mjs).
 if [ -n "${CI:-}" ]; then
     case "$which" in chromium) engines=(chromium) ;; webkit) engines=(webkit) ;; *) engines=(chromium webkit) ;; esac

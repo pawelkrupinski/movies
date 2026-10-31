@@ -84,7 +84,7 @@ check "...and says why" "1" "$(grep -c 'did not become reachable' "$stub_dir/out
 check "a mongod that never becomes PRIMARY fails too" "1" "$(start secondary)"
 check "...naming what it waited for" "1" "$(grep -c 'did not become PRIMARY' "$stub_dir/out")"
 
-# NATIVE: the Forgejo job image's own mongod and mongosh (stubs here, answering as the container's do), started on the
+# NATIVE: the job image's own mongod and mongosh (stubs here, answering as the container's do), started on the
 # job's localhost with the container's flags; no docker at all. `sudo` runs its command, logging it.
 native="$stub_dir/native"
 mkdir -p "$native/bin"

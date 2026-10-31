@@ -2,7 +2,7 @@
 # ANY sbt COMMAND ON CI (scripts/identity-ci-run) -- a targeted testOnly or compile check at a commit, or one over a CACHED RECORDING: an IntegrationTest runMain -- a resolve dump,
 # an ablation, a simulation, a replay sweep -- over one `Record scrape fixtures` run laid out as
 # scripts/identity-fetch-recording.sh lays it (the pair identity-measure-local and identity-slice replay), against a
-# throwaway MongoDB, off the laptop (the user's rule, 2026-10-21: heavy work runs on ci-runner). Once per country, or
+# throwaway MongoDB, off the laptop (the user's rule, 2026-10-21: heavy work runs on CI). Once per country, or
 # once in all when the command names no {cc}. What the command writes under {out} comes back as the `identity-run`
 # artifact, with each country's sbt log.
 #
@@ -36,9 +36,8 @@ on:
                 default: '8g'
                 type: string
 # Every branch's runs in a lane of their own off main (a measurement's form; identity-ci-run pushes a measure/ branch per
-# run): runs side by side, none replaced. Keyed by the branch, never github.run_id, which Forgejo leaves empty when it
-# evaluates `concurrency:`. On Forgejo a dispatch
-# into a busy non-cancelling group is dropped, so main's runs (one lane) are dispatched one at a time.
+# run): runs side by side, none replaced. Keyed by the branch, never github.run_id.
+# Main's runs (one lane) are dispatched one at a time.
 concurrency:
     group: identity-run${{ github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '' }}
     cancel-in-progress: false
@@ -124,5 +123,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`: Forgejo 15 refuses a workflow_call `secrets:` block naming them (identity-decorations.yml)
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

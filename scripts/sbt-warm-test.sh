@@ -413,7 +413,7 @@ check "...an idle one is: stopped by its keeper, which ends, its slot free" "sto
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone)"
 : > "$scratch/sbt-calls"
 # The stub starts no server process, so this call's keeper finds none and ends after its grace: 2 s here (the export
-# above) was a race with the check below, lost under load (the keeper gone before `kill -0`, ci-runner at load 92,
+# above) was a race with the check below, lost under load (the keeper gone before `kill -0`, a CI host at load 92,
 # 2026-10-28). The keeper of THIS call gets a grace no check outlasts, and is stopped once checked.
 (cd "$scratch/idler" && KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=600 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 keeper=$(cat "$idler_key.keep.flock" 2>/dev/null)

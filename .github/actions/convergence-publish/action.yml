@@ -333,11 +333,6 @@ runs:
     # production-shaped recording `scripts/identity-repro` and `--recording prod-latest` replay, so a prod
     # listing can be reproduced on the corpus prod scraped last night rather than on a pair weeks old.
     # `prod-latest-<code>.txt` → `<corpus run> <recorded at> <tree asset>`, the hermetic marker's format.
-    #
-    # `github.ref == 'main'` beside `refs/heads/main` in every recording write above and here: Forgejo (CI
-    # since the GitHub suspension) starts a SCHEDULED run with the bare branch name as its ref (action_run.ref
-    # and action_schedule.ref are `main`), so under the refs/heads/main test alone no nightly recording
-    # published its tree from 2026-10-20 to 10-23 (runs 647, 985, 1578: packed, never uploaded).
     - name: Mark this recording as prod-latest
       if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record' && inputs.complete == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
       shell: bash

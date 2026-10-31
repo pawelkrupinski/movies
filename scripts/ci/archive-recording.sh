@@ -8,7 +8,7 @@
 # convergence-fixtures) and the run's scrape-fixtures-<cc> artifact's scrapes-<cc>.tar.* as scrapes-<cc>-<run>.tar.*,
 # both uploaded to $RECORDING_ARCHIVE_TAG (default identity-recordings). An asset the archive holds at the source's
 # size is skipped (a partial upload, at another size, is replaced); a country the recording lacks is said and skipped.
-# Exit 1 when any copy failed or a run left nothing archived. Needs `gh` (the shim on Forgejo) with release write.
+# Exit 1 when any copy failed or a run left nothing archived. Needs `gh` with release write.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/tool-conventions.sh

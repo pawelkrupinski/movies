@@ -5,7 +5,7 @@ A port PASSES when https://kinowo.net/ answered THROUGH the tunnel with an HTTP 
 not followed, it is the origin answering). It FAILS on a proxy-side error: CONNECT `Tunnel connection failed: 503`,
 407, a timeout, a refusal, a reset. Exit 0: at least one port passed; 1: none did (Decodo is down); 2: no credentials
 (a config error, not a proxy outage). Both failure verdicts are `::error::` annotations, which `agentctl ci-why` ranks
-first: a step's plain output can fall outside Forgejo's per-step log slice and leave a red run reading UNCLEAR.
+first.
 """
 import collections
 import os

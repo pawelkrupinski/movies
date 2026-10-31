@@ -1,6 +1,6 @@
 #
 # THE VERIFY PHASE of the nightly recording: main's code judged, hermetically, against what one
-# `Record scrape fixtures` run captured (docs/forgejo-ci.md, "Capture, then verify").
+# `Record scrape fixtures` run captured ("Capture, then verify").
 #
 # The recorder used to capture AND judge in one go: its legs ran their suites in record mode, with live
 # fallback, so one red meant any of "the scrape or tunnel failed", "the runner was starved" (1476: Germany at
@@ -27,7 +27,7 @@
 # or one dispatched by hand on the SAME recording once a fix has landed, which takes this run's ~30 minutes
 # rather than another night:
 #
-#   forgejo-gh workflow run verify-scrape-recording.yml --ref main -f recording=<Record scrape fixtures run id>
+#   gh workflow run verify-scrape-recording.yml --ref main -f recording=<Record scrape fixtures run id>
 #
 name: Verify scrape recording
 
@@ -65,9 +65,7 @@ jobs:
         permissions:
             contents: read
             actions: read
-        # THE PLAN (WorkflowPlanSpec): the legs' matrix call reads `needs.preflight.outputs`, so Forgejo re-parses it
-        # once this job is done, with these outputs and NOTHING ELSE -- `inputs.recording` read in its `with:` was
-        # empty, and every verify replayed the pinned pair instead of the recording it was dispatched for.
+        # THE PLAN (WorkflowPlanSpec): the legs' matrix call reads `needs.preflight.outputs`.
         outputs:
             countries: ${{ steps.countries.outputs.countries }}
             recording: ${{ inputs.recording }}
@@ -101,8 +99,7 @@ jobs:
               run: scripts/ci/convergence-preflight.sh "${{ steps.countries.outputs.countries }}" "${{ inputs.recording }}"
 
     # THE IDENTITY LANE'S ROWS (identity-model-convergence.yml's `leg` matrix: aliases, splits, heaps, Mongo), replaying
-    # the named recording instead of the pinned pair. EVERY ROW CARRIES EVERY KEY THE JOB READS, for Forgejo's strict
-    # reads of `matrix.<key>` in a reusable call's `with:`.
+    # the named recording instead of the pinned pair. EVERY ROW CARRIES EVERY KEY THE JOB READS.
     leg:
         needs: [ preflight ]
         name: verify (${{ matrix.country }})
@@ -142,8 +139,7 @@ jobs:
             corpus-run:                    ${{ needs.preflight.outputs.recording }}
             countries:                     ${{ needs.preflight.outputs.countries }}
             takes-row:                     false
-            # The nightly pipeline's own runner, as the recorder's legs: verify runs right behind the capture it judges,
-            # on the lane the capture just left, not on the push lane (main-lane).
+            # The nightly pipeline's own runner, as the recorder's legs: verify runs right behind the capture it judges.
             runner: ${{ needs.preflight.outputs.runner }}
         # The GITHUB_TOKEN the setup and publish actions read; nothing here fetches, so no key is used.
         secrets: inherit
@@ -156,7 +152,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

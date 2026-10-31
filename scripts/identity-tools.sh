@@ -114,8 +114,8 @@ identity_dispatch_measure() { # (IDENTITY_REPO, not BASH_SOURCE: bash 3.2 names 
 # other measure/ push of this machine is under way (identity_locked measure-push), git's output passed through. Fails
 # with MEASURE_PUSH_ERROR set to the remote's reason ("remote rejected (unable to migrate objects to permanent storage)").
 # ONE AT A TIME (2026-10-23): identity-landing-check pushes one commit to a measure/ branch per spec group and one for
-# its identity-measure, all at once. Concurrent receive-packs of the same new objects (100+, so kept as a pack) on
-# Forgejo each write pack-<hash>.keep with their own pid in it; the second to move its quarantine in finds the first's
+# its identity-measure, all at once. Concurrent receive-packs of the same new objects (100+, so kept as a pack)
+# each write pack-<hash>.keep with their own pid in it; the second to move its quarantine in finds the first's
 # .keep "differs in contents" and rejects the push. A push after the first finds the commit there and sends no objects.
 identity_push_measure_branch() {
   local remote=$1 commit=$2 branch=$3 err rc

@@ -92,7 +92,7 @@ identity_paths=(geodata/src/main common/src/main identity/src/main scrapers/src/
 # checks stopped on 2026-10-16 (the suspension) and came back in shadow on 2026-10-31 while Forgejo judged every commit
 # between, so the newest green github.com status was 1,429 commits back (run 41209071921: every takes row failed on
 # moves Forgejo had accepted one commit at a time). Past the floor github.com picks its base as a check that never ran
-# would -- the head's parent -- until its own statuses take over. Forgejo reads no floor. TAKES_HISTORY_FLOOR overrides.
+# would -- the head's parent -- until its own statuses take over. TAKES_HISTORY_FLOOR overrides.
 history_floor=""
 if [ "${GITHUB_SERVER_URL:-}" = "https://github.com" ]; then
   history_floor=${TAKES_HISTORY_FLOOR-$(grep -vE '^\s*(#|$)' "$here/.github/github-takes-history-floor" 2>/dev/null | head -1)}
@@ -380,7 +380,7 @@ ratchet() { # <checkout> <out file> [trace file]
   scope+=$(traced "$tool" "${3:-}")
   if [ -f "$tool" ]; then
     # Unforked, whatever the base's build says: a base from 82de60cf0 until project/ForkedTests.scala kept `run` in the
-    # server forked its tools in worker/, where the repo-relative identity-judgements.tsv is missing (Forgejo run 195, every row).
+    # server forked its tools in worker/, where the repo-relative identity-judgements.tsv is missing (run 195, every row).
     ( cd "$1" && sbt -J-Xmx"$ratchet_heap" 'set worker / Test / run / fork := false' 'set worker / Test / runMain / fork := false' \
         "worker/Test/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched$scope" > "$2.log" 2>&1 ) \
       || { echo "::warning::identity takes ($cc): the ratchet exited $? ($2.log)"; return 1; }

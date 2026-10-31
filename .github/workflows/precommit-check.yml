@@ -1,8 +1,8 @@
 name: Pre-commit check
 
 # REMOTE CHECKS (agentctl's land queue, ~/bin/AGENTCTL.md "remote checks"; the owner, 2026-10-27): while the laptop is
-# under memory or CPU pressure, a queued change's pre-commit checks run HERE, on ci-runner's check tier (the ubuntu
-# runner, cgroup slice `check`), instead of on the laptop. agentctl pushes the change's checked tip to `check/<entry>`
+# under memory or CPU pressure, a queued change's pre-commit checks run HERE, on CI (the ubuntu
+# runner), instead of on the laptop. agentctl pushes the change's checked tip to `check/<entry>`
 # (the pre-push hook checks nothing for a check/ branch: a run's ref, never landed), this run runs THE SAME HOOK over it
 # -- `scripts/hooks/pre-push --checks-only <merge-base with main>..HEAD`: the path-selected checks, the basic tests and
 # the touched areas' tests, the red gate left to the push to main -- and agentctl reads the verdict, deletes the branch
@@ -95,7 +95,7 @@ jobs:
                   # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check from ci-runner --
+                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check --
                   # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
                   # laptop; every other check/<id> the change's own checks
                   mode=--checks-only
@@ -198,7 +198,7 @@ jobs:
                   # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check from ci-runner --
+                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check --
                   # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
                   # laptop; every other check/<id> the change's own checks
                   mode=--checks-only
@@ -241,7 +241,7 @@ jobs:
 
     check-page:
         name: check (page)
-        # AFTER the rest, not beside it: beside it on the check tier its WebKit rows starved (landing check run 4059:
+        # AFTER the rest, not beside it: beside it its WebKit rows starved (landing check run 4059:
         # every WebKit test ~40 s, then timed out, past the 80 minutes) -- the reason it runs with a cap of its own -- and
         # after the heavy rows and the old refs' compile, which run beside the rest and would starve it the same way
         needs: [ check, check-oldrefs, heavy ]
@@ -289,7 +289,7 @@ jobs:
                   # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check from ci-runner --
+                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check --
                   # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
                   # laptop; every other check/<id> the change's own checks
                   mode=--checks-only
@@ -335,7 +335,7 @@ jobs:
     # `IT_ROW=<row> sbt itAll` against a throwaway MongoDB replica set (on 24.04: mongod 8.3 will not start on 26.04's
     # kernel 7.0, MongoServerVersionParitySpec), `sbt e2eRest` and `sbt e2eCorpus`.
     # ONE job running the selected rows one after another, not a job a row: four rows at once beside the rest and the
-    # old refs starved the check tier, and an integration spec's loopback handshake missed its 5 s connect budget
+    # old refs starved the host, and an integration spec's loopback handshake missed its 5 s connect budget
     # (logged as "30s", the request budget, until RealHttpFetch named the budget that ran out; landing check run 4131,
     # IssuerCertificateFetchingSpec; itrest took 1403 s against 431 s alone).
     heavy:
@@ -407,5 +407,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not secrets by name: Forgejo 15 refuses a `workflow_call.secrets` block.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

@@ -39,9 +39,6 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   # The coverage check asks whether a run's commit descends from the newest pipeline commit.
-                  # ON FORGEJO, A DEPTH INSTEAD OF 0: its copy of the repo is itself shallow (at 257ad0a),
-                  # and a depth-0 fetch of a shallow server fails ("shallow roots are not allowed to be
-                  # updated") -- see main.yml. A depth past the root takes every commit the server has.
                   fetch-depth: 0
 
             # The checker's own verdicts first, offline: a checker that can no longer fail would report
@@ -54,7 +51,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-              # A checker that cannot read the runs (gh, git or jq failed: Forgejo's API, not our code) is an ALERT
+              # A checker that cannot read the runs (gh, git or jq failed: the forge's API, not our code) is an ALERT
               # (scripts/ci/alert-step.sh), never a red run; its self-test above still fails red.
               run: scripts/ci/alert-step.sh 1 -- scripts/ci/identity-ci-staleness.sh
 
@@ -66,9 +63,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit
 
     # A failed scheduled check becomes an issue assigned to the owner, closed on the next pass --

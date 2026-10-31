@@ -17,17 +17,17 @@ What it asserts, per host (kinowo.net, showtimes.cc):
      `KINOWO_SESSION_SECURE` is live on both hosts; without it a missing `Secure` is only a
      GitHub warning (for a run against a host that has not turned it on).
 
-AN UNREACHABLE ORIGIN IS A FAILURE, NOT A PASS. Datacenter IPs (GitHub's runners, then ci-runner)
+AN UNREACHABLE ORIGIN IS A FAILURE, NOT A PASS. Datacenter IPs (GitHub's runners)
 are Cloudflare Bot-Fight-Mode material on both zones (2026-09-15), and a challenge page carries
 none of the headers checked here -- so "no ACAC header" would pass against a page that is not
 ours. Every request therefore has an EXPECTED status (401 anonymous /api/me, 2xx preflight, 303
 OAuth start), and anything else fails with the status and `cf-mitigated` named.
 
-DIRECT FIRST, FROM CI-RUNNER, WITH THE EDGE KEY. Runs #2239 on (2026-10-27): the check went
+DIRECT FIRST, WITH THE EDGE KEY. Runs #2239 on (2026-10-27): the check went
 through the Decodo residential proxy only, and Decodo's account went dark (CONNECT 503 on every
 port), so a header check of our own sites failed for a third party's reason. Bot Fight Mode has no
 custom-rule skip on the Free plan; its one exception is an IP Access Rule, matched first. So both
-zones Allow ci-runner's address (162.55.0.154), and a custom rule BLOCKS that address on
+zones Allow the former CI host's address (162.55.0.154), and a custom rule BLOCKS that address on
 kinowo.net / showtimes.cc unless the request carries `X-Kinowo-Edge-Check: <EDGE_CHECK_KEY>` --
 the bypass is the address AND the secret, nothing else (infra/bin/cloudflare-ci-edge-allow sets
 both up). Every request goes direct with that header; only a direct answer that is not the

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-1|2 (<country>)` rows -- "Check that the incremental state ends
 # where a whole resolve does" (scripts/ci/identity-drift-check.sh), the step behind 28 of 36 red convergence runs in the
-# week to 2026-10-29 -- run on ci-runner BEFORE the commit lands, and nothing else of the convergence suite.
+# week to 2026-10-29 -- run on CI BEFORE the commit lands, and nothing else of the convergence suite.
 #
 # Why (docs: convergence-failures-2026-10-29, §5 Tier 2 and §7.2): main's full suite gives a drift verdict ~48 minutes
 # after a push (red) or ~80 (green), and only once the commit is on main; fixers' "fixes" were refuted there, one after

@@ -136,7 +136,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: always  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: always
 
             - name: Robolectric tests, classes and methods in a seeded order
               env:
@@ -185,7 +185,7 @@ jobs:
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
               with:
-                  add-job-summary: always  # Forgejo discards job summaries, and warns of each
+                  add-job-summary: always
 
             - name: Enable KVM
               # The script lives at the repo root; this job's run steps default to android/.
@@ -252,9 +252,7 @@ jobs:
 
     swift:
         needs: seed
-        # macOS legs: github.com's hosted macOS only. Forgejo has no macOS runner, and it evaluates a job's
-        # `if` only once a runner takes the job, so a macos-latest job there waits forever and holds the run
-        # (and its timings/report) open. There it goes to a Linux runner instead, which skips it on the `if`.
+        # macOS legs: github.com's hosted macOS only.
         runs-on: macos-latest
         timeout-minutes: 105
         steps:
@@ -291,9 +289,7 @@ jobs:
                   /usr/bin/python3 scripts/ci/python_floor_lint.py
 
     ios:
-        # macOS legs: github.com's hosted macOS only. Forgejo has no macOS runner, and it evaluates a job's
-        # `if` only once a runner takes the job, so a macos-latest job there waits forever and holds the run
-        # (and its timings/report) open. There it goes to a Linux runner instead, which skips it on the `if`.
+        # macOS legs: github.com's hosted macOS only.
         runs-on: macos-latest
         timeout-minutes: 150
         steps:
@@ -388,9 +384,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --

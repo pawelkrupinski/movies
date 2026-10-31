@@ -405,8 +405,7 @@ jobs:
     # 3-hour one — the 6-hour cancellation the split exists to escape. The leg costs one
     # more concurrent runner while it is in flight rather than one more afternoon.
     convergence:
-        # `<phase> (<country>)`, the label the row's test report carries: Forgejo shows a reusable workflow's jobs without
-        # the caller's `<country> / ` prefix github.com adds, so a bare phase left five countries' rows indistinguishable.
+        # `<phase> (<country>)`, the label the row's test report carries.
         name: ${{ matrix.phase }} (${{ inputs.country }})
         # A takes-only measurement of some countries (scripts/identity-measure --countries) skips the others' legs whole.
         # A verify run skips the countries its recording did not capture complete (`countries`), a proven reuse every row.
@@ -465,9 +464,7 @@ jobs:
                   dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
                   dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
                   mode:          ${{ inputs.mode }}
-                  # A recording leg's own run when the caller's `github.run_id` arrives empty: Forgejo (CI since the
-                  # GitHub suspension) expands a reusable call's `with:` before its run has an id, so every
-                  # recording leg there replayed "the newest" corpus, never named its own and never pinned (run 408).
+                  # A recording leg's own run when no corpus run is named.
                   corpus-run:    ${{ inputs.corpus-run || (inputs.mode == 'record' && github.run_id || '') }}
                   mongo-tmpfs:   ${{ (inputs.mongo-tmpfs-order != 'false' || !startsWith(matrix.phase, 'order-independence')) && inputs.mongo-tmpfs || '' }}
                   mongo-cache-gb: ${{ (inputs.mongo-tmpfs-order != 'false' || !startsWith(matrix.phase, 'order-independence')) && inputs.mongo-cache-gb || '2' }}
@@ -796,7 +793,6 @@ jobs:
                   # time went — on a red suite too, which is when it is read; then the suite's own verdict.
                   scripts/ci/mongo-exec.sh du -sh /data/db || true
                   scripts/ci/mongo-top.sh report || true
-                  # Not `continue-on-error: <expression>`: Forgejo refuses an expression there and the whole leg with it.
                   if [ "${suite:-0}" != 0 ] && [ "$RECORDING" = true ]; then
                       echo "failed=true" >> "$GITHUB_OUTPUT"
                       echo "::warning::the recording's suite failed (exit $suite) -- no verdict over live fallbacks; Verify scrape recording judges the code on this recording"
@@ -1197,7 +1193,7 @@ jobs:
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             # A RECORDING whose per-origin health failed (convergence-publish's "Judge this recording's per-origin
-            # health", its table in the log -- Forgejo discards job summaries): red here, after every publish, so the tree
+            # health", its table in the log): red here, after every publish, so the tree
             # is saved either way.
             - name: Fail the leg on the recording's health
               if: always() && inputs.mode == 'record' && steps.publish.outputs.recording-healthy == 'false'

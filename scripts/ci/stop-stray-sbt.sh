@@ -2,9 +2,8 @@
 # stop-stray-sbt.sh: end every JVM an earlier step left running in this build, so the step about to compile (or the
 # cache save about to read target/) is the build's only writer.
 #
-# Why: Forgejo's runner (act) does not end a step that outlives its `timeout-minutes` -- it gives up on the step's
-# `docker exec`, logs "context deadline exceeded", and goes on to the next step while the step's processes run on in
-# the job container. Convergence run #1880 (germany row, 2026-10-26): the pre-suite fill's sbt passed the fill step's
+# Why: a runner may go on to the next step when a step outlives its `timeout-minutes` while the step's processes run on
+# in the job container. Convergence run #1880 (germany row, 2026-10-26): the pre-suite fill's sbt passed the fill step's
 # 5 minutes mid-compile (identity's second cycle, no "done compiling"), went on compiling -- the suite's sbt found
 # identity already compiled, which only the abandoned one could have done -- and reached worker while the suite's sbt
 # compiled worker into the same classes directory. Two zincs moving and rewriting one module's class files: the suite

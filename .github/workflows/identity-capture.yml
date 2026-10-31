@@ -168,7 +168,7 @@ jobs:
             OPEN_PR: ${{ inputs.open-pr && 'true' || 'false' }}
         steps:
             # On github.com the App's token pushes the branch (checkout keeps it as the push credential)
-            # and opens the PR, so Branch CI runs on it. Forgejo has no App: the job's own token pushes.
+            # and opens the PR, so Branch CI runs on it.
             - uses: actions/create-github-app-token@v3
               id: app-token
               with:
@@ -312,9 +312,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --

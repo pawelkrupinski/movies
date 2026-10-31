@@ -33,8 +33,8 @@ concurrency:
     group: ios-${{ github.ref }}
     cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# `checks: write` so action-junit-report posts its check-run + summary on github.com (Forgejo has neither: it
-# only annotates there); `contents: read` for checkout. All jobs are same-repo.
+# `checks: write` so action-junit-report posts its check-run + summary on github.com;
+# `contents: read` for checkout. All jobs are same-repo.
 permissions:
     contents: read
     checks: write
@@ -89,8 +89,6 @@ jobs:
 
 
     ui-tests:
-        # Forgejo has no macOS runner: there the job would wait forever and hold the run open. Forgejo
-        # evaluates a job's `if` on the runner that picks it up, so it is handed to a Linux one to skip it.
         runs-on: macos-latest
         # Build ~2 min + XCUITest step (bounded below) + SPM ~2 min.
         timeout-minutes: 75
@@ -234,7 +232,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

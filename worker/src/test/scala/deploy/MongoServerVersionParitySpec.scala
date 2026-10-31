@@ -46,8 +46,8 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // The NATIVE mongod the Forgejo job image bakes (start-mongo-replset.sh's MONGO_NATIVE_HOME, /opt/mongodb/<version>,
-  // copied out of the same mongo:<version> image by infra's nix/files/forgejo-job-image): the same release, or the
+  // The NATIVE mongod a job image bakes (start-mongo-replset.sh's MONGO_NATIVE_HOME, /opt/mongodb/<version>,
+  // copied out of the same mongo:<version> image): the same release, or the
   // script would start another one wherever the image carries it.
   "the job image's native mongod" should "be the exact server release production runs" in {
     val homes = """/opt/mongodb/([0-9][0-9.]*)""".r.findAllMatchIn(RepoFile.read("scripts/ci/start-mongo-replset.sh")).map(_.group(1)).toSeq

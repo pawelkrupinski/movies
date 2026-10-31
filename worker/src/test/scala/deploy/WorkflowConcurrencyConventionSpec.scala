@@ -18,8 +18,7 @@ import org.scalatest.matchers.should.Matchers
  *      ConvergenceConcurrencyConfigSpec).
  *    - `identity-refit`'s branch form: the scheduled runs in one lane, each branch's dispatches (a thread-count
  *      measurement, a relearn) in a lane of their own (the user's choice, 2026-10-15; IdentityRefitWorkflowSpec).
- *    Never `github.run_id`: Forgejo evaluates `concurrency:` before the run has an id, so it is empty there and
- *    every run shared one lane (2026-10-21).
+ *    Never `github.run_id`.
  *
  *  `cancel-in-progress` is NOT part of the convention: each workflow chooses it for its own reason and says so
  *  beside it (a recording's or a measurement's `false` keeps hours of paid-for work from being thrown away). The one
@@ -30,12 +29,11 @@ import org.scalatest.matchers.should.Matchers
  *
  *  A NON-CANCELLING group (`cancel-in-progress` anything but a literal `true`: `false`, or an expression that can come
  *  out false) relies on the CI server to keep at most one running and one pending run, a newer pending run replacing
- *  the older: github.com does, and so does our patched Forgejo (infra docs/forgejo-actions.md, "We run a patched
- *  Forgejo", live since 2026-10-22). So no workflow carries the retired self-supersede wiring any more: no
+ *  the older: github.com does. So no workflow carries the retired self-supersede wiring any more: no
  *  `supersede` job, no `needs.supersede` gate, no .github/actions/supersede-check.
  *
- *  MAIN NEVER CANCELS (2026-10-22). It used to (`cancel-in-progress: true`, for GitHub Free's runner budget); on
- *  Forgejo with ~10 agents pushing, 39 of 51 Main runs on 2026-10-21 were cancelled (906 runner-minutes thrown
+ *  MAIN NEVER CANCELS (2026-10-22). It used to (`cancel-in-progress: true`, for GitHub Free's runner budget); with
+ *  ~10 agents pushing, 39 of 51 Main runs on 2026-10-21 were cancelled (906 runner-minutes thrown
  *  away, 8 runs completed), so builds and deploys rarely landed. Now the run in flight finishes and publishes and
  *  only the newest waiting push runs next: github.com's one running, one pending.
  *
@@ -89,13 +87,10 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
     nonCancelling(main) shouldBe true
   }
 
-  /** NO JOB OF A MAIN RUN CANCELS ANOTHER RUN'S JOBS (2026-10-24). Our Forgejo creates a queued run's jobs `waiting`
-   *  while the run itself waits behind the one in flight, and evaluates a job-level group as those jobs are created
-   *  (infra nix/files/forgejo/github-job-concurrency.patch, `ApplyJobConcurrencyOfRun`). A job-level
-   *  `cancel-in-progress: true` on a test row therefore lets every push cancel the rows of the run in flight, which
+  /** NO JOB OF A MAIN RUN CANCELS ANOTHER RUN'S JOBS (2026-10-24). A job-level
+   *  `cancel-in-progress: true` on a test row lets every push cancel the rows of the run in flight, which
    *  then publishes nothing: the run-level lane above, without the deploys. A superseded push costs no test runner as
-   *  it is: it waits, and the server cancels it while it waits, before any job starts (14 of the 16 Main runs cancelled
-   *  on 2026-10-24; the other two by hand). A job-level group may serialize (`publish-*`), never cancel. */
+   *  it is: it waits, and the server cancels it while it waits, before any job starts. A job-level group may serialize (`publish-*`), never cancel. */
   "Main's jobs and ci.yml's" should "never cancel another run's jobs from a job-level group" in {
     val cancelling = for {
       stem        <- Seq("main", "ci")

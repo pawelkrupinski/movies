@@ -287,19 +287,9 @@ runs:
       env:
         PW_RUNS: ${{ inputs.runs }}
         PW_EXTRA: ${{ inputs.extra-args }}
-        # Off github.com the job container sees the whole shared ci-runner host
-        # (32 cores → '125%' = 40 workers per job, several jobs at once), so pin
-        # the 5 workers a 4-vCPU GitHub runner gets. Empty on github.com.
-        #
-        # A WebKit-only row runs ONE worker, on any host. A WebKit worker is a
+        # A WebKit-only row runs ONE worker. A WebKit worker is a
         # WebProcess plus a NetworkProcess plus the test runner, beside the fixture
-        # server's JVM, and since the ci-runner shared CPU by tier (2026-10-25) a
-        # Main job container gets about one core of a busy host: one of ~16 Main jobs
-        # in the deploy slice while the gate tier holds CCD0. A test's time is then
-        # its CPU times the workers sharing that core. At 5 workers the p50 went
-        # 4.4s -> 17-21s, its max past the 30s timeout (Main #1838, #1843); at 2,
-        # p50 9.7s and one test at 37.8s (#1862: hidden-films-bulk, ~4x the p50 on
-        # every run). The CPU sets the wall time either way; fewer workers only make
+        # server's JVM. The CPU sets the wall time either way; fewer workers only make
         # each test shorter, so the row that carries the most tests is sharded
         # instead (ci.yml's `pw behaviour 1/2, 2/2`): a second container is a second
         # share of the CPU. PlaywrightWorkerBudgetSpec.

@@ -39,8 +39,8 @@ permissions:
 
 jobs:
     races:
-        # TWO HALVES ON GITHUB.COM: the 50 iterations ran into this job's 180-minute cap on ci-runner already, and a hosted
-        # 4-core runner is no faster -- 2 x 25 there, each well inside it; one job of all 50 on Forgejo, as before.
+        # TWO HALVES ON GITHUB.COM: the 50 iterations ran into this job's 180-minute cap already, and a hosted
+        # 4-core runner is no faster -- 2 x 25, each well inside it.
         name: races${{ format(' ({0}/2)', matrix.half) || '' }}
         strategy:
             fail-fast: false
@@ -111,9 +111,6 @@ jobs:
                   browsers:   webkit
                   label:      ${{ matrix.label }}
                   runs:       'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; ${{ matrix.shard }}'
-                  # On Forgejo the four shards share one ci-runner host with every other job; at the
-                  # action's 5 workers each, run 414's WebKit loads took ~10s (load average 130+), so
-                  # the stress rows run 3. Nothing is appended on github.com.
                   extra-args: --repeat-each 5
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
@@ -124,9 +121,7 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
-        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
-        # every event). `inherit` reads the same on github.com and declares nothing.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --

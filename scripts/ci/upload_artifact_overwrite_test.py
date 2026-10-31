@@ -2,7 +2,7 @@
 """Every `actions/upload-artifact` step in the workflows and composite actions sets `overwrite: true`.
 
 A `gh run rerun --failed` re-runs a failed job inside the SAME run: its artifacts from the first attempt still exist,
-and Forgejo's upload-artifact (like v4+ on github.com) refuses a name that exists unless `overwrite: true`
+and upload-artifact (v4+) refuses a name that exists unless `overwrite: true`
 (2026-10-23: Record scrape fixtures #798's rerun died at leg-verdict with "an artifact named
 'convergence-diagnostics-pl-convergence' already exists in this run"). Names stay fixed, so downloaders are unchanged."""
 

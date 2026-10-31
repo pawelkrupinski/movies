@@ -50,8 +50,7 @@ class RunTimingsWiringSpec extends AnyFlatSpec with Matchers {
             Option.when(needsOf(timings) != others)(s"$path: timings needs ${needsOf(timings).toSeq.sorted}, not every other job ${others.toSeq.sorted}"),
             Option.when(!timings.contains("!cancelled()"))(s"$path: timings is skipped when a job it needs fails"),
             Option.when(!timings.contains("actions: read"))(s"$path: timings cannot read the run's jobs"),
-            // `inherit` rather than the secrets by name: a named secret must be declared under the callee's
-            // `workflow_call.secrets`, which Forgejo 15 rejects (it runs this CI since the GitHub suspension).
+            // `inherit` rather than the secrets by name: report-timings.yml declares no secrets.
             Option.when(!timings.contains("secrets: inherit"))(
               s"$path: timings does not inherit secrets: report-timings gets no Grafana token, nothing reaches the dashboard"),
             jobs.get("report").flatMap(r => Option.when(!needsOf(r).contains("timings"))(s"$path: report runs before timings"))

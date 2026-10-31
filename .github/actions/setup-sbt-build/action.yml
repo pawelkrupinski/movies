@@ -50,8 +50,8 @@ runs:
         cache: sbt
     # setup-sbt installs the runner; ITS sbt-2 disk cache is off, and restored below under a key of our
     # own. setup-sbt keys it on the first line of `java -version`, which is the JVM's "Picked up
-    # JAVA_TOOL_OPTIONS: ..." banner wherever that variable is set (every Forgejo container job), so
-    # the key carried it (2026-10-22). Its key also hashed `**/*.sbt`, a walk of every file in the
+    # JAVA_TOOL_OPTIONS: ..." banner wherever that variable is set, so
+    # the key carried it. Its key also hashed `**/*.sbt`, a walk of every file in the
     # workspace (~9 s a job). NOTE the build is still sbt 1.x, which writes nothing to ~/.cache/sbt, so
     # nothing is saved under any key until it moves to sbt 2; the restore is then a cheap miss.
     - uses: sbt/setup-sbt@v1

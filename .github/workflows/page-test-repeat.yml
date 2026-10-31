@@ -4,7 +4,7 @@ name: Page test repeat
 # page-test row, on whatever ref it is dispatched on. A flake fix lands with a green run of this on its branch (and,
 # for contrast, a red one on the code before it), instead of a laptop pinned under CPU burners.
 #
-#   forgejo-gh workflow run page-test-repeat.yml --ref <branch> \
+#   gh workflow run page-test-repeat.yml --ref <branch> \
 #       -f specs='tests/app-banner.spec.ts tests/language-select.spec.ts' -f projects='webkit-iphone-13,chrome-desktop'
 on:
     workflow_dispatch:
@@ -61,5 +61,5 @@ jobs:
             actions: read
             contents: read
         uses: ./.github/workflows/report-timings.yml
-        # `inherit`, not secrets by name: Forgejo 15 refuses a `workflow_call.secrets` block.
+        # `inherit`: report-timings.yml declares no secrets.
         secrets: inherit

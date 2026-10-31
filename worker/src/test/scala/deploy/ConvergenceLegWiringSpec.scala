@@ -638,7 +638,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  which is the exact shape that cancelled the US leg before its heap was raised. */
   it should "declare a budget for every order row, and an order row for every budget" in {
     // A row with no order row carries `order: ''` and its own job / suite budgets as the order ones (its takes rows
-    // run on them) rather than omitting the keys: Forgejo refuses a `matrix.<key>` a row lacks. So "declares an
+    // run on them) rather than omitting the keys. So "declares an
     // order row" means a non-empty `order`, and a row without one may only repeat its own budgets.
     def declared(fields: Map[String, String], key: String) =
       fields.get(key).exists(v => v.nonEmpty && v != "''")
@@ -835,7 +835,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.positionOf(suite, "scripts/ci/mongo-top.sh report") should be < RepoFile.positionOf(suite, "exit \"${suite:-0}\"")
   }
 
-  // Forgejo's runner abandons a step at its timeout without ending it. Run #1880's germany row: the fill's sbt, past
+  // A runner may abandon a step at its timeout without ending it. Run #1880's germany row: the fill's sbt, past
   // its 5 minutes, compiled on beside the suite's into one target/, and the suite failed on a member both had.
   it should "have the build to itself: no JVM a timed-out step left behind compiles beside it or under the cache save" in {
     val suite = RepoFile.step(leg, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite")

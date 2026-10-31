@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * EVERY JOB ASKS FOR A RUNNER GITHUB.COM HAS. GitHub is the only forge since Forgejo was switched off (2026-10-31), and
+ * EVERY JOB ASKS FOR A RUNNER GITHUB.COM HAS. GitHub is the only forge, and
  * a job asking for a label no runner carries (the old self-hosted tiers: `measure`, `main-lane`, ...) waits forever
  * instead of failing. Each job's `runs-on:` is read as github.com evaluates it on main (RunnerLabel); one that reads an
  * input or a needed job's output is judged by its fallback, and an input's own default is judged as well.
