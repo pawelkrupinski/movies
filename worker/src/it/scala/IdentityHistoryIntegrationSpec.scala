@@ -14,13 +14,14 @@ import scala.jdk.CollectionConverters._
  *  oldest first — as the in-memory history reads them, which the replay and explanation specs run on — under a TTL
  *  index that keeps a month.
  *
- *  The entries are written at moments just behind now, never at epoch-millis like 1000: `at` is stored as a date, and
- *  an entry dated 1970 is already a month old, so Mongo's TTL monitor (a pass every 60 s) deleted them between two
- *  reads of the same test (`List() was not equal to List(1000, 3000)` in a land check, 2026-10-31). */
+ *  The entries are dated in 2100, never at epoch-millis like 1000: `at` is stored as a date, and an entry dated 1970
+ *  is already a month old, so Mongo's TTL monitor (a pass every 60 s) deleted them between two reads of the same test
+ *  (`List() was not equal to List(1000, 3000)` in a land check, 2026-10-31). A fixed future moment, not one read off
+ *  the wall clock (NoWallClockInTestsSpec): the monitor never expires an entry dated after its own now. */
 class IdentityHistoryIntegrationSpec extends AnyFlatSpec with Matchers with tools.IntegrationMongoSuite {
   private def doc(v: String) = new BsonDocument("ids", BsonString(v))
-  /** The spec's moment zero: an hour ago, so every entry is well inside the month the TTL index keeps. */
-  private val t0 = System.currentTimeMillis() - 3600 * 1000L
+  /** The spec's moment zero, 2100-01-01T00:00Z: later than any now the TTL monitor reads, so it keeps every entry. */
+  private val t0 = 4102444800000L
   private val entries = Seq(
     HistoryEntry("answer:tmdb_queries", "q", t0 + 3000L, Some(doc("1")), Some(doc("2")), "b1"),
     HistoryEntry("answer:tmdb_queries", "q", t0 + 1000L, None, Some(doc("1")), "b1"),
