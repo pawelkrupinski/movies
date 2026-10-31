@@ -63,11 +63,9 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle), takeReads),
       takeHistory = new services.identity.adapters.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
       adopt       = identityListingIntake.adopt,
-      // the agreement's takes, each a hand judgement calls wrong withdrawn from its own listing (TakeJudgements.withdraw),
-      // each typed with what its served outcome awaits (AgreementStage.typed): a Pending take is served marked provisional
+      // the agreement's takes, each a hand judgement calls wrong withdrawn from its own listing (TakeJudgements.withdraw)
       agreement   = (resolution, listingOf, republished) =>
-        services.identity.TakeJudgements.withdraw(
-          agreementStage.typed(agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished)), judged),
+        services.identity.TakeJudgements.withdraw(agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished), judged),
       agreementBacklog = () => agreementStage.backlog,
       suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
       changeFeed  = takeChangesTold,

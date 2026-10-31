@@ -178,29 +178,6 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   }
 
 
-  /** `applied` -- this stage's last [[apply]] -- with each decision's `awaits` what its served outcome awaits
-   *  ([[outcomeOf]]): a take the stage still waits on is Pending to whoever reads the decision, the projection's
-   *  provisional mark included (step 6, the owner 2026-10-31: a Pending take is served as decided on the inputs as they
-   *  stand, marked provisional, never an earlier take). A decision already typed so is itself; one typed so the apply
-   *  before is that apply's copy again, so the projection's index meets no new object for an unmoved decision. */
-  def typed(applied: services.identity.Resolution): services.identity.Resolution = typedLock.synchronized {
-    val now = new java.util.IdentityHashMap[ResolverDecision, ResolverDecision]()
-    val decisions = applied.decisions.map { d =>
-      outcomeOf(d) match {
-        case services.identity.TakeOutcome.Pending(awaits) if awaits != d.awaits =>
-          val before = typedBefore.get(d)
-          val copy   = if (before != null && before.awaits == awaits) before else d.copy(awaits = awaits)(d.trace)
-          now.put(d, copy)
-          copy
-        case _ => d
-      }
-    }
-    typedBefore = now
-    if (now.isEmpty) applied else applied.copy(decisions = decisions)
-  }
-  private val typedLock = new Object
-  private var typedBefore = new java.util.IdentityHashMap[ResolverDecision, ResolverDecision]()
-
   /** `decision`'s cluster key ([[StableNames]]) as the last apply left it: of a model decision it was handed, or of what
    *  it took one as. Read off maps no apply changes once built, from any thread, allocating nothing; a decision no apply
    *  was handed is keyed by its first listing ([[StoredFamily.idOf]]), as nothing the stage keeps is. */

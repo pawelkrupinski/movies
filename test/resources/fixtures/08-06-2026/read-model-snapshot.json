@@ -197,7 +197,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f02d16ea0738fc07",
     "title" : "Caravaggio - dusza i krew",
@@ -272,7 +272,7 @@
     "ageRating" : "16",
     "shareCardPending" : false,
     "searchTitles" : [ "Call Me by Your Name" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f0375de3b651453c",
     "title" : "Malując duszę XX wieku: Pellizza z Volpedo",
@@ -447,7 +447,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f0545fb786430c42",
     "title" : "Minimaraton Superman i Supergirl",
@@ -528,7 +528,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f06367dcb782ecb9",
     "title" : "Smak wiśni",
@@ -672,7 +672,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "War on Art" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f08cf58baf16f0e7",
     "title" : "Angel's Egg",
@@ -759,7 +759,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f0a95a8bfd168465",
     "title" : "Czarne i białe w kolorze – klasyka kina z Grzegorzem Pieńkowskim",
@@ -851,7 +851,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f0b8b484da9a7b5d",
     "title" : "Biesy + spotkanie z dr Agnieszką Morstin",
@@ -976,7 +976,7 @@
     "ageRating" : "7",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f0e1a55d00a84543",
     "title" : "Stań przy mnie",
@@ -1082,7 +1082,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f10c8dbe40df9d59",
     "title" : "Piękno Bez Rozmiaru [Pokaz stylu, urody i dobrych manier] i projekcja filmu \" Cruella\"",
@@ -1295,7 +1295,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f122bf12e51ff66d~dymkowskinajwazniejszymeczpokazspecjalny",
     "title" : "Dymkowski. Najważniejszy mecz. Pokaz Specjalny",
@@ -1318,7 +1318,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Dymkowski. Najważniejszy mecz" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f124af29fc0a9bc0",
     "title" : "Młodsza siostra",
@@ -1480,7 +1480,7 @@
     "ageRating" : "15",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f1459055c1a63a94",
     "title" : "Left-Handed Girl",
@@ -1866,7 +1866,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f18131e52ed96b56",
     "title" : "Bez znieczulenia",
@@ -1969,7 +1969,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f1995f5461c6aabc",
     "title" : "90. rocznica urodzin Pavarottiego- Koncert gwiazd z Arena di Verona",
@@ -1988,7 +1988,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f1a1591e25948c6c",
     "title" : "Rambo: Pierwsza krew",
@@ -2095,7 +2095,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f1c22471b7b5f93d",
     "title" : "Marinette | Queer Week",
@@ -2135,7 +2135,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f1c924491162cdd9",
     "title" : "Beavis and Butt-Head",
@@ -2489,7 +2489,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f1ef8a9303ab4a3c",
     "title" : "Ladies Night - Narodziny gwiazdy",
@@ -2933,7 +2933,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f220104696d468b0",
     "title" : "Pillion | Queerowe Kino",
@@ -3227,7 +3227,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f23242454bf83e7a",
     "title" : "Mickey i Nicky",
@@ -3248,7 +3248,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f238996bcc5dd356",
     "title" : "Plenerowe Pałacowe: Suspiria",
@@ -3529,7 +3529,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2646eeaaad012fe",
     "title" : "La Gomera",
@@ -3888,7 +3888,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2906b23658e9ae4",
     "title" : "Prosta historia",
@@ -3936,7 +3936,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f295df5a9fa5b9f2",
     "title" : "Plenerowe Pałacowe: Amelia",
@@ -4008,7 +4008,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2ab27248b9e9e77",
     "title" : "Dzikie z natury",
@@ -4091,7 +4091,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2b9bda093526202",
     "title" : "Nowa Warszawa + rozmowa z Bartoszem Konopką",
@@ -4111,7 +4111,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2bfac4cc48ea165",
     "title" : "Dziewczyna z igłą",
@@ -4266,7 +4266,7 @@
     "ageRating" : "15",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2e676b14f18e859",
     "title" : "Arnie i barney",
@@ -4288,7 +4288,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2e81ebb7dcaa13b",
     "title" : "Aberald Giza \"Wentyl\"",
@@ -4310,7 +4310,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2e81ebb7dcaa13b~abelardgizawentyl",
     "title" : "Abelard Giza \"Wentyl\"",
@@ -4332,7 +4332,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f2ea6b51480afe06",
     "title" : "Teściowie | uśmiech o poranku",
@@ -4463,7 +4463,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f323862b49fe0f8c",
     "title" : "Van gogh. Pola zbóż i zachmurzone niebiosa",
@@ -4482,7 +4482,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f32a00c7c759a6f0",
     "title" : "Mężczyźni wolą blondynki",
@@ -4558,7 +4558,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "O Último Azul", "The Blue Trail" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f33fd36bf837eae1",
     "title" : "Sprawiedliwość owiec",
@@ -4869,7 +4869,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f34cc92ad2f66dd6",
     "title" : "Salto",
@@ -5052,7 +5052,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f3786fe3ec86c15d",
     "title" : "Sztuka Pięknego Życia",
@@ -5073,7 +5073,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f3789379e91e60f4",
     "title" : "Biuro Detektywistyczne Lassego i Mai. Licz do czterech",
@@ -5096,7 +5096,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f38296261911c1b2",
     "title" : "Omen",
@@ -5313,7 +5313,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f4043e5c7ce25757",
     "title" : "Kiedy Harry poznał Sally",
@@ -5382,7 +5382,7 @@
     "ageRating" : "12",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f40cae027c6bf254",
     "title" : "Na własną rękę",
@@ -6483,7 +6483,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f4899026ff9e270a",
     "title" : "Absolwent",
@@ -6506,7 +6506,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f48b10e13a5cde27",
     "title" : "Klub Konesera: Najbogatsza kobieta świata",
@@ -6884,7 +6884,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f4b1460ef1e4be69",
     "title" : "Zapiski śmiertelnika",
@@ -7211,7 +7211,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f4f53cbd3d9902ef",
     "title" : "Przeżyj to sam",
@@ -7486,7 +7486,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f5094887e20dcd9f",
     "title" : "Giulietta i duchy",
@@ -7570,7 +7570,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f50e3f8c9483ce4f",
     "title" : "Głosem malowane",
@@ -7641,7 +7641,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f517e5a318fff51a",
     "title" : "Romeo i Julia",
@@ -7943,7 +7943,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f53db2816a2e3e11",
     "title" : "Retrospektywa: Tadeusz Konwicki ,,Salto\"",
@@ -8048,7 +8048,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f553b8890ad5665a",
     "title" : "Chinatown | 10/10 Klasyka filmowa",
@@ -8131,7 +8131,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f55a79c2c8c67746",
     "title" : "Anatomia upadku",
@@ -8367,7 +8367,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f5b5803e586954b4",
     "title" : "Pan Tadeusz (1999) + spotkanie z Michałem Żebrowskim przed filmem",
@@ -8387,7 +8387,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f5b7dc5f2c56161d",
     "title" : "Mężczyźni niepozorni. Wieczór z krótkimi filmami Michała Toczka",
@@ -8463,7 +8463,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ "Le Muranów de Varsovie" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f5d370c9a65a7412",
     "title" : "Vivaldi i ja",
@@ -8483,7 +8483,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f5d3b0c5126e80da",
     "title" : "Felek i Tola ratują las",
@@ -8514,7 +8514,7 @@
     "ageRating" : "AL",
     "shareCardPending" : false,
     "searchTitles" : [ "Fox and Hare Save the Forest", "Fox & Hare Save the Forest", "Vos en Haas redden het bos" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f5d833f2a745f9a8",
     "title" : "Resident Evil",
@@ -8534,7 +8534,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f5e4b07b834c538b",
     "title" : "Klasyki SFR vol.4",
@@ -8813,7 +8813,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Drømmer", "Dreams" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f621e9647af1a330",
     "title" : "Próba orkiestry + prelekcja Julii Palmowskiej z portalu Pełna Sala",
@@ -8841,7 +8841,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Prova d'orchestra", "Orchestra Rehearsal" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f624332e7629717e",
     "title" : "Odyseja",
@@ -8908,7 +8908,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f630a2302fe02c8e",
     "title" : "Bluey w kinie: Kolekcja Zabawy z przyjaciółmi",
@@ -8935,7 +8935,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f6370ee1d758ab40",
     "title" : "Krajobraz po bitwie",
@@ -9050,7 +9050,7 @@
     "ageRating" : "15",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f649175a21227548",
     "title" : "Plenerowe Pałacowe: Poprzednie życie",
@@ -9151,7 +9151,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f650fb00745169cf",
     "title" : "Tom i Jerry: Przygoda w muzeum",
@@ -9381,7 +9381,7 @@
     "ageRating" : "7",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f68516640e2804ac",
     "title" : "Arek.Mama.Panorama",
@@ -9536,7 +9536,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f6b59315cef41ad9",
     "title" : "The Birthday Party: Bunt w niebie",
@@ -9665,7 +9665,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f6be8c253fac0d4b",
     "title" : "Mi Amor",
@@ -9740,7 +9740,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f6c6d93ff843bf64",
     "title" : "Lekcje Filmowe - Śniadanie u Tiffany'ego",
@@ -9762,7 +9762,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f6d144b6cfda0e30",
     "title" : "Król umiera, czyli Ceremonie",
@@ -10410,7 +10410,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f7038e8412b6ca1e",
     "title" : "Szczęki | 10/10 Klasyka filmowa",
@@ -10497,7 +10497,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f722ff8bbdba4bc0",
     "title" : "Moon. Panda i ja",
@@ -10596,7 +10596,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f74088e7464ae940",
     "title" : "WTF Fest | Mały Otik",
@@ -10638,7 +10638,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f7541e2d099c9459",
     "title" : "Zwierzogród 2",
@@ -10668,7 +10668,7 @@
     "ageRating" : "7",
     "shareCardPending" : false,
     "searchTitles" : [ "Zootopia 2" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f75cd10cef41a3ca",
     "title" : "Osiem i pół",
@@ -10824,7 +10824,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f7634e69b6a984b1",
     "title" : "Festiwal Górski – Dzień 1",
@@ -10844,7 +10844,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f7638ebb74d227c8",
     "title" : "Tam, gdzie rośnie muzyka",
@@ -10949,7 +10949,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f772d64d08cf888c",
     "title" : "Wielkie Artystki",
@@ -11043,7 +11043,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f7a781163a7585ac",
     "title" : "Dzieci z Bullerbyn",
@@ -11226,7 +11226,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f7eda090739ef4c7",
     "title" : "Cinema Italia Oggi: Dobrze się kłamie w miłym towarzystwie",
@@ -11411,7 +11411,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Toute une nuit" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f8100efe482bb68a",
     "title" : "Quo Vadis",
@@ -11694,7 +11694,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f8387318f0cd1cd6",
     "title" : "Róża (2026)",
@@ -11714,7 +11714,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f83ea95f16652746",
     "title" : "Uczta Babette",
@@ -11955,7 +11955,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f84c0c26f11b9a98",
     "title" : "Niesamowite przygody skarpetek 2. Skarpetki górą!",
@@ -12280,7 +12280,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ "Mer om oss barn i Bullerbyn", "More About the Children of Noisy Village" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f856a488a6366beb",
     "title" : "Tampopo",
@@ -12329,7 +12329,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f86bd46b01731a9b",
     "title" : "Zimna wojna",
@@ -12388,7 +12388,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Night on Earth" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f8701fb121c2953c~nocnaziemijimjarmusch",
     "title" : "Noc na ziemi // jim jarmusch",
@@ -12417,7 +12417,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Night on Earth" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f872fcd3e49fd154",
     "title" : "Człowiek do wszystkiego",
@@ -12887,7 +12887,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f8f5442054a2318a",
     "title" : "Супергьорл",
@@ -13822,7 +13822,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Dolina Issy", "The Issa Valley" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f91b032aed4968af",
     "title" : "Bez wyjścia",
@@ -13934,7 +13934,7 @@
     "ageRating" : "12",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f946c44f640a6bed",
     "title" : "To nie mój film",
@@ -13961,7 +13961,7 @@
     "ageRating" : "16",
     "shareCardPending" : false,
     "searchTitles" : [ "It's Not My Film" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f9481e51793027d1",
     "title" : "Zarządca Sansho",
@@ -13990,7 +13990,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "山椒大夫", "Sanshô dayû", "Sansho the Bailiff" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f951b80b3917f45f",
     "title" : "Kino gorzkie #3: Propozycja",
@@ -14032,7 +14032,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f95cdae5dd62635a",
     "title" : "Ścieżki życia",
@@ -14530,7 +14530,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f98abd32f6623553",
     "title" : "Zabriskie Point",
@@ -15085,7 +15085,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f9bf30f13b6e122a",
     "title" : "Piłat i inni + spotkanie z prof. Anną Nacher",
@@ -15105,7 +15105,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f9c6656a2d138e59",
     "title" : "Noce Cabirii",
@@ -15158,7 +15158,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f9d5f956d5bfb56a",
     "title" : "National Theatre Live: Audiencja",
@@ -15325,7 +15325,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "f9fbedfd890f1369",
     "title" : "BTS World Tour ‘Arirang’ in Busan: Live Viewing",
@@ -15949,7 +15949,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fa2c355f410a674d",
     "title" : "Dobry wieczór, dobry dzień",
@@ -15968,7 +15968,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fa34107f7122ffb7",
     "title" : "Bohater",
@@ -16168,7 +16168,7 @@
     "ageRating" : "15",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fa4875d881ca01f8",
     "title" : "Mira",
@@ -16290,7 +16290,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fa7f710733582c61",
     "title" : "Basia. Mam swój świat",
@@ -16316,7 +16316,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ "Basia. My Little World" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fa8f5371ad54d048",
     "title" : "Zniknięcie",
@@ -16454,7 +16454,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fa9dacf432e67edf",
     "title" : "To uczucie",
@@ -16483,7 +16483,7 @@
     "ageRating" : "16",
     "shareCardPending" : false,
     "searchTitles" : [ "To uczucle", "Such Feeling" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "faa9001c9900aa15",
     "title" : "Mandarynka",
@@ -16512,7 +16512,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Tangerine" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fabbfaf7396c67e0",
     "title" : "Truposz",
@@ -16636,7 +16636,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ "FolleMente", "Somebody to Love" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "facbe1bbd8b0abb2~follementewtymszalenstwiejestmetoda",
     "title" : "FolleMente. W tym szaleństwie jest metoda",
@@ -16663,7 +16663,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "FolleMente", "Somebody to Love" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fadcd8125df27191",
     "title" : "Danton + prelekcja Alliance française",
@@ -16864,7 +16864,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "faf584c20daed136",
     "title" : "Pati i klątwa Posejdona",
@@ -16885,7 +16885,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "faf9a0834ab4f229",
     "title" : "Ostatni konsjerż",
@@ -16908,7 +16908,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fafc7f90b3301cda",
     "title" : "Kultowe dobranocki",
@@ -17033,7 +17033,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fb0dc6eedff8affa",
     "title" : "Labirynt",
@@ -17072,7 +17072,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fb1254d93c73b6c0",
     "title" : "Nieustające wakacje",
@@ -17101,7 +17101,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Permanent Vacation" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fb1254d93c73b6c0~nieustajacewakacjejimjarmusch",
     "title" : "Nieustające wakacje // jim jarmusch",
@@ -17130,7 +17130,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Permanent Vacation" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fb12a74ace7ca8a6",
     "title" : "Frankenstein",
@@ -17265,7 +17265,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fb1ffa62515e79e9",
     "title" : "Szopy w natarciu",
@@ -17346,7 +17346,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Back to the Future Part III" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fb3fdd5742da1cd6",
     "title" : "Niespodzianki – pasmo filmów krótkometrażówych",
@@ -17499,7 +17499,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fb5eb8abde72e1e5",
     "title" : "Pan Ryba",
@@ -17619,7 +17619,7 @@
     "ageRating" : "12",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fb79c835e316727b",
     "title" : "Żółtodzioby Galaktyki",
@@ -17809,7 +17809,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fba01ff914185c6e",
     "title" : "Sztuka w centrum. Nowości 2026 | Caravaggio w Rzymie: Sztuka i Jubileusz",
@@ -17829,7 +17829,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fbab0ab9b89dbcd8",
     "title" : "Dkf - Klątwa Doliny Węży x Łona",
@@ -17924,7 +17924,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fbbeeb112419d2ad",
     "title" : "DKF Kogucik: Mój karpacki dziadek",
@@ -18074,7 +18074,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fbd8f18feac50516",
     "title" : "Zmierzch bogów",
@@ -18712,7 +18712,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fc0b7b55fec7e308",
     "title" : "Szatańskie tango",
@@ -18842,7 +18842,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fc14146269d68d83",
     "title" : "Bez końca",
@@ -18865,7 +18865,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fc170a48ccd588e1",
     "title" : "500 mil",
@@ -18977,7 +18977,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fc1b1d9798dbca02",
     "title" : "Owady, czy mają wady?",
@@ -19029,7 +19029,7 @@
     "ageRating" : "12",
     "shareCardPending" : false,
     "searchTitles" : [ "The Bibi Files" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fc217ea385912321",
     "title" : "Klasyki SFR vol.7",
@@ -19300,7 +19300,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fc40cfa79579c8cc",
     "title" : "Fleak. Futrzak i ja",
@@ -19741,7 +19741,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ "버닝", "Beoning", "Beo-ning", "Burning" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fca31bcc5c041407",
     "title" : "Bliskie spotkania trzeciego stopnia",
@@ -19857,7 +19857,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Stranger Than Paradise" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fca7fc10f03df93e",
     "title" : "Władcy Wszechświata",
@@ -19980,7 +19980,7 @@
     "ageRating" : "12",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fcaaa66134e367b5~andrerieuniechzyjemaastrichtretransmisjaletniegokoncertuzmaastricht2026",
     "title" : "André Rieu. Niech żyje Maastricht! | Retransmisja letniego koncertu z Maastricht 2026",
@@ -20002,7 +20002,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fcadc1207be25187",
     "title" : "Pokaz sensorycznie przyjazny: Delfinek i ja 2",
@@ -20397,7 +20397,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fccdf807627302db",
     "title" : "Trzy korony marynarza + prelekcja Tomasza Poborcy",
@@ -20424,7 +20424,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Les Trois couronnes du matelot", "Three Crowns of the Sailor" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fcd81bb0c875d855",
     "title" : "Donnie Darko",
@@ -20756,7 +20756,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fd05e972be07d72f",
     "title" : "Piep*zyć Mickiewicza 3",
@@ -20810,7 +20810,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fd115b027316a3e6",
     "title" : "Ruchomy zamek Hauru",
@@ -20956,7 +20956,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fd5383f4077e31ae",
     "title" : "Dziewczyna Piętaszek",
@@ -21005,7 +21005,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fd61cd173882219e",
     "title" : "Mała Amelia",
@@ -21033,7 +21033,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Amélie et la métaphysique des tubes", "Little Amélie or the Character of Rain" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fd67c1a5668eb4d3",
     "title" : "Frida Kahlo. Ikoniczna artystka",
@@ -21227,7 +21227,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Woodwalkers" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fda8cbaed160ad81",
     "title" : "Księga pustyni",
@@ -21252,7 +21252,7 @@
     "ageRating" : "7",
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fdadd32272c16a55",
     "title" : "Kopnięci w czasie",
@@ -21393,7 +21393,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fdc5508d5ab187c2",
     "title" : "21 i 22 Jump Street – podwójny seans",
@@ -21582,7 +21582,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fdf37855b39430b9",
     "title" : "Podręcznik dla superbohaterów",
@@ -21607,7 +21607,7 @@
     "ageRating" : "7",
     "shareCardPending" : false,
     "searchTitles" : [ "Handbok för superhjältar" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fdf6283e7921beba",
     "title" : "Klub Filmowy Urania: Miroirs III. Barka na oceanie",
@@ -21753,7 +21753,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fdff9d757356fd23",
     "title" : "Chłopiec w różowych spodniach",
@@ -21780,7 +21780,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Il ragazzo dai pantaloni rosa", "The Boy with Pink Pants" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe0154e0e042adc6",
     "title" : "Jak Bert to wszystko ogarnie",
@@ -21957,7 +21957,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe22aa92dbfe541c",
     "title" : "Obcy",
@@ -22131,7 +22131,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe35a55641312693",
     "title" : "One to One: John i Yoko",
@@ -22160,7 +22160,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "One to One: John & Yoko" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe4227f57ad9245c",
     "title" : "Persepolis",
@@ -22240,7 +22240,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Le Grand Bleu", "The Big Blue" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe51d8d347e4a35d",
     "title" : "Vermeer. Blisko mistrza",
@@ -22289,7 +22289,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe677e48e4f667de",
     "title" : "Romería",
@@ -22463,7 +22463,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe7422ef9e77b89e",
     "title" : "Filmy z lektorem - I znowu zgrzeszyliśmy, dobry Boże!",
@@ -22485,7 +22485,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe76c34e24041768",
     "title" : "Ojciec chrzestny | 10/10 Klasyka filmowa",
@@ -22573,7 +22573,7 @@
     },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "fe92db41af624e0f",
     "title" : "Nowy Pamiętnik Pauliny P.",
@@ -22726,7 +22726,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "feb7322f7858fe5b",
     "title" : "Nóż w wodzie",
@@ -22806,7 +22806,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "febcf36fd7f4e57d",
     "title" : "Goya. Śladami mistrza",
@@ -23183,7 +23183,7 @@
     "ageRating" : "15",
     "shareCardPending" : false,
     "searchTitles" : [ "Jimpa" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ff018208eb8f056e",
     "title" : "Dziś nie gramy, wybierz inną datę.",
@@ -23393,7 +23393,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ff286d92fcce133a",
     "title" : "To był zwykły przypadek",
@@ -23700,7 +23700,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "L'Apollonide, souvenirs de la maison close", "L'Apollonide (Souvenirs de la maison close)", "House of Pleasures" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ff45f3e5d7dd80ab",
     "title" : "Mortal Kombat II",
@@ -23905,7 +23905,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ff67f7294da586c6",
     "title" : "Bolek i Lolek na wakacjach - zestaw III",
@@ -24238,7 +24238,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ff9682dec3985ae2",
     "title" : "Lalka",
@@ -24291,7 +24291,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Niewinni czarodzieje", "Innocent Sorcerers" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ffa1d03f286356c0",
     "title" : "Tedi i magiczna lampa",
@@ -24311,7 +24311,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ffa73013f889da24",
     "title" : "Niebo nie może czekać",
@@ -24332,7 +24332,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ffa91f554655f7ef",
     "title" : "\"Popiełuszko - wolność jest w nas\" - Projekcja filmu",
@@ -24353,7 +24353,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ffaacb80592135af",
     "title" : "Lotto i Berenson – splecione losy. Śladami renesansowego mistrza",
@@ -24504,7 +24504,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ffb7d2bc7feb7cb1",
     "title" : "Powrót do przyszłości II",
@@ -24533,7 +24533,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ "Back to the Future Part II" ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ffb945d9a915cdb9",
     "title" : "Dom Dobry",
@@ -24553,7 +24553,7 @@
     "synopsisByCity" : { },
     "shareCardPending" : false,
     "searchTitles" : [ ],
-    "provisional" : true
+    "provisional" : false
   }, {
     "_id" : "ffc5c129d088b673",
     "title" : "Wypadek fortepianowy",

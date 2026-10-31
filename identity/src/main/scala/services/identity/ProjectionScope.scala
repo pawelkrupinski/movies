@@ -10,8 +10,11 @@ enum ClusterId {
 }
 
 /** A cluster: its listings published now, the TMDB film the resolver matched them to, and — for none — the fallback source's
- *  film it took instead ([[ResolverDecision.fallback]]). `provisional`: one of its decisions is Pending ([[TakeOutcome]]):
- *  its take is the decision on the inputs as they stand while an answer it reads is not filed, served marked so (step 6). */
+ *  film it took instead ([[ResolverDecision.fallback]]). `provisional`: one of its decisions awaits an answer
+ *  ([[ResolverDecision.awaits]]: a search, a venue page, a pool record): its take is the model's decision on the inputs as
+ *  they stand, served marked so (step 6). The model's awaits alone -- a pure function of the inputs, read off decisions the
+ *  projection holds anyway -- not the agreement stage's own waits, which depend on what an apply read and cost a pass
+ *  over every decision each tick. */
 final case class Cluster(members: Set[ListingKey], film: Option[Int], fallback: Option[ResolverDecision.Fallback] = None,
                          provisional: Boolean = false)
 

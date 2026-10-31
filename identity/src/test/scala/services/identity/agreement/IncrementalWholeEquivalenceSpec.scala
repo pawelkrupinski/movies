@@ -488,14 +488,7 @@ object IncrementalWholeEquivalenceSpec {
         val now = applied()
         now.decisions.foreach(d => if (servedOf(d) != "none" && stage.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Pending])
           d.members.foreach(_ => provisional()))
-        // what the projection reads (AgreementStage.typed): each decision Pending exactly where its served outcome is,
-        // and the same objects when typed again
-        val typed  = stage.typed(now)
-        val mistyped = now.decisions.zip(typed.decisions).collectFirst {
-          case (d, t) if stage.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Pending] != t.awaits.nonEmpty || t.film != d.film =>
-            s"seed $seed, step $step ($label): ${d.members.head.rawTitle} typed ${t.awaits} for ${stage.outcomeOf(d)}" }
-          .orElse(Option.when(!stage.typed(now).decisions.corresponds(typed.decisions)(_ eq _))(s"seed $seed, step $step ($label): typed anew"))
-        mistyped.orElse(difference(now, whole(settled = false)).map(d => s"seed $seed, step $step ($label): $d"))
+        difference(now, whole(settled = false)).map(d => s"seed $seed, step $step ($label): $d")
       }.nextOption()
 
     /** At the end of a history under the stage's budget, settled, the incremental take equals the whole resolve's, settled. */
