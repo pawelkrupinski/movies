@@ -216,8 +216,10 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     }
   }
 
-  // AGREE OR NONE (the owner, 2026-10-29): while a film's record is pending, a take only where the pool with it and the
-  // pool without it agree, else none until it is filed. Each case is a convergence flip, replayed as its seed filed it.
+  // STEP 6 (the owner, 2026-10-31; it replaces 2026-10-29's agree-or-none): while a film's record is pending, the take is
+  // the decision on the inputs as they stand -- the film weighed on its hits, its record's facts unknown -- served
+  // provisionally (Pending, the record named), never a previous take nor none in its place. A provisional take is no take
+  // to the flip check. Each case was a convergence flip, replayed as its seed filed it.
 
   "a search filed before the records of the films it names" should "move no take back and forth" in {
     // Convergence #2527 (run 3757), takes-drift-1 (united-kingdom): seed 1's gate held flicks.co.uk's "Rose (2023)" search
@@ -229,20 +231,22 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     replay.lookups.held = Set(s"q:${search.sortKey}", "f:1069112")
     replay.scraped("boot", _ => true)
     replay.filed("the search filed", Set(search), Set.empty)
-    replay.takes("Rose (2023)").values.toSet should not contain "tmdb:1069112"
+    // the parade's hit decides as it stands, provisionally: Pending on its record
+    replay.takes("Rose (2023)").values.toSet shouldBe Set("tmdb:1069112")
+    IdentityDrift.pendingOf(replay.model.decisions).map(_.rawTitle) should contain ("Rose (2023)")
     replay.filed("its record filed", Set.empty, Set(1069112))
     replay.flips.flips.map(_.line) shouldBe empty
     replay.takes("Rose (2023)").values.toSet shouldBe Set("tmdb:901251")
   }
 
-  "a bare title whose rival's record is pending" should "take no film either reading alone would guess" in {
+  "a bare title whose rival's record is pending" should "take what its inputs as they stand take, the rival weighed on its hits" in {
     // Drift 3810, takes-drift-1 (germany), with the rival's record left out of the pool: Metropol-Kino-Center's bare "Madoka
     // Magica - Der Film: Rebellion" took the 2013 film (212162) at boot, the 1962 "Rebellion" (42997) once its record was
     // filed, and 212162 again once Filmhaus (Langerringen)'s listing joined it.
     val replay = new SliceReplay("test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc")
     replay.lookups.held = Set("f:42997")
     replay.scraped("boot", _ == "Metropol-Kino-Center")
-    // both readings agree since the pooled tie goes to the title covering more of the listing's (the next case)
+    // the pooled tie goes to the title covering more of the listing's (the next case), the rival's record pending or not
     replay.takes("Madoka Magica - Der Film: Rebellion") shouldBe Map("Metropol-Kino-Center" -> "tmdb:212162")
     replay.filed("the rival's record filed", Set.empty, Set(42997))
     replay.scraped("Filmhaus's listing", _ => true)
@@ -250,15 +254,16 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     replay.takes("Madoka Magica - Der Film: Rebellion").values.toSet shouldBe Set("tmdb:212162")
   }
 
-  "a namesake whose record is pending" should "not stand in for the film the model takes once it is filed" in {
+  "a namesake whose record is pending" should "be weighed on its hits, provisionally, and the take decided once it is filed" in {
     // Drift 3810, takes-drift-2 (united-kingdom), with the namesake's record left out of the pool: Chichester's "The Ties
     // That Bind Us" took the 2025 film (1096642) at boot, the model's take 1460982 once its record was filed at step 8, and
-    // 1096642 again when the agreement corrected it at settle. The model's take, every answer filed, is 1460982. Main's
-    // reading (the pending film weighed on its hits) passes this too: it holds the agree-or-none rule's other half.
+    // 1096642 again when the agreement corrected it at settle. The model's take, every answer filed, is 1460982; weighed on
+    // its hits while its record is pending, it is that take already, provisionally.
     val replay = new SliceReplay("test/resources/fixtures/drift-slices/uk/chichester-ties-1231860f")
     replay.lookups.held = Set("f:1460982")
     replay.scraped("boot", _ => true)
     replay.takes("The Ties That Bind Us").values.toSet should not contain "tmdb:1096642"
+    IdentityDrift.pendingOf(replay.model.decisions).map(_.rawTitle) should contain ("The Ties That Bind Us")
     replay.filed("its record filed", Set.empty, Set(1460982))
     replay.flips.flips.map(_.line) shouldBe empty
     replay.takes("The Ties That Bind Us").values.toSet shouldBe Set("tmdb:1460982")
@@ -281,17 +286,16 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     replay.takes(title).values.toSet shouldBe Set("tmdb:212162")
   }
 
-  "a cluster whose fallback's record is pending" should "take no film, saying what it waits on, and its fallback once filed" in {
+  "a cluster whose fallback's record is pending" should "be Pending, saying what it waits on, and take its fallback once filed" in {
     // Drift 3991 (the precise none, a229501a7): US "Parkway Drive: Home" x123 went none -> tt47657111 -> none -> tt47657111.
     // Every TMDB candidate is denied it; it falls back to IMDb's tt47657111, whose record (fallback id -181874839) the
-    // seeds' gate held. Held, the cluster takes no film -- agree-or-none, the fallback scope alike -- but its decision told
-    // nothing pending (Vetoed, no lookup unanswerable), so the flip check read a take given up. It now names the records
-    // its pools await.
+    // seeds' gate held. Held, its decision told nothing pending (Vetoed, no lookup unanswerable), so the flip check read a
+    // take given up. It now names the records its pools await; what it serves meanwhile is the decision on the fallback
+    // as its hits carry it (step 6).
     val replay = new SliceReplay("test/resources/fixtures/drift-slices/us/parkway-drive-home-2abd6734")
     val title  = "Parkway Drive: Home"
     replay.lookups.held = Set("f:-181874839")
     replay.scraped("boot", _ => true)
-    replay.takes(title).values.toSet shouldBe Set("none")
     IdentityDrift.pendingOf(replay.model.decisions).map(_.rawTitle) should contain (title)
     replay.filed("the fallback's record filed", Set.empty, Set(-181874839))
     replay.flips.flips.map(_.line) shouldBe empty

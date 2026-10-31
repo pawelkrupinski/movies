@@ -9,40 +9,24 @@ import scala.collection.mutable
 /** One family's scoring: every member node's candidates — the family's pool — scored on the node's
  *  own evidence ([[of]]), or on a cluster's evidence pooled into one listing ([[pooled]]). A `fallback` scope's pool is
  *  instead the members' fallback-source films ([[CandidateGeneration.fallbackOf]]), scored by the very same measures and
- *  denials: what a cluster no TMDB film was taken for may fall back to. An `awaitedOut` scope leaves out the films whose
- *  records are not answered yet: the reading [[of]] and [[pooled]] hold their takes against while a record is pending. */
+ *  denials: what a cluster no TMDB film was taken for may fall back to.
+ *
+ *  A film whose record is not answered yet is in the pool as its hits carry it, its record's facts unknown -- neither
+ *  for it nor against it (the owner, 2026-10-31, identity-flips-structural step 6: decide from the inputs as they stand,
+ *  unanswered questions treated as unknown). The decision is the same as on any other input, and Pending on the record
+ *  ([[ResolverDecision.awaits]]): provisional until it is filed, never held to a previous take nor to none. It replaces
+ *  AGREE OR NONE (2026-10-29), which took no film where the pool with and without the pending films disagreed: UK
+ *  flicks.co.uk "Rose (2023)" now serves "Rose Parade 2023", its search's one hit, provisionally until the parade's record
+ *  denies it, and the pending tally (IdentityDrift) counts how often such a take differs from the final one. */
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
-                                          counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false,
-                                          awaitedOut: Boolean = false) {
+                                          counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyAProgrammeSlot, namesOnlyATag, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, candidateOf, fallbackOf, sharedOf}
 
-  val pool: Seq[Candidate] = {
-    val all =
-      if (fallback) members.flatMap(member => fallbackOf(member.id)).distinct.sorted.flatMap(candidateOf)
-      else members.flatMap(member => scoring.generation.reached(member)).distinct.sorted.map(candidateById)
-    if (awaitedOut) all.filterNot(_.awaitingRecord) else all
-  }
+  val pool: Seq[Candidate] =
+    if (fallback) members.flatMap(member => fallbackOf(member.id)).distinct.sorted.flatMap(candidateOf)
+    else members.flatMap(member => scoring.generation.reached(member)).distinct.sorted.map(candidateById)
 
-  // AGREE OR NONE (the owner, 2026-10-29): a film whose record is not answered yet is weighed on its hits alone, which no
-  // fact of its record can deny meanwhile. While one is pending, a node or cluster takes a film only where both readings
-  // take it -- the pool with the pending films, and the pool without them -- else none until the record is filed. Either
-  // reading alone guesses the answer: with it, UK flicks.co.uk's "Rose (2023)" {Niels Arden Oplev} took "Rose Parade 2023",
-  // its search's one hit, until the parade's record (a 90-minute US broadcast) denied it (convergence #2527's
-  // takes-drift-1 (united-kingdom) flip); without it, DE Metropol's bare "Madoka Magica - Der Film: Rebellion" took the
-  // 2013 film until the 1962 "Rebellion"'s record was filed, and UK Chichester's "The Ties That Bind Us" its 2025 film
-  // until its 2008 namesake's was (drift 3810). A function of what is filed, so a whole resolve and the incremental model
-  // decide alike at every step; the record's filing re-resolves the family (`IncrementalResolver`'s film readers).
-  private lazy val pending: Boolean = !awaitedOut && pool.exists(_.awaitingRecord)
-  private lazy val withoutPending = new FamilyScope(members, scoring, acceptance, () => (), () => (), fallback, awaitedOut = true)
-  private def agreeOrNone(ranked: Seq[Scored], withTake: Option[Int], withoutTake: Option[Int]): Seq[Scored] =
-    if (withTake == withoutTake) ranked
-    else {
-      val awaited = pool.filter(_.awaitingRecord).map(_.tmdbId).mkString(", ")
-      val why     = s"awaiting the record of $awaited: with it pending ${withTake.fold("none")(_.toString)} is taken, without it " +
-        withoutTake.fold("none")(_.toString)
-      ranked.map(scored => if (scored.untaken.isDefined) scored else scored.copy(untaken = Some(why)))
-    }
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
    *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
    *  record titled only a listing's qualifier does not name it. The family's own pool, so a
@@ -313,12 +297,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def sourceOf(node: EvidenceNode): String = SourceReliability.claimOf(node.listings.head)
 
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
-  def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id, {
-    val ranked = scoreOf(node)
-    if (!pending) ranked
-    else agreeOrNone(ranked, acceptance.aloneNamed(ranked).map(_._1._1.candidate.tmdbId),
-      withoutPending.takenAlone(node).map(_._1._1.candidate.tmdbId))
-  })
+  def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id, scoreOf(node))
   private def scoreOf(node: EvidenceNode): Seq[Scored] = {
     val reached = reach(node)
     val soles   = soleResultsOf(evidenceOf(node).measured, reached)
@@ -448,12 +427,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the
    *  median runtime, the modal original title, and every candidate any of them named. The
    *  directors credited beside that year are only those of the members publishing it. */
-  def pooled(cluster: Seq[EvidenceNode]): Seq[Scored] = pooledMemo.getOrElseUpdate(cluster.map(_.id), {
-    val ranked = scorePooled(cluster)
-    if (!pending) ranked
-    else agreeOrNone(ranked, acceptance.pooled(ranked).map(_._1.candidate.tmdbId),
-      acceptance.pooled(withoutPending.pooled(cluster)).map(_._1.candidate.tmdbId))
-  })
+  def pooled(cluster: Seq[EvidenceNode]): Seq[Scored] = pooledMemo.getOrElseUpdate(cluster.map(_.id), scorePooled(cluster))
   // Voting, the vote on a cluster's rest and the decisions each pool the same clusters again.
   private val pooledMemo = mutable.HashMap.empty[Seq[String], Seq[Scored]]
 

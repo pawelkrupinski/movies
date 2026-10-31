@@ -314,8 +314,8 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     ticks.completedRuns shouldBe Seq(LookupFill.Tick -> 30.minutes)        // and once it ran to its end
   }
 
-  // AGREE OR NONE (FamilyScope) takes no film while a pool's record is pending: a record whose read failed for good would
-  // hold its listings at no take for good. A run of failed reads while TMDB answers the rest files it absent, as a 404.
+  // A take whose pool's record is pending is provisional (Pending) until it is filed: a record whose read failed for good
+  // would hold its listings provisional for good. A run of failed reads while TMDB answers the rest files it absent, as a 404.
   it should "file a film's record absent once its read has failed as many rounds in a row as the policy allows" in {
     val clock   = new tools.MutableClock(TestWiring.FixedInstant)
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)

@@ -47,6 +47,15 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
     every(Budget.Unlimited)(_.stepwise()) shouldBe empty
   }
 
+  // STEP 6 (the owner, 2026-10-31): a Pending take is the decision on the inputs as they stand -- unanswered questions
+  // unknown -- served provisionally, never a previous take substituted. Equal to a whole resolve of the same inputs at
+  // every step, film and all, and not vacuously: histories serve films while Pending.
+  it should "serve a Pending take as a whole resolve of the inputs as they stand decides it, film and all" in {
+    val provisional = new java.util.concurrent.atomic.AtomicInteger
+    every(Budget.Unlimited)(_.stepwise(provisional = () => { provisional.incrementAndGet(); () })) shouldBe empty
+    withClue("listing-steps served a film while Pending: ") { provisional.get should be > 0 }
+  }
+
   it should "equal it once settled under production's correction budget, restarted with its keys kept, lost or renumbered" in {
     every(Budget.Production)(_.settledEnd()) shouldBe empty
   }
@@ -86,6 +95,10 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
   // resolve makes too, which the flip property above cannot see (UK "Rose (2023)")
   it should "refine each take as answers are only filed: no film yet, then one decided value" in {
     every(Budget.Unlimited)(_.monotoneUnderFiling()) shouldBe empty
+    // the Pending-through-decide path is in the sequences it checks: a film served provisionally, then decided
+    val provisional = cases.exists { case (_, make) => Seeds.take(8).exists(seed =>
+      new History(make(seed), seed, Budget.Unlimited).filingOutcomes().valuesIterator.exists(_.exists(o => isPending(o) && o != "pending:none"))) }
+    withClue("a film served while Pending, in some history: ") { provisional shouldBe true }
   }
 
   // P2, P3 (identity-flips-structural-2026-10-30, property 2): the same filings in another order come to the same
@@ -103,14 +116,20 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
   // filed under other TMDB ids comes to the image of the same takes
   it should "take the same films whatever TMDB ids they are filed under" in {
     val reversed: Int => Int = i => 1011 - i                                // 1001..1010 the other way round
-    def image(outcome: String) = outcome.stripPrefix("tmdb:").toIntOption.filter(id => id > 1000 && id <= 1010)
-      .fold(outcome)(id => s"tmdb:${2011 - id}")
+    def image(outcome: String): String =
+      if (isPending(outcome)) s"pending:${image(outcome.stripPrefix("pending:"))}"
+      else outcome.stripPrefix("tmdb:").toIntOption.filter(id => id > 1000 && id <= 1010).fold(outcome)(id => s"tmdb:${2011 - id}")
+    // every round's outcome, not the end's alone: decided at the same rounds, the same films then, and Pending at the same
+    // rounds -- the Pending-through-decide path (step 6) included. What a Pending take serves meanwhile is not compared: a
+    // grouping tie the order of ids breaks shows there first (seed 7's Kino Apollo "Faust 2 (2026)", two listings of one
+    // title, one joining the 2025 film's cluster by id order) -- the tie audit's (structural plan step 7), not this one's
+    def state(outcome: String) = if (isPending(outcome)) "pending" else image(outcome)
     IndependentCases.flatMap(Seeds) { seed =>
-      val plain = new History(Case.generated(seed), seed, Budget.Unlimited).filingOutcomes().view.mapValues(_.last).toMap
+      val plain = new History(Case.generated(seed), seed, Budget.Unlimited).filingOutcomes()
       val back  = (question: String) => "\\b10(0[1-9]|10)\\b".r.replaceAllIn(question, m => (2011 - m.matched.toInt).toString)
-      val other = new History(Case.relabelled(seed, reversed), seed, Budget.Unlimited, canonical = back).filingOutcomes().view.mapValues(_.last).toMap
-      plain.collectFirst { case (key, end) if other.get(key).exists(_ != image(end)) =>
-        s"generated: seed $seed, ${key.venue} | ${key.rawTitle}: $end, relabelled ${other(key)}" }
+      val other = new History(Case.relabelled(seed, reversed), seed, Budget.Unlimited, canonical = back).filingOutcomes()
+      plain.collectFirst { case (key, seq) if other.get(key).exists(o => o.map(o => if (isPending(o)) "pending" else o) != seq.map(state)) =>
+        s"generated: seed $seed, ${key.venue} | ${key.rawTitle}: ${seq.mkString(" -> ")}, relabelled ${other(key).mkString(" -> ")}" }
     } shouldBe empty
   }
 
@@ -125,7 +144,7 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
       val (bounded, unbounded) = (new History(make(seed), seed, budget), new History(make(seed), seed, Budget.Unlimited))
       (0 to 30).iterator.map { step =>
         val ((event, b), (_, u)) = (bounded.outcomesAfter(step == 30), unbounded.outcomesAfter(step == 30))
-        b.collectFirst { case (key, film) if film != "pending" && u.get(key).exists(_ != film) =>
+        b.collectFirst { case (key, film) if !isPending(film) && u.get(key).exists(_ != film) =>
           s"$label ($budget): seed $seed, step $step ($event), ${key.venue} | ${key.rawTitle}: $film under the budget, ${u(key)} unbounded" }
       }.collectFirst { case Some(found) => found }
     } shouldBe empty
@@ -138,6 +157,16 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
 }
 
 object IncrementalWholeEquivalenceSpec {
+
+  /** What `d` serves: its TMDB film, its fallback's `source:id`, or none -- whatever its outcome. */
+  def servedOf(d: ResolverDecision): String = d.film.map(id => s"tmdb:$id").orElse(d.fallback.map(f => s"${f.source}:${f.id}")).getOrElse("none")
+  /** An outcome as the properties compare it: a decided film, "none", or "pending:<what it serves meanwhile>". */
+  def outcomeString(outcome: services.identity.TakeOutcome, d: ResolverDecision): String = outcome match {
+    case services.identity.TakeOutcome.Pending(_)  => s"pending:${servedOf(d)}"
+    case services.identity.TakeOutcome.Taken(film) => film
+    case services.identity.TakeOutcome.NoFilm(_)   => "none"
+  }
+  def isPending(outcome: String): Boolean = outcome.startsWith("pending")
   private val normalizer  = SingleCountryNormalizer.titleNormalizer
   private val calibration = IdentityCalibration.fromResource("services/identity/test-calibration.json").get
 
@@ -416,7 +445,7 @@ object IncrementalWholeEquivalenceSpec {
      *  decided value then Pending: a decision made before an answer it reads was filed. */
     def monotoneUnderFiling(): Option[String] = {
       val outcomes = filingOutcomes()
-      def refines(seq: Vector[String]): Boolean = seq.dropWhile(_ == "pending").distinct.sizeIs <= 1 && !seq.dropWhile(_ == "pending").contains("pending")
+      def refines(seq: Vector[String]): Boolean = { val decided = seq.dropWhile(isPending); decided.distinct.sizeIs <= 1 && !decided.exists(isPending) }
       outcomes.collectFirst { case (key, seq) if !refines(seq) => s"seed $seed, ${key.venue} | ${key.rawTitle}: ${seq.mkString(" -> ")}" }
     }
 
@@ -431,11 +460,7 @@ object IncrementalWholeEquivalenceSpec {
           decorations = TitleDecorations.None)
         val fresh = newStage(new InMemoryAgreementVerdicts, new InMemoryAgreementKeys, Int.MaxValue)
         fresh.apply(resolution, listingOf, world.round).decisions.foreach { d =>
-          val outcome = fresh.outcomeOf(d) match {
-            case services.identity.TakeOutcome.Pending(_) => "pending"
-            case services.identity.TakeOutcome.Taken(film) => film
-            case services.identity.TakeOutcome.NoFilm(_)   => "none"
-          }
+          val outcome = outcomeString(fresh.outcomeOf(d), d)
           d.members.foreach(key => outcomes(key) = outcomes.getOrElse(key, Vector.empty) :+ outcome)
         }
       }
@@ -445,24 +470,25 @@ object IncrementalWholeEquivalenceSpec {
     }
 
     /** One event of the history, the stage applied after it, and each listing's outcome then: a film, "none", or
-     *  "pending" ([[AgreementStage.outcomeOf]]). */
+     *  "pending:<the film served provisionally>" ([[AgreementStage.outcomeOf]], [[outcomeString]]). */
     def outcomesAfter(last: Boolean): (String, Map[ListingKey, String]) = {
       val label = if (last) finish() else event()
       val r     = applied()
       label -> r.decisions.iterator.flatMap { d =>
-        val outcome = stage.outcomeOf(d) match {
-          case services.identity.TakeOutcome.Pending(_)  => "pending"
-          case services.identity.TakeOutcome.Taken(film) => film
-          case services.identity.TakeOutcome.NoFilm(_)   => "none"
-        }
+        val outcome = outcomeString(stage.outcomeOf(d), d)
         d.members.iterator.map(_ -> outcome)
       }.toMap
     }
 
-    /** After every event, the incremental take of the inputs equals the whole resolve's of the same inputs. */
-    def stepwise(steps: Int = 30): Option[String] =
+    /** After every event, the incremental take of the inputs equals the whole resolve's of the same inputs -- a Pending
+     *  one too, film and all: the decision on the inputs as they stand, never a previous take (step 6). `provisional` is
+     *  told of each listing served a film while Pending. */
+    def stepwise(steps: Int = 30, provisional: () => Unit = () => ()): Option[String] =
       (Iterator.range(0, steps).map(_ => event()) ++ Iterator(()).map(_ => finish())).zipWithIndex.flatMap { case (label, step) =>
-        difference(applied(), whole(settled = false)).map(d => s"seed $seed, step $step ($label): $d")
+        val now = applied()
+        now.decisions.foreach(d => if (servedOf(d) != "none" && stage.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Pending])
+          d.members.foreach(_ => provisional()))
+        difference(now, whole(settled = false)).map(d => s"seed $seed, step $step ($label): $d")
       }.nextOption()
 
     /** At the end of a history under the stage's budget, settled, the incremental take equals the whole resolve's, settled. */
