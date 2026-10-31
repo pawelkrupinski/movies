@@ -23,12 +23,9 @@ export const HOST = "127.0.0.1";
  * where exiting on an edit would just stop the server. */
 export const AUTODEPLOY = process.env.KINOWO_AUTODEPLOY === "1";
 
-/**
- * The remote the mobile release lane and this page's tag reads use: Forgejo's, where main and the
- * `mobile-*` tags live since GitHub was suspended (2026-10-19) -- `origin` still names GitHub, and
- * every fetch from it failed. scripts/tag-mobile-release.sh pushes its tags to the same name.
- */
-export const RELEASE_REMOTE = "forgejo";
+/** The remote the mobile release lane and this page's tag reads use; scripts/tag-mobile-release.sh pushes its tags to
+ * the same name. */
+export const RELEASE_REMOTE = "origin";
 
 /** Outside the repository on purpose: a state file inside it would be an uncommitted change,
  * which this page reports on its own header and which makes every `nix eval` copy a dirty tree. */

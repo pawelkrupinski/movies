@@ -100,8 +100,6 @@ describe("mobile tag fetch", () => {
     cloneDir = mkdtempSync(join(tmpdir(), "mobile-clone-"));
     clone = join(cloneDir, "clone");
     origin.cloneTo(clone);
-    // The release remote is Forgejo's, by name: fetching `origin` (GitHub, suspended) failed for weeks.
-    new TempRepo(clone).git("remote", "rename", "origin", "forgejo");
   });
   afterEach(() => {
     origin.cleanup();
@@ -117,7 +115,7 @@ describe("mobile tag fetch", () => {
   });
 
   it("is not fatal when origin cannot be reached", async () => {
-    new TempRepo(clone).git("remote", "set-url", "forgejo", "/nonexistent");
+    new TempRepo(clone).git("remote", "set-url", "origin", "/nonexistent");
     expect(await fetchMobileTags(clone)).toBe(false);
     expect(await mobileTagSha(clone, "android", "2.0.9")).toBe(first);
   });

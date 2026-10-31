@@ -25,7 +25,7 @@ describe("kinowo's fleet configuration", () => {
     expect(config.prometheus).toEqual({ via: "ssh", host: "monitoring-1" });
     expect(config.confirmRoles).toEqual([{ role: "mongo", warning: MONGO_WARNING }]);
     expect(config.reboot).toEqual({ tool: `${INFRA_DIR}/bin/rolling-reboot` });
-    expect(config.forges.map((forge) => [forge.remote, "stagingRuns" in forge])).toEqual([["forgejo", false]]);
+    expect(config.forges.map((forge) => [forge.remote, "stagingRuns" in forge])).toEqual([["origin", false]]);
     expect(STAGED_PATHS).toEqual([".", "../.github/workflows/nix-stage-closures.yml"]);
     expect(kinowoFleet({ KINOWO_FLEET_SSH_USER: "ops" }).ssh.user).toBe("ops");
   });

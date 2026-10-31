@@ -41,13 +41,13 @@ function executor(events: string[], ran: Ran[], gradleExit = 0): Executor {
     ran.push({ argv, options });
     const line = argv.join(" ");
     events.push(`run ${line}`);
-    if (line === "git rev-parse forgejo/main") return ok(MAIN_SHA);
+    if (line === "git rev-parse origin/main") return ok(MAIN_SHA);
     if (line === `git show ${MAIN_SHA}:mobile-version.txt`) return ok("2.0.9\n");
     if (line.startsWith("git ls-remote --tags")) return ok(`${TAG_SHA}\trefs/tags/mobile-ios-2.0.9\n${TAG_SHA}\trefs/tags/mobile-android-2.0.9\n`);
     if (line.startsWith("git diff --quiet")) return { ...ok(), code: 1 }; // the app changed since 2.0.9
     if (line.startsWith("git worktree add")) mkdirSync(argv[5] as string, { recursive: true });
     if (line === "git rev-parse HEAD") return ok(BUMP_SHA);
-    if (line === "git ls-remote forgejo refs/heads/main") return ok(`${BUMP_SHA}\trefs/heads/main`);
+    if (line === "git ls-remote origin refs/heads/main") return ok(`${BUMP_SHA}\trefs/heads/main`);
     if (argv[0]?.endsWith("ios-release.sh")) {
       const logDir = join(options.cwd as string, "ios", "build", "release");
       mkdirSync(logDir, { recursive: true });
@@ -130,7 +130,7 @@ describe("release", () => {
     await release(d, options);
 
     const push = ran.find((r) => r.argv[1] === "push");
-    expect(push?.argv).toEqual(["git", "push", "--quiet", "forgejo", "HEAD:refs/heads/main"]);
+    expect(push?.argv).toEqual(["git", "push", "--quiet", "origin", "HEAD:refs/heads/main"]);
     expect(push?.options.env).toEqual({ PREPUSH_SKIP: "ios" });
 
     const gradle = ran.find((r) => r.argv[0] === "./gradlew");
