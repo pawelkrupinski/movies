@@ -11,8 +11,8 @@ Forgejo since. Every laptop tool that finds a run, an artifact or a release asse
                                    for agentctl and every laptop tool); `forge-gh --configured` prints what a switch
                                    names, or an empty line
   inside a CI job ($GITHUB_ACTIONS) -> the job's own gh (on Forgejo that is the job image's shim): exec'd as is
-  otherwise                     -> Forgejo when this checkout has a Forgejo remote (ssh://forgejo-git/..., a forgejo.*
-                                   host, localhost:2222 -- the pre-push hook's is_forgejo_url), else GitHub
+  otherwise                     -> GitHub. (Until 2026-10-31 a checkout with a Forgejo remote read Forgejo here;
+                                   Forgejo was switched off then, so only a switch naming forgejo still reads it.)
   GitHub: `gh "$@"`, exec'd, so a stub `gh` on the PATH answers a spec (shell-spec.sh pins KINOWO_FORGE=github).
 
 THE FORGEJO SUBSET -- what the laptop tools ask, translated to Forgejo 15's API at $KINOWO_FORGEJO_URL (default the
@@ -121,15 +121,9 @@ def forge(env=os.environ, remotes=None) -> str:
     chosen = configured_forge(env)
     if chosen:
         return chosen
-    if env.get("GITHUB_ACTIONS") == "true":
-        return "github"
-    if remotes is None:
-        try:
-            done = subprocess.run(["git", "-C", REPO_ROOT, "remote", "-v"], capture_output=True, text=True, timeout=10)
-            remotes = [line.split()[1] for line in done.stdout.splitlines() if len(line.split()) > 1]
-        except (OSError, subprocess.TimeoutExpired):
-            remotes = []
-    return "forgejo" if any(is_forgejo_url(u) for u in remotes) else "github"
+    # No switch: GitHub, whatever remotes the checkout has -- Forgejo was switched off on 2026-10-31, and a leftover
+    # `forgejo` remote must not send the laptop tools to a dead API. `remotes` is kept for callers' signatures.
+    return "github"
 
 
 # ── Forgejo's API ──────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Cut the kinowo cluster's Flux back from the self-hosted Forgejo to github.com -- the reverse of
-# infra/bin/flux-cutover-forgejo (github-return plan, Phase 3, cut-over step C7).
+# Cut the kinowo cluster's Flux back from the self-hosted Forgejo to github.com (github-return plan,
+# Phase 3, cut-over step C7; done 2026-10-31). Re-running it re-mints the GitHub deploy keys.
 #
 # movies-gitops' branch `flux-github` points the GitRepositories `movies` (flux/gotk-sync.yaml,
 # applied by hand) and `movies-write` (image-automation/automation.yaml, reconciled) at
@@ -27,8 +27,8 @@
 # cluster) and prints what steps 1-6 would do, including the deploy keys it would remove. --apply
 # does it. Re-running --apply is harmless: fresh keys replace both deploy keys and the Secrets.
 #
-# ROLLBACK: infra/bin/flux-cutover-forgejo (mints Forgejo keys again; Forgejo's own deploy keys are
-# left registered here).
+# NO ROLLBACK TO FORGEJO: Forgejo was switched off on 2026-10-31 and infra/bin/flux-cutover-forgejo deleted
+# (git log -- infra/bin/flux-cutover-forgejo, should it ever be wanted).
 #
 # Needs: gh logged in as the owner (repo admin on movies-gitops), ~/projects/movies-gitops with remotes
 # `forgejo` and `origin`, ssh to monitoring-1 and k3s-worker-1 (--apply only), jq, ssh-keygen.
@@ -177,7 +177,7 @@ if [ "$apply" = 1 ]; then
   now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   kube "kubectl -n flux-system annotate --overwrite gitrepository/movies gitrepository/movies-write reconcile.fluxcd.io/requestedAt=$now" | sed 's/^/  /'
   kube "kubectl -n flux-system wait gitrepository/movies gitrepository/movies-write --for=condition=Ready --timeout=120s" | sed 's/^/  /' ||
-    echo "  sources not Ready within 120s -- see the status below; rollback: infra/bin/flux-cutover-forgejo"
+    echo "  sources not Ready within 120s -- see the status below; re-run this script once github.com answers"
   kube "kubectl -n flux-system annotate --overwrite kustomization --all reconcile.fluxcd.io/requestedAt=$now" >/dev/null
   kube "kubectl -n flux-system annotate --overwrite imageupdateautomation/movies reconcile.fluxcd.io/requestedAt=$now" >/dev/null
   echo

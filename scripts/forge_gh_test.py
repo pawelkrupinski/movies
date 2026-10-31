@@ -177,11 +177,12 @@ class ForgeGhTest(unittest.TestCase):
         return subprocess.run([TOOL, *argv], capture_output=True, text=True, env=env or self.env, timeout=60)
 
     # ── which forge ──
-    def test_a_forgejo_remote_reads_forgejo_and_github_alone_reads_github(self):
+    def test_without_a_switch_it_is_github_even_with_a_forgejo_remote(self):
+        # Forgejo was switched off on 2026-10-31: a leftover remote no longer picks it.
         env = {}
-        self.assertEqual("forgejo", forge_gh.forge(env, ["https://github.com/p/movies.git",
-                                                         "ssh://forgejo-git/p/movies.git"]))
-        self.assertEqual("forgejo", forge_gh.forge(env, ["http://forgejo.internal:3000/p/movies.git"]))
+        self.assertEqual("github", forge_gh.forge(env, ["https://github.com/p/movies.git",
+                                                        "ssh://forgejo-git/p/movies.git"]))
+        self.assertEqual("github", forge_gh.forge(env, ["http://forgejo.internal:3000/p/movies.git"]))
         self.assertEqual("github", forge_gh.forge(env, ["https://github.com/p/movies.git", "git@github.com:p/m.git"]))
 
     def test_kinowo_forge_overrides_and_a_ci_job_runs_its_own_gh(self):
