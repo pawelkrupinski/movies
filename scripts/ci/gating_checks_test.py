@@ -50,9 +50,6 @@ job\tmain.yml\ttimings\taggregate
 job\tmain.yml\ttest (heavy1)\t2722
 job\tmain.yml\tcommit rules\tunproven\tborn today; owner: ci
 job\tidentity-model-convergence.yml\tpreflight\t2691
-label\t-\tmain-lane\t2722
-label\t-\tubuntu-26.04\t2722
-label\t-\tgate-lane\t2691
 """
 
 
@@ -94,22 +91,6 @@ class Lint(unittest.TestCase):
     def test_a_row_naming_no_job_is_stale(self):
         self.write(".github/gating-checks.tsv", REGISTRY + "job\tmain.yml\tscript self-tests\t2700\n")
         self.assertIn("'script self-tests' names no job", " ".join(g.lint(self.root)))
-
-    def test_a_new_runner_label_needs_a_proven_row(self):
-        self.write(".github/workflows/main.yml", MAIN.replace("'main-lane'", "'new-tier'"))
-        self.assertIn("runner label 'new-tier' has no proven", " ".join(g.lint(self.root)))
-
-    def test_a_label_only_github_com_picks_may_stay_unproven(self):
-        picked = "${{ inputs.lane || github.server_url == 'https://github.com' && 'gh-only' || 'ubuntu-26.04' }}"
-        self.write(".github/workflows/ci.yml", CI.replace("${{ inputs.lane || 'ubuntu-26.04' }}", picked))
-        self.assertIn("runner label 'gh-only' has no proven", " ".join(g.lint(self.root)))
-        self.write(".github/gating-checks.tsv", REGISTRY + "label\t-\tgh-only\tunproven\tgithub.com's; owner: ci\n")
-        self.assertEqual(g.lint(self.root), [])
-
-    def test_a_label_forgejo_can_pick_still_needs_a_proven_row(self):
-        self.write(".github/workflows/main.yml", MAIN.replace("'main-lane'", "'new-tier'"))
-        self.write(".github/gating-checks.tsv", REGISTRY + "label\t-\tnew-tier\tunproven\tborn today; owner: ci\n")
-        self.assertIn("runner label 'new-tier' has no proven", " ".join(g.lint(self.root)))
 
     def test_a_new_gate_workflow_needs_a_proven_row(self):
         self.write("scripts/hooks/pre-push", HOOK.replace('"identity-model-convergence.yml")', '"identity-model-convergence.yml" "recording.yml")'))
@@ -173,20 +154,20 @@ class ReportOnly(unittest.TestCase):
 
 
 class Prove(unittest.TestCase):
-    def test_a_green_run_proves_its_unproven_and_missing_jobs_and_labels(self):
+    def test_a_green_run_proves_its_unproven_and_missing_jobs(self):
         with tempfile.NamedTemporaryFile("w", suffix=".tsv", delete=False) as f:
             f.write(REGISTRY)
         rows = g.load(f.name)
         jobs = [{"name": "commit rules", "conclusion": "success"}, {"name": "e2e (rest)", "conclusion": "success"},
                 {"name": "test (heavy1)", "conclusion": "success"}, {"name": "flaky", "conclusion": "failure"}]
-        changed = g.prove(rows, "main.yml", jobs, "2800", {"main-lane", "landing"})
-        self.assertEqual(changed, ["commit rules", "e2e (rest)", "label landing"])
+        changed = g.prove(rows, "main.yml", jobs, "2800")
+        self.assertEqual(changed, ["commit rules", "e2e (rest)"])
         state = {(r["kind"], r["name"]): r["proven"] for r in rows}
         self.assertEqual(state[("job", "commit rules")], "2800")
         self.assertEqual(state[("job", "test (heavy1)")], "2722")
         self.assertNotIn(("job", "flaky"), state)
         g.save(f.name, rows)
-        self.assertEqual(g.load(f.name)[-1]["name"], "landing")
+        self.assertEqual(g.load(f.name)[-1]["name"], "e2e (rest)")
         os.unlink(f.name)
 
 

@@ -30,10 +30,6 @@ job	main.yml	mobile-local-server	2722
 job	main.yml	e2e (corpus)	2722
 job	main.yml	e2e (rest)	2722
 job	main.yml	report (timings)	aggregate
-label	-	main-lane	2722
-label	-	ubuntu-24.04	2722
-label	-	ubuntu-22.04	unproven	github.com's mongod runner (kernel 6.8; 24.04/26.04 boot 6.19-7.0.x, which mongod 8.3 refuses); Forgejo never runs it; owner: W4 (github return)
-label	-	ubuntu-26.04	2722
 job	main.yml	publish-web	2718
 job	main.yml	image-worker	2718
 job	main.yml	publish-worker	2718
@@ -73,7 +69,6 @@ job	identity-model-convergence.yml	takes-drift-2 (united-states)	2691
 job	identity-model-convergence.yml	verdict complete	aggregate
 job	identity-model-convergence.yml	timings	aggregate
 job	identity-model-convergence.yml	report (timings)	aggregate
-label	-	measure	2691
 job	main.yml	commit rules	2855
 job	identity-model-convergence.yml	request-bisect	unproven	runs only after a red leg; owner: convergence; proven by its first green run
 job	identity-model-convergence.yml	drop-measure-branch	unproven	runs only on measure/ branches, never on main; owner: convergence

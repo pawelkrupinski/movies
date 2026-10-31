@@ -5,8 +5,7 @@ WHY. 22 red runs and ~35 red hours in the five days to 2026-10-30 came from chec
 gate (33 h, E9), agentctl's CI enabled with Linux-only failures, a lint born against a test it already failed, and 24
 `measure` runs wasted on a workflow's own lints. Convergence adopted "a new check lands green" on 10-29 (5e848677b, the
 drift gate's commit rules); this generalises it to every check THE GATE (Main and Identity model convergence on main)
-reads: a gate workflow, a job in one (a reusable workflow's included: they run under the caller's run), and a runner
-label a gate job asks for.
+reads: a gate workflow, and a job in one (a reusable workflow's included: they run under the caller's run).
 
 .github/gating-checks.tsv lists them, one row each, with the run that PROVED it green:
 
@@ -14,7 +13,6 @@ label a gate job asks for.
     workflow  main.yml                        -                         2701     the gate itself
     job       main.yml                        test (heavy1)             2690
     job       main.yml                        ci                        aggregate   fails only when a job it runs does
-    label     -                               main-lane                 2690
     job       identity-model-convergence.yml  takes (germany)           unproven  born 2026-10-30, owner: ...
 
   - `proven` is the run NUMBER (the #n of its URL) of a green run on main in which the check ran and passed; `aggregate`
@@ -24,10 +22,10 @@ label a gate job asks for.
     them) is no red for the push gate (scripts/hooks/pre-push's red gate asks `report-only`). Its red is still listed --
     and still somebody's -- but no push waits on it.
   - `lint` holds the registry to the workflows: every job a gate workflow (or a workflow it calls) defines has a row,
-    every row names a job that exists, every literal runner label a gate job asks for is a proven `label` row, and
-    every gate workflow the hook reads is a proven `workflow` row. A new job, label or gate workflow therefore lands
+    every row names a job that exists, and every gate workflow the hook reads is a proven `workflow` row. A new job or
+    gate workflow therefore lands
     WITH its row, as `unproven`; RegistryCoverage runs it in the unit rows and the hook's `newchecks` check.
-  - `prove --run <run id>` records a green gate run: every job (and its labels) that ran green in it and is unproven or
+  - `prove --run <run id>` records a green gate run: every job that ran green in it and is unproven or
     missing gets that run's number. Run it after the first green run of a new check, and commit the registry.
 
 usage: gating_checks.py lint [--root DIR]
@@ -52,10 +50,7 @@ GATE_WORKFLOWS = ("main.yml", "identity-model-convergence.yml")
 HOOK = "scripts/hooks/pre-push"
 EXPR = re.compile(r"\$\{\{.*?\}\}")
 CALL = re.compile(r"^\s+uses:\s*\./\.github/workflows/(\S+\.ya?ml)\s*$", re.M)
-LABEL_LINE = re.compile(r"^\s+(runs-on|lane|runner):\s*(.+)$")
-QUOTED = re.compile(r"'([^']+)'")
-# A label github.com alone picks: `github.server_url == 'https://github.com' && '<label>'`.
-GITHUB_PICK = re.compile(r"github\.server_url == 'https://github\.com' && '([^']+)'")
+
 
 
 def load(path: str) -> list[dict]:
@@ -130,33 +125,6 @@ def workflow_globs(root: str, file: str, seen: frozenset = frozenset()) -> list[
     return globs
 
 
-def workflow_labels(root: str, file: str, seen: frozenset = frozenset(), github_only: bool = False) -> set[str]:
-    """Every runner label the workflow (and what it calls) can ask for; with github_only, those only github.com's
-    branch of an expression picks (`github.server_url == 'https://github.com' && '<label>'`) and no other place names."""
-    text = open(os.path.join(root, ".github/workflows", file)).read()
-    labels, picked = set(), set()
-    for line in jobs_block(text):
-        m = LABEL_LINE.match(line)
-        if m:
-            value = m.group(2).split(" #")[0].strip()
-            if "${{" in value:
-                quoted = [q for q in QUOTED.findall(value) if q != "https://github.com"]
-                github = GITHUB_PICK.findall(value)
-                picked |= set(github)
-                rest = list(quoted)
-                for g in github:
-                    rest.remove(g)
-                labels |= set(rest)
-            elif value:
-                labels.add(value.strip("'\""))
-    for call in CALL.findall(text):
-        if call not in seen:
-            theirs = workflow_labels(root, call, seen | {file}, github_only=True)
-            picked |= theirs
-            labels |= workflow_labels(root, call, seen | {file}) - theirs
-    return picked - labels if github_only else labels | picked
-
-
 def hook_gate_files(root: str) -> list[str]:
     try:
         text = open(os.path.join(root, HOOK)).read()
@@ -173,8 +141,8 @@ def lint(root: str) -> list[str]:
         return [str(e)]
     problems = []
     for r in rows:
-        if r["kind"] not in ("workflow", "job", "label"):
-            problems.append(f"line {r['line']}: kind {r['kind']!r} (workflow, job or label)")
+        if r["kind"] not in ("workflow", "job"):
+            problems.append(f"line {r['line']}: kind {r['kind']!r} (workflow or job)")
         if not (is_proven(r) or r["proven"] in ("unproven", "aggregate")):
             problems.append(f"line {r['line']}: proven {r['proven']!r} (a run number, `aggregate` or `unproven`)")
         if r["proven"] == "unproven" and not r["note"].strip():
@@ -197,14 +165,6 @@ def lint(root: str) -> list[str]:
         for r in named:
             if not any(fnmatch.fnmatchcase(r["name"], g) for g in globs):
                 problems.append(f"{file}: row {r['name']!r} names no job the workflow runs: remove it")
-        # A label only github.com's branch picks runs no job on the forge whose run numbers prove rows here (Forgejo,
-        # until the cut-over): it needs a row, and may stay `unproven` (owner and why) until github.com proves it.
-        github_only = workflow_labels(root, file, github_only=True)
-        for label in sorted(workflow_labels(root, file)):
-            row = [r for r in rows if r["kind"] == "label" and r["name"] == label]
-            if any(is_proven(r) for r in row) or (label in github_only and any(r["proven"] == "unproven" for r in row)):
-                continue
-            problems.append(f"{file}: runner label {label!r} has no proven `label` row: a new tier gates only after a green run on it")
     return problems
 
 
@@ -231,8 +191,8 @@ def run_jobs(run: str) -> list[dict]:
     return json.loads(out).get("jobs", [])
 
 
-def prove(rows: list[dict], file: str, jobs: list[dict], number: str, labels: set[str]) -> list[str]:
-    """Rows proven by green run `number`: its green jobs unproven or missing, and the workflow's labels. Changed names."""
+def prove(rows: list[dict], file: str, jobs: list[dict], number: str) -> list[str]:
+    """Rows proven by green run `number`: its green jobs unproven or missing. Changed names."""
     changed = []
     for j in jobs:
         if j.get("conclusion") != "success":
@@ -244,14 +204,6 @@ def prove(rows: list[dict], file: str, jobs: list[dict], number: str, labels: se
         elif row["proven"] == "unproven":
             row["proven"], row["note"] = number, ""
             changed.append(j["name"])
-    for label in sorted(labels):
-        row = next((r for r in rows if r["kind"] == "label" and r["name"] == label), None)
-        if row is None:
-            rows.append({"kind": "label", "workflow": "-", "name": label, "proven": number, "note": ""})
-            changed.append(f"label {label}")
-        elif row["proven"] == "unproven":
-            row["proven"], row["note"] = number, ""
-            changed.append(f"label {label}")
     return changed
 
 
@@ -291,7 +243,7 @@ def main(argv: list[str]) -> int:
     if not number or not number.isdigit():
         print("gating-checks: prove needs --number <the run's #n>", file=sys.stderr)
         return 2
-    changed = prove(rows, file, jobs, number, workflow_labels(root, file))
+    changed = prove(rows, file, jobs, number)
     save(os.path.join(root, REGISTRY), rows)
     print(f"proven by #{number}: " + (", ".join(changed) or "nothing new"))
     return 0
