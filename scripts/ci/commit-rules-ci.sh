@@ -35,7 +35,7 @@ if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = true ]; then
         || { echo "::error title=commit rules::could not deepen the checkout to read $base..HEAD"; exit 2; }
 fi
 git cat-file -e "$base^{commit}" 2>/dev/null \
-    || timeout 120 git fetch --quiet --no-tags --filter=blob:none origin "$base" 2>/dev/null \
+    || timeout 120 git fetch --quiet --no-tags --filter=blob:none origin "$base" \
     || { echo "::error title=commit rules::no commit $base to judge from"; exit 2; }
 git merge-base --is-ancestor "$base" HEAD || { echo "commit-rules-ci: $base is no ancestor of HEAD: nothing to judge"; exit 0; }
 

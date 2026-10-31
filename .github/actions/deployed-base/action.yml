@@ -50,6 +50,7 @@ runs:
           exit 0
         }
 
+        # allow-silenced: an unreachable tag falls back to the push's parent (above), never to "everything changed"
         git fetch --no-tags --depth=1 origin "+refs/tags/$tag:refs/tags/$tag" 2>/dev/null || true
 
         git rev-parse -q --verify "refs/tags/$tag^{commit}" >/dev/null || fallback "does not exist yet"

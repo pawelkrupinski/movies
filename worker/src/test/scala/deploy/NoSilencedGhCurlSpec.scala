@@ -7,7 +7,8 @@ import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters.*
 
 /**
- * A `gh` or `curl` read in CI and fleet scripts is not silenced into "nothing there".
+ * A `gh`, `curl` or `wget` read, or a git network read (`git fetch`, `clone`, `ls-remote`, `pull`), in CI and fleet
+ * scripts is not silenced into "nothing there" (simplification-2026-10-31 item 6: the tree-restore hang hid behind one).
  *
  * `gh release download … 2>/dev/null` inside an `if`, or `gh run list … || true`, reads an auth
  * refusal, a 5xx or a network failure exactly like "no marker yet" / "no earlier run" — the
@@ -23,8 +24,7 @@ class NoSilencedGhCurlSpec extends AnyFlatSpec with Matchers {
 
   private val Roots = Seq("scripts", ".github", "infra")
   private val Helper = "scripts/ci/gh-optional.sh"
-  private val Tool     = """(?:^|[\s;|&($`])(?:gh|curl)\s""".r
-  private val Silenced = """2>\s*/dev/null|&>\s*/dev/null|\|\|\s*true\b|\|\|\s*:(?:\s|$)""".r
+  private val Tool     = """(?:^|[\s;|&($`])(?:gh|curl|wget|git(?:\s+-\S+(?:\s+\S+)?)*\s+(?:fetch|clone|ls-remote|pull))\s""".r
   private val Allowed  = "allow-silenced:"
 
   private def files(root: String): Seq[Path] =
@@ -38,6 +38,19 @@ class NoSilencedGhCurlSpec extends AnyFlatSpec with Matchers {
     (path.endsWith(".sh") || path.endsWith(".yml") || path.endsWith(".yaml")) &&
       !path.endsWith("-test.sh") && path != Helper && !path.contains("/node_modules/") &&
       !path.startsWith("infra/kubernetes")
+
+  /** A read silenced in its own command: its segment (between `||`, `&&` and `;`) sends stderr to /dev/null, or the
+   *  segment after its `||` is `true` / `:`. A silencer of a neighbouring command (`git cat-file -e X 2>/dev/null ||
+   *  git fetch …`) is that command's, not the read's. */
+  private def silencedRead(code: String): Boolean = {
+    val parts = code.split("""\|\||&&|;""", -1).toVector
+    val ops   = """\|\||&&|;""".r.findAllIn(code).toVector
+    parts.indices.exists { i =>
+      Tool.findFirstIn(parts(i)).isDefined && (
+        """2>\s*/dev/null|&>\s*/dev/null""".r.findFirstIn(parts(i)).isDefined ||
+          (i + 1 < parts.length && ops(i) == "||" && """^\s*(true\b|:(\s|\)|$))""".r.findFirstIn(parts(i + 1)).isDefined))
+    }
+  }
 
   /** Offending (line number, logical line) pairs: `\`-continued lines joined, comments dropped. */
   private[deploy] def offenders(text: String): Seq[(Int, String)] = {
@@ -53,8 +66,7 @@ class NoSilencedGhCurlSpec extends AnyFlatSpec with Matchers {
       }
       val code = if (logical.trim.startsWith("#")) "" else logical.split(" #", 2).head
       val excused = logical.contains(Allowed) || (start > 0 && lines(start - 1).contains(Allowed))
-      if (!excused && Tool.findFirstIn(code).isDefined && Silenced.findFirstIn(code).isDefined)
-        out += (start + 1 -> code.trim)
+      if (!excused && silencedRead(code)) out += (start + 1 -> code.trim)
       i += 1
     }
     out.result()
@@ -82,7 +94,11 @@ class NoSilencedGhCurlSpec extends AnyFlatSpec with Matchers {
         |n=$(curl -sS "$u")
         |grep -q x file 2>/dev/null
         |# gh release download t 2>/dev/null
+        |git fetch -q origin "$tag" 2>/dev/null || true
+        |git -C "$d" ls-remote origin main || :
+        |git rev-parse -q --verify HEAD 2>/dev/null
+        |git cat-file -e "$b^{commit}" 2>/dev/null || git fetch -q origin "$b" || exit 2
         |""".stripMargin
-    offenders(script).map(_._1) shouldBe Seq(1, 4)
+    offenders(script).map(_._1) shouldBe Seq(1, 4, 11, 12)
   }
 }

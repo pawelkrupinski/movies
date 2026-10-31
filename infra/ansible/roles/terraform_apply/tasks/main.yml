@@ -74,7 +74,7 @@
       root=$(git -C "{{ terraform_dir }}" rev-parse --show-toplevel 2>/dev/null) || exit 3
       GIT_SSH_COMMAND="ssh -o ConnectTimeout=15 -o BatchMode=yes" \
         git -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=30 \
-            -C "${root}" fetch --quiet origin main 2>/dev/null || exit 4
+            -C "${root}" fetch --quiet origin main || exit 4
       if ! git -C "${root}" rebase --autostash origin/main >/dev/null 2>&1; then
           # Leave no half-rebased tree behind for the next caller to trip over.
           git -C "${root}" rebase --abort >/dev/null 2>&1
