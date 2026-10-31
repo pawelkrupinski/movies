@@ -71,13 +71,18 @@ _stall_newer() { [ -n "$1" ] && [ -e "$1" ] && [ "$1" -nt "$2" ]; }
 stall_watch() { # <root pid> <seconds> <label> <stalled file> [<progress file>] [<dir>]
   local root=$1 bound=$2 label=$3 stalled=$4 progress=${5:-} dir=${6:-}
   local poll=${KINOWO_STALL_POLL_SECONDS:-30} need=${KINOWO_STALL_CPU_CENTIS:-100}
-  local mark quiet=0 last now mine pids p q moved own g groups
-  mark=$(mktemp "${TMPDIR:-/tmp}/stall-mark.XXXXXX") || return 1
+  local mark="" quiet=0 last now mine pids p q moved own g groups
   local nap=""
   # ended at once, mid-poll: a trap waits for a foreground `sleep` to end, so the poll sleeps in the background (each
   # check of the hook would otherwise wait up to a poll for its watchdog to go)
   # (HUP too: a watchdog whose terminal or hook went away otherwise left its stall-mark.* in the temp directory)
-  trap 'kill $nap 2> /dev/null; rm -f "$mark"; exit 0' TERM INT HUP
+  # SET BEFORE THE MARK IS MADE: a caller ends its watchdog the moment a quick step is done, often while it is still in
+  # `$(mktemp)`. Untrapped, that TERM ended the shell mid-substitution: mktemp wrote into a pipe nobody read ("mktemp:
+  # failed to print directory name: Broken pipe" on the watchdog's stderr, which run-script-tests appends to the test's
+  # own log -- Tool self-tests 41193766567 on github.com) and its stall-mark.* was left behind. Trapped, bash runs the
+  # trap once the substitution is done, with the mark known, and removes it.
+  trap 'kill $nap 2> /dev/null; [ -n "$mark" ] && rm -f "$mark"; exit 0' TERM INT HUP
+  mark=$(mktemp "${TMPDIR:-/tmp}/stall-mark.XXXXXX") || return 1
   last=-1
   while kill -0 "$root" 2> /dev/null; do
     sleep "$poll" & nap=$!; wait "$nap"; nap=""
