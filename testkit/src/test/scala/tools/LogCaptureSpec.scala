@@ -96,6 +96,54 @@ class LogCaptureSpec extends AnyFlatSpec with Matchers {
     events.map(_.getFormattedMessage) shouldBe Seq("mine")
   }
 
+  // IdentityProjectionSpec on github.com (Main 41207214765): `List() was not equal to List("periodic")` -- a projection's
+  // lines, logged on the test's own thread, missed by a capture attached while parallel suites logged to the same class
+  // logger. Each capture attached its own appender, and logback's COWArrayList.refreshCopy, racing that attach on a
+  // logging thread, can publish the appender list as it was before the add: every event until the next attach or detach
+  // then skips the new appender. A logger's appender list is now changed once, by the capture hub's attach, settled
+  // until the logging path sees it; captures register with the hub.
+  it should "see every line of its own thread while other threads log to the same logger and capture it" in {
+    val name   = "kinowo.log-capture-spec.attach-race"
+    val logger = LogCapture.logbackLogger(name)
+    logger.setAdditive(false) // the hammering stays off the console
+    logger.setLevel(Level.INFO)
+    val running = new AtomicBoolean(true)
+    // logging AND capturing, as the suites next door do: each capture of theirs changed the appender list too
+    val noisy = (1 to 3).map { n =>
+      val t = new Thread(() => while (running.get()) LogCapture.capture(name)((1 to 20).foreach(_ => logger.info(s"theirs $n"))))
+      t.setDaemon(true); t.start(); t
+    }
+    try {
+      val missed = (1 to 2000).count(_ => !LogCapture.capture(name)(logger.info("mine")).exists(_.getFormattedMessage == "mine"))
+      withClue("captures that missed their own thread's line: ")(missed shouldBe 0)
+    } finally {
+      running.set(false)
+      noisy.foreach(_.join(SpecTimeouts.Io.toMillis))
+      logger.setLevel(null)
+      logger.setAdditive(true)
+    }
+  }
+
+  it should "fix each line's thread and MDC as it is logged, with no other appender to do it" in {
+    // An event reads both lazily, on whichever thread first asks. A console appender fixes them as it writes; a logger
+    // without one (additivity off) left `thisThread` and a `within` block's fields to the reader's thread and MDC.
+    val name   = "kinowo.log-capture-spec.deferred"
+    val logger = LogCapture.logbackLogger(name)
+    logger.setAdditive(false)
+    logger.setLevel(Level.INFO)
+    try {
+      val events = LogCapture.capture(name) {
+        org.slf4j.MDC.put("log_capture_spec", "set")
+        try logger.info("mine") finally org.slf4j.MDC.remove("log_capture_spec")
+        val other = new Thread(() => logger.info("theirs"), "log-capture-spec-other")
+        other.start(); other.join()
+      }
+      events.map(e => e.getFormattedMessage -> e.getThreadName) shouldBe
+        Seq("mine" -> Thread.currentThread().getName, "theirs" -> "log-capture-spec-other")
+      events.head.getMDCPropertyMap.get("log_capture_spec") shouldBe "set"
+    } finally { logger.setLevel(null); logger.setAdditive(true) }
+  }
+
   it should "leave the logger's level alone unless asked to change it" in {
     // The ROOT-appender specs assert that the CONFIGURED level lets an audit line
     // through; a capture that forced DEBUG would answer their question for them.

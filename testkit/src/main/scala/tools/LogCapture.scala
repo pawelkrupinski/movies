@@ -5,7 +5,7 @@ import ch.qos.logback.classic.{Level, Logger as LogbackLogger}
 import ch.qos.logback.core.AppenderBase
 import org.slf4j.LoggerFactory
 
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentLinkedQueue}
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -24,12 +24,17 @@ import scala.jdk.CollectionConverters.*
  * A `ConcurrentLinkedQueue` fixes it at the root: its iterator is weakly consistent, so
  * a snapshot taken while other threads append is merely a snapshot, never an exception.
  *
- * What it does NOT fix, because logback owns it: attaching an appender to a logger that
- * another thread is hammering can lose events. `COWArrayList.refreshCopy` may publish an
- * array snapshot taken just before the `add`, and every event until the next refresh then
- * goes to the old array — so a capture on a hot global logger can come back empty even
- * though the line was logged. Measured at roughly one attach in twenty against a thread
- * logging in a tight loop. Capture a class-specific logger where you can.
+ * THE ATTACH RACE, logback's own: attaching an appender to a logger another thread is
+ * logging to can lose events. `COWArrayList.refreshCopy`, run by the logging thread, may
+ * publish an array snapshot taken just before the `add`, and every event until the next
+ * attach or detach then goes to the old array — so a capture came back empty although the
+ * line was logged (roughly one attach in twenty against a thread logging in a tight loop;
+ * IdentityProjectionSpec on github.com, Main 41207214765, a class logger other suites log to
+ * and capture). So a capture never attaches anything: each logger gets ONE [[Hub]], attached
+ * the first time it is captured and SETTLED there ([[settle]]: until the array the logging
+ * path reads holds it, steadily), and captures register with the hub. A later attach or
+ * detach by anyone else cannot drop it: a stale snapshot is at worst one taken after the
+ * hub's own `add`.
  *
  * Lives in testkit so worker, web and e2e share one copy. `common`'s own tests cannot
  * reach it — testkit depends on `common`, and the reverse would be a project cycle — so
@@ -64,20 +69,87 @@ object LogCapture {
 
   def capture(loggerName: String, level: Option[Level] = None)(body: => Unit): Seq[ILoggingEvent] = {
     val logger    = logbackLogger(loggerName)
+    val hub       = hubOf(logger)
     val collector = new CollectingAppender
     collector.setContext(logger.getLoggerContext)
     collector.start()
     val previous = logger.getLevel
     level.foreach(logger.setLevel)
-    logger.addAppender(collector)
+    hub.collectors.add(collector)
     try {
       body
       collector.events
     } finally {
-      logger.detachAppender(collector)
+      hub.collectors.remove(collector)
       collector.stop()
       level.foreach(_ => logger.setLevel(previous))
     }
+  }
+
+  /** The one appender a captured logger carries for good, handing each event to the captures running on it. An event
+   *  reads its thread's name and MDC LAZILY, on whatever thread first asks: they are fixed here, on the logging thread
+   *  (as a console appender does), or [[thisThread]] and a `within` block's fields would read the reader's own. */
+  private final class Hub extends AppenderBase[ILoggingEvent] {
+    val collectors: java.util.Set[CollectingAppender] = ConcurrentHashMap.newKeySet[CollectingAppender]()
+    override def append(event: ILoggingEvent): Unit =
+      if (!collectors.isEmpty) { event.prepareForDeferredProcessing(); collectors.forEach(_.collect(event)) }
+  }
+
+  private val hubs = new ConcurrentHashMap[LogbackLogger, Hub]()
+
+  private def hubOf(logger: LogbackLogger): Hub = {
+    // a hub its context detached (a reset) is replaced: a capture never waits on one no logging path can reach
+    val hub = hubs.compute(logger, (l, old) =>
+      if (old != null && old.isStarted && l.isAttached(old)) old
+      else {
+        val h = new Hub
+        h.setName("log-capture-hub")
+        h.setContext(l.getLoggerContext)
+        h.start()
+        l.addAppender(h)
+        if (old != null) settled.remove(old)
+        h
+      })
+    settle(logger, hub)
+    hub
+  }
+
+  /** Until the appender array `logger`'s logging path reads holds `hub`, on three looks in a row a few ms apart: a
+   *  `refreshCopy` racing the hub's `add` publishes its old array AFTER the add, so one look is not enough. A look that
+   *  misses it marks the array stale, as an attach would, so the next read takes it afresh. Once settled, one look per
+   *  capture. Read through logback's private fields; were they ever renamed, every capture fails loudly here. */
+  private def settle(logger: LogbackLogger, hub: Hub): Unit = {
+    def visible = appenderArray(logger).contains(hub)
+    if (!(settled.contains(hub) && visible)) {
+      var steady = 0
+      var looks  = 0
+      while (steady < 3) {
+        looks += 1
+        if (looks > 2000) throw new IllegalStateException(s"LogCapture: the capture hub on ${logger.getName} never reached its logging path")
+        if (visible) steady += 1 else { steady = 0; staleFlag(logger).set(false) }
+        Thread.sleep(2)
+      }
+      settled.add(hub)
+      ()
+    }
+  }
+  private val settled = ConcurrentHashMap.newKeySet[Hub]()
+
+  private def appenderList(logger: LogbackLogger): AnyRef = {
+    val aai = classOf[LogbackLogger].getDeclaredField("aai")
+    aai.setAccessible(true)
+    val impl = aai.get(logger)
+    val list = classOf[ch.qos.logback.core.spi.AppenderAttachableImpl[?]].getDeclaredField("appenderList")
+    list.setAccessible(true)
+    list.get(impl)
+  }
+  /** The array `appendLoopOnAppenders` reads: refreshed first when stale, as it is. */
+  private def appenderArray(logger: LogbackLogger): Seq[AnyRef] =
+    appenderList(logger).asInstanceOf[ch.qos.logback.core.util.COWArrayList[AnyRef]].asTypedArray().toSeq
+  private def staleFlag(logger: LogbackLogger): java.util.concurrent.atomic.AtomicBoolean = {
+    val fresh = classOf[ch.qos.logback.core.util.COWArrayList[?]].getDeclaredField("fresh")
+    fresh.setAccessible(true)
+    fresh.get(appenderList(logger)).asInstanceOf[java.util.concurrent.atomic.AtomicBoolean]
   }
 
   /**
@@ -98,6 +170,7 @@ object LogCapture {
   final class CollectingAppender extends AppenderBase[ILoggingEvent] {
     private val queue = new ConcurrentLinkedQueue[ILoggingEvent]()
     override def append(event: ILoggingEvent): Unit = { queue.add(event); () }
+    private[tools] def collect(event: ILoggingEvent): Unit = if (isStarted) { queue.add(event); () }
     def events: Seq[ILoggingEvent] = queue.iterator().asScala.toSeq
   }
 }
