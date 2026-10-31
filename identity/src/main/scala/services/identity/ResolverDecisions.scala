@@ -55,15 +55,17 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     // that takes no film: agree-or-none takes none either reading of one would guess (FamilyScope), and a fallback rests on
     // its IMDb record. Told only: no take moves by it. US "Parkway Drive: Home" x123 (drift 3991) held no film while its
     // fallback's record was pending, read as Vetoed with nothing waited on, and took tt47657111 once it was filed
-    val awaited = if (film.isDefined) Nil
-      else (scope.pool ++ fallbacks.pool).filter(_.awaitingRecord).map(_.tmdbId).distinct.sorted
+    val awaited = (if (film.isDefined) scope.pool else scope.pool ++ fallbacks.pool).filter(_.awaitingRecord).map(_.tmdbId).distinct.sorted
     val awaiting = Option.when(awaited.nonEmpty)(s"${awaited.size} record(s) awaited: ${awaited.take(5).mkString(", ")}")
     // a cluster no TMDB film was taken for, every question answered: the one fallback film its members take
     val fallback = if (film.isDefined || unknown > 0) None else fallbackOf(cluster, scope, fallbacks)
     // what a cluster taking no film still waits on (ResolverDecision.awaits: its outcome Pending, not NoFilm): its searches
     // unanswered, the records its family's pools await, its listings' venue pages not read yet
+    // -- and a cluster taking a film too: a search not answered yet may name a film it weighs, a venue page not read yet a
+    // fact it reads, so its take is interim until they are (P1, identity-flips-structural-2026-10-30 step 6: PL "Lalka"
+    // pooled to 1001 with a search unanswered, corrected to 1002 once it was). Typed only: the film is served all the same
     val awaits: Set[Question] =
-      if (film.isDefined || fallback.isDefined) Set.empty
+      if (fallback.isDefined) Set.empty
       else cluster.flatMap(node => queriesOf(node.id)).distinct.filterNot(query => answers(query).isKnown).map(Question.Candidate(_)).toSet ++
         awaited.map(Question.FilmRecord(_)) ++
         cluster.flatMap(_.listings).filter(scoring.generation.pagePending).map(listing => Question.VenuePage(listing.key))

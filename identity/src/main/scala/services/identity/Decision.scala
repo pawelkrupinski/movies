@@ -37,11 +37,12 @@ final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], c
                                   candidate: Option[ResolverDecision.Leaning] = None, awaits: Set[Question] = Set.empty)(
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
-  /** What it comes to, typed: a film taken (TMDB's or a fallback's), no film yet -- [[TakeOutcome.Pending]], naming what it
-   *  awaits -- or no film, nothing pending ([[TakeOutcome.NoFilm]]). */
+  /** What it comes to, typed: [[TakeOutcome.Pending]] while it awaits anything, naming what -- its film, if it took one,
+   *  served all the same, but interim (P1) -- else a film taken (TMDB's or a fallback's), or no film ([[TakeOutcome.NoFilm]]). */
   def outcome: TakeOutcome =
-    film.map(id => TakeOutcome.Taken(s"tmdb:$id")).orElse(fallback.map(f => TakeOutcome.Taken(s"${f.source}:${f.id}")))
-      .getOrElse(if (awaits.nonEmpty) TakeOutcome.Pending(awaits) else TakeOutcome.NoFilm(basis))
+    if (awaits.nonEmpty) TakeOutcome.Pending(awaits)
+    else film.map(id => TakeOutcome.Taken(s"tmdb:$id")).orElse(fallback.map(f => TakeOutcome.Taken(s"${f.source}:${f.id}")))
+      .getOrElse(TakeOutcome.NoFilm(basis))
   def tmdbId: Option[Int]            = film
   /** The verdict in one line, as every screen and script names it: its film (for a no-match, the fallback's `source:id`
    *  it takes, if any), its confidence and its basis. */
