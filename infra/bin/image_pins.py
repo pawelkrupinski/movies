@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Every container image pin no other bumper owns, checked against its registry each week.
 
-WHY THIS EXISTS. infra/bin/nix-update moves the Nix side (flake inputs, mongod), scala-steward.yml the sbt side (Gradle
-has no bumper since Renovate was retired, 2026-10-24). Nothing looked at the container images: the Dockerfile's two
-bases, the buildx BuildKit image, the Swift CI container, and the cluster's own components in movies-gitops (Flux,
-kube-state-metrics, Reloader, Headlamp) -- which were found months behind on 2026-10-23 (docs/proposals/2026-10-23-dependency-and-flag-audit.md).
+WHY THIS EXISTS. infra/bin/nix-update moves the Nix side (flake inputs, mongod), scala-steward.yml the sbt side and
+renovate.json only Gradle. Nothing looked at the container images: the Dockerfile's two bases, the buildx BuildKit
+image, the Swift CI container, and the cluster's own components in movies-gitops (Flux, kube-state-metrics, Reloader,
+Headlamp) -- which were found months behind on 2026-10-23 (docs/proposals/2026-10-23-dependency-and-flag-audit.md).
 
 WHAT IT DOES. For each pin in PINS it reads the tag (and digest) from the file, lists the registry's tags over the
 OCI distribution API (anonymous bearer token, paginated) and decides by the pin's policy:

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommitsDisabled"
+  ],
+  "description": "Renovate is scoped to the Gradle/Android project ONLY. The Scala side is handled by scala-steward.yml, and the rest of the polyglot repo (npm, Docker, GitHub Actions) is intentionally left alone — so we whitelist just the two Gradle managers below. Widen enabledManagers if you ever want Renovate to own those too.",
+  "enabledManagers": ["gradle", "gradle-wrapper"],
+  "ignorePaths": ["**/build/**", "**/target/**", "**/node_modules/**"],
+  "labels": ["dependencies", "android"],
+  "schedule": ["before 6am on monday"],
+  "prConcurrentLimit": 5,
+  "rangeStrategy": "pin",
+  "packageRules": [
+    {
+      "description": "The Compose compiler plugin and the kotlinx-serialization plugin are version-locked to the Kotlin release (the Compose plugin in particular MUST equal the Kotlin version, currently 2.4.10). Bump them in one PR so they never drift apart. (AGP 9 bundles the Kotlin Gradle plugin, so there is no standalone org.jetbrains.kotlin.android entry to include.)",
+      "matchManagers": ["gradle"],
+      "matchDepTypes": ["plugin"],
+      "matchPackageNames": [
+        "org.jetbrains.kotlin.plugin.compose",
+        "org.jetbrains.kotlin.plugin.serialization"
+      ],
+      "groupName": "Kotlin"
+    },
+    {
+      "description": "androidx.lifecycle artifacts share a version (currently 2.11.0) and are meant to move together.",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["androidx.lifecycle:**"],
+      "groupName": "AndroidX Lifecycle"
+    },
+    {
+      "description": "okhttp + mockwebserver are the same com.squareup.okhttp3 release (5.5.0) and must move in lockstep, or the test artifact won't resolve against the main one.",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["com.squareup.okhttp3:**"],
+      "groupName": "OkHttp"
+    },
+    {
+      "description": "kotlinx-coroutines-android + kotlinx-coroutines-test share the coroutines version (1.11.0) and must bump together.",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["org.jetbrains.kotlinx:kotlinx-coroutines-**"],
+      "groupName": "kotlinx-coroutines"
+    }
+  ]
+}

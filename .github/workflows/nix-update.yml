@@ -1,8 +1,8 @@
 name: Nix update
 
 # EVERY NIX DEPENDENCY UPGRADE, WEEKLY, AS ONE PULL REQUEST (ported from bitcashier/infra's
-# nix-update.yaml, 2026-10-22). Nothing upgraded the fleet flake before: scala-steward is scoped
-# to sbt. infra/bin/nix-update finds the upgrades (every flake input, and
+# nix-update.yaml, 2026-10-22). Nothing upgraded the fleet flake before: Renovate is scoped to
+# Gradle and scala-steward to sbt. infra/bin/nix-update finds the upgrades (every flake input, and
 # mongod -- pinned in infra/nix/modules/roles/mongodb.nix -- within its current major), builds every
 # host before and after, and writes the patch and a body with what changes on the machines;
 # infra/bin/propose-pr force-pushes branch nix-update/all and opens or updates its PR as ci-bot.

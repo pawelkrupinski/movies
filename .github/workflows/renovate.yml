@@ -1,0 +1,94 @@
+name: Renovate
+
+# Renovate is the Gradle/Android analog of scala-steward.yml: it scans the
+# Android build files (android/build.gradle.kts plugin versions, the inline
+# coordinates in android/app/build.gradle.kts, and the Gradle wrapper) and
+# opens one PR per available upgrade. The actual config — including the scope
+# that limits Renovate to the Gradle managers so it doesn't tread on
+# scala-steward or the npm/Docker side of this repo — lives in /renovate.json.
+# It only proposes the bump; per CLAUDE.md's test gate a human reviews each PR
+# and lands it once android.yml is green.
+#
+# GITHUB.COM ONLY, AND ONLY AS PRIMARY: it needs the Sync Bot App and opens PRs, so it never ran on Forgejo (deleted
+# 2026-10-24, 375c1a7657, restored 2026-10-31 for the return to GitHub). In shadow (CI_ROLE unset) the job is skipped:
+# every step it has is a write (scripts/ci/ci-writes.sh, WriteGateSpec).
+on:
+    # Weekly sweep — Monday 06:00 UTC. Renovate batches and dedups against open
+    # PRs, so a quiet week produces nothing.
+    schedule:
+        - cron: '0 6 * * 1'
+    # Manual kick from the Actions tab for an upgrade pass now.
+    workflow_dispatch:
+
+# Renovate pushes its update branches and opens PRs as the "Kinowo Sync Bot"
+# GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY), so android.yml
+# CI fires on them -- a PR opened with the default GITHUB_TOKEN never does. The
+# App mints a fresh token per run; the personal access token this used before
+# expired silently on 2026-09-28 and every run 401'd from then on.
+permissions:
+    contents: read
+
+# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
+env:
+    CI_ROLE: ${{ vars.CI_ROLE }}
+
+jobs:
+    renovate:
+        if: ${{ github.server_url == 'https://github.com' && vars.CI_ROLE == 'primary' && (github.event_name != 'schedule' || (github.server_url != 'https://github.com' || vars.CI_ROLE == 'primary')) }}
+        runs-on: ubuntu-26.04
+        name: Renovate
+        steps:
+            - uses: actions/create-github-app-token@v3
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
+            - name: Self-hosted Renovate
+              uses: renovatebot/github-action@v46.1.15
+              with:
+                  token: ${{ steps.app-token.outputs.token }}
+              env:
+                  # Single-repo, self-hosted: don't crawl the org, don't open an
+                  # onboarding PR (the committed renovate.json is the config).
+                  RENOVATE_AUTODISCOVER: 'false'
+                  RENOVATE_REPOSITORIES: ${{ github.repository }}
+                  RENOVATE_ONBOARDING: 'false'
+                  # Let Renovate run `./gradlew wrapper` on a Gradle-wrapper bump so
+                  # it produces a complete update (regenerated wrapper jar + scripts,
+                  # not just the distributionUrl string). Verified to run cleanly with
+                  # no Android SDK present, exactly like this CI container; Renovate's
+                  # image installs the JDK on demand. Without this the dashboard logs
+                  # "gradleWrapper is not permitted in the allowedUnsafeExecutions".
+                  RENOVATE_ALLOWED_UNSAFE_EXECUTIONS: '["gradleWrapper"]'
+                  LOG_LEVEL: info
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    timings:
+        needs: [renovate]
+        if: ${{ !cancelled() && needs.renovate.result != 'skipped' }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`, not the two secrets by name: naming them obliges report-timings.yml to declare them
+        # under `workflow_call.secrets`, which Forgejo 15 refuses outright (the whole file then fails on
+        # every event). `inherit` reads the same on github.com and declares nothing.
+        secrets: inherit
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        name: report (scheduled run)
+        needs: [renovate, timings]
+        if: always() && !cancelled() && github.event_name == 'schedule' && needs.renovate.result != 'skipped'
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

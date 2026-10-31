@@ -428,8 +428,9 @@ val noSdkMessage = "Android SDK not found — set sdk.dir in local.properties or
 
 
 // Google Play flags an app whose BUNDLED SDKs are outdated, so the versions
-// that matter are the resolved ones, not the declared ones. A declared-version
-// bumper never sees these: every module below arrives transitively — which is exactly how androidx.fragment sat at 1.1.0
+// that matter are the resolved ones, not the declared ones. Renovate never
+// sees these: it bumps declared dependencies only, and every module below
+// arrives transitively — which is exactly how androidx.fragment sat at 1.1.0
 // until Play complained about release 2.0.0.
 //
 // Each entry is held up by a matching `constraints` entry in `dependencies`.

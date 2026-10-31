@@ -22,20 +22,10 @@ that must be confirmed before acting. Measure before landing any performance ite
 ## Versions: mostly already current
 
 Scala Steward (`scala-steward.yml`) and the weekly `nix-update.yml` keep most versions fresh; since 2026-10-23 the
-nix-update PR also carries the container image pins (`infra/bin/image_pins.py`). Renovate (Gradle/Android only) never
-ran after the move to Forgejo (`renovate.yml` minted a GitHub App token) and was **deleted on 2026-10-24**
-(`renovate.yml`, `renovate.json`): **Android (Gradle) dependencies are now unwatched** -- the plugin versions in
-`android/build.gradle.kts`, the inline coordinates in `android/app/build.gradle.kts` and the Gradle wrapper.
-
-Cheap cover, not built (assessed 2026-10-24):
-- **Scala Steward** has Gradle support, but it reads only a version catalog (`gradle/libs.versions.toml`); the Android
-  build declares every coordinate inline, so it sees nothing until the build moves to a catalog (a one-off refactor of
-  both `build.gradle.kts` files). After that the existing `scala-steward.yml` (already Forgejo-adapted) would cover it
-  with no new workflow; the wrapper would still be unwatched.
-- **nix-update / `image_pins.py`** cannot: they read Nix flake inputs and OCI registries, not Maven repositories.
-  A Maven-metadata pin type in `image_pins.py` is possible but would re-implement a dependency bumper.
-- **Renovate on Forgejo** (`platform: forgejo` with the ci-bot token, like Scala Steward's adaptation) would be the
-  closest replacement if Android coverage is wanted back.
+nix-update PR also carries the container image pins (`infra/bin/image_pins.py`). Renovate (Gradle/Android only) has
+not run since the move to Forgejo: `renovate.yml` still mints a GitHub App token and drives the github platform, so
+on Forgejo it would fail at its first step (as Scala Steward did before its Forgejo adaptation); Android
+dependencies are currently unwatched.
 
 | Area | Current | Newer | Note |
 |---|---|---|---|

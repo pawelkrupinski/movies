@@ -45,7 +45,7 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
   private val NamedOutsideTheScheme = Map("main" -> "deploy-${{ github.ref }}")
   /** Not reusable, and no lane — unreviewed as of 2026-10-15; giving one a lane is a change of its own. */
   private val LaneLess = Set("discover-cinemas", "country-fixture-artifact", "filmweb-diff", "order-independence",
-    "roster-audit", "security-headers", "scala-steward", "decodo-probe")
+    "renovate", "roster-audit", "security-headers", "scala-steward", "decodo-probe")
 
   private val Key = """(-\$\{\{ github\.ref \}\}|-\$\{\{ inputs\.[a-z-]+ \}\}|\$\{\{ github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.ref_name\) \|\| '' \}\}|\$\{\{ github\.event_name != 'schedule' && format\('-\{0\}', github\.ref_name\) \|\| '' \}\})?"""
 
