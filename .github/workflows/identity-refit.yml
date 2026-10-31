@@ -66,9 +66,6 @@ permissions:
     pull-requests: write
     issues: write
 
-# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
-env:
-    CI_ROLE: ${{ vars.CI_ROLE }}
 
 jobs:
     # ROUND 1 ON FOUR RUNNERS. It is the refit's measure: ~58 proposals, each the five captures re-resolved, CPU-bound

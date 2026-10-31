@@ -44,9 +44,6 @@ permissions:
     pull-requests: write
     issues: write
 
-# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
-env:
-    CI_ROLE: ${{ vars.CI_ROLE }}
 
 jobs:
     discover-cinemas:

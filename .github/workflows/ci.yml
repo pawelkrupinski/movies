@@ -30,7 +30,6 @@ on:
 # the self-hosted Forgejo, and after the 2026-10-31 cut-over github.com fell back to ghcr.io and logged in
 # there as the pushing actor with registry.kinowo.net's password -- `denied` (Main #2030).
 env:
-    CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
     IMAGE_REPO: registry.kinowo.net
     REGISTRY_HOST: registry.kinowo.net
     REGISTRY_USER: ci

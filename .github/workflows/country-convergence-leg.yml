@@ -361,7 +361,6 @@ on:
                 default: ''
 
 env:
-    CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
     # The rolling release the per-country fixture trees live in. One tag, three assets,
     # each replaced in place — a store, not a history. Marked as a prerelease when
     # created so it never reads as a shipped version of anything.

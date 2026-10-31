@@ -41,7 +41,6 @@ concurrency:
     cancel-in-progress: false
 
 env:
-    CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
     FIXTURE_RELEASE_TAG: convergence-fixtures
 
 permissions:

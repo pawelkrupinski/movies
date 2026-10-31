@@ -22,14 +22,6 @@
 # Tested by scripts/ci/gh-release-test.sh against a stub `gh`.
 set -uo pipefail
 
-# SHADOW (scripts/ci/ci-writes.sh): every release write -- create, edit, upload, delete, delete-asset -- funnels
-# through here, so one gate keeps a github.com shadow run from publishing recordings, fixtures or the takes store.
-. "$(dirname "${BASH_SOURCE[0]}")/ci-writes.sh" || { echo "::error::$0: scripts/ci/ci-writes.sh is missing beside it -- its shadow gate cannot be read" >&2; exit 2; }
-case "${1:-}" in
-  view|list|download) ;;
-  # fixture data in convergence-fixtures is written in shadow too (ci-writes.sh, ci_writes_shadow_data)
-  *) ci_writes || ci_writes_shadow_data "$@" || { ci_writes_skipped "gh release ${1:-} ${2:-}"; exit 0; } ;;
-esac
 
 attempts="${GH_RELEASE_ATTEMPTS:-4}"
 delay="${GH_RELEASE_RETRY_DELAY:-5}"

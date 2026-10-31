@@ -9,9 +9,7 @@ name: Renovate
 # It only proposes the bump; per CLAUDE.md's test gate a human reviews each PR
 # and lands it once android.yml is green.
 #
-# GITHUB.COM ONLY, AND ONLY AS PRIMARY: it needs the Sync Bot App and opens PRs, so it never ran on Forgejo (deleted
-# 2026-10-24, 375c1a7657, restored 2026-10-31 for the return to GitHub). In shadow (CI_ROLE unset) the job is skipped:
-# every step it has is a write (scripts/ci/ci-writes.sh, WriteGateSpec).
+# It needs the Sync Bot App and opens PRs.
 on:
     # Weekly sweep — Monday 06:00 UTC. Renovate batches and dedups against open
     # PRs, so a quiet week produces nothing.
@@ -28,9 +26,6 @@ on:
 permissions:
     contents: read
 
-# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
-env:
-    CI_ROLE: ${{ vars.CI_ROLE }}
 
 jobs:
     renovate:

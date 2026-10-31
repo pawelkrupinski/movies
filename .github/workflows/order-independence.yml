@@ -40,9 +40,6 @@ on:
 permissions:
     contents: read
 
-# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
-env:
-    CI_ROLE: ${{ vars.CI_ROLE }}
 
 jobs:
     # The one seed every shuffled leg uses: the dispatch input, checked to be digits

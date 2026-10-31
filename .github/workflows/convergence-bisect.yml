@@ -61,7 +61,6 @@ permissions:
     contents: read
 
 env:
-    CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
     # `convergence-setup` reads the pinned pair from here.
     FIXTURE_RELEASE_TAG: convergence-fixtures
     BUDGET_MINUTES: 90
@@ -256,7 +255,6 @@ jobs:
     # checks out and runs nothing of the project.
     tell:
         needs: [plan, bisect]
-        # SHADOW: a commit comment is a write (scripts/ci/ci-writes.sh, WriteGateSpec).
         if: ${{ !cancelled() && needs.bisect.result != 'skipped' }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5

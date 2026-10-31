@@ -57,9 +57,6 @@ concurrency:
 permissions:
     contents: read
 
-# SHADOW SWITCH (scripts/ci/ci-writes.sh): on github.com this run writes nothing outside its runner unless CI_ROLE=primary.
-env:
-    CI_ROLE: ${{ vars.CI_ROLE }}
 
 jobs:
     # Seconds, first: every secret the jobs below read is set. (PreflightWiringSpec)
