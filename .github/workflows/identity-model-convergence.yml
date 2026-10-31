@@ -175,6 +175,8 @@ jobs:
             tier: ${{ github.server_url == 'https://github.com' && 'ubuntu-26.04' || inputs.tier || 'measure' }}
             timings-lane: ${{ github.server_url != 'https://github.com' && (inputs.tier || 'measure') || '' }}
             on-main: ${{ github.ref == 'refs/heads/main' }}
+            # github.com's hosted runners (16 GB VMs): the legs' `with:` reads this, never github.server_url.
+            hosted: ${{ github.server_url == 'https://github.com' }}
             drop-branch: ${{ startsWith(github.ref, 'refs/heads/measure/') && github.server_url != 'https://github.com' }}
         steps:
             # Blobless history: the reuse check keys commits by their trees and walks back to main's takes base.
@@ -339,7 +341,7 @@ jobs:
             # the host's disk per row; its order rows stay on disk (`mongo-tmpfs-order`; runs 1258/1276).
             # github.com's hosted runners are 16 GB VMs, not ci-runner's 17.2 GB cgroups beside a page cache of their own: the
             # United States' 10g heap keeps Mongo's data on disk there, ~2-3 GB of RAM back (github-return-plan 3.4, 2c).
-            mongo-tmpfs:                   ${{ (github.server_url != 'https://github.com' || matrix.code != 'us') && matrix.mongo-tmpfs || '' }}
+            mongo-tmpfs:                   ${{ (needs.preflight.outputs.hosted != 'true' || matrix.code != 'us') && matrix.mongo-tmpfs || '' }}
             mongo-cache-gb:                ${{ matrix.mongo-cache-gb || '2' }}
             mongo-tmpfs-order:             ${{ matrix.mongo-tmpfs-order || 'true' }}
             # Replay the pinned pair and nothing else: the verdict a bisect can trust.

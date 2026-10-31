@@ -54,6 +54,11 @@ jobs:
             # SHARDS: one country a job on github.com's hosted runners (16 GB, 6 h a job: the five countries in one job
             # ran up to ~5 h on ci-runner's measure tier), all five in one job on Forgejo, as before.
             shards: ${{ steps.shards.outputs.shards }}
+            # The compare rows' runner and ceiling, evaluated HERE: their matrix reads this job's outputs, so Forgejo
+            # re-parses them with these outputs and nothing else (WorkflowPlanSpec).
+            runner: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
+            ceiling: ${{ github.server_url == 'https://github.com' && 350 || 600 }}
+            hosted: ${{ github.server_url == 'https://github.com' }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -83,9 +88,9 @@ jobs:
         needs: [plan]
         if: needs.plan.outputs.run != ''
         # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
-        runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-24.04' || 'measure' }}
+        runs-on: ${{ needs.plan.outputs.runner || 'ubuntu-24.04' }}
         # github.com caps a job at 6 h: one country's shard there, the whole set on Forgejo.
-        timeout-minutes: ${{ github.server_url == 'https://github.com' && 350 || 600 }}
+        timeout-minutes: ${{ fromJSON(needs.plan.outputs.ceiling || '350') }}
         strategy:
             fail-fast: false
             matrix:
@@ -121,7 +126,7 @@ jobs:
               env:
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
                   # 16 GB hosted runners also hold mongod and the page cache: 10 GB of heap there, 11 on ci-runner.
-                  SBT_OPTS: ${{ github.server_url == 'https://github.com' && '-Xmx10g' || '-Xmx11g' }}
+                  SBT_OPTS: ${{ needs.plan.outputs.hosted == 'true' && '-Xmx10g' || '-Xmx11g' }}
                   COUNTRIES: ${{ matrix.countries }}
               run: |
                   set -uo pipefail
@@ -146,7 +151,7 @@ jobs:
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: identity-lean-whole${{ github.server_url == 'https://github.com' && format('-{0}', matrix.countries) || '' }}
+                  name: identity-lean-whole${{ needs.plan.outputs.hosted == 'true' && format('-{0}', matrix.countries) || '' }}
                   path: ${{ runner.temp }}/identity-lean-whole/
                   retention-days: 30
             - uses: ./.github/actions/runner-peaks

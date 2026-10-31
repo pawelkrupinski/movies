@@ -78,7 +78,9 @@ jobs:
                   HALVES: ${{ github.server_url == 'https://github.com' && '2' || '1' }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB: kinowo
-              run: scripts/ci/stress-races.sh "$(( (ITERATIONS + HALVES - 1) / HALVES ))" all
+              run: |
+                  ITERATIONS=$(( (ITERATIONS + HALVES - 1) / HALVES ))
+                  scripts/ci/stress-races.sh "$ITERATIONS" all
 
             - name: Upload the failing iterations' reports
               if: failure()
