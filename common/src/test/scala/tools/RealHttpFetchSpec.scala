@@ -29,6 +29,13 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
       .connectTimeout().orElseThrow() shouldBe HostPolicies.DefaultConnectTimeout
   }
 
+  it should "carry an injected connect budget instead of the host policy's, for every host" in {
+    val http = new RealHttpFetch(connectTimeoutFor = _ => java.time.Duration.ofMinutes(3))
+    http.clientFor("https://127.0.0.1:8443/").connectTimeout().orElseThrow() shouldBe java.time.Duration.ofMinutes(3)
+    http.clientFor("https://www.iluzjon.fn.org.pl/repertuar.html").connectTimeout().orElseThrow() shouldBe java.time.Duration.ofMinutes(3)
+    http.clientFor("https://www.filmweb.pl/film/x").version() shouldBe java.net.http.HttpClient.Version.HTTP_2
+  }
+
   it should "speak the HTTP version the host policy names, on that host's own connect budget" in {
     val http = new RealHttpFetch()
     http.clientFor("https://www.filmweb.pl/film/x").version() shouldBe java.net.http.HttpClient.Version.HTTP_2

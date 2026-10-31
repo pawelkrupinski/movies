@@ -202,12 +202,18 @@ object IssuerCertificateFetchingServers {
 }
 
 /** The child JVM's whole life: apply the named [[IssuerCertificateFetching]] (or none) the way
- *  a composition root does, then one fetch through a fresh `RealHttpFetch`. */
+ *  a composition root does, then one fetch through a fresh `RealHttpFetch`.
+ *
+ *  ON ITS OWN CONNECT BUDGET, not the host policy's 5 s: the handshake under test is this cold JVM's first (its
+ *  TLS and PKIX classes loaded, the chain built, the intermediate fetched, all inside the connect), and on a runner
+ *  under a load of 100+ that alone outran 5 s (it-e2e-measure #2752: `HTTP connect timed out` with the servers in
+ *  their own JVM). The verdict is the policy's, never the clock's; the child JVM's own bound cuts a hang. */
 object IssuerCertificateFetchingProbe {
   def main(args: Array[String]): Unit = {
     val Array(policy, url) = args
     if (policy != IssuerCertificateFetchingSpec.NoPolicy) IssuerCertificateFetching.valueOf(policy).applyToJvm()
-    val outcome = Try(println(s"fetched: ${new RealHttpFetch().get(url)}"))
+    val budget  = java.time.Duration.ofMillis(SpecTimeouts.Run.toMillis)
+    val outcome = Try(println(s"fetched: ${new RealHttpFetch(requestTimeoutFor = _ => budget, connectTimeoutFor = _ => budget).get(url)}"))
     outcome.failed.foreach(_.printStackTrace(System.out))
     System.out.flush()
     System.exit(if (outcome.isSuccess) 0 else 1)

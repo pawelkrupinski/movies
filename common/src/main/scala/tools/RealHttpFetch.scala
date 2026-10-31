@@ -18,7 +18,11 @@ class RealHttpFetch(
   // fetch built without one gets its own.
   tls: javax.net.ssl.SSLContext = TlsTrust.newContext(),
   // The host's request budget — HostPolicies' table; a spec passes a short one.
-  requestTimeoutFor: String => Duration = HostPolicies.requestTimeoutFor
+  requestTimeoutFor: String => Duration = HostPolicies.requestTimeoutFor,
+  // The host's connect budget (TCP and TLS handshake) — HostPolicies' table. A spec whose handshake is the thing under
+  // test, in a cold JVM on a loaded machine, passes its own (IssuerCertificateFetchingSpec): the 5 s a live host needs
+  // is no bound on a starved runner's class loading and path building.
+  connectTimeoutFor: String => Duration = HostPolicies.connectTimeoutFor
 ) extends HttpFetch with Logging {
   // Connect + per-request timeouts so a hung upstream (MC search HTML
   // sometimes streams forever, Filmweb soft-blocks by holding the socket
@@ -74,13 +78,13 @@ class RealHttpFetch(
 
   // One HttpClient per distinct (connect budget, HTTP version) the host-policy table
   // can ask for (plus the defaults). Building a client isn't free and the distinct
-  // pairs are few, so prebuild them all and pick per host.
-  private val clientsByShape: Map[(Duration, HttpClient.Version), HttpClient] =
-    ((HostPolicies.DefaultConnectTimeout, HostPolicies.DefaultHttpVersion) +:
-      HostPolicies.all.map(policy => (policy.connectTimeout, policy.httpVersion)))
-      .distinct
-      .map { case shape @ (connectTimeout, version) => shape -> buildClient(connectTimeout, version) }
-      .toMap
+  // pairs are few, so prebuild them all and pick per host; a shape an injected connect
+  // budget asks for is built the first time it is asked.
+  private val clientsByShape = new java.util.concurrent.ConcurrentHashMap[(Duration, HttpClient.Version), HttpClient]()
+  ((HostPolicies.DefaultConnectTimeout, HostPolicies.DefaultHttpVersion) +:
+    HostPolicies.all.map(policy => (policy.connectTimeout, policy.httpVersion)))
+    .distinct
+    .foreach { case shape @ (connectTimeout, version) => clientsByShape.put(shape, buildClient(connectTimeout, version)) }
 
   /** Pick the client whose connect budget and HTTP version match the host policy: the
    *  slow-TLS hosts get their long handshake budget, the HTTP/2 hosts an h2 client,
@@ -88,7 +92,9 @@ class RealHttpFetch(
    *  assert the routing (the real slow-handshake behaviour needs a live server and
    *  can't be reached in a unit test). */
   private[tools] def clientFor(url: String): HttpClient =
-    clientsByShape((HostPolicies.connectTimeoutFor(url), HostPolicies.httpVersionFor(url)))
+    clientsByShape.computeIfAbsent((connectTimeoutFor(url), HostPolicies.httpVersionFor(url)), {
+      case (connectTimeout, version) => buildClient(connectTimeout, version)
+    })
 
   override def get(url: String): String = get(url, Map.empty)
 
@@ -186,7 +192,7 @@ class RealHttpFetch(
   /** The longest one hop of an exchange with `url`'s host may take: its connect
    *  budget plus its request budget. */
   private def exchangeDeadline(url: String): Duration =
-    HostPolicies.connectTimeoutFor(url).plus(requestTimeoutFor(url))
+    connectTimeoutFor(url).plus(requestTimeoutFor(url))
 
   /** Package-private so the spec can assert what actually goes on the wire — the
    *  header a host policy demands is only observable on the built request. */
