@@ -71,6 +71,20 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers {
   // A flip the leg finds is fixed, never listed (the owner, 2026-10-27). The one exception is a check's birth (the ratchet,
   // scripts/ci/commit_rules.py; convergence-failures-2026-10-29 recommendation 2): what a new or tightened check
   // finds at birth is listed TEMPORARY, with an owner and when it goes, so the check lands green -- and the list only shrinks.
+  it should "move with what its stage verdict read: an answer filed at a scrape moves it, the same receipt does not" in {
+    import services.identity.{Dependency, Question}
+    import services.identity.agreement.VoterFamily
+    val asked    = Dependency.Answer(Question.Family(VoterFamily.Imdb, "title|Titans"))
+    val unread   = services.identity.agreement.StoredVerdict("c1", 42L, Map(asked -> Dependency.Unanswered), None)
+    val filed    = unread.copy(reads = Map(asked -> 7L))
+    val receipt  = IdentityDrift.receiptOf(unread)
+    IdentityDrift.receiptMoved(Some(receipt), Some(IdentityDrift.receiptOf(filed))) shouldBe true      // DE "Titans", drift 4281
+    IdentityDrift.receiptMoved(Some(receipt), Some(IdentityDrift.receiptOf(unread.copy()))) shouldBe false
+    IdentityDrift.receiptMoved(Some(receipt), Some(IdentityDrift.receiptOf(unread.copy(listings = 43L)))) shouldBe true
+    IdentityDrift.receiptMoved(None, Some(receipt)) shouldBe true
+    IdentityDrift.receiptMoved(None, None) shouldBe false
+  }
+
   "the reviewed flips" should "hold nothing but a check's TEMPORARY birth rows, each with an owner and when it goes" in {
     val path = "test/resources/fixtures/identity-flips-allow.tsv"
     deploy.RepoFile.exists(path) shouldBe true

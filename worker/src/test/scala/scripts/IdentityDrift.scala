@@ -431,11 +431,18 @@ object IdentityDrift {
       // named -- is no take left (TakeFlips); never read off the explanation's prose
       val pending = r.decisions.iterator.filter(d => stage.outcomeOf(d).isInstanceOf[TakeOutcome.Pending]).flatMap(_.members).toSet
       lastPending = pending
+      // each listing's receipt: what its stage verdict read, answer by answer -- an answer filed inline at a scrape (another
+      // cluster's ask, or its own) moves it as a filing step does (DE "Titans", drift 4281: filled at a scrape whose apply
+      // filed the answer its fill read)
+      val receipts   = verdicts.all().iterator.map(v => v.id -> receiptOf(v)).toMap
+      val receiptNow = r.decisions.iterator.flatMap(d => { val receipt = receipts.get(stage.keyOf(d)); d.members.iterator.map(_ -> receipt) }).toMap
       flips.record(step, takesOf(r).iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
         key => answered || inputsMoved(clusters.get(key), now.get(key), scraped) ||
           // a title's venues moved: what reads the title across the corpus (the stage's venues.current fill) read new input
-          held.get(key).exists(listing => movedTitles(ListingRetention.titleOf(listing, reads.normalizer))))
+          held.get(key).exists(listing => movedTitles(ListingRetention.titleOf(listing, reads.normalizer))) ||
+          receiptMoved(lastReceipt.get(key).flatten, receiptNow.get(key).flatten))
       movedTitles = Set.empty
+      lastReceipt = receiptNow
       clusters = now
       events = Vector.empty
       System.err.println(f"[identity-drift] seed $seed projection $projections: ${held.size} listings, " +
@@ -448,6 +455,8 @@ object IdentityDrift {
     val retained = scala.collection.mutable.Set.empty[ListingKey]
     /** The titles whose listings arrived, came back or left since the last projection. */
     private var movedTitles = Set.empty[String]
+    /** Each listing's stage verdict's receipt at the last projection ([[receiptOf]]). */
+    private var lastReceipt = Map.empty[ListingKey, Option[Int]]
     private def moved(listings: Iterable[Listing]): Unit = movedTitles ++= listings.map(ListingRetention.titleOf(_, reads.normalizer))
     // a listing back replaces what was kept of it: its current data wins
     def scraped(listings: Seq[Listing]): Unit = {
@@ -499,6 +508,14 @@ object IdentityDrift {
    *  it: the model take's clause only ever removes a flag. */
   def inputsMoved(before: Option[ModelCluster], now: Option[ModelCluster], listingsMoved: Boolean): Boolean =
     before.isEmpty || before.map(_.members) != now.map(_.members) || (listingsMoved && before.map(_.film) != now.map(_.film))
+
+  /** A stage verdict's receipt: the listings it was decided over and every answer it read, by digest. */
+  def receiptOf(verdict: services.identity.agreement.StoredVerdict): Int = (verdict.listings, verdict.reads).##
+
+  /** Whether what the stage read for a listing moved between two projections: its verdict's receipt is another, or it has
+   *  one at one of them only. An answer filed by a scrape's apply -- an inline ask, another cluster's -- moves it as a
+   *  filing step does; a take moving under the same receipt is still a flip. */
+  def receiptMoved(before: Option[Int], now: Option[Int]): Boolean = before != now
 
   /** The share of the booted listings that leave and return: a venue's run ending. */
   val Leave = 0.03
