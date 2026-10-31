@@ -60,6 +60,7 @@ test/resources/fixtures/corpus/**
 scripts/ci/leg-verdict.sh
 scripts/ci/gh-release.sh
 scripts/ci/ci-writes.sh
+.github/github-takes-history-floor
 scripts/ci/gh-optional.sh
 scripts/ci/preflight.sh
 scripts/ci/convergence-preflight.sh
