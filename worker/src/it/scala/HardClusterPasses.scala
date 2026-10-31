@@ -12,7 +12,7 @@ import tools._
 
 import java.util.concurrent.Executors
 import scala.collection.mutable
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Random, Try}
 
 /**
@@ -76,12 +76,16 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
   /** Production's arrival: each cinema's scrape lands in the identity model's intake through the
    *  production runner. How many landed without throwing. */
   private def arrive(w: ArchiveReplayWiring, scrapers: Seq[CinemaScraper]): Int =
-    scrapers.count(scraper => Try(w.cinemaScrapeRunner.run(scraper)).isSuccess)
+    scrapers.count { scraper => val landed = Try(w.cinemaScrapeRunner.run(scraper)).isSuccess; progress.incrementAndGet(); landed }
+
+  /** Every venue landed and every projection run, by any pass: what the boot's wait is bounded by
+   *  ([[tools.ProgressAwait]]), never the wall clock a loaded runner stretches. */
+  private val progress = new java.util.concurrent.atomic.AtomicLong()
 
   /** Projections until one writes nothing — the rest production's projection interval reaches, as the
    *  venue pages and ids a projection's enrichment fetched are taken in by the next — then the read model. */
   private def settle(w: ArchiveReplayWiring): Unit = {
-    Iterator.continually(w.projectIdentity()).take(SettleProjections).find(_.atRest)
+    Iterator.continually { val tick = w.projectIdentity(); progress.incrementAndGet(); tick }.take(SettleProjections).find(_.atRest)
     // The read model every claim reads, from a whole sweep: passes boot side by side against one
     // local Mongo, where a side read or a read-model write can time out.
     WholeReconcile(w.readModelSweeper)
@@ -129,7 +133,11 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
           // page is read again and taken in, never decided without.
           (c -> (() => boot(c, "unacked", OrderSeed, split = false, venuePages = new UnacknowledgedVenuePageWrites(_))))
       }
-      val done = Await.result(Future.traverse(jobs) { case (c, job) => Future(c -> job()) }, SpecTimeouts.Run)
+      // Bounded by progress: the passes' boot is minutes on a free runner and past SpecTimeouts.Run on a loaded one
+      // (it-e2e-measure #2748, #2776, #2800), every pass still projecting; a window with no venue landed and no
+      // projection run anywhere is a hang, and fails.
+      val done = ProgressAwait.result("the hard-cluster passes' boot", Future.traverse(jobs) { case (c, job) => Future(c -> job()) },
+        SpecTimeouts.Run, () => progress.get)()
       done.groupMap(_._1)(_._2)
     } finally pool.shutdown()
   }
@@ -172,7 +180,8 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
             } finally storage.close()
           }
       }
-      Await.result(Future.traverse(jobs)(job => Future(Try(job()))), SpecTimeouts.Run)
+      ProgressAwait.result("recording each spelling alone", Future.traverse(jobs)(job => Future(Try(job()))), SpecTimeouts.Run,
+        () => progress.get)()
       println(s"[hard-clusters] recorded ${jobs.size} spellings on their own")
     } finally pool.shutdown()
   }
