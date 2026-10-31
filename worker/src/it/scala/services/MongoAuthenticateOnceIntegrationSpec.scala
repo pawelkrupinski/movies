@@ -32,10 +32,15 @@ class MongoAuthenticateOnceIntegrationSpec extends AnyFlatSpec with Matchers wit
   }
 
   it should "give up within its bound when the server is out of reach, and not throw" in {
-    val client  = MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=60000")
-    val started = System.nanoTime()
-    try MongoConnection.authenticateOnce(client, 2.seconds)
-    finally client.close()
-    (System.nanoTime() - started).nanos should be < 10.seconds
+    val client = MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=60000")
+    // Only authenticateOnce is timed: the bound is the boot's wait on it. The client's close() is no part of it (it
+    // stops the driver's monitor threads); timed together, they took 10.9 s on a loaded runner (land check 2026-10-31).
+    val took =
+      try {
+        val started = System.nanoTime()
+        MongoConnection.authenticateOnce(client, 2.seconds)
+        (System.nanoTime() - started).nanos
+      } finally client.close()
+    took should be < 10.seconds
   }
 }
