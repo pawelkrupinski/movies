@@ -200,7 +200,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}LiveProjectionIndex.scala#films"        -> Name("a field of a Slot: the stored films with a slot there"),
     s"${I}VenueSlotFingerprints.scala#kept"       -> Content("venue slot fingerprints"),
     s"${I}VenueSlots.scala#recorded"              -> Content("venue slot fingerprints"),
-    s"${W}IdentityProjection.scala#recordedFingerprints" -> Content("venue slot fingerprints"),
+    s"${W}SlotFingerprintRecord.scala#recordedFingerprints" -> Content("venue slot fingerprints"),
     s"${W}IdentityProjection.scala#lastUnwritten" -> Pass("the films the last write left unwritten, replaced by each"),
     s"${W}RuleFiringCount.scala#titleRules"       -> Content("by venue and raw title: the title is the content its rules are read from"),
     s"${W}VenuePageIndex.scala#answers"           -> Store("each page's answer as read, compared by value to see it move"),
