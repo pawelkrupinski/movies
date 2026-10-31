@@ -99,6 +99,21 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
     } shouldBe empty
   }
 
+  // P4 (identity-flips-structural-2026-10-30, property 4): no decision turns on an id -- the same corpus with its films
+  // filed under other TMDB ids comes to the image of the same takes
+  it should "take the same films whatever TMDB ids they are filed under" in {
+    val reversed: Int => Int = i => 1011 - i                                // 1001..1010 the other way round
+    def image(outcome: String) = outcome.stripPrefix("tmdb:").toIntOption.filter(id => id > 1000 && id <= 1010)
+      .fold(outcome)(id => s"tmdb:${2011 - id}")
+    IndependentCases.flatMap(Seeds) { seed =>
+      val plain = new History(Case.generated(seed), seed, Budget.Unlimited).filingOutcomes().view.mapValues(_.last).toMap
+      val back  = (question: String) => "\\b10(0[1-9]|10)\\b".r.replaceAllIn(question, m => (2011 - m.matched.toInt).toString)
+      val other = new History(Case.relabelled(seed, reversed), seed, Budget.Unlimited, canonical = back).filingOutcomes().view.mapValues(_.last).toMap
+      plain.collectFirst { case (key, end) if other.get(key).exists(_ != image(end)) =>
+        s"generated: seed $seed, ${key.venue} | ${key.rawTitle}: $end, relabelled ${other(key)}" }
+    } shouldBe empty
+  }
+
   // P3 (identity-flips-structural-2026-10-30, property 3): a budget decides how soon, never what -- at every step of the
   // same history, a listing's outcome under production's correction budget is the unbounded one's, or Pending: never
   // another decided value (Chichester x2, Cosi, Hamlet, Rocky Horror, La Fanciulla, E4 were each such a take)
@@ -162,8 +177,10 @@ object IncrementalWholeEquivalenceSpec {
 
     /** A generated corpus: four families holding most of its films (Filmweb's records linking no IMDb id), most listings
      *  showing a poster of the film they really are, TMDB's posters of its own films. */
-    def generated(seed: Long): Case = {
-      val corpus = GeneratedIdentityCorpus.generate(seed, normalizer, films = 10, listings = 48, tmdbShare = 0.6)
+    def generated(seed: Long): Case = relabelled(seed, 1000 + _)
+    /** The generated case with its films filed under the TMDB ids `tmdbIdOf` names. */
+    def relabelled(seed: Long, tmdbIdOf: Int => Int): Case = {
+      val corpus = GeneratedIdentityCorpus.generate(seed, normalizer, films = 10, listings = 48, tmdbShare = 0.6, tmdbIdOf = tmdbIdOf)
       val rnd    = new Random(seed * 104729)
       def imdbOf(film: GeneratedIdentityCorpus.Film) = s"tt${9000000 + film.id}"
       val families = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes).map { family =>
@@ -225,11 +242,12 @@ object IncrementalWholeEquivalenceSpec {
    * before they are filed, or for good. The clock crosses into a new year at round [[NewYear]]. Everything is a function
    * of the seed, the question and the round: the world keeps no history, so a whole resolve reads what is filed now.
    */
-  final class World(seed: Long, of: Case, order: Long = 0) {
+  final class World(seed: Long, of: Case, order: Long = 0, canonical: String => String = identity) {
     var round = 0
     /** The clock kept in its first year whatever the round: a history of filings alone, the year no input that moves. */
     var yearHeld = false
-    private def roll(salt: String, question: String, n: Int): Int = (MurmurHash3.stringHash(s"$seed|$salt|$question") & 0x7fffffff) % n
+    /** `question` as the world schedules it: by its `canonical` text, so a corpus relabelled is filed as the original. */
+    private def roll(salt: String, question: String, n: Int): Int = (MurmurHash3.stringHash(s"$seed|$salt|${canonical(question)}") & 0x7fffffff) % n
     /** The round `question` is filed at: 0 for most, a later one for some, never for a few — but TMDB's, which the
      *  model's every take waits on: a cluster with one of them unanswered is never the stage's to read. */
     def filedAt(question: String): Int = roll("filed", question, 20) match {
@@ -300,8 +318,8 @@ object IncrementalWholeEquivalenceSpec {
   }
 
   /** One random history over a case: the incremental path driven event by event, and the whole resolve. */
-  final class History(of: Case, seed: Long, budget: Budget, order: Long = 0) {
-    private val world    = new World(seed, of, order)
+  final class History(of: Case, seed: Long, budget: Budget, order: Long = 0, canonical: String => String = identity) {
+    private val world    = new World(seed, of, order, canonical)
     private val rnd      = new Random(seed * 7919)
     private val held     = mutable.LinkedHashMap.empty[ListingKey, Listing]
     /** The listings that left whose facts are kept ([[services.identity.ListingRetention]]). */

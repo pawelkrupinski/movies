@@ -36,13 +36,16 @@ object GeneratedIdentityCorpus {
     "Andrzej Żuławski", "F.W. Murnau", "Danny DeVito", "Wong Kar Wai", "Justin Baldoni", "Alexander Ullom", "George Cukor")
   private val Years = Seq(1926, 1954, 1976, 1990, 2013, 2018, 2021, 2025, 2026)
 
-  def generate(seed: Long, normalizer: TitleNormalizer, films: Int = 10, listings: Int = 40, tmdbShare: Double = 0.85): GeneratedIdentityCorpus = {
+  /** `tmdbIdOf`: the TMDB id the `i`th film is filed under -- another bijection relabels the corpus, nothing else moving
+   *  (the relabelling property: no decision may turn on an id). */
+  def generate(seed: Long, normalizer: TitleNormalizer, films: Int = 10, listings: Int = 40, tmdbShare: Double = 0.85,
+               tmdbIdOf: Int => Int = 1000 + _): GeneratedIdentityCorpus = {
     val rnd = new Random(seed)
     val universe = (1 to films).map { i =>
       val base  = Bases(rnd.nextInt(Bases.size))
       val title = if (rnd.nextDouble() < 0.12) s"$base 2" else base
       Film(i, title, Years(rnd.nextInt(Years.size)), Directors(rnd.nextInt(Directors.size)), 80 + rnd.nextInt(100),
-        Option.when(rnd.nextDouble() < tmdbShare)(1000 + i), math.round(rnd.nextDouble() * 1000) / 10.0)
+        Option.when(rnd.nextDouble() < tmdbShare)(tmdbIdOf(i)), math.round(rnd.nextDouble() * 1000) / 10.0)
     }.distinctBy(f => (f.title, f.year))
     val detailVenues = Venues.zipWithIndex.collect { case (v, i) if i % 3 == 0 => v.displayName }.toSet
     val made = (1 to listings).map { _ =>
@@ -89,18 +92,20 @@ object GeneratedIdentityCorpus {
         case CandidateQuery.Title(text) =>
           val want = words(text)
           Answer.Known(known.filter(f => want.nonEmpty && want.subsetOf(words(f.title)))
-            .sortBy(f => (-f.popularity, f.tmdbId.get)).map(hit))
+            .sortBy(f => (-f.popularity, f.id)).map(hit))
         case CandidateQuery.Director(name) =>
-          Answer.Known(known.filter(_.director == name).sortBy(_.tmdbId.get).map(hit))
+          Answer.Known(known.filter(_.director == name).sortBy(_.id).map(hit))
         case CandidateQuery.Imdb(title) =>
-          Answer.Known(known.filter(f => words(f.title) == words(title)).sortBy(_.tmdbId.get).map(hit))
+          Answer.Known(known.filter(f => words(f.title) == words(title)).sortBy(_.id).map(hit))
         case CandidateQuery.ImdbTitled(title) =>
-          Answer.Known(known.filter(f => IdentityMeasures.key(f.title) == IdentityMeasures.key(title)).sortBy(_.tmdbId.get).map(hit))
+          Answer.Known(known.filter(f => IdentityMeasures.key(f.title) == IdentityMeasures.key(title)).sortBy(_.id).map(hit))
         case CandidateQuery.TitleCredit(title) =>
-          Answer.Known(TitleCredit.named(title, known.map(_.director)).toSeq.flatMap(name => known.filter(_.director == name)).sortBy(_.tmdbId.get).map(hit))
+          Answer.Known(TitleCredit.named(title, known.map(_.director)).toSeq.flatMap(name => known.filter(_.director == name)).sortBy(_.id).map(hit))
       }
+    // the films' order and which records never answer are the films' own -- by their index, never their TMDB id -- so a
+    // corpus relabelled ([[generate]]'s `tmdbIdOf`) is the same data under other ids; filed under 1000 + index, as before
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
-      if (tmdbId % 7 == 0) Answer.Unknown
+      if (known.find(_.tmdbId.contains(tmdbId)).fold(tmdbId)(f => 1000 + f.id) % 7 == 0) Answer.Unknown
       else Answer.Known(known.find(_.tmdbId.contains(tmdbId)).map(f =>
         IdentityMeasures.Film(f.title, None, Nil, Some(f.year), Some(f.runtime), Some(Seq(f.director)), None, Some(f.popularity))))
   }
