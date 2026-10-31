@@ -110,7 +110,7 @@ c4=$(scratch_git "$work/src" rev-parse HEAD~1) c5=$(scratch_git "$work/src" rev-
 rm -rf "$work/job" && mkdir -p "$work/job" && scratch_git "$work/job" clone -q --depth=1 --branch main "file://$work/origin.git" .
 mkdir -p "$work/job/test/resources/fixtures" "$work/job/scripts/ci"
 printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n' > "$work/job/test/resources/fixtures/identity-judgements.tsv"
-cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/report_fields.py" "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
+cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/report_fields.py" "$(dirname "$script")/gh-release.sh" "$(dirname "$script")/ci-writes.sh" "$work/job/scripts/ci/"
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
 # Every argument not a flag is an sbt command, run in order as sbt runs them: "[success]" after each, and the first that

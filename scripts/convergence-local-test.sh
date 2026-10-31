@@ -8,6 +8,9 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 . "$REPO_ROOT/scripts/tool-conventions.sh" # bounded
+# The job's own keys stay out: the landing check runs this with TMDB_API_KEY/OMDB_API_KEY set, and the vault and
+# no-key cases would read them instead of their stubs. Each case names the keys it gives.
+unset TMDB_API_KEY OMDB_API_KEY
 
 printf '\033[36m▸\033[0m convergence-local.sh\n'
 work="$(mktemp -d)"

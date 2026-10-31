@@ -39,4 +39,10 @@ check "build-image.sh still builds in shadow, with --load, not --push" "1 0" \
 check "mark-grafana-deploy posts nothing in shadow" "" "$(shadow env GRAFANA_URL=https://g GRAFANA_ANNOTATION_TOKEN=t TIER=web SHA=abcdef0 MSG=m bash "$REPO_ROOT/.github/actions/mark-grafana-deploy/mark.sh")"
 check "drop-bot-branch deletes nothing in shadow" "" "$(shadow env GH_REPO=o/r BRANCH=b bash "$REPO_ROOT/.github/actions/drop-bot-branch/drop.sh")"
 
+# Copied without the helper, a writer fails loudly -- never a silent skip of its write (identity-takes-check-test.sh
+# copied gh-release.sh alone once, and every store "succeeded" by writing nothing).
+mkdir -p "$work/alone"; cp "$REPO_ROOT/scripts/ci/gh-release.sh" "$work/alone/"
+check "gh-release.sh without ci-writes.sh beside it fails, writing nothing" "2 " \
+    "$(: > "$work/calls"; env PATH="$work/bin:$PATH" CI_ROLE=primary bash "$work/alone/gh-release.sh" upload t f > /dev/null 2>&1; echo "$? $(cat "$work/calls")")"
+
 spec_summary

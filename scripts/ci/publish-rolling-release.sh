@@ -21,7 +21,7 @@
 set -euo pipefail
 
 # SHADOW (scripts/ci/ci-writes.sh): no pre-release, asset or tag move from a github.com shadow run.
-. "$(dirname "${BASH_SOURCE[0]}")/ci-writes.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/ci-writes.sh" || { echo "::error::$0: scripts/ci/ci-writes.sh is missing beside it -- its shadow gate cannot be read" >&2; exit 2; }
 ci_writes || { ci_writes_skipped "the ${1:-} pre-release"; exit 0; }
 
 tag="${1:?tag}"

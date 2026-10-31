@@ -7,12 +7,14 @@ stale assets listed (pruned only when asked), and the overflow past github.com's
 import importlib.machinery
 import importlib.util
 import os
+import sys
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 _loader = importlib.machinery.SourceFileLoader("copy_releases", os.path.join(HERE, "copy-releases-to-github"))
 _spec = importlib.util.spec_from_loader("copy_releases", _loader)
 cr = importlib.util.module_from_spec(_spec)
+sys.modules["copy_releases"] = cr  # its dataclasses look their module up there (Python <= 3.13 fails without)
 _loader.exec_module(cr)
 
 

@@ -55,8 +55,11 @@ test/resources/fixtures/corpus/**
 # pair, and the status that IS its verdict on the commit. (ConvergenceDispatchGateSpec walks
 # the convergence workflows and fails on any repository file they run that is not listed.)
 .github/actions/leg-verdict/**
+.github/actions/free-disk/**
+.github/actions/runner-peaks/**
 scripts/ci/leg-verdict.sh
 scripts/ci/gh-release.sh
+scripts/ci/ci-writes.sh
 scripts/ci/gh-optional.sh
 scripts/ci/preflight.sh
 scripts/ci/convergence-preflight.sh

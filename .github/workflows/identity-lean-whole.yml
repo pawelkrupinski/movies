@@ -99,6 +99,10 @@ jobs:
             contents: read
             actions: read
         steps:
+            # THE ROW'S CEILING, in its log, for the timings reporter (ci_timings.py `CEILING_LINE`): the job's expression.
+            - name: Report the row's ceiling
+              shell: bash
+              run: echo "ci-job-ceiling ${{ fromJSON(needs.plan.outputs.ceiling || '350') }} minutes"
             - uses: actions/checkout@v5
             - uses: ./.github/actions/free-disk
             - name: Lay out the recording

@@ -3,7 +3,7 @@
 # Runs as the runner runs a `shell: bash` step: -e and pipefail.
 set -eo pipefail
 # SHADOW (scripts/ci/ci-writes.sh): a deploy marker only from the run that deploys.
-. "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/ci/ci-writes.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/../../../scripts/ci/ci-writes.sh" || { echo "::error::$0: scripts/ci/ci-writes.sh is missing beside it -- its shadow gate cannot be read" >&2; exit 2; }
 ci_writes || { ci_writes_skipped "the Grafana deploy marker"; exit 0; }
 if [ -z "${GRAFANA_URL:-}" ] || [ -z "${GRAFANA_ANNOTATION_TOKEN:-}" ]; then
     echo "Grafana annotation secrets unset — skipping deploy marker."

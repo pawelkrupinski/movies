@@ -57,6 +57,7 @@ def _forge_gh():
     loader = importlib.machinery.SourceFileLoader("forge_gh", os.path.join(HERE, "forge-gh"))
     spec = importlib.util.spec_from_loader("forge_gh", loader)
     module = importlib.util.module_from_spec(spec)
+    sys.modules["forge_gh"] = module  # a dataclass looks its module up there (Python <= 3.13 fails without)
     loader.exec_module(module)
     return module
 
