@@ -91,6 +91,8 @@ scripts/ci/recording_health.py
 # The identity takes check every hermetic convergence row runs after its suite: the scripts, and the judgements
 # that accept a move and that the suspect gate reads (an acceptance re-runs the lane, which turns the check green again).
 scripts/ci/identity-takes-check.sh
+# ...and the history floor it reads on github.com: a status older than it counts as none when the base is picked
+.github/github-takes-history-floor
 # the incremental = whole gate beside it: its replay harness, the allow-lists and known-flips baseline it reads, and
 # the unmatched families both checks read (ConvergenceReuse's ListedInputs: every input of either check listed)
 scripts/ci/identity-drift-check.sh
