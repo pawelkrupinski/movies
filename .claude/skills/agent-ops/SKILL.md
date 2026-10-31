@@ -43,7 +43,7 @@ The rules themselves are in `CLAUDE.md`; this skill holds the mechanics. Dated i
 
 A push to `main` starts ~20 jobs. Since 2026-10-22 the run in flight is NEVER cancelled: it finishes and publishes,
 a newer push queues behind it, and an even newer push replaces that queued run, which shows as cancelled (github.com's
-one running, one pending; our patched Forgejo does the same). Until then a newer push cancelled
+one running, one pending). Until then a newer push cancelled
 the run in flight, and on 2026-10-21 39 of 51 runs died that way. Still batch, because every run that does start
 takes ~20 min of runners:
 
@@ -68,13 +68,10 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   `project/`, `infra/nix/`, `Dockerfile`) carries `Fixes-Red: <run id>` naming a red run. Tools-only commits
   (scripts, docs, skills, tests, fixtures, `test/resources/`, `.github/`) land without one. The Identity findings
   report (a recording's data findings, one issue per country) is not gating.
-- **Check first, then push.** git opens the push's ssh connection before it runs the hook. To Forgejo that connection
-  rides the launchd tunnel (`net.bitcashier.forgejo-tunnel`, `ssh -N forgejo-tunnel`); when the tunnel drops (it
-  misses its own keepalives under heavy load, or the network blips) and launchd restarts it, everything forwarded
-  through it dies. A 20–76 min hook then prints "all clear" and the push dies ("closed by remote host", "Broken pipe",
-  "unexpected disconnect while reading sideband packet"; while the tunnel is down, "Connection refused" /
-  "kex_exchange_identification"). So run `scripts/hooks/pre-push --range forgejo/main..HEAD` first (a `<remote>/…`
-  base reads that remote's runs, as the push will), then `git push forgejo <sha>:main`: the hook reuses the stored
+- **Check first, then push.** git opens the push's ssh connection before it runs the hook, and a connection held
+  through a 20–76 min hook can die (a network blip): the hook prints "all clear" and the push dies ("closed by remote
+  host", "Broken pipe", "unexpected disconnect while reading sideband packet"). So run
+  `scripts/hooks/pre-push --range origin/main..HEAD` first, then `git push origin <sha>:main`: the hook reuses the stored
   pass and the connection lives seconds. A push that died after "all clear" is re-pushed as is — the same reuse. The
   hook says so itself when it ran over `PREPUSH_LONG_SECONDS` (300).
 - Bypasses — always say so in your report: `PREPUSH_SKIP=redgate`, `PREPUSH_SKIP="<checks>"` (names: `redgate`,

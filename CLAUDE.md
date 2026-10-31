@@ -34,16 +34,15 @@ Bypasses — `PREPUSH_SKIP="<checks>"`, `git push --no-verify` — must be named
 A check's local tool missing (sbt or a working java, shellcheck, actionlint, npm, python3 / timezonefinder, gh, curl,
 jq) BLOCKS the push with the fix, never a skip: for sbt, `. "$HOME/.sdkman/bin/sdkman-init.sh"` (or put
 `~/.sdkman/candidates/{sbt,java}/current/bin` on PATH) before `git push`. Only what lies outside the machine's install
-warns and passes: the red gate's API unreachable or no Forgejo token, Docker not running. The GitOps manifests
-(`infra/bin/fetch-gitops`: Forgejo, else GitHub) failing to fetch BLOCKS too: the checkout left behind is stale.
+warns and passes: Docker not running. The GitOps manifests
+(`infra/bin/fetch-gitops`, from GitHub) failing to fetch BLOCKS too: the checkout left behind is stale.
 
 **Red builds gate every push to main.** While the newest COMPLETED run on main of Main or Identity model convergence
 -- exactly those two, the owner's gate (2026-10-27) -- is red (running, queued and cancelled runs say nothing), a push lands only as a fix for it: every pushed
 commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`, `project/`, `infra/nix/`, `Dockerfile`)
 carries a `Fixes-Red: <run id>` trailer naming a red run. Tools-only commits (scripts, docs, `.claude/` skills,
 `*/src/test|it|fixtures/`, `test/resources/`, `.github/`) land while red without one. The hook enforces it;
-`PREPUSH_SKIP=redgate` bypasses — say so. A push to the Forgejo remote reads Forgejo's runs (`Fixes-Red:` takes the run number in its
-URL or the API run id), with `$FORGEJO_API_TOKEN` or the `movies` vault's token while unlocked; otherwise skipped. The gates judge only what a commit's code changed; a recording's own data
+`PREPUSH_SKIP=redgate` bypasses — say so. A gate gh cannot read refuses a production push. The gates judge only what a commit's code changed; a recording's own data
 findings go to the non-gating Identity findings report (history: `docs/agent-workflow-history.md`). The nightly
 recording's capture (Record scrape fixtures) and its hermetic replay (Verify scrape recording) do not gate either;
 `agentctl ci-why` lists their reds as information (`docs/design/convergence-fixture-fill.md`, "Capture, then verify").
@@ -249,7 +248,7 @@ The work is done when the area is at least as clean as you found it and nothing 
 ## Deploying a NixOS host: `infra/bin/deploy <host>`
 
 Never hand-craft `nix-env --set` / `switch-to-configuration` lines. `infra/bin/deploy <host>`
-previews (refuses a checkout behind forgejo main, uses the `monitoring-1`-style ssh alias, shows
+previews (refuses a checkout behind origin main, uses the `monitoring-1`-style ssh alias, shows
 units started/stopped/restarted and whether a reboot is owed); `--apply` switches and verifies.
 Agents run the preview only and hand the user the `--apply` command. Details, and the auto-apply
 new/routine-unit rules: docs/deploying-nixos-hosts.md.
@@ -261,9 +260,7 @@ the end. Per-service limits: `external-api-rate-limits` skill.
 
 ## Investigating identity, scraper or CI failures
 
-CI runs on the self-hosted Forgejo since the GitHub suspension (2026-10-19), and workflows must stay valid on
-github.com. Every Forgejo difference these workflows hit and how they were adapted: infra
-`docs/forgejo-actions.md` (`~/bitcashier/infra/docs/forgejo-actions.md`).
+CI runs on GitHub's hosted runners (Forgejo, the self-hosted CI of 2026-10-19..31, is switched off).
 
 **Writing a workflow (WorkflowPlanSpec):** inputs, refs, run ids and skip decisions are evaluated in ONE plan job (a
 root: `preflight`/`plan`) and every other job reads `needs.<plan>.outputs.<name>`. A step with its own `timeout-minutes` starts `. scripts/ci/bounded-step.sh`
@@ -278,7 +275,7 @@ Before an ad-hoc test or a full convergence leg (10–90 min), use the local too
 answers which question, flags, speed and data sources: `identity-investigation` skill. **Name these tools in every
 subagent brief.**
 
-**Heavy identity work runs on CI (ci-runner, Forgejo), not the laptop** (the user, 2026-10-21): measure with
+**Heavy identity work runs on CI, not the laptop** (the user, 2026-10-21): measure with
 `scripts/identity-measure --base X --head Y` (pushes a `measure/<user>/…` branch the run deletes itself); any other
 heavy sbt command over a cached recording (a resolve dump, an ablation, a simulation, a replay sweep) with
 `scripts/identity-ci-run --recording RUN [--countries …] -- '<sbt command>'`. `scripts/identity-measure-local` and other
