@@ -88,6 +88,23 @@ class IncrementalWholeEquivalenceSpec extends AnyFlatSpec with Matchers {
     every(Budget.Unlimited)(_.monotoneUnderFiling()) shouldBe empty
   }
 
+  // P3 (identity-flips-structural-2026-10-30, property 3): a budget decides how soon, never what -- at every step of the
+  // same history, a listing's outcome under production's correction budget is the unbounded one's, or Pending: never
+  // another decided value (Chichester x2, Cosi, Hamlet, Rocky Horror, La Fanciulla, E4 were each such a take)
+  it should "decide under a correction budget what it decides unbounded, or wait" in {
+    // production's budget binds over a country's corrections, never over these few clusters: one an apply, and none
+    // (PL "Lalka" stood on its stored, unread correction past a restart, served 1001 as decided -- caught here)
+    val histories = for { budget <- Seq(Budget.Tight, Budget.Spent); (label, make) <- cases; seed <- Seeds } yield (budget, label, make, seed)
+    IndependentCases.flatMap(histories) { case (budget, label, make, seed) =>
+      val (bounded, unbounded) = (new History(make(seed), seed, budget), new History(make(seed), seed, Budget.Unlimited))
+      (0 to 30).iterator.map { step =>
+        val ((event, b), (_, u)) = (bounded.outcomesAfter(step == 30), unbounded.outcomesAfter(step == 30))
+        b.collectFirst { case (key, film) if film != "pending" && u.get(key).exists(_ != film) =>
+          s"$label ($budget): seed $seed, step $step ($event), ${key.venue} | ${key.rawTitle}: $film under the budget, ${u(key)} unbounded" }
+      }.collectFirst { case Some(found) => found }
+    } shouldBe empty
+  }
+
   "its cases" should "reach the stage's takes — agreed, filled, corrected — and the model's matches" in {
     val bases = cases.flatMap { case (_, make) => Seeds.take(8).flatMap(seed => takes(new History(make(seed), seed, Budget.Unlimited).wholeAtEnd()).map(_._4)) }.toSet
     bases should contain allOf (ResolverDecision.Basis.Agreed, ResolverDecision.Basis.Filled, ResolverDecision.Basis.Corrected, ResolverDecision.Basis.OwnMatch)
@@ -103,6 +120,8 @@ object IncrementalWholeEquivalenceSpec {
     case Unlimited  extends Budget(Int.MaxValue)
     case Production extends Budget(AgreementStage.CorrectionsPerApply)
     case Spent      extends Budget(0)
+    /** One correction an apply: what binds over these few clusters, as production's binds over a country's. */
+    case Tight      extends Budget(1)
   }
 
   /** Each listing's cluster (its members) and take, in one order: what "equal" means — grouping and takes, exactly. */
@@ -386,6 +405,21 @@ object IncrementalWholeEquivalenceSpec {
       while (world.round < Final) { world.round += 1; record() }
       def refines(seq: Vector[String]): Boolean = seq.dropWhile(_ == "pending").distinct.sizeIs <= 1 && !seq.dropWhile(_ == "pending").contains("pending")
       outcomes.collectFirst { case (key, seq) if !refines(seq) => s"seed $seed, ${key.venue} | ${key.rawTitle}: ${seq.mkString(" -> ")}" }
+    }
+
+    /** One event of the history, the stage applied after it, and each listing's outcome then: a film, "none", or
+     *  "pending" ([[AgreementStage.outcomeOf]]). */
+    def outcomesAfter(last: Boolean): (String, Map[ListingKey, String]) = {
+      val label = if (last) finish() else event()
+      val r     = applied()
+      label -> r.decisions.iterator.flatMap { d =>
+        val outcome = stage.outcomeOf(d) match {
+          case services.identity.TakeOutcome.Pending(_)  => "pending"
+          case services.identity.TakeOutcome.Taken(film) => film
+          case services.identity.TakeOutcome.NoFilm(_)   => "none"
+        }
+        d.members.iterator.map(_ -> outcome)
+      }.toMap
     }
 
     /** After every event, the incremental take of the inputs equals the whole resolve's of the same inputs. */
