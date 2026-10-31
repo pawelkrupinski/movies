@@ -114,7 +114,7 @@ object LogCapture {
     hub
   }
 
-  /** Until the appender array `logger`'s logging path reads holds `hub`, on three looks in a row a few ms apart: a
+  /** Until the appender array `logger`'s logging path reads holds `hub`, on three looks in a row a few ms apart ([[Eventually]]'s polls): a
    *  `refreshCopy` racing the hub's `add` publishes its old array AFTER the add, so one look is not enough. A look that
    *  misses it marks the array stale, as an attach would, so the next read takes it afresh. Once settled, one look per
    *  capture. Read through logback's private fields; were they ever renamed, every capture fails loudly here. */
@@ -122,13 +122,11 @@ object LogCapture {
     def visible = appenderArray(logger).contains(hub)
     if (!(settled.contains(hub) && visible)) {
       var steady = 0
-      var looks  = 0
-      while (steady < 3) {
-        looks += 1
-        if (looks > 2000) throw new IllegalStateException(s"LogCapture: the capture hub on ${logger.getName} never reached its logging path")
+      val held = Eventually.poll(pollMs = 2) {
         if (visible) steady += 1 else { steady = 0; staleFlag(logger).set(false) }
-        Thread.sleep(2)
+        steady >= 3
       }
+      if (!held) throw new IllegalStateException(s"LogCapture: the capture hub on ${logger.getName} never held on its logging path")
       settled.add(hub)
       ()
     }
