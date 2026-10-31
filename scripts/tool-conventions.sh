@@ -37,7 +37,8 @@
 #   country_flag / selected_countries_csv -> `--country cc[,cc]` and `--countries a,b`, one parser (below)
 #   flag_value "$@"                 -> a usage_error when the flag in $1 has no value after it (below)
 #   path_flag "$@"                  -> the flag's value made absolute, a usage_error when its directory is not there (below)
-#   gh_download <seconds> <gh download args...> -> 0 got it, 3 absent, 1 failed: bounded and retried (below)
+#   gh_download <seconds> <gh download args...> -> 0 got it, 3 absent, 1 failed: bounded and retried; a public release
+#        asset from its public URL, no API request (below)
 #   local_mongo_port / local_mongo_uri [database] -> the local, password-free Mongo the prod mirror, the it/ suites
 #        and the identity tools share: 127.0.0.1:$LOCAL_MIRROR_PORT (default 28017), a direct connection
 
@@ -190,11 +191,37 @@ path_flag() {
 #   which a caller treating "absent" as "carry on with less" must not read as it.
 #   A `run download`'s --dir is emptied before each retry (gh refuses to overwrite what a cut-short attempt left), so
 #   it must be a directory of the download's own. gh's own messages go to stderr.
+#
+#   PUBLIC ASSETS, NO API. A `release download <tag> --pattern <one exact name>` is fetched from the release's public
+#   URL, https://github.com/<repo>/releases/download/<tag>/<name>, which the CDN serves without the REST API — where gh
+#   spends three API requests on each (the release by tag, a GraphQL lookup, the asset). A convergence run downloads
+#   ~500 fills that way; two runs side by side drew the repository's GITHUB_TOKEN budget dry (run 41228549464: every
+#   uk-2 retry 403 "API rate limit exceeded for installation" for 14 minutes; run 41228572378's de-2 waited out its
+#   900 s tree-restore bound inside the same window, its fill retries silenced). Taken when GH_DOWNLOAD_PUBLIC=1, and
+#   by default on a github.com Actions runner (GITHUB_ACTIONS, GITHUB_SERVER_URL https://github.com) — never against
+#   Forgejo, whose forge-gh answers the same command. The repository is -R's, else GH_REPO's, else GITHUB_REPOSITORY's.
+#   A 404 there (a private repository, a missing asset) and any other failure fall back to gh from then on: the API's
+#   answer decides absent from failed, as it always did.
+#   PROGRESS, NOT A CLOCK: the public fetch ends once it moves under GH_DOWNLOAD_STALL_BYTES (1024) bytes a second for
+#   GH_DOWNLOAD_STALL_SECONDS (60) — a stalled connection is a failed attempt within a minute, not one that holds the
+#   whole <seconds> bound — and gh, on a fresh connection, takes over.
+#   RATE LIMIT: a gh refused with "API rate limit exceeded" waits for that limit's reset (`gh api rate_limit`, which
+#   the limit does not count; X-RateLimit-Reset's value) plus a few seconds of jitter, said in the log, when the reset is at
+#   most GH_RATE_LIMIT_MAX_WAIT (600) seconds away: one request after the reset instead of blind ones inside the empty
+#   window. Further than that, or unreadable, it backs off as any throttle.
 gh_download() {
-  local seconds=$1 attempt=1 attempts err status dir="" arg prev="" wait
+  local seconds=$1 attempt=1 attempts err status dir="" arg prev="" wait public=1
   shift
   for arg in "$@"; do [ "$prev" = --dir ] && dir=$arg; prev=$arg; done
   while :; do
+    if [ -n "$public" ]; then
+      gh_release_public "$seconds" "$@"
+      status=$?
+      [ "$status" -eq 0 ] && return 0
+      public=""
+      # 4: not a download the public URL serves -- gh, quietly, as before
+      [ "$status" -eq 4 ] || echo "gh $1 $2: the public asset URL did not serve it (status $status); asking the API" >&2
+    fi
     # gh's stderr read into a variable, its stdout left where it was (fd 3, opened outside the substitution, is this
     # function's stdout): no temporary file for a signal to strand
     { err=$(bounded "$seconds" "$KINOWO_GH" "$@" 2>&1 1>&3 3>&-); status=$?; } 3>&1
@@ -211,14 +238,82 @@ gh_download() {
       echo "gh $1 $2: failed after $attempt attempt(s) (exit $status)" >&2
       return 1
     fi
-    wait=$(( ${GH_DOWNLOAD_BACKOFF:-5} << (attempt - 1) ))
-    [ "$wait" -le "${GH_DOWNLOAD_MAX_WAIT:-120}" ] || wait=${GH_DOWNLOAD_MAX_WAIT:-120}
-    wait=$(( wait + RANDOM % (wait / 2 + 1) ))
-    echo "gh $1 $2: attempt $attempt of $attempts failed (exit $status); asking again in ${wait}s" >&2
+    if printf '%s' "$err" | grep -Eiq 'API rate limit exceeded' && wait=$(gh_rate_limit_wait); then
+      echo "gh $1 $2: the API rate limit is spent; it resets in $wait s -- asking again then (attempt $attempt of $attempts)" >&2
+    else
+      wait=$(( ${GH_DOWNLOAD_BACKOFF:-5} << (attempt - 1) ))
+      [ "$wait" -le "${GH_DOWNLOAD_MAX_WAIT:-120}" ] || wait=${GH_DOWNLOAD_MAX_WAIT:-120}
+      wait=$(( wait + RANDOM % (wait / 2 + 1) ))
+      echo "gh $1 $2: attempt $attempt of $attempts failed (exit $status); asking again in ${wait}s" >&2
+    fi
     sleep "$wait"
     if [ "$1" = run ] && [ -n "$dir" ] && [ -d "$dir" ]; then find "$dir" -mindepth 1 -delete; fi
     attempt=$((attempt + 1))
   done
+}
+
+# gh_rate_limit_wait -> the seconds until the spent API rate limit (REST core or GraphQL, whichever is at 0) resets,
+#   plus GH_RATE_LIMIT_SLACK (5) and up to GH_RATE_LIMIT_JITTER (10) seconds, so a matrix's legs do not ask in step;
+#   status 1 when none is spent, it cannot be read, or the reset is over GH_RATE_LIMIT_MAX_WAIT
+#   (600) seconds away. `gh api rate_limit` is not counted against the limit it reads.
+gh_rate_limit_wait() {
+  local reset now wait
+  # allow-silenced: an unreadable limit only means the caller backs off blind, as it did before.
+  reset=$(bounded 30 "$KINOWO_GH" api rate_limit \
+            --jq '[.resources.core, .resources.graphql] | map(select(.remaining == 0) | .reset) | max // empty' 2>/dev/null) || return 1
+  [[ "$reset" =~ ^[0-9]+$ ]] || return 1
+  now=$(date +%s)
+  wait=$(( reset - now ))
+  [ "$wait" -ge 0 ] || wait=0
+  [ "$wait" -le "${GH_RATE_LIMIT_MAX_WAIT:-600}" ] || return 1
+  echo $(( wait + ${GH_RATE_LIMIT_SLACK:-5} + RANDOM % (${GH_RATE_LIMIT_JITTER:-10} + 1) ))
+}
+
+# gh_release_public <seconds> <gh release download args...> -> 0 fetched from the public asset URL; 3 that URL said 404;
+#   4 not a download it serves (see gh_download: off, not github.com, a glob or several patterns, an option it does not
+#   know, a file it would have to overwrite without --clobber); 1 any other failure, said on stderr. KINOWO_CURL
+#   overrides curl (a test's stub, a counting wrapper).
+gh_release_public() {
+  local seconds=$1 tag repo name="" dir=. output="" clobber="" dest tmp code status
+  shift
+  case "${GH_DOWNLOAD_PUBLIC:-}" in
+    1) ;;
+    0) return 4 ;;
+    *) [ "${GITHUB_ACTIONS:-}" = true ] && [ "${GITHUB_SERVER_URL:-}" = https://github.com ] || return 4 ;;
+  esac
+  [ "${1:-}" = release ] && [ "${2:-}" = download ] && [ $# -ge 3 ] || return 4
+  tag=$3 repo=${GH_REPO:-${GITHUB_REPOSITORY:-}}
+  shift 3
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -R|--repo) [ $# -ge 2 ] || return 4; repo=$2; shift 2 ;;
+      -p|--pattern) [ $# -ge 2 ] && [ -z "$name" ] || return 4; name=$2; shift 2 ;;
+      -D|--dir) [ $# -ge 2 ] || return 4; dir=$2; shift 2 ;;
+      -O|--output) [ $# -ge 2 ] || return 4; output=$2; shift 2 ;;
+      --clobber) clobber=1; shift ;;
+      *) return 4 ;;
+    esac
+  done
+  # owner/name, and a tag and an asset name of URL-safe characters only: a glob, a host prefix or anything to escape
+  # stays gh's
+  [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 4
+  [[ "$tag" =~ ^[A-Za-z0-9_.~+-]+$ ]] && [[ "$name" =~ ^[A-Za-z0-9_.~+-]+$ ]] || return 4
+  if [ -n "$output" ]; then dest=$output; else dest=$dir/$name; fi
+  [ "$dest" = - ] || [ -n "$clobber" ] || [ ! -e "$dest" ] || return 4
+  if [ "$dest" = - ]; then tmp=$(mktemp) || return 1; else mkdir -p "$(dirname "$dest")" || return 1; tmp=$dest.part; fi
+  code=$(bounded "$seconds" "${KINOWO_CURL:-curl}" -sSL --connect-timeout 20 \
+           --speed-limit "${GH_DOWNLOAD_STALL_BYTES:-1024}" --speed-time "${GH_DOWNLOAD_STALL_SECONDS:-60}" \
+           -o "$tmp" -w '%{http_code}' "https://github.com/$repo/releases/download/$tag/$name")
+  status=$?
+  if [ "$status" -eq 0 ] && [ "$code" = 200 ]; then
+    if [ "$dest" = - ]; then cat "$tmp"; rm -f "$tmp"; else mv -f "$tmp" "$dest"; fi
+    return 0
+  fi
+  rm -f "$tmp"
+  [ "$code" != 404 ] || return 3
+  # curl 28: the transfer stalled under the speed limit (or the bound ended it)
+  echo "public asset $repo $tag/$name: curl exit $status, HTTP ${code:-none}" >&2
+  return 1
 }
 
 # prod_latest_run <cc> -> the run id of the freshest COMPLETE nightly recording of that country (`--recording prod-latest`):

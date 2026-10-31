@@ -84,9 +84,10 @@ case "${1:-}" in
     status=0
     for fill in "$@"; do
       attempt=1
-      # allow-silenced: gh's own message is noise beside the error below, which names the fill.
-      # One attempt a turn: this loop asks again itself, the download and its unpack together.
-      until GH_DOWNLOAD_ATTEMPTS=1 gh_download "$GH_DOWNLOAD" release download "$TAG" --pattern "$fill" --dir "$downloads" --clobber 2>/dev/null &&
+      # One attempt a turn: this loop asks again itself, the download and its unpack together. Its messages are SAID:
+      # run 41228572378's de-2 spent its whole 900 s tree-restore bound on one fill's rate-limited retries, silenced
+      # here, and its log ended at the fill before with nothing to say why.
+      until GH_DOWNLOAD_ATTEMPTS=1 gh_download "$GH_DOWNLOAD" release download "$TAG" --pattern "$fill" --dir "$downloads" --clobber &&
             "$here/unpack-fixture-archive.sh" "$downloads/$fill" "$stage"; do
         if [ "$attempt" -ge "$attempts" ]; then
           echo "::error::fill $fill could not be restored after $attempts attempts — the pair names it, so this leg will not replay without it"

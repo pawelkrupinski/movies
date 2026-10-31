@@ -118,8 +118,11 @@ fi
 # ── gh_download ───────────────────────────────────────────────────────────────────────────────────
 # gh: answers each call from the next line of $STUB/answers ("ok", "absent", "gone", "expired", "partial", "egress",
 # "busy", "fail", "hang"), recording it
+# `gh api rate_limit` (gh_download's reset lookup) answers $STUB/reset's epoch, or fails when there is none: not a
+# download, so not an answer or a call.
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
+if [ "$1" = api ]; then [ -s "$STUB/reset" ] && cat "$STUB/reset" && exit 0; echo "HTTP 403" >&2; exit 1; fi
 n=$(( $(cat "$STUB/n" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$STUB/n"
 echo "gh $*" >> "$STUB/calls"
 dir=""; while [ $# -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done
@@ -132,6 +135,8 @@ case "$(sed -n "${n}p" "$STUB/answers")" in
   # what Actions' artifact storage (Azure) answered run 38763455103 while it throttled a shared storage account
   egress) echo "error downloading a: HTTP 503: 503 Egress is over the account limit. (https://productionresultssa17.blob.core.windows.net/x.zip)" >&2; exit 1 ;;
   busy) echo "HTTP 429: API rate limit exceeded" >&2; exit 1 ;;
+  # what every uk-2 attempt of run 41228549464 met while two convergence runs spent the repository's token budget
+  spent) echo "HTTP 403: API rate limit exceeded for installation. If you reach out to GitHub Support for help, please include the request ID 2C01:C5FB6" >&2; exit 1 ;;
   hang) sleep 30 ;;
   stdout) echo "the asset, on stdout"; echo "a warning" >&2; exit 0 ;;
   stdout-absent) echo "no assets match, said on stdout"; echo "HTTP 403: Resource not accessible by integration" >&2; exit 1 ;;
@@ -147,7 +152,7 @@ download() { # <answers, space-separated> <gh download args...> -> "<status> <ca
   # shellcheck disable=SC2086 # one answer a word
   printf '%s\n' $1 > "$work/answers"; shift
   local out; out=$(lib "GH_DOWNLOAD_BACKOFF=0 gh_download ${DOWNLOAD_BOUND:-$SPEC_HANG_BOUND} $*" | tail -1)
-  echo "${out#exit=} $(wc -l < "$work/calls" | tr -d ' ')"
+  echo "${out#exit=} $( { cat "$work/calls" 2>/dev/null || true; } | wc -l | tr -d ' ')"
 }
 check "downloaded at once: 0, one call" "0 1" "$(download ok release download t --pattern a --dir "$work/d1")"
 check "a failed read is asked again (GH_DOWNLOAD_ATTEMPTS, 3): 0 on the second" "0 2" "$(download "fail ok" release download t --pattern a --dir "$work/d2")"
@@ -176,6 +181,66 @@ mkdir -p "$work/d7"; echo stale > "$work/d7/got"
 download "partial ok" run download 1 --name a --dir "$work/d7" > /dev/null
 check "a run download cut short is retried into an emptied --dir (gh will not overwrite what it left)" "payload" "$(cat "$work/d7/got")"
 check "...whose files of before the retry are gone" "1" "$(find "$work/d7" -type f | wc -l | tr -d ' ')"
+
+# ── a spent API rate limit: wait for its reset, not blind ─────────────────────────────────────────
+date +%s > "$work/reset"
+check "a spent rate limit waits for its reset (gh api rate_limit), then asks once more" "0 2" \
+  "$(GH_RATE_LIMIT_SLACK=0 GH_RATE_LIMIT_JITTER=0 download "spent ok" release download t --pattern a --dir "$work/r1")"
+rm -f "$work/n" "$work/calls"; printf 'spent\nok\n' > "$work/answers"
+check "...and says when it resets" "yes" "$(lib "GH_RATE_LIMIT_SLACK=0 GH_RATE_LIMIT_JITTER=0 gh_download $SPEC_HANG_BOUND release download t --pattern a --dir $work/r2" | grep -c 'rate limit is spent; it resets in 0 s' | sed 's/^1$/yes/')"
+echo $(( $(date +%s) + 7200 )) > "$work/reset"
+rm -f "$work/n" "$work/calls"; printf 'spent\nok\n' > "$work/answers"
+check "...a reset further than GH_RATE_LIMIT_MAX_WAIT backs off as any throttle" "yes" \
+  "$(lib "GH_DOWNLOAD_BACKOFF=0 gh_download $SPEC_HANG_BOUND release download t --pattern a --dir $work/r3" | grep -c 'attempt 1 of 10 failed' | sed 's/^1$/yes/')"
+: > "$work/reset"
+check "...as does a limit it cannot read" "0 2" "$(download "spent ok" release download t --pattern a --dir "$work/r4")"
+
+# ── the public asset URL: no API request ──────────────────────────────────────────────────────────
+# curl: answers from $STUB/curl_answers' next line -- "200" (the asset, to -o), "404", "stall" (curl's 28 after a
+# partial 200: under --speed-limit for --speed-time) -- and records the URL it was asked
+cat > "$work/bin/curl" <<'STUB'
+#!/usr/bin/env bash
+n=$(( $(cat "$STUB/cn" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$STUB/cn"
+out=""; url=""; while [ $# -gt 0 ]; do case "$1" in -o) out=$2; shift ;; https://*) url=$1 ;; esac; shift; done
+echo "$url" >> "$STUB/curls"
+case "$(sed -n "${n}p" "$STUB/curl_answers")" in
+  200) echo public > "$out"; printf 200 ;;
+  404) echo "Not Found" > "$out"; printf 404 ;;
+  stall) echo half > "$out"; printf 200; exit 28 ;;
+  *) printf 000; exit 6 ;;
+esac
+STUB
+chmod +x "$work/bin/curl"
+public() { # <curl answers> <gh answers> <gh download args...> -> "<status> <gh calls> <curl calls>"
+  rm -f "$work/cn" "$work/curls"
+  # shellcheck disable=SC2086 # one answer a word
+  printf '%s\n' $1 > "$work/curl_answers"; shift
+  local out; out=$(download "$@"); echo "$out $( { cat "$work/curls" 2>/dev/null || true; } | wc -l | tr -d ' ')"
+}
+check "an exact asset name is fetched from the public release URL: no gh, no API request" "0 0 1" \
+  "$(GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r public 200 ok release download t --pattern a.tar.zst --dir "$work/p1")"
+check "...github.com's browser URL for the asset" "https://github.com/o/r/releases/download/t/a.tar.zst" "$(cat "$work/curls")"
+check "...into --dir under its own name" "public" "$(cat "$work/p1/a.tar.zst")"
+check "...-R names the repository" "https://github.com/x/y/releases/download/t/a" \
+  "$(GH_DOWNLOAD_PUBLIC=1 public 200 ok release download t -R x/y --pattern a --dir "$work/p2" > /dev/null; cat "$work/curls")"
+check "...--output - on stdout" "public|exit=0" \
+  "$(rm -f "$work/cn"; echo 200 > "$work/curl_answers"; lib "GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r gh_download $SPEC_HANG_BOUND release download t --pattern a --output -" | paste -sd'|' -)"
+check "a 404 there (a private repository, a missing asset) leaves the verdict to gh: absent stays absent" "3 1 1" \
+  "$(GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r public 404 absent release download t --pattern a --dir "$work/p3")"
+check "a STALLED transfer (under GH_DOWNLOAD_STALL_BYTES a second) falls back to gh at once" "0 1 1" \
+  "$(GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r public stall ok release download t --pattern a --dir "$work/p4")"
+check "...leaving no partial file behind" "payload" "$(cat "$work/p4"/* | paste -sd' ' -)"
+check "a glob is gh's (only the API can match it)" "0 1 0" \
+  "$(GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r public 200 ok release download t --pattern 'a.tar.*' --dir "$work/p5")"
+check "...as are several patterns" "0 1 0" \
+  "$(GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r public 200 ok release download t --pattern a --pattern b --dir "$work/p6")"
+check "...and a run's artifact" "0 1 0" "$(GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r public 200 ok run download 1 --name a --dir "$work/p7")"
+check "by default on a github.com Actions runner (GITHUB_REPOSITORY)" "0 0 1" \
+  "$(GH_DOWNLOAD_PUBLIC='' GITHUB_ACTIONS=true GITHUB_SERVER_URL=https://github.com GITHUB_REPOSITORY=o/r public 200 ok release download t --pattern a --dir "$work/p8")"
+check "...never on a Forgejo runner, whose forge-gh answers it" "0 1 0" \
+  "$(GH_DOWNLOAD_PUBLIC='' GITHUB_ACTIONS=true GITHUB_SERVER_URL=http://forge GITHUB_REPOSITORY=o/r public 200 ok release download t --pattern a --dir "$work/p9")"
+check "...nor off a runner" "0 1 0" \
+  "$(GH_DOWNLOAD_PUBLIC='' GITHUB_ACTIONS='' GITHUB_REPOSITORY=o/r public 200 ok release download t --pattern a --dir "$work/p10")"
 
 # ── a stall says what it was stuck on ─────────────────────────────────────────────────────────────
 # shellcheck disable=SC2016 # expanded by the bounded command's shell
