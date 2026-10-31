@@ -39,7 +39,7 @@ check "another base (same tree) runs everything" "0 5" "$(reuse_push "$rhead..$d
 check "a red-gate state that differs runs everything (a red run appeared; tools land while red)" "0 6" \
   "$(reuse_push "$rbase..$docs_only" GH_IMC="[$red]")"
 check "another PREPUSH_SKIP runs everything" "0 7" "$(reuse_push "$rbase..$docs_only" PREPUSH_SKIP="${pathchecks/scripttests/} linux")"
-# --fast-only: the `waiting` batch's combined check (sbt alone: compiles, lints, the `fast` set), no red gate; a push
+# --fast-only: the `waiting` batch's combined check (sbt, shellcheck, actionlint: compiles, lints, the `fast` set), no red gate; a push
 # with PREPUSH_REUSE_FAST=1 (agentctl's batch push) of that tree on that base reuses its pass after the gate
 fast_head="$(commit_paths "a batch of script changes" -- scripts/z.sh)"
 fast_run() { (cd "$grepo" && env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cache" PREPUSH_SKIP="${pathchecks/scripttests/}" \
@@ -47,6 +47,17 @@ fast_run() { (cd "$grepo" && env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cac
   echo "$? $(cat "$reuse/runs" 2>/dev/null | wc -l | tr -d ' ')"; }
 check "--fast-only judges no red gate and runs no path check but sbt (scripttests not run)" "0 7 1" \
   "$(fast_run) $(grep -c 'fast-only: the red gate is not judged' "$gate/err")"
+# ...and it lints what the batch touches: a shellcheck warning the batch adds fails it (a stub shellcheck: one warning
+# for a script that says BAD)
+mkdir -p "$reuse/sc"
+printf '#!/bin/sh\nfor a; do f=$a; done\ngrep -q BAD "$f" && echo "$f:1:1: warning: stub [SC0000]"\nexit 0\n' > "$reuse/sc/shellcheck"
+chmod +x "$reuse/sc/shellcheck"
+fast_lint() { (cd "$grepo" && env PREPUSH_NO_REUSE=1 PREPUSH_SKIP="${pathchecks/shellcheck/}" PATH="$reuse/sc:$PATH" \
+  STUB_RUNS="$reuse/lint-runs" GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" --fast-only "$rbase..$1" >/dev/null 2>"$gate/err"); echo "$? $(grep -c 'shellcheck warnings 0 → 1' "$gate/err")"; }
+check "--fast-only shellchecks the scripts the batch touches: a warning it adds fails the batch" "1 1" \
+  "$(printf '#!/bin/sh\necho BAD\n' > "$grepo/scripts/bad.sh"; scratch_git "$grepo" add scripts/bad.sh
+     scratch_git "$grepo" commit -qm "a script with a warning"; fast_lint "$(scratch_git "$grepo" rev-parse HEAD)")"
+scratch_git "$grepo" reset -q --hard "$fast_head"
 check "a batch push with PREPUSH_REUSE_FAST=1 reuses the fast pass: nothing runs, said once" "0 7 1" \
   "$(reuse_push "$rbase..$fast_head" PREPUSH_REUSE_FAST=1) $(grep -c "the waiting batch's fast check passed" "$gate/err")"
 check "...an ordinary push of it runs its checks" "0 8" "$(reuse_push "$rbase..$fast_head")"

@@ -155,7 +155,7 @@
 # paths selects, without running them (scripts/hooks/pre-push-test.sh). `--fast-only A..B` is the `waiting` batch's
 # combined check at green (each change in it passed its own full checks before it joined): the red gate is not judged
 # and only the `sbt` check runs -- every test config compiled, the lint specs, and local-tests.txt's `fast` set instead
-# of `basic`; no area tests. Its pass is stored like any (THE REUSE), and a push with PREPUSH_REUSE_FAST=1 (agentctl's
+# of `basic`; no area tests -- with the touched files' shellcheck and actionlint checks. Its pass is stored like any (THE REUSE), and a push with PREPUSH_REUSE_FAST=1 (agentctl's
 # batch push) of the same tree on the same base reuses it after judging the red gate. `--checks-only A..B` is `--range A..B` without
 # the red gate: every check, judged as a push to main whatever main's state -- what `agentctl land` runs on the
 # `waiting` branch while main is red (the gate is judged again when that branch is pushed). `--range A..B` runs the
@@ -765,8 +765,11 @@ if [ -n "${PREPUSH_BASELINE_DIR:-}" ]; then
 fi
 
 checks=""; [ -z "$changed" ] || checks="$(printf '%s\n' "$changed" | plan)" # a deletion-only push: the drift check's alone
-# --fast-only: the `sbt` check alone (compiles, lints, the `fast` set), whatever else the paths select
-[ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | grep -x sbt || true)"
+# --fast-only: the `sbt` check (compiles, lints, the `fast` set) and the seconds-cheap linters of the touched files
+# (the shellcheck and actionlint checks), whatever else the paths select: a lint finding is never left for main to find (16 commits in
+# the week to 2026-10-31 fixed a lint after landing; simplification-2026-10-31, "lints before landing").
+FastChecks='^(sbt|shellcheck|actionlint)$'
+[ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | grep -E "$FastChecks" || true)"
 # THE IDENTITY DRIFT CHECK (the header): the runs a push to main claims to fix, when it touches a drift path. A commit carrying
 # `Red-Unrelated:` claims no fix (a speed-up landing on red under the owner's rule), so its trailer names none here.
 drift_reds="" drift_birth=""
@@ -838,7 +841,7 @@ compute_reuse_key() { # prints the key, or fails when any part of it cannot be r
 }
 if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUSH_REUSE_FAST:-}" ] && [ -z "$fast_only" ]; then
     # agentctl's push of the `waiting` batch: the batch's --fast-only pass of this tree on this base stands for it
-    fast_key="$(gate_state=fast-only; checks="$(printf '%s\n' "$checks" | grep -x sbt || true)"; compute_reuse_key)" || fast_key=""
+    fast_key="$(gate_state=fast-only; checks="$(printf '%s\n' "$checks" | grep -E "$FastChecks" || true)"; compute_reuse_key)" || fast_key=""
     if [ -n "$fast_key" ] && [ -f "$reuse_dir/$fast_key" ]; then
         log "the waiting batch's fast check passed for tree $(git rev-parse --short "$head_sha^{tree}") on this base $(cat "$reuse_dir/$fast_key"): reused (each change passed its own full checks before it joined)" >&2
         exit 0
