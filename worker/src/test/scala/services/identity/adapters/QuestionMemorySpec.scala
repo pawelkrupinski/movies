@@ -170,6 +170,26 @@ class QuestionMemorySpec extends AnyFlatSpec with Matchers {
     memory.failed(Seq(record)) shouldBe Map(record -> 1)                          // counted afresh after an answer
   }
 
+  // The settle rule (the owner, 2026-10-31): a take settles past a question only once it is answered or given up on -- a
+  // failure still in its retry backoff (a TMDB 5xx, a 429) leaves it Pending, as its retry may yet answer and move it.
+  it should "call a question given up on once answered, durably unanswered or failed its kind's give-up count in a row, never in its backoff" in {
+    val clock  = at
+    val memory = this.memory(clock)
+    val (find, record, poster) = (Question.Find("tt1"), Question.Record(7), Question.Poster(PosterQuestion.Film(7)))
+    memory.answered(Seq(imdbLalka)); memory.unanswered(Seq(find))
+    Seq(imdbLalka, find).forall(memory.givenUp) shouldBe true
+    (1 until QuestionPolicies.SettleGiveUpFailures).foreach(_ => memory.failed(Seq(record)))
+    memory.givenUp(record) shouldBe false                                        // in its backoff: still pending
+    memory.failed(Seq(record))
+    memory.givenUp(record) shouldBe true                                         // its retries exhausted
+    memory.failed(Seq(poster))
+    memory.givenUp(poster) shouldBe false
+    QuestionPolicies.giveUpFailures(poster.kind) shouldBe QuestionPolicies.PosterGiveUpAttempts
+    QuestionPolicies.giveUpFailures(Question.FilmRecord(7).kind) shouldBe QuestionPolicies.RecordGiveUpFailures
+    memory.answered(Seq(record)); memory.failed(Seq(record))
+    memory.givenUp(record) shouldBe false                                        // counted afresh after an answer
+  }
+
   // The agreement stage's quiet apply reads none of the questions it waits on while this count stands still: it must move
   // on every write of a marker, and on no read.
   it should "count its writes, each answer, non-answer and failure marked, and no read" in {

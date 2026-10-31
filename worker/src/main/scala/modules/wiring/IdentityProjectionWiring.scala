@@ -157,7 +157,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         normalizer = titleNormalizer, identities = IdentityProjectionWiring.identities(country.code),
         listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
         changes = familyAnswerStore.changes, posters = posterAnswerStore, catalogue = catalogueAnswerStore,
-        attempted = identityQuestionMemory.attempted, attemptsMarked = Some(() => identityQuestionMemory.marks), keys = keys),
+        attempted = identityQuestionMemory.attempted, givenUp = identityQuestionMemory.givenUp, attemptsMarked = Some(() => identityQuestionMemory.marks), keys = keys),
       services.identity.agreement.AgreementStageComposition.Effects(ask = ask, metrics = metrics, askNow = askNow,
         pressed = () => tools.HeapPressure.pressed()),
       overrides = if (budgets) Set.empty else Set(services.identity.agreement.AgreementStageComposition.Override.Unbudgeted))

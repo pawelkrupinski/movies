@@ -92,7 +92,7 @@ object CorrectionArrivalOrderSpec {
     private val sources = AgreementStageComposition.Sources(families, NoVenueDetails, table, _ => Answer.Known(None), new InMemoryAgreementVerdicts,
       _root_.tools.SpecClock.Pinned, normalizer, identities = Seq(VoterFamily.Wiki), listedOn = None,
       changes = since => Some(filings.iterator.collect { case (at, id) if at > since => id }.toSet), posters = posters,
-      catalogue = CatalogueAnswers.Silent, attempted = tried, attemptsMarked = None, keys = new InMemoryAgreementKeys)
+      catalogue = CatalogueAnswers.Silent, attempted = tried, givenUp = _ => true, attemptsMarked = None, keys = new InMemoryAgreementKeys)
     // the worker's inline asks: the family questions asked are answered — filed — before the apply reads them again
     private val askNow: AgreementStage.AskNow = (questions, _) =>
       if (!familyFiled && questions.exists { case Question.Family(_, asked) => joinedQuestion(asked); case _ => false }) {

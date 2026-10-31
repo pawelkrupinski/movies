@@ -62,7 +62,7 @@ object ModelTakeCorrectionCost {
           identities = modules.wiring.IdentityProjectionWiring.identities(l.c.country.code),
           listedOn = modules.wiring.IdentityProjectionWiring.listedOn(l.c.country.code), changes = store,
           posters = new PosterAnswerStore(store, SpecClock.Pinned),
-          catalogue = new CatalogueAnswerStore(store, SpecClock.Pinned, UnmatchedClusters.CataloguePages), attempted = _ => false,
+          catalogue = new CatalogueAnswerStore(store, SpecClock.Pinned, UnmatchedClusters.CataloguePages), attempted = _ => false, givenUp = _ => true,
           attemptsMarked = Some(() => 0L), keys = new services.identity.agreement.InMemoryAgreementKeys),
           overrides = Set(services.identity.agreement.AgreementStageComposition.Override.CorrectionsPerApply(perApply)))
       }

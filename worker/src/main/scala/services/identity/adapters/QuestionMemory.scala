@@ -123,6 +123,15 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
   /** Has `question` been asked and come to an answer, a durable non-answer or a failure — not merely queued? */
   def attempted(question: Question): Boolean = outcome(question).isDefined
 
+  /** Given up on, as the settle rule reads it (`AgreementStage.givenUp`): anything but a failure still inside its
+   *  retries -- failed fewer than its kind's [[QuestionPolicies.giveUpFailures]] times in a row, asked again on its
+   *  backoff -- which leaves a take settled past it Pending. Answered, durably unanswered, given up on, or held nothing of
+   *  (never attempted: the stage waits on that one as unattempted, not by this). */
+  def givenUp(question: Question): Boolean = outcome(question) match {
+    case Some(Outcome.Failed(times, _, _)) => times >= QuestionPolicies.giveUpFailures(question.kind)
+    case _                                 => true
+  }
+
   /** The questions whose ask failed just now — asked again on their kind's failure backoff — and how many times in a
    *  row each has failed now (counted since the last answer or durable non-answer). `host`: where the failing request
    *  went, when the asker knows it. */

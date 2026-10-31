@@ -134,6 +134,13 @@ and NO timer (2026-10-24, superseding the 30-minute deadline of 2026-10-23): a t
 waits on was attempted, and any answer or new data recalculates it. A new answer can always move a take: settling only
 ends the wait, never the take's readiness to change when an answer arrives or changes.
 
+Decided by the owner (2026-10-31): a take counts as SETTLED only when every question it depends on is answered or GIVEN
+UP ON (its retries exhausted), not once each was asked: one whose ask failed and sits in its retry backoff (a TMDB 5xx,
+a 429) leaves the take Pending (`TakeOutcome.Pending`), since its retry may yet answer and move it. Given up on
+(`QuestionMemory.givenUp`): answered, durably unanswered, or failed `QuestionPolicies.giveUpFailures` times in a row --
+a poster's and a model record's own counts (8), every other kind's `SettleGiveUpFailures` (8, ~16 h at 5 min doubling
+to 6 h). A kind with no give-up of its own keeps being asked on its backoff past it; no take waits on it any more.
+
 ## The questions
 
 | kind | question | source | asked by (`path`) |

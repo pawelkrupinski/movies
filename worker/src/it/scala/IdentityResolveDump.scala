@@ -152,7 +152,7 @@ object IdentityResolveDump {
       stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, normalizer = c.normalizer,
       identities = modules.wiring.IdentityProjectionWiring.identities(c.country.code),
       listedOn = modules.wiring.IdentityProjectionWiring.listedOn(c.country.code), changes = services.identity.agreement.AnswerChanges.Unknown,
-      posters = posterStore, catalogue = catalogue.answers, attempted = _ => false, attemptsMarked = Some(() => 0L),
+      posters = posterStore, catalogue = catalogue.answers, attempted = _ => false, givenUp = _ => true, attemptsMarked = Some(() => 0L),
       keys = new services.identity.agreement.InMemoryAgreementKeys),
       overrides = Set(services.identity.agreement.AgreementStageComposition.Override.Unbudgeted))
     val byKey = listings.map(l => l.key -> l).toMap

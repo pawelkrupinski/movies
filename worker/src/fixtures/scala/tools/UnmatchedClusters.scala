@@ -126,7 +126,7 @@ object UnmatchedClusters {
     // no attempt (a question it gives up on is left open: `unreachable`), so the memory's marks never move
     val stage = AgreementStageComposition(AgreementStageComposition.Sources(families, venuePages = lookups, tmdb = lookups, tmdbOf = tmdbOf,
       stored = new InMemoryAgreementVerdicts, clock = SpecClock.Pinned, normalizer = normalizer, identities = identities, listedOn = listedOn,
-      changes = services.identity.agreement.AnswerChanges.Unknown, posters = posters, catalogue = catalogue, attempted = _ => false,
+      changes = services.identity.agreement.AnswerChanges.Unknown, posters = posters, catalogue = catalogue, attempted = _ => false, givenUp = _ => true,
       attemptsMarked = Some(() => 0L), keys = new services.identity.agreement.InMemoryAgreementKeys, calibration = calibration))
     val byKey = listings.map(l => l.key -> l).toMap
     Outcome(model, stage.apply(model, byKey.get, version), stage)

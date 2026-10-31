@@ -9,7 +9,7 @@ import services.movies.TitleNormalizer
  * the dumps — each handing it its [[Sources]], the worker's live, a harness's recorded. Every role is filled the same
  * way whoever builds it: the venues' pages and TMDB apart (a harness handing one lookups for both hid that the worker's
  * venue lookups answer no film, and prod kept 26 takes a whole resolve made, 2026-10-27), the families, the finds,
- * the posters, the catalogue, the attempts and their marks.
+ * the posters, the catalogue, the attempts, what is given up on and the attempts' marks.
  *
  * What a harness may build otherwise is an [[Override]], each named here with the reason it changes no take; nothing
  * else differs. `AgreementStageCompositionSpec` holds both: no stage is built but through [[apply]] (the spec names the
@@ -22,7 +22,12 @@ object AgreementStageComposition {
                            tmdbOf: String => Answer[Option[Int]], stored: AgreementVerdicts, clock: java.time.Clock,
                            normalizer: TitleNormalizer, identities: Seq[VoterFamily], listedOn: Option[VoterFamily],
                            changes: AnswerChanges, posters: PosterAnswers, catalogue: CatalogueAnswers,
-                           attempted: Question => Boolean, attemptsMarked: Option[() => Long], keys: AgreementKeys,
+                           attempted: Question => Boolean,
+                           /** Answered or given up on, as the settle rule reads a question it settled past: one whose ask
+                            *  failed and sits in its retry backoff is not, and leaves a take settled past it Pending (the
+                            *  owner, 2026-10-31). The worker's: the question memory's (`QuestionMemory.givenUp`). */
+                           givenUp: Question => Boolean,
+                           attemptsMarked: Option[() => Long], keys: AgreementKeys,
                            calibration: IdentityCalibration = IdentityCalibration.resolver)
 
   /** What a stage sets off beside its takes — the worker's queue and inline asks, its metrics, the
@@ -50,7 +55,7 @@ object AgreementStageComposition {
       correctionsPerApply = overrides.collectFirst { case Override.CorrectionsPerApply(n) => n }
         .getOrElse(if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionsPerApply),
       backfillPerApply = if (unbudgeted) Int.MaxValue else AgreementStage.BackfillPerApply,
-      askNow = effects.askNow, attempted = sources.attempted, attemptsMarked = sources.attemptsMarked,
+      askNow = effects.askNow, attempted = sources.attempted, givenUp = sources.givenUp, attemptsMarked = sources.attemptsMarked,
       keyStore = sources.keys, pressed = effects.pressed)
   }
 }

@@ -87,7 +87,7 @@ object CorrectionFlipReplaySpec {
     private val sources  = AgreementStageComposition.Sources(families, NoVenueDetails, table, _ => Answer.Known(None), verdicts,
       _root_.tools.SpecClock.Pinned, normalizer, identities = Seq(VoterFamily.Wiki), listedOn = None,
       changes = since => Some(filings.iterator.collect { case (at, id) if at > since => id }.toSet), posters = posters,
-      catalogue = CatalogueAnswers.Silent, attempted = tried, attemptsMarked = None, keys = keys)
+      catalogue = CatalogueAnswers.Silent, attempted = tried, givenUp = _ => true, attemptsMarked = None, keys = keys)
     // the worker's inline asks: the family questions asked are answered — filed — before the apply reads them again
     private val askNow: AgreementStage.AskNow = (questions, _) =>
       if (!familyFiled && questions.exists { case Question.Family(_, asked) => joinedQuestion(asked); case _ => false }) {

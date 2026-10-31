@@ -60,6 +60,22 @@ object QuestionPolicies {
   /** The failed fetch on which a poster that keeps failing is given up on (Kino Kryterium's posters, 2026-10-06: ten
    *  attempts between 14:55 and 16:09). */
   val PosterGiveUpAttempts: Int = 8
+  // ── Settling ──────────────────────────────────────────────────────────────────────────────────
+  /** The failures in a row on which a take stops waiting on a question (the owner, 2026-10-31): a take is SETTLED only
+   *  once every question it depends on is answered or given up on -- one whose ask failed and sits in its retry backoff
+   *  leaves it Pending (`AgreementStage.givenUp`), as a transient failure's retry (TMDB's 5xx, a 429) may yet move it.
+   *  A poster and a model record are given up on at their own counts ([[PosterGiveUpAttempts]], [[RecordGiveUpFailures]]:
+   *  filed unread or absent); every other kind keeps being asked on its backoff past this, but no take waits on it any
+   *  more: ~16 hours of failing at 5 min doubling to 6 h. */
+  val SettleGiveUpFailures: Int = 8
+
+  /** The failures in a row on which a question of `kind` is given up on for settling ([[SettleGiveUpFailures]]). */
+  def giveUpFailures(kind: QuestionKind): Int = of(kind).nonAnswer match {
+    case NonAnswer.GivenUp(_, _, attempts, _) => attempts
+    case _ if kind == QuestionKind.FilmRecord => RecordGiveUpFailures
+    case _                                    => SettleGiveUpFailures
+  }
+
   /** How long a catalogue id's mapping to a film is read before it is asked again. */
   val CatalogueMappedAge: FiniteDuration = 365.days
   /** How long a catalogue id Wikidata states on no item yet is read before it is asked again: it gains items. */
