@@ -3,7 +3,7 @@ package deploy
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import ForgejoParse.*
+import WorkflowText.*
 
 /**
  * ONE RESOLVER FOR UPSTREAM RUNS. A workflow started by another workflow's run (`on: workflow_run`) reads that run's
@@ -34,7 +34,7 @@ class UpstreamRunSpec extends AnyFlatSpec with Matchers {
   }
   private def resolverSteps(file: String) = for {
     (name, job) <- RepoFile.jobs(code(file)).toSeq.sortBy(_._1)
-    step        <- ForgejoParse.steps(job)
+    step        <- WorkflowText.steps(job)
     if step.get("uses").exists(_.trim == Action)
   } yield (name, job, step)
 

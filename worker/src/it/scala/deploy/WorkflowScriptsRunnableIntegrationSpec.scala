@@ -26,7 +26,7 @@ class WorkflowScriptsRunnableIntegrationSpec extends AnyFlatSpec with Matchers w
     RepoFile.workflows().map(_.getPath).sorted.flatMap { path =>
       val yml = RepoFile.read(path)
       RepoFile.jobs(yml).toSeq.sortBy(_._1).flatMap { (name, job) =>
-        val defaultDir = ForgejoParse.keys(job).get("defaults")
+        val defaultDir = WorkflowText.keys(job).get("defaults")
           .flatMap(_.linesIterator.map(_.trim).collectFirst { case s"working-directory: $dir" => dir.trim })
         steps(job).map(s => Script(s"$path ($name)", s.script, s.workingDirectory.orElse(defaultDir)))
       }

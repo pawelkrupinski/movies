@@ -53,7 +53,7 @@ class CiRowTimeoutSpec extends AnyFlatSpec with Matchers {
 
   private lazy val ablate      = RepoFile.jobs(RepoFile.read(".github/workflows/identity-rule-ablation.yml"))("ablate")
   private def ablateStep(name: String) =
-    ForgejoParse.steps(ablate).find(_.get("name").exists(_.startsWith(name))).getOrElse(fail(s"the ablate row has no step `$name`"))
+    WorkflowText.steps(ablate).find(_.get("name").exists(_.startsWith(name))).getOrElse(fail(s"the ablate row has no step `$name`"))
 
   "the rule ablation's ablate row" should "cut its ablation step above its longest green run, leaving the job room to upload what it resolved" in {
     val step = ablateStep("Ablate").get("timeout-minutes").map(_.trim.takeWhile(_.isDigit).toInt)
@@ -67,7 +67,7 @@ class CiRowTimeoutSpec extends AnyFlatSpec with Matchers {
 
   it should "upload each configuration's done marker, and a resumed run restore the round it was cut in" in {
     // IdentityRuleAblation skips a configuration whose done-<cc> is there: a cut row's resolved configurations are kept
-    ForgejoParse.steps(ablate).flatMap(_.get("with")).mkString("\n") should include("ablation/round-*/*/*/done-*")
+    WorkflowText.steps(ablate).flatMap(_.get("with")).mkString("\n") should include("ablation/round-*/*/*/done-*")
     ablateStep("Carry on").getOrElse("run", "") should include("round-")
   }
 
@@ -88,7 +88,7 @@ class CiRowTimeoutSpec extends AnyFlatSpec with Matchers {
     // the upload's paths share the workspace, not ablation/ (ablation.out sits beside it): `shards/*/state.json` matched
     // nothing, and every collect since went red with no report
     val collect = RepoFile.jobs(RepoFile.read(".github/workflows/identity-rule-ablation.yml"))("collect")
-    ForgejoParse.steps(ablate).flatMap(_.get("with")).mkString("\n") should include("ablation.out")
-    ForgejoParse.steps(collect).flatMap(_.get("run")).mkString("\n") should include("--merge shards/*/ablation/state.json")
+    WorkflowText.steps(ablate).flatMap(_.get("with")).mkString("\n") should include("ablation.out")
+    WorkflowText.steps(collect).flatMap(_.get("run")).mkString("\n") should include("--merge shards/*/ablation/state.json")
   }
 }

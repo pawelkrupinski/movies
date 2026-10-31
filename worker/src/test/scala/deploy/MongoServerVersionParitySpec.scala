@@ -71,7 +71,7 @@ class MongoServerVersionParitySpec extends AnyFlatSpec with Matchers {
   private def planned(jobs: Map[String, String], runner: String): String = runner match {
     case s"$${{ needs.$job.outputs.$key }}" if jobs.contains(job.trim) =>
       RepoFile.block(jobs(job.trim), "outputs").linesIterator.map(_.trim)
-        .collectFirst { case line if line.startsWith(s"${key.trim}:") => ForgejoParse.stripComment(line.drop(key.trim.length + 1).trim) }
+        .collectFirst { case line if line.startsWith(s"${key.trim}:") => WorkflowText.stripComment(line.drop(key.trim.length + 1).trim) }
         .getOrElse(runner)
     case other => other
   }
