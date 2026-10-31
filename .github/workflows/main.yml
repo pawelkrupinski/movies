@@ -23,16 +23,16 @@ concurrency:
     group: deploy-${{ github.ref }}
     cancel-in-progress: false
 
-# WHERE IMAGES GO, chosen by repository VARIABLES that exist only on the self-hosted Forgejo (set
-# 2026-10, after the GitHub suspension): IMAGE_REPO=registry.kinowo.net, REGISTRY_HOST=
-# registry.kinowo.net, REGISTRY_USER=ci, plus the REGISTRY_PASSWORD secret. On github.com none is set,
-# so every fallback below is exactly what this file did before -- which is what keeps going back to
-# GitHub a matter of pushing there, not of reverting anything.
+# WHERE IMAGES GO: registry.kinowo.net (infra/nix/modules/roles/registry.nix), the registry Flux's
+# ImageRepositories scan (FluxImageAutomationSpec), pushed as `ci` with the REGISTRY_PASSWORD secret
+# (infra/k8s-secrets/github-secrets.map). Fixed here, not in repository variables: those existed only on
+# the self-hosted Forgejo, and after the 2026-10-31 cut-over github.com fell back to ghcr.io and logged in
+# there as the pushing actor with registry.kinowo.net's password -- `denied` (Main #2030).
 env:
     CI_ROLE: ${{ vars.CI_ROLE }} # the shadow switch: scripts/ci/ci-writes.sh
-    IMAGE_REPO: ${{ vars.IMAGE_REPO || format('ghcr.io/{0}', github.repository_owner) }}
-    REGISTRY_HOST: ${{ vars.REGISTRY_HOST || 'ghcr.io' }}
-    REGISTRY_USER: ${{ vars.REGISTRY_USER || github.actor }}
+    IMAGE_REPO: registry.kinowo.net
+    REGISTRY_HOST: registry.kinowo.net
+    REGISTRY_USER: ci
 
 # Pipeline shape:
 #
@@ -345,7 +345,7 @@ jobs:
               # something (never deploy `latest`: a restart under it can come back on another build). A
               # manifest copy in the registry — seconds. The SHA tag stays the provenance tag.
               env:
-                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
               run: |
                   set -euo pipefail
                   echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin
@@ -437,7 +437,7 @@ jobs:
               with:
                   registry: ${{ env.REGISTRY_HOST }}
                   username: ${{ env.REGISTRY_USER }}
-                  password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+                  password: ${{ secrets.REGISTRY_PASSWORD }}
 
             # BuildKit from Docker Hub's mirror, Docker Hub only when the mirror fails (CiImageMirrorSpec).
             - uses: ./.github/actions/setup-buildx
@@ -501,7 +501,7 @@ jobs:
               # something (never deploy `latest`: a restart under it can come back on another build). A
               # manifest copy in the registry — seconds. The SHA tag stays the provenance tag.
               env:
-                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
               run: |
                   set -euo pipefail
                   echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin

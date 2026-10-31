@@ -83,6 +83,29 @@ class WriteGateSpec extends AnyFlatSpec with Matchers {
 
   // The owner, 2026-10-31: github.com's convergence must not lean on fills copied over from Forgejo (convergence
   // 41209071921, red on github.com only). Its legs publish their own fixture data in shadow -- and nothing else does.
+  // Main #2030 (2026-10-31): the registry came from repository variables that existed only on Forgejo, with ghcr.io as
+  // the fallback. When github.com turned primary it logged in to ghcr.io with registry.kinowo.net's password --
+  // `denied` -- and the e2e corpus row never built the image. A registry must never hang on a variable being set: every
+  // workflow that logs in to a registry names registry.kinowo.net (the one Flux scans) itself, with its own password.
+  "every workflow that pushes an image" should "name registry.kinowo.net itself, never via a variable or a ghcr.io fallback" in {
+    val pushers = workflows.filter { case (_, yml) =>
+      val code = RepoFile.withoutComments(yml)
+      code.contains("docker/login-action") || code.contains("docker login")
+    }
+    pushers.map(_._1).sorted shouldBe Seq("ci.yml", "main.yml")
+    for ((name, yml) <- pushers) withClue(name) {
+      val env = RepoFile.withoutComments(RepoFile.block(yml, "env")).linesIterator.map(_.trim).toSeq
+      env should contain("IMAGE_REPO: registry.kinowo.net")
+      env should contain("REGISTRY_HOST: registry.kinowo.net")
+      env should contain("REGISTRY_USER: ci")
+      val code = RepoFile.withoutComments(yml)
+      code should not include "vars.IMAGE_REPO"
+      code should not include "vars.REGISTRY_"
+      code should not include "ghcr.io"
+      code should not include "secrets.REGISTRY_PASSWORD ||"
+    }
+  }
+
   "the one shadow exception" should "be a convergence leg's fixture data in convergence-fixtures: never a pin, pointer or tree" in {
     val gate = RepoFile.read("scripts/ci/ci-writes.sh")
     gate should include("CI_SHADOW_DATA_RELEASE=convergence-fixtures")
