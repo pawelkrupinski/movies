@@ -19,6 +19,23 @@ check "the baseline run itself failed the old-ref compile" "1" "$(grep -c 'oldre
 mv "$known/$oldrefs_base.out" "$known/$oldrefs_base"
 check "a failure plain main shares is said, not blocking" "0 1 1 1" \
   "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED: oldrefs' "$gate/err") $(grep -c 'FAIL: tools compile into c0ffee' "$gate/err")"
+# ...wherever the host's mktemp puts the hook's temp files (2026-10-31: GNU mktemp honours $TMPDIR, on a GitHub runner
+# /home/runner/work/_temp/...; the check's `full log: <tmp>/oldrefs.log` line differed run to run and no Linux land's
+# known red held, while macOS's mktemp, ignoring $TMPDIR, passed). A GNU-like mktemp and a $TMPDIR outside /tmp and
+# /var/folders, so this case fails the same way on a Mac.
+mkdir -p "$gate/gnumktemp"; realmktemp="$(command -v mktemp)"
+printf '#!/bin/sh\n[ "$*" = -d ] && exec "%s" -d "${TMPDIR%%/}/tmp.XXXXXXXXXX"\nexec "%s" "$@"\n' "$realmktemp" "$realmktemp" \
+  > "$gate/gnumktemp/mktemp"; chmod +x "$gate/gnumktemp/mktemp"
+mkdir -p "${XDG_CACHE_HOME:-$HOME/.cache}"; hosttmp="$(mktemp -d "${XDG_CACHE_HOME:-$HOME/.cache}/kinowo-hook-tmpdir.XXXXXX")"
+gnu=(PATH="$gate/gnumktemp:$gate/sbt:$PATH" TMPDIR="$hosttmp")
+cp "$known/$oldrefs_base" "$gate/baseline.kept"
+{ echo "pre-push baseline $oldrefs_base"; oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 "${gnu[@]}" >/dev/null; cat "$gate/err"; } \
+  > "$known/x" && mv "$known/x" "$known/$oldrefs_base"
+check "...its temp files under a \$TMPDIR the host's mktemp honours (GNU): the baseline names them there" "1" \
+  "$(grep -c "full log: $hosttmp/tmp\." "$known/$oldrefs_base")"
+check "...and the same failure, its temp paths differing, is still said, not blocking" "0 1 1" \
+  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 "${gnu[@]}" PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED: oldrefs' "$gate/err")"
+rm -rf "$hosttmp"; mv "$gate/baseline.kept" "$known/$oldrefs_base"
 check "...a failure plain main does not share blocks" "1 1 0" \
   "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1 STUB_OLDREFS_LINE="Error: a new break" PREPUSH_BASELINE_DIR="$known") $(grep -c 'KNOWN RED' "$gate/err")"
 check "...a change fixing the baseline's failure passes" "0 1 0" \
