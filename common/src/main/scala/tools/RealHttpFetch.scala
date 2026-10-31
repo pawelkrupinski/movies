@@ -3,7 +3,7 @@ package tools
 import play.api.Logging
 
 import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse, HttpTimeoutException}
+import java.net.http.{HttpClient, HttpConnectTimeoutException, HttpRequest, HttpResponse, HttpTimeoutException}
 import java.net.{Authenticator, CookieManager, CookiePolicy, InetSocketAddress, PasswordAuthentication, ProxySelector}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
@@ -274,15 +274,27 @@ class RealHttpFetch(
   private def decodeBody(bytes: Array[Byte]): String =
     new String(Gunzip.decode(bytes), StandardCharsets.UTF_8)
 
-  private def logFailure(method: String, url: String, exception: Throwable): Unit = {
+  private def logFailure(method: String, url: String, exception: Throwable): Unit =
+    logger.warn(failureLine(method, url, exception))
+
+  /** The line a transport failure is logged as. A timeout names the budget that ran out: a connect timeout used to
+   *  read "timed out after 30s" -- the REQUEST budget -- while the connect budget (5 s by default, bounding TCP and the
+   *  TLS handshake together) was what expired, which sent a loopback flake hunting for a 30 s connect that never
+   *  happened (IssuerCertificateFetchingSpec, run 4360). */
+  private[tools] def failureLine(method: String, url: String, exception: Throwable): String = {
     val safeUrl = RedactedUrl(url)
     exception match {
+      case _: HttpConnectTimeoutException =>
+        s"HTTP $method $safeUrl: connect (TCP + TLS handshake) timed out after ${shown(connectTimeoutFor(url))}"
       case _: HttpTimeoutException =>
-        logger.warn(s"HTTP $method $safeUrl timed out after ${requestTimeoutFor(url).toSeconds}s (service not responding)")
+        s"HTTP $method $safeUrl timed out after ${shown(requestTimeoutFor(url))} (service not responding)"
       case _ =>
-        logger.warn(s"HTTP $method $safeUrl failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+        s"HTTP $method $safeUrl failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}"
     }
   }
+
+  private def shown(budget: Duration): String =
+    if (budget.toMillis % 1000 == 0) s"${budget.toSeconds}s" else s"${budget.toMillis}ms"
 
   // Async failures come wrapped in `CompletionException`; unwrap so the
   // log line names the real cause (`HttpTimeoutException`, …) rather than

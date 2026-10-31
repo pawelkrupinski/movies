@@ -341,6 +341,34 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     } finally pool.shutdownNow()
   }
 
+  // ── A connect timeout names the connect budget ────────────────────────────
+  // IssuerCertificateFetchingSpec (run 4360) failed on a loopback HTTPS fetch whose log read "timed out after 30s":
+  // the REQUEST budget, printed for every timeout, while the 5 s connect budget (TCP plus the TLS handshake) was what
+  // ran out. The listener below accepts the TCP connect and never answers the ClientHello, so only the handshake can
+  // time out; the log must name that budget, not the 30 s one.
+
+  "a handshake that never completes" should "be logged as a connect timeout on the connect budget" in {
+    val listener = new java.net.ServerSocket(0, 50, java.net.InetAddress.getLoopbackAddress)
+    val held     = new java.util.concurrent.ConcurrentLinkedQueue[java.net.Socket]
+    val acceptor = new Thread(() => { scala.util.Try(while (true) held.add(listener.accept())); () })
+    acceptor.setDaemon(true)
+    acceptor.start()
+    try {
+      val fetch = new RealHttpFetch(requestTimeoutFor = _ => java.time.Duration.ofSeconds(30),
+        connectTimeoutFor = _ => java.time.Duration.ofMillis(300))
+      val (failure, _) = timedFailure(fetch.get(s"https://127.0.0.1:${listener.getLocalPort}/"))
+      val timeout = unwrapped(failure)
+      timeout shouldBe a [java.net.http.HttpConnectTimeoutException]
+      val line = fetch.failureLine("GET", s"https://127.0.0.1:${listener.getLocalPort}/", timeout)
+      line should include ("connect")
+      line should include ("after 300ms")
+      line should not include "30s"
+    } finally {
+      listener.close()
+      held.forEach(_.close())
+    }
+  }
+
   // Far past the slow body's under-a-second answer: only a deadlocked read gets near it.
   private val SpecBound = java.time.Duration.ofSeconds(20)
 }
