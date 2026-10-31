@@ -313,9 +313,10 @@ This replaces the structural plan's `Readings.decide` (agree-or-none generalised
   record is not filed yet is in the pool as its hits carry it, its record's facts unknown. The take is the same decision as
   on any other input, and it is Pending on the record. UK "Rose (2023)" now serves the parade's hit provisionally until the
   parade's record denies it, then Oplev's film. The same goes for the fallback scope: US "Parkway Drive: Home".
-- **Searches.** A no-match's fallback film is no longer withheld while a search is unanswered (`ResolverDecisions`), and
-  the stage reads a no-match whose searches are open as it reads any other (`AgreementStage.decide`'s `unanswered > 0`
-  guard is gone). A fallback taken is Pending on what it still reads.
+- **Searches.** A no-match's fallback film is no longer withheld while a search is unanswered (`ResolverDecisions`). A
+  fallback taken is Pending on what it still reads. The agreement stage still serves a no-match with an open search as the
+  model decided it, Pending (`AgreementStage.decide`'s `unanswered > 0`). Reading such a cluster at once asks the families
+  questions that 6 committed identity slices hold no answer to (IdentitySliceCasesSpec), so it waits for re-cut slices.
 - **Venue pages.** A new listing whose venue page is unread is no longer held out of the model for up to an hour
   (`IdentityModelService.admit`, `PageWait.limit` removed). Its page is asked for once, the listing is decided on the
   title alone meanwhile, and it is Pending on the page until it is read, which re-resolves its family.
@@ -328,10 +329,20 @@ so A -> B (provisional) -> B -> A still flips. The price is measured, not failed
 `pending-<cc>.tsv`. For each kind of input awaited, it counts the listing-projections served Pending, and how many of
 them served another film than the whole resolve's final take.
 
-**Served.** `AgreementStage.typed` gives each served decision the `awaits` its outcome has, the stage's waits included.
-The projection marks a film whose cluster is Pending with `MovieRecord.tmdbProvisional`. That becomes
-`ResolvedMovie.provisional`, the card's `data-provisional="true"` and the repertoire API's `"provisional": true`, which is
-omitted when the take is decided.
+**Served.** The projection marks a film provisional when a decision of its cluster awaits an answer
+(`ResolverDecision.awaits`: a search, a venue page, a pool record). That is `MovieRecord.tmdbProvisional`, which becomes
+`ResolvedMovie.provisional`, the card's `data-provisional="true"` and the repertoire API's `"provisional": true`. The API
+omits the field when the take is decided.
+
+The flag reads the model's awaits alone, which are a pure function of the inputs. Typing the stage's own waits in as well
+(`AgreementStage.outcomeOf` over every decision, every tick) cost too much. A quiet tick went from 4 to 18 MB on Main's e2e
+row (GitHub run 41226357900). It also made a whole projection disagree with the scoped ones before it
+(IdentityCutoverIntegrationSpec), because the stage's waits depend on what an apply read.
+
+**Cost.** A quiet projection tick over the fixture corpus goes back to its cost before agree-or-none: 5.3 MB locally, against
+4.35 with agree-or-none, as `PerformanceBudgets.QuietProjectionTick` recorded when agree-or-none landed. More of the
+fixture's clusters, whose records the recording never files, take a film now, and the stage reads them. In the fixture
+corpus, 709 of 909 cards are provisional and 5 cards' takes moved.
 
 **Properties (IncrementalWholeEquivalenceSpec).**
 
@@ -350,3 +361,24 @@ omitted when the take is decided.
 **Still serving an earlier take (not changed here).** A stored correction that stands unread under the apply's budget is
 served as last decided while it is Pending on its re-read (`AgreementStage.outcomeOf`'s `held` clause; plan step 8). It
 is the one remaining place a previous take is served.
+
+**Measured** (GitHub run 41226360347, the full convergence on the branch; takes-drift rows, one seed each). Each table
+counts listing-projections served Pending, by the kind of input awaited. A listing-projection awaiting several kinds is
+counted under each. "Differ" counts those that served another film than the whole resolve's final take.
+
+| Row | search | page | pool record | family | poster | any |
+|---|---|---|---|---|---|---|
+| pl 1 | 502 / 64616 (0.8%) | 45 / 52789 (0.1%) | 445 / 64094 (0.7%) | 192 / 72856 (0.3%) | 42 / 131163 | 749 / 223980 (0.3%) |
+| pl 2 | 429 / 62140 (0.7%) | 96 / 52712 (0.2%) | 225 / 53340 (0.4%) | 122 / 75191 (0.2%) | 40 / 130496 | 607 / 224794 (0.3%) |
+| de 1 | 911 / 165555 (0.6%) | 0 / 15 | 1419 / 154246 (0.9%) | 283 / 8577 (3.3%) | 0 / 182 | 1790 / 214824 (0.8%) |
+| de 2 | 1205 / 172995 (0.7%) | 0 / 25 | 1592 / 154763 (1.0%) | 316 / 9641 (3.3%) | 1 / 325 | 1964 / 219355 (0.9%) |
+| uk 1 | 878 / 199627 (0.4%) | 281 / 282285 (0.1%) | 1183 / 214513 (0.6%) | 205 / 100648 (0.2%) | 25 / 252089 | 1506 / 539429 (0.3%) |
+| us 1 | 2947 / 227812 (1.3%) | 3563 / 907947 (0.4%) | 3398 / 497476 (0.7%) | 122 / 115946 (0.1%) | 10 / 264430 | 3624 / 1151559 (0.3%) |
+| us 2 | 77 / 210278 (0.0%) | 475 / 912888 (0.1%) | 460 / 472907 (0.1%) | 378 / 116170 (0.3%) | 10 / 239511 | 573 / 1172369 (0.0%) |
+| es 1 | 33 / 19025 (0.2%) | - | 41 / 32107 (0.1%) | 7 / 27834 | 0 / 15374 | 41 / 64230 (0.1%) |
+| es 2 | 19 / 21094 (0.1%) | - | 59 / 24584 (0.2%) | 0 / 21519 | 0 / 21469 | 59 / 60882 (0.1%) |
+
+Divergences and flips are 0 in all 9 rows that ran. UK seed 2 and the US convergence and order rows failed to download
+their fixture release (infra). The catalogue kind is rare: US 324 / 329 and 80 / 81 differ, every one a catalogue id
+still unmapped while the take stood on another film. The final takes, against the base d9261accb (takes-only run
+41226362802), moved nowhere: lost 0, changed 0 and gained 0 in pl, de, uk, us and es.
