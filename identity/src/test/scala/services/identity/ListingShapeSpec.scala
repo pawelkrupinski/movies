@@ -110,25 +110,18 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.festivalsOlderNamesake(billed("Kino Seniora: The Dating Game"), hour, dating) shouldBe false
   }
 
-  "a bare billing joined to an event" should "name the newer of two namesakes no fact tells apart, never the older the ranking prefers" in {
-    // UK Phoenix Leicester's "Premature + Writer/Director Q&A" (prod 2026-11-01) is Kevin Walls's 2026 film, its
-    // writer-director at the screening, not Dan Beers's 2014 comedy TMDB ranks first
+  "a bare billing joined to an event" should "be read as one, its year or director or a work joined to it aside" in {
+    // UK Phoenix Leicester's "Amazing Grace + Q&A" and "Premature + Writer/Director Q&A" (measure 41348646489): the
+    // pooled vote took the namesake TMDB ranks first, both wrong, once the "Q&A" no longer stood for a film of its own
     def billed(raw: String, year: Option[Int] = None, directors: Seq[String] = Nil) =
       IdentityMeasures.Listing(raw, Some(raw), year = year, directors = directors, screeningsSeason = Some(2026))
-    val comedy = IdentityMeasures.Film("Premature", year = Some(2014), directors = Some(Seq("Dan Beers")))
-    val walls  = IdentityMeasures.Film("Premature", year = Some(2026), directors = Some(Seq("Kevin Walls")))
-    ListingShape.eventsOlderNamesake(billed("Premature + Writer/Director Q&A"), comedy, walls) shouldBe true
-    // a plain talk is no filmmaker's: a repertory "Dracula + Q&A" is Fisher's 1958 film beside Besson's 2025
-    ListingShape.eventsOlderNamesake(billed("Premature + Q&A"), comedy, walls) shouldBe false
-    ListingShape.eventsOlderNamesake(billed("Premature + Filmgespräch mit Regisseurin Susanne Kim"), comedy, walls) shouldBe true
-    ListingShape.eventsOlderNamesake(billed("Premature + Writer/Director Q&A"), walls, comedy) shouldBe false
-    // no event joined, or a stated year or director: the facts decide, as before
-    ListingShape.eventsOlderNamesake(billed("Premature"), comedy, walls) shouldBe false
-    ListingShape.eventsOlderNamesake(billed("Premature + The Graduate"), comedy, walls) shouldBe false
-    ListingShape.eventsOlderNamesake(billed("Premature + Director Q&A", year = Some(2014)), comedy, walls) shouldBe false
-    ListingShape.eventsOlderNamesake(billed("Premature + Director Q&A", directors = Seq("Dan Beers")), comedy, walls) shouldBe false
-    // an undated namesake is no newer film
-    ListingShape.eventsOlderNamesake(billed("Premature + Director Q&A"), comedy, walls.copy(year = None)) shouldBe false
+    ListingShape.eventsBareBilling(billed("Amazing Grace + Q&A")) shouldBe true
+    ListingShape.eventsBareBilling(billed("Premature + Writer/Director Q&A")) shouldBe true
+    ListingShape.eventsBareBilling(billed("Who are you, Polly Maggoo ? + panel")) shouldBe true
+    ListingShape.eventsBareBilling(billed("Amazing Grace")) shouldBe false
+    ListingShape.eventsBareBilling(billed("Amazing Grace + Respect")) shouldBe false
+    ListingShape.eventsBareBilling(billed("Amazing Grace + Q&A", year = Some(2006))) shouldBe false
+    ListingShape.eventsBareBilling(billed("Amazing Grace + Q&A", directors = Seq("Michael Apted"))) shouldBe false
   }
 
   "a piece billed beside the film" should "be a subtitle, performer or show of its own words, never the venue's wording around a film" in {

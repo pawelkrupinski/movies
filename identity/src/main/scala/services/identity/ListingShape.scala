@@ -325,26 +325,18 @@ object ListingShape {
   def festivalsOlderNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, newer: IdentityMeasures.Film): Boolean =
     festivalsBareBilling(listing, film) && film.year.exists(year => newer.year.exists(_ > year))
 
-  /** Is the listing a bare billing JOINED TO ITS FILMMAKER'S APPEARANCE — a talk after a "+" naming its director or
-   *  writer ("Premature + Writer/Director Q&A", "BECOMING KIM + Filmgespräch mit Regisseurin Susanne Kim"), no year or
-   *  director stated? A filmmaker at the screening is a recent film's ([[eventsOlderNamesake]]); a plain "+ Q&A" is not
-   *  read so — a repertory "Dracula + Q&A" is Fisher's 1958 film (measure 41348646489). */
+  /** Is the listing a bare billing JOINED TO AN EVENT — a talk, a panel, an interval after a "+" ("Amazing Grace + Q&A",
+   *  "Premature + Writer/Director Q&A"), no year or director stated? Its title names the film the event is held for, and
+   *  among namesakes no fact tells apart only the database's popularity ranking would pick one: the pooled vote leaves
+   *  it unmatched ([[AcceptanceCalibratedRules]]). The "Q & A" (1990) its "Q&A" once searched stood as such a namesake
+   *  by accident; without it UK Phoenix Leicester's "Amazing Grace + Q&A" took Apted's 2006 film and "Premature +
+   *  Writer/Director Q&A" Dan Beers's 2014 comedy, both wrong (measure 41348646489). */
   def eventsBareBilling(listing: IdentityMeasures.Listing): Boolean =
     listing.year.isEmpty && listing.directors.isEmpty && {
       val raw = listing.rawTitle.getOrElse(listing.title)
       raw.indexOf('+') >= 0 && services.billing.BillJoins.billPieces(raw).drop(1)
-        .exists(piece => IdentityMeasures.namesAnEvent(TitleContainment.tokens(piece)) && FilmmakerPresent.findFirstIn(piece).isDefined)
+        .exists(piece => IdentityMeasures.namesAnEvent(TitleContainment.tokens(piece)))
     }
-  /** A filmmaker named at the screening, in any language a country bills in. */
-  private val FilmmakerPresent = """(?iu)\b(?:director|writer|filmmaker|regisseur\p{L}*|reżyser\p{L}*|twórc\p{L}*|realizador\p{L}*|directora)\b""".r
-
-  /** Is `film` OLDER than `newer`, a film the same bare billing joined to an event names alike ([[eventsBareBilling]])?
-   *  Of two namesakes no fact tells apart, only the database's popularity ranking picks the older: UK Phoenix Leicester's
-   *  "Premature + Writer/Director Q&A" is Kevin Walls's 2026 film, its writer-director there, not the 2014 comedy
-   *  TMDB ranks first — taken pooled once the "Q&A" no longer stood for a film of its own (2026-11-01). As the
-   *  festival's rule ([[festivalsOlderNamesake]]), this only keeps the pooled vote from taking the older on its ranking. */
-  def eventsOlderNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, newer: IdentityMeasures.Film): Boolean =
-    eventsBareBilling(listing) && film.year.exists(year => newer.year.exists(_ > year))
 
   /** How many years before its screenings a film released is a catalogue film, no festival's entry of its year. */
   val FestivalCatalogueYears = 10

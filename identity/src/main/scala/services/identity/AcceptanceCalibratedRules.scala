@@ -101,9 +101,9 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
       _     <- noneOf(eligible.find(rival => (rival ne best) && namedAlike(best, rival) &&
                  ListingShape.festivalsOlderNamesake(best.listing, best.candidate.film, rival.candidate.film)),
                  "a festival's bare billing names a newer film alike", best)
-      _     <- noneOf(eligible.find(rival => (rival ne best) && namedAlike(best, rival) &&
-                 ListingShape.eventsOlderNamesake(best.listing, best.candidate.film, rival.candidate.film)),
-                 "an event's bare billing names a newer film alike", best)
+      _     <- noneOf(eligible.find(rival => (rival ne best) && namedAlike(best, rival) && facts(rival) >= facts(best) &&
+                 ListingShape.eventsBareBilling(best.listing)),
+                 "an event's bare billing names namesakes no fact tells apart", best)
       _     <- noneOf(Option.when(namedWithinAnother(best, eligible))(best), "the title names it only within another candidate's longer title", best)
     } yield taken
   }
