@@ -313,13 +313,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The /debug/readmodel page: one film with one showtime, whose booking URL is
       // the marker the lazy-screenings test looks for — in the fetched fragment,
       // never in the page itself.
-      val readModelFixture = services.readmodel.TestReadModel.fromRecords(Seq(("Readmodel Film", Some(2024),
+      val readModelFixture = services.readmodel.TestReadModel.store(Seq(("Readmodel Film", Some(2024),
         MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Readmodel Film"),
           showtimes = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(2).atTime(18, 30), bookingUrl = Some("https://book.example/readmodel")))))))))
       val readModelHtml: String =
-        views.html.debugReadModel(controllers.ReadModelDump.of(readModelFixture), current = models.Country.Poland).body
-      readModelScreenings = id => controllers.ReadModelDump.screeningsOf(readModelFixture)(id)
-        .map(views.html.debugReadModelScreenings(id, _).body).getOrElse("")
+        views.html.debugReadModel(controllers.ReadModelDump.read(readModelFixture).get, models.Country.Poland, "the serving database").body
+      readModelScreenings = id => readModelFixture.findCard(id)
+        .map(card => views.html.debugReadModelScreenings(id, card.screenings).body).getOrElse("")
       readModelPage = readModelHtml
       // Change-stream frames for the no-op-guard test, rendered by the SAME
       // `_debugRow` partial DebugStreamController ships. One re-asserts `slotsRow`

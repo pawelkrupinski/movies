@@ -157,7 +157,9 @@ trait DebugWiring { self: Wiring =>
     }
 
   lazy val debugReadModels: DebugReadModels = DebugReadModels.of(country, readModelRepository,
-    debugMirrorClient.map(client => db => new MongoReadModelRepository(Some(client.getDatabase(db)), stopwatch = stopwatch)))
+    debugMirrorClient.map(client => db => new MongoReadModelRepository(Some(client.getDatabase(db)), stopwatch = stopwatch)),
+    freshnessOf = db => debugMirrorClient.fold(services.MirrorFreshness.notMirrored)(client =>
+      new services.MongoMirrorFreshness(Some(client.getDatabase(db)))))
 
   lazy val debugController  = { debugSnapshotTicker; new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()),

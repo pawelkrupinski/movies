@@ -23,8 +23,7 @@ class DebugCountriesSpec extends AnyFlatSpec with Matchers {
     new services.movies.InMemoryMovieRepository(Nil, normalizer = services.movies.TitleNormalizer.forCountry(country)),
     new services.tasks.InMemoryTaskQueue,
     services.cadence.RatingCadenceReader.empty,
-    services.attempts.EnrichmentAttemptReader.empty,
-    () => DebugSnapshot(ReadModelDump.empty, None), _ => Some(Seq.empty))
+    services.attempts.EnrichmentAttemptReader.empty)
 
   private val switching = DebugCountries.of(
     stack(Country.Poland), Map(Country.UnitedKingdom -> stack(Country.UnitedKingdom)), devMode = true)

@@ -72,7 +72,7 @@ class DebugViewMirrorFreshnessSpec extends AnyFlatSpec with Matchers {
   }
 
   "read-model page" should "carry the same badge" in {
-    val html = views.html.debugReadModel(controllers.ReadModelDump.empty, mirror = age(26.hours), current = models.Country.Poland).body
+    val html = views.html.debugReadModel(controllers.ReadModelDump(Seq.empty, Map.empty), models.Country.Poland, "local mirror kinowo_prod_mirror", mirror = age(26.hours)).body
     html should include ("mirror 26h behind")
     html should include ("""debug-nav-mirror is-stale""")
   }

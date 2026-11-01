@@ -29,14 +29,6 @@ class FileSnapshotStoreSpec extends AnyFlatSpec with Matchers {
     s.load[CorpusListing]("/debug listing pl") shouldBe Some(DebugSnapshot(listing, Some(at.minusSeconds(5)), Some(at)))
   }
 
-  "a stored read-model dump" should "round-trip" in {
-    val s    = store()
-    val dump = ReadModelDump.of(services.readmodel.TestReadModel.fromRecords(Seq(("Belle", Some(2021), record))))
-    dump.movies should not be empty
-    s.save("/debug/readmodel pl", DebugSnapshot(dump, None, Some(at)))
-    s.load[ReadModelDump]("/debug/readmodel pl").map(_.value) shouldBe Some(dump)
-  }
-
   "stored cadence records" should "round-trip" in {
     val s       = store()
     val records = Seq("imdb:7" -> services.cadence.RatingChangeStats(3, 10, 1, at.minusSeconds(86400), at))

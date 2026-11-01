@@ -1,5 +1,5 @@
 @import controllers.{ReadModelDump, ScreeningCounts}
-@(dump: ReadModelDump, current: models.Country, source: String, sameOrigin: Boolean = false)(implicit city: models.City)
+@(dump: ReadModelDump, current: models.Country, source: String, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
 @*
  * Dev-only dump of one country's read model — `web_movies` (ResolvedMovie) and
  * per-film `web_screenings` (CityScreening) counts — read from `source` (the
@@ -108,7 +108,7 @@
 </head>
 <body>
 
-@_debugNavbar("readmodel", current, sameOrigin)
+@_debugNavbar("readmodel", current, sameOrigin, mirror)
 <h1>Read model · @current.displayName</h1>
 <div class="summary">
   <b>@movies.size</b> movies · <b>@dump.screeningCount</b> screenings · <b>@dump.showtimeCount</b> showtimes ·

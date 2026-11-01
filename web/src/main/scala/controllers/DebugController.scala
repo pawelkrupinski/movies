@@ -198,7 +198,8 @@ class DebugController(cc: ControllerComponents,
       ReadModelDump.read(readModel.reader) match {
         case Some(dump) =>
           implicit val c: City = City.all.head   // only for the shared debug navbar's city link
-          Ok(views.html.debugReadModel(dump, country, readModel.source, sameOrigin = readModels.countries.sizeIs > 1))
+          Ok(views.html.debugReadModel(dump, country, readModel.source, sameOrigin = readModels.countries.sizeIs > 1,
+            mirror = services.MirrorFreshness.describe(readModel.freshness.newestUpdate(), clock.instant())))
         // Not a smaller listing: that reads as films missing from the read model.
         case None       => ServiceUnavailable(s"could not read the ${country.code} read model whole (${readModel.source})")
       }

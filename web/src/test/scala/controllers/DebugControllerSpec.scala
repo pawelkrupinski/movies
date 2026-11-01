@@ -282,8 +282,7 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
     val stack = new DebugStack(models.Country.default,
       new services.movies.InMemoryMovieRepository(Seq.empty, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer),
       new services.tasks.InMemoryTaskQueue, services.cadence.RatingCadenceReader.empty,
-      services.attempts.EnrichmentAttemptReader.empty,
-      () => DebugSnapshot(ReadModelDump.empty, None), _ => None)
+      services.attempts.EnrichmentAttemptReader.empty)
     val ctrl = TestDebugController.build(Seq.empty, Mode.Dev, debugCountries = Some(DebugCountries.single(stack)))._1
     status(ctrl.debugReadModelScreenings("x").apply(FakeRequest(GET, "/debug/readmodel/screenings?id=x"))) shouldBe SERVICE_UNAVAILABLE
   }
