@@ -804,6 +804,23 @@ def trend(measures_list, by, since, until, threshold, previous=None):
 
 # ── GitHub ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+class _DropAuthOnRedirect(urllib.request.HTTPRedirectHandler):
+    """An artifact download redirects to a signed blob-storage URL, which refuses a request that also carries the
+    API's bearer token: the token stays on api.github.com."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None and urllib.parse.urlsplit(newurl).netloc != urllib.parse.urlsplit(req.full_url).netloc:
+            for name in list(new.headers):
+                if name.lower() == "authorization":
+                    del new.headers[name]
+            new.unredirected_hdrs.pop("Authorization", None)
+        return new
+
+
+_OPENER = urllib.request.build_opener(_DropAuthOnRedirect)
+
+
 class GitHub:
     """The API -- urllib with GH_TOKEN/GITHUB_TOKEN when set (the collector), else the `gh` CLI (a laptop) -- with a
     disk cache for what cannot change any more: a completed run's jobs and metrics artifacts."""
@@ -824,7 +841,7 @@ class GitHub:
             request = urllib.request.Request(url, headers={"Authorization": "Bearer " + self.token,
                                                            "Accept": "application/vnd.github+json",
                                                            "X-GitHub-Api-Version": "2022-11-28"})
-            with urllib.request.urlopen(request, timeout=GH_TIMEOUT_SECONDS) as response:
+            with _OPENER.open(request, timeout=GH_TIMEOUT_SECONDS) as response:
                 body = response.read()
                 link = response.headers.get("Link") or ""
         else:

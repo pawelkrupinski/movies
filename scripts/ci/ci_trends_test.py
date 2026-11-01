@@ -281,6 +281,18 @@ class GroupingTest(unittest.TestCase):
         self.assertNotIn("timings", text)
 
 
+class RedirectTest(unittest.TestCase):
+    def test_the_token_never_follows_a_redirect_off_the_api(self):
+        import urllib.request
+        handler = t._DropAuthOnRedirect()
+        request = urllib.request.Request("https://api.github.com/repos/o/r/actions/artifacts/1/zip",
+                                         headers={"Authorization": "Bearer x"})
+        moved = handler.redirect_request(request, None, 302, "Found", {}, "https://blob.core.windows.net/a?sig=1")
+        self.assertNotIn("Authorization", dict(moved.header_items()))
+        same = handler.redirect_request(request, None, 302, "Found", {}, "https://api.github.com/other")
+        self.assertIn("Authorization", dict(same.header_items()))
+
+
 class ExportTest(unittest.TestCase):
     def test_idempotent_and_resumable(self):
         runs = [{"id": 1, "run_attempt": 1, "status": "completed", "conclusion": "success", "created_at": at(0),
