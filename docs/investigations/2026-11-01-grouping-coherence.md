@@ -90,9 +90,8 @@ Measured with `scripts/identity-measure --all-countries --recording prod-latest`
   - two RBO relays' season years;
   - a slot or a slip in a runtime;
   - a venue crediting producers (UK "Forgotten Island").
-- **Run 41348097395 (calibrated thresholds, commit ff2665231e2).** It was dispatched for the top 20 per country. Its
-  ranked reports are in the `identity-takes-<cc>` artifacts (`head/grouping-suspects-<cc>.json`/`.md`). **The owner
-  should judge them there. They are not yet copied here.**
+- **Run 41348097395 (calibrated thresholds, commit ff2665231e2).** Judged below. Its ranked reports are in the
+  `identity-takes-<cc>` artifacts (`head/grouping-suspects-<cc>.json`/`.md`).
 
 Likely true positives among the first run's flags, for the owner to judge:
 
@@ -104,12 +103,65 @@ Likely true positives among the first run's flags, for the owner to judge:
 | pl | tmdb:1933 Inni (2001) | KINOMUZEUM "Inni" [2021] beside Cinema City's "Inni 25-lecie" [2001]: probably a wrong venue year |
 
 Precision on the first run's flags, by inspection of their members and pages: about 4 of 24 are plausibly wrong
-groupings. The calibration above removes about 15 of the 20 false positives. The calibrated run's precision is
-still to be read from run 41348097395.
+groupings. The calibration above removes about 15 of the 20 false positives. The calibrated run's precision (1 of 11 flagged) is judged below.
 
 DE Peppa: the corpus splits "Festtagsspaß mit Peppa" across two TMDB records (1650896 ×344, 1778515 ×33). That is a
 split, not a merge, and no member of either cluster prefers the other alone. The known wrong take, Cinefactory's
 "Fun_with_Peppa", shows only as a weak cut-only denial (0.4) and is not flagged.
+
+## Judged: run 41348097395
+
+Judged against TMDB (web) and the `decisions-<cc>.jsonl` explanations (venue year, director, runtime per listing).
+"Flagged" is score >= 1.0; "top" is the whole ranked list (at most 20; every country had fewer clusters).
+
+| country | clusters | flagged | flagged really wrong | precision (flagged) | top: really wrong |
+|---|---|---|---|---|---|
+| pl | 10 | 1 | 0 | 0/1 | 0 |
+| de | 18 | 4 | 1 (+1 unclear) | 1/4 | 1 (+ a few unclear) |
+| us | 1 | 1 | 0 | 0/1 | 0 |
+| uk | 9 | 5 | 0 | 0/5 | 0 |
+| es | 3 | 0 | 0 | n/a | 0 |
+| total | 41 | 11 | 1 | 1/11 | 1 |
+
+Only one grouping is confirmed wrong, so the year signal is the noisy one: every false positive but one is a year
+(or a credit) that a venue states differently from the record. The detector's value is the rare true positive, not
+its flag precision.
+
+**Really wrong**
+- de tmdb:42236 Fellinis Casanova: Filmmuseum München lists two programmes under the one title; the second credits
+  Jeunet and is not Fellini's Casanova (1976). Grouped by title.
+
+**Unclear**
+- de tmdb:1151422 Royal Opera House: Carmen (Marias Kino): TMDB holds the broadcast twice; the denial is about a
+  duplicate record, not a wrong film.
+- de tmdb:1419383 Die andere Seite (credits Minoguchi vs Mertens), tmdb:1167307 David (credits differ, Hirak vs
+  Cunningham/Dawes), tmdb:1624471 Finding Connection (2023 vs 2026), tmdb:1648927 Frost ohne Schnee und Eis (2022 vs
+  2026), tmdb:1755291 NAZA (PL, 2023 vs 2026), tmdb:1154730 La Gradiva (PL, 2023 vs 2026): a differing year or credit
+  with nothing on the pages to settle it.
+- de tmdb:1778515 Festtagsspaß mit Peppa (Cinefactory "Fun_with_Peppa", cut-only denial 0.4): the known wrong take.
+
+**Not wrong** (the listing's year, credit or runtime is the venue's error or a different cut of the same film)
+- pl Inni (1933, The Others 2001): KINOMUZEUM's [2021] listing has director Amenabar and matches runtime; a wrong
+  venue year. Skarpetek 4, Hokus, The Room: A Tribute, Pasazer Andrzej Munk, Przepis na Swieta: dubbing or
+  commentator credits, or runtimes. Everytime, The Social Reckoning: Kino Muzeum states 2023/2024 for several 2026
+  films; its year is unreliable.
+- us Point Blank (26039): Drexel's flicks.us listing [2010] credits John Boorman, the 1967 director, with a matching
+  runtime. A wrong feed year (country mismatch), not the French 2010 film.
+- de The Killer (10835): Bambi's kinoheld [2024] and Cinecitta against 5 venues with Woo and the 1989 runtime. The
+  2024 is a wrong feed year (Woo's remake is not in cinemas); worth one look at the Bambi page if it returns.
+  B-Movie Lust & Sound: the 1989 is parsed from the title's "1979-1989" range. Coyote vs. ACME (made 2023, released
+  2026), Krankheit wie ein Gedicht, Amore und Basta, Mad Dog of Europe, Triegel trifft Cranach, Metropolis, Es,
+  Bonhoeffer, Mockingjay: production vs release years and cuts.
+- uk all 5 flagged: Doctor Who: The Satan Pit (2006 episode, 2026 re-release), NT Live: Golden Boy, The Polar Express
+  (2004), The Dark Knight (2008), Pirates of the Caribbean (2003): a venue stating the re-release year (or the
+  original year) against the record's. Also Forgotten Island (producer credits), Tampopo (1985 vs 1988), the Andre
+  Rieu and Disney Junior runtimes.
+- es: nothing flagged; the three clusters are a release-year gap and two runtime spreads.
+
+**Follow-ups.** (1) Fix Fellinis Casanova: split the same-venue programmes that credit different directors.
+(2) The year signal flags re-release years: a venue year equal to the current year, or to the record's year plus a
+re-release, should weigh less (UK produced all 5 false flags). (3) Kino Muzeum, kinoheld (Bambi) and flicks.us
+(Drexel) feed years are unreliable.
 
 ## CI cost
 
