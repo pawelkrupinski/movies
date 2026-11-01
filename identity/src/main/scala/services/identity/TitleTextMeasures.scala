@@ -164,18 +164,18 @@ private[identity] object TitleTextMeasures {
     if (!lower.exists(Cyrillic.contains)) key(s)
     else key(lower.flatMap(c => Cyrillic.getOrElse(c, c.toString)))
   }
-  /** [[key]] with the two spellings a venue swaps for a title's own folded: an "&" read as the "and" it stands for, in
-   *  the language the title writes it in ("Sinn & Sinnlichkeit" is TMDB's "Sinn und Sinnlichkeit", "Music & Lyrics" its
-   *  "Music and Lyrics", "Renoir and Love" its "Renoir & Love"), and an "ß" as the "ss" an upper-case billing writes for
-   *  it ("DER RHEIN FLIESST INS MITTELMEER" is "Der Rhein fließt ins Mittelmeer"). Asked only of a pair one side of which
-   *  writes an "&" or an "ß" ([[respells]]): two titles writing neither key alike or not at all. */
+  /** [[key]] with the two spellings a venue swaps for a record's own folded: a billing's "&" read as the "and" the
+   *  record spells out, in the record's language ("Sinn & Sinnlichkeit" is TMDB's "Sinn und Sinnlichkeit", "Music &
+   *  Lyrics" its "Music and Lyrics"), and a record's "ß" as the "ss" an upper-case billing writes for it ("DER RHEIN
+   *  FLIESST INS MITTELMEER" is "Der Rhein fließt ins Mittelmeer"). Asked only where the LISTING writes the "&" or the
+   *  RECORD the "ß" ([[TitleForm.ampersand]], [[TitleForm.sharpS]]): a billing spelling out a record's "&" is read as
+   *  before — DE FFSBC's "… Agnes und Amir" named Hufnagel's "… Agnes & Amir" exactly, which kept it apart from the bare
+   *  "Lieblingsmenschen" ×30 their feed link held to that film (measure 41347266388). */
   def spellingKey(s: String): String =
     TitleContainment.tokens(withoutPossessives(s.toLowerCase(Locale.ROOT).replace("ß", "ss").replace("&", " and ")))
       .map(word => if (Conjunctions(word)) "and" else word).mkString
   /** "And" in each language a country bills in. */
   private val Conjunctions = Set("and", "und", "y", "i", "et")
-  /** Does `s` write a spelling [[spellingKey]] folds? */
-  def respells(s: String): Boolean = s.indexOf('&') >= 0 || s.indexOf('ß') >= 0
 
   private val Cyrillic: Map[Char, String] = Map(
     'а' -> "a", 'б' -> "b", 'в' -> "v", 'г' -> "g", 'ґ' -> "g", 'д' -> "d", 'е' -> "e", 'є' -> "ye", 'ё' -> "yo",
@@ -193,8 +193,10 @@ private[identity] object TitleTextMeasures {
     lazy val yearlessWords: Seq[String] = yearlessTokens(text)
     lazy val yearless: String       = yearlessWords.mkString
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
-    /** [[IdentityMeasures.spellingKey]], when it writes an "&" or an "ß" ([[IdentityMeasures.respells]]). */
-    lazy val respelt: Boolean       = respells(text)
+    /** Does it write an "&" (a billing's for the record's "and") or an "ß" (a record's for the billing's "ss"): its
+     *  [[spellingKey]] asked then. */
+    lazy val ampersand: Boolean     = text.indexOf('&') >= 0
+    lazy val sharpS: Boolean        = text.indexOf('ß') >= 0
     lazy val spellingKey: String    = TitleTextMeasures.spellingKey(text)
     /** Its words after a leading article ([[LeadingArticles]]), when it has one — what a venue that drops the article lists. */
     lazy val afterArticle: Option[Seq[String]] = Some(withoutLeadingArticle(words)).filter(_.sizeIs < words.size)

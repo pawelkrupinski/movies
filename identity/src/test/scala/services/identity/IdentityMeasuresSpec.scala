@@ -614,7 +614,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // capitals the "ß" of "Der Rhein fließt ins Mittelmeer" (prod 2026-11-01).
     IdentityMeasures.titleRelation(Listing("Sinn & Sinnlichkeit"), Film("Sinn und Sinnlichkeit", year = Some(2026))) shouldBe Category("exact")
     IdentityMeasures.titleRelation(Listing("Music & Lyrics"), Film("Music and Lyrics", year = Some(2007))) shouldBe Category("exact")
-    IdentityMeasures.titleRelation(Listing("Renoir and Love"), Film("Renoir & Love", year = Some(2027))) shouldBe Category("exact")
+    // never the other way: a billing spelling out a record's "&" is read as before (DE FFSBC's "… Agnes und Amir")
+    IdentityMeasures.titleRelation(Listing("Renoir and Love"), Film("Renoir & Love", year = Some(2027))) should not be Category("exact")
     IdentityMeasures.titleRelation(Listing("DER RHEIN FLIESST INS MITTELMEER"), Film("Der Rhein fließt ins Mittelmeer", year = Some(2023))) shouldBe
       Category("exact")
     // Only the spelling: the "&" joins the same words, or it names another title.
