@@ -167,6 +167,9 @@ enum A11y {
         /// Film page: detail title font-size slider + the rendered title.
         static let detailTitleFontSlider  = "tuning.slider.detailTitleFont"
         static let detailTitle             = "tuning.detail.title"
+        /// The "−" step beside a slider identified `slider`, so a test can set
+        /// the slider exactly, one step at a time, where a drag cannot.
+        static func stepDown(of slider: String) -> String { "\(slider).minus" }
         /// Tab labels in the page bar — let a UITest jump to a page by tap
         /// instead of relying on a swipe distance.
         static let pageTabPrefix       = "tuning.page.tab"

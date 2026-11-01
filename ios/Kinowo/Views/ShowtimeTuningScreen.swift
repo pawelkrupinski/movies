@@ -414,6 +414,7 @@ struct ShowtimeTuningScreen: View {
             stepButton(systemName: "minus") {
                 value.wrappedValue = max(range.lowerBound, value.wrappedValue - step)
             }
+            .accessibilityIdentifier(id.map(A11y.Tuning.stepDown(of:)) ?? "")
             Slider(value: value, in: range, step: step)
                 .accessibilityIdentifier(id ?? "")
             stepButton(systemName: "plus") {
