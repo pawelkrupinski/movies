@@ -187,6 +187,46 @@ class InputsTest(unittest.TestCase):
                          ("true", "false", "shadow", "true", ""))
 
 
+class LegMatrixTest(unittest.TestCase):
+    """The `leg` matrix is the preflight's (cmd_legs): only the countries a run starts get a row, so none is skipped."""
+    ROWS = """matrix:
+        include:
+            - { country: poland,        code: pl, job: 55, heap: 7g, mongo-cache-gb: 0.5, order: '', order-split: false, mongo-tmpfs-order: 'true' }
+            - { country: germany,       code: de, job: 55, heap: 4g, mongo-cache-gb: 2, order: convergenceGermanyOrder, order-split: true }
+            - { country: united-states, code: us, job: 55, heap: 10g }
+    """
+
+    def test_rows_keep_the_types_yaml_gives_them(self):
+        rows = reuse.parse_rows(self.ROWS)
+        self.assertEqual(rows[0], {"country": "poland", "code": "pl", "job": 55, "heap": "7g", "mongo-cache-gb": 0.5,
+                                   "order": "", "order-split": False, "mongo-tmpfs-order": "true"})
+        self.assertIs(rows[1]["order-split"], True)
+
+    def test_a_full_run_starts_every_leg(self):
+        m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({}))
+        self.assertEqual(m["country"], ["poland", "germany", "united-states"])
+        self.assertEqual(len(m["include"]), 3)
+
+    def test_a_narrowed_takes_or_drift_run_starts_only_its_countries(self):
+        for flag in ("INPUT_TAKES_ONLY", "INPUT_DRIFT_ONLY"):
+            m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({flag: "true", "INPUT_TAKES_COUNTRIES": "pl, us"}))
+            self.assertEqual(m["country"], ["poland", "united-states"])
+            self.assertEqual([r["code"] for r in m["include"]], ["pl", "us"])
+
+    def test_takes_countries_means_nothing_to_a_run_that_is_neither(self):
+        m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({"INPUT_TAKES_COUNTRIES": "pl"}))
+        self.assertEqual(len(m["country"]), 3)
+
+    def test_the_workflows_own_rows_all_parse_with_the_keys_the_legs_read(self):
+        import pathlib
+        text = (pathlib.Path(__file__).resolve().parents[2] / ".github/workflows/identity-model-convergence.yml").read_text()
+        rows = reuse.parse_rows(text.split("LEG_ROWS: |", 1)[1].split("run:", 1)[0])
+        self.assertEqual([r["code"] for r in rows], ["pl", "de", "uk", "es", "us"])
+        for r in rows:
+            self.assertIsInstance(r["order-split"], bool)
+            self.assertIsInstance(r["job"], int)
+
+
 class RotatingSeedsTest(unittest.TestCase):
     """ROTATING SEEDS (drift_seeds.py): the legs are handed the run's two takes-drift seeds, or a dispatch's pins; a reuse
     carries the SOURCE's seeds by name, never this run's as if equal."""

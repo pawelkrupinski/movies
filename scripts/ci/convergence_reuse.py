@@ -100,7 +100,7 @@ FIND_RUNS = 30
 FIND_HOURS = 24
 
 
-USAGE = "usage: convergence_reuse.py key|inputs|facts|verify|find|complete|drift-rows|expected-rows|judge ... (see the header)"
+USAGE = "usage: convergence_reuse.py key|inputs|facts|verify|find|complete|legs|drift-rows|expected-rows|judge ... (see the header)"
 
 
 class Unproven(Exception):
@@ -219,6 +219,45 @@ def leg_inputs(env):
 
 
 SEED_KEYS = ("drift-seed-1", "drift-seed-2")
+
+
+def scalar(text):
+    """A flow-map value as YAML types it: quotes make a string, `true`/`false` a boolean, digits a number."""
+    text = text.strip()
+    if len(text) >= 2 and text[0] == text[-1] and text[0] in "'\"":
+        return text[1:-1]
+    if text in ("true", "false"):
+        return text == "true"
+    for kind in (int, float):
+        try:
+            return kind(text)
+        except ValueError:
+            pass
+    return text
+
+
+def parse_rows(text):
+    """The `- { key: value, ... }` rows of a matrix written as flow maps (values hold no comma or brace), as dicts."""
+    rows = []
+    for m in re.finditer(r"-\s*\{([^}]*)}", text):
+        row = {}
+        for field in m.group(1).split(","):
+            key, sep, value = field.partition(":")
+            if sep:
+                row[key.strip()] = scalar(value)
+        rows.append(row)
+    return rows
+
+
+def leg_matrix(rows, inputs):
+    """The `leg` job's matrix as JSON-able data (identity-model-convergence.yml): a `country` vector the rows extend, so a
+    row is named `leg (<country>)` by default, holding only the countries this run starts -- a takes-only or drift-only run
+    with `takes-countries` keeps those. A country left out is no row at all: a matrix job skipped for it would show its
+    `name:` template raw in the run graph (`${{ matrix.phase }} (...)`)."""
+    wanted = {c.strip() for c in inputs.get("takes-countries", "").split(",") if c.strip()}
+    narrowed = (inputs.get("takes-only") == "true" or inputs.get("drift-only") == "true") and wanted
+    kept = [r for r in rows if not narrowed or r["code"] in wanted]
+    return {"country": [r["country"] for r in kept], "include": kept}
 
 
 def run_seeds(env, inputs):
@@ -539,6 +578,21 @@ def cmd_inputs(_):
     return 0
 
 
+def cmd_legs(_):
+    """The `leg` matrix (leg_matrix), from LEG_ROWS (the rows as written in the workflow) and the dispatch's inputs; for
+    verify-scrape-recording.yml, LEG_CODES (the recording's complete countries, comma-separated) narrows it instead."""
+    rows = parse_rows(os.environ.get("LEG_ROWS", ""))
+    codes = os.environ.get("LEG_CODES")
+    if codes is not None:
+        inputs = {"takes-only": "true", "takes-countries": codes}
+    else:
+        inputs = read_json(os.environ["LEG_INPUTS_FILE"])  # the file `inputs` wrote
+    matrix = leg_matrix(rows, inputs)
+    print(f"leg-matrix={json.dumps(matrix, separators=(',', ':'))}")
+    print(f"any-leg={'true' if matrix['country'] else 'false'}")
+    return 0
+
+
 def cmd_facts(opts):
     workflow = workflow_at(opts["sha"])
     inputs = read_json(opts["inputs"])
@@ -680,7 +734,7 @@ def main(argv):
     if command == "phases-expression":
         print(PHASES_EXPRESSION)
         return 0
-    handlers = {"inputs": cmd_inputs, "facts": cmd_facts, "verify": cmd_verify, "find": cmd_find, "complete": cmd_complete}
+    handlers = {"inputs": cmd_inputs, "facts": cmd_facts, "verify": cmd_verify, "find": cmd_find, "complete": cmd_complete, "legs": cmd_legs}
     if command not in handlers:
         print(USAGE, file=sys.stderr)
         return 64
