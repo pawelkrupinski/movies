@@ -29,12 +29,9 @@ class IdentityDriftSlicesSpec extends AnyFlatSpec with Matchers {
   private val baselined = IdentityDrift.flipBaseline(fixtures.resolve("identity-flips-baseline.tsv"))
   private val slices   = sliceDirs(fixtures.resolve("drift-slices"))
 
-  /** Every slice's findings, the slices side by side: each replays its own answers and shares nothing with another.
-   *  One thread per core (2026-11-01; it was half the cores): this suite is the `test (worker-identity)` row's long pole,
-   *  278 s of its 4:57 sbt step on run 41308264642, while the row's CPU read 75% busy
-   *  (docs/investigations/2026-11-01-twenty-runners.md, section 7). */
+  /** Every slice's findings, the slices side by side: each replays its own answers and shares nothing with another. */
   private lazy val found: Map[Path, Try[Outcome]] = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors))
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
     try slices.zip(ParallelTasks.all(slices)(dir => Try(replayed(dir)))(using
       scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
     finally pool.shutdown()
