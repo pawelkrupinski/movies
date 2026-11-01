@@ -478,3 +478,100 @@ The per-job artifact's own lines (`machine`, `job_start`, `series`, `procs`, `jv
   phases are already pushed to Prometheus by the in-run reporter (`kinowo_ci_phase_seconds`); the counters need the
   replay code to write a small JSON file the finish step picks up (identity code, not done here).
 - Coursier and fixture download bytes: covered only as the machine's `net_rx_mb` per job and step.
+
+## 7. Main under 8 minutes? (2026-11-01, afternoon)
+
+The owner: "getting Main under 8m": the whole Main run, first job start to last job end, queueing included. Measured
+with section 6's `ci-timings` (step timestamps only).
+
+### Before: where Main's 16.9 minutes went (10 green runs on main, 41252843639 .. 41298328467)
+
+`ci-timings report --workflow main.yml --last 10 --critical`:
+
+| | p50 |
+|---|---|
+| wall | 16:52 (p90 20:33) |
+| critical path | queue 4:21 + work 11:30 |
+| setup vs work, runner-min per run | setup 12.3 (checkout 4.3, JDK/sbt/caches 5.2, browsers/Mongo/swift 2.3, compile 0.4) against work 64.6 (tests 63.4) |
+| the critical path | `scope` → `page tests (safari / pw phones 1 or 2/2)` (9.6-9.8 min) → `image-worker` (queue 2.0 + 1.1) → `publish-worker` (queue 1.4 + 0.1) → `timings` (queue 0.5 + 0.3) |
+
+Setup is not where the time goes: a sbt row restores its JDK, coursier and target caches in ~22 s (hit), checks out in
+~13 s, and compiles in seconds. Two things are: **the WebKit phone rows' tests** (9.4 min of a 9.7 min job, one
+Playwright worker at ~4.5 s a test), and **three queue hops after ci** (`image-worker`, `publish-worker`, `timings`),
+each a fresh job behind every convergence row already queued.
+
+### What changed (branch `measure/main-speed`, then main)
+
+1. **Two, then three WebKit workers** (`run-page-test`'s `PW_WORKERS`). One was sized in 2817f38e7 for Forgejo's shared
+   host (~16 job containers on one CCD, about a core each). A github.com runner is 4 dedicated vCPUs. Two workers:
+   the longest row 6.9 min at 66-71% CPU; three: 5.1-5.5 min at 80-87%. No test failed on any run.
+2. **The worker image is built in ci's `e2e (corpus)` row**, beside the web image, from its own Docker context, under
+   its SHA tag only; `image-worker` is gone and `publish-worker` needs only `ci` and `gates`. One queue hop after ci
+   instead of two. Nothing ships before ci is green, as before (`publish-*` still `needs: [ci, gates]`).
+   The `stage-worker` artifact had no other consumer and is no longer uploaded.
+3. **The drift slices in two suites.** `IdentityDriftSlicesSpec` replayed 22 slices for 420-450 s: once the WebKit
+   rows were shorter, `test (worker-identity)` (8.5 min) was Main's long pole. Every other slice now runs in
+   `IdentityDriftSlicesPart2Spec` on the `heavy1` row (2.5-2.8 min). Same slices, same seeds.
+4. **A dispatch on a branch ships nothing**: `gates` outputs `ship` (main only), both publishes need it, and
+   `kick-convergence` kicks only from main. That is what made these measurements possible without deploying.
+5. Tried and reverted: the drift slices on every core instead of half. The suite went from 278 s to 446-452 s at 92%
+   CPU: it competes with the row's other suites.
+
+Coverage is unchanged: every test, spec, slice and check still runs before a deploy.
+
+### After
+
+Branch dispatches of the final shape (three WebKit workers, the worker image in ci): runs 41311300585, 41312711652,
+41316846216 (the first also carried the reverted every-core drift-slice experiment, which only touched
+`test (worker-identity)`). Before: the 10 green runs on main above. `ci-timings compare --before runs:... --after
+runs:...`, medians:
+
+| | before (10 runs on main) | after (3 branch runs) | change |
+|---|---|---|---|
+| **Main wall** | **16:52** (p90 20:33) | **13:27** (p90 19:45) | -20% |
+| critical path: queue | 4:21 | 10:46 | the account was saturated during all three |
+| critical path: work | 11:30 | 5:32 | -52% |
+| runner-min per run | 75.3 | 69.5 | -8% (no `image-worker`) |
+| page tests (safari / pw phones 1/2) | 9:40 | 5:25 | -44% |
+| page tests (safari / pw phones 2/2) | 9:50 | 5:06 | -48% |
+| page tests (safari / pw behaviour 2/2) | 6:20 | 5:00 | -21% |
+| page tests (safari / pw behaviour 1/2) | 4:58 | 3:39 | -26% |
+| e2e (corpus), now building both images | 2:39 | 3:18 | +25% (off the critical path) |
+| test (worker-identity) | 7:48 | 8:43 | +12%: `IdentityDriftSlicesSpec` grew (below) |
+| queue hops after ci | 3 (`image-worker` 2:00, `publish-*` 1:26-2:31, `timings` 0:28) | 2 (`publish-*`, `timings`) | -1 hop |
+
+The first run of the shape, 41308264642 (two WebKit workers, a quiet account, 23 s of queueing in all), ran **8:00**
+first job to last, with no publish (a branch ships nothing; on main `publish-*` adds one hop of ~10 s plus its queue).
+
+Two numbers explain why the wall is still above 8 minutes:
+
+- **Queueing.** The first run on main after the telemetry landed (41309546859) took 35:29, of which 27:15 was jobs
+  waiting for a runner; the branch runs waited 5-23 min. In those windows the account carried Main, the convergence run
+  Main kicks (26 rows of 10-13 min), other agents' convergence measurement runs on `measure/*` branches (26 rows each)
+  and landing checks. GitHub hands a free runner to the oldest queued job, so every Main job created after another
+  workflow's rows waits for them; the post-ci hops always are.
+- **`IdentityDriftSlicesSpec` is the new long pole.** It replays every committed drift slice (a drift or flip red is
+  not closed until its slice is committed), computing them in one lazy pass two at a time. It took 278 s at 12:55Z,
+  420-450 s by 14:30Z as slices landed, and grows with every closed drift red. Halving it by position (reverted) gave
+  578 s and 288 s: a few slices dominate.
+
+### Verdict, and what under 8 minutes would take
+
+Main's own work now fits in about 7.5 min (the WebKit rows ~5.5, `test (worker-identity)` ~8 at today's slice count,
+then one publish hop and `timings`), down from 11.5. **Under 8 minutes wall is not reachable on the shared 20 free
+runners with identical coverage**, because queueing alone was 5-27 min in every busy window today. It would take, for
+the owner to choose:
+
+1. **Main never queues behind other work.** Either (a) move what is not Main off the shared 20: the landing checks and
+   `measure/*` convergence runs to the self-hosted ci-runner (it already runs agentctl's checks), or (b) a paid plan with
+   more concurrent jobs or larger runners. With no queueing, the branch runs show Main at ~8 min today and ~7 once (2)
+   lands.
+2. **Split `IdentityDriftSlicesSpec` by measured slice cost** across `worker-identity` and `heavy1`/`heavy2`, so no row
+   carries more than ~3 min of it (identity test code; per-slice times need one instrumented run). Same slices, same
+   seeds. Worth ~2-3 min of Main today and more as slices accumulate.
+3. **Fold the two post-ci hops into one** (a coverage-neutral but gate-semantics change): either `timings` runs beside
+   `publish-*` instead of after them (its report then misses the two ~10 s publish jobs, which VictoriaLogs still has),
+   or one job held from t=0 polls ci and publishes the moment it is green (no hop at all, one runner held for the run,
+   and a hand-written equivalent of `needs` in front of the deploy). Worth one queue wait, 0.5-2.5 min under load.
+4. Not worth it: more WebKit workers (three already run the rows at 80-89% CPU), fewer setup seconds (setup is ~45 s
+   of a 5-8 min sbt row, caches hit).
