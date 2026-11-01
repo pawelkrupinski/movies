@@ -103,7 +103,8 @@ jobs:
                   case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
                   # the fast-only set is the sbt check alone: nothing for the page or oldrefs share
                   [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
-                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="page oldrefs"; else export PREPUSH_ONLY="$SHARE"; fi
+                  elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"
+                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi
                   timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
@@ -137,6 +138,110 @@ jobs:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
                   name: precommit-check-logs-rest
+                  path: ${{ runner.temp }}/hook/**/*.log
+                  if-no-files-found: ignore
+
+    # THE IDENTITY MODULE'S TESTS, a job of their own (2026-11-01): in `check (rest)` they ran after the sbt check, one
+    # after the other, and were most of its slowest runs (run 41276112019: sbt 292 s, then identity 585 s, a 15.9-min
+    # job). Beside the rest they end with it (docs/investigations/2026-11-01-twenty-runners.md).
+    check-identity:
+        name: check (identity)
+        runs-on: ubuntu-26.04
+        # the rest job's caps: the hook 80 minutes, the job 90, room for the failure steps after it
+        timeout-minutes: 90
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+            - name: Fetch main, the base the change sits on
+              run: git fetch --quiet origin main
+            # Seconds: the hook's own selection over the change. A change it gives no identity check (and a fast-* ref,
+            # whose rest job runs it) sets up nothing below; the hook in the next steps decides the same way regardless.
+            - name: Does the change select the identity check?
+              id: selected
+              run: |
+                  case "$GITHUB_REF_NAME" in fast-*|check/fast-*) exit 0 ;; esac
+                  if git diff --name-only "$(git merge-base HEAD origin/main)" HEAD | scripts/hooks/pre-push --plan | grep -qx identity; then
+                      echo "identity=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "no identity check for this change"
+                  fi
+            # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
+            - uses: ./.github/actions/setup-sbt-build
+              if: steps.selected.outputs.identity == 'true'
+              with:
+                  target-cache-restore-only: 'true'
+            - uses: actions/setup-node@v5
+              if: steps.selected.outputs.identity == 'true'
+              with:
+                  node-version: '22'
+                  cache: 'npm'
+            # the hook's tools that the job image lacks: a missing one blocks the check, as on the laptop
+            - name: The hook's tools
+              if: steps.selected.outputs.identity == 'true'
+              env:
+                  ACTIONLINT_VERSION: 1.7.12
+                  ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+              run: |
+                  archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+                  curl -fsSL --retry 3 --max-time 60 -o "$RUNNER_TEMP/$archive" \
+                      "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/$archive"
+                  echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+                  tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+                  echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+                  python3 -m pip install --quiet timezonefinder || python3 -m pip install --quiet --break-system-packages timezonefinder
+                  for tool in shellcheck jq; do command -v "$tool" > /dev/null || scripts/ci/install-apt-package.sh "$tool"; done
+            # NOT gated: the hook decides for itself, so a selection the step above missed fails loudly here, never skips.
+            - name: The pre-push hook's checks of the change
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+                  TMPDIR: ${{ runner.temp }}/hook
+                  SHARE: identity
+              run: |
+                  mkdir -p "$TMPDIR"
+                  # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
+                  # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
+                  rc=0
+                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check --
+                  # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
+                  # laptop; every other check/<id> the change's own checks
+                  mode=--checks-only
+                  case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
+                  # the fast-only set is the sbt check alone: nothing for the page or oldrefs share
+                  [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
+                  elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"
+                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi
+                  timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
+                  [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
+                  exit "$rc"
+            # The drift gate's commit rules over the change's commits, whatever paths it touched (scripts/ci/commit-rules-ci.sh):
+            # the hook selects them by path; here no selection can leave them out.
+            # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
+            # verdict reads them, so a remote check never fails output-less. Each log's errors first (Playwright's
+            # `Error:` blocks, sbt's FAILED/[error]: run 3342's 60 `✘` lines filled every head and its error never
+            # showed), then its last lines, whatever matched: `grep | head` exits 0 on no match, so the old `|| tail`
+            # never ran.
+            - name: The failed checks' lines
+              if: failure()
+              env:
+                  HOOK_TMP: ${{ runner.temp }}/hook
+              run: |
+                  find "$HOOK_TMP" -name '*.log' -print0 | while IFS= read -r -d '' log; do
+                      echo "::group::$log"
+                      echo "-- its error lines (first 120):"
+                      grep -E -B2 -A8 '\*\*\* FAILED|\[error\]|::error::|^ *Error:|Error: |[0-9]+ failed' "$log" | head -120 || true
+                      echo "-- its last 60 lines:"
+                      tail -60 "$log"
+                      echo "::endgroup::"
+                  done
+            # ...and every log whole, for what the lines above leave out
+            - name: The hook's logs
+              if: failure()
+              uses: actions/upload-artifact@v4
+              with:
+                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
+                  overwrite: true
+                  name: precommit-check-logs-identity
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
 
@@ -206,7 +311,8 @@ jobs:
                   case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
                   # the fast-only set is the sbt check alone: nothing for the page or oldrefs share
                   [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
-                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="page oldrefs"; else export PREPUSH_ONLY="$SHARE"; fi
+                  elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"
+                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi
                   timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
@@ -245,8 +351,8 @@ jobs:
         # AFTER the rest, not beside it: beside it its WebKit rows starved (landing check run 4059:
         # every WebKit test ~40 s, then timed out, past the 80 minutes) -- the reason it runs with a cap of its own -- and
         # after the heavy rows and the old refs' compile, which run beside the rest and would starve it the same way
-        needs: [ check, check-oldrefs, heavy ]
-        if: ${{ !cancelled() && needs.check.result == 'success' && needs.check-oldrefs.result == 'success' && needs.heavy.result != 'failure' }}
+        needs: [ check, check-identity, check-oldrefs, heavy ]
+        if: ${{ !cancelled() && needs.check.result == 'success' && needs.check-identity.result == 'success' && needs.check-oldrefs.result == 'success' && needs.heavy.result != 'failure' }}
         runs-on: ubuntu-26.04
         # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
         # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
@@ -297,7 +403,8 @@ jobs:
                   case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
                   # the fast-only set is the sbt check alone: nothing for the page or oldrefs share
                   [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
-                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="page oldrefs"; else export PREPUSH_ONLY="$SHARE"; fi
+                  elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"
+                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi
                   timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
@@ -402,7 +509,7 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
     timings:
-        needs: [ plan, check, check-oldrefs, check-page, heavy ]
+        needs: [ plan, check, check-identity, check-oldrefs, check-page, heavy ]
         if: ${{ !cancelled() }}
         permissions:
             actions: read

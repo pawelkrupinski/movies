@@ -12,15 +12,28 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   private lazy val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/precommit-check.yml"))
 
   "the landing check" should "run the page area and the old refs in jobs of their own, each with a cap of its own" in {
-    Map("check" -> "rest", "check-oldrefs" -> "oldrefs", "check-page" -> "page").foreach { case (job, share) =>
+    Map("check" -> "rest", "check-identity" -> "identity", "check-oldrefs" -> "oldrefs", "check-page" -> "page").foreach { case (job, share) =>
       jobs(job) should include(s"SHARE: $share")
-      jobs(job) should include("""if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="page oldrefs"; else export PREPUSH_ONLY="$SHARE"; fi""")
+      jobs(job) should include("""elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"""")
+      jobs(job) should include("""if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi""")
       jobs(job) should include("timeout --kill-after=60 80m scripts/hooks/pre-push")
     }
     // the old refs from the trees Main keeps: cold, they pushed the rest past its 80 minutes (run 4083)
     jobs("check-oldrefs") should include("KINOWO_IDENTITY_CACHE: ${{ runner.temp }}/kinowo-identity")
     // beside the rest its WebKit rows starved and ran out of the 80 minutes (run 4059)
-    jobs("check-page") should include("needs: [ check, check-oldrefs, heavy ]")
+    jobs("check-page") should include("needs: [ check, check-identity, check-oldrefs, heavy ]")
+    jobs("check-page") should include("needs.check-identity.result == 'success'")
+  }
+
+  /** The identity module's tests ran after the sbt check in the rest's job: 292 s then 585 s, a 15.9-minute job (run
+   *  41276112019; docs/investigations/2026-11-01-twenty-runners.md). A job of their own, at t=0 beside the rest, which sets
+   *  nothing up for a change the hook gives no identity check -- and whose hook step still runs, so a selection the cheap
+   *  step missed fails there rather than going unchecked. */
+  "the identity check" should "run in a job of its own beside the rest, its hook step never skipped" in {
+    val identity = jobs("check-identity")
+    identity should not include "needs:"
+    identity should include("scripts/hooks/pre-push --plan | grep -qx identity")
+    RepoFile.step(identity, "The pre-push hook's checks of the change") should not include "if:"
   }
 
   /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the
