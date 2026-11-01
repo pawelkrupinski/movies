@@ -206,12 +206,18 @@ side-event	en	party
 side-event	en	mocktail
 side-event	en	cocktail
 side-event	en	choir
+side-event	en	panel	"Who are you, Polly Maggoo ? + panel", "Lost, Banned, Reclaimed: Chess of the Wind + Panel" — UK, 2026-11
+side-event	en	interval	"The Odyssey + Interval" — UK, 2026-11
+side-event	en	reception	"Flowers of Shanghai + Taiwan night reception" — UK, 2026-11
+side-event	en	ScreenTalk	"LPFF 2026: Revolutionaries Never Die +ScreenTalk" — UK, 2026-11
 side-event	de	Vortrag
 side-event	de	Werkstatt
 side-event	de	Ausstellung
 side-event	de	Tournee
 side-event	de	Diskussion
 side-event	de	Lesung
+side-event	de	Gäste	"Was haben wir gelacht + Gäste" — DE, 2026-11
+side-event	de	Filmgespräch	"NUR EINE FRAU + Filmgespräch mit Louise-Otto-Peters-Gesellschaft" — DE, 2026-11
 side-event	es	charla
 side-event	es	taller
 side-event	es	exposición

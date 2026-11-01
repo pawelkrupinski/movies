@@ -1,6 +1,6 @@
 package services.identity
 
-import services.billing.{BillingParse, NumberedTitles}
+import services.billing.{BillingParse, DecorationWords, NumberedTitles}
 import services.movies.TitleContainment
 import services.resolution.SearchTitles
 
@@ -71,9 +71,25 @@ private[identity] object TitleShapeMeasures {
     else l.shapesOfOwn(billed).filter(piece => piece != billed.trim && piece.exists(_.isLetter) && !piece.exists(_.isLower))
   }
 
+  /** Every shape but a piece naming only the event a billing joins to its film ([[namesOnlyAnEvent]]): UK "The Assassin
+   *  + Q&A" searched "Q&A" and stood Q & A (1990) beside Hou Hsiao-hsien's film as its runner-up, and "Inside Gaza + Q&A"
+   *  ×1, "Le Moulin + Q&A", "Journey There + Q&A" took it as their best candidate (prod 2026-11-01: 30 UK listings). The
+   *  listing's own titles are shapes whatever they bill: a film called "Q&A" is billed by its title alone. */
   private[identity] def shapesOf(l: Listing): Seq[String] = {
+    val own = l.ownTitles.map(_.trim).toSet
     shapes(l.ownTitles ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
       l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)) ++ l.ownTitles.flatMap(creditedWork), l.decorations)
+      .filter(shape => own(shape) || !namesOnlyAnEvent(shape))
+  }
+
+  /** Does a piece of a billing name nothing but an event around a screening — a talk, a panel, an interval, an
+   *  introduction ([[DecorationWords.namesAnEvent]]), every other word of it one a venue bills around a film
+   *  ([[DecorationWords.billedAround]]): "Q&A", "Q+A", "Panel", "Interval", "Live Q&A"? No film's title, whatever film a
+   *  database files under the word. */
+  private[identity] def namesOnlyAnEvent(piece: String): Boolean = {
+    val all   = TitleContainment.tokens(piece)
+    val words = all.filter(_.length > 1)
+    all.nonEmpty && DecorationWords.namesAnEvent(all) && words.forall(DecorationWords.billedAround)
   }
 
   /** `titles` and every part a split leaves, each de-decorated in turn ("Throwback: Donnie Darko
