@@ -194,8 +194,8 @@ private[identity] object TitleTextMeasures {
     lazy val yearless: String       = yearlessWords.mkString
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
     /** [[IdentityMeasures.spellingKey]], when it writes an "&" or an "ß" ([[IdentityMeasures.respells]]). */
-    lazy val respelt: Boolean       = IdentityMeasures.respells(text)
-    lazy val spellingKey: String    = IdentityMeasures.spellingKey(text)
+    lazy val respelt: Boolean       = respells(text)
+    lazy val spellingKey: String    = spellingKey(text)
     /** Its words after a leading article ([[LeadingArticles]]), when it has one — what a venue that drops the article lists. */
     lazy val afterArticle: Option[Seq[String]] = Some(withoutLeadingArticle(words)).filter(_.sizeIs < words.size)
     /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */
