@@ -319,6 +319,15 @@ class RatchetTest(unittest.TestCase):
                     "Drift slice: Zniknięcie")
         self.assertEqual(0, self.guards(f"{fix}^..HEAD"), "git quotes a non-ASCII path unless told not to")
 
+    def test_a_red_unrelated_commit_claims_no_fix_to_the_guards(self):
+        a = "identity/src/main/A.scala"
+        rule = "identity/src/main/scala/services/identity/CatalogueLinks.scala"
+        head = self.commit({a: "1\n", rule: "r\n"},
+                           "Identity: the drift helper, one class\n\nFixes-Red: 579\nRed-Unrelated: the owner's call, not a fix")
+        self.assertEqual(0, self.guards(f"{head}^..{head}"), "no slice and a rule file, yet it claims no fix")
+        head = self.commit({a: "2\n", rule: "s\n"}, "Identity: the drift helper, one class\n\nFixes-Red: 579")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"), "the same commit claiming the fix")
+
     def test_an_unreadable_range_is_no_verdict_to_the_guards(self):
         self.assertEqual(2, self.guards("nosuch..HEAD"))
 

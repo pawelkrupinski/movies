@@ -119,6 +119,10 @@ class Commit:
     def has(self, key: str) -> bool:
         return bool(self.trailers.get(key.lower()))
 
+    def claims_fix(self) -> bool:
+        """`Fixes-Red:` as a claim: a `Red-Unrelated:` commit names the red only to land on it under the owner's call
+        and claims no fix (as the pre-push hook reads it), so the red-fix guards do not judge it."""
+        return self.has("Fixes-Red") and not self.has("Red-Unrelated")
 
     def label(self) -> str:
         return f"{self.sha[:9]} {self.subject}"
@@ -260,7 +264,7 @@ SLICE_NONE = re.compile(r"^none\s*(--|\u2014|-)\s*\S", re.I)
 
 
 def drift_fix_carries_its_slice(c: Commit, opts: dict) -> list[str]:
-    if not c.has("Fixes-Red") or not DRIFT_WORDS.search(c.message):
+    if not c.claims_fix() or not DRIFT_WORDS.search(c.message):
         return []
     if any(p.startswith(SLICES) for p in opts.get("pushed", ())) or any(SLICE_NONE.match(v) for v in c.trailers.get("drift-slice", [])):
         return []
@@ -272,7 +276,7 @@ def drift_fix_carries_its_slice(c: Commit, opts: dict) -> list[str]:
 
 def red_fix_is_no_rule(c: Commit, _opts: dict) -> list[str]:
     rules = sorted(p for p in c.changed if RULE_FILES.match(p))
-    if not c.has("Fixes-Red") or not rules:
+    if not c.claims_fix() or not rules:
         return []
     docs = c.trailers.get("identity-design", [])
     if docs and all(at(c.sha, d.split()[0]) for d in docs):
