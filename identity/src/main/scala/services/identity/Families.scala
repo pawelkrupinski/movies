@@ -66,7 +66,15 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  bill, beside Kino Krokodil's "Camouflage" [2016] crediting Imge Özbilge. So does a take of the film the node's own
    *  feed links, its link standing ([[FamilyScope.overruled]]): DE Metro-Kino im Schloßhof's 96′ "Billie", which
    *  Cineamo links to the 2020 Billie Holiday documentary, beside Hansa Kino's "Billie" crediting Sheri Hagen's 2026
-   *  film (recording 573). */
+   *  film (recording 573).
+   *
+   *  Nor does a sibling's denial that the film is the WORK its billing names, one a credit overrules
+   *  ([[Denial.Kind.NotTheWork]] `creditOverrules`: a screen namesake of its stage house's work), withdraw a node crediting
+   *  the film's director: the rule spares the node's own billing so, and a sibling crediting nobody says nothing of its
+   *  credit. UK red 629 (seed 42, recording 573): Keswick Alhambra's "Scottish Ballet: These Violent Delights" {Christopher
+   *  Hampson, Oscar Sansom} [95′] lost the ballet's 2026 record whenever Kiln Kilburn's uncredited billing of it arrived —
+   *  the pair then voted together, Vetoed, its pooled runtime off the record's — and took it back once a third billing's
+   *  facts carried the pair: a take hanging on the arrival order. */
   def deniedBySibling(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
                       takenAlone: String => Option[Scored]): Option[(EvidenceNode, String)] =
     siblingDenying(node, members, scope, best, takenAlone).map { case (sibling, other) => sibling -> other.denial.fold("denied")(_.why) }
@@ -75,12 +83,14 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   def siblingDenying(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
                      takenAlone: String => Option[Scored]): Option[(EvidenceNode, Scored)] = {
     lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
+    lazy val creditedDirector = IdentityMeasures.sameDirector(best.measures)
     val ownProduction = best.seasonProduction && StageRelays.billsItsHouse(best.listing, best.candidate.film) ||
       RelayStage.particularRecordOf(best.listing, best.candidate.film)
     def comparedUnpublished(denial: Scored) =
       (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty
     def withdraws(denial: Scored, byTaken: Boolean) =
       !(best.houseProduction && denial.denial.exists(_.kind == Denial.Kind.AnotherHousesSeason)) &&
+        !(creditedDirector && denial.denial.exists(_.kind == Denial.Kind.NotTheWork(creditOverrules = true))) &&
         (!(denial.deniedByCutOnly || byTaken) || comparedUnpublished(denial))
     // the node's take read by another title, corroborated by no other venue nor linked by its own feed: only then may a
     // sibling taken alone withdraw it

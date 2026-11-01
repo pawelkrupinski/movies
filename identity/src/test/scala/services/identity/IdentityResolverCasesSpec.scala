@@ -3115,6 +3115,29 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(relays.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(relays.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(None))
   }
 
+  it should "not withdraw a same-titled billing crediting the film's director from it, though an uncredited sibling's banner denies it" in {
+    // UK red 629 (convergence takes-drift-2, seed 42, recording 573): Keswick Alhambra's "Scottish Ballet: These Violent
+    // Delights" {Christopher Hampson, Oscar Sansom} [95′] took the 2026 record of the ballet by its own match until Kiln
+    // Kilburn's same-titled billing, crediting nobody, arrived: its banner denies the record as a screen namesake of the
+    // work, and that denial withdrew Keswick's own match, though the rule spares a billing that credits the film's director
+    // (Denial.Kind.NotTheWork(creditOverrules)). The pair then voted together, Vetoed, and Keswick took the film back only
+    // when a third billing's facts carried the pair: its take hung on the arrival order.
+    val record   = Seq(F(1462368, "These Violent Delights", 2026, "Christopher Hampson", 70, 0.6))
+    val credited = Seq(KinoMuza, Helios).map(listing(_, "Scottish Ballet: These Violent Delights", None, Some("Christopher Hampson"), Some(95)))
+    val bare     = listing(Kinoteka, "Scottish Ballet: These Violent Delights")
+    val r        = shipped(credited :+ bare, record)
+    withClue(rendered(r, credited :+ bare))(films(r, credited) shouldBe Seq(Some(1462368)))
+  }
+
+  it should "still take nothing for its uncredited billings, the denial right for every one of them" in {
+    // the guard: without a credit, every billing of the banner is a screen namesake of the work, alone or together
+    val record = Seq(F(1462368, "These Violent Delights", 2026, "Christopher Hampson", 70, 0.6))
+    val bare   = Seq(KinoMuza, Helios, Kinoteka).map(listing(_, "Scottish Ballet: These Violent Delights"))
+    val timed  = listing(KinoApollo, "Scottish Ballet: These Violent Delights", None, None, Some(95))
+    val r      = shipped(bare :+ timed, record)
+    withClue(rendered(r, bare :+ timed))(films(r, bare :+ timed) shouldBe Seq(None))
+  }
+
   it should "still take a record billing its house, and a film whose own title carries the word" in {
     val films = Seq(F(1702789, "RBO 2026/27: Romeo und Julia (The Royal Ballet)", 2027, "", 0, 0.5),
       F(6003, "Romeo und Julia", 1968, "Franco Zeffirelli", 138, 9.8967), F(9001, "Das Phantom der Oper", 2004, "Joel Schumacher", 143, 8.0))
