@@ -1598,30 +1598,35 @@ def command_export(args, source, out, post=post_events):
     runs = github.runs(created="%s..%s" % (iso(since)[:10], iso(until)[:10]))
     pending = [run for run in runs if run.get("status") == "completed"
                and "%s/%s" % (run["id"], run.get("run_attempt") or 1) not in state["done"]]
-    records = []
-    for run in sorted(pending, key=lambda run: run.get("created_at") or ""):
-        try:
-            records.append((run, record_of(github, run)))
-        except Exception as error:  # noqa: BLE001 -- see the docstring
-            print("ci-timings export: run %s not read: %s" % (run.get("id"), error), file=sys.stderr)
+    def log(message):
+        print("ci-timings export: " + message, file=sys.stderr, flush=True)
+
+    log("%d runs in the window, %d to send, %d already in" % (len(runs), len(pending), len(runs) - len(pending)))
+    # Every job's window first (one cached call per run), for each run's slot saturation; then each run is read, sent
+    # and recorded in the state ON ITS OWN, so a pass cut short (a budget floor, a timeout) keeps what it sent and the
+    # journal shows it moving (2026-11-01: the first pass read every run before sending any, ~15 min of silence).
     everything = []
-    for run in runs:
-        if run.get("status") == "completed":
-            try:
-                for job in github.jobs(run):
-                    record = job_record(job)
-                    if record:
-                        everything.append((record["s"], record["e"]))
-            except Exception:  # noqa: BLE001
-                continue
-    sent = failed = 0
-    for run, record in records:
-        key = "%s/%s" % (run["id"], run.get("run_attempt") or 1)
-        if record["jobs"]:
-            record["sat"] = saturation(run_window(record), everything)
-        record["change"] = commit_change(github, record.get("sha"))
-        events = events_of(record)
+    completed = [run for run in runs if run.get("status") == "completed"]
+    for index, run in enumerate(completed, 1):
         try:
+            for job in github.jobs(run):
+                record = job_record(job)
+                if record:
+                    everything.append((record["s"], record["e"]))
+        except Exception:  # noqa: BLE001 -- saturation is context; the run itself is read again below
+            pass
+        if index % 50 == 0 or index == len(completed):
+            log("job windows: %d of %d runs, %d API calls" % (index, len(completed), github.calls))
+    sent = failed = 0
+    started = parse_when("now")
+    for index, run in enumerate(sorted(pending, key=lambda run: run.get("created_at") or ""), 1):
+        key = "%s/%s" % (run["id"], run.get("run_attempt") or 1)
+        try:
+            record = record_of(github, run)
+            if record["jobs"]:
+                record["sat"] = saturation(run_window(record), everything)
+            record["change"] = commit_change(github, record.get("sha"))
+            events = events_of(record)
             if args.dry_run:
                 for event in events:
                     out.write(json.dumps(event, separators=(",", ":"), default=str) + "\n")
@@ -1629,18 +1634,21 @@ def command_export(args, source, out, post=post_events):
                 post(args.vl_url, events)
         except Exception as error:  # noqa: BLE001 -- see the docstring
             failed += 1
-            print("ci-timings export: run %s not sent: %s" % (run["id"], error), file=sys.stderr)
+            log("run %s not sent: %s" % (run["id"], error))
             continue
         sent += 1
         state["done"][key] = int(parse_when("now"))
         if args.state and not args.dry_run:
             save_state(args.state, state)
+        if index % 10 == 0 or index == len(pending):
+            log("sent %d of %d (%s %s, %d events), %d failed, %d API calls, %.0f s" % (
+                index, len(pending), run.get("name"), run["id"], len(events), failed, github.calls,
+                parse_when("now") - started))
     horizon = parse_when("100d")
     state["done"] = {k: v for k, v in state["done"].items() if v >= horizon}
     if args.state and not args.dry_run:
         save_state(args.state, state)
-    print("ci-timings export: %d runs sent, %d failed, %d already in, %d API calls" % (
-        sent, failed, len(runs) - len(pending), github.calls), file=sys.stderr)
+    log("%d runs sent, %d failed, %d already in, %d API calls" % (sent, failed, len(runs) - len(pending), github.calls))
 
 
 def command_legs(args, source, out):
