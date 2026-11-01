@@ -39,6 +39,18 @@ class ListingIntakeSpec extends AnyFlatSpec with Matchers {
     v.accepted shouldBe board
   }
 
+  // Kino Parczew's page for "Kino 01.11.2026/ nieczynne" (a closed-day notice) carries no run, and the client lists it
+  // with no showtime: landed, it became a film with no screening, served as an empty card (Verify scrape recording #1,
+  // recording 41265286306, Poland: "1 served film(s) with NO screening").
+  "A scraped film with no showtime" should "not land: a listing with nothing to screen is no film" in {
+    val notice = film("Kino 01.11.2026/ nieczynne", showtimes = 0)
+    val next   = board.tail :+ notice
+    val v      = decide(board, next)
+    v.outcome shouldBe Outcome.Replaced
+    v.accepted shouldBe board.tail
+    decide(board, Seq(notice)).outcome shouldBe Outcome.Kept
+  }
+
   "A scrape whose upcoming showtimes collapsed" should "be discarded until the depth guard's grace runs out" in {
     val thin = board.map(_.copy(showtimes = Seq(Showtime(now.plusDays(1), None))))
     val first = decide(board, thin)

@@ -53,8 +53,12 @@ object ListingIntake {
     case BreadthAccept extends Guarded(ListingIntakeMetrics.Guard.Breadth, ListingIntakeMetrics.Verdict.Accept)
   }
 
-  def decide(cinema: Cinema, known: Seq[CinemaMovie], offer: Offer, guard: ScrapeGuardState, now: LocalDateTime,
+  def decide(cinema: Cinema, known: Seq[CinemaMovie], scraped: Offer, guard: ScrapeGuardState, now: LocalDateTime,
              maxRejections: Int, normalizer: TitleNormalizer): Verdict = {
+    // A film the scrape lists with no showtime has nothing to screen: landed, it is a film served as an empty card
+    // (Kino Parczew's closed-day notice "Kino 01.11.2026/ nieczynne", a page with no run). The scrape is judged
+    // without it.
+    val offer = scraped.copy(films = scraped.films.filter(_.showtimes.nonEmpty))
     def added = union(cinema, known, offer.films)
     if (offer.films.isEmpty) Verdict(known, guard, Outcome.Kept)
     else if (offer.viaFallback) Verdict(added, guard, Outcome.Added)
