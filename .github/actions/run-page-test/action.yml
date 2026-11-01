@@ -287,13 +287,16 @@ runs:
       env:
         PW_RUNS: ${{ inputs.runs }}
         PW_EXTRA: ${{ inputs.extra-args }}
-        # A WebKit-only row runs ONE worker. A WebKit worker is a
+        # A WebKit-only row runs TWO workers (2026-11-01). A WebKit worker is a
         # WebProcess plus a NetworkProcess plus the test runner, beside the fixture
-        # server's JVM. The CPU sets the wall time either way; fewer workers only make
-        # each test shorter, so the row that carries the most tests is sharded
-        # instead (ci.yml's `pw behaviour 1/2, 2/2`): a second container is a second
-        # share of the CPU. PlaywrightWorkerBudgetSpec.
-        PW_WORKERS: ${{ inputs.browsers == 'webkit' && '1' || '' }}
+        # server's JVM. One worker (2817f38e7) was sized for Forgejo's shared host, where
+        # ~16 job containers split one CCD and each got about a core; a github.com runner is
+        # 4 dedicated vCPUs, on which one worker left the phone rows at ~9.5 min of ~4.5 s
+        # tests, the build's long pole (docs/investigations/2026-11-01-twenty-runners.md,
+        # section 7). Two stay well under the 4 cores beside the JVM; the row's telemetry
+        # (job-telemetry: CPU, PSI) shows whether a third would still pay.
+        # PlaywrightWorkerBudgetSpec.
+        PW_WORKERS: ${{ inputs.browsers == 'webkit' && '2' || '' }}
       run: |
         cd page-tests-playwright
         # `set -f` so the shell never glob-expands a project pattern

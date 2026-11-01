@@ -35,7 +35,8 @@ env:
 # Pipeline shape:
 #
 #   ci (reusable workflow — lint, test, integration, ──┬─► publish-web
-#       ios/android local-server, page-tests)           ├─► image-worker ──► publish-worker
+#       ios/android local-server, page-tests;           └─► publish-worker
+#       its e2e (corpus) row builds both images)        │
 #   gates (t=0: which tiers changed since their   ──────┘
 #          last deploy; both publishes read it)
 #   kick-convergence (t=0, whether ci passes or not)
@@ -79,16 +80,16 @@ jobs:
 
     # The web image is BUILT WHILE ci RUNS and only PUBLISHED here: ci's `e2e (corpus)` row builds it from the
     # dist it staged, while ci's slowest rows still run, and pushes it under the commit SHA alone — a tag
-    # nothing deploys. The worker's (`image-worker`) is built from the dist that row staged once ci is green
+    # nothing deploys. The worker's is built there too, from the dist that row staged
     # (it used to start beside ci too, and kept building after a red row). `publish-web` /
-    # `publish-worker` below `needs: ci` (the worker's also `needs: image-worker`),
+    # `publish-worker` below `needs: ci`,
     # and for a tier whose paths changed give those bytes the tags that ship: a registry manifest copy
     # of seconds where they used to restage (~2 min of cold `sbt stage`) and build (~1.7 min) on the
     # post-ci critical path. (DeployImageReuseSpec)
     #
     # The web image is built on every main push, even when its paths did not change: building is not
     # shipping, and an unpublished SHA-tagged image costs registry space and a runner ci's e2e rows have
-    # already given back. The worker's is built only for a push that changed the worker (`image-worker`).
+    # already given back. So is the worker's (2026-11-01: it was a job of its own, `image-worker`, two queue hops after ci).
     # `free-runners` — the job that used to sit here, cancelling any in-flight
     # convergence run to take its runners back for the Fly deploy — was
     # retired 2026-09-08 alongside that workflow moving to `cancel-in-progress:
@@ -113,6 +114,8 @@ jobs:
         outputs:
             web-changed: ${{ steps.changed-web.outputs.changed }}
             worker-changed: ${{ steps.changed-worker.outputs.changed }}
+            # Whether this run may ship at all: main only. A dispatch on a branch measures Main and ships nothing.
+            ship: ${{ github.ref == 'refs/heads/main' }}
         steps:
             # Full history, BLOBLESS — the tier gates below diff against each tier's last DEPLOYED
             # commit, which a shallow checkout would not have; commits and trees only.
@@ -237,8 +240,9 @@ jobs:
     # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
     # the US runs the same leg from its own workflow.
     kick-convergence:
-        # A cancelled run dispatches nothing.
-        if: ${{ !cancelled() }}
+        # A cancelled run dispatches nothing, and neither does a dispatch on a branch (a measurement of Main itself):
+        # convergence judges main's commits.
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
         runs-on: ubuntu-26.04
         # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
         # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
@@ -303,12 +307,15 @@ jobs:
     #
     # PUBLISH AND RECORD IN ONE JOB. The marker write used to be a `record-<tier>` job of its own,
     # so the `contents: write` token never sat in a job that ran a Docker build of project code.
-    # The images are built elsewhere now (ci's `e2e (corpus)` row, `image-worker` below) and this job only
+    # The images are built elsewhere now (ci's `e2e (corpus)` row) and this job only
     # copies registry tags with the runner's own docker CLI: no project code and no third-party
     # action runs here, so the split bought nothing but a second job hop on every push.
+    # MAIN ONLY (2026-11-01): a `workflow_dispatch` on a branch -- how a Main change is measured before it lands
+    # (docs/investigations/2026-11-01-twenty-runners.md, section 7) -- runs every test and builds the SHA-tagged images,
+    # and ships nothing: Flux deploys the `main-<utc>-<sha7>` tag this job attaches.
     publish-web:
         needs: [ci, gates]
-        if: needs.gates.outputs.web-changed == 'true'
+        if: needs.gates.outputs.web-changed == 'true' && needs.gates.outputs.ship == 'true'
         runs-on: ubuntu-26.04
         timeout-minutes: 10
 
@@ -417,73 +424,12 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-    # THE WORKER IMAGE, BUILT AND AOT-TRAINED ONCE ci IS GREEN — and OUTSIDE ci, so `publish-web` (which
-    # `needs: ci`) never waits for the ~5 min training: only `publish-worker` needs this job. Until
-    # 2026-10-22 it started beside ci and waited for the dist ci's `e2e (corpus)` row uploads, so a red
-    # test row still built a worker image for nobody;
-    # now it needs `ci` and a red run skips it (MainAfterRedCiSpec). SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys
-    # a SHA tag; `publish-worker` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`)
-    # only once ci is green and the tier's paths changed (DeployImageReuseSpec).
-    # Only when the worker's paths changed: `publish-worker` publishes nothing otherwise, and an image
-    # built for nobody held a runner for its wait and ~5 min build on every web-only push. Skipped
-    # here, `publish-worker` skips with it — nothing ships, as before.
-    image-worker:
-        needs: [ci, gates]
-        if: needs.gates.outputs.worker-changed == 'true'
-        runs-on: ubuntu-26.04
-        timeout-minutes: 30
-        permissions:
-            contents: read
-            # To see ci's artifacts and jobs while ci still runs.
-            actions: read
-            # The built-in GITHUB_TOKEN can push to GHCR; no new credential.
-            packages: write
-        steps:
-            - uses: actions/checkout@v5
-            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
-            - uses: ./.github/actions/job-telemetry
-              with:
-                  phase: start
-                  token: ${{ github.token }}
-
-            # Already uploaded once ci is green; kept as the check that it is there.
-            - name: Wait for the worker distribution ci's e2e corpus row stages
-              env:
-                  GH_TOKEN: ${{ github.token }}
-              run: scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (corpus)" 900
-
-            - name: Fetch the worker distribution the e2e corpus row staged
-              # Straight into `stage/`, the only path the Dockerfile's whitelisted context
-              # (.dockerignore) can see. The artifact drops file modes; the Dockerfile's
-              # `chmod +x bin/*` restores the one that matters.
-              uses: actions/download-artifact@v6
-              with:
-                  name: stage-worker
-                  path: stage
-
-            - uses: docker/login-action@v3
-              with:
-                  registry: ${{ env.REGISTRY_HOST }}
-                  username: ${{ env.REGISTRY_USER }}
-                  password: ${{ secrets.REGISTRY_PASSWORD }}
-
-            # BuildKit from Docker Hub's mirror, Docker Hub only when the mirror fails (CiImageMirrorSpec).
-            - uses: ./.github/actions/setup-buildx
-
-            # amd64 only, the inline cache of `latest`, Docker Hub's bases when the mirror loses a blob: build-image.sh.
-            - name: Build and push under this commit's SHA tag only
-              run: scripts/ci/build-image.sh worker ${{ env.IMAGE_REPO }}/movies-worker ${{ github.sha }}
-            - uses: ./.github/actions/job-telemetry
-              if: ${{ !cancelled() }}
-              with:
-                  phase: finish
-                  token: ${{ github.token }}
-                  job-status: ${{ job.status }}
-
-
+    # The worker's image is built inside ci now, in the `e2e (corpus)` row beside the web's (SHA tag only); this job
+    # gives it the tags that ship, as `publish-web` does, one queue hop after ci instead of two (it used to wait for an
+    # `image-worker` job that itself queued once ci was green; docs/investigations/2026-11-01-twenty-runners.md, section 7).
     publish-worker:
-        needs: [ci, gates, image-worker]
-        if: needs.gates.outputs.worker-changed == 'true'
+        needs: [ci, gates]
+        if: needs.gates.outputs.worker-changed == 'true' && needs.gates.outputs.ship == 'true'
         runs-on: ubuntu-26.04
         timeout-minutes: 10
 
@@ -531,7 +477,7 @@ jobs:
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
             - name: Publish the image ci built under the tags that ship it
-              # `image-worker` above built this commit's image while ci ran, and pushed it
+              # ci's `e2e (corpus)` row built this commit's image while ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
               # automation sorts and DEPLOYS, and `latest`, so a hand-applied manifest resolves to
@@ -594,7 +540,7 @@ jobs:
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
-        needs: [ci, gates, kick-convergence, publish-web, image-worker, publish-worker]
+        needs: [ci, gates, kick-convergence, publish-web, publish-worker]
         if: ${{ !cancelled() }}
         permissions:
             actions: read

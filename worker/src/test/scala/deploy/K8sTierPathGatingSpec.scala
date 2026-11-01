@@ -213,13 +213,15 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    */
   "neither k3s publish" should "start before ci is green" in {
     job("publish-web") should include("needs: [ci, gates]")
-    job("publish-worker") should include("needs: [ci, gates, image-worker]")
+    job("publish-worker") should include("needs: [ci, gates]")
   }
 
-  /** The worker image is built only for a push that changes the worker: `publish-worker` would
-   *  publish nothing else, and the build held a runner for minutes beside ci on every push. */
-  "the worker image build" should "run only when the worker's paths changed" in {
-    job("image-worker") should include("if: needs.gates.outputs.worker-changed == 'true'")
+  /** Each tier ships only when its own paths changed, and only from main: a dispatch on a branch measures Main and
+   *  ships nothing. */
+  "each k3s publish" should "run only for its own tier's change, on main" in {
+    job("gates") should include("ship: ${{ github.ref == 'refs/heads/main' }}")
+    job("publish-web") should include("if: needs.gates.outputs.web-changed == 'true' && needs.gates.outputs.ship == 'true'")
+    job("publish-worker") should include("if: needs.gates.outputs.worker-changed == 'true' && needs.gates.outputs.ship == 'true'")
   }
 
   /** The fold is only done once the workflows it replaced are gone. */

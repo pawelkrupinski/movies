@@ -7,8 +7,9 @@ import org.scalatest.matchers.should.Matchers
  * How many Playwright workers a page-test row starts, against the 4 CPUs a job is budgeted (a hosted runner's 4
  * vCPUs). `PW_WORKERS` in `.github/actions/run-page-test` is the only thing sizing it.
  *
- * WebKit gets one worker. Its workers are each a WebProcess, a NetworkProcess and the test runner, beside the fixture
- * server's JVM. More rows, not more workers, are what buy WebKit CPU (ci.yml's shards).
+ * WebKit gets two workers (2026-11-01): each is a WebProcess, a NetworkProcess and the test runner, beside the fixture
+ * server's JVM, and a github.com runner's 4 dedicated vCPUs hold two where Forgejo's shared host gave a job about one
+ * core (docs/investigations/2026-11-01-twenty-runners.md, section 7).
  */
 class PlaywrightWorkerBudgetSpec extends AnyFlatSpec with Matchers {
 
@@ -26,9 +27,9 @@ class PlaywrightWorkerBudgetSpec extends AnyFlatSpec with Matchers {
     Pattern.findFirstMatchIn(workersExpr).map(_.group(1).toInt).getOrElse(fail(s"no `$condition && '<n>'` in $workersExpr"))
   }
 
-  "run-page-test" should "give a WebKit row one worker, on every host" in {
+  "run-page-test" should "give a WebKit row two workers, half the runner's 4 vCPUs" in {
     workersExpr should startWith("PW_WORKERS: ${{ inputs.browsers == 'webkit' &&")
-    workersFor("inputs.browsers == 'webkit'") shouldBe 1
+    workersFor("inputs.browsers == 'webkit'") shouldBe 2
   }
 
   it should "leave any other row at Playwright's own CI default (no override)" in {

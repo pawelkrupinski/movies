@@ -5,8 +5,8 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * NOTHING SHIPS AFTER A RED ci: once a Main test row or the tier gates fail, main.yml builds and publishes nothing
- * (2026-10-22). `image-worker` used to hang off `gates` alone and start beside ci, and could run after a red row
- * (run 1351: the worker image built minutes after `test (worker)` failed).
+ * (2026-10-22). Both images are built inside ci, in its `e2e (corpus)` row, under their SHA tags only (2026-11-01: the
+ * worker's was a job of its own, `image-worker`); nothing ships either until ci and gates are green.
  *
  * Every job but `gates` (t=0), `timings` (`!cancelled()`: it reports red runs too) and `kick-convergence` needs `ci`
  * and `gates`, directly or through a job that does, and carries no status function in its `if:`, so the implicit
@@ -35,7 +35,7 @@ class MainAfterRedCiSpec extends AnyFlatSpec with Matchers {
 
   "every shipping job in main.yml" should "need both ci and gates" in {
     val shipping = jobs.keySet -- Unconditional
-    shipping should contain allOf ("image-worker", "publish-web", "publish-worker")
+    shipping should contain allOf ("publish-web", "publish-worker")
     for (name <- shipping) withClue(s"$name: ") {
       needs(jobs(name)) should contain allOf ("ci", "gates")
     }
@@ -54,6 +54,6 @@ class MainAfterRedCiSpec extends AnyFlatSpec with Matchers {
 
   "kick-convergence" should "not be skipped by a red ci" in {
     needs(jobs("kick-convergence")) shouldBe Set.empty
-    jobIf("kick-convergence") shouldBe Seq("if: ${{ !cancelled() }}")
+    jobIf("kick-convergence") shouldBe Seq("if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}")
   }
 }

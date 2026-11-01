@@ -21,11 +21,9 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val publishWorker = RepoFile.block(mainYml, "publish-worker")
   private lazy val ciYml       = RepoFile.read(".github/workflows/ci.yml")
 
-  /** Where each tier's image is built: the web's at the end of ci's `e2e (corpus)` row, which staged its dist;
-   *  the worker's in main.yml's `image-worker` — after and outside ci, so `publish-web`, which `needs: ci`, never
-   *  waits for the worker's AOT training. */
-  private def imageJob(tier: String): String =
-    if (tier == "web") RepoFile.block(ciYml, "e2e") else RepoFile.block(mainYml, "image-worker")
+  /** Where each tier's image is built: both in ci's `e2e (corpus)` row, which staged their dists (2026-11-01: the
+   *  worker's was main.yml's `image-worker`, two queue hops after ci). */
+  private def imageJob: String = RepoFile.block(ciYml, "e2e")
 
   // ONE IMAGE PER TIER, built once in ci. A Fly build of the same Dockerfile (on a
   // builder this project does not run) failed roughly two runs in five; with the
@@ -120,22 +118,16 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
     def commands(block: String) = block.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
     for ((tier, publish) <- Seq("web" -> publishWeb, "worker" -> publishWorker)) {
       withClue(s"$tier: ") {
-        val image = imageJob(tier)
-        // The web's image is built where its dist was staged, from the stage on disk; the worker's, outside ci,
-        // downloads the dist that row uploads once it is there.
-        if (tier == "web") {
-          ciYml should not include "name: stage-web"
-          RepoFile.positionOf(image, """sbt "web/stage"""") should be < RepoFile.positionOf(image, "cp -R web/target/universal/stage stage")
-          RepoFile.positionOf(image, "cp -R web/target/universal/stage stage") should be < RepoFile.positionOf(image, "in-background.sh start web-image")
-          // built BESIDE the e2e run (2026-10-23), its verdict collected after it, failing the row
-          RepoFile.positionOf(image, "in-background.sh start web-image") should be < RepoFile.positionOf(image, "run: sbt ${{ matrix.cmd }}")
-          RepoFile.positionOf(image, "run: sbt ${{ matrix.cmd }}") should be < RepoFile.positionOf(image, "in-background.sh wait web-image")
-        } else {
-          ciYml should include("name: stage-worker")
-          image should include("actions/download-artifact")
-          image should include("name: stage-worker")
-          image should include("""scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (corpus)"""")
-        }
+        val image = imageJob
+        // Each image is built where its dist was staged, from the stage on disk, BESIDE the e2e run (2026-10-23; the
+        // worker's since 2026-11-01), its verdict collected after it, failing the row. No dist is uploaded for a job
+        // after ci to build from.
+        ciYml should not include s"name: stage-$tier"
+        val copy = if (tier == "web") "cp -R web/target/universal/stage stage" else """cp -R worker/target/universal/stage "$context/stage""""
+        RepoFile.positionOf(image, """sbt "web/stage" "worker/stage"""") should be < RepoFile.positionOf(image, copy)
+        RepoFile.positionOf(image, copy) should be < RepoFile.positionOf(image, s"in-background.sh start $tier-image")
+        RepoFile.positionOf(image, s"in-background.sh start $tier-image") should be < RepoFile.positionOf(image, "run: sbt ${{ matrix.cmd }}")
+        RepoFile.positionOf(image, "run: sbt ${{ matrix.cmd }}") should be < RepoFile.positionOf(image, s"in-background.sh wait $tier-image")
         commands(publish) should not include "sbt "
         commands(publish) should not include "build-push-action"
         commands(publish) should include("docker buildx imagetools create")
@@ -155,32 +147,35 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   it should "push only the SHA tag before ci is green, and ship tags only after it" in {
     for ((tier, publish) <- Seq("web" -> publishWeb, "worker" -> publishWorker)) {
       withClue(s"$tier: ") {
-        val image = imageJob(tier)
+        val image = imageJob
         // both through build-image.sh, which tags `<repository>:<sha>` and nothing else (build-image-test.sh)
-        val builds = """scripts/ci/build-image\.sh (.+)""".r.findAllMatchIn(RepoFile.withoutComments(image)).map(_.group(1).trim).toSeq
-        builds shouldBe Seq(s"$tier $${{ env.IMAGE_REPO }}/movies-$tier $${{ github.sha }}")
+        val code = RepoFile.withoutComments(image)
+        if (tier == "web") {
+          val builds = """scripts/ci/build-image\.sh (.+)""".r.findAllMatchIn(code).map(_.group(1).trim).toSeq
+          builds shouldBe Seq(s"web $${{ env.IMAGE_REPO }}/movies-web $${{ github.sha }}")
+        } else {
+          // From its own context (the Dockerfile's whitelist sees only `stage/`), through the same script.
+          code should include("\"$PWD/scripts/ci/build-image.sh\" \\")
+          code should include("'cd \"$0\" && \"$1\" worker \"$2\" \"$3\"'")
+          code should include("${{ env.IMAGE_REPO }}/movies-worker ${{ github.sha }}")
+        }
         RepoFile.withoutComments(image) should not include "--tag"
         image should not include "steps.tag.outputs.value"
-        // The web's build sits in ci, which a PR run calls too; the worker's in main.yml, push-only.
-        if (tier == "web") {
-          RepoFile.step(ciYml, "Build and push the web image under this commit's SHA tag only") should include(
-            "if: matrix.shard == 'corpus' && !github.event.pull_request")
-          RepoFile.step(ciYml, "The web image was built and pushed") should include("!github.event.pull_request")
-        }
-        publish should include(if (tier == "web") "needs: [ci, gates]" else "needs: [ci, gates, image-worker]")
+        // Both builds sit in ci, which a PR run calls too: never on one.
+        RepoFile.step(ciYml, s"Build and push the $tier image under this commit's SHA tag only") should include(
+          "if: matrix.shard == 'corpus' && !github.event.pull_request")
+        RepoFile.step(ciYml, s"The $tier image was built and pushed") should include("!github.event.pull_request")
+        publish should include("needs: [ci, gates]")
         publish should include(s"-t $${{ env.IMAGE_REPO }}/movies-$tier:$${{ steps.tag.outputs.value }}")
         publish should include(s"-t $${{ env.IMAGE_REPO }}/movies-$tier:latest")
       }
     }
   }
 
-  /** THE WEB DEPLOY NEVER WAITS FOR THE WORKER'S IMAGE: it is built after ci, not inside it, so
-   *  `ci` — and `publish-web`, which `needs: ci` — closes on the tests alone. Since 2026-10-22 the
-   *  worker's image waits for a green ci, so a red run builds nothing (MainAfterRedCiSpec). */
-  it should "keep the worker's image build out of everything the web deploy waits for" in {
-    ciYml should not include "\n    image-worker:"
+  /** ONE QUEUE HOP AFTER ci (2026-11-01): no job builds an image after ci, so each publish needs only ci and gates. */
+  it should "publish both tiers straight after ci, with no image job between" in {
+    mainYml should not include "\n    image-worker:"
     publishWeb should include("needs: [ci, gates]")
-    imageJob("worker") should include("needs: [ci, gates]")
-    publishWeb should not include "image-worker"
+    publishWorker should include("needs: [ci, gates]")
   }
 }

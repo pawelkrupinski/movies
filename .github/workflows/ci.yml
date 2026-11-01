@@ -966,6 +966,24 @@ jobs:
                   scripts/ci/in-background.sh start web-image \
                       scripts/ci/build-image.sh web ${{ env.IMAGE_REPO }}/movies-web ${{ github.sha }}
 
+            # THE WORKER IMAGE, BUILT HERE TOO (2026-11-01), from the dist this row staged, in a context of its own (the
+            # Dockerfile's whitelist sees only `stage/`): it was main.yml's `image-worker`, a job that queued for a runner
+            # once ci was green and then held `publish-worker` behind it -- two queue hops after ci, 1-2.5 min each on a
+            # busy account (docs/investigations/2026-11-01-twenty-runners.md, section 7). SHA tag only, like the web's:
+            # `publish-worker` ships it once ci is green and the worker's paths changed. Built on every push, as the
+            # web's is: building is not shipping, and it costs this row ~1 min of background work and no runner.
+            - name: Build and push the worker image under this commit's SHA tag only
+              if: matrix.shard == 'corpus' && !github.event.pull_request
+              run: |
+                  context="$RUNNER_TEMP/worker-image"
+                  mkdir -p "$context"
+                  cp Dockerfile .dockerignore "$context"/
+                  cp -R worker/target/universal/stage "$context/stage"
+                  # shellcheck disable=SC2016 # the inner script's own positional parameters, expanded by its bash
+                  scripts/ci/in-background.sh start worker-image bash -c \
+                      'cd "$0" && "$1" worker "$2" "$3"' "$context" "$PWD/scripts/ci/build-image.sh" \
+                      ${{ env.IMAGE_REPO }}/movies-worker ${{ github.sha }}
+
 
             - run: sbt ${{ matrix.cmd }}
               env:
@@ -1021,21 +1039,9 @@ jobs:
               if: ${{ !cancelled() && matrix.shard == 'corpus' && !github.event.pull_request }}
               run: scripts/ci/in-background.sh wait web-image 900
 
-            - name: Hand the staged worker dist to main.yml's image build
-              # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
-              # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
-              # jars, already zipped, so compressing again only costs upload time — and
-              # kept one day, since its one consumer runs minutes after this job.
-              if: matrix.shard == 'corpus' && !github.event.pull_request
-              uses: actions/upload-artifact@v6
-              with:
-                  # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
-                  overwrite: true
-                  name: stage-worker
-                  path: worker/target/universal/stage
-                  compression-level: 0
-                  retention-days: 1
-                  if-no-files-found: error
+            - name: The worker image was built and pushed
+              if: ${{ !cancelled() && matrix.shard == 'corpus' && !github.event.pull_request }}
+              run: scripts/ci/in-background.sh wait worker-image 900
 
             # ESLint over the production JS in `public/js/`, on the corpus row for
             # the same reason as the staging above (it was a standalone `lint` job

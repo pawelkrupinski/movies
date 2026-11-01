@@ -31,7 +31,6 @@ job	main.yml	e2e (corpus)	2722
 job	main.yml	e2e (rest)	2722
 job	main.yml	report (timings)	aggregate
 job	main.yml	publish-web	2718
-job	main.yml	image-worker	2718
 job	main.yml	publish-worker	2718
 job	identity-model-convergence.yml	preflight	2691
 job	identity-model-convergence.yml	leg (germany)	aggregate
