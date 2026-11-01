@@ -103,4 +103,18 @@ bare billings; every subset holding Chichester, whole and incrementally in every
 963568. On main: red ("whole {Prima Facie / NT Live: Prima Facie}" and two incremental orders take the recording, the
 seed-17 step). After: green, and the NT Live listing still takes its record.
 
-The measure of this rule follows.
+A record crediting nobody is contradicted by no credit (the first measure, run 41303205383, lost UK "Live from the
+Met: Parsifal" x5: the Met's 2026/27 record credits nobody, so "names none of its directors" held vacuously; a test
+holds it).
+
+**Measure** (full corpus, five countries, base def6794af, head 6d2edbef8, run 41307720737): **LANDABLE**. PL, DE, US, ES:
+0 takes moved, model and final. UK: 1 model take changed, 0 final:
+
+- Chichester "La Traviata (2026)": 1745794 "La Traviata 2026" (TMDB: the Arena di Verona relay, Alaimo/Curran) ->
+  1444432 "La Traviata" (2025, Eliza Thompson and Selina Cadell). The venue's text: "OperaGlass Works ... not live
+  capture of a stage performance ... We welcome the directors Eliza Thompson and Selina Cadell", cast Susana Gaspar,
+  Thomas Elwin, Roderick Williams (TMDB 1444432's cast). A CURE; judged in identity-judgements.tsv.
+
+**Drift** (drift-only rows, all five countries; 41303223661 seeds 17/33, 41303236763 seeds 9/50, on the first form of
+the rule, which the second only narrows): every row 0 divergences and 0 flips, uk seed 17 included (main: 1 flip,
+Chichester "Prima Facie", run 41297259801).
