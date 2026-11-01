@@ -335,46 +335,15 @@ jobs:
               run: xcrun simctl bootstatus "${DESTINATION##*id=}" -b
 
             # Each XCUITest class on its own, so none can lean on state another left behind.
-            # Every class runs even after a failure; the job fails at the end, naming them.
+            # Every class runs even after a failure; the job fails at the end, naming them, each
+            # failed test an error carrying its own assertion (the script says why it is one).
             # Each test is bounded (a hung one fails at its allowance, naming itself), and so
             # is the step: the whole suite in one run takes ~25 min, alone ~a minute more a class.
             - name: Every XCUITest class alone
               timeout-minutes: 120
               run: |
                   . scripts/ci/bounded-step.sh
-                  set -uo pipefail
-                  mkdir -p build/alone
-                  classes=$(grep -hoE 'class[[:space:]]+[A-Za-z0-9_]+[[:space:]]*:[[:space:]]*XCTestCase' ios/KinowoUITests/*.swift \
-                      | sed -E 's/class[[:space:]]+([A-Za-z0-9_]+).*/\1/' | sort -u)
-                  [ -n "$classes" ] || { echo "::error::no XCUITest classes found in ios/KinowoUITests"; exit 1; }
-                  failed=""
-                  for class in $classes; do
-                      echo "::group::$class"
-                      started=$SECONDS
-                      if xcodebuild test-without-building \
-                          -project ios/Kinowo.xcodeproj \
-                          -scheme Kinowo \
-                          -destination "$DESTINATION" \
-                          -derivedDataPath build/dd \
-                          -only-testing:"KinowoUITests/$class" \
-                          -resultBundlePath "build/alone/$class.xcresult" \
-                          -test-timeouts-enabled YES \
-                          -default-test-execution-time-allowance 180 \
-                          -maximum-test-execution-time-allowance 300 \
-                          CODE_SIGNING_ALLOWED=NO > "build/alone/$class.log" 2>&1; then
-                          echo "$class passed alone in $((SECONDS - started))s"
-                      else
-                          echo "$class FAILED alone after $((SECONDS - started))s"
-                          tail -80 "build/alone/$class.log"
-                          failed="$failed $class"
-                      fi
-                      echo "::endgroup::"
-                  done
-                  if [ -n "$failed" ]; then
-                      echo "XCUITest classes that fail when run alone:$failed" >> "$GITHUB_STEP_SUMMARY"
-                      echo "::error::XCUITest classes that fail when run alone:$failed"
-                      exit 1
-                  fi
+                  scripts/ci/xcuitest-each-class-alone.sh
 
             # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
             - name: End what a timed-out step left running
