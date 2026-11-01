@@ -596,10 +596,19 @@ case class MovieRecord(
   /** Display-time URL: validated stored URL if we have one, else an on-the-fly
    *  search URL (for legacy records that pre-date URL persistence). */
   def metacriticHref(fallbackTitle: String): String =
-    metacriticUrl.getOrElse(RatingSearchUrls.metacritic(originalTitle.getOrElse(fallbackTitle)))
+    metacriticUrl.getOrElse(RatingSearchUrls.metacritic(englishSiteSearchTitle(fallbackTitle)))
 
   def rottenTomatoesHref(fallbackTitle: String): String =
-    rottenTomatoesUrl.getOrElse(RatingSearchUrls.rottenTomatoes(originalTitle.getOrElse(fallbackTitle)))
+    rottenTomatoesUrl.getOrElse(RatingSearchUrls.rottenTomatoes(englishSiteSearchTitle(fallbackTitle)))
+
+  /** What the English-language rating sites are searched by: the original title, unless it is
+   *  not Latin script, then TMDB's English title, IMDb's or Filmweb's original (usually a
+   *  romanisation), or `fallbackTitle` ([[RatingSearchUrls.englishSiteTitle]]). */
+  private def englishSiteSearchTitle(fallbackTitle: String): String =
+    RatingSearchUrls.englishSiteTitle(
+      originalTitle.getOrElse(fallbackTitle),
+      data.get(Tmdb).flatMap(_.englishTitle).toSeq ++
+        Seq(Imdb, Filmweb).flatMap(s => data.get(s).flatMap(_.originalTitle)) :+ fallbackTitle)
 
   def filmwebHref(fallbackTitle: String): String =
     filmwebUrl.getOrElse(RatingSearchUrls.filmweb(originalTitle.getOrElse(fallbackTitle)))
