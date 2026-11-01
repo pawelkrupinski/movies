@@ -18,7 +18,9 @@ object FetchReplayWiring {
             fixtureRoot: settings.FixtureRoot = settings.FixtureRoot.RepositoryRelative,
             clock: Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC),
             fillSleep: Long => Unit = Thread.sleep, environment: Env = Env.of(),
-            venuePages: services.venuepages.VenuePageStore => services.venuepages.VenuePageStore = identity): ArchiveReplayWiring = {
+            venuePages: services.venuepages.VenuePageStore => services.venuepages.VenuePageStore = identity,
+            /** The recording's capture of the listings prod's model kept for their facts alone ([[ProdRetained]]). */
+            retained: Seq[services.identity.Listing] = Nil): ArchiveReplayWiring = {
     CorpusFixture.seedInto(storage.archive, rows)
     val language = country.language
     val fixed    = clock
@@ -27,6 +29,7 @@ object FetchReplayWiring {
     new ArchiveReplayWiring(country, storage.archive, None, storage, s"enrichment-${country.code}", fixtureRoot,
       environment = environment) {
       override lazy val clock: java.time.Clock = fixed
+      override def recordedRetained: Seq[services.identity.Listing] = retained
       // Ordering, not timing: the whole cascade on the calling thread, so the only
       // nondeterminism left is the seeded arrival order.
       override lazy val backgroundBudget: ExecutionBudget = new SameThreadExecutionBudget

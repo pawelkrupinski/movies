@@ -273,6 +273,26 @@ class ArchiveReplayWiring(
 
   private lazy val countryCinemas: Set[Cinema] = CountryScrapeCorpus.cinemasOf(country).toSet
 
+  /** The recording's capture of the listings prod's model kept for their facts alone ([[ProdRetained]]): none unless
+   *  the replay names its recording's. Overridden where a recording is replayed (the convergence rows, the takes
+   *  check), read as a def: `WorkerWiring`'s own initialisation may reach the store below first. */
+  def recordedRetained: Seq[services.identity.Listing] = Nil
+
+  /** The recorded kept listings of the venues this replay holds (a sample's draw holds some). */
+  private def retainedOfReplay: Seq[services.identity.Listing] = recordedRetained.filter(l => archivedListings.contains(l.cinema))
+
+  // The model's take-up resumes the recorded set as prod's resumes its store (ListingRetention.restored): the model's
+  // input is the listings billed AND those kept, never the billed alone. No history behind a recording's set.
+  override lazy val identityRetainedStore: services.identity.adapters.RetainedListingStore =
+    new services.identity.adapters.RetainedListingStore.InMemory(Some(retainedOfReplay))
+  override protected def identityHeldBefore(): Seq[services.identity.Listing] = Nil
+
+  /** The kept listings a resolve of this replay reads beside the listings billed ([[services.identity.ModelRead.corpus]]
+   *  of [[archivedListings]]): the recorded set under the take-up's own rule, so a whole resolve (the takes check) and
+   *  the model read the same input. */
+  def retainedListings(billed: Seq[services.identity.Listing]): Seq[services.identity.Listing] =
+    services.identity.ListingRetention.restored(retainedOfReplay, billed, titleNormalizer).kept
+
   /** One scraper per archived cinema, replacing the catalogue's HTTP clients.
    *  `PreScrapedCinemaScraper` is production code — the same wrapper
    *  `ScrapeChunkReduceHandler` uses to push a reduced chunk set back through the

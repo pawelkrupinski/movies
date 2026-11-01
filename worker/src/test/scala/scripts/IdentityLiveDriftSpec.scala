@@ -87,4 +87,21 @@ class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers with ScratchDirect
     drift.copy(filedOnly = Some(decision(raices, None))).waitsOnAsks shouldBe true
     drift.copy(filedOnly = Some(decision(raices, Some(122769)))).waitsOnAsks shouldBe false
   }
+
+  // The model's input beyond the listings billed (ListingRetention): what prod's worker kept, captured beside the corpus
+  // (ProdRetained) and read back as its take-up resumes it -- every replay of a recording reads it so.
+  "the model's input" should "hold a recorded listing whose showtimes ended while another venue bills its title, and not once none does" in {
+    import models.{CinemaMovie, Helios, Movie, Multikino, Showtime}
+    val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer
+    def listings(byVenue: (models.Cinema, String)*) = services.identity.ModelRead.corpus(byVenue.map { case (cinema, title) =>
+      cinema -> Seq(CinemaMovie(Movie(title), cinema, None, None, None, Nil, Nil, Seq(Showtime(java.time.LocalDateTime.of(2026, 10, 1, 18, 0), None))))
+    }, normalizer)
+    val root  = tempDirectory("prod-retained")
+    val ended = listings(Multikino -> "Lalka")                                // Multikino's run ended: prod's worker kept it
+    tools.ProdRetained.write(root, "pl", ended)
+    val recorded = tools.ProdRetained.readFrom(root, "pl")
+    recorded shouldBe ended                                                   // read back as written, its facts whole
+    IdentityLiveDrift.modelInput(listings(Helios -> "Lalka"), recorded, normalizer).map(_.key) should contain(ended.head.key)
+    IdentityLiveDrift.modelInput(listings(Helios -> "Matilda"), recorded, normalizer).map(_.key) should not contain ended.head.key
+  }
 }

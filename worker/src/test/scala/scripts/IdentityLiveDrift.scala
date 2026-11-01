@@ -5,7 +5,7 @@ import play.api.libs.json.{JsObject, JsString, Json}
 import services.identity._
 import services.movies.{ListingKey, ScrapeListing, TitleNormalizer}
 import services.identity.adapters.TmdbStore
-import tools.{MutableClock, ProdFilm, ProdFilms, ProdIdentityInputs, ProdListings, ProdLookupInputs}
+import tools.{MutableClock, ProdFilm, ProdFilms, ProdIdentityInputs, ProdListings, ProdLookupInputs, ProdRetained}
 
 import java.nio.file.{Files, Path}
 
@@ -105,6 +105,12 @@ object IdentityLiveDrift {
 
   /** Every listing (with its slot keys) joined to prod's film and compared with the whole resolve's — see the header for
    *  what is left out. */
+  /** The model's input as prod's take-up holds it: the listings `billed`, and those of `recorded` (prod's kept set,
+   *  [[ProdRetained]]) a billed listing still bills the title of ([[services.identity.ListingRetention.restored]]). */
+  def modelInput(billed: Seq[services.identity.Listing], recorded: Seq[services.identity.Listing],
+                 normalizer: TitleNormalizer): Seq[services.identity.Listing] =
+    billed ++ services.identity.ListingRetention.restored(recorded, billed, normalizer).kept
+
   def compare(listings: Seq[(ListingKey, Seq[String])], live: Map[String, Option[Int]], whole: Map[ListingKey, ResolverDecision]): Report = {
     val joined = listings.flatMap { case (key, slots) =>
       for { slot <- slots.find(live.contains); decision <- whole.get(key) } yield (key, slot, decision)
@@ -162,8 +168,10 @@ object IdentityLiveDrift {
     val opened    = IdentitySlice.openRecording(recording, filed)
     // the listings prod's model read: each venue's accepted listing, the recording's scrape where it accepted none
     val rows      = ProdListings.merged(opened.rows, accepted)
-    val listings  = IdentitySlice.listingsOf(recording, rows)
     val normalizer = TitleNormalizer.forCountry(country)
+    // and the listings prod's model kept for their facts alone (ProdRetained), as its take-up resumes them
+    val billed    = IdentitySlice.listingsOf(recording, rows)
+    val listings  = modelInput(billed, ProdRetained.readFrom(inputsDir, country.code), normalizer)
     val venues    = tools.CountryScrapeCorpus.cinemasOf(country).toSet
     val slots     = rows.filter(r => venues(r.cinema)).flatMap(r => r.films.map(cm => ListingKey.of(r.cinema, cm) -> slotKeys(r.cinema, cm, normalizer)))
       .distinctBy(_._1)

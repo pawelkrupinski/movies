@@ -421,6 +421,7 @@ abstract class CountryConvergenceBehaviour(
     val seeded   = seedArchive(archive)
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
+      override def recordedRetained: Seq[services.identity.Listing] = CountryConvergenceBehaviour.this.recordedRetained
     }
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded
@@ -728,6 +729,17 @@ abstract class CountryConvergenceBehaviour(
    * what turned Germany's silent "0 venues, 0 listings" into a diagnosis, and it
    * stays even though the read underneath it is now sound.
    */
+  /** The recording's capture of the listings prod's model kept for their facts alone, beside its corpus
+   *  ([[tools.ProdRetained]]): the model's input beyond the listings billed, resumed at its take-up as prod's is. None
+   *  for a generated corpus, or a recording made before the capture. */
+  private lazy val recordedRetained: Seq[services.identity.Listing] =
+    if (!CorpusFixture.exists(corpusKey)) Nil
+    else {
+      val kept = tools.ProdRetained.readIn(CorpusFixture.pathFor(corpusKey).getParent, country.code)
+      info(s"${country.displayName}: ${kept.size} kept listing(s) recorded beside the corpus")
+      kept
+    }
+
   private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] =
     if (CorpusFixture.exists(corpusKey)) {
       // The checked-in corpus. Preferred over the live read whenever it exists: it
@@ -1066,6 +1078,7 @@ abstract class CountryConvergenceBehaviour(
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive,
         tmdbBodies = passBodies) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
+      override def recordedRetained: Seq[services.identity.Listing] = CountryConvergenceBehaviour.this.recordedRetained
     }
     // A cut-over pass lands and projects through the identity model (see `rescrapeCutover`); a replayed
     // corpus has nothing that may legitimately fail to land, so a venue that throws fails the pass.

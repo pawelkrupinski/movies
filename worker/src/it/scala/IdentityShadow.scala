@@ -36,7 +36,9 @@ object IdentityShadow {
   final class Corpus(val label: String, val country: Country, val rows: Seq[ArchivedScrape], rawFetch: HttpFetch,
                      val misses: () => Long, val missedKeys: () => Seq[String], threadMisses: Option[() => Long] = None,
                      /** The TMDB and IMDb answers read live in place of the recording's gaps ([[LiveGapLeaf.answered]]). */
-                     val liveAnswers: () => Map[String, String] = () => Map.empty) {
+                     val liveAnswers: () => Map[String, String] = () => Map.empty,
+                     /** The recording's capture of the listings prod's model kept for their facts alone ([[tools.ProdRetained]]). */
+                     val retained: Seq[Listing] = Nil) {
     /** How the lookups tell a gap from an answer: by the gaps met on the asking thread when the corpus counts them per
      *  thread (lookups then read side by side), else by the replay's one counter, lookups taking turns. */
     def gaps: TmdbIdentityLookups.Gaps = threadMisses.fold[TmdbIdentityLookups.Gaps](new CountedGaps(misses))(onThread =>
@@ -70,7 +72,8 @@ object IdentityShadow {
           val l = new LiveGapLeaf(key, leaf); liveLeaf.set(Some(l)); l
         })
         new Corpus(s"full-${c.code}", c, opened.rows, opened.fetch, () => opened.leaf.met, () => opened.missing.keys.map(_._2),
-          Some(() => opened.leaf.metOnThread), () => liveLeaf.get.fold(Map.empty[String, String])(_.answered))
+          Some(() => opened.leaf.metOnThread), () => liveLeaf.get.fold(Map.empty[String, String])(_.answered),
+          tools.ProdRetained.readIn(corpusDir, c.code))
       }
     }
 
@@ -168,15 +171,22 @@ object IdentityShadow {
              root: settings.FixtureRoot, environment: Env): ArchiveReplayWiring = {
     val storage = ConvergenceStorage.mongo(target, s"idshadow-${c.label}", c.normalizer)
     storages.synchronized(storages += storage)
-    FetchReplayWiring(c.country, storage, c.rows, c.fetch, root, fillSleep = (_: Long) => (), environment = environment)
+    FetchReplayWiring(c.country, storage, c.rows, c.fetch, root, fillSleep = (_: Long) => (), environment = environment, retained = c.retained)
   }
 
   // ── the resolver ──────────────────────────────────────────────────────────────────────
 
   /** The corpus's raw listings — never `ScrapeListing.prepare`'s folded rows, which hide the very
-   *  listings a venue lists twice — read as prod's model reads them ([[ModelRead]]): lean. */
-  def listingsOf(w: ArchiveReplayWiring, normalizer: TitleNormalizer): Seq[Listing] =
-    ModelRead.corpus(w.archivedListings, normalizer)
+   *  listings a venue lists twice — read as prod's model reads them ([[ModelRead]]): lean. With them, the listings prod's
+   *  model kept for their facts alone that a billed one still bills the title of ([[ArchiveReplayWiring.retainedListings]]):
+   *  the model's whole input, as prod's take-up holds it. */
+  def listingsOf(w: ArchiveReplayWiring, normalizer: TitleNormalizer): Seq[Listing] = {
+    val billed = ModelRead.corpus(w.archivedListings, normalizer)
+    val kept   = w.retainedListings(billed)
+    if (w.recordedRetained.nonEmpty)
+      System.err.println(s"[identity] ${billed.size} listings billed, ${kept.size} kept for their facts alone (of ${w.recordedRetained.size} recorded)")
+    billed ++ kept
+  }
 
   /** [[tools.MemoLookups]], by the name the shadow harness has always used. */
   type Memo = tools.MemoLookups
