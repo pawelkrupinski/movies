@@ -194,7 +194,7 @@ class MetacriticClient(http: HttpFetch) {
    *  gone; a failed read throws. Each hit's page ([[pageFor]] on [[MetacriticClient.movieUrl]]) is its record. */
   def search(title: String): Seq[SearchHit] =
     if (title.trim.isEmpty) Nil
-    else HttpRead.pageOrNone(http, s"$Site/search/${URLEncoder.encode(title, StandardCharsets.UTF_8)}/?category=2").toSeq.flatMap(parseSearchResults)
+    else HttpRead.pageOrNone(http, s"$Site/search/${URLEncoder.encode(title, StandardCharsets.UTF_8)}/?category=2").toSeq.flatMap(body => MetacriticClient.searchPages(body)(parseSearchResults))
 
   /** Parse MC search results out of the HTML. Each result is a
    *  `<a class="c-search-item search-item__content" href="/movie/{slug}/">`
@@ -287,6 +287,10 @@ class MetacriticClient(http: HttpFetch) {
 }
 
 object MetacriticClient {
+  /** Search pages, each parsed once per distinct content ([[tools.ParsedByContent]]): [[parseSearchResults]] reads the
+   *  text alone, and a replay reads the same recorded page again on every refresh of the film. */
+  private val searchPages = new tools.ParsedByContent[Seq[SearchHit]](16_384)
+
   private val Site = "https://www.metacritic.com"
 
   /** A search hit's movie page. */

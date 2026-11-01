@@ -156,7 +156,7 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  gone; a failed read throws. Each hit's page ([[pageFor]] on [[movieUrl]]) is its record. */
   def search(title: String): Seq[SearchHit] =
     if (title.trim.isEmpty) Nil
-    else HttpRead.pageOrNone(http, s"$Site/search?search=${URLEncoder.encode(title, StandardCharsets.UTF_8)}").toSeq.flatMap(parseSearchResults)
+    else HttpRead.pageOrNone(http, s"$Site/search?search=${URLEncoder.encode(title, StandardCharsets.UTF_8)}").toSeq.flatMap(body => RottenTomatoesClient.searchPages(body)(parseSearchResults))
 
   /** Parse RT search results out of the HTML. Each result is a
    *  `<search-page-media-row release-year="…" tomatometer-score="…">` custom
@@ -286,6 +286,10 @@ class RottenTomatoesClient(http: HttpFetch) {
 }
 
 object RottenTomatoesClient {
+  /** Search pages, each parsed once per distinct content ([[tools.ParsedByContent]]): [[parseSearchResults]] reads the
+   *  text alone, and a replay reads the same recorded page again on every refresh of the film. */
+  private val searchPages = new tools.ParsedByContent[Seq[SearchHit]](16_384)
+
   private val Site          = "https://www.rottentomatoes.com"
   private val MoviePathSlug = "/m/([^/?#]+)".r
 
