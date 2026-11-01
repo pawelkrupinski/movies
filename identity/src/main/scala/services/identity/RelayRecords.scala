@@ -20,14 +20,17 @@ import services.movies.RelayBanner
 private[identity] object RelayRecords {
   val OwnTextDenial = "its venue's own text credits another film's director, and none of this relay's"
 
-  /** Is `film` a relay's record (a title billing a relay's banner, [[RelayBanner]]) that `listings` -- billing no relay
-   *  themselves -- contradict: their own text names whole a director of one of `others` (the other records their searches
-   *  reach) that is no relay's, and none of `film`'s? */
+  /** Is `film` a relay's record (a title billing a relay's banner, [[RelayBanner]]) crediting a director, that `listings`
+   *  -- billing no relay themselves -- contradict: their own text names whole a director of one of `others` (the other
+   *  records their searches reach) that is no relay's, and none of `film`'s? */
   def contradictedByOwnText(listings: Seq[Listing], film: IdentityMeasures.Film, others: => Seq[IdentityMeasures.Film]): Boolean =
     RelayBanner.billed(film.titles) && listings.nonEmpty && listings.forall(l => !RelayBanner.billed(Seq(l.rawTitle, l.title))) && {
       val named = listings.map(_.names).filterNot(_.isEmpty)
       def credits(director: String) = named.exists(_.names(director))
-      named.nonEmpty && !film.directors.getOrElse(Nil).exists(credits) &&
+      // a record crediting nobody is contradicted by no credit: the Met's 2026/27 records do (UK "Live from the Met:
+      // Parsifal", whose text names Syberberg's film's director, lost its record to an empty credit list)
+      val directors = film.directors.getOrElse(Nil)
+      named.nonEmpty && directors.nonEmpty && !directors.exists(credits) &&
         others.exists(other => !RelayBanner.billed(other.titles) && other.directors.getOrElse(Nil).exists(credits))
     }
 }

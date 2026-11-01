@@ -59,6 +59,16 @@ class RelayOwnFactsSpec extends AnyFlatSpec with Matchers {
     } shouldBe empty
   }
 
+  "a relay's record crediting nobody" should "be contradicted by no credit the venue's text names" in {
+    // UK "Live from the Met: Parsifal" (recording 573): the Met's 2026/27 record credits nobody; the venue's text naming
+    // another Parsifal's director lost it the record under the first form of the rule
+    val met   = F(1703636, "The Metropolitan Opera 2026/27: Parsifal", 2027, "", 0, 2.0)
+    val other = F(36848, "Parsifal", 1982, "Hans-Jürgen Syberberg", 255, 3.0)
+    val dca   = listing(KinoMuza, "Live from the Met: Parsifal").copy(names = VenueNames.of(Seq("Unlike Hans-Jürgen Syberberg's film, live from New York")))
+    RelayRecords.contradictedByOwnText(Seq(dca), new FilmTable(Seq(met), normalizer).film(met.id).toOption.flatten.get,
+      new FilmTable(Seq(other), normalizer).film(other.id).toOption.toSeq.flatten) shouldBe false
+  }
+
   "the relay's own listing" should "still take its record" in {
     takeOf(all, ntLive) shouldBe Some(Recording)
   }
