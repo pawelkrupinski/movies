@@ -14,7 +14,7 @@ import scala.util.control.NonFatal
 
 /**
  * Publishes what this country's identity takes still wait on, and what they decided, for the staging screen
- * (docs/design/identity-questions.md "The staging screen"; its page was retired 2026-10-27): the stage's waits live in the
+ * (`/debug/identity/staging`, docs/design/identity-questions.md "The staging screen"): the stage's waits live in the
  * worker's memory ([[agreement.AgreementStage.waitingOn]]), not in Mongo, so nothing else can show them.
  *
  * What HAPPENED comes as events (`changes`, drained from a [[ChangeFeed]], [[StagingEvent]]): the agreement stage's

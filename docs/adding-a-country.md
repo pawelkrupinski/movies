@@ -449,7 +449,8 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
 6. **Flip `Country.<Cc>.webOrigin` → `Some("https://showtimes.cc")`** (with
    `pathPrefix = "/<cc>"` already set, `webUrl` derives to
    `https://showtimes.cc/<cc>`) — now `switchable`. This one flag AUTO-adds the country to (a) the navbar country
-   `<select>` and (b) the `/api/catalog` mobile endpoint — both iterate
+   `<select>`, (b) the debug `?country=` switcher + the dev per-country `DebugStack`
+   wiring, and (c) the `/api/catalog` mobile endpoint — all three iterate
    `Country.switchable`, so no separate edits. Then update the CountrySpec /
    CatalogSpec / PageSnapshot assertions that asserted the country was excluded, and
    **regenerate the page snapshots** (the switcher gains an option) + the **mobile
@@ -767,7 +768,7 @@ is `None` for both. It is the single lever the whole product hangs off:
 | iOS `CityGate` / `FiltersBar`, Android `CountryPicker` / filters sheet | pickers hidden — they read the catalog |
 | `Country.ogOrigin` | falls back to the deployed host, so share links resolve |
 | `CountryConvergenceBehaviour.productionIsLive` | the ±5% production band is cancelled for that country |
-| `_countrySwitch` (admin) | renders the country's name instead of a switcher |
+| `_countrySwitch` / `_debugNavbar` (admin, debug) | render the country's name instead of a switcher |
 
 Putting the host string back re-arms every one of those, including the
 convergence band. There is no second place to remember for any of them.

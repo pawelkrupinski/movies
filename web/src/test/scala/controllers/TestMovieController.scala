@@ -7,7 +7,8 @@ import services.readmodel.{TestReadModel, WebReadModel}
 /** Shared builder for a fully-wired [[MovieController]] backed by an in-memory
  *  read model and no live HTTP — the seam every controller spec needs. Pass the
  *  records the read model should hold; get back the controller and the concrete
- *  [[WebReadModel]] so a test can `reload()` to bump the mtime. */
+ *  [[WebReadModel]] so a test can `reload()` to bump the mtime. The dev-only
+ *  `/debug*` pages have their own builder, [[TestDebugController]]. */
 object TestMovieController {
 
   /** The instant every controller built here runs at, unless a spec passes its own. */
@@ -79,6 +80,7 @@ object TestMovieController {
       movieControllerService = new MovieControllerService(readModel_, clock),
       readModel              = readModel_,
       oauthProviders         = Set.empty,
+      environment            = mode,
       responseCache          = responseCache,
       servingCountry         = servingCountry,
       minifier               = tools.Minifier.forMode(mode),

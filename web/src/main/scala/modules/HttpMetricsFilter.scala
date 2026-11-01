@@ -26,7 +26,7 @@ import scala.util.control.NonFatal
  *
  * The clock stops when the RESPONSE HEADER is produced, not when the body has
  * finished streaming. Play hands back the result before the body flows, and the
- * app serves open-ended SSE streams (`/uptime/stream`) whose
+ * app serves open-ended SSE streams (`/debug/stream`, `/uptime/stream`) whose
  * bodies live for minutes — timing those to completion would put a permanent
  * multi-minute tail in the histogram and make the p99 meaningless.
  *

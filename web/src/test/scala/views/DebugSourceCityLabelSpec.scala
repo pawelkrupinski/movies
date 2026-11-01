@@ -1,0 +1,44 @@
+package views
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+import java.time.LocalDateTime
+import models.{Helios, HeliosKonin, MovieRecord, Showtime, Source, SourceData}
+import services.movies.SingleCountryNormalizer.titleNormalizer
+
+/**
+ * The debug source-data view lists one slot per cinema, labelled by the
+ * cinema's display name. Many venues share a chain display name ("Helios")
+ * across cities, so the slot also shows the cinema's city to disambiguate
+ * which venue fed which raw values. Locks that the city rides next to the
+ * name in the rendered HTML.
+ */
+class DebugSourceCityLabelSpec extends AnyFlatSpec with Matchers {
+
+  private val now = LocalDateTime.parse("2026-06-10T12:00") // the view renders it as-is; no clock reads it
+
+  private def recordFrom(cinema: models.Cinema): MovieRecord =
+    MovieRecord(
+      imdbId = Some("tt0000001"),
+      data = Map[Source, SourceData](
+        cinema -> SourceData(
+          title     = Some("My Film"),
+          showtimes = Seq(Showtime(now.plusHours(2), None, None, Nil))
+        )
+      )
+    )
+
+  private def render(cinema: models.Cinema): String =
+    views.html.debugDetails("My Film", Some(2024), recordFrom(cinema), titleNormalizer, latestYear = tools.SpecClock.latestTitleYear, now = tools.SpecClock.Pinned.instant()).body
+
+  "debugDetails source slot" should "show the cinema name with its city" in {
+    render(HeliosKonin) should include ("Helios Konin · Konin")
+  }
+
+  it should "disambiguate venues whose display name omits the city" in {
+    // "Helios Posnania" carries no city word, so the appended city is what
+    // tells you this slot is the Poznań venue.
+    render(Helios) should include ("Helios Posnania · Poznań")
+  }
+}

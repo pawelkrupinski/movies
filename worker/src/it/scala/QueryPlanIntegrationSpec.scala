@@ -203,7 +203,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
 
   "the stores keyed by id alone" should "read, write and sweep by id" in {
     import services.attempts.{AttemptOutcome, EnrichmentAttempt, MongoEnrichmentAttemptStore}
-    import services.cadence.MongoRatingCadenceStore
+    import services.cadence.{MongoRatingCadenceReader, MongoRatingCadenceStore}
     import services.freshness.{FreshnessKind, MongoFreshnessStore}
     import services.identity.MongoVenueSlotFingerprints
     import services.movies.ChangeStreamResumeToken
@@ -218,8 +218,12 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       freshness.invalidate(keys.head)
       val attempts = new MongoEnrichmentAttemptStore(Some(db))
       keys.foreach(attempts.record(_, EnrichmentAttempt(Far, 12L, AttemptOutcome.Unchanged)))
+      new MongoEnrichmentAttemptStore(Some(db)).forKeys(keys.take(3))
       val cadence = new MongoRatingCadenceStore(Some(db))
       keys.foreach(cadence.record(_, Some("7.1"), Far))
+      val cadenceReads = new MongoRatingCadenceReader(Some(db))
+      tools.Eventually.eventually(cadenceReads.all() should have size 10)
+      cadenceReads.forKeys(keys.take(3))
       Seq(freshness.retention, attempts.retention, cadence.retention).foreach { rows =>
         tools.Eventually.eventually(rows.stampedBefore(Far.plusSeconds(1)) should not be empty)
         rows.deleteIfStill(rows.stampedBefore(Far.plusSeconds(1)).take(2))

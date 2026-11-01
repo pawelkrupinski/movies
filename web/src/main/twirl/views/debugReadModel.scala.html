@@ -1,5 +1,5 @@
 @import controllers.{ReadModelDump, ScreeningCounts}
-@(dump: ReadModelDump, current: models.Country, source: String, countries: Seq[models.Country])
+@(dump: ReadModelDump, current: models.Country, source: String, sameOrigin: Boolean = false)(implicit city: models.City)
 @*
  * Dev-only dump of one country's read model — `web_movies` (ResolvedMovie) and
  * per-film `web_screenings` (CityScreening) counts — read from `source` (the
@@ -35,10 +35,6 @@
     .summary { color: #666; margin-bottom: .5rem; font-size: 11px; }
     .summary b { color: #aad4ff; font-weight: normal; }
     .summary .warn { color: #d9a441; }
-    .country {
-      color: #ffd479; background: #1a1a2e; border: 1px solid #2a2a3e;
-      padding: .2rem .5rem; border-radius: 3px; font: 12px monospace; cursor: pointer; margin-left: .5rem;
-    }
     input[type=search] {
       background: #1a1a2e; border: 1px solid #3a3a6e; color: #eee;
       padding: .2rem .5rem; border-radius: 4px; font: 12px monospace;
@@ -112,13 +108,8 @@
 </head>
 <body>
 
-<h1>Read model
-  @if(countries.size > 1){
-    <select class="country" aria-label="Country" onchange="location.href=this.value">
-      @for(c <- countries){<option value="@routes.DebugController.debugReadModel()?country=@c.code"@if(c == current){ selected}>@c.displayName</option>}
-    </select>
-  } else { · @current.displayName }
-</h1>
+@_debugNavbar("readmodel", current, sameOrigin)
+<h1>Read model · @current.displayName</h1>
 <div class="summary">
   <b>@movies.size</b> movies · <b>@dump.screeningCount</b> screenings · <b>@dump.showtimeCount</b> showtimes ·
   read from <b>@source</b> ·

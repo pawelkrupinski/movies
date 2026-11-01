@@ -115,7 +115,8 @@ object ReadModelProjection {
   }
 
   /** Materialise a record's per-source ratings + their click-through URLs into
-   *  the flat [[ResolvedRatings]] the web renders. `title` is the display
+   *  the flat [[ResolvedRatings]] the web renders. Shared by [[resolve]] and the
+   *  `/debug` table so both show identical rating links. `title` is the display
    *  title the `*Href` fallbacks key off when a source supplies no direct URL. */
   def ratingsFor(r: MovieRecord, title: String): ResolvedRatings =
     ResolvedRatings(
@@ -416,7 +417,7 @@ object ReadModelProjection {
   /** Both halves of the projection for ONE display-title variant — the
    *  single-card view. [[projectAll]] is the split-aware entry point production
    *  serves from; this stays the building block for the common single-title row
-   *  and for callers that materialise one card (view specs). */
+   *  and for callers that materialise one card (the `/debug` table, view specs). */
   def project(stored: StoredMovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): (ResolvedMovie, Seq[CityScreening]) =
     (resolve(stored, normalizer), screenings(stored))
 }

@@ -244,7 +244,7 @@ trait TaskQueue {
    *  once it has waited past a rollback's length (`MongoTaskQueue.RetiredTaskTypeAfter`). */
   def reapExpiredLeases(now: Instant): Int
 
-  /** Count of tasks per state, of the types this build knows — for the heartbeat, the metrics and tests. THROWS
+  /** Count of tasks per state, of the types this build knows — for the debug view, the heartbeat and tests. THROWS
    *  when the counts cannot be read, like [[waitingCount]]: an empty map is an empty
    *  queue. */
   def countByState(): Map[String, Long]

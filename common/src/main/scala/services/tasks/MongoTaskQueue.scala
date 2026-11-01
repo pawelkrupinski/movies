@@ -239,7 +239,8 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
 
   /**
    * One `$group` over the whole collection instead of a `countDocuments` per
-   * state. Runs on the 60s heartbeat AND on every metrics scrape, so halving its round-trips is worth the aggregation.
+   * state. Runs on the 60s heartbeat AND on every `/debug` request and metrics
+   * scrape, so halving its round-trips is worth the aggregation.
    *
    * States with no documents stay ABSENT from the map rather than mapping to 0 —
    * `$group` emits no bucket for them, which is the same contract the per-state
@@ -251,7 +252,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
    * answer about the states we named, whereas `$group` buckets whatever value it
    * finds — so without the filter a document carrying an unrecognised (or
    * missing) `state` would surface as a new key and be rendered as a queue state
-   * in the metrics export.
+   * on /debug and in the metrics export.
    */
   override def countByState(): Map[String, Long] = coll match {
     case None => Map.empty

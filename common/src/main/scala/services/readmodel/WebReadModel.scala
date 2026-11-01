@@ -163,7 +163,8 @@ class WebReadModel(
   private def bucket(citySlug: String, keep: CityScreening => Boolean): Seq[CityScreening] =
     Option(byCity.get(citySlug)).map(_.values.asScala.iterator.filter(s => keep(s) && !foreign(s.cinema)).toSeq)
       .getOrElse(Seq.empty)
-  /** Every cached screening across all cities — the read cache's full `web_screenings` view. */
+  /** Every cached screening across all cities — the read cache's full
+   *  `web_screenings` view, used by the dev `/debug/readmodel` dump. */
   def allScreenings(): Seq[CityScreening] =
     byCity.values.asScala.flatMap(_.values.asScala).toSeq
 

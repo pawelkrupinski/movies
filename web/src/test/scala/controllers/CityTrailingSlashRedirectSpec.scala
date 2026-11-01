@@ -71,7 +71,7 @@ class CityTrailingSlashRedirectSpec extends AnyFlatSpec with Matchers {
     val catchAll = lines.indexWhere(_.startsWith("GET     /:city "))
     catchAll should be >= 0
 
-    val literals = Seq("/health", "/metrics", "/uptime", "/tasks",
+    val literals = Seq("/health", "/metrics", "/uptime", "/tasks", "/debug",
                        "/support", "/robots.txt", "/sitemap.xml", "/privacy-policy")
     literals.foreach { path =>
       val at = lines.indexWhere(l => l.startsWith("GET ") && l.split("\\s+").lift(1).contains(path))

@@ -74,6 +74,10 @@ trait Wiring
     // after the read model so the first sample reads a warm corpus.
     webMovieMetrics.start()
     userChangeTimeCache.start()
+    // Force the Dev-only per-country debug stacks so their extra database views'
+    // boot probes surface now, not on the first /debug?country= switch. A no-op
+    // in prod (no extras) and cheap in Dev (one shared client, N db views).
+    debugCountries
   }
 
   /** Every pool and closeable this wiring created, shut by [[stop]] newest first — before Mongo closes. */
@@ -81,12 +85,13 @@ trait Wiring
 
   protected def stop(): Unit = {
     // Every service and pool the wiring built (the config ticker, the uptime monitor, the metrics sampler,
-    // page re-renders, the read model), newest first, before the repositories and
-    // Mongo go: a page re-render reads both.
+    // page re-renders, the /debug snapshots, the read model), newest first, before the repositories and
+    // Mongo go: a page re-render reads both, a snapshot re-read a client below.
     managedResources.closeAll()
     // Each repository's close() is a no-op when it borrowed its database from
     // `mongoConnection` — closing the shared MongoClient is owned here.
     readModelRepository.close()
+    movieRepository.close()
     userRepository.close()
     userStateRepository.close()
     // A users database of its own is a second view on the shared client. When it
@@ -96,6 +101,12 @@ trait Wiring
     // The same for the fleet database: its own view unless it is this deployment's own (Poland's
     // while `MONGODB_FLEET_DB` is unset).
     if (fleetConnection ne mongoConnection) fleetConnection.close()
+    // The /debug read-mirror owns its own MongoClient when distinct from the
+    // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set).
+    if (movieMirrorConnection ne mongoConnection) movieMirrorConnection.close()
+    // Dev-only per-country debug stacks share ONE client (built in DebugWiring);
+    // their connections' own close() is a no-op, so close the shared client once.
+    debugExtraClient.foreach(_.close())
     mongoConnection.close()
     // Every connection above BORROWED this client, so none of their own close()
     // calls touched it — it is owned here, and closed once, last.
@@ -104,6 +115,18 @@ trait Wiring
 }
 
 object Wiring {
+  /** Where a /debug data source reads from — the boot country's `movies` corpus,
+   *  and equally each extra country's per-database stack.
+   *  With `MONGODB_MOVIES_MIRROR_URI` set, always the local mirror `openMirror`
+   *  builds — there is deliberately NO fall-back to the prod tunnel, even when
+   *  the mirror is unreachable (then that connection is simply disabled and
+   *  /debug renders empty). Unset → the shared `prod` connection. `prod` is
+   *  by-name so a configured mirror never forces the primary connection here. */
+  def debugMirrorConnection(mirrorUri: Option[settings.MirrorMongoUri],
+                            openMirror: settings.MirrorMongoUri => MongoConnection,
+                            prod: => MongoConnection): MongoConnection =
+    mirrorUri.fold(prod)(openMirror)
+
   /** Which connection a database shared across deployments binds to — the users database
    *  (`users` + `userStates`), the fleet database (the film pages Facebook fetched).
    *

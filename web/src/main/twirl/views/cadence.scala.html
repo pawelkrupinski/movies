@@ -1,0 +1,133 @@
+@import services.cadence.CadenceReport
+@(groups: Seq[CadenceReport.Group], now: java.time.Instant, current: models.Country, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
+@at(i: java.time.Instant) = @{ i.toString.take(16).replace("T", " ") }
+@change(c: Option[services.cadence.RatingChange]) = @{
+  c.map { x =>
+    val transition = if (x.from.nonEmpty) x.from + " → " + x.to else x.to
+    transition + "  @ " + x.at.toString.take(16).replace("T", " ")
+  }.getOrElse("—")
+}
+@untilNext(target: java.time.Instant) = @{
+  val secs = java.time.Duration.between(now, target).getSeconds
+  if (secs <= 0) "due"
+  else {
+    val d = secs / 86400; val h = (secs % 86400) / 3600; val m = (secs % 3600) / 60
+    if (d > 0) s"in ${d}d ${h}h" else if (h > 0) s"in ${h}h ${m}m" else s"in ${m}m"
+  }
+}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cadence</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font: 12px/1.4 monospace; background: #0d0d0d; color: #ccc; padding: 1rem; margin: 0; }
+    h1 { font-size: 14px; color: #aad4ff; margin: 0 0 .3rem; }
+    .summary { color: #666; margin-bottom: .8rem; font-size: 11px; }
+    #cadence-filter { width: 100%; max-width: 24rem; margin: 0 0 .6rem; padding: .3rem .5rem;
+      font: 12px/1.4 monospace; background: #101018; color: #ddd; border: 1px solid #26263a;
+      border-radius: 4px; }
+    #cadence-filter::placeholder { color: #556; }
+    #cadence-filter:focus { outline: none; border-color: #3a5a88; }
+    details.grp[hidden] { display: none; }
+    .grp { margin-bottom: .5rem; border: 1px solid #1a1a2e; border-radius: 4px; background: #101018; }
+    .grp > summary { font-size: 12px; color: #ffd479; cursor: pointer; padding: .35rem .5rem;
+      list-style-position: inside; user-select: none; }
+    .grp > summary:hover { background: #15151f; }
+    .grp[open] > summary { border-bottom: 1px solid #1a1a2e; }
+    .grp > summary .cnt { color: #555; font-weight: normal; margin-left: .3rem; }
+    table { border-collapse: collapse; width: 100%; font-size: 11px; }
+    th, td { text-align: left; padding: .25rem .5rem; border-bottom: 1px solid #16161f; white-space: nowrap; }
+    thead th { color: #8899bb; font-weight: normal; }
+    tbody tr:hover { background: #1a1a2e; }
+    td.film { white-space: normal; color: #ddd; min-width: 12rem; }
+    td.num { text-align: right; color: #99a; }
+    td.dim { color: #889; }
+    .due { color: #ffb060; font-weight: bold; }
+    .ago { color: #667; }
+    .site { font-weight: bold; border-radius: 3px; padding: 0 .3rem; color: #0d0d0d; display: inline-block; min-width: 2.6em; text-align: center; }
+    .site-imdb { background: #f5c518; }
+    .site-mc   { background: #66cc33; }
+    .site-rt   { background: #fa320a; color: #fff; }
+    .site-fw   { background: #ff8c00; }
+  </style>
+</head>
+<body>
+  @_debugNavbar("cadence", current, sameOrigin, mirror)
+  <h1>Rating refresh cadence</h1>
+  <input id="cadence-filter" type="search" placeholder="filter by title…" autocomplete="off" spellcheck="false" aria-label="Filter entries by film title">
+  <div class="summary">
+    <span id="cadence-match-count">@groups.map(_.entries.size).sum</span> (source, film) entries across @groups.size interval group(s),
+    slowest first · groups fold open on click · "next refresh" estimates the reaper's next due tick
+  </div>
+  @for(g <- groups) {
+    <details class="grp">
+      <summary>every @CadenceReport.intervalLabel(g.interval)<span class="cnt">@g.entries.size</span></summary>
+      <table>
+        <thead>
+          <tr>
+            <th>src</th><th>film</th><th>next refresh</th><th class="num">streak</th>
+            <th class="num">chg/chk</th><th>last change</th><th>prev change</th>
+          </tr>
+        </thead>
+        <tbody>
+        @for(e <- g.entries) {
+          <tr>
+            <td><span class="site site-@e.site">@e.site</span></td>
+            <td class="film">@e.title</td>
+            <td>@if(untilNext(e.nextRefreshAt) == "due"){<span class="due">due</span>}else{@untilNext(e.nextRefreshAt)} <span class="ago">(@at(e.nextRefreshAt))</span></td>
+            <td class="num">↻@e.streak</td>
+            <td class="num">@e.windowChanges/@e.windowChecks</td>
+            <td class="dim">@change(e.lastChange)</td>
+            <td class="dim">@change(e.prevChange)</td>
+          </tr>
+        }
+        </tbody>
+      </table>
+    </details>
+  }
+  <script>
+    (function () {
+      var input  = document.getElementById('cadence-filter');
+      var count  = document.getElementById('cadence-match-count');
+      var groups = Array.prototype.slice.call(document.querySelectorAll('details.grp'));
+      // Snapshot each group's default open state + total row count once, so
+      // clearing the box restores exactly what the server rendered.
+      groups.forEach(function (g) {
+        g.dataset.defaultOpen = g.open ? '1' : '';
+        var cnt = g.querySelector('summary .cnt');
+        g.dataset.total = cnt ? cnt.textContent.trim() : '';
+      });
+      var totalEntries = count ? count.textContent.trim() : '';
+
+      function apply() {
+        var q = input.value.trim().toLowerCase();
+        var shownTotal = 0;
+        groups.forEach(function (g) {
+          var shown = 0;
+          Array.prototype.forEach.call(g.querySelectorAll('tbody tr'), function (tr) {
+            var film  = tr.querySelector('.film');
+            var match = !q || (film && film.textContent.toLowerCase().indexOf(q) !== -1);
+            tr.hidden = !match;
+            if (match) shown++;
+          });
+          shownTotal += shown;
+          var cnt = g.querySelector('summary .cnt');
+          if (cnt) cnt.textContent = q ? (shown + '/' + g.dataset.total) : g.dataset.total;
+          if (q) {
+            g.hidden = shown === 0;   // drop groups with nothing matching
+            g.open   = shown > 0;     // open the ones that match so hits are visible
+          } else {
+            g.hidden = false;
+            g.open   = g.dataset.defaultOpen === '1';
+          }
+        });
+        if (count) count.textContent = q ? (shownTotal + ' of ' + totalEntries) : totalEntries;
+      }
+      input.addEventListener('input', apply);
+    })();
+  </script>
+</body>
+</html>

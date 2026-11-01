@@ -29,7 +29,7 @@ import scala.concurrent.duration._
  *  - `windowStartedAt` / `lastCheckedAt` — window anchor and last-refresh stamp.
  *  - `lastChange` / `prevChange` — the two most recent times the displayed value
  *    moved, each carrying what it moved FROM and TO. Survive the window roll
- *    (they're the last two changes ever), unlike the
+ *    (they're the last two changes ever, for the cadence debug page), unlike the
  *    volatility counters.
  */
 case class RatingChangeStats(
@@ -46,7 +46,7 @@ case class RatingChangeStats(
 /** One observed change of a rating's DISPLAYED value: when it happened, the badge
  *  text it moved away FROM, and the one it became — both as shown ("7.1", "85",
  *  "93%"). `from` is empty for the very first value ever recorded (nothing to
- *  move away from). */
+ *  move away from), so the debug page renders that one with no arrow. */
 case class RatingChange(at: Instant, from: String, to: String)
 
 object RatingCadence {

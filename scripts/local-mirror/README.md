@@ -1,22 +1,24 @@
-# Local Mongo for dev — prod read-mirror + web/worker playground
+# Local Mongo for dev — `/debug` mirror + web/worker playground
 
 A single **native (Homebrew) single-node replica-set Mongo on `:28017`** backs
-local development. It's a replica set (not a standalone) because the local
-web dev server reads **change streams**,
+local development. It's a replica set (not a standalone) because both the
+`/debug` live SSE view and the local web dev server read **change streams**,
 which a standalone rejects (error 40573) — the same reason prod runs `--replSet
 rs0`. One instance, two databases:
 
 | DB           | Role | Written by |
 |--------------|------|------------|
-| `<prod db>_prod_mirror` | The read-mirror — prod's data synced in, read-only locally. One per country: `kinowo_prod_mirror`, `kinowo_uk_prod_mirror`, `kinowo_de_prod_mirror` | `mirror.sh` tailers |
+| `<prod db>_prod_mirror` | The `/debug` mirror — prod's data synced in, read-only locally. One per country: `kinowo_prod_mirror`, `kinowo_uk_prod_mirror`, `kinowo_de_prod_mirror` | `mirror.sh` tailers |
 | `kinowo_local` | The local **web dev server**'s playground (its own change streams) | nothing by default (the worker runs only in the cluster) |
 
-Why the mirror exists: every local read of prod data (the identity scripts, replays,
-`ReviewLabelsCli`, ad-hoc inspection) is otherwise a prod-tunnel round-trip, and the
-tunnel charges **~110ms per round-trip** on top of queries that themselves run in
-single-digit ms — a full `movies` scan takes **8–30s** over it. Against the LAN
-mirror the ping is **~0.5ms**. (It was built for the `/debug` pages, retired
-2026-10-27.)
+Why the mirror exists: everything `/debug` reads is otherwise a prod-tunnel
+round-trip, and the tunnel charges **~110ms per round-trip** on top of queries
+that themselves run in single-digit ms. Two shapes of pain follow. The corpus
+table is a full `movies` scan (`movieRepo.findAll()`, 1200+ docs) that takes
+**8–30s** and intermittently times out to an empty table. And expanding one row
+costs three sequential reads — the row, its enrichment attempts, its rating
+cadence — i.e. **~340ms of pure latency**. Against the LAN mirror the ping is
+**~0.5ms**: the corpus lands in ~200ms and a row expand in single-digit ms.
 
 **What's mirrored** — the collections `services.MongoCollections` marks mirrored, each with its rationale, written out
 as `common/src/main/resources/debug-mirror-collections.json` for the sync (`mirror-targets.js` reads it;
@@ -25,7 +27,7 @@ as `common/src/main/resources/debug-mirror-collections.json` for the sync (`mirr
 
 - **Collections:** `movies`, `screenings`, `movie_slots`,
   `enrichment_attempts`, `rating_cadence`, `web_movies`, `web_screenings` (plus
-  `cinema_scrapes`, for replays) — the corpus and its read model — and, for
+  `cinema_scrapes`, for replays) — exactly what a `/debug` load reads — and, for
   local identity investigations (`scripts/identity-slice`, `scripts/listing-history`, `scripts/label-lookup`,
   `scripts/venue-replay`, `ReviewLabelsCli`), `identity_model_families` (the model's decisions),
   `identity_listings` (each venue's last scrape: catalogue ids, screenings),
@@ -42,10 +44,11 @@ as `common/src/main/resources/debug-mirror-collections.json` for the sync (`mirr
   other countries hold none). A running mirror picks a newly
   listed collection up by itself: the tailers restart on the changed list and the
   staleness audit re-seeds a database missing one. A collection this list
-  omits reads as permanently **empty**, not slowly-from-prod. `MongoConnectionSpec` fails
-  if a mirror reader reads one the file omits, holding each reader's own collection constant
+  omits reads as permanently **empty**, not slowly-from-prod: the `/debug`
+  country stacks read the mirror unconditionally. `MongoConnectionSpec` fails
+  if the app reads one the file omits, holding each reader's own collection constant
   to it rather than a literal — which is how `web_movies` /
-  `web_screenings` (a blank page for every non-boot country on the retired `/debug`) turned
+  `web_screenings` (a blank `/debug/readmodel` for every non-boot country) turned
   up missing.
 
   **Adding a collection re-seeds every mirror once.** A database missing the new
@@ -60,11 +63,11 @@ as `common/src/main/resources/debug-mirror-collections.json` for the sync (`mirr
   ~9 MB if every PL and UK venue (524 + 842) had fallen back, realistically a few hundred
   KB; the re-seed's cost is the corpus re-copy, not this collection.
 - **Databases:** every `kinowo*` database the tunnel exposes, discovered at
-  startup (override with `KINOWO_MIRROR_DBS`), so every country reads LAN-fast, not
-  just the boot country.
+  startup (override with `KINOWO_MIRROR_DBS`). So the navbar's country switch
+  (`/debug?country=uk`) is LAN-fast too, not just the boot country.
 
 `MongoConnection.mirrorDbFor` derives the same `_prod_mirror` names on the Scala
-side, and `MongoConnectionSpec` fails if the two drift apart or if a mirror reader
+side, and `MongoConnectionSpec` fails if the two drift apart or if `/debug`
 starts reading a collection the sync doesn't carry.
 
 > One source of truth per collection. The tailers **replace** the mirrored
@@ -104,8 +107,8 @@ digest) in one go, under Node (`nodb.js`) when there is no mongosh; CI runs it b
    brew install mongodb-community@7.0     # matches prod 7.0.x
    ```
 
-2. **Point the mirror readers at the mirror.** Export, in the shell that runs
-   them (`ReviewLabelsCli`; it is not a secret, so it never goes in the vault):
+2. **Point the web app's `/debug` at the mirror.** Export, in the shell that runs
+   the web app (it is not a secret, so it never goes in the vault):
 
    ```
    export MONGODB_MOVIES_MIRROR_URI='mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true'
@@ -141,8 +144,10 @@ digest) in one go, under Node (`nodb.js`) when there is no mongosh; CI runs it b
    `Unauthorized` for these credentials) and mongosh is single-threaded, so N
    databases means N children rather than one loop.
 
-The mirror is opt-in: nothing in the apps reads it unless `MONGODB_MOVIES_MIRROR_URI`
-is set, and prod is never affected.
+5. **Run the web app** (`sbt run`) and open `/debug` — it now reads the mirror.
+
+When `MONGODB_MOVIES_MIRROR_URI` is unset, the app reads `movies` from prod
+exactly as before, so the mirror is opt-in and prod is never affected.
 
 ## Run it as a service (no terminal to babysit)
 
@@ -172,7 +177,7 @@ one — e.g. `sbt run`'s — when there is, never fighting it), re-ensures the n
 Mongo via `brew services` if it's stopped, re-seeds when a mirror is empty **or
 has drifted** (below), and reconnects the tunnel / change stream on every drop.
 So a dropped tunnel, a stopped Mongo, or a stale resume token all recover on
-their own instead of leaving the mirror empty. The Mongo itself also restarts at
+their own instead of leaving `/debug` empty. The Mongo itself also restarts at
 login (it's a `brew services` agent). `start-local-mongo.sh` asks `brew services`
 for whichever `mongodb-community[@X.Y]` formula is installed, and when `brew
 services` cannot start it falls back to `mongod --config $(brew --prefix)/etc/mongod.conf
@@ -195,7 +200,8 @@ MONGODB_DB=kinowo_local
 ```
 
 `kinowo_local` is a normal database on the same replica set, so web gets the
-change streams it needs. No worker runs locally,
+change streams it needs. `/debug` keeps reading the prod-synced
+`kinowo_prod_mirror` (via `MONGODB_MOVIES_MIRROR_URI`). No worker runs locally,
 so the rest of the site serves whatever read model `kinowo_local` already holds
 (usually nothing). `/debug/readmodel?country=xx` lists each country's read model from
 its `*_prod_mirror` instead.
@@ -241,7 +247,7 @@ and `mirror.sh` does a full re-seed.
 mongosh decodes a BSON double to a plain JS number and writes a whole one back
 as **Int32**, so a copy that round-trips documents through JS turns prod's
 `confidence: 1.0` into `1` (and a Long into an Int32 or a double). The prod
-codecs the mirror's readers use (`ReviewLabelsCli`, the identity scripts)
+codecs the mirror's readers use (web's movieRepo, `/debug`, `ReviewLabelsCli`)
 then fail with "Value expected to be of type DOUBLE is of unexpected type
 INT32". Both copy paths therefore read with `promoteValues: false` — `seed.js`
 on its `find()`, `tail.js` on its `watch()` — which keeps every number as its
@@ -356,6 +362,23 @@ cycle — a broken gate must never block the sync. The thresholds live in
 mongosh --nodb --quiet --file scripts/local-mirror/staleness-rule.js \
                        --file scripts/local-mirror/staleness-rule-spec.js
 ```
+
+### The page states its own age
+
+Every gate above is the sync judging itself, and a sync that has stopped judges
+nothing. Whatever the cause, the visible result is the same: `/debug` renders a
+SNAPSHOT — right-looking numbers, a live-looking page, silently hours or days
+behind. It has been mistaken for a data bug three times, most recently on
+2026-08-30, when a frozen mirror made `/debug/cadence?country=us` show nothing
+but the 2h base interval (the copy had stopped during that country's FIRST HOUR
+of rating checks, before any film had backed off) and read as a cadence bug.
+
+So the debug navbar carries the age of what it is showing — the newest
+`updatedAt` across that country's mirrored `movies` + `screenings`
+(`services.MirrorFreshness`, read per page load; ~12–26ms against the loopback
+Mongo). Past the same 30 minutes the re-seed gate uses, it turns amber and says
+`⚠ mirror 26h behind` instead of `mirror 12s behind`. Nothing is rendered in
+prod, where the pages read the source and there is no copy to be behind.
 
 ### Picking up its own code
 
@@ -475,8 +498,8 @@ Then stop exporting `MONGODB_MOVIES_MIRROR_URI` for the web app. To wipe the dat
 
 | Port  | What                                                              |
 |-------|-------------------------------------------------------------------|
-| 27100-27899 | prod tunnel, one per caller (`ssh -N -L <port>:127.0.0.1:27017`) — everything except mirror reads, and the sync **source** |
-| 28017 | native local Mongo — mirror reads + the sync **target**, and the web dev server's `kinowo_local` |
+| 27100-27899 | prod tunnel, one per caller (`ssh -N -L <port>:127.0.0.1:27017`) — everything except `/debug` reads, and the sync **source** |
+| 28017 | native local Mongo — `/debug` mirror reads + the sync **target**, and the web dev server's `kinowo_local` |
 
 Override the Mongo port with `LOCAL_MIRROR_PORT` (and match it in
 `MONGODB_MOVIES_MIRROR_URI`).

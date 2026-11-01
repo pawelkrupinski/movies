@@ -137,7 +137,7 @@ object StoredMovieDto {
       // Drop any legacy bare-Cinema slot a per-title CinemaShowing slot now
       // supersedes — pre-split rows (before commit 847f555f) keyed a cinema's
       // slot by the bare Cinema, so a re-scraped film carries BOTH keys with the
-      // same showtimes (the twin-slot duplication). See
+      // same showtimes (the /debug twin-slot duplication). See
       // `Source.dropSupersededCinemaSlots`.
       data              = Source.dropSupersededCinemaSlots(
                             dto.sourceData.getOrElse(Map.empty)

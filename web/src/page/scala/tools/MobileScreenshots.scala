@@ -61,7 +61,7 @@ object MobileScreenshots {
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
-        schedules, cinemas, pills, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
+        schedules, cinemas, pills, devMode = false, minifier = tools.Minify, pinnedToday = wiring.pinnedToday,
         oauthProviders = noOauth, renderedAt = now
       ).body
 

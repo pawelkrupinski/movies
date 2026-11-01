@@ -91,6 +91,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("web/src/main/scala/controllers/MetricsController.scala", "metrics",
       "val fallback = scala.util.Try(fallbackStore.findAll()).fold(_ => \"\",") ->
       "not an empty value but an ABSENT one: an unreadable fallback store leaves its two gauge families out of the exposition (no series, never a false 0), so the rest of /metrics — the web tier's only request-rate, latency and disk signals — is still served",
+    ("web/src/main/scala/controllers/DebugSnapshot.scala", "load",
+      "case Failure(exception) =>") ->
+      "a dev-only CACHE of a /debug read, never data: None means 'nothing usable stored' and the caller reads the source at once, exactly as with no file — a stale or corrupt file must not fail the page; logged",
     ("scrapers/src/main/scala/services/cinemas/common/GatsbyBoxOfficeClient.scala", "ask",
       "case NonFatal(e) =>") ->
       "the film details are optional credits beside the schedule, which is the scrape: after a second attempt (a response naming none of the batch counts as a failure), an empty map lists those films without a credit or runtime, exactly as every scrape before the details request did, and the failure is logged",
@@ -211,6 +214,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "catch { case _: NoSuchFileException => false; case _: IOException => false }") ->
       "a file that could not be deleted is reported as not deleted, which is what happened",
     // ── found once the lint saw chained calls, braces, `Failure(_)`, bare binders and `;` bodies ──
+    ("web/src/main/scala/services/MirrorFreshness.scala", "newestIn",
+      ".recover { case exception => logger.debug(s\"Mirror freshness read failed: ${exception.getMessage}\"); Seq.empty }") ->
+      "the local mirror's age for a dev page: None renders as unknown age, and nothing is decided from it",
     ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "findCard",
       "case Failure(exception) =>") ->
       "read only by ReadModelContentAudit, which skips a card it could not read and audits it on the next pass",

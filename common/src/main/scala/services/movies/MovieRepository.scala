@@ -73,7 +73,10 @@ trait MovieRepository {
   }
 
   /** The single row stored under this exact `_id` (the [[StoredMovieRecord.idOf]]
-   *  form), or `None` when absent. The default scans [[findAll]] (fine for the in-memory store);
+   *  form), or `None` when absent. Lets the dev `/debug` page render ONE row's
+   *  heavy per-source breakdown lazily, on expand, instead of every row's
+   *  up front — rendering the whole corpus's details in one Twirl pass OOM'd the
+   *  view. The default scans [[findAll]] (fine for the in-memory store);
    *  `MongoMovieRepository` overrides it with an indexed `_id` lookup. */
   def findById(id: FilmId): Option[StoredMovieRecord] = findByIdChecked(id).toOptionOrThrow
 
@@ -127,6 +130,18 @@ trait MovieRepository {
    *  load-bearing (the id it writes IS the row's identity). ABSTRACT, so a new
    *  implementation cannot inherit a process default by omission. */
   def normalizer: TitleNormalizer
+
+  /** Like [[findAll]] but with each source's `showtimes` list dropped — the
+   *  rows for a LISTING that renders only per-cinema metadata + counts, never
+   *  the showtimes themselves (the dev `/debug` corpus table; showtimes there
+   *  are fetched per-row on expand). Measured on prod, `showtimes` are ~58% of
+   *  the corpus bytes, so omitting them roughly halves what the scan transfers
+   *  and holds. Callers that NEED showtimes (cache hydrate, read-model
+   *  projection) must use [[findAll]]/[[findById]]. The default strips in-process
+   *  via [[MovieRepository.withoutShowtimes]]; `MongoMovieRepository` overrides
+   *  it to strip server-side so the bytes never cross the wire. */
+  def findAllForListing(): Seq[StoredMovieRecord] =
+    findAll().map(MovieRepository.withoutShowtimes)
 
   /** Stream every persisted record through `f`, one row at a time. The default loads via
    *  [[findAll]] — fine for the in-memory store — while `MongoMovieRepository` overrides
@@ -237,8 +252,8 @@ trait MovieRepository {
     watchChanges(onUpsert, _ => ())
 
   /** Like [[watchUpserts]] but also surfaces out-of-band DELETEs (by `_id`), so
-   *  a consumer that must reflect row *removal* sees it — a merge deletes the
-   *  losing row. `onDelete`
+   *  a consumer that must reflect row *removal* sees it — the /debug live view,
+   *  where a merge deletes the losing row and the row must disappear. `onDelete`
    *  gets the deleted row's id. Default: not supported (returns None), same as
    *  [[watchUpserts]]. */
   def watchChanges(
@@ -365,6 +380,15 @@ object MovieRepository {
   final case class ReadDocument(stored: StoredMovieDto, whole: org.bson.BsonDocument)
 
   /** The corpus collection. Named here rather than inline so
-   *  [[services.DebugMirror]] can state what the local mirror has to carry. */
+   *  [[services.DebugMirror]] can state what the local /debug mirror has to carry. */
   val Collection = "movies"
+
+  /** A copy of `row` with every source's `showtimes` dropped — the shared rule
+   *  behind [[MovieRepository.findAllForListing]]. `MongoMovieRepository` strips
+   *  the same field server-side; this keeps the in-memory store's listing view
+   *  byte-for-byte equivalent so both impls honour the same "no showtimes"
+   *  contract (the listing renders cinema metadata + counts, never showtimes). */
+  def withoutShowtimes(row: StoredMovieRecord): StoredMovieRecord =
+    row.copy(record = row.record.copy(
+      data = row.record.data.view.mapValues(_.copy(showtimes = Seq.empty)).toMap))
 }

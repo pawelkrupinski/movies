@@ -16,7 +16,8 @@ private[readmodel] final class ReadModelStamps(clock: java.time.Clock, formerSlu
   // function of its argument, so it is safe to re-apply on a CAS retry.
   private val _lastModified = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](clock.instant())
   /** Model-wide change stamp — moves when ANYTHING in the corpus changes. The
-   *  sitemap's `<lastmod>` and the `filmSlugs` memo both want exactly this. A conditional GET does not: see [[lastModifiedFor]]. */
+   *  sitemap's `<lastmod>`, the `filmSlugs` memo and `/debug/readmodel` all want
+   *  exactly this. A conditional GET does not: see [[lastModifiedFor]]. */
   def lastModified: java.time.Instant = _lastModified.get()
 
   /** The floor under every city's stamp — what versions the corpus-wide indexes. */

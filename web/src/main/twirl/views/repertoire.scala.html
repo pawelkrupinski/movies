@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @* `renderedAt` must be the clock `films` was filtered by — see `_repertoireView`. *@
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", pinnedToday: Option[java.time.LocalDate] = None, structuredData: Option[String] = None)(implicit city: models.City, messages: play.api.i18n.Messages, fragments: controllers.FilmCardFragments = controllers.FilmCardFragments.Uncached)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, minifier: tools.Minifier, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", pageTags: controllers.PageTags = controllers.PageTags.none, canonicalUrl: String = "", pinnedToday: Option[java.time.LocalDate] = None, structuredData: Option[String] = None)(implicit city: models.City, messages: play.api.i18n.Messages, fragments: controllers.FilmCardFragments = controllers.FilmCardFragments.Uncached)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -36,7 +36,7 @@
 <body>
 
 @_minified(minifier) { @_appBanner() }
-@_navbar(oauthProviders, showImaxFilter = controllers.MovieControllerService.hasImaxShowtime(films))
+@_navbar(devMode, oauthProviders, showImaxFilter = controllers.MovieControllerService.hasImaxShowtime(films))
 @_loginModal(oauthProviders)
 @_hiddenModal()
 

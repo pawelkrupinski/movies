@@ -1,0 +1,66 @@
+package views
+
+import testsupport.TestMessages.given
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+/**
+ * Locks in the contract that the Debug nav link is dev-only AND
+ * hidden on mobile (portrait + landscape). The CSS rule that hides
+ * it keys on the `nav-tab-debug` class, so the test also asserts
+ * that class is present whenever the link renders — otherwise the
+ * "hide on mobile" rule would silently no-op.
+ */
+class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
+
+  private implicit val city: models.City = models.Poznan
+
+  private def render(devMode: Boolean): String =
+    views.html._navbar(devMode = devMode,
+      oauthProviders = Set.empty, showImaxFilter = true).body
+
+  "navbar partial" should "not render a Filmy nav link" in {
+    // The Filmy pill was dropped from the navbar. The logo stays, but
+    // there is no longer a tab linking back to the city's film listing.
+    val html = render(devMode = false)
+    html should not include ">Filmy<"
+  }
+
+  it should "omit the Debug link entirely when devMode is false" in {
+    val html = render(devMode = false)
+    html should not include "/debug"
+    html should not include "nav-tab-debug"
+  }
+
+  it should "render the Debug link with the `nav-tab-debug` class when devMode is true" in {
+    val html = render(devMode = true)
+    html should include ("""href="/debug"""")
+    // The class lets the (max-width: 575px) / landscape CSS rules in
+    // `_sharedStyles` hide the link on mobile viewports.
+    html should include ("nav-tab-debug")
+  }
+
+  "filter panel" should "navigate to the unified `/` picker rather than a country select or an in-panel city select" in {
+    // The old `#country-select` dropdown is gone entirely — picking a
+    // country is now a step inside the `/` picker itself (`landing.scala.html`),
+    // not a separate navbar control.
+    val html = render(devMode = false)
+    html should not include ("""id="country-select"""")
+    html should include ("""onclick="goToCityPicker()"""")
+    html should not include ("""id="city-select"""")
+    html should not include ("""id="locate-city-btn"""")
+  }
+
+  "shared styles" should "hide `.nav-tab-debug` on the mobile media queries" in {
+    // Render `_sharedStyles` directly so the stylesheet block is in
+    // the rendered HTML. The CSS minifier collapses ` : ` → `:`, so
+    // assert on the minified shape that ships to the browser.
+    val css = views.html._sharedStyles(tools.Minify).body
+    css should include (".nav-tab-debug{display:none}")
+    // Anchor the rule under both mobile media queries so a future
+    // tidy-up can't drop one arm of the OR.
+    css should include ("max-width:575px")
+    css should include ("max-height:500px) and (orientation:landscape")
+  }
+}

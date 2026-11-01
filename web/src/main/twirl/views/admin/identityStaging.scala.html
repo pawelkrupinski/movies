@@ -1,0 +1,580 @@
+@(current: models.Country, pollMillis: Int)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Identity staging — @current.brandName</title>
+  <style>
+    /* One hue per kind of data, so a listing, its venue, the film it takes and what it took before read apart. */
+    :root {
+      --bg: #0d0d0d; --panel: #121212; --text: #c8c8c8; --muted: #6f7782; --faint: #4a4f55;
+      --listing: #ece4d4;   /* a listing's billed title: warm white */
+      --venue: #a99bd0;     /* where it is billed: lavender */
+      --film: #6cc2b0;      /* the film taken now: teal */
+      --before: #d2a467;    /* what it held before: amber */
+      --differs: #ef8a72;   /* a value no other column shares: coral */
+      --why: #b8b4a6;       /* the evidence lines */
+      --question: #8fb8de;  /* what was asked: sky */
+      --link: #7f97ad;      /* links: a quiet steel blue */
+      --link-hover: #a9bfd2;
+      --country: #8fb3d6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 13px/1.4 monospace; background: var(--bg); color: var(--text); padding: 24px; }
+    a { color: var(--link); text-decoration: underline; text-decoration-color: rgba(127, 151, 173, 0.35); text-underline-offset: 2px; }
+    a:hover { color: var(--link-hover); text-decoration-color: currentColor; }
+    .venue { color: var(--venue); }
+    .film { color: var(--film); }
+    h1 { font-size: 16px; font-weight: 600; color: #fff; }
+    .page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .sub { color: #666; font-size: 11px; margin-bottom: 18px; }
+    .sub .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #2ecc40; margin-right: 5px; vertical-align: middle; }
+    .sub.stale .dot { background: #c0392b; }
+    #countries { display: flex; flex-direction: column; gap: 18px; }
+    .country { background: var(--panel); border: 1px solid #1f1f1f; border-radius: 6px; padding: 12px; min-width: 0; }
+    .country h2 { font-size: 14px; color: #fff; display: flex; gap: 10px; align-items: baseline; }
+    .country h2 .age { font-size: 10px; color: #666; font-weight: 400; }
+    .country h2 .age.stale { color: #e07a6a; }
+    .counts { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+    .pill { background: #181818; border: 1px solid #262626; border-radius: 5px; padding: 4px 9px; }
+    .pill .n { color: #fff; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pill.staging .n { color: #f0ad4e; }
+    .pill.resolved .n { color: #6a9b78; }
+    .kinds { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+    .kind { font-size: 10px; color: #b89cd6; background: #1d1726; border-radius: 3px; padding: 1px 6px; }
+    h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #777; margin: 12px 0 4px; }
+    details { border-bottom: 1px solid #1a1a1a; }
+    summary { cursor: pointer; padding: 4px 2px; display: flex; gap: 8px; align-items: baseline; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::before { content: "▸"; color: #555; }
+    details[open] > summary::before { content: "▾"; }
+    summary:hover { background: #171717; }
+    .title { color: var(--listing); flex: 1 1 45%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta { color: var(--muted); font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    /* The take shrinks too: unshrinkable, a long one squeezed the listing's title to nothing. */
+    summary > .meta { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .progress { color: #4aa3df; }
+    .body { padding: 4px 4px 10px 18px; font-size: 12px; }
+    .body .line { margin: 2px 0; }
+    .body .label { color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    td, th { padding: 2px 6px; border-bottom: 1px solid #161616; vertical-align: top; text-align: left; }
+    th { font-size: 10px; color: #666; font-weight: 600; }
+    .q-text { word-break: break-all; color: var(--question); }
+    .o-not-attempted { color: #888; }
+    .o-failed { color: #e07a6a; }
+    .o-absent { color: #c8a45a; }
+    .o-answered { color: #6a9b78; }
+    .r-settled { color: #6a9b78; }
+    .r-regrouped { color: #b89cd6; }
+    .r-decided { color: #6a9b78; }
+    .r-joined { color: #5f6b63; }
+    details.quiet > summary .title { color: #8a8a8a; }
+    .pill.dropped .n { color: #e07a6a; }
+    .r-gained { color: #6a9b78; }
+    .r-lost { color: #d67a6a; }
+    .r-changed { color: #d6a35c; }
+    .empty { color: #555; padding: 6px 2px; }
+    .why { list-style: none; margin: 2px 0 4px; color: var(--why); }
+    .why li { margin: 1px 0; padding-left: 10px; text-indent: -10px; word-break: break-word; }
+    .why li::before { content: "· "; color: var(--faint); }
+    .why .key { display: block; padding-left: 12px; text-indent: 0; }
+    .why .key .label { display: inline-block; min-width: 5.5em; }
+    .why .key.signal { padding-left: 24px; }
+    .why .key.signal .label { min-width: 13em; }
+    .weight { font-variant-numeric: tabular-nums; }
+    .weight.for { color: #7fbf8a; }
+    .weight.against { color: #d9826e; }
+    .out { margin-left: 6px; font-size: 11px; }
+    .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .search { font: inherit; font-size: 12px; color: var(--listing); background: #151515; border: 1px solid #262626; border-radius: 5px;
+      padding: 4px 9px; width: 100%; max-width: 420px; margin-bottom: 10px; }
+    .search:focus { outline: none; border-color: #5a5a8a; }
+    .filter { font: inherit; font-size: 11px; color: #aaa; background: #151515; border: 1px solid #262626; border-radius: 5px; padding: 3px 9px; cursor: pointer; }
+    .filter:hover { border-color: #3a3a3a; }
+    .filter.on { color: #fff; background: #23232e; border-color: #5a5a8a; }
+    .cc { font-size: 10px; color: var(--country); background: #16202b; border-radius: 3px; padding: 0 5px; flex: none; }
+    .filter .n { color: #777; margin-left: 4px; font-variant-numeric: tabular-nums; }
+    .move-from { color: var(--before); }
+    table.facts { margin: 4px 0 8px; font-size: 11px; table-layout: fixed; }
+    table.facts td { word-break: break-word; }
+    table.facts td.name { color: var(--muted); width: 9em; }
+    table.facts td.differs { color: var(--differs); }
+    table.facts td.none { color: var(--faint); }
+    .listing-facts > summary { color: #777; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="page-head">
+    <h1>Identity staging</h1>
+  </div>
+  <div class="sub" id="sub"><span class="dot"></span><span id="status">connecting…</span>
+    — every country's clusters whose take still waits on an answer, and every match decided or changed in the last
+    7 days (decided: a new cluster's listings; joined: new listings joining a cluster already on the site; gained, lost or changed: listings' film moved; settled; regrouped), as each country's worker last published them to its database (read here through the local prod mirror).
+    Search a title to list only the rows billing or taking it; pick a country to list it alone, or "all" for every country's rows in one list by time; pick types to list only those (hover one for what it means); open a row for its questions, and a move's row for what the
+    listings held before and why, beside what they hold now and why.</div>
+  <input type="search" id="search" class="search" placeholder="search titles…" autocomplete="off">
+  <div class="filters" id="country-filters"></div>
+  <div class="filters" id="filters"></div>
+  <div id="countries"></div>
+
+  <script>
+    "use strict";
+    var POLL_MS = @pollMillis;
+    var STALE_MS = 120000;
+    var SHOWN = 300;   // the newest decisions and changes a country lists; the rest are counted
+    var state = {};          // code → { name, beat, cursor, clusters: { key → cluster } }
+    var order = [];          // the countries in the server's order
+    var open = {};           // "code|key" → true while its row is open
+    var skew = 0;            // client now − server now
+    // the row types a filter picks: a staging cluster's, else its resolution; none picked lists every type
+    var TYPES = ["staging", "settled", "regrouped", "decided", "joined", "gained", "lost", "changed"];
+    // what each type means, shown on its filter's hover
+    var MEANS = {
+      "": "every type",
+      staging: "a cluster whose take still waits on an answer: a model gap, an open question or TMDB",
+      settled: "a cluster that waited and waits on nothing now, with the take it got",
+      regrouped: "a cluster that waited and whose listings no longer form it: they moved to another cluster, or left",
+      decided: "a cluster of new listings decided between two publishes, never seen waiting: most new films",
+      joined: "new listings joining a match already on the site",
+      gained: "listings that had no film and have one now: a late answer or new data",
+      lost: "listings that had a film and have none now",
+      changed: "listings whose film moved from one film to another: a late answer or new data"
+    };
+    var MOVES = ["gained", "lost", "changed"];
+    var picked = {};         // type → true while picked; kept in the URL's #only= so a link keeps it
+    (location.hash.match(/only=([a-z,]*)/) || [, ""])[1].split(",").forEach(function (t) { if (TYPES.indexOf(t) >= 0) picked[t] = true; });
+    // the countries listed: "" each in a section of its own, one under the other; "all" every country's rows in one list,
+    // by time; a code that country alone. Kept in the URL's #country= beside #only=.
+    var country = (location.hash.match(/country=([a-z]+)/) || [, ""])[1];
+    // the title searched, matched as the city page's search matches it: a row is listed when one of its titles (a
+    // listing's, its film's now or before) or one of their other spellings (`searchTitles`: original and alternative
+    // titles, unaccented, romanised — the server's `SearchTitles`) holds it, case aside. Kept in the URL's #q=.
+    var query = decodeURIComponent((location.hash.match(/q=([^&]*)/) || [, ""])[1]);
+    function titled(cl) {
+      var q = query.trim().toLowerCase();
+      if (!q) return true;
+      var titles = cl.listings.map(function (l) { return l.rawTitle; })
+        .concat([cl.take.title, cl.take.leaningTitle, cl.before && cl.before.title], cl.searchTitles || []);
+      return titles.some(function (t) { return t && t.toLowerCase().includes(q); });
+    }
+    function keepInUrl() {
+      var only = TYPES.filter(function (k) { return picked[k]; }).join(",");
+      var parts = (only ? ["only=" + only] : []).concat(country ? ["country=" + country] : [])
+        .concat(query.trim() ? ["q=" + encodeURIComponent(query.trim())] : []);
+      history.replaceState(null, "", parts.length ? "#" + parts.join("&") : location.pathname + location.search);
+    }
+    function typeOf(cl) { return cl.resolvedAt == null ? "staging" : cl.resolution; }
+    function wanted(cl) { return titled(cl) && (!Object.keys(picked).length || picked[typeOf(cl)] === true); }
+    /** What an empty list says: that the search or the picked types left out every row it had, or that it had none. */
+    function emptyText(had, none) {
+      return !had ? none : query.trim() && !Object.keys(picked).length ? "no title matching “" + esc(query.trim()) + "”" : "none of the picked types";
+    }
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+      });
+    }
+    function dur(ms) {
+      if (ms < 0) ms = 0;
+      var s = Math.floor(ms / 1000);
+      if (s < 60) return s + "s";
+      var m = Math.floor(s / 60);
+      if (m < 60) return m + "m";
+      var h = Math.floor(m / 60);
+      return h + "h " + (m % 60) + "m";
+    }
+    function serverNow() { return Date.now() - skew; }
+
+    function apply(data) {
+      skew = Date.now() - data.now;
+      order = data.countries.map(function (c) { return c.code; });
+      data.countries.forEach(function (c) {
+        var held = state[c.code] || (state[c.code] = { clusters: {} });
+        held.name = c.name;
+        if (c.beat) held.beat = c.beat;
+        if (c.cursor != null) held.cursor = c.cursor;
+        c.changed.forEach(function (cl) { held.clusters[cl.key] = cl; });
+        var keep = {};
+        c.keys.forEach(function (k) { keep[k] = true; });
+        Object.keys(held.clusters).forEach(function (k) { if (!keep[k]) delete held.clusters[k]; });
+      });
+    }
+
+    function since() {
+      return order.filter(function (code) { return state[code] && state[code].cursor != null; })
+        .map(function (code) { return code + ":" + state[code].cursor; }).join(",");
+    }
+
+    /** A listing as a line names it: its billed title, and the venue billing it. */
+    function atVenue(l) {
+      var page = (l.facts || []).filter(function (f) { return f.name === "page"; })[0];
+      return (page ? out(page.value, l.rawTitle) : esc(l.rawTitle)) + " <span class=\"venue\">@@ " + esc(l.venue) + "</span>";
+    }
+    function takeText(t) {
+      if (t.film != null) return (t.title ? t.title : "tmdb " + t.film) + " · " + t.basis + " " + Math.round(t.confidence * 100) + "%";
+      if (t.fallback) return t.fallback + " · " + t.basis;
+      return "no film · " + t.basis + (t.leaning != null ? " (leans " + (t.leaningTitle || "tmdb " + t.leaning) + ")" : "");
+    }
+    function headline(cl) {
+      var l = cl.listings[0];
+      if (!l) return "(no listings) " + esc(cl.take.title || cl.take.leaningTitle || "") + " <span class=\"meta\">" + esc(cl.key) + "</span>";
+      var more = cl.listingCount > 1 ? " +" + (cl.listingCount - 1) : "";
+      if (cl.resolution === "joined") more = cl.listingCount > 1 ? " +" + (cl.listingCount - 1) + " joined" : "";
+      return esc(l.rawTitle) + " <span class=\"meta venue\">@@ " + esc(l.venue) + more + "</span>";
+    }
+    function outcomeText(q) {
+      if (q.outcome === "failed") {
+        var retry = q.nextRetryAt != null ? (q.nextRetryAt > serverNow() ? ", next in " + dur(q.nextRetryAt - serverNow()) : ", due") : "";
+        return "failed " + q.attempts + "×" + retry + (q.host ? " (" + esc(q.host) + ")" : "");
+      }
+      return q.outcome;
+    }
+    function questionsTable(cl) {
+      if (!cl.questions.length) return "<div class=\"line label\">no agreement question" +
+        (cl.modelGaps ? "; the model waits on " + cl.modelGaps + " gap(s)" : "") + (cl.onTmdb ? "; the fill waits on TMDB" : "") + "</div>";
+      var rows = cl.questions.map(function (q) {
+        return "<tr class=\"question\"><td>" + esc(q.kind) + "</td><td>" + esc(q.asker) + "</td><td class=\"q-text\">" + (answerUrl(q.text) ? out(answerUrl(q.text), q.text) : esc(q.text)) +
+          "</td><td class=\"o-" + esc(q.outcome) + "\">" + outcomeText(q) + "</td></tr>";
+      }).join("");
+      var hidden = cl.questionCount > cl.questions.length ? "<div class=\"line label\">… and " + (cl.questionCount - cl.questions.length) + " more</div>" : "";
+      return "<table><tr><th>kind</th><th>asked of</th><th>question</th><th>outcome</th></tr>" + rows + "</table>" + hidden;
+    }
+    /** The first lines of the take's explanation: the evidence the decision rests on (none in an older snapshot). */
+    function why(t, label) {
+      if (!t.explanation || !t.explanation.length) return "";
+      return "<div class=\"line\"><span class=\"label\">" + (label || "why") + "</span><ul class=\"why\">" +
+        t.explanation.map(function (line) { return "<li>" + keyed(line) + "</li>"; }).join("") + "</ul></div>";
+    }
+    /** The fields of a listing key a line ends with, by name: a venue page's key (venue, page, title) or a published
+     *  one's (venue, title, year, directors). The resolver's last explanation line names its cluster's first listing so
+     *  (`node Native(venue,page,title)`, the key's case-class text), and the documents hold it as text. */
+    function keyFields(text) {
+      var at = text.search(/(Native|Published)\(.*\)$/);
+      if (at < 0) return null;
+      var kind = text.slice(at).match(/^(Native|Published)/)[1], inner = text.slice(at + kind.length + 1, -1), m;
+      if (kind === "Native" && (m = inner.match(/^(.*?),((?:https?:\/\/)[^,]*),(.*)$/) || inner.match(/^([^,]*),([^,]*),(.*)$/)))
+        return { at: at, fields: [["venue", m[1]], [/^https?:/.test(m[2]) ? "page" : "id", m[2]], ["title", m[3]]] };
+      if (kind === "Published" && (m = inner.match(/^(.*?),(.*),(?:Some\((\d+)\)|None),\w*\((.*)\)$/)))
+        return { at: at, fields: [["venue", m[1]], ["title", m[2]]].concat(m[3] ? [["year", m[3]]] : [], m[4] ? [["directors", m[4]]] : []) };
+      return null;
+    }
+    /** A link out, opened beside the page. */
+    function out(url, text) { return "<a href=\"" + esc(url) + "\" target=\"_blank\" rel=\"noopener\">" + esc(text) + "</a>"; }
+    function tmdbUrl(id) { return "https://www.themoviedb.org/movie/" + id; }
+    /** `text` escaped, each "tmdb N" in it a link to that film on TMDB. */
+    function tmdbLinked(text) {
+      return esc(text).replace(/tmdb (\d+)/g, function (all, id) { return out(tmdbUrl(id), all); });
+    }
+    /** The page a question asks (`family|kind|subject`): a record's own page — the ratings sites' pages, IMDb's, the
+     *  Wikidata item —, a title's search on that site, the poster itself; null where none is known. */
+    function answerUrl(text) {
+      var parts = text.split("|"), family = parts[0], kind = parts[1], subject = parts.slice(2).join("|"), q = encodeURIComponent(subject);
+      if (!subject) return null;
+      var records = {
+        imdb: "https://www.imdb.com/title/" + subject + "/", filmweb: "https://www.filmweb.pl/Film?id=" + subject,
+        rt: "https://www.rottentomatoes.com/m/" + subject, metacritic: "https://www.metacritic.com/movie/" + subject + "/",
+        wiki: "https://www.wikidata.org/wiki/" + subject, tmdb: tmdbUrl(subject)
+      };
+      var searches = {
+        imdb: "https://www.imdb.com/find/?s=tt&q=" + q, filmweb: "https://www.filmweb.pl/search#/film?query=" + q,
+        rt: "https://www.rottentomatoes.com/search?search=" + q, metacritic: "https://www.metacritic.com/search/" + q + "/?category=2",
+        wiki: "https://www.wikidata.org/w/index.php?search=" + q, tmdb: "https://www.themoviedb.org/search/movie?query=" + q
+      };
+      if (/^https?:\/\//.test(subject)) return subject;
+      if (kind === "record") return records[family] || null;
+      if (kind === "title") return searches[family] || null;
+      return null;
+    }
+    /** A named value as a facts table shows it: a film's id on TMDB, an IMDb id, a page or poster, a catalogue id, linked. */
+    function factValue(name, value) {
+      if (name === "tmdb" && /^\d+$/.test(value)) return out(tmdbUrl(value), value);
+      if (name === "imdb" && /^tt\d+$/.test(value)) return out("https://www.imdb.com/title/" + value + "/", value);
+      if (/^https?:\/\//.test(value)) return out(value, value);
+      if (name === "catalogue ids") return value.split(", ").map(function (c) {
+        var m = c.match(/^(\w+):(.+)$/), url = m && answerUrl(m[1] + "|record|" + m[2]);
+        return url ? out(url, c) : esc(c);
+      }).join(", ");
+      return tmdbLinked(value);
+    }
+    /** An own match's line, field by field: the listing as the resolver names it ('title' [year] {directors} ×listings),
+     *  the film it took and at what confidence, the rule that took it, and each signal's value and weight, one a line. */
+    function ownMatch(line) {
+      var m = line.match(/^'(.*)'(?: \[(\d{4})\])?(?: \{(.*?)\})?(?: ×(\d+))?: own match (\d+) at ([\d.]+%)(.*?)(?: by (\S+))? \(([^()]*(?:\([^()]*\)[^()]*)*)\)$/);
+      if (!m) return null;
+      var key = function (label, value, cls) { return "<span class=\"key" + (cls ? " " + cls : "") + "\"><span class=\"label\">" + label + "</span> " + value + "</span>"; };
+      var signals = [], sm, re = /(\S+?)=(\S*?)\(([+-]?[\d.]+)\)/g;
+      while ((sm = re.exec(m[9])) !== null) {
+        var w = parseFloat(sm[3]);
+        signals.push(key(esc(sm[1]), esc(sm[2]) + " <span class=\"weight " + (w >= 0 ? "for" : "against") + "\">" + esc(sm[3]) + "</span>", "signal"));
+      }
+      return "own match" + key("listing", "'" + esc(m[1]) + "'") + (m[2] ? key("year", esc(m[2])) : "") + (m[3] ? key("directors", esc(m[3])) : "") +
+        (m[4] ? key("listings", esc(m[4])) : "") + key("film", out(tmdbUrl(m[5]), "tmdb " + m[5]) + " at " + esc(m[6]) + esc(m[7])) +
+        (m[8] ? key("by", esc(m[8])) : "") + (signals.length ? key("signals", "") + signals.join("") : key("signals", esc(m[9])));
+    }
+    function keyed(line) {
+      var matched = ownMatch(line);
+      if (matched) return matched;
+      var k = keyFields(line);
+      if (!k) return tmdbLinked(line);
+      return tmdbLinked(line.slice(0, k.at).trim()) + k.fields.map(function (f) {
+        var value = f[0] === "page" ? out(f[1], f[1]) : esc(f[1]);
+        return "<span class=\"key\"><span class=\"label\">" + f[0] + "</span> " + value + "</span>";
+      }).join("");
+    }
+    /** A link to `film` on TMDB beside a line naming it; none for no film. */
+    function onTmdb(film) { return film != null ? "<span class=\"out\">" + out(tmdbUrl(film), "TMDB ↗") + "</span>" : ""; }
+    function body(cl) {
+      var listings = cl.listings.map(atVenue).join("<br>") +
+        (cl.listingCount > cl.listings.length ? "<br>… and " + (cl.listingCount - cl.listings.length) + " more" : "");
+      var moved = isMove(cl);
+      var from = moved ? "<div class=\"line from\"><span class=\"label\">from</span> <span class=\"move-from\">" + esc(beforeText(cl)) +
+        "</span>" + onTmdb(cl.before ? cl.before.film : cl.was) + "</div>" + (cl.before ? why(cl.before, "why then") : "") : "";
+      return "<div class=\"body\"><div class=\"line\"><span class=\"label\">listings</span><br>" + listings + "</div>" + (moved ? whatChanged(cl) : "") + from +
+        "<div class=\"line to\"><span class=\"label\">" + (moved ? "to" : "take") + "</span> <span class=\"film\">" + esc(takeText(cl.take)) + "</span>" + onTmdb(cl.take.film) + "</div>" +
+        why(cl.take, moved ? "why now" : "why") + evidence(cl, moved) +
+        "<div class=\"line\"><span class=\"label\">waits on</span> " + cl.modelGaps + " model gap(s), " + cl.questionCount +
+        " question(s), " + cl.attempted + " attempted" + (cl.onTmdb ? ", the fill's TMDB answers" : "") + "</div>" + questionsTable(cl) + "</div>";
+    }
+    /** Named values side by side, a column each ({ head, facts }), a row for every name any column states, in the order
+     *  first stated; a value no other column shares is marked where `compared`. */
+    function factsTable(columns, compared) {
+      var names = [], at = columns.map(function () { return {}; });
+      columns.forEach(function (c, i) {
+        (c.facts || []).forEach(function (f) { if (names.indexOf(f.name) < 0) names.push(f.name); at[i][f.name] = f.value; });
+      });
+      if (!names.length) return "";
+      var head = "<tr><th></th>" + columns.map(function (c) { return "<th>" + esc(c.head) + "</th>"; }).join("") + "</tr>";
+      var rows = names.map(function (n) {
+        var values = at.map(function (m) { return m[n]; });
+        var differs = compared && values.filter(function (v) { return v != null; }).some(function (v, _, all) { return v !== all[0]; });
+        return "<tr><td class=\"name\">" + esc(n) + "</td>" + values.map(function (v) {
+          return v == null ? "<td class=\"none\">—</td>" : "<td" + (differs ? " class=\"differs\"" : "") + ">" + factValue(n, v) + "</td>";
+        }).join("") + "</tr>";
+      }).join("");
+      return "<table class=\"facts\">" + head + rows + "</table>";
+    }
+    function filmHead(t, label) { return label + ": " + (t.film != null ? (t.title || "tmdb " + t.film) : (t.leaning != null ? "leans " + (t.leaningTitle || "tmdb " + t.leaning) : "no film")); }
+    /** Everything the take was decided on: the first listing's facts beside the films' (before and now, for a move), each
+     *  listing's trace against them, and the other listings' facts. */
+    function evidence(cl, moved) {
+      var first = cl.listings[0];
+      var columns = [];
+      if (first && moved && first.formerly && first.formerly.length) columns.push({ head: "listing before", facts: first.formerly });
+      if (first) columns.push({ head: moved && first.formerly && first.formerly.length ? "listing now" : "listing", facts: first.facts });
+      if (moved && cl.before) columns.push({ head: filmHead(cl.before, "before"), facts: cl.before.filmFacts });
+      columns.push({ head: filmHead(cl.take, moved ? "now" : "film"), facts: cl.take.filmFacts });
+      var html = factsTable(columns, true);
+      html = html ? "<div class=\"line\"><span class=\"label\">facts</span>" + html + "</div>" : "";
+      var nodesOf = function (t) { var m = {}; ((t && t.nodes) || []).forEach(function (n) { m[n.venue + "|" + n.rawTitle] = n.facts; }); return m; };
+      var now = nodesOf(cl.take), then = nodesOf(moved ? cl.before : null);
+      cl.listings.forEach(function (l) {
+        var k = l.venue + "|" + l.rawTitle;
+        if (!now[k] && !then[k]) return;
+        var cols = moved ? [{ head: "before", facts: then[k] }, { head: "now", facts: now[k] }] : [{ head: "trace", facts: now[k] }];
+        html += "<div class=\"line trace\"><span class=\"label\">trace · " + atVenue(l) + "</span>" + factsTable(cols, moved) + "</div>";
+      });
+      var others = cl.listings.slice(1).filter(function (l) { return l.facts && l.facts.length; });
+      if (others.length) html += "<details class=\"listing-facts\"><summary>the other " + others.length + " listings' facts</summary>" +
+        others.map(function (l) { return factsTable([{ head: l.rawTitle + " @@ " + l.venue, facts: l.facts }], false); }).join("") + "</details>";
+      return html;
+    }
+    function factOf(facts, name) { var f = (facts || []).filter(function (x) { return x.name === name; })[0]; return f ? f.value : null; }
+    /** What a move's facts say changed: what set the projection off, each listing's facts its venue re-published, and
+     *  the decision — film, basis and the rule that decided it — before and now. */
+    function whatChanged(cl) {
+      var lines = [];
+      if (cl.trigger) lines.push("set off by: " + esc(cl.trigger));
+      var anyFormer = false;
+      cl.listings.forEach(function (l) {
+        if (!l.formerly || !l.formerly.length) return;
+        anyFormer = true;
+        var names = [];
+        l.formerly.concat(l.facts || []).forEach(function (f) { if (names.indexOf(f.name) < 0) names.push(f.name); });
+        var moved = names.filter(function (n) { return factOf(l.formerly, n) !== factOf(l.facts, n); }).map(function (n) {
+          return esc(n) + " <span class=\"move-from\">" + esc(factOf(l.formerly, n) || "—") + "</span> → " + esc(factOf(l.facts, n) || "—");
+        });
+        lines.push("listing " + atVenue(l) + ": " + (moved.length ? moved.join("; ") : "its facts as before"));
+      });
+      if (!anyFormer) lines.push("listing: no change of its own facts seen — the move came from the films' records, answers or the cluster");
+      var b = cl.before, t = cl.take;
+      if (b) {
+        var node = function (take) { return ((take.nodes || [])[0] || {}).facts; };
+        var dated = function (take) { var y = factOf(take.filmFacts, "year"); return filmText(take) + (take.film != null && y ? " (" + y + ")" : ""); };
+        var parts = ["film <span class=\"move-from\">" + esc(dated(b)) + "</span> → <span class=\"film\">" + esc(dated(t)) + "</span>",
+          "basis <span class=\"move-from\">" + esc(b.basis) + "</span> → " + esc(t.basis)];
+        var byThen = factOf(node(b), "decided by"), byNow = factOf(node(t), "decided by");
+        if (byThen || byNow) parts.push("decided by <span class=\"move-from\">" + esc(byThen || "—") + "</span> → " + esc(byNow || "—"));
+        lines.push("decision: " + parts.join("; "));
+      }
+      return "<div class=\"line changed\"><span class=\"label\">what changed</span><ul class=\"why\">" +
+        lines.map(function (line) { return "<li>" + line + "</li>"; }).join("") + "</ul></div>";
+    }
+    /** A resolution's label. */
+    function change(cl) {
+      return "<span class=\"r-" + esc(cl.resolution) + "\">" + esc(cl.resolution) + "</span>";
+    }
+    function isMove(cl) { return cl.resolvedAt != null && MOVES.indexOf(cl.resolution) >= 0; }
+    function filmText(t) { return t.film != null ? (t.title ? t.title : "tmdb " + t.film) : "no film"; }
+    /** The take a move's listings held: its film, and the decision's basis and confidence when the worker saw it (none
+     *  in a document written before it was kept: the film's id alone). */
+    function beforeText(cl) {
+      var b = cl.before;
+      if (!b) return cl.was != null ? "tmdb " + cl.was : "no film";
+      return filmText(b) + (b.film != null && b.title ? " (tmdb " + b.film + ")" : "") +
+        (b.basis === "unknown" ? " · its decision not seen" : " · " + b.basis + (b.film != null ? " " + Math.round(b.confidence * 100) + "%" : ""));
+    }
+    function row(code, cl, tagged) {
+      var id = code + "|" + cl.key;
+      var meta;
+      if (cl.resolvedAt == null) {
+        meta = "<span class=\"progress\">" + cl.attempted + "/" + cl.questionCount + " attempted</span>" +
+          (cl.modelGaps ? " · " + cl.modelGaps + " gaps" : "") + (cl.onTmdb ? " · tmdb" : "") + " · waiting " + dur(serverNow() - cl.since);
+      } else {
+        var answered = cl.questions.filter(function (q) { return q.outcome === "answered"; }).length;
+        meta = change(cl) + " " + dur(serverNow() - cl.resolvedAt) + " ago" +
+          (cl.resolvedAt > cl.since ? " · waited " + dur(cl.resolvedAt - cl.since) : "") +
+          (cl.questionCount ? " · " + answered + " answered, " + (cl.questionCount - answered) + " left out" : "");
+      }
+      // a listing joining a match already on the site: most of the activity, listed quietly
+      var quiet = cl.resolution === "joined" ? " quiet" : "";
+      return "<details class=\"cluster" + quiet + "\" data-id=\"" + esc(id) + "\"" + (open[id] ? " open" : "") + "><summary>" + (tagged ? "<span class=\"cc\">" + esc(code) + "</span>" : "") + "<span class=\"title\">" +
+        headline(cl) + "</span><span class=\"meta\">" + (cl.resolvedAt == null ? "" : change(cl) + " · ") +
+        (isMove(cl) ? "<span class=\"move-from\">" + esc(cl.before ? filmText(cl.before) : beforeText(cl)) + "</span> → " : "") + "<span class=\"film\">" + esc(takeText(cl.take)) + "</span>" +
+        "</span></summary>" +
+        "<div class=\"body line meta\">" + meta + "</div>" + body(cl) + "</details>";
+    }
+
+    function render() {
+      var counted = {};
+      // a type's count: of the countries listed
+      order.filter(function (code) { return !country || country === "all" || code === country; }).forEach(function (code) {
+        Object.keys(state[code].clusters).forEach(function (k) {
+          var cl = state[code].clusters[k];
+          if (titled(cl)) counted[typeOf(cl)] = (counted[typeOf(cl)] || 0) + 1;   // a type's count: of the rows the search keeps
+        });
+      });
+      var filters = "<button class=\"filter" + (Object.keys(picked).length ? "" : " on") + "\" data-type=\"\" title=\"" + MEANS[""] + "\">all</button>" +
+        TYPES.map(function (t) {
+          return "<button class=\"filter" + (picked[t] ? " on" : "") + "\" data-type=\"" + t + "\" title=\"" + esc(MEANS[t]) + "\"><span class=\"r-" + t + "\">" + t +
+            "</span><span class=\"n\">" + (counted[t] || 0) + "</span></button>";
+        }).join("");
+      var countryFilters = [["", "by country"], ["all", "all"]].concat(order.map(function (code) { return [code, state[code].name]; }))
+        .map(function (c) {
+          return "<button class=\"filter" + (country === c[0] ? " on" : "") + "\" data-country=\"" + esc(c[0]) + "\">" + esc(c[1]) + "</button>";
+        }).join("");
+      var html = country === "all" ? interspersed() :
+        order.filter(function (code) { return !country || code === country; }).map(section).join("");
+      if (filters !== shownFilters) document.getElementById("filters").innerHTML = shownFilters = filters;
+      if (countryFilters !== shownCountryFilters) document.getElementById("country-filters").innerHTML = shownCountryFilters = countryFilters;
+      // unchanged since the last poll: the rows stay as they are, a click on one in flight included
+      if (html === shown) return;
+      shown = html;
+      document.getElementById("countries").innerHTML = html;
+    }
+    var shown = null, shownFilters = null, shownCountryFilters = null;
+    /** A country's clusters: those waiting, oldest wait first, and those decided or changed, newest first. */
+    function split(code) {
+      var c = state[code];
+      var all = Object.keys(c.clusters).map(function (k) { return { code: code, cl: c.clusters[k] }; });
+      return {
+        staging: all.filter(function (r) { return r.cl.resolvedAt == null; }),
+        resolved: all.filter(function (r) { return r.cl.resolvedAt != null; })
+      };
+    }
+    function byWait(a, b) { return a.cl.since - b.cl.since; }
+    function byNewest(a, b) { return b.cl.resolvedAt - a.cl.resolvedAt; }
+    /** The staging and the decided rows ({ code, cl } each), of the picked types alone, a row tagged with its country
+     *  where `tagged`. */
+    function lists(staging, resolved, tagged) {
+      var listedStaging = staging.filter(function (r) { return wanted(r.cl); }), listedResolved = resolved.filter(function (r) { return wanted(r.cl); });
+      var rows = function (rs) { return rs.map(function (r) { return row(r.code, r.cl, tagged); }).join(""); };
+      return "<h3>Staging</h3>" + (listedStaging.length ? rows(listedStaging) :
+          "<div class=\"empty\">" + emptyText(staging.length, "nothing waits") + "</div>") +
+        "<h3>Decided and changed, last 7 days</h3>" + (listedResolved.length ? rows(listedResolved.slice(0, SHOWN)) +
+          (listedResolved.length > SHOWN ? "<div class=\"empty\">… and " + (listedResolved.length - SHOWN) + " older</div>" : "") :
+          "<div class=\"empty\">" + emptyText(resolved.length, "none lately") + "</div>");
+    }
+    function section(code) {
+      var c = state[code], parts = split(code);
+      var beat = c.beat;
+      var age = beat ? serverNow() - beat.at : null;
+      var head = "<h2>" + esc(c.name) + " <span class=\"age" + (age != null && age > STALE_MS ? " stale" : "") + "\">" +
+        (beat ? "published " + dur(age) + " ago" : "no snapshot yet") + "</span></h2>";
+      var counts = "<div class=\"counts\"><span class=\"pill staging\"><span class=\"n\">" + (beat ? beat.staging : parts.staging.length) +
+        "</span> staging" + (beat && beat.shown < beat.staging ? " (" + beat.shown + " shown)" : "") + "</span>" +
+        "<span class=\"pill resolved\"><span class=\"n\">" + parts.resolved.length + "</span> decided or changed</span>" +
+        "<span class=\"pill\"><span class=\"n\">" + (beat ? beat.modelGaps : 0) + "</span> model gaps</span>" +
+        (beat && beat.dropped ? "<span class=\"pill dropped\"><span class=\"n\">" + beat.dropped + "</span> events dropped</span>" : "") + "</div>";
+      var kinds = beat ? Object.keys(beat.openByKind).sort().map(function (k) {
+        return "<span class=\"kind\">" + esc(k) + " " + beat.openByKind[k] + "</span>";
+      }).join("") : "";
+      return "<section class=\"country\" data-country=\"" + esc(code) + "\">" + head + counts + "<div class=\"kinds\">" + kinds + "</div>" +
+        lists(parts.staging.sort(byWait), parts.resolved.sort(byNewest), false) + "</section>";
+    }
+    /** Every country's rows in one list: the waits oldest first, the decisions and changes newest first, each tagged. */
+    function interspersed() {
+      var staging = [], resolved = [];
+      order.forEach(function (code) { var parts = split(code); staging = staging.concat(parts.staging); resolved = resolved.concat(parts.resolved); });
+      return "<section class=\"country\" data-country=\"all\"><h2>Every country</h2>" + lists(staging.sort(byWait), resolved.sort(byNewest), true) + "</section>";
+    }
+
+    var search = document.getElementById("search");
+    search.value = query;
+    search.addEventListener("input", function () { query = search.value; keepInUrl(); render(); });
+
+    document.getElementById("country-filters").addEventListener("click", function (e) {
+      var button = e.target.closest && e.target.closest("button.filter");
+      if (!button) return;
+      country = button.dataset.country;
+      keepInUrl();
+      render();
+    });
+
+    // A type's filter picks it, or lets it go; "all" lets every type go — the rows listed at once, not on the next poll.
+    document.getElementById("filters").addEventListener("click", function (e) {
+      var button = e.target.closest && e.target.closest("button.filter");
+      if (!button) return;
+      var t = button.dataset.type;
+      if (!t) picked = {}; else if (picked[t]) delete picked[t]; else picked[t] = true;
+      keepInUrl();
+      render();
+    });
+
+    // A click's toggle event fires after the click, a poll's render may land between the two and redraw the row closed:
+    // the row's new state is noted on the click itself, before any render can read it.
+    document.addEventListener("click", function (e) {
+      var summary = e.target.closest && e.target.closest("details.cluster > summary");
+      if (!summary) return;
+      var el = summary.parentElement;
+      if (el.open) delete open[el.dataset.id]; else open[el.dataset.id] = true;
+    }, true);
+    document.addEventListener("toggle", function (e) {
+      var el = e.target;
+      if (el.matches && el.matches("details.cluster")) {
+        if (el.open) open[el.dataset.id] = true; else delete open[el.dataset.id];
+      }
+    }, true);
+
+    function poll() {
+      var q = since();
+      fetch("@routes.IdentityStagingController.data(None)" + (q ? "?since=" + encodeURIComponent(q) : ""), { credentials: "same-origin" })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (data) {
+          apply(data);
+          render();
+          document.getElementById("sub").className = "sub";
+          document.getElementById("status").textContent = "live · updated " + new Date().toLocaleTimeString();
+        })
+        .catch(function (e) {
+          document.getElementById("sub").className = "sub stale";
+          document.getElementById("status").textContent = "poll failed: " + e.message;
+        })
+        .then(function () { setTimeout(poll, POLL_MS); });
+    }
+    poll();
+  </script>
+</body>
+</html>

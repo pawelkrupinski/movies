@@ -42,6 +42,26 @@ class ShowtimesDigestSpec extends AnyFlatSpec with Matchers {
     ShowtimesDigest.leanEqual(a, b) shouldBe false    // ...but leanEqual catches it — no false-skip
   }
 
+  // `recordDigest` is `leanEqual` collapsed to one comparable number, for viewers that
+  // hold a PREVIOUS render rather than the previous record (the /debug table's
+  // change-stream no-op guard). It must inherit leanEqual's showtime sensitivity —
+  // `MovieRecord.hashCode` alone is showtime-blind, which would let a real showtime
+  // change hash equal and leave an open /debug row showing stale screenings.
+  "recordDigest" should "be stable for equal records and shift on a showtime-only change" in {
+    val a = rec(Seq(st("2026-06-11T10:00")))
+    val b = rec(Seq(st("2026-06-11T10:00"), st("2026-06-11T12:00")))   // a new screening appeared
+    ShowtimesDigest.recordDigest(a) shouldBe ShowtimesDigest.recordDigest(a.copy())
+    (a == b) shouldBe true                                              // == can't see it...
+    ShowtimesDigest.recordDigest(a) should not be ShowtimesDigest.recordDigest(b)   // ...the digest can
+  }
+
+  it should "shift on non-showtime changes too (scalar field and per-slot field)" in {
+    val base = rec(Seq(st("2026-06-11T10:00")))
+    ShowtimesDigest.recordDigest(base) should not be ShowtimesDigest.recordDigest(base.copy(imdbRating = Some(9.0)))
+    ShowtimesDigest.recordDigest(base) should not be
+      ShowtimesDigest.recordDigest(rec(Seq(st("2026-06-11T10:00")), synopsis = Some("x")))
+  }
+
   it should "detect non-showtime changes (scalar field and per-slot field)" in {
     val base = rec(Seq(st("2026-06-11T10:00")))
     ShowtimesDigest.leanEqual(base, base.copy(imdbRating = Some(9.0))) shouldBe false          // top-level scalar

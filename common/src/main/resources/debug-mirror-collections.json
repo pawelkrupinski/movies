@@ -1,14 +1,14 @@
 {
-  "_about": "THE list of collections the local prod mirror syncs (scripts/local-mirror reads it through mirror-targets.js; services.DebugMirror reads it as DebugMirror.Collections). One entry per collection, each with why it is mirrored. A collection missing here reads as permanently EMPTY to a mirror reader, not slowly-from-prod. A running mirror notices an edit within a minute and restarts its tailers. `tasks` is deliberately absent: it is a WRITE path, so mirroring it would strand work locally.",
+  "_about": "THE list of collections the local prod mirror syncs (scripts/local-mirror reads it through mirror-targets.js; services.DebugMirror reads it as DebugMirror.Collections). One entry per collection, each with why it is mirrored. A collection missing here reads as permanently EMPTY on a /debug page, not slowly-from-prod. A running mirror notices an edit within a minute and restarts its tailers. `tasks` is deliberately absent: it is a WRITE path (the /debug row's re-enrich enqueues for the real worker), so mirroring it would strand the work locally.",
   "collections": [
-    { "name": "movies", "why": "Backs no page: the corpus, read by `ReviewLabelsCli` (the answers' film links, the queue) and for local inspection." },
-    { "name": "screenings", "why": "Backs no page: the corpus's showtimes, read by `ReviewLabelsCli queue` (what prod serves each listing as)." },
-    { "name": "movie_slots", "why": "Backs no page: the per-cinema slot rows beside `movies`, read by the local identity scripts (`scripts/identity-calibrate`, the matching experiments)." },
-    { "name": "enrichment_attempts", "why": "Backs no page: each rating source's last fetch, read by `scripts/local-mirror/staleness.js`." },
-    { "name": "rating_cadence", "why": "Backs no page: each rating source's refresh cadence, read by `scripts/local-mirror/staleness.js`." },
-    { "name": "web_movies", "why": "The /debug/readmodel dump of every country's read model." },
+    { "name": "movies", "why": "The corpus table: the film rows (/debug), also read by `ReviewLabelsCli` (the answers' film links, the queue)." },
+    { "name": "screenings", "why": "The corpus table's showtimes, stitched back into the film rows." },
+    { "name": "movie_slots", "why": "The per-cinema slot rows the corpus readers resolve beside `movies`. Missing, every /debug film rendered slot-less." },
+    { "name": "enrichment_attempts", "why": "The per-row expand: each rating source's last fetch." },
+    { "name": "rating_cadence", "why": "The per-row expand: each rating source's refresh cadence." },
+    { "name": "web_movies", "why": "The /debug/readmodel dump of what the serving app actually serves. Missing, the dump was blank for every non-boot country." },
     { "name": "web_screenings", "why": "The /debug/readmodel dump's screenings." },
-    { "name": "cinema_scrapes", "why": "Backs no page. Each cinema's last content-bearing scrape: the listing the client actually produced, before the corpus merge touched it, which is what you read when a scrape looks wrong and the corpus a local replay replays. Over the tunnel that read is the latency this mirror exists to remove." },
+    { "name": "cinema_scrapes", "why": "Backs no /debug page. Each cinema's last content-bearing scrape: the listing the client actually produced, before the corpus merge touched it, which is what you read when a scrape looks wrong and the corpus a local replay replays. Over the tunnel that read is the latency this mirror exists to remove." },
     { "name": "identity_model_families", "why": "Backs no page: the model's decisions, read by `ReviewLabelsCli queue`, `scripts/identity-slice` and `scripts/listing-history`. ~190 MB over the five countries with the other identity collections (2026-10-06)." },
     { "name": "identity_listings", "why": "Backs no page: each venue's last scrape as the identity intake holds it (catalogue ids, screenings), read by `scripts/venue-replay` and `scripts/listing-history`." },
     { "name": "venue_pages", "why": "Backs no page: each listing's own film page at its venue, read by `scripts/venue-replay`." },
@@ -19,8 +19,8 @@
     { "name": "identity_history", "why": "Backs no page: a month of the identity system's history -- every answer, venue page and listing the model read as it moved, every read that failed, every take moved with what decided it -- which `scripts/identity-replay` resolves a past moment from and `scripts/identity-why` explains a take change by." },
     { "name": "identity_agreement_keys", "why": "Backs no page: the agreement stage's cluster keys, which its verdicts in `identity_agreements` are filed under, each with its cluster's first listing. `scripts/identity-slice --prod-mirror` reads them to find each cluster's stored verdict." },
     { "name": "identity_pins", "why": "Backs no page: operator pins, read by `scripts/identity-slice --prod-mirror` beside the agreements." },
-    { "name": "identity_staging", "why": "Backs no page: each country's clusters still waiting on an answer and those resolved lately, capped by its publisher (at most 700 small documents a country)." },
-    { "name": "uptimeBuckets", "why": "Backs no page: ~24 h of 15-minute scrape outcomes per service (TTL-expired in prod; the tailer carries those deletes). The scheduled white-cinema investigation (docs/white-cinema-investigations.md) replays /uptime's classification over them, since /uptime is admin-gated and prod Mongo is off limits to agents." },
-    { "name": "filmwebFallback", "why": "Backs no page: one document per venue that ever fell back (PL's own-site to Filmweb, UK chains to Flicks; other countries hold none, and an empty prod collection never makes a mirror stale). The white-cinema sweep reads it beside the buckets to tell a venue served via its fallback from one that is genuinely white." }
+    { "name": "identity_staging", "why": "The staging screen (/debug/identity/staging): each country's clusters still waiting on an answer and those resolved lately, capped by its publisher (at most 700 small documents a country)." },
+    { "name": "uptimeBuckets", "why": "Backs no /debug page: ~24 h of 15-minute scrape outcomes per service (TTL-expired in prod; the tailer carries those deletes). The scheduled white-cinema investigation (docs/white-cinema-investigations.md) replays /uptime's classification over them, since /uptime is admin-gated and prod Mongo is off limits to agents." },
+    { "name": "filmwebFallback", "why": "Backs no /debug page: one document per venue that ever fell back (PL's own-site to Filmweb, UK chains to Flicks; other countries hold none, and an empty prod collection never makes a mirror stale). The white-cinema sweep reads it beside the buckets to tell a venue served via its fallback from one that is genuinely white." }
   ]
 }

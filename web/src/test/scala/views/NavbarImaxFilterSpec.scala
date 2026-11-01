@@ -42,7 +42,7 @@ class NavbarImaxFilterSpec extends AnyFlatSpec with Matchers {
   private def render(films: FilmSchedule*): String =
     views.html.repertoire(
       films = films, allCinemas = Nil, cinemaPills = Map.empty,
-      minifier = tools.Minify, oauthProviders = Set.empty,
+      devMode = false, minifier = tools.Minify, oauthProviders = Set.empty,
       renderedAt = today.atStartOfDay,
     ).body
 

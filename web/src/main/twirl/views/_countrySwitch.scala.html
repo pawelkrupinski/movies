@@ -9,6 +9,11 @@
    the address's `#…` too. `path` is that page's path ("/uptime", "/tasks"),
    appended to each country's `webUrl`.
 
+   Deliberately NOT shared with `_debugNavbar`'s switcher: that one carries a Dev
+   `sameOrigin` mode (`?country=xx`) which swaps the served db in-process. These
+   pages read one shared store per deployment, so there is no in-process db to
+   swap — a cross-host link is the only thing that can work here.
+
    Callers own the surrounding header layout (`.page-head`); this owns only the
    control and its own appearance. *@
 @if(models.Country.switchable.sizeIs > 1) {
