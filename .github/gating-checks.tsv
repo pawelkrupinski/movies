@@ -71,4 +71,4 @@ job	identity-model-convergence.yml	timings	aggregate
 job	identity-model-convergence.yml	report (timings)	aggregate
 job	main.yml	commit rules	2855
 job	identity-model-convergence.yml	request-bisect	unproven	runs only after a red leg; owner: convergence; proven by its first green run
-job	identity-model-convergence.yml	leg	unproven	added by gating_checks.py sync; owner: Paweł Krupiński
+job	identity-model-convergence.yml	leg	unproven	the name of the leg job only when a proven reuse skips it; its rows are `leg (<country>)`; owner: convergence; never proven by a green run
