@@ -294,6 +294,21 @@ groups:
     expr: |-
       max by (country) (up{job="kinowo-worker"} == 1)
       unless on (country)
+      count by (country) (kinowo_worker_identity_staging_dropped_total)
+    for: 15m
+    labels:
+      severity: warning
+      metric: kinowo_worker_identity_staging_dropped
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_staging_dropped'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_staging_dropped series
+        for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the family
+        was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing and
+        cannot fire: identity-agreement.rules IdentityStagingEventsDropped.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (up{job="kinowo-worker"} == 1)
+      unless on (country)
       count by (country) (kinowo_worker_identity_suspect_takes)
     for: 15m
     labels:

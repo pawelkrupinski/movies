@@ -185,7 +185,7 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
       "givenUp"     -> Inert("what the typed outcome reads a settled question as -- given up on or still pending; no verdict reads it"),
       "attemptsMarked" -> Inert("how many attempts were marked: when to read the receipts again"),
       "ask"         -> Inert("asking"), "askNow" -> Inert("asking, inline"), "metrics" -> Inert("metrics"),
-      "keyStore"    -> Inert("names: no verdict is found by its key"),
+      "staging"     -> Inert("the staging screen"), "keyStore" -> Inert("names: no verdict is found by its key"),
       "correctionPostersAtOnce" -> Inert("a budget: delays a decision, never moves its result (no-drift item 21)"),
       "correctionsPerApply"     -> Inert("a budget: delays a decision, never moves its result (no-drift item 21)"),
       "backfillPerApply"        -> Inert("a budget: delays a decision, never moves its result"),

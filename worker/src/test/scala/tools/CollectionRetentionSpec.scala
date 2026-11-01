@@ -28,17 +28,12 @@ class CollectionRetentionSpec extends AnyFlatSpec with Matchers {
   }
 
   "The declarations" should "name only collections the sources still name" in {
-    withClue("no main source names these collections any more — move them to services.MongoCollections.retired " +
+    withClue("no main source names these collections any more — drop them from services.MongoCollections " +
       "(and drop the collection itself in prod if it still holds data): ")(
       (declared.keySet -- named) shouldBe empty)
   }
 
-  "The retired collections" should "be opened by no source" in {
-    withClue("a source opens a collection services.MongoCollections.retired names — register it again, or stop opening it: ")(
-      (MongoCollections.retired.map(_.name).toSet intersect named) shouldBe empty)
-  }
-
-  "The declarations" should "name a sweep class that exists, and a TTL field some source indexes with an expiry" in {
+  they should "name a sweep class that exists, and a TTL field some source indexes with an expiry" in {
     val classes = """\b(?:class|object)\s+(\w+)""".r
     val defined = sources.flatMap(s => classes.findAllMatchIn(s).map(_.group(1))).toSet
     val expiring = sources.filter(s => s.contains("expireAfter") || s.contains("MongoTtlIndex."))

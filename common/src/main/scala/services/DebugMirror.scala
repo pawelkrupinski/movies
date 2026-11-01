@@ -24,6 +24,9 @@ object DebugMirror {
    *  a spec holds to these names: the stores are the identity code's, which this mirror does not reach). */
   val IdentityFamilies = "identity_model_families"
   val IdentityTraces   = "identity_traces"
+  /** What each country's worker publishes of its identity stage's waits (`IdentityStaging`, which a spec holds to this
+   *  name). */
+  val IdentityStaging  = "identity_staging"
 
   /** The collection list the sync reads (`scripts/local-mirror/mirror-targets.js`), with a rationale for each: GENERATED
    *  from [[MongoCollections]] by `sbt 'worker/Test/runMain deploy.DebugMirrorList'` ([[rendered]]), which

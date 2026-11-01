@@ -30,10 +30,11 @@ object AgreementStageComposition {
                            attemptsMarked: Option[() => Long], keys: AgreementKeys,
                            calibration: IdentityCalibration = IdentityCalibration.resolver)
 
-  /** What a stage sets off beside its takes — the worker's queue and inline asks, its metrics, the
+  /** What a stage sets off beside its takes — the worker's queue and inline asks, its metrics, the staging screen, the
    *  heap's pressure. A harness's own: it answers what the stage `wanted` between applies, as the queue would. */
   final case class Effects(ask: Set[Question] => Unit = _ => (), metrics: AgreementStage.Metrics = AgreementStage.Metrics.Silent,
                            askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never,
+                           staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
                            pressed: () => Boolean = () => false)
 
   /** The ways a harness's stage may differ from the worker's, each with why no take moves by it. */
@@ -56,6 +57,6 @@ object AgreementStageComposition {
         .getOrElse(if (unbudgeted) Int.MaxValue else AgreementStage.CorrectionsPerApply),
       backfillPerApply = if (unbudgeted) Int.MaxValue else AgreementStage.BackfillPerApply,
       askNow = effects.askNow, attempted = sources.attempted, givenUp = sources.givenUp, attemptsMarked = sources.attemptsMarked,
-      keyStore = sources.keys, pressed = effects.pressed)
+      staging = effects.staging, keyStore = sources.keys, pressed = effects.pressed)
   }
 }

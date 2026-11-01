@@ -68,15 +68,25 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         services.identity.TakeJudgements.withdraw(agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished), judged),
       agreementBacklog = () => agreementStage.backlog,
       suspects    = (resolution, listings) => { suspectTakeCount.submit(resolution, listings); ruleFiringCount.submit(resolution, listings) },
-      changeFeed  = takeChangesTold,
+      changeFeed  = { val projections = new java.util.concurrent.atomic.AtomicLong
+        changes => {
+          takeChangesTold(changes)
+          val (projection, at) = (projections.incrementAndGet(), clock.millis())
+          identityStagingEvents.offer(changes.map(services.identity.staging.StagingEvent.Changed(_, projection, at)))
+        } },
       pagesMoved  = venuePageFacts.takeMoved)
 
   /** This country's hand judgements of takes, as the worker was built with them ([[BundledJudgements]]). */
   lazy val judged: services.identity.TakeJudgements.Index = BundledJudgements.index(country.code)
 
-  /** Handed each written projection's change list, as the take-change counter is: nothing reads it in production since
-   *  the staging screen retired; a harness overrides it to hold the change lists to what the projection wrote. */
+  /** Handed each written projection's change list, beside the staging publisher's feed: a harness overrides it to hold
+   *  the change lists to what the projection wrote. */
   def takeChangesTold: Seq[services.identity.TakeChange] => Unit = _ => ()
+
+  /** What the staging publisher drains as it happens: each written projection's change list, and the live agreement
+   *  stage's waits starting and ending. */
+  lazy val identityStagingEvents: services.identity.staging.ChangeFeed[services.identity.staging.StagingEvent] =
+    new services.identity.staging.ChangeFeed(services.identity.adapters.IdentityStagingPublisher.FeedCapacity)
 
   /** The suspect takes no hand judgement judges, and the takes one calls wrong, of each written projection of the whole
    *  corpus (`kinowo_worker_identity_suspect_takes`, `…_wrong`): its
@@ -118,7 +128,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
           threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),
         stopwatch = stopwatch),
-      keys = agreementKeys)
+      staging = Some(identityStagingEvents.offer), keys = agreementKeys)
     familyAnswerStore.awaitedBy(question => stage.wanted.contains(question))
     familyAnswerStore.readBy(stage.reads)
     stage
@@ -134,6 +144,19 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   lazy val outstandingQuestionsSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("identity-outstanding-questions", () => outstandingQuestions.reask().enqueued.run,
       services.identity.adapters.OutstandingQuestions.Interval, services.identity.adapters.OutstandingQuestions.Interval, scheduledRunStore, clock, ticks))
+  /** The staging screen's store (`identity_staging`), in this country's database, which the local screen reads beside
+   *  every other country's; in memory without one. */
+  lazy val identityStaging: services.identity.staging.IdentityStaging =
+    services.identity.staging.IdentityStaging.in(mongoConnection.database, clock)
+  /** What this country's takes still wait on, published for the local staging screen (`scripts/identity-staging`). */
+  lazy val identityStagingPublisher: services.identity.adapters.IdentityStagingPublisher = managedResources.stopping(
+    new services.identity.adapters.IdentityStagingPublisher(country.code, identityStaging,
+      taken = () => identityProjection.lastProjected.map(_.taken), changes = () => identityStagingEvents.drain(),
+      waitingOn = agreementStage.waitingOn, clusterKey = agreementStage.keyOf,
+      outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
+      takeMetrics = workerMetrics.identityTakes.forCountry(country.code),
+      storedFilm = { val records = storedLookups(); id => records.film(id).toOption.flatten },
+      read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read())))
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
   private val InlineFamilyAskThreads = 16
   /** An agreement stage over this country's answers: the live one ([[agreementStage]]), and the drift check's, which keeps
@@ -144,6 +167,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
                         metrics: services.identity.agreement.AgreementStage.Metrics = services.identity.agreement.AgreementStage.Metrics.Silent,
                         budgets: Boolean = true,
                         askNow: services.identity.agreement.AgreementStage.AskNow = services.identity.agreement.AgreementStage.AskNow.Never,
+                        staging: Option[Seq[services.identity.staging.StagingEvent] => Unit] = None,
                         keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys)
       : services.identity.agreement.AgreementStage =
     services.identity.agreement.AgreementStageComposition(
@@ -158,7 +182,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
         listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)),
         changes = familyAnswerStore.changes, posters = posterAnswerStore, catalogue = catalogueAnswerStore,
         attempted = identityQuestionMemory.attempted, givenUp = identityQuestionMemory.givenUp, attemptsMarked = Some(() => identityQuestionMemory.marks), keys = keys),
-      services.identity.agreement.AgreementStageComposition.Effects(ask = ask, metrics = metrics, askNow = askNow,
+      services.identity.agreement.AgreementStageComposition.Effects(ask = ask, metrics = metrics, askNow = askNow, staging = staging,
         pressed = () => tools.HeapPressure.pressed()),
       overrides = if (budgets) Set.empty else Set(services.identity.agreement.AgreementStageComposition.Override.Unbudgeted))
 

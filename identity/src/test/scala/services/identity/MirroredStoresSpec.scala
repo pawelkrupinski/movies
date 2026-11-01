@@ -13,4 +13,8 @@ class MirroredStoresSpec extends AnyFlatSpec with Matchers {
     DebugMirror.Collections should contain allOf (MongoIdentityModelStore.FamiliesCollection, MongoIdentityTraceStore.Collection)
   }
 
+  it should "copy the staging screen's collection, which each country's worker writes" in {
+    DebugMirror.IdentityStaging shouldBe staging.IdentityStaging.Collection
+    DebugMirror.Collections should contain (staging.IdentityStaging.Collection)
+  }
 }

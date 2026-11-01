@@ -1,11 +1,12 @@
 # IS THE AGREEMENT STAGE KEEPING UP, AND IS IT STILL AS CHEAP AS IT WAS? -- the identity projection's agreement
-# phase (services.identity.agreement.AgreementStage).
+# phase (services.identity.agreement.AgreementStage), and the staging publisher beside it.
 #
 #   - `kinowo_worker_identity_agreement_clusters{state}` -- clusters by agreement state, as the last stage run left
 #     them; `incomplete` is a cluster whose verdict is still to be read, the backfill's backlog.
 #   - `kinowo_worker_identity_agreement_phase_seconds{mode}` / `..._allocated_bytes{mode}` -- every projection's
 #     agreement phase, by projection mode (periodic, whole, changed): the "agreement 69.1s/9579MB" of its
 #     `identity projection:` log line, as histograms.
+#   - `kinowo_worker_identity_staging_dropped_total` -- staging events the publisher let go unwritten.
 groups:
   - name: identity-agreement-recorded
     rules:
@@ -79,3 +80,16 @@ groups:
             The identity projection's agreement phase allocates twice its weekly median. VictoriaLogs
             `country:<cc> "identity projection:"` names each projection's phases with their MB; compare the
             build before and after.
+
+      # A STAGING EVENT WAS DROPPED. The staging publisher let a take change or a wait go unwritten: the local
+      # /debug/identity/staging page misses it. Zero always; the counter is seeded at 0 per country.
+      - alert: IdentityStagingEventsDropped
+        expr: sum by (country) (increase(kinowo_worker_identity_staging_dropped_total[30m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the identity staging publisher dropped events"
+          description: >-
+            Identity staging events (take changes, waits) were let go before a publish wrote them -- the feed let
+            them go, or publishes kept failing -- so the staging screen misses them. VictoriaLogs
+            `country:<cc> "identity staging"` has the WARN line per drop and the failed publishes before it.

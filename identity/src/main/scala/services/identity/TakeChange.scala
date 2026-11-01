@@ -5,7 +5,7 @@ import services.movies.ListingKey
 import java.util.Locale
 
 /** A listing still published whose take a projection changed — THE change list every reader of what a projection changed
- *  reads (the take-change lines and counter, the drift check's kinds): one per listing, with its film
+ *  reads (the take-change lines and counter, the staging screen, the drift check's kinds): one per listing, with its film
  *  and its decision's basis before and after, read off what the projection's writes did to the stored film the listing
  *  is on ([[LiveProjectionIndex.written]]).
  *
