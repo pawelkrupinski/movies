@@ -25,3 +25,20 @@ with what the same drain admits: a waiting listing's venue scrape replaces its w
 no take. Measured with the full measure (run 41241555033, base 73f1dcfcb, head ac921f2de):
 0 takes lost, changed or gained, model and final stage, in PL (10,804 listings), DE (34,237), UK (36,649), US (97,570)
 and ES (5,937). LANDABLE.
+
+## Class D: listing retention by normalized title (owner decision, 2026-11-01)
+
+`ListingRetention` kept a listing that left while a present listing billed its title, read by the sanitized title
+alone. DE Filmhaus Kino Koeln's "BLACK WATER (2025)" left while Kinocenter Giessen billed "Black Water (GLOBALE)".
+Giessen's take then depended on event order: drift slice `de/kinocenter-giessen-black-water-globale--0ea0f3bc`, seed 29,
+went tmdb:1436969 -> 454615 -> 1436969. The title is now read as it is searched (`TitleNormalizer.searchQuery`: case,
+banners, OmU/OV/3D/IMAX) without its trailing parenthetical (`SearchTitles.withoutTrailingParenthesis`), then sanitized.
+It reads the input only, never a take. Translated titles stay out of scope.
+
+- Property: `ListingRetentionSpec`. The Koeln/Giessen pair, and every case/year/tag pairing over 64 seeds, stay kept
+  (both failed before); a different title still goes.
+- Slice: seed 29 red before and clean after; clean on seeds 1-64 after. Once the slice lands (red #549's commit), its `seeds` file holds 29 so
+  `IdentityDriftSlicesSpec` replays it on every run.
+- Measured (run 41253482805, base cc5e62c40, head 27ce6c284): 0 takes moved in PL, DE, UK, US and ES, model and final.
+  The measure resolves each recording whole, where no listing leaves, so it cannot see retention. The convergence
+  legs' drift rows, which replay leaves, are the check of the incremental sequence after landing.
