@@ -57,6 +57,47 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     tools.costs.CpuMeter.fastest()(IdentityMeasures.shapes(Seq(long))) should be < 100.millis
   }
 
+  "a billing's banner or strand" should "leave the film's title a shape, each case from prod's unmatched listings (2026-11-01)" in {
+    def shapes(title: String) = IdentityMeasures.shapes(Seq(title))
+    // an edition closing the title after its stop
+    shapes("TOUCH OF EVIL: THE RESTORED CUT") should contain("TOUCH OF EVIL")
+    shapes("Kult-Special: Blade Runner - The Final Cut") should contain("Blade Runner")
+    shapes("The Lord of the Rings: The Return of the King - Extended Edition") should contain("The Lord of the Rings: The Return of the King")
+    // a certificate note the billing runs on past
+    shapes("Ken Russell's The Devils (18) Directors Cut") should contain("Ken Russell's The Devils")
+    shapes("Wicker (15) 105 mins 05.01.27") should contain("Wicker")
+    // a case change: a strand closing it, a programme heading it, the film in capitals after the programme
+    shapes("Lalka.  DZIEŃ KINA POLSKIEGO") should contain("Lalka")
+    shapes("Chłopiec w różowych spodniach-DZIECIŃSTWO BEZ PRZEMOCY") should contain("Chłopiec w różowych spodniach")
+    shapes("Godard est mort, vive Godard! DIE PASSION DER JUNGFRAU VON ORLÉANS") should contain("DIE PASSION DER JUNGFRAU VON ORLÉANS")
+    shapes("UK PREMIERE For The Plasma") should contain("For The Plasma")
+    // the one title a long announcement quotes
+    shapes("DKF ZAPRASZA 13 LISTOPADA O GODZ. 18:00 NA FILM „NASZA REWOLUCJA” –  HISTORIĘ MIŁOŚCI SILNIEJSZEJ NIŻ STRACH") should
+      contain("NASZA REWOLUCJA")
+  }
+
+  it should "keep a film's own subtitle, number and stop whole" in {
+    def shapes(title: String) = IdentityMeasures.shapes(Seq(title))
+    // a subtitle in capitals after a colon or a spaced dash is the film's, never a case change to split at
+    IdentityMeasures.caseSplit("Mission: Impossible – THE FINAL RECKONING") shouldBe empty
+    IdentityMeasures.caseSplit("Avatar: FIRE AND ASH") shouldBe empty
+    // one word in capitals is a numeral or a name, no strand
+    IdentityMeasures.caseSplit("Rocky IV") shouldBe empty
+    IdentityMeasures.caseSplit("NT Live: Hay Fever") shouldBe empty
+    IdentityMeasures.caseSplit("M3GAN 2.0") shouldBe empty
+    // a sentence's stop between words of one case is the title's ("Szkoła magicznych zwierząt. Tajemnica…")
+    IdentityMeasures.caseSplit("Szkoła magicznych zwierząt. Tajemnica szkolnego podwórka") shouldBe empty
+    IdentityMeasures.caseSplit("DIUNA: CZĘŚĆ TRZECIA") shouldBe empty
+    // what follows the stop must be an edition's words only
+    shapes("Dune: Part Two") should not contain "Dune"
+    IdentityMeasures.shapes(Seq("Dune: Part One Reissue")) should not contain "Dune"
+    shapes("The Final Cut") shouldBe Seq("The Final Cut")
+    // a short billing quoting a work bills a talk or a show about it
+    shapes("Wojciech Cejrowski i „Prawo Dżungli”") should not contain "Prawo Dżungli"
+    // a bracketed number is no certificate
+    shapes("Sweet Sixteen (16) 2002") should not contain "Sweet Sixteen"
+  }
+
   "an original title" should "share nothing with the billing only when it is another title altogether, not a spelling of it" in {
     // DE kinoheld's event pages: what a search for the billing hit, copied as the original
     Listing("Abdul Kader Chahin", originalTitle = Some("秒速5センチメートル")).originalSharesNothingBilled shouldBe true
@@ -497,8 +538,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // …also behind a programme banner: UK "Horror Season 2026 Manhunter: The Final Cut" ×81 was only an
     // overlap of "Manhunter" — the banner-free shape decorates it with an edition label — and was vetoed.
     val season = TitleDecorations(Set(Seq("horror", "season", "2026")), Set.empty)
+    // Since its edition is read off as one (2026-11-01, `editionHead`), "Manhunter" is a whole piece of it: a segment.
     IdentityMeasures.titleRelation(Listing("Horror Season 2026 Manhunter: The Final Cut", decorations = season), Film("Manhunter")) shouldBe
-      Category("decorated")
+      Category("segment")
     // Its original title decorates the film on both sides: a director's possessive before, an edition after.
     IdentityMeasures.originalTitleRelation(Some("Michael Mann's Manhunter: The Final Cut"), Seq("Manhunter")) shouldBe Category("decorated")
   }

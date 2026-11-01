@@ -2815,7 +2815,7 @@
 {"text":"Corpus Christi"}
 {"text":"Corpus Delicti"}
 {"text":"Corpus Delicti (deutsch with English subs)","pl,uk,de,us,es":{"query":"Corpus Delicti"}}
-{"text":"Corpus Delicti Literaturverfilmung nach Juli Zeh"}
+{"text":"Corpus Delicti Literaturverfilmung nach Juli Zeh","de":{"query":"Corpus Delicti"}}
 {"text":"Cosi Fan Tutte"}
 {"text":"Cosi fan Tutte (ROH)"}
 {"text":"Cosi fan tutte (RB+O 2026/27)"}
@@ -8531,7 +8531,7 @@
 {"text":"LN: Der perfekte Urlaub"}
 {"text":"LN: Liebe braucht keine Ferien"}
 {"text":"LOL 2.0"}
-{"text":"LOL 2.0 Zum 60. Geb. von Sophie Marceau!"}
+{"text":"LOL 2.0 Zum 60. Geb. von Sophie Marceau!","de":{"query":"LOL 2.0"}}
 {"text":"LOLA MONTEZ"}
 {"text":"LONDON"}
 {"text":"LONDON (OmeU)"}
@@ -9805,7 +9805,7 @@
 {"text":"Mending the Line"}
 {"text":"Menschen am Sonntag"}
 {"text":"Mentalmagie mit Andy Häussler - Kraft der Träume"}
-{"text":"Menü mit dem Film TITANIC"}
+{"text":"Menü mit dem Film TITANIC","de":{"query":"TITANIC","bannerEnd":18}}
 {"text":"Mercury"}
 {"text":"Mermaid Beach"}
 {"text":"Mermaids (1990)","pl,uk,de,us,es":{"key":"Mermaids","venue":{"kino-kinematograf":"Mermaids"}}}
@@ -11082,7 +11082,7 @@
 {"text":"On Drive"}
 {"text":"On Her Majesty's Secret Service"}
 {"text":"On Our Own"}
-{"text":"On Screen Michael (12A)","pl,uk,de,us,es":{"query":"On Screen Michael"}}
+{"text":"On Screen Michael (12A)","pl,de,us,es":{"query":"On Screen Michael"},"uk":{"query":"Michael","bannerEnd":10}}
 {"text":"On Screen: Andre Rieu's 2026 Christmas Concert: Let It Snow (PG)","pl,uk,de,us,es":{"query":"On Screen: Andre Rieu's 2026 Christmas Concert: Let It Snow"}}
 {"text":"On Screen: Andrew Lloyd Webber's Starlight Express (PG)","pl,uk,de,us,es":{"query":"On Screen: Andrew Lloyd Webber's Starlight Express"}}
 {"text":"On Screen: Doctor Who: The Satan Pit (12A)","pl,uk,de,us,es":{"query":"On Screen: Doctor Who: The Satan Pit"}}

@@ -160,8 +160,79 @@ private[identity] object TitleShapeMeasures {
     val quoted  = (if (quotesOne && Quoted.findAllMatchIn(title).size == 1)
       LeadingQuoted.findFirstMatchIn(title).orElse(TrailingQuoted.findFirstMatchIn(title)).map(_.group(1)) else None).toSeq
     val banner  = BannerBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
-    (slashed ++ coded ++ undated ++ format ++ quoted ++ banner).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
+    (slashed ++ coded ++ undated ++ format ++ quoted ++ banner ++ editionHead(title) ++ caseSplit(title) ++ beforeCertificate(title) ++
+      quotedWithin(title, quotesOne))
+      .map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
   }
+
+  /** The title before an EDITION its colon or spaced dash closes on — "TOUCH OF EVIL: THE RESTORED CUT" ×5 (US), "Blade
+   *  Runner - The Final Cut", "Dune: Part One Reissue" is not one, as "Part One" is the film's: every word after the
+   *  stop an edition's ([[EditionTail]]). `SearchTitles` reads what follows a colon as the title and the head as its
+   *  banner, and searched only "THE RESTORED CUT" (prod 2026-11-01). */
+  private def editionHead(title: String): Seq[String] = {
+    // the stops, read by index: a pattern anchored at both ends backtracks over a long billing (the scan spec below)
+    val stops = Iterator.iterate(title.indexOf(": "))(i => if (i < 0) i else title.indexOf(": ", i + 1)).takeWhile(_ >= 0).map(i => (i, i + 2)) ++
+      Seq(" - ", " – ", " — ").iterator.flatMap(stop =>
+        Iterator.iterate(title.indexOf(stop))(i => if (i < 0) i else title.indexOf(stop, i + 1)).takeWhile(_ >= 0).map(i => (i, i + stop.length)))
+    stops.collectFirst { case (at, after) if {
+      val tail = TitleContainment.tokens(title.substring(after))
+      tail.exists(EditionTail) && tail.forall(word => EditionTail(word) || LeadingArticles(word)) &&
+        title.substring(0, at).exists(_.isLetter)
+    } => title.substring(0, at) }.toSeq
+  }
+  /** The words of an edition a billing names after its film: the word table's editions and anniversaries
+   *  ([[services.billing.DecorationWords.EditionWords]]: cut, restored, remastered, 4K, re-release, anniversary…) and the
+   *  words they come with ("Director's Cut", "The Final Cut", "Reissue", "Extended Edition"). */
+  private val EditionTail: Set[String] = services.billing.DecorationWords.EditionWords ++
+    Set("director", "directors", "final", "reissue", "extended", "uncut", "theatrical", "ultimate", "special", "edition")
+
+  /** The two halves of a mixed-case billing at a CASE CHANGE: a run of two or more words in capitals heading or closing a
+   *  billing whose other words are not, set off by a sentence's stop, an unspaced dash or a bare space — never by a colon
+   *  or a spaced dash, which `SearchTitles` already splits, and where a film's own subtitle is billed in capitals
+   *  ("Mission: Impossible – THE FINAL RECKONING"). The case change is the venue's: a strand closing the film's title
+   *  (PL "Lalka.  DZIEŃ KINA POLSKIEGO", "Chłopiec w różowych spodniach-DZIECIŃSTWO BEZ PRZEMOCY"), a programme heading
+   *  it ("UK PREMIERE For The Plasma"), or the film billed in capitals after the programme ("Godard est mort, vive
+   *  Godard! DIE PASSION DER JUNGFRAU VON ORLÉANS"). Both halves are shapes: which one is the film, the candidates tell. */
+  private[identity] def caseSplit(title: String): Seq[String] =
+    if (!title.exists(_.isLower) || !title.exists(_.isUpper)) Nil
+    else {
+      val words = CaseWord.findAllMatchIn(title).toVector
+      def capitals(w: String) = w.count(_.isLetter) >= 2 && !w.exists(_.isLower)
+      def lettered(w: String) = w.exists(_.isLetter)
+      def split(at: Int): Option[Seq[String]] = {
+        val (head, tail) = (title.substring(0, words(at).start), title.substring(words(at).start))
+        val stop = head.reverse.takeWhile(c => !c.isLetterOrDigit)
+        val spaced = stop.exists(_.isWhitespace)
+        val allowed = stop.trim.isEmpty || stop.trim.forall(".!?…".contains(_)) || (stop.trim.forall("-–—".contains(_)) && !spaced)
+        Option.when(allowed && head.exists(_.isLetter) && tail.exists(_.isLetter))(Seq(head.trim.stripSuffix(stop.trim).trim, tail.trim))
+      }
+      // a closing run of capitals
+      val closing = words.reverseIterator.takeWhile(m => capitals(m.matched) || !lettered(m.matched)).size
+      val opening = words.iterator.takeWhile(m => capitals(m.matched) || !lettered(m.matched)).size
+      val tailRun = Option.when(closing >= 2 && closing < words.size && words.takeRight(closing).count(m => capitals(m.matched)) >= 2 &&
+        words.dropRight(closing).exists(_.matched.exists(_.isLower)))(words.size - closing).flatMap(split)
+      val headRun = Option.when(opening >= 2 && opening < words.size && words.take(opening).count(m => capitals(m.matched)) >= 2 &&
+        words.drop(opening).exists(_.matched.exists(_.isLower)))(opening).flatMap(split)
+      (tailRun.toSeq ++ headRun.toSeq).flatten.filter(_.nonEmpty)
+    }
+  private val CaseWord = """[\p{L}\p{N}][\p{L}\p{N}'’]*""".r
+
+  /** The title before a box office's certificate note the billing runs on past — "Ken Russell's The Devils (18)
+   *  Directors Cut", "Wicker (15) 105 mins 05.01.27" (UK, prod 2026-11-01): the ingest's peel takes a closing note only
+   *  (FormatTags.uncertified). */
+  private def beforeCertificate(title: String): Seq[String] =
+    if (title.indexOf('(') < 0 && !title.toLowerCase(java.util.Locale.ROOT).contains("cert")) Nil
+    else CertificateWithin.findFirstMatchIn(title).filter(m => m.end < title.length && title.substring(m.end).trim.nonEmpty &&
+      title.substring(0, m.start).exists(_.isLetter)).map(m => title.substring(0, m.start)).toSeq
+  private val CertificateWithin = (s"""(?i)(?<=\\S)\\s*${services.titlerules.TitleRulePlaceholders.all("CERT_NOTE")}(?=\\s)""").r
+
+  /** The one title a long billing quotes within its prose — PL DKF's "DKF ZAPRASZA 13 LISTOPADA O GODZ. 18:00 NA FILM
+   *  „NASZA REWOLUCJA” – HISTORIĘ MIŁOŚCI …" — of six words or more around the quote: a short billing quoting a work is
+   *  a talk's or a show's about it ([[LeadingQuoted]]'s note), a long one an announcement of the film it quotes. */
+  private def quotedWithin(title: String, quotesOne: Boolean): Seq[String] =
+    if (!quotesOne || Quoted.findAllMatchIn(title).size != 1) Nil
+    else QuotedTitle.findFirstMatchIn(title).filter(m =>
+      TitleContainment.tokens(title.substring(0, m.start) + " " + title.substring(m.end)).count(_.length > 1) >= 6).map(_.group(1)).toSeq
   /** Whether a title can match a pattern anchored at its end, read off its last characters before the pattern scans it
    *  from the start: anchored at the end, a scan backtracks over every title that does not end so (11.8% of a
    *  convergence leg's single-threaded take-up, JFR run 38553692147). A `$` also matches before a final line break, so a
