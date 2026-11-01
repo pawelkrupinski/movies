@@ -78,7 +78,10 @@ SELF_TEST_FILES = re.compile(
 
 
 def git(*args: str) -> str:
-    return subprocess.run(["git", *args], check=True, capture_output=True, text=True).stdout
+    # core.quotePath=false: a path with a non-ASCII letter (drift-slices/pl/centrum-3d-przemyśl-...) is printed as
+    # itself, not as a quoted octal escape that no prefix test matches (2026-11-01: a push's committed Zniknięcie slice
+    # read as "no drift slice", landing check run 41275275554)
+    return subprocess.run(["git", "-c", "core.quotePath=false", *args], check=True, capture_output=True, text=True).stdout
 
 
 def at(rev: str, path: str) -> str:
@@ -115,6 +118,7 @@ class Commit:
 
     def has(self, key: str) -> bool:
         return bool(self.trailers.get(key.lower()))
+
 
     def label(self) -> str:
         return f"{self.sha[:9]} {self.subject}"

@@ -312,6 +312,13 @@ class RatchetTest(unittest.TestCase):
         head = self.commit({a: "6\n"}, "CI: the drift row times out later\n\nFixes-Red: 3134\nDrift-Slice: none")
         self.assertEqual(1, self.guards(f"{head}^..{head}"), "Drift-Slice: none without a reason")
 
+    def test_a_slice_under_a_non_ascii_name_counts(self):
+        a = "identity/src/main/A.scala"
+        fix = self.commit({a: "1\n"}, "Identity: Zniknięcie no longer flips\n\nFixes-Red: 555")
+        self.commit({"test/resources/fixtures/drift-slices/pl/centrum-3d-przemyśl-dkf-zniknięcie/slice.json.gz": "s\n"},
+                    "Drift slice: Zniknięcie")
+        self.assertEqual(0, self.guards(f"{fix}^..HEAD"), "git quotes a non-ASCII path unless told not to")
+
     def test_an_unreadable_range_is_no_verdict_to_the_guards(self):
         self.assertEqual(2, self.guards("nosuch..HEAD"))
 
