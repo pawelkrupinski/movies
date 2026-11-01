@@ -96,14 +96,17 @@ def jobs_block(text: str) -> list[str]:
 
 
 def yaml_jobs(text: str) -> list[tuple[str, str, str]]:
-    """(key, display-name template, the job's own lines) of each top-level job: its `name:`, else its key."""
+    """(key, display-name template, the job's own lines) of each top-level job: its `name:`, else its key (`<key> (*)` for a
+    matrix job, whose rows github.com names off the matrix vector)."""
     out, key, body = [], None, []
     for line in jobs_block(text) + ["END:"]:
         m = re.match(r"^    ([A-Za-z][\w-]*):\s*$", line)
         if m or (line and not line.startswith(" ") and not line.startswith("#")):
             if key:
+                # no `name:` on a matrix job: github.com names each row `<key> (<matrix vector values>)`
+                default = f"{key} (*)" if any(re.match(r"^            matrix:", l) for l in body) else key
                 name = next((re.sub(r"^\s+name:\s*", "", l).strip().strip("'\"") for l in body
-                             if re.match(r"^        name:\s*\S", l)), key)
+                             if re.match(r"^        name:\s*\S", l)), default)
                 out.append((key, name, "\n".join(body)))
             key, body = (m.group(1), []) if m else (None, [])
             if not m:

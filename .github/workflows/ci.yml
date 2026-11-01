@@ -147,10 +147,13 @@ jobs:
     # 4.1 min against worker-identity 7.2, which carried them until then); the script self-tests run off the gate, in
     # tool-self-tests.yml; the gitops manifests ride `worker`, whose deploy specs read them.
     test:
-        name: test (${{ matrix.shard }})
+        # No `name:`: github.com names a row `test (<shard>)` off the one matrix vector (`include` only adds keys to it), and a job
+        # that is skipped or cancelled before it starts as plain `test` -- a `name:` naming a matrix value renders raw then
+        # (`${{ matrix.shard }}`).
         strategy:
             fail-fast: false
             matrix:
+                shard: [ heavy1, heavy2, worker-identity, worker, rest ]
                 include:
                     - { shard: heavy1,          cmd: testUnitWorker, suites: heavy1 }
                     - { shard: heavy2,          cmd: testUnitWorker, suites: heavy2 }
@@ -334,10 +337,13 @@ jobs:
     # suites on 4 cores, the build's long pole beside the unit tests (2026-10-15). The slot came from the WebKit
     # phone shards (4 → 2). Both rows run `itAll`, so `all` still keeps going past a failing module.
     integration-test:
-        name: integration-test (${{ matrix.row }})
+        # No `name:`: github.com names a row `integration-test (<row>)` off the one matrix vector (`include` only adds keys to it), and a job
+        # that is skipped or cancelled before it starts as plain `integration-test` -- a `name:` naming a matrix value renders raw then
+        # (`${{ matrix.row }}`).
         strategy:
             fail-fast: false
             matrix:
+                row: [ identity, rest ]
                 include:
                     - { row: identity }
                     - { row: rest }
@@ -460,12 +466,15 @@ jobs:
     # other way round, safari queued behind everything and ended last in 174 of 204 Main runs to 2026-10-26.
     # (Matrix rows are created sorted by their values, not in `include:` order.) CiDispatchOrderSpec.
     page-tests-safari:
-        name: page tests (safari / ${{ matrix.variant }})
+        # No `name:`: github.com names a row `page-tests-safari (<variant>)` off the one matrix vector (`include` only adds keys to it), and a job
+        # that is skipped or cancelled before it starts as plain `page-tests-safari` -- a `name:` naming a matrix value renders raw then
+        # (`${{ matrix.variant }}`).
         needs: scope
         if: ${{ !cancelled() && needs.scope.outputs.browsers != 'false' }}
         strategy:
             fail-fast: false
             matrix:
+                variant: [ pw behaviour 1/2, pw behaviour 2/2, pw phones 1/2, pw phones 2/2 ]
                 include:
                     # The ~13 viewport-INDEPENDENT spec files (localStorage, URL
                     # round-trips, filter inclusion-sets, search, keyboard a11y —
@@ -552,7 +561,9 @@ jobs:
                   label: webkit
 
     page-tests-chrome:
-        name: page tests (chrome / ${{ matrix.variant }})
+        # No `name:`: github.com names a row `page-tests-chrome (<variant>)` off the one matrix vector (`include` only adds keys to it), and a job
+        # that is skipped or cancelled before it starts as plain `page-tests-chrome` -- a `name:` naming a matrix value renders raw then
+        # (`${{ matrix.variant }}`).
         needs: scope
         # `stable` is the Scala PageTest row (the review and identity admin pages render identity code): it runs on
         # `pages`; the Playwright rows below it only on `browsers`, their steps skipped otherwise (a job `if:` cannot
@@ -561,6 +572,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
+                variant: [ stable, pw behaviour + desktop, pw phones ]
                 include:
                     - { variant: stable, kind: chrome, version: stable }
 
@@ -854,12 +866,15 @@ jobs:
     # Uses FixtureTestWiring (no Mongo); reports go to the root unit/ dir
     # (unitReportSettings) → a per-shard `e2e tests (<shard>)` check.
     e2e:
-        name: e2e (${{ matrix.shard }})
+        # No `name:`: github.com names a row `e2e (<shard>)` off the one matrix vector (`include` only adds keys to it), and a job
+        # that is skipped or cancelled before it starts as plain `e2e` -- a `name:` naming a matrix value renders raw then
+        # (`${{ matrix.shard }}`).
         needs: scope
         if: ${{ !cancelled() && needs.scope.outputs.e2e != 'false' }}
         strategy:
             fail-fast: false
             matrix:
+                shard: [ corpus, rest ]
                 include:
                     - { shard: corpus,   cmd: e2eCorpus }
                     - { shard: rest,     cmd: e2eRest }

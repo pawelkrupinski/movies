@@ -179,7 +179,9 @@ def job_record(job):
 def job_group(name):
     """`ci / page tests (safari / pw phones 1/2)` → `page tests`; `leg (germany) / takes-drift-1 (germany)` →
     `takes-drift-1`: what a job is, across its matrix rows and callers."""
-    return MATRIX.sub("", CALLER_PREFIX.sub("", name)).strip()
+    group = MATRIX.sub("", CALLER_PREFIX.sub("", name)).strip()
+    # the page tests were `page tests (<engine> / <variant>)` until 2026-11-01 (now `page-tests-<engine> (<variant>)`): one group
+    return "page tests" if re.fullmatch(r"page-tests-(safari|chrome)", group) else group
 
 
 def job_leg(name, label=None):

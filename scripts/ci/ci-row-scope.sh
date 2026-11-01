@@ -3,7 +3,7 @@
 # CAN THIS PUSH MOVE ci.yml's SLOW ROWS? Reads changed paths on stdin and prints `true` when one of them can change
 # what the named rows test (or, for `deploy`, what main.yml ships), `false` when every one is inert for them.
 #
-#   ci-row-scope.sh pages    < paths   the Scala page-test row (`page tests (chrome / stable)`: ReviewPageSpec
+#   ci-row-scope.sh pages    < paths   the Scala page-test row (`page-tests-chrome (stable)`: ReviewPageSpec
 #                                      renders identity code)
 #   ci-row-scope.sh browsers < paths   the Playwright page-test rows and mobile-local-server: the public pages,
 #                                      served by FixtureServerMain from the checked-in read-model snapshot

@@ -81,6 +81,13 @@ class Lint(unittest.TestCase):
         self.assertEqual(len(problems), 1, problems)
         self.assertIn("'e2e (*)' has no row", problems[0])
 
+    def test_a_matrix_job_without_a_name_is_named_off_its_vector(self):
+        self.write(".github/workflows/ci.yml", CI + "    e2e:\n        runs-on: ubuntu-26.04\n        strategy:\n"
+                   "            matrix:\n                shard: [ rest ]\n")
+        problems = g.lint(self.root)
+        self.assertEqual(len(problems), 1, problems)
+        self.assertIn("'e2e (*)' has no row", problems[0])
+
     def test_a_new_job_lands_as_unproven_with_its_owner(self):
         self.write(".github/workflows/ci.yml", CI + "    e2e:\n        name: e2e (${{ matrix.shard }})\n        runs-on: ubuntu-26.04\n")
         self.write(".github/gating-checks.tsv", REGISTRY + "job\tmain.yml\te2e (rest)\tunproven\tborn today; owner: e2e\n")

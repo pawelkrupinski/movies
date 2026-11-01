@@ -127,6 +127,8 @@ class RunMeasuresTest(unittest.TestCase):
 
     def test_groups_and_legs(self):
         self.assertEqual("page tests", t.job_group("ci / page tests (safari / pw phones 1/2)"))
+        self.assertEqual("page tests", t.job_group("ci / page-tests-safari (pw phones 1/2)"))
+        self.assertEqual("page tests", t.job_group("ci / page-tests-chrome (stable)"))
         self.assertEqual("takes-drift-1", t.job_group("leg (germany) / takes-drift-1 (germany)"))
         self.assertEqual("germany", t.job_leg("leg (germany) / takes-drift-1 (germany)"))
         self.assertEqual("webkit", t.job_leg("ci / x", "webkit"))
