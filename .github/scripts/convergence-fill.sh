@@ -7,6 +7,7 @@
 #   convergence-fill.sh unpack <stage dir> [fill asset...]       # each laid over a staged tree
 #   convergence-fill.sh gaps   <code> <corpus run> <out file>    # the newest refetch list, less what was refused lately; prints its line count
 #   convergence-fill.sh pack   <fill dir> <archive>              # what a fill fetched; no archive when nothing
+#   convergence-fill.sh fold   <code> <corpus run>               # fold the pair's fills into one, past CONVERGENCE_FILL_FOLD_AT
 #
 # Reads FIXTURE_RELEASE_TAG and GH_TOKEN from the environment.
 #
@@ -19,6 +20,15 @@
 # (Names from before the attempt was part of them, `<run id>[-<row>]`, still read, as attempt 0.) Readers take every
 # fill of the pair (`fills`), the NEWEST list (`gaps`) and the newest few refused lists; the pin step prunes them all
 # with the pair they belong to.
+#
+# FOLDED, SO A PINNED PAIR'S FILLS STAY BOUNDED. A pair kept for good ($KINOWO_KEPT_RECORDINGS) is never pruned, and every
+# leg adds a fill to it: run 41351315090 found the release at GitHub's 1000-asset cap (278 of them fills of pair 573) and
+# every publish after it refused (HTTP 422 "file_count limited to 1000 assets per release"). Past
+# CONVERGENCE_FILL_FOLD_AT fills since the newest fold, `fold` lays them over one another as `unpack` does and publishes
+# the result as `fill-<code>-<corpus>-<run id>-<attempt>-folded.tar.zst`, under the newest one's run id and attempt, so
+# it sorts after every fill it holds. `fills` reads from the newest fold on: the fold, then each fill after it -- the same
+# tree as laying every fill. A fold deletes only what the fold BEFORE it holds (that fold kept): a leg that listed the
+# fills before this fold existed still finds every asset it named.
 #
 # A release it cannot LIST, asked three times, fails `fills` and `gaps` loudly: a failed listing is not an empty
 # release, and read as "no fills" it would let the leg decide its verdict on — and pin into its bisect's pair — a tree
@@ -70,11 +80,42 @@ named() {
     LC_ALL=C sort -t- -k4,4n -k5,5n
 }
 
+# The fills a leg lays, one per line: from the newest fold on (every fill when there is none).
+from_fold() { awk '{ line[NR] = $0 } /-folded\.tar\.zst$/ { from = NR } END { for (i = (from ? from : 1); i <= NR; i++) if (line[i] != "") print line[i] }'; }
+
 case "${1:-}" in
   fills)
     code="${2:?code}"; corpus="${3:?corpus run}"
     names=$(named fill "$code" "$corpus" 'tar\.zst') || exit 1
-    printf '%s\n' "$names" | paste -sd' ' -
+    printf '%s\n' "$names" | from_fold | paste -sd' ' -
+    ;;
+  fold)
+    code="${2:?code}"; corpus="${3:?corpus run}"; at="${CONVERGENCE_FILL_FOLD_AT:-12}"
+    names=$(named fill "$code" "$corpus" 'tar\.zst') || exit 1
+    laid=$(printf '%s\n' "$names" | from_fold)
+    count=$(printf '%s' "$laid" | grep -c . || true)
+    if [ "$count" -le "$at" ]; then echo "pair $code-$corpus: $count fill(s) since its last fold, at most $at -- not folded"; exit 0; fi
+    newest=$(printf '%s\n' "$laid" | tail -1)
+    run_id=$(sed -E "s/^fill-$code-$corpus-([0-9]+).*/\\1/" <<< "$newest")
+    attempt=$(sed -nE "s/^fill-$code-$corpus-[0-9]+-([0-9]+)([-.].*)?$/\\1/p" <<< "$newest")
+    fold="fill-$code-$corpus-$run_id-${attempt:-0}-folded.tar.zst"
+    work=$(mktemp -d)
+    # shellcheck disable=SC2086 # one asset name a word
+    "$0" unpack "$work/tree" $laid > /dev/null || { rm -rf "$work"; echo "::warning::could not restore pair $code-$corpus's fills to fold them"; exit 1; }
+    "$0" pack "$work/tree" "$work/$fold" > /dev/null || { rm -rf "$work"; exit 1; }
+    # A name is never replaced: an upload refused because a concurrent fold published this very name is that fold done.
+    if ! "$here/../../scripts/ci/gh-release.sh" upload "$TAG" "$work/$fold" > /dev/null 2>&1; then
+      assets | grep -qxF "$fold" || { rm -rf "$work"; echo "::warning::could not publish $fold"; exit 1; }
+    fi
+    rm -rf "$work"
+    echo "folded $count fill(s) of pair $code-$corpus into $fold"
+    # Everything before the PREVIOUS fold: that fold holds it, and stays for the legs that listed before this one.
+    previous=$(printf '%s\n' "$names" | grep -n -- '-folded\.tar\.zst$' | tail -1 | cut -d: -f1)
+    [ -n "$previous" ] || exit 0
+    # allow-silenced: deleting folded fills is housekeeping; one that fails to delete goes with the next fold.
+    printf '%s\n' "$names" | head -n "$((previous - 1))" \
+      | while read -r stale; do "$here/../../scripts/ci/gh-release.sh" delete-asset "$TAG" "$stale" -y > /dev/null 2>&1 || true; done
+    echo "deleted $((previous - 1)) fill(s) the fold before it holds"
     ;;
   unpack)
     stage="${2:?stage dir}"; shift 2
@@ -134,6 +175,6 @@ case "${1:-}" in
     echo "packed $files fetched file(s) into $archive ($(du -h "$archive" | cut -f1))"
     ;;
   *)
-    echo "usage: $0 fills <code> <corpus> | unpack <stage> [asset...] | gaps <code> <corpus> <out> | pack <dir> <archive>" >&2
+    echo "usage: $0 fills <code> <corpus> | unpack <stage> [asset...] | gaps <code> <corpus> <out> | pack <dir> <archive> | fold <code> <corpus>" >&2
     exit 64 ;;
 esac

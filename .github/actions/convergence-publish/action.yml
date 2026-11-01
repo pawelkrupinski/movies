@@ -287,6 +287,19 @@ runs:
           echo "asset=$named" >> "$GITHUB_OUTPUT"
           echo "published $named over pair $KINOWO_CONVERGENCE_PIN_CORPUS_RUN"
 
+    # A pinned pair kept for good is never pruned and every leg adds a fill to it: past a dozen, they are folded into one
+    # (convergence-fill.sh `fold`), so the release stays under GitHub's 1000-asset cap (run 41351315090 met it).
+    - name: Fold the pair's fills
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && steps.fill.outputs.asset != ''
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          # allow-silenced: folding is housekeeping; a fold that fails is made by the next leg's, over one fill more.
+          .github/scripts/convergence-fill.sh fold "${{ inputs.code }}" "$KINOWO_CONVERGENCE_PIN_CORPUS_RUN" \
+            || echo "::warning::could not fold pair $KINOWO_CONVERGENCE_PIN_CORPUS_RUN's fills -- the next leg's fold tries again"
+
     # Which corpus this GREEN full leg replayed, as `corpus-green-<code>.txt` beside the
     # tree — `convergence-setup` reads it back so the next leg can diff its corpus against
     # the last one the pipeline converged on (`CorpusProvenance`). Main only, like the

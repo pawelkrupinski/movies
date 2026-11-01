@@ -50,6 +50,12 @@ if [ "$1 $2" = "release download" ]; then
   if [ -n "${output:-}" ]; then cp "$release/$pattern" "$output"; else cp "$release/$pattern" "$dir/"; fi
   exit 0
 fi
+if [ "$1 $2" = "release upload" ]; then
+  for a in "$@"; do case "$a" in release|upload|--*) ;; *) [ -f "$a" ] && f="$a" ;; esac; done
+  [ ! -e "$release/$(basename "$f")" ] || { echo "HTTP 422: already_exists" >&2; exit 1; }
+  cp "$f" "$release/"; exit 0
+fi
+if [ "$1 $2" = "release delete-asset" ]; then echo "$4" >> "$release/../deleted"; rm -f "$release/$4"; exit 0; fi
 exit 1
 STUB
 chmod +x "$work/bin/gh"
@@ -134,5 +140,42 @@ check "...the others are" "true:false" \
 for run in 202 203 204 205; do printf '# 0 refused gap(s)\n' > "$work/release/refused-us-100-$run-1.tsv"; done
 check "...but asked again once newer fills have published lists without it" "2" "$(run gaps us 100 "$work/again.tsv" 2>/dev/null)"
 rm "$work/release"/refused-us-100-*.tsv
+
+# --- fold: a pinned pair's fills stay bounded -----------------------------------------------------
+# A pair kept for good is never pruned, and every leg adds a fill: run 41351315090 met the release at GitHub's 1000-asset
+# cap. Each fill here fetched one page of its own, and the newest a newer copy of the first's.
+rm -f "$work/release"/fill-* "$work/deleted"
+mkfill() { # <run id> <page> <body>
+  rm -rf "$work/f" && mkdir -p "$work/f/enrichment-de" && printf '%s\n' "$3" > "$work/f/enrichment-de/$2"
+  FIXTURE_RELEASE_TAG=t bash "$fill" pack "$work/f" "$work/release/fill-de-7-$1-1-convergence.tar.zst" > /dev/null
+}
+for id in 11 12 13; do mkfill "$id" "page-$id" "body $id"; done
+check "a pair with no more fills than the fold's threshold is not folded" "0 fill-de-7-11-1-convergence.tar.zst fill-de-7-12-1-convergence.tar.zst fill-de-7-13-1-convergence.tar.zst" \
+  "$(CONVERGENCE_FILL_FOLD_AT=3 run fold de 7 > /dev/null; echo "$?") $(run fills de 7)"
+mkfill 14 page-11 "body 14"
+check "past it, the pair's fills are folded into one, named after the newest" "0" \
+  "$(CONVERGENCE_FILL_FOLD_AT=3 run fold de 7 > "$work/out-fold" 2>&1; echo "$?")"
+check "...which the fills now start from" "fill-de-7-14-1-folded.tar.zst" "$(run fills de 7)"
+run unpack "$work/folded" fill-de-7-14-1-folded.tar.zst > /dev/null 2>&1
+check "...holding every fill's pages, a later fill's copy winning" "body 14|body 12|body 13" \
+  "$(cat "$work/folded/enrichment-de/page-11")|$(cat "$work/folded/enrichment-de/page-12")|$(cat "$work/folded/enrichment-de/page-13")"
+check "...deleting none of them yet: a leg that listed them before the fold still finds each" "0" \
+  "$(grep -c . "$work/deleted" 2>/dev/null || echo 0)"
+mkfill 15 page-15 "body 15"
+check "a fill after the fold is laid after it" "fill-de-7-14-1-folded.tar.zst fill-de-7-15-1-convergence.tar.zst" "$(run fills de 7)"
+for id in 16 17; do mkfill "$id" "page-$id" "body $id"; done
+CONVERGENCE_FILL_FOLD_AT=3 run fold de 7 > /dev/null 2>&1
+check "the next fold holds the one before it and what came after" "fill-de-7-17-1-folded.tar.zst" "$(run fills de 7)"
+run unpack "$work/folded2" fill-de-7-17-1-folded.tar.zst > /dev/null 2>&1
+check "...every page of the pair still in it" "body 14|body 12|body 15|body 17" \
+  "$(cat "$work/folded2/enrichment-de/page-11")|$(cat "$work/folded2/enrichment-de/page-12")|$(cat "$work/folded2/enrichment-de/page-15")|$(cat "$work/folded2/enrichment-de/page-17")"
+check "...and deletes what the fold before it holds, keeping that fold for the legs that listed it" \
+  "fill-de-7-11-1-convergence.tar.zst fill-de-7-12-1-convergence.tar.zst fill-de-7-13-1-convergence.tar.zst fill-de-7-14-1-convergence.tar.zst" \
+  "$(paste -sd' ' "$work/deleted")"
+check "...so the pair holds the two folds and the fills between them" \
+  "fill-de-7-14-1-folded.tar.zst fill-de-7-15-1-convergence.tar.zst fill-de-7-16-1-convergence.tar.zst fill-de-7-17-1-convergence.tar.zst fill-de-7-17-1-folded.tar.zst" \
+  "$(cd "$work/release" && printf '%s\n' fill-de-7-* | LC_ALL=C sort -t- -k4,4n -k5,5n | paste -sd' ' -)"
+check "a fold of a release that cannot be listed fails, and deletes nothing" "1 4" \
+  "$(for id in 18 19 20 21; do mkfill "$id" "page-$id" "body $id"; done; STUB_UNREACHABLE=1 CONVERGENCE_FILL_FOLD_AT=3 run fold de 7 > /dev/null 2>&1; echo "$?") $(grep -c . "$work/deleted")"
 
 spec_summary
