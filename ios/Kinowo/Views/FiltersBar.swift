@@ -416,13 +416,16 @@ struct BounceButtonStyle: ButtonStyle {
     }
 }
 
-// Translucent capsule background for the search pill. On iOS 26+ uses
-// the Liquid-Glass `.glassEffect` modifier; on iOS 18-25 falls back
-// to `.ultraThinMaterial`.
+// Translucent capsule background for the search pill: the Liquid-Glass
+// `.glassEffect` modifier from iOS 27, `.ultraThinMaterial` before it.
+// Not the glass on iOS 26: there it hands a tap on anything in the pill
+// but the text field through to the listing behind it, so the clear "x"
+// never fired (Order independence #30, SearchDayUITests on iOS 26.5).
+// iOS 27 delivers the tap to the pill.
 private struct GlassyPillBackground: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
+        if #available(iOS 27.0, macOS 27.0, *) {
             content.glassEffect(in: Capsule())
         } else {
             content.background(.ultraThinMaterial, in: Capsule())

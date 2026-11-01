@@ -31,12 +31,23 @@ final class SearchDayUITests: XCTestCase {
         field.typeText(text)
     }
 
+    /// Taps the search's clear "x" and waits for the search to be empty: the "x" shows only while
+    /// there is one, so its going is the search cleared. A tap the "x" drops (iOS 26's Liquid Glass
+    /// handed it to the listing behind the pill, Order independence #30) fails here by name -- and not
+    /// only where the day would then stay wrong: a picked day that stays anyway passed with the search
+    /// never cleared.
+    private func clearSearch() {
+        let clear = app.buttons[A11y.Search.clear]
+        clear.tap()
+        XCTAssertTrue(clear.waitForNonExistence(timeout: 5), "the clear button's tap left the search in place")
+    }
+
     func testASearchShowsEveryDayAndClearingGoesBack() throws {
         pill(A11y.TopBar.datePillTomorrow).tap()
         waitSelected(A11y.TopBar.datePillTomorrow, "Jutro should be picked")
         type("straszny")
         waitSelected(A11y.TopBar.datePillAnytime, "a search should move to Wszystkie")
-        app.buttons[A11y.Search.clear].tap()
+        clearSearch()
         waitSelected(A11y.TopBar.datePillTomorrow, "clearing should go back to Jutro")
     }
 
@@ -46,7 +57,7 @@ final class SearchDayUITests: XCTestCase {
         waitSelected(A11y.TopBar.datePillAnytime, "a search should move to Wszystkie")
         pill(A11y.TopBar.datePillWeek).tap()
         waitSelected(A11y.TopBar.datePillWeek, "a pick during the search should hold")
-        app.buttons[A11y.Search.clear].tap()
+        clearSearch()
         waitSelected(A11y.TopBar.datePillWeek, "clearing should keep the picked day")
     }
 }
