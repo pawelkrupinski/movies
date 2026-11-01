@@ -380,7 +380,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // mirroring DebugController.debugReadModelScreenings.
           case "/debug/readmodel" => readModelPage
           case p if p.startsWith("/debug/readmodel/screenings?") =>
-            readModelScreenings(URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8"))
+            readModelScreenings(URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse("").takeWhile(_ != '&'), "UTF-8"))
           // A corpus row's per-source breakdown, fetched lazily when its /debug
           // table row is expanded (the heavy subtree is no longer rendered inline).
           // The `id` query param is the row's `_id`; serve the matching row's
