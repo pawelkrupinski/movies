@@ -14,6 +14,12 @@
 #       Write prod-latest-<code>.txt naming this complete recording's pinned copy (the hermetic marker's format)
 #       WITHOUT making it the hermetic pair, then prune as `pin` does. What `--recording prod-latest` and
 #       scripts/identity-repro replay.
+#   convergence-publish.sh dead <code>
+#       Delete the country's assets nothing reads any more: an identity overlay (`identity-overlay-<code>-<run>`, no
+#       longer published since the overlay mode went) whose recording's tree is not on the release -- the overlay is
+#       only ever laid over its own tree (scripts/identity-fetch-recording.sh). Run before a leg's uploads: run
+#       41351315090 found the release at GitHub's 1000-asset cap, 101 of them such overlays, and a release at the cap
+#       refuses every upload, the fold that would shrink it included.
 #
 # Pruning never removes a KEPT recording: the hermetic pair, prod-latest, and the identity measure's landing
 # recordings ($KINOWO_KEPT_RECORDINGS, default "528 573": identity-measure's pinned pair and its second recording),
@@ -135,7 +141,20 @@ prune_pairs() {
           done
 }
 
+prune_dead() {
+    local code="$1" names trees
+    # allow-silenced: pruning is housekeeping; a listing that fails prunes nothing now and the next leg's prunes it.
+    names=$(gh release view "$FIXTURE_RELEASE_TAG" --json assets --jq '.assets[].name' 2>/dev/null) || return 0
+    trees=$({ grep -oE "^enrichment-$code-[0-9]+\\.tar\\.(gz|zst)$" <<< "$names" || true; } | grep -oE '[0-9]+' | sort -u)
+    { grep -E "^identity-overlay-$code-[0-9]+\\.tar\\.(gz|zst)$" <<< "$names" || true; } \
+        | while read -r overlay; do
+              run=$(grep -oE '[0-9]+' <<< "$overlay" | head -1)
+              grep -qxF "$run" <<< "$trees" || "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$overlay" -y || true
+          done
+}
+
 case "${1:-}" in
+    dead) [ "$#" -eq 2 ] || { echo "usage: $0 dead <code>" >&2; exit 64; }; prune_dead "$2" ;;
     tree) [ "$#" -eq 4 ] || { echo "usage: $0 tree <code> <complete> <log>" >&2; exit 64; }; publish_tree "$2" "$3" "$4" ;;
     pin)  [ "$#" -eq 2 ] || { echo "usage: $0 pin <code>" >&2; exit 64; }; pin_pair "$2" ;;
     latest) [ "$#" -eq 2 ] || { echo "usage: $0 latest <code>" >&2; exit 64; }; mark_latest "$2" ;;

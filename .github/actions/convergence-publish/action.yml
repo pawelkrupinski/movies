@@ -123,6 +123,14 @@ runs:
     # The packing and its cache guard live in a script rather than here, so
     # `EnrichmentTreePackingSpec` can run the real thing against a fabricated tree —
     # including the "nothing recorded yet" case a new country starts in.
+    # Before any upload: a release at GitHub's 1000-asset cap refuses them all (run 41351315090).
+    - name: Prune the assets nothing reads
+      if: github.ref == 'refs/heads/main' || github.ref == 'main'
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: .github/scripts/convergence-publish.sh dead "${{ inputs.code }}"
+
     - name: Pack the enrichment fixtures this leg recorded
       if: inputs.mode == 'record'
       shell: bash
@@ -288,9 +296,10 @@ runs:
           echo "published $named over pair $KINOWO_CONVERGENCE_PIN_CORPUS_RUN"
 
     # A pinned pair kept for good is never pruned and every leg adds a fill to it: past a dozen, they are folded into one
-    # (convergence-fill.sh `fold`), so the release stays under GitHub's 1000-asset cap (run 41351315090 met it).
+    # (convergence-fill.sh `fold`), so the release stays under GitHub's 1000-asset cap (run 41351315090 met it). Every
+    # hermetic leg folds, whether or not its own fill was published: one refused at the cap is the fold's reason to run.
     - name: Fold the pair's fills
-      if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && steps.fill.outputs.asset != ''
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'hermetic' && env.KINOWO_CONVERGENCE_PIN_CORPUS_RUN != ''
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}

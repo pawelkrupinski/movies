@@ -123,6 +123,19 @@ check "pruning to the newest five, never the hermetic pair or a kept landing rec
   "enrichment-pl-1.tar.zst enrichment-pl-2.tar.zst enrichment-pl-4.tar.zst enrichment-pl-5.tar.zst enrichment-pl-6.tar.zst enrichment-pl-7.tar.zst enrichment-pl-8.tar.zst hermetic-pl.txt prod-latest-pl.txt" \
   "$(assets)"
 
+ # --- dead ---------------------------------------------------------------------------------------
+# Run 41351315090 found the release at GitHub's 1000-asset cap, 101 of them identity overlays published by a mode
+# since removed: an overlay is only laid over its own recording's tree, so one whose tree is gone is read by nothing.
+rm -f "$work/release"/* "$work/calls"
+for asset in enrichment-uk-573.tar.zst identity-overlay-uk-573.tar.gz identity-overlay-uk-36691290304.tar.gz \
+             identity-overlay-us-36691290304.tar.gz fill-uk-573-9-1-convergence.tar.zst; do : > "$work/release/$asset"; done
+check "dead assets are pruned" "0" "$(run bash "$publish" dead uk)"
+check "...an overlay whose tree is gone, and only the country's own" \
+  "enrichment-uk-573.tar.zst fill-uk-573-9-1-convergence.tar.zst identity-overlay-uk-573.tar.gz identity-overlay-us-36691290304.tar.gz" \
+  "$(assets)"
+rm -f "$work/calls"
+check "a release with nothing dead deletes nothing" "0 0" "$(run bash "$publish" dead uk) $(calls delete)"
+
 check "an unknown command is refused" "64" "$(run bash "$publish" publish pl)"
 
 spec_summary
