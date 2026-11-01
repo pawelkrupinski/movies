@@ -51,6 +51,7 @@ import re
 import statistics
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 import zipfile
@@ -835,7 +836,18 @@ class GitHub:
         path = path if path.startswith("repos/") else "repos/%s/%s" % (self.repo, path)
         return "https://api.github.com/" + path
 
-    def _get(self, url, raw=False):
+    def _get(self, url, raw=False, attempts=3):
+        """One GET, retried twice on a transient failure (a 5xx, a reset, a timeout) after 2 s and 6 s."""
+        for attempt in range(attempts):
+            try:
+                return self._get_once(url, raw)
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as error:
+                status = getattr(error, "code", None)
+                if attempt == attempts - 1 or (status is not None and 400 <= status < 500 and status != 429):
+                    raise
+                time.sleep(2 * 3 ** attempt)
+
+    def _get_once(self, url, raw=False):
         self.calls += 1
         if self.token:
             request = urllib.request.Request(url, headers={"Authorization": "Bearer " + self.token,
