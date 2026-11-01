@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Where CI's time goes across runs: report, trend, compare, collect. The manual: scripts/ci/ci_trends.py --help, and
+# docs/investigations/2026-11-01-twenty-runners.md ("How to measure").
+exec python3 "$(dirname "${BASH_SOURCE[0]}")/ci_trends.py" "$@"

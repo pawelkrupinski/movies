@@ -417,6 +417,19 @@ def named(github, run):
     return dict(run, name=github.workflow_name(run["workflow_id"]))
 
 
+def leg_summary(run):
+    """Per leg (convergence's countries; elsewhere per job group): each row's queue, setup by category, work, machine,
+    GC and pressure, from the API's steps and the jobs' ci-metrics artifacts (ci_trends.leg_tables). Never fails."""
+    try:
+        import ci_trends
+        source = ci_trends.GitHub(run.get("repository", {}).get("full_name") or os.environ.get("GITHUB_REPOSITORY", ""))
+        record = ci_trends.record_of(source, dict(run, status="in_progress"))
+        tables = ci_trends.leg_tables(record)
+        return ("\n### Per leg\n" + tables) if tables else ""
+    except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
+        return "\n(per-leg tables not written: %s)\n" % error
+
+
 def handle(github, run, args, out=sys.stdout):
     run = named(github, run)
     jobs = collect(github.jobs(run["id"]), github.log, workflow_ceilings(run.get("path") or ""))
@@ -425,6 +438,7 @@ def handle(github, run, args, out=sys.stdout):
     if summary:
         with open(summary, "a", encoding="utf-8") as handle_:
             handle_.write(summary_markdown(run, jobs))
+            handle_.write(leg_summary(run))
     try:
         ready = ready_at(run, github.recent_runs(run["head_branch"])) if run.get("head_branch") else None
     except Exception as error:  # noqa: BLE001 -- see the header: never fail the job
