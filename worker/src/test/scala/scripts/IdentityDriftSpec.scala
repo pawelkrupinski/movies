@@ -387,4 +387,10 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     answers.tmdbOf("tt0048561") shouldBe Answer.Known(Some(18148))
     reads.findsRead.get("tt0048561") shouldBe Some(18148)
   }
+
+  // A crashed replay (an OOM, a kill) prints no verdict line; scripts/identity-slice reports that as NO VERDICT, not RED.
+  "the replay's verdict line" should "name RED and CLEAN apart, in the form scripts/identity-slice reads" in {
+    IdentityDrift.verdictLine(red = true) shouldBe "## DRIFT VERDICT: RED"
+    IdentityDrift.verdictLine(red = false) shouldBe "## DRIFT VERDICT: CLEAN"
+  }
 }

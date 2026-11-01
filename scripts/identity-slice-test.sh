@@ -76,6 +76,17 @@ STUB
 cat > "$work/bin/java" <<STUB
 #!/usr/bin/env bash
 echo "java \$PWD \$*" >> "$work/calls"
+# the drift replay (--emit-drift-slice's second stage): STUB_DRIFT says how it ends
+case " \$* " in *" scripts.IdentityDrift "*)
+  case "\${STUB_DRIFT:-clean}" in
+    clean) echo "## de: 1 listings"; echo "## DRIFT VERDICT: CLEAN"; exit 0 ;;
+    red) echo "## de: 1 listings, 1 divergence(s)"; echo "## DRIFT VERDICT: RED"; exit 1 ;;
+    oom) echo "java.lang.OutOfMemoryError: Java heap space" >&2; exit 1 ;;
+    exit1) echo "boom" >&2; exit 1 ;;
+    killed) exit 137 ;;
+  esac ;;
+esac
+[ -z "\${STUB_EMIT_SLICE:-}" ] || [ -z "\$(printf '%s' "\$*" | grep -- --emit-slice)" ] || echo "--emit-slice: \$STUB_EMIT_SLICE"
 out="" ref="" serve=""
 while [ "\$#" -gt 0 ]; do case "\$1" in --out) out=\$2 ;; --ref) ref=\$2 ;; --serve) serve=\$2 ;; esac; shift; done
 # --serve: a kept JVM, answering each request on its socket (the batch's own arguments) until it is stopped
@@ -416,5 +427,16 @@ rm -f "$work/calls"
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-explain" de --fixture "$work/capture" --venue Kino > /dev/null 2>&1
 check "scripts/identity-explain is identity-slice --explain" "1" \
   "$(grep -c -- "scripts.IdentityExplain de --fixture $work/capture/de.json.gz --labels $work/capture/identity-judgements.tsv --venue Kino" "$work/calls")"
+
+# --emit-drift-slice: a replay's verdict is told apart from a crash (an OOM once printed REPLAYS RED)
+drift() { STUB_EMIT_SLICE="$work/slice-dir" STUB_DRIFT="$1" slice de --recording 777 --key 'Kino|Lalka' --emit-drift-slice > "$work/drift.stdout"; echo $?; }
+check "a replay that ends RED is REPLAYS RED, exit 0" "0 1" "$(drift red) $(grep -c 'REPLAYS RED' "$work/err")"
+check "a replay that ends CLEAN replays clean" "0 1" "$(drift clean) $(grep -c 'replays clean' "$work/err")"
+check "a JVM out-of-memory is NO VERDICT, exit 5, never RED or CLEAN" "5 1 0 0" \
+  "$(drift oom) $(grep -c 'NO VERDICT: the replay ran out of memory' "$work/err") $(grep -c 'REPLAYS RED' "$work/err") $(grep -c 'replays clean' "$work/err")"
+check "a non-zero exit with no verdict line is NO VERDICT, exit 5" "5 1 0" \
+  "$(drift exit1) $(grep -c 'NO VERDICT: the replay exited 1 with no verdict line' "$work/err") $(grep -c 'REPLAYS RED' "$work/err")"
+check "a killed replay is NO VERDICT, exit 5" "5 1 0" \
+  "$(drift killed) $(grep -c 'NO VERDICT: the replay was killed or timed out' "$work/err") $(grep -c 'REPLAYS RED' "$work/err")"
 
 spec_summary

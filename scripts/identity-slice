@@ -31,7 +31,7 @@
 #                 sequence (--slice --widen, $KINOWO_DRIFT_SLICE_SEEDS seeds, default 12) with every answer it lacks read from
 #                 the recording and kept in it, round after round until the slice is CLOSED: replayed alone it lacks no
 #                 request and finds what its listings' replay with the recording behind it finds -- else the cut fails
-#                 (exit 1, CUT NOT CLOSED). IdentityDriftSlicesSpec replays every such slice. A drift or flip red is not
+#                 (exit 1, CUT NOT CLOSED). A replay that crashes, runs out of memory, is killed or prints no "## DRIFT VERDICT:" line is "NO VERDICT: <cause>", exit 5, never RED or CLEAN. IdentityDriftSlicesSpec replays every such slice. A drift or flip red is not
 #                 closed until its listing's slice is committed (docs/landing-process.md). This checkout's code only.
 #   --emit-case   pin the listing as a FAILING TEST: the slice copied to test/resources/fixtures/identity-slices/, its expected
 #                 film taken from the judgements (never from the take), each shown with its own evidence; refused when
@@ -547,14 +547,25 @@ if [ "$emit_drift" = 1 ]; then
     jvm_slot_take identity-slice
     (cd "$repo" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityDrift "$cc" --slice "$dir" --seeds "${KINOWO_DRIFT_SLICE_SEEDS:-12}" \
       --allow "$repo/test/resources/fixtures/identity-drift-allow.tsv" --flips-allow "$repo/test/resources/fixtures/identity-flips-allow.tsv" \
-      --out "$work/drift" --widen --recording "$recording" --families "$families") 2> "$work/drift.log" || rc=$?
+      --out "$work/drift" --widen --recording "$recording" --families "$families" | tee "$work/drift.out") 2> "$work/drift.log" || rc=$?
     jvm_slot_release
+    # the verdict is the replay's own explicit line, never its exit status alone: a JVM that dies (an OOM, a kill, a
+    # timeout) exits non-zero too, and was once read as RED
+    verdict=$(sed -n 's/^## DRIFT VERDICT: //p' "$work/drift.out" | tail -1)
     case $rc in
-      0|1) ;;
       4) identity_log "$dir: CUT NOT CLOSED (above) -- no faithful cut: do not commit it (git checkout/clean it)"; exit 1 ;;
-      *) tail -20 "$work/drift.log" >&2; identity_log "$dir: the cut's replay failed ($rc)"; exit 1 ;;
     esac
-    identity_log "drift slice $dir: closed, $( [ "$rc" = 0 ] && echo "replays clean" || echo "REPLAYS RED (above): the regression it guards is open -- commit it with the fix")"
+    case "$rc:$verdict" in
+      0:CLEAN|1:RED) ;;
+      *)
+        tail -20 "$work/drift.log" >&2
+        if grep -q 'OutOfMemoryError' "$work/drift.log" "$work/drift.out" 2> /dev/null; then cause="the replay ran out of memory (KINOWO_DRIFT_SLICE_SEEDS=${KINOWO_DRIFT_SLICE_SEEDS:-12}: fewer seeds or a bigger heap)"
+        elif [ "$rc" -ge 128 ]; then cause="the replay was killed or timed out (signal $((rc - 128)))"
+        elif [ "$rc" = 3 ]; then cause="the slice lacks answers (exit 3)"
+        else cause="the replay exited $rc with no verdict line"; fi
+        identity_log "$dir: NO VERDICT: $cause"; exit 5 ;;
+    esac
+    identity_log "drift slice $dir: closed, $( [ "$verdict" = CLEAN ] && echo "replays clean" || echo "REPLAYS RED (above): the regression it guards is open -- commit it with the fix")"
   done < <(sed -n 's/^--emit-slice: //p' "$work/0.txt")
   [ "$emitted" -gt 0 ] || { identity_log "no drift slice emitted (no listing matched?)"; exit 1; }
   exit 0

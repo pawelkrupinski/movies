@@ -176,6 +176,9 @@ object IdentityDrift {
     def tsv: String = Seq(country, seed.toString, checkpoint, key.venue, key.rawTitle, whole.film, whole.basis, incremental.film, incremental.basis,
       whole.why, incremental.why).map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
   }
+  val VerdictPrefix = "## DRIFT VERDICT: "
+  /** The replay's explicit verdict line: scripts/identity-slice reads it, never the exit status alone. */
+  def verdictLine(red: Boolean): String = s"$VerdictPrefix${if (red) "RED" else "CLEAN"}"
   val Header = "country\tseed\tcheckpoint\tvenue\trawTitle\twholeFilm\twholeBasis\tincrementalFilm\tincrementalBasis\twholeWhy\tincrementalWhy"
 
   /** An allow-list row: a divergence production's design keeps on purpose, with why. */
@@ -904,7 +907,10 @@ object IdentityDrift {
       println(s"## the slice lacks ${lacking.size} answer(s) — cut it again (scripts/identity-slice --emit-drift-slice): ${lacking.take(8).mkString("; ")}")
       sys.exit(3)
     }
-    if (open.divergences.nonEmpty || verdict.fresh.nonEmpty) sys.exit(1)
+    // the explicit verdict line scripts/identity-slice reads: a crash prints none, so it is never read as red or clean
+    val red = open.divergences.nonEmpty || verdict.fresh.nonEmpty
+    println(verdictLine(red))
+    if (red) sys.exit(1)
   }
 
   /** What the judgements say of the two sides' films, where they judge the listing. */
