@@ -13,14 +13,14 @@ import tools.SpecTimeouts
 import java.nio.file.Files
 import java.time.{Clock, Instant, ZoneOffset}
 
-class ReviewControllerSpec extends AnyFlatSpec with Matchers {
+class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
   import ReviewFixtures._
 
   private val now   = Instant.parse("2026-10-06T10:00:00Z")
   private val clock = Clock.fixed(now, ZoneOffset.UTC)
 
   private def controller(mode: Mode, answers: ReviewAnswers = new ReviewAnswers(new InMemoryReviewAnswerStore),
-                         labels: java.nio.file.Path = Files.createTempFile("labels", ".tsv"), clock: Clock = clock,
+                         labels: java.nio.file.Path = tempFile("labels", ".tsv"), clock: Clock = clock,
                          tmdbPosters: Option[TmdbPosterLookup] = None) =
     new ReviewController(Helpers.stubControllerComponents(), mode, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock,
       tmdbPosters = tmdbPosters)
@@ -37,7 +37,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
   private def howlsLookup = TmdbPosterLookupSpec.lookup
 
   "the review digest" should "404 in production, and list the takes awaiting the user by country, each film named and its listing explained" in {
-    val labels = Files.createTempDirectory("digest").resolve("identity-judgements.tsv")
+    val labels = tempDirectory("digest").resolve("identity-judgements.tsv")
     LabelsTsv.write(labels, Seq(LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right",
       "agent judged 2026-10-22 (test): Miyazaki's, the venue's year 2004", judged = "2026-10-22")))
     Files.writeString(ReviewDigest.candidatesPath(labels), ReviewDigest.CandidatesHeader +
@@ -101,7 +101,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     def queueOver(films: Map[Int, FilmCard], records: Map[Int, FilmCard]) = contentAsString(new ReviewController(
       Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> new InMemoryReviewSource(Seq(heldDecision),
         filmsHeld = films, recordsHeld = records)), new ReviewAnswers(new InMemoryReviewAnswerStore),
-      Files.createTempFile("labels", ".tsv"), clock).queue(Some("pl"), 60, false)(FakeRequest()))
+      tempFile("labels", ".tsv"), clock).queue(Some("pl"), 60, false)(FakeRequest()))
     val record = FilmCard(kafka.tmdb, Some("tt22963134"), Some("Franz (TMDB)"), Some("Franz"), Some(2025), Seq("Agnieszka Holland"), Some(127), None, None)
 
     val recordOnly = queueOver(Map.empty, Map(kafka.tmdb -> record))
@@ -129,7 +129,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
       slotsHeld = Map(Held -> SlotFacts(VenueFacts(cast = venue), now), fed -> SlotFacts(VenueFacts(year = Some(2025), cast = catalog), now)),
       feedsHeld = Map((fed.venue, fed.rawTitle) -> ListingFeed(Seq(services.identity.CatalogueId("webedia", "1")), 1, None, None)),
       recordsHeld = Map(kafka.tmdb -> kafka.copy(cast = tmdb)))), new ReviewAnswers(new InMemoryReviewAnswerStore),
-      Files.createTempFile("labels", ".tsv"), clock).queue(Some("pl"), 60, false)(FakeRequest()))
+      tempFile("labels", ".tsv"), clock).queue(Some("pl"), 60, false)(FakeRequest()))
     // the venue's: its first five, the other three behind "+3 more", every name escaped
     html should include("<summary>Venue Actor 1, Venue Actor 2, Venue Actor 3, Venue Actor 4, Venue Actor 5 <span class=\"more\">+3 more</span></summary>")
     html should include("Venue Actor 6, Venue Actor 7, &lt;b&gt;Bold&lt;/b&gt; &amp; Co")
@@ -160,7 +160,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
 
   "an answer" should "take its cluster out of the queue, an undo bring it back, each written into identity-judgements.tsv as it is given" in {
     val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
-    val labels  = Files.createTempFile("labels", ".tsv")
+    val labels  = tempFile("labels", ".tsv")
     val c       = controller(Mode.Dev, answers, labels)
     val card    = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
       new ReviewAnswers.Index(Nil)).head.payload(ReviewPage.Queue)
@@ -184,7 +184,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "be kept when the labels file cannot be written, the response saying why" in {
     val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
-    val labels  = Files.createTempDirectory("labels")                    // a directory: no file can be read or written there
+    val labels  = tempDirectory("labels")                    // a directory: no file can be read or written there
     val card    = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
       new ReviewAnswers.Index(Nil)).head.payload(ReviewPage.Queue)
     val result  = controller(Mode.Dev, answers, labels).answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "right")))
@@ -200,7 +200,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
       services.identity.ResolverDecision.Basis.PooledMatch, Nil)()
     val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
       Map(Country.Poland -> new InMemoryReviewSource(Seq(heldDecision, crowded, matchedDecision, pooled))),
-      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), clock)
+      new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock)
     val html = contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest()))
     val order = Seq("Kandydaci śmierci", "FRANZ KAFKA", "Dolly").map(t => html.indexOf(s"""<span class="raw-title">$t</span>"""))
     order should not contain -1
@@ -213,7 +213,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "take a cluster the reviewer can't determine off the list, and label nothing for it" in {
     val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
-    val labels  = Files.createTempFile("labels", ".tsv")
+    val labels  = tempFile("labels", ".tsv")
     val c       = controller(Mode.Dev, answers, labels)
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("""data-verdict="unsure">Can't determine""")
     val card    = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
@@ -236,7 +236,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     }
     val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
       Map(Country.Poland -> meeting(Seq(heldDecision)), Country.UnitedKingdom -> meeting(Nil)),
-      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), clock)
+      new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock)
     val html = contentAsString(c.queue(None, 60, false)(FakeRequest()))
     html should not include "could not read"
     html should include("FRANZ KAFKA")
@@ -253,7 +253,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
       def updatedSince(since: Instant)      = meet(source.updatedSince(since))
     }
     val html = contentAsString(new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> meeting),
-      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), clock).recent(Some("pl"), 48, 60, false)(FakeRequest()))
+      new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock).recent(Some("pl"), 48, 60, false)(FakeRequest()))
     html should not include "could not read"
     html should include("Klondike")
   }
@@ -283,7 +283,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
       def decisions(unmatchedOnly: Boolean) = held                                   // the same read until it changes
     }
     val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> rereading),
-      new ReviewAnswers(new InMemoryReviewAnswerStore), Files.createTempFile("labels", ".tsv"), clock)
+      new ReviewAnswers(new InMemoryReviewAnswerStore), tempFile("labels", ".tsv"), clock)
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
     held = Seq(vetoedDecision)
     val html = contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest()))

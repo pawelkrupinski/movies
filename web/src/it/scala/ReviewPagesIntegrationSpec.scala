@@ -28,7 +28,7 @@ import scala.concurrent.Await
  * [[MongoReviewSource]], and the answers kept in a [[MongoReviewAnswerStore]] — an answered cluster
  * leaves the queue, and stays out after a fresh store reads the history back.
  */
-class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
+class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite with tools.ScratchDirectories {
   import ReviewFixtures._
 
   private val mirror  = IsolatedMongoDatabase.open(mongoTarget, "review-mirror")
@@ -115,7 +115,7 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
   "an answered cluster" should "leave the queue, and stay out for a fresh store reading the history back" in {
     val answers    = new ReviewAnswers(new MongoReviewAnswerStore(review.database))
     def controller(a: ReviewAnswers) = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> source), a,
-      Files.createTempFile("labels", ".tsv"), clock)
+      tempFile("labels", ".tsv"), clock)
     val c          = controller(answers)
     contentAsString(c.queue(Some("pl"), 60, false)(FakeRequest())) should include("FRANZ KAFKA")
     val card = ReviewCards.build(source, Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil, new ReviewAnswers.Index(Nil))
@@ -161,12 +161,12 @@ class ReviewPagesIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAn
 
   "importing the hand-built pages' answers" should "store each once" in {
     val store   = new ReviewAnswers(new MongoReviewAnswerStore(imports.database))
-    val fixture = Files.createTempFile("all-answers", ".json")
+    val fixture = tempFile("all-answers", ".json")
     Files.copy(getClass.getResourceAsStream("/review/all-answers.json"), fixture, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     ReviewLabelsCli.run(store, List("import", fixture.toString)) should startWith("imported 71 of 71 answers")
     ReviewLabelsCli.run(store, List("import", fixture.toString)) should startWith("imported 0 of 71 answers (71 already there)")
     store.history() should have size 71
-    val labels = Files.createTempFile("labels", ".tsv")
+    val labels = tempFile("labels", ".tsv")
     ReviewLabelsCli.run(store, List("export", labels.toString)) should include("added")
     LabelsTsv.read(labels) should not be empty
   }

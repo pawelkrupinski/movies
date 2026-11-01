@@ -17,9 +17,9 @@ import java.time.{Clock, Instant, ZoneOffset}
 
 /** `/debug/review/listing`: one production listing explained — over REAL prod decisions and traces ([[ProdReviewSample]]),
  *  and a hand-built source for what the sample lacks (a listing served otherwise than decided, a judgement row). */
-class ListingExplainSpec extends AnyFlatSpec with Matchers {
+class ListingExplainSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
 
-  private def controller(mode: Mode, sources: Map[Country, ReviewSource], labels: Path = Files.createTempFile("labels", ".tsv")) =
+  private def controller(mode: Mode, sources: Map[Country, ReviewSource], labels: Path = tempFile("labels", ".tsv")) =
     new ReviewController(Helpers.stubControllerComponents(), mode, sources, new ReviewAnswers(new InMemoryReviewAnswerStore), labels,
       Clock.fixed(Instant.parse("2026-10-06T12:00:00Z"), ZoneOffset.UTC))
 
@@ -82,7 +82,7 @@ class ListingExplainSpec extends AnyFlatSpec with Matchers {
     servedHeld = Map(kafka -> Some(4321))))
 
   private def labelsWith(rows: String*): Path = {
-    val path = Files.createTempFile("labels", ".tsv")
+    val path = tempFile("labels", ".tsv")
     Files.write(path, (LabelsTsv.Header +: rows).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
     path
   }

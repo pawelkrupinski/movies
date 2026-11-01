@@ -25,11 +25,11 @@ import java.time.{Clock, Instant, ZoneOffset}
  *
  * Skips gracefully when Chrome isn't installed, same as the other PageTest specs.
  */
-class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
+class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration with tools.ScratchDirectories {
 
   private val now     = Instant.parse("2026-10-06T10:00:00Z")
   private val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
-  private val labels  = Files.createTempFile("labels", ".tsv")
+  private val labels  = tempFile("labels", ".tsv")
   // each answer a millisecond after the one before, as answers clicked apart are: the export written on each takes the
   // answers given since the one before it
   private val ticking = new Clock {
@@ -105,7 +105,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   }
 
   /** The review digest over its own judgements file: two agent judgements (one in PL, one in DE) and two candidates. */
-  private val digestDir     = Files.createTempDirectory("digest")
+  private val digestDir     = tempDirectory("digest")
   private val digestLabels  = digestDir.resolve("identity-judgements.tsv")
   private val digestAnswers = new ReviewAnswers(new InMemoryReviewAnswerStore)
   private val digest = {

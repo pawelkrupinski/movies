@@ -9,7 +9,7 @@ import java.time.Instant
 
 /** The review digest's items: which judgements and candidates await the user, and what an answer to one does to the
  *  judgements file. */
-class ReviewDigestSpec extends AnyFlatSpec with Matchers {
+class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
 
   private val at = Instant.parse("2026-10-23T08:00:00Z")
 
@@ -104,7 +104,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers {
     AnswerRequest.parse(Json.obj("card" -> item.payload, "verdict" -> verdict.code), "dev", when).toOption.get
 
   private def withLabels(rows: Seq[LabelRow])(body: Path => Any): Unit = {
-    val dir  = Files.createTempDirectory("digest")
+    val dir  = tempDirectory("digest")
     val path = dir.resolve("identity-judgements.tsv")
     LabelsTsv.write(path, rows)
     try body(path): Unit

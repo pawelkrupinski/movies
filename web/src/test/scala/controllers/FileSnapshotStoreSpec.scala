@@ -12,11 +12,11 @@ import java.time.{Instant, LocalDateTime}
 /** The /debug snapshots survive a restart on disk — every kind the pages keep must
  *  round-trip, and a file that doesn't decode must read as "nothing stored", never
  *  as an error page. */
-class FileSnapshotStoreSpec extends AnyFlatSpec with Matchers {
+class FileSnapshotStoreSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
 
   private val at = Instant.parse("2026-10-03T12:00:00Z")
 
-  private def store() = new FileSnapshotStore(Files.createTempDirectory("debug-snapshots"))
+  private def store() = new FileSnapshotStore(tempDirectory("debug-snapshots"))
 
   private val record = MovieRecord(tmdbId = Some(7), data = Map(CinemaCityWroclavia -> SourceData(title = Some("Belle"),
     showtimes = Seq(Showtime(LocalDateTime.parse("2026-10-05T18:30"), bookingUrl = Some("https://book.example/b"))))))
@@ -37,7 +37,7 @@ class FileSnapshotStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   "a missing or unreadable file" should "read as nothing stored" in {
-    val dir = Files.createTempDirectory("debug-snapshots")
+    val dir = tempDirectory("debug-snapshots")
     val s   = new FileSnapshotStore(dir)
     s.load[Int]("/debug listing uk") shouldBe None
     Files.writeString(dir.resolve("debug-listing-uk.ser"), "not a snapshot")

@@ -32,14 +32,14 @@ import scala.concurrent.{Await, ExecutionContext}
  * the page must load the three Google families the template does. Side-by-side screenshots land in
  * `web/target/review-screenshots/`.
  */
-class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration {
+class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.SuiteConfiguration with tools.ScratchDirectories {
 
   private implicit val system: ActorSystem             = ActorSystem("review-design-parity")
   private implicit val materializer: Materializer      = Materializer(system)
   private implicit val executionContext: ExecutionContext = system.dispatcher
 
   private val now        = Instant.parse("2026-10-06T10:00:00Z")
-  private val labels     = Files.createTempFile("labels", ".tsv")
+  private val labels     = tempFile("labels", ".tsv")
   private val controller = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev,
     Map(Country.Poland -> ReviewFixtures.source(now)), new ReviewAnswers(new InMemoryReviewAnswerStore), labels, Clock.fixed(now, ZoneOffset.UTC))
 
