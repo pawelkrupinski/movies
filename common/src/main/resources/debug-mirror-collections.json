@@ -6,7 +6,7 @@
     { "name": "movie_slots", "why": "The per-cinema slot rows the corpus readers resolve beside `movies`, and each listing's venue facts on the review pages. Missing, every /debug film rendered slot-less." },
     { "name": "enrichment_attempts", "why": "The per-row expand: each rating source's last fetch." },
     { "name": "rating_cadence", "why": "The per-row expand: each rating source's refresh cadence." },
-    { "name": "web_movies", "why": "The /debug/readmodel dump of what the serving app actually serves; also the review pages' film records. Missing, the dump was blank for every non-boot country." },
+    { "name": "web_movies", "why": "The /debug/readmodel dump of every country's read model; also the review pages' film records." },
     { "name": "web_screenings", "why": "The /debug/readmodel dump's screenings." },
     { "name": "cinema_scrapes", "why": "Backs no /debug page. Each cinema's last content-bearing scrape: the listing the client actually produced, before the corpus merge touched it, which is what you read when a scrape looks wrong and the corpus a local replay replays. Over the tunnel that read is the latency this mirror exists to remove." },
     { "name": "identity_model_families", "why": "The identity review pages (/debug/review*): the model's decisions. ~190 MB over the five countries with the other review collections (2026-10-06)." },

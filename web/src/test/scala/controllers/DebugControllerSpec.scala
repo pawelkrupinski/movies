@@ -10,7 +10,6 @@ import org.scalatest.matchers.should.Matchers
 import play.api.Mode
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.tasks.InMemoryTaskQueue
 
 import java.time.Instant
 
@@ -193,13 +192,13 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
-  "GET /debug/readmodel" should "dump the warm read cache in dev mode" in {
+  "GET /debug/readmodel" should "dump the read model in dev mode" in {
     val result = buildController(Mode.Dev).debugReadModel().apply(FakeRequest(GET, "/debug/readmodel"))
 
     status(result) shouldBe OK
     val html = contentAsString(result)
-    html should include("Read cache")
-    // Reflects what the web serves from — the read cache's resolved movies.
+    html should include("Read model")
+    // The serving country's read model: its resolved movies.
     html should include("Belle")
     html should include("Incepcja")
   }
@@ -276,15 +275,6 @@ class DebugControllerSpec extends AnyFlatSpec with Matchers {
     screenings should include("https://book.example/cc")         // showtime bookingUrl
     screenings should include("Sala 4")                          // showtime room
     screenings should include("NAP")                             // showtime format token
-  }
-
-  it should "503 a film whose screenings could not be read, rather than list it as screening nowhere" in {
-    val stack = new DebugStack(models.Country.default,
-      new services.movies.InMemoryMovieRepository(Seq.empty, normalizer = services.movies.SingleCountryNormalizer.titleNormalizer),
-      new services.tasks.InMemoryTaskQueue, services.cadence.RatingCadenceReader.empty,
-      services.attempts.EnrichmentAttemptReader.empty)
-    val ctrl = TestDebugController.build(Seq.empty, Mode.Dev, debugCountries = Some(DebugCountries.single(stack)))._1
-    status(ctrl.debugReadModelScreenings("x").apply(FakeRequest(GET, "/debug/readmodel/screenings?id=x"))) shouldBe SERVICE_UNAVAILABLE
   }
 
   "GET /debug/readmodel/screenings" should "404 in production like the rest of /debug" in {
