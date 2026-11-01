@@ -289,3 +289,82 @@ saving `actions/cache` reports no matched key, so every `takes-drift-1` row read
 on every run. The follow-up commit reads the restored tree instead (worker test classes present right after the restore,
 before anything compiles), and drops the `matched-key` output. With the cache hitting, the branch run's numbers apply:
 about 50 runner-min less per run, and drift rows 2.5-6 min shorter.
+
+## 5. Under 10 minutes? (2026-11-01, afternoon)
+
+The owner: "i want convergence run to be under 10m", clarified as "the whole workflow": from the run's first job start
+to its last job's end, including `verdict complete`, `timings`, `request-bisect` and any queueing between them. All times
+below come from step timestamps (the run and job timestamps read an hour ahead today).
+
+### Where a row's time goes (main runs 41296844565 and 41299606411; branch runs 41302871174, 41302893834)
+
+| part | per row | notes |
+|---|---|---|
+| checkout | 13 s | |
+| `convergence-setup` (JDK, sbt caches, Mongo, pair, tree, corpus) | 37-83 s | Most of it already runs in the background. The fill step adds 29 s to a convergence row. |
+| sbt load + compile | 25-60 s | Each row compiles 1 source; the drift rows restore the takes build (section 3). |
+| **the replay itself** | **5-11 min** | DE boot `bootCutover` 293 s; US order pass pair `replayCutover` 629 s; UK drift seed 628 s. |
+
+Setup is 1.0-1.5 min of a 10-13 min row. The rest is the replay, and it is CPU-bound: the runner's `[cpu]` sampler reads
+3.3-3.9 of 4 cores busy for most of a convergence row (java plus mongod), with no iowait. So compiling once, restoring
+fixtures once, or a faster Mongo would each save seconds per row, not minutes.
+
+### Whole-workflow wall today
+
+| runs | wall (first step to last step) |
+|---|---|
+| last 10 main runs (41253023172 .. 41299606411) | median 26 min (19.2-52.0) |
+| the 4 since 67345c04 landed | 19.2, 22.8, 24.3, 25.7: median 23.6 min |
+
+### The floor, measured: an idle account
+
+Branch run 41302871174 (`runner=ubuntu-22.04-arm`) happened to start while the account was almost idle (0-1 x64 jobs
+running at 11:38-11:40Z). Every row got a runner within 1.8 min of the preflight. **Its rows still ended 14.3 min after
+the first job started**, because the longest rows are that long by themselves: drift UK 11.7, order DE p01 12.7,
+convergence DE 12.0, US convergence/order 10.6. That is the floor for today's rows with no queueing at all. Off main it
+also ran no p12 rows; on main those are 10-13 min as well.
+
+arm64 runners are no faster than x64 for this work (same rows, same minutes, within noise), and they share the same 20
+concurrent jobs (sampled: x64 + arm never above 20). There is no second pool to use.
+
+### What each lever is worth
+
+| lever | what it saves | gets under 10? |
+|---|---|---|
+| compile once / bake an image | 25-60 s per row (sbt load stays) | no: the longest row is still 10-12 min |
+| restore fixtures once per leg, faster Mongo | part of 37-83 s per row | no |
+| merge the tiny rows (takes, Spain) into one wave | ~6 jobs, less queueing | no: the 14.3 min floor stays |
+| skip unaffected pushes | already there: Main's kick dispatches nothing for a push outside `.github/convergence-paths.txt` (27 of the last 60 commits). Of the 33 that do dispatch, 15 change CI files the rows run (provably not identical inputs), 18 change identity/worker code | no, for the pushes that do run |
+| arm64 runners | 0 | no |
+| JFR profile (below) | about 10% of a US order row, a few % elsewhere | no, and it is identity code |
+| one replay per order row instead of two passes sharing 4 cores | order rows 12 -> ~7 min, but one more job per country, and a cross-row comparison the spec does not have | no: the drift and convergence rows are 10-12 min on their own |
+
+### JFR profile (branch run 41302893834, `profile=true`)
+
+- **US order-independence-p01**: 8.0% of samples in `LiveProjectionIndex.wasPlaced` (identity/src/main), plus 3.6% in
+  `ListingKey$Native.equals` and 3.1% in `DecidedBy.accepted`, all under `FamilyScope.score` ->
+  `LiveProjectionIndex.written` (12-13% inclusive): an `exists` over a collection doing a HashMap lookup per element.
+  That reads like a linear scan per listing, worth about 10% of the row if it became a lookup.
+- **DE convergence**: parsing recorded answers dominates the own-code frames: `MetacriticClient.parseSearchResults` 6.5%,
+  `RottenTomatoesClient.parseSearchResults` 2.5%, `JsonBodies.parse` 2.9%, `TitleRule.apply` 2.3%.
+
+Both are identity/enrichment code, outside this CI work, and reported to the identity owner. Neither is worth the 1.7x a
+10-minute run needs.
+
+### Verdict
+
+With identical coverage on GitHub's free runners, the whole workflow cannot get under 10 minutes: an uncontended run
+takes 14.3 min, and a run on main shares the 20 slots with Main's ~22 jobs, which adds 5-10 min of queueing. No CI change
+was landed for this target, because none of the levers moves the floor. Under 10 needs one of these, for the owner to
+decide:
+
+1. **Faster replays (identity code)**: every 10-13 min row must reach about 7 min of replay, so about 1.7x faster.
+   The profile above is the starting point, but it shows no single 40% hotspot.
+2. **Bigger machines**: GitHub larger runners (8-16 cores, a paid plan) or a self-hosted runner. The rows are
+   CPU-bound at 4 cores, so 8 cores would roughly halve the two-pass order rows and speed up the parallel parts of the
+   others.
+3. **Less work per push (a coverage change)**:
+   - a shorter replay per row, e.g. drift over a slice of each corpus per push with the full corpus nightly;
+   - plus one wave: one drift seed per push instead of two, and one order phase per push alternating p01/p12, with the
+     daily run still running all of them. That is 8 fewer rows and about 80 runner-min less, which removes most of the
+     queueing, but the floor stays at about 14 min unless the rows themselves get shorter.
