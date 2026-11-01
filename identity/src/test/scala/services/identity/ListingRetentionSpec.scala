@@ -55,4 +55,16 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
   it should "go when no present listing bills its title" in {
     kept("BLACK WATER (2025)", "White Water (GLOBALE)") shouldBe false
   }
+
+  "a listing kept before" should "be kept again by a restore while a present listing bills its title, and dropped once none does" in {
+    val stored = Seq(listing(0, "BLACK WATER (2025)"))
+    ListingRetention.restored(stored, Seq(listing(1, "Black Water (GLOBALE)")), normalizer).kept.map(_.key) shouldBe Seq(base(0).key)
+    val gone = ListingRetention.restored(stored, Seq(listing(1, "White Water")), normalizer)
+    (gone.kept, gone.dropped) shouldBe ((Nil, Seq(base(0).key)))
+  }
+
+  it should "be neither kept nor dropped once it is billed again: its current data wins" in {
+    val back = ListingRetention.restored(Seq(listing(0, "Black Water")), Seq(listing(0, "Black Water"), listing(1, "Black Water")), normalizer)
+    (back.kept, back.dropped) shouldBe ((Nil, Nil))
+  }
 }

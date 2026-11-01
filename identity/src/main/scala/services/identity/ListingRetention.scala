@@ -14,7 +14,10 @@ import services.resolution.SearchTitles
  *
  * The rule is data, not stickiness: a pure function of the listings that left, the ones present and the ones kept
  * before, applied where listings are fed to the model (the worker's drain, the drift replay, the equivalence spec's
- * histories), so a whole resolve of the inputs and the incremental model read the same set. It is why DE Metropol's bare
+ * histories), so a whole resolve of the inputs and the incremental model read the same set. The set kept is persisted
+ * (`identity_retained`): the worker's take-up resumes it ([[restored]]) rather than losing it at a restart, and the nightly
+ * recording captures it, so every replay of a recording -- the convergence rows, the takes check -- reads the model's
+ * input as production holds it: the listings billed and the ones kept. It is why DE Metropol's bare
  * "Madoka Magica - Der Film: Rebellion" keeps Filmhaus (Langerringen)'s dated facts while Filmhaus is away, and stays on
  * the 2013 film (drift slices: Madoka, CinemaxX "Titans", Hasetor "Scott & Lila").
  *
@@ -64,6 +67,17 @@ object ListingRetention {
   def leave(gone: Seq[Listing], present: Iterable[Listing], retained: Iterable[Listing], normalizer: TitleNormalizer): Left = {
     val title = (listing: Listing) => titleOf(listing, normalizer)
     leave(gone, retained, present.iterator.flatMap(billed(_, normalizer)).toSet, title)
+  }
+
+  /** What was kept before (`stored`: the worker's persisted set, or a recording's capture of it) as it stands against
+   *  `present`, the listings billed now: [[leave]] of every stored listing no present one replaced, as if each had just
+   *  left. Kept, those whose title a present listing bills; dropped, the rest. A listing back replaces what was kept
+   *  of it: a stored listing under a present key is neither. How the worker's take-up resumes the set it kept, and how
+   *  every replay of a recording reads the model's input beyond the listings billed (the convergence rows, the takes
+   *  check), so all of them hold the same set. */
+  def restored(stored: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer): Left = {
+    val billed = present.iterator.map(_.key).toSet
+    leave(stored.filterNot(listing => billed(listing.key)), present, Nil, normalizer)
   }
 
   /** [[leave]] over the titles `showing` (those a present listing bills), each listing's title read by `title`. */
