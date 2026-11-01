@@ -119,6 +119,11 @@ object MongoCollections {
         "screenings).")
       .record
       .resolveInput(ListingsKey),
+    RegisteredCollection("identity_retained", Corpus, Sweep("IdentityModelService"), Set(Worker))
+      .mirror("Backs no page: the listings the identity model keeps for their facts alone (ListingRetention) -- no venue " +
+        "bills them, a present listing bills their title -- which its take-up resumes and every convergence row reads.")
+      .record
+      .resolveInput(ListingsKey),
     RegisteredCollection("venue_pages", Corpus, Unswept("one per venue detail page ever read; a gone page is flagged, never deleted. The rule would be 'no " +
       "current listing names (its group, page)', but listings name pages through each cinema's enricher group and no " +
       "complete read of them exists yet to sweep against"), Set(Worker))

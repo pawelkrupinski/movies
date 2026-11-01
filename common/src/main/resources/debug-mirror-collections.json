@@ -11,6 +11,7 @@
     { "name": "cinema_scrapes", "why": "Backs no /debug page. Each cinema's last content-bearing scrape: the listing the client actually produced, before the corpus merge touched it, which is what you read when a scrape looks wrong and the corpus a local replay replays. Over the tunnel that read is the latency this mirror exists to remove." },
     { "name": "identity_model_families", "why": "The identity review pages (/debug/review*): the model's decisions. ~190 MB over the five countries with the other review collections (2026-10-06)." },
     { "name": "identity_listings", "why": "Review pages: each venue's last scrape as the identity intake holds it (catalogue ids, screenings)." },
+    { "name": "identity_retained", "why": "Backs no page: the listings the identity model keeps for their facts alone (ListingRetention) -- no venue bills them, a present listing bills their title -- which its take-up resumes and every convergence row reads." },
     { "name": "venue_pages", "why": "Review pages: each listing's own film page at its venue." },
     { "name": "tmdb_films", "why": "Review pages: the resolver's own TMDB record of each candidate film, for the candidates the corpus lacks." },
     { "name": "identity_family_answers", "why": "Review pages: what the other film databases answered, and each candidate's TMDB poster paths filed beside the hashes (13 MB over the five countries, 2026-10-08)." },

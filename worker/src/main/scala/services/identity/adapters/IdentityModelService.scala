@@ -78,7 +78,13 @@ final class IdentityModelService(
   /** Where each listing the model takes in, re-published with another field or poster, or lets go is kept, before and
    *  after ([[HistoryEntry.Listing]]), by the build `build`: what a replay of a moment's takes resolves. */
   history:    IdentityHistory = IdentityHistory.Discard,
-  build:      String = ""
+  build:      String = "",
+  /** The listings kept for their facts alone ([[ListingRetention]]), persisted: written as the set moves, resumed by
+   *  each take-up ([[ListingRetention.restored]]). */
+  retainedStore: RetainedListingStore = new RetainedListingStore.InMemory(),
+  /** The listings the history last saw the model hold ([[RetainedListingStore.fromHistory]]): what a take-up resumes
+   *  the kept set from when the store was never written. */
+  heldBefore: () => Seq[Listing] = () => Nil
 ) extends Logging {
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
@@ -240,8 +246,8 @@ final class IdentityModelService(
     }
   }
 
-  /** The listings left kept for their facts alone ([[ListingRetention]]): no venue bills them now. Lost on a restart,
-   *  whose take-up holds them as billed until their venue's next scrape leaves them again. */
+  /** The listings left kept for their facts alone ([[ListingRetention]]): no venue bills them now. Persisted in
+   *  `retainedStore` as they move, and resumed by a take-up ([[resumed]]): a restart keeps them as the rule does. */
   private val retained = java.util.concurrent.ConcurrentHashMap.newKeySet[services.movies.ListingKey]()
   /** Each held listing's title as [[ListingRetention]] reads it, by the listing object it was read off. */
   private val titles = new java.util.WeakHashMap[Listing, String]()
@@ -261,9 +267,9 @@ final class IdentityModelService(
    *  listing kept before whose title no present listing bills any more. */
   private def retaining(engine: IncrementalResolver, seen: Seq[Listing],
                         leaving: Iterable[services.movies.ListingKey]): (Seq[Listing], Seq[services.movies.ListingKey]) = {
-    seen.foreach(listing => retained.remove(listing.key))
+    val back  = seen.map(_.key).filter(retained.remove)
     val going = leaving.toSet
-    if (going.isEmpty && retained.isEmpty) (seen, Nil)
+    if (going.isEmpty && retained.isEmpty) { if (back.nonEmpty) persist(retainedStore.update(Nil, back)); (seen, Nil) }
     else {
       going.foreach(retained.remove)
       val seenKeys = seen.map(_.key).toSet
@@ -272,9 +278,31 @@ final class IdentityModelService(
         present.flatMap(billedOf).toSet, titleOf)
       left.dropped.foreach(retained.remove)
       left.kept.foreach(l => retained.add(l.key))
+      if (back.nonEmpty || left.kept.nonEmpty || left.dropped.nonEmpty) persist(retainedStore.update(left.kept, back ++ left.dropped))
       (seen ++ left.kept, left.dropped)
     }
   }
+
+  /** The kept set a take-up resumes, against `present` (the listings billed now): what the store kept -- the history's
+   *  last held listings when it was never written -- under [[ListingRetention.restored]], written back as it stands.
+   *  Nothing billed read, or the store unread, resumes none and writes nothing: no read is a reason to forget the set. */
+  private def resumed(present: Seq[Listing]): Seq[Listing] = {
+    retained.clear()
+    if (present.isEmpty) Nil
+    else scala.util.Try(retainedStore.read().getOrElse(heldBefore())).fold(
+      failed => { logger.warn(s"identity model: the kept listings could not be read -- none resumed: $failed"); Nil },
+      stored => {
+        val left = ListingRetention.restored(stored, present, normalizer)
+        left.kept.foreach(l => retained.add(l.key))
+        persist(retainedStore.replace(left.kept))
+        if (stored.nonEmpty) logger.info(s"identity model: ${left.kept.size} kept listing(s) resumed, ${left.dropped.size} no longer billed")
+        left.kept
+      })
+  }
+
+  /** A write of the kept set: one that fails is logged, never the drain's failure -- the next move writes again. */
+  private def persist(write: => Unit): Unit =
+    try write catch { case NonFatal(e) => logger.warn(s"identity model: the kept listings could not be written: $e") }
 
   /** `seen` and `gone`, as they move what `engine` holds, into the history: a listing new to it, held otherwise — the
    *  model's fields or its poster — or let go. Its screening days alone moving is no entry: a scrape adds days daily,
@@ -305,7 +333,8 @@ final class IdentityModelService(
   def takeUp(): Unit = {
     val started = tools.Stopwatch.start()
     val engine  = newModel()
-    engine.restore(archive())
+    val present = archive()
+    engine.restore(present ++ resumed(present))
     model = Some(engine)
     retryAt = scala.None; retryDelay = IdentityModelService.FirstRetry
     // The gauges from the moment the model is up, not from its first event.

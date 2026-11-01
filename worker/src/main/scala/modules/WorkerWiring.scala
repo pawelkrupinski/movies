@@ -114,6 +114,18 @@ class WorkerWiring(
           new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
           workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
+  /** The listings the identity model keeps for their facts alone, persisted (`identity_retained`, ListingRetention). */
+  lazy val identityRetainedStore: services.identity.adapters.RetainedListingStore =
+    mongoConnection.database.fold[services.identity.adapters.RetainedListingStore](new services.identity.adapters.RetainedListingStore.InMemory())(
+      new services.identity.adapters.MongoRetainedListingStore(_))
+  /** The listings the identity history last saw the model hold: what the kept set starts from before it was ever
+   *  persisted (`RetainedListingStore.fromHistory`). */
+  protected def identityHeldBefore(): Seq[services.identity.Listing] =
+    mongoConnection.database.fold(Seq.empty[services.identity.Listing]) { db =>
+      val reader = new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches)
+      services.identity.adapters.RetainedListingStore.fromHistory(
+        reader.since(Seq(services.identity.adapters.HistoryEntry.Listing), clock.millis() - services.identity.adapters.IdentityHistory.Kept.toMillis))
+    }
   /** How this wiring's history differs from the worker's (`IdentityHistory.Override`): none in production; a harness's
    *  wiring names its own. */
   protected def identityHistoryOverrides: Set[services.identity.adapters.IdentityHistory.Override] = Set.empty
@@ -188,7 +200,9 @@ class WorkerWiring(
       takenUp    = () => identityModelTakenUp(),
       clock      = clock,
       history    = identityHistory,
-      build      = configuration.commit.value)
+      build      = configuration.commit.value,
+      retainedStore = identityRetainedStore,
+      heldBefore = () => identityHeldBefore())
     identityTmdbStore.onChanged(model.filed)
     model
   }

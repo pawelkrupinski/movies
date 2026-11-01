@@ -55,10 +55,13 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val reads   = new ObservationReads
     val lookups = new Keyed(reads)
     val store   = new InMemoryIdentityModelStore
+    /** The kept listings' store, which outlives a service as `identity_retained` outlives a worker. */
+    var retained: RetainedListingStore = new RetainedListingStore.InMemory()
     var scrapes = Map.empty[Cinema, Seq[CinemaMovie]]
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
-      reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), clock = _root_.tools.SpecClock.Pinned)
+      reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), clock = _root_.tools.SpecClock.Pinned,
+      retainedStore = retained)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
       scrapes += cinema -> films; service.venueScraped(cinema, films)
     }
@@ -135,6 +138,40 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     service.drain()
     held(Multikino) shouldBe empty
     held(Helios) shouldBe empty
+  }
+
+  // A row's model input is production's: the listings billed AND the ones kept. A worker's restart, or a replay of a
+  // recording (whose capture of the kept set is this store, seeded: ArchiveReplayWiring.recordedRetained), takes up
+  // the kept ones too -- until no venue bills their title.
+  it should "take up, after a restart, a listing whose showtimes ended while another venue bills its title, and drop it once none does" in {
+    val world = new World
+    val first = world.service()
+    first.takeUp()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")))
+    world.scrape(first, Helios, Seq(movie(Helios, "Lalka")))
+    first.drain()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Matilda")))                 // Lalka's showtimes at Multikino end
+    first.drain()
+    val again = world.service()                                                     // a deploy: the model taken up anew
+    again.takeUp()
+    def held(service: IdentityModelService) = service.peek(10.seconds).get.listings.map(_.key)
+    val kept = ListingKey.of(Multikino, movie(Multikino, "Lalka", Some(2025)))
+    held(again) should contain(kept)                                                // Helios bills "Lalka": its facts stay
+    again.peek(10.seconds).get.resolution.decisions.find(_.listings.exists(_.venue == Helios.displayName)).flatMap(_.film) shouldBe Some(2)
+    world.scrape(again, Helios, Nil)                                                // no venue bills it any more
+    again.drain()
+    held(again) should not contain kept
+    world.retained.read().get.map(_.key) should not contain kept                    // and the store forgets it
+  }
+
+  it should "resume no recorded kept listing whose title no venue bills" in {
+    val world = new World
+    world.scrapes = Map(Helios -> Seq(movie(Helios, "Matilda")))
+    world.retained = new RetainedListingStore.InMemory(Some(listingsOf(Map(Multikino -> Seq(movie(Multikino, "Lalka", Some(2025)))))))
+    val service = world.service()
+    service.takeUp()
+    service.peek(10.seconds).get.listings.map(_.key.venue) shouldBe Seq(Helios.displayName)
+    world.retained.read() shouldBe Some(Nil)
   }
 
   it should "forget, in the reads index, the questions of a film no venue lists any more" in {
