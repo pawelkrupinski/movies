@@ -230,6 +230,16 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
       model.batch(gone = leaving.map(_.key))
       check(step)
     }
+    /** `venues`' listings leave as the worker's drain has them leave ([[services.identity.ListingRetention]]): kept, marked
+     *  so, while a present listing bills their title, else gone. */
+    def left(step: String, venues: String => Boolean): Unit = {
+      val (leaving, staying) = seen.partition(listing => venues(listing.venue))
+      val outcome = services.identity.ListingRetention.leave(leaving, staying, Nil, reads.normalizer)
+      seen = staying ++ outcome.kept
+      model.batch(seen = outcome.kept, gone = outcome.dropped)
+      check(step)
+    }
+    def held: Seq[services.identity.Listing] = model.listings
     def filed(step: String, queries: Set[CandidateQuery], films: Set[Int]): Unit = {
       lookups.held = lookups.held -- queries.map(query => s"q:${query.sortKey}") -- films.map(film => s"f:$film")
       model.batch(answered = AnswersChanged(queries, films))
@@ -311,6 +321,20 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     replay.scraped("Filmhaus's listing back", _ == "Filmhaus (Langerringen)")
     replay.flips.flips.map(_.line) shouldBe empty
     replay.takes(title).values.toSet shouldBe Set("tmdb:212162")
+  }
+
+  // The owner's lifetime of identity facts, beside the kept-apart rule (identity design, 2026-11-01, "B"): a kept listing
+  // joins no present listing whose feed link the present sources overrule -- and still keeps a bare present listing on
+  // its film where nothing overrules it. DE Metropol's bare "Madoka Magica - Der Film: Rebellion" stays on the 2013 film
+  // while Filmhaus (Langerringen)'s dated listing is away, its facts kept.
+  "a bare title beside a kept dated listing of its film" should "stay on that film while the dated listing is kept" in {
+    val replay = new SliceReplay("test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc")
+    val title  = "Madoka Magica - Der Film: Rebellion"
+    replay.scraped("boot", _ => true)
+    replay.left("Filmhaus's listing leaves", _ == "Filmhaus (Langerringen)")
+    replay.held.filter(_.venue == "Filmhaus (Langerringen)").map(_.kept).distinct shouldBe Seq(true)   // kept, marked
+    replay.takes(title)("Metropol-Kino-Center") shouldBe "tmdb:212162"
+    replay.flips.flips.map(_.line) shouldBe empty
   }
 
   "a cluster whose fallback's record is pending" should "be Pending, saying what it waits on, and take its fallback once filed" in {

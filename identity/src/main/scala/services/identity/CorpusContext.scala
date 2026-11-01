@@ -221,7 +221,7 @@ private[identity] object CorpusContext {
     val houseEvidence = nodes.flatMap { node =>
       val listing = node.evidence.measured
       StageRelays.Houses.evidence(listing, billedFilms(reached(node), listing, seasonFilms.getOrElse(_, Set.empty)).map(candidates(_).film)) }
-    val titleGroups = nodes.flatMap(node => node.listings.map(listing => IdentityMeasures.key(node.evidence.title) -> (Backer(listing.venue, SourceReliability.claimOf(listing)) -> node.evidence.measured)))
+    val titleGroups = nodes.flatMap(node => node.listings.map(listing => IdentityMeasures.key(node.evidence.title) -> (Backer.of(listing) -> node.evidence.measured)))
       .groupMap(_._1)(_._2)
     val wholeTitles = nodes.map(node => sanitize(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet
     val reachedByTitle = nodes.groupBy(titleOf).filter(_._1.nonEmpty).map { case (title, sameTitled) =>

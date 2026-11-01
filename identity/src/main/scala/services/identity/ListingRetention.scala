@@ -42,8 +42,9 @@ object ListingRetention {
    *  screens on, and those are facts of it: they date the broadcast a relay screens (UK "Royal Ballet and Opera: Alice's
    *  Adventures in Wonderland" is the 2026/27 staging by its day; kept without its days -- or with its season alone -- it
    *  joined the 2024/25 one and came back: 11 flips in the drift rows, 2026-10-30). The showings drop from the cinema data
-   *  the site serves, not from the facts the model reads. */
-  def kept(listing: Listing): Listing = listing
+   *  the site serves, not from the facts the model reads. Marked kept ([[Listing.kept]]): an input fact the resolve reads,
+   *  so a kept listing never overrules, nor joins, what the present listings' own sources decide (DE "Eternity"). */
+  def kept(listing: Listing): Listing = listing.copy(kept = true)
 
   /** `gone`, listings that just left, against `present` (those still showing after the leave) and `retained` (those kept
    *  before): each gone listing whose title a present one bills is kept, showings dropped; every other goes, and so does

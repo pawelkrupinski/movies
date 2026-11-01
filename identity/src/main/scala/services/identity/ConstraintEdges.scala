@@ -124,6 +124,14 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         families.readsAsReused(other)
     }
 
+  /** Is `kept` a node of kept listings alone ([[Listing.kept]]) and `other` one whose feed link the present sources
+   *  overrule toward another film ([[FamilyScope.overruled]])? The kept facts keep their own film's details alive; they
+   *  never join a listing whose own sources say it is another film. DE "Eternity", prod-latest 41265286306: Caligari's
+   *  kept kinoheld listing of Freyne's 2025 film joined the bare "Eternity" [2025] Cineamo links to it, which Zazie's and
+   *  kinoheld's 2026 entries credit to Meures, and moved 18 venues onto Freyne's film. */
+  private def keptBesideOverruled(kept: EvidenceNode, other: EvidenceNode): Boolean =
+    kept.listings.forall(_.kept) && !other.listings.forall(_.kept) && families.scopeOf(other).overruled(other).isDefined
+
   /** The edges between `members`, each node's film (accepted or voted) given by `filmOf`. */
   def of(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] =
     pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (first, second) =>
@@ -141,7 +149,8 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         Option.when(copiedOriginalJoinsAnotherFilm(first, second, firstFilm, secondFilm) ||
           copiedOriginalJoinsAnotherFilm(second, first, secondFilm, firstFilm))(ConstraintEdges.CopiedOriginalApart),
         Option.when(reusedPageDeniesLink(first, second, firstFilm, secondFilm) || reusedPageDeniesLink(second, first, secondFilm, firstFilm))(
-          ConstraintEdges.ReusedPageApart)
+          ConstraintEdges.ReusedPageApart),
+        Option.when(keptBesideOverruled(first, second) || keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart)
       ).flatten.filterNot(reason => RuleAblation.disables("apart:" + DecisionTrace.id(reason)))
       val titleX = sanitized(firstEvidence.cleanTitle)
       val originals = (firstEvidence.originalTitle.map(sanitized) ++ secondEvidence.originalTitle.map(sanitized)).filter(_.nonEmpty).toSet
@@ -175,6 +184,8 @@ private[identity] object ConstraintEdges {
   val CopiedOriginalApart = "copied-original-apart"
   /** The cannot-link of a node a feed links to a film and one whose reused page's copied facts deny it. */
   val ReusedPageApart = "reused-page-apart"
+  /** The cannot-link of a node of kept listings and one whose feed link the present sources overrule. */
+  val KeptOverruledApart = "kept-overruled-apart"
 
   /** The must-link tiers a title draws: same title, same search form or original title, one
    *  title a segment of the other. */

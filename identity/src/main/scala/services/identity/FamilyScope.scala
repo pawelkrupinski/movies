@@ -225,8 +225,11 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val overruledMemo = mutable.HashMap.empty[String, Option[FeedLink]]
   private def overrule(node: EvidenceNode): Option[FeedLink] = feedLinked(node).flatMap { case (id, film) =>
     val listing = node.evidence.measured
-    val own     = sourceOf(node)
-    def sources(candidate: Candidate) = backing.sources(backingGroups(listing, candidate), candidate.film, own)
+    // whose claim the link is: the node's present listings' -- a kept one sharing its evidence is no claim of the link's
+    val own     = SourceReliability.claimOf(node.listings.find(!_.kept).getOrElse(node.listings.head))
+    // the PRESENT sources' say: a kept listing ([[Listing.kept]]) keeps its own film's details alive, never a link a
+    // present listing's own sources overrule (DE "Eternity": Caligari's kept Freyne listing backed Cineamo's link)
+    def sources(candidate: Candidate) = backing.sources(backingGroups(listing, candidate), candidate.film, own, presentOnly = true)
     // a rival the title names only as one of its pieces overrules no link to a film it names whole: DE Metropolis's
     // "KIRSCHBLÜTEN - HANAMI", linked to Dörrie's 2008 film, is not the "Hanami" three venues credit to Denise Fernandes
     val namedWhole = pool.exists(candidate => candidate.tmdbId == film && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
@@ -257,7 +260,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       linked.film.year.exists(year => !node.evidence.statedYear.contains(year)))
     if (!older) None
     else backed.filter(candidate => current(candidate) && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
-      .map(candidate => candidate.tmdbId -> backing.corroborating(backingGroups(listing, candidate), candidate.film, node.venue, sourceOf(node)))
+      .map(candidate => candidate.tmdbId -> backing.corroborating(backingGroups(listing, candidate), candidate.film, node.venue, sourceOf(node), presentOnly = true))
       .filter { case (_, venues) => venues >= FeedLink.ReleaseVenues && venues > node.venues.size } match {
       case Seq(rival) => Some(rival)
       case _          => None

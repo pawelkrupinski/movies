@@ -30,6 +30,8 @@ object ListingBson {
     put(d, "searchTitle", l.searchTitle); put(d, "properTitle", l.properTitle); put(d, "poster", l.poster); put(d, "certificate", l.certificate)
     putInt(d, "yearUpperBound", l.yearUpperBound)
     putInt(d, "performanceYear", l.performanceYear)
+    if (l.kept) d.append("kept", org.bson.BsonBoolean.TRUE)
+    d
   }
 
   def of(d: BsonDocument): Listing = {
@@ -43,7 +45,8 @@ object ListingBson {
         ScreeningDays.ofSeason(seasonDay(season, optInt(d, "firstYear")))),
       VenueNames.ofHashes(ints(d, "names")), properTitle = opt(d, "properTitle"),
       certificate = opt(d, "certificate"), listedCast = ListedCast.ofHashes(ints(d, "listedCast")), yearUpperBound = optInt(d, "yearUpperBound"),
-      performanceYear = optInt(d, "performanceYear"), words = ProseWords.ofHashes(ints(d, "words")))
+      performanceYear = optInt(d, "performanceYear"), words = ProseWords.ofHashes(ints(d, "words")),
+      kept = Option(d.get("kept")).exists(v => v.isBoolean && v.asBoolean.getValue))
   }
 
   /** A day of `season` in `firstYear` (its opening year when the document names none, as one written before it kept the

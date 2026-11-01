@@ -8,9 +8,19 @@ import services.identity.IdentityMeasures.*
  *  by [[Backer.Join]]. */
 object Backer {
   val Join = '\u0001'
+  /** Leads the key of a KEPT listing's entry ([[Listing.kept]]): it backs a film as any other does, but never toward
+   *  overruling a present listing's feed link ([[VenueBacking.sources]]). */
+  val Kept = '\u0002'
   def apply(venue: String, source: String): String = if (source == venue) venue else s"$venue$Join$source"
-  def venue(key: String): String  = { val at = key.indexOf(Join); if (at < 0) key else key.substring(0, at) }
-  def source(key: String): String = { val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
+  /** `listing`'s entry: its venue and whose claim its facts are, marked when it is kept. */
+  def of(listing: services.identity.Listing): String = {
+    val key = apply(listing.venue, SourceReliability.claimOf(listing))
+    if (listing.kept) s"$Kept$key" else key
+  }
+  def kept(key: String): Boolean = key.nonEmpty && key.charAt(0) == Kept
+  private def unmarked(key: String): String = if (kept(key)) key.substring(1) else key
+  def venue(marked: String): String  = { val key = unmarked(marked); val at = key.indexOf(Join); if (at < 0) key else key.substring(0, at) }
+  def source(marked: String): String = { val key = unmarked(marked); val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
   /** Whose statement a backer's facts are for counting venues: the page a listings site serves every venue it lists
    *  ([[SourceReliability.claimOf]]'s "p:" claim), else its venue. */
   def origin(key: String): String = { val claim = source(key); if (claim.startsWith(SourceReliability.PageClaim)) claim else venue(key) }
@@ -33,13 +43,14 @@ final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
    *  listings site's entry page counted once ([[Backer.origin]]), and never when it is the listing's own page,
    *  `ownSource`: US Burns Court Sarasota's "NT Live: Hamlet" counted Film Streams Omaha's 2015 as a second venue's,
    *  both read off the one Flicks page that dated it so. A feed's catalogue id stays each venue's own listing of it. */
-  def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String, ownSource: String = ""): Int =
-    (backing(titleGroups, f).map(Backer.origin).toSet - ownVenue - ownSource).size
+  def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String, ownSource: String = "", presentOnly: Boolean = false): Int =
+    (backing(titleGroups, f).filterNot(key => presentOnly && Backer.kept(key)).map(Backer.origin).toSet - ownVenue - ownSource).size
   /** The SOURCES of `titleGroups` other than `ownSource` backing `f` ([[Backer.source]]): a feed entry's facts, copied
    *  onto every venue it lists, are one claim, counted once — what a feed's own link is weighed against
-   *  (`services.identity.FeedLink`). */
-  def sources(titleGroups: Seq[String], f: Film, ownSource: String): Int =
-    (backing(titleGroups, f).map(Backer.source).toSet - ownSource).size
+   *  (`services.identity.FeedLink`). `presentOnly`: a kept listing's entry ([[Backer.Kept]]) left out -- whether the
+   *  present sources overrule a present listing's link is theirs to say. */
+  def sources(titleGroups: Seq[String], f: Film, ownSource: String, presentOnly: Boolean = false): Int =
+    (backing(titleGroups, f).filterNot(key => presentOnly && Backer.kept(key)).map(Backer.source).toSet - ownSource).size
 }
 
 object VenueBacking {

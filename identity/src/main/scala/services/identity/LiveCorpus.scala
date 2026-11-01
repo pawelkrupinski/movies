@@ -354,7 +354,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     live.queries.foreach(query => askers.addValue(query, key))
     live.reached.foreach(id => reachers.addValue(id, key))
     StageRelays.seasonWorks(live.node.evidence.measured).foreach(pair => seasonNodes.addValue(pair, key))
-    groups.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.node.listings.map(listing => Backer(listing.venue, SourceReliability.claimOf(listing)) -> live.node.evidence.measured)
+    groups.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.node.listings.map(listing => Backer.of(listing) -> live.node.evidence.measured)
     if (live.whole.nonEmpty) wholes.countUp(live.whole)
     live.pieces.foreach(piece => spreads.getOrElseUpdate(piece, mutable.HashMap.empty).countUp(live.whole))
     if (live.titleKey.nonEmpty) reachedByKey.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.reached.toSet

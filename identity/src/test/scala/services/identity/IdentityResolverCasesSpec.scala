@@ -2902,6 +2902,29 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // DE "Eternity", prod-latest 41265286306 (2026-11-01): Cineamo links the bare "Eternity" [2025] of the venues screening
+  // Susanne Regina Meures' 2026 film (Florentina Holzinger's glacier piece) to David Freyne's 2025 romcom (1259102m, its
+  // year copied); Zazie's and kinoheld's entries credit Meures and date it 2026, overruling the link. Caligari's kinoheld
+  // listing of Freyne's film [2025] {David Freyne} left its board and is KEPT (ListingRetention) while "Eternity" is billed:
+  // kept facts keep a film's details alive, never pull a present listing onto the film its overruled link names.
+  private val eternityFilms = Seq(F(1259102, "Eternity", 2025, "David Freyne", 114, 20.0), F(1769681, "Eternity", 2026, "Susanne Regina Meures", 90, 0.4))
+  private val cineamoEternity = Seq(KinoMikro, KinoOaza, KinoPalacowe, Kinoteka).map(v => fed(listing(v, "Eternity", Some(2025)), "cineamo", "1259102m"))
+  private val meuresEternity = Seq(
+    listing(KinoApollo, "Eternity", Some(2026), Some("Susanne Regina Meures"), Some(90)).copy(page = Some("https://www.kinoheld.de/film/eternity-2026")),
+    fed(listing(KinoMuza, "Eternity", Some(2026), Some("Susanne Regina Meures"), Some(90)), "webedia", "1000052001"))
+  private val keptFreyne = ListingRetention.kept(
+    listing(KinoBulgarska, "Eternity", Some(2025), Some("David Freyne"), Some(114)).copy(page = Some("https://www.kinoheld.de/film/eternity")))
+
+  "A kept listing" should "never join a present listing whose feed link the title's present sources overrule toward another film" in {
+    val all = cineamoEternity ++ meuresEternity :+ keptFreyne
+    val r   = shipped(all, eternityFilms)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      cineamoEternity.map(l => r.decisionOf(l.key).film).distinct.foreach(film => Seq(None, Some(1769681)) should contain(film))
+      r.decisionOf(keptFreyne.key).film shouldBe Some(1259102)                  // its own facts kept alive, on its own film
+      meuresEternity.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1769681))
+    }
+  }
+
   it should "stand while a single source contradicts it" in {
     // one entry stating another film is one claim against another: two films, each named once (DE "Kohlhiesels Töchter")
     val other = fed(karlaStated(KinoMuza), "webedia", "1000023315")

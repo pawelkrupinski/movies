@@ -76,7 +76,12 @@ final case class Listing(
   /** The year of the performance its venue's own synopsis says a stage relay screens ("the indelible 2010 Met
    *  performance", [[StageRelays.performanceYear]]): what dates an ENCORE's relay, whose billed year is the encore's
    *  ([[RelayStage.of]]). Inside equality and hash. */
-  performanceYear: Option[Int] = None
+  performanceYear: Option[Int] = None,
+  /** Is it KEPT for its facts alone ([[ListingRetention]]): no venue bills it now, a present listing bills its title?
+   *  An input fact, inside equality and hash: its facts keep its film's details alive, but it never counts toward
+   *  overruling a present listing's feed link, nor joins a present listing whose link the present sources overrule
+   *  toward another film ([[FeedLink]], [[ConstraintEdges.KeptOverruledApart]]). */
+  kept: Boolean = false
 ) {
   def venue: String = key.venue
 
@@ -143,13 +148,13 @@ final case class Listing(
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
       countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && properTitle == that.properTitle && cinema == that.cinema &&
       screenedSeason == that.screenedSeason && listedCast == that.listedCast && certificate == that.certificate &&
-      yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear)
+      yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear && kept == that.kept)
     case _ => false
   }
   override def hashCode: Int = {
     import scala.util.hashing.MurmurHash3.{finalizeHash, mix, mixLast}
     val fields = Array(cinema.##, key.##, rawTitle.##, title.##, cleanTitle.##, year.##, directors.##, runtime.##, page.##, originalTitle.##,
-      countries.##, catalogueIds.##)
+      countries.##, catalogueIds.##, kept.##)
     var h = 0x4c697374
     var i = 0
     while (i < fields.length) { h = mix(h, fields(i)); i += 1 }
