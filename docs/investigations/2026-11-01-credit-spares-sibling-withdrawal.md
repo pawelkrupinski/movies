@@ -45,4 +45,8 @@ The withdrawal was the cause. The vote only followed from it.
   Hexham's row, the state at step 9) is red on main and green after. `…-hexham` (the whole family) is green on both.
 - `IdentityResolverCasesSpec` "A stage house's relay of a work": the credited pair beside an uncredited billing keeps
   the record (red on main), and the guard: uncredited billings, one with a runtime, still take nothing.
-- Measurement: below.
+- Whole-corpus measure, all five countries (run 41350777435, base 1c47f1fd816 vs de3af5df373): 0 takes moved in pl,
+  de, uk, us or es, model and final, so right→wrong 0. LANDABLE. The whole resolve already took Keswick's film. Only
+  the incremental path depended on the arrival order, and that is what changed.
+- Drift: uk `takes-drift-2` at the red's seed 42 is CLEAN with 0 flips (run 41350801923). All ten rows, five countries ×
+  seeds 9 and 10, are CLEAN with 0 divergences and 0 flips (run 41350773991).
