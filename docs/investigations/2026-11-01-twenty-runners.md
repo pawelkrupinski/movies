@@ -368,3 +368,113 @@ decide:
    - plus one wave: one drift seed per push instead of two, and one order phase per push alternating p01/p12, with the
      daily run still running all of them. That is 8 fewer rows and about 80 runner-min less, which removes most of the
      queueing, but the floor stays at about 14 min unless the rows themselves get shorter.
+
+## 6. How to measure (2026-11-01)
+
+The owner: "add measurements that will make these adjustments / investigations straightforward in the future", then
+"per time range and trend", "gc / mem pressure / processor and memory", "identification of machine per each run",
+"json in VL", "publish timings per leg" and "as much stats as possible". Everything in sections 1-5 was measured with
+ad-hoc API scripts. This section replaces them with one tool, one per-job telemetry step and one store.
+
+### The pieces
+
+| piece | where | what it does |
+|---|---|---|
+| `scripts/ci/ci-timings` (`ci_trends.py`) | laptop, and the collector | `report`, `trend`, `compare`, `legs`, `export` (below) |
+| `.github/actions/job-telemetry` | every job of Main (`ci.yml`, `main.yml`), the landing check (`precommit-check.yml`) and convergence (`identity-model-convergence.yml`, `country-convergence-leg.yml`) | `start` right after checkout, `finish` last (`!cancelled()`; before a convergence row's leg verdict). Uploads the job's `ci-metrics-<job>-<runner>` artifact (7 days). Every step continues on error. |
+| `scripts/ci/machine-id.sh` | `start` | one `machine: {json}` log line and metrics line |
+| `scripts/ci/cgroup-sampler.sh start 5` | `start` | the resource series, every 5 s (overhead below) |
+| `scripts/ci/job_metrics.py` | `start`/`finish` | sets `JDK_JAVA_OPTIONS=-Xlog:gc:file=$RUNNER_TEMP/ci-gc/gc-%p.log` for every later JVM; at the end parses the GC logs, the JUnit reports, the series; reads the API rate limit at both ends |
+| `scripts/ci/cache-marker.sh` | `sbt-target-cache`, `setup-jdk` | `ci-cache <name> <hit\|partial\|miss> <key>` plus restore time and size |
+| `ci_timings.py` (each workflow's `timings` job) | in-run | the run summary now ends with **one table per leg** (convergence's countries; Main's job groups): each row's queue, setup by category, work, total, machine, GC and pressure; the leg's wall clock and its critical row |
+| collector (`ci-metrics-collector` on ci-runner, infra branch `ci-metrics-collector`) | ci-runner, every 5 min | runs `ci-timings export --since 2d`, POSTs the events to `victoria-logs-ci` (`/insert/jsonline`, stream fields `source,repo,workflow`); a run is recorded in its state file only once accepted, so it is idempotent and resumable. A one-off backfill pass runs `--since 90d`. |
+| `victoria-logs-ci` | monitoring host, port 9429, `vlogs-ci.jebaka.com` | its own VictoriaLogs (1.52.1 has one retention per instance): **400 days**, capped at 10 GiB |
+| Grafana "CI" dashboard | grafana.jebaka.com | wall-clock trend per workflow, per-job p50/p90, setup vs work, queue wait and slot saturation, GC share and memory pressure per job, by CPU model / image, cache hit rate; variables for workflow and job |
+
+The runners never talk to VictoriaLogs: they only upload artifacts. Runs older than the artifacts' 7 days still have
+every timing (from the API's steps), just no resource, GC, test or cache figures.
+
+### Commands
+
+```
+# The last 10 green Main runs on main: per job/step, setup vs work, bound, critical paths
+scripts/ci/ci-timings report --workflow main.yml --last 10 --critical
+# ...one report per CPU model, image, leg, job group or label
+scripts/ci/ci-timings report --workflow main.yml --last 20 --by cpu-model
+# A change's effect in one command: the newest 10 on main against the newest 3 on a branch, or two commit ranges
+scripts/ci/ci-timings compare --workflow main.yml --before main:10 --after my-branch:3
+scripts/ci/ci-timings compare --workflow main.yml --before abc123..def456 --after def456..0a1b2c3
+# Per day for 14 days, with sparklines, slopes, changes, and regressions against the 14 days before
+scripts/ci/ci-timings trend --workflow main.yml --since 14d --by day [--threshold 20] [--match 'job: .*safari']
+# Convergence per leg, per day
+scripts/ci/ci-timings trend --workflow identity-model-convergence.yml --since 7d --by leg
+# Machine-readable
+scripts/ci/ci-timings --format json|csv trend ...
+# One run's per-leg tables
+scripts/ci/ci-timings legs 41298328467
+```
+
+`--vl-url https://vlogs-ci.jebaka.com` (or `CI_TIMINGS_VL_URL`) reads VictoriaLogs first (LogsQL), and the API only for
+runs not yet ingested, so a range older than the API's 90 days needs no refetching. Without it every command reads the
+API through `gh` and keeps completed runs in `~/.cache/ci-timings`. Selections: `<branch>:<N>`, `<sha>..<sha>`,
+`runs:<id>,<id>`, `<date|7d>..<date|now>`; green runs only unless `--include-red`.
+
+**Regressions.** `trend` compares the range with the one before it. A row is flagged when its p50 rose by more than
+`--threshold` % (default 20) and by at least 10 s (time rows; shares and rates have no minimum), or a cache's hit rate
+fell by more than the threshold. Each flag names the push window where it started: the change point (the split of the
+chronological per-run values with the largest gap between the medians either side, ties to the most uniform sides) as
+"between run A (sha, time) and run B (sha, time)", and says when the commonest image version or CPU model changed at the
+same point ("lines up with a machine change: cpu_model EPYC 7763 → Xeon 8370C").
+
+**The bound** on each job row: `memory/GC` when GC pauses are ≥ 5% of the job's wall, `memory` when PSI memory full ≥ 1%,
+some ≥ 10%, swap ≥ 256 MB or an OOM kill, `io` when PSI io full ≥ 5% or iowait ≥ 10%, else `cpu` at ≥ 85% busy,
+`waiting` under 35%, `mixed` between; plus `r(dur,gc|psi_mem|cpu|queue)` when a job's duration correlates with one of
+them at |r| ≥ 0.6 over 5+ runs. So "is it CPU, memory or waiting?" is one column.
+
+**Clock skew.** Only step timestamps are trusted. A job whose `started_at` is ≥ 10 min from its first step is skewed by
+that much (rounded to the quarter hour), and a `created_at` after its first step started is impossible and pulled back;
+the skew comes off the job's `created_at` before its queue wait is computed. `report` prints how many jobs it corrected
+(58 of 10 Main runs on 2026-11-01).
+
+### Overhead
+
+- The sampler: one sample is two `cat`s over `/proc/<pid>/stat` and the cgroup files, four awks and a `df`, about 10 ms
+  of CPU every 5 s: ~0.2% of one core of the runner's 4 (0.05% of the machine). It used to fork a `grep` per process per
+  sample for the java/mongod RSS; that is now part of the same awk.
+- GC logging: `-Xlog:gc` at info, one line per pause. The `Picked up JDK_JAVA_OPTIONS` banner is stripped for the
+  hermetic child JVMs (itkit `ChildJvm`), as it already was for `JAVA_TOOL_OPTIONS`.
+- Per job: `start` ~1 s, `finish` ~1 s plus the artifact upload (~2-4 s, 10-200 KB).
+- The collector: ~2.2 API calls per run (jobs, artifacts, the commit), measured over 150 runs of a 3 h window
+  (337 calls); about 11 MB of events per 150 runs before compression.
+
+### The event schema (VictoriaLogs, `source:ci`)
+
+Every event: `_time` (ISO-8601 UTC), `_msg` (one human line), `source` = `ci`, `repo`, `workflow` (name), `workflow_file`,
+`run_id`, `run_number`, `run_attempt`, `sha`, `branch`, `event`, `run_conclusion`, `kind`. Job-level events add `job`,
+`job_id`, `group` (the job without caller prefix and matrix suffix: `page tests`, `takes-drift-1`), `leg` (a convergence
+row's country, else the telemetry label), `label`.
+
+| kind | `_time` | fields |
+|---|---|---|
+| `run` | first job start | `wall_s`, `runner_min`, `peak_jobs`, `path_queue_s`, `path_work_s`, `critical_path` (job names, →), `sat_mean`, `sat_peak`, `sat_full` (share of the window at 20), `jobs`, `skewed_jobs`, `skipped_jobs`, `skipped` (the jobs a scope gate skipped), `start`, `end` (epoch s), `change_files`, `change_additions`, `change_deletions`, `change_parents` |
+| `job` | first step start | `conclusion`, `duration_s`, `queue_s`, `skew_s`, `runner_name`, `setup_s`, `work_s`, `bound`, `start`, `end`, `runnable` (epoch s), `rate_start`, `rate_end` (API rate limit remaining); `machine_*`: `runner_name`, `runner_os`, `hosted`, `arch`, `image`, `image_version`, `cpu_model`, `cores`, `cpu_flags_hash`, `mem_mb`, `disk_gb`, `disk_free_gb`, `kernel`, `cgroup_cpu_max`, `cgroup_mem_max`, `virt`, `product`, `vendor`, `region`; `res_*` over the job: `cpu`, `user`, `sys`, `iowait`, `steal` (shares of all cores), `load_mean`, `load_max`, `runq_mean`, `runq_max`, `mem_used_max_mb`, `mem_avail_min_mb`, `swap_used_max_mb`, `psi_cpu_some`, `psi_mem_some`, `psi_mem_full`, `psi_io_some`, `psi_io_full` (shares of wall time), `disk_read_mb`, `disk_write_mb`, `disk_free_min_mb`, `net_rx_mb`, `net_tx_mb`, `open_files_max`, `oom_kills`; `gc_*`: `jvms`, `collections`, `pause_s`, `max_pause_ms`, `heap_after_max_mb`, `of_wall`, `worst_jvm_overhead`; `tests_*`: `files`, `suites`, `tests`, `failed`, `skipped`, `time_s` |
+| `step` | step start | `step`, `step_index`, `category` (runner, checkout, toolchain/cache, compile, services, fixtures, tests, publish, other; the first six are "setup"), `offset_s`, `duration_s`, and the `res_*` above over the step when it ran ≥ 15 s |
+| `jvm` | job start | `pid`, `log`, `main` (main class or jar), `flags` (-X/-XX), `gc_count`, `gc_full`, `gc_pause_ms`, `gc_max_pause_ms`, `heap_after_max_mb`, `heap_committed_max_mb`, `uptime_s`, `gc_overhead` |
+| `cache` | job start | `cache` (sbt-target, sbt-deps), `family` (the key without its hash), `status` (hit/partial/miss), `key`, `size_mb`, `restore_s` |
+| `suite`, `test` | job start | the 15 slowest suites and tests of the job (and every failed test): `suite`, `test`, `tests`, `failed`, `skipped`, `time_s`, `status` |
+| `process` | job start | the 5 commands with the largest RSS: `comm`, `rss_mb` (peak, all its processes), `cpu_s`, `threads` (peak), `procs` (peak) |
+
+The per-job artifact's own lines (`machine`, `job_start`, `series`, `procs`, `jvm`, `cache`, `tests`, `suite`, `test`,
+`rate_limit`, `job_end`) are what `export` turns into these events; `series` columns are cgroup-sampler.sh's
+`SERIES_HEADER`.
+
+### Not collected yet (and what it would take)
+
+- sbt task timings (update/compile/test per module, incremental vs full): sbt prints none by default; needs a
+  `-Dsbt.task.timings` run or a small sbt plugin writing them to a file the finish step reads.
+- Mongo op counters (mongo-top.sh) and Playwright browser launch time: need a hook in the Mongo start script and the
+  page-test action; Playwright's per-spec times already arrive as `suite`/`test` events from its JUnit report.
+- Convergence replay internals (listings replayed, resolves, flips, per-phase split, corpus size): the `PhaseTimer`
+  phases are already pushed to Prometheus by the in-run reporter (`kinowo_ci_phase_seconds`); the counters need the
+  replay code to write a small JSON file the finish step picks up (identity code, not done here).
+- Coursier and fixture download bytes: covered only as the machine's `net_rx_mb` per job and step.
