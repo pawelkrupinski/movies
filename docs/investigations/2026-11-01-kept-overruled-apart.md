@@ -43,4 +43,10 @@ present sources.
 
 ## Measurement
 
-Recorded on the persistence branch's re-measure (`2026-11-01-retained-listings-input.md`).
+- **The fix alone**, on the pinned recordings (identity-measure run 41321711292, all five countries): no take moved and
+  LANDABLE. No recording holds kept listings yet.
+- **Over the kept input** (run 41323419852, prod-latest 41265286306 with prod's kept set captured beside it): the base
+  is the kept input on main, and the head adds this fix. Only DE moved: the 18 "Eternity" listings went from
+  1259102 (Freyne, wrong) to none. Meures' film is 1769681, and none is not wrong. There were no other moves in any
+  country and no new suspect. LANDABLE.
+- **Drift** (`identity-drift-ci --against main`, run 41321787149): both seeds in all five countries, DRIFT CLEAN.
