@@ -56,8 +56,6 @@ object DecidedBy {
   }
 
   /** The rule a node accepted the film by alone: `key`'s own node's, else the first member's that did. */
-  private def accepted(decision: ResolverDecision, key: Option[ListingKey]): Option[String] = {
-    val nodes = decision.trace.nodes
-    key.flatMap(nodes.get).flatMap(_.accepted).orElse(decision.members.iterator.flatMap(nodes.get).flatMap(_.accepted).nextOption())
-  }
+  private def accepted(decision: ResolverDecision, key: Option[ListingKey]): Option[String] =
+    key.flatMap(decision.trace.nodes.get).flatMap(_.accepted).orElse(decision.firstAccepted)
 }

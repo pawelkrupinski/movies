@@ -37,6 +37,10 @@ final case class ResolverDecision(members: Seq[ListingKey], film: Option[Int], c
                                   candidate: Option[ResolverDecision.Leaning] = None, awaits: Set[Question] = Set.empty)(
                                   val trace: DecisionTrace = DecisionTrace.Empty) {
   lazy val listings: Set[ListingKey] = members.toSet
+  /** The rule the first member whose node accepted the film alone accepted it by ([[DecidedBy]]'s fallback for a listing
+   *  whose own node accepted none): the same for every member, so worked out once a decision, not once a listing — asked
+   *  per listing it walked the members each time, 3% of a US order row's CPU (JFR, run 41302893834). */
+  lazy val firstAccepted: Option[String] = members.iterator.flatMap(trace.nodes.get).flatMap(_.accepted).nextOption()
   /** What it comes to, typed: [[TakeOutcome.Pending]] while it awaits anything, naming what -- its film, if it took one,
    *  served all the same, but interim (P1) -- else a film taken (TMDB's or a fallback's), or no film ([[TakeOutcome.NoFilm]]). */
   def outcome: TakeOutcome =
