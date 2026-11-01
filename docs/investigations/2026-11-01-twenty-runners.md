@@ -509,13 +509,11 @@ each a fresh job behind every convergence row already queued.
    its SHA tag only; `image-worker` is gone and `publish-worker` needs only `ci` and `gates`. One queue hop after ci
    instead of two. Nothing ships before ci is green, as before (`publish-*` still `needs: [ci, gates]`).
    The `stage-worker` artifact had no other consumer and is no longer uploaded.
-3. **The drift slices in two suites.** `IdentityDriftSlicesSpec` replayed 22 slices for 420-450 s: once the WebKit
-   rows were shorter, `test (worker-identity)` (8.5 min) was Main's long pole. Every other slice now runs in
-   `IdentityDriftSlicesPart2Spec` on the `heavy1` row (2.5-2.8 min). Same slices, same seeds.
-4. **A dispatch on a branch ships nothing**: `gates` outputs `ship` (main only), both publishes need it, and
+3. **A dispatch on a branch ships nothing**: `gates` outputs `ship` (main only), both publishes need it, and
    `kick-convergence` kicks only from main. That is what made these measurements possible without deploying.
-5. Tried and reverted: the drift slices on every core instead of half. The suite went from 278 s to 446-452 s at 92%
-   CPU: it competes with the row's other suites.
+4. Tried and reverted: the drift slices on every core instead of half. The suite went from 278 s to 446-452 s at 92%
+   CPU: it competes with the row's other suites. Tried on the branch and not landed: the drift slices halved by
+   position into a second suite on `heavy1` (run 41319004595): 578 s and 288 s, see below.
 
 Coverage is unchanged: every test, spec, slice and check still runs before a deploy.
 
@@ -552,7 +550,7 @@ Two numbers explain why the wall is still above 8 minutes:
   workflow's rows waits for them; the post-ci hops always are.
 - **`IdentityDriftSlicesSpec` is the new long pole.** It replays every committed drift slice (a drift or flip red is
   not closed until its slice is committed), computing them in one lazy pass two at a time. It took 278 s at 12:55Z,
-  420-450 s by 14:30Z as slices landed, and grows with every closed drift red. Halving it by position (reverted) gave
+  420-450 s by 14:30Z as slices landed, and grows with every closed drift red. Halving it by position (not landed) gave
   578 s and 288 s: a few slices dominate.
 
 ### Verdict, and what under 8 minutes would take
