@@ -271,7 +271,21 @@ touches no identity code. It was reported to the reds owner.
 
 Shorter runs also mean fewer lane waits: a run that ends sooner lets the next one start sooner.
 
-### On main after landing
+### On main after landing (67345c04: Main 41293603926, convergence 41293639713, 09:33-10:02Z)
 
-The first Main + convergence pair on main after this change lands is measured the same way (step timestamps). The result
-is reported with the landing.
+| | baseline (median) | first run after |
+|---|---|---|
+| `kick-convergence` starts | +2.1 min (queued 1.8) | **+0.0 min** (ended +0.4) |
+| convergence's first job | +3.0 min | +4.5 min (its preflight waited for the lane: run 41291836903 was still in flight) |
+| Main wall | 15.5 min | 18.2 min |
+| convergence wall | 30.5 min | **24.3 min** |
+| push to both verdicts | 35 min | **28.8 min** |
+| convergence runner-min | 250 | 244 |
+| peak Main + convergence jobs at once | 20 | 18 |
+
+In that run the drift rows still compiled everything, because no takes entry existed yet. Their save worked
+(`sbt-target-takes-...67ff671e`, 111 MB, 09:46Z), so the next run restores it. The run also exposed a bug: on main the
+saving `actions/cache` reports no matched key, so every `takes-drift-1` row read "restored nothing" and would have saved
+on every run. The follow-up commit reads the restored tree instead (worker test classes present right after the restore,
+before anything compiles), and drops the `matched-key` output. With the cache hitting, the branch run's numbers apply:
+about 50 runner-min less per run, and drift rows 2.5-6 min shorter.
