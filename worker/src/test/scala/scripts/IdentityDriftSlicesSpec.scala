@@ -27,21 +27,23 @@ abstract class IdentityDriftSlicesShard(shard: Int) extends AnyFlatSpec with Mat
    *  stands -- the corpus gate's own rule -- and is held strictly once the fix removes it. A tightened check's birth
    *  baselines what it newly sees (a229501a7's precise none: CinemaxX "Titans" goes to no film and back). */
   private val baselined = IdentityDrift.flipBaseline(fixtures.resolve("identity-flips-baseline.tsv"))
-  private val slices   = shards(AllSlices, costs(CostsFile))(shard)
+  private val parts    = shards(AllSlices, costs(CostsFile))(shard)
 
-  /** This shard's slices' findings, side by side: each replays its own answers and shares nothing with another. */
-  private lazy val found: Map[Path, Try[Outcome]] = {
+  /** This shard's parts' findings, side by side: each replays its own answers and shares nothing with another. */
+  private lazy val found: Map[Part, Try[Outcome]] = {
     val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    try slices.zip(ParallelTasks.all(slices)(dir => Try(replayed(dir)))(using
+    try parts.zip(ParallelTasks.all(parts)(part => Try(replayed(part.dir, part.seeds)))(using
       scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
     finally pool.shutdown()
   }
 
-  slices.foreach { dir =>
-    "A drift slice" should s"replay incremental = whole with no divergence nor flip beyond the allow-lists: ${fixtures.relativize(dir)}" in {
-      val outcome = found(dir).get
-      // what the slice costs, for drift-slice-costs.tsv (the shards' balance): CPU of its replay thread, and wall
-      info(f"cost: ${sliceKey(dir)}%s ${outcome.cpuSeconds}%.1f s CPU, ${outcome.wallSeconds}%.1f s wall")
+  parts.foreach { part =>
+    val dir = part.dir
+    "A drift slice" should s"replay incremental = whole with no divergence nor flip beyond the allow-lists: ${fixtures.relativize(dir)}" +
+      (if (part.whole) "" else s" (seeds ${part.seeds.mkString(",")})") in {
+      val outcome = found(part).get
+      // what the part costs, for drift-slice-costs.tsv (a slice's cost is its parts' sum): its replay thread's CPU, and wall
+      info(f"cost: ${sliceKey(dir)}%s ${outcome.cpuSeconds}%.1f s CPU, ${outcome.wallSeconds}%.1f s wall, seeds ${part.seeds.mkString(",")}%s")
       // a request the slice does not hold is read as unknown, as a leg reads a gap of its recording: code that asks
       // something new still replays the slice, deterministically; cutting it again brings the answer in
       if (outcome.lacking.nonEmpty) info(s"${outcome.lacking.size} request(s) the slice lacks, read as unknown (scripts/identity-slice --emit-drift-slice cuts it again)")
@@ -72,18 +74,24 @@ class IdentityDriftSlicesSpec extends IdentityDriftSlicesShard(0) {
     AllSlices should not be empty
   }
 
-  they should "each be replayed by exactly one shard" in {
+  they should "each be replayed on each of its seeds by exactly one shard" in {
     val split = shards(AllSlices, costs(CostsFile))
     split should have size ShardCount
-    split.flatten.sortBy(_.toString) shouldBe AllSlices
-    split.flatten.distinct should have size AllSlices.size.toLong
+    val replays = split.flatten.flatMap(p => p.seeds.map(p.dir.toString -> _))
+    replays.sorted shouldBe AllSlices.flatMap(d => seedsOf(d).map(d.toString -> _)).sorted
+    replays.distinct should have size replays.size.toLong
   }
 
   "The shards" should "be balanced by measured cost, heaviest first onto the lightest shard, an unmeasured slice at the median" in {
     val dirs = Seq("a", "b", "c", "d", "e").map(n => Path.of("drift-slices", "pl", n))
     val cost = Map("pl/a" -> 10.0, "pl/b" -> 6.0, "pl/c" -> 5.0, "pl/d" -> 4.0)
-    shards(dirs, cost, 2).map(_.map(_.getFileName.toString)) shouldBe Seq(Seq("a", "c"), Seq("b", "d", "e"))
+    // a: 10 of 31 is over half a shard's even share (7.75), so it is replayed in two parts of its seeds, 5 each
+    shards(dirs, cost, 2).map(_.map(p => p.dir.getFileName.toString -> p.seeds.head)) shouldBe
+      Seq(Seq("a" -> 1, "b" -> 1, "c" -> 1), Seq("a" -> 2, "d" -> 1, "e" -> 1))
+    shards(dirs, cost, 2).flatten.filter(_.dir.getFileName.toString == "a").map(_.seeds) shouldBe
+      Seq(Seeds.filter(_ % 2 == 1), Seeds.filter(_ % 2 == 0))
     shards(dirs, Map.empty, 2).map(_.size) shouldBe Seq(3, 2)
+    shards(dirs, Map.empty, 2).flatten.forall(_.whole) shouldBe true
   }
 
   it should "read the costs file, one `<cc>/<name>  seconds` a line" in {
@@ -111,7 +119,8 @@ object IdentityDriftSlicesSpec {
 
   /** How many suites the slices are split over: one per CI row that carries a shard (build.sbt `HeavyRows`,
    *  `WorkerRestSuites`, the `identity` row). Four, measured on Main run 41348471000: the slices' CPU was 1,157 s, a
-   *  third of it one slice (Torrington "Dracula", 332 s), and four rows bring each to ~6 min, under the page tests. */
+   *  third of it one slice (Torrington "Dracula", 332 s), which alone held its row at 8.5 min (run 41350900273) until
+   *  [[shards]] split a heavy slice's seeds into parts. */
   val ShardCount: Int = 4
 
   /** Each slice's measured replay cost, seconds of its replay thread's CPU on a Main runner (`cost:` in this spec's
@@ -129,22 +138,33 @@ object IdentityDriftSlicesSpec {
       key -> seconds.trim.toDouble
     }.toMap
 
-  /** `dirs` split into `count` shards by cost, longest-processing-time first: heaviest slice first (ties by path),
+  /** `dirs` split into `count` shards by cost, longest-processing-time first: heaviest part first (ties by path, seed),
    *  each onto the shard carrying the least so far (ties the lowest). A slice with no measured cost counts the median
    *  of the measured ones (1 when none are). Deterministic: every JVM computes the same split. Each shard sorted by path. */
-  def shards(dirs: Seq[Path], cost: Map[String, Double], count: Int = ShardCount): Seq[Seq[Path]] = {
+  def shards(dirs: Seq[Path], cost: Map[String, Double], count: Int = ShardCount): Seq[Seq[Part]] = {
     val known  = dirs.flatMap(d => cost.get(sliceKey(d))).sorted
     val median = if (known.isEmpty) 1.0 else known(known.size / 2)
     def of(d: Path) = cost.getOrElse(sliceKey(d), median)
-    val load  = Array.fill(count)(0.0)
-    val taken = Array.fill(count)(Vector.empty[Path])
-    dirs.sortBy(d => (-of(d), d.toString)).foreach { d =>
-      val i = load.indices.minBy(i => (load(i), i))
-      load(i) += of(d)
-      taken(i) = taken(i) :+ d
+    // A slice over half a shard's even share is replayed in parts, its seeds dealt round: one slice (Torrington
+    // "Dracula", 332 s of CPU) was otherwise a row's floor on its own. Its seeds are independent replays.
+    val cap   = dirs.map(of).sum / (2 * count)
+    val parts = dirs.flatMap { d =>
+      val seeds = seedsOf(d)
+      val n     = math.max(1, math.min(seeds.size, math.ceil(of(d) / cap).toInt))
+      (0 until n).map(j => Part(d, seeds.zipWithIndex.collect { case (s, i) if i % n == j => s }, of(d) / n, n == 1))
     }
-    taken.toSeq.map(_.sortBy(_.toString))
+    val load  = Array.fill(count)(0.0)
+    val taken = Array.fill(count)(Vector.empty[Part])
+    parts.sortBy(p => (-p.cost, p.dir.toString, p.seeds.head)).foreach { p =>
+      val i = load.indices.minBy(i => (load(i), i))
+      load(i) += p.cost
+      taken(i) = taken(i) :+ p
+    }
+    taken.toSeq.map(_.sortBy(p => (p.dir.toString, p.seeds.head)))
   }
+
+  /** What one shard's test replays: a slice on `seeds` -- all of its seeds (`whole`), or its share when it is split. */
+  final case class Part(dir: Path, seeds: Seq[Int], cost: Double, whole: Boolean)
 
   /** How many seeds each slice replays: each one a different share of the answers held at boot, a different arrival and
    *  re-scrape order — cheap at a slice's size. */
@@ -165,11 +185,11 @@ object IdentityDriftSlicesSpec {
     if (!Files.isDirectory(root)) Nil
     else Files.walk(root).iterator().asScala.filter(d => Files.exists(d.resolve("slice.json.gz"))).toSeq.sortBy(_.toString)
 
-  def replayed(dir: Path): Outcome = {
+  def replayed(dir: Path, seeds: Seq[Int]): Outcome = {
     val threads = java.lang.management.ManagementFactory.getThreadMXBean
     val (cpu0, wall0) = (threads.getCurrentThreadCpuTime, System.nanoTime)
     val run      = new IdentityDrift.SliceRun(dir)
-    val findings = quietly(run.run(seedsOf(dir), Gate))
+    val findings = quietly(run.run(seeds, Gate))
     Outcome(run.slice.country.code, findings, run.lacking, (threads.getCurrentThreadCpuTime - cpu0) / 1e9,
       (System.nanoTime - wall0) / 1e9)
   }
