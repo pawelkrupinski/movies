@@ -64,6 +64,10 @@ env:
     # `convergence-setup` reads the pinned pair from here.
     FIXTURE_RELEASE_TAG: convergence-fixtures
     BUDGET_MINUTES: 90
+    # ci-runner's job image (catthehacker's hosted-Ubuntu copy) sets no locale, where a hosted VM sets C.UTF-8: the JVM
+    # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
+    # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
+    LANG: C.UTF-8
 
 jobs:
     # Seconds, first: the secrets the jobs below read are set, so a missing one fails here

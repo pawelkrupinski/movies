@@ -120,6 +120,12 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image (catthehacker's hosted-Ubuntu copy) sets no locale, where a hosted VM sets C.UTF-8: the JVM
+    # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
+    # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
+    LANG: C.UTF-8
+
 jobs:
     # Seconds, first: the secret the legs read is set, and the pair every leg replays exists, so a missing one fails
     # here rather than minutes into each of ten legs (scripts/ci/preflight.sh, scripts/ci/convergence-preflight.sh:

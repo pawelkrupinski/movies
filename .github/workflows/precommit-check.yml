@@ -25,6 +25,12 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image (catthehacker's hosted-Ubuntu copy) sets no locale, where a hosted VM sets C.UTF-8: the JVM
+    # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
+    # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
+    LANG: C.UTF-8
+
 jobs:
     # WHICH OF MAIN'S HEAVY ROWS THE CHANGE CAN MOVE (scripts/hooks/pre-push --plan with PREPUSH_HEAVY_ROWS=1: `itrest`,
     # `itidentity`, `e2e`, `e2ecorpus`), space-separated, for the `heavy` job. The batch's fast check (check/fast-*) runs none.

@@ -65,6 +65,15 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     withClue("a job of Main's on a self-hosted label: ")(main.filterNot((_, l) => Hosted(l)) shouldBe empty)
   }
 
+  "every workflow that can run on ci-runner" should "set the UTF-8 locale a hosted VM sets and ci-runner's image does not" in {
+    // unset, the JVM encodes file names as ASCII: a fixture path with a Polish letter throws InvalidPathException
+    // (precommit-check run 41356052566). Workflow-level env does not cross into a called workflow, so each declares it.
+    val TopLevelLang = """(?m)^env:\n(?:[ \t]+.*\n|\s*\n)*?[ \t]+LANG: C\.UTF-8\s*$""".r
+    val missing = Seq("precommit-check.yml", "identity-model-convergence.yml", "country-convergence-leg.yml",
+      "convergence-bisect.yml", "report-timings.yml").filterNot(f => TopLevelLang.findFirstIn(yml(f)).isDefined)
+    missing shouldBe empty
+  }
+
   "with the variable unset" should "run every job on GitHub's hosted runners (the fallback)" in {
     val off = Seq("precommit-check.yml" -> "refs/heads/check/x", "identity-model-convergence.yml" -> "refs/heads/measure/y",
       "convergence-bisect.yml" -> RunnerLabel.Main, "report-timings.yml" -> "refs/heads/measure/y")

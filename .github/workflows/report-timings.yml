@@ -13,6 +13,12 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image (catthehacker's hosted-Ubuntu copy) sets no locale, where a hosted VM sets C.UTF-8: the JVM
+    # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
+    # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
+    LANG: C.UTF-8
+
 jobs:
     # Named, not the bare `report`: beside a workflow's own scheduled-run `report` this row would read `report-1`.
     report:

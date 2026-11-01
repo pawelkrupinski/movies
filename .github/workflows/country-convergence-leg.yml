@@ -368,6 +368,10 @@ env:
     # Declared HERE and not only in the caller: workflow-level `env` does not cross
     # into a called workflow, and `convergence-setup` reads this variable.
     FIXTURE_RELEASE_TAG: convergence-fixtures
+    # ci-runner's job image (catthehacker's hosted-Ubuntu copy) sets no locale, where a hosted VM sets C.UTF-8: the JVM
+    # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
+    # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
+    LANG: C.UTF-8
 
 # Least privilege by default: every job that needs more than reading the
 # repository grants it at job level.
