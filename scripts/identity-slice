@@ -5,7 +5,7 @@
 # scrape fixtures" recording with every answer they read (TMDB, IMDb, the families, posters, catalogue links, venue pages)
 # into a hermetic slice; each ref's code decides the slice again.
 #
-#   scripts/identity-slice <cc> SELECTOR... [--ref A [--ref B]] [--recording RUN] [--widen N] [--emit-case]
+#   scripts/identity-slice <cc> SELECTOR... [--ref A [--ref B]] [--recording RUN [--fills LIST]] [--widen N] [--emit-case]
 #   scripts/identity-slice <cc> --batch FILE --ref BASE --ref HEAD [--recording RUN]
 #   scripts/identity-slice <cc> SELECTOR... --bisect A..B [--recording RUN]
 #   scripts/identity-slice --log '<take-change log line (JSON)>'
@@ -20,6 +20,10 @@
 #                 last night; scripts/identity-repro), default: the newest successful "Record scrape fixtures" run holding the
 #                 country's corpus; older ones are tried in turn, each skip said. Every ref replays the
 #                 SAME recording: the comparison is the code's, never the input's.
+#   --fills LIST  lay these fill assets over the recording's tree, as a hermetic convergence leg did: its log's
+#                 "hermetic leg: corpus from recording run N ..., fills: fill-<cc>-N-... ..." names them. Without them a
+#                 slice cut for that leg's red lacks the answers its flip read, and replays clean (UK "Rebuilding",
+#                 "Dracula": 2026-11-01). The filled pair is cached apart from the bare one.
 #   --widen N     N more rings of context: the context listings' own families joined to the slice
 #   --orders N    also feed the slice to the INCREMENTAL model in N shuffled arrival orders (the worker's path) and name
 #                 every listing whose take any order moves from the whole resolve's — nondeterminism, a mode flip
@@ -171,6 +175,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --ref) flag_value "$@"; refs+=("$2"); shift 2 ;;
     --recording) flag_value "$@"; run=$2; shift 2 ;;
+    --fills) flag_value "$@"; export IDENTITY_FILLS=$2; shift 2 ;;
     --venue|--title|--key|--widen|--orders|--modes) flag_value "$@"; pass+=("$1" "$2"); shift 2 ;;
     --batch) batch=$(path_flag "$@") || exit 2; shift 2 ;;
     --bisect) flag_value "$@"; bisect=$2; shift 2 ;;

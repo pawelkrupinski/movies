@@ -6,10 +6,14 @@
 # enrichment-<cc>}), to replay or diff an older recording against today's. scripts/identity-capture.sh
 # and scripts/convergence-local.sh fetch only the newest (or pinned) recording, into the checkout.
 #
-#   scripts/identity-fetch-recording.sh [--corpus-only | --no-overlay] <recording run id> <dest dir> [cc ...]
+#   scripts/identity-fetch-recording.sh [--corpus-only | --no-overlay] [--fills "<asset> ..."] <recording run id> <dest dir> [cc ...]
 #                                                                         (default: pl de uk us es)
 #   --corpus-only  the scrape corpus alone: no enrichment tree, no overlay
 #   --no-overlay   the corpus and enrichment tree, without the identity overlay (what the decorations relearn reads)
+#   --fills        the fill assets a hermetic leg laid over its tree, as its log names them ("fills: fill-uk-573-655-1-
+#                  convergence.tar.zst ..."): each of a laid-out country's (fill-<cc>-...) is laid over its tree in order,
+#                  a later file winning, as .github/scripts/convergence-fill.sh unpack lays them -- so a replay reads the
+#                  answers that leg read. A named fill the release does not hold fails the fetch.
 #
 # Each country's corpus is laid out LAST, its cinema-scrapes-<cc>.json.gz moved in by a rename: that file
 # there means the country is laid out whole (identity_recorded in scripts/identity-tools.sh, which
@@ -28,11 +32,15 @@ set -euo pipefail
 . "$(dirname "$0")/tool-conventions.sh"
 usage() { usage_from_header; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
-corpus_only=0 overlay=1
-case "${1:-}" in
-  --corpus-only) corpus_only=1; shift ;;
-  --no-overlay) overlay=0; shift ;;
-esac
+corpus_only=0 overlay=1 fills=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --corpus-only) corpus_only=1; shift ;;
+    --no-overlay) overlay=0; shift ;;
+    --fills) [ "$#" -ge 2 ] || { usage >&2; exit 2; }; fills=${2//,/ }; shift 2 ;;
+    *) break ;;
+  esac
+done
 [ "$#" -ge 2 ] || { usage >&2; exit 2; }
 
 RUN=$1 DEST=$2
@@ -76,6 +84,16 @@ for cc in "${CCS[@]}"; do
     if [ "$overlay" = 0 ]; then :
     elif archive=$(fetch "identity-overlay-$cc-$RUN"); then bash "$UNPACK" "$archive" "$DEST/pair"
     elif [ $? -eq 2 ]; then echo "$cc: could not read release $RELEASE (see gh's error above)" >&2; exit 1; fi
+    for fill in $fills; do
+      case "$fill" in fill-"$cc"-*) ;; *) continue ;; esac
+      if gh_download "$LIMIT" release download "$RELEASE" -R "$REPO" --pattern "$fill" --dir "$DEST/archive" --clobber >&2
+      then status=0; else status=$?; fi
+      case $status in
+        0) bash "$UNPACK" "$DEST/archive/$fill" "$DEST/pair"; echo "$cc: laid fill $fill over the tree" >&2 ;;
+        3) echo "$cc: release $RELEASE holds no fill $fill" >&2; exit 1 ;;
+        *) echo "$cc: could not read release $RELEASE for fill $fill (see gh's error above)" >&2; exit 1 ;;
+      esac
+    done
   fi
   # a download cut short earlier leaves files gh will not overwrite
   rm -rf "$DEST/archive/scrape-$cc"; mkdir -p "$DEST/archive/scrape-$cc"

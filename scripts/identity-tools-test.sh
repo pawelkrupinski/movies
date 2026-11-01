@@ -120,7 +120,7 @@ cat > "$repo/scripts/identity-fetch-recording.sh" <<'STUB'
 #!/usr/bin/env bash
 echo "fetch $*" >> "$STUB/calls"
 [ -z "${FETCH_FAILS:-}" ] || exit 1
-[ "$1" != --corpus-only ] || shift
+while :; do case "$1" in --corpus-only) shift ;; --fills) shift 2 ;; *) break ;; esac; done
 mkdir -p "$2/pair/test/resources/fixtures/enrichment-$3" "$2/pair/test/resources/fixtures/corpus"
 echo corpus > "$2/pair/test/resources/fixtures/corpus/cinema-scrapes-$3.json.gz"
 STUB
@@ -135,6 +135,14 @@ tools identity_recording 500 pl > /dev/null
 check "...then read from the cache" "0" "$(grep -c '^fetch' "$work/calls" 2>/dev/null || echo 0)"
 check "--corpus-only fetches the scrape corpus alone" "fetch --corpus-only 501 $work/cache/recordings/501 pl" \
   "$(tools identity_recording 501 pl corpus > /dev/null; grep '^fetch' "$work/calls")"
+# a pair with a hermetic leg's fills laid over it is cached apart from the bare pair: the two answer differently
+rm -f "$work/calls"
+filled=$(IDENTITY_FILLS="fill-pl-505-1-1-convergence.tar.zst" tools identity_recording 505 pl)
+check "IDENTITY_FILLS fetches the recording with those fills" "1" \
+  "$(grep -c '^fetch --fills fill-pl-505-1-1-convergence.tar.zst 505 '"$work"'/cache/recordings/505-fills-' "$work/calls")"
+case "$filled" in "$work/cache/recordings/505-fills-"*/pair/test/resources/fixtures) apart="filled-apart" ;; *) apart=$filled ;; esac
+check "...into a directory of its own, apart from the bare pair" "filled-apart" "$apart"
+check "...and the bare pair stays where it was" "$work/cache/recordings/505/pair/test/resources/fixtures" "$(tools identity_recording 505 pl)"
 check "a fetch that fails fails, handing back no directory" "1 " "$(out=$(FETCH_FAILS=1 tools identity_recording 502 pl); echo "$? $out")"
 check "...and leaves its lock free" "free" \
   "$(spec_lock_state "$work/cache/locks/recording-502-pl.flock")"

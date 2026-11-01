@@ -306,15 +306,24 @@ identity_nearest_compiled() {
 
 # identity_recording <run> <cc> [corpus] -> the directory holding that "Record scrape fixtures" run's corpus/ and
 # enrichment-<cc>/ (with `corpus`: its scrape corpus alone), downloaded once into the shared cache
-# (scripts/identity-fetch-recording.sh), one download of a run's country at a time across agents
+# (scripts/identity-fetch-recording.sh), one download of a run's country at a time across agents. With IDENTITY_FILLS
+# (the fill assets a hermetic leg laid over its tree, as its log names them), the pair with those fills laid over it,
+# cached apart from the bare pair: the two answer differently.
 identity_recording() {
   local run=$1 cc=$2 what=${3:-} fixtures
   fixtures=$(identity_recording_dir "$run")
-  identity_recorded "$fixtures" "$cc" "$what" || identity_locked "recording-$run-$cc" identity_recording_download "$run" "$cc" "$what" || return 1
+  identity_recorded "$fixtures" "$cc" "$what" ||
+    identity_locked "recording-$(identity_recording_key "$run")-$cc" identity_recording_download "$run" "$cc" "$what" || return 1
   echo "$fixtures"
 }
 
-identity_recording_dir() { echo "$IDENTITY_CACHE/recordings/$1/pair/test/resources/fixtures"; }
+# identity_recording_key <run> -> the run's cache key: the run, and with IDENTITY_FILLS a digest of the fills it names
+identity_recording_key() {
+  if [ -z "${IDENTITY_FILLS:-}" ]; then echo "$1"
+  else echo "$1-fills-$(printf '%s' "${IDENTITY_FILLS//,/ }" | tr -s ' ' '\n' | sort | cksum | cut -d' ' -f1)"; fi
+}
+
+identity_recording_dir() { echo "$IDENTITY_CACHE/recordings/$(identity_recording_key "$1")/pair/test/resources/fixtures"; }
 
 # identity_recording_cached <run> <cc> -> the directory holding the run's corpus/ and enrichment-<cc>/ when the cache
 # holds both, else fails saying so: for a caller that must not reach GitHub (identity-capture.sh --offline)
@@ -331,10 +340,12 @@ identity_recorded() {
 }
 
 identity_recording_download() {
-  local run=$1 cc=$2 what=$3 dir=$IDENTITY_CACHE/recordings/$1
+  local run=$1 cc=$2 what=$3 dir
+  dir=$IDENTITY_CACHE/recordings/$(identity_recording_key "$run")
   identity_recorded "$(identity_recording_dir "$run")" "$cc" "$what" && return 0
-  identity_log "downloading recording $run ($cc${what:+, its $what alone}) into $dir"
-  "$IDENTITY_REPO/scripts/identity-fetch-recording.sh" ${what:+--corpus-only} "$run" "$dir" "$cc" >&2 && return 0
+  identity_log "downloading recording $run ($cc${what:+, its $what alone}${IDENTITY_FILLS:+, with its fills}) into $dir"
+  "$IDENTITY_REPO/scripts/identity-fetch-recording.sh" ${what:+--corpus-only} ${IDENTITY_FILLS:+--fills "$IDENTITY_FILLS"} \
+    "$run" "$dir" "$cc" >&2 && return 0
   identity_log "could not download recording $run ($cc)"
   return 1
 }

@@ -95,6 +95,19 @@ $(cat "$work/archived/pair/test/resources/fixtures/corpus/cinema-scrapes-uk.json
 check "...naming where its tree came from" "1" "$(grep -c 'uk: tree from the archive release identity-recordings' "$work/out")"
 check "a run neither release holds names both" "1 1" \
   "$(fetch 91 "$work/neither" uk) $(grep -c 'neither release convergence-fixtures nor identity-recordings holds enrichment-uk-91' "$work/out")"
+# a hermetic leg replays its pair WITH fills laid over the tree (.github/scripts/convergence-fill.sh unpack): --fills
+# names them as the leg's log does ("fills: fill-uk-77-5-1-convergence.tar.zst ..."), so a slice reads the answers it read
+pack "$work/assets/fill-uk-77-5-1-convergence.tar.zst" enrichment-uk/api.themoviedb.org/search filled zstd
+pack "$work/assets/fill-de-77-5-1-convergence.tar.zst" enrichment-de/api.themoviedb.org/search other-country zstd
+check "--fills lays each named fill of the country over its tree, a later file winning" "0 filled" \
+  "$(fetch --no-overlay --fills "fill-uk-77-5-1-convergence.tar.zst fill-de-77-5-1-convergence.tar.zst" 77 "$work/filled" uk) \
+$(cat "$work/filled/pair/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
+check "...another country's fill is not laid" "no-de" \
+  "$([ -e "$work/filled/pair/test/resources/fixtures/enrichment-de" ] && echo de || echo no-de)"
+check "...and says what it laid" "1" "$(grep -c 'uk: laid fill fill-uk-77-5-1-convergence.tar.zst over the tree' "$work/out")"
+check "a named fill the release does not hold fails, naming it" "1 1" \
+  "$(fetch --fills fill-uk-77-6-1-convergence.tar.zst 77 "$work/fill-missing" uk) $(grep -c 'release convergence-fixtures holds no fill fill-uk-77-6-1-convergence.tar.zst' "$work/out")"
+
 check "--help prints the usage" "0" "$(fetch --help)"
 check "...which names the arguments" "1" "$(grep -c '<recording run id> <dest dir>' "$work/out")"
 check "too few arguments is a usage error" "2" "$(fetch 77)"
