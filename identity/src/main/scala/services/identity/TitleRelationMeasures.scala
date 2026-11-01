@@ -72,7 +72,8 @@ private[identity] object TitleRelationMeasures {
     val articleless = (t: TitleForm) => !t.text.contains(':') && t.afterArticle.exists(rest => rest.sizeIs >= 3 &&
       ls.exists(a => !a.text.contains(':') && a.words == rest))
     if (own.contains(titleForm.key) || articleless(titleForm) || ls.exists(a => oneTypoApart(a.words, titleForm.words)) ||
-        (titleForm.latinKey.nonEmpty && ls.exists(_.latinKey == titleForm.latinKey))) Category("exact")
+        (titleForm.latinKey.nonEmpty && ls.exists(_.latinKey == titleForm.latinKey)) ||
+        ls.exists(a => (a.respelt || titleForm.respelt) && a.spellingKey.nonEmpty && a.spellingKey == titleForm.spellingKey)) Category("exact")
     else if (originalForms.map(_.key).exists(own) || originalForms.exists(articleless)) Category("original")
     else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless)) Category("alternative")
     else (if (fs.isEmpty) None

@@ -164,6 +164,19 @@ private[identity] object TitleTextMeasures {
     if (!lower.exists(Cyrillic.contains)) key(s)
     else key(lower.flatMap(c => Cyrillic.getOrElse(c, c.toString)))
   }
+  /** [[key]] with the two spellings a venue swaps for a title's own folded: an "&" read as the "and" it stands for, in
+   *  the language the title writes it in ("Sinn & Sinnlichkeit" is TMDB's "Sinn und Sinnlichkeit", "Music & Lyrics" its
+   *  "Music and Lyrics", "Renoir and Love" its "Renoir & Love"), and an "ß" as the "ss" an upper-case billing writes for
+   *  it ("DER RHEIN FLIESST INS MITTELMEER" is "Der Rhein fließt ins Mittelmeer"). Asked only of a pair one side of which
+   *  writes an "&" or an "ß" ([[respells]]): two titles writing neither key alike or not at all. */
+  def spellingKey(s: String): String =
+    TitleContainment.tokens(withoutPossessives(s.toLowerCase(Locale.ROOT).replace("ß", "ss").replace("&", " and ")))
+      .map(word => if (Conjunctions(word)) "and" else word).mkString
+  /** "And" in each language a country bills in. */
+  private val Conjunctions = Set("and", "und", "y", "i", "et")
+  /** Does `s` write a spelling [[spellingKey]] folds? */
+  def respells(s: String): Boolean = s.indexOf('&') >= 0 || s.indexOf('ß') >= 0
+
   private val Cyrillic: Map[Char, String] = Map(
     'а' -> "a", 'б' -> "b", 'в' -> "v", 'г' -> "g", 'ґ' -> "g", 'д' -> "d", 'е' -> "e", 'є' -> "ye", 'ё' -> "yo",
     'ж' -> "zh", 'з' -> "z", 'и' -> "y", 'і' -> "i", 'ї' -> "yi", 'й' -> "y", 'к' -> "k", 'л' -> "l", 'м' -> "m",
@@ -180,6 +193,9 @@ private[identity] object TitleTextMeasures {
     lazy val yearlessWords: Seq[String] = yearlessTokens(text)
     lazy val yearless: String       = yearlessWords.mkString
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
+    /** [[IdentityMeasures.spellingKey]], when it writes an "&" or an "ß" ([[IdentityMeasures.respells]]). */
+    lazy val respelt: Boolean       = IdentityMeasures.respells(text)
+    lazy val spellingKey: String    = IdentityMeasures.spellingKey(text)
     /** Its words after a leading article ([[LeadingArticles]]), when it has one — what a venue that drops the article lists. */
     lazy val afterArticle: Option[Seq[String]] = Some(withoutLeadingArticle(words)).filter(_.sizeIs < words.size)
     /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */
