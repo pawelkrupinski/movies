@@ -34,8 +34,10 @@ jobs:
         # narrow its caller's token, never widen it. `packages: write` only so the
         # workflow loads: its `image-*` jobs ask for it, and GitHub refuses a called
         # job more than its caller grants even when, as on every PR run, it is skipped.
+        # `contents: write` likewise only so the workflow loads: `commit rules` asks for it (it advances its verified ref
+        # on main alone, never on a branch run).
         permissions:
-            contents: read
+            contents: write
             checks: write
             packages: write
             # ci.yml's `scope` job reads the newest green Main run (gh run list) to know which rows a push can move.

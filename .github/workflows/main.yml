@@ -68,9 +68,10 @@ jobs:
         uses: ./.github/workflows/ci.yml
         secrets: inherit
         # ci.yml's jobs post JUnit check-runs, and its `image-*` jobs push this commit's SHA-tagged
-        # images; a called workflow can only narrow its caller's token, never widen it.
+        # images; a called workflow can only narrow its caller's token, never widen it. `contents: write` for its
+        # `commit rules` job alone, which advances refs/verified/commit-rules when the rules hold on main.
         permissions:
-            contents: read
+            contents: write
             checks: write
             packages: write
             # ci.yml's `scope` job reads the newest green Main run (gh run list) to know which rows a push can move.

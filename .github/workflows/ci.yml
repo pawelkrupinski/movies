@@ -1015,8 +1015,8 @@ jobs:
     # bg) that aren't worth blocking deploys over.
 
     # THE DRIFT GATE'S COMMIT RULES, UNSKIPPABLE (scripts/ci/commit-rules-ci.sh): the allow-list ratchet, the shrink-only
-    # known-flips baseline and the design-trailer rule (scripts/ci/commit_rules.py) over every commit since the newest
-    # green Main run, whatever it touched. The pre-push hook runs them too, but `--no-verify` skips the hook. After
+    # known-flips baseline and the design-trailer rule (scripts/ci/commit_rules.py) over every commit since they last held
+    # on main (refs/verified/commit-rules, which a run on main advances), whatever it touched. The pre-push hook runs them too, but `--no-verify` skips the hook. After
     # `scope`, so it takes no runner at t=0 (CiRunnerBudgetSpec), and last, the shortest of the rows that wait on it
     # (CiDispatchOrderSpec); like every job here it gates the deploy.
     commit-rules:
@@ -1026,7 +1026,8 @@ jobs:
         runs-on: ubuntu-26.04
         timeout-minutes: 40 # longest green row 31 min (CiRowTimeoutSpec)
         permissions:
-            contents: read
+            # write: a run on main advances refs/verified/commit-rules when the rules hold
+            contents: write
             actions: read
         steps:
             # the whole history (the range, and the lists' earlier revisions the ratchet reads), no blob it does not read
@@ -1037,9 +1038,7 @@ jobs:
                   sparse-checkout: |
                       .github
                       scripts
-            - name: Every commit since the newest green Main run keeps the drift gate's commit rules
+            - name: Every commit since the rules last held on main keeps the drift gate's commit rules
               env:
-                  GH_TOKEN: ${{ github.token }}
-                  GH_REPO: ${{ github.repository }}
                   BEFORE: ${{ github.event.before }}
               run: scripts/ci/commit-rules-ci.sh
