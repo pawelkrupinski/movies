@@ -73,7 +73,10 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("93a1264d51df13fa"), DerivationScope.Cards),
     // A card says whether its film's identity is provisional (`ResolvedMovie.provisional`: the take Pending, decided on
     // the inputs as they stand while an answer it reads is not filed yet; identity-flips-structural step 6).
-    Derivation(DerivationVersion("ac8a94f7a60569ff"), DerivationScope.Cards))
+    Derivation(DerivationVersion("ac8a94f7a60569ff"), DerivationScope.Cards),
+    // A card whose original title is not Latin script searches Metacritic and Rotten Tomatoes by a Latin-script one
+    // (`RatingSearchUrls.englishSiteTitle`: TMDB's English title, a romanisation, the shown title).
+    Derivation(DerivationVersion("127928f91657330c"), DerivationScope.Cards))
 
   def current: DerivationVersion = History.last.version
 

@@ -943,8 +943,8 @@
     "trailerUrls" : [ ],
     "ratings" : {
       "imdbUrl" : "https://www.imdb.com/title/tt37180720/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%D8%B1%D9%88%DB%8C%D8%A7%D8%B4%D9%87%D8%B1/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%D8%B1%D9%88%DB%8C%D8%A7%D8%B4%D9%87%D8%B1",
+      "metacriticUrl" : "https://www.metacritic.com/search/Dreamland/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Dreamland",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=%D8%B1%D9%88%DB%8C%D8%A7%D8%B4%D9%87%D8%B1"
     },
     "weightedRating" : 0,
@@ -1497,8 +1497,8 @@
     "trailerUrls" : [ ],
     "ratings" : {
       "imdbUrl" : "https://www.imdb.com/title/tt27722618/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%B7%A6%E6%92%87%E5%AD%90%E5%A5%B3%E5%AD%A9/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%E5%B7%A6%E6%92%87%E5%AD%90%E5%A5%B3%E5%AD%A9",
+      "metacriticUrl" : "https://www.metacritic.com/search/Zuo+pie+zi+nv+hai/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zuo+pie+zi+nv+hai",
       "filmweb" : 7.3,
       "filmwebUrl" : "https://www.filmweb.pl/film/Left-Handed+Girl.+To+by%C5%82a+r%C4%99ka%E2%80%A6+diab%C5%82a%21-2025-10078990"
     },
@@ -2605,7 +2605,7 @@
     "ratings" : {
       "imdb" : 8.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0101640/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%A4%A7%E7%BA%A2%E7%81%AF%E7%AC%BC%E9%AB%98%E9%AB%98%E6%8C%82/?category=2",
+      "metacriticUrl" : "https://www.metacritic.com/search/Raise+the+Red+Lantern/?category=2",
       "rottenTomatoes" : 97,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/raise_the_red_lantern_1991",
       "filmweb" : 7.8,
@@ -2637,7 +2637,7 @@
     "ratings" : {
       "imdb" : 8.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0101640/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%A4%A7%E7%BA%A2%E7%81%AF%E7%AC%BC%E9%AB%98%E9%AB%98%E6%8C%82/?category=2",
+      "metacriticUrl" : "https://www.metacritic.com/search/Raise+the+Red+Lantern/?category=2",
       "rottenTomatoes" : 97,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/raise_the_red_lantern_1991",
       "filmweb" : 7.8,
@@ -2667,7 +2667,7 @@
     "ratings" : {
       "imdb" : 8.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0101640/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%A4%A7%E7%BA%A2%E7%81%AF%E7%AC%BC%E9%AB%98%E9%AB%98%E6%8C%82/?category=2",
+      "metacriticUrl" : "https://www.metacritic.com/search/Raise+the+Red+Lantern/?category=2",
       "rottenTomatoes" : 97,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/raise_the_red_lantern_1991",
       "filmweb" : 7.8,
@@ -2696,7 +2696,7 @@
     "ratings" : {
       "imdb" : 8.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0101640/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%A4%A7%E7%BA%A2%E7%81%AF%E7%AC%BC%E9%AB%98%E9%AB%98%E6%8C%82/?category=2",
+      "metacriticUrl" : "https://www.metacritic.com/search/Raise+the+Red+Lantern/?category=2",
       "rottenTomatoes" : 97,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/raise_the_red_lantern_1991",
       "filmweb" : 7.8,
@@ -2726,7 +2726,7 @@
     "ratings" : {
       "imdb" : 8.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0101640/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%A4%A7%E7%BA%A2%E7%81%AF%E7%AC%BC%E9%AB%98%E9%AB%98%E6%8C%82/?category=2",
+      "metacriticUrl" : "https://www.metacritic.com/search/Raise+the+Red+Lantern/?category=2",
       "rottenTomatoes" : 97,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/raise_the_red_lantern_1991",
       "filmweb" : 7.8,
@@ -2754,7 +2754,7 @@
     "ratings" : {
       "imdb" : 8.1,
       "imdbUrl" : "https://www.imdb.com/title/tt0101640/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%A4%A7%E7%BA%A2%E7%81%AF%E7%AC%BC%E9%AB%98%E9%AB%98%E6%8C%82/?category=2",
+      "metacriticUrl" : "https://www.metacritic.com/search/Raise+the+Red+Lantern/?category=2",
       "rottenTomatoes" : 97,
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/raise_the_red_lantern_1991",
       "filmweb" : 7.8,
@@ -7913,7 +7913,7 @@
       "imdbUrl" : "https://www.imdb.com/title/tt0118845/",
       "metascore" : 70,
       "metacriticUrl" : "https://www.metacritic.com/movie/happy-together",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%E6%98%A5%E5%85%89%E4%B9%8D%E6%B4%A9",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Happy+Together",
       "filmwebUrl" : "https://www.filmweb.pl/film/Happy+Together-1997-870"
     },
     "weightedRating" : 7,
@@ -15985,8 +15985,8 @@
     "trailerUrls" : [ ],
     "ratings" : {
       "imdbUrl" : "https://www.imdb.com/title/tt11777738/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%D9%82%D9%87%D8%B1%D9%85%D8%A7%D9%86/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%D9%82%D9%87%D8%B1%D9%85%D8%A7%D9%86",
+      "metacriticUrl" : "https://www.metacritic.com/search/A+Hero/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=A+Hero",
       "filmweb" : 7,
       "filmwebUrl" : "https://www.filmweb.pl/film/Bohater-2021-875479"
     },
@@ -17468,7 +17468,7 @@
       "imdbUrl" : "https://www.imdb.com/title/tt0112913/",
       "metascore" : 71,
       "metacriticUrl" : "https://www.metacritic.com/movie/fallen-angels",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%E5%A2%AE%E8%90%BD%E5%A4%A9%E4%BD%BF",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Fallen+Angels",
       "filmwebUrl" : "https://www.filmweb.pl/film/Upad%C5%82e+anio%C5%82y-1995-615"
     },
     "weightedRating" : 7.3,
@@ -20020,8 +20020,8 @@
     "ratings" : {
       "imdb" : 6.2,
       "imdbUrl" : "https://www.imdb.com/title/tt35624638/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%D9%BE%D8%B3%D8%B1+%D8%AF%D9%84%D9%81%DB%8C%D9%86%DB%8C+%DB%B2/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%D9%BE%D8%B3%D8%B1+%D8%AF%D9%84%D9%81%DB%8C%D9%86%DB%8C+%DB%B2",
+      "metacriticUrl" : "https://www.metacritic.com/search/Dolphin+Boy+2/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Dolphin+Boy+2",
       "filmweb" : 4.7,
       "filmwebUrl" : "https://www.filmweb.pl/film/Delfinek+i+ja+2-2025-10103515"
     },
