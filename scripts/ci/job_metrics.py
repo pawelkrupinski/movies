@@ -154,6 +154,8 @@ def main_class(command):
             continue
         if word == "-jar":
             return os.path.basename(words[index + 1]) if index + 1 < len(words) else "-jar"
+        if word.startswith("@") or re.match(r"^sbt-args\d+\.tmp$", word.rsplit("/", 1)[-1]):
+            return "sbt forked test JVM"
         if not word.startswith("-"):
             return word.rsplit("/", 1)[-1][:120]
     return None
@@ -204,6 +206,9 @@ def jvms(commands):
         except OSError:
             continue
         command = commands.get(pid or "", "")
+        # A JVM that lived under a second and never paused (`java -version`, a launcher probe) says nothing.
+        if figures["gc_count"] == 0 and figures["uptime_s"] < 1:
+            continue
         found.append(dict(kind="jvm", pid=pid, log=os.path.basename(path), main=main_class(command),
                           flags=jvm_flags(command), **figures))
     return found
@@ -216,6 +221,7 @@ def junit(root="."):
         paths.update(glob.glob(os.path.join(root, pattern), recursive=True))
     suites, tests = [], []
     totals = {"files": 0, "tests": 0, "failed": 0, "skipped": 0, "time_s": 0.0}
+    seen = set()
     for path in sorted(paths):
         try:
             tree = ElementTree.parse(path)
@@ -227,6 +233,12 @@ def junit(root="."):
         for suite in elements:
             cases = list(suite.findall("testcase"))
             name = suite.get("name") or os.path.basename(path)
+            # sbt writes a suite's report twice (the root's target/test-reports and the module's): count it once.
+            identity_ = (name, len(cases), suite.get("time"), suite.get("timestamp"), suite.get("hostname"))
+            if identity_ in seen or (name, len(cases), suite.get("time")) in seen:
+                continue
+            seen.add(identity_)
+            seen.add((name, len(cases), suite.get("time")))
             failed = sum(1 for case in cases if case.find("failure") is not None or case.find("error") is not None)
             skipped = sum(1 for case in cases if case.find("skipped") is not None)
             seconds = float(suite.get("time") or sum(float(case.get("time") or 0) for case in cases) or 0)

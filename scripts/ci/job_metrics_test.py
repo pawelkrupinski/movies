@@ -49,15 +49,20 @@ class Parsers(unittest.TestCase):
         self.assertEqual("xsbt.boot.Boot", jm.main_class(command))
         self.assertEqual("-Xmx4g -XX:+UseG1GC", jm.jvm_flags(command))
         self.assertEqual("sbt-launch.jar", jm.main_class("java -Xms1g -jar /x/sbt-launch.jar"))
+        self.assertEqual("sbt forked test JVM", jm.main_class("java -Xmx3g /tmp/sbt_1/sbt-args1234.tmp"))
 
     def test_junit(self):
         with tempfile.TemporaryDirectory() as root:
             os.makedirs(os.path.join(root, "target/test-reports/unit"))
             with open(os.path.join(root, "target/test-reports/unit/TEST.xml"), "w") as handle:
                 handle.write(JUNIT)
+            # sbt's second copy of the same reports, under the module
+            os.makedirs(os.path.join(root, "worker/target/test-reports"))
+            with open(os.path.join(root, "worker/target/test-reports/TEST.xml"), "w") as handle:
+                handle.write(JUNIT)
             lines = jm.junit(root)
         totals = lines[0]
-        self.assertEqual({"kind": "tests", "suites": 2, "files": 1, "tests": 4, "failed": 1, "skipped": 1,
+        self.assertEqual({"kind": "tests", "suites": 2, "files": 2, "tests": 4, "failed": 1, "skipped": 1,
                           "time_s": 31.5}, totals)
         self.assertEqual("b.SlowSpec", lines[1]["suite"])
         slow = [l for l in lines if l["kind"] == "test"]
