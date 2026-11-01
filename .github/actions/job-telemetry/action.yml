@@ -42,7 +42,6 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
         CI_METRICS_LABEL: ${{ inputs.label }}
         CI_JOB_STATUS: ${{ inputs.job-status }}
-        CI_KEEP_GC_LOGS: ${{ (inputs.job-status == 'failure' || vars.CI_KEEP_GC_LOGS == 'true') && 'true' || 'false' }}
       run: python3 "$GITHUB_WORKSPACE/scripts/ci/job_metrics.py" finish || true
 
     - if: inputs.phase == 'finish' && steps.finish.outputs.name != ''

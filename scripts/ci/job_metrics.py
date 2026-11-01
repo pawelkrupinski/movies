@@ -303,7 +303,9 @@ def finish(env=os.environ, root="."):
         with open(output, "a", encoding="utf-8") as handle:
             handle.write("name=%s\n" % artifact_name())
             handle.write("dir=%s\n" % os.path.dirname(metrics_file()))
-    if env.get("CI_KEEP_GC_LOGS") == "true":
+    # The raw GC logs travel with the metrics when the job failed, or when the caller's env sets CI_KEEP_GC_LOGS=true
+    # (a composite action cannot read `vars`).
+    if env.get("CI_JOB_STATUS") == "failure" or env.get("CI_KEEP_GC_LOGS") == "true":
         target = os.path.join(os.path.dirname(metrics_file()), "gc")
         os.makedirs(target, exist_ok=True)
         for path in glob.glob(os.path.join(gc_dir(), "gc-*.log")):
