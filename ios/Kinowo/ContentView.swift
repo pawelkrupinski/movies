@@ -528,6 +528,8 @@ struct ContentView: View {
             Text("content.loading").font(.callout).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(A11y.EmptyState.loading)
     }
 
     private func errorState(_ error: Error) -> some View {

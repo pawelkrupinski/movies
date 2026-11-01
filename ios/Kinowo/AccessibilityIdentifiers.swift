@@ -146,6 +146,8 @@ enum A11y {
     enum EmptyState {
         static let repertoire = "empty.repertoire"
         static let error      = "error.repertoire"
+        /// The spinner shown while a cold launch has nothing to render yet.
+        static let loading    = "loading.repertoire"
     }
 
     /// Non-prod tuning pager only — lets the tuning UITests find a card to
