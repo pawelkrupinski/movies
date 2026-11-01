@@ -3,6 +3,10 @@ package services.review
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.identity.ResolverDecision.Basis
+import services.movies.ListingKey
+
+import java.time.Instant
 
 class ReviewClusterSpec extends AnyFlatSpec with Matchers {
   import ReviewFixtures._
@@ -26,6 +30,11 @@ class ReviewClusterSpec extends AnyFlatSpec with Matchers {
     odblask.shown shouldBe Some(16878)
     odblask.vetoedCandidates shouldBe Seq(ReviewCandidate(850957, Some(0.289), vetoed = true,
       Some("its title names it only by a programme tag billed beside many titles")))
+    val card = ReviewCards.build(odblaskSource, Seq(odblask -> None), Nil, new ReviewAnswers.Index(Nil)).head
+    card.shown shouldBe Some(16878)
+    card.otherCandidates.map(_.film) should not contain 850957
+    card.vetoedCandidates.map(_.film) shouldBe Seq(850957)
+    (card.payload(ReviewPage.Queue) \ "shown" \ "ref").as[String] shouldBe "tmdb:16878"
   }
 
   it should "put no film forward when every candidate it weighed was vetoed" in {
@@ -33,7 +42,7 @@ class ReviewClusterSpec extends AnyFlatSpec with Matchers {
     macbeth.lead shouldBe None
     macbeth.shown shouldBe None
     macbeth.vetoedCandidates.map(_.film) shouldBe Seq(1703622)
-    macbeth.best.map(_.film) shouldBe Some(1703622)   // still what the queue sorts by
+    macbeth.best.map(_.film) shouldBe Some(1703622)   // still what the queue and the matchable page sort by
   }
 
   it should "keep a stable id however its members are ordered" in {
@@ -46,5 +55,41 @@ class ReviewClusterSpec extends AnyFlatSpec with Matchers {
   "the queue" should "list unmatched clusters, of one listing each the most confident candidate first, and leave an own take out" in {
     titles(ReviewSelection.queue(clusters, Map.empty, JudgedListings.none).map(_._1)) shouldBe
       Seq("FRANZ KAFKA", "Macbeth", "Filmowe popołudnie dla dzieci: Robaczki")
+  }
+
+  "the matchable page" should "list unmatched clusters whose best candidate the resolver rated at the threshold or more" in {
+    titles(ReviewSelection.matchable(clusters, 0.5, None)) shouldBe Seq("FRANZ KAFKA", "Macbeth")
+    titles(ReviewSelection.matchable(clusters, 0.7, None)) shouldBe Seq("FRANZ KAFKA")
+    titles(ReviewSelection.matchable(clusters, 0.5, Some(Basis.Vetoed))) shouldBe Seq("Macbeth")
+    ReviewSelection.matchableByBasis(clusters, 0.5).toMap shouldBe Map(Basis.BelowThreshold -> 1, Basis.Vetoed -> 1)
+  }
+
+  it should "leave out a cluster that fell back to another database's film" in {
+    val fellBack = heldDecision.copy(fallback = Some(services.identity.ResolverDecision.Fallback("imdb", "tt1", 0.9)))(services.identity.DecisionTrace.Empty)
+    ReviewSelection.matchable(Seq(ReviewCluster.of(Country.Poland, fellBack)), 0.5, None) shouldBe empty
+  }
+
+  "the recently matched page" should "list matched clusters whose listing was written since, least confident first" in {
+    val now     = Instant.parse("2026-10-06T10:00:00Z")
+    val second  = ListingKey.Native("Kino X", "https://x/y", "Y")
+    val sure    = matchedDecision.copy(members = Seq(second), confidence = 0.99)(services.identity.DecisionTrace.Empty)
+    val all     = clusters :+ ReviewCluster.of(Country.Poland, sure)
+    val updated = Map(ListingKey.serialised(Matched) -> now.minusSeconds(3600), ListingKey.serialised(second) -> now.minusSeconds(60),
+      ListingKey.serialised(Held) -> now.minusSeconds(60))
+    ReviewSelection.recent(all, updated, now.minusSeconds(48 * 3600)).map { case (c, at) => c.title -> at } shouldBe
+      Seq("Klondike" -> now.minusSeconds(3600), "Y" -> now.minusSeconds(60))
+    ReviewSelection.recent(all, updated, now.minusSeconds(600)).map(_._1.title) shouldBe Seq("Y")
+  }
+
+  "a card" should "warn when the venue's own year or director contradicts the film it puts forward" in {
+    val now   = Instant.parse("2026-10-06T10:00:00Z")
+    val wrong = kafka.copy(year = Some(1991), directors = Seq("Steven Soderbergh"))
+    val agreeing = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
+      new ReviewAnswers.Index(Nil)).head
+    agreeing.disagreements shouldBe empty
+    FactCheck.warnings(agreeing.reviewMembers, wrong.facts) shouldBe Seq(
+      "Kino Opalenica states FRANZ KAFKA is from 2025; Franz (1991) is from 1991",
+      "Kino Opalenica credits Agnieszka Holland; Franz (1991) is directed by Steven Soderbergh")
+    FactCheck.warnings(agreeing.reviewMembers, wrong.facts.copy(year = Some(2024), directors = Seq("A. Holland"))) shouldBe empty
   }
 }

@@ -4,7 +4,7 @@ name: Identity rule refit
 # identity/src/main/resources/identity-weights.json — the acceptance cut, each scope's
 # cannot-link cut, the learned cannot-links' numeric bounds and the listing-film signals'
 # weights — on the unmatched-cluster ratchet's ground truth (identity-judgements.tsv, which carries the
-# review answers, which `ReviewLabelsCli export` writes there, once they are committed,
+# review answers, which the review page writes there as they are given, once they are committed,
 # and expected-matches.tsv). No new rule, no new feature: approach B, proposed for review in ONE PR.
 #
 # The whole job is ONE script, `scripts/identity-refit`, which a local run uses the same way

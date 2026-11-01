@@ -1,5 +1,6 @@
-# CANDIDATES FOR THE USER'S REVIEW: takes an agent thinks look wrong (or right) but did not judge. The user's answer
-# becomes a `review page:` row of identity-judgements.tsv. A row here judges nothing: no gate reads this file.
+# CANDIDATES FOR THE USER'S REVIEW: takes an agent thinks look wrong (or right) but did not judge -- the review digest
+# (/debug/review/digest) lists each until the user answers it there; the answer becomes a `review page:` row of
+# identity-judgements.tsv, and the candidate drops off the digest. A row here judges nothing: no gate reads this file.
 # An agent that JUDGES a take writes identity-judgements.tsv instead, marking the row AGENT-JUDGED (identity-investigation skill).
 # Columns: country, venue (or "*"), rawTitle (normalised), film (the take), filmTitle, flagged (YYYY-MM-DD), evidence.
 country	venue	rawTitle	film	filmTitle	flagged	evidence

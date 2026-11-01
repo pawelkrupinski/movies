@@ -81,6 +81,8 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     ("POST",   "/facebook/data-deletion")                -> Protection(Auth.Public,   Csrf.CrossSiteFilter),
     ("POST",   "/admin/config/set")                      -> Protection(Auth.Admin,    Csrf.CrossSiteFilter),
     ("POST",   "/admin/config/reset")                    -> Protection(Auth.Admin,    Csrf.CrossSiteFilter),
+    ("POST",   "/debug/review/answer")                   -> Protection(Auth.DevOnly,  Csrf.CrossSiteFilter),
+    ("POST",   "/debug/review/export")                   -> Protection(Auth.DevOnly,  Csrf.CrossSiteFilter),
   )
 
   /** Every GET that changes a visitor's session, and what keeps another site's page
@@ -151,9 +153,10 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val tasks       = new TasksController(cc, adminAction, null, null, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     val facebook    = new FacebookDataDeletionController(cc, models.Country.Poland, None, users, null)
     val envConfig   = new EnvConfigController(cc, adminAction, null)
+    val review      = new ReviewController(cc, Mode.Prod, Map.empty, null, java.nio.file.Paths.get("labels.tsv"), _root_.tools.SpecClock.Pinned)
     // By type, so reordering the routes file leaves this alone; every controller not listed is null.
     _root_.tools.ConstructByType.partially[router.Routes](Components.httpErrorHandler, debug, sso, auth, userState, uptime, tasks,
-      facebook, envConfig)
+      facebook, envConfig, review)
   }
 
   /** `(verb, path as the routes file spells it)` for every route the router serves. */

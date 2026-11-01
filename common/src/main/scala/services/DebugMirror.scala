@@ -31,13 +31,14 @@ import play.api.libs.json.{JsString, Json}
  * strand the work locally rather than make a page fast.
  */
 object DebugMirror {
-  /** The venue film pages the worker's `VenuePageStore` keeps. */
+  /** The venue film pages the worker's `VenuePageStore` keeps — named here because the reader is web's. */
   val VenuePages       = "venue_pages"
   /** Each venue's last scrape as the identity intake holds it (worker `IdentityListingIntake`). */
   val IdentityListings = "identity_listings"
   /** The worker's normalized TMDB store of films (worker `TmdbKind.Film`), one document per TMDB id. */
   val TmdbFilms        = "tmdb_films"
-  /** What the other film databases answered, and the posters' hashes (worker `TmdbKind.Family`). */
+  /** What the other film databases answered, and the posters' hashes (worker `TmdbKind.Family`): the review pages read
+   *  a film's poster paths from it. */
   val FamilyAnswers    = "identity_family_answers"
   /** The identity model's families and each listing's trace (`MongoIdentityModelStore`, `MongoIdentityTraceStore`, which
    *  a spec holds to these names: the stores are the identity code's, which this mirror does not reach). */

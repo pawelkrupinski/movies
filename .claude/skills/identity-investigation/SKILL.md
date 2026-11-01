@@ -210,13 +210,15 @@ scope filmTitle reason judged evidence` (documented in `scripts/ci/identity_judg
   right, or the old one wrong.
 - `undecided` rows are the suspects standing since the suspect gate was armed (2026-10-13): never add one.
 - **a judgement the user has not seen** (an agent's, not the user's own): put `AGENT-JUDGED` in its evidence, e.g.
-  `AGENT-JUDGED 2026-10-23 (<task>): <the evidence>` — the gates read it like any row. Older spellings ("agent judged …",
+  `AGENT-JUDGED 2026-10-23 (<task>): <the evidence>` — the gates read it like any row, and the **review digest**
+  (`/debug/review/digest`, dev server) lists it for the user until they answer. Older spellings ("agent judged …",
   "judged 10-22 (agent, …)") are read too (`ReviewDigest.agentJudged`). Don't also list it in your report as "for the user".
 - **a take that looks wrong (or right) that you did not judge**: a row in `test/resources/fixtures/identity-review-candidates.tsv`
   (`country venue rawTitle film filmTitle flagged evidence`; no gate reads it) — never an `undecided` row, never a
-  "for the user" list buried in a report or `docs/identity-experiments.md` alone.
-- The user's own answers are `review page:` rows (`ReviewLabelsCli export`): a confirmed or overruled agent row is
-  rewritten in place, its agent evidence kept after "was:". The user commits them with `scripts/review-commit`.
+  "for the user" list buried in a report or `docs/identity-experiments.md` alone. The digest lists it until a row judges it.
+- The user's digest answers (right / wrong / not a film) are written into this file as each is given, as `review page:`
+  rows: a confirmed or overruled agent row is rewritten in place, its agent evidence kept after "was:". The user
+  commits them with `scripts/review-commit`.
 
 The lint (`python3 scripts/ci/identity_judgements_lint.py`, a second) fails a second row for one key — a listing judged
 both ways, or a `merge=union` merge (`.gitattributes`) that kept both sides of one edited row — keys not normalised, a

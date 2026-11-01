@@ -1,0 +1,431 @@
+@import services.review._
+@(view: controllers.ReviewView)
+@pct(p: Double) = @{ f"${p * 100}%.1f%%" }
+@isOn(card: ReviewCard, verdict: String) = @{ card.answer.exists(_.verdict.code == verdict) }
+@isPicked(card: ReviewCard, tmdb: Int) = @{ card.answer.exists(a => a.verdict == ReviewVerdict.Film && a.ref.contains(FilmRef.tmdb(tmdb))) }
+@pickedOwn(card: ReviewCard) = @{
+  card.answer.filter(_.verdict == ReviewVerdict.Film).flatMap(_.ref)
+    .filterNot(r => (card.otherCandidates ++ card.vetoedCandidates).exists(c => r == FilmRef.tmdb(c.film)))
+}
+@poster(src: Option[String], who: String) = {@src match {
+  case Some(p) => {<img class="poster" src="@p" alt="@who poster" loading="lazy" referrerpolicy="no-referrer">}
+  case None    => {<div class="poster empty">no @who poster</div>}
+}}
+@* The venues' posters through the app's poster proxy (venue hosts block hot-linking or want a Referer), the first
+   that loads shown: the rest wait in `data-fallbacks` for the error handler below. *@
+@venuePoster(posters: Seq[String]) = {@if(posters.isEmpty) {<div class="poster empty">no venue poster</div>} else {@defining(posters.map(tools.PosterProxy.proxy)) { proxied =>
+  <img class="poster" src="@proxied.head" alt="venue poster" loading="lazy" referrerpolicy="no-referrer"@if(proxied.size > 1){ data-fallbacks="@proxied.tail.mkString("|")"}>}}}
+@* A cast, its first names shown and the rest folded behind "+N more": tapped open on a phone, hovered whole on a desktop. *@
+@castList(names: Seq[String]) = {@if(names.size <= ReviewCards.CastShown) {<span class="cast">@names.mkString(", ")</span>} else {<details class="cast" title="@names.mkString(", ")"><summary>@names.take(ReviewCards.CastShown).mkString(", ") <span class="more">+@(names.size - ReviewCards.CastShown) more</span></summary>@names.drop(ReviewCards.CastShown).mkString(", ")</details>}}
+@factRows(rows: Seq[(String, String)], cast: Seq[String], extra: String) = {<dl class="facts@extra">@for((name, value) <- rows){<dt>@name</dt><dd>@if(name == "Cast"){@castList(cast)} else {@value}</dd>}</dl>}
+@filmBody(card: ReviewCard, tmdb: Int, candidate: Option[ReviewCandidate]) = {
+  @defining(card.films.get(tmdb)) { known =>
+    @* no stored read gives this film a poster: asked of TMDB live, the "no TMDB poster" placeholder should none load *@
+    @poster(known.flatMap(_.poster).orElse(Some(controllers.routes.ReviewController.tmdbPoster(tmdb, Some(card.cluster.country.code)).url)), "TMDB")
+    <div class="t">
+      <b>@known.flatMap(_.title).getOrElse(s"tmdb:$tmdb")</b>@for(k <- known; o <- k.originalTitle if !k.title.contains(o)){ <span class="s">(@o)</span>}
+      @for(c <- candidate if c.vetoed){<span class="tag veto">vetoed</span>}
+      <div class="s">
+        @for(k <- known){@Seq(k.year.map(_.toString), Option(k.directors.mkString(", ")).filter(_.nonEmpty), k.runtime.map(r => s"$r min")).flatten.mkString(" · ") · }
+        @for(c <- candidate; p <- c.probability){<span class="pct">@pct(p)</span> · }
+        <a href="https://www.themoviedb.org/movie/@tmdb" target="_blank" rel="noopener">TMDB</a>
+        @for(i <- known.flatMap(_.imdb)){ · <a href="https://www.imdb.com/title/@i/" target="_blank" rel="noopener">IMDb</a>}
+      </div>
+      @for(k <- known if k.cast.nonEmpty){<div class="s with">with @castList(k.cast)</div>}
+      @for(c <- candidate; d <- c.denial){<div class="denial">denied: @d</div>}
+      @if(known.isEmpty){<div class="s">neither the corpus nor the resolver's TMDB store holds this film</div>}
+      @for(o <- known.flatMap(_.overview)){<div class="ov">@o</div>}
+    </div>
+  }
+}
+@candidateRow(card: ReviewCard, cand: ReviewCandidate) = {
+  <div class="cand@if(isPicked(card, cand.film)){ picked}@if(!cand.survives){ vetoed}" data-ref="tmdb:@cand.film">
+    @filmBody(card, cand.film, Some(cand))
+    <button type="button" class="btn yes@if(isPicked(card, cand.film)){ on}" data-verdict="film" data-ref="tmdb:@cand.film">This film</button>
+  </div>
+}
+@venueLink(m: MemberView) = {@m.pageUrl match {
+  case Some(url) => {<a href="@url" target="_blank" rel="noopener">@m.venue</a>}
+  case None      => {@m.venue}
+}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@view.page.title · Review</title>
+  @_reviewHead()
+</head>
+<body>
+<div class="wrap">
+  <nav class="review-nav">
+    @for(p <- ReviewPage.values) {
+      <a href="@{controllers.ReviewView.pathOf(p)}?country=@view.country" class="@if(p == view.page){is-active}">@p.title</a>
+    }
+    <a href="/debug">Korpus</a>
+    <span class="spacer"></span>
+    <select aria-label="Country" onchange="location.href=this.value">
+      @for(c <- "all" +: models.Country.all.map(_.code)) {
+        <option value="@view.link("country" -> Some(c))"@if(c == view.country){ selected}>@c</option>
+      }
+    </select>
+  </nav>
+  <h1>@view.page.title</h1>
+  <p class="lede">@view.page match {
+    case ReviewPage.Queue => {Listing clusters the resolver left unmatched or is unsure of — a pooled take, or one prod serves otherwise than the model decided — those an answer settles the most listings of first: the listings no label covers yet, weighted by how likely the resolver is wrong on them. Each card shows what the venue says, the film put forward, and why it is unsure. Mark that film right or wrong, pick another candidate, or give the right film; each answer is written to identity-judgements.tsv as it is given.}
+    case ReviewPage.Matchable => {Unmatched clusters whose best candidate the resolver itself rated at the threshold or above — held below the line, or vetoed by a guard. Each card shows what the venue says, the film the model leaned to, and why it held back. Confirm or reject it, or give the right film; answers become labels, never hand matches.}
+    case ReviewPage.Recent => {Clusters matched to a film lately, least confident first. Each card shows what the venue says, the film it was matched to, the rule that took it and why. Mark each match right or wrong, or give the right film; answers become labels the rules are graded against.}
+    case ReviewPage.Digest => {}
+  }</p>
+  @for(n <- view.notices){<div class="notice warn">@n</div>}
+  <div class="controls">
+    @for(min <- view.controls.min) {
+      <form method="get" action="@controllers.ReviewView.pathOf(view.page)">
+        <input type="hidden" name="country" value="@view.country">
+        @for(b <- view.controls.basis){<input type="hidden" name="basis" value="@b">}
+        best candidate ≥ <input name="min" size="4" value="@min"> <button class="btn">apply</button>
+      </form>
+      <a href="@view.link("basis" -> None)" class="@if(view.controls.basis.isEmpty){is-active}">every basis</a>
+      @for((basis, n) <- view.controls.byBasis) {
+        <a href="@view.link("basis" -> Some(basis.toString))" class="@if(view.controls.basis.contains(basis)){is-active}">@basis (@n)</a>
+      }
+    }
+    @for(hours <- view.controls.hours) {
+      <form method="get" action="@controllers.ReviewView.pathOf(view.page)">
+        <input type="hidden" name="country" value="@view.country">
+        matched in the last <input name="hours" size="4" value="@hours"> hours <button class="btn">apply</button>
+      </form>
+      <span>— by the members' <code>movie_slots.updatedAt</code>: the model stores no decision time, so a re-scrape also counts.</span>
+    }
+  </div>
+  <pre id="export-summary"></pre>
+  <div class="bar" data-total="@{view.total + view.answeredHidden}" data-answered="@view.answered" data-hidden="@view.answeredHidden"
+       data-show-answered="@view.showAnswered" data-answered-link="@view.link("answered" -> Some("true"))"
+       data-open-link="@view.link("answered" -> None)">
+    <div class="meter" aria-hidden="true"><i id="meterFill"></i></div>
+    <span class="count" id="count">@view.answered / @{view.total + view.answeredHidden} answered</span>
+    <div class="filters" role="group" aria-label="Show">
+      <button type="button" id="fOpen" data-filter="open" aria-pressed="true">To review</button>
+      <button type="button" id="fAll" data-filter="all" aria-pressed="false">All</button>
+      <button type="button" id="fDone" data-filter="done" aria-pressed="false">Answered</button>
+    </div>
+  </div>
+  <div class="summary">
+    @view.cards.size shown of @view.total@if(view.answeredHidden > 0){ · @view.answeredHidden answered hidden (<a href="@view.link("answered" -> Some("true"))">show</a>)}
+    @if(view.showAnswered){ · <a href="@view.link("answered" -> None)">hide answered</a>}
+    @if(view.total > view.cards.size){ · <a href="@view.link("limit" -> Some((view.limit * 2).toString))">show more</a>}
+  </div>
+
+  <div class="list" id="list">
+  @for(card <- view.cards) {
+    @defining(card.cluster) { c =>
+    <article class="card@if(card.answer.isDefined){ done}" data-cluster="@c.id" data-card="@card.payload(view.page).toString"
+             data-answered="@card.answer.fold("")(_.verdict.code)" data-was-answered="@card.answer.isDefined">
+      <div class="head">
+        <div class="raw"><span class="tag">@c.country.code.toUpperCase(java.util.Locale.ROOT)</span><span class="raw-title">@c.title</span></div>
+        @if(c.film.isDefined) {
+          <span class="conf" title="match confidence">@pct(c.confidence)</span>
+        } else {
+          @for(p <- c.lead.flatMap(_.probability)){<span class="conf" title="best candidate">@pct(p)</span>}
+        }
+      </div>
+      @for(p <- card.priority) {
+        <div class="priority" title="listings an answer labels × the probability the resolver is wrong on them">
+          <span class="settles">settles @p.listings listing@if(p.listings != 1){s}</span> · <span class="unsure">@pct(p.uncertainty) unsure</span>@for(r <- p.reasons){ · <span class="reason">@r</span>}
+        </div>
+      }
+      @for(l <- card.labels) {
+        <div class="label-row @l.verdict">labelled @l.verdict: @l.film @if(l.venue != "*"){(@l.venue)} — @l.note</div>
+      }
+      <div class="listing">
+        @venuePoster(card.posters)
+        <div>
+          @if(card.members.size <= 3) {
+            <div class="meta">@for((m, i) <- card.members.zipWithIndex){@if(i > 0){ · }@venueLink(m)}</div>
+          } else {
+            <details class="venues" data-listings><summary>@card.members.size cinemas</summary><ul></ul></details>
+          }
+          @if(card.venueSays.nonEmpty){@factRows(card.venueSays, card.venueCast, "")} else {<div class="s muted">The venue gives no film details.</div>}
+          @if(card.catalogueSays.nonEmpty) {
+            <div class="s catalogue-note">The aggregator's catalogue entry says (not the venue):</div>
+            @factRows(card.catalogueSays, card.catalogueCast, " muted catalogue")
+          }
+          @card.synopsis match {
+            case Some(s) => {<div class="syn">@s</div>}
+            case None    => {<div class="syn muted">The venue gives no synopsis.</div>}
+          }
+        </div>
+      </div>
+
+      @for(tmdb <- card.shown) {
+        <div class="lead">
+          <div class="kind">@if(c.film.isDefined){Matched by @c.basis} else {The model leaned to · @c.basis}@for(at <- card.updatedAt){ · <span title="the latest movie_slots.updatedAt of a member: a proxy for the decision time">@at.toString.take(16).replace("T", " ") UTC</span>}</div>
+          <div class="cand">@filmBody(card, tmdb, if (c.film.isDefined) None else c.lead)</div>
+          <div class="rb">
+            <button type="button" class="btn yes right@if(isOn(card, "right")){ on}" data-verdict="right">Right film</button>
+            <button type="button" class="btn none wrong@if(isOn(card, "wrong")){ on}" data-verdict="wrong">Wrong film</button>
+          </div>
+        </div>
+      }
+      @if(card.shown.isEmpty && card.vetoedCandidates.nonEmpty) {
+        <div class="lead none-survived">
+          <div class="kind">The model leaned to · @c.basis</div>
+          <div class="s">No candidate survived its vetoes</div>
+        </div>
+      }
+      <details class="why"><summary>Why the resolver decided this</summary><ul>
+        <li>@c.basis · @if(c.film.isDefined){match confidence} else {no-match confidence} @pct(c.confidence)</li>
+        @for(w <- c.explanation){<li@if(w.contains("denied") || w.contains("vetoed")){ class="veto"}>@w</li>}
+        @for(x <- c.reasons.contradictions){<li class="against">contradiction: @x</li>}
+        @for(f <- c.reasons.fallback){<li>fallback: @f.source:@f.id at @pct(f.probability)@for(t <- f.title){ · @t}@for(y <- f.year){ (@y)}</li>}
+        @for((family, id) <- c.reasons.agreed.toSeq.sorted){<li>agreement: @family named @id</li>}
+        @if(c.reasons.unanswered > 0){<li>@c.reasons.unanswered question(s) unanswered</li>}
+      </ul><div class="traces" data-src="/debug/review/why?country=@c.country.code&amp;cluster=@java.net.URLEncoder.encode(c.id, "UTF-8")"></div></details>
+      @if(card.otherCandidates.nonEmpty) {
+        @if(card.shown.isDefined){<div class="s">Other candidates</div>}
+        <div class="cands">
+          @for(cand <- card.otherCandidates){@candidateRow(card, cand)}
+        </div>
+      }
+      @if(card.vetoedCandidates.nonEmpty) {
+        <details class="vetoed"><summary>Vetoed candidates (@card.vetoedCandidates.size)</summary>
+          <div class="cands">@for(cand <- card.vetoedCandidates){@candidateRow(card, cand)}</div>
+        </details>
+      }
+      <div class="picked-own"@if(pickedOwn(card).isEmpty){ hidden}>Your answer: @pickedOwn(card) match {
+        case Some(r) => {<a href="@r.url.getOrElse("#")" target="_blank" rel="noopener">@r.render</a>}
+        case None    => {<a href="#" target="_blank" rel="noopener"></a>}
+      }</div>
+      <form class="own">
+        <input type="text" class="other" name="ref" autocomplete="off" aria-label="Other film link or id"
+               placeholder="Other film: paste a TMDB, IMDb, Filmweb, Wikidata, RT or Letterboxd link">
+        <button type="button" class="btn yes" data-verdict="film" data-other="1">Use this film</button>
+        <span class="hint"></span>
+      </form>
+      <div class="other">
+        <button type="button" class="btn none@if(isOn(card, "none")){ on}" data-verdict="none">None of these</button>
+        <button type="button" class="btn event@if(isOn(card, "event")){ on}" data-verdict="event">Not a film</button>
+        <button type="button" class="btn bill@if(isOn(card, "bill")){ on}" data-verdict="bill">Double bill</button>
+        <button type="button" class="btn unsure@if(isOn(card, "unsure")){ on}" data-verdict="unsure">Can't determine</button>
+        <button type="button" class="btn" data-verdict="undo"@if(card.answer.isEmpty){ hidden}>Undo</button>
+        <span class="status"></span>
+      </div>
+      @if(card.disagreements.nonEmpty) {
+        <details class="checks" title="Where the venues' own facts disagree with the film put forward"><summary>⚠ @card.disagreements.size</summary><ul>
+          @for(d <- card.disagreements) {
+            <li>@d.render@if(d.venues.size > 1){<details class="venues"><summary>show cinemas</summary><ul>@for(v <- d.venues){<li>@v</li>}</ul></details>}</li>
+          }
+        </ul></details>
+      }
+    </article>
+    }
+  }
+  </div>
+  <div class="notice" id="empty" hidden></div>
+</div>
+<script>
+  (function () {
+    var bar = document.querySelector('.bar');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.card'));
+    var filter = 'open';
+    try { filter = localStorage.getItem('review.filter') || 'open'; } catch (e) { /* storage blocked: the default filter */ }
+    // "show answered" asks for the answered cards: don't hide them again behind "To review".
+    if (bar.getAttribute('data-show-answered') === 'true' && filter === 'open') filter = 'all';
+    // A filter remembered from another review page that wants answered cards this page left out loads the page that
+    // lists them, as clicking it would — never an empty page.
+    if (filter !== 'open' && bar.getAttribute('data-show-answered') !== 'true' && Number(bar.getAttribute('data-hidden')) > 0) {
+      location.replace(bar.getAttribute('data-answered-link'));
+      return;
+    }
+
+    function isAnswered(card) { return !!card.getAttribute('data-answered'); }
+    function applyFilter(card) { card.hidden = !(filter === 'all' || (filter === 'open') === !isAnswered(card)); }
+    function refresh() {
+      var total = Number(bar.getAttribute('data-total'));
+      var done = Number(bar.getAttribute('data-answered'));
+      cards.forEach(function (c) { done += (isAnswered(c) ? 1 : 0) - (c.getAttribute('data-was-answered') === 'true' ? 1 : 0); });
+      document.getElementById('count').textContent = total ? done + ' / ' + total + ' answered' : 'nothing to review';
+      document.getElementById('meterFill').style.width = total ? (100 * done / total).toFixed(1) + '%' : '0';
+      var empty = document.getElementById('empty');
+      empty.textContent = cards.length ? 'Nothing here. Switch the filter to see the rest.' : 'Nothing to review here.';
+      empty.hidden = cards.some(function (c) { return !c.hidden; });
+    }
+    function setFilter(f) {
+      filter = f;
+      Array.prototype.forEach.call(document.querySelectorAll('.filters button'), function (b) {
+        b.setAttribute('aria-pressed', String(b.getAttribute('data-filter') === f));
+      });
+      cards.forEach(applyFilter);
+      refresh();
+    }
+
+    // A pasted link or id as the server's FilmRef.parse reads it — a preview only; the server decides.
+    var SOURCES = ['tmdb', 'imdb', 'filmweb', 'wikidata', 'rt', 'letterboxd', 'metacritic'];
+    function formed(text) {
+      var i = text.indexOf(':');
+      if (i < 0) return null;
+      var source = text.slice(0, i).toLowerCase(), id = text.slice(i + 1).trim();
+      if (SOURCES.indexOf(source) < 0 || !id) return null;
+      if (source === 'tmdb') return /^\d+$/.test(id) ? 'tmdb:' + parseInt(id, 10) : null;
+      if (source === 'imdb') return /^tt\d{5,}$/.test(id) ? 'imdb:' + id : null;
+      if (source === 'wikidata') return /^Q\d+$/.test(id) ? 'wikidata:' + id : null;
+      if (source === 'filmweb') return /^\d+$/.test(id) ? 'filmweb:' + id.replace(/^0+(?=\d)/, '') : null;
+      return source + ':' + id;
+    }
+    function fromUrl(text) {
+      var url;
+      try { url = new URL(text.indexOf('://') >= 0 ? text : 'https://' + text); } catch (e) { return null; }
+      var host = url.hostname.toLowerCase().replace(/^www\./, '').replace(/^m\./, '');
+      var segments = url.pathname.split('/').filter(Boolean);
+      function after(marker) { var i = segments.indexOf(marker); return i >= 0 && i + 1 < segments.length ? segments[i + 1] : null; }
+      function ends(domain) { return host.slice(-domain.length) === domain; }
+      var s, m;
+      if (ends('themoviedb.org')) return (s = after('movie')) && (m = /^(\d+)/.exec(s)) ? 'tmdb:' + parseInt(m[1], 10) : null;
+      if (ends('imdb.com')) return (s = after('title')) && /^tt\d{5,}$/.test(s) ? 'imdb:' + s : null;
+      if (ends('filmweb.pl')) return (s = after('film')) && (m = /-(\d+)$/.exec(s)) ? 'filmweb:' + m[1] : null;
+      if (ends('wikidata.org')) return (s = after('wiki') || after('entity')) && /^Q\d+$/.test(s) ? 'wikidata:' + s : null;
+      if (ends('rottentomatoes.com')) return (s = after('m')) ? 'rt:' + s : null;
+      if (ends('letterboxd.com')) return (s = after('film')) ? 'letterboxd:' + s : null;
+      if (ends('metacritic.com')) return (s = after('movie')) ? 'metacritic:' + s : null;
+      return null;
+    }
+    function parseRef(input) {
+      var text = String(input || '').trim();
+      if (!text) return null;
+      if (/^tt\d{5,}$/.test(text)) return 'imdb:' + text;
+      if (/^Q\d+$/.test(text)) return 'wikidata:' + text;
+      if (/^\d+$/.test(text)) return 'tmdb:' + parseInt(text, 10);
+      if (text.indexOf('://') >= 0 || /^(www\.)?[a-z0-9.-]+\.[a-z]{2,}\/.*/.test(text)) return fromUrl(text);
+      return formed(text);
+    }
+
+    function post(url, body) {
+      return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); });
+    }
+    // The card's buttons as the answer just given leaves them: the chosen one on, the rest off.
+    function mark(card, button, j) {
+      Array.prototype.forEach.call(card.querySelectorAll('.btn.on'), function (b) { b.classList.remove('on'); });
+      Array.prototype.forEach.call(card.querySelectorAll('.cand.picked'), function (c) { c.classList.remove('picked'); });
+      var own = card.querySelector('.picked-own');
+      own.hidden = true;
+      card.querySelector('button[data-verdict=undo]').hidden = !button;
+      if (!button) return;
+      if (button.getAttribute('data-other')) {
+        var link = own.querySelector('a');
+        link.textContent = j.ref || '';
+        link.setAttribute('href', j.url || '#');
+        own.hidden = false;
+        return;
+      }
+      button.classList.add('on');
+      var cand = button.closest('.cands .cand');
+      if (cand) cand.classList.add('picked');
+    }
+    function answer(button) {
+      var card = button.closest('.card');
+      var status = card.querySelector('.status');
+      var body = { card: JSON.parse(card.getAttribute('data-card')), verdict: button.getAttribute('data-verdict') };
+      if (button.getAttribute('data-ref')) body.ref = button.getAttribute('data-ref');
+      if (button.getAttribute('data-other')) body.ref = card.querySelector('input.other').value;
+      status.classList.remove('is-error');
+      post('/debug/review/answer', body).then(function (j) {
+        var undone = j.verdict === 'undo';
+        card.setAttribute('data-answered', undone ? '' : j.verdict);
+        card.classList.toggle('done', !undone);
+        mark(card, undone ? null : button, j);
+        status.textContent = (undone ? 'undone' : 'saved: ' + button.textContent) + (j.warnings.length ? ' — ⚠ ' + j.warnings.join('; ') : '');
+        // Each answer is written into identity-judgements.tsv as it is given: what that did, or why it could not.
+        var out = document.getElementById('export-summary');
+        if (j.exportError) { status.classList.add('is-error'); status.textContent += ' — ' + j.exportError; out.textContent = j.exportError; }
+        else out.textContent = j.path + '\n' + j.exported;
+        refresh();
+        // A warning stays on screen until the reviewer has read it; otherwise the filter takes the card.
+        if (!j.warnings.length) setTimeout(function () { applyFilter(card); refresh(); }, 600);
+      }).catch(function (err) { status.classList.add('is-error'); status.textContent = String(err.message || err); });
+    }
+
+    document.addEventListener('click', function (e) {
+      var f = e.target.closest('.filters button');
+      if (f) {
+        var wanted = f.getAttribute('data-filter');
+        try { localStorage.setItem('review.filter', wanted); } catch (err) { /* storage blocked: not remembered */ }
+        // The answered cards aren't on this page: load the page that lists them.
+        if (wanted !== 'open' && Number(bar.getAttribute('data-hidden')) > 0) { location.href = bar.getAttribute('data-answered-link'); return; }
+        // This page's first cards can all be answered ones, the unanswered past its limit: load the page that leaves
+        // the answered out, never hide them into an empty page.
+        if (wanted === 'open' && bar.getAttribute('data-show-answered') === 'true') { location.href = bar.getAttribute('data-open-link'); return; }
+        setFilter(wanted);
+        return;
+      }
+      var b = e.target.closest('.card button[data-verdict]');
+      if (b) answer(b);
+    });
+    document.addEventListener('submit', function (e) {
+      var form = e.target.closest('form.own');
+      if (!form) return;
+      e.preventDefault();
+      answer(form.querySelector('button[data-other]'));
+    });
+    document.addEventListener('input', function (e) {
+      var form = e.target.closest('form.own');
+      if (!form) return;
+      var ref = parseRef(e.target.value);
+      form.querySelector('.hint').textContent = !e.target.value.trim() ? '' : ref ? 'Reads as ' + ref : 'Not a link or id I recognise.';
+    });
+    // A card's full reasoning is read only when its "Why" is opened: the list stays one read of the decisions.
+    document.addEventListener('toggle', function (e) {
+      var why = e.target;
+      if (!why.matches || !why.matches('details.why') || !why.open) return;
+      var box = why.querySelector('.traces');
+      if (!box || box.getAttribute('data-loaded')) return;
+      box.setAttribute('data-loaded', '1');
+      box.textContent = 'loading the listings\u2019 traces\u2026';
+      fetch(box.getAttribute('data-src'))
+        .then(function (r) { return r.ok ? r.text() : r.text().then(function (t) { throw new Error(t || r.status); }); })
+        .then(function (html) { box.innerHTML = html; })
+        .catch(function (err) { box.textContent = 'could not load the traces: ' + (err.message || err); });
+    }, true);
+    // A card's cinemas are listed when their fold is opened, from the card's own listings: a film at hundreds of
+    // venues otherwise sent each of them twice, most of the page.
+    document.addEventListener('toggle', function (e) {
+      var fold = e.target;
+      if (!fold.matches || !fold.matches('details[data-listings]') || !fold.open) return;
+      var list = fold.querySelector('ul');
+      if (list.childElementCount) return;
+      JSON.parse(fold.closest('.card').getAttribute('data-card')).listings.forEach(function (l) {
+        l.venues.forEach(function (venue) {
+          var item = document.createElement('li');
+          if (l.page && /^https?:\/\//.test(l.page)) {
+            var link = document.createElement('a');
+            link.href = l.page;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.textContent = venue;
+            item.appendChild(link);
+          } else item.textContent = venue;
+          list.appendChild(item);
+        });
+      });
+    }, true);
+    // A poster that fails to load gives way to the next it has, then to the "no poster" placeholder.
+    document.addEventListener('error', function (e) {
+      var img = e.target;
+      if (!img.classList || !img.classList.contains('poster') || img.tagName !== 'IMG') return;
+      var rest = (img.getAttribute('data-fallbacks') || '').split('|').filter(Boolean);
+      if (rest.length) {
+        img.setAttribute('data-fallbacks', rest.slice(1).join('|'));
+        img.src = rest[0];
+        return;
+      }
+      var empty = document.createElement('div');
+      empty.className = 'poster empty';
+      empty.textContent = 'no ' + (img.alt || 'poster').replace(/ poster$/, '') + ' poster';
+      img.replaceWith(empty);
+    }, true);
+
+    setFilter(filter);
+  })();
+</script>
+</body>
+</html>
