@@ -38,6 +38,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // a film called by an event word is billed by its title alone, or beside another work
     shapes("Q&A") should contain("Q&A")
     shapes("Intro") should contain("Intro")
+    // a banner's own event words are its programme's, read as before: only a piece joined by a "+" is dropped (DE Euromax's
+    // "HALLOWEEN - SPECIAL - ZOMBIE-DAWN OF THE DEAD & …" took Carpenter's Halloween without its "SPECIAL", measure 41348646489)
+    shapes("HALLOWEEN - SPECIAL - ZOMBIE-DAWN OF THE DEAD") should contain("SPECIAL")
     IdentityMeasures.namesOnlyAnEvent("Writer/Director Q&A") shouldBe false
     IdentityMeasures.namesOnlyAnEvent("The Graduate") shouldBe false
     IdentityMeasures.namesOnlyAnEvent("Q&A") shouldBe true

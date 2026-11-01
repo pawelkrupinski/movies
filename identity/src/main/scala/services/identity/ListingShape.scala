@@ -325,15 +325,18 @@ object ListingShape {
   def festivalsOlderNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, newer: IdentityMeasures.Film): Boolean =
     festivalsBareBilling(listing, film) && film.year.exists(year => newer.year.exists(_ > year))
 
-  /** Is the listing a bare billing JOINED TO AN EVENT — a talk, a panel, a filmmaker's Q&A after a "+" ("Premature +
-   *  Writer/Director Q&A", "The Assassin + Q&A"), no year or director stated? Its title names the film the event is
-   *  held for, which no fact singles out among its namesakes ([[eventsOlderNamesake]]). */
+  /** Is the listing a bare billing JOINED TO ITS FILMMAKER'S APPEARANCE — a talk after a "+" naming its director or
+   *  writer ("Premature + Writer/Director Q&A", "BECOMING KIM + Filmgespräch mit Regisseurin Susanne Kim"), no year or
+   *  director stated? A filmmaker at the screening is a recent film's ([[eventsOlderNamesake]]); a plain "+ Q&A" is not
+   *  read so — a repertory "Dracula + Q&A" is Fisher's 1958 film (measure 41348646489). */
   def eventsBareBilling(listing: IdentityMeasures.Listing): Boolean =
     listing.year.isEmpty && listing.directors.isEmpty && {
       val raw = listing.rawTitle.getOrElse(listing.title)
       raw.indexOf('+') >= 0 && services.billing.BillJoins.billPieces(raw).drop(1)
-        .exists(piece => IdentityMeasures.namesAnEvent(TitleContainment.tokens(piece)))
+        .exists(piece => IdentityMeasures.namesAnEvent(TitleContainment.tokens(piece)) && FilmmakerPresent.findFirstIn(piece).isDefined)
     }
+  /** A filmmaker named at the screening, in any language a country bills in. */
+  private val FilmmakerPresent = """(?iu)\b(?:director|writer|filmmaker|regisseur\p{L}*|reżyser\p{L}*|twórc\p{L}*|realizador\p{L}*|directora)\b""".r
 
   /** Is `film` OLDER than `newer`, a film the same bare billing joined to an event names alike ([[eventsBareBilling]])?
    *  Of two namesakes no fact tells apart, only the database's popularity ranking picks the older: UK Phoenix Leicester's

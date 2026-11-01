@@ -76,11 +76,21 @@ private[identity] object TitleShapeMeasures {
    *  ×1, "Le Moulin + Q&A", "Journey There + Q&A" took it as their best candidate (prod 2026-11-01: 30 UK listings). The
    *  listing's own titles are shapes whatever they bill: a film called "Q&A" is billed by its title alone. */
   private[identity] def shapesOf(l: Listing): Seq[String] = {
-    val own = l.ownTitles.map(_.trim).toSet
-    shapes(l.ownTitles ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
+    val all = shapes(l.ownTitles ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
       l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)) ++ l.ownTitles.flatMap(creditedWork), l.decorations)
-      .filter(shape => own(shape) || !namesOnlyAnEvent(shape))
+    val joined = joinedEvents(l)
+    if (joined.isEmpty) all else all.filterNot(joined)
   }
+
+  /** The pieces a billing JOINS to its film with a "+" that name only an event ([[namesOnlyAnEvent]]): "Q&A" of "The
+   *  Assassin + Q&A", "Interval" of "The Odyssey + Interval". Only a joined piece: a banner's own words ("HALLOWEEN -
+   *  SPECIAL - …") are its programme's, which the shapes read as before. Never one of the listing's own titles. */
+  private[identity] def joinedEvents(l: Listing): Set[String] =
+    if (!l.ownTitles.exists(_.indexOf('+') >= 0)) Set.empty
+    else {
+      val own = l.ownTitles.map(_.trim).toSet
+      l.ownTitles.flatMap(t => services.billing.BillJoins.billPieces(t).drop(1).map(_.trim)).filter(p => !own(p) && namesOnlyAnEvent(p)).toSet
+    }
 
   /** Does a piece of a billing name nothing but an event around a screening — a talk, a panel, an interval, an
    *  introduction ([[DecorationWords.namesAnEvent]]), every other word of it one a venue bills around a film

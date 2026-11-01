@@ -97,5 +97,5 @@ object MultiFilmBill {
    *  is neither of its works, which is why its family keys leave them out. */
   private[identity] def billedWorks(l: IdentityMeasures.Listing): Seq[String] =
     l.ownTitles.map(t => BillJoins.billPieces(l.decorations.withoutTail(t)).map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
-      .filterNot(IdentityMeasures.namesOnlyAnEvent)   // "… + Q&A" bills a talk, searched for nothing
+      .filterNot(IdentityMeasures.joinedEvents(l))   // "… + Q&A" bills a talk, searched for nothing
 }
