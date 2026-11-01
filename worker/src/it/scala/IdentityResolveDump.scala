@@ -41,7 +41,10 @@ object IdentityResolveDump {
     CommandLine.Value("corpus-dir", "dir", "the directory holding cinema-scrapes-<cc>.json.gz (required)"),
     CommandLine.Value("fixtures", "dir", "the directory holding enrichment-<cc>/ (default: KINOWO_FIXTURE_ROOT, else the repository's)"),
     CommandLine.Value("trace", "file", "also write every title reading the resolve made there (services.movies.NormalizerTrace): what " +
-      "scripts/identity-measure --footprint replays under a title-rule change"))
+      "scripts/identity-measure --footprint replays under a title-rule change"),
+    CommandLine.Value("population", "chains", "also walk every family of two listings or more along this many arrival chains " +
+      "(services.identity.PopulationMonotonicity, report only): population-flips-<cc>.json and a kind=identity.population_flips line"),
+    CommandLine.Value("population-seconds", "seconds", "the population walk's time budget per country", default = Some("900")))
 
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
@@ -65,7 +68,7 @@ object IdentityResolveDump {
     missing.foreach(c => System.err.println(s"[IdentityResolveDump] no cinema-scrapes-${c.code}.json.gz in $corpusDir"))
     val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
     val failed    = try corpora.filterNot { c =>
-      Try(dump(configuration, target, root, c, out, storages)).fold({ e =>
+      Try(dump(configuration, target, root, c, out, storages, arguments.int("population").map(_ -> arguments.double("population-seconds").get))).fold({ e =>
         System.err.println(s"[${c.label}] FAILED: $e"); e.printStackTrace(); false }, _ => true)
     } finally storages.foreach(s => Try(s.close()))
     missing.nonEmpty || failed.nonEmpty
@@ -73,15 +76,15 @@ object IdentityResolveDump {
 
   /** Every listing of `c` resolved and its decision written to `<out>/decisions-<cc>.jsonl` (and the rest, above). */
   private def dump(configuration: settings.ProcessConfiguration, target: IntegrationMongoTarget, root: settings.FixtureRoot, c: Corpus, dir: Path,
-                   storages: mutable.ListBuffer[ConvergenceStorage]): Unit = {
+                   storages: mutable.ListBuffer[ConvergenceStorage], population: Option[(Int, Double)]): Unit = {
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
     val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
       language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
       c.gaps))
     // as the worker projects them: each take a hand judgement calls wrong withdrawn from its own listing
-    val (resolution, seconds) = timed(services.identity.TakeJudgements.withdraw(
-      IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned), modules.wiring.BundledJudgements.index(c.country.code)))
+    val (resolved, seconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, ResolveInputs.Unpinned))
+    val resolution = services.identity.TakeJudgements.withdraw(resolved, modules.wiring.BundledJudgements.index(c.country.code))
     val clusterOf = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
     // what argues against each take (SuspectTakes), which the takes check asks a person to judge before a gain passes
     val suspects  = {
@@ -125,8 +128,35 @@ object IdentityResolveDump {
       Files.writeString(dir.resolve(s"focus-${c.country.code}.txt"), trace.mkString("", "\n", "\n"))
     }
     configuration.identityAgreementCache.foreach(cache => agreed(configuration, c, lookups, listings, resolution, cache, dir))
+    population.foreach { case (chains, budget) => populationReport(c, listings, lookups, resolved, chains, budget, dir) }
     println(f"[${c.label}] ${listings.size} listings → ${resolution.decisions.size} clusters " +
       f"(${resolution.decisions.count(_.film.isDefined)} with a film) in $seconds%.1fs; unanswered queries ${resolution.unknownQueries}")
+  }
+
+  /** Every family of two listings or more walked along `chains` arrival chains, each prefix resolved whole against the
+   *  corpus's context (services.identity.PopulationMonotonicity, the flip-unification design's stage 1): the listings
+   *  whose take goes back to a value it left as listings only arrive, and the CONTESTED bare listings -- a facts-free
+   *  cluster whose title family backs two films or more by its siblings' own statements, what stage 5 would give no film.
+   *  Report only: `population-flips-<cc>.json`, and one `kind=identity.population_flips` line. */
+  private def populationReport(c: Corpus, listings: Seq[Listing], lookups: IdentityLookups, resolved: Resolution, chains: Int, budget: Double,
+                               dir: Path): Unit = {
+    val report = PopulationMonotonicity.report(listings, lookups, c.normalizer, ResolveInputs.Unpinned, resolved, chains, budgetSeconds = budget)
+    def film(take: Option[String]) = take.fold[play.api.libs.json.JsValue](JsString("pending"))(JsString(_))
+    val json = JsObject(Seq(
+      "country"   -> JsString(c.country.code),
+      "line"      -> JsString(report.line(c.country.code)),
+      "flips"     -> JsArray(report.flips.map { case (family, f) => JsObject(Seq(
+        "family" -> JsString(family.title), "familyListings" -> JsNumber(family.listings), "venue" -> JsString(f.key.venue),
+        "rawTitle" -> JsString(f.key.rawTitle), "bare" -> play.api.libs.json.JsBoolean(family.bare(f.key)), "shape" -> JsString(f.shape),
+        "path" -> JsString(f.path), "chain" -> JsNumber(f.chain))) }),
+      "contested" -> JsArray(report.contested.map { case (key, take, backed) => JsObject(Seq(
+        "venue" -> JsString(key.venue), "rawTitle" -> JsString(key.rawTitle), "take" -> film(take),
+        "backed" -> JsObject(backed.toSeq.sortBy(_._1).map { case (id, venues) => s"tmdb:$id" -> JsArray(venues.toSeq.sorted.map(JsString(_))) }))) })))
+    Files.writeString(dir.resolve(s"population-flips-${c.country.code}.json"), Json.prettyPrint(json))
+    println(report.line(c.country.code))
+    report.flipped.sortBy(f => (-f.flips.size, f.title)).take(25).foreach(f =>
+      println(s"[population ${c.country.code}] ${f.title} (${f.listings} listings): " + f.flips.distinctBy(_.key).take(3).map(x =>
+        s"${x.key.venue}${if (f.bare(x.key)) " [bare]" else ""}: ${x.path}").mkString("; ")))
   }
 
   /** The agreement stage over the resolution's no-matches, the families answered from the experiment's cache, else live —

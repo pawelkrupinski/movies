@@ -153,7 +153,9 @@ traced() { local t; t=$(flag --trace); [ -z "$t" ] || echo "{\"tool\":\"$1\"}" |
 run_one() {
 case "$command" in
   *"runMain integration.IdentityResolveDump "*)
-    called dump-tool; traced dump; decisions "$(flag --out)" "$(flag --full)"; [ -z "${STUB_DUMP_EXIT:-}" ] || exit "$STUB_DUMP_EXIT" ;;
+    called dump-tool; traced dump; decisions "$(flag --out)" "$(flag --full)"
+    [ -z "$(flag --population)" ] || echo "kind=identity.population_flips country=$(flag --full) chains=$(flag --population) families=1"
+    [ -z "${STUB_DUMP_EXIT:-}" ] || exit "$STUB_DUMP_EXIT" ;;
   *IdentityResolveDumpIntegrationSpec*)
     called dump-spec; decisions "$KINOWO_IDENTITY_DUMP" "$KINOWO_IDENTITY_FULL" ;;
   *"runMain scripts.UnmatchedClustersRatchet "*)
@@ -243,6 +245,8 @@ chmod +x "$work/no-tmp/mktemp"
 code=0; PATH="$work/no-tmp:$PATH" TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "the check writes nothing outside its out dir: no temporary directory loses no verdict" \
   "0 1" "$code $(grep -c 'identity final takes (pl): 1 listings' "$work/out/verdict.txt")"
+check "the head's resolve walks its families' arrival chains, the population line in the verdict (report only)" \
+  1 "$(grep -c '^kind=identity.population_flips country=pl chains=4 ' "$work/out/verdict.txt")"
 
 # A measure/ branch (scripts/identity-measure) stores the BASE it resolved -- main's commit, under a key naming its code
 # and inputs, never the ref -- and never its own head: the next measurement against the same base reuses it.

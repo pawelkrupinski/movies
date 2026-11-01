@@ -590,7 +590,9 @@ head_commands=() head_names=()
 if [ -n "$takes_moves" ]; then
   [ -n "$head_final" ] || { head_names+=(final); head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched --countries $cc$(
     traced "$here/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" "$traces/head-final.jsonl.gz")"); }
-  [ -n "$head_resolve" ] || { head_names+=(resolve); head_commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures$(
+  # the head's resolve also walks its families along arrival chains (the flip-unification design's stage 1, report
+  # only): population-flips-<cc>.json beside its decisions, and the kind=identity.population_flips line in the verdict
+  [ -n "$head_resolve" ] || { head_names+=(resolve); head_commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures --population ${TAKES_POPULATION_CHAINS:-4} --population-seconds ${TAKES_POPULATION_SECONDS:-300}$(
     traced "$here/worker/src/it/scala/IdentityResolveDump.scala" "$traces/head-model.jsonl.gz")"); }
 fi
 [ -n "$shape_moves" ] && [ -z "$head_shape" ] && { head_names+=(shape); head_commands+=("$shape_command"); }
@@ -605,6 +607,8 @@ if [ "${#head_commands[@]}" -gt 0 ]; then
   # each command's seconds, in order: sbt's "[success] Total time: N s" after every command that succeeded
   while read -r t; do took+=("$t"); done < <(sed 's/\x1b\[[0-9;]*m//g' "$out/head.log" | sed -n 's/^\[success\] Total time: \([0-9]*\) s.*/\1/p')
   echo "identity takes ($cc): the head's session ran ${head_names[*]} in ${SECONDS}s (sbt exit $session)"
+  # report only: the families whose take goes back to a value it left as listings arrive (PopulationMonotonicity)
+  sed 's/\x1b\[[0-9;]*m//g' "$out/head.log" | grep -E '^kind=identity\.population_flips ' | tee -a "$out/verdict.txt" || true
 elif [ -n "$takes_moves$shape_moves" ]; then
   session=0
   echo "identity takes ($cc): every head result was stored -- no head session"
