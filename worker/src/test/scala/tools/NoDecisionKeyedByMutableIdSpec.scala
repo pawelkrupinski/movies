@@ -179,6 +179,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${W}IdentityModelService.scala#venues"       -> Store("the latest scrape per venue, until drained"),
     s"${W}IdentityModelService.scala#observations" -> Pass("an event queue, drained by the model's thread"),
     s"${W}IdentityModelService.scala#retained"     -> Store("the listings the drain kept for their facts alone (ListingRetention): membership only, the listing itself the engine's, by its key"),
+    s"${W}RetainedListings.scala#held"             -> Store("the persisted kept listings (identity_retained) in memory: each the whole listing under its own key, replaced whole when kept again"),
     s"${W}StoredTmdbLookups.scala#held"   -> Content("by the store document's id, a TMDB id or a question; released around every prefetch"),
     s"${W}StoredTmdbLookups.scala#films"  -> Content("by TMDB id, released with held"),
     s"${W}StoredTmdbLookups.scala#hits"   -> Content("by TMDB id, released with held"),
