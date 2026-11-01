@@ -35,7 +35,13 @@ runs:
     # starts from the previous cache and fetches only what actually changed.
     # Saved by main only, like the sbt target cache (sbt-target-cache's header; CacheSavePolicySpec):
     # 0.4 GB an entry, and every other ref restores the prefix.
+    # The restore's outcome, time and size for the job's metrics (cache-marker.sh, ci-timings' cache hit rates).
+    - if: inputs.cache == 'sbt'
+      shell: bash
+      continue-on-error: true
+      run: '"$GITHUB_WORKSPACE/scripts/ci/cache-marker.sh" begin sbt-deps || true'
     - name: Restore the sbt dependency cache
+      id: sbt-deps-cache
       if: inputs.cache == 'sbt' && github.ref == 'refs/heads/main'
       uses: actions/cache@v5
       with:
@@ -51,6 +57,7 @@ runs:
         restore-keys: |
           sbt-deps-${{ runner.os }}-
     - name: Restore the sbt dependency cache (not main, restore only)
+      id: sbt-deps-restore
       if: inputs.cache == 'sbt' && github.ref != 'refs/heads/main'
       uses: actions/cache/restore@v5
       with:
@@ -62,6 +69,12 @@ runs:
         key: sbt-deps-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/*.sbt', 'project/build.properties', 'project/**/*.scala') }}
         restore-keys: |
           sbt-deps-${{ runner.os }}-
+    - if: inputs.cache == 'sbt'
+      shell: bash
+      continue-on-error: true
+      env:
+        HIT: ${{ steps.sbt-deps-cache.outputs.cache-hit || steps.sbt-deps-restore.outputs.cache-hit }}
+      run: '"$GITHUB_WORKSPACE/scripts/ci/cache-marker.sh" end sbt-deps "$HIT" "" "$HOME/.ivy2/cache" "$HOME/.cache/coursier" || true'
     - name: Set up JDK (attempt 1)
       id: setup-jdk-1
       uses: actions/setup-java@v5

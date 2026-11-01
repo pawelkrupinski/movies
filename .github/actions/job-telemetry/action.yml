@@ -1,0 +1,56 @@
+name: Job telemetry
+description: >-
+  The job's measurements for scripts/ci/ci_trends.py and VictoriaLogs (docs/investigations/2026-11-01-twenty-runners.md,
+  "How to measure"). `start` (right after checkout): machine-id.sh's `machine:` line, cgroup-sampler.sh's resource
+  series every 5 s, GC logging for every later JVM, the API rate limit. `finish` (the job's last step, `if: always()`):
+  the series, each JVM's GC, the JUnit suites and tests, uploaded as this job's `ci-metrics-*` artifact. Never fails
+  the job: every step continues on error.
+
+inputs:
+  phase:
+    description: "'start' or 'finish'"
+    required: true
+  label:
+    description: A grouping for this job (a convergence leg's country, a page-test engine), stored as `label`.
+    required: false
+    default: ''
+  token:
+    description: A token to read the API rate limit with (github.token); empty skips it.
+    required: false
+    default: ''
+  job-status:
+    description: The job's status at the end (job.status), stored on job_end; a failure keeps the raw GC logs.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - if: inputs.phase == 'start'
+      shell: bash
+      continue-on-error: true
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        CI_METRICS_LABEL: ${{ inputs.label }}
+      run: python3 "$GITHUB_WORKSPACE/scripts/ci/job_metrics.py" start || true
+
+    - if: inputs.phase == 'finish'
+      id: finish
+      shell: bash
+      continue-on-error: true
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        CI_METRICS_LABEL: ${{ inputs.label }}
+        CI_JOB_STATUS: ${{ inputs.job-status }}
+        CI_KEEP_GC_LOGS: ${{ (inputs.job-status == 'failure' || vars.CI_KEEP_GC_LOGS == 'true') && 'true' || 'false' }}
+      run: python3 "$GITHUB_WORKSPACE/scripts/ci/job_metrics.py" finish || true
+
+    - if: inputs.phase == 'finish' && steps.finish.outputs.name != ''
+      continue-on-error: true
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ steps.finish.outputs.name }}
+        path: ${{ steps.finish.outputs.dir }}
+        overwrite: true
+        if-no-files-found: ignore
+        retention-days: 7

@@ -41,6 +41,11 @@ inputs:
 runs:
   using: composite
   steps:
+    # The restore's outcome, time and size for the job's metrics (cache-marker.sh, ci-timings' cache hit rates).
+    - if: inputs.save-only != 'true'
+      shell: bash
+      continue-on-error: true
+      run: '"$GITHUB_WORKSPACE/scripts/ci/cache-marker.sh" begin sbt-target || true'
     - if: inputs.restore-only != 'true' && inputs.save-only != 'true' && github.ref == 'refs/heads/main'
       id: cache
       uses: actions/cache@v5
@@ -63,6 +68,13 @@ runs:
           !*/target/scala-*/*.jar
         key: ${{ inputs.key }}
         restore-keys: ${{ inputs.restore-keys }}
+    - if: inputs.save-only != 'true'
+      shell: bash
+      continue-on-error: true
+      env:
+        HIT: ${{ steps.cache.outputs.cache-hit || steps.restore.outputs.cache-hit }}
+        KEY: ${{ inputs.key }}
+      run: '"$GITHUB_WORKSPACE/scripts/ci/cache-marker.sh" end sbt-target "$HIT" "$KEY" project/target */target/scala-* || true'
     # zinc misses one change in a restored build: a member added to an object another source `export X.*`s leaves the
     # exporter's class without its forwarder (Main #226, an entry from an older commit). Recompiling the few wildcard
     # exporters, seconds, keeps the incremental build correct; on every restore, since not every key hashes every source.
