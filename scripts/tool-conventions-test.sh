@@ -235,10 +235,8 @@ check "a glob is gh's (only the API can match it)" "0 1 0" \
 check "...as are several patterns" "0 1 0" \
   "$(GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r public 200 ok release download t --pattern a --pattern b --dir "$work/p6")"
 check "...and a run's artifact" "0 1 0" "$(GH_DOWNLOAD_PUBLIC=1 GH_REPO=o/r public 200 ok run download 1 --name a --dir "$work/p7")"
-check "by default on a github.com Actions runner (GITHUB_REPOSITORY)" "0 0 1" \
-  "$(GH_DOWNLOAD_PUBLIC='' GITHUB_ACTIONS=true GITHUB_SERVER_URL=https://github.com GITHUB_REPOSITORY=o/r public 200 ok release download t --pattern a --dir "$work/p8")"
-check "...never on a Forgejo runner, whose forge-gh answers it" "0 1 0" \
-  "$(GH_DOWNLOAD_PUBLIC='' GITHUB_ACTIONS=true GITHUB_SERVER_URL=http://forge GITHUB_REPOSITORY=o/r public 200 ok release download t --pattern a --dir "$work/p9")"
+check "by default on an Actions runner (GITHUB_REPOSITORY)" "0 0 1" \
+  "$(GH_DOWNLOAD_PUBLIC='' GITHUB_ACTIONS=true GITHUB_REPOSITORY=o/r public 200 ok release download t --pattern a --dir "$work/p8")"
 check "...nor off a runner" "0 1 0" \
   "$(GH_DOWNLOAD_PUBLIC='' GITHUB_ACTIONS='' GITHUB_REPOSITORY=o/r public 200 ok release download t --pattern a --dir "$work/p10")"
 

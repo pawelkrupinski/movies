@@ -192,8 +192,7 @@ path_flag() {
 #   ~500 fills that way; two runs side by side drew the repository's GITHUB_TOKEN budget dry (run 41228549464: every
 #   uk-2 retry 403 "API rate limit exceeded for installation" for 14 minutes; run 41228572378's de-2 waited out its
 #   900 s tree-restore bound inside the same window, its fill retries silenced). Taken when GH_DOWNLOAD_PUBLIC=1, and
-#   by default on a github.com Actions runner (GITHUB_ACTIONS, GITHUB_SERVER_URL https://github.com) — never against
-#   Forgejo, whose forge-gh answers the same command. The repository is -R's, else GH_REPO's, else GITHUB_REPOSITORY's.
+#   by default on an Actions runner (GITHUB_ACTIONS). The repository is -R's, else GH_REPO's, else GITHUB_REPOSITORY's.
 #   A 404 there (a private repository, a missing asset) and any other failure fall back to gh from then on: the API's
 #   answer decides absent from failed, as it always did.
 #   PROGRESS, NOT A CLOCK: the public fetch ends once it moves under GH_DOWNLOAD_STALL_BYTES (1024) bytes a second for
@@ -273,7 +272,7 @@ gh_release_public() {
   case "${GH_DOWNLOAD_PUBLIC:-}" in
     1) ;;
     0) return 4 ;;
-    *) [ "${GITHUB_ACTIONS:-}" = true ] && [ "${GITHUB_SERVER_URL:-}" = https://github.com ] || return 4 ;;
+    *) [ "${GITHUB_ACTIONS:-}" = true ] || return 4 ;;
   esac
   [ "${1:-}" = release ] && [ "${2:-}" = download ] && [ $# -ge 3 ] || return 4
   tag=$3 repo=${GH_REPO:-${GITHUB_REPOSITORY:-}}
