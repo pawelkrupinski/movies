@@ -89,8 +89,14 @@ private[identity] object TitleShapeMeasures {
   private[identity] def namesOnlyAnEvent(piece: String): Boolean = {
     val all   = TitleContainment.tokens(piece)
     val words = all.filter(_.length > 1)
-    all.nonEmpty && DecorationWords.namesAnEvent(all) && words.forall(DecorationWords.billedAround)
+    namesAnEvent(all) && words.forall(word => DecorationWords.billedAround(word) || SideEventWords(word))
   }
+  /** Do the folded `words` of a piece name an event around a screening — one the billing grammar knows
+   *  ([[DecorationWords.namesAnEvent]]: a talk, a premiere, a festival) or one a bill joins after a film (a panel, an
+   *  interval, a reception: the word table's side events)? */
+  private[identity] def namesAnEvent(words: Seq[String]): Boolean =
+    DecorationWords.namesAnEvent(words) || words.exists(SideEventWords)
+  private val SideEventWords: Set[String] = services.movies.TitleWords.tokens(services.movies.TitleWords.Concept.SideEvent)
 
   /** `titles` and every part a split leaves, each de-decorated in turn ("Throwback: Donnie Darko
    *  (25th Anniversary)" → "Donnie Darko (25th Anniversary)" → "Donnie Darko"; "(4DX Rewind) Shrek"

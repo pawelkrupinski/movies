@@ -110,6 +110,25 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.festivalsOlderNamesake(billed("Kino Seniora: The Dating Game"), hour, dating) shouldBe false
   }
 
+  "a bare billing joined to an event" should "name the newer of two namesakes no fact tells apart, never the older the ranking prefers" in {
+    // UK Phoenix Leicester's "Premature + Writer/Director Q&A" (prod 2026-11-01) is Kevin Walls's 2026 film, its
+    // writer-director at the screening, not Dan Beers's 2014 comedy TMDB ranks first
+    def billed(raw: String, year: Option[Int] = None, directors: Seq[String] = Nil) =
+      IdentityMeasures.Listing(raw, Some(raw), year = year, directors = directors, screeningsSeason = Some(2026))
+    val comedy = IdentityMeasures.Film("Premature", year = Some(2014), directors = Some(Seq("Dan Beers")))
+    val walls  = IdentityMeasures.Film("Premature", year = Some(2026), directors = Some(Seq("Kevin Walls")))
+    ListingShape.eventsOlderNamesake(billed("Premature + Writer/Director Q&A"), comedy, walls) shouldBe true
+    ListingShape.eventsOlderNamesake(billed("The Odyssey + Interval"), comedy, walls) shouldBe true
+    ListingShape.eventsOlderNamesake(billed("Premature + Writer/Director Q&A"), walls, comedy) shouldBe false
+    // no event joined, or a stated year or director: the facts decide, as before
+    ListingShape.eventsOlderNamesake(billed("Premature"), comedy, walls) shouldBe false
+    ListingShape.eventsOlderNamesake(billed("Premature + The Graduate"), comedy, walls) shouldBe false
+    ListingShape.eventsOlderNamesake(billed("Premature + Q&A", year = Some(2014)), comedy, walls) shouldBe false
+    ListingShape.eventsOlderNamesake(billed("Premature + Q&A", directors = Seq("Dan Beers")), comedy, walls) shouldBe false
+    // an undated namesake is no newer film
+    ListingShape.eventsOlderNamesake(billed("Premature + Q&A"), comedy, walls.copy(year = None)) shouldBe false
+  }
+
   "a piece billed beside the film" should "be a subtitle, performer or show of its own words, never the venue's wording around a film" in {
     def film(title: String, original: Option[String] = None, directors: Seq[String] = Nil) =
       IdentityMeasures.Film(title, original, directors = Some(directors))

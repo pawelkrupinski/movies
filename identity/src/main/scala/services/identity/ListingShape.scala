@@ -325,6 +325,24 @@ object ListingShape {
   def festivalsOlderNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, newer: IdentityMeasures.Film): Boolean =
     festivalsBareBilling(listing, film) && film.year.exists(year => newer.year.exists(_ > year))
 
+  /** Is the listing a bare billing JOINED TO AN EVENT — a talk, a panel, a filmmaker's Q&A after a "+" ("Premature +
+   *  Writer/Director Q&A", "The Assassin + Q&A"), no year or director stated? Its title names the film the event is
+   *  held for, which no fact singles out among its namesakes ([[eventsOlderNamesake]]). */
+  def eventsBareBilling(listing: IdentityMeasures.Listing): Boolean =
+    listing.year.isEmpty && listing.directors.isEmpty && {
+      val raw = listing.rawTitle.getOrElse(listing.title)
+      raw.indexOf('+') >= 0 && services.billing.BillJoins.billPieces(raw).drop(1)
+        .exists(piece => IdentityMeasures.namesAnEvent(TitleContainment.tokens(piece)))
+    }
+
+  /** Is `film` OLDER than `newer`, a film the same bare billing joined to an event names alike ([[eventsBareBilling]])?
+   *  Of two namesakes no fact tells apart, only the database's popularity ranking picks the older: UK Phoenix Leicester's
+   *  "Premature + Writer/Director Q&A" is Kevin Walls's 2026 film, its writer-director there, not the 2014 comedy
+   *  TMDB ranks first — taken pooled once the "Q&A" no longer stood for a film of its own (2026-11-01). As the
+   *  festival's rule ([[festivalsOlderNamesake]]), this only keeps the pooled vote from taking the older on its ranking. */
+  def eventsOlderNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, newer: IdentityMeasures.Film): Boolean =
+    eventsBareBilling(listing) && film.year.exists(year => newer.year.exists(_ > year))
+
   /** How many years before its screenings a film released is a catalogue film, no festival's entry of its year. */
   val FestivalCatalogueYears = 10
 

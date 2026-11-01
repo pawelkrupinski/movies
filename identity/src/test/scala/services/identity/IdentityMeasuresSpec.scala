@@ -24,6 +24,27 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.shapes(Seq("Blade Runner 2049")) should not contain "Blade Runner"
   }
 
+  "a billing's piece naming only its event" should "be no shape of the listing, its own title always one" in {
+    // UK The Garden Cinema's "The Assassin + Q&A" searched "Q&A" and stood Q & A (1990) beside Hou Hsiao-hsien's film as
+    // the runner-up its own facts did not outweigh; Ciné Lumière's "Inside Gaza + Q&A" took it as its best candidate
+    // (prod 2026-11-01)
+    // as the intake hands it over: the search titles a "+" splits the billing into
+    def shapes(raw: String) = IdentityMeasures.Listing(raw, Some(raw), searchTitles = raw.split("""\s*\+\s*""").toSeq).shapes
+    shapes("The Assassin + Q&A") should contain("The Assassin")
+    shapes("The Assassin + Q&A") should not contain "Q&A"
+    shapes("Oxide Ghosts: The Brass Eye Tapes + Q+A") should not contain "Q+A"
+    shapes("Who are you, Polly Maggoo ? + panel") should not contain "panel"
+    shapes("The Odyssey + Interval") should not contain "Interval"
+    // a film called by an event word is billed by its title alone, or beside another work
+    shapes("Q&A") should contain("Q&A")
+    shapes("Intro") should contain("Intro")
+    IdentityMeasures.namesOnlyAnEvent("Writer/Director Q&A") shouldBe false
+    IdentityMeasures.namesOnlyAnEvent("The Graduate") shouldBe false
+    IdentityMeasures.namesOnlyAnEvent("Q&A") shouldBe true
+    MultiFilmBill.billedWorks(IdentityMeasures.Listing("The Assassin + Q&A", Some("The Assassin + Q&A"))) should not contain "Q&A"
+  }
+
+
   they should "cost a title that ends in neither no scan of it" in {
     val long = ("Kino Seniora " * 1500).trim
     // CPU, not wall time: a quadratic scan of a 1,500-word title takes seconds of it, a scan that never starts microseconds
