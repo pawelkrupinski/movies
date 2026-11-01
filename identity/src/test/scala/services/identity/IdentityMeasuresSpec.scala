@@ -608,6 +608,21 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleRelation(Listing("Potyag"), record) should not be Category("exact")
   }
 
+  "a title writing an \"&\" or an \"ß\" the record spells out" should "name the record exactly" in {
+    // DE Metropol Stuttgart ×5 billed Georgia Oakley's 2026 "Sinn & Sinnlichkeit", TMDB's "Sinn und Sinnlichkeit": an
+    // `overlap`, refused below the cannot-link cut; Kulturzentrum Linse's "DER RHEIN FLIESST INS MITTELMEER" writes in
+    // capitals the "ß" of "Der Rhein fließt ins Mittelmeer" (prod 2026-11-01).
+    IdentityMeasures.titleRelation(Listing("Sinn & Sinnlichkeit"), Film("Sinn und Sinnlichkeit", year = Some(2026))) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(Listing("Music & Lyrics"), Film("Music and Lyrics", year = Some(2007))) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(Listing("Renoir and Love"), Film("Renoir & Love", year = Some(2027))) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(Listing("DER RHEIN FLIESST INS MITTELMEER"), Film("Der Rhein fließt ins Mittelmeer", year = Some(2023))) shouldBe
+      Category("exact")
+    // Only the spelling: the "&" joins the same words, or it names another title.
+    IdentityMeasures.titleRelation(Listing("Sinn & Sinnlichkeit"), Film("Sinnlichkeit", year = Some(2026))) should not be Category("exact")
+    IdentityMeasures.titleRelation(Listing("Fast & Furious"), Film("Fast Five", year = Some(2011))) should not be Category("exact")
+    IdentityMeasures.titleRelation(Listing("Sinn Sinnlichkeit"), Film("Sinn und Sinnlichkeit", year = Some(2026))) should not be Category("exact")
+  }
+
   "a banner's contending houses" should "be ranked by the words they share with it, then their works, and a tie on both be no house" in {
     def billed(banner: String, house: String, work: String) = Billing(banner.split(" ").toSeq, house.split(" ").toSeq, work)
     val tied = Houses.ranking(Seq(billed("nt live", "national theatre live", "misanthrope"), billed("nt live", "rsc live", "macbeth")))
