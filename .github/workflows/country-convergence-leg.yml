@@ -413,7 +413,10 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}
+                # LONGEST FIRST: the drift seeds (13-15 min), the suite, the order rows, next-day, then the 2-minute takes
+                # check. github.com queues the rows in this order behind a shared 20-runner allowance, and a long row queued
+                # last is the run's tail (docs/investigations/2026-11-01-twenty-runners.md). Order only: the set is unchanged.
+                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('[{0}"convergence"{1}{2}{3}]', inputs.mode == 'hermetic' && inputs.takes-row && '"takes-drift-2","takes-drift-1",' || '', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p12","order-independence-p01"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
