@@ -10,8 +10,8 @@ import org.scalatest.matchers.should.Matchers
  *
  * Every job but `gates` (t=0), `timings` (`!cancelled()`: it reports red runs too) and `kick-convergence` needs `ci`
  * and `gates`, directly or through a job that does, and carries no status function in its `if:`, so the implicit
- * `success()` skips it. `kick-convergence` is the deliberate exception: it hangs off `gates` alone so convergence
- * starts minutes after the push, red ci or not (KickConvergenceWiringSpec); behind `ci` it started ~50 min later.
+ * `success()` skips it. `kick-convergence` is the deliberate exception: it hangs off nothing so convergence
+ * starts at the push, red ci or not (KickConvergenceWiringSpec); behind `ci` it started ~50 min later.
  */
 class MainAfterRedCiSpec extends AnyFlatSpec with Matchers {
   private lazy val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/main.yml"))
@@ -53,7 +53,7 @@ class MainAfterRedCiSpec extends AnyFlatSpec with Matchers {
   }
 
   "kick-convergence" should "not be skipped by a red ci" in {
-    needs(jobs("kick-convergence")) shouldBe Set("gates")
+    needs(jobs("kick-convergence")) shouldBe Set.empty
     jobIf("kick-convergence") shouldBe Seq("if: ${{ !cancelled() }}")
   }
 }

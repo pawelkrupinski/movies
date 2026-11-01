@@ -103,12 +103,14 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
    * queue would be whichever GitHub felt like. `free-runners` was the earlier
    * t=0 exception and is gone (`DeployImageReuseSpec`).
    */
-  it should "start nothing alongside ci but the tier gates" in {
+  // ...and the convergence kick (2026-11-01): seconds of a runner, and behind `gates` it queued ~1.8 min behind ci's
+  // second wave, delaying every convergence row (docs/investigations/2026-11-01-twenty-runners.md, KickConvergenceWiringSpec).
+  it should "start nothing alongside ci but the tier gates and the convergence kick" in {
     val atStart = RepoFile.jobs(mainYml).view
       .filterKeys(_ != "ci")
       .collect { case (name, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => name }
       .toSet
-    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("gates"))
+    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("gates", "kick-convergence"))
   }
 
   /** ...and the gates job holds that slot for seconds, not for whatever it grows into. */

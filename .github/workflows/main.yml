@@ -38,11 +38,11 @@ env:
 #       ios/android local-server, page-tests)           ├─► image-worker ──► publish-worker
 #   gates (t=0: which tiers changed since their   ──────┘
 #          last deploy; both publishes read it)
-#     └──► kick-convergence (minutes after the push, whether ci passes or not)
+#   kick-convergence (t=0, whether ci passes or not)
 #
 # NOTHING SHIPS AFTER A RED ci (2026-10-22): the worker image and both publishes need BOTH `ci` and `gates`
 # and run only when both passed, instead of taking runners after the run is already lost.
-# `kick-convergence` is the one deliberate exception: it hangs off `gates` alone, because convergence
+# `kick-convergence` is the one deliberate exception: it hangs off nothing, because convergence
 # builds and judges the commit itself and behind ci it started ~50 min later (see its note).
 # (MainAfterRedCiSpec, KickConvergenceWiringSpec)
 #
@@ -185,7 +185,7 @@ jobs:
                       .github/actions/changed-paths/**
 
 
-    # Kick the convergence suite off AT THE PUSH, behind only `gates` (seconds), never
+    # Kick the convergence suite off AT THE PUSH, behind nothing, never
     # behind `ci`. Convergence builds and judges the commit itself; Main's tests add
     # nothing to its answer. Hung off `ci`, a push whose Main run went red on an unrelated
     # spec never dispatched at all: on 2026-10-15 the Arsenal client's push (f58b71add,
@@ -194,8 +194,12 @@ jobs:
     # `[ci, gates]` with the worker image; that put every dispatch ~50 min after the push,
     # so it is back on `gates` alone (2026-10-23). The worker image and publishes still
     # skip after a red ci (MainAfterRedCiSpec).
-    # `needs: gates` rather than no `needs:` keeps the runner budget's t=0 set to `gates`
-    # alone (CiRunnerBudgetSpec): this job takes the slot gates has just given back.
+    # NO `needs:` (2026-11-01): behind `gates` it was created after ci's second wave (the rows that need only
+    # `scope`, seconds in) had taken the account's 20 runners, and queued a median 1.8 min for one, then the
+    # suite's preflight queued again: every convergence row was created ~3 min after the push
+    # (docs/investigations/2026-11-01-twenty-runners.md). It reads nothing of gates'. At t=0 it is the 2nd
+    # main.yml job beside ci (CiRunnerBudgetSpec), holds its runner for seconds, and a row of ci's second
+    # wave waits those seconds instead.
     #
     # Two shapes this deliberately is not:
     #
@@ -222,8 +226,7 @@ jobs:
     # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
     # the US runs the same leg from its own workflow.
     kick-convergence:
-        needs: gates
-        # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
+        # A cancelled run dispatches nothing.
         if: ${{ !cancelled() }}
         runs-on: ubuntu-26.04
         # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
