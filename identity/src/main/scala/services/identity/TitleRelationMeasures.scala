@@ -73,7 +73,8 @@ private[identity] object TitleRelationMeasures {
       ls.exists(a => !a.text.contains(':') && a.words == rest))
     if (own.contains(titleForm.key) || articleless(titleForm) || ls.exists(a => oneTypoApart(a.words, titleForm.words)) ||
         (titleForm.latinKey.nonEmpty && ls.exists(_.latinKey == titleForm.latinKey)) ||
-        ls.exists(a => (a.ampersand || titleForm.sharpS) && a.spellingKey.nonEmpty && a.spellingKey == titleForm.spellingKey)) Category("exact")
+        ls.exists(a => a.ampersand && a.spellingKey.nonEmpty && a.spellingKey == titleForm.spellingKey) ||
+        titleForm.sharpS && ls.exists(a => a.sharpSKey.nonEmpty && a.sharpSKey == titleForm.sharpSKey)) Category("exact")
     else if (originalForms.map(_.key).exists(own) || originalForms.exists(articleless)) Category("original")
     else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless)) Category("alternative")
     else (if (fs.isEmpty) None

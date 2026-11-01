@@ -167,13 +167,15 @@ private[identity] object TitleTextMeasures {
   /** [[key]] with the two spellings a venue swaps for a record's own folded: a billing's "&" read as the "and" the
    *  record spells out, in the record's language ("Sinn & Sinnlichkeit" is TMDB's "Sinn und Sinnlichkeit", "Music &
    *  Lyrics" its "Music and Lyrics"), and a record's "ß" as the "ss" an upper-case billing writes for it ("DER RHEIN
-   *  FLIESST INS MITTELMEER" is "Der Rhein fließt ins Mittelmeer"). Asked only where the LISTING writes the "&" or the
-   *  RECORD the "ß" ([[TitleForm.ampersand]], [[TitleForm.sharpS]]): a billing spelling out a record's "&" is read as
-   *  before — DE FFSBC's "… Agnes und Amir" named Hufnagel's "… Agnes & Amir" exactly, which kept it apart from the bare
-   *  "Lieblingsmenschen" ×30 their feed link held to that film (measure 41347266388). */
+   *  FLIESST INS MITTELMEER" is "Der Rhein fließt ins Mittelmeer", [[sharpSKey]]). Asked only where the LISTING writes
+   *  the "&" ([[TitleForm.ampersand]]): a billing spelling out a record's "&" is read as before. */
   def spellingKey(s: String): String =
     TitleContainment.tokens(withoutPossessives(s.toLowerCase(Locale.ROOT).replace("ß", "ss").replace("&", " and ")))
       .map(word => if (Conjunctions(word)) "and" else word).mkString
+  /** [[key]] with only the "ß" read as "ss": a record's "ß" folds no "und" of a billing into its "&" — DE "… Agnes und
+   *  Amir" ×56 is no exact billing of Hufnagel's "… außergewöhnliche Freundschaft von Agnes & Amir" (measure 41347266388:
+   *  named so, it was kept apart from the bare "Lieblingsmenschen" ×30 their feed link held to that film). */
+  def sharpSKey(s: String): String = key(s.replace("ß", "ss").replace("ẞ", "SS"))
   /** "And" in each language a country bills in. */
   private val Conjunctions = Set("and", "und", "y", "i", "et")
 
@@ -198,6 +200,7 @@ private[identity] object TitleTextMeasures {
     lazy val ampersand: Boolean     = text.indexOf('&') >= 0
     lazy val sharpS: Boolean        = text.indexOf('ß') >= 0
     lazy val spellingKey: String    = TitleTextMeasures.spellingKey(text)
+    lazy val sharpSKey: String      = TitleTextMeasures.sharpSKey(text)
     /** Its words after a leading article ([[LeadingArticles]]), when it has one — what a venue that drops the article lists. */
     lazy val afterArticle: Option[Seq[String]] = Some(withoutLeadingArticle(words)).filter(_.sizeIs < words.size)
     /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */
