@@ -32,6 +32,11 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
               run: git fetch --quiet origin main
             - name: The heavy rows the change can move
@@ -45,6 +50,12 @@ jobs:
                   esac
                   echo "heavy rows: ${rows:-none}" | tr '\n' ' '
                   echo "heavy=$(printf '%s' "$rows" | tr '\n' ' ' | sed 's/ *$//')" >> "$GITHUB_OUTPUT"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # THE SPLIT CHECK (scripts/hooks/pre-push, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the hook's selected checks shared
     # between two jobs, each with an 80-minute cap of its own. In one job they ran one after another under one cap: run
@@ -62,6 +73,11 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
               run: git fetch --quiet origin main
             # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
@@ -140,6 +156,12 @@ jobs:
                   name: precommit-check-logs-rest
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # THE IDENTITY MODULE'S TESTS, a job of their own (2026-11-01): in `check (rest)` they ran after the sbt check, one
     # after the other, and were most of its slowest runs (run 41276112019: sbt 292 s, then identity 585 s, a 15.9-min
@@ -153,6 +175,11 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
               run: git fetch --quiet origin main
             # Seconds: the hook's own selection over the change. A change it gives no identity check (and a fast-* ref,
@@ -244,6 +271,12 @@ jobs:
                   name: precommit-check-logs-identity
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
 
     check-oldrefs:
@@ -260,6 +293,11 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
               run: git fetch --quiet origin main
             # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
@@ -344,6 +382,12 @@ jobs:
                   name: precommit-check-logs-oldrefs
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
 
     check-page:
@@ -362,6 +406,11 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
               run: git fetch --quiet origin main
             # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
@@ -436,6 +485,12 @@ jobs:
                   name: precommit-check-logs-page
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # MAIN'S HEAVY ROWS, BEFORE MAIN (ci-failures-2026-10-30, recommendation 3): 8 of Main's 14 code reds in five days
     # were in integration-test or e2e rows that nothing ran before the push -- Main was the first place they ran. Each
@@ -456,6 +511,11 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   fetch-depth: 0
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
               run: git fetch --quiet origin main
             - name: Start MongoDB (single-node replica set, for change streams)
@@ -506,6 +566,12 @@ jobs:
                       tail -60 "$log"
                       echo "::endgroup::"
                   done
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
     timings:

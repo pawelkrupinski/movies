@@ -115,6 +115,11 @@ jobs:
                       web/src/page
                       page-tests-playwright
                       project
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Which rows can this push move?
               id: scope
               env:
@@ -123,6 +128,12 @@ jobs:
                   BEFORE: ${{ github.event.before }}
                   PULL_REQUEST: ${{ github.event.pull_request.number }}
               run: scripts/ci/ci-row-scope.sh --outputs
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # The unit tests, SPLIT across five runners: the worker module (~6,300 tests, the heaviest) on four through
     # build.sbt's WORKER_ROW filter, and common, identity and testkit on the fifth (`rest`). Two of the worker's rows are
@@ -157,6 +168,11 @@ jobs:
             checks: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # THE GITOPS MANIFESTS, CHECKED OUT WHERE THEY USED TO LIVE IN THIS TREE.
             #
@@ -305,6 +321,12 @@ jobs:
                       */target/performance-budgets.tsv
                   if-no-files-found: ignore
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # The integration specs, SPLIT across two runners by build.sbt's `IT_ROW` filter: `identity` runs the
     # hard-cluster convergence, whose parallel boots fill a runner's cores; `rest` runs every other spec, by
@@ -343,6 +365,11 @@ jobs:
         # container command, so start Mongo by hand as a single-node RS instead.
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # The gitops manifests where the unit `worker` row checks them out (see there): the deploy specs that run a
             # real script or JVM over them (K8sTierPathGatingIntegrationSpec, LauncherJvmFlagsSpec, …) are `it` specs
@@ -419,6 +446,12 @@ jobs:
                       */target/performance-budgets.tsv
                   if-no-files-found: ignore
                   retention-days: 14
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # DISPATCH ORDER. A free runner takes the waiting jobs in this file's order. The
     # needs-less rows above wait from t=0 and take the slots first; the `needs: scope` rows all turn waiting the
@@ -498,12 +531,25 @@ jobs:
             checks: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+                  label: webkit
             - uses: ./.github/actions/run-page-test
               with:
                   kind:          ${{ matrix.kind }}
                   browsers:      ${{ matrix.browsers }}
                   label:         ${{ matrix.label }}
                   runs:          ${{ matrix.runs }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+                  label: webkit
 
     page-tests-chrome:
         name: page tests (chrome / ${{ matrix.variant }})
@@ -572,6 +618,13 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               if: matrix.kind == 'chrome' || needs.scope.outputs.browsers != 'false'
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              if: hashFiles('scripts/ci/job_metrics.py') != ''
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+                  label: chromium
             - uses: ./.github/actions/run-page-test
               if: matrix.kind == 'chrome' || needs.scope.outputs.browsers != 'false'
               with:
@@ -580,6 +633,13 @@ jobs:
                   browsers:      ${{ matrix.browsers }}
                   label:         ${{ matrix.label }}
                   runs:          ${{ matrix.runs }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() && hashFiles('scripts/ci/job_metrics.py') != '' }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+                  label: chromium
 
     # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
     # Boots the fixture Play server (same FixtureServerMain + InMemoryMovieRepository
@@ -612,6 +672,11 @@ jobs:
             checks: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - uses: ./.github/actions/setup-sbt-build
               with:
@@ -768,6 +833,12 @@ jobs:
                   name: fixture-server-log-mobile
                   path: /tmp/fixture-server/log
                   if-no-files-found: ignore
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across two
     # parallel shards (see the e2eCorpus/e2eRest aliases in build.sbt):
@@ -801,6 +872,11 @@ jobs:
             packages: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # Keyed by the one script a convergence leg also keys with: the legs restore THIS entry first, the
             # commit's whole e2e/Test compile, Main dispatching them only once `ci` is done
@@ -978,6 +1054,12 @@ jobs:
               run: npm ci
             - if: matrix.shard == 'corpus'
               run: npm run lint
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # Cross-browser page tests, split into one matrix job per engine
     # family so the CI checks list groups red rows by browser. Every
@@ -1038,7 +1120,18 @@ jobs:
                   sparse-checkout: |
                       .github
                       scripts
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Every commit since the rules last held on main keeps the drift gate's commit rules
               env:
                   BEFORE: ${{ github.event.before }}
               run: scripts/ci/commit-rules-ci.sh
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}

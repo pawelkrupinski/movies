@@ -442,11 +442,14 @@ jobs:
             statuses: write
         steps:
             - uses: actions/checkout@v5
-            # The job's memory and disk writes from its own cgroup, reported in the row's last step (cgroup-sampler.sh):
-            # what decides whether a country's Mongo fits on a tmpfs beside its heap.
-            - name: Sample the job's memory
-              shell: bash
-              run: scripts/ci/cgroup-sampler.sh start 5
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            # It starts cgroup-sampler.sh too: the job's memory and disk writes from its own cgroup, reported in the
+            # row's last step -- what decides whether a country's Mongo fits on a tmpfs beside its heap.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+                  label: ${{ inputs.country }}
             # THE ROW'S CEILING, in its log: its `timeout-minutes` is an expression the timings reporter cannot read off
             # this file, so it reads this line instead, for the near-ceiling alert (scripts/ci/ci_timings.py
             # `CEILING_LINE`, ci-build-times.rules). The same expression as the job's, which ci_timings_test.py holds it to.
@@ -1256,6 +1259,14 @@ jobs:
             # github.com's hosted runner: the whole VM's peak memory and least free disk (.github/actions/free-disk).
             - uses: ./.github/actions/runner-peaks
               if: always()
+
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+                  label: ${{ inputs.country }}
 
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
             - uses: ./.github/actions/leg-verdict

@@ -173,6 +173,11 @@ jobs:
                   sparse-checkout: |
                       scripts/ci
                       .github
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: What every leg is handed
               id: legs
               env:
@@ -252,6 +257,12 @@ jobs:
                   path: ${{ runner.temp }}/reuse-facts/
                   if-no-files-found: ignore
                   retention-days: 7
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # One row per country; `fail-fast: false`, so every country reports on its own. A hermetic row
     # runs no sample — it replays a slice of the corpus the suite replays, so it only failed sooner, for
@@ -397,6 +408,11 @@ jobs:
                   sparse-checkout: |
                       scripts/ci
                       .github
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: Did every takes and takes-drift row decide?
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -413,6 +429,12 @@ jobs:
                   LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs > /dev/null
                   python3 scripts/ci/convergence_reuse.py complete --run "$RUN_ID" --sha "$GITHUB_SHA" --reused-from "$REUSED_FROM" \
                       --inputs "$RUNNER_TEMP/leg-inputs.json" --order-phases "$ORDER_PHASES"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:

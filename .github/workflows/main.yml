@@ -120,6 +120,11 @@ jobs:
               with:
                   fetch-depth: 0
                   filter: blob:none
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             - name: What is the web tier actually running?
               id: base-web
               uses: ./.github/actions/deployed-base
@@ -183,6 +188,12 @@ jobs:
                       infra/jvm/worker.options
                       .github/workflows/main.yml
                       .github/actions/changed-paths/**
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
 
     # Kick the convergence suite off AT THE PUSH, behind nothing, never
@@ -242,6 +253,11 @@ jobs:
               with:
                   fetch-depth: 0
                   filter: blob:none
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
             # Both convergence suites — the pipeline's and the identity model's — on the same
             # gate: only for a push that can change a verdict (`.github/convergence-paths.txt`),
             # each diffed from the head of ITS OWN newest run.
@@ -253,6 +269,12 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   GH_REPO: ${{ github.repository }}
               run: .github/scripts/kick-convergence.sh "$GITHUB_SHA" "$GITHUB_REF_NAME" "Identity model convergence"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # ── The k3s tiers ────────────────────────────────────────────────────────────────────────────
     #
@@ -310,6 +332,11 @@ jobs:
                   sparse-checkout: |
                       .github
                       scripts/ci
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Compute an orderable image tag
               id: tag
@@ -383,6 +410,12 @@ jobs:
                   grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
                   sha: ${{ github.sha }}
                   commit-message: ${{ github.event.head_commit.message }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # THE WORKER IMAGE, BUILT AND AOT-TRAINED ONCE ci IS GREEN — and OUTSIDE ci, so `publish-web` (which
     # `needs: ci`) never waits for the ~5 min training: only `publish-worker` needs this job. Until
@@ -407,6 +440,11 @@ jobs:
             packages: write
         steps:
             - uses: actions/checkout@v5
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             # Already uploaded once ci is green; kept as the check that it is there.
             - name: Wait for the worker distribution ci's e2e corpus row stages
@@ -435,6 +473,12 @@ jobs:
             # amd64 only, the inline cache of `latest`, Docker Hub's bases when the mirror loses a blob: build-image.sh.
             - name: Build and push under this commit's SHA tag only
               run: scripts/ci/build-image.sh worker ${{ env.IMAGE_REPO }}/movies-worker ${{ github.sha }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
 
     publish-worker:
@@ -463,6 +507,11 @@ jobs:
                   sparse-checkout: |
                       .github
                       scripts/ci
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
 
             - name: Compute an orderable image tag
               id: tag
@@ -536,6 +585,12 @@ jobs:
                   grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
                   sha: ${{ github.sha }}
                   commit-message: ${{ github.event.head_commit.message }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
