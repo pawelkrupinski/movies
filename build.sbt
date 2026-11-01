@@ -190,12 +190,14 @@ lazy val HeavyRows: Map[String, Set[String]] = Map(
     "services.identity.IdentitySliceCasesSpec",       // every pinned slice of a recording, decided again
     "scripts.IdentityUnifiedFitSpec",                 // the unified model's weights fitted again from every capture's rows
     "services.identity.NonFilmEventsFixtureSpec",     // the non-film events over every capture's unmatched clusters
-    "tools.UnmatchedClustersGapsSpec"),               // a capture replayed for the lookups it lacks
+    "tools.UnmatchedClustersGapsSpec",                // a capture replayed for the lookups it lacks
+    "scripts.IdentityDriftSlicesShard1Spec"),         // the drift slices' second shard (IdentityDriftSlicesSpec)
   "heavy2" -> Set(
     "scripts.IdentityRefitMeasureAllSpec",            // the refit's whole-vs-sharded measure over two captures
     "services.identity.UnmatchedClustersRatchetSpec", // the ratchet: the five captures replayed
     "scripts.IdentityRefitCaptureReplaySpec",         // the refit's re-resolve of a capture
-    "services.identity.MatchedTakesLabelSpec"))       // every capture's matched takes against the labels
+    "services.identity.MatchedTakesLabelSpec",        // every capture's matched takes against the labels
+    "scripts.IdentityDriftSlicesShard2Spec"))         // the drift slices' third shard (IdentityDriftSlicesSpec)
 lazy val HeavySuites: Set[String] = HeavyRows.values.flatten.toSet
 lazy val workerRowSettings = rowSettings("WORKER_ROW", Test, Seq(
   "heavy1"   -> HeavyRows("heavy1"),
