@@ -44,6 +44,14 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
     missed shouldBe empty
   }
 
+  it should "be kept while a strand bills its title as a piece: Keighley's \"The Ladykillers (1955)\" beside " +
+    "Nerve Centre's \"The Ladykillers | Cinematic Breakfast\" (drift slice nerve-centre-londonderry-the-ladykillers)" in {
+    val uk   = TitleNormalizer.forCountry(models.Country.UnitedKingdom)
+    val left = ListingRetention.leave(Seq(listing(0, "The Ladykillers (1955)")),
+      Seq(listing(1, "The Ladykillers | Cinematic Breakfast")), Nil, uk)
+    left.kept.map(_.key) shouldBe Seq(base(0).key)
+  }
+
   it should "go when no present listing bills its title" in {
     kept("BLACK WATER (2025)", "White Water (GLOBALE)") shouldBe false
   }

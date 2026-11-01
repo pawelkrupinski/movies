@@ -248,6 +248,13 @@ final class IdentityModelService(
   private def titleOf(listing: Listing): String = titles.synchronized {
     Option(titles.get(listing)).getOrElse { val t = ListingRetention.titleOf(listing, normalizer); titles.put(listing, t); t }
   }
+  /** Each present listing's billed titles as [[ListingRetention.billed]] reads them, by the listing object. */
+  private val billedTitles = new java.util.WeakHashMap[Listing, Seq[String]]()
+  private def billedOf(listing: Listing): Seq[String] = billedTitles.synchronized {
+    Option(billedTitles.get(listing)).getOrElse {
+      val t = ListingRetention.billed(listing, normalizer); billedTitles.put(listing, t); t
+    }
+  }
 
   /** `seen` and the keys `leaving` as the model is handed them under [[ListingRetention]]: a listing back is billed again,
    *  one leaving whose title a present listing bills is kept (showings dropped) and seen so, and the rest go -- with every
@@ -262,7 +269,7 @@ final class IdentityModelService(
       val seenKeys = seen.map(_.key).toSet
       val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)) ++ seen.iterator
       val left     = ListingRetention.leave(going.toSeq.flatMap(engine.held), retained.asScala.toSeq.flatMap(engine.held),
-        present.map(titleOf).toSet, titleOf)
+        present.flatMap(billedOf).toSet, titleOf)
       left.dropped.foreach(retained.remove)
       left.kept.foreach(l => retained.add(l.key))
       (seen ++ left.kept, left.dropped)
