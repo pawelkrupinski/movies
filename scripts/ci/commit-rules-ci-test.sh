@@ -9,6 +9,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/scratch-git.sh"
 
 printf '\033[36m▸\033[0m commit-rules-ci.sh\n'
+# The runner's own event (Tool self-tests on a push to main sets GITHUB_REF=refs/heads/main, GITHUB_EVENT_NAME=push)
+# would make every case a run on main: each case names the event it is, nothing leaks in (Tool self-tests #21).
+unset GITHUB_REF GITHUB_EVENT_NAME BEFORE
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
