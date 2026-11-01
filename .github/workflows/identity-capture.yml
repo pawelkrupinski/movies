@@ -83,7 +83,8 @@ jobs:
               run: scripts/ci/preflight.sh SYNC_PR_APP_ID SYNC_PR_APP_PRIVATE_KEY
 
     capture:
-        name: capture (${{ matrix.code }})
+        # No `name:`: the default `capture (<code>)` is the same, and a skipped job (no `capture`) shows as plain `capture`
+        # rather than the raw `${{ matrix.code }}` template.
         needs: [ preflight ]
         if: ${{ needs.preflight.outputs.capture == 'true' }}
         runs-on: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)

@@ -288,11 +288,15 @@ jobs:
     # runner for 55 minutes, not 2.5-6 hours.
     leg:
         needs: [ preflight ]
-        # `leg (<country>)`, as record-scrape-fixtures.yml's `enrichment (<country>)`.
-        name: leg (${{ matrix.country }})
+        # No `name:`: github.com names a row `leg (<country>)` off the one matrix vector (`include` only adds keys to it), and
+        # the job, when skipped, as plain `leg` -- a `name:` naming a matrix value renders raw (`leg (${{ matrix.country }})`)
+        # on a skipped job. A proven reuse (the preflight's `reused-from`) runs no row, so it skips the job whole instead of
+        # creating five legs whose rows the callee skips.
+        if: ${{ needs.preflight.outputs.reused-from == '' }}
         strategy:
             fail-fast: false
             matrix:
+                country: [ poland, germany, united-kingdom, spain, united-states ]
                 # EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
                 # value.
                 include:

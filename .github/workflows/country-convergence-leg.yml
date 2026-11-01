@@ -394,7 +394,8 @@ jobs:
     #
     # (A job's `name:` renders as the literal `${{ matrix.phase }}` in the run graph
     # until the job actually STARTS. A convergence row cancelled at creation never gets
-    # that far, and reads as a broken name when nothing is broken.)
+    # that far, and reads as a broken name when nothing is broken. A skipped row of a takes-only measurement of some
+    # countries still reads so; a proven reuse skips the caller's `leg` job whole instead.)
     #
     # `fail-fast: false` because the rows are independent claims about the same country —
     # a divergent replay must not cancel the boot that would have said where, and vice

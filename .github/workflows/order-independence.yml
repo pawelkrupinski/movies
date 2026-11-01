@@ -62,7 +62,7 @@ jobs:
               run: seed=$(scripts/ci/order-seed.sh "$REQUESTED" "$GITHUB_RUN_ID"); echo "seed=$seed" >> "$GITHUB_OUTPUT"
 
     scala:
-        name: scala (${{ matrix.order }})
+        # No `name:`: the default `scala (<order>)` is the same, and a job cancelled before it starts shows no raw template.
         needs: seed
         runs-on: ubuntu-26.04
         timeout-minutes: 105

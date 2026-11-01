@@ -160,7 +160,8 @@ jobs:
     # minutes for setup and the publish (HermeticConvergenceWiringSpec). No row runs the sample: a recording never
     # requests a bisect, the one thing that still replays it.
     enrichment:
-        name: enrichment (${{ matrix.country }})
+        # No `name:`: github.com names a row `enrichment (<country>)` off the one matrix vector (`include` only adds keys to it),
+        # and a skipped job (the preflight's alert) as plain `enrichment`, not the raw `${{ matrix.country }}` template.
         # Behind the preflight alone: each leg records its own corpus, so one country's tunnel
         # trouble fails only that country's leg (`fail-fast: false`).
         needs: [ preflight ]
@@ -168,6 +169,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
+                # The rows' order (the US first, see below); each `include` entry extends the combination of its country.
+                country: [ united-states, poland, germany, united-kingdom, spain ]
                 # EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
                 # value.
                 include:
