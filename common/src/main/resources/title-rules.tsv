@@ -15,7 +15,8 @@
 #   flags:     all = replace every match (default: the first); seed = the frozen pre-rules baseline (TitleRules,
 #              pinned by ProdTitlesNormalizationSpec against the legacy code)
 #   effect:    what the row takes off — banner, audience, event, edition, format, festival, retrospective, relay
-#              (a relay house's banner; RelayStage owns those houses), rename, venue, junk. Descriptive only.
+#              (a relay house's banner; RelayStage owns those houses), rename, venue, junk. Descriptive only, but
+#              relay: identity reads a relay row's banner as a fact (RelayBanner, RelayRecords).
 #   season:    the months its billing comes back in (jun-sep, dec-feb, oct…). Descriptive only: a seasonal row stays in
 #              force all year, so next summer's banner is stripped the day it is billed.
 #   pattern:   a Java regex; {{NAME}} placeholders expand from TitleRulePlaceholders first.

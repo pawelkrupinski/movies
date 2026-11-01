@@ -15,14 +15,19 @@ import scala.io.Source
  *  - `venue` — one venue's cleanup at ingest (`PerCinema`, the row's `cinema` the [[TitleRuleKey]]).
  *
  *  A row's rules fold in the order of the table: a tier (and each venue) folds its rows top to bottom. The table's
- *  `effect` and `season` columns describe a row (what it takes off, when its banner is billed) and change nothing: a
- *  seasonal row is in force all year, ready for the season's billings. */
+ *  `effect` and `season` columns describe a row (what it takes off, when its banner is billed) and change no fold: a
+ *  seasonal row is in force all year, ready for the season's billings. One effect is also read as a fact: a
+ *  [[RelayEffect]] row's banner bills an event-cinema relay ([[services.movies.RelayBanner]]), which the identity model
+ *  reads as a fact. */
 object TitleRuleTable {
   val Resource = "title-rules.tsv"
 
   /** What a row takes off or rewrites — the inventory's grouping (docs/investigations/2026-10-22-rule-consolidation.md). */
   val Effects: Set[String] =
     Set("banner", "audience", "event", "edition", "format", "festival", "retrospective", "relay", "rename", "venue", "junk")
+
+  /** The effect of a row whose banner bills an event-cinema relay ([[services.movies.RelayBanner]]). */
+  val RelayEffect = "relay"
 
   private val Season = """[a-z]{3}(?:-[a-z]{3})?""".r
 

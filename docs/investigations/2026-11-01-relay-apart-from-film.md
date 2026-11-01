@@ -82,3 +82,25 @@ What the right-lost are, by kind:
 Conclusion: a listing-kind split read off titles cannot hold "never share a take" without losing right takes in the
 hundreds, because box offices bill relays bare and TMDB files relays under plain titles. The Prima Facie flip itself is
 a plain listing's OWN match to a relay record whose facts its own (2026, Cynthia Erivo in the venue's text) contradict.
+
+## The narrower fix (the owner, 2026-11-01: "do it")
+
+B is not landed. In its place, one direction only: a PLAIN listing is denied a relay's record when its OWN facts
+contradict that record (`RelayRecords.contradictedByOwnText`, a node denial in `FamilyScope`). No cannot-link, no split by
+listing kind, no retention marking.
+
+- The record is a relay's: one of its titles bills a relay banner (`services.movies.RelayBanner`: stage houses, the title
+  rules of effect `relay`, a broadcaster's name anywhere in the title).
+- The listing bills none, and its own text (`Listing.names`: synopsis and cast field, never a feed's copy) names whole
+  the director of another record its OWN searches reached (no relay's), and none of the relay record's directors.
+
+Chichester's text credits "UK 2026 Susanna White 106m" (1127282's director) and never Justin Martin (963568's): it is
+denied the recording. It reads the listing, the record and the listing's own search results only: no other listing and
+no take, so a whole resolve and the incremental model decide alike.
+
+**Test** (`RelayOwnFactsSpec`): Chichester's text, Power Station's "NT Live: Prima Facie" [2022] {Justin Martin} and two
+bare billings; every subset holding Chichester, whole and incrementally in every arrival order: Chichester never takes
+963568. On main: red ("whole {Prima Facie / NT Live: Prima Facie}" and two incremental orders take the recording, the
+seed-17 step). After: green, and the NT Live listing still takes its record.
+
+The measure of this rule follows.

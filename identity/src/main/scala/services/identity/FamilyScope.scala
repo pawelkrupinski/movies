@@ -395,7 +395,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
 
   /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a feed link's copied title
    *  (a short its feed links another film beside among them), a title naming it only by the venue's own name, a programme tag or
-   *  slot, a title billing a film festival alone, or a billing as a silent film of a sound-era film. */
+   *  slot, a title billing a film festival alone, a billing as a silent film of a sound-era film, or a relay's record a
+   *  plain billing's own text contradicts ([[RelayRecords.contradictedByOwnText]]). */
   private def denialByNode(node: EvidenceNode, id: Int): Option[Denial] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial)).map(Denial(_))
@@ -410,7 +411,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         "it bills a silent film, and this one is of the sound era"))
       // the venues' own cast fields name none of its cast, and none of their facts agrees with it
       .orElse(CastEvidence.mismatch(node.listings, candidateById(id).film, node.country.flatMap(TitleRelationMeasures.languageOf),
-        billingOf(node).castIsTheFilms)).map(Denial(_)))
+        billingOf(node).castIsTheFilms))
+      // a plain billing whose own text credits another film's director, never the relay's
+      .orElse(Option.when(RelayRecords.contradictedByOwnText(node.listings, candidateById(id).film,
+        scoring.generation.reached(node).filterNot(_ == id).map(other => candidateById(other).film)))(RelayRecords.OwnTextDenial)).map(Denial(_)))
 
   /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
    *  festival billed by its name alone ([[services.billing.BillingParse.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),
