@@ -72,6 +72,17 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
       .exists(_.script.linesIterator.exists(_.trim == "scripts/run-script-tests --bash /bin/bash")) shouldBe true
   }
 
+  it should "first give them GNU timeout and shellcheck, which the tools run with on Linux CI and the laptop" in {
+    // The macOS image has neither: ten self-tests failed there "timeout: command not found" and "shellcheck is not
+    // installed" (Order independence #28, run 41294275183), though every one passed on ubuntu and the laptop.
+    val swift = RepoFile.block(RepoFile.block(RepoFile.read(".github/workflows/order-independence.yml"), "jobs"), "swift")
+    val provide = RepoFile.stepScript(swift, "GNU timeout and shellcheck, as Linux CI and the laptop have them")
+    provide should include("brew install coreutils shellcheck")
+    provide should include("gtimeout")
+    provide should include("$GITHUB_PATH")
+    RepoFile.positionOf(swift, "GNU timeout and shellcheck") should be < RepoFile.positionOf(swift, "scripts/run-script-tests --bash /bin/bash")
+  }
+
   "a tagged self-test" should "say why it leaves the default run" in {
     ScriptTests.all.filter(test => test.tag.nonEmpty && test.reason.trim.isEmpty).map(_.path) shouldBe empty
   }

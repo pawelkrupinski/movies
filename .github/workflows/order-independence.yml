@@ -276,6 +276,20 @@ jobs:
               env:
                   SYNC_MODEL_SEEDS: '2000'
 
+            # The tools the self-tests drive run on ubuntu CI and the laptop, both with GNU `timeout` and shellcheck;
+            # this image has neither (run 41294275183: ten self-tests failed "timeout: command not found" / "shellcheck
+            # is not installed"). Only `timeout` is linked unprefixed, as on the laptop -- no coreutils gnubin, so
+            # the tests still meet macOS's own sed, date and friends. (ScriptSelfTestsRunInCiSpec)
+            - name: GNU timeout and shellcheck, as Linux CI and the laptop have them
+              if: ${{ !cancelled() }}
+              env:
+                  HOMEBREW_NO_AUTO_UPDATE: '1'
+              run: |
+                  brew install coreutils shellcheck
+                  mkdir -p "$RUNNER_TEMP/gnu-timeout"
+                  ln -sf "$(brew --prefix)/bin/gtimeout" "$RUNNER_TEMP/gnu-timeout/timeout"
+                  echo "$RUNNER_TEMP/gnu-timeout" >> "$GITHUB_PATH"
+
             # Not an order leg, but the one nightly macOS job: the script tools promise macOS's /bin/bash 3.2 and
             # /usr/bin/python3 3.9 (scripts/run-script-tests' PythonFloor), and ci.yml's Linux run has neither, so a
             # bash-4-only construct ($BASHPID, an empty "${a[@]}" under set -u) or 3.10+ syntax passed there. Every
