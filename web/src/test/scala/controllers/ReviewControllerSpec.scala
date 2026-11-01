@@ -21,9 +21,13 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
 
   private def controller(mode: Mode, answers: ReviewAnswers = new ReviewAnswers(new InMemoryReviewAnswerStore),
                          labels: java.nio.file.Path = tempFile("labels", ".tsv"), clock: Clock = clock,
-                         tmdbPosters: Option[TmdbPosterLookup] = None) =
+                         tmdbPosters: Option[TmdbPosterLookup] = None, groupings: Map[String, Seq[SuspectGrouping]] = Map.empty) =
     new ReviewController(Helpers.stubControllerComponents(), mode, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock,
-      tmdbPosters = tmdbPosters)
+      tmdbPosters = tmdbPosters, groupings = () => groupings)
+
+  private def suspect(cc: String, score: Double, film: String, title: String, flagged: Boolean = true) =
+    SuspectGrouping(cc, 1, score, flagged, film, title, 5, Seq("alone"), Seq(s"prefers: a member of $title alone takes another film"),
+      Seq(s"Chichester '$title'"), 0, 1)
 
   "every review page" should "404 in production" in {
     val prod = controller(Mode.Prod)
@@ -81,6 +85,18 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     html should include("86.4%")
     html should include("best rejected candidate 1157322")
     html should not include "Klondike"                                      // matched: not in the queue
+  }
+
+  it should "list the suspect groupings, the most suspect first, of the country asked for, flagged ones only" in {
+    val groupings = Map("pl" -> Seq(suspect("pl", 1.0, "tmdb:7", "Lalka"), suspect("pl", 2.0, "tmdb:1259102", "Eternity"),
+      suspect("pl", 0.6, "tmdb:9", "Psy", flagged = false)), "uk" -> Seq(suspect("uk", 3.0, "tmdb:963568", "Prima Facie")))
+    val html = contentAsString(controller(Mode.Dev, groupings = groupings).queue(Some("pl"), 60, false)(FakeRequest()))
+    html should include("Suspect groupings")
+    html.indexOf("Eternity") should be < html.indexOf("Lalka")
+    html should include("""<a href="https://www.themoviedb.org/movie/1259102">tmdb:1259102</a>""")
+    html should not include "Prima Facie"                                   // another country's
+    html should not include "tmdb:9"                                        // not flagged
+    contentAsString(controller(Mode.Dev).queue(Some("pl"), 60, false)(FakeRequest())) should not include "Suspect groupings"
   }
 
   it should "send the policy that lets it load the published review pages' Google fonts" in {

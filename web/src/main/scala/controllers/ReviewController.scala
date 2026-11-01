@@ -32,7 +32,9 @@ class ReviewController(cc: ControllerComponents,
                        // Why the pages may be empty or answers not kept, for the banner (no mirror, answers in memory).
                        notices: Seq[String] = Nil,
                        // A candidate's TMDB poster asked live when no stored read gives one; none without a TMDB key.
-                       tmdbPosters: Option[TmdbPosterLookup] = None) extends AbstractController(cc) {
+                       tmdbPosters: Option[TmdbPosterLookup] = None,
+                       // The suspect groupings the last whole resolve ranked (GroupingSuspects), by country; none without its reports.
+                       groupings: () => Map[String, Seq[SuspectGrouping]] = () => Map.empty) extends AbstractController(cc) {
 
   private def devOnly(result: => Result): Result = DevMode.gate(environment)(result)
 
@@ -72,7 +74,7 @@ class ReviewController(cc: ControllerComponents,
   private def render(page: ReviewPage, country: Option[String], selected: Seq[(ReviewCluster, Option[Instant])], limit: Int,
                      showAnswered: Boolean, errors: Seq[String], controls: ReviewView.Controls,
                      labelsRead: (Seq[LabelRow], Option[String]) = readLabels(),
-                     priorities: Map[String, ReviewPriority] = Map.empty): Result = {
+                     priorities: Map[String, ReviewPriority] = Map.empty, suspects: Seq[SuspectGrouping] = Nil): Result = {
     val index    = new ReviewAnswers.Index(answers.current())
     val (done, notDone) = selected.partition { case (c, _) => index.answerFor(c.id, c.reviewMembers).isDefined }
     val open     = if (showAnswered) selected else notDone
@@ -83,7 +85,7 @@ class ReviewController(cc: ControllerComponents,
       .map(card => card.copy(priority = priorities.get(card.cluster.id)))
     val order    = shown.map(_._1.id).zipWithIndex.toMap
     val view     = ReviewView(page, country.getOrElse("all"), cards.sortBy(card => order(card.cluster.id)), total = open.size,
-      answeredHidden = selected.size - open.size, done.size, showAnswered, limit, controls, errors ++ labelsError ++ notices)
+      answeredHidden = selected.size - open.size, done.size, showAnswered, limit, controls, errors ++ labelsError ++ notices, suspects)
     Ok(views.html.review(view)).withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
   }
 
@@ -94,8 +96,10 @@ class ReviewController(cc: ControllerComponents,
       // each country's clusters ranked against what it serves, the countries side by side, then merged by the same order
       val (chosen, errors) = chosenOf(countriesOf(country), unmatchedOnly = false)(c => ReviewSelection.queue(_, sources(c).served(), judged))
       val ranked = chosen.sortBy { case (c, p) => (-p.score, -p.listings, c.title) }
+      // the suspect groupings, most suspect first: of the country asked for, else of every country ranked
+      val suspects = GroupingSuspects.ranked(groupings(), country.filterNot(_ == "all").map(Set(_)), limit)
       render(ReviewPage.Queue, country, ranked.map(_._1 -> None), limit, answered, errors, ReviewView.Controls(), labelsRead,
-        ranked.map { case (c, p) => c.id -> p }.toMap)
+        ranked.map { case (c, p) => c.id -> p }.toMap, suspects)
     }
   }
 
@@ -261,7 +265,9 @@ object ReviewController {
 /** Everything `review.scala.html` renders. */
 final case class ReviewView(page: ReviewPage, country: String, cards: Seq[ReviewCard], total: Int, answeredHidden: Int,
                             // every listed cluster with an answer, hidden or not — the progress bar's numerator
-                            answered: Int, showAnswered: Boolean, limit: Int, controls: ReviewView.Controls, notices: Seq[String]) {
+                            answered: Int, showAnswered: Boolean, limit: Int, controls: ReviewView.Controls, notices: Seq[String],
+                            // the queue's suspect groupings, most suspect first (GroupingSuspects)
+                            suspects: Seq[SuspectGrouping] = Nil) {
   /** This page's URL with one query parameter changed. */
   def link(changes: (String, Option[String])*): String = {
     val base = Seq("country" -> Some(country), "limit" -> Option.when(limit != ReviewController.DefaultLimit)(limit.toString),

@@ -46,6 +46,10 @@
     .filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
     .summary { color: var(--muted); font-size: .85rem; margin-top: 8px; }
     .notice { margin: 16px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--muted); }
+    .suspects { margin: 16px 0; overflow-x: auto; }
+    .suspects table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+    .suspects th, .suspects td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    .suspects .hint { color: var(--muted); font-size: .85rem; }
     .notice.warn { border-color: var(--warn); background: var(--warn-soft); color: var(--warn); }
     .list { display: grid; gap: 14px; margin-top: 16px; }
     .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }

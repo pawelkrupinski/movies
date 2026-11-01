@@ -98,6 +98,27 @@
       <span>— by the members' <code>movie_slots.updatedAt</code>: the model stores no decision time, so a re-scrape also counts.</span>
     }
   </div>
+  @if(view.suspects.nonEmpty) {
+  <section class="suspects" id="suspect-groupings">
+    <h2>Suspect groupings</h2>
+    <p class="hint">Clusters whose members' own facts conflict, or a member of which would take another film on its own evidence (<code>GroupingCoherence</code>), most suspect first — as the last whole resolve ranked them (<code>grouping-suspects-&lt;cc&gt;.json</code>). Report-only: judge the members' takes below or in identity-judgements.tsv.</p>
+    <table>
+      <thead><tr><th>score</th><th>film</th><th>members</th><th>signals</th><th>why</th><th>judged right / wrong</th></tr></thead>
+      <tbody>
+      @for(s <- view.suspects) {
+        <tr class="suspect" data-country="@s.country" data-score="@s.score">
+          <td>@{"%.2f".format(s.score)}</td>
+          <td>@s.country · @s.filmUrl match { case Some(u) => {<a href="@u">@s.film</a>} case None => {@s.film} } @s.title</td>
+          <td>@s.size@if(s.involved.nonEmpty){ — @s.involved.take(4).mkString("; ")}</td>
+          <td>@s.signals.mkString(", ")</td>
+          <td>@for(f <- s.findings.take(3)){<div>@f</div>}</td>
+          <td>@s.judgedRight / @s.judgedWrong</td>
+        </tr>
+      }
+      </tbody>
+    </table>
+  </section>
+  }
   <pre id="export-summary"></pre>
   <div class="bar" data-total="@{view.total + view.answeredHidden}" data-answered="@view.answered" data-hidden="@view.answeredHidden"
        data-show-answered="@view.showAnswered" data-answered-link="@view.link("answered" -> Some("true"))"
