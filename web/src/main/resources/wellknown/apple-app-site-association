@@ -25,10 +25,14 @@
           { "/": "/*/health", "exclude": true },
           { "/": "/*/.well-known/*", "exclude": true },
 
-          { "/": "/*/movie", "comment": "film detail" },
+          { "/": "/*/movie/*", "comment": "film detail, /{city}/movie/{slug}: iOS matches each pattern against the WHOLE path, so /*/movie alone claims only the legacy ?title= form" },
+          { "/": "/*/film/*", "comment": "its pre-rename address with a slug" },
+          { "/": "/*/movie", "comment": "film detail, legacy /{city}/movie?title=… form" },
           { "/": "/*/film", "comment": "its pre-rename address — still opens the app rather than bouncing through the server's 301 in Safari" },
           { "/": "/*/", "comment": "city repertoire listing (with optional filter query)" },
-          { "/": "/*/*/movie", "comment": "film detail under a country prefix" },
+          { "/": "/*/*/movie/*", "comment": "film detail under a country prefix, /{country}/{city}/movie/{slug}" },
+          { "/": "/*/*/film/*", "comment": "its pre-rename address with a slug, under a country prefix" },
+          { "/": "/*/*/movie", "comment": "film detail under a country prefix, legacy ?title= form" },
           { "/": "/*/*/film", "comment": "its pre-rename address, under a country prefix" },
           { "/": "/*/*/", "comment": "city repertoire listing under a country prefix" }
         ]
