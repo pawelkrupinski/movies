@@ -45,10 +45,40 @@ both forms (Prima Facie, Hamlet, Carmen, e.g. "NT Live: Prima Facie" + "Prima Fa
 each half (cannot-link, denial) alone fails it. `ListingRetentionSpec`: a relay never kept by a film's title or a film by
 a relay's.
 
+## The flip, as the corpus replays it
+
+Base drift row uk seed 17 (run 41297259801, base 142c59804): Chichester "Prima Facie" none -> 1127282 (step 3, filled by
+cast.venue: Cynthia Erivo) -> 963568 (step 4 scrape, OwnMatch of its node ALONE) -> 963568 -> 1127282 (step 9, joined
+by Kendal). So the move to the recording is the bare listing's own match, not only the grouping.
+
 ## The slice
 
-Measurement pending.
+`scripts/identity-slice uk --recording 573 --venue "Chichester Cinema at New Park" --title "Prima Facie"
+--emit-drift-slice` cuts closed (4 listings: Chichester, Power Station, Kendal, Bo'ness; `--widen 2` adds no context) but
+replays CLEAN on the base code on seeds 1-64 and with a `seeds` file of 17: the corpus's step-4 own match depends on
+corpus context the slice lacks. Not committed: it does not pin the red.
 
-## The measure
+## The measure (full corpus, five countries, pinned pair 573, base 142c59804)
 
-Measurement pending.
+Two variants, both NOT LANDABLE:
+
+| variant | run | model takes moved (pl / de / uk / us / es) | right-lost (model) | final right-lost |
+|---|---|---|---|---|
+| B by banner only (af8e5a09..ad869f705) | 41297551190 | 117 / 335 / 1244 / 1315 / 43 | 64 / 16 / 672 / 515 / 0 | 1 / 1 / 32 / 0 / 0 |
+| B + broadcast-season, original title, names anywhere (2098fe845) | 41298198021 | 241 / 122 / 2116 / 294 / 43 | 64 / 7 / 692 / 1 / 0 | 0 / 0 / 15 / 0 / 0 |
+
+Cures: 3 (UK "Così fan tutte" off the 2006 film). One new right->wrong (UK Pwllheli "Carrie (1976)" -> Obsession).
+What the right-lost are, by kind:
+
+- **Bare billings of a relay** (the design's own cost): PL Kino Nowe Horyzonty "Fleabag", Kinoteka "Mizantrop", UK
+  Halstead "Carmen", Chichester "Golden Boy", PL "Dziewczyna z Dzikiego Zachodu" all took their relay's record, right; B
+  forbids it, and the NT Live listings of the same work lose their pooled take with them (PL "NT Live: Fleabag" x16).
+- **Relays whose TMDB record bills no banner**, or the reverse: Exhibition On Screen records filed under the painter's
+  title (US "John Singer Sargent: Fashion and Swagger", DE Rembrandt), BTS's "LIVE VIEWING" billings vs "BTS WORLD TOUR"
+  records (UK x many), Berliner Philharmoniker.
+- **The broadcast-season widening**: any bare film title that is also a stage work, screening, read as a relay: PL
+  "Orlando" (Handel), "Jestem Rocky" (the musical), "Martwe zło 2", "Kaczka po pekińsku" -- hundreds of right film takes.
+
+Conclusion: a listing-kind split read off titles cannot hold "never share a take" without losing right takes in the
+hundreds, because box offices bill relays bare and TMDB files relays under plain titles. The Prima Facie flip itself is
+a plain listing's OWN match to a relay record whose facts its own (2026, Cynthia Erivo in the venue's text) contradict.
