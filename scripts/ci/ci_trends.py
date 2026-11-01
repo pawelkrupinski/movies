@@ -220,6 +220,9 @@ def attach_metrics(job, lines):
             job["tests"] = {key: value for key, value in line.items() if key != "kind"}
         elif kind in ("suite", "test"):
             job.setdefault("slow", []).append(line)
+        elif kind == "identity_suspect_groupings":
+            # grouping_suspects.py: one country's suspect-grouping counts, trended per country
+            job.setdefault("identity", []).append({key: value for key, value in line.items() if key != "kind"})
     return job
 
 
@@ -986,7 +989,8 @@ def _flat(prefix, figures):
 
 
 def events_of(record):
-    """The run as flat JSON events (the doc's schema table): run, job, step, jvm, cache, suite/test, process."""
+    """The run as flat JSON events (the doc's schema table): run, job, step, jvm, cache, suite/test, process,
+    identity.suspect_groupings."""
     if not record["jobs"]:
         return []
     m = run_measures(record)
@@ -1049,6 +1053,11 @@ def events_of(record):
             events.append(dict(base, _time=iso(job["s"]), _msg="%s: %s %s %.1fs" % (
                 job["n"], line.get("kind"), line.get("test") or line.get("suite"), line.get("time_s") or 0),
                 **{k: v for k, v in line.items() if isinstance(v, (int, float, str))}))
+        for line in job.get("identity") or []:
+            events.append(dict(base, _time=iso(job["s"]), kind="identity.suspect_groupings",
+                               _msg="%s: %s suspect groupings %s flagged of %s" % (job["n"], line.get("country"), line.get("flagged"),
+                                                                                  line.get("clusters")),
+                               **{k: v for k, v in line.items() if isinstance(v, (int, float, str))}))
         for proc in top_processes(job):
             events.append(dict(base, _time=iso(job["s"]), kind="process",
                                _msg="%s: %s peak %d MB, %.0f CPU-s" % (job["n"], proc["comm"], proc["rss_mb"], proc["cpu_s"]),

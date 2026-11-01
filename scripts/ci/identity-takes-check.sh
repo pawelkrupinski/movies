@@ -687,6 +687,13 @@ if [ -n "$takes_moves" ]; then
   base_final_finish
   keep_trace base "$base" base
   gaps_of head; gaps_of base
+  # THE SUSPECT GROUPINGS (GroupingCoherence, on the head resolve's lines): ranked into $out/head, the top on the summary
+  # page, one metrics line for VictoriaLogs -- reported, never a verdict, and never failing the check
+  SECONDS=0
+  python3 "$here/scripts/ci/grouping_suspects.py" "$cc" "$out/head/decisions-$cc.jsonl" --out "$out/head" \
+    --judgements "$here/test/resources/fixtures/identity-judgements.tsv" ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"} \
+    || echo "::warning::identity takes ($cc): the suspect groupings could not be read"
+  timing grouping-suspects ranked
 elif [ -z "$takes_skipped" ]; then
   echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"
 fi

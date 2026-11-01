@@ -148,6 +148,8 @@ class MetricsTest(unittest.TestCase):
                  + "a" * 64, "size_mb": 900, "restore_s": 12.0},
                 {"kind": "tests", "tests": 100, "failed": 0, "skipped": 3, "time_s": 250.0},
                 {"kind": "test", "suite": "S", "test": "slow one", "time_s": 30.0, "status": "passed"},
+                {"kind": "identity_suspect_groupings", "country": "uk", "clusters": 40, "flagged": 12, "facts": 5,
+                 "alone": 9, "judged_right": 1, "judged_wrong": 3, "top_score": 2.0},
                 {"kind": "rate_limit", "remaining": 880}]
 
     def record(self):
@@ -194,6 +196,8 @@ class MetricsTest(unittest.TestCase):
         self.assertTrue(all(e["source"] == "ci" and e["_time"] and e["_msg"] for e in events))
         cache = next(e for e in events if e["kind"] == "cache")
         self.assertEqual("sbt-target-unit-rest-Linux", cache["family"])
+        groupings = next(e for e in events if e["kind"] == "identity.suspect_groupings")
+        self.assertEqual(("uk", 12, 9, "ci / test (rest)"), (groupings["country"], groupings["flagged"], groupings["alone"], groupings["job"]))
         # VictoriaLogs hands every field back as a string.
         stringly = [{k: (str(v) if v is not None else "") for k, v in e.items()} for e in events]
         rebuilt = t.records_from_events(stringly)

@@ -463,6 +463,7 @@ row's country, else the telemetry label), `label`.
 | `cache` | job start | `cache` (sbt-target, sbt-deps), `family` (the key without its hash), `status` (hit/partial/miss), `key`, `size_mb`, `restore_s` |
 | `suite`, `test` | job start | the 15 slowest suites and tests of the job (and every failed test): `suite`, `test`, `tests`, `failed`, `skipped`, `time_s`, `status` |
 | `process` | job start | the 5 commands with the largest RSS: `comm`, `rss_mb` (peak, all its processes), `cpu_s`, `threads` (peak), `procs` (peak) |
+| `identity.suspect_groupings` | job start | a convergence takes row's suspect groupings (`scripts/ci/grouping_suspects.py`, docs/investigations/2026-11-01-grouping-coherence.md): `country`, `clusters` (with a finding), `flagged`, `facts`, `alone` (flagged by each signal), `judged_right`, `judged_wrong` (flagged clusters the hand judgements call right / wrong), `top_score` |
 
 The per-job artifact's own lines (`machine`, `job_start`, `series`, `procs`, `jvm`, `cache`, `tests`, `suite`, `test`,
 `rate_limit`, `job_end`) are what `export` turns into these events; `series` columns are cgroup-sampler.sh's

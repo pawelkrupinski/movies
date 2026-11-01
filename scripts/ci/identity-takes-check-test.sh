@@ -222,7 +222,7 @@ check "...the exact-input trace among them" 1 "$(find "$work/release" -name 'tak
 check "...the trace under the head's identity code and the pinned recording, both tools' readings in one" \
   "1 dump ratchet" "$(find "$work/release" -name 'takes-trace-pl-*-p42.gz' | grep -cE 'takes-trace-pl-[0-9a-f]{24}-p42\.gz$') $(
     gunzip -c "$work"/release/takes-trace-pl-*-p42.gz | gunzip -c | sed 's/.*"tool":"\([a-z]*\)".*/\1/' | sort | xargs)"
-check "...each phase timed, saying which it resolved" "phase:how head-final:replayed head-resolve:resolved base-final:replayed base-resolve:resolved " \
+check "...each phase timed, saying which it resolved, the suspect groupings ranked last" "phase:how head-final:replayed head-resolve:resolved base-final:replayed base-resolve:resolved grouping-suspects:ranked " \
   "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')"
 check "...and why the base was not stored" 1 "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")"
 check "...the head resolving and replaying with the tools" "dump-tool ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"

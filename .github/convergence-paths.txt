@@ -124,6 +124,7 @@ scripts/ci/corpus_shape_diff.py
 scripts/ci/dispatch.sh
 scripts/ci/drift_seeds.py
 scripts/ci/generated-artefacts-drift.sh
+scripts/ci/grouping_suspects.py
 scripts/ci/identity-drift-check.sh
 scripts/ci/identity-takes-check.sh
 scripts/ci/identity_judgements_lint.py

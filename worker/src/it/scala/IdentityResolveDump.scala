@@ -87,11 +87,14 @@ object IdentityResolveDump {
     val resolution = services.identity.TakeJudgements.withdraw(resolved, modules.wiring.BundledJudgements.index(c.country.code))
     val clusterOf = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
     // what argues against each take (SuspectTakes), which the takes check asks a person to judge before a gain passes
-    val suspects  = {
-      val corpus = SuspectTakes.corpus(resolution, listings, lookups, _ => None)
-      val year   = listings.flatMap(_.screenings.firstYear).maxOption.getOrElse(SpecClock.PinnedDay.getYear)
+    val corpus    = SuspectTakes.corpus(resolution, listings, lookups, _ => None)
+    val year      = listings.flatMap(_.screenings.firstYear).maxOption.getOrElse(SpecClock.PinnedDay.getYear)
+    val suspects  =
       SuspectTakes.suspected(corpus.takes, year, corpus.billings).collect { case (t, found) if found.nonEmpty => t.listing.key -> found.map(_.render) }.toMap
-    }
+    // what argues a cluster holds listings of more than one film (GroupingCoherence): on its first member's line, which
+    // scripts/ci/grouping_suspects.py ranks into the suspect groupings -- reported, never judged here
+    val (groupings, coherenceSeconds) = timed(GroupingCoherence.corpus(corpus.takes, year, Option(c.country.language.getCountry).filter(_.nonEmpty)))
+    val groupingOf = groupings.map(g => g.members.map(_.key).min -> g).toMap
     Files.createDirectories(dir)
     val lines = listings.map { l =>
       val d = resolution.decisionOf(l.key)
@@ -112,7 +115,8 @@ object IdentityResolveDump {
         "searched"    -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.searched).map(JsString(_))),
         "candidates"  -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.candidates).map(JsString(_))),
         "refusals"    -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.refusals).map(r =>
-          JsString(s"${r.rule}: ${r.why}${r.film.fold("")(id => s" [tmdb $id]")}${if (r.detail.nonEmpty) s" — ${r.detail}" else ""}"))))))
+          JsString(s"${r.rule}: ${r.why}${r.film.fold("")(id => s" [tmdb $id]")}${if (r.detail.nonEmpty) s" — ${r.detail}" else ""}")))) ++
+        groupingOf.get(l.key).map(g => "grouping" -> groupingJson(g))))
     }
     Files.writeString(dir.resolve(s"decisions-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
     configuration.identityFocus.foreach { f =>
@@ -131,6 +135,8 @@ object IdentityResolveDump {
     population.foreach { case (chains, budget) => populationReport(c, listings, lookups, resolved, chains, budget, dir) }
     println(f"[${c.label}] ${listings.size} listings → ${resolution.decisions.size} clusters " +
       f"(${resolution.decisions.count(_.film.isDefined)} with a film) in $seconds%.1fs; unanswered queries ${resolution.unknownQueries}")
+    println(f"[${c.label}] grouping coherence: ${groupings.count(_.flagged)} suspect grouping(s) flagged of ${groupings.size} with a finding, " +
+      f"in $coherenceSeconds%.1fs")
   }
 
   /** Every family of two listings or more walked along `chains` arrival chains, each prefix resolved whole against the
@@ -159,6 +165,19 @@ object IdentityResolveDump {
       println(s"[population ${c.country.code}] ${f.title} (${f.listings} listings): " + f.flips.distinctBy(_.key).take(3).map(x =>
         s"${x.key.venue}${if (f.bare(x.key)) " [bare]" else ""}: ${x.path}").mkString("; ")))
   }
+
+  /** A cluster's coherence as its first member's `grouping` field: its score, its signals, the members a finding names
+   *  and each finding (kind, weight, why). */
+  private def groupingJson(g: GroupingCoherence.Coherence): JsObject = JsObject(Seq(
+    "score"    -> JsNumber(BigDecimal(g.score).setScale(2, BigDecimal.RoundingMode.HALF_UP)),
+    "flagged"  -> play.api.libs.json.JsBoolean(g.flagged),
+    "film"     -> JsString(g.film),
+    "title"    -> JsString(g.title),
+    "size"     -> JsNumber(g.members.size),
+    "signals"  -> JsArray(g.signals.map(s => JsString(s.label))),
+    "involved" -> JsArray(g.involved.map(k => JsString(ListingKey.serialised(k)))),
+    "findings" -> JsArray(g.findings.map(f => JsObject(Seq("kind" -> JsString(f.kind.label), "signal" -> JsString(f.kind.signal.label),
+      "weight" -> JsNumber(BigDecimal(f.weight).setScale(2, BigDecimal.RoundingMode.HALF_UP)), "why" -> JsString(f.why)))))))
 
   /** The agreement stage over the resolution's no-matches, the families answered from the experiment's cache, else live —
    *  asked until nothing is open — and every cluster it takes (agreed, by a poster, a broadcast day or a fill rule) written
