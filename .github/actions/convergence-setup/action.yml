@@ -72,9 +72,11 @@ outputs:
   hermetic-pair:
     description: The recorded pair this job restored (hermetic mode), for the steps after it.
     value: ${{ steps.pair.outputs.pair }}
-  sbt-target-restored:
-    description: The sbt target cache entry this job restored (its key; empty on a miss), so a row can tell a takes entry from another family.
-    value: ${{ steps.sbt-target.outputs.matched-key }}
+  worker-test-classes-restored:
+    description: >-
+      'true' when the sbt target cache entry this job restored held worker's compiled test classes (a takes-family entry
+      does; the e2e and convergence families do not), read before anything compiles.
+    value: ${{ steps.restored-tests.outputs.restored }}
 
 runs:
   using: composite
@@ -254,7 +256,6 @@ runs:
     # `CinemaScraperCatalogSpec`. The module classes are all that is worth carrying.
     # (SbtCachePathsSpec, ConvergenceLegWiringSpec)
     - uses: ./.github/actions/sbt-target-cache
-      id: sbt-target
       with:
           key: ${{ steps.sbt-key.outputs.key }}
           # A takes row's own family first: every other entry lacks worker/Test and worker/It, and the row compiled all
@@ -270,6 +271,14 @@ runs:
           # A measure/* branch (scripts/identity-measure) saves nothing: a branch's cache is restorable only from that
           # branch and main, and a measure branch is never run again -- each saved 82 MB toward the 10 GB cap for no one.
           restore-only: ${{ inputs.replay != 'true' || startsWith(github.ref, 'refs/heads/measure/') }}
+    # WHAT THE RESTORE BROUGHT, read before anything compiles: a drift row whose entry held no worker test classes
+    # compiled them itself, and saves them as the takes family for the next run (country-convergence-leg.yml). Read off
+    # the tree, not the cache's matched key: actions/cache (the saving variant, on main) reports no matched key.
+    - name: Did the restored build hold worker's test classes?
+      id: restored-tests
+      shell: bash
+      run: |
+          if compgen -G 'worker/target/scala-*/test-classes/*' > /dev/null; then echo "restored=true" >> "$GITHUB_OUTPUT"; fi
 
     # The scrape corpus, from the ARTIFACT of a `Record scrape fixtures` run (the
     # pinned one, else the newest) — not from the actions cache it also writes.

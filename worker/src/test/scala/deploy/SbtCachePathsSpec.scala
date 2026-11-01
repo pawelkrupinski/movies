@@ -118,11 +118,12 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
   it should "also save the first drift seed's worker test classes as that family when no takes entry was restored" in {
     val decide = RepoFile.step(leg, "Did the takes check compile worker's test and it classes?")
     decide should include("(matrix.phase == 'takes' || matrix.phase == 'takes-drift-1')")
-    decide should include("RESTORED: ${{ steps.setup.outputs.sbt-target-restored }}")
-    decide should include("""elif [[ "$RESTORED" != sbt-target-takes-* ]]""")
-    setup should include("value: ${{ steps.sbt-target.outputs.matched-key }}")
-    RepoFile.read(".github/actions/sbt-target-cache/action.yml") should include(
-      "value: ${{ steps.cache.outputs.cache-matched-key || steps.restore.outputs.cache-matched-key }}")
+    decide should include("RESTORED_TESTS: ${{ steps.setup.outputs.worker-test-classes-restored }}")
+    decide should include("""elif [ "$RESTORED_TESTS" != true ]""")
+    // read off the tree before anything compiles: actions/cache (the saving variant, on main) reports no matched key
+    // (run 41293639713's drift rows read an empty one and all saved)
+    setup should include("value: ${{ steps.restored-tests.outputs.restored }}")
+    RepoFile.positionOf(setup, "id: restored-tests") should be > RepoFile.positionOf(setup, "uses: ./.github/actions/sbt-target-cache")
   }
 
   /** A branch's cache is restorable only from that branch and main, and a measure branch never runs again: each
