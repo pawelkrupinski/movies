@@ -1,0 +1,27 @@
+# Each drift slice's replay cost, seconds of its replay thread's CPU on a Main runner: what IdentityDriftSlicesSpec.shards
+# balances. Measured on Main run 41348471000 (2026-11-01). Refresh from a Main run's `cost:` lines when slices land;
+# a slice not listed counts the median.
+de/dammtor-titans-0bd19a4c	13.2
+de/hasetor-lichtspiele-scott-lila-63a6686f	3.4
+de/kinocenter-giessen-black-water-globale--0ea0f3bc	15.8
+de/metropol-madoka-6a9b3bcc	9.0
+de/werkstattkino-camouflage-07fb3fab	12.2
+de/zeise-kinos-do-you-love-me-350d1711	8.2
+pl/centrum-3d-przemyśl-dkf-zniknięcie-51cc6ab6	16.6
+pl/centrum-kultury-nowy-pafawag-festiwal-korelacje-zemsta-z-aut-0340ac9c	6.4
+pl/cinema-city-kinepolis-piesek-1d2222d6	6.6
+pl/kino-kameralne-cafe-siostry-1972--3afdb8ca	3.6
+uk/-cbeebies-panto-2026-2c0694a1	50.9
+uk/chichester-ties-1231860f	3.2
+uk/halstead-alice-7289654b	61.0
+uk/halstead-cosi-49e45b97	125.6
+uk/halstead-swan-lake-64d7a829	158.9
+uk/nerve-centre-londonderry-the-ladykillers-039701b7	8.3
+uk/old-market-hall-shrewsbury-starlight-express-live-on-stage-6a5f8f29	199.1
+uk/plough-arts-centre-torrington-dracula-625b65d9	331.8
+uk/rio-rocky-horror-08970d5d	2.3
+uk/savoy-doncaster-hocus-pocus-48e7a678	31.9
+uk/the-cinema-campus-west-verity-0d6c386e	63.4
+us/-nt-live-hamlet-7802e9fe	2.8
+us/-seventeen-23224b92	13.0
+us/parkway-drive-home-2abd6734	9.2

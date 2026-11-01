@@ -61,7 +61,8 @@ abstract class IdentityDriftSlicesShard(shard: Int) extends AnyFlatSpec with Mat
  * every closed drift red, Main's long pole). [[IdentityDriftSlicesSpec.ShardCount]] suites each replay the slices
  * [[IdentityDriftSlicesSpec.shards]] gives them, balanced by each slice's measured cost (drift-slice-costs.tsv), and
  * build.sbt's rows put each on its own CI row: shard 0 (this suite, with the checks on the split itself) on
- * `worker-identity`, [[IdentityDriftSlicesShard1Spec]] on `heavy1`, [[IdentityDriftSlicesShard2Spec]] on `heavy2`. Every
+ * `worker-identity`, [[IdentityDriftSlicesShard1Spec]] on `heavy1`, [[IdentityDriftSlicesShard2Spec]] on `heavy2`,
+ * [[IdentityDriftSlicesShard3Spec]] on `worker` (build.sbt `WorkerRestSuites`). Every
  * slice is replayed by exactly one shard, on the same seeds: the coverage of the one suite it was.
  */
 class IdentityDriftSlicesSpec extends IdentityDriftSlicesShard(0) {
@@ -101,12 +102,6 @@ class IdentityDriftSlicesSpec extends IdentityDriftSlicesShard(0) {
   }
 }
 
-/** The drift slices' second shard ([[IdentityDriftSlicesSpec]]): CI row `heavy1`. */
-class IdentityDriftSlicesShard1Spec extends IdentityDriftSlicesShard(1)
-
-/** The drift slices' third shard ([[IdentityDriftSlicesSpec]]): CI row `heavy2`. */
-class IdentityDriftSlicesShard2Spec extends IdentityDriftSlicesShard(2)
-
 object IdentityDriftSlicesSpec {
 
   val Fixtures: Path = Path.of("test", "resources", "fixtures")
@@ -114,9 +109,10 @@ object IdentityDriftSlicesSpec {
   /** Every committed slice. */
   lazy val AllSlices: Seq[Path] = sliceDirs(Fixtures.resolve("drift-slices"))
 
-  /** How many suites the slices are split over: one per CI row that carries a shard (build.sbt `HeavyRows`, the
-   *  `identity` row). */
-  val ShardCount: Int = 3
+  /** How many suites the slices are split over: one per CI row that carries a shard (build.sbt `HeavyRows`,
+   *  `WorkerRestSuites`, the `identity` row). Four, measured on Main run 41348471000: the slices' CPU was 1,157 s, a
+   *  third of it one slice (Torrington "Dracula", 332 s), and four rows bring each to ~6 min, under the page tests. */
+  val ShardCount: Int = 4
 
   /** Each slice's measured replay cost, seconds of its replay thread's CPU on a Main runner (`cost:` in this spec's
    *  output; refresh it when slices land): what [[shards]] balances. */

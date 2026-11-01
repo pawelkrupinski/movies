@@ -76,6 +76,22 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
       RepoFile.matrixRows(testJob).flatMap(_.get("suites")).filter(_.startsWith("heavy")).toSet
   }
 
+  /** The drift slices run as IdentityDriftSlicesSpec.ShardCount suites, one a row: a shard no row selects runs its
+   *  slices nowhere, and two on one row put the long pole back. */
+  they should "run each drift-slice shard on its own row" in {
+    val shards = (1 until scripts.IdentityDriftSlicesSpec.ShardCount).map(i => s"scripts.IdentityDriftSlicesShard${i}Spec")
+    shards.foreach(name => withClue(name)(RepoFile.exists(s"worker/src/test/scala/${name.replace('.', '/')}.scala") shouldBe true))
+    val heavy = buildSbt.substring(buildSbt.indexOf("lazy val HeavyRows"), buildSbt.indexOf("lazy val HeavySuites"))
+    val rest  = buildSbt.substring(buildSbt.indexOf("lazy val WorkerRestSuites"), buildSbt.indexOf("lazy val workerRowSettings"))
+    val rowOf = shards.map(name => name -> Seq("heavy1", "heavy2").find { row =>
+      val at = heavy.indexOf(s""""$row"""")
+      heavy.substring(at, heavy.indexOf(")", at)).contains(s""""$name"""")
+    }.orElse(Option.when(rest.contains(s""""$name""""))("rest"))).toMap
+    rowOf.values.toSeq.foreach(_ should not be empty)
+    // shard 0 rides the identity row by its `scripts.` prefix; the others each on a row of their own
+    (rowOf.values.flatten.toSeq :+ "identity") shouldBe (rowOf.values.flatten.toSeq :+ "identity").distinct
+  }
+
   "ci.yml's integration rows" should "be build.sbt's IT_ROW filters, each running all of itAll" in {
     RepoFile.matrixRows(itJob).map(_("row")) should contain theSameElementsAs rowsOf("IT_ROW").toSeq
     itJob should include("IT_ROW: ${{ matrix.row }}")

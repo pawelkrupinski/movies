@@ -199,10 +199,13 @@ lazy val HeavyRows: Map[String, Set[String]] = Map(
     "services.identity.MatchedTakesLabelSpec",        // every capture's matched takes against the labels
     "scripts.IdentityDriftSlicesShard2Spec"))         // the drift slices' third shard (IdentityDriftSlicesSpec)
 lazy val HeavySuites: Set[String] = HeavyRows.values.flatten.toSet
+// Identity suites the catch-all `rest` row (CI's `worker`) runs instead: a drift-slice shard (IdentityDriftSlicesSpec).
+lazy val WorkerRestSuites: Set[String] = Set("scripts.IdentityDriftSlicesShard3Spec")
 lazy val workerRowSettings = rowSettings("WORKER_ROW", Test, Seq(
   "heavy1"   -> HeavyRows("heavy1"),
   "heavy2"   -> HeavyRows("heavy2"),
-  "identity" -> (suite => !HeavySuites(suite) && Seq("services.identity.", "scripts.", "tools.").exists(suite.startsWith))))
+  "identity" -> (suite => !HeavySuites(suite) && !WorkerRestSuites(suite) &&
+    Seq("services.identity.", "scripts.", "tools.").exists(suite.startsWith))))
 
 lazy val itReportSettings = Seq(
   IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
