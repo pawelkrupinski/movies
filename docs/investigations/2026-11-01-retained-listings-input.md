@@ -52,7 +52,37 @@ The capture holds every listing the history last saw held, before the rule. For 
 
 Once the store is written it holds only the kept set, which should be smaller.
 
-## Measurement
+## Measurement (2026-11-01)
 
-See below (identity-measure over prod-latest 41265286306, the capture made after the fact by `scripts.RecordProdRetained`
-from the local mirror at each country's recording time).
+The run was `scripts/identity-measure 1a25d0c97a5 --recording 41265286306 --all-countries --one-recording`, run 41308398650.
+The capture came from the local mirror at each country's recording time (`scripts.RecordProdRetained`). It went onto a
+measure-only commit and was never landed. Base is 5b2e13bd38a.
+
+| country | kept added to the input (of recorded) | moved among the billed | new takes of kept listings |
+| --- | --- | --- | --- |
+| PL | 415 | none | 1: Kino Sokół "PIESEK" -> tmdb 1319522 *Gohan* (2026) |
+| DE | 72 (of 2,241) | 18 gained: "Eternity" -> tmdb 1259102 | 16: UCI "Brute-1986" -> tmdb 1433854 *Brute 1986* (2026) |
+| UK | 60 | none | none flagged |
+| US | 66 | none | none flagged |
+| ES | 5 | none | none flagged |
+
+No take is lost and no take changes film.
+
+Each take was judged against TMDB:
+
+- **PL "PIESEK" -> Gohan: right.** It is the Thai *โกฮัง..หัวใจโกโฮม*, released in Poland as "Piesek". Multikino's
+  "Piesek" lists its directors, Atta Hemwadee and Nattawut Poonpiriya. The suspect check fired on the Thai title alone.
+- **DE "Brute-1986" -> Brute 1986 (2026): right.** This is Marcel Walz's slasher, released in Germany on 26.11.2026.
+- **DE "Eternity" x18 -> tmdb 1259102: WRONG.** That id is David Freyne's 2025 romcom. The 18 venues bill Susanne
+  Regina Meures' 2026 *Eternity*, Florentina Holzinger's glacier film, which plays across Germany on 25 and 29 November
+  2026. It is not on TMDB, so "none" was the right take.
+  - The cause is the rule itself. Retention reads a title alone, so Caligari Ludwigsburg's kinoheld listing of Freyne's
+    film (`/film/eternity`, director David Freyne) is kept while the Meures screenings bill "Eternity". It then
+    corroborates the bare "Eternity (2025)" listings.
+  - Production holds the same 18 wrong takes. `identity_history` has them gained at 2026-10-31T10:49Z, six minutes
+    after that listing left Caligari's board (10:43Z).
+  - Before this change a restart cleared them. With the kept set persisted, they outlast restarts until no venue bills
+    "Eternity".
+
+The full suite on the same commit and recording ran as run 41308412546. The convergence, order-independence and next-day
+rows read the kept listings. The drift rows read none: their path, `IdentityDrift` and `IdentitySlice`, is untouched.
