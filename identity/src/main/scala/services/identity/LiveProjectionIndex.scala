@@ -365,14 +365,20 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
     afterWrites ++= moved.filterNot(placedAsWritten)
     afterWrites ++= writtenInto.keysIterator.filterNot(placedAsWritten)
     def wasPlaced(k: ListingKey): Boolean = before.get(k).fold(previousAt(k).isDefined)(_.isDefined)
+    // Whether a listing of a cluster was on a film before the writes, worked out once per cluster: a listing on none before
+    // is not placed itself, so "another member was" is "a member was" — the same for every newly placed listing of the
+    // cluster. Asked per listing, it scanned the whole cluster each time: 12% of a US order row's CPU (JFR, run 41302893834).
+    val clusterPlaced = mutable.HashMap.empty[ClusterId, Boolean]
     moved.iterator.flatMap { k =>
       previousAt(k).flatMap { now =>
         before(k) match {
           case Some(was) if was.tmdbId == now.tmdbId => None
           case Some(was)                             => Some(TakeChange(k, Some(was.id), was.tmdbId, now.tmdbId))
           case None                                  =>
-            val cluster = entries.get(k).flatMap(e => Option(e.cluster)).flatMap(clusters.get).fold(Set.empty[ListingKey])(_.members)
-            Some(TakeChange(k, None, None, now.tmdbId, joined = cluster.exists(m => m != k && wasPlaced(m))))
+            val joined = entries.get(k).flatMap(e => Option(e.cluster)).exists { id =>
+              clusterPlaced.getOrElseUpdate(id, clusters.get(id).exists(_.members.exists(wasPlaced)))
+            }
+            Some(TakeChange(k, None, None, now.tmdbId, joined = joined))
         }
       }
     }.toSeq.sortBy(_.listing)
