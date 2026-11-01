@@ -71,26 +71,35 @@ private[identity] object TitleShapeMeasures {
     else l.shapesOfOwn(billed).filter(piece => piece != billed.trim && piece.exists(_.isLetter) && !piece.exists(_.isLower))
   }
 
-  /** Every shape but a piece naming only the event a billing joins to its film ([[namesOnlyAnEvent]]): UK "The Assassin
-   *  + Q&A" searched "Q&A" and stood Q & A (1990) beside Hou Hsiao-hsien's film as its runner-up, and "Inside Gaza + Q&A"
-   *  ×1, "Le Moulin + Q&A", "Journey There + Q&A" took it as their best candidate (prod 2026-11-01: 30 UK listings). The
-   *  listing's own titles are shapes whatever they bill: a film called "Q&A" is billed by its title alone. */
   private[identity] def shapesOf(l: Listing): Seq[String] = {
-    val all = shapes(l.ownTitles ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
+    shapes(l.ownTitles ++ l.searchTitles ++ SearchTitles.candidates(l.title, l.originalTitle) ++
       l.rawTitle.toSeq.flatMap(SearchTitles.candidates(_, None)) ++ l.ownTitles.flatMap(creditedWork), l.decorations)
-    val joined = joinedEvents(l)
-    if (joined.isEmpty) all else all.filterNot(joined)
   }
 
   /** The pieces a billing JOINS to its film with a "+" that name only an event ([[namesOnlyAnEvent]]): "Q&A" of "The
    *  Assassin + Q&A", "Interval" of "The Odyssey + Interval". Only a joined piece: a banner's own words ("HALLOWEEN -
-   *  SPECIAL - …") are its programme's, which the shapes read as before. Never one of the listing's own titles. */
+   *  SPECIAL - …") are its programme's. Never one of the listing's own titles. A film such a piece alone names is no
+   *  rule's take ([[eventNamed]]). */
   private[identity] def joinedEvents(l: Listing): Set[String] =
     if (!l.ownTitles.exists(_.indexOf('+') >= 0)) Set.empty
     else {
       val own = l.ownTitles.map(_.trim).toSet
       l.ownTitles.flatMap(t => services.billing.BillJoins.billPieces(t).drop(1).map(_.trim)).filter(p => !own(p) && namesOnlyAnEvent(p)).toSet
     }
+
+  /** Does the listing name `f` ONLY by a piece its billing joins as an event ([[joinedEvents]]) — "Q & A" (1990) of UK
+   *  "The Assassin + Q&A", which its "Q&A" searched? Such a film stays in the pool as a rival (the namesakes a bare
+   *  billing cannot tell apart are still left to no pooled vote: "Amazing Grace + Q&A" is Ruth Carney's, not Apted's),
+   *  but no rule takes it ("Inside Gaza + Q&A" ×1, "Le Moulin + Q&A": prod 2026-11-01) nor does it stand as the runner-up
+   *  a film's own facts must outweigh ("The Assassin + Q&A", "My Daughter Is a Zombie + Q&A"). */
+  private[identity] def eventNamed(l: Listing, f: Film): Boolean = {
+    val joined = joinedEvents(l)
+    joined.nonEmpty && {
+      val pieces = namingPieces(l, f)
+      val events = joined.map(TitleContainment.tokens)
+      pieces.nonEmpty && pieces.forall(events)
+    }
+  }
 
   /** Does a piece of a billing name nothing but an event around a screening — a talk, a panel, an interval, an
    *  introduction ([[DecorationWords.namesAnEvent]]), every other word of it one a venue bills around a film

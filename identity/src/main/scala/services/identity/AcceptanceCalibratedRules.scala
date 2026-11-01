@@ -22,7 +22,10 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
     val eligible = eligibleOf(ranked)
     for {
       taken <- calibratedWhy(ranked)
-      _     <- noneOf(eligible.lift(1).filterNot(favours(taken._1, _)), "its own facts do not favour it over the runner-up", taken._1)
+      // the runner-up a film's own facts must outweigh is another film the billing could name, never one it names only by
+      // the event it joins (UK "The Assassin + Q&A" beside Q & A, 1990: [[IdentityMeasures.eventNamed]])
+      _     <- noneOf(eligible.filterNot(r => (r eq taken._1) || IdentityMeasures.eventNamed(r.listing, r.candidate.film)).headOption
+                 .filterNot(favours(taken._1, _)), "its own facts do not favour it over the runner-up", taken._1)
       _     <- noneOf(closerThan(taken._1, eligible), "its title sits inside a closer record", taken._1)
     } yield taken
   }
@@ -101,9 +104,6 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
       _     <- noneOf(eligible.find(rival => (rival ne best) && namedAlike(best, rival) &&
                  ListingShape.festivalsOlderNamesake(best.listing, best.candidate.film, rival.candidate.film)),
                  "a festival's bare billing names a newer film alike", best)
-      _     <- noneOf(eligible.find(rival => (rival ne best) && namedAlike(best, rival) && facts(rival) >= facts(best) &&
-                 ListingShape.eventsBareBilling(best.listing)),
-                 "an event's bare billing names namesakes no fact tells apart", best)
       _     <- noneOf(Option.when(namedWithinAnother(best, eligible))(best), "the title names it only within another candidate's longer title", best)
     } yield taken
   }

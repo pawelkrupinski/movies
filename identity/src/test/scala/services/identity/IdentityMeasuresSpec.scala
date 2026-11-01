@@ -24,28 +24,27 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.shapes(Seq("Blade Runner 2049")) should not contain "Blade Runner"
   }
 
-  "a billing's piece naming only its event" should "be no shape of the listing, its own title always one" in {
+  "a billing's piece naming only its event" should "name no film a rule takes, its own title and a banner's words read as before" in {
     // UK The Garden Cinema's "The Assassin + Q&A" searched "Q&A" and stood Q & A (1990) beside Hou Hsiao-hsien's film as
     // the runner-up its own facts did not outweigh; Ciné Lumière's "Inside Gaza + Q&A" took it as its best candidate
     // (prod 2026-11-01)
-    // as the intake hands it over: the search titles a "+" splits the billing into
-    def shapes(raw: String) = IdentityMeasures.Listing(raw, Some(raw), searchTitles = raw.split("""\s*\+\s*""").toSeq).shapes
-    shapes("The Assassin + Q&A") should contain("The Assassin")
-    shapes("The Assassin + Q&A") should not contain "Q&A"
-    shapes("Oxide Ghosts: The Brass Eye Tapes + Q+A") should not contain "Q+A"
-    shapes("Who are you, Polly Maggoo ? + panel") should not contain "panel"
-    shapes("The Odyssey + Interval") should not contain "Interval"
+    def billed(raw: String) = IdentityMeasures.Listing(raw, Some(raw), searchTitles = raw.split("""\s*\+\s*""").toSeq)
+    val qa = Film("Q & A", year = Some(1990))
+    IdentityMeasures.eventNamed(billed("The Assassin + Q&A"), qa) shouldBe true
+    IdentityMeasures.eventNamed(billed("The Assassin + Q&A"), Film("The Assassin", year = Some(2015))) shouldBe false
+    IdentityMeasures.eventNamed(billed("Who are you, Polly Maggoo ? + panel"), Film("Panel", year = Some(2026))) shouldBe true
+    IdentityMeasures.eventNamed(billed("The Odyssey + Interval"), Film("Interval", year = Some(2019))) shouldBe true
     // a film called by an event word is billed by its title alone, or beside another work
-    shapes("Q&A") should contain("Q&A")
-    shapes("Intro") should contain("Intro")
-    // a banner's own event words are its programme's, read as before: only a piece joined by a "+" is dropped (DE Euromax's
-    // "HALLOWEEN - SPECIAL - ZOMBIE-DAWN OF THE DEAD & …" took Carpenter's Halloween without its "SPECIAL", measure 41348646489)
-    shapes("HALLOWEEN - SPECIAL - ZOMBIE-DAWN OF THE DEAD") should contain("SPECIAL")
+    IdentityMeasures.eventNamed(billed("Q&A"), qa) shouldBe false
+    IdentityMeasures.eventNamed(billed("Rise + Fight Like a Girl"), Film("Rise", year = Some(2022))) shouldBe false
     IdentityMeasures.namesOnlyAnEvent("Writer/Director Q&A") shouldBe false
     IdentityMeasures.namesOnlyAnEvent("The Graduate") shouldBe false
     IdentityMeasures.namesOnlyAnEvent("Q&A") shouldBe true
-    MultiFilmBill.billedWorks(IdentityMeasures.Listing("The Assassin + Q&A", Some("The Assassin + Q&A"))) should not contain "Q&A"
+    // a banner's own event words are its programme's: only a piece joined by a "+" is the event (DE Euromax's "HALLOWEEN -
+    // SPECIAL - ZOMBIE-DAWN OF THE DEAD & …", measure 41348646489)
+    IdentityMeasures.joinedEvents(billed("HALLOWEEN - SPECIAL - ZOMBIE-DAWN OF THE DEAD")) shouldBe empty
   }
+
 
 
   they should "cost a title that ends in neither no scan of it" in {

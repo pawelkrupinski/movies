@@ -35,6 +35,8 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
 }
 
 private[identity] object Scored {
+  /** Why a film is [[Scored.untaken]] when the billing names it only by the event it joins ([[IdentityMeasures.eventNamed]]). */
+  val EventNamed = "named only by the event its billing joins"
   /** Where IMDb's suggestions for the listing's own title put the film: its 1-based place, among `of` films. */
   final case class ImdbPlace(place: Int, of: Int)
   /** A scored candidate the resolver takes, with the confidence it is taken at. */

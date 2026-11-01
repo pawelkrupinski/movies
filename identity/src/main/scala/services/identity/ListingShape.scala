@@ -325,19 +325,6 @@ object ListingShape {
   def festivalsOlderNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, newer: IdentityMeasures.Film): Boolean =
     festivalsBareBilling(listing, film) && film.year.exists(year => newer.year.exists(_ > year))
 
-  /** Is the listing a bare billing JOINED TO AN EVENT — a talk, a panel, an interval after a "+" ("Amazing Grace + Q&A",
-   *  "Premature + Writer/Director Q&A"), no year or director stated? Its title names the film the event is held for, and
-   *  among namesakes no fact tells apart only the database's popularity ranking would pick one: the pooled vote leaves
-   *  it unmatched ([[AcceptanceCalibratedRules]]). The "Q & A" (1990) its "Q&A" once searched stood as such a namesake
-   *  by accident; without it UK Phoenix Leicester's "Amazing Grace + Q&A" took Apted's 2006 film and "Premature +
-   *  Writer/Director Q&A" Dan Beers's 2014 comedy, both wrong (measure 41348646489). */
-  def eventsBareBilling(listing: IdentityMeasures.Listing): Boolean =
-    listing.year.isEmpty && listing.directors.isEmpty && {
-      val raw = listing.rawTitle.getOrElse(listing.title)
-      raw.indexOf('+') >= 0 && services.billing.BillJoins.billPieces(raw).drop(1)
-        .exists(piece => IdentityMeasures.namesAnEvent(TitleContainment.tokens(piece)))
-    }
-
   /** How many years before its screenings a film released is a catalogue film, no festival's entry of its year. */
   val FestivalCatalogueYears = 10
 

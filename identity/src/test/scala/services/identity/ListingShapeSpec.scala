@@ -110,20 +110,6 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.festivalsOlderNamesake(billed("Kino Seniora: The Dating Game"), hour, dating) shouldBe false
   }
 
-  "a bare billing joined to an event" should "be read as one, its year or director or a work joined to it aside" in {
-    // UK Phoenix Leicester's "Amazing Grace + Q&A" and "Premature + Writer/Director Q&A" (measure 41348646489): the
-    // pooled vote took the namesake TMDB ranks first, both wrong, once the "Q&A" no longer stood for a film of its own
-    def billed(raw: String, year: Option[Int] = None, directors: Seq[String] = Nil) =
-      IdentityMeasures.Listing(raw, Some(raw), year = year, directors = directors, screeningsSeason = Some(2026))
-    ListingShape.eventsBareBilling(billed("Amazing Grace + Q&A")) shouldBe true
-    ListingShape.eventsBareBilling(billed("Premature + Writer/Director Q&A")) shouldBe true
-    ListingShape.eventsBareBilling(billed("Who are you, Polly Maggoo ? + panel")) shouldBe true
-    ListingShape.eventsBareBilling(billed("Amazing Grace")) shouldBe false
-    ListingShape.eventsBareBilling(billed("Amazing Grace + Respect")) shouldBe false
-    ListingShape.eventsBareBilling(billed("Amazing Grace + Q&A", year = Some(2006))) shouldBe false
-    ListingShape.eventsBareBilling(billed("Amazing Grace + Q&A", directors = Seq("Michael Apted"))) shouldBe false
-  }
-
   "a piece billed beside the film" should "be a subtitle, performer or show of its own words, never the venue's wording around a film" in {
     def film(title: String, original: Option[String] = None, directors: Seq[String] = Nil) =
       IdentityMeasures.Film(title, original, directors = Some(directors))

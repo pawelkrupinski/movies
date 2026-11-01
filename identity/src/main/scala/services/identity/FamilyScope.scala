@@ -163,6 +163,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked,
         features.nonEmpty || ShortFilms.isShort(scored.candidate.film) && !IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) &&
           ShortFilms.billedBeyond(listing, scored.candidate.film, venue))
+    // A film the billing names only by the event it joins ("+ Q&A": Q & A, 1990) stays a rival no rule takes
+    // ([[IdentityMeasures.eventNamed]]).
+    private def eventUntaken(scored: Scored): Option[String] =
+      Option.when(!scored.denied && IdentityMeasures.eventNamed(listing, scored.candidate.film))(Scored.EventNamed)
     // A film of the venue's own language is billed by its title: one the listing's titles share no word with is another
     // film, however its director's credit or running time fits — a director's filmography is a path to candidates, never a
     // title. UK Picture House Uckfield's "Gremlins Special Event" {Joe Dante} [120′] took Innerspace,
@@ -197,7 +201,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       else None
 
     def scored: Seq[Scored] =
-      candidates.map(scored => RuleAblation.live(deniedBeside(scored).map(Denial(_))).fold(scored.copy(untaken = shortUntaken(scored)))(denial => scored.copy(denial = Some(denial))))
+      candidates.map(scored => RuleAblation.live(deniedBeside(scored).map(Denial(_))).fold(scored.copy(untaken = eventUntaken(scored).orElse(shortUntaken(scored))))(denial => scored.copy(denial = Some(denial))))
         .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
 
