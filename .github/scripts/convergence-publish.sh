@@ -19,7 +19,8 @@
 #       longer published since the overlay mode went) whose recording's tree is not on the release -- the overlay is
 #       only ever laid over its own tree (scripts/identity-fetch-recording.sh). Run before a leg's uploads: run
 #       41351315090 found the release at GitHub's 1000-asset cap, 101 of them such overlays, and a release at the cap
-#       refuses every upload, the fold that would shrink it included.
+#       refuses every upload, the fold that would shrink it included. And the takes check's results (`takes-<kind>-<code>-`),
+#       stored on a release of their own since (TAKES_RELEASE_TAG): 483 of the 1000.
 #
 # Pruning never removes a KEPT recording: the hermetic pair, prod-latest, and the identity measure's landing
 # recordings ($KINOWO_KEPT_RECORDINGS, default "528 573": identity-measure's pinned pair and its second recording),
@@ -151,6 +152,9 @@ prune_dead() {
               run=$(grep -oE '[0-9]+' <<< "$overlay" | head -1)
               grep -qxF "$run" <<< "$trees" || "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$overlay" -y || true
           done
+    [ "$FIXTURE_RELEASE_TAG" != "${TAKES_RELEASE_TAG:-}" ] || return 0
+    { grep -E "^takes-[a-z]+-${code}[-.]" <<< "$names" || true; } \
+        | while read -r takes; do "$RELEASE" delete-asset "$FIXTURE_RELEASE_TAG" "$takes" -y || true; done
 }
 
 case "${1:-}" in

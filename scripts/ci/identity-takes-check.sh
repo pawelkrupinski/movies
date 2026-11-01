@@ -259,6 +259,16 @@ awaited() { # <asset> <file> <what>: reused, or -- beside a base row -- stored b
     sleep "${TAKES_BASE_POLL:-15}"
   done
 }
+# The store is a release of its own (TAKES_RELEASE_TAG), made by the first result stored on it. Rows racing to create it
+# all find it there afterwards, the outcome each wanted; one that cannot create it fails its upload, said below.
+store_release() {
+  [ -z "${store_made:-}" ] || return 0
+  bounded "$gh_read" gh release view "$store" > /dev/null 2>&1 \
+    || "$here/scripts/ci/gh-release.sh" create "$store" --prerelease --title "Identity takes store (rolling)" \
+         --notes "The identity takes check's resolves, keyed by code and inputs (scripts/ci/identity-takes-check.sh). A cache, not a version of anything." > /dev/null 2>&1 \
+    || true
+  store_made=1
+}
 keep() { # <file> <asset> [base]: store a result, never failing the check
   # A head's only on main: the only commits a later base is. A BASE's on any ref -- a measure/ branch's base is main's
   # commit, and a key names the code and every input, never the ref that resolved them -- so the next measurement of the
@@ -266,6 +276,7 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
   [ -n "$store" ] && [ -n "$2" ] && { [ "${3:-}" = base ] || [ "${GITHUB_REF:-}" = refs/heads/main ]; } && [ -s "$1" ] || return 0
   # Measurements running side by side resolve one base at once and race to store it: a refused upload of an asset the
   # release holds by then is the race lost to an equal result (the key names every input), not a store missing.
+  store_release
   if ! { gzip -c "$1" > "$RUNNER_TEMP/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null; }; then
     # allow-silenced: a read that fails is no proof the asset is there, and falls through to the warning below.
     if bounded "$gh_read" gh release view "$store" --json assets --jq ".assets[] | select(.name == \"$2\") | .name" 2> /dev/null | grep -x "$2" > /dev/null; then # all of it: -q would leave gh a broken pipe, which pipefail counts

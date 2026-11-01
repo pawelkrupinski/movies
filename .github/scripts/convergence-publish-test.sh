@@ -128,13 +128,17 @@ check "pruning to the newest five, never the hermetic pair or a kept landing rec
 # since removed: an overlay is only laid over its own recording's tree, so one whose tree is gone is read by nothing.
 rm -f "$work/release"/* "$work/calls"
 for asset in enrichment-uk-573.tar.zst identity-overlay-uk-573.tar.gz identity-overlay-uk-36691290304.tar.gz \
-             identity-overlay-us-36691290304.tar.gz fill-uk-573-9-1-convergence.tar.zst; do : > "$work/release/$asset"; done
-check "dead assets are pruned" "0" "$(run bash "$publish" dead uk)"
-check "...an overlay whose tree is gone, and only the country's own" \
-  "enrichment-uk-573.tar.zst fill-uk-573-9-1-convergence.tar.zst identity-overlay-uk-573.tar.gz identity-overlay-us-36691290304.tar.gz" \
+             identity-overlay-us-36691290304.tar.gz fill-uk-573-9-1-convergence.tar.zst \
+             takes-decisions-uk-0123abcd.gz takes-full-uk.txt takes-final-us-0123abcd.gz; do : > "$work/release/$asset"; done
+check "dead assets are pruned" "0" "$(run env TAKES_RELEASE_TAG=identity-takes bash "$publish" dead uk)"
+check "...an overlay whose tree is gone, and the takes results stored on their own release since, only the country's own" \
+  "enrichment-uk-573.tar.zst fill-uk-573-9-1-convergence.tar.zst identity-overlay-uk-573.tar.gz identity-overlay-us-36691290304.tar.gz takes-final-us-0123abcd.gz" \
   "$(assets)"
 rm -f "$work/calls"
-check "a release with nothing dead deletes nothing" "0 0" "$(run bash "$publish" dead uk) $(calls delete)"
+check "a release with nothing dead deletes nothing" "0 0" "$(run env TAKES_RELEASE_TAG=identity-takes bash "$publish" dead uk) $(calls delete)"
+rm -f "$work/calls"
+check "a takes store still on the fixtures' release is the store, never pruned" "0 delete identity-overlay-us-36691290304.tar.gz" \
+  "$(run env TAKES_RELEASE_TAG=convergence-fixtures bash "$publish" dead us) $(paste -sd' ' "$work/calls")"
 
 check "an unknown command is refused" "64" "$(run bash "$publish" publish pl)"
 

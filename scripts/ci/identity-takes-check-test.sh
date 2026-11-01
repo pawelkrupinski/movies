@@ -180,7 +180,12 @@ case "\$1 \$2" in
   "release download") [ -f "$work/release/\$5" ] && cp "$work/release/\$5" "\$7" ;;
   "release upload")   [ -n "\${UPLOAD_RACES:-}" ] && { mkdir -p "$work/release" && cp "\$4" "$work/release/"; exit 1; }
                       mkdir -p "$work/release" && cp "\$4" "$work/release/" ;;
+  "release create")   echo "\$3" >> "$work/creates"; mkdir -p "$work/release" ;;
   "release view")     case "\$*" in
+                        *--json*) ;;
+                        *) [ -d "$work/release" ] || { echo "release not found" >&2; exit 1; } ;;
+                      esac
+                      case "\$*" in
                         *takes-full-*) f=\$(ls "$work"/release/takes-full-*.txt 2> /dev/null | head -1)
                                        [ -n "\$f" ] && python3 -c 'import os, sys, datetime as d; print(d.datetime.fromtimestamp(os.path.getmtime(sys.argv[1]), d.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))' "\$f" ;;
                         *) for f in "$work"/release/*; do [ -f "\$f" ] && basename "\$f"; done ;;
@@ -204,11 +209,13 @@ scratch_git "$work/job" worktree add -q --detach "$work/identity-takes-base" HEA
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a base checkout an earlier run left registered is checked out afresh" "0 0" \
   "$code $(grep -c 'already registered' "$work/log")"
-rm -rf "$work/release"
+rm -rf "$work/release" "$work/creates"
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "with nothing stored, the base is checked out and resolved" 2 "$(base_calls)"
 check "...and the check passes on the same takes" 0 "$code"
 check "...and the head's decisions, final takes and normalizer trace (by its code, and by its exact inputs), the base's it resolved, and the daily full row's marker, are stored" 7 "$(ls "$work/release" | wc -l | tr -d ' ')"
+# The store is a release of its own (run 41351315090: beside the fixtures it took their release to the 1000-asset cap).
+check "...on a store release the first result made, once" "fixtures" "$(cat "$work/creates" 2> /dev/null)"
 check "...the exact-input trace among them" 1 "$(find "$work/release" -name 'takes-tracex-pl-*.gz' | wc -l | tr -d ' ')"
 check "...the trace under the head's identity code and the pinned recording, both tools' readings in one" \
   "1 dump ratchet" "$(find "$work/release" -name 'takes-trace-pl-*-p42.gz' | grep -cE 'takes-trace-pl-[0-9a-f]{24}-p42\.gz$') $(

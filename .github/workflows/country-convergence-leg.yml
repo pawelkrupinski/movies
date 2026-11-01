@@ -368,6 +368,10 @@ env:
     # Declared HERE and not only in the caller: workflow-level `env` does not cross
     # into a called workflow, and `convergence-setup` reads this variable.
     FIXTURE_RELEASE_TAG: convergence-fixtures
+    # The takes check's store (identity-takes-check.sh's TAKES_STORE): a release of its own, created on first store. It
+    # keeps 24 results a kind and country -- over 700 assets -- and beside the fixtures on one release it took that
+    # release to GitHub's 1000-asset cap, where every upload is refused (run 41351315090).
+    TAKES_RELEASE_TAG: identity-takes
     # ci-runner's job image (catthehacker's hosted-Ubuntu copy) sets no locale, where a hosted VM sets C.UTF-8: the JVM
     # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
     # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
@@ -1006,7 +1010,7 @@ jobs:
                   TAKES_BASE: ${{ inputs.takes-base }}
                   SHAPE_COMMAND: ${{ inputs.shape-command }}
                   # Where each head's resolve is stored for the run whose base it becomes (identity-takes-check.sh).
-                  TAKES_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && env.FIXTURE_RELEASE_TAG || '' }}
+                  TAKES_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && env.TAKES_RELEASE_TAG || '' }}
                   # A takes-only dispatch's base is the `takes-base` row's (below): this row runs the head and waits.
                   TAKES_SIDE: ${{ inputs.takes-only && 'head' || 'both' }}
                   TAKES_BASE_JOB: takes-base (${{ inputs.country }})
@@ -1101,7 +1105,7 @@ jobs:
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
                   TAKES_BASE: ${{ inputs.takes-base }}
                   SHAPE_COMMAND: ${{ inputs.shape-command }}
-                  TAKES_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && env.FIXTURE_RELEASE_TAG || '' }}
+                  TAKES_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && env.TAKES_RELEASE_TAG || '' }}
                   TAKES_SIDE: base
               run: |
                   . scripts/ci/bounded-step.sh

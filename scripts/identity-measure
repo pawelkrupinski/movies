@@ -112,8 +112,8 @@
 # `--take-paths` prints the take-moving patterns (at HEAD) and exits.
 #
 # THE RESULT CACHE (2026-10-23). Every verdict a measurement prints (LANDABLE or NOT LANDABLE, its table, the countries
-# whose takes moved) is stored as an asset of the takes store's release (FIXTURE_RELEASE_TAG, convergence-fixtures, where
-# the takes check stores its resolves): `measure-result-<key>.json`, the key a hash of the head and base shas, the
+# whose takes moved) is stored as an asset of the convergence fixtures' release (FIXTURE_RELEASE_TAG, convergence-fixtures; the takes
+# check's resolves are on their own, TAKES_RELEASE_TAG, identity-takes): `measure-result-<key>.json`, the key a hash of the head and base shas, the
 # recording (`pinned` or the run), the countries measured, the measure mode (takes, full, footprint) and THE TOOLING HASH
 # -- the blobs of this script, identity_measure.py, the takes check and the workflows that run it, in this checkout. A
 # repeat request with the same key prints the stored verdict in seconds (`CACHED verdict of run <id>`, exit as stored):
@@ -702,7 +702,7 @@ footprint_measure() {
     done
   fi
   code=$(footprint_code "$base") || { say "footprint: no identity paths in the takes check -- the full measure"; return 10; }
-  [ -n "$footprint_traces" ] || names=$(identity_gh "$DISPATCH_GH_TIMEOUT" release view "${FIXTURE_RELEASE_TAG:-convergence-fixtures}" --json assets \
+  [ -n "$footprint_traces" ] || names=$(identity_gh "$DISPATCH_GH_TIMEOUT" release view "${TAKES_RELEASE_TAG:-identity-takes}" --json assets \
       --jq '.assets | sort_by(.createdAt) | reverse | .[] | "\(.name) \(.size)"') \
     || { say "footprint: could not list the release's traces -- the full measure"; return 10; }
   dir=$KINOWO_IDENTITY_CACHE/footprint
@@ -713,7 +713,7 @@ footprint_measure() {
     trace=$dir/${asset%.gz}.$size.jsonl.gz
     # (kept by its name and size: the newest trace of a code over a recording replaces an older one under the same name)
     if [ ! -s "$trace" ]; then
-      if ! { identity_gh 1800 release download "${FIXTURE_RELEASE_TAG:-convergence-fixtures}" -p "$asset" -O "$trace.part.gz" --clobber > /dev/null \
+      if ! { identity_gh 1800 release download "${TAKES_RELEASE_TAG:-identity-takes}" -p "$asset" -O "$trace.part.gz" --clobber > /dev/null \
              && gunzip -c "$trace.part.gz" > "$trace.part"; }; then
         rm -f "$trace.part" "$trace.part.gz"; say "footprint: could not download $asset -- the full measure"; return 10
       fi
