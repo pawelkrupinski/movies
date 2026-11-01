@@ -195,7 +195,7 @@ private[identity] object TitleTextMeasures {
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)
     /** [[IdentityMeasures.spellingKey]], when it writes an "&" or an "ß" ([[IdentityMeasures.respells]]). */
     lazy val respelt: Boolean       = respells(text)
-    lazy val spellingKey: String    = spellingKey(text)
+    lazy val spellingKey: String    = TitleTextMeasures.spellingKey(text)
     /** Its words after a leading article ([[LeadingArticles]]), when it has one — what a venue that drops the article lists. */
     lazy val afterArticle: Option[Seq[String]] = Some(withoutLeadingArticle(words)).filter(_.sizeIs < words.size)
     /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */
