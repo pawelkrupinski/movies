@@ -27,16 +27,24 @@ def load_tree(argv):
     sys.exit("usage: xcresult_junit.py <bundle.xcresult> | --json <tests.json>")
 
 
-def messages(node, kind):
-    """Every `kind` message under `node`, however deep (repetitions and arguments nest them)."""
+def message_nodes(node, kind):
+    """Every `kind` message node under `node`, however deep (repetitions and arguments nest them)."""
     found = []
     for child in node.get("children", []):
         if child.get("nodeType") == kind:
-            loc = child.get("sourceLocation")
-            where = f" ({loc['filePath']}:{loc['lineNumber']})" if loc else ""
-            found.append(child.get("name", "") + where)
+            found.append(child)
         else:
-            found.extend(messages(child, kind))
+            found.extend(message_nodes(child, kind))
+    return found
+
+
+def messages(node, kind):
+    """Every `kind` message under `node`, with the file:line it fired at."""
+    found = []
+    for message in message_nodes(node, kind):
+        loc = message.get("sourceLocation")
+        where = f" ({loc['filePath']}:{loc['lineNumber']})" if loc else ""
+        found.append(message.get("name", "") + where)
     return found
 
 
@@ -51,10 +59,16 @@ def collect(node, suite, cases):
         collect(child, suite, cases)
 
 
-def junit(tree):
+def test_cases(tree):
+    """(suite, case) for every Test Case in the tree."""
     cases = []
     for root in tree.get("testNodes", []):
         collect(root, "Uncategorized", cases)
+    return cases
+
+
+def junit(tree):
+    cases = test_cases(tree)
 
     suites = {}
     for suite, case in cases:

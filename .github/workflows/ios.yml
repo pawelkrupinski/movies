@@ -7,7 +7,7 @@ on:
             - 'mobile-version.txt'
             - 'scripts/mobile-version-check.sh'
             - 'scripts/ci/ios-sim-destination*.sh'
-            - 'scripts/ci/xcresult_junit*.py'
+            - 'scripts/ci/xcresult_*.py'
             - '.github/workflows/ios.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
@@ -18,7 +18,7 @@ on:
             - 'mobile-version.txt'
             - 'scripts/mobile-version-check.sh'
             - 'scripts/ci/ios-sim-destination*.sh'
-            - 'scripts/ci/xcresult_junit*.py'
+            - 'scripts/ci/xcresult_*.py'
             - '.github/workflows/ios.yml'
             # The retry-classification table the language-push and hidden-films tests hold the app's rules to.
             - 'test/resources/retry-classification.json'
@@ -184,14 +184,7 @@ jobs:
               if: always()
               run: |
                   [ -d build/Kinowo.xcresult ] || exit 0
-                  xcrun xcresulttool get test-results summary --path build/Kinowo.xcresult > xcuitest-summary.json || exit 0
-                  python3 - <<'PY'
-                  import json
-                  summary = json.load(open("xcuitest-summary.json"))
-                  for failure in summary.get("testFailures", []):
-                      text = str(failure.get("failureText")).replace("%", "%25").replace("\n", "%0A")
-                      print(f"::warning title={failure.get('testName')}::{text}")
-                  PY
+                  python3 scripts/ci/xcresult_annotations.py --level warning build/Kinowo.xcresult
 
             # Parity check — catches Foundation/Darwin vs Linux drift in
             # the model / decoder layer that Linux swift-corelibs-foundation
