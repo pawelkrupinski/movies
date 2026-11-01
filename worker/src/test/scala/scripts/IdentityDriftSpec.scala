@@ -417,4 +417,20 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     IdentityDrift.verdictLine(red = true) shouldBe "## DRIFT VERDICT: RED"
     IdentityDrift.verdictLine(red = false) shouldBe "## DRIFT VERDICT: CLEAN"
   }
+
+  // The flip-unification design's stage 1: every flip names why each of its moves happened, so a red names its class
+  // without a manual trace (the red notebook's ask on #629)
+  "a flip's cause" should "be the inputs a faithful move followed, or lag" in {
+    import IdentityDrift.Cause
+    Cause.of(faithful = true, answered = true, listings = false) shouldBe "answer"
+    Cause.of(faithful = true, answered = false, listings = true) shouldBe "population"
+    Cause.of(faithful = true, answered = true, listings = true) shouldBe "answer+population"
+    Cause.of(faithful = true, answered = false, listings = false) shouldBe "lag"     // nothing moved, yet the take did
+    Cause.of(faithful = false, answered = true, listings = true) shouldBe "lag"      // the model took otherwise than a whole resolve
+    val key  = services.movies.ListingKey.Published("Kino", "Titans", None, Nil)
+    def at(step: String, film: String) = services.identity.TakeFlips.Taken(step, services.identity.TakeFlips.Served(film, ""), moved = true)
+    val flip = services.identity.TakeFlips.Flip(key, Vector(at("1 boot", "tmdb:1"), at("4 scrape", "none"), at("9 fill", "tmdb:1")))
+    Cause.ofFlip(flip, Map((key, "4 scrape") -> "population", (key, "9 fill") -> "answer")) shouldBe "population,answer"
+    Cause.ofFlip(flip, Map((key, "4 scrape") -> "population")) shouldBe "population,unreproduced"
+  }
 }

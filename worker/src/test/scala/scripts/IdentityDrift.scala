@@ -202,7 +202,26 @@ object IdentityDrift {
       case Array(cc, venue, title, reason, _*) if reason.trim.nonEmpty => FlipAllowed(cc, venue, title, reason)
       case row => sys.error(s"identity-flips-allow: every row names cc, venue, raw title and a REASON: ${row.mkString("|")}")
     }
-  val FlipHeader = "country\tseed\tvenue\trawTitle\tfilms\treasons\ttakes"
+  val FlipHeader = "country\tseed\tvenue\trawTitle\tfilms\treasons\ttakes\tcause"
+
+  /** Why a flip's take moved, step by step ([[Worker.probed]]; the flip-unification design's stage 1): `answer` when a whole
+   *  resolve of the inputs at the step takes what the model takes and the step filed answers, `population` when it does and
+   *  listings arrived or left, `answer+population` for both, and `lag` when the model took otherwise than the whole resolve
+   *  or nothing moved at all -- a mechanism's, not the inputs'. */
+  object Cause {
+    def of(faithful: Boolean, answered: Boolean, listings: Boolean): String =
+      if (!faithful) "lag"
+      else (answered, listings) match {
+        case (true, true)   => "answer+population"
+        case (true, false)  => "answer"
+        case (false, true)  => "population"
+        case (false, false) => "lag"
+      }
+    /** A flip's cause: the causes of every move after its first take, in order, distinct; `unreproduced` for a move the
+     *  probed pass did not see. */
+    def ofFlip(flip: TakeFlips.Flip, causes: Map[(ListingKey, String), String]): String =
+      flip.takes.drop(1).map(t => causes.getOrElse((flip.key, t.step), "unreproduced")).distinct.mkString(",")
+  }
 
   /** A KNOWN flip (`identity-flips-baseline.tsv`, written by scripts/ci/identity_flips_baseline.py from a run's flips):
    *  the listing flipped on main before the gate failed on new flips only. It covers its listing's flips in any seed; it
@@ -482,6 +501,11 @@ object IdentityDrift {
     private var events = Vector.empty[String]
     /** The events that change every listing's deciding inputs: answers filed, the rules. */
     private val Answering = Set("fill", "answer", "settle", "deploy-rules")
+    /** The listings whose every served-take move is classified ([[Cause]]): a seed's flipped listings, on a second pass
+     *  over its sequence. Each move's cause, by the listing and the step's name. */
+    var probed: Set[ListingKey] = Set.empty
+    val causes = scala.collection.mutable.HashMap.empty[(ListingKey, String), String]
+    private var lastServed = Map.empty[ListingKey, (String, Boolean)]
     /** Each listing's model cluster at the last projection, as a hash of its members, and the model's take of it
      *  ([[inputsMoved]]). */
     private var clusters = Map.empty[ListingKey, ModelCluster]
@@ -531,6 +555,19 @@ object IdentityDrift {
           // a title's venues moved: what reads the title across the corpus (the stage's venues.current fill) read new input
           held.get(key).exists(listing => movedTitles(ListingRetention.titleOf(listing, reads.normalizer))) ||
           receiptMoved(lastReceipt.get(key).flatten, receiptNow.get(key).flatten))
+      if (probed.nonEmpty) {
+        // a probed listing's served take moved: the whole resolve of the inputs as they are now, once a step, says whether
+        // the model took what the inputs decide (then the step's events say which inputs), or lagged
+        val changed = probed.filter(key => served.get(key).exists(t => lastServed.get(key).exists(_ != (t.film, pending(key)))))
+        if (changed.nonEmpty) {
+          val whole = IdentityResolver.resolve(held.values.toSeq, gate, reads.normalizer, inputs)
+          changed.foreach { key =>
+            val faithful = whole.decisionOf.get(key).map(filmOf).getOrElse(TakeFlips.NoFilm) == now.get(key).fold(TakeFlips.NoFilm)(_.film)
+            causes((key, step)) = Cause.of(faithful, answered, scraped)
+          }
+        }
+        lastServed = lastServed ++ probed.iterator.flatMap(key => served.get(key).map(t => key -> (t.film, pending(key))))
+      }
       movedTitles = Set.empty
       lastReceipt = receiptNow
       clusters = now
@@ -621,7 +658,9 @@ object IdentityDrift {
   /** One seed's sequence: each checkpoint's resolution, named, and the listings whose take flip-flopped on the way. */
   /** Each checkpoint's resolution with the listings its served take leaves Pending ([[TakeOutcome.Pending]]), and the flips. */
   final case class Replay(checkpoints: Seq[(String, Resolution, Set[ListingKey])], flips: Seq[TakeFlips.Flip],
-                          pendingServed: Seq[PendingServed] = Nil, spans: PendingSpans.Summary = PendingSpans.Summary.empty)
+                          pendingServed: Seq[PendingServed] = Nil, spans: PendingSpans.Summary = PendingSpans.Summary.empty,
+                          /** The probed listings' moves, each with its [[Cause]] ([[Worker.probed]]). */
+                          causes: Map[(ListingKey, String), String] = Map.empty)
 
   /** Each listing's stretches served Pending ([[TakeOutcome.Pending]]) over a replay's projections: how many are Pending
    *  at once, and how long -- in projections and in the replay clock's minutes -- each stretch lasted before its take
@@ -665,7 +704,9 @@ object IdentityDrift {
   def sequence(reads: Reads, listings: Seq[Listing], seed: Long, gatePercent: Int, clock: MutableClock, filedDocs: FiledDocs = Noted,
                /** At least one booted listing leaves and returns: a drift slice's few listings, where [[Leave]] would send
                 *  none away — and a sibling's run ending is what moved DE Werkstattkino's "CAMOUFLAGE" (#2473, ecedac9aa). */
-               leaveOne: Boolean = false): Replay = {
+               leaveOne: Boolean = false,
+               /** The listings whose served-take moves are classified ([[Cause]]): a second pass over a seed that flipped. */
+               probe: Set[ListingKey] = Set.empty): Replay = {
     val rng     = new scala.util.Random(seed)
     val venues  = rng.shuffle(listings.map(_.venue).distinct.sorted)
     val (first, later) = venues.splitAt((venues.size * 0.7).toInt)
@@ -677,6 +718,7 @@ object IdentityDrift {
     val leaving  = if (drawn.isEmpty && leaveOne && initial.nonEmpty) Seq(initial(rng.nextInt(initial.size))) else drawn
     def half     = rng.shuffle(venues).take(venues.size / 2).toSet
     val w = new Worker(reads, seed, gatePercent, clock, filedDocs)
+    w.probed = probe
     val checkpoints = Seq.newBuilder[(String, Resolution, Set[ListingKey])]
     def rescrape(checkpoint: String = ""): Resolution = {
       // a venue scraped again bills what it bills: never a listing it dropped, kept for its facts alone
@@ -702,16 +744,19 @@ object IdentityDrift {
       checkpoints += { val r = w.project(checkpoint = s"deploy-$run"); (s"deploy-$run", r, w.lastPending) }
       checkpoints += { val r = rescrape(s"after-deploy-$run"); (s"after-deploy-$run", r, w.lastPending) }
     }
-    Replay(checkpoints.result(), w.flips.flips, w.pendingServed.toSeq, w.pendingSpans.summary)
+    Replay(checkpoints.result(), w.flips.flips, w.pendingServed.toSeq, w.pendingSpans.summary, w.causes.toMap)
   }
 
   /** What one replay found, over every seed: each divergence from the whole resolve, and each flip by its seed. */
   final case class Findings(divergences: Seq[Divergence], flips: Seq[(Int, TakeFlips.Flip)], pending: PendingTally = PendingTally.Empty,
                             /** Each seed's Pending stretches ([[PendingSpans]]). */
-                            spans: Seq[(Int, PendingSpans.Summary)] = Nil) {
+                            spans: Seq[(Int, PendingSpans.Summary)] = Nil,
+                            /** Each flip's [[Cause]], by its seed and listing. */
+                            causes: Map[(Int, ListingKey), String] = Map.empty) {
     /** The divergences no `allowed` row names, and the flips no `flipsAllowed` row does: what fails the gate. */
     def open(country: String, allowed: Seq[Allowed], flipsAllowed: Seq[FlipAllowed]): Findings =
-      Findings(divergences.filterNot(d => allowed.exists(_.covers(d))), flips.filterNot { case (_, f) => flipsAllowed.exists(_.covers(country, f)) }, pending, spans)
+      Findings(divergences.filterNot(d => allowed.exists(_.covers(d))), flips.filterNot { case (_, f) => flipsAllowed.exists(_.covers(country, f)) }, pending, spans,
+        causes)
     def isEmpty: Boolean = divergences.isEmpty && flips.isEmpty
   }
 
@@ -720,14 +765,21 @@ object IdentityDrift {
    *  seed's whole-resolve takes are handed to `wholeTakes`. */
   def replay(country: Country, listings: Seq[Listing], recordedAt: java.time.Instant, seeds: Seq[Int], gate: Int,
              readsAt: java.time.Clock => Reads, filedDocs: FiledDocs = Noted, leaveOne: Boolean = false,
-             wholeTakes: (Int, Map[ListingKey, Take]) => Unit = (_, _) => ()): Findings = {
+             wholeTakes: (Int, Map[ListingKey, Take]) => Unit = (_, _) => (), classify: Boolean = true): Findings = {
     val flips = Seq.newBuilder[(Int, TakeFlips.Flip)]
+    val causes = Map.newBuilder[(Int, ListingKey), String]
     var tally = PendingTally.Empty
     val spans = Seq.newBuilder[(Int, PendingSpans.Summary)]
     val divergences = seeds.flatMap { seed =>
       val clock  = new MutableClock(recordedAt)
       val replay = sequence(readsAt(clock), listings, seed.toLong, gate, clock, filedDocs, leaveOne)
       flips ++= replay.flips.map(seed -> _)
+      // each flip's cause: the seed's sequence again, the flipped listings' moves compared with a whole resolve at each
+      if (classify && replay.flips.nonEmpty) {
+        val again  = new MutableClock(recordedAt)
+        val probed = sequence(readsAt(again), listings, seed.toLong, gate, again, filedDocs, leaveOne, probe = replay.flips.map(_.key).toSet)
+        replay.flips.foreach(f => causes += (seed, f.key) -> Cause.ofFlip(f, probed.causes))
+      }
       spans += seed -> replay.spans
       // the whole resolve at the sequence's last moment: the same answers' ages, the same year
       val wholeClock = new MutableClock(clock.instant())
@@ -745,7 +797,7 @@ object IdentityDrift {
         }
       }
     }
-    Findings(divergences, flips.result(), tally, spans.result())
+    Findings(divergences, flips.result(), tally, spans.result(), causes.result())
   }
 
   /** One drift slice replayed (`test/resources/fixtures/drift-slices/<cc>/<name>/`, cut by `scripts/identity-slice
@@ -882,7 +934,8 @@ object IdentityDrift {
     }
     val flipped = findings.flips
     Files.writeString(o.out.resolve(s"flips-${country.code}.tsv"), (FlipHeader +: flipped.map { case (seed, f) =>
-      Seq(country.code, seed.toString, f.key.venue, f.key.rawTitle, f.films, f.reasons.mkString("; "), f.takes.map(_.line).mkString(" -> "))
+      Seq(country.code, seed.toString, f.key.venue, f.key.rawTitle, f.films, f.reasons.mkString("; "), f.takes.map(_.line).mkString(" -> "),
+        findings.causes.getOrElse((seed, f.key), "unclassified"))
         .map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
     }).mkString("", "\n", "\n"))
     // step 6's price: how often a provisional (Pending) take differed from the final one, by the kind of input it awaited
@@ -898,10 +951,14 @@ object IdentityDrift {
     println(s"## ${country.code} known flips: ${verdict.known.size} known flip(s) remaining (${verdict.known.map(_._2.key).distinct.size} listings in " +
       s"identity-flips-baseline.tsv), ${verdict.fixed.size} fixed")
     verdict.fixed.sortBy(b => (b.rawTitle, b.venue)).foreach(b => println(s"      FIXED, remove its row: ${b.venue} | ${b.rawTitle} [seed ${b.seed}] — no flip in this run"))
-    verdict.known.distinctBy(_._2.key).sortBy { case (_, f) => (f.key.rawTitle, f.key.venue) }.foreach { case (seed, f) => println(s"      KNOWN: ${f.line} [seed $seed]") }
+    // each flip's cause (answer, population, lag), counted: what the flip-unification design's stage 1 tallies
+    println(s"## ${country.code} flip causes: " + flipped.map { case (seed, f) => findings.causes.getOrElse((seed, f.key), "unclassified") }
+      .groupMapReduce(identity)(_ => 1)(_ + _).toSeq.sorted.map { case (cause, n) => s"$cause $n" }.mkString(", "))
+    def cause(seed: Int, f: TakeFlips.Flip) = s" {cause ${findings.causes.getOrElse((seed, f.key), "unclassified")}}"
+    verdict.known.distinctBy(_._2.key).sortBy { case (_, f) => (f.key.rawTitle, f.key.venue) }.foreach { case (seed, f) => println(s"      KNOWN: ${f.line} [seed $seed]${cause(seed, f)}") }
     verdict.fresh.groupBy { case (_, f) => f.reasons.head }.toSeq.sortBy(-_._2.size).foreach { case (reason, fs) =>
       println(s"  ${fs.map(_._2.key).distinct.size} listing(s)  flip: $reason")
-      fs.distinctBy(_._2.key).sortBy { case (_, f) => (f.key.rawTitle, f.key.venue) }.take(6).foreach { case (seed, f) => println(s"      ${f.line} [seed $seed]") }
+      fs.distinctBy(_._2.key).sortBy { case (_, f) => (f.key.rawTitle, f.key.venue) }.take(6).foreach { case (seed, f) => println(s"      ${f.line} [seed $seed]${cause(seed, f)}") }
     }
     if (lacking.nonEmpty) {
       println(s"## the slice lacks ${lacking.size} answer(s) — cut it again (scripts/identity-slice --emit-drift-slice): ${lacking.take(8).mkString("; ")}")
