@@ -36,6 +36,14 @@ class RatingGateSpec extends AnyFlatSpec with Matchers {
     w.copy(ratings = movie.ratings, weightedRating = movie.weightedRating) shouldBe movie
   }
 
+  it should "search Metacritic and Rotten Tomatoes by a Latin-script title when the original is Cyrillic" in {
+    val killhouse = movie.copy(title = "Killhouse", originalTitle = Some("Кіллхаус"),
+      searchTitles = Seq("Кіллхаус", "Killhouse"))
+    val w = RatingGate.withheld(killhouse)
+    w.ratings.metacriticUrl shouldBe RatingSearchUrls.metacritic("Killhouse")
+    w.ratings.rottenTomatoesUrl shouldBe RatingSearchUrls.rottenTomatoes("Killhouse")
+  }
+
   "the off gate" should "serve every card untouched" in {
     RatingGate.off(stored, movie) shouldBe movie
   }

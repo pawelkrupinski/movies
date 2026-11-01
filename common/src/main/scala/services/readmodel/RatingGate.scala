@@ -35,14 +35,16 @@ object RatingGate {
    *  unrated sort key. */
   def withheld(movie: ResolvedMovie): ResolvedMovie = {
     val title = movie.originalTitle.getOrElse(movie.title)
+    // `searchTitles` lists TMDB's English title last, after the sources' originals.
+    val englishSite = RatingSearchUrls.englishSiteTitle(title, movie.searchTitles.reverse :+ movie.title)
     movie.copy(
       ratings = ResolvedRatings(
         imdb              = None,
         imdbUrl           = None,
         metascore         = None,
-        metacriticUrl     = RatingSearchUrls.metacritic(title),
+        metacriticUrl     = RatingSearchUrls.metacritic(englishSite),
         rottenTomatoes    = None,
-        rottenTomatoesUrl = RatingSearchUrls.rottenTomatoes(title),
+        rottenTomatoesUrl = RatingSearchUrls.rottenTomatoes(englishSite),
         filmweb           = None,
         filmwebUrl        = RatingSearchUrls.filmweb(title)),
       weightedRating = 0.0)
