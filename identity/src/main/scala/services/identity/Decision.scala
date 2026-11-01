@@ -180,9 +180,17 @@ object DecisionTrace {
   final case class Node(accepted: Option[String], joins: Seq[String], apart: Seq[String],
                         measures: Map[String, IdentityMeasures.Measure] = Map.empty, candidate: Option[Int] = None,
                         refusals: Seq[Refusal] = Nil, searched: Seq[String] = Nil, candidates: Seq[String] = Nil,
-                        blocker: Option[String] = None, score: Option[Double] = None, runnerUp: Option[Rival] = None)
+                        blocker: Option[String] = None, score: Option[Double] = None, runnerUp: Option[Rival] = None,
+                        alone: Option[Alone] = None, denied: Option[Denied] = None)
   /** A candidate a node weighed beside the one its trace is of: its TMDB id and the node's probability of it. */
   final case class Rival(film: Int, score: Double)
+  /** What the node's OWN rules take alone ([[FamilyScope.takenAlone]]: its own evidence, no sibling's, no pooled vote) —
+   *  the film, the confidence it takes it at and the rule — whatever its cluster took: what [[GroupingCoherence]] reads
+   *  of a member that would resolve differently on its own. Read only, never by the resolver. */
+  final case class Alone(film: Int, confidence: Double, rule: String)
+  /** The node's own evidence denying the film its decision took ([[Scored.denial]]): why, and whether by the
+   *  probability cut alone (`cutOnly`, the weakest denial). Read only, never by the resolver. */
+  final case class Denied(why: String, cutOnly: Boolean)
   /** Why `rule` refused a node no rule took alone: the condition that stopped it (`why`, a fixed phrase), the
    *  candidate it was weighing then, and what that candidate's evidence said ("p 26.6% < 40.0%", the facts against
    *  it, the rival it lost to). `ruleId` is the indexed `refused:<rule>:<why>`. */

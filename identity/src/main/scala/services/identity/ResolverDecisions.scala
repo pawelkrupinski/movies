@@ -153,9 +153,14 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
         .getOrElse(DecisionTrace.blockerOf(own, searched.exists(_.endsWith(": unanswered")), refusals)))
       // the best other film it weighed, by probability: what the take beat (or, taking none, its next best)
       val rival    = own.iterator.filterNot(scored => weighed.exists(_ eq scored)).maxByOption(_.probability)
+      // what the node's own rules take alone, and its own evidence's denial of the film taken: read after the fact by
+      // GroupingCoherence (a member that would resolve differently on its own), never by a decision
+      val alone    = scope.takenAlone(node).map { case ((scored, confidence), rule) => DecisionTrace.Alone(scored.candidate.tmdbId, confidence, rule) }
+      val denied   = weighed.filter(scored => film.contains(scored.candidate.tmdbId)).flatMap(scored =>
+        scored.denial.map(denial => DecisionTrace.Denied(denial.why, scored.deniedByCutOnly)))
       val traced   = DecisionTrace.Node(accepted, joins, apart, weighed.fold(Map.empty[String, IdentityMeasures.Measure])(_.measures),
         weighed.map(_.candidate.tmdbId), refusals, searched, shown.map(DecisionTrace.renderCandidate), blocker,
-        weighed.map(_.probability), rival.map(scored => DecisionTrace.Rival(scored.candidate.tmdbId, scored.probability)))
+        weighed.map(_.probability), rival.map(scored => DecisionTrace.Rival(scored.candidate.tmdbId, scored.probability)), alone, denied)
       node.listings.map(_.key -> traced)
     }.toMap
     val pooled = Option.when(basis == ResolverDecision.Basis.PooledMatch)(acceptance.pooledNamed(scored).collect {
