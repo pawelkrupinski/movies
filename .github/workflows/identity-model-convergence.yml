@@ -282,18 +282,14 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                # LONGEST FIRST (docs/investigations/2026-11-01-twenty-runners.md): github.com creates a matrix's jobs in this
-                # order and hands the account's 20 runners to queued jobs first come, first served, so the legs whose rows
-                # run longest (the United States, Germany, then Poland's 12-minute convergence row) are queued first and the
-                # short ones fill the tail. Within a leg the phase list is ordered the same way (country-convergence-leg.yml).
                 # EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
                 # value.
                 include:
-                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 55, suite: 30, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 55, order-suite: 30, order-split: true, mongo-tmpfs: 3g, mongo-cache-gb: 0.5, mongo-tmpfs-order: 'false' }
-                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 55, suite: 30, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
                     - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
+                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 55, suite: 30, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
                     - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceUkOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
                     - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
+                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 55, suite: 30, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 55, order-suite: 30, order-split: true, mongo-tmpfs: 3g, mongo-cache-gb: 0.5, mongo-tmpfs-order: 'false' }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
