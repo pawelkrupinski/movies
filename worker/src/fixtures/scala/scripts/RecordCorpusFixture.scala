@@ -4,7 +4,7 @@ import services.movies.LatestTitleYear
 
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{Alongside, CommandLine, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ProdFilms, ProdIdentityInputs, ProdListings, ProdLookupInputs, TunnelTunedUri}
+import tools.{Alongside, CommandLine, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ProdFilms, ProdIdentityInputs, ProdListings, ProdLookupInputs, ProdRetained, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -60,6 +60,8 @@ object RecordCorpusFixture {
       val now      = clock.instant()
       // prod's identity inputs at the same moment, for the live drift check's whole resolve (ProdIdentityInputs)
       val inputs   = Alongside.start(s"prod-identity-inputs-${country.code}")(ProdIdentityInputs.read(database))
+      // the listings prod's model keeps for their facts alone (ProdRetained): the rows' model input beyond the billed
+      val retained = Alongside.start(s"prod-retained-${country.code}")(ProdRetained.read(database, now.toEpochMilli))
       val (rows, prodFilms) = Alongside(
         archive.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))(
         ProdCoverage.films(database, now))
@@ -102,6 +104,14 @@ object RecordCorpusFixture {
         captured => {
           val inputsPaths = ProdIdentityInputs.write(ProdIdentityInputs.Root, country.code, captured)
           println(s"[corpus] wrote ${inputsPaths.mkString(", ")} — prod's ${captured.pins.size} pin(s) and ${captured.families.size} filed family answer(s)")
+        })
+      // Not the corpus's to fail over either: without it every row reads the listings billed alone, as before it.
+      scala.util.Try(retained.join(ProdLookupInputs.ReadTimeout)).fold(
+        failed => println(s"::warning::[corpus] ${country.displayName}: prod's kept listings not recorded (${failed.getMessage}); " +
+          "the rows will read the listings billed alone"),
+        kept => {
+          val file = ProdRetained.write(ProdLookupInputs.Root, country.code, kept)
+          println(f"[corpus] wrote $file%s — prod's ${kept.size}%d kept listing(s), ${java.nio.file.Files.size(file) / 1024.0}%.0f KB")
         })
       scala.util.Try(lookups.join(ProdLookupInputs.ReadTimeout)).fold(
         failed => println(s"::warning::[corpus] ${country.displayName}: prod's accepted listings, TMDB store and venue pages not recorded (${failed.getMessage}); " +
