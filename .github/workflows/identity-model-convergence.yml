@@ -127,7 +127,7 @@ jobs:
     # had dropped, or a country with no pin). The ONLY job in front of the legs: one runner wait, not two (a second one
     # cost measure run 968 12.6 minutes of queue on 2026-10-22). (IdentityModelConvergenceWiringSpec)
     preflight:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -158,8 +158,13 @@ jobs:
             takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
             takes-skip: ${{ steps.legs.outputs.takes-skip }}
             drift-twice: ${{ steps.legs.outputs.drift-twice }}
-            # The legs' runner: ubuntu-22.04 unless a dispatch names one.
-            runner: ${{ inputs.runner || 'ubuntu-22.04' }}
+            # The legs' runner: ubuntu-22.04 unless a dispatch names one -- or, off main with the repository variable
+            # MOVIES_CI_RUNNERS=self-hosted, ci-runner's `movies-measure` slots (infra nix/hosts/ci-runner/movies-runners.nix):
+            # every run off main is a measurement (measure/*: identity-measure, identity-drift-ci, a landing check's full
+            # suite) or an agent's own branch, and none of them may queue Main's hosted runners. Main's suite stays hosted.
+            runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}
+            # The light jobs after the legs, on the same side as the preflight.
+            light-runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
             # THE REST OF THE PLAN (WorkflowPlanSpec): every later job's decision, evaluated here too, as expressions so
             # they are set however this job ends.
             on-main: ${{ github.ref == 'refs/heads/main' }}
@@ -378,7 +383,7 @@ jobs:
     request-bisect:
         needs: [ preflight, leg ]
         if: ${{ !cancelled() && needs.leg.result == 'failure' && needs.preflight.outputs.on-main == 'true' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ needs.preflight.outputs.light-runner }}
         timeout-minutes: 5
         permissions:
             actions: write
@@ -399,7 +404,7 @@ jobs:
         name: verdict complete
         needs: [ preflight, leg ]
         if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ needs.preflight.outputs.light-runner }}
         timeout-minutes: 5
         permissions:
             contents: read

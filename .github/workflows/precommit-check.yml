@@ -8,6 +8,11 @@ name: Pre-commit check
 # the touched areas' tests, the red gate left to the push to main -- and agentctl reads the verdict, deletes the branch
 # and pushes to main with PREPUSH_REMOTE_RUN=<this run's id>, which the hook takes for its checks only once GitHub
 # confirms that this workflow succeeded on that very commit.
+#
+# WHERE IT RUNS: with the repository variable MOVIES_CI_RUNNERS=self-hosted, every job on ci-runner's `movies-check` slots
+# (infra nix/hosts/ci-runner/movies-runners.nix: one ephemeral hosted-Ubuntu container per job), so landing checks never
+# queue Main for GitHub Free's 20 hosted runners; unset, on GitHub's hosted runners as before -- the fallback while
+# ci-runner is down. (SelfHostedRunnersSpec)
 on:
     push:
         branches: ['check/**']
@@ -24,7 +29,7 @@ jobs:
     # WHICH OF MAIN'S HEAVY ROWS THE CHANGE CAN MOVE (scripts/hooks/pre-push --plan with PREPUSH_HEAVY_ROWS=1: `itrest`,
     # `itidentity`, `e2e`, `e2ecorpus`), space-separated, for the `heavy` job. The batch's fast check (check/fast-*) runs none.
     plan:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         timeout-minutes: 10
         outputs:
             heavy: ${{ steps.rows.outputs.heavy }}
@@ -64,7 +69,7 @@ jobs:
     # area and the old refs; `check (oldrefs)` the old refs beside it; `check (page)` the page area alone, after both.
     check:
         name: check (rest)
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
         # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
         # and the job 90, room for the failure steps after it
@@ -168,7 +173,7 @@ jobs:
     # job). Beside the rest they end with it (docs/investigations/2026-11-01-twenty-runners.md).
     check-identity:
         name: check (identity)
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         # the rest job's caps: the hook 80 minutes, the job 90, room for the failure steps after it
         timeout-minutes: 90
         steps:
@@ -284,7 +289,7 @@ jobs:
         # identity-slice's tool files compiled into each floor ref: two whole old trees, 5-30 min cold under load. In the
         # rest job they pushed it past its 80 minutes (run 4083: scripttests, sbt and identity took 50, oldrefs the rest);
         # beside it in a job of its own, from the old trees Main's runs keep (restored below)
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
         # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
         # and the job 90, room for the failure steps after it
@@ -397,7 +402,7 @@ jobs:
         # after the heavy rows and the old refs' compile, which run beside the rest and would starve it the same way
         needs: [ check, check-identity, check-oldrefs, heavy ]
         if: ${{ !cancelled() && needs.check.result == 'success' && needs.check-identity.result == 'success' && needs.check-oldrefs.result == 'success' && needs.heavy.result != 'failure' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
         # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
         # and the job 90, room for the failure steps after it
@@ -505,7 +510,7 @@ jobs:
         name: heavy rows
         needs: [ plan ]
         if: ${{ needs.plan.outputs.heavy != '' }}
-        runs-on: ubuntu-22.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-22.04' }}
         timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5

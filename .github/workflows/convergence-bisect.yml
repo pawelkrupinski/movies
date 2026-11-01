@@ -70,7 +70,7 @@ jobs:
     # rather than hours into a leg. OMDB_API_KEY is left out: the legs read it, but it is not a repository secret and they run without it. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -85,7 +85,7 @@ jobs:
     # so its CONCLUSION is not read: the requests are the gate, since only a red hermetic leg on
     # main leaves one.
     plan:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             actions: read
@@ -144,7 +144,7 @@ jobs:
             matrix:
                 country: ${{ fromJson(needs.plan.outputs.countries != '[]' && needs.plan.outputs.countries || '["none"]') }}
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
-        runs-on: ubuntu-22.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
         # Above everything the script may spend, so its own cap is what stops it and the
         # verdict it has so far still reaches the summary: up to two replays before bisecting
         # (the red commit when only the full leg failed, and the last green one under this
@@ -251,7 +251,7 @@ jobs:
     tell:
         needs: [plan, bisect]
         if: ${{ !cancelled() && needs.bisect.result != 'skipped' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: write

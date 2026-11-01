@@ -17,7 +17,9 @@ jobs:
     # Named, not the bare `report`: beside a workflow's own scheduled-run `report` this row would read `report-1`.
     report:
         name: report (timings)
-        runs-on: ubuntu-26.04
+        # Off main with MOVIES_CI_RUNNERS=self-hosted -- a landing check's or a measurement's run -- any free slot of
+        # ci-runner's (`movies`), so a run whose jobs ran there does not wait for a hosted runner to report; Main's stays hosted.
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         steps:
             # The workflows too: each job's `timeout-minutes` goes out beside its time (ci_timings.py `workflow_ceilings`).
