@@ -30,7 +30,7 @@ class GroupingCoherenceSpec extends AnyFlatSpec with Matchers {
     kinds(Seq(freyne, meures), film("Eternity", 2025)) shouldNot contain(Kind.Year)
     val old = listing(Helios, "Eternity", Some(1999))
     val found = coherence(Seq(freyne, old), film("Eternity", 2025)).findings.filter(_.kind == Kind.Year)
-    found.map(_.weight) shouldBe Seq(1.0)
+    found.map(_.weight) shouldBe Seq(0.6) // a current year beside an old one
     found.head.why should include("1999")
   }
 
@@ -43,6 +43,35 @@ class GroupingCoherenceSpec extends AnyFlatSpec with Matchers {
     val reissue = listing(KinoMuza, "The Ladykillers", Some(2026))
     val dated   = listing(Helios, "The Ladykillers (1955)", Some(1955))
     kinds(Seq(reissue, dated), film("The Ladykillers", 1955)) shouldNot contain(Kind.Year)
+    // PL "Everytime": Kino 60 Krzeseł dates its 2026 Polish release, Kino Muzeum the 2024 record's year (prod-latest 41265286306)
+    kinds(Seq(listing(KinoMuza, "Everytime", Some(2026)), listing(Helios, "EVERYTIME", Some(2024))), film("Everytime", 2024)) shouldNot
+      contain(Kind.Year)
+  }
+
+  it should "take a title-year marker agreeing over a feed's year, and leave two relays' years alone" in {
+    // UK The Odyssey St Albans' "Film Club: East Of Eden (1955)" fed 1995, Depot Lewes' 1955 (prod-latest 41265286306)
+    kinds(Seq(listing(KinoMuza, "East of Eden", Some(1955)), listing(Helios, "Film Club: East Of Eden (1955)", Some(1995))),
+      film("East of Eden", 1955)) shouldNot contain(Kind.Year)
+    // an RBO season relay states its season, a house's billing of the staging its premiere
+    kinds(Seq(listing(KinoMuza, "RBO Cinema Season 2026-27: Romeo and Juliet", Some(2027)),
+      listing(Helios, "The Royal Ballet: Romeo & Juliet", Some(2025))), film("Royal Ballet & Opera 2026/27: Romeo and Juliet", 2026)) shouldNot
+      contain(Kind.Year)
+  }
+
+  it should "weigh 1.0 two films far apart, none of them current, and leave an edition's year alone (prod-latest 41265286306)" in {
+    // DE "The Killer": Apollo Aachen's Woo 1989 film beside Bambi's 2024 remake (screening in 2026: neither current)
+    coherence(Seq(listing(KinoMuza, "Killer, The (1989)", Some(1989)), listing(Helios, "The Killer", Some(2024))),
+      film("The Killer", 1989)).findings.map(f => f.kind -> f.weight) shouldBe Seq(Kind.Year -> 1.0)
+    // US "The Lord of the Rings: The Return of the King (Extended Edition)" dated 2011
+    kinds(Seq(listing(KinoMuza, "The Lord of the Rings: The Return of the King", Some(2003)),
+      listing(Helios, "The Lord of the Rings: The Return of the King (Extended Edition)", Some(2011))),
+      film("The Lord of the Rings: The Return of the King", 2003)) shouldNot contain(Kind.Year)
+  }
+
+  it should "weigh a current year beside an old one as a weaker conflict: a re-release record's original year beside it" in {
+    // UK "Doctor Who: The Satan Pit", its 2026 cinema record, the 2006 broadcast's year at Quad Derby
+    coherence(Seq(listing(KinoMuza, "Doctor Who: The Satan Pit", Some(2026)), listing(Helios, "Doctor Who - The Satan Pit (12A)", Some(2006))),
+      film("Doctor Who: The Satan Pit", 2026)).findings.map(f => f.kind -> f.weight) shouldBe Seq(Kind.Year -> 0.6)
   }
 
   it should "read a title's year marker as the year it states" in {
@@ -66,7 +95,28 @@ class GroupingCoherenceSpec extends AnyFlatSpec with Matchers {
     kinds(Seq(relay, bare), film("National Theatre Live: Prima Facie", 2022)) shouldNot contain(Kind.Director)
   }
 
+  it should "not be a credit in another script, nor a name the record shares in part (prod-latest 41265286306, pl)" in {
+    // Helios Blue City's Ukrainian billing credits Villeneuve in Cyrillic
+    val dune = film("Diuna: Część trzecia", 2026, directors = Seq("Denis Villeneuve"))
+    kinds(Seq(listing(KinoMuza, "Diuna: Część trzecia", Some(2026), Some("Denis Villeneuve")),
+      listing(Helios, "Diuna: Chastyna Tretia - UA", Some(2026), Some("Дені Вільньов"))), dune) shouldNot contain(Kind.Director)
+    // Kino Roma's typo of one of the three co-directors
+    val hokus = film("Hokus: Królestwo magii", 2026, directors = Seq("Jason Hand", "Josie Trinidad", "Fawn Veerasunthorn"))
+    kinds(Seq(listing(KinoMuza, "Hokus: Królestwo magii", Some(2026), Some("Jason Hand")),
+      listing(Helios, "Hokus: Królestwo magii", Some(2026), Some("Favn Veerasunthorn"))), hokus) shouldNot contain(Kind.Director)
+  }
+
+  it should "weigh less when neither member credits the record's director: a lecturer, a host" in {
+    val munk = film("Pasażer Andrzej Munk", 2025, directors = Seq("Michał Bielawski"))
+    val both = Seq(listing(KinoMuza, "PASAŻER ANDRZEJ MUNK", Some(2025), Some("Marek Hendrykowski")),
+      listing(Helios, "PASAŻER – ANDRZEJ MUNK", Some(2025), Some("Jan Kowalski")))
+    coherence(both, munk).findings.map(f => f.kind -> f.weight) shouldBe Seq(Kind.Director -> 0.3)
+  }
+
   "a runtime conflict" should "be a member running far shorter than another, which no cut of the film explains" in {
+    // a slot beside a venue's slip: Cinema1's 140-minute CLAYFACE, Kino Sokolnia's 93, the film 109 -- neither a cut apart
+    kinds(Seq(listing(KinoMuza, "CLAYFACE", runtime = Some(93)), listing(Helios, "CLAYFACE", runtime = Some(140))),
+      film("Clayface", 2026, runtime = Some(109))) shouldNot contain(Kind.Runtime)
     val feature = listing(KinoMuza, "Lalka", Some(2026), runtime = Some(118))
     val other   = listing(Helios, "Lalka", Some(2026), runtime = Some(75))
     kinds(Seq(feature, other), film("Lalka", 2026, runtime = Some(118))) should contain(Kind.Runtime)
@@ -130,9 +180,9 @@ class GroupingCoherenceSpec extends AnyFlatSpec with Matchers {
   "the score" should "sum each kind's heaviest finding, and rank the most suspect first" in {
     val freyne = listing(KinoMuza, "Eternity", Some(2025), Some("David Freyne"))
     val meures = listing(KinoApollo, "Eternity", Some(2018), Some("Susanne Regina Meures"))
-    val both   = coherence(Seq(freyne, meures), film("Eternity", 2025))
+    val both   = coherence(Seq(freyne, meures), film("Eternity", 2025, directors = Seq("David Freyne")))
     both.findings.map(_.kind).toSet shouldBe Set(Kind.Year, Kind.Director)
-    both.score shouldBe 2.0
+    both.score shouldBe 1.2
     both.flagged shouldBe true
     val rec = film("Eternity", 2025)
     val takes = Seq(freyne, meures).map(l => SuspectTakes.Take(l, "tmdb:1", Some(1), rec, decision(Seq(freyne, meures), 1))) ++

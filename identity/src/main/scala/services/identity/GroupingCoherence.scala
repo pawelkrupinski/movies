@@ -65,8 +65,6 @@ object GroupingCoherence {
   val YearSlack = 1
   /** Years apart from which a year conflict is a strong one: no premiere, festival or print dates a film this far off. */
   val FarYears = 5
-  /** A film released this many years before the screening is an old one, whose re-release a venue may date to now. */
-  val OldFilmYears = 10
   /** How far a running time may sit from a record's and still be that cut ("rounding and trailers"). */
   val RuntimeFit = 10
   /** The confidence a member's own rules must take another film at for it to count. */
@@ -124,45 +122,67 @@ object GroupingCoherence {
   private type Pair = (Statement, Statement, Map[String, IdentityMeasures.Measure])
 
   /** Years more than [[YearSlack]] apart, neither explained by the film: a stated year a dated release of the record
-   *  carries (a re-release, an edition: "Apocalypse Now" billed 2019), or an old film dated to the screening by one venue
-   *  (an undated re-release) is the film's own. An anniversary's year is no statement of the film's
-   *  ([[IdentityMeasures.listingListing]] leaves it out). */
+   *  carries (a re-release, an edition: "Apocalypse Now" billed 2019), the screening year (or the one before) beside the
+   *  record's own year -- the venue dating its local release or re-release ("Everytime" billed 2026, its 2024 record) --
+   *  a title-year marker agreeing where the feed's year does not ("Film Club: East Of Eden (1955)" fed 1995), or an
+   *  edition's billing ("(Extended Edition)" 2011). Two relays
+   *  state their productions' and seasons' years, no film's. An anniversary's year is no statement of the film's
+   *  ([[IdentityMeasures.listingListing]] leaves it out). Weighs 1.0 at [[FarYears]] apart unless one year is the
+   *  screening's (a re-release record's original beside it: "Doctor Who: The Satan Pit" 2006 and 2026), else 0.6. */
   private def year(pair: Pair, record: IdentityMeasures.Film, screeningYear: Int, country: Option[String]): Option[Finding] = {
     val (a, b, m) = pair
-    m.get("year.delta").collect { case Number(d) if d > YearSlack => d.toInt }.flatMap { gap =>
+    m.get("year.delta").collect { case Number(d) if d > YearSlack => d.toInt }.filterNot(_ => relay(a) && relay(b)).flatMap { gap =>
       val (ya, yb) = (a.measured.statedYear.get, b.measured.statedYear.get)
       def releasedIn(y: Int) = record.closestYear(y, country).exists(r => math.abs(r - y) <= YearSlack)
-      val old = record.year.exists(_ <= screeningYear - OldFilmYears)
-      def reReleased(current: Int, other: Int) = old && current >= screeningYear - 1 && record.year.exists(r => math.abs(r - other) <= YearSlack)
-      Option.unless((releasedIn(ya) && releasedIn(yb)) || reReleased(ya, yb) || reReleased(yb, ya))(
-        Finding(Kind.Year, a.keys ++ b.keys, s"${named(a)} states $ya, ${named(b)} $yb", if (gap >= FarYears) 1.0 else 0.6))
+      def current(y: Int) = y >= screeningYear - 1
+      def released(now: Int, other: Int) = current(now) && record.year.exists(r => math.abs(r - other) <= YearSlack)
+      def years(s: Statement) = (s.measured.year.toSeq ++ s.measured.titleYear).distinct
+      val marked = years(a).exists(x => years(b).exists(y => math.abs(x - y) <= YearSlack))
+      // an edition's billing dates the edition ("The Return of the King (Extended Edition)" 2011)
+      def edition(s: Statement) = services.billing.DecorationWords.billsAnEdition(s.measured.ownTitles, record.titles)
+      Option.unless((releasedIn(ya) && releasedIn(yb)) || released(ya, yb) || released(yb, ya) || marked || edition(a) || edition(b))(
+        Finding(Kind.Year, a.keys ++ b.keys, s"${named(a)} states $ya, ${named(b)} $yb",
+          if (gap >= FarYears && !current(ya) && !current(yb)) 1.0 else 0.6))
     }
   }
 
-  /** Credited directors with no person in common — neither a relay's (a staging's director beside a screen one), nor
-   *  two of the film's own credits (a co-direction each venue credits one half of). */
+  /** Credited directors with no person in common, anchored on the record: one member credits the film's director and
+   *  the other someone else entirely (0.6) -- or, the record crediting nobody either names, both apart (0.3). Never
+   *  enough alone: a venue's credit field names producers and writers too (UK The Ritz Workington's "Forgotten Island"
+   *  credits its three producers), so a director conflict is flagged beside another finding. A credit in
+   *  another script, a name shared in part (a typo, a transliteration: "Favn Veerasunthorn"), two of the record's own
+   *  credits (a co-direction each venue credits half of) and a relay's or stage work's credit are no conflict. */
   private def director(pair: Pair, record: IdentityMeasures.Film): Option[Finding] = {
     val (a, b, m) = pair
-    def film(s: Statement) = record.directors.exists(d => d.nonEmpty && IdentityMeasures.directorRelation(s.listing.directors, d) == IdentityMeasures.SamePersonMeasure)
-    m.get("director").collect { case Category("different" | "different_script") => () }
-      .filterNot(_ => relay(a) || relay(b) || (film(a) && film(b)))
-      .map(_ => Finding(Kind.Director, a.keys ++ b.keys,
-        s"${named(a)} credits ${a.listing.directors.mkString(", ")}, ${named(b)} ${b.listing.directors.mkString(", ")}", 1.0))
+    val credited = record.directors.filter(_.exists(_.trim.nonEmpty))
+    def toFilm(s: Statement) = credited.map(d => IdentityMeasures.directorRelation(s.listing.directors, d))
+    def films(s: Statement) = toFilm(s).contains(IdentityMeasures.SamePersonMeasure)
+    def apart(s: Statement) = toFilm(s).forall(_ == Category("different"))
+    m.get("director").collect { case Category("different") => () }.filterNot(_ => relay(a) || relay(b)).flatMap { _ =>
+      val weight = if ((films(a) && apart(b)) || (films(b) && apart(a))) Some(0.6) else Option.when(apart(a) && apart(b))(0.3)
+      weight.map(w => Finding(Kind.Director, a.keys ++ b.keys,
+        s"${named(a)} credits ${a.listing.directors.mkString(", ")}, ${named(b)} ${b.listing.directors.mkString(", ")}" +
+          credited.fold("")(d => s"; the film ${d.mkString(", ")}"), w))
+    }
   }
 
-  /** Running times far apart (at least [[IdentityMeasures.RuntimeContradiction]] minutes and a quarter of the longer),
-   *  neither a short's programme, a relay's broadcast nor an event's slot — and the longer no slot around the record's
-   *  cut the shorter runs (the film with its wine, its Q&A, its adverts: "Psycho with wine", 170 minutes). */
+  /** A member running far SHORTER than every cut of the record (at least [[IdentityMeasures.RuntimeContradiction]]
+   *  minutes and a quarter of the record's) beside one running a cut of it -- or, the record stating none, two members at
+   *  least that far apart. A longer listing is the venue's slot (the film with its wine, its Q&A, its adverts: "Psycho
+   *  with wine", 170 minutes); a short's programme, a relay's broadcast and an event's billing are no conflict either. */
   private def runtime(pair: Pair, record: IdentityMeasures.Film): Option[Finding] = {
     val (a, b, m) = pair
-    m.get("runtime.delta").collect { case Number(d) => d.toInt }.flatMap { gap =>
+    m.get("runtime.delta").collect { case Number(d) => d.toInt }.flatMap { _ =>
       val Seq((short, lo), (long, hi)) = Seq(a -> a.measured.statedRuntime.get, b -> b.measured.statedRuntime.get).sortBy(_._2)
       def event(s: Statement) = relay(s) || FilmNess.eventWords(s.measured).nonEmpty
-      val slot = record.runtimes.exists(r => math.abs(lo - r) <= RuntimeFit && hi > r)
-      Option.when(lo > ShortFilms.MaxMinutes && gap >= math.max(IdentityMeasures.RuntimeContradiction.toDouble, hi * 0.25) &&
-        !event(a) && !event(b) && !slot)(
+      def far(x: Int, y: Int) = y - x >= math.max(IdentityMeasures.RuntimeContradiction.toDouble, y * 0.25)
+      val runs = record.runtimes
+      val apart =
+        if (runs.isEmpty) far(lo, hi)
+        else runs.forall(r => far(lo, r)) && runs.exists(r => math.abs(hi - r) <= RuntimeFit)
+      Option.when(lo > ShortFilms.MaxMinutes && apart && !event(a) && !event(b))(
         Finding(Kind.Runtime, short.keys ++ long.keys, s"${named(short)} runs $lo minutes, ${named(long)} $hi" +
-          (if (record.runtimes.isEmpty) "" else s"; the film ${record.runtimes.sorted.mkString("/")}"), 0.5))
+          (if (runs.isEmpty) "" else s"; the film ${runs.sorted.mkString("/")}"), 0.5))
     }
   }
 
