@@ -20,8 +20,16 @@ object RelayBanner {
   private val Names: Seq[Seq[String]] = Seq(Seq("nt", "live"), Seq("ntlive"), Seq("ntl"), Seq("national", "theatre", "live"),
     Seq("national", "theatre", "at", "home"), Seq("exhibition", "on", "screen"), Seq("metopera"))
 
+  /** Each title's answer, worked out once: [[billed]] reads the title alone (the relay rows are fixed for the process), and
+   *  the identity model asks it of every candidate record of every node it scores ([[services.identity.RelayRecords]]) --
+   *  6% of a US order row's CPU, matching the same titles again (JFR, run 41347578716). A title evicted is read again,
+   *  alike: the cache changes what an answer costs, never what it is. */
+  private val answers = tools.BoundedCache.ofSize(65_536).build[String, java.lang.Boolean]()
+
   /** Does `title` bill a relay's banner? */
-  def billed(title: String): Boolean = {
+  def billed(title: String): Boolean = answers.get(title, t => java.lang.Boolean.valueOf(read(t))).booleanValue
+
+  private def read(title: String): Boolean = {
     lazy val words = TitleContainment.tokens(title).toSeq
     StageHouse.billed(Seq(title)) || rules.exists(_.compiled.exists(_.findFirstIn(title).isDefined)) || Names.exists(words.containsSlice)
   }
