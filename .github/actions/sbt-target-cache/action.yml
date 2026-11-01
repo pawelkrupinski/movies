@@ -35,6 +35,12 @@ inputs:
       the entry its restoring call saves at the job's end (the takes row's worker test and it classes).
     required: false
     default: 'false'
+outputs:
+  matched-key:
+    description: >-
+      The key the restore actually took (the exact key, or the newest entry under a restore-keys prefix); empty on a miss
+      or a save-only call. A caller tells from it which family its classes came from.
+    value: ${{ steps.cache.outputs.cache-matched-key || steps.restore.outputs.cache-matched-key }}
 # ONLY MAIN SAVES. Every other ref (measure/*, a landing check's batch, a lane run) restores and never
 # saves. A measure or landing run's entries are read by nobody after it, and a save of a key another job
 # already saved is a second copy. (CacheSavePolicySpec)

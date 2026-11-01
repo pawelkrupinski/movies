@@ -72,6 +72,9 @@ outputs:
   hermetic-pair:
     description: The recorded pair this job restored (hermetic mode), for the steps after it.
     value: ${{ steps.pair.outputs.pair }}
+  sbt-target-restored:
+    description: The sbt target cache entry this job restored (its key; empty on a miss), so a row can tell a takes entry from another family.
+    value: ${{ steps.sbt-target.outputs.matched-key }}
 
 runs:
   using: composite
@@ -251,6 +254,7 @@ runs:
     # `CinemaScraperCatalogSpec`. The module classes are all that is worth carrying.
     # (SbtCachePathsSpec, ConvergenceLegWiringSpec)
     - uses: ./.github/actions/sbt-target-cache
+      id: sbt-target
       with:
           key: ${{ steps.sbt-key.outputs.key }}
           # A takes row's own family first: every other entry lacks worker/Test and worker/It, and the row compiled all

@@ -1109,14 +1109,27 @@ jobs:
             # whichever row finishes first -- a suite row's, without them (run 38693633421: Spain's, 60 MB). On main
             # only: a branch's entry is restorable from that branch alone. Saved only once they exist (a check that
             # found no identity code changed compiles nothing).
+            # AND THE FIRST DRIFT SEED'S, when no takes entry was there to restore: the drift replay compiles scrapers/Test
+            # and worker/Test (884 sources, ~170 s a row) and a takes check that compiled nothing saves nothing, so after
+            # an eviction every drift row of every run recompiled them all (runs 41242893057-41271681408: 10 of 10 rows,
+            # 5 runs in a row). Saved under the takes family, whose restore every takes and drift row tries first; the
+            # takes row's own entry, when it compiled, wins the key (it ends first) and this save is a no-op warning.
             - name: Did the takes check compile worker's test and it classes?
               id: takes-build
-              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' && github.ref == 'refs/heads/main' }}
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && (matrix.phase == 'takes' || matrix.phase == 'takes-drift-1') && github.ref == 'refs/heads/main' }}
               shell: bash
+              env:
+                  PHASE: ${{ matrix.phase }}
+                  RESTORED: ${{ steps.setup.outputs.sbt-target-restored }}
               run: |
                   # The check's JVMs ended before the entry is read: a step past its timeout is abandoned, not ended.
                   scripts/ci/stop-stray-sbt.sh
-                  if compgen -G 'worker/target/scala-*/test-classes/*' > /dev/null && compgen -G 'worker/target/scala-*/it-classes/*' > /dev/null; then
+                  if [ "$PHASE" = takes ]; then
+                      if compgen -G 'worker/target/scala-*/test-classes/*' > /dev/null && compgen -G 'worker/target/scala-*/it-classes/*' > /dev/null; then
+                          echo "compiled=true" >> "$GITHUB_OUTPUT"
+                      fi
+                  elif [[ "$RESTORED" != sbt-target-takes-* ]] && compgen -G 'worker/target/scala-*/test-classes/*' > /dev/null; then
+                      echo "restored ${RESTORED:-nothing}, not a takes entry: saving this row's worker/Test build for the next drift rows"
                       echo "compiled=true" >> "$GITHUB_OUTPUT"
                   fi
             - uses: ./.github/actions/sbt-target-cache

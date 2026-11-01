@@ -112,6 +112,19 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
     keyStep(setup) should include("scripts/ci/sbt-sources-key.sh convergence")
   }
 
+  /** After an eviction no takes entry existed and a takes check that compiled nothing saved none, so every drift row of
+   *  five runs in a row recompiled scrapers/Test and worker/Test (~170 s a row; docs/investigations/2026-11-01-twenty-runners.md).
+   *  The first drift seed saves the family when what it restored was not a takes entry. */
+  it should "also save the first drift seed's worker test classes as that family when no takes entry was restored" in {
+    val decide = RepoFile.step(leg, "Did the takes check compile worker's test and it classes?")
+    decide should include("(matrix.phase == 'takes' || matrix.phase == 'takes-drift-1')")
+    decide should include("RESTORED: ${{ steps.setup.outputs.sbt-target-restored }}")
+    decide should include("""elif [[ "$RESTORED" != sbt-target-takes-* ]]""")
+    setup should include("value: ${{ steps.sbt-target.outputs.matched-key }}")
+    RepoFile.read(".github/actions/sbt-target-cache/action.yml") should include(
+      "value: ${{ steps.cache.outputs.cache-matched-key || steps.restore.outputs.cache-matched-key }}")
+  }
+
   /** A branch's cache is restorable only from that branch and main, and a measure branch never runs again: each
    *  measurement saved 82 MB toward the repository's 10 GB cap for no one. */
   "a measurement's legs" should "save no build cache" in {
