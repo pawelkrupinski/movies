@@ -1652,13 +1652,31 @@ def command_legs(args, source, out):
 def main(argv=None, out=sys.stdout):
     parser = argparse.ArgumentParser(prog="ci-timings", description=__doc__.split("\n")[0],
                                      formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
-    parser.add_argument("--repo", help="OWNER/REPO (default: origin's)")
-    parser.add_argument("--vl-url", default=os.environ.get("CI_TIMINGS_VL_URL"),
-                        help="VictoriaLogs base URL to read events from (env CI_TIMINGS_VL_URL); none: the API alone")
-    parser.add_argument("--include-red", action="store_true", help="count failed runs too (default: green only)")
-    parser.add_argument("--no-metrics", action="store_true", help="skip the jobs' metrics artifacts (timings only)")
-    parser.add_argument("--format", choices=("text", "json", "csv"), default="text")
+    # THE COMMON OPTIONS GO EITHER SIDE OF THE COMMAND (2026-11-01: the collector on ci-runner ran
+    # `export ... --vl-url URL`, which only `--vl-url URL export ...` parsed, and failed every pass). Each subcommand
+    # takes them too, defaulting to SUPPRESS so a value given before the command is never reset by the subparser.
+    def common(target, top):
+        default = (lambda value: value) if top else (lambda value: argparse.SUPPRESS)
+        target.add_argument("--repo", default=default(None), help="OWNER/REPO (default: origin's)")
+        target.add_argument("--vl-url", default=default(os.environ.get("CI_TIMINGS_VL_URL")),
+                            help="VictoriaLogs base URL (env CI_TIMINGS_VL_URL); none: the API alone")
+        target.add_argument("--include-red", action="store_true", default=default(False),
+                            help="count failed runs too (default: green only)")
+        target.add_argument("--no-metrics", action="store_true", default=default(False),
+                            help="skip the jobs' metrics artifacts (timings only)")
+        target.add_argument("--format", choices=("text", "json", "csv"), default=default("text"))
+        target.add_argument("--parse-only", action="store_true", default=default(False),
+                            help="check the arguments and exit 0, touching nothing (infra's check of its unit's argv)")
+
+    common(parser, top=True)
     sub = parser.add_subparsers(dest="command", required=True)
+    _add_parser = sub.add_parser
+
+    def add_parser(*args_, **kwargs):
+        made = _add_parser(*args_, **kwargs)
+        common(made, top=False)
+        return made
+    sub.add_parser = add_parser
     by_help = "hour|day|week (time buckets) or %s (groups)" % "|".join(sorted(ATTRIBUTES))
 
     report = sub.add_parser("report", help="one aggregate over a selection of runs")
@@ -1703,6 +1721,9 @@ def main(argv=None, out=sys.stdout):
     legs.add_argument("run_id")
 
     args = parser.parse_args(argv)
+    if args.parse_only:
+        print("ci-timings: arguments ok (%s)" % args.command, file=out)
+        return 0
     github = GitHub(repo_of(args))
     if args.command == "export":
         if not args.dry_run and not args.vl_url:

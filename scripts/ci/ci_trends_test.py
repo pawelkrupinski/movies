@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ci_trends as t  # noqa: E402
@@ -337,6 +338,46 @@ class ExportTest(unittest.TestCase):
             self.assertEqual([1, "fail-once", 2], posted)
             with open(state) as handle:
                 self.assertEqual({"1/1", "2/1"}, set(json.load(handle)["done"]))
+
+
+class CliTest(unittest.TestCase):
+    # The exact argv infra's collector runs (nix/files/ci-metrics-collector/ci-metrics-collector in bitcashier/infra):
+    # it failed every pass on ci-runner when `--vl-url` after `export` was refused (2026-11-01).
+    COLLECTOR = ["--repo", "o/r", "export", "--since", "2d", "--state", "/tmp/s.json", "--vl-url", "http://vl:9429"]
+
+    def parsed(self, argv):
+        captured = {}
+
+        def fake(args, source, out, **_):
+            captured.update(vars(args))
+        with unittest.mock.patch.object(t, "command_export", fake), \
+                unittest.mock.patch.object(t, "GitHub", lambda repo: type("G", (), {"repo": repo})()):
+            self.assertEqual(0, t.main(argv, out=io.StringIO()))
+        return captured
+
+    def test_the_collector_argv(self):
+        args = self.parsed(self.COLLECTOR)
+        self.assertEqual(("http://vl:9429", "2d", "/tmp/s.json"), (args["vl_url"], args["since"], args["state"]))
+
+    def test_common_options_either_side_of_the_command(self):
+        before = self.parsed(["--vl-url", "http://a", "--repo", "o/r", "export", "--since", "1d"])
+        after = self.parsed(["export", "--since", "1d", "--repo", "o/r", "--vl-url", "http://a"])
+        self.assertEqual(before["vl_url"], after["vl_url"])
+        self.assertEqual("http://a", before["vl_url"])
+
+    def test_a_value_before_the_command_is_not_reset_by_the_subcommand(self):
+        self.assertEqual("http://a", self.parsed(["--vl-url", "http://a", "export", "--dry-run"])["vl_url"])
+
+    def test_parse_only_touches_nothing(self):
+        out = io.StringIO()
+        with unittest.mock.patch.object(t, "GitHub", side_effect=AssertionError("no API")):
+            self.assertEqual(0, t.main(self.COLLECTOR + ["--parse-only"], out=out))
+        self.assertIn("arguments ok (export)", out.getvalue())
+
+    def test_an_unknown_option_still_fails(self):
+        with self.assertRaises(SystemExit) as raised, unittest.mock.patch("sys.stderr", io.StringIO()):
+            t.main(["export", "--no-such-option"], out=io.StringIO())
+        self.assertEqual(2, raised.exception.code)
 
 
 if __name__ == "__main__":
