@@ -357,6 +357,9 @@ def window_resources(series, start, end):
         "disk_read_mb": round((b.get("disk_read_sectors", 0) - a.get("disk_read_sectors", 0)) * 512 / 1e6),
         "disk_write_mb": round((b.get("disk_write_sectors", 0) - a.get("disk_write_sectors", 0)) * 512 / 1e6),
         "disk_free_min_mb": round(min(free) / 1024) if free else None,
+        "net_rx_mb": round((b.get("net_rx_bytes", 0) - a.get("net_rx_bytes", 0)) / 1e6, 1),
+        "net_tx_mb": round((b.get("net_tx_bytes", 0) - a.get("net_tx_bytes", 0)) / 1e6, 1),
+        "open_files_max": max((row["open_files"] for row in inside if "open_files" in row), default=None),
         "oom_kills": int(b.get("oom_kill", 0) - a.get("oom_kill", 0)),
     }
 
