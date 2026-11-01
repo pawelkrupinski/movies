@@ -51,9 +51,8 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
 
   /** The resolution: every family's decisions, and the resolve's counts. */
   def resolution: Resolution = {
-    val perFamily = nodes.groupBy(node => familyOf(node.id)).toSeq.sortBy(_._1).map { case (family, members0) =>
-      new FamilyRun(family, members0.sortBy(_.id)).decided
-    }
+    val runs      = nodes.groupBy(node => familyOf(node.id)).toSeq.sortBy(_._1).map { case (family, members0) => new FamilyRun(family, members0.sortBy(_.id)) }
+    val perFamily = runs.map(_.decided)
     val decided = perFamily.flatMap(_._2).sortBy(_.members.head)(using ListingKey.ordering)
     Resolution(
       decisions      = decided,
@@ -68,7 +67,8 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       violations     = perFamily.map(_._3).sum,
       films          = decided.flatMap(_.film).distinct.flatMap(id => candidateOf(id).map(id -> _.film)).toMap,
       scorings       = families.scorings,
-      titleRelations = families.titleRelations)
+      titleRelations = families.titleRelations,
+      contested      = runs.flatMap(_.contested).toMap)
   }
 
   /** One family's assignment: round A's clusters, the votes of those no member matched alone, the final clusters, and
@@ -82,14 +82,18 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     private val unaccepted = roundA.filter(_.forall(node => !accepted.contains(node.id)))
     // A facts-free cluster in a split title family follows the family's clear majority
     // (`ClusterVoting.familyMajority`); every other cluster votes on its pooled evidence.
+    // The title family: the round's title must-links (same title, search form, original title, segment), however the
+    // solver then split the nodes they join.
+    private lazy val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
     private val familyTaken: Map[String, (Int, Double, String)] =
       if (mutation == Mutation.NoVoting) Map.empty
-      else {
-        // The title family: the round's title must-links (same title, search form, original
-        // title, segment), however the solver then split the nodes they join.
-        val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
-        unaccepted.flatMap(cluster => voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
-      }
+      else unaccepted.flatMap(cluster => voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
+    /** Each listing of a facts-free cluster whose title family backs two films or more by its siblings' own statements
+     *  ([[ClusterVoting.ownBacked]]), with those films and their venues: report only. */
+    def contested: Seq[(ListingKey, Map[Int, Set[String]])] = unaccepted.flatMap { cluster =>
+      val backed = voting.ownBacked(cluster, members, accepted, titleEdges)
+      if (backed.sizeIs < 2) Nil else cluster.flatMap(_.listings.map(_.key -> backed))
+    }
     private val votes: Map[String, ResolverDecisions.Vote] =
       if (mutation == Mutation.NoVoting) Map.empty
       else unaccepted.flatMap { cluster =>

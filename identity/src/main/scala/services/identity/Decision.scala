@@ -134,7 +134,11 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
                             scorings: Int = 0,
                             /** How many listing-film title relations the families read: once per pool film and
                              *  distinct titles a family bills, however many of its nodes and clusters bill them. */
-                            titleRelations: Int = 0) {
+                            titleRelations: Int = 0,
+                            /** Each listing of a facts-free cluster whose title family backs two films or more by its
+                             *  siblings' own statements, with those films and their venues ([[ClusterVoting.ownBacked]]):
+                             *  what the population report counts as a contested bare listing. No take reads it. */
+                            contested: Map[ListingKey, Map[Int, Set[String]]] = Map.empty) {
   def families: Int = familyOf.values.toSet.size
   /** The partition over listing keys — what the order-independence properties compare. */
   lazy val partition: Set[Set[ListingKey]] = decisions.map(_.listings).toSet

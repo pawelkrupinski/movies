@@ -101,6 +101,22 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  re-release, and 4 of 84 is no majority. Siblings whose titles name a season do not count
    *  (Kino Amok's bare "Manon", a Met broadcast, beside 16 venues' "RBO Sezon Kinowy 2026-27:
    *  Manon"). `None` also when a member publishes a fact or the siblings hold fewer than two films. */
+  /** The films a facts-free cluster's TITLE FAMILY backs by OWN statements, each with the venues backing it: the siblings a
+   *  title must-link of round A joins it to ([[familyMajority]]'s) that publish a fact of their own (a year, a director,
+   *  a runtime) and took a film ALONE on it (`accepted`), a season's billing apart. Empty for a cluster publishing a
+   *  fact: its own evidence decides. What the flip-unification design (docs/investigations/2026-11-01-flip-unification.md,
+   *  stage 5) calls a CONTESTED family when it names two films or more: a bare listing there borrows no film by a
+   *  majority. Read by the population report only ([[Resolution.contested]]); no take reads it yet. */
+  def ownBacked(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int],
+                titleEdges: Seq[ResolverEdge]): Map[Int, Set[String]] =
+    if (cluster.exists(_.evidence.measured.publishesAFact)) Map.empty
+    else {
+      val inside = cluster.map(_.id).toSet
+      val linked = titleEdges.flatMap(edge => if (inside(edge.a)) Seq(edge.b) else if (inside(edge.b)) Seq(edge.a) else Nil).toSet -- inside
+      members.filter(sibling => linked(sibling.id) && accepted.contains(sibling.id) && sibling.evidence.measured.publishesAFact &&
+        sibling.evidence.measured.seasonYear.isEmpty).groupMapReduce(sibling => accepted(sibling.id))(_.venues.toSet)(_ ++ _)
+    }
+
   def familyMajority(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int],
                      titleEdges: Seq[ResolverEdge]): Option[(Int, Double, String)] =
     Option.when(!cluster.exists(_.evidence.measured.publishesAFact)) {
