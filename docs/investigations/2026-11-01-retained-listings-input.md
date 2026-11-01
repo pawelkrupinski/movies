@@ -86,3 +86,13 @@ Each take was judged against TMDB:
 
 The full suite on the same commit and recording ran as run 41308412546. The convergence, order-independence and next-day
 rows read the kept listings. The drift rows read none: their path, `IdentityDrift` and `IdentitySlice`, is untouched.
+
+## Re-measure over the kept-apart rule (2026-11-01)
+
+`docs/investigations/2026-11-01-kept-overruled-apart.md` (the owner's "B") landed first. This branch is rebased on top
+of it.
+
+The re-measure ran as run 41324825465. Its base was the rule alone; its head was this branch with the kept input,
+prod-latest 41265286306. Nothing moved among the billed listings in any country, and the 18 DE "Eternity" stay none.
+The kept listings' own takes are all right: PL "PIESEK" -> Gohan, and DE UCI "Brute-1986" x16 -> Brute 1986, judged in
+identity-judgements.tsv. No wrong take is left for the persisted set to preserve. LANDABLE.
