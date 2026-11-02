@@ -85,18 +85,28 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     // The title family: the round's title must-links (same title, search form, original title, segment), however the
     // solver then split the nodes they join.
     private lazy val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
+    // A facts-free cluster whose title family is CONTESTED -- two films or more, each backed by more than one venue's own
+    // statements (ClusterVoting.contested) -- takes no film: neither the family's majority nor its pooled vote (stage 5).
+    private val contestedBy: Map[String, Map[Int, Set[String]]] =
+      if (mutation == Mutation.NoVoting) Map.empty
+      else unaccepted.flatMap { cluster =>
+        val backed = voting.ownBacked(cluster, members, accepted, links.titleLinked)
+        if (voting.contested(backed)) cluster.map(_.id -> backed) else Nil
+      }.toMap
+    private def contestedCluster(cluster: Seq[EvidenceNode]): Boolean = cluster.nonEmpty && cluster.forall(node => contestedBy.contains(node.id))
     private val familyTaken: Map[String, (Int, Double, String)] =
       if (mutation == Mutation.NoVoting) Map.empty
-      else unaccepted.flatMap(cluster => voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
+      else unaccepted.filterNot(contestedCluster).flatMap(cluster =>
+        voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
     /** Each listing of a facts-free cluster whose title family backs two films or more by its siblings' own statements
      *  ([[ClusterVoting.ownBacked]]), with those films and their venues: report only. */
     def contested: Seq[(ListingKey, Map[Int, Set[String]])] = unaccepted.flatMap { cluster =>
-      val backed = voting.ownBacked(cluster, members, accepted, titleEdges)
+      val backed = voting.ownBacked(cluster, members, accepted, links.titleLinked)
       if (backed.sizeIs < 2) Nil else cluster.flatMap(_.listings.map(_.key -> backed))
     }
     private val votes: Map[String, ResolverDecisions.Vote] =
       if (mutation == Mutation.NoVoting) Map.empty
-      else unaccepted.flatMap { cluster =>
+      else unaccepted.filterNot(contestedCluster).flatMap { cluster =>
         if (cluster.exists(node => familyTaken.contains(node.id)))
           cluster.map(node => node.id -> { val (film, probability, why) = familyTaken(node.id); ResolverDecisions.Vote(film, probability, Some(why)) })
         else voting.vote(cluster, scope).map { case (id, (film, probability)) => id -> ResolverDecisions.Vote(film, probability, None) }
@@ -122,23 +132,53 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
 
     /** One cluster's decisions: the cluster's own, or — where some of its members bill several works, bill its film as
      *  one piece beside another thing, or take it uncorroborated — the rest's, and each such group's as none. */
-    private def decide(cluster: Seq[EvidenceNode]): Seq[ResolverDecision] = {
+    private def decide(cluster: Seq[EvidenceNode]): Seq[ResolverDecision] =
+      if (contestedCluster(cluster) && cluster.forall(node => filmOf(node.id).isEmpty && !families.pinnedFilm.contains(node.id))) {
+        val backed = cluster.flatMap(node => contestedBy.get(node.id)).headOption.getOrElse(Map.empty)
+        Seq(none(cluster, Seq(contestedWhy(backed)), DecisionTrace.Contested))
+      } else decideTaken(cluster)
+
+    private def contestedWhy(backed: Map[Int, Set[String]]): String =
+      "contested title family: " + backed.toSeq.sortBy { case (film, venues) => (-venues.size, film) }
+        .map { case (film, venues) => s"$film by ${venues.size} venue(s)' own statements" }.mkString(", ") + " -- a bare listing takes none"
+
+    /** Does `node` BORROW its cluster's film: no fact of its own, no own match, no feed link, no catalogue id another
+     *  listing of the family shares (a chain's one film; a venue's own booking id joins nothing), no pin -- nothing but its
+     *  title joins it to the film? */
+    private def borrows(node: EvidenceNode): Boolean =
+      !node.evidence.measured.publishesAFact && !accepted.contains(node.id) && linked(node).isEmpty && !families.pinnedFilm.contains(node.id) && {
+        val keys = catalogueKeys(node)
+        keys.isEmpty || !members.exists(other => other.id != node.id && catalogueKeys(other).exists(keys))
+      }
+    private def catalogueKeys(node: EvidenceNode): Set[String] = node.listings.flatMap(_.catalogueIds).map(edges.catalogueKey(_, node)).toSet
+
+    private def decideTaken(cluster: Seq[EvidenceNode]): Seq[ResolverDecision] = {
       val (bills, unbilled) = cluster.partition(node => billing(node.id))
       // a member billing its cluster's film as one piece beside another thing is none of it either — unless a pin took it
       val film   = cluster.iterator.flatMap(node => filmOf(node.id)).nextOption()
       val pinned = cluster.exists(node => families.pinnedFilm.contains(node.id))
       val piecesOf = billedAsPieces(unbilled, film, pinned)
-      val placed = unbilled.filterNot(piecesOf.contains)
+      val unplaced = unbilled.filterNot(piecesOf.contains)
+      // a BARE member borrowing the cluster's film in a CONTESTED title family takes none of it (stage 5): which film it
+      // borrowed turned on which siblings the solver joined it to as listings arrived (UK Old Market Hall Shrewsbury's
+      // "Dracula (12A)": in 11868's cluster, then alone and contested, then back)
+      val contestedOf = if (film.isEmpty || pinned || mutation == Mutation.NoVoting) Map.empty[EvidenceNode, String]
+        else unplaced.filter(borrows).flatMap { node =>
+          val backed = voting.ownBacked(Seq(node), members, accepted, links.titleLinked)
+          Option.when(voting.contested(backed))(node -> contestedWhy(backed))
+        }.toMap
+      val placed = unplaced.filterNot(contestedOf.contains)
       // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against
       val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, linked, familyEdges, backed)).toMap
       val rest   = placed.filterNot(weak.contains)
-      if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
+      if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty && contestedOf.isEmpty) || film.isEmpty)
         Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
       else
         restDecided(rest, film) ++
           Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), DecisionTrace.BillsBoth)) ++
           Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, DecisionTrace.BilledAsPiece)) ++
-          Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, DecisionTrace.Uncorroborated))
+          Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, DecisionTrace.Uncorroborated)) ++
+          Option.when(contestedOf.nonEmpty)(none(unplaced.filter(contestedOf.contains), unplaced.flatMap(contestedOf.get).distinct, DecisionTrace.Contested))
     }
 
     /** The members of `unbilled` billing `film` as one piece beside another thing, or beside their screening, with why. */

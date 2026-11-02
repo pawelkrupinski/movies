@@ -196,6 +196,8 @@ object DecisionTrace {
   val BilledAsPiece: String  = "billed as one piece"
   val Uncorroborated: String = "uncorroborated namesake"
   val Apart: Set[String]     = Set(BillsBoth, BilledAsPiece, Uncorroborated)
+  /** The veto of a facts-free cluster whose title family is contested ([[ClusterVoting.contested]]): no film. */
+  val Contested: String      = "contested title family"
   val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
 
   /** What of `decision`'s trace the model keeps with it, and stores: what a stage after the model reads of it

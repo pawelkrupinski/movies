@@ -84,21 +84,30 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
     })
   }
 
-  /** The films a facts-free cluster's TITLE FAMILY backs by OWN statements, each with the venues backing it: the siblings a
-   *  title must-link of round A joins it to ([[familyMajority]]'s) that publish a fact of their own (a year, a director,
+  /** The films a facts-free cluster's TITLE FAMILY backs by OWN statements, each with the venues backing it: the siblings
+   *  its titles relate to (`titled`: the one title relation, [[TitleLinks.titleLinked]] -- a function of the titles alone,
+   *  never of the clusters the solver made) that publish a fact of their own (a year, a director,
    *  a runtime) and took a film ALONE on it (`accepted`), a season's billing apart. Empty for a cluster publishing a
    *  fact: its own evidence decides. What the flip-unification design (docs/investigations/2026-11-01-flip-unification.md,
    *  stage 5) calls a CONTESTED family when it names two films or more: a bare listing there borrows no film by a
-   *  majority. Read by the population report only ([[Resolution.contested]]); no take reads it yet. */
+   *  majority ([[contested]]), and the population report counts its bare listings ([[Resolution.contested]]). */
   def ownBacked(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int],
-                titleEdges: Seq[ResolverEdge]): Map[Int, Set[String]] =
+                titled: (EvidenceNode, EvidenceNode) => Boolean): Map[Int, Set[String]] =
     if (cluster.exists(_.evidence.measured.publishesAFact)) Map.empty
     else {
       val inside = cluster.map(_.id).toSet
-      val linked = titleEdges.flatMap(edge => if (inside(edge.a)) Seq(edge.b) else if (inside(edge.b)) Seq(edge.a) else Nil).toSet -- inside
-      members.filter(sibling => linked(sibling.id) && accepted.contains(sibling.id) && sibling.evidence.measured.publishesAFact &&
+      members.filter(sibling => !inside(sibling.id) && cluster.exists(titled(_, sibling)) && accepted.contains(sibling.id) &&
+        sibling.evidence.measured.publishesAFact &&
         sibling.evidence.measured.seasonYear.isEmpty).groupMapReduce(sibling => accepted(sibling.id))(_.venues.toSet)(_ ++ _)
     }
+
+  /** Is a facts-free cluster's title family CONTESTED ([[ownBacked]]'s films): two films or more each backed by
+   *  [[ClusterVoting.WellSupported]] venues' own statements or more? A bare listing there has nothing of its own to tell
+   *  the works apart by, and takes no film rather than a majority's (the flip-unification design's stage 5, the owner's
+   *  rule "unmatched beats wrong": UK Beehive Honiton's "Nostalgic Cinema: The Addams Family" went 2907 -> 481084 -> 2907
+   *  as venues crediting Sonnenfeld's 1991 film and Vernon's 2019 one arrived, the family majority's bound crossed each
+   *  way). As listings arrive a bare listing's take can then only go to none, never back. */
+  def contested(backed: Map[Int, Set[String]]): Boolean = backed.count(_._2.sizeIs >= ClusterVoting.WellSupported) >= 2
 
   /** The film a cluster of listings that publish NOTHING but their titles takes from its TITLE
    *  FAMILY — the siblings outside it a title must-link of round A joins it to (`titleEdges`,
@@ -135,4 +144,10 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
           (film, bound, s"title family's majority film $film: ${venues.size} of $total venue(s), at least ${ResolverDecision.percent(bound)}"))
       }.flatten
     }.flatten
+}
+
+private[identity] object ClusterVoting {
+  /** How many venues' own statements make a film WELL SUPPORTED in a title family ([[ClusterVoting.contested]]): more than
+   *  one venue -- one venue's credit or year may be its own slip. */
+  val WellSupported = 2
 }
