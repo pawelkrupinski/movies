@@ -65,11 +65,10 @@ final class CardSpacingTuningUITests: XCTestCase {
         )
     }
 
-    /// `maxOut` still reaches the maximum from a slider a drag left one step short of it, as the
-    /// first drag of run 41305616620 left the Sekcje slider (47 of 48 steps). Its two retries were
-    /// drags from there to the end, and from that close to the end a drag does not move the thumb:
-    /// all three read 47 of 48 and the test blamed the lever. The row's own "−" sets that state
-    /// exactly, which a drag cannot.
+    /// `maxOut` still reaches the maximum from a slider a drag left one step short of it, as every
+    /// drag of run 41305616620 left the Sekcje slider (47 of 48 steps) and of run 41424660878 the
+    /// Film title's (39 of 40): from that close to the end a drag does not move the thumb, and the
+    /// row's "+" must finish it. The row's own "−" sets that state exactly, which a drag cannot.
     func testMaxOutRecoversFromADragThatStopsAStepShort() throws {
         let card = firstCard()
         XCTAssertTrue(card.waitForExistence(timeout: 20), "Tuning screen never showed its first card")
@@ -81,6 +80,8 @@ final class CardSpacingTuningUITests: XCTestCase {
         XCTAssertTrue(stepDown.waitForExistence(timeout: 5), "Section-spacing slider's − step missing")
         stepDown.tap()
         XCTAssertLessThan(slider.normalizedSliderPosition, 0.99, "the − step left the slider at its maximum")
+        let stepUp = app.buttons[A11y.Tuning.stepUp(of: A11y.Tuning.sectionSpacingSlider)]
+        XCTAssertTrue(stepUp.waitForExistence(timeout: 5), "Section-spacing slider's + step missing")
         maxOut(slider)
     }
 
@@ -182,28 +183,30 @@ final class CardSpacingTuningUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.4) // let the pager settle on the new page
     }
 
-    /// Drags `slider` to its maximum and confirms the slider itself reports it,
-    /// re-dragging (up to three times) when it does not. Run 38278405182 read the
-    /// Film page's detail title at the same height before and after "maxing" its
-    /// font (15 of 15 passed alone locally): the drag was synthesized right after
-    /// the controls sheet swapped to that page on a slow runner, and either never
-    /// moved the slider or was measured before the title re-laid out — either way
-    /// the test blamed the lever's wiring. Checking the slider's
-    /// own position separates the two: a drag that cannot land fails here, an
-    /// unwired lever still fails the caller's measurement.
+    /// Drags `slider` to its maximum, finishes with the row's own "+" step when the drag
+    /// stops short, and confirms the slider itself reports the maximum. Run 38278405182 read the
+    /// Film page's detail title at the same height before and after "maxing" its font: the drag
+    /// either never moved the slider or was measured before the title re-laid out, and the test
+    /// blamed the lever's wiring. Checking the slider's own position separates the two: a slider
+    /// that cannot reach its end fails here, an unwired lever still fails the caller's measurement.
     ///
-    /// A retry first drags the slider back to its minimum, so every attempt is
-    /// a drag along the whole track: a drag that stops a step short of the end
-    /// leaves the thumb where a further drag to the end does not move it (run
-    /// 41305616620: 47 of 48 steps, all three drags;
-    /// testMaxOutRecoversFromADragThatStopsAStepShort).
-    private func maxOut(_ slider: XCUIElement) {
-        for attempt in 0..<3 {
-            if attempt > 0 { slider.adjust(toNormalizedSliderPosition: 0) }
-            slider.adjust(toNormalizedSliderPosition: 1.0)
-            if slider.normalizedSliderPosition >= 0.99 { return }
+    /// A synthesized drag to the end of the track can stop a step short of it, and drags again
+    /// do not cure it: run 41305616620 read 47 of 48 steps three times even with each retry
+    /// starting from the minimum, and run 41424660878 39 of 40. The "+" sets the value exactly,
+    /// one step at a time (testMaxOutRecoversFromADragThatStopsAStepShort), so after the drag at
+    /// most `stepTaps` of them finish the job.
+    private func maxOut(_ slider: XCUIElement, stepTaps: Int = 4) {
+        slider.adjust(toNormalizedSliderPosition: 1.0)
+        let stepUp = app.buttons[A11y.Tuning.stepUp(of: slider.identifier)]
+        var taps = 0
+        while slider.normalizedSliderPosition < 0.99, taps < stepTaps, stepUp.exists {
+            stepUp.tap()
+            taps += 1
         }
-        XCTFail("\(slider) stayed at \(slider.normalizedSliderPosition) after three drags to its maximum")
+        XCTAssertGreaterThanOrEqual(
+            slider.normalizedSliderPosition, 0.99,
+            "\(slider) stayed at \(slider.normalizedSliderPosition) after a drag to its maximum and \(taps) \"+\" step(s)"
+        )
     }
 
     /// Re-reads `measure` until it passes `threshold` or `timeout` runs out, and

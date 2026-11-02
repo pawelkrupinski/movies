@@ -420,6 +420,7 @@ struct ShowtimeTuningScreen: View {
             stepButton(systemName: "plus") {
                 value.wrappedValue = min(range.upperBound, value.wrappedValue + step)
             }
+            .accessibilityIdentifier(id.map(A11y.Tuning.stepUp(of:)) ?? "")
             Text(String(format: "%.1f", value.wrappedValue))
                 .font(.system(size: 12, weight: .medium).monospacedDigit())
                 .frame(width: 34, alignment: .trailing)

@@ -172,6 +172,9 @@ enum A11y {
         /// The "−" step beside a slider identified `slider`, so a test can set
         /// the slider exactly, one step at a time, where a drag cannot.
         static func stepDown(of slider: String) -> String { "\(slider).minus" }
+        /// The "+" step beside a slider identified `slider`: it reaches the
+        /// slider's maximum exactly where a drag stops a step short of it.
+        static func stepUp(of slider: String) -> String { "\(slider).plus" }
         /// Tab labels in the page bar — let a UITest jump to a page by tap
         /// instead of relying on a swipe distance.
         static let pageTabPrefix       = "tuning.page.tab"
