@@ -39,13 +39,13 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
 
   /** The identity module's tests ran after the sbt check in the rest's job: 292 s then 585 s, a 15.9-minute job (run
    *  41276112019; docs/investigations/2026-11-01-twenty-runners.md), then in one job of their own (~12.5 min). Three
-   *  shards at t=0 beside the rest, each a third of the selected specs (scripts/ci/test_shards.py). */
+   *  shards at t=0 beside the rest, each a third of the selected specs (scripts/ci/shard_tests.py). */
   "the identity check" should "run in three shards beside the rest, at once" in {
     val identity = jobs("check-identity")
     identity should not include "needs:"
     identity should include("shard: [1, 2, 3]")
     identity should include("PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/3")
-    RepoFile.read("scripts/hooks/pre-push") should include("scripts/ci/test_shards.py --shard \"$PREPUSH_IDENTITY_SHARD\"")
+    RepoFile.read("scripts/hooks/pre-push") should include("scripts/ci/shard_tests.py --shard \"$PREPUSH_IDENTITY_SHARD\"")
   }
 
   /** 8 of Main's 14 code reds in the five days to 2026-10-30 were in integration-test or e2e rows nothing ran before the

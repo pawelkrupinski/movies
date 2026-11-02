@@ -203,8 +203,8 @@ jobs:
     # THE IDENTITY SHARDS: the identity module's tests ran after the sbt check in the rest's job (292 s then 585 s, a
     # 15.9-minute job, run 41276112019), then in one job of their own beside it (~12.5 min: 2.5 min selecting, 10 min of
     # ~300 specs, run 41373956176). Now in three, each at t=0: every shard selects the same specs (the hook's test-impact
-    # selection) and runs a third of them (PREPUSH_IDENTITY_SHARD, scripts/ci/test_shards.py: each class in exactly one shard,
-    # balanced on scripts/ci/identity-test-weights.tsv). A change the hook gives no identity check sets nothing up.
+    # selection) and runs a third of them (PREPUSH_IDENTITY_SHARD, scripts/ci/shard_tests.py: each class in exactly one shard,
+    # balanced on scripts/ci/shard-weights-identity.tsv). A change the hook gives no identity check sets nothing up.
     check-identity:
         name: check (identity ${{ matrix.shard }}/3)
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}

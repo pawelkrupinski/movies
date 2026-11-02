@@ -343,7 +343,7 @@ area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hook
 scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
 for f in hooks/pre-push hooks-path.sh tool-conventions.sh ci/commit_rules.py; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
-cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/test_shards.py" "$area/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$area/scripts/ci/"
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
 basic sbt Test/compile

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""test_shards.py: the n shards together run exactly the input's classes and lines, each once, each class under its
+"""shard_tests.py: the n shards together run exactly the input's classes and lines, each once, each class under its
 own line's command and arguments; one shard is the input; the split is deterministic and balanced by weight.
-Run: python3 scripts/ci/test_shards_test.py"""
+Run: python3 scripts/ci/shard_tests_test.py"""
 import os
 import random
 import subprocess
@@ -10,9 +10,9 @@ import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import test_shards as t  # noqa: E402
+import shard_tests as t  # noqa: E402
 
-TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_shards.py")
+TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shard_tests.py")
 
 
 def runs(lines):

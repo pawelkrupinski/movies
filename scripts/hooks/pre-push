@@ -1061,14 +1061,13 @@ run_local_tests() { # <set>
         fi
     fi
     # THE IDENTITY SHARDS (precommit-check.yml's `check (identity k/n)` jobs): PREPUSH_IDENTITY_SHARD=<k>/<n> runs shard k of
-    # the selected lines (scripts/ci/test_shards.py: every class in exactly one shard, under its own line's command and
+    # the selected lines (scripts/ci/shard_tests.py: every class in exactly one shard, under its own line's command and
     # arguments; a line naming no class outright whole in one). The n jobs together run what one job ran.
     if [ "$1" = identity ] && [ -n "${PREPUSH_IDENTITY_SHARD:-}" ] && [ "${#cmds[@]}" -gt 0 ]; then
-        local sharded=() weights=()
-        # the weights only balance the shards: without them every class weighs the same
-        [ -f scripts/ci/identity-test-weights.tsv ] && weights=(--weights scripts/ci/identity-test-weights.tsv)
-        printf '%s\n' "${cmds[@]}" | python3 scripts/ci/test_shards.py --shard "$PREPUSH_IDENTITY_SHARD" \
-            ${weights[@]+"${weights[@]}"} > "$tmp/identity.shard" \
+        local sharded=()
+        # balanced on scripts/ci/shard-weights-identity.tsv (absent: every class weighs the same)
+        printf '%s\n' "${cmds[@]}" | python3 scripts/ci/shard_tests.py --shard "$PREPUSH_IDENTITY_SHARD" --weights identity \
+            > "$tmp/identity.shard" \
             || { warn "identity: shard $PREPUSH_IDENTITY_SHARD could not be cut"; return 1; }
         while IFS= read -r line; do [ -n "$line" ] && sharded+=("$line"); done < "$tmp/identity.shard"
         log "identity: shard $PREPUSH_IDENTITY_SHARD, $(wc -w < "$tmp/identity.shard" | tr -d ' ') words of ${#cmds[@]} line(s)"

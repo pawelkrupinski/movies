@@ -12,13 +12,14 @@ glob, an exclusion, `<module>/test`, any other command) is never split: it goes 
 assignment is longest-first onto the least-loaded shard (classes weighted by --weights' seconds, an unknown class by
 --default-weight, an unsplit line by --whole-weight), ties to the lowest shard: deterministic for one input.
 
-So the union of the n shards' lines runs exactly the input's classes and lines, each once (test_shards_test.py proves it
+So the union of the n shards' lines runs exactly the input's classes and lines, each once (shard_tests_test.py proves it
 over random inputs).
 
-Usage: test_shards.py --shard K/N [--weights FILE] < sbt lines   the shard's lines, in the input's order
+Usage: shard_tests.py --shard K/N [--weights FILE|NAME] < sbt lines   the shard's lines, in the input's order
 """
 
 import argparse
+import os
 import re
 import sys
 
@@ -38,9 +39,14 @@ def parse(line):
 
 
 def read_weights(path):
+    """<class> <seconds> rows. A bare NAME is shard-weights-NAME.tsv beside this tool; absent, no weights."""
     weights = {}
     if not path:
         return weights
+    if "/" not in path:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"shard-weights-{path}.tsv")
+        if not os.path.exists(path):
+            return weights
     with open(path, encoding="utf-8") as fh:
         for raw in fh:
             raw = raw.split("#", 1)[0].strip()
@@ -89,7 +95,7 @@ def shard(lines, k, n, weights=None, default_weight=3.0, whole_weight=600.0):
 def main(argv):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--shard", required=True, help="K/N, 1-based")
-    ap.add_argument("--weights", help="TSV: <class> <seconds>, # comments")
+    ap.add_argument("--weights", help="a TSV of <class> <seconds> rows (# comments), or NAME: shard-weights-NAME.tsv here")
     ap.add_argument("--default-weight", type=float, default=3.0)
     ap.add_argument("--whole-weight", type=float, default=600.0)
     a = ap.parse_args(argv)
