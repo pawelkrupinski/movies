@@ -204,7 +204,8 @@ private[identity] object TitleShapeMeasures {
         val stop = head.reverse.takeWhile(c => !c.isLetterOrDigit)
         val spaced = stop.exists(_.isWhitespace)
         val allowed = stop.trim.isEmpty || stop.trim.forall(".!?…".contains(_)) || (stop.trim.forall("-–—".contains(_)) && !spaced)
-        Option.when(allowed && head.exists(_.isLetter) && tail.exists(_.isLetter))(Seq(head.trim.stripSuffix(stop.trim).trim, tail.trim))
+        Option.when(allowed && head.exists(_.isLetter) && tail.exists(_.isLetter) && bracketsClosed(head))(
+          Seq(head.trim.stripSuffix(stop.trim).trim, tail.trim))
       }
       // a closing run of capitals
       val closing = words.reverseIterator.takeWhile(m => capitals(m.matched) || !lettered(m.matched)).size
@@ -216,6 +217,9 @@ private[identity] object TitleShapeMeasures {
       (tailRun.toSeq ++ headRun.toSeq).flatten.filter(_.nonEmpty)
     }
   private val CaseWord = """[\p{L}\p{N}][\p{L}\p{N}'’]*""".r
+  /** Does `head` close every bracket it opens? A case change inside a bracket is the note's, never a strand's stop: PL
+   *  "KADR JUNIOR (6-12 lat): …" split at "lat" searched "KADR JUNIOR (6-12". */
+  private def bracketsClosed(head: String): Boolean = head.count(c => c == '(' || c == '[') == head.count(c => c == ')' || c == ']')
 
   /** The title before a box office's certificate note the billing runs on past — "Ken Russell's The Devils (18)
    *  Directors Cut", "Wicker (15) 105 mins 05.01.27" (UK, prod 2026-11-01): the ingest's peel takes a closing note only

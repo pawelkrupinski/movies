@@ -88,6 +88,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // a sentence's stop between words of one case is the title's ("Szkoła magicznych zwierząt. Tajemnica…")
     IdentityMeasures.caseSplit("Szkoła magicznych zwierząt. Tajemnica szkolnego podwórka") shouldBe empty
     IdentityMeasures.caseSplit("DIUNA: CZĘŚĆ TRZECIA") shouldBe empty
+    // a case change inside a bracket is the note's: no split leaves a bracket open
+    IdentityMeasures.caseSplit("KADR JUNIOR (6-12 lat): Baranek Shaun i kudłata bestia") shouldBe empty
     // what follows the stop must be an edition's words only
     shapes("Dune: Part Two") should not contain "Dune"
     IdentityMeasures.shapes(Seq("Dune: Part One Reissue")) should not contain "Dune"
