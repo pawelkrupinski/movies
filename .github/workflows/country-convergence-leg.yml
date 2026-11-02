@@ -799,7 +799,7 @@ jobs:
                   scripts/ci/mongo-top.sh start || true
                   profile=()
                   if [ "${{ inputs.profile }}" = true ]; then
-                      profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
+                      profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true" "-J-XX:FlightRecorderOptions=stackdepth=1024")
                   fi
                   read -ra jvm <<< "$JVM_OPTIONS"
                   sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
