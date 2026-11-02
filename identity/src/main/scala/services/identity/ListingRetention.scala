@@ -7,16 +7,18 @@ import services.movies.{ListingKey, TitleNormalizer}
  * from all cinemas data until there are no showtimes in any cinema in the country", "and update the details when it
  * comes back"). A listing that leaves -- its venue's page or its showings dropped -- leaves the cinema data the site
  * serves at once, but its facts (year, runtime, director, original title, poster, the days it screened on, the links that
- * decided its film) stay in the model's input
- * while a present listing of the country still bills its title; they go once none does. A listing that comes back
- * replaces what was kept of it: its current data wins, never a frozen copy.
+ * decided its film) stay in the model's input while a present listing of the country bills its title. A listing that
+ * comes back replaces what was kept of it: its current data wins, never a frozen copy.
  *
- * The rule is data, not stickiness: a pure function of the listings that left, the ones present and the ones kept
- * before, applied where listings are fed to the model (the worker's drain, the drift replay, the equivalence spec's
- * histories), so a whole resolve of the inputs and the incremental model read the same set. The set kept is persisted
- * (`identity_retained`): the worker's take-up resumes it ([[restored]]) rather than losing it at a restart, and the nightly
- * recording captures it, so every replay of a recording -- the convergence rows, the takes check -- reads the model's
- * input as production holds it: the listings billed and the ones kept. It is why DE Metropol's bare
+ * A PURE FUNCTION of the inputs (the owner's R1, no stickiness; flip-unification design §7, retention as a pure
+ * function). The input is every listing that left -- [[Departed]]: its last-seen facts and when it left -- and the
+ * listings billed now. What is kept is [[retained]] of the two, read afresh on every resolve, incremental or whole: never
+ * a set decided at the moment a listing left. A listing that left while nothing related to it is kept again the moment a
+ * related one is billed, so "A leaves, then B arrives" and "B arrives, then A leaves" keep the same set (before
+ * 2026-11-03 the first dropped A for good: G1 of the flip audit). The departed listings are persisted
+ * (`identity_retained`): the worker's take-up reads them, and the nightly recording captures them, so every replay of a
+ * recording reads the model's input as production holds it. What bounds them is a pure rule too: a listing departed
+ * more than [[MaxAge]] ago is no input ([[live]]), whatever came before or after. It is why DE Metropol's bare
  * "Madoka Magica - Der Film: Rebellion" keeps Filmhaus (Langerringen)'s dated facts while Filmhaus is away, and stays on
  * the 2013 film (drift slices: Madoka, CinemaxX "Titans", Hasetor "Scott & Lila").
  *
@@ -26,9 +28,21 @@ import services.movies.{ListingKey, TitleNormalizer}
  */
 object ListingRetention {
 
-  /** What a leave comes to: the listings kept, their showings dropped, and the keys that go -- the ones that left and are
-   *  not kept, and the ones kept before whose title no present listing bills any more. */
-  final case class Left(kept: Seq[Listing], dropped: Seq[ListingKey])
+  /** A listing that left: its facts as last billed, and when it left (epoch millis; [[Unknown]] for one persisted before
+   *  departures were dated, which the take-up dates to itself). An INPUT, never a decision: whether it is kept is read
+   *  afresh from the listings billed ([[retained]]). */
+  final case class Departed(listing: Listing, at: Long)
+
+  /** The departure time of a listing persisted before departures were dated (`identity_retained` before 2026-11-03). */
+  val Unknown: Long = 0L
+
+  /** How long a departed listing stays an input: past it, its facts go whatever is billed. A pure bound on the store, by
+   *  the departure's age alone -- never by the order of leaves and arrivals. Two months covers a film's run and a venue's
+   *  later repeat of it. */
+  val MaxAge: java.time.Duration = java.time.Duration.ofDays(60)
+
+  /** Is `departed` an input at `now`: it left no more than [[MaxAge]] before. */
+  def live(departed: Departed, now: Long): Boolean = now - departed.at <= MaxAge.toMillis
 
   /** A listing as kept: whole. The model's input holds no showing (time, screen, booking), only the DAYS a listing
    *  screens on, and those are facts of it: they date the broadcast a relay screens (UK "Royal Ballet and Opera: Alice's
@@ -38,30 +52,44 @@ object ListingRetention {
    *  so a kept listing never overrules, nor joins, what the present listings' own sources decide (DE "Eternity"). */
   def kept(listing: Listing): Listing = listing.copy(kept = true)
 
-  /** `gone`, listings that just left, against `present` (those still showing after the leave) and `retained` (those kept
-   *  before): each gone listing a present one relates to by title ([[TitleRelation.related]]) is kept, showings dropped;
-   *  every other goes, and so does every retained one no present listing relates to any more. DE Filmhaus Kino Koeln's
-   *  "BLACK WATER (2025)" is kept while Kinocenter Giessen bills "Black Water (GLOBALE)", UK Picture House Keighley's
-   *  "The Ladykillers (1955)" while Nerve Centre bills "The Ladykillers | Cinematic Breakfast": the model joins each pair
-   *  by title, and each went and came back with the order the present one's answers arrived in when retention read a
-   *  title key of its own (drift slices kinocenter-giessen-black-water-globale, nerve-centre-londonderry-the-ladykillers). */
+  /** The listings kept of `departed` (those that left) against `present` (those billed now), each marked [[kept]]: every
+   *  departed listing no present one is under whose title a present listing relates to ([[TitleRelation.related]]). A
+   *  pure function of the two sets: whole resolves, the worker's drain, its take-up and every replay read it alike. DE
+   *  Filmhaus Kino Koeln's "BLACK WATER (2025)" is kept while Kinocenter Giessen bills "Black Water (GLOBALE)", UK Picture
+   *  House Keighley's "The Ladykillers (1955)" while Nerve Centre bills "The Ladykillers | Cinematic Breakfast": the model
+   *  joins each pair by title (drift slices kinocenter-giessen-black-water-globale, nerve-centre-londonderry-the-ladykillers). */
+  def retained(departed: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer): Seq[Listing] =
+    retained(departed, present, normalizer, (listing: Listing) => TitleRelation.of(listing, normalizer))
+
+  /** [[retained]], each listing's title read by `forms` (the worker's cache of them). */
+  def retained(departed: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer, forms: Listing => TitleRelation.Forms): Seq[Listing] = {
+    val billed = present.iterator.map(_.key).toSet
+    val gone   = departed.filterNot(listing => billed(listing.key))
+    if (gone.isEmpty || present.isEmpty) Nil
+    else {
+      val showing = new TitleRelation.Showing(present.map(forms), gone.map(forms), normalizer)
+      gone.filter(listing => showing.relates(forms(listing))).map(kept)
+    }
+  }
+
+  /** [[retained]] of the departed listings that are inputs at `now` ([[live]]). */
+  def retainedAt(departed: Iterable[Departed], present: Seq[Listing], now: Long, normalizer: TitleNormalizer,
+                 forms: Listing => TitleRelation.Forms): Seq[Listing] =
+    retained(departed.iterator.filter(live(_, now)).map(_.listing).toSeq, present, normalizer, forms)
+
+  /** The decision at a leave the worker's drain and the replays still read until they read [[retained]] (next step). */
+  final case class Left(kept: Seq[Listing], dropped: Seq[ListingKey])
+
   def leave(gone: Seq[Listing], present: Iterable[Listing], retained: Iterable[Listing], normalizer: TitleNormalizer): Left = {
     val forms = (listing: Listing) => TitleRelation.of(listing, normalizer)
     leave(gone, retained, new TitleRelation.Showing(present.toSeq.map(forms), (gone ++ retained).map(forms), normalizer), forms)
   }
 
-  /** What was kept before (`stored`: the worker's persisted set, or a recording's capture of it) as it stands against
-   *  `present`, the listings billed now: [[leave]] of every stored listing no present one replaced, as if each had just
-   *  left. Kept, those whose title a present listing bills; dropped, the rest. A listing back replaces what was kept
-   *  of it: a stored listing under a present key is neither. How the worker's take-up resumes the set it kept, and how
-   *  every replay of a recording reads the model's input beyond the listings billed (the convergence rows, the takes
-   *  check), so all of them hold the same set. */
   def restored(stored: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer): Left = {
     val billed = present.iterator.map(_.key).toSet
     leave(stored.filterNot(listing => billed(listing.key)), present, Nil, normalizer)
   }
 
-  /** [[leave]] over the titles `showing` (the present listings'), each listing's title read by `forms`. */
   def leave(gone: Seq[Listing], retained: Iterable[Listing], showing: TitleRelation.Showing, forms: Listing => TitleRelation.Forms): Left = {
     val (stay, go) = gone.partition(listing => showing.relates(forms(listing)))
     val expired    = retained.iterator.filterNot(listing => showing.relates(forms(listing))).map(_.key).toSeq

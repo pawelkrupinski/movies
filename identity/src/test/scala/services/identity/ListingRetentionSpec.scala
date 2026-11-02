@@ -26,8 +26,7 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
     _ + " (GLOBALE)", _ + " (OmU)", _ + " (OV)", _ + " 3D", _ + " - IMAX")
 
   private def kept(gone: String, present: String): Boolean = {
-    val left = ListingRetention.leave(Seq(listing(0, gone)), Seq(listing(1, present)), Nil, normalizer)
-    left.kept.map(_.key) == Seq(base(0).key)
+    ListingRetention.retained(Seq(listing(0, gone)), Seq(listing(1, present)), normalizer).map(_.key) == Seq(base(0).key)
   }
 
   "a listing that leaves" should "be kept while another venue bills its title: Koeln's \"BLACK WATER (2025)\" beside Giessen's \"Black Water (GLOBALE)\"" in {
@@ -48,24 +47,35 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
   it should "be kept while a strand bills its title as a piece: Keighley's \"The Ladykillers (1955)\" beside " +
     "Nerve Centre's \"The Ladykillers | Cinematic Breakfast\" (drift slice nerve-centre-londonderry-the-ladykillers)" in {
     val uk   = TitleNormalizer.forCountry(models.Country.UnitedKingdom)
-    val left = ListingRetention.leave(Seq(listing(0, "The Ladykillers (1955)", uk)),
-      Seq(listing(1, "The Ladykillers | Cinematic Breakfast", uk)), Nil, uk)
-    left.kept.map(_.key) shouldBe Seq(base(0).key)
+    ListingRetention.retained(Seq(listing(0, "The Ladykillers (1955)", uk)),
+      Seq(listing(1, "The Ladykillers | Cinematic Breakfast", uk)), uk).map(_.key) shouldBe Seq(base(0).key)
   }
 
   it should "go when no present listing bills its title" in {
     kept("BLACK WATER (2025)", "White Water (GLOBALE)") shouldBe false
   }
 
-  "a listing kept before" should "be kept again by a restore while a present listing bills its title, and dropped once none does" in {
-    val stored = Seq(listing(0, "BLACK WATER (2025)"))
-    ListingRetention.restored(stored, Seq(listing(1, "Black Water (GLOBALE)")), normalizer).kept.map(_.key) shouldBe Seq(base(0).key)
-    val gone = ListingRetention.restored(stored, Seq(listing(1, "White Water")), normalizer)
-    (gone.kept, gone.dropped) shouldBe ((Nil, Seq(base(0).key)))
+  "a listing that left" should "be kept again the moment a present listing bills its title, and not once none does: " +
+    "read from the inputs, never from what was kept before" in {
+    val departed = Seq(listing(0, "BLACK WATER (2025)"))
+    ListingRetention.retained(departed, Seq(listing(1, "White Water")), normalizer) shouldBe empty
+    ListingRetention.retained(departed, Seq(listing(1, "Black Water (GLOBALE)")), normalizer).map(_.key) shouldBe Seq(base(0).key)
+    ListingRetention.retained(departed, Seq(listing(1, "White Water")), normalizer) shouldBe empty
+  }
+
+  it should "be marked kept: an input fact the resolve reads" in {
+    ListingRetention.retained(Seq(listing(0, "Black Water")), Seq(listing(1, "Black Water")), normalizer).map(_.kept) shouldBe Seq(true)
   }
 
   it should "be neither kept nor dropped once it is billed again: its current data wins" in {
-    val back = ListingRetention.restored(Seq(listing(0, "Black Water")), Seq(listing(0, "Black Water"), listing(1, "Black Water")), normalizer)
-    (back.kept, back.dropped) shouldBe ((Nil, Nil))
+    ListingRetention.retained(Seq(listing(0, "Black Water")), Seq(listing(0, "Black Water"), listing(1, "Black Water")), normalizer) shouldBe empty
+  }
+
+  it should "be an input no longer past MaxAge, whatever is billed: the store's bound is the departure's age alone" in {
+    val left    = ListingRetention.Departed(listing(0, "Black Water"), at = 1000L)
+    val present = Seq(listing(1, "Black Water"))
+    def keptAt(now: Long) = ListingRetention.retainedAt(Seq(left), present, now, normalizer, TitleRelation.of(_, normalizer)).map(_.key)
+    keptAt(1000L + ListingRetention.MaxAge.toMillis) shouldBe Seq(base(0).key)
+    keptAt(1001L + ListingRetention.MaxAge.toMillis) shouldBe empty
   }
 }
