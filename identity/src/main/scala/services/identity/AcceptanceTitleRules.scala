@@ -122,7 +122,10 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
       _      <- needOf(!alternativeAgainstTmdbsSearch(scored, ranked), "a bare billing names the film only by an alternative title, " +
                   "and TMDB's search of it finds other films, not this one", scored, s"title=${scored.category("title").getOrElse("absent")}")
       _      <- noneOf(eligible.find(searchNamesAnother(scored, _)), "TMDB ranks another film the title names above it", scored)
-      _      <- notAnotherInstalment(scored)
+      // a billing that is the film's own title but for a slip numbers what that title numbers (a slip is never a
+      // numeral): the series' numbered alias it shares words with is no other instalment (UK "The Hunger Games Sunrise of
+      // the Reaping" beside TMDB's numbered alias of "… Sunrise on the Reaping")
+      _      <- if (slippedTitle(scored.listing, scored.candidate.film)) Right(()) else notAnotherInstalment(scored)
       taken  <- unopposed(scored, asItsTitlesTopHit(scored), eligible)
     } yield taken
   }
