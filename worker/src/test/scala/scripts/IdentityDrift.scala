@@ -467,6 +467,9 @@ object IdentityDrift {
 
   // ── the incremental sequence ─────────────────────────────────────────────────────────────
 
+  /** How many of an update's regions the replay's model resolves side by side: every core the JVM is given. */
+  val RegionThreads: Int = math.max(1, Runtime.getRuntime.availableProcessors)
+
   /** A worker's identity state over one sequence of events: the model, the stage, their stores and the answers filed. */
   final class Worker(reads: Reads, seed: Long, gatePercent: Int, val clock: MutableClock, filedDocs: FiledDocs = Noted) {
     private val share    = new Share(seed, gatePercent)
@@ -479,7 +482,10 @@ object IdentityDrift {
     private val keys     = new agreement.InMemoryAgreementKeys
     private var rules    = "rules-1"
     private val inputs   = inputsOf(reads)
-    private def newModel() = inputs.incremental(gate, reads.normalizer, families, code = rules, IdentityTraceSink.Discard)
+    // an update's regions resolved on every core: the replay is the model's work event after event, one thread's while
+    // they were resolved in turn (a drift row busy on 2 of its 4 cores; docs/investigations/2026-11-01-twenty-runners.md)
+    private def newModel() = inputs.incremental(gate, reads.normalizer, families, code = rules, IdentityTraceSink.Discard,
+      regionThreads = RegionThreads)
     var model: IncrementalResolver = newModel()
     /** A stage wired to the answer feed as the worker wires the live one (IdentityProjectionWiring.agreementStage): the
      *  TMDB finds and records it waits on, and the records and searches it read, move its answers' version when filed. */

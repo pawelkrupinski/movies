@@ -77,17 +77,18 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // gets a fresh copy of the film, whose cached title forms are computed for that use and dropped
   // with it, never kept on the ~30k resident records (1.6M strings on the UK corpus when they were).
   def candidate(id: Int): Option[Candidate] = candidates.get(id).map(fresh)
-  // Read many times per resolve, changed per event: each view is built once after it changes.
+  // Read many times per resolve, changed per event: each view is built once after it changes. Built under the corpus's
+  // lock: an update's regions may be resolved side by side (IncrementalResolver's `regionThreads`), each reading them.
   private var housesView: Option[StageRelays.Houses] = None
   private val groupView   = mutable.HashMap.empty[String, Seq[(String, IdentityMeasures.Listing)]]
   private val reachedView = mutable.HashMap.empty[String, Seq[(String, Set[Int])]]
-  def houses: StageRelays.Houses = housesView.getOrElse { val built = StageRelays.Houses(houseOf.toMap); housesView = Some(built); built }
+  def houses: StageRelays.Houses = synchronized(housesView.getOrElse { val built = StageRelays.Houses(houseOf.toMap); housesView = Some(built); built })
   def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = rankingOf.toMap
   def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] =
-    groupView.getOrElseUpdate(key, groups.get(key).fold(Seq.empty)(_.values.flatten.toSeq))
+    synchronized(groupView.getOrElseUpdate(key, groups.get(key).fold(Seq.empty)(_.values.flatten.toSeq)))
   def wholeTitle(sanitised: String): Boolean = wholes.contains(sanitised)
   def segmentSpread(sanitised: String): Int = spreads.get(sanitised).fold(0)(_.size)
-  def reachedBy(key: String): Seq[(String, Set[Int])] = reachedView.getOrElseUpdate(key, reachedByKey.get(key).fold(Seq.empty)(_.toSeq))
+  def reachedBy(key: String): Seq[(String, Set[Int])] = synchronized(reachedView.getOrElseUpdate(key, reachedByKey.get(key).fold(Seq.empty)(_.toSeq)))
   def ranked(query: CandidateQuery): Option[Seq[Int]] = named.get(query).flatten
   override def evidenceOf(listing: Listing): Option[Evidence] =
     listings.get(listing.key).flatMap(heads.get).collect { case (head, evidence) if head == listing.key => evidence }

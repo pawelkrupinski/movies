@@ -195,6 +195,26 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
   }
 
   // `sizes` counted the families over the default region (500 listings), whatever region the model resolves by.
+  // The drift replay resolves an update's regions side by side (`regionThreads`): each region reads only the context, the
+  // lookups and the listings held, and the round's results are folded in batch order, so every decision is the same.
+  it should "decide the same when an update's regions are resolved side by side, event after event" in {
+    val cases = Seeds.map(seed => (s"seed $seed", GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)))
+      .map { case (label, c) => (label, c.listings, c.lookups) } ++ crossFamily
+    IndependentCases.flatMap(cases) { case (label, listings, lookups) =>
+      val alone  = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = 3)
+      val beside = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = 3,
+        regionThreads = 4)
+      val rnd    = new Random(listings.size.toLong)
+      val halves = rnd.shuffle(listings).splitAt(listings.size / 2)
+      val events = Seq[IncrementalResolver => Unit](_.batch(seen = halves._1), _.batch(seen = halves._2),
+        _.batch(gone = halves._1.take(5).map(_.key)), _.batch(seen = halves._1.take(5)))
+      events.zipWithIndex.flatMap { case (event, step) =>
+        event(alone); event(beside)
+        Option.when(ResolutionSignature.of(beside) != ResolutionSignature.of(alone) || beside.familyOf != alone.familyOf)(s"$label, event $step")
+      }
+    } shouldBe empty
+  }
+
   it should "count as large the families over its own region, as the model bounds one" in {
     val corpus = GeneratedIdentityCorpus.generate(7L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = 1)

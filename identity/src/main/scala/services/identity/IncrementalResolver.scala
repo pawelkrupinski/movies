@@ -35,7 +35,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
                                 rules: String = "",
                                 regionBatch: Int = IncrementalResolver.RegionBatch,
                                 mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None,
-                                traces: IdentityTraceSink = IdentityTraceSink.Discard) {
+                                traces: IdentityTraceSink = IdentityTraceSink.Discard,
+                                regionThreads: Int = 1) {
   import IdentityResolver.RegionFamily
   import IncrementalResolver.Mutation
 
@@ -215,28 +216,30 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // as large as the families it holds, never as every family an event touched.
     while (units.nonEmpty) {
       val next = mutable.ArrayBuffer.empty[Set[ListingKey]]
-      IncrementalResolver.pack(units, regionBatch).foreach { batch =>
-        val listings = batch.toSeq.flatMap(heldListing)
-        if (listings.nonEmpty) {
-          val result = clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context))
-          reResolved += result.size
-          result.foreach { family =>
-            val joined = if (mutation == Mutation.NoExpansion) Set.empty[Int]
-                         else family.blockKeys.flatMap(key => familiesOfKey.getOrElse(key, Set.empty)) -- replaced
-            val back   = if (mutation == Mutation.NoExpansion) Seq.empty[RegionFamily]
-                         else family.blockKeys.iterator.flatMap(settledOfKey.getOrElse(_, Nil)).distinct.flatMap(settled.get)
-                           .filter(_.blockKeys.exists(family.blockKeys)).toSeq
-            if (joined.isEmpty && back.isEmpty) {
-              settled(family.listings) = family
-              family.blockKeys.foreach(key => settledOfKey.getOrElseUpdate(key, mutable.HashSet.empty) += family.listings)
-            } else {
-              back.foreach { again =>
-                settled.remove(again.listings)
-                again.blockKeys.foreach(key => settledOfKey.get(key).foreach(_ -= again.listings))
-              }
-              replaced ++= joined
-              next += family.listings ++ joined.flatMap(id => families(id).resolved.listings) ++ back.flatMap(_.listings)
+      // A round's regions read the context, the lookups and the listings held, none of which the round's own results
+      // move (they are folded in below, in batch order): resolved side by side on `regionThreads`, each region is what
+      // it would be resolved alone, and the fold is the same.
+      val regions = IncrementalResolver.pack(units, regionBatch).map(batch => batch.toSeq.flatMap(heldListing)).filter(_.nonEmpty)
+      val resolved = IncrementalResolver.inOrder(regions, regionThreads)(listings =>
+        clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context)))
+      resolved.foreach { result =>
+        reResolved += result.size
+        result.foreach { family =>
+          val joined = if (mutation == Mutation.NoExpansion) Set.empty[Int]
+                       else family.blockKeys.flatMap(key => familiesOfKey.getOrElse(key, Set.empty)) -- replaced
+          val back   = if (mutation == Mutation.NoExpansion) Seq.empty[RegionFamily]
+                       else family.blockKeys.iterator.flatMap(settledOfKey.getOrElse(_, Nil)).distinct.flatMap(settled.get)
+                         .filter(_.blockKeys.exists(family.blockKeys)).toSeq
+          if (joined.isEmpty && back.isEmpty) {
+            settled(family.listings) = family
+            family.blockKeys.foreach(key => settledOfKey.getOrElseUpdate(key, mutable.HashSet.empty) += family.listings)
+          } else {
+            back.foreach { again =>
+              settled.remove(again.listings)
+              again.blockKeys.foreach(key => settledOfKey.get(key).foreach(_ -= again.listings))
             }
+            replaced ++= joined
+            next += family.listings ++ joined.flatMap(id => families(id).resolved.listings) ++ back.flatMap(_.listings)
           }
         }
       }
@@ -364,6 +367,20 @@ object IncrementalResolver {
       }
   }
 
+  /** `f` of each of `items`, in their order: on the calling thread, or on `threads` threads of a pool made for the call
+   *  (each item's work its own; the results gathered in order, the first failure thrown). The caller's switched-off
+   *  rules ([[RuleAblation]], held per thread) hold on every thread. */
+  private[identity] def inOrder[A, B](items: Seq[A], threads: Int)(f: A => B): Seq[B] =
+    if (threads <= 1 || items.sizeIs < 2) items.map(f)
+    else {
+      val off  = RuleAblation.switchedOff
+      val pool = java.util.concurrent.Executors.newFixedThreadPool(math.min(threads, items.size))
+      try items.map(item => pool.submit(() => RuleAblation.disabling(off)(f(item)))).map { future =>
+        try future.get() catch { case e: java.util.concurrent.ExecutionException if e.getCause != null => throw e.getCause }
+      }
+      finally { val _ = pool.shutdownNow() }
+    }
+
   /** The most listings resolved together — in a full build or an event's update alike. A region is
    *  bounded by it unless one family is larger; 2,000 took over a minute a region in production. */
   val RegionBatch = 500
@@ -400,7 +417,7 @@ object IncrementalResolver {
     def context[A](body: => A): A  = contexts(body)
     def resolves[A](listings: Int)(body: => A): A = {
       val started = tools.Stopwatch.start()
-      try resolving(body) finally slowest = ((started.seconds, listings) :: slowest).sortBy(-_._1).take(5)
+      try resolving(body) finally synchronized { slowest = ((started.seconds, listings) :: slowest).sortBy(-_._1).take(5) }
     }
     def slices[A](body: => A): A   = slicing(body)
     def render: String = f"context ${contexts.seconds}%.1fs, resolves ${resolving.seconds}%.1fs, slices ${slicing.seconds}%.1fs; " +
