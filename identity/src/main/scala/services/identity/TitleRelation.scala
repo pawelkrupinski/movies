@@ -79,13 +79,15 @@ object TitleRelation {
 
   /** The title must-link the model joins two nodes by, and why ([[ConstraintEdges]]: 2 the same sanitised title, 3 the same
    *  search form -- not one either title only bills BESIDE another listing's title (`beside`) -- or an original title
-   *  naming the other or both, 4 one's whole title a delimited segment of the other's). The segment's own exception, the
+   *  naming the other or both, 4 one's whole title a delimited segment of the other's). `sharedOriginal`: whether two titles
+   *  naming only the same original title link -- a link the edges draw, and cancel where the original is a feed's copy
+   *  ([[ConstraintEdges.CopiedOriginalApart]]); a sibling's denial reads none of it ([[TitleLinks.titleLinked]]). The segment's own exception, the
    *  rest of a title naming a film of its own, reads the candidates and stays with [[ConstraintEdges]]. */
-  def tier(a: Forms, b: Forms, besideA: String => Boolean, besideB: String => Boolean): Option[(Int, String)] =
+  def tier(a: Forms, b: Forms, besideA: String => Boolean, besideB: String => Boolean, sharedOriginal: Boolean = true): Option[(Int, String)] =
     if (a.whole.nonEmpty && a.whole == b.whole) Some((2, ConstraintEdges.SameTitle))
     else if (a.searchForm.nonEmpty && a.searchForm == b.searchForm && !besideA(a.searchForm) && !besideB(a.searchForm))
       Some((3, ConstraintEdges.SameSearchForm))
-    else if ((a.originals ++ b.originals).exists(o => o == a.whole || o == b.whole) || (a.originals.nonEmpty && a.originals == b.originals))
+    else if ((a.originals ++ b.originals).exists(o => o == a.whole || o == b.whole) || (sharedOriginal && a.originals.nonEmpty && a.originals == b.originals))
       Some((3, ConstraintEdges.OriginalTitle))
     else if (segmentOf(a, b) || segmentOf(b, a)) Some((4, ConstraintEdges.TitleSegment))
     else None

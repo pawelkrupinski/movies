@@ -36,9 +36,12 @@ private[identity] final class TitleLinks(normalizer: TitleNormalizer, pins: PinC
     TitleRelation.tier(forms(node), forms(other), titlesBeside(node, _), titlesBeside(other, _))
 
   /** Do two nodes' titles must-link them ([[tier]]: same sanitised title, same search form unless either bills another
-   *  listing's title beside it, an original title naming the other or both, or one a whole segment of the other)? The
-   *  relation the constraint edges join by, read for a sibling's denial too ([[Families.siblingDenying]]). */
-  def titleLinked(node: EvidenceNode, other: EvidenceNode): Boolean = tier(node, other).isDefined
+   *  listing's title beside it, an original title naming the other, or one a whole segment of the other)? The relation
+   *  the constraint edges join by, read for a sibling's denial ([[Families.siblingDenying]]) -- all but the edges' shared
+   *  original title, which they cancel where it is a feed's copy: DE "Der Zorn der Engel" (the copied original "Fallen
+   *  Angels") withdrew seven "Fallen Angels by Noël Coward" billings' own match when its denial read it. */
+  def titleLinked(node: EvidenceNode, other: EvidenceNode): Boolean =
+    TitleRelation.tier(forms(node), forms(other), titlesBeside(node, _), titlesBeside(other, _), sharedOriginal = false).isDefined
 
   /** Does `n`'s title carry, beside its search form `form`, a delimited segment that is ANOTHER
    *  listing's whole title sharing no word with the form — so that a search form it shares with
