@@ -87,18 +87,8 @@ private[identity] object Authority {
     member.seasonProduction && StageRelays.billsItsHouse(member.listing, member.candidate.film) ||
       RelayStage.particularRecordOf(member.listing, member.candidate.film)
 
-  /** May `sibling`'s `denial` withdraw `member`'s own match? Its provenance must, the member's statement must not
-   *  answer the denial ([[spares]]), and the sibling's own facts must not split on it ([[splitDenial]]). */
+  /** May `sibling`'s `denial` withdraw `member`'s own match? Its provenance must, and the member's statement must not
+   *  answer the denial ([[spares]]). */
   def withdraws(sibling: EvidenceNode, denial: Scored, member: Scored): Boolean =
-    may(of(sibling), Withdraw) && !sparesEvery(member) && denial.denial.forall(d => spares(member, d.kind).isEmpty) &&
-      !splitDenial(denial)
-
-  /** A sibling's learned listing-film rule against a film whose director the sibling itself credits: its own facts split
-   *  -- its credit names the film, its runtime or year (a Q&A event's length, a re-release's year) set it apart -- so
-   *  the rule says the sibling's screening differs, never that the member's title means another film. The member keeps
-   *  its own match; the denial still holds for the sibling. UK "Oxide Ghosts: The Brass Eye Tapes + Q&A": Cultplex
-   *  (Michael Cumming, 21 years off, +30′) withdrew MAC's own match crediting him; UK "It's Nice Up North + Q&A": Hexham
-   *  (Graham Fellows, +40′) withdrew Kendal's -- each none -> film -> none along an arrival chain. */
-  def splitDenial(denial: Scored): Boolean =
-    !denial.deniedByPin && denial.denial.exists(_.kind == Denial.Kind.Learned) && IdentityMeasures.sameDirector(denial.measures)
+    may(of(sibling), Withdraw) && !sparesEvery(member) && denial.denial.forall(d => spares(member, d.kind).isEmpty)
 }

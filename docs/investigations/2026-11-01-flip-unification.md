@@ -822,6 +822,16 @@ here. Two new drift slices from recording 41379008920 (`quad-derby-oxide-ghosts-
 fail `PopulationMonotonicitySpec` on the parent and pass here; their full-population takes move none → 475376 and
 none → 197993.
 
+**Backed out (2026-11-02).** The cumulative measure (run 41500994372) found one new wrong take: DE Centralkino
+Wittenberg "Panem-Mockingjay 1+2", a double bill of both parts, went none → 131631 (Mockingjay Teil 1). The billing
+credits Francis Lawrence, so its own learned runtime denial ("runtime.gap" against Teil 1) became a split denial and no
+longer kept the double bill out of Teil 1's family. A slice bisect over the branch (`identity-slice de --venue Wittenberg
+--title "Panem-Mockingjay 1+2" --recording 573 --fills …`) names this commit as the first to move it. Restoring only
+`Families.denies` still left it wrong: the withdrawal exemption alone lets it in. A director credit cannot tell a Q&A's
++30′ from a second feature, and no fix by the evidence was quick, so the code is reverted. The two drift slices stay;
+their three listings are known rows in `identity-population-flips-known.tsv` until a fix can tell an event's length
+from a double bill's.
+
 ### 7.9 Titans: inherent bare-borrow flip, baselined by owner decision (CinemaxX Dammtor, Raschplatz)
 
 Convergence #728 (DE takes-drift-1, seed 47; red 9400367d430f): the one node of bare "Titans" at CinemaxX Dammtor and
