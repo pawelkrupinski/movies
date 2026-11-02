@@ -119,9 +119,9 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     private def linked(node: EvidenceNode) = scope.feedLinked(node).map(_._2)
     private val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of, linked)
 
-    def decided: (Seq[ResolverEdge], Seq[ResolverDecision], Int) = (familyEdges, clusters.flatMap(decide), violations)
+    def decided: (Seq[ResolverEdge], Seq[ResolverDecision], Int) = (familyEdges, clusters.flatMap(decideWithBare), violations)
 
-    // ── BARE listings: nothing but their titles speak for them ──
+    // ── BARE listings ([[BareListing]]): decided by their own title alone, apart from the cluster the family put them in ──
     private def catalogueKeysOf(node: EvidenceNode, listing: Listing): Seq[String] = listing.catalogueIds.distinct.map(edges.catalogueKey(_, node))
     // the catalogue keys two listings of the family carry: a link of a listing's own data to another listing
     private val sharedCatalogue: Set[String] =
@@ -132,15 +132,59 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       if (node.evidence.measured.publishesAFact || families.pinnedFilm.contains(node.id)) Nil
       else node.listings.filter(listing => listing.listedCast.isEmpty && SourceReliability.tmdbLinked(listing).isEmpty &&
         !catalogueKeysOf(node, listing).exists(sharedCatalogue))
-    /** The family's bare listings: what the bare-take property ([[PopulationMonotonicity.bareMoves]]) walks. */
-    def bareListings: Set[ListingKey] = members.flatMap(bareOf).map(_.key).toSet
+    /** Each node holding bare listings: those listings, the node's own scope read for them alone, and their film. */
+    private val bare: Map[String, (Set[ListingKey], FamilyScope, Option[Int])] =
+      if (mutation == Mutation.NoVoting) Map.empty
+      else members.flatMap { node =>
+        val listings = bareOf(node)
+        Option.when(listings.nonEmpty) {
+          val own  = new FamilyScope(Seq(node), scoring, acceptance, () => (), titleOnly = true)
+          // a billing of several works is none of them, as in a cluster
+          val take = if (acceptance.billsSeveralWorks(own.of(node))) None
+                     else BareListing.take(own.of(node), own.takenAlone(node).map(_._1._1.candidate.tmdbId))
+          node.id -> (listings.map(_.key).toSet, own, take)
+        }
+      }.toMap
+    private val bareKeys: Set[ListingKey] = bare.values.flatMap(_._1).toSet
+    def bareListings: Set[ListingKey] = bareKeys
+
+    /** A cluster's decisions with its bare listings taken out: each node's bare listings decided by their own title alone,
+     *  the rest as the cluster would be, its film kept (a bare node lends the rest the film it was joined by). */
+    private def decideWithBare(cluster: Seq[EvidenceNode]): Seq[ResolverDecision] = {
+      val holding = cluster.filter(node => bare.contains(node.id))
+      if (holding.isEmpty) decide(cluster)
+      else {
+        val film = cluster.iterator.flatMap(node => filmOf(node.id)).nextOption()
+        val rest = cluster.filterNot(node => bare.get(node.id).exists(_._1.size == node.listings.size))
+        Option.when(rest.nonEmpty)(rest).toSeq.flatMap(decide(_, id => filmOf(id).orElse(film))).flatMap(without(bareKeys)) ++
+          holding.flatMap(bareDecision)
+      }
+    }
+
+    // a decision with `keys` taken out of its members, none when it keeps none
+    private def without(keys: Set[ListingKey])(decision: ResolverDecision): Option[ResolverDecision] =
+      if (!decision.members.exists(keys)) Some(decision)
+      else Option.when(decision.members.exists(key => !keys(key)))(keeping(decision, decision.members.filterNot(keys)))
+
+    private def keeping(decision: ResolverDecision, members: Seq[ListingKey]): ResolverDecision = {
+      val kept = members.toSet
+      decision.copy(members = members)(decision.trace.copy(nodes = decision.trace.nodes.filter { case (key, _) => kept(key) }))
+    }
+
+    private def bareDecision(node: EvidenceNode): Option[ResolverDecision] = {
+      val (keys, own, take) = bare(node.id)
+      val decided = decisions.of(Seq(node), own, _ => take, take.map(node.id -> _).toMap, Map.empty, familyEdges, clusterIndex)
+      val why     = if (take.isDefined) Nil else Seq(BareListing.whyNone(own.of(node)))
+      val marked  = decided.copy(explanation = why ++ decided.explanation, fallback = None)(decided.trace.copy(bare = true))
+      Some(keeping(marked, marked.members.filter(keys)))
+    }
 
     /** One cluster's decisions: the cluster's own, or — where some of its members bill several works, bill its film as
      *  one piece beside another thing, or take it uncorroborated — the rest's, and each such group's as none. */
-    private def decide(cluster: Seq[EvidenceNode]): Seq[ResolverDecision] = {
+    private def decide(cluster: Seq[EvidenceNode], taking: String => Option[Int] = id => filmOf(id)): Seq[ResolverDecision] = {
       val (bills, unbilled) = cluster.partition(node => billing(node.id))
       // a member billing its cluster's film as one piece beside another thing is none of it either — unless a pin took it
-      val film   = cluster.iterator.flatMap(node => filmOf(node.id)).nextOption()
+      val film   = cluster.iterator.flatMap(node => taking(node.id)).nextOption()
       val pinned = cluster.exists(node => families.pinnedFilm.contains(node.id))
       val piecesOf = billedAsPieces(unbilled, film, pinned)
       val placed = unbilled.filterNot(piecesOf.contains)
@@ -148,7 +192,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, linked, familyEdges, backed)).toMap
       val rest   = placed.filterNot(weak.contains)
       if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
-        Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
+        Seq(decisions.of(cluster, scope, taking, accepted, votes, familyEdges, clusterIndex))
       else
         restDecided(rest, film) ++
           Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), DecisionTrace.BillsBoth)) ++

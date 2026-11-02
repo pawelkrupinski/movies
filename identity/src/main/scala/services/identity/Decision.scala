@@ -139,8 +139,7 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
                              *  siblings' own statements, with those films and their venues ([[ClusterVoting.ownBacked]]):
                              *  what the population report counts as a contested bare listing. No take reads it. */
                             contested: Map[ListingKey, Map[Int, Set[String]]] = Map.empty,
-                            /** The BARE listings: of a node publishing no fact, with no cast, pin, feed link or catalogue id
-                             *  shared with another listing of their own (the bare-take property's subjects). */
+                            /** The listings of BARE nodes ([[BareListing]]): each decided by its own title alone. */
                             bare: Set[ListingKey] = Set.empty) {
   def families: Int = familyOf.values.toSet.size
   /** The partition over listing keys — what the order-independence properties compare. */
@@ -161,7 +160,10 @@ final case class ResolverEdge(a: String, b: String, must: Boolean, tier: Int, re
  *  @param stage   the rule a stage after the model took (or withdrew) the film by, as one id — `fill:<rule>`,
  *                 `correction:<evidence>`, `withdrawal:<evidence>` ([[agreement.AgreementStage]]); none for the model's own */
 final case class DecisionTrace(pooled: Option[String], vetoed: Option[DecisionTrace.Veto], nodes: Map[ListingKey, DecisionTrace.Node],
-                               stage: Option[String] = None) {
+                               stage: Option[String] = None,
+                               /** A BARE node's decision ([[BareListing]]): its own title decided it, and no stage after
+                                *  the model reads it again -- a fill or a correction would read the venues around it. */
+                               bare: Boolean = false) {
   /** `key`'s rule ids, by kind: `accept:`, `pooled:`, `veto:`, `join:`, `apart:`, and for a member no rule took alone,
    *  `refused:<rule>:<the first condition that stopped it>` for each rule. */
   def rulesOf(key: ListingKey): Seq[String] = {
@@ -198,8 +200,12 @@ object DecisionTrace {
   val BillsBoth: String      = "bills both works"
   val BilledAsPiece: String  = "billed as one piece"
   val Uncorroborated: String = "uncorroborated namesake"
+  /** A bare node decided by its own title alone ([[BareListing]]). */
+  val Bare: String           = "bare listing"
   val Apart: Set[String]     = Set(BillsBoth, BilledAsPiece, Uncorroborated)
   val Empty: DecisionTrace = DecisionTrace(None, None, Map.empty)
+  /** What the model keeps of a bare node's decision: that it is one, so a stage after it leaves it as decided. */
+  val BareKept: DecisionTrace = DecisionTrace(None, None, Map.empty, bare = true)
 
   /** What of `decision`'s trace the model keeps with it, and stores: what a stage after the model reads of it
    *  ([[UnifiedEvidence]]'s `rule.*` signals and the guards they lift, read by the fill of a no-match) — of a no-match, the
@@ -208,7 +214,8 @@ object DecisionTrace {
    *  model kept no trace, so prod's fill never read a `rule.*` signal a whole resolve's did). Of members the model decided
    *  apart, nothing either: the rules their nodes accepted the film by are the model's own overruled ([[decidedApart]]). */
   def kept(decision: ResolverDecision): DecisionTrace =
-    if (decision.film.isDefined || decision.trace.decidedApart) Empty
+    if (decision.trace.bare) BareKept
+    else if (decision.film.isDefined || decision.trace.decidedApart) Empty
     else {
       val nodes = decision.trace.nodes.collect { case (key, node) if node.accepted.isDefined => key -> Node(node.accepted, Nil, Nil, candidate = node.candidate) }
       if (nodes.isEmpty && decision.trace.pooled.isEmpty) Empty else DecisionTrace(decision.trace.pooled, None, nodes)

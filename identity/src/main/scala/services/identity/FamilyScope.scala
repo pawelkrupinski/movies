@@ -18,8 +18,11 @@ import scala.collection.mutable
  *  AGREE OR NONE (2026-10-29), which took no film where the pool with and without the pending films disagreed: UK
  *  flicks.co.uk "Rose (2023)" now serves "Rose Parade 2023", its search's one hit, provisionally until the parade's record
  *  denies it, and the pending tally (IdentityDrift) counts how often such a take differs from the final one. */
+/* `titleOnly`: the scope of a BARE listing's node ([[BareListing]]), read for that listing alone: no feed link a sibling
+ * listing of its node carries is read for it. */
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
-                                          counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false) {
+                                          counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false,
+                                          titleOnly: Boolean = false) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyAProgrammeSlot, namesOnlyATag, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, candidateOf, fallbackOf, sharedOf}
 
@@ -217,7 +220,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLink.linked]]) — none where this resolve's films are a
    *  family's own numbers, which no TMDB id names ([[IdentityLookups.numbersFilmsByTmdbId]]). */
   private[identity] def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    if (scoring.generation.numbersFilmsByTmdbId) FeedLink.linked(node.listings) else None
+    if (scoring.generation.numbersFilmsByTmdbId && !titleOnly) FeedLink.linked(node.listings) else None
 
   /** [[feedLinked]], where the original title on `node` is the feed's copy, only Support ([[SourceReliability.Fact.OriginalTitle]]):
    *  the link the copied-title and short denials read — a venue's own original title is its claim, never a copy's pull. */

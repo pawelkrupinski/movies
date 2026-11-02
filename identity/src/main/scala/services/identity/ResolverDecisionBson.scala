@@ -62,6 +62,7 @@ object ResolverDecisionBson {
           .append("candidate", node.candidate.fold[BsonValue](BsonNull())(BsonInt32(_))))
       }))
       kept.pooled.foreach(rule => d.append("pooled", BsonString(rule)))
+      if (kept.bare) d.append("bare", org.bson.BsonBoolean.TRUE)
       d
     }
   }
@@ -73,7 +74,8 @@ object ResolverDecisionBson {
       sorted.lift(node.getInt32("at").getValue).map(key => key -> DecisionTrace.Node(Some(node.getString("accepted").getValue), Nil, Nil,
         candidate = Option(node.get("candidate")).filter(_.isInt32).map(_.asInt32.getValue)))
     }.toMap
-    DecisionTrace(Option(d.get("pooled")).filter(_.isString).map(_.asString.getValue), None, nodes)
+    DecisionTrace(Option(d.get("pooled")).filter(_.isString).map(_.asString.getValue), None, nodes,
+      bare = Option(d.get("bare")).exists(v => v.isBoolean && v.asBoolean.getValue))
   }
 
   def decode(d: BsonDocument): ResolverDecision = read(new org.bson.BsonDocumentReader(d))

@@ -24,7 +24,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
 
   /** A film the model took by its own rules — what [[Correction]] reads the evidence against. */
   private[agreement] def correctable(decision: ResolverDecision): Boolean =
-    decision.film.isDefined && decision.members.nonEmpty &&
+    decision.film.isDefined && decision.members.nonEmpty && !decision.trace.bare &&
       (decision.basis == ResolverDecision.Basis.OwnMatch || decision.basis == ResolverDecision.Basis.PooledMatch)
 
   /** The model's take, withdrawn or switched where the evidence against it says so ([[Correction.decide]]): the stored

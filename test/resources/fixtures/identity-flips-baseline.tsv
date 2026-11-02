@@ -9,5 +9,3 @@
 # THE END STATE IS AUTOMATIC: with no row left, every flip fails -- the strict gate. Divergences have no baseline.
 # Owner: the convergence red's fixer. A newborn check's own findings go TEMPORARY on identity-flips-allow.tsv instead.
 country	seed	venue	rawTitle	takes	firstSeen	owner	note
-de	47	CinemaxX Dammtor	Titans	tmdb:869152 -> tmdb:869152 -> none -> none -> tmdb:869152	2026-11-02	owner	OWNER-APPROVED 2026-11-02: inherent bare-borrow flip (borrows 869152 while no rival bills Titans, unmatched once Grünstadt's Ruffin listing arrives, 869152 again by venues.current at 3 venues); rule designed later; reproducer drift-slices/de/cinemaxx-titans-inherent-08f3a19c --seed 20: back to a film it left
-de	47	CinemaxX Raschplatz	Titans	tmdb:869152 -> tmdb:869152 -> none -> none -> tmdb:869152	2026-11-02	owner	OWNER-APPROVED 2026-11-02: inherent bare-borrow flip (borrows 869152 while no rival bills Titans, unmatched once Grünstadt's Ruffin listing arrives, 869152 again by venues.current at 3 venues); rule designed later; reproducer drift-slices/de/cinemaxx-titans-inherent-08f3a19c --seed 20: back to a film it left

@@ -743,3 +743,32 @@ owner (2026-11-02) chose to baseline the two rows as a named exception. `scripts
 admits a baseline row only from a commit carrying `Owner-Approved: <date> <why>`, with each row's note reading
 `OWNER-APPROVED <date>: <why>`. The rows go when that rule lands. Seed 31 of the same slice flips Regensburg the same
 way, and it is NOT baselined.
+
+### 7.10 A bare listing decides by its own title alone (Titans, Addams, Fishguard; Identity-Design)
+
+The owner (2026-11-03): a flip is a wrong match that only happens in some arrival states, and it must go; no
+stickiness, every take a pure function of the current inputs, as if all data had been there from the start; unmatched
+beats wrong, near-ties stay unmatched. §7.9's Titans, the Beehive's Addams (row 46) and Fishguard's "Romeo and Juliet"
+are one shape: a BARE listing borrows a film from whatever siblings are present, so its take moves as they arrive.
+
+**The rule** (`BareListing`, `ResolverRun.FamilyRun.bare`). A listing is bare when nothing but its title speaks for it:
+its node publishes no fact (`publishesAFact`), and the listing itself lists no cast, carries no pin, no feed link and no
+catalogue id another listing of its family shares. Bareness is per LISTING, not per node: CinemaxX Dammtor's and
+Regensburg's "Titans" share a node with Raschplatz's, whose cineamo id links 869152, so a node-level test called them
+linked whenever Raschplatz was present. A bare listing reads only its node's own pool (a family scope of that node, its
+siblings' feed links unread), and takes a film only when exactly ONE work of that pool is plausible -- named by its
+title (or IMDb's title for it), of a kind none of its own rules deny but the probability cut, not untaken -- and its own
+alone rules take that work. TMDB namesakes give no film, whatever the siblings' majority or venue count. Bypassed for a
+bare listing: `familyMajority`'s bound, the solver's join (the family still clusters it; its decision is taken apart),
+`Corroboration.refused`'s node counts, and the agreement stage after the model (fill incl. `venues.current`, families,
+posters, corrections: `DecisionTrace.bare`, kept and stored with the decision, so a booted model reads it too). Siblings
+contribute nothing population-independent beyond what makes a listing non-bare (its own feed link, its shared
+catalogue id): every other sibling input is a count or a fact of another listing, both moved by arrivals. The rest of a
+cluster keeps the film it was joined to; only the bare listings leave it. Pure: no state, nothing remembers a take.
+
+**The property** (`BareTakeSpec`, `PopulationMonotonicity.bareMoves`): a bare listing's take is identical at every step
+of every arrival chain of its family (8 chains, 8 steps, every committed slice) -- stronger than "never back to a value
+it left". On main, 17 bare takes in 11 slices moved (`identity-bare-moves-known.tsv`, the property's first commit):
+Titans (Dammtor, Regensburg; both Titans slices), Werkstattkino's Camouflage siblings (Cinecitta, Metropol; 4 slices),
+the Beehive's Addams, Fishguard's "Romeo and Juliet" and "Alice's Adventures in Wonderland", Woodbridge's CBeebies
+"Treasure Island" (2 slices), Nerve Centre's "The Ladykillers | Cinematic Breakfast". With the rule: 0 of 101 slices.

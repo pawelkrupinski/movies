@@ -570,7 +570,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       pass.correcting += key
       corrected(decision, listingOf, key, pass)
     }
-    else if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
+    // a bare node's decision is its own title's ([[services.identity.BareListing]]): no family, poster, fill or catalogue
+    // reads the venues around it again
+    else if (decision.trace.bare || decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
     else {
       val now = eventOf(decision, listingOf) match {
         // an event no film database holds: no family is asked about it, no poster hashed, no verdict kept
