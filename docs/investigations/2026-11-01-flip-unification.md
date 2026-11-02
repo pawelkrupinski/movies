@@ -641,3 +641,42 @@ The cause: `siblingDenying` read the unified tier's shared-original clause, so "
 **Measure.** Run 41374801177, base = stage 1: 0 model and 0 final takes moved in pl, de, uk, us and es. LANDABLE.
 
 **Drift.** Rows at seeds 5 and 6 in all five countries, run 41376690109: all 10 clean.
+
+### 7.3 Stage 3: one evidence-provenance table (no take moved)
+
+**What landed.**
+
+- `Authority` holds the table, once. Every piece of evidence one listing gives another has a provenance: the listing's
+  own statement, a present sibling's, a kept sibling's (it left, its title is still billed), or a feed's copy. The table
+  says which acts each provenance may do: back a film, corroborate a sibling's film, count toward overruling a feed link,
+  join an overruled listing, withdraw a member's own match.
+
+  | provenance | back | corroborate | overrule | join an overruled | withdraw |
+  |------------|------|-------------|----------|-------------------|----------|
+  | own        | yes  | -           | yes      | -                 | -        |
+  | present    | yes  | yes         | yes      | yes               | yes      |
+  | kept       | yes  | yes         | no       | no                | yes      |
+  | feed copy  | yes  | once a feed | once     | yes               | yes      |
+
+- The withdrawal rows (`Authority.spares`, `sparesEvery`) say when a member's own statement answers a sibling's denial:
+  - its title names the record's production (house and season, or its relay's record): every denial is spared;
+  - its banner bills the record's house, against another house's season;
+  - its credit of the film's director, against a "not the work" denial that a credit overrules. This is #629's fix
+    (Keswick), absorbed as a row.
+- The rule sites read the table instead of deriving it:
+  - `VenueBacking`'s venue and source counts (`presentOnly` became the act counted for);
+  - `FamilyScope`'s overrule of a feed link;
+  - `ConstraintEdges.KeptOverruledApart`, the kept listing's join;
+  - `Families.siblingDenying`, a sibling's withdrawal;
+  - `ClusterVoting.onlyWithdrawn`, the group vote's withdrawal. It and `siblingDenying` now read one row where they read
+    two, which is how Keswick's two paths came to disagree.
+- `ProvenanceSpec`: the table's rows (a kept listing backs, corroborates and withdraws, and never counts toward an
+  overrule or joins an overruled listing; the credit row spares Keswick's credited billing alone), and a scan of the
+  identity code. A listing's or backer's kept mark, a credit or house sparing a denial, or a present-only flag read
+  anywhere but where provenance is defined fails it. On the commit before, it names the two readings of the credit row,
+  the kept marks in `ConstraintEdges` and `FamilyScope`, and `VenueBacking.presentOnly`.
+
+**Measure.** Run 41381954546, base = stage 2: 0 model and 0 final takes moved in pl, de, uk, us and es. LANDABLE.
+
+**Drift.** Rows at seeds 9 and 10 in all five countries, run 41386009340: all 10 clean. An earlier run at seeds 53 and 54
+(41368259117) was clean too.
