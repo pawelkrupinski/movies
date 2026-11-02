@@ -67,11 +67,12 @@ out=$(cd "$out" && pwd) # absolute: every sbt run below runs in a checkout of it
 # own, removed at exit with what it holds.
 own_temp=""
 [ -n "${RUNNER_TEMP:-}" ] || { RUNNER_TEMP=$(mktemp -d) || exit 2; own_temp=$RUNNER_TEMP; }
-base_final_pid=""
+base_final_pid="" head_final_pid=""
 # shellcheck disable=SC2329 # run by the EXIT trap below
 on_exit() {
-  # an exit before base_final_finish's wait leaves no replay behind (best effort)
+  # an exit before base_final_finish's (or the head's) wait leaves no replay behind (best effort)
   [ -z "$base_final_pid" ] || kill "$base_final_pid" 2> /dev/null
+  [ -z "$head_final_pid" ] || kill "$head_final_pid" 2> /dev/null
   [ -z "$own_temp" ] || { rm -rf "$own_temp"; git worktree prune 2> /dev/null; }
   return 0
 }
@@ -581,15 +582,34 @@ if [ -n "$shape_moves" ] && reused "$(asset shape "$(shape_key "$head")")" "$out
     && head_shape=reused && echo "identity takes ($cc): head corpus-shape findings reused"
 fi
 
-# THE HEAD IN ONE sbt: what of its final takes, its resolve and its corpus shape was not stored, each a command of one
-# JVM. Each its own sbt was a JVM start, a project load and a cold JIT apiece -- the head ratchet's 1-2 minutes were
-# mostly that, the replay seconds. sbt stops at a command that fails (a tool's exit takes the JVM with it), so each
-# command's "[success]" is what says it ran: the ratchet first (seconds, and the resolve is no verdict without it), the
-# corpus shape last (its specs FAIL on a finding, which is no failure here).
+# THE HEAD'S FINAL TAKES BESIDE ITS RESOLVE: the ratchet replays the capture in a checkout of its own (the head's commit,
+# the build and the capture copied in, as the base's final takes are replayed), its own sbt on its own cores, while the
+# session below resolves. In the session they ran in turn: 230-253 s of ratchet, then 220-311 s of resolve, a UK or US
+# takes row 12-15 minutes (docs/investigations/2026-11-01-twenty-runners.md section 9). Its result reads only the code and
+# the capture (capture_key), never this checkout's recording or laid fills, so the other checkout replays the same takes.
+head_final_tree="$RUNNER_TEMP/identity-takes-head-final"
+if [ -n "$takes_moves" ] && [ -z "$head_final" ]; then
+  rm -rf "$head_final_tree"; git worktree prune
+  if git worktree add -q --detach "$head_final_tree" "$head"; then
+    for d in project/target project/project/target */target/scala-*; do
+      [ -d "$here/$d" ] && mkdir -p "$head_final_tree/$d" && cp -a "$here/$d/." "$head_final_tree/$d/"
+    done
+    cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
+       "$head_final_tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
+    head_final_started=$(date +%s)
+    ratchet "$head_final_tree" "$out/head/ratchet-takes.tsv" "$traces/head-final.jsonl.gz" > "$out/head-final.out" 2>&1 &
+    head_final_pid=$! # on_exit stops it should the check end before it is waited for
+  else
+    echo "::warning::identity takes ($cc): could not check the head out for its final takes"; final=2
+  fi
+fi
+
+# THE HEAD'S RESOLVE AND CORPUS SHAPE IN ONE sbt: what of them was not stored, each a command of one JVM. Each its own
+# sbt was a JVM start, a project load and a cold JIT apiece. sbt stops at a command that fails (a tool's exit takes the
+# JVM with it), so each command's "[success]" is what says it ran: the resolve first, the corpus shape last (its specs
+# FAIL on a finding, which is no failure here).
 head_commands=() head_names=()
 if [ -n "$takes_moves" ]; then
-  [ -n "$head_final" ] || { head_names+=(final); head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched --countries $cc$(
-    traced "$here/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" "$traces/head-final.jsonl.gz")"); }
   # the head's resolve also walks its families along arrival chains (the flip-unification design's stage 1, report
   # only): population-flips-<cc>.json beside its decisions, and the kind=identity.population_flips line in the verdict
   [ -n "$head_resolve" ] || { head_names+=(resolve); head_commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures --population ${TAKES_POPULATION_CHAINS:-4} --population-seconds ${TAKES_POPULATION_SECONDS:-300}$(
@@ -624,12 +644,16 @@ took_by() { # <name>: the seconds the session's <name> command took; fails when 
 if [ -n "$takes_moves" ]; then
   if [ -n "$head_final" ]; then
     SECONDS=0; timing head-final reused
-  elif secs=$(took_by final); then
-    ratchet_out "$here" "$out/head/ratchet-takes.tsv"
-    SECONDS=$secs; timing head-final replayed
-    keep_final head "$head"
-  else
-    echo "::warning::identity takes ($cc): the ratchet exited $session ($out/head.log)"; final=2
+  elif [ -n "$head_final_pid" ]; then
+    head_final_ok=0; wait "$head_final_pid" || head_final_ok=$?
+    head_final_pid=""
+    cat "$out/head-final.out"
+    if [ "$head_final_ok" = 0 ] && [ -s "$out/head/ratchet-takes.tsv" ]; then
+      SECONDS=$(( $(date +%s) - head_final_started )); timing head-final replayed
+      keep_final head "$head"
+    else
+      final=2 # the ratchet said why, above (its log: ratchet-takes.tsv.log)
+    fi
   fi
   if [ -n "$head_resolve" ]; then
     SECONDS=0; timing head-resolve reused
@@ -690,7 +714,7 @@ elif [ -n "$shape_command" ]; then
 else
   echo "identity takes ($cc): corpus shape not checked (no SHAPE_COMMAND)" | tee -a "$out/verdict.txt"
 fi
-for dir in "$tree" "$final_tree"; do [ -d "$dir" ] && { git worktree remove --force "$dir" || true; }; done
+for dir in "$tree" "$final_tree" "$head_final_tree"; do [ -d "$dir" ] && { git worktree remove --force "$dir" || true; }; done
 
 diff_takes() { # <base> <head> [--final]
   python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$1" "$2" "${@:3}" \

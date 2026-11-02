@@ -226,7 +226,8 @@ check "...each phase timed, saying which it resolved" "phase:how head-final:repl
   "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')"
 check "...and why the base was not stored" 1 "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")"
 check "...the head resolving and replaying with the tools" "dump-tool ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
-check "...both in one sbt" 1 "$(grep -vc identity-takes-base "$work/sbt-calls.runs")"
+check "...the resolve in the checkout, the final takes beside it in one of their own (two sbt runs at once)" \
+  "identity-takes-head-final job" "$(for c in ratchet dump; do grep -v identity-takes-base "$work/sbt-calls" | grep " $c-" | cut -d' ' -f1 | xargs basename; done | xargs)"
 check "...its base, from before them, with the specs they were" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
 # outside Actions: no RUNNER_TEMP (the same run, nothing stored)
 rm -rf "$work/release"; mkdir -p "$work/tmp"
@@ -370,7 +371,8 @@ rm -f "$work"/release/takes-final-*
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a head whose decisions alone are stored replays only its final takes" \
   "ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
-check "...in a session that ran just that" 1 "$(grep -c "the head's session ran final in" "$work/log")"
+check "...in a checkout of its own, and no head session" "identity-takes-head-final 0" \
+  "$(grep -v identity-takes-base "$work/sbt-calls" | grep ' ratchet-' | cut -d' ' -f1 | xargs basename) $(grep -c "the head's session ran" "$work/log")"
 # the capture's gaps travel with the final takes: a reused head still names its blind spots
 rm -rf "$work/release"
 STUB_GAPS=1 TAKES_BASE=$c4 store_run "$c5" || true
