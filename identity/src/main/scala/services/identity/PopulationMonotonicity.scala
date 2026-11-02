@@ -145,7 +145,7 @@ object PopulationMonotonicity {
       else {
         // the caller's switched-off rules, on every thread the walk runs on (RuleAblation holds per thread)
         val off  = RuleAblation.switchedOff
-        val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+        val pool = tools.DaemonExecutors.boundedEC("population-walk", threads)
         try fits.map { case (_, members) => pool.submit(() => RuleAblation.disabling(off)(walkedInTime(members))) }.map(_.get)
         finally { val _ = pool.shutdownNow() }
       }

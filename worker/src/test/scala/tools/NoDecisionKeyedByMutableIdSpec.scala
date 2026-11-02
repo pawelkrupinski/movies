@@ -146,6 +146,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}FamilyScope.scala#takenAloneMemo" -> Pass(PerResolve),
     s"${I}FamilyScope.scala#billingMemo"    -> Pass(PerResolve),
     s"${I}FamilyScope.scala#pooledMemo"     -> Pass(PerResolve),
+    s"${I}FamilyScope.scala#denialMemo"     -> Pass(PerResolve),
     s"${I}VenueBacking.scala#memo"          -> Pass("one per resolve or calibration pass"),
     s"${I}CandidateGeneration.scala#details" -> Pass(PerResolve),
     s"${I}CandidateGeneration.scala#held"    -> Pass(PerResolve),

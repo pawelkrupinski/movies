@@ -367,14 +367,14 @@ object IncrementalResolver {
       }
   }
 
-  /** `f` of each of `items`, in their order: on the calling thread, or on `threads` threads of a pool made for the call
+  /** `f` of each of `items`, in their order: on the calling thread, or on at most `threads` threads of a pool made for the call (DaemonExecutors' bounded one)
    *  (each item's work its own; the results gathered in order, the first failure thrown). The caller's switched-off
    *  rules ([[RuleAblation]], held per thread) hold on every thread. */
   private[identity] def inOrder[A, B](items: Seq[A], threads: Int)(f: A => B): Seq[B] =
     if (threads <= 1 || items.sizeIs < 2) items.map(f)
     else {
       val off  = RuleAblation.switchedOff
-      val pool = java.util.concurrent.Executors.newFixedThreadPool(math.min(threads, items.size))
+      val pool = tools.DaemonExecutors.boundedEC("identity-regions", math.min(threads, items.size))
       try items.map(item => pool.submit(() => RuleAblation.disabling(off)(f(item)))).map { future =>
         try future.get() catch { case e: java.util.concurrent.ExecutionException if e.getCause != null => throw e.getCause }
       }
