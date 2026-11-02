@@ -38,16 +38,19 @@ job	identity-model-convergence.yml	convergence (germany)	aggregate
 job	identity-model-convergence.yml	order-independence-p01 (germany)	2691
 job	identity-model-convergence.yml	order-independence-p12 (germany)	2691
 job	identity-model-convergence.yml	takes (germany)	2691
+job	identity-model-convergence.yml	takes-base (germany)	unproven	the takes check's base side on main (2026-11-02, rows under 8 min); owner: convergence
 job	identity-model-convergence.yml	takes-drift-1 (germany)	2691
 job	identity-model-convergence.yml	takes-drift-2 (germany)	2691
 job	identity-model-convergence.yml	leg (poland)	aggregate
 job	identity-model-convergence.yml	convergence (poland)	aggregate
 job	identity-model-convergence.yml	takes (poland)	2691
+job	identity-model-convergence.yml	takes-base (poland)	unproven	the takes check's base side on main (2026-11-02, rows under 8 min); owner: convergence
 job	identity-model-convergence.yml	takes-drift-1 (poland)	2691
 job	identity-model-convergence.yml	takes-drift-2 (poland)	2691
 job	identity-model-convergence.yml	leg (spain)	aggregate
 job	identity-model-convergence.yml	convergence (spain)	aggregate
 job	identity-model-convergence.yml	takes (spain)	2691
+job	identity-model-convergence.yml	takes-base (spain)	unproven	the takes check's base side on main (2026-11-02, rows under 8 min); owner: convergence
 job	identity-model-convergence.yml	takes-drift-1 (spain)	2691
 job	identity-model-convergence.yml	takes-drift-2 (spain)	2691
 job	identity-model-convergence.yml	leg (united-kingdom)	aggregate
@@ -55,6 +58,7 @@ job	identity-model-convergence.yml	convergence (united-kingdom)	aggregate
 job	identity-model-convergence.yml	order-independence-p01 (united-kingdom)	2691
 job	identity-model-convergence.yml	order-independence-p12 (united-kingdom)	2691
 job	identity-model-convergence.yml	takes (united-kingdom)	2691
+job	identity-model-convergence.yml	takes-base (united-kingdom)	unproven	the takes check's base side on main (2026-11-02, rows under 8 min); owner: convergence
 job	identity-model-convergence.yml	takes-drift-1 (united-kingdom)	2691
 job	identity-model-convergence.yml	takes-drift-2 (united-kingdom)	2691
 job	identity-model-convergence.yml	leg (united-states)	aggregate
@@ -63,6 +67,7 @@ job	identity-model-convergence.yml	next-day (united-states)	2691
 job	identity-model-convergence.yml	order-independence-p01 (united-states)	2691
 job	identity-model-convergence.yml	order-independence-p12 (united-states)	2691
 job	identity-model-convergence.yml	takes (united-states)	2691
+job	identity-model-convergence.yml	takes-base (united-states)	unproven	the takes check's base side on main (2026-11-02, rows under 8 min); owner: convergence
 job	identity-model-convergence.yml	takes-drift-1 (united-states)	2691
 job	identity-model-convergence.yml	takes-drift-2 (united-states)	2691
 job	identity-model-convergence.yml	verdict complete	aggregate
