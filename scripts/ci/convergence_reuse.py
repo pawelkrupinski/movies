@@ -88,11 +88,16 @@ PHASES_EXPRESSION = (
     "${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '[\"takes-drift-2\"]' || "
     "inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '[\"takes-drift-1\"]' || '[\"takes-drift-1\",\"takes-drift-2\"]') || "
     "inputs.takes-only && '[\"takes\",\"takes-base\"]' || format('[\"convergence\"{0}{1}{2}]', "
-    "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',\"order-independence-p01\"' || "
-    "',\"order-independence-p01\",\"order-independence-p12\"') || ',\"order-independence\"') || '', "
+    "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && "
+    "',\"order-independence-p01-pass0\",\"order-independence-p01-pass1\"' || ',\"order-independence-p01-pass0\","
+    "\"order-independence-p01-pass1\",\"order-independence-p12-pass1\",\"order-independence-p12-pass2\"') || "
+    "',\"order-independence\"') || '', "
     "inputs.next-day-command != '' && ',\"next-day\"' || '', inputs.mode == 'hermetic' && inputs.takes-row && "
     "',\"takes\",\"takes-base\",\"takes-drift-1\",\"takes-drift-2\"' || '')) }}"
 )
+# A split country's order rows on main: each pass in a row of its own, then the two comparisons (`order-compare`).
+ORDER_SPLIT_ROWS = ["order-independence-p01-pass0", "order-independence-p01-pass1", "order-independence-p12-pass1",
+                    "order-independence-p12-pass2", "order-independence-p01", "order-independence-p12"]
 GH_SECONDS = 60
 STATUS_PAGES = 4
 BASE_WALK = 100
@@ -172,7 +177,9 @@ def expected_rows(workflow_text):
         phases = ["convergence"]
         if row.get("order", ""):
             split = row.get("order-split", "false") == "true"
-            phases += ["order-independence-p01", "order-independence-p12"] if split else ["order-independence"]
+            # a split country's passes each in a row of their own, and the leg's `order-compare` job per pair (named
+            # as the two-pass row was)
+            phases += ORDER_SPLIT_ROWS if split else ["order-independence"]
         if row.get("next-day", ""):
             phases.append("next-day")
         phases += ["takes", "takes-base", "takes-drift-1", "takes-drift-2"]

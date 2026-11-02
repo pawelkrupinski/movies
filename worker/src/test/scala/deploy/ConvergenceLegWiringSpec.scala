@@ -243,9 +243,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     Seq(1, 2).foreach(i => job.group(i).toInt should be >= step.group(i).toInt + 10)
   }
 
-  it should "hold no sample job, and no `needs:` edge for a row to wait on" in {
-    legJobs shouldBe Seq("convergence")
-    legDirectives should not include "needs:"
+  // The one edge (2026-11-02): the order comparison reads the one-pass rows' corpora, so it waits for them -- a job
+  // after the rows, never a row waiting on another.
+  it should "hold no sample job, and no `needs:` edge but the order comparison's on the rows" in {
+    legJobs shouldBe Seq("convergence", "order-compare")
+    legDirectives.linesIterator.filter(_.contains("needs:")).map(_.trim).toSeq shouldBe Seq("needs: [ convergence ]")
+    RepoFile.block(leg, "order-compare") should include("needs: [ convergence ]")
     legDirectives should not include "needs.sample"
   }
 
@@ -443,16 +446,19 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    * order-independence into its standard run expands to one row and renders nothing
    * extra; the United States expands to two.
    */
+  // Since 2026-11-02 the comparison of a split country's one-pass rows is a job after them (`order-compare`), skipped
+  // for the one country that does not split (Spain): the price of rows under 8 minutes. No third job.
   "the order-independence split" should "render nothing for a country that folds it into the standard run" in {
     withClue("a third job would be rendered, skipped, for every country that doesn't split: ") {
-      legJobs shouldBe Seq("convergence")
+      legJobs shouldBe Seq("convergence", "order-compare")
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
       """phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || """ +
         """inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || """ +
         """'["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
-        """(inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', """ +
+        """(inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || """ +
+        """',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', """ +
         """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '')) }}""")
   }
 
@@ -529,13 +535,26 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     takes should include("TAKES_BASE_JOB: takes-base (${{ inputs.country }})")
   }
 
-  /** A country whose single order row ran past the 10-minute target splits it into two rows of two
-   *  passes, overlapping on pass 1: a pass is only compared with the others in its row, so 0 = 1 and
-   *  1 = 2 are what hold all three to one corpus. Each row's passes are read off its phase. */
-  it should "split an over-budget order row into two overlapping two-pass rows" in {
+  /** A country whose single order row ran past the 10-minute target splits it into two comparisons of two
+   *  passes, overlapping on pass 1: a pass is only compared with the others in its comparison, so 0 = 1 and
+   *  1 = 2 are what hold all three to one corpus. ONE PASS PER ROW (2026-11-02): each comparison's two passes replay
+   *  in rows of their own (pass 1 in both, as when they shared a row), each read off its phase, writing its corpus
+   *  out; `order-compare` reads the two back under the two-pass row's name and passes and runs the order test. */
+  it should "split an over-budget order row into one-pass rows and two overlapping comparisons" in {
     val suite = RepoFile.block(leg, "convergence")
-    suite should include("""KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || """ +
-      """matrix.phase == 'order-independence-p12' && '1,2' || '' }}""")
+    suite should include("""KINOWO_CONVERGENCE_ORDER_PASSES: ${{ endsWith(matrix.phase, '-pass0') && '0' || """ +
+      """endsWith(matrix.phase, '-pass1') && '1' || endsWith(matrix.phase, '-pass2') && '2' || '' }}""")
+    suite should include("""KINOWO_CONVERGENCE_ORDER_PASS_OUT: ${{ contains(matrix.phase, '-pass') && format('{0}/order-pass', runner.temp) || '' }}""")
+    RepoFile.step(suite, "Upload the order pass's corpus for the comparison") should include(
+      "name: order-pass-${{ inputs.code }}-${{ matrix.phase }}")
+    val compare = RepoFile.block(leg, "order-compare")
+    compare should include("name: ${{ matrix.phase }} (${{ inputs.country }})")
+    compare should include("""phase: ${{ fromJson(inputs.order-one-phase && '["order-independence-p01"]' || '["order-independence-p01","order-independence-p12"]') }}""")
+    compare should include("pattern: order-pass-${{ inputs.code }}-${{ matrix.phase }}-pass*")
+    compare should include("""KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || '1,2' }}""")
+    compare should include("KINOWO_CONVERGENCE_ORDER_PASS_IN: ${{ runner.temp }}/order-pass")
+    compare should include("check_name: ${{ matrix.phase }} (${{ inputs.country }})")
+    compare should include(FindingsAction)
     RepoFile.block(leg, "order-split") should include("default: false")
   }
 
@@ -868,9 +887,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.read("scripts/ci/jfr-every-jvm.sh") should include ("-XX:StartFlightRecording=filename=${RUNNER_TEMP:-/tmp}/jfr/%p.jfr")
     // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
     caller should include ("jvm-options:                   ${{ needs.preflight.outputs.jvm-options }}")
-    // Every sbt run of the leg: the suite, the pre-suite fill, a recording's corpus capture and its corpus-shape report.
-    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 4
-    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 4
+    // Every sbt run of the leg: the suite, the pre-suite fill, a recording's corpus capture and its corpus-shape report,
+    // and the order comparison's.
+    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 5
+    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 5
     RepoFile.withoutComments(leg).linesIterator.filter(_.trim.startsWith("sbt ")).foreach { line =>
       withClue(s"$line: ")(line should include ("\"${jvm[@]}\""))
     }

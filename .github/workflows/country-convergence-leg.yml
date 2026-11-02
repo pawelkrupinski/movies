@@ -422,7 +422,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '')) }}
+                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -849,7 +849,9 @@ jobs:
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
                   # A split order row's passes, read off its phase (`order-independence-p01` -> 0,1);
                   # empty, every pass, on any other row.
-                  KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || matrix.phase == 'order-independence-p12' && '1,2' || '' }}
+                  KINOWO_CONVERGENCE_ORDER_PASSES: ${{ endsWith(matrix.phase, '-pass0') && '0' || endsWith(matrix.phase, '-pass1') && '1' || endsWith(matrix.phase, '-pass2') && '2' || '' }}
+                  # ONE PASS PER ROW: the row writes its pass's corpus here, uploaded below for `order-compare`.
+                  KINOWO_CONVERGENCE_ORDER_PASS_OUT: ${{ contains(matrix.phase, '-pass') && format('{0}/order-pass', runner.temp) || '' }}
                   # GAP-FILL in a RECORDING's order row: it replays the
                   # working tree it restored (the last recording's) and fetches live only what that
                   # lacks, ONCE between its three passes (`SharedLiveAnswers`), never refreshing it.
@@ -892,6 +894,18 @@ jobs:
             - name: End what a timed-out step left running
               if: always()
               run: scripts/ci/bounded-step.sh --reap
+            # A one-pass order row's corpus, for the comparison job (`order-compare`); only a pass that ended green wrote
+            # one, and a missing file fails the comparison, as the pass would have failed the row that compared it.
+            - name: Upload the order pass's corpus for the comparison
+              if: contains(matrix.phase, '-pass') && steps.suite.outcome == 'success'
+              uses: actions/upload-artifact@v6
+              with:
+                  name: order-pass-${{ inputs.code }}-${{ matrix.phase }}
+                  path: ${{ runner.temp }}/order-pass/
+                  retention-days: 1
+                  compression-level: 0
+                  if-no-files-found: error
+                  overwrite: true
             # A SUITE STOPPED AT ITS CEILING IS NOT A TEST FAILURE, and said so: the leg names the ceiling and the runner's
             # load at that moment (/proc/loadavg is the host's, so other jobs' CPU shows in it), so a row starved by CPU
             # contention reads "timed out under load" -- an infra verdict, rerun it -- rather than a red like any other.
@@ -1296,6 +1310,109 @@ jobs:
                   label: ${{ inputs.country }}
 
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
+            - uses: ./.github/actions/leg-verdict
+              if: always()
+              with:
+                  leg:    ${{ matrix.phase }} (${{ inputs.country }})
+                  status: ${{ job.status }}
+                  token:  ${{ secrets.GITHUB_TOKEN }}
+
+    # THE ORDER COMPARISON, A JOB OF ITS OWN (2026-11-02, rows under 8 minutes): a split row ran its two passes side by
+    # side on one 4-core runner and compared them, 8-13 minutes; one pass alone took 8-9.3. Each pass now replays in a
+    # row of its own (`order-independence-p01-pass0`, `-p01-pass1`, `-p12-pass1`, `-p12-pass2`: the same passes, seeds
+    # and rows' runs as before, pass 1 in both) and writes its corpus out (ReplayCorpusFile); this job reads the two its
+    # row names and runs the same order test on them, the same CorpusComparison, under the name the row had --
+    # `order-independence-p01 (<country>)` -- so the verdict, its report and its readers are unchanged. No MongoDB, no
+    # corpus: a warm sbt and the two files.
+    order-compare:
+        name: ${{ matrix.phase }} (${{ inputs.country }})
+        needs: [ convergence ]
+        if: ${{ !cancelled() && inputs.reused-from == '' && inputs.order-command != '' && inputs.order-split && !inputs.takes-only && !inputs.drift-only && (inputs.countries == '' || contains(format(',{0},', inputs.countries), format(',{0},', inputs.code))) }}
+        strategy:
+            fail-fast: false
+            matrix:
+                phase: ${{ fromJson(inputs.order-one-phase && '["order-independence-p01"]' || '["order-independence-p01","order-independence-p12"]') }}
+        runs-on: ${{ inputs.runner }}
+        timeout-minutes: 20
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+            statuses: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+                  label: ${{ inputs.country }}
+            - uses: ./.github/actions/convergence-setup
+              with:
+                  code:          ${{ inputs.code }}
+                  token:         ${{ secrets.GITHUB_TOKEN }}
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
+                  mode:          ${{ inputs.mode }}
+                  corpus-run:    ${{ inputs.corpus-run }}
+                  replay:        'false'
+            - name: Download the row's two passes
+              uses: actions/download-artifact@v6
+              with:
+                  pattern: order-pass-${{ inputs.code }}-${{ matrix.phase }}-pass*
+                  path: ${{ runner.temp }}/order-pass
+                  merge-multiple: true
+            - name: Compare the ${{ inputs.country }} ${{ matrix.phase }} passes
+              id: suite
+              shell: bash
+              timeout-minutes: 15
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  set -o pipefail
+                  ls -l "$KINOWO_CONVERGENCE_ORDER_PASS_IN" || true
+                  rm -rf target/test-reports/unit
+                  scripts/ci/stop-stray-sbt.sh
+                  # As every sbt run of a leg: the runner's whole CPU beside it (cpu-sampler.sh).
+                  scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
+                  read -ra jvm <<< "$JVM_OPTIONS"
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" ${{ inputs.order-command }} 2>&1 | tee convergence.log
+              env:
+                  JVM_OPTIONS:      ${{ inputs.jvm-options }}
+                  KINOWO_COUNTRY:   ${{ inputs.code }}
+                  KINOWO_COUNTRIES: ${{ inputs.code }}
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
+                  KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || '1,2' }}
+                  KINOWO_CONVERGENCE_ORDER_PASS_IN: ${{ runner.temp }}/order-pass
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
+            - name: Publish convergence test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  annotate_only: true
+                  job_summary: true
+                  detailed_summary: true
+                  report_paths: 'target/test-reports/unit/**/*.xml'
+                  check_name: ${{ matrix.phase }} (${{ inputs.country }})
+                  include_passed: true
+                  require_tests: true
+            - uses: ./.github/actions/convergence-findings
+              if: always()
+              with:
+                  title: ${{ matrix.phase }} (${{ inputs.country }})
+                  log:   convergence.log
+                  name:  ${{ inputs.code }}-${{ matrix.phase }}
+            - name: End any JVM a timed-out step left running
+              if: always()
+              shell: bash
+              run: scripts/ci/stop-stray-sbt.sh
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+                  label: ${{ inputs.country }}
             - uses: ./.github/actions/leg-verdict
               if: always()
               with:

@@ -167,7 +167,13 @@ class JudgeTest(unittest.TestCase):
 
 class RowsTest(unittest.TestCase):
     def test_main_runs_every_country_with_both_order_phases_next_day_and_takes(self):
-        self.assertEqual(len(ROWS), 34)
+        # 34 until 2026-11-02, when each of the four split countries' order passes took a row of its own (+4 each), the
+        # two comparisons keeping the two-pass rows' names
+        self.assertEqual(len(ROWS), 50)
+        for p in ("p01-pass0", "p01-pass1", "p12-pass1", "p12-pass2"):
+            for country in ("poland", "germany", "united-kingdom", "united-states"):
+                self.assertIn(f"order-independence-{p} ({country})", ROWS)
+        self.assertNotIn("order-independence-p01-pass0 (spain)", ROWS)
         for row in ("convergence (poland)", "takes (spain)", "takes-base (spain)", "order-independence-p01 (germany)",
                     "order-independence-p12 (united-kingdom)", "next-day (united-states)",
                     "order-independence-p12 (united-states)"):

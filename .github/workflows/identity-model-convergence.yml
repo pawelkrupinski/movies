@@ -308,6 +308,9 @@ jobs:
     # States -- and those rows split in two (`order-split`: passes 0,1 and 1,2), since three passes on one 4-core runner
     # ran 12.9-13.5m. Poland and Spain, under 10 minutes, keep theirs beside the boot (run 38548739769). The United
     # States' convergence row, 11.4m with no replays at all, runs its next-day test on a boot of its own (`next-day`).
+    # ONE PASS PER ROW (2026-11-02): two passes side by side still ran 8-13m, so each split pass replays in a row of its
+    # own (`order-independence-p01-pass0`, `-p01-pass1`, `-p12-pass1`, `-p12-pass2`) and the leg's `order-compare` job
+    # compares each pair under the two-pass row's name (`order-independence-p01 (<country>)`), the verdict unchanged.
     # OFF MAIN, ONE SPLIT ROW: a ref whose change from main touches no order code (scripts/ci/order-phases.sh, via the
     # preflight's `order-phases`) runs p01 alone -- two arrival orders compared instead of three. Main runs both on every
     # push, and so does any ref whose change could move the order or that the check cannot clear.
