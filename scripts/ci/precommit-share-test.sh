@@ -5,6 +5,7 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
+. "$REPO_ROOT/scripts/scratch-git.sh"
 
 printf '\033[36m▸\033[0m precommit-share.sh\n'
 dir="$(mktemp -d)"; trap 'rm -rf "$dir"' EXIT
@@ -13,8 +14,8 @@ for f in hooks/pre-push hooks/local-tests.txt hooks-path.sh tool-conventions.sh 
          ci/precommit-share.sh; do
     cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"
 done
-g() { git -C "$repo" -c user.name=t -c user.email=t@t -c commit.gpgsign=false "$@"; }
-g init -q -b main; g add -A; g commit -qm base; g update-ref refs/remotes/origin/main HEAD
+g() { scratch_git "$repo" "$@"; }
+scratch_repo "$repo" -b main; g add -A; g commit -qm base; g update-ref refs/remotes/origin/main HEAD
 change() { # <path>: a branch off main touching <path>
     g checkout -q -B "c$RANDOM" refs/remotes/origin/main
     mkdir -p "$repo/$(dirname "$1")"; echo "x $RANDOM" >> "$repo/$1"; g add -A; g commit -qm "touches $1"
