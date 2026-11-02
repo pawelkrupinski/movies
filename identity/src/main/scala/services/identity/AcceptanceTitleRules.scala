@@ -101,6 +101,10 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
       (place.place == 1 && scored.number("year.delta").contains(0.0)) ||
         (scored.ownCredit && suggested.count(_.ownCredit) == 1) ||
         (place.of == 1 && scored.titleNamesIt && !outranked(scored)) ||
+        // the only film IMDb suggests, its title the billing's but for a venue's slip of letters in a word or two (UK
+        // "The Hunger Games Sunrise of the Reaping" ×25, DE "LA VIE DE CHÂTEAU, MON ENFACE À VERSEILLES"): TMDB's
+        // search finds nothing under the slip, and only IMDb's forgiving one reaches the film
+        (place.of == 1 && slippedTitle(scored.listing, scored.candidate.film) && !outranked(scored)) ||
         // the old pipeline's yearless rung: IMDb's FIRST suggestion, and the only suggested film the title is ("Kroll")
         (place.place == 1 && exact(scored) && suggested.count(exact) == 1 && !outranked(scored))
     }
@@ -121,6 +125,25 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
       _      <- notAnotherInstalment(scored)
       taken  <- unopposed(scored, asItsTitlesTopHit(scored), eligible)
     } yield taken
+  }
+
+  /** Is one of the listing's titles the film's own or original title, word for word, but for a SLIP in at most two
+   *  words — never more than half of them, of four words or more: each slipped pair words of letters, no numeral
+   *  ("Part II", "2"), at most one letter edit apart per four letters (one in a short word: "of" for "on", "Enface" for
+   *  "Enfance", "Caspar" for "Casper")? A slip a typist makes, not another film's title: "A Boy and His Dog" is no slip
+   *  of "A Boy and Her Dog" (two edits in a three-letter word), "Part One" none of "Part Two". */
+  private[identity] def slippedTitle(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
+    def letters(word: String) = word.forall(_.isLetter) && !IdentityMeasures.numbersAnInstalment(word)
+    def slip(a: String, b: String) = letters(a) && letters(b) &&
+      tools.EditDistance.within(a, b, math.max(1, math.min(a.length, b.length) / 4))
+    val billed = (listing.ownTitles ++ listing.searchTitles).map(services.movies.TitleContainment.tokens).distinct
+    val titles = (film.title +: film.originalTitle.toSeq).map(services.movies.TitleContainment.tokens).distinct
+    billed.exists(own => own.sizeIs >= 4 && titles.exists { title =>
+      title.sizeIs == own.size && {
+        val slipped = own.zip(title).filter { case (a, b) => a != b }
+        slipped.nonEmpty && slipped.sizeIs <= 2 && slipped.size * 2 <= own.size && slipped.forall(slip.tupled)
+      }
+    })
   }
 
   /** Does a BARE billing — no year, director, running time or original title of its own — reach the IMDb-suggested film

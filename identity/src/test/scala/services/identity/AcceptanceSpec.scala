@@ -364,6 +364,24 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     byImdb(suggested(ranked(hope, film), 2, 1058424 -> 1)) shouldBe None
   }
 
+  it should "take the only film IMDb suggests whose title the billing slips a letter or a short word of" in {
+    // UK "The Hunger Games Sunrise of the Reaping" ×25 (prod 2026-11-01): TMDB's search finds nothing under the slip,
+    // IMDb suggests only the film
+    val reaping = (1300968, Film("The Hunger Games: Sunrise on the Reaping", year = Some(2026)), None)
+    byImdb(suggested(ranked(Listing("The Hunger Games Sunrise of the Reaping"), reaping), 1, 1300968 -> 1)) shouldBe Some(1300968)
+    // DE "LA VIE DE CHÂTEAU, MON ENFACE À VERSEILLES", DE "Caspar und Emmas wunderbare Weihnacht"
+    val chateau = (1489456, Film("La Vie de château : Mon enfance à Versailles", year = Some(2025)), None)
+    byImdb(suggested(ranked(Listing("LA VIE DE CHÂTEAU, MON ENFACE À VERSEILLES"), chateau), 1, 1489456 -> 1)) shouldBe Some(1489456)
+    val caspar = (285208, Film("Casper und Emmas wunderbare Weihnachten", year = Some(2014)), None)
+    byImdb(suggested(ranked(Listing("Caspar und Emmas wunderbare Weihnacht"), caspar), 1, 285208 -> 1)) shouldBe Some(285208)
+    // not one suggestion among several, not another film's title, not a numbered instalment, not a short title
+    byImdb(suggested(ranked(Listing("The Hunger Games Sunrise of the Reaping"), reaping), 2, 1300968 -> 1)) shouldBe None
+    byImdb(suggested(ranked(Listing("A Boy and His Dog"), (7, Film("A Boy and Her Dog", year = Some(2010)), None)), 1, 7 -> 1)) shouldBe None
+    byImdb(suggested(ranked(Listing("Harry Potter Part II"), (8, Film("Harry Potter Part III", year = Some(2011)), None)), 1, 8 -> 1)) shouldBe None
+    byImdb(suggested(ranked(Listing("Ebeneezer"), (9, Film("Ebenezer", year = Some(2026)), None)), 1, 9 -> 1)) shouldBe None
+    acceptance.slippedTitle(Listing("Night of the Living Dead"), Film("Day of the Living Dead")) shouldBe false
+  }
+
   it should "take IMDb's first suggestion, the only suggested film the title is, when TMDB ranks no film it names above it" in {
     // PL "Kroll": TMDB ranks Machulski's 1991 film first and Krõll (1972) second; IMDb's only movie suggestion is the
     // 1991 film, beside other suggestions — the old pipeline's yearless rung.
