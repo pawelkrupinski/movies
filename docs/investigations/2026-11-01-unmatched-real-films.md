@@ -91,7 +91,16 @@ of Otrar, Chess of the Wind, Inside Gaza, Who Are You Polly Maggoo, My Daughter 
 DE Nur eine Frau, Was haben wir gelacht ×2. The remaining 68 companion listings stay unmatched: double bills, shorts
 blocks, TV episodes, and documentaries TMDB lacks.
 
-**Measure.** _pending_
+**Measure** (108e31dcc, run 41404505515, all five countries, pinned recording; base be5a6b181 with flip-unification
+stage 2). LANDABLE:
+
+- gained right: UK ×6 model / ×5 final (Flowers of Shanghai, Chess of the Wind, My Daughter Is a Zombie, Journey
+  There, Silent Grace, Who Are You Polly Maggoo …), DE ×1 (Becoming Kim);
+- 1 cure (UK "The Phantom of the Opera + live score" no longer takes the 2004 musical);
+- 0 right lost, 0 right→wrong, 0 new wrong.
+
+Drift rows (run 41404500946, both seeds, all five countries): ten clean. An earlier base's drift (41388705989) was
+also clean.
 
 ## 4. Fix B: a billing's "&" and a record's "ß"
 
