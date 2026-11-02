@@ -197,7 +197,9 @@ private[identity] object TitleShapeMeasures {
     if (!title.exists(_.isLower) || !title.exists(_.isUpper)) Nil
     else {
       val words = CaseWord.findAllMatchIn(title).toVector
-      def capitals(w: String) = w.count(_.isLetter) >= 2 && !w.exists(_.isLower)
+      // a Roman numeral is the film's number, never a word in capitals, and closes the run as a word in lower case does: DE
+      // Babylon's "Halloween II [OV]" split at "II" searched "Halloween" and lost Halloween II's family (measure 41438444822)
+      def capitals(w: String) = !numeral(w) && w.count(_.isLetter) >= 2 && !w.exists(_.isLower)
       def lettered(w: String) = w.exists(_.isLetter)
       // the half in capitals is the head (a programme heading the film) or the tail (a strand closing it, or the film
       // billed in capitals after its programme)
@@ -231,6 +233,9 @@ private[identity] object TitleShapeMeasures {
     words.nonEmpty && words.forall(services.billing.DecorationWords.billedAround)
   }
   private val CaseWord = """[\p{L}\p{N}][\p{L}\p{N}'’]*""".r
+  /** A Roman numeral of two letters or more ("II", "XIV"), a film's number in [[caseSplit]]'s reading. */
+  private def numeral(word: String): Boolean = word.length >= 2 && RomanNumeral.matches(word)
+  private val RomanNumeral = """(?=[IVXL])(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0,3})""".r
   /** Does `head` close every bracket it opens? A case change inside a bracket is the note's, never a strand's stop: PL
    *  "KADR JUNIOR (6-12 lat): …" split at "lat" searched "KADR JUNIOR (6-12". */
   private def bracketsClosed(head: String): Boolean = head.count(c => c == '(' || c == '[') == head.count(c => c == ')' || c == ']')

@@ -83,6 +83,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.caseSplit("Avatar: FIRE AND ASH") shouldBe empty
     // one word in capitals is a numeral or a name, no strand
     IdentityMeasures.caseSplit("Rocky IV") shouldBe empty
+    // a Roman numeral is the film's number, never a word of a run in capitals: DE Babylon's "Halloween II [OV]"
+    IdentityMeasures.caseSplit("Halloween II [OV]") shouldBe empty
+    IdentityMeasures.caseSplit("Rocky III NEW RESTORATION") should contain("Rocky III")
     IdentityMeasures.caseSplit("NT Live: Hay Fever") shouldBe empty
     IdentityMeasures.caseSplit("M3GAN 2.0") shouldBe empty
     // a sentence's stop between words of one case is the title's ("Szkoła magicznych zwierząt. Tajemnica…")
