@@ -67,13 +67,14 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     // fact it reads, so its take is interim until they are (P1, identity-flips-structural-2026-10-30 step 6: PL "Lalka"
     // pooled to 1001 with a search unanswered, corrected to 1002 once it was). Typed only: the film is served all the same
     // -- and a fallback taken: it is the decision on what is filed, provisional while anything it reads is not
-    // -- and the nodes a member's must-link reaches that the cluster does not hold: what kept them apart -- a cannot-link,
-    // or a link reaching components held apart (ConstraintSolver rule 3, the node left alone) -- is THEIR evidence as it
-    // stands, so the take reads their unanswered questions too (UK Torrington "Dracula", convergence #595: left alone
-    // while Quad Derby's "Dracula (15)" page was unread, back in tmdb 11868's cluster once it was read)
-    val linkedOut = edges.iterator.filter(edge => edge.must && (ids(edge.a) ^ ids(edge.b)))
-      .map(edge => if (ids(edge.a)) edge.b else edge.a).toSeq.distinct.map(nodeById)
-    val reads = cluster ++ linkedOut
+    // -- and every node of its FAMILY: the decision READ their evidence, not its own cluster's alone (the flip-unification
+    // design's stage 4, read-set closure). The family's pool is every member's searches' hits; a sibling's denial withdraws
+    // a member's own match, a facts-free cluster follows the family's majority, a sibling's own match keeps a film the
+    // group vote may not take back, and the solver's must-links reach nodes held apart (UK Torrington "Dracula",
+    // convergence #595: left alone while Quad Derby's "Dracula (15)" page was unread, back in tmdb 11868's cluster once it
+    // was read -- 589a6e3ea awaited the reach alone). Each reads that sibling's facts as they stand, so the take awaits
+    // their unanswered questions too: Pending, served all the same, until they close.
+    val reads = scope.members
     val awaits: Set[Question] =
       reads.flatMap(node => queriesOf(node.id)).distinct.filterNot(query => answers(query).isKnown).map(Question.Candidate(_)).toSet ++
         awaited.map(Question.FilmRecord(_)) ++
