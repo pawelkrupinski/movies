@@ -737,6 +737,35 @@ the parent and passes here (seconds). `PopulationMonotonicitySpec`: Torrington's
 none (11868 → 138 → none along one chain): its best rejected candidate is Besson's 2025 "Dracula" (1246049), so the
 1958 take was most likely wrong.
 
+### 7.6 A sibling's arrival no longer withdraws a borrowed take (DCA "+ Recorded Q&A")
+
+**Mechanism.** DCA's "These Violent Delights + Recorded Q&A" bills no fact of its own that fits (its runtime is the
+ballet's plus the recorded Q&A), so it took the ballet's record (1462368) from its family: none → 1462368 → none along
+the arrival chains. Two arrivals each took it back:
+
+- Picture House Uckfield's "Scottish Ballet: These Violent Delights + Q&A" searched "Q&A", which put the film "Q&A" in
+  the family's pool; the calibrated vote's rival check ("a film the title names alike fits its facts better") then
+  refused the pooled film. `eventNamed` missed the rival: "Recorded" was no event word, and it compared pieces by
+  equality, not as runs of the event's words.
+- Kiln Kilburn's "Scottish Ballet: These Violent Delights" denies the record as a screen namesake of its house's work,
+  which withdraws Kendal's uncredited own match (`Families.siblingDenying`). Kendal still takes 1462368 by the vote,
+  but DCA, already in round A's cluster of the film's accepted nodes, had no film for the family round's `sameFilm`
+  exemption (`filmOf` read only accepted and voted nodes), so the learned listing-to-listing cannot-link between DCA
+  and Kendal (their runtimes 20 minutes apart) stood and kept DCA out.
+
+**Fix.**
+
+1. A film a piece joined as an event names (`eventNamed`) stands as no rival in the calibrated vote either, as it
+   already stood as no runner-up; `eventNamed` reads a piece as a run of the event's words; "recorded" is a
+   side-event word.
+2. `filmOf` also gives a node the film of its round-A cluster when every accepted member of that cluster took that one
+   film: a node the first round put with one film's nodes holds that film for the `sameFilm` exemption, whichever of
+   its siblings' own matches a later denial withdraws.
+
+**Proof.** `IdentityMeasuresSpec` (the "+ Recorded Q&A" piece) and `PopulationMonotonicitySpec`: DCA's row is removed
+from `identity-population-flips-known.tsv` (the spec fails with only the first fix, its Kiln arm still flipping), and
+no other committed slice gained a flip. DCA's take at full population moves none → 1462368, the right film.
+
 ### 7.9 Titans: inherent bare-borrow flip, baselined by owner decision (CinemaxX Dammtor, Raschplatz)
 
 Convergence #728 (DE takes-drift-1, seed 47; red 9400367d430f): the one node of bare "Titans" at CinemaxX Dammtor and

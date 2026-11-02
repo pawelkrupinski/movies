@@ -101,7 +101,11 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
           cluster.map(node => node.id -> { val (film, probability, why) = familyTaken(node.id); ResolverDecisions.Vote(film, probability, Some(why)) })
         else voting.vote(cluster, scope).map { case (id, (film, probability)) => id -> ResolverDecisions.Vote(film, probability, None) }
       }.toMap
-    private val filmOf: String => Option[Int] = id => accepted.get(id).orElse(votes.get(id).map(_.film))
+    // a node of a round-A cluster whose accepted members all took ONE film follows it
+    private val joinedFilm: Map[String, Int] = roundA.flatMap { cluster =>
+      cluster.flatMap(node => accepted.get(node.id)).distinct match { case Seq(film) => cluster.map(_.id -> film); case _ => Nil }
+    }.toMap
+    private val filmOf: String => Option[Int] = id => accepted.get(id).orElse(votes.get(id).map(_.film)).orElse(joinedFilm.get(id))
     private val familyEdges = edges.of(members, filmOf)
     private val clusters    = solve(members, familyEdges, filmOf)
 
