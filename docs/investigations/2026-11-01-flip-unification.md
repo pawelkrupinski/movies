@@ -766,6 +766,27 @@ the arrival chains. Two arrivals each took it back:
 from `identity-population-flips-known.tsv` (the spec fails with only the first fix, its Kiln arm still flipping), and
 no other committed slice gained a flip. DCA's take at full population moves none → 1462368, the right film.
 
+### 7.7 A facts-free member neither keeps nor withdraws a withdrawn vote (Titans, Grünstadt)
+
+**Mechanism.** `ClusterVoting.onlyWithdrawn` refuses a cluster's vote for a film every member took alone and a
+sibling's NotTheWork denial withdrew. Filmwelt Grünstadt's "TITANS AWAKENING" took 1690206 alone; Luxor's feed-linked
+short withdrew it (none). When the bare "Titans" node joined its cluster, the rule no longer held for every member
+(the bare node's alone take, on its title only, was 10637), so the pooled vote re-took 1690206; Essen's arrival
+dropped it again: none → 1690206 → none.
+
+**Fix.** The rule reads only members that publish a fact (and needs one): a facts-free member's title is already the
+others', so it brings no evidence that answers the denial.
+
+**Proof.** `PopulationMonotonicitySpec`: Grünstadt's row removed, no new flip in any slice. Its take at full population
+is none, unchanged.
+
+**What stays in the slice (class b, inherent).** CinemaxX Dammtor and Raschplatz's bare "Titans" (one node) and Luxor's
+"Titans, Malayalam/english": none alone (or 10637 on the title alone), 869152 once Kino's credited Prince Joy billing
+arrives (the only film the family states), none once Grünstadt's Ben Ruffin film makes the family contested (the
+solver's ambiguity). At full population they take what they take with the contest present, none; the borrow at the
+middle populations is right with the data then present, and no rule over the present listings can know that a
+contesting sibling will come.
+
 ### 7.9 Titans: inherent bare-borrow flip, baselined by owner decision (CinemaxX Dammtor, Raschplatz)
 
 Convergence #728 (DE takes-drift-1, seed 47; red 9400367d430f): the one node of bare "Titans" at CinemaxX Dammtor and

@@ -46,15 +46,21 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  Paris" (the Paris Opera Ballet's relay) re-took the 1956 Hunchback, a screen namesake of the ballet billings' work,
    *  and DE Mal seh'n Kino's "THE THING WITH FEATHERS" re-took Oelofse's 24-minute short (kinoheld's copied credit) beside
    *  the Cineamo link of "Das Ding mit den Federn" to Southern's feature. */
-  private def onlyWithdrawn(cluster: Seq[EvidenceNode], film: Int): Boolean = !keptByASibling(cluster, film) && cluster.forall { node =>
-    val scope = families.scopeOf(node)
-    !families.bestOf.contains(node.id) && !FeedLink.linked(node.listings).exists(_._2 == film) && scope.takenAlone(node).exists { case ((best, _), _) =>
-      best.candidate.tmdbId == film && families.siblingDenying(node, scope.members, scope, best,
-        id => scope.takenAlone(scoring.generation.nodeById(id)).map(_._1._1)).exists { case (_, denial) =>
-        denial.denial.exists(_.kind match {
-          case kind @ Denial.Kind.NotTheWork(_) => Authority.spares(best, kind).isEmpty
-          case _                                       => false
-        }) }
+  private def onlyWithdrawn(cluster: Seq[EvidenceNode], film: Int): Boolean = {
+    // a member publishing no fact brings no evidence of its own to answer the denial: its title is the others' already,
+    // so it neither keeps the vote nor withdraws it (DE Filmwelt Grünstadt's "TITANS AWAKENING" re-took 1690206 whenever
+    // the bare "Titans" joined it, and lost it again as the family grew: drift slice dammtor-titans-0bd19a4c)
+    val stating = cluster.filter(_.evidence.measured.publishesAFact)
+    !keptByASibling(cluster, film) && stating.nonEmpty && stating.forall { node =>
+      val scope = families.scopeOf(node)
+      !families.bestOf.contains(node.id) && !FeedLink.linked(node.listings).exists(_._2 == film) && scope.takenAlone(node).exists { case ((best, _), _) =>
+        best.candidate.tmdbId == film && families.siblingDenying(node, scope.members, scope, best,
+          id => scope.takenAlone(scoring.generation.nodeById(id)).map(_._1._1)).exists { case (_, denial) =>
+          denial.denial.exists(_.kind match {
+            case kind @ Denial.Kind.NotTheWork(_) => Authority.spares(best, kind).isEmpty
+            case _                                       => false
+          }) }
+      }
     }
   }
 
