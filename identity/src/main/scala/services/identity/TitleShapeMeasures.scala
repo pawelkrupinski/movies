@@ -199,23 +199,37 @@ private[identity] object TitleShapeMeasures {
       val words = CaseWord.findAllMatchIn(title).toVector
       def capitals(w: String) = w.count(_.isLetter) >= 2 && !w.exists(_.isLower)
       def lettered(w: String) = w.exists(_.isLetter)
-      def split(at: Int): Option[Seq[String]] = {
+      // the half in capitals is the head (a programme heading the film) or the tail (a strand closing it, or the film
+      // billed in capitals after its programme)
+      def split(at: Int, capitalsHead: Boolean): Option[Seq[String]] = {
         val (head, tail) = (title.substring(0, words(at).start), title.substring(words(at).start))
         val stop = head.reverse.takeWhile(c => !c.isLetterOrDigit)
         val spaced = stop.exists(_.isWhitespace)
         val allowed = stop.trim.isEmpty || stop.trim.forall(".!?…".contains(_)) || (stop.trim.forall("-–—".contains(_)) && !spaced)
-        Option.when(allowed && head.exists(_.isLetter) && tail.exists(_.isLetter) && bracketsClosed(head))(
-          Seq(head.trim.stripSuffix(stop.trim).trim, tail.trim))
+        val halves = Seq(head.trim.stripSuffix(stop.trim).trim, tail.trim)
+        Option.when(allowed && head.exists(_.isLetter) && tail.exists(_.isLetter) && bracketsClosed(head) &&
+          tail.trim.headOption.exists(c => c.isUpper || c.isDigit) && !partsInCapitals(if (capitalsHead) head else tail) &&
+          !halves.exists(onlyBilledAround))(halves)
       }
       // a closing run of capitals
       val closing = words.reverseIterator.takeWhile(m => capitals(m.matched) || !lettered(m.matched)).size
       val opening = words.iterator.takeWhile(m => capitals(m.matched) || !lettered(m.matched)).size
       val tailRun = Option.when(closing >= 2 && closing < words.size && words.takeRight(closing).count(m => capitals(m.matched)) >= 2 &&
-        words.dropRight(closing).exists(_.matched.exists(_.isLower)))(words.size - closing).flatMap(split)
+        words.dropRight(closing).exists(_.matched.exists(_.isLower)))(words.size - closing).flatMap(split(_, capitalsHead = false))
       val headRun = Option.when(opening >= 2 && opening < words.size && words.take(opening).count(m => capitals(m.matched)) >= 2 &&
-        words.drop(opening).exists(_.matched.exists(_.isLower)))(opening).flatMap(split)
+        words.drop(opening).exists(_.matched.exists(_.isLower)))(opening).flatMap(split(_, capitalsHead = true))
       (tailRun.toSeq ++ headRun.toSeq).flatten.filter(_.nonEmpty)
     }
+  /** Does the half in capitals hold stops of its own — a programme of parts, PL "24. Festiwal TERRA - BANGLADESZ -
+   *  NIEZNOŚNY CIĘŻAR ŻYCIA", whose pieces the searches would read alone ("TERRA" took Terra, 2007)? No case change
+   *  splits such a billing. */
+  private def partsInCapitals(half: String): Boolean = Seq(" - ", " – ", " — ", ": ").exists(half.contains)
+  /** Is every word of a half one a venue bills around a film ([[services.billing.DecorationWords.billedAround]])? DE Café
+   *  Trauma's "FREI~QUENZ Anniversary" is a party's anniversary, never Komasa's "Anniversary". */
+  private def onlyBilledAround(half: String): Boolean = {
+    val words = TitleContainment.tokens(half).filter(_.length > 1)
+    words.nonEmpty && words.forall(services.billing.DecorationWords.billedAround)
+  }
   private val CaseWord = """[\p{L}\p{N}][\p{L}\p{N}'’]*""".r
   /** Does `head` close every bracket it opens? A case change inside a bracket is the note's, never a strand's stop: PL
    *  "KADR JUNIOR (6-12 lat): …" split at "lat" searched "KADR JUNIOR (6-12". */

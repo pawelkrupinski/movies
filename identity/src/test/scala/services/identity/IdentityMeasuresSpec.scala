@@ -88,6 +88,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // a sentence's stop between words of one case is the title's ("Szkoła magicznych zwierząt. Tajemnica…")
     IdentityMeasures.caseSplit("Szkoła magicznych zwierząt. Tajemnica szkolnego podwórka") shouldBe empty
     IdentityMeasures.caseSplit("DIUNA: CZĘŚĆ TRZECIA") shouldBe empty
+    // a capitals run a sentence goes on from in lower case names no film of its own (PL "VAN GOGH w The National
+    // Gallery London" took Pialat's Van Gogh), nor one holding a programme's parts (PL "24. Festiwal TERRA - …" took
+    // Terra, 2007), nor a half only of words billed around a film (DE "FREI~QUENZ Anniversary" took Komasa's)
+    IdentityMeasures.caseSplit("VAN GOGH w The National Gallery London") shouldBe empty
+    IdentityMeasures.caseSplit("24. Festiwal TERRA - BANGLADESZ - NIEZNOŚNY CIĘŻAR ŻYCIA") shouldBe empty
+    IdentityMeasures.caseSplit("FREI~QUENZ Anniversary") shouldBe empty
     // a case change inside a bracket is the note's: no split leaves a bracket open
     IdentityMeasures.caseSplit("KADR JUNIOR (6-12 lat): Baranek Shaun i kudłata bestia") shouldBe empty
     // what follows the stop must be an edition's words only
