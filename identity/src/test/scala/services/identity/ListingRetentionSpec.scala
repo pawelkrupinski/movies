@@ -18,7 +18,8 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
   private val normalizer = TitleNormalizer.forCountry(models.Country.Germany)
   private val base       = GeneratedIdentityCorpus.generate(1L, normalizer, films = 2, listings = 2).listings
 
-  private def listing(n: Int, title: String): Listing = base(n).copy(title = title, rawTitle = title)
+  private def listing(n: Int, title: String, titles: TitleNormalizer = normalizer): Listing =
+    base(n).copy(title = title, rawTitle = title, cleanTitle = services.movies.ScrapeListing.cleanTitle(base(n).cinema, title, titles)._1)
 
   /** The decorations a venue bills a title in: case, a trailing year, an edition or format tag. */
   private val Decorations: Seq[String => String] = Seq(identity, _.toUpperCase(java.util.Locale.ROOT), _ + " (2025)",
@@ -47,8 +48,8 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
   it should "be kept while a strand bills its title as a piece: Keighley's \"The Ladykillers (1955)\" beside " +
     "Nerve Centre's \"The Ladykillers | Cinematic Breakfast\" (drift slice nerve-centre-londonderry-the-ladykillers)" in {
     val uk   = TitleNormalizer.forCountry(models.Country.UnitedKingdom)
-    val left = ListingRetention.leave(Seq(listing(0, "The Ladykillers (1955)")),
-      Seq(listing(1, "The Ladykillers | Cinematic Breakfast")), Nil, uk)
+    val left = ListingRetention.leave(Seq(listing(0, "The Ladykillers (1955)", uk)),
+      Seq(listing(1, "The Ladykillers | Cinematic Breakfast", uk)), Nil, uk)
     left.kept.map(_.key) shouldBe Seq(base(0).key)
   }
 

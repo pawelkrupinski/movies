@@ -553,7 +553,7 @@ object IdentityDrift {
       flips.record(step, served.iterator.map { case (key, t) => key -> TakeFlips.Served(t.film, s"${t.basis}: ${t.why}", pending(key)) },
         key => answered || inputsMoved(clusters.get(key), now.get(key), scraped) ||
           // a title's venues moved: what reads the title across the corpus (the stage's venues.current fill) read new input
-          held.get(key).exists(listing => movedTitles(ListingRetention.titleOf(listing, reads.normalizer))) ||
+          held.get(key).exists(listing => movedTitles(titleOf(listing, reads.normalizer))) ||
           receiptMoved(lastReceipt.get(key).flatten, receiptNow.get(key).flatten))
       if (probed.nonEmpty) {
         // a probed listing's served take moved: the whole resolve of the inputs as they are now, once a step, says whether
@@ -584,7 +584,7 @@ object IdentityDrift {
     private var movedTitles = Set.empty[String]
     /** Each listing's stage verdict's receipt at the last projection ([[receiptOf]]). */
     private var lastReceipt = Map.empty[ListingKey, Option[Int]]
-    private def moved(listings: Iterable[Listing]): Unit = movedTitles ++= listings.map(ListingRetention.titleOf(_, reads.normalizer))
+    private def moved(listings: Iterable[Listing]): Unit = movedTitles ++= listings.map(titleOf(_, reads.normalizer))
     // a listing back replaces what was kept of it: its current data wins
     def scraped(listings: Seq[Listing]): Unit = {
       event("scrape"); moved(listings); retained --= listings.map(_.key); held ++= listings.map(l => l.key -> l); model.batch(seen = listings)
@@ -651,6 +651,14 @@ object IdentityDrift {
    *  one at one of them only. An answer filed by a scrape's apply -- an inline ask, another cluster's -- moves it as a
    *  filing step does; a take moving under the same receipt is still a flip. */
   def receiptMoved(before: Option[Int], now: Option[Int]): Boolean = before != now
+
+  /** A listing's title as the agreement stage's venue count reads its title across the corpus (`venues.current`): the
+   *  title it is searched under, a trailing parenthesis off, sanitised -- what [[Worker.project]] marks a title's venues
+   *  moved by. The harness's key, not the model's: retention relates listings by the model's own title relation. */
+  def titleOf(listing: Listing, normalizer: services.movies.TitleNormalizer): String = {
+    val normalized = normalizer.sanitize(services.resolution.SearchTitles.withoutTrailingParenthesis(normalizer.searchQuery(listing.title)))
+    if (normalized.nonEmpty) normalized else normalizer.sanitize(listing.title)
+  }
 
   /** The share of the booted listings that leave and return: a venue's run ending. */
   val Leave = 0.03

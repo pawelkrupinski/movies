@@ -249,17 +249,11 @@ final class IdentityModelService(
   /** The listings left kept for their facts alone ([[ListingRetention]]): no venue bills them now. Persisted in
    *  `retainedStore` as they move, and resumed by a take-up ([[resumed]]): a restart keeps them as the rule does. */
   private val retained = java.util.concurrent.ConcurrentHashMap.newKeySet[services.movies.ListingKey]()
-  /** Each held listing's title as [[ListingRetention]] reads it, by the listing object it was read off. */
-  private val titles = new java.util.WeakHashMap[Listing, String]()
-  private def titleOf(listing: Listing): String = titles.synchronized {
-    Option(titles.get(listing)).getOrElse { val t = ListingRetention.titleOf(listing, normalizer); titles.put(listing, t); t }
-  }
-  /** Each present listing's billed titles as [[ListingRetention.billed]] reads them, by the listing object. */
-  private val billedTitles = new java.util.WeakHashMap[Listing, Seq[String]]()
-  private def billedOf(listing: Listing): Seq[String] = billedTitles.synchronized {
-    Option(billedTitles.get(listing)).getOrElse {
-      val t = ListingRetention.billed(listing, normalizer); billedTitles.put(listing, t); t
-    }
+  /** Each held listing's title as [[ListingRetention]] reads it -- by the one title relation ([[TitleRelation]]) -- by the
+   *  listing object it was read off. */
+  private val titles = new java.util.WeakHashMap[Listing, TitleRelation.Forms]()
+  private def formsOf(listing: Listing): TitleRelation.Forms = titles.synchronized {
+    Option(titles.get(listing)).getOrElse { val t = TitleRelation.of(listing, normalizer); titles.put(listing, t); t }
   }
 
   /** `seen` and the keys `leaving` as the model is handed them under [[ListingRetention]]: a listing back is billed again,
@@ -274,8 +268,10 @@ final class IdentityModelService(
       going.foreach(retained.remove)
       val seenKeys = seen.map(_.key).toSet
       val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)) ++ seen.iterator
-      val left     = ListingRetention.leave(going.toSeq.flatMap(engine.held), retained.asScala.toSeq.flatMap(engine.held),
-        present.flatMap(billedOf).toSet, titleOf)
+      val leaving  = going.toSeq.flatMap(engine.held)
+      val kept     = retained.asScala.toSeq.flatMap(engine.held)
+      val left     = ListingRetention.leave(leaving, kept, new TitleRelation.Showing(present.map(formsOf).toSeq, (leaving ++ kept).map(formsOf), normalizer),
+        formsOf)
       left.dropped.foreach(retained.remove)
       left.kept.foreach(l => retained.add(l.key))
       if (back.nonEmpty || left.kept.nonEmpty || left.dropped.nonEmpty) persist(retainedStore.update(left.kept, back ++ left.dropped))

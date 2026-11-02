@@ -1,7 +1,6 @@
 package services.identity
 
 import services.movies.{ListingKey, TitleNormalizer}
-import services.resolution.SearchTitles
 
 /**
  * How long a listing's IDENTITY FACTS live (the owner, 2026-10-30, identity design: "Drop showings, keep movie details
@@ -21,37 +20,15 @@ import services.resolution.SearchTitles
  * "Madoka Magica - Der Film: Rebellion" keeps Filmhaus (Langerringen)'s dated facts while Filmhaus is away, and stays on
  * the 2013 film (drift slices: Madoka, CinemaxX "Titans", Hasetor "Scott & Lila").
  *
- * "Its film" is read by its normalized title ([[titleOf]]): known before any resolve, so the rule needs no take to decide
- * what a take reads.
+ * "Its film" is read by its TITLE, by the one title relation the model groups and backs by ([[TitleRelation.related]]):
+ * known before any resolve, so the rule needs no take to decide what a take reads, and whatever the model joins a present
+ * listing to by title, or backs its film by, is kept while that listing is billed (the flip-unification design's stage 2).
  */
 object ListingRetention {
 
   /** What a leave comes to: the listings kept, their showings dropped, and the keys that go -- the ones that left and are
    *  not kept, and the ones kept before whose title no present listing bills any more. */
   final case class Left(kept: Seq[Listing], dropped: Seq[ListingKey])
-
-  /** The title a listing is kept by: its normalized title, read off the listing alone -- the title it is searched under
-   *  (`TitleNormalizer.searchQuery`: case, programme banners, format and edition tags such as OmU, OV, 3D, IMAX), without
-   *  a trailing parenthetical (`SearchTitles.withoutTrailingParenthesis`: a year, "(GLOBALE)", "(OmU)"), sanitized. DE
-   *  Filmhaus Kino Koeln's "BLACK WATER (2025)" is kept while Kinocenter Giessen bills "Black Water (GLOBALE)": kept by its
-   *  sanitized title alone it went and came back with the order Giessen's answers arrived in (drift slice, seed 29). Never
-   *  by a take: what a take reads cannot be decided by a take. */
-  def titleOf(listing: Listing, normalizer: TitleNormalizer): String = keyOf(listing.title, normalizer)
-
-  private def keyOf(title: String, normalizer: TitleNormalizer): String = {
-    val normalized = normalizer.sanitize(SearchTitles.withoutTrailingParenthesis(normalizer.searchQuery(title)))
-    if (normalized.nonEmpty) normalized else normalizer.sanitize(title)
-  }
-
-  /** The titles a PRESENT listing bills: its own ([[titleOf]]) and each piece its delimiters cut it into
-   *  (`BillingPieces.pieces`: a pipe, a colon, a spaced dash or slash), each read as [[titleOf]] reads a title. A
-   *  strand's billing bills its film: UK Nerve Centre's "The Ladykillers | Cinematic Breakfast" bills "The Ladykillers",
-   *  so Picture House Keighley's "The Ladykillers (1955)" -- the listing the strand's take joins by its title segment --
-   *  is kept while Keighley is away. Kept by the whole title alone it went, and the strand's take moved to the 2004
-   *  remake and came back with Keighley's next scrape (drift slice nerve-centre-londonderry-the-ladykillers, #624). */
-  def billed(listing: Listing, normalizer: TitleNormalizer): Seq[String] =
-    (titleOf(listing, normalizer) +: services.billing.BillingPieces.pieces(listing.title).filter(_.exists(_.isLetter))
-      .map(keyOf(_, normalizer))).filter(_.nonEmpty).distinct
 
   /** A listing as kept: whole. The model's input holds no showing (time, screen, booking), only the DAYS a listing
    *  screens on, and those are facts of it: they date the broadcast a relay screens (UK "Royal Ballet and Opera: Alice's
@@ -62,11 +39,15 @@ object ListingRetention {
   def kept(listing: Listing): Listing = listing.copy(kept = true)
 
   /** `gone`, listings that just left, against `present` (those still showing after the leave) and `retained` (those kept
-   *  before): each gone listing whose title a present one bills ([[billed]]) is kept, showings dropped; every other
-   *  goes, and so does every retained one whose title no present listing bills any more. */
+   *  before): each gone listing a present one relates to by title ([[TitleRelation.related]]) is kept, showings dropped;
+   *  every other goes, and so does every retained one no present listing relates to any more. DE Filmhaus Kino Koeln's
+   *  "BLACK WATER (2025)" is kept while Kinocenter Giessen bills "Black Water (GLOBALE)", UK Picture House Keighley's
+   *  "The Ladykillers (1955)" while Nerve Centre bills "The Ladykillers | Cinematic Breakfast": the model joins each pair
+   *  by title, and each went and came back with the order the present one's answers arrived in when retention read a
+   *  title key of its own (drift slices kinocenter-giessen-black-water-globale, nerve-centre-londonderry-the-ladykillers). */
   def leave(gone: Seq[Listing], present: Iterable[Listing], retained: Iterable[Listing], normalizer: TitleNormalizer): Left = {
-    val title = (listing: Listing) => titleOf(listing, normalizer)
-    leave(gone, retained, present.iterator.flatMap(billed(_, normalizer)).toSet, title)
+    val forms = (listing: Listing) => TitleRelation.of(listing, normalizer)
+    leave(gone, retained, new TitleRelation.Showing(present.toSeq.map(forms), (gone ++ retained).map(forms), normalizer), forms)
   }
 
   /** What was kept before (`stored`: the worker's persisted set, or a recording's capture of it) as it stands against
@@ -80,10 +61,10 @@ object ListingRetention {
     leave(stored.filterNot(listing => billed(listing.key)), present, Nil, normalizer)
   }
 
-  /** [[leave]] over the titles `showing` (those a present listing bills), each listing's title read by `title`. */
-  def leave(gone: Seq[Listing], retained: Iterable[Listing], showing: String => Boolean, title: Listing => String): Left = {
-    val (stay, go) = gone.partition(listing => showing(title(listing)))
-    val expired    = retained.iterator.filterNot(listing => showing(title(listing))).map(_.key).toSeq
+  /** [[leave]] over the titles `showing` (the present listings'), each listing's title read by `forms`. */
+  def leave(gone: Seq[Listing], retained: Iterable[Listing], showing: TitleRelation.Showing, forms: Listing => TitleRelation.Forms): Left = {
+    val (stay, go) = gone.partition(listing => showing.relates(forms(listing)))
+    val expired    = retained.iterator.filterNot(listing => showing.relates(forms(listing))).map(_.key).toSeq
     Left(stay.map(kept), go.map(_.key) ++ expired)
   }
 }
