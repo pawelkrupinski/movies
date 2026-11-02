@@ -100,7 +100,7 @@ private[identity] final class WholeCorpusContext(
 }
 
 private[identity] object CorpusContext {
-  def titleOf(node: EvidenceNode): String = IdentityMeasures.key(node.evidence.title)
+  def titleOf(node: EvidenceNode): String = TitleRelation.groupKey(node.evidence)
 
   /** The records a listing's own title searches found — TMDB's, and IMDb's FIRST suggestion for its title: IMDb
    *  matches a title's other-language spellings TMDB's search lacks ("Camino dla opornych" is Compostelle, which TMDB
@@ -154,7 +154,7 @@ private[identity] object CorpusContext {
     def of(members: Seq[EvidenceNode], pool: Seq[IdentityMeasures.Film], films: Set[Int], queries: Set[CandidateQuery],
            sanitize: String => String): Reads = Reads(
       members.map(titleOf).toSet,
-      members.flatMap(node => IdentityMeasures.titleGroups(node.evidence.measured) ++ IdentityMeasures.searchGroupsAny(node.evidence.measured)).toSet,
+      members.flatMap(node => TitleRelation.groups(node.evidence.measured)).toSet,
       members.flatMap(node => node.evidence.published.shapes.map(sanitize)).toSet,
       members.flatMap(node => pool.flatMap(film => StageRelays.billings(node.evidence.measured, film).map(_.listingHouse))).toSet,
       films, queries)
@@ -221,7 +221,7 @@ private[identity] object CorpusContext {
     val houseEvidence = nodes.flatMap { node =>
       val listing = node.evidence.measured
       StageRelays.Houses.evidence(listing, billedFilms(reached(node), listing, seasonFilms.getOrElse(_, Set.empty)).map(candidates(_).film)) }
-    val titleGroups = nodes.flatMap(node => node.listings.map(listing => IdentityMeasures.key(node.evidence.title) -> (Backer.of(listing) -> node.evidence.measured)))
+    val titleGroups = nodes.flatMap(node => node.listings.map(listing => titleOf(node) -> (Backer.of(listing) -> node.evidence.measured)))
       .groupMap(_._1)(_._2)
     val wholeTitles = nodes.map(node => sanitize(node.evidence.cleanTitle)).filter(_.nonEmpty).toSet
     val reachedByTitle = nodes.groupBy(titleOf).filter(_._1.nonEmpty).map { case (title, sameTitled) =>

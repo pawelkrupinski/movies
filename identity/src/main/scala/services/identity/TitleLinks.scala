@@ -6,7 +6,7 @@ import scala.collection.mutable
 
 /** How two nodes' TITLES relate: the keys a title blocks under, the delimited segments it carries,
  *  and whether two titles must-link them. */
-private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: TitleNormalizer, pins: PinConstraints,
+private[identity] final class TitleLinks(normalizer: TitleNormalizer, pins: PinConstraints,
                                          wholeTitle: String => Boolean, bannerSegment: String => Boolean) {
 
   // Each once per title, and each node's keys once per resolve: every pair of a family's nodes
@@ -17,27 +17,28 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
   def sanitized(title: String): String  = sanitizedOf.getOrElseUpdate(title, normalizer.sanitize(title))
   def searchForm(title: String): String = searchFormOf.getOrElseUpdate(title, normalizer.searchQuery(title))
 
+  private val formsOf = mutable.HashMap.empty[String, TitleRelation.Forms]
+  /** A node's title as [[TitleRelation]] reads it, once per resolve. */
+  def forms(node: EvidenceNode): TitleRelation.Forms = formsOf.getOrElseUpdate(node.id, TitleRelation.of(node.evidence, sanitized, searchForm))
+
   def titleKeys(node: EvidenceNode): Set[String] =
     keysOf.getOrElseUpdate(node.id, TitleLinks.titleKeys(node, normalizer, pins, wholeTitle, bannerSegment))
 
   /** Each node's delimited segments, its own title aside. A segment with no letter names no work: a spaced dash splits
    *  the year range of "B-MOVIE – LUST & SOUND IN WESTBERLIN 1979 – 1989", and its "1989" is not the bare "(1989)"
    *  kinoheld titles 帝都大戦 by (DE recording 3650). */
-  val segmentsOf: Map[String, Set[String]] = nodes.map(node => node.id ->
-    (node.evidence.published.shapes.map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.exists(_.isLetter))).toMap
-  def segmentOf(whole: EvidenceNode, decorated: EvidenceNode): Boolean =
-    segmentsOf(decorated.id).contains(sanitized(whole.evidence.cleanTitle))
+  def segmentsOf(node: EvidenceNode): Set[String] = forms(node).segments
+  def segmentOf(whole: EvidenceNode, decorated: EvidenceNode): Boolean = TitleRelation.segmentOf(forms(whole), forms(decorated))
 
-  /** Do two nodes' titles must-link them (tiers 2–4: same sanitised title, same search form,
-   *  an original title naming the other, or one a whole segment of the other)? */
-  def titleLinked(node: EvidenceNode, other: EvidenceNode): Boolean = {
-    val (evidence, otherEvidence) = (node.evidence, other.evidence)
-    val originals = (evidence.originalTitle ++ otherEvidence.originalTitle).map(sanitized).filter(_.nonEmpty).toSet
-    (sanitized(evidence.cleanTitle).nonEmpty && sanitized(evidence.cleanTitle) == sanitized(otherEvidence.cleanTitle)) ||
-      (searchForm(evidence.cleanTitle).nonEmpty && searchForm(evidence.cleanTitle) == searchForm(otherEvidence.cleanTitle)) ||
-      originals.contains(sanitized(evidence.cleanTitle)) || originals.contains(sanitized(otherEvidence.cleanTitle)) ||
-      segmentOf(node, other) || segmentOf(other, node)
-  }
+  /** The title must-link two nodes' titles give, and why ([[TitleRelation.tier]]): what [[ConstraintEdges]] joins them by,
+   *  the segment's own exception aside (it reads the candidates). */
+  def tier(node: EvidenceNode, other: EvidenceNode): Option[(Int, String)] =
+    TitleRelation.tier(forms(node), forms(other), titlesBeside(node, _), titlesBeside(other, _))
+
+  /** Do two nodes' titles must-link them ([[tier]]: same sanitised title, same search form unless either bills another
+   *  listing's title beside it, an original title naming the other or both, or one a whole segment of the other)? The
+   *  relation the constraint edges join by, read for a sibling's denial too ([[Families.siblingDenying]]). */
+  def titleLinked(node: EvidenceNode, other: EvidenceNode): Boolean = tier(node, other).isDefined
 
   /** Does `n`'s title carry, beside its search form `form`, a delimited segment that is ANOTHER
    *  listing's whole title sharing no word with the form — so that a search form it shares with
@@ -56,22 +57,14 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
     // segment ("Pieśni lasu" in "Pieśni lasu | Pokaz …") is never another listing's title beside it.
     val formKey = sanitized(form)
     val billed = MultiFilmBill.billedSecondTitle(node.evidence.published).map(sanitized).filter(_.nonEmpty)
-    (segmentsOf(node.id) ++ billed).exists(seg => wholeTitle(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
+    (segmentsOf(node) ++ billed).exists(seg => wholeTitle(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
       (services.movies.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
   }
 }
 
 private[identity] object TitleLinks {
-  /** The keys a node's title blocks under: its sanitised title, search form, original title, its
-   *  segments except BANNERS, and its pins' keys — a family's seed before any match grows it. A
-   *  segment is a banner when it is no listing's whole title (`wholeTitle`, sanitised) while another
-   *  piece of the same title is one: in "Coraline - Sensory Friendly Screening" the work is
-   *  "Coraline", and "Sensory Friendly Screening", "Part 2", "Młode Horyzonty" as keys chained PL's
-   *  programmes and festivals into one family of ~75% of its listings. A title no piece of which is
-   *  anyone's whole title keeps every piece: "RBO Cinema Season 2026-27: Così fan tutte" joins the
-   *  RBO's and the Met's other spellings of the work only through "Così fan tutte" — unless the piece
-   *  is a banner by how many titles carry it (`bannerSegment`: a festival's films rarely have a
-   *  listing of their own, so "Młode Horyzonty: …" has no whole-title piece beside the banner). */
+  /** The keys a node's title blocks under: its title's ([[TitleRelation.Cut]]: sanitised title, search form, original
+   *  title, its segments except BANNERS) and its pins' and catalogue ids' — a family's seed before any match grows it. */
   def titleKeys(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
                 bannerSegment: String => Boolean): Set[String] =
     new Cut(node, normalizer, pins, wholeTitle, bannerSegment).keys
@@ -98,31 +91,17 @@ private[identity] object TitleLinks {
       droppedPieces.flatMap { case (segment, key) => reasonToDrop(key).map(reason => s"'$segment'" -> reason) }.distinctBy(_._1))
   }
 
-  /** What [[titleKeys]] and [[keyed]] both decide — the pieces kept and dropped, and the keys — with
-   *  no reason told: a resolve and every event's title components key every node, and read no reason. */
+  /** What [[titleKeys]] and [[keyed]] both decide — the title's cut ([[TitleRelation.Cut]]: the pieces kept and dropped,
+   *  and its block keys) and the node's pins and catalogue ids — with no reason told: a resolve and every event's title
+   *  components key every node, and read no reason. */
   private final class Cut(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
                           bannerSegment: String => Boolean) {
-    val whole   = normalizer.sanitize(node.evidence.cleanTitle)
-    val pieces  = node.evidence.published.shapes.map(segment => segment -> normalizer.sanitize(segment))
-    // The listing's own cleaned title is a work too, when another piece of what the venue published
-    // lies OUTSIDE it: "Spider-Man. Całkiem nowy dzień" beside "2D DUB", "KNT"; "Lalka" beside
-    // "PREMIERA", though the normaliser drops "premiera" from the whole. Pieces inside it ("Così fan
-    // tutte" in "RBO Cinema Season 2026-27: Così fan tutte") say nothing of what is beside it.
-    private val besideIt = pieces.exists { case (_, key) => key.nonEmpty && key != whole && !whole.contains(key) }
-    val isWhole = pieces.collect { case (_, key) if (key != whole && wholeTitle(key)) || (key == whole && besideIt) => key }.toSet
-    // The search form is a work too, for the pieces that lie outside it: in "Gorzkie święta / napisy
-    // - Nasze Kino" the label sticks to the film's piece, so no piece is anyone's whole title, but the
-    // normaliser's form "Gorzkie święta" still says the venue's name beside it is no work.
-    private val form = normalizer.sanitize(normalizer.searchQuery(node.evidence.cleanTitle))
-    private def besideTheForm(key: String): Boolean = form.nonEmpty && form != whole && !key.contains(form) && !form.contains(key)
-    def reasonToDrop(key: String): Option[String] =
-      if (isWhole(key) || key == whole) None
-      else isWhole.find(_ != key).map(work => s"banner beside the work '$work', which a listing carries whole")
-        .orElse(Option.when(besideTheForm(key))(s"banner beside the work '$form', its title's search form"))
-        .orElse(Option.when(bannerSegment(key))("banner: no listing's whole title, and carried by many titles"))
-    val (keptPieces, droppedPieces) = pieces.partition { case (_, key) => reasonToDrop(key).isEmpty }
-    val blocked: Set[String] = FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, normalizer,
-      segments = keptPieces.map(_._1) :+ node.evidence.cleanTitle)
+    private val title = new TitleRelation.Cut(TitleRelation.of(node.evidence, normalizer), normalizer, wholeTitle, bannerSegment)
+    val whole: String = title.whole
+    def isWhole(key: String): Boolean = title.isWhole(key)
+    def reasonToDrop(key: String): Option[String] = title.reasonToDrop(key)
+    def droppedPieces: Seq[(String, String)] = title.droppedPieces
+    val blocked: Set[String] = title.blocked
     val pinned: Seq[String] = pins.blockKeys(node.listings.head.key).toSeq.sorted
     val catalogued: Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.sorted.map(_.key)
     def keys: Set[String] = blocked ++ pinned ++ catalogued

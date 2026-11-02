@@ -266,12 +266,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       case _          => None
     }
   }
-  /** The title groups whose venues back `candidate` for `listing`: its own title's, and a film the title carries as one of
-   *  its delimited pieces is backed by the venues billing that piece alone — DE Astor's "ATMOS: Michael", which Cineamo
-   *  links to Dreyer's 1924 film, is the "Michael" sixteen venues credit to Antoine Fuqua. */
+  /** The title groups whose venues back `candidate` for `listing`, by the one title relation ([[TitleRelation.backingGroups]]). */
   private def backingGroups(listing: IdentityMeasures.Listing, candidate: Candidate): Seq[String] =
-    (IdentityMeasures.titleGroups(listing) ++ IdentityMeasures.searchGroups(listing, candidate.film) ++
-      listing.shapeKeys.filter(candidate.film.titleKeys)).distinct
+    TitleRelation.backingGroups(listing, candidate.film)
   /** The one film of the pool `titles` (a node's titles alone) name exactly, when they name the linked `film` not at all. */
   private def titledRival(titles: IdentityMeasures.Listing, film: Int): Option[Int] = {
     def relation(candidate: Candidate) = IdentityMeasures.titleRelation(titles, candidate.film, houses, qualifiers).value

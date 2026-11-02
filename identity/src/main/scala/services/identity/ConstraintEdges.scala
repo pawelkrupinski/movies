@@ -13,6 +13,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   import scoring.generation.{nodeById, nodes}
   import links.{sanitized, searchForm, segmentOf, titlesBeside}
 
+
   private def pairsSharingAKey(group: Seq[EvidenceNode]): Seq[(EvidenceNode, EvidenceNode)] = {
     // By position, so indexed: a resolve's first round pairs every node of the region.
     val members = group.toIndexedSeq
@@ -152,23 +153,19 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
           ConstraintEdges.ReusedPageApart),
         Option.when(keptBesideOverruled(first, second) || keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart)
       ).flatten.filterNot(reason => RuleAblation.disables("apart:" + DecisionTrace.id(reason)))
-      val titleX = sanitized(firstEvidence.cleanTitle)
-      val originals = (firstEvidence.originalTitle.map(sanitized) ++ secondEvidence.originalTitle.map(sanitized)).filter(_.nonEmpty).toSet
       val musts = Seq(
         Option.when(sameFilm)((1, "same-film")),
         // One chain lists them under one catalogue id: its one film, whatever each venue calls it (a feed's id, only
         // where their titles agree: `catalogueKey`).
         Option.when(sharesCatalogueId(first, second))((2, ConstraintEdges.SameCatalogueId)),
-        Option.when(titleX.nonEmpty && titleX == sanitized(secondEvidence.cleanTitle))((2, ConstraintEdges.SameTitle)),
-        Option.when(sharedSearchForm(first, second).isDefined)((3, ConstraintEdges.SameSearchForm)),
-        Option.when(originals.contains(titleX) || originals.contains(sanitized(secondEvidence.cleanTitle)) ||
-          (firstEvidence.originalTitle.isDefined && firstEvidence.originalTitle.map(sanitized) == secondEvidence.originalTitle.map(sanitized) && originals.nonEmpty))((3, "original-title")),
-        // One listing's whole title is a delimited SEGMENT of the other's ("Oficjalna premiera:
-        // Lalka" and "Lalka"): the decorated spelling joins its plain sibling's cluster, so group
-        // voting and the venue signal reach it. Whole segments only — "Zärtlich kreist die Faust"
-        // has no delimiter before "Faust" — and the ambiguity rule leaves a spelling whose segment
-        // names two films apart, as it does one whose rest names a film of its own (`namesBeside`).
-        Option.when((segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)))((4, ConstraintEdges.TitleSegment))
+        // The titles' must-link, by the one title relation (TitleRelation.tier: same title, same search form, original
+        // title, whole segment). One listing's whole title a delimited SEGMENT of the other's ("Oficjalna premiera:
+        // Lalka" and "Lalka") joins the decorated spelling to its plain sibling's cluster, so group voting and the venue
+        // signal reach it. Whole segments only — "Zärtlich kreist die Faust" has no delimiter before "Faust" — and the
+        // ambiguity rule leaves a spelling whose segment names two films apart, as it does one whose rest names a film of
+        // its own (`namesBeside`).
+        links.tier(first, second).filter { case (tier, _) => tier != 4 ||
+          (segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)) }
       ).flatten.filterNot { case (_, reason) => RuleAblation.disables("join:" + reason) }
       cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
     }.filter(admitted)
@@ -180,6 +177,7 @@ private[identity] object ConstraintEdges {
   val SameCatalogueId  = "same-catalogue-id"
   val SameSearchForm   = "same-search-form"
   val TitleSegment     = "title-segment"
+  val OriginalTitle    = "original-title"
   /** The cannot-link of two nodes a feed's copied original title alone joins, one's feed linking a film the other's is not. */
   val CopiedOriginalApart = "copied-original-apart"
   /** The cannot-link of a node a feed links to a film and one whose reused page's copied facts deny it. */
