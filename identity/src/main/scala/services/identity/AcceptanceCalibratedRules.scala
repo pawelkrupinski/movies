@@ -97,7 +97,7 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
       taken <- calibratedWhy(ranked)
       best   = taken._1
       _     <- noneOf(closerThan(best, eligible), "its title sits inside a closer record", best)
-      _     <- noneOf(eligible.find(rival => (rival ne best) && !IdentityMeasures.eventNamed(rival.listing, rival.candidate.film) && {
+      _     <- noneOf(eligible.find(rival => (rival ne best) && {
                  val apart = IdentityMeasures.namedApart(best.listing, best.candidate.film, rival.candidate.film)
                  (namedAlike(best, rival) && facts(rival) > facts(best)) || (apart && facts(rival) >= facts(best))
                }), "a film the title names alike fits its facts better", best)

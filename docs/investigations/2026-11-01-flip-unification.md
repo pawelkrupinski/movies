@@ -770,6 +770,17 @@ the arrival chains. Two arrivals each took it back:
 from `identity-population-flips-known.tsv` (the spec fails with only the first fix, its Kiln arm still flipping), and
 no other committed slice gained a flip. DCA's take at full population moves none → 1462368, the right film.
 
+
+**Backed out (same day).** The whole-corpus measure (run 41465290558) found the first fix's price: UK Riverside
+Woodbridge's "Dracula + Q&A" (Hammer's 1958 film, judged right by its synopsis) went to Besson's 2025 film. That
+listing publishes no fact; the "Q & A" (1990) rival had been all that kept the IMDb and RT families' calibrated vote
+from guessing between the two "Dracula"s on rank alone, and once it voted, `families.current` outranked the venue's
+cast tie-break. Guarding the skip by the listing's own facts, or by the rival's listing being a sibling's, brought
+DCA's flip back, so the rival check is restored as it was. Without it the second fix alone made a new
+film → none → film flip for DCA in the `…-nohexham` slice, so it is backed out too; `eventNamed`'s token runs and the
+"recorded" word stay (no take moved by them). DCA's row is back in `identity-population-flips-known.tsv`: it is a
+named remainder, the facts-free rival check standing in for a near-tie that no rule yet names.
+
 ### 7.7 A facts-free member neither keeps nor withdraws a withdrawn vote (Titans, Grünstadt)
 
 **Mechanism.** `ClusterVoting.onlyWithdrawn` refuses a cluster's vote for a film every member took alone and a
