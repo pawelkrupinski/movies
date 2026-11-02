@@ -15,7 +15,13 @@ package services.identity
  *    fit both "Escape Room 2"s, so they tell neither apart;
  *  - `feed id`: a TMDB-keyed feed's id linking it to `f` (`linked`: [[FamilyScope.feedLinked]], none where the resolve's
  *    films are a family's own numbers);
- *  - `season`: a stage relay's screening days placing it in the season its record names ([[Scored.seasonProduction]]).
+ *  - `season`: a stage relay's screening days placing it in the season its record names ([[Scored.seasonProduction]]);
+ *  - `named director`: the venue's own text (synopsis or cast field, [[VenueNames]]) names one of the film's directors
+ *    WHOLE, where the node credits none of its own — ES taquilla's "Hope" ×56, "Basada en la propia historia de su
+ *    directora Maria Sødahl", her 2019 film word for word, beside Na Hong-jin's 2026 "Hope" taken by 4 nodes' facts;
+ *  - `cast`: the venue's own cast field ([[ListedCast]]) names [[CastEvidence.Names]] of the film's top-billed cast, no
+ *    namesake's being named as often, and the field is the film's ([[CastEvidence.castIsTheFilms]]: no relay, stage
+ *    work, performance or bill of several works lists its performers there).
  *
  *  A node with none still takes the film when another node of its cluster billed under the SAME title corroborates it on
  *  its own — its title, clean title or search title alike — or joined to such a node by a [[Vouching]] must-link (US
@@ -39,8 +45,14 @@ private[identity] object Corroboration {
     val runtime    = inBand(own) && !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && inBand(rival))
     val feedId     = linked(node).contains(own.candidate.tmdbId)
     val season     = own.seasonProduction || own.number("season.delta").contains(0.0)
+    val named      = own.candidate.film.directors.exists(directors => node.listings.exists(listing =>
+      listing.directors.isEmpty && directors.exists(listing.names.names)))
+    def castNamed(scored: Scored) = scored.candidate.film.cast.exists(cast => node.listings.exists(listing =>
+      listing.listedCast.nonEmpty && cast.namedBy(listing.listedCast) >= CastEvidence.Names))
+    val cast       = castNamed(own) && CastEvidence.castIsTheFilms(node.listings) &&
+      !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && castNamed(rival))
     Seq("year" -> agree("year"), "director" -> agree("director"), "original title" -> original, "runtime" -> runtime, "feed id" -> feedId,
-      "season" -> season)
+      "season" -> season, "named director" -> named, "cast" -> cast)
       .collect { case (name, true) => name }
   }
 
@@ -130,6 +142,6 @@ private[identity] object Corroboration {
       }.filter(vouched.add)
     }
     cluster.filterNot(node => vouched(node.id)).flatMap(node => disputed.get(node.id).map(why =>
-      node -> s"uncorroborated namesake: no year, director, original title, discriminating runtime, feed id or season of its own names tmdb $film, and $why"))
+      node -> s"uncorroborated namesake: no year, director, original title, discriminating runtime, feed id, season, director its text names or cast of its own names tmdb $film, and $why"))
   }
 }
