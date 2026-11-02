@@ -937,16 +937,6 @@ jobs:
                   path: convergence.jfr
                   if-no-files-found: warn
                   retention-days: 7
-            # A takes or drift row's profiles: one per JVM its check started (scripts/ci/jfr-every-jvm.sh).
-            - name: Upload the check's CPU profiles
-              if: always() && inputs.profile && startsWith(matrix.phase, 'takes')
-              uses: actions/upload-artifact@v6
-              with:
-                  overwrite: true
-                  name: convergence-profile-${{ inputs.code }}-${{ matrix.phase }}
-                  path: ${{ runner.temp }}/jfr/
-                  if-no-files-found: warn
-                  retention-days: 7
 
             # `include_passed: true` — these tests are the report. A convergence leg that
             # PASSES is the interesting case: the run's whole value is the numbers it
@@ -1102,6 +1092,16 @@ jobs:
                   name: identity-drift-${{ inputs.code }}-${{ matrix.phase }}
                   path: ${{ runner.temp }}/identity-drift/
                   if-no-files-found: ignore
+                  retention-days: 7
+            # A takes or drift row's profiles, once its check ended: one per JVM it started (scripts/ci/jfr-every-jvm.sh).
+            - name: Upload the check's CPU profiles
+              if: always() && inputs.profile && startsWith(matrix.phase, 'takes')
+              uses: actions/upload-artifact@v6
+              with:
+                  overwrite: true
+                  name: convergence-profile-${{ inputs.code }}-${{ matrix.phase }}
+                  path: ${{ runner.temp }}/jfr/
+                  if-no-files-found: warn
                   retention-days: 7
 
             # THE BASE ROW of a takes-only dispatch (scripts/identity-measure): the takes check's base side -- its resolve,
