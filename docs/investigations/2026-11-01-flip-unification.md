@@ -600,3 +600,44 @@ es. LANDABLE.
 
 **Drift.** Rows at seeds 41 and 42 in all five countries, run 41362718212: 9 of 10 rows clean. UK seed 42 is red on
 Keswick Alhambra's flip. That is main's open red, fixed by #629 (waiting), and its cause reads `answer,population`.
+
+### 7.2 Stage 2: one title relation (no take moved)
+
+**What landed.**
+
+- `TitleRelation` defines how two listings' titles relate, once. It gives a title's forms: its sanitised whole, search
+  form, original titles, delimited segments, its backing group key and the groups its backing reads. From those it gives
+  the must-link tier between two titles, and the family block keys its cut keeps (`TitleRelation.Cut`, moved out of
+  `TitleLinks`).
+- Its readers:
+  - `ConstraintEdges`' title must-links. The segment's candidate-reading exception (`namesBeside`) stays there.
+  - `TitleLinks.titleLinked`, the sibling relation `Families.siblingDenying` reads. It is the same tier with one clause
+    left out: two titles that share only an original title. The edges draw that link, then cancel it with
+    `copied-original-apart` where the original is a feed's copy.
+  - The backing's groups (`FamilyScope.backingGroups`, `CorpusContext.titleOf`) and what a family's resolve reads of
+    them (`CorpusContext.Reads`). The latter now includes the shapes the backing reads, so an incremental family is
+    re-resolved when a group it backs by moves.
+  - `ListingRetention`. A leaving listing is kept while a present listing relates to it by title: the model's title
+    must-link (without its exceptions), a shared family block key (cut against the whole titles and banners of the
+    listings present, leaving and kept), or one backing the other's film by title group. `titleOf` and `billed` are
+    gone. The drift harness keeps the agreement stage's own key for "a title's venues moved" (`IdentityDrift.titleOf`).
+- `TitleRelationSpec`, over every committed slice: retention keeps every pair the slice's resolve joins by a title
+  must-link, and every pair where one listing backs the other's film by title group.
+- Teeth:
+  - with the retention rule from before 8dfe17752, the Ladykillers slice drops 7 such pairs;
+  - with the rule from before 5959ba7bf, the Black Water slice drops 2 more.
+- What retention now keeps that it did not: relay billings the model joins only through a venue page's original
+  title, which retention cannot see. RBO "Swan Lake", NT Live "Hay Fever", Rieu's "Let it Snow" and "Carmen" are now
+  kept through their shared block key.
+
+**The one move, found and removed.** The first measure (run 41365658407) moved 35 DE model takes:
+
+- CineStar "Tribute von Panem - Mockingjay: Teil 1" ×35 went to none; the final takes were unmoved.
+- The pinned slice de-fallen-angels-by-noel-coward-adria-zorn's seven Coward billings lost their own match.
+
+The cause: `siblingDenying` read the unified tier's shared-original clause, so "Der Zorn der Engel" (copied original
+"Fallen Angels") withdrew those matches. The sibling relation now leaves that clause out (c527df039).
+
+**Measure.** Run 41374801177, base = stage 1: 0 model and 0 final takes moved in pl, de, uk, us and es. LANDABLE.
+
+**Drift.** Rows at seeds 5 and 6 in all five countries, run 41376690109: all 10 clean.
