@@ -37,6 +37,12 @@ class ReadSetClosureSpec extends AnyFlatSpec with Matchers with tools.CountrySco
       withClue("takes decided while a question they read was open, moved by its answer: ")(found(dir).get shouldBe empty)
     }
   }
+
+  slices.foreach { dir =>
+    "A real family" should s"decide no take while a sibling's venue page is unread, beyond its cluster: ${PopulationMonotonicitySpec.relative(dir)}" in {
+      withClue("takes decided while a family sibling's page, outside their cluster, was unread: ")(unreadSibling(dir) shouldBe empty)
+    }
+  }
 }
 
 object ReadSetClosureSpec {
@@ -84,6 +90,36 @@ object ReadSetClosureSpec {
         }
     }.distinct.sorted
   }
+
+  /** Every listing decided while the venue page of a listing of its FAMILY in another cluster is unread -- the
+   *  read-set's own statement (stage 4): a decision reads its family's evidence (the pool, a sibling's denial, the
+   *  family majority, the must-link reach), so it awaits every open question of its family, not its cluster's alone. For
+   *  each family the whole resolve splits into clusters, one listing of each cluster (at most [[SiblingProbes]]) has its
+   *  page withheld; where that leaves its own take awaiting its page, no listing of its family may be decided. Before
+   *  stage 4 a take awaited its cluster and its must-links' reach only, and a sibling cluster's listings stayed decided. */
+  def unreadSibling(dir: Path): Seq[String] = {
+    val slice     = IdentitySlice.readSlice(dir)
+    val replaying = new tools.SliceHttp.Replaying(slice.http)
+    val reads     = new IdentitySlice.Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed,
+      tools.ProdState.none)
+    val lookups   = scripts.IdentityDrift.memo(reads)
+    val all       = (slice.core ++ slice.context).sorted.distinctBy(_.key)
+    val whole     = IdentityResolver.resolve(all, lookups, reads.normalizer, ResolveInputs.Unpinned)
+    val probes    = whole.decisions.groupBy(d => whole.familyOf.get(d.members.head)).collect {
+      case (Some(_), decisions) if decisions.sizeIs > 1 => decisions.map(_.members.min).sorted.take(SiblingProbes)
+    }.flatten.toSeq.sorted
+    probes.flatMap { probe =>
+      val r = IdentityResolver.resolve(all, new Unread(lookups, Set(probe)), reads.normalizer, ResolveInputs.Unpinned)
+      val awaitsItsPage = r.decisionOf.get(probe).exists(_.awaits.contains(Question.VenuePage(probe)))
+      val family        = r.familyOf.get(probe)
+      if (!awaitsItsPage || family.isEmpty) Nil
+      else r.decisions.filter(d => d.members.exists(r.familyOf.get(_) == family) && !d.members.contains(probe))
+        .flatMap(d => PopulationMonotonicity.takeOf(d).map(take => s"${d.members.min.venue} | ${d.members.min.rawTitle}: $take with ${probe.venue} | ${probe.rawTitle}'s page unread"))
+    }.distinct.sorted
+  }
+
+  /** At most how many clusters of one family [[unreadSibling]] withholds a page of. */
+  val SiblingProbes = 4
 
   /** How many arrival chains [[arrivals]] walks, and at most how many steps each. */
   val ArrivalChains = 3
