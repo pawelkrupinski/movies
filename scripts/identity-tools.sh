@@ -195,6 +195,7 @@ identity_tree() {
   sha=$(git -C "$IDENTITY_REPO" rev-parse --verify "$ref^{commit}") || { echo "no ref $ref" >&2; return 2; }
   dir=$IDENTITY_CACHE/refs/$sha
   [ -f "$dir/build.sbt" ] || identity_locked "tree-$sha" identity_tree_layout "$ref" "$sha" "$dir" || return 1
+  identity_tree_judgements "$sha" "$dir" || return 1
   # one agent a tree drops the files in: a second, comparing while the first copies, would copy over it again and move
   # the time the first's compile reads — or read (and remove) the seed marker the first still needs
   identity_locked "tools-$sha" identity_tree_claimed "$ref" "$sha" "$dir" "$@"
@@ -216,6 +217,7 @@ identity_tree_claimed() {
   if [ -n "$held" ] && [ "$held" != "$hash" ]; then
     dir=$dir-t$hash
     [ -f "$dir/build.sbt" ] || identity_locked "tree-$sha-t$hash" identity_tree_layout "$ref" "$sha" "$dir" || return 1
+    identity_tree_judgements "$sha" "$dir" || return 1
   fi
   identity_tree_tools "$dir" "$@" || return 1
   mkdir -p "$dir/target/identity-tools"; echo "$hash" > "$dir/$mark"
@@ -238,6 +240,15 @@ identity_tree_tools() {
   fi
 }
 
+# identity_tree_judgements <sha> <dir> -> the ref's judgements in <dir> (a tree laid out before they were, too): the
+# worker's build bundles them as a resource (build.sbt) and fails to compile without them
+identity_tree_judgements() {
+  local sha=$1 dir=$2
+  [ -f "$dir/$IDENTITY_JUDGEMENTS" ] && return 0
+  git -C "$IDENTITY_REPO" cat-file -e "$sha:$IDENTITY_JUDGEMENTS" 2>/dev/null || return 0
+  git -C "$IDENTITY_REPO" archive "$sha" -- "$IDENTITY_JUDGEMENTS" | tar -x -C "$dir"
+}
+
 # identity_tree_layout <ref> <sha> <dir> -> the ref's sources in <dir>, laid out beside it and moved in whole
 identity_tree_layout() {
   local ref=$1 sha=$2 dir=$3 t part
@@ -246,9 +257,7 @@ identity_tree_layout() {
   part=$dir.part
   rm -rf "$part" "$dir"; mkdir -p "$part"
   git -C "$IDENTITY_REPO" archive "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' | tar -x -C "$part" || return 1
-  # the worker's build bundles the judgements (build.sbt's resourceGenerators): without the file its compile fails
-  ! git -C "$IDENTITY_REPO" cat-file -e "$sha:test/resources/fixtures/identity-judgements.tsv" 2>/dev/null ||
-    git -C "$IDENTITY_REPO" archive "$sha" -- test/resources/fixtures/identity-judgements.tsv | tar -x -C "$part" || return 1
+  identity_tree_judgements "$sha" "$part" || return 1
   # Seed the compile from the nearest compiled code (APFS clones, no copy): sbt recompiles only what the ref changed.
   local seed apart=""
   seed=$(identity_nearest_compiled "$sha")

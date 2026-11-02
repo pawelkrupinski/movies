@@ -132,6 +132,10 @@ slice() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" KIN
 
 out=$(slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --ref HEAD)
 check "both refs are laid out once in the cache" "2" "$(find "$cache/refs" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+check "...with the ref's judgements, which the worker's build bundles" "1" "$(grep -c '^country' "$cache/refs/$base/test/resources/fixtures/identity-judgements.tsv" 2>/dev/null)"
+rm "$cache/refs/$base/test/resources/fixtures/identity-judgements.tsv"
+IDENTITY_REPO=$repo bash -c '. "$1/scripts/identity-tools.sh" && identity_tree_judgements "$2" "$3"' _ "$repo" "$base" "$cache/refs/$base"
+check "...and into a tree laid out before they were" "1" "$(grep -c '^country' "$cache/refs/$base/test/resources/fixtures/identity-judgements.tsv" 2>/dev/null)"
 check "...with the tool's files dropped in" "// worker/src/test/scala/scripts/IdentitySlice.scala" "$(cat "$cache/refs/$base/worker/src/test/scala/scripts/IdentitySlice.scala")"
 check "each ref decides on the SAME recording" "2" "$(grep -c -- "--recording $cache/recordings/777/pair/test/resources/fixtures" "$work/calls")"
 check "...each reading prod's filed answers from this checkout's capture" "2" "$(grep -c -- "--families $repo/test/resources/fixtures/identity-unmatched/de.json.gz" "$work/calls")"
