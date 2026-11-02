@@ -120,6 +120,8 @@ final case class ShareCardDirectoryTemplate(value: String) extends AnyVal {
 }
 /** `KINOWO_HEAP_DUMP_DIR` — where an on-demand or watchdog heap dump is written. */
 final case class HeapDumpDirectory(value: Path) extends AnyVal
+/** `KINOWO_GROUPING_SUSPECTS_DIR` — where the ranked suspect-grouping reports of the identity takes check are read from. */
+final case class GroupingSuspectsDirectory(value: Path) extends AnyVal
 /** `KINOWO_SCRAPE_CITIES` — the city slugs a worker scrapes, overriding every modelled city. */
 final case class ScrapeCitySlugs(value: Set[String]) extends AnyVal
 

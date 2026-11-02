@@ -30,7 +30,7 @@ trait ReviewWiring { self: Wiring =>
 
   lazy val reviewController: ReviewController = new ReviewController(controllerComponents, environmentMode, reviewSources, reviewAnswers,
     LabelsTsv.locate(), clock,
-    groupings = () => services.review.GroupingSuspects.locate().fold(Map.empty[String, Seq[services.review.SuspectGrouping]])(services.review.GroupingSuspects.read),
+    groupings = () => services.review.GroupingSuspects.locate(processConfiguration.groupingSuspectsDirectory).fold(Map.empty[String, Seq[services.review.SuspectGrouping]])(services.review.GroupingSuspects.read),
     tmdbPosters = Option.when(environmentMode != Mode.Prod)(processConfiguration.tmdbApiKey.map(new TmdbPosterLookup(httpFetch, _))).flatten,
     notices = if (reviewMirrorClient.isEmpty)
       Seq("MONGODB_MOVIES_MIRROR_URI is not set: these pages read only the local mirror (scripts/local-mirror/README.md), so they list nothing, and answers are kept in memory only.")

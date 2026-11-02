@@ -39,7 +39,7 @@ class GroupingSuspectsSpec extends AnyFlatSpec with Matchers {
 
   "the directory" should "be the environment's, else target/grouping-suspects, and none when it is not there" in {
     val dir = Files.createTempDirectory("grouping-suspects")
-    GroupingSuspects.locate(Map(GroupingSuspects.Env -> dir.toString)) shouldBe Some(dir)
-    GroupingSuspects.locate(Map(GroupingSuspects.Env -> dir.resolve("missing").toString)) shouldBe None
+    GroupingSuspects.locate(settings.GroupingSuspectsDirectory(dir)) shouldBe Some(dir)
+    GroupingSuspects.locate(settings.GroupingSuspectsDirectory(dir.resolve("missing"))) shouldBe None
   }
 }

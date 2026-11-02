@@ -146,6 +146,10 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_HEAP_DUMP_DIR`, else `/data/heapdumps`. */
   def heapDumpDirectory: HeapDumpDirectory = HeapDumpDirectory(Path.of(text("KINOWO_HEAP_DUMP_DIR").getOrElse("/data/heapdumps")))
 
+  /** `KINOWO_GROUPING_SUSPECTS_DIR`, else `target/grouping-suspects`. */
+  def groupingSuspectsDirectory: GroupingSuspectsDirectory =
+    GroupingSuspectsDirectory(Path.of(text("KINOWO_GROUPING_SUSPECTS_DIR").getOrElse("target/grouping-suspects")))
+
   /** `KINOWO_SCRAPE_CITIES` — lowercased slugs; None when unset or naming nothing. */
   def scrapeCitySlugs: Option[ScrapeCitySlugs] =
     text("KINOWO_SCRAPE_CITIES").map(_.split(",").iterator.map(_.trim.toLowerCase(Locale.ROOT)).filter(_.nonEmpty).toSet)

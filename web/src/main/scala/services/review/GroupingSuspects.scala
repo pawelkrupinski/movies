@@ -2,7 +2,7 @@ package services.review
 
 import play.api.libs.json.{JsValue, Json}
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
@@ -17,17 +17,13 @@ final case class SuspectGrouping(country: String, rank: Int, score: Double, flag
 /**
  * The SUSPECT GROUPINGS the review page lists, sorted by suspicion: read from the identity takes check's ranked reports
  * (`grouping-suspects-<cc>.json`, the `identity-takes-<cc>` artifact of a convergence run, or a local resolve dump ranked
- * by `scripts/ci/grouping_suspects.py`) in one directory — `KINOWO_GROUPING_SUSPECTS_DIR`, else `target/grouping-suspects`.
+ * by `scripts/ci/grouping_suspects.py`) in one directory — `KINOWO_GROUPING_SUSPECTS_DIR` (settings.ProcessConfiguration), else `target/grouping-suspects`.
  * The model's stored decisions keep no trace of a match (`DecisionTrace.kept`), so the page cannot work them out from the
  * mirror: it shows what the last whole resolve ranked. None, and a notice, without the directory.
  */
 object GroupingSuspects {
-  val Env = "KINOWO_GROUPING_SUSPECTS_DIR"
-  val DefaultDir: Path = Paths.get("target", "grouping-suspects")
-
-  /** Where the reports are, when there is a directory of them. */
-  def locate(env: Map[String, String] = sys.env): Option[Path] =
-    Some(env.get(Env).filter(_.nonEmpty).fold(DefaultDir)(Paths.get(_))).filter(Files.isDirectory(_))
+  /** The directory the process configuration names, when there is one of reports there. */
+  def locate(directory: settings.GroupingSuspectsDirectory): Option[Path] = Some(directory.value).filter(Files.isDirectory(_))
 
   /** Every country's ranked suspects in `dir` (`grouping-suspects-<cc>.json`), a report that cannot be read left out. */
   def read(dir: Path): Map[String, Seq[SuspectGrouping]] =
