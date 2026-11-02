@@ -83,29 +83,27 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   def siblingDenying(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
                      takenAlone: String => Option[Scored]): Option[(EvidenceNode, Scored)] = {
     lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
-    lazy val creditedDirector = IdentityMeasures.sameDirector(best.measures)
-    val ownProduction = best.seasonProduction && StageRelays.billsItsHouse(best.listing, best.candidate.film) ||
-      RelayStage.particularRecordOf(best.listing, best.candidate.film)
     def comparedUnpublished(denial: Scored) =
       (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty
-    def withdraws(denial: Scored, byTaken: Boolean) =
-      !(best.houseProduction && denial.denial.exists(_.kind == Denial.Kind.AnotherHousesSeason)) &&
-        !(creditedDirector && denial.denial.exists(_.kind == Denial.Kind.NotTheWork(creditOverrules = true))) &&
-        (!(denial.deniedByCutOnly || byTaken) || comparedUnpublished(denial))
+    // the provenance table's withdrawal rows (Authority.withdraws): the sibling's provenance may, and the node's own
+    // statement does not answer the denial; then a weak denial (the cut alone, or a sibling's own take) only by a fact
+    // the node did not publish
+    def withdraws(sibling: EvidenceNode, denial: Scored, byTaken: Boolean) =
+      Authority.withdraws(sibling, denial, best) && (!(denial.deniedByCutOnly || byTaken) || comparedUnpublished(denial))
     // the node's take read by another title, corroborated by no other venue nor linked by its own feed: only then may a
     // sibling taken alone withdraw it
     lazy val readOtherwise = !best.category("title").contains("exact") && best.number("venues.corroborating").forall(_ <= 0) &&
       !(scope.feedLinked(node).exists(_._2 == best.candidate.tmdbId) && scope.overruled(node).isEmpty)
     def namedCloser(taken: Scored) = readOtherwise && taken.candidate.tmdbId != best.candidate.tmdbId &&
       scope.of(node).exists(own => own.candidate.tmdbId == taken.candidate.tmdbId && own.category("title").contains("exact"))
-    if (ownProduction) None
+    if (Authority.sparesEvery(best)) None
     else members.iterator.filter(_.id != node.id)
       .flatMap { sibling =>
         val taken = takenAlone(sibling.id)
         // the title link last: a sibling taken alone almost never may withdraw, and a family can hold thousands of them
         if (!taken.forall(namedCloser) || !links.titleLinked(node, sibling)) None
         else scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied &&
-          withdraws(other, taken.isDefined)).map(other => sibling -> other)
+          withdraws(sibling, other, taken.isDefined)).map(other => sibling -> other)
       }
       .nextOption()
   }

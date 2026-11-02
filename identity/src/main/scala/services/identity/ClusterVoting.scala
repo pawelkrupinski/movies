@@ -52,7 +52,7 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
       best.candidate.tmdbId == film && families.siblingDenying(node, scope.members, scope, best,
         id => scope.takenAlone(scoring.generation.nodeById(id)).map(_._1._1)).exists { case (_, denial) =>
         denial.denial.exists(_.kind match {
-          case Denial.Kind.NotTheWork(creditOverrules) => !(creditOverrules && IdentityMeasures.sameDirector(best.measures))
+          case kind @ Denial.Kind.NotTheWork(_) => Authority.spares(best, kind).isEmpty
           case _                                       => false
         }) }
     }

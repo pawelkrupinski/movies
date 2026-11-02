@@ -43,14 +43,16 @@ final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
    *  listings site's entry page counted once ([[Backer.origin]]), and never when it is the listing's own page,
    *  `ownSource`: US Burns Court Sarasota's "NT Live: Hamlet" counted Film Streams Omaha's 2015 as a second venue's,
    *  both read off the one Flicks page that dated it so. A feed's catalogue id stays each venue's own listing of it. */
-  def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String, ownSource: String = "", presentOnly: Boolean = false): Int =
-    (backing(titleGroups, f).filterNot(key => presentOnly && Backer.kept(key)).map(Backer.origin).toSet - ownVenue - ownSource).size
+  def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String, ownSource: String = "",
+                    act: Authority.Act = Authority.Act.Corroborate): Int =
+    (backing(titleGroups, f).filter(Authority.counts(_, act)).map(Backer.origin).toSet - ownVenue - ownSource).size
   /** The SOURCES of `titleGroups` other than `ownSource` backing `f` ([[Backer.source]]): a feed entry's facts, copied
    *  onto every venue it lists, are one claim, counted once — what a feed's own link is weighed against
-   *  (`services.identity.FeedLink`). `presentOnly`: a kept listing's entry ([[Backer.Kept]]) left out -- whether the
+   *  (`services.identity.FeedLink`). `act`: what they are counted for, each entry only where its provenance may
+   *  ([[Authority]]: a kept listing's entry never toward an overrule) -- whether the
    *  present sources overrule a present listing's link is theirs to say. */
-  def sources(titleGroups: Seq[String], f: Film, ownSource: String, presentOnly: Boolean = false): Int =
-    (backing(titleGroups, f).filterNot(key => presentOnly && Backer.kept(key)).map(Backer.source).toSet - ownSource).size
+  def sources(titleGroups: Seq[String], f: Film, ownSource: String, act: Authority.Act = Authority.Act.Corroborate): Int =
+    (backing(titleGroups, f).filter(Authority.counts(_, act)).map(Backer.source).toSet - ownSource).size
 }
 
 object VenueBacking {

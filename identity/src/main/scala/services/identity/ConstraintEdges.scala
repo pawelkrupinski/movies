@@ -131,7 +131,8 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
    *  kept kinoheld listing of Freyne's 2025 film joined the bare "Eternity" [2025] Cineamo links to it, which Zazie's and
    *  kinoheld's 2026 entries credit to Meures, and moved 18 venues onto Freyne's film. */
   private def keptBesideOverruled(kept: EvidenceNode, other: EvidenceNode): Boolean =
-    kept.listings.forall(_.kept) && !other.listings.forall(_.kept) && families.scopeOf(other).overruled(other).isDefined
+    !Authority.may(Authority.of(kept), Authority.Act.JoinOverruled) && Authority.of(other) != Authority.Provenance.Kept &&
+      families.scopeOf(other).overruled(other).isDefined
 
   /** The edges between `members`, each node's film (accepted or voted) given by `filmOf`. */
   def of(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] =
