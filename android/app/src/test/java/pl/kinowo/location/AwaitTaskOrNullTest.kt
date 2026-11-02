@@ -3,8 +3,11 @@ package pl.kinowo.location
 import com.google.android.gms.tasks.CancellationToken
 import com.google.android.gms.tasks.TaskCompletionSource
 import com.google.android.gms.tasks.Tasks
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
@@ -54,5 +57,26 @@ class AwaitTaskOrNullTest {
         }
         assertNull(answer)
         assertTrue("the location request was left running", token!!.isCancellationRequested)
+    }
+
+    // Order independence #33: a language switch recreated MainActivity while its
+    // locate-me request was starting, so the caller was already cancelled. The
+    // cancellation handler cancelled the token before the request was built, and
+    // getCurrentLocation refuses an already-cancelled token with an
+    // IllegalArgumentException that crashed the app instead of answering no fix.
+    @Test
+    fun aCallerAlreadyCancelledNeverHandsTheRequestACancelledToken() = runTest {
+        var thrown: Throwable? = null
+        launch {
+            cancel()
+            thrown = runCatching {
+                awaitTaskOrNull<String> { token ->
+                    // Play Services' own precondition in getCurrentLocation.
+                    require(!token.isCancellationRequested) { "cancellationToken may not be already canceled" }
+                    TaskCompletionSource<String?>(token).task
+                }
+            }.exceptionOrNull()
+        }.join()
+        assertTrue("expected the caller's cancellation, got $thrown", thrown is CancellationException)
     }
 }

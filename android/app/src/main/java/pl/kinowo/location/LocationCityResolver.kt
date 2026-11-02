@@ -100,13 +100,18 @@ internal suspend fun <L : Any> preferRecentHeldFix(held: L?, ageMs: (L) -> Long,
  * location request rather than leaving the radio on for an answer nobody reads.
  * A task cancelled from outside answers null rather than suspending forever.
  * Listeners run on the completing thread: nothing here needs the main thread.
+ *
+ * The token is tied to the caller only once [start] has built the task: a
+ * caller already cancelled (a recreated activity) runs its cancellation handler
+ * at once, and `getCurrentLocation` throws on a token already cancelled.
  */
 internal suspend fun <T : Any> awaitTaskOrNull(start: (CancellationToken) -> Task<T?>): T? =
     suspendCancellableCoroutine { cont ->
         val cancellation = CancellationTokenSource()
+        val task = start(cancellation.token)
         cont.invokeOnCancellation { cancellation.cancel() }
         val direct = Executor(Runnable::run)
-        start(cancellation.token)
+        task
             .addOnSuccessListener(direct) { cont.resume(it) }
             .addOnFailureListener(direct) { cont.resume(null) }
             .addOnCanceledListener(direct) { cont.resume(null) }
