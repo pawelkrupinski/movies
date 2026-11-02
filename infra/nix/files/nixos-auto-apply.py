@@ -296,7 +296,17 @@ def unit_forgiven(unit: str, patterns, never=()) -> bool:
 #   dry-activate says it would restart (it is running now -- a backup mid-flight), that is refused
 #   on both sides.
 #
-# NEITHER CAN REACH A STATEFUL SERVICE. `never` outranks both, as it outranks every allow-list, and
+#   IDLE UNITS (always on, structural only; ADDED 2026-11-02). A changed `.service` that exists in
+#   both trees and is `inactive` on the host right now has no process to disturb: the switch leaves
+#   it alone and its next start reads the new definition -- which is why dry-activate, correctly,
+#   says nothing about it. bin/deploy has always shown these as "unit files changed, unit idle".
+#   Without this rule the unit tree counted them while dry-activate stayed silent, and every closure
+#   touching one raised `classifier_disagreement`: monitoring-1 on 2026-11-02, held back 21 commits
+#   by `generate-shutdown-ramfs.service` (a nixpkgs bump; it runs only at shutdown). If dry-activate
+#   DOES name an idle unit (it started between the two reads), that refusal is fed back to the
+#   structural test as for a routine timer's service, so both halves refuse it together.
+#
+# NONE OF THEM CAN REACH A STATEFUL SERVICE. `never` outranks both, as it outranks every allow-list, and
 # STATEFUL_UNITS is a floor under these two rules that no host setting can widen -- so `routine =
 # [ "*" ]` written by mistake still cannot restart postgres. `restartable` is NOT fenced by it: that
 # list is a host's own explicit, reviewed decision (monitoring-1 names prometheus.service in it).
@@ -317,6 +327,7 @@ class Leniency(typing.NamedTuple):
     new_units: frozenset = frozenset()       # units the running tree does not have at all
     routine: tuple = ()                      # glob patterns: routine units
     timer_services: frozenset = frozenset()  # `.service` of a routine timer; structural only
+    idle: frozenset = frozenset()            # changed `.service` units inactive now; structural only
 
     def forgives(self, unit: str, never=(), structural: bool = False) -> bool:
         if any(fnmatch.fnmatchcase(unit, pattern) for pattern in tuple(never) + STATEFUL_UNITS):
@@ -325,15 +336,30 @@ class Leniency(typing.NamedTuple):
             return True
         if any(fnmatch.fnmatchcase(unit, pattern) for pattern in self.routine):
             return True
-        return structural and unit in self.timer_services
+        return structural and (unit in self.timer_services or unit in self.idle)
+
+    def structural_only(self) -> frozenset:
+        """Units forgiven by the unit tree alone, which dry-activate naming them must take back."""
+        return self.timer_services | self.idle
 
 
 def units_named(tree) -> set[str]:
     return {unit for unit in (unit_named_by(path) for path in tree) if unit is not None}
 
 
-def leniency_for(running_tree, candidate_tree, start_new_units: bool, routine=()) -> Leniency:
-    """Which units the two lenient rules cover for THIS pair of trees. Pure, so it is provable."""
+def changed_units(running_tree, candidate_tree) -> set[str]:
+    """Units present in both trees with some path of theirs differing -- the only ones `idle` may
+    cover, and the ones classify_and_apply asks systemd about."""
+    before, after = units_named(running_tree), units_named(candidate_tree)
+    differing = {unit_named_by(path) for path in set(running_tree) | set(candidate_tree)
+                 if running_tree.get(path) != candidate_tree.get(path)}
+    return {unit for unit in differing if unit in before and unit in after}
+
+
+def leniency_for(running_tree, candidate_tree, start_new_units: bool, routine=(),
+                 inactive=()) -> Leniency:
+    """Which units the lenient rules cover for THIS pair of trees. Pure, so it is provable:
+    `inactive` is what systemd said, read by the caller (`inactive_units`)."""
     before, after = units_named(running_tree), units_named(candidate_tree)
     new = frozenset(
         unit for unit in after - before
@@ -341,7 +367,23 @@ def leniency_for(running_tree, candidate_tree, start_new_units: bool, routine=()
     timer_services = frozenset(
         unit[:-len(".timer")] + ".service" for unit in after
         if unit.endswith(".timer") and any(fnmatch.fnmatchcase(unit, p) for p in routine))
-    return Leniency(new, tuple(routine), timer_services)
+    idle = frozenset(unit for unit in changed_units(running_tree, candidate_tree)
+                     if unit.endswith(".service") and unit in set(inactive))
+    return Leniency(new, tuple(routine), timer_services, idle)
+
+
+def inactive_units(units) -> set[str]:
+    """The given units systemd reports `inactive` right now. Any doubt -- systemctl failing, or
+    output that does not line up with the request -- answers NONE, which forgives nothing."""
+    units = sorted(units)
+    if not units:
+        return set()
+    completed = run(["systemctl", "show", "--property=ActiveState", "--value", "--", *units],
+                    check=False, timeout=120)
+    states = completed.stdout.split()
+    if completed.returncode != 0 or len(states) != len(units):
+        return set()
+    return {unit for unit, state in zip(units, states) if state == "inactive"}
 
 
 class Undetermined(Exception):
@@ -543,9 +585,10 @@ class DryActivate(typing.NamedTuple):
     reloads: list[str]           # unit names that would merely be reloaded
     unrecognised: list[str]      # lines no rule matched -- each one blocks
     forgiven: tuple = ()         # disturbances a host declared acceptable; reported, never decisive
-    # Every SYSTEM unit this classifier refused, as bare names. Only routine timers' services are
-    # fed back to the structural test (see classify_and_apply), so a running timer-driven job is
-    # refused by both halves instead of being forgiven structurally and raising a disagreement.
+    # Every SYSTEM unit this classifier refused, as bare names. Only the units the unit tree alone
+    # forgives (a routine timer's service, an idle unit: Leniency.structural_only) are fed back
+    # to the structural test, so a unit that is running after all is refused by both halves
+    # instead of being forgiven structurally and raising a disagreement.
     refused: tuple = ()
 
 
@@ -884,13 +927,13 @@ class Verdict(typing.NamedTuple):
 def structural_changes(running: pathlib.Path, candidate: pathlib.Path, dry: DryActivate,
                        restartable=(), reload_forgiven=(), never=(),
                        leniency: Leniency = Leniency()) -> UnitChanges:
-    """The unit-tree test, given what dry-activate refused. A routine timer's service that
-    dry-activate would RESTART (it is running now) is denied here too, so both halves refuse it
+    """The unit-tree test, given what dry-activate refused. A routine timer's service or an idle
+    unit that dry-activate would RESTART or START (it is running now) is denied here too, so both halves refuse it
     together instead of disagreeing. Split out so test/test_auto_apply_classify.py drives the code
     that ships rather than a copy of it."""
-    refused_timer_services = tuple(unit for unit in dry.refused if unit in leniency.timer_services)
+    taken_back = tuple(unit for unit in dry.refused if unit in leniency.structural_only())
     return unit_changes(running, candidate, set(restartable) | set(reload_forgiven),
-                        tuple(never) + refused_timer_services, leniency)
+                        tuple(never) + taken_back, leniency)
 
 
 def classify_and_apply(args, metrics: Metrics) -> Verdict:
@@ -932,8 +975,10 @@ def classify_and_apply(args, metrics: Metrics) -> Verdict:
     # THE REDUNDANCY SURVIVES, which is the point of doing it this way rather than widening the
     # structural test: a changed unit that dry-activate mentions NOWHERE is still blocked and still
     # disagrees, and that is the dangerous case -- a change systemd did not tell us about.
-    leniency = leniency_for(unit_tree(running), unit_tree(candidate),
-                            args.start_new_units, tuple(sorted(args.routine)))
+    running_tree, candidate_tree = unit_tree(running), unit_tree(candidate)
+    leniency = leniency_for(running_tree, candidate_tree, args.start_new_units,
+                            tuple(sorted(args.routine)),
+                            inactive_units(changed_units(running_tree, candidate_tree)))
     dry = dry_activate(candidate, args.dry_activate_timeout, args.restartable, args.never, leniency)
     reload_forgiven = {unit for unit in dry.reloads
                        if unit_forgiven(unit, args.reloadable, args.never)}

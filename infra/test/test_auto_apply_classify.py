@@ -321,11 +321,12 @@ class Leniency(unittest.TestCase):
             (unit_dir / unit).symlink_to(target)
         return self.base / name
 
-    def _both(self, changes, text, start_new=True, routine=(), never=()):
+    def _both(self, changes, text, start_new=True, routine=(), never=(), inactive=()):
         """(structural_noop, dry_noop), each computed by the code that ships."""
         candidate = self._tree(f"c{len(list(self.base.iterdir()))}", changes)
         leniency = applier.leniency_for(applier.unit_tree(self.running),
-                                        applier.unit_tree(candidate), start_new, tuple(routine))
+                                        applier.unit_tree(candidate), start_new, tuple(routine),
+                                        tuple(inactive))
         dry = applier.classify_output(text, (), never, leniency=leniency)
         changed = applier.structural_changes(self.running, candidate, dry, (), (), never, leniency)
         return not changed.blocked, not dry.disruptive and not dry.unrecognised
@@ -393,6 +394,51 @@ class Leniency(unittest.TestCase):
         self.assertEqual(self._both({"mongodump.timer": None, "mongodump.service": None},
                                     "would stop the following units: mongodump.timer"),
                          (False, False))
+
+    def test_an_idle_changed_unit_applies(self):
+        # monitoring-1, 2026-11-02: a nixpkgs bump changed generate-shutdown-ramfs.service, which
+        # runs only at shutdown; dry-activate said nothing of it and the unit tree refused it, so
+        # every pass was `classifier_disagreement`.
+        self.RUNNING = dict(self.RUNNING, **{"generate-shutdown-ramfs.service": "/nix/store/r1"})
+        self.running = self._tree("running-ramfs", {})
+        changes = {"generate-shutdown-ramfs.service": "/nix/store/r2"}
+        self.assertEqual(self._both(changes, "", inactive=("generate-shutdown-ramfs.service",)),
+                         (True, True))
+        self.assertEqual(self._both(changes, ""), (False, True),
+                         "an active unit dry-activate is silent about is still the dangerous case")
+
+    def test_an_idle_unit_dry_activate_would_restart_is_refused_by_both(self):
+        changes = {"mongodump.service": "/nix/store/d2"}
+        line = "would restart the following units: mongodump.service"
+        self.assertEqual(self._both(changes, line, inactive=("mongodump.service",)), (False, False))
+
+    def test_idle_cannot_reach_a_stateful_unit_or_a_never_disturb_one(self):
+        self.assertEqual(self._both({"mongodb.service": "/nix/store/m2"}, "",
+                                    inactive=("mongodb.service",))[0], False)
+        self.assertEqual(self._both({"mongodump.service": "/nix/store/d2"}, "",
+                                    inactive=("mongodump.service",), never=("mongodump.*",))[0],
+                         False)
+
+    def test_idle_covers_only_changed_services_already_running_tree(self):
+        leniency = applier.leniency_for(
+            {"a.service": "x", "b.socket": "y", "c.service": "z"},
+            {"a.service": "x2", "b.socket": "y2", "c.service": "z", "n.service": "n"},
+            False, (), ("a.service", "b.socket", "c.service", "n.service"))
+        self.assertEqual(leniency.idle, frozenset({"a.service"}))
+
+    def test_inactive_units_reads_systemd_and_fails_closed(self):
+        import subprocess
+        def answering(stdout, code=0):
+            return lambda argv, **_: subprocess.CompletedProcess(argv, code, stdout, "")
+        original = applier.run
+        self.addCleanup(setattr, applier, "run", original)
+        applier.run = answering("active\ninactive\n")
+        self.assertEqual(applier.inactive_units({"b.service", "a.service"}), {"b.service"})
+        applier.run = answering("inactive\n")
+        self.assertEqual(applier.inactive_units({"a.service", "b.service"}), set(),
+                         "an answer that does not line up forgives nothing")
+        applier.run = answering("inactive\ninactive\n", code=1)
+        self.assertEqual(applier.inactive_units({"a.service", "b.service"}), set())
 
     def test_user_units_are_never_lenient(self):
         got = applier.classify_output(
