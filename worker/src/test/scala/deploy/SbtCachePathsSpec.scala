@@ -86,7 +86,7 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
     keyStep(setup) should include("scripts/ci/sbt-sources-key.sh e2e")
     keyStep(e2eJob) should include("scripts/ci/sbt-sources-key.sh e2e")
     e2eJob should include("key: sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
-    restoreKeys.lift(1) shouldBe Some("sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
+    restoreKeys.lift(1) shouldBe Some("${{ inputs.takes != 'true' && format('sbt-target-e2e-{0}-{1}', runner.os, steps.sbt-key.outputs.e2e) || '' }}")
     restoreKeys.indexOf("sbt-target-convergence-${{ runner.os }}-") should be > 1
   }
 
@@ -100,6 +100,10 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
    *  takes row saves a family of its own once they exist, and a takes row restores that family first. */
   "a leg's takes row" should "restore main's newest takes build first, and only a takes row" in {
     restoreKeys.headOption shouldBe Some("${{ inputs.takes == 'true' && format('sbt-target-takes-{0}-', runner.os) || '' }}")
+    // its own key the takes family's, and no e2e entry: an exact hit on either (a suite row's, Main's e2e) has no worker
+    // test classes and won over the family's prefix, every drift row compiling them (run 41404627085)
+    keyStep(setup) should include("""family=convergence; [ "${{ inputs.takes }}" = true ] && family=takes""")
+    keyStep(setup) should include("key=sbt-target-$family-")
     leg should include("takes:         ${{ startsWith(matrix.phase, 'takes') }}")
   }
 

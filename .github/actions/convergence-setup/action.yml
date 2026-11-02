@@ -245,7 +245,11 @@ runs:
       id: sbt-key
       shell: bash
       run: |
-          echo "key=sbt-target-convergence-${{ runner.os }}-$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh convergence)" >> "$GITHUB_OUTPUT"
+          # A takes or drift row keys the takes family (worker/Test and worker/It compiled): the convergence key's
+          # entry is a suite row's, without them, and an exact hit there -- or on Main's e2e entry -- won over the takes
+          # family's prefix, so every drift row compiled scrapers/Test and worker/Test, ~2.5-3 min a row (run 41404627085).
+          family=convergence; [ "${{ inputs.takes }}" = true ] && family=takes
+          echo "key=sbt-target-$family-${{ runner.os }}-$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh convergence)" >> "$GITHUB_OUTPUT"
           echo "e2e=$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh e2e)" >> "$GITHUB_OUTPUT"
           echo "convergence=$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh convergence)" >> "$GITHUB_OUTPUT"
     # NOT the root `target/`: every module writes its JUnit XML into the one root-level
@@ -262,7 +266,7 @@ runs:
           # 957 of their sources each run, ~3 min a row (run 38703015688). Blank for any other row (actions/cache drops it).
           restore-keys: |
               ${{ inputs.takes == 'true' && format('sbt-target-takes-{0}-', runner.os) || '' }}
-              sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}
+              ${{ inputs.takes != 'true' && format('sbt-target-e2e-{0}-{1}', runner.os, steps.sbt-key.outputs.e2e) || '' }}
               sbt-target-convergence-${{ runner.os }}-
               sbt-target-e2e-${{ runner.os }}-
               sbt-target-${{ runner.os }}-
