@@ -422,7 +422,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}
+                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -1021,8 +1021,10 @@ jobs:
                   SHAPE_COMMAND: ${{ inputs.shape-command }}
                   # Where each head's resolve is stored for the run whose base it becomes (identity-takes-check.sh).
                   TAKES_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && env.TAKES_RELEASE_TAG || '' }}
-                  # A takes-only dispatch's base is the `takes-base` row's (below): this row runs the head and waits.
-                  TAKES_SIDE: ${{ inputs.takes-only && 'head' || 'both' }}
+                  # The base is the `takes-base` row's (below), main's suite and a takes-only dispatch alike: this row runs
+                  # the head and waits. On main the base was resolved here after the head, 159-252 s of a 12-15 minute UK
+                  # or US row (the rotating fills change its key every run); a base row still queued leaves it to this row.
+                  TAKES_SIDE: head
                   TAKES_BASE_JOB: takes-base (${{ inputs.country }})
                   TAKES_SKIP_MODE: ${{ inputs.takes-skip }}
               run: |

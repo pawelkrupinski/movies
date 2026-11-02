@@ -91,7 +91,7 @@ PHASES_EXPRESSION = (
     "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',\"order-independence-p01\"' || "
     "',\"order-independence-p01\",\"order-independence-p12\"') || ',\"order-independence\"') || '', "
     "inputs.next-day-command != '' && ',\"next-day\"' || '', inputs.mode == 'hermetic' && inputs.takes-row && "
-    "',\"takes\",\"takes-drift-1\",\"takes-drift-2\"' || '')) }}"
+    "',\"takes\",\"takes-base\",\"takes-drift-1\",\"takes-drift-2\"' || '')) }}"
 )
 GH_SECONDS = 60
 STATUS_PAGES = 4
@@ -175,7 +175,7 @@ def expected_rows(workflow_text):
             phases += ["order-independence-p01", "order-independence-p12"] if split else ["order-independence"]
         if row.get("next-day", ""):
             phases.append("next-day")
-        phases += ["takes", "takes-drift-1", "takes-drift-2"]
+        phases += ["takes", "takes-base", "takes-drift-1", "takes-drift-2"]
         out += [f"{p} ({row['country']})" for p in phases]
     if not out:
         raise Unproven("no `leg` matrix rows in the workflow")

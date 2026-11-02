@@ -453,7 +453,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
         """inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || """ +
         """'["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """(inputs.order-one-phase && ',"order-independence-p01"' || ',"order-independence-p01","order-independence-p12"') || ',"order-independence"') || '', """ +
-        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-drift-1","takes-drift-2"' || '')) }}""")
+        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '')) }}""")
   }
 
   /** THE INCREMENTAL = WHOLE GATE, ONE SEED A ROW (2026-10-26): the takes row ran the takes check and then both drift seeds,
@@ -515,7 +515,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /** The base's side on a runner of its own (identity-takes-check.sh's THE BASE ROW): the takes row ran it after its
-   *  head's session, 5.5 of run 38735006233's 13.8-minute US row. The base row stores it; the takes row waits for it. */
+   *  head's session, 5.5 of run 38735006233's 13.8-minute US row. The base row stores it; the takes row waits for it.
+   *  Main's suite too (2026-11-02): the rotating fills change the base's key every run, so main's takes row resolved the
+   *  base after its head, 159-252 s of a 12-15 minute UK or US row. */
   it should "resolve the base in a takes-base row of its own, the takes row waiting for it" in {
     val suite = RepoFile.block(leg, "convergence")
     val base  = RepoFile.step(suite, "Store the base's side for the takes row")
@@ -523,7 +525,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     base should include("TAKES_SIDE: base")
     base should not include "statuses/"
     val takes = RepoFile.step(suite, "Check which listings the code moved to another film")
-    takes should include("TAKES_SIDE: ${{ inputs.takes-only && 'head' || 'both' }}")
+    takes should include("TAKES_SIDE: head")
     takes should include("TAKES_BASE_JOB: takes-base (${{ inputs.country }})")
   }
 
