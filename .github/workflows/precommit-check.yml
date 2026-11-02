@@ -32,35 +32,47 @@ env:
     LANG: C.UTF-8
 
 jobs:
-    # WHICH OF MAIN'S HEAVY ROWS THE CHANGE CAN MOVE (scripts/hooks/pre-push --plan with PREPUSH_HEAVY_ROWS=1: `itrest`,
-    # `itidentity`, `e2e`, `e2ecorpus`), space-separated, for the `heavy` job. The batch's fast check (check/fast-*) runs none.
+    # WHAT THE CHANGE SELECTS (scripts/ci/precommit-share.sh checks plan: the hook's own selection, PREPUSH_LIST=1, with
+    # PREPUSH_HEAVY_ROWS=1), for the jobs that run only when it names their share: the old refs, the page area and Main's
+    # heavy rows (`itrest`, `itidentity`, `e2e`, `e2ecorpus`). A job the plan does not name is skipped, never set up. The rest
+    # and the identity shards start at once beside it and select for themselves, so they wait for no plan.
     plan:
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         timeout-minutes: 10
         outputs:
-            heavy: ${{ steps.rows.outputs.heavy }}
+            heavy: ${{ steps.plan.outputs.heavy }}
+            heavy-groups: ${{ steps.plan.outputs.heavy-groups }}
+            page: ${{ steps.plan.outputs.page }}
+            oldrefs: ${{ steps.plan.outputs.oldrefs }}
         steps:
             - uses: actions/checkout@v5
               with:
+                  # every commit and tree, no file contents but HEAD's (fetched with the checkout) -- the history the hook walks
+                  # (merge base, commit rules, old refs) is all there and any older file arrives on demand. The whole repository
+                  # (2 GB of packs) took 65-71 s a job; this 18 s (probe run 41387934910, ci-runner).
                   fetch-depth: 0
+                  filter: blob:none
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry
               with:
                   phase: start
                   token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
-              run: git fetch --quiet origin main
-            - name: The heavy rows the change can move
-              id: rows
+              run: git fetch --quiet --filter=blob:none origin main
+            - name: What the change selects
+              id: plan
               run: |
-                  rows=""
-                  case "$GITHUB_REF_NAME" in
-                      fast-*|check/fast-*) ;;
-                      *) rows="$(git diff --name-only "$(git merge-base HEAD origin/main)" HEAD \
-                              | PREPUSH_HEAVY_ROWS=1 scripts/hooks/pre-push --plan | grep -xE 'itrest|itidentity|e2ecorpus|e2e' || true)" ;;
-                  esac
-                  echo "heavy rows: ${rows:-none}" | tr '\n' ' '
-                  echo "heavy=$(printf '%s' "$rows" | tr '\n' ' ' | sed 's/ *$//')" >> "$GITHUB_OUTPUT"
+                  checks=" $(scripts/ci/precommit-share.sh checks plan) "
+                  echo "the change's checks:${checks% }"
+                  rows="$(tr ' ' '\n' <<< "$checks" | grep -xE 'itrest|itidentity|e2ecorpus|e2e' | tr '\n' ' ' | sed 's/ *$//' || true)"
+                  echo "heavy=$rows" >> "$GITHUB_OUTPUT"
+                  # THE HEAVY ROWS IN TWO JOBS: `itrest` (~4.5 min with its compile) alone, the other rows (~1.5-2 min each) together
+                  groups="$(python3 -c 'import json, sys; r = sys.argv[1].split(); g = [x for x in (["itrest"] if "itrest" in r else []) + [" ".join(x for x in r if x != "itrest")] if x]; print(json.dumps(g or [""]))' "$rows")"
+                  echo "heavy-groups=$groups" >> "$GITHUB_OUTPUT"
+                  for share in page oldrefs; do
+                      case "$checks" in *" $share "*) echo "$share=true" ;; *) echo "$share=false" ;; esac >> "$GITHUB_OUTPUT"
+                  done
+                  echo "heavy rows: ${rows:-none} as $groups"
             - uses: ./.github/actions/job-telemetry
               if: ${{ !cancelled() }}
               with:
@@ -69,10 +81,11 @@ jobs:
                   job-status: ${{ job.status }}
 
     # THE SPLIT CHECK (scripts/hooks/pre-push, PREPUSH_ONLY / PREPUSH_ELSEWHERE): the hook's selected checks shared
-    # between two jobs, each with an 80-minute cap of its own. In one job they ran one after another under one cap: run
+    # between jobs, each with an 80-minute cap of its own. In one job they ran one after another under one cap: run
     # 4025 (a 124-path batch) spent 7 min on scripttests, 8 on sbt, 13 on identity and 37 on page, and ran out of its 80
     # minutes with oldrefs, ios and identitydrift still to go. `check (rest)` runs every selected check but the page
-    # area and the old refs; `check (oldrefs)` the old refs beside it; `check (page)` the page area alone, after both.
+    # area, the old refs and identity; `check (identity k/3)` a third of identity's specs each; `check (oldrefs)` the old
+    # refs beside them; `check (page)` the page area alone, after all of them.
     check:
         name: check (rest)
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
@@ -83,24 +96,42 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
+                  # every commit and tree, no file contents but HEAD's (fetched with the checkout) -- the history the hook walks
+                  # (merge base, commit rules, old refs) is all there and any older file arrives on demand. The whole repository
+                  # (2 GB of packs) took 65-71 s a job; this 18 s (probe run 41387934910, ci-runner).
                   fetch-depth: 0
+                  filter: blob:none
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry
               with:
                   phase: start
                   token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
-              run: git fetch --quiet origin main
+              run: git fetch --quiet --filter=blob:none origin main
+            # What the hook runs in this job (scripts/ci/precommit-share.sh: the hook's own selection, PREPUSH_LIST=1): nothing set
+            # up below for a share with nothing to run. The hook step still runs, so a check this missed fails there, never unrun.
+            - name: What this job runs
+              id: share
+              env:
+                  SHARE: rest
+              run: |
+                  scripts/ci/precommit-share.sh env "$SHARE" >> "$GITHUB_ENV"
+                  checks="$(scripts/ci/precommit-share.sh checks "$SHARE")"
+                  echo "this job's checks: ${checks:-none}"
+                  echo "checks=$checks" >> "$GITHUB_OUTPUT"
             # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
             - uses: ./.github/actions/setup-sbt-build
+              if: steps.share.outputs.checks != ''
               with:
                   target-cache-restore-only: 'true'
             - uses: actions/setup-node@v5
+              if: steps.share.outputs.checks != ''
               with:
                   node-version: '22'
                   cache: 'npm'
             # the hook's tools that the job image lacks: a missing one blocks the check, as on the laptop
             - name: The hook's tools
+              if: steps.share.outputs.checks != ''
               env:
                   ACTIONLINT_VERSION: 1.7.12
                   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -120,19 +151,14 @@ jobs:
                   SHARE: rest
               run: |
                   mkdir -p "$TMPDIR"
-                  # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
+                  # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check --
-                  # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
-                  # laptop; every other check/<id> the change's own checks
-                  mode=--checks-only
-                  case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
-                  # the fast-only set is the sbt check alone: nothing for the page or oldrefs share
-                  [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
-                  elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"
-                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi
-                  timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
+                  # the branch names the hook's mode (PREPUSH_MODE, from precommit-share.sh): check/fast-<id> is agentctl's batch
+                  # check -- the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
+                  # laptop; every other check/<id> the change's own checks. The fast-only set is the rest's alone.
+                  [ "$SHARE" = rest ] || [ "$PREPUSH_MODE" = --checks-only ] || exit 0
+                  timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
             # The drift gate's commit rules over the change's commits, whatever paths it touched (scripts/ci/commit-rules-ci.sh):
@@ -174,49 +200,58 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-    # THE IDENTITY MODULE'S TESTS, a job of their own (2026-11-01): in `check (rest)` they ran after the sbt check, one
-    # after the other, and were most of its slowest runs (run 41276112019: sbt 292 s, then identity 585 s, a 15.9-min
-    # job). Beside the rest they end with it (docs/investigations/2026-11-01-twenty-runners.md).
+    # THE IDENTITY SHARDS: the identity module's tests ran after the sbt check in the rest's job (292 s then 585 s, a
+    # 15.9-minute job, run 41276112019), then in one job of their own beside it (~12.5 min: 2.5 min selecting, 10 min of
+    # ~300 specs, run 41373956176). Now in three, each at t=0: every shard selects the same specs (the hook's test-impact
+    # selection) and runs a third of them (PREPUSH_IDENTITY_SHARD, scripts/ci/test_shards.py: each class in exactly one shard,
+    # balanced on scripts/ci/identity-test-weights.tsv). A change the hook gives no identity check sets nothing up.
     check-identity:
-        name: check (identity)
+        name: check (identity ${{ matrix.shard }}/3)
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
-        # the rest job's caps: the hook 80 minutes, the job 90, room for the failure steps after it
         timeout-minutes: 90
+        strategy:
+            fail-fast: false
+            matrix:
+                shard: [1, 2, 3]
         steps:
             - uses: actions/checkout@v5
               with:
+                  # every commit and tree, no file contents but HEAD's (fetched with the checkout) -- the history the hook walks
+                  # (merge base, commit rules, old refs) is all there and any older file arrives on demand. The whole repository
+                  # (2 GB of packs) took 65-71 s a job; this 18 s (probe run 41387934910, ci-runner).
                   fetch-depth: 0
+                  filter: blob:none
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry
               with:
                   phase: start
                   token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
-              run: git fetch --quiet origin main
-            # Seconds: the hook's own selection over the change. A change it gives no identity check (and a fast-* ref,
-            # whose rest job runs it) sets up nothing below; the hook in the next steps decides the same way regardless.
-            - name: Does the change select the identity check?
-              id: selected
+              run: git fetch --quiet --filter=blob:none origin main
+            # What the hook runs in this job (scripts/ci/precommit-share.sh: the hook's own selection, PREPUSH_LIST=1): nothing set
+            # up below for a share with nothing to run. The hook step still runs, so a check this missed fails there, never unrun.
+            - name: What this job runs
+              id: share
+              env:
+                  SHARE: identity
               run: |
-                  case "$GITHUB_REF_NAME" in fast-*|check/fast-*) exit 0 ;; esac
-                  if git diff --name-only "$(git merge-base HEAD origin/main)" HEAD | scripts/hooks/pre-push --plan | grep -qx identity; then
-                      echo "identity=true" >> "$GITHUB_OUTPUT"
-                  else
-                      echo "no identity check for this change"
-                  fi
+                  scripts/ci/precommit-share.sh env "$SHARE" >> "$GITHUB_ENV"
+                  checks="$(scripts/ci/precommit-share.sh checks "$SHARE")"
+                  echo "this job's checks: ${checks:-none}"
+                  echo "checks=$checks" >> "$GITHUB_OUTPUT"
             # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
             - uses: ./.github/actions/setup-sbt-build
-              if: steps.selected.outputs.identity == 'true'
+              if: steps.share.outputs.checks != ''
               with:
                   target-cache-restore-only: 'true'
             - uses: actions/setup-node@v5
-              if: steps.selected.outputs.identity == 'true'
+              if: steps.share.outputs.checks != ''
               with:
                   node-version: '22'
                   cache: 'npm'
             # the hook's tools that the job image lacks: a missing one blocks the check, as on the laptop
             - name: The hook's tools
-              if: steps.selected.outputs.identity == 'true'
+              if: steps.share.outputs.checks != ''
               env:
                   ACTIONLINT_VERSION: 1.7.12
                   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -229,31 +264,24 @@ jobs:
                   echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
                   python3 -m pip install --quiet timezonefinder || python3 -m pip install --quiet --break-system-packages timezonefinder
                   for tool in shellcheck jq; do command -v "$tool" > /dev/null || scripts/ci/install-apt-package.sh "$tool"; done
-            # NOT gated: the hook decides for itself, so a selection the step above missed fails loudly here, never skips.
             - name: The pre-push hook's checks of the change
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
                   SHARE: identity
+                  PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/3
               run: |
                   mkdir -p "$TMPDIR"
-                  # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
+                  # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check --
-                  # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
-                  # laptop; every other check/<id> the change's own checks
-                  mode=--checks-only
-                  case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
-                  # the fast-only set is the sbt check alone: nothing for the page or oldrefs share
-                  [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
-                  elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"
-                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi
-                  timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
+                  # the branch names the hook's mode (PREPUSH_MODE, from precommit-share.sh): check/fast-<id> is agentctl's batch
+                  # check -- the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
+                  # laptop; every other check/<id> the change's own checks. The fast-only set is the rest's alone.
+                  [ "$SHARE" = rest ] || [ "$PREPUSH_MODE" = --checks-only ] || exit 0
+                  timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
-            # The drift gate's commit rules over the change's commits, whatever paths it touched (scripts/ci/commit-rules-ci.sh):
-            # the hook selects them by path; here no selection can leave them out.
             # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
             # verdict reads them, so a remote check never fails output-less. Each log's errors first (Playwright's
             # `Error:` blocks, sbt's FAILED/[error]: run 3342's 60 `✘` lines filled every head and its error never
@@ -279,7 +307,7 @@ jobs:
               with:
                   # a rerun (--failed) re-uploads the same name: without this it fails "already exists"
                   overwrite: true
-                  name: precommit-check-logs-identity
+                  name: precommit-check-logs-identity-${{ matrix.shard }}
                   path: ${{ runner.temp }}/hook/**/*.log
                   if-no-files-found: ignore
             - uses: ./.github/actions/job-telemetry
@@ -289,38 +317,51 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-
     check-oldrefs:
         name: check (oldrefs)
-        # identity-slice's tool files compiled into each floor ref: two whole old trees, 5-30 min cold under load. In the
-        # rest job they pushed it past its 80 minutes (run 4083: scripttests, sbt and identity took 50, oldrefs the rest);
-        # beside it in a job of its own, from the old trees Main's runs keep (restored below)
+        needs: [ plan ]
+        if: ${{ needs.plan.outputs.oldrefs == 'true' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
-        # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
-        # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
-        # and the job 90, room for the failure steps after it
         timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5
               with:
+                  # every commit and tree, no file contents but HEAD's (fetched with the checkout) -- the history the hook walks
+                  # (merge base, commit rules, old refs) is all there and any older file arrives on demand. The whole repository
+                  # (2 GB of packs) took 65-71 s a job; this 18 s (probe run 41387934910, ci-runner).
                   fetch-depth: 0
+                  filter: blob:none
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry
               with:
                   phase: start
                   token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
-              run: git fetch --quiet origin main
+              run: git fetch --quiet --filter=blob:none origin main
+            # What the hook runs in this job (scripts/ci/precommit-share.sh: the hook's own selection, PREPUSH_LIST=1): nothing set
+            # up below for a share with nothing to run. The hook step still runs, so a check this missed fails there, never unrun.
+            - name: What this job runs
+              id: share
+              env:
+                  SHARE: oldrefs
+              run: |
+                  scripts/ci/precommit-share.sh env "$SHARE" >> "$GITHUB_ENV"
+                  checks="$(scripts/ci/precommit-share.sh checks "$SHARE")"
+                  echo "this job's checks: ${checks:-none}"
+                  echo "checks=$checks" >> "$GITHUB_OUTPUT"
             # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
             - uses: ./.github/actions/setup-sbt-build
+              if: steps.share.outputs.checks != ''
               with:
                   target-cache-restore-only: 'true'
             - uses: actions/setup-node@v5
+              if: steps.share.outputs.checks != ''
               with:
                   node-version: '22'
                   cache: 'npm'
             # the hook's tools that the job image lacks: a missing one blocks the check, as on the laptop
             - name: The hook's tools
+              if: steps.share.outputs.checks != ''
               env:
                   ACTIONLINT_VERSION: 1.7.12
                   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -333,9 +374,8 @@ jobs:
                   echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
                   python3 -m pip install --quiet timezonefinder || python3 -m pip install --quiet --break-system-packages timezonefinder
                   for tool in shellcheck jq; do command -v "$tool" > /dev/null || scripts/ci/install-apt-package.sh "$tool"; done
-            # The old refs' laid-out, compiled trees Main keeps (tool-self-tests.yml, integration-test before it): the
-            # compile then redoes only the tool files
             - name: Restore identity-slice's compiled old refs
+              if: steps.share.outputs.checks != ''
               uses: actions/cache/restore@v5
               with:
                   path: ${{ runner.temp }}/kinowo-identity/refs
@@ -350,19 +390,14 @@ jobs:
                   KINOWO_IDENTITY_CACHE: ${{ runner.temp }}/kinowo-identity
               run: |
                   mkdir -p "$TMPDIR"
-                  # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
+                  # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check --
-                  # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
-                  # laptop; every other check/<id> the change's own checks
-                  mode=--checks-only
-                  case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
-                  # the fast-only set is the sbt check alone: nothing for the page or oldrefs share
-                  [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
-                  elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"
-                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi
-                  timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
+                  # the branch names the hook's mode (PREPUSH_MODE, from precommit-share.sh): check/fast-<id> is agentctl's batch
+                  # check -- the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
+                  # laptop; every other check/<id> the change's own checks. The fast-only set is the rest's alone.
+                  [ "$SHARE" = rest ] || [ "$PREPUSH_MODE" = --checks-only ] || exit 0
+                  timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
             # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
@@ -400,40 +435,55 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-
     check-page:
         name: check (page)
         # AFTER the rest, not beside it: beside it its WebKit rows starved (landing check run 4059:
         # every WebKit test ~40 s, then timed out, past the 80 minutes) -- the reason it runs with a cap of its own -- and
-        # after the heavy rows and the old refs' compile, which run beside the rest and would starve it the same way
-        needs: [ check, check-identity, check-oldrefs, heavy ]
-        if: ${{ !cancelled() && needs.check.result == 'success' && needs.check-identity.result == 'success' && needs.check-oldrefs.result == 'success' && needs.heavy.result != 'failure' }}
+        # after the heavy rows and the old refs' compile, which run beside the rest and would starve it the same way. Only for
+        # a change the plan gives a page check: any other change no longer waits ~2 min at the end for a job with nothing to do.
+        needs: [ plan, check, check-identity, check-oldrefs, heavy ]
+        if: ${{ !cancelled() && needs.plan.outputs.page == 'true' && needs.check.result == 'success' && needs.check-identity.result == 'success' && needs.check-oldrefs.result != 'failure' && needs.check-oldrefs.result != 'cancelled' && needs.heavy.result != 'failure' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
-        # the page area alone is ~45 min here (diag run 3367, 2026-10-27: browsers + warm-up 2 min, the Chromium rows
-        # 4 min, the WebKit row at its one worker ~23 min; web/PageTest/test ~10 min before them), so the hook gets 80
-        # and the job 90, room for the failure steps after it
         timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5
               with:
+                  # every commit and tree, no file contents but HEAD's (fetched with the checkout) -- the history the hook walks
+                  # (merge base, commit rules, old refs) is all there and any older file arrives on demand. The whole repository
+                  # (2 GB of packs) took 65-71 s a job; this 18 s (probe run 41387934910, ci-runner).
                   fetch-depth: 0
+                  filter: blob:none
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry
               with:
                   phase: start
                   token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
-              run: git fetch --quiet origin main
+              run: git fetch --quiet --filter=blob:none origin main
+            # What the hook runs in this job (scripts/ci/precommit-share.sh: the hook's own selection, PREPUSH_LIST=1): nothing set
+            # up below for a share with nothing to run. The hook step still runs, so a check this missed fails there, never unrun.
+            - name: What this job runs
+              id: share
+              env:
+                  SHARE: page
+              run: |
+                  scripts/ci/precommit-share.sh env "$SHARE" >> "$GITHUB_ENV"
+                  checks="$(scripts/ci/precommit-share.sh checks "$SHARE")"
+                  echo "this job's checks: ${checks:-none}"
+                  echo "checks=$checks" >> "$GITHUB_OUTPUT"
             # sbt, the JDK and the shared build cache, restored only: a check's tree is no main build to save
             - uses: ./.github/actions/setup-sbt-build
+              if: steps.share.outputs.checks != ''
               with:
                   target-cache-restore-only: 'true'
             - uses: actions/setup-node@v5
+              if: steps.share.outputs.checks != ''
               with:
                   node-version: '22'
                   cache: 'npm'
             # the hook's tools that the job image lacks: a missing one blocks the check, as on the laptop
             - name: The hook's tools
+              if: steps.share.outputs.checks != ''
               env:
                   ACTIONLINT_VERSION: 1.7.12
                   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -453,19 +503,14 @@ jobs:
                   SHARE: page
               run: |
                   mkdir -p "$TMPDIR"
-                  # inside the job's 60 minutes, so the two failure steps below still print and upload its logs: the
+                  # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
                   # job's own timeout ends every step, those too, and leaves a run with no output at all (run 3357)
                   rc=0
-                  # the branch names the hook's mode: check/fast-<id> is agentctl's batch check --
-                  # the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
-                  # laptop; every other check/<id> the change's own checks
-                  mode=--checks-only
-                  case "$GITHUB_REF_NAME" in fast-*|check/fast-*) mode=--fast-only ;; esac
-                  # the fast-only set is the sbt check alone: nothing for the page or oldrefs share
-                  [ "$SHARE" = rest ] || [ "$mode" = --checks-only ] || exit 0
-                  elsewhere="page oldrefs"; [ "$mode" = --fast-only ] || elsewhere+=" identity"
-                  if [ "$SHARE" = rest ]; then export PREPUSH_ELSEWHERE="$elsewhere"; else export PREPUSH_ONLY="$SHARE"; fi
-                  timeout --kill-after=60 80m scripts/hooks/pre-push "$mode" "$(git merge-base HEAD origin/main)..HEAD" || rc=$?
+                  # the branch names the hook's mode (PREPUSH_MODE, from precommit-share.sh): check/fast-<id> is agentctl's batch
+                  # check -- the fast-only set (compile + the fast tests; each change passed its own full checks), as on the
+                  # laptop; every other check/<id> the change's own checks. The fast-only set is the rest's alone.
+                  [ "$SHARE" = rest ] || [ "$PREPUSH_MODE" = --checks-only ] || exit 0
+                  timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
             # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
@@ -503,40 +548,40 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-    # MAIN'S HEAVY ROWS, BEFORE MAIN (ci-failures-2026-10-30, recommendation 3): 8 of Main's 14 code reds in five days
-    # were in integration-test or e2e rows that nothing ran before the push -- Main was the first place they ran. Each
-    # row the change can move (the plan above) runs here as Main runs it, through the same hook (PREPUSH_ONLY=<rows>):
-    # `IT_ROW=<row> sbt itAll` against a throwaway MongoDB replica set (on 24.04: mongod 8.3 will not start on 26.04's
-    # kernel 7.0, MongoServerVersionParitySpec), `sbt e2eRest` and `sbt e2eCorpus`.
-    # ONE job running the selected rows one after another, not a job a row: four rows at once beside the rest and the
-    # old refs starved the host, and an integration spec's loopback handshake missed its 5 s connect budget
-    # (logged as "30s", the request budget, until RealHttpFetch named the budget that ran out; landing check run 4131,
-    # IssuerCertificateFetchingSpec; itrest took 1403 s against 431 s alone).
+    # MAIN'S HEAVY ROWS the change can move, in two jobs (the plan's heavy-groups): `itrest` alone, the others together. One
+    # job ran them one after another, 9-10 min (itrest 264 s, itidentity 74, e2ecorpus 111, e2e 98: run 41373956176).
     heavy:
-        name: heavy rows
+        name: heavy rows (${{ matrix.rows }})
         needs: [ plan ]
         if: ${{ needs.plan.outputs.heavy != '' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-22.04' }}
         timeout-minutes: 90
+        strategy:
+            fail-fast: false
+            matrix:
+                rows: ${{ fromJSON(needs.plan.outputs.heavy-groups) }}
         steps:
             - uses: actions/checkout@v5
               with:
+                  # every commit and tree, no file contents but HEAD's (fetched with the checkout) -- the history the hook walks
+                  # (merge base, commit rules, old refs) is all there and any older file arrives on demand. The whole repository
+                  # (2 GB of packs) took 65-71 s a job; this 18 s (probe run 41387934910, ci-runner).
                   fetch-depth: 0
+                  filter: blob:none
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             - uses: ./.github/actions/job-telemetry
               with:
                   phase: start
                   token: ${{ github.token }}
             - name: Fetch main, the base the change sits on
-              run: git fetch --quiet origin main
+              run: git fetch --quiet --filter=blob:none origin main
             - name: Start MongoDB (single-node replica set, for change streams)
-              if: ${{ contains(needs.plan.outputs.heavy, 'it') }}
+              if: ${{ contains(matrix.rows, 'it') }}
               run: scripts/ci/in-background.sh start mongo-start scripts/ci/start-mongo-replset.sh
               env:
                   MONGO_MAJORITY_JOURNAL: 'false'
                   DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
                   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-            # The it rows' build-cache family first (every module's main + test + it), restored only
             - uses: ./.github/actions/setup-sbt-build
               with:
                   target-cache-restore-only: 'true'
@@ -544,18 +589,17 @@ jobs:
                       sbt-target-it-${{ runner.os }}-
                       sbt-target-unit-worker-${{ runner.os }}-
                       sbt-target-${{ runner.os }}-
-            # The deploy specs the rest row runs read the gitops manifests where Main's row checks them out
             - name: Check out the gitops manifests (movies-gitops main, anonymously)
-              if: ${{ contains(needs.plan.outputs.heavy, 'itrest') }}
+              if: ${{ contains(matrix.rows, 'itrest') }}
               run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
             - name: Wait for MongoDB, started in the background above
-              if: ${{ contains(needs.plan.outputs.heavy, 'it') }}
+              if: ${{ contains(matrix.rows, 'it') }}
               run: scripts/ci/in-background.sh wait mongo-start 240
             - name: The change's heavy rows
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
-                  ROWS: ${{ needs.plan.outputs.heavy }}
+                  ROWS: ${{ matrix.rows }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB: kinowo
               run: |
