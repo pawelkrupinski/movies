@@ -584,16 +584,34 @@ object IdentityDrift {
       r
     }
     def boot(listings: Seq[Listing]): Unit = { event("boot"); held = listings.map(l => l.key -> l).toMap; model.restore(listings) }
-    /** The listings that left whose facts are kept while a present listing bills their title ([[ListingRetention]]). */
+    /** The listings held as kept for their facts ([[ListingRetention]]): a cache of [[ListingRetention.retained]] of
+     *  `departed` and the listings billed, recomputed whole at every arrival and leave, as the worker's drain has it. */
     val retained = scala.collection.mutable.Set.empty[ListingKey]
+    /** Every listing that left, with its facts as last billed: the input the kept listings are read from (R1). */
+    private val departed = scala.collection.mutable.Map.empty[ListingKey, Listing]
     /** The titles whose listings arrived, came back or left since the last projection. */
     private var movedTitles = Set.empty[String]
     /** Each listing's stage verdict's receipt at the last projection ([[receiptOf]]). */
     private var lastReceipt = Map.empty[ListingKey, Option[Int]]
     private def moved(listings: Iterable[Listing]): Unit = movedTitles ++= listings.map(titleOf(_, reads.normalizer))
+    /** `seen` and `gone` handed the model with the kept listings recomputed from the inputs: one a related arrival bills
+     *  again kept again, one no present listing relates to any more let go -- whatever order they came in. */
+    private def retaining(seen: Seq[Listing], gone: Seq[ListingKey]): Unit = {
+      val present = held.values.iterator.filterNot(l => retained(l.key)).toSeq
+      val kept    = ListingRetention.retained(departed.values.toSeq.sortBy(l => ListingKey.serialised(l.key)), present, reads.normalizer)
+      val keys    = kept.iterator.map(_.key).toSet
+      val newly   = kept.filterNot(l => retained(l.key))
+      val dropped = (gone.iterator ++ retained.iterator).filterNot(keys).toSeq.distinct
+      moved(newly ++ dropped.flatMap(held.get))
+      held --= dropped; held ++= newly.map(l => l.key -> l)
+      retained.clear(); retained ++= keys
+      model.batch(seen = seen ++ newly, gone = dropped)
+    }
     // a listing back replaces what was kept of it: its current data wins
     def scraped(listings: Seq[Listing]): Unit = {
-      event("scrape"); moved(listings); retained --= listings.map(_.key); held ++= listings.map(l => l.key -> l); model.batch(seen = listings)
+      event("scrape"); moved(listings)
+      departed --= listings.map(_.key); retained --= listings.map(_.key); held ++= listings.map(l => l.key -> l)
+      retaining(listings, Nil)
     }
     // a listing leaving loses its showings; its facts stay while a present listing bills its title (ListingRetention), as
     // the worker's drain keeps them
@@ -601,11 +619,9 @@ object IdentityDrift {
       event("gone")
       val leaving = keys.flatMap(held.get)
       moved(leaving)
+      departed ++= leaving.filterNot(l => retained(l.key)).map(l => l.key -> l)
       held --= keys; retained --= keys
-      val left = ListingRetention.leave(leaving, held.values.filterNot(l => retained(l.key)), retained.toSeq.flatMap(held.get), reads.normalizer)
-      held --= left.dropped; retained --= left.dropped
-      held ++= left.kept.map(l => l.key -> l); retained ++= left.kept.map(_.key)
-      model.batch(seen = left.kept, gone = left.dropped)
+      retaining(Nil, keys)
     }
     def filled(fraction: Double, rng: scala.util.Random): Unit = { event("fill"); model.batch(answered = filed(gate.release(fraction, rng))) }
     /** `changed` filed as production's fill files it: each answer announced on the feed the TMDB store publishes to --

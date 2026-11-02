@@ -366,8 +366,23 @@ object IncrementalWholeEquivalenceSpec {
     private val world    = new World(seed, of, order, canonical)
     private val rnd      = new Random(seed * 7919)
     private val held     = mutable.LinkedHashMap.empty[ListingKey, Listing]
-    /** The listings that left whose facts are kept ([[services.identity.ListingRetention]]). */
+    /** The listings held as kept for their facts ([[services.identity.ListingRetention]]): recomputed whole from
+     *  `departed` and the listings billed at every arrival and leave, as the worker's drain has it (R1, no stickiness). */
     private val retained = mutable.Set.empty[ListingKey]
+    /** Every listing that left, with its facts as last billed: the input the kept listings are read from. */
+    private val departed = mutable.Map.empty[ListingKey, Listing]
+    /** `seen` and `gone` handed the model with the kept listings read afresh from the inputs. */
+    private def retaining(seen: Seq[Listing], gone: Seq[ListingKey]): Unit = {
+      val present = held.values.filterNot(l => retained(l.key)).toSeq
+      val kept    = services.identity.ListingRetention.retained(departed.values.toSeq.sortBy(l => services.movies.ListingKey.serialised(l.key)),
+        present, normalizer)
+      val keys    = kept.iterator.map(_.key).toSet
+      val newly   = kept.filterNot(l => retained(l.key))
+      val dropped = (gone.iterator ++ retained.iterator).filterNot(keys).toSeq.distinct
+      dropped.foreach(held.remove); newly.foreach(l => held(l.key) = l)
+      retained.clear(); retained ++= keys
+      model.batch(seen = seen ++ newly, gone = dropped)
+    }
     private val pending  = mutable.Queue.from(rnd.shuffle(of.listings))
     private val asked    = mutable.Set.empty[CandidateQuery]
     private val recorded = mutable.Set.empty[Int]
@@ -425,18 +440,16 @@ object IncrementalWholeEquivalenceSpec {
       case 0 | 1 | 2 | 3 if pending.nonEmpty =>
         val batch = Seq.fill(1 + rnd.nextInt(6))(()).flatMap(_ => Option.when(pending.nonEmpty)(pending.dequeue()))
         batch.foreach(listing => held(listing.key) = listing)
-        retained --= batch.map(_.key)                                     // back: its current data replaces what was kept
-        model.batch(seen = batch); s"seen ${batch.size}"
+        retained --= batch.map(_.key); departed --= batch.map(_.key)      // back: its current data replaces what was kept
+        retaining(batch, Nil); s"seen ${batch.size}"
       case 4 if held.keys.exists(k => !retained(k)) =>
         // a listing leaving: its showings dropped, its facts kept while a present listing bills its title (ListingRetention),
         // as the worker's drain feeds the model
         val gone    = rnd.shuffle(held.keys.filterNot(retained).toSeq).take(1 + rnd.nextInt(3))
         val leaving = gone.flatMap(held.remove)
         pending ++= leaving
-        val left = services.identity.ListingRetention.leave(leaving, held.values.filterNot(l => retained(l.key)), retained.toSeq.flatMap(held.get), normalizer)
-        left.dropped.foreach(held.remove); retained --= left.dropped
-        left.kept.foreach(l => held(l.key) = l); retained ++= left.kept.map(_.key)
-        model.batch(seen = left.kept, gone = left.dropped); s"gone ${gone.size}"
+        departed ++= leaving.map(l => l.key -> l)
+        retaining(Nil, gone); s"gone ${gone.size}"
       case 5 | 6 if world.round < Final => nextRound()
       case 7                            => restart()
       case _                            => "tick"
@@ -449,7 +462,7 @@ object IncrementalWholeEquivalenceSpec {
 
     /** The rest of the history: every listing held, every round filed. */
     private def finish(): String = {
-      if (pending.nonEmpty) { val rest = pending.dequeueAll(_ => true); rest.foreach(l => held(l.key) = l); retained --= rest.map(_.key); model.batch(seen = rest) }
+      if (pending.nonEmpty) { val rest = pending.dequeueAll(_ => true); rest.foreach(l => held(l.key) = l); retained --= rest.map(_.key); departed --= rest.map(_.key); retaining(rest, Nil) }
       while (world.round < Final) nextRound()
       "finish"
     }

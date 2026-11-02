@@ -228,9 +228,9 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
      *  so, while a present listing bills their title, else gone. */
     def left(step: String, venues: String => Boolean): Unit = {
       val (leaving, staying) = seen.partition(listing => venues(listing.venue))
-      val outcome = services.identity.ListingRetention.leave(leaving, staying, Nil, reads.normalizer)
-      seen = staying ++ outcome.kept
-      model.batch(seen = outcome.kept, gone = outcome.dropped)
+      val kept    = services.identity.ListingRetention.retained(leaving, staying, reads.normalizer)
+      seen = staying ++ kept
+      model.batch(seen = kept, gone = leaving.map(_.key).filterNot(kept.map(_.key).toSet))
       check(step)
     }
     def held: Seq[services.identity.Listing] = model.listings

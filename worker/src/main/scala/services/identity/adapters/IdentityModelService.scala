@@ -79,11 +79,11 @@ final class IdentityModelService(
    *  after ([[HistoryEntry.Listing]]), by the build `build`: what a replay of a moment's takes resolves. */
   history:    IdentityHistory = IdentityHistory.Discard,
   build:      String = "",
-  /** The listings kept for their facts alone ([[ListingRetention]]), persisted: written as the set moves, resumed by
-   *  each take-up ([[ListingRetention.restored]]). */
+  /** Every listing that left, with its last-seen facts and departure ([[ListingRetention.Departed]]), persisted: the
+   *  input the kept listings are read from on every drain and take-up ([[ListingRetention.retainedAt]]). */
   retainedStore: RetainedListingStore = new RetainedListingStore.InMemory(),
-  /** The listings the history last saw the model hold ([[RetainedListingStore.fromHistory]]): what a take-up resumes
-   *  the kept set from when the store was never written. */
+  /** The listings the history last saw the model hold ([[RetainedListingStore.fromHistory]]): what a take-up reads
+   *  the departed listings from when the store was never written. */
   heldBefore: () => Seq[Listing] = () => Nil
 ) extends Logging {
 
@@ -233,8 +233,8 @@ final class IdentityModelService(
       val before  = engine.familiesResolved
       val scrapedSeen = scraped.flatMap(_._2)
       val leaving     = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
-      // a listing leaving loses its showings, its facts kept while a present listing of the country bills its title; one
-      // back replaces what was kept of it (ListingRetention, the owner's lifetime of identity facts)
+      // a listing leaving loses its showings, its facts kept while a present listing of the country bills its title -- read
+      // afresh from every listing that left on each drain; one back replaces what was kept of it (ListingRetention)
       val (seen, gone) = retaining(engine, scrapedSeen, leaving)
       kept(engine, seen, gone)
       engine.batch(seen, gone, reads.changedBy(changes))
@@ -246,8 +246,11 @@ final class IdentityModelService(
     }
   }
 
-  /** The listings left kept for their facts alone ([[ListingRetention]]): no venue bills them now. Persisted in
-   *  `retainedStore` as they move, and resumed by a take-up ([[resumed]]): a restart keeps them as the rule does. */
+  /** Every listing that left, with its last-seen facts and when it left ([[ListingRetention.Departed]]): an INPUT,
+   *  persisted in `retainedStore` as it moves, and read back by a take-up ([[resumed]]). */
+  private val departed = new ConcurrentHashMap[services.movies.ListingKey, ListingRetention.Departed]()
+  /** The departed listings the model holds as kept now: a cache of [[ListingRetention.retainedAt]] of the inputs, never
+   *  a decision of its own -- each drain recomputes it whole and moves the model by the difference. */
   private val retained = java.util.concurrent.ConcurrentHashMap.newKeySet[services.movies.ListingKey]()
   /** Each held listing's title as [[ListingRetention]] reads it -- by the one title relation ([[TitleRelation]]) -- by the
    *  listing object it was read off. */
@@ -256,49 +259,69 @@ final class IdentityModelService(
     Option(titles.get(listing)).getOrElse { val t = TitleRelation.of(listing, normalizer); titles.put(listing, t); t }
   }
 
-  /** `seen` and the keys `leaving` as the model is handed them under [[ListingRetention]]: a listing back is billed again,
-   *  one leaving whose title a present listing bills is kept (showings dropped) and seen so, and the rest go -- with every
-   *  listing kept before whose title no present listing bills any more. */
+  /** `seen` and the keys `leaving` as the model is handed them under [[ListingRetention]], a pure function of the inputs
+   *  (R1, no stickiness): a listing back is billed again and is no departed one; a billed listing leaving is departed,
+   *  with its facts as last held and the drain's time; a departed one past [[ListingRetention.MaxAge]] is no input. Then
+   *  the listings kept are recomputed WHOLE from the departed and the billed ones, whatever order they came in -- one a
+   *  related arrival bills again is kept again -- and the model moves by the difference from what it held as kept. */
   private def retaining(engine: IncrementalResolver, seen: Seq[Listing],
                         leaving: Iterable[services.movies.ListingKey]): (Seq[Listing], Seq[services.movies.ListingKey]) = {
-    val back  = seen.map(_.key).filter(retained.remove)
-    val going = leaving.toSet
-    if (going.isEmpty && retained.isEmpty) { if (back.nonEmpty) persist(retainedStore.update(Nil, back)); (seen, Nil) }
-    else {
-      going.foreach(retained.remove)
-      val seenKeys = seen.map(_.key).toSet
-      val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)) ++ seen.iterator
-      val leaving  = going.toSeq.flatMap(engine.held)
-      val kept     = retained.asScala.toSeq.flatMap(engine.held)
-      val left     = ListingRetention.leave(leaving, kept, new TitleRelation.Showing(present.map(formsOf).toSeq, (leaving ++ kept).map(formsOf), normalizer),
-        formsOf)
-      left.dropped.foreach(retained.remove)
-      left.kept.foreach(l => retained.add(l.key))
-      if (back.nonEmpty || left.kept.nonEmpty || left.dropped.nonEmpty) persist(retainedStore.update(left.kept, back ++ left.dropped))
-      (seen ++ left.kept, left.dropped)
+    val now      = clock.millis()
+    val seenKeys = seen.iterator.map(_.key).toSet
+    val back     = seenKeys.filter(departed.containsKey)
+    back.foreach(departed.remove)
+    // a listing held as kept that its venue's page no longer names left before: it keeps the departure it has
+    val left     = leaving.iterator.filterNot(k => retained.contains(k) || seenKeys(k)).flatMap(k => engine.held(k).map(k -> _))
+      .map { case (k, listing) => k -> ListingRetention.Departed(listing, now) }.toMap
+    left.foreach { case (k, d) => departed.put(k, d) }
+    val aged     = departed.asScala.collect { case (k, d) if !ListingRetention.live(d, now) => k }.toSeq
+    aged.foreach(departed.remove)
+    val going    = leaving.toSet
+    if (departed.isEmpty && retained.isEmpty) {
+      if (back.nonEmpty || aged.nonEmpty) persist(retainedStore.update(Nil, back ++ aged))
+      (seen, going.toSeq)
+    } else {
+      val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)).toSeq ++ seen
+      val kept     = ListingRetention.retainedAt(departed.values.asScala.toSeq.sortBy(d => services.movies.ListingKey.serialised(d.listing.key)),
+        present, now, normalizer, formsOf)
+      val keptKeys = kept.iterator.map(_.key).toSet
+      val newly    = kept.filterNot(l => retained.contains(l.key))
+      val dropped  = (going ++ retained.asScala).filterNot(k => keptKeys(k) || seenKeys(k)).toSeq
+      retained.clear(); keptKeys.foreach(retained.add)
+      if (back.nonEmpty || left.nonEmpty || aged.nonEmpty) persist(retainedStore.update(left.values.toSeq, back ++ aged))
+      (seen ++ newly, dropped)
     }
   }
 
-  /** The kept set a take-up resumes, against `present` (the listings billed now): what the store kept -- the history's
-   *  last held listings when it was never written -- under [[ListingRetention.restored]], written back as it stands.
-   *  Nothing billed read, or the store unread, resumes none and writes nothing: no read is a reason to forget the set. */
+  /** The kept set a take-up resumes, against `present` (the listings billed now): [[ListingRetention.retainedAt]] of the
+   *  departed listings the store holds -- the history's last held listings when it was never written. A departed listing
+   *  persisted before departures were dated ([[ListingRetention.Unknown]]) is dated to this take-up and written back so
+   *  (the store's migration: nothing it held is lost). Nothing billed read, or the store unread, resumes none and writes
+   *  nothing: no read is a reason to forget an input. */
   private def resumed(present: Seq[Listing]): Seq[Listing] = {
-    retained.clear()
+    retained.clear(); departed.clear()
     if (present.isEmpty) Nil
-    else scala.util.Try(retainedStore.read().getOrElse(heldBefore())).fold(
-      failed => { logger.warn(s"identity model: the kept listings could not be read -- none resumed: $failed"); Nil },
-      stored => {
-        val left = ListingRetention.restored(stored, present, normalizer)
-        left.kept.foreach(l => retained.add(l.key))
-        persist(retainedStore.replace(left.kept))
-        if (stored.nonEmpty) logger.info(s"identity model: ${left.kept.size} kept listing(s) resumed, ${left.dropped.size} no longer billed")
-        left.kept
+    else scala.util.Try(retainedStore.read()).fold(
+      failed => { logger.warn(s"identity model: the departed listings could not be read -- none resumed: $failed"); Nil },
+      read => {
+        val now     = clock.millis()
+        val stored  = read.getOrElse(heldBefore().map(ListingRetention.Departed(_, ListingRetention.Unknown)))
+        val dated   = stored.map(d => if (d.at == ListingRetention.Unknown) d.copy(at = now) else d)
+        val billed  = present.iterator.map(_.key).toSet
+        val (live, aged) = dated.filterNot(d => billed(d.listing.key)).partition(ListingRetention.live(_, now))
+        live.foreach(d => departed.put(d.listing.key, d))
+        if (read.isEmpty || stored.exists(_.at == ListingRetention.Unknown) || aged.nonEmpty || live.size != stored.size)
+          persist(retainedStore.replace(live))
+        val kept = ListingRetention.retainedAt(live, present, now, normalizer, formsOf)
+        kept.foreach(l => retained.add(l.key))
+        if (stored.nonEmpty) logger.info(s"identity model: ${kept.size} kept listing(s) resumed of ${live.size} departed, ${aged.size} past ${ListingRetention.MaxAge.toDays} days")
+        kept
       })
   }
 
-  /** A write of the kept set: one that fails is logged, never the drain's failure -- the next move writes again. */
+  /** A write of the departed listings: one that fails is logged, never the drain's failure -- the next move writes again. */
   private def persist(write: => Unit): Unit =
-    try write catch { case NonFatal(e) => logger.warn(s"identity model: the kept listings could not be written: $e") }
+    try write catch { case NonFatal(e) => logger.warn(s"identity model: the departed listings could not be written: $e") }
 
   /** `seen` and `gone`, as they move what `engine` holds, into the history: a listing new to it, held otherwise — the
    *  model's fields or its poster — or let go. Its screening days alone moving is no entry: a scrape adds days daily,

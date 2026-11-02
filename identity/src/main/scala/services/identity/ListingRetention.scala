@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.{ListingKey, TitleNormalizer}
+import services.movies.TitleNormalizer
 
 /**
  * How long a listing's IDENTITY FACTS live (the owner, 2026-10-30, identity design: "Drop showings, keep movie details
@@ -76,23 +76,4 @@ object ListingRetention {
   def retainedAt(departed: Iterable[Departed], present: Seq[Listing], now: Long, normalizer: TitleNormalizer,
                  forms: Listing => TitleRelation.Forms): Seq[Listing] =
     retained(departed.iterator.filter(live(_, now)).map(_.listing).toSeq, present, normalizer, forms)
-
-  /** The decision at a leave the worker's drain and the replays still read until they read [[retained]] (next step). */
-  final case class Left(kept: Seq[Listing], dropped: Seq[ListingKey])
-
-  def leave(gone: Seq[Listing], present: Iterable[Listing], retained: Iterable[Listing], normalizer: TitleNormalizer): Left = {
-    val forms = (listing: Listing) => TitleRelation.of(listing, normalizer)
-    leave(gone, retained, new TitleRelation.Showing(present.toSeq.map(forms), (gone ++ retained).map(forms), normalizer), forms)
-  }
-
-  def restored(stored: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer): Left = {
-    val billed = present.iterator.map(_.key).toSet
-    leave(stored.filterNot(listing => billed(listing.key)), present, Nil, normalizer)
-  }
-
-  def leave(gone: Seq[Listing], retained: Iterable[Listing], showing: TitleRelation.Showing, forms: Listing => TitleRelation.Forms): Left = {
-    val (stay, go) = gone.partition(listing => showing.relates(forms(listing)))
-    val expired    = retained.iterator.filterNot(listing => showing.relates(forms(listing))).map(_.key).toSeq
-    Left(stay.map(kept), go.map(_.key) ++ expired)
-  }
 }

@@ -161,17 +161,49 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.scrape(again, Helios, Nil)                                                // no venue bills it any more
     again.drain()
     held(again) should not contain kept
-    world.retained.read().get.map(_.key) should not contain kept                    // and the store forgets it
+    world.retained.read().get.map(_.listing.key) should contain(kept)               // still an input: kept again if billed
+  }
+
+  // R1, no stickiness (flip-unification design §7, retention as a pure function): the listings kept are a function of
+  // the inputs -- the listings billed, and those that left with their last-seen facts -- never of the order the leaves
+  // and arrivals came in. Multikino's "Lalka (2025)" leaving before Kinoteka bills "Lalka" kept nothing and stayed so;
+  // Kinoteka first kept it. Every order now holds what a fresh take-up of the same inputs (the whole resolve) holds.
+  it should "keep the same listings and decide the same whatever order the leaves and arrivals come in, as a fresh take-up does" in {
+    val start  = Map[Cinema, Seq[CinemaMovie]](Multikino -> Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")),
+      Helios -> Seq(movie(Helios, "Matilda"), movie(Helios, "Lalka")), Kinoteka -> Nil)
+    val finish = Map[Cinema, Seq[CinemaMovie]](Multikino -> Seq(movie(Multikino, "Matilda")), Helios -> Seq(movie(Helios, "Matilda")),
+      Kinoteka -> Seq(movie(Kinoteka, "Lalka")))
+    def outcome(service: IdentityModelService) = {
+      val model = service.peek(10.seconds).get
+      (model.listings.map(_.key).toSet, decided(model.resolution.decisions))
+    }
+    val outcomes = start.keys.toSeq.permutations.map { order =>
+      val world   = new World
+      val service = world.service()
+      service.takeUp()
+      start.foreach { case (cinema, films) => world.scrape(service, cinema, films) }
+      service.drain()
+      order.foreach { cinema => world.scrape(service, cinema, finish(cinema)); service.drain() }
+      val whole = world.service()                                    // a fresh take-up of the same inputs
+      whole.takeUp()
+      outcome(whole) shouldBe outcome(service)
+      order.map(_.displayName) -> outcome(service)
+    }.toSeq
+    val kept = ListingKey.of(Multikino, movie(Multikino, "Lalka", Some(2025)))
+    all(outcomes.map(_._2._1)) should contain(kept)                   // Kinoteka bills "Lalka": Multikino's facts stay
+    outcomes.map(_._2).distinct.size shouldBe 1
   }
 
   it should "resume no recorded kept listing whose title no venue bills" in {
     val world = new World
     world.scrapes = Map(Helios -> Seq(movie(Helios, "Matilda")))
-    world.retained = new RetainedListingStore.InMemory(Some(listingsOf(Map(Multikino -> Seq(movie(Multikino, "Lalka", Some(2025)))))))
+    val stored  = listingsOf(Map(Multikino -> Seq(movie(Multikino, "Lalka", Some(2025)))))
+    world.retained = new RetainedListingStore.InMemory(Some(RetainedListingStore.undated(stored)))   // written before 2026-11-03
     val service = world.service()
     service.takeUp()
     service.peek(10.seconds).get.listings.map(_.key.venue) shouldBe Seq(Helios.displayName)
-    world.retained.read() shouldBe Some(Nil)
+    // migrated, not lost: dated to the take-up, an input a later "Lalka" keeps again
+    world.retained.read().get.map(d => (d.listing.key, d.at)) shouldBe stored.map(_.key -> _root_.tools.SpecClock.Pinned.millis())
   }
 
   it should "forget, in the reads index, the questions of a film no venue lists any more" in {

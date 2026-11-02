@@ -11,10 +11,10 @@ import scala.jdk.CollectionConverters._
 import scala.util.{Try, Using}
 
 /**
- * The listings prod's identity model keeps for their facts alone (`identity_retained`, [[services.identity.ListingRetention]]):
- * no venue bills them now, a present listing of the country bills their title. Captured beside the corpus
+ * The listings that left prod's billing, which its identity model keeps for their facts alone while a present listing of
+ * the country bills their title (`identity_retained`, [[services.identity.ListingRetention]]). Captured beside the corpus
  * (`RecordCorpusFixture`, the same connection), so every replay of the recording reads the model's input as prod's take-up
- * does -- the listings billed and these, under [[services.identity.ListingRetention.restored]] -- and none of them is
+ * does -- the listings billed and these, under [[services.identity.ListingRetention.retained]] -- and none of them is
  * missing from a convergence row's input. One listing per line, as [[ListingBson]] writes it (its days included).
  */
 object ProdRetained {
@@ -25,9 +25,9 @@ object ProdRetained {
 
   /** What prod's worker kept, as its take-up reads it: the store, or -- never written -- the history's last held listings
    *  ([[RetainedListingStore.fromHistory]]). Captured as read: each replay keeps of it what the take-up's rule keeps
-   *  against the listings billed ([[services.identity.ListingRetention.restored]]). */
+   *  against the listings billed ([[services.identity.ListingRetention.retained]]). */
   def read(database: org.mongodb.scala.MongoDatabase, now: Long): Seq[Listing] =
-    new MongoRetainedListingStore(database).read().getOrElse {
+    new MongoRetainedListingStore(database).read().map(_.map(_.listing)).getOrElse {
       val history = new services.identity.adapters.MongoIdentityHistory(database, new services.TtlIndexMismatches)
       RetainedListingStore.fromHistory(history.since(Seq(services.identity.adapters.HistoryEntry.Listing),
         now - services.identity.adapters.IdentityHistory.Kept.toMillis).filter(_.at <= now))

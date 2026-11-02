@@ -13,7 +13,7 @@ import scala.util.Try
  * committed slice (the drift slices and the identity slices), every pair of listings the model's resolve joins by a
  * TITLE must-link (same title, same search form, original title, title segment) -- and every listing whose title is filed
  * in a group another listing's backing reads ([[IdentityMeasures.titleGroups]], the searches, the shapes) -- is a pair
- * retention keeps: one listing leaving while the other is billed stays in the model's input ([[ListingRetention.leave]]).
+ * retention keeps: one listing leaving while the other is billed stays in the model's input ([[ListingRetention.retained]]).
  * Retention reading a title key of its own let a listing the model joined leave while a present listing still needed it:
  * UK "The Ladykillers (1955)" beside "The Ladykillers | Cinematic Breakfast" (8dfe17752), DE "BLACK WATER (2025)" beside
  * "Black Water (GLOBALE)" (5959ba7bf) -- each went and came back with the order answers arrived in.
@@ -43,7 +43,7 @@ abstract class TitleRelationSpec(part: Int) extends AnyFlatSpec with Matchers wi
     }
 
   if (SliceParts.holdsWholeChecks(part))
-    "The pairs' retention, the forms read once" should "decide as ListingRetention.leave does, pair for pair" in {
+    "The pairs' retention, the forms read once" should "decide as ListingRetention.retained does, pair for pair" in {
       val dir             = PopulationMonotonicitySpec.sliceDirs.find(_.toString.contains("werkstattkino-camouflage")).get
       val (alike, pairs)  = keptAlike(dir)
       pairs should be > 0
@@ -100,19 +100,19 @@ object TitleRelationSpec {
 
   def related(dir: Path): Related = { val (l, b) = pairs(read(dir)); Related(l.size, b.size) }
 
-  /** Whether retention keeps `gone` beside `present`: [[ListingRetention.leave]] of the one pair, each listing's title forms
-   *  read ONCE per slice. The three-argument `leave` reads them again on every call -- three [[TitleRelation.of]] (the
+  /** Whether retention keeps `gone` beside `present`: [[ListingRetention.retained]] of the one pair, each listing's title forms
+   *  read ONCE per slice. The three-argument `retained` reads them again on every call -- three [[TitleRelation.of]] (the
    *  title shapes' regexes) per pair -- and a UK slice relates up to ~320k pairs: 88% of this spec's CPU, ~1,000 s of the
-   *  identity shards' (profiled 2026-11-03). Same Showing, same forms: the very decision `leave(Seq(gone), Seq(present),
-   *  Nil, normalizer)` takes, which "the forms read once" below holds pair for pair. */
+   *  identity shards' (profiled 2026-11-03). Same Showing, same forms: the very decision `retained(Seq(gone), Seq(present),
+   *  normalizer)` takes, which "the forms read once" below holds pair for pair. */
   private def keeps(r: Read): (Listing, Listing) => Boolean = {
     val formsOf = r.all.map(l => l.key -> TitleRelation.of(l, r.normalizer)).toMap
     val forms   = (l: Listing) => formsOf(l.key)
     (gone, present) =>
-      ListingRetention.leave(Seq(gone), Nil, new TitleRelation.Showing(Seq(forms(present)), Seq(forms(gone)), r.normalizer), forms).kept.nonEmpty
+      ListingRetention.retained(Seq(gone), Seq(present), r.normalizer, forms).nonEmpty
   }
 
-  /** How many of the slice's related pairs `keeps` and the three-argument `leave` decide alike, of how many. */
+  /** How many of the slice's related pairs `keeps` and the three-argument `retained` decide alike, of how many. */
   def keptAlike(dir: Path): (Int, Int) = {
     val r                = read(dir)
     val (linked, backed) = pairs(r)
@@ -120,7 +120,7 @@ object TitleRelationSpec {
     val all              = (linked.flatMap { case (a, b, _) => Seq((a, b), (b, a)) } ++ backed.map { case (a, b, _) => (a, b) }).distinctBy {
       case (a, b) => (a.key, b.key)
     }
-    (all.count { case (gone, present) => kept(gone, present) == ListingRetention.leave(Seq(gone), Seq(present), Nil, r.normalizer).kept.nonEmpty }, all.size)
+    (all.count { case (gone, present) => kept(gone, present) == ListingRetention.retained(Seq(gone), Seq(present), r.normalizer).nonEmpty }, all.size)
   }
 
   /** Every related pair whose one listing retention drops while the other is billed. */

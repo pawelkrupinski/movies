@@ -114,7 +114,7 @@ class WorkerWiring(
           new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
           workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
-  /** The listings the identity model keeps for their facts alone, persisted (`identity_retained`, ListingRetention). */
+  /** Every listing that left, with its facts and departure, persisted (`identity_retained`): the input ListingRetention keeps from. */
   lazy val identityRetainedStore: services.identity.adapters.RetainedListingStore =
     mongoConnection.database.fold[services.identity.adapters.RetainedListingStore](new services.identity.adapters.RetainedListingStore.InMemory())(
       new services.identity.adapters.MongoRetainedListingStore(_))

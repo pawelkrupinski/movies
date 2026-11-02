@@ -106,10 +106,10 @@ object IdentityLiveDrift {
   /** Every listing (with its slot keys) joined to prod's film and compared with the whole resolve's — see the header for
    *  what is left out. */
   /** The model's input as prod's take-up holds it: the listings `billed`, and those of `recorded` (prod's kept set,
-   *  [[ProdRetained]]) a billed listing still bills the title of ([[services.identity.ListingRetention.restored]]). */
+   *  [[ProdRetained]]) a billed listing still bills the title of ([[services.identity.ListingRetention.retained]]). */
   def modelInput(billed: Seq[services.identity.Listing], recorded: Seq[services.identity.Listing],
                  normalizer: TitleNormalizer): Seq[services.identity.Listing] =
-    billed ++ services.identity.ListingRetention.restored(recorded, billed, normalizer).kept
+    billed ++ services.identity.ListingRetention.retained(recorded, billed, normalizer)
 
   def compare(listings: Seq[(ListingKey, Seq[String])], live: Map[String, Option[Int]], whole: Map[ListingKey, ResolverDecision]): Report = {
     val joined = listings.flatMap { case (key, slots) =>

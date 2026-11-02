@@ -281,17 +281,17 @@ class ArchiveReplayWiring(
   /** The recorded kept listings of the venues this replay holds (a sample's draw holds some). */
   private def retainedOfReplay: Seq[services.identity.Listing] = recordedRetained.filter(l => archivedListings.contains(l.cinema))
 
-  // The model's take-up resumes the recorded set as prod's resumes its store (ListingRetention.restored): the model's
+  // The model's take-up reads the recorded set as prod's reads its store (ListingRetention.retainedAt): the model's
   // input is the listings billed AND those kept, never the billed alone. No history behind a recording's set.
   override lazy val identityRetainedStore: services.identity.adapters.RetainedListingStore =
-    new services.identity.adapters.RetainedListingStore.InMemory(Some(retainedOfReplay))
+    new services.identity.adapters.RetainedListingStore.InMemory(Some(services.identity.adapters.RetainedListingStore.undated(retainedOfReplay)))
   override protected def identityHeldBefore(): Seq[services.identity.Listing] = Nil
 
   /** The kept listings a resolve of this replay reads beside the listings billed ([[services.identity.ModelRead.corpus]]
    *  of [[archivedListings]]): the recorded set under the take-up's own rule, so a whole resolve (the takes check) and
    *  the model read the same input. */
   def retainedListings(billed: Seq[services.identity.Listing]): Seq[services.identity.Listing] =
-    services.identity.ListingRetention.restored(retainedOfReplay, billed, titleNormalizer).kept
+    services.identity.ListingRetention.retained(retainedOfReplay, billed, titleNormalizer)
 
   /** One scraper per archived cinema, replacing the catalogue's HTTP clients.
    *  `PreScrapedCinemaScraper` is production code — the same wrapper
