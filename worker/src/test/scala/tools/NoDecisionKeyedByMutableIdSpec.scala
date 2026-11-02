@@ -156,6 +156,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}TitleLinks.scala#sanitizedOf"      -> Content("by the title text"),
     s"${I}TitleLinks.scala#searchFormOf"     -> Content("by the title text"),
     s"${I}TitleLinks.scala#keysOf"           -> Content("by the title text"),
+    s"${I}TitleLinks.scala#formsOf"          -> Pass("one TitleLinks per resolve's stages: each node's title forms (TitleRelation), for that resolve"),
     // ── the projection
     s"${I}LiveProjectionIndex.scala#venueListings" -> Name("each venue's listings as last read: compared by value to see a move"),
     s"${I}LiveProjectionIndex.scala#entries"       -> Name("each listing's entry, kept equal to the builder's index (ScopedProjectionEquivalenceSpec)"),
