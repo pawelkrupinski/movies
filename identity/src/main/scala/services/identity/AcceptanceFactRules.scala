@@ -110,9 +110,9 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
     // — counting every record billing it that credits no OTHER director: a season's record often credits nobody yet.
     def bills(scored: Scored) = StageRelays.billings(scored.listing, scored.candidate.film).nonEmpty
     lazy val billedAlike = eligibleOf(ranked).count(scored => bills(scored) && !scored.category("director").contains("different"))
-    def billedWork(scored: Scored) = IdentityMeasures.sameDirector(scored.measures) && bills(scored) && billedAlike == 1 &&
+    def billedWork(scored: Scored) = scored.ownCredit && bills(scored) && billedAlike == 1 &&
       IdentityMeasures.runtimeGap(scored.measures).exists(_ <= BilledRuntime)
-    val found = eligibleOf(ranked).filter(scored => IdentityMeasures.sameDirector(scored.measures) &&
+    val found = eligibleOf(ranked).filter(scored => scored.ownCredit &&
       (IdentityMeasures.sharesWork(scored.listing, scored.candidate.film) || bareWork(scored) || billedWork(scored)) && !contradicted(scored))
     one(withoutHollow(found), "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(atOwn)
   }
@@ -135,7 +135,7 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
       candidate.category("originalTitle").contains("match") && candidate.listing.originalStandsApart && !titled
     one(withoutHollow(eligible.filter(candidate =>
       (candidate.category("title").contains("exact") || byOriginal(candidate)) &&
-      IdentityMeasures.sameDirector(candidate.measures) && !contradicted(candidate))),
+      candidate.ownCredit && !contradicted(candidate))),
       "no film of its exact title by its credited director", "two films of its title by its director", credited(ranked)).map(atOwn)
   }
 

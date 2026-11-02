@@ -291,19 +291,19 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     replay.takes("Madoka Magica - Der Film: Rebellion").values.toSet shouldBe Set("tmdb:212162")
   }
 
-  "a namesake whose record is pending" should "be weighed on its hits, provisionally, and the take decided once it is filed" in {
+  "a namesake whose record is pending" should "not move the take its billing's own text credits, before or after it is filed" in {
     // Drift 3810, takes-drift-2 (united-kingdom), with the namesake's record left out of the pool: Chichester's "The Ties
     // That Bind Us" took the 2025 film (1096642) at boot, the model's take 1460982 once its record was filed at step 8, and
-    // 1096642 again when the agreement corrected it at settle. The model's take, every answer filed, is 1460982; weighed on
-    // its hits while its record is pending, it is that take already, provisionally.
+    // 1096642 again when the agreement corrected it at settle. Its synopsis ends "writer/director Carine Tardieu", whom
+    // Wikidata credits with 1096642 (L'Attachement): the director measure takes it ([[CreditMeasures.creditedByText]]),
+    // weighed on the namesake's hits while its record is pending and on its record once filed -- no flip.
     val replay = new SliceReplay("test/resources/fixtures/drift-slices/uk/chichester-ties-1231860f")
     replay.lookups.held = Set("f:1460982")
     replay.scraped("boot", _ => true)
-    replay.takes("The Ties That Bind Us").values.toSet should not contain "tmdb:1096642"
-    IdentityDrift.pendingOf(replay.model.decisions).map(_.rawTitle) should contain ("The Ties That Bind Us")
+    replay.takes("The Ties That Bind Us").values.toSet shouldBe Set("tmdb:1096642")
     replay.filed("its record filed", Set.empty, Set(1460982))
     replay.flips.flips.map(_.line) shouldBe empty
-    replay.takes("The Ties That Bind Us").values.toSet shouldBe Set("tmdb:1460982")
+    replay.takes("The Ties That Bind Us").values.toSet shouldBe Set("tmdb:1096642")
   }
 
   "a bare title its pooled scoring ties between two films" should "take the one whose title covers more of its own" in {

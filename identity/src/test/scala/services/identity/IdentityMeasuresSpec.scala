@@ -192,6 +192,40 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.creditedByTitle(credited, salto, measures(credited, salto))("director") should not be Category("same_person")
   }
 
+  // ES taquilla's "Hope" (2026-11-02): no director field, a synopsis "Basada en la propia historia de su directora Maria
+  // Sødahl"; UK Chichester's "The Ties That Bind Us": "writer/director Carine Tardieu", L'Attachement
+  "a venue's own text naming a director whole" should "credit the film it names, and discredit no other" in {
+    val hope     = Film("Hope", year = Some(2019), directors = Some(Seq("Maria Sødahl")))
+    val namesake = Film("Hope", year = Some(2026), directors = Some(Seq("Na Hong-jin")))
+    def director(text: String, f: Film, l: Listing = Listing("Hope"), pool: Seq[Film] = Seq(hope, namesake)) = {
+      val names = VenueNames.of(Seq(text))
+      IdentityMeasures.creditedByText(f, IdentityMeasures.textNamedDirectors(l, names.names, pool), measures(l, f))("director")
+    }
+    val described = "Basada en la propia historia de su directora Maria Sødahl."
+    director(described, hope) shouldBe Category("same_person")
+    // a text naming someone who directed ANOTHER film says nothing against this one: synopses name stars and crew who
+    // direct too -- UK Riverside Woodbridge's "Rocky 50th Anniversary" names Stallone, director of Rocky II-IV, not of
+    // Avildsen's 1976 film the measure (2026-11-02) then denied
+    director(described, namesake) shouldBe Missing("listing")
+    val rocky  = Film("Rocky", year = Some(1976), directors = Some(Seq("John G. Avildsen")))
+    val sequel = Film("Rocky II", year = Some(1979), directors = Some(Seq("Sylvester Stallone")))
+    director("Sylvester Stallone stars as Rocky Balboa.", rocky, Listing("Rocky 50th Anniversary"), Seq(rocky, sequel)) shouldBe Missing("listing")
+    // a surname alone says nothing
+    director("La historia de Sødahl.", hope) shouldBe Missing("listing")
+    director("La historia de Sødahl.", namesake) shouldBe Missing("listing")
+    // a person the billing's title names is its subject, not its credit: the comedian of "NURSE GEORGIE CARROLL:
+    // INFECTIOUS", whom IMDb credits as director of an earlier special, takes nothing from this one
+    val special   = Film("Infectious", directors = Some(Seq("Jim Hare")))
+    val earlier   = Film("Nurse Georgie Carroll: The Gloves Are Off", directors = Some(Seq("Georgie Carroll")))
+    val billed    = Listing("NURSE GEORGIE CARROLL: INFECTIOUS")
+    val comedian  = VenueNames.of(Seq("Award winning comedian and NHS nurse Georgie Carroll is back on tour."))
+    IdentityMeasures.textNamedDirectors(billed, comedian.names, Seq(special, earlier)) shouldBe empty
+    // a listing crediting a director of its own keeps its own credit
+    val credited = Listing("Hope", directors = Seq("Na Hong-jin"))
+    director(described, namesake, credited) shouldBe Category("same_person")
+    director(described, hope, credited) should not be Category("same_person")
+  }
+
   // DE Eulenspiegel's "King Kong" (Cineamo 244m, German premiere 1933-12-01): since f5784855d an old premiere states no
   // year, and the listing took the 2005 remake. The premiere still bounds the film: none premieres before it is made.
   "a year upper bound" should "weigh as the year it bounds against a film released after it, and only there" in {

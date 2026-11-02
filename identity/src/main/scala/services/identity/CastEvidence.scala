@@ -4,7 +4,8 @@ import scala.util.hashing.MurmurHash3
 
 /**
  * The people a venue's OWN text names — its synopsis and its cast field — as [[CastEvidence]] reads them: each pair of
- * neighbouring words of a run of capitalised words ("Marcin Dorociński", "Bolesława Prusa"), folded (accents off, `ł` as
+ * neighbouring words of a run of capitalised words ("Marcin Dorociński", "Bolesława Prusa", a hyphened part in lower
+ * case among them: "Na Hong-jin", "Bong Joon-ho"), folded (accents off, `ł` as
  * `l`, lower case) and hashed; in a cast field, whose entries are names whatever their case, every pair of an entry's
  * neighbouring words. A comma, bracket, quote or line keeps two runs apart, a space, hyphen, apostrophe or full stop
  * does not ("Richard E. Grant", "Glynn-Carney"). Held as the sorted hashes, never the text: a corpus holds one per
@@ -58,13 +59,14 @@ object VenueNames {
   private def collect(text: String, capitalisedOnly: Boolean, into: scala.collection.mutable.ArrayBuilder[Int]): Unit = {
     var previous = 0          // the previous word's hash, while it stands beside the next in one run
     var inRun    = false
+    var hyphened = false      // the run's last word ended at a hyphen: a name's lower-case part follows it ("Bong Joon-ho")
     var i        = 0
     val n        = text.length
     while (i < n) {
       val c = text.charAt(i)
       if (Character.isLetterOrDigit(c)) {
         var j = i
-        if (capitalisedOnly && !Character.isUpperCase(c)) {
+        if (capitalisedOnly && !Character.isUpperCase(c) && !(inRun && hyphened)) {
           // prose: skipped unread, and it ends the run
           while (j < n && Character.isLetterOrDigit(text.charAt(j))) j += 1
           inRun = false
@@ -78,6 +80,7 @@ object VenueNames {
         i = j
       } else {
         if (!joins(c)) inRun = false
+        hyphened = c == '-'
         i += 1
       }
     }

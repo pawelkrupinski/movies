@@ -5482,7 +5482,7 @@ showings:
 
 === Monterey Pop ===
 displayTitle:      Monterey Pop
-cinemaTitles:      "Monterey Pop" z prelekcją Piotra Metza | Klasyka w kinie Atlantic: Monterey Pop | MONTEREY POP | Monterey Pop | Monterey Pop | DKF
+cinemaTitles:      "Monterey Pop" z prelekcją Piotra Metza | Klasyka w kinie Atlantic: Monterey Pop | MONTEREY POP | Monterey Pop | Monterey Pop | DKF | Rialto DOCumentalnie - Monterey Pop
 runtimeMinutes:    78
 releaseYear:       1968
 countries:         USA
@@ -5515,6 +5515,7 @@ cinemaScrapes:
   Kino Pionier 1907 / MONTEREY POP / 1968
   Kino Rialto / MONTEREY POP / 1968
   KinoPort / Monterey Pop / 1968
+  Kinoteatr Rialto / Rialto DOCumentalnie - Monterey Pop / —
   Pionier / Monterey Pop | DKF / —
 showings:
   2026-06-16  Kino Apollo                   19:30

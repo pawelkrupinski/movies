@@ -73,7 +73,6 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
   private[identity] def imdbSuggestedWhy(ranked: Seq[Scored]): Verdict = firstCandidate(ranked).flatMap { any =>
     val eligible  = ranked.filterNot(_.denied)
     val suggested = eligible.filter(scored => scored.imdb.isDefined || scored.imdbTitled.nonEmpty)
-    def sameDirector(scored: Scored) = IdentityMeasures.sameDirector(scored.measures)
     // the film's own title or its original — not an alternative TMDB files it under ("Lumière" is not "Café Lumière")
     def exact(scored: Scored)        = scored.category("title").exists(Set("exact", "original"))
     def outranked(scored: Scored) = eligible.exists(rival => (rival ne scored) && rival.category("title").contains("exact") &&
@@ -100,7 +99,7 @@ private[identity] trait AcceptanceTitleRules { this: Acceptance =>
     }
     def rung(scored: Scored): Boolean = titledRung(scored) || scored.imdb.exists { place =>
       (place.place == 1 && scored.number("year.delta").contains(0.0)) ||
-        (sameDirector(scored) && suggested.count(sameDirector) == 1) ||
+        (scored.ownCredit && suggested.count(_.ownCredit) == 1) ||
         (place.of == 1 && scored.titleNamesIt && !outranked(scored)) ||
         // the old pipeline's yearless rung: IMDb's FIRST suggestion, and the only suggested film the title is ("Kroll")
         (place.place == 1 && exact(scored) && suggested.count(exact) == 1 && !outranked(scored))

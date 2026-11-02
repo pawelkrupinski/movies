@@ -1,6 +1,7 @@
 package services.identity
 
 import IdentityMeasures.*
+import services.movies.TitleContainment
 
 /** How a listing's director credits relate to a film's: the director relation, and a credit read by search or by title.
  *  Part of [[IdentityMeasures]], which exports it. */
@@ -26,6 +27,33 @@ private[identity] object CreditMeasures {
   def creditedByTitle(l: Listing, f: Film, measures: Map[String, Measure]): Map[String, Measure] =
     if (!measures.get("director").contains(MissingListing) || !bannerNamesItsDirector(l, f)) measures
     else measures + ("director" -> SamePersonMeasure)
+
+  /** `measures`, the director read from the venue's OWN text ([[VenueNames]]: its synopsis, its cast field) where the
+   *  listing credits nobody: the text naming one of the film's directors WHOLE (`named`: [[textNamedDirectors]]) is a
+   *  credit (`same_person`) — ES taquilla's "Hope", "Basada en la propia historia de su directora Maria Sødahl", is her
+   *  2019 film; UK Chichester's "The Ties That Bind Us", "writer/director Carine Tardieu", is L'Attachement. One
+   *  measure, so its learned weight scores the film and [[Corroboration]] and the vetoes read it as any credit.
+   *  Never a credit AGAINST a film: a synopsis names stars and crew who direct too, so the text naming another film's
+   *  director says nothing of this one — measured 2026-11-02 (docs/identity-experiments/2026-11-02-text-director-against.md),
+   *  it denied UK Riverside Woodbridge's "Rocky 50th Anniversary" its 1976 film for naming Stallone, Rocky II's director. */
+  def creditedByText(f: Film, named: Set[String], measures: Map[String, Measure]): Map[String, Measure] =
+    if (measures.get("director").contains(MissingListing) && f.directors.exists(_.exists(named))) measures + ("director" -> SamePersonMeasure)
+    else measures
+
+  /** Does the venue's own text (`names`: [[VenueNames.names]], two words at least, never a surname alone) name one of the
+   *  film's directors WHOLE? */
+  def textNamesItsDirector(names: String => Boolean, f: Film): Boolean = f.directors.exists(_.exists(names))
+
+  /** The directors of `films` the venue's own text (`names`) names WHOLE, where the listing `l` credits nobody — what
+   *  [[creditedByText]] reads each of them against. Not a person the billing's title names: the title's subject, whom the
+   *  text names as such, not as its director — UK Forum Northallerton's "NURSE GEORGIE CARROLL: INFECTIOUS" describes the
+   *  comedian, whom IMDb credits as the director of an earlier special of hers, not of this one. */
+  def textNamedDirectors(l: Listing, names: String => Boolean, films: Iterable[Film]): Set[String] =
+    if (l.directors.nonEmpty) Set.empty
+    else {
+      val billed = (l.title +: l.rawTitle.toSeq).flatMap(TitleContainment.tokens).toSet
+      films.iterator.flatMap(_.directors.getOrElse(Nil)).filter(director => names(director) && !TitleContainment.tokens(director).forall(billed)).toSet
+    }
 
   /** Does the listing's title bill one of the film's titles whole under a BANNER naming one of its directors — the
    *  surname ([[Film.directorSurnames]]) among the words before it? "Konwicki Salto", "Konwicki: Salto" (PL Kino Fenix's

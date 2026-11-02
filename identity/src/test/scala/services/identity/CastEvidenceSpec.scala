@@ -44,6 +44,15 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
     VenueNames.of(Seq("Kondrat, Marcin Dorociński")).names("Kondrat Marcin") shouldBe false
   }
 
+  it should "carry a name's hyphened part in lower case: 'Na Hong-jin', 'Bong Joon-ho'" in {
+    // ES "Hope" (2026-11-02): a synopsis naming Na Hong-jin read the run as "Na Hong" and named nobody
+    val venue = VenueNames.of(Seq("Lo nuevo de Na Hong-jin, tras Bong Joon-ho y otros."))
+    venue.names("Na Hong-jin") shouldBe true
+    venue.names("Bong Joon-ho") shouldBe true
+    // prose after a hyphen outside a run of capitals stays prose
+    VenueNames.of(Seq("una historia anti-bélica de amor")).isEmpty shouldBe true
+  }
+
   "one name of a candidate's cast" should "break no tie: US 'MetOpera: Medea (2022–23)' names Radvanovsky, who sings another production's Medea" in {
     // flicks.us's text of the Met's 2022–23 Medea (TMDB 1737985, no cast on TMDB); TMDB 1601989 is the 2025 Naples production
     val venue = VenueNames.of(Seq("Having triumphed at the Met in some of the repertory’s fiercest soprano roles, Sondra Radvanovsky stars as the " +

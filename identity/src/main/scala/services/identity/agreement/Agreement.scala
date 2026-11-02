@@ -512,7 +512,7 @@ object Agreement {
         billed(surname) && !film.titles.exists(title => TitleContainment.tokens(title).contains(surname)))
       // the venue's own synopsis naming a director WHOLE ([[VenueNames.names]]) says whose film it describes as the billing
       // does: UK Southsea's "Unrest" synopsis names Jennifer Brea, director of the 2017 documentary, not Ipson's 2006 horror
-      def described(film: IdentityMeasures.Film) = film.directors.getOrElse(Nil).exists(listing.names.names)
+      def described(film: IdentityMeasures.Film) = IdentityMeasures.textNamesItsDirector(listing.names.names, film)
       (!records.exists(record => credited(record.film)) && namesakes.exists(namesake => credited(namesake.film) && namesIt(listing, Seq(namesake.film)))) ||
         (!records.exists(record => described(record.film)) && namesakes.exists(namesake => described(namesake.film) && namesIt(listing, Seq(namesake.film))))
     }

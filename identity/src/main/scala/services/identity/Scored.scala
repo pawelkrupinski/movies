@@ -24,6 +24,14 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
   def deniedByCutOnly: Boolean = !deniedByPin && denial.exists(_.kind == Denial.Kind.ProbabilityCut)
   def category(measure: String): Option[String] = measures.get(measure).collect { case IdentityMeasures.Category(value) => value }
   def number(measure: String): Option[Double]   = measures.get(measure).collect { case IdentityMeasures.Number(value) => value }
+  /** Does the listing ITSELF credit the film's director — its director field, or a banner its title bills the film under
+   *  ([[IdentityMeasures.bannerNamesItsDirector]])? Not a credit its venue's text alone gives
+   *  ([[IdentityMeasures.creditedByText]]): that weighs in the score, but a rule taking a film by its director at any
+   *  probability was calibrated on billed credits, and a synopsis naming a staging's choreographer names every season's
+   *  relay of it — UK Empire Theatre Halstead's "The Nutcracker" (the 2026/27 relay, 140 min, Peter Wright's) took
+   *  Wright's 2009 recording at 4.7% by `directors-title`. */
+  def ownCredit: Boolean = IdentityMeasures.sameDirector(measures) &&
+    (listing.directors.nonEmpty || IdentityMeasures.bannerNamesItsDirector(listing, candidate.film))
   /** Does the listing's title NAME the film ([[IdentityMeasures.NamingRelations]])? */
   def titleNamesIt: Boolean = category("title").exists(IdentityMeasures.NamingRelations)
   // `suggestedOnly`: only IMDb's suggestions reached the film, under a title the listing does not carry
