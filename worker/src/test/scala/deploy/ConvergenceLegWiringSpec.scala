@@ -858,6 +858,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     leg should include ("if [ \"${{ inputs.profile }}\" = true ]; then")
     leg should include ("-J-XX:StartFlightRecording=filename=convergence.jfr")
     leg should include ("if: always() && inputs.profile && !startsWith(matrix.phase, 'takes')")
+    // a takes or drift row: every JVM its check starts, through JDK_JAVA_OPTIONS
+    leg should include ("[ \"${{ inputs.profile }}\" = true ] && . scripts/ci/jfr-every-jvm.sh")
+    leg should include ("if: always() && inputs.profile && startsWith(matrix.phase, 'takes')")
+    RepoFile.read("scripts/ci/jfr-every-jvm.sh") should include ("-XX:StartFlightRecording=filename=${RUNNER_TEMP:-/tmp}/jfr/%p.jfr")
     // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
     caller should include ("jvm-options:                   ${{ needs.preflight.outputs.jvm-options }}")
     // Every sbt run of the leg: the suite, the pre-suite fill, a recording's corpus capture and its corpus-shape report.

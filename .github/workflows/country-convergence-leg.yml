@@ -937,6 +937,16 @@ jobs:
                   path: convergence.jfr
                   if-no-files-found: warn
                   retention-days: 7
+            # A takes or drift row's profiles: one per JVM its check started (scripts/ci/jfr-every-jvm.sh).
+            - name: Upload the check's CPU profiles
+              if: always() && inputs.profile && startsWith(matrix.phase, 'takes')
+              uses: actions/upload-artifact@v6
+              with:
+                  overwrite: true
+                  name: convergence-profile-${{ inputs.code }}-${{ matrix.phase }}
+                  path: ${{ runner.temp }}/jfr/
+                  if-no-files-found: warn
+                  retention-days: 7
 
             # `include_passed: true` — these tests are the report. A convergence leg that
             # PASSES is the interesting case: the run's whole value is the numbers it
@@ -1018,6 +1028,8 @@ jobs:
               run: |
                   . scripts/ci/bounded-step.sh
                   # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
+                  # A profiled dispatch: a JFR profile of every JVM the check starts (scripts/ci/jfr-every-jvm.sh).
+                  [ "${{ inputs.profile }}" = true ] && . scripts/ci/jfr-every-jvm.sh
                   code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?
                   case $code in 0) state=success ;; 1) state=failure ;; *) state=error ;; esac
                   # allow-silenced: the status only names the next run's base; failing to post it must not turn the verdict
@@ -1062,6 +1074,8 @@ jobs:
                   DRIFT_SEED=$(python3 scripts/ci/drift_seeds.py seed --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS" --run-number "$GITHUB_RUN_NUMBER") \
                       || { echo "::error title=identity drift (${{ inputs.code }})::no seed for $DRIFT_ROW from pins '$DRIFT_PINS' -- nothing was judged"; exit 2; }
                   export DRIFT_SEED
+                  # A profiled dispatch: a JFR profile of every JVM the replay starts (scripts/ci/jfr-every-jvm.sh).
+                  [ "${{ inputs.profile }}" = true ] && . scripts/ci/jfr-every-jvm.sh
                   echo "$DRIFT_ROW (${{ inputs.code }}) replays seed $DRIFT_SEED (run #$GITHUB_RUN_NUMBER, pins '$DRIFT_PINS')"
                   code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
                   repro=$(cat "$RUNNER_TEMP/identity-drift/reproduce.txt" 2>/dev/null || echo "IdentityDrift ${{ inputs.code }} --seed $DRIFT_SEED")
