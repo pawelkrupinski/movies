@@ -34,6 +34,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.eventNamed(billed("The Assassin + Q&A"), Film("The Assassin", year = Some(2015))) shouldBe false
     IdentityMeasures.eventNamed(billed("Who are you, Polly Maggoo ? + panel"), Film("Panel", year = Some(2026))) shouldBe true
     IdentityMeasures.eventNamed(billed("The Odyssey + Interval"), Film("Interval", year = Some(2019))) shouldBe true
+    // UK Picture House Uckfield's "Scottish Ballet: These Violent Delights + Q&A" searched "Q&A", and DCA's
+    // "These Violent Delights + Recorded Q&A" names the film only inside its event piece: a run of the event's words
+    IdentityMeasures.eventNamed(billed("These Violent Delights + Recorded Q&A"), Film("Q&A", year = Some(2025))) shouldBe true
     // a film called by an event word is billed by its title alone, or beside another work
     IdentityMeasures.eventNamed(billed("Q&A"), qa) shouldBe false
     IdentityMeasures.eventNamed(billed("Rise + Fight Like a Girl"), Film("Rise", year = Some(2022))) shouldBe false

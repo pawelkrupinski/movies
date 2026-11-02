@@ -97,7 +97,7 @@ private[identity] object TitleShapeMeasures {
     joined.nonEmpty && {
       val pieces = namingPieces(l, f)
       val events = joined.map(TitleContainment.tokens)
-      pieces.nonEmpty && pieces.forall(events)
+      pieces.nonEmpty && pieces.forall(piece => events.exists(event => event == piece || TitleContainment.isTokenRun(piece, event)))
     }
   }
 
