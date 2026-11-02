@@ -621,7 +621,11 @@ if [ "${#head_commands[@]}" -gt 0 ]; then
   rm -f "$here/target/identity-unmatched/ratchet-takes.tsv" "$here/target/identity-unmatched/capture-gaps.tsv" \
         "$here"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt
   SECONDS=0
-  ( cd "$here" && KINOWO_IDENTITY_CORPUS_DIR="$corpus" "${IDENTITY_SBT[@]}" -J-Xmx"$heap" "${head_commands[@]}" > "$out/head.log" 2>&1 )
+  # Beside the head's ratchet ($ratchet_heap) and the row's Mongo, on a 16 GB runner: at most TAKES_SESSION_HEAP_BESIDE
+  # (8g). The US session's live heap peaked at 5.2 GB with 10g allowed (run 41404627085, ci-metrics jvm heap_after_max).
+  session_heap=$heap beside=${TAKES_SESSION_HEAP_BESIDE:-8g}
+  if [ -n "$head_final_pid" ] && [ "${heap%g}" -gt "${beside%g}" ] 2> /dev/null; then session_heap=$beside; fi
+  ( cd "$here" && KINOWO_IDENTITY_CORPUS_DIR="$corpus" "${IDENTITY_SBT[@]}" -J-Xmx"$session_heap" "${head_commands[@]}" > "$out/head.log" 2>&1 )
   session=$?
   grep -E '\[full-|\[ratchet\]|error|Total time' "$out/head.log"
   # each command's seconds, in order: sbt's "[success] Total time: N s" after every command that succeeded
