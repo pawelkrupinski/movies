@@ -20,7 +20,10 @@
 #   carrying `New-Check:` that changes what decides what the gate finds, never `Fixes-Red:`, may baseline the flips the
 #   tightened check finds at birth, each a listing no list or earlier baseline named (a drift slice's listing may be
 #   baselined: the slice holds its past flip; the owner, 2026-10-30: a229501a7's precise `none` revealed 138 flips the
-#   blind predicate hid, "baseline them, then burn them down"). Any other added row is refused: no override.
+#   blind predicate hid, "baseline them, then burn them down"). The one exception is the OWNER'S NAMED DECISION (the
+#   owner, 2026-11-02: CinemaxX Dammtor/Raschplatz "Titans", a flip inherent to which listings are present): a commit
+#   carrying `Owner-Approved: <YYYY-MM-DD> <decision and why>`, each row it adds noted `OWNER-APPROVED <that date>:
+#   <why>` (owner_approved). Any other added row is refused: no override.
 #   A registered list is a TSV whose last column is the row's reason; `#` lines and the header (its first other line)
 #   are not rows. Every allow-list file in the repository is registered (AllowListRatchetSpec).
 #
@@ -229,6 +232,28 @@ def judge(added: list[str], births: bool, fixes_red: bool = False, adds_check: b
     return why
 
 
+OWNER_APPROVED = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+\S")
+ROW_APPROVED = re.compile(r"^OWNER-APPROVED (\d{4}-\d{2}-\d{2}): \S")
+
+
+def owner_approved(added: list[str], trailers: list[str]) -> list[str]:
+    """Why each row an `Owner-Approved:` commit adds to the known-flips baseline is refused; empty when every one may
+    land. The owner's named exception (2026-11-02, CinemaxX Dammtor/Raschplatz "Titans": a flip inherent to which
+    listings are present, no mechanism to fix, the rule to be designed later): the commit carries
+    `Owner-Approved: <YYYY-MM-DD> <the owner's decision and why>`, and every row it adds says so in its note,
+    `OWNER-APPROVED <the same date>: <why>` -- so each such row names its decision where the baseline is read."""
+    dates = {m.group(1) for t in trailers if (m := OWNER_APPROVED.match(t))}
+    if not dates:
+        return [f"`Owner-Approved: {t}`: not `<YYYY-MM-DD> <the owner's decision and why>`" for t in trailers]
+    why = []
+    for row in added:
+        m = ROW_APPROVED.match(row.split("\t")[-1].strip())
+        if not m or m.group(1) not in dates:
+            why.append(f"{row!r}: an `Owner-Approved:` baseline row says so in its note, `OWNER-APPROVED <the trailer's "
+                       "date>: <why>` (the known-flips baseline only shrinks but by the owner's named decision)")
+    return why
+
+
 def allow_lists(c: Commit, opts: dict) -> list[str]:
     refused, before_known = [], None
     births, fixes_red = c.has("New-Check"), c.has("Fixes-Red")
@@ -240,6 +265,9 @@ def allow_lists(c: Commit, opts: dict) -> list[str]:
         if path in BASELINES:
             born = not before and not at(c.parent, path) and not existed_before(c.sha, path)
             if not added or born:
+                continue
+            if c.has("Owner-Approved"):
+                refused += [f"{path}: {why}" for why in owner_approved(added, c.trailers["owner-approved"])]
                 continue
             if not (births and bool(c.changed & check_paths(c.sha)) and not fixes_red):
                 refused += [f"{path}: {r!r}: the known-flips baseline only shrinks -- a new flip is fixed, never baselined; "

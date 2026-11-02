@@ -176,6 +176,21 @@ class RatchetTest(unittest.TestCase):
             self.assertIn("only shrinks", err)
             self.scratch("scratch_git", "reset", "-q", "--hard", reg)
 
+    def test_the_owners_named_decision_baselines_a_flip(self):
+        # the owner, 2026-11-02: CinemaxX Dammtor/Raschplatz "Titans", inherent to which listings are present, baselined
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
+        approved = "Owner-Approved: 2026-11-02 inherent bare-borrow flip, the rule designed later"
+        noted = BROW.replace("CAMOUFLAGE", "Titans").replace("convergence #2527", "OWNER-APPROVED 2026-11-02: inherent")
+        for message, row, ok in ((f"baseline\n\nFixes-Red: 2527\n{approved}", noted, True),
+                                 (f"baseline\n\n{approved}", BROW.replace("CAMOUFLAGE", "Titans"), False),
+                                 (f"baseline\n\n{approved}", noted.replace("2026-11-02:", "2026-11-01:"), False),
+                                 ("baseline\n\nOwner-Approved: because", noted, False),
+                                 ("baseline\n\nFixes-Red: 2527", noted, False)):
+            head = self.commit({BASELINE: BHEAD + BROW + row}, message)
+            rc, err = self.ratchet(f"{reg}..{head}")
+            self.assertEqual(0 if ok else 1, rc, f"{message}: {err}")
+            self.scratch("scratch_git", "reset", "-q", "--hard", reg)
+
     def test_a_tightened_checks_birth_baselines_what_it_finds(self):
         # the owner, 2026-10-30: a229501a7's precise `none` revealed flips the blind predicate hid -- baselined at its birth
         reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
