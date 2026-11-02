@@ -16,7 +16,7 @@ package services.identity
  *      spellings of both).
  *   2. Must-links are applied in TIERS (strongest evidence first), and within a tier in the order
  *      `(min node, max node)`.
- *   3. An AMBIGUOUS node is left alone for its tier: one whose must-links of this tier reach two
+ *   3. An AMBIGUOUS node is left alone for its tier and every weaker one: one whose must-links of this tier reach two
  *      components (as they stand at the START of the tier) that are cannot-linked to each other, or
  *      that hold different films. A
  *      bare "A Star Is Born" beside the 1954 and 2018 films is evidence for neither, and rule 2
@@ -90,16 +90,21 @@ object ConstraintSolver {
     }.filter { case (_, a, b) => a != b }
 
     if (!canonical) must.foreach { case (_, a, b) => join(a, b) }
-    else must.distinct.sorted.groupBy(_._1).toSeq.sortBy(_._1).foreach { case (_, tierEdges) =>
-      val edges = tierEdges.sorted
-      // Rule 3, judged against the components as they stand at the START of the tier.
-      val reach = scala.collection.mutable.HashMap.empty[Int, Set[Int]]
-      edges.foreach { case (_, a, b) =>
-        reach(a) = reach.getOrElse(a, Set(find(a))) + find(b)
-        reach(b) = reach.getOrElse(b, Set(find(b))) + find(a)
+    else {
+      // Rule 3's ambiguity, kept through the weaker tiers: a node a stronger tier found ambiguous is not settled by
+      // weaker evidence.
+      val ambiguous = scala.collection.mutable.Set.empty[Int]
+      must.distinct.sorted.groupBy(_._1).toSeq.sortBy(_._1).foreach { case (_, tierEdges) =>
+        val edges = tierEdges.sorted
+        // Rule 3, judged against the components as they stand at the START of the tier.
+        val reach = scala.collection.mutable.HashMap.empty[Int, Set[Int]]
+        edges.foreach { case (_, a, b) =>
+          reach(a) = reach.getOrElse(a, Set(find(a))) + find(b)
+          reach(b) = reach.getOrElse(b, Set(find(b))) + find(a)
+        }
+        ambiguous ++= reach.collect { case (node, roots) if roots.exists(r => roots.exists(forbidden(r, _))) => node }
+        edges.foreach { case (_, a, b) => if (!ambiguous(a) && !ambiguous(b)) join(a, b) }
       }
-      val ambiguous = reach.collect { case (node, roots) if roots.exists(r => roots.exists(forbidden(r, _))) => node }.toSet
-      edges.foreach { case (_, a, b) => if (!ambiguous(a) && !ambiguous(b)) join(a, b) }
     }
 
     sortedNodes.indices.groupBy(find).values.toSeq

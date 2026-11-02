@@ -720,6 +720,23 @@ Pending per projection:
 The listings ever Pending rose by at most 70 (DE seed 9). The minutes a listing stays Pending (p50 and p90) did not
 move in any country.
 
+### 7.5 The solver's ambiguity holds through the weaker tiers (Torrington)
+
+**Mechanism.** `ConstraintSolver` rule 3 judged ambiguity tier by tier. Torrington's bare "Dracula" reaches the 1931
+film (138) and the 1958 film (11868) by same-title links, so that tier left it alone; the next, weaker tier's
+same-search-form link reached the 1958 film only and joined it. With "Dracula (1931)" present but "DRACULA (1958)" not
+yet, the strong tier was unambiguous and took 138: 11868 → 138 → 11868 as the listings arrived.
+
+**Fix.** A node a tier finds ambiguous stays left alone in every weaker tier: weaker evidence does not settle what
+stronger evidence found contested. Monotone: a node's reach only grows as listings arrive, so it only becomes
+ambiguous, never un-ambiguous.
+
+**Proof.** `ConstraintSolverSpec` "leave a node a stronger tier found ambiguous alone in the weaker tiers too" fails on
+the parent and passes here (seconds). `PopulationMonotonicitySpec`: Torrington's row removed from
+`identity-population-flips-known.tsv`; no new flip in any committed slice. Torrington's take at full population is now
+none (11868 → 138 → none along one chain): its best rejected candidate is Besson's 2025 "Dracula" (1246049), so the
+1958 take was most likely wrong.
+
 ### 7.9 Titans: inherent bare-borrow flip, baselined by owner decision (CinemaxX Dammtor, Raschplatz)
 
 Convergence #728 (DE takes-drift-1, seed 47; red 9400367d430f): the one node of bare "Titans" at CinemaxX Dammtor and

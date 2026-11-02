@@ -62,6 +62,18 @@ class ConstraintSolverSpec extends AnyFlatSpec with Matchers {
       ConstraintSolver.solveAs(Seq("C", "B", "A"), cs.reverse, Presentation.AsGiven)
   }
 
+  // Torrington "Dracula" (drift slice plough-arts-centre-torrington-dracula-625b65d9): the bare title's same-title links
+  // reach the 1931 and the 1958 films, so it is ambiguous; its weaker same-search-form link to the 1958 one alone used
+  // to settle it, and the take went 11868 -> 138 -> 11868 as the listings arrived.
+  it should "leave a node a stronger tier found ambiguous alone in the weaker tiers too (B ~2 X, B ~2 Y, B ~3 Y)" in {
+    val cs = Seq(Constraint("B", "X", must = true, 2, "same-title"), Constraint("B", "Y", must = true, 2, "same-title"),
+      Constraint("B", "Y", must = true, 3, "same-search-form"))
+    val films = Map("X" -> 138, "Y" -> 11868)
+    ConstraintSolver.solve(Seq("B", "X", "Y"), cs, films) shouldBe Seq(Seq("B"), Seq("X"), Seq("Y"))
+    // Without the 1931 node the weaker link joins it, as before.
+    ConstraintSolver.solve(Seq("B", "Y"), cs.filterNot(_.b == "X"), films) shouldBe Seq(Seq("B", "Y"))
+  }
+
   it should "leave a node cannot-linked to one component it reaches alone, never hand it to the other (U ~ M, U ~ O, U ≁ M)" in {
     // UK "Sense and Sensibility [U]" [132′] (U), apart from the 2026 film's spellings (M) and must-linked to them and to
     // the "Baby & Me: …" screenings of the 1995 film (O): read as no choice, the link it cannot take left it the 1995
