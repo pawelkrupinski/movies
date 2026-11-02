@@ -104,12 +104,13 @@ object PopulationMonotonicity {
   }
 
   /** Every family of `whole` (the corpus resolve of `listings`) holding two listings or more, one of them `focus`ed, at most `maxFamily`, walked
-   *  along `count` arrival chains of at most `steps` steps, smallest family id first, until `budgetSeconds` is spent. */
+   *  along `count` arrival chains of at most `steps` steps, smallest family id first, until `budgetSeconds` is spent on
+   *  `stopwatch` (the caller's: a tool's composition root hands down its own). */
   def report(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, whole: Resolution,
-             count: Int = 4, steps: Int = 6, budgetSeconds: Double = 900, maxFamily: Int = 300,
+             stopwatch: tools.Stopwatch, count: Int = 4, steps: Int = 6, budgetSeconds: Double = 900, maxFamily: Int = 300,
              focus: ListingKey => Boolean = _ => true): Report = {
-    val started    = System.nanoTime()
-    def elapsed    = (System.nanoTime() - started) / 1e9
+    val started    = stopwatch.start()
+    def elapsed    = started.seconds
     val all        = listings.sorted.distinctBy(_.key)
     val generation = new CandidateGeneration(all, lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
     val context    = generation.context

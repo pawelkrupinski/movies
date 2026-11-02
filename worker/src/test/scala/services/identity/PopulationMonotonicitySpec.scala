@@ -115,8 +115,9 @@ object PopulationMonotonicitySpec {
     val inputs    = ResolveInputs.Unpinned
     val whole     = IdentityResolver.resolve(all, lookups, reads.normalizer, inputs)
     val core      = slice.core.map(_.key).toSet
-    val report    = PopulationMonotonicity.report(all, lookups, reads.normalizer, inputs, whole, Chains, Steps, budgetSeconds = Double.MaxValue,
-      maxFamily = Int.MaxValue, focus = core)
+    // no budget: every family is walked, so no time is read (a stopwatch that never moves)
+    val report    = PopulationMonotonicity.report(all, lookups, reads.normalizer, inputs, whole, new tools.Stopwatch(() => 0L), Chains, Steps,
+      budgetSeconds = Double.MaxValue, maxFamily = Int.MaxValue, focus = core)
     report.flips.map(_._2).map(f => Row(f.key.venue, f.key.rawTitle, f.shape, f.path, f.chain)).distinctBy(r => (r.venue, r.rawTitle))
       .sortBy(r => (r.rawTitle, r.venue))
   }

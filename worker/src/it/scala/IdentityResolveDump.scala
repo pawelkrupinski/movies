@@ -140,7 +140,8 @@ object IdentityResolveDump {
    *  Report only: `population-flips-<cc>.json`, and one `kind=identity.population_flips` line. */
   private def populationReport(c: Corpus, listings: Seq[Listing], lookups: IdentityLookups, resolved: Resolution, chains: Int, budget: Double,
                                dir: Path): Unit = {
-    val report = PopulationMonotonicity.report(listings, lookups, c.normalizer, ResolveInputs.Unpinned, resolved, chains, budgetSeconds = budget)
+    val report = PopulationMonotonicity.report(listings, lookups, c.normalizer, ResolveInputs.Unpinned, resolved, tools.Stopwatch.System, chains,
+      budgetSeconds = budget)
     def film(take: Option[String]) = take.fold[play.api.libs.json.JsValue](JsString("pending"))(JsString(_))
     val json = JsObject(Seq(
       "country"   -> JsString(c.country.code),
