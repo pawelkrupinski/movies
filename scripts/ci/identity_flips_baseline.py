@@ -28,7 +28,8 @@ HEADER = """\
 # generated from a run's flips by scripts/ci/identity_flips_baseline.py -- never typed. The drift check
 # (scripts/ci/identity-drift-check.sh, scripts.IdentityDrift --flips-baseline) passes a flip of a listing named here,
 # counted loudly as "N known flips remaining" (a ::warning and the step summary), and FAILS every other flip.
-# ONLY SHRINKS: a commit adding a row is refused, no override (scripts/ci/commit_rules.py). A commit fixing a flip
+# ONLY SHRINKS: a commit adding a row is refused, no override (scripts/ci/commit_rules.py) -- but the owner's named
+# decision: an `Owner-Approved: <date> <why>` commit whose rows' notes read `OWNER-APPROVED <date>: <why>`. A commit fixing a flip
 # removes its row; a run whose seed shows the listing no longer flips names it "fixed, remove its row".
 # THE END STATE IS AUTOMATIC: with no row left, every flip fails -- the strict gate. Divergences have no baseline.
 # Owner: the convergence red's fixer. A newborn check's own findings go TEMPORARY on identity-flips-allow.tsv instead.

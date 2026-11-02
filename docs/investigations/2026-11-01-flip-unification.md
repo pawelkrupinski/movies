@@ -719,3 +719,27 @@ Pending per projection:
 
 The listings ever Pending rose by at most 70 (DE seed 9). The minutes a listing stays Pending (p50 and p90) did not
 move in any country.
+
+### 7.9 Titans: inherent bare-borrow flip, baselined by owner decision (CinemaxX Dammtor, Raschplatz)
+
+Convergence #728 (DE takes-drift-1, seed 47; red 9400367d430f): the one node of bare "Titans" at CinemaxX Dammtor and
+Raschplatz goes 869152 → none → 869152. Reproducer: `drift-slices/de/cinemaxx-titans-inherent-08f3a19c` at seed 20 (its
+`seeds` file), the seven DE "Titans" listings, about 20 s. A slice can't replay seed 47 itself, because
+`IdentityDrift.sequence` shuffles the slice's own venues. The cause, step by step:
+
+1. **Borrow.** At boot, Dammtor, Raschplatz, Kino am Raschplatz (kinoheld, Prince Joy credited → 869152, 66%) and
+   Luxor are present. The bare node's own 10637 (46.5%) is withdrawn by the Prince Joy node's denial
+   (`Families.scala` ~34), so the cluster takes Kino am Raschplatz's 869152 (`ResolverDecisions.scala` ~30).
+2. **Rival.** Essen and Grünstadt arrive. Grünstadt's Ruffin node (TITANS AWAKENING, 1690206) must-links by the same
+   title to the bare node and cannot-links the Prince Joy node. The solver leaves the bare cluster (2 venues) alone,
+   where 869152 has 3.5%: BelowThreshold. Unmatched beats wrong. Nothing was pending and `contested` played no part.
+3. **Fill.** Regensburg arrives. The cluster now has 3 venues, so the `venues.current` fill (WidelyBilled 3,
+   `UnifiedEvidence.scala` ~296) gives 869152, which is also the whole resolve's take (own match refused, fill only).
+
+Each take is the honest one for the listings present. No stale state or unanswered question is involved, so no
+mechanism fix exists. Curing it means changing a rule over the present listings, for example counting co-titled venues
+outside the cluster toward `venues.current`. That is identity design, to be measured on the full corpus later. The
+owner (2026-11-02) chose to baseline the two rows as a named exception. `scripts/ci/commit_rules.py` (`owner_approved`)
+admits a baseline row only from a commit carrying `Owner-Approved: <date> <why>`, with each row's note reading
+`OWNER-APPROVED <date>: <why>`. The rows go when that rule lands. Seed 31 of the same slice flips Regensburg the same
+way, and it is NOT baselined.
