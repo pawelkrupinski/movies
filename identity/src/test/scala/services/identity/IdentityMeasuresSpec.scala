@@ -815,6 +815,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // a venue's "On Screen" is how the relay screens, as "im Kino" is, never its work: UK Lowther Pavilion's, screening on
     // 25 April 2027, is the house's 2026/27 Swan Lake, which "screen" denied, leaving it the 2024 record
     StageRelays.namesAnotherWork(Listing("On Screen: The Royal Ballet SWAN LAKE (12A)"), Film("Royal Ballet & Opera 2026/27: Swan Lake")) shouldBe false
+    // and "EOS" still abbreviates "Exhibition on Screen" by it
+    StageRelays.abbreviates(Seq("eos"), Seq("exhibition", "on", "screen")) shouldBe true
     // a title naming nothing but its house names no work, and a film's title naming no house is no relay's
     StageRelays.namesAnotherWork(Listing("Royal Ballet & Opera Live"), Film("RBO 2026/27: Tosca (The Royal Opera)")) shouldBe false
     StageRelays.namesAnotherWork(Listing("Das Phantom der Oper"), Film("The Phantom of the Opera")) shouldBe false

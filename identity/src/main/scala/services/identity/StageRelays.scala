@@ -169,11 +169,16 @@ object StageRelays {
     def of(titles: Seq[String]): Relay = {
       val all             = titles.flatMap(fragments).distinct
       val (houses, works) = all.partition(namesAHouse)
-      Relay(works.flatMap(wordsOf).filter(word => word.length >= 4 && !HouseCommonWords(word)).toSet,
+      Relay(works.flatMap(wordsOf).filter(word => word.length >= 4 && !HouseCommonWords(word) && !ScreeningWords(word)).toSet,
         works.flatMap(billedIn(_, seasonNamed = true)).toSet, all.filterNot(namesOnlyTheArt).map(wholeKey).filter(_.nonEmpty).toSet,
         houses.map(houseWords).filter(_.nonEmpty).distinct)
     }
   }
+  /** A venue's words for how it screens a relay, which name no work ([[Relay]]'s `workWords`): UK Lowther Pavilion's "On
+   *  Screen: The Royal Ballet SWAN LAKE (12A)", screening 25 April 2027, read "screen" as its work and denied the house's
+   *  2026/27 record, leaving it the 2024 one. Not a relay word ([[RelayWords]]): "EOS" abbreviates "Exhibition on Screen"
+   *  by it. */
+  private val ScreeningWords = Set("screen")
   /** Is `fragment` only the art form, a relay's word or a year ("Opera 2026", "Live")? It names no work and no house, so
    *  no record carries it whole: UK "Macbeth - Opera 2026" took Argento's 1987 "Opera" so. */
   private def namesOnlyTheArt(fragment: String): Boolean = wordsOf(fragment).forall(HouseCommonWords)
@@ -268,9 +273,8 @@ object StageRelays {
   private val RecordingLag = 2
 
   /** A relay's own words, which a house's name is billed WITH but never abbreviated by ("NT Live" of "National Theatre
-   *  Live" is "NT"). ES taquilla's "(Cine)" tags how a relay screens ("Ópera Cosi fan tutte (Cine)"), and names no work;
-   *  nor does UK Lowther Pavilion's "On Screen: The Royal Ballet SWAN LAKE (12A)", whose "screen" denied the 2026/27 record. */
-  private val RelayWords = Set("live", "hd", "kino", "cinema", "cine", "screen", "im", "in", "aus", "at", "from", "presents", "season", "saison", "sezon", "kinowy")
+   *  Live" is "NT"). ES taquilla's "(Cine)" tags how a relay screens ("Ópera Cosi fan tutte (Cine)"), and names no work. */
+  private val RelayWords = Set("live", "hd", "kino", "cinema", "cine", "im", "in", "aus", "at", "from", "presents", "season", "saison", "sezon", "kinowy")
   /** Words a house's name shares with any other's — the art form in each language, the kind of institution ("National",
    *  "Staatsoper", "Opera House", "Theatre", "Company": English National Ballet is not Dutch National Ballet, nor the Wiener
    *  Staatsoper the Bayerische), articles, prepositions and a relay's own words ("Live", "im Kino", "Season") — which say
