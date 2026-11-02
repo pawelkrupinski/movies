@@ -20,6 +20,27 @@ check "a red verify of the nightly recording no longer refuses it" "0" "$(GH_MAI
 check "a commit naming the red run in Fixes-Red: lands" "0" "$(GH_IMC="[$red,$green]" push "$gbase..$fixing")"
 check "every pushed commit must name it, not just one" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
 check "a Fixes-Red: naming another run is no declaration" "1" "$(GH_IMC="[$(run_json 1 completed failure 1)]" push "$gbase..$fixing")"
+# A STRANDED TRAILER: a Fixes-Red: line in a paragraph of its own above Co-Authored-By: is no trailer to git, so neither the
+# gate nor agentctl reads it (Main #2164, #2547: the fixes landed unlinked and fixers were sent at fixed reds). Refused on
+# every push to main -- green, the commit tools-only, a dry run too; one in the closing block, or in prose mid-line, lands.
+stray="$(commit_paths "a tools fix" "Fixes-Red: 38520439037" "Co-Authored-By: A <a@b.c>" -- scripts/z.sh)"
+check "a Fixes-Red: line outside the closing trailer block is refused, main green, the commit tools-only" "1" \
+  "$(all_green push "$fixing..$stray")"
+check "...naming the commit, and where the line belongs" "1 1" \
+  "$(grep -c "${stray:0:9}: a Fixes-Red: line outside the message's closing trailer block" "$gate/err") $(grep -c 'beside' "$gate/err")"
+check "...with --fast-only too (a change about to be checked)" "1" \
+  "$(cd "$grepo" && PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --fast-only "$fixing..$stray" >/dev/null 2>&1; echo $?)"
+check "PREPUSH_SKIP=trailers bypasses it, said out loud" "0 1" \
+  "$(PREPUSH_SKIP=trailers all_green push "$fixing..$stray") $(grep -c 'trailers SKIPPED' "$gate/err")"
+scratch_git "$grepo" reset -q --hard "$fixing"
+stranded_ru="$(commit_paths "an unrelated tools change" "Red-Unrelated: 38520439037" "Co-Authored-By: A <a@b.c>" -- scripts/z.sh)"
+check "a stranded Red-Unrelated: is refused as well" "1" "$(all_green push "$fixing..$stranded_ru")"
+scratch_git "$grepo" reset -q --hard "$fixing"
+trailed="$(commit_paths "a tools fix" $'Fixes-Red: 38520439037\nCo-Authored-By: A <a@b.c>' -- scripts/z.sh)"
+check "a Fixes-Red: in the closing trailer block lands" "0" "$(all_green push "$fixing..$trailed")"
+prose="$(commit_paths "a note on the gate" "It explains the Fixes-Red: trailer in prose, mid-line." -- scripts/z.sh)"
+check "a Fixes-Red: mentioned mid-line is no trailer line: the push lands" "0" "$(all_green push "$trailed..$prose")"
+scratch_git "$grepo" reset -q --hard "$plain"
 check "a cancelled or running newest run says nothing: the decided one before it counts" "1" \
   "$(GH_IMC="[$running,$cancelled,$red,$green]" push "$gbase..$plain")"
 check "...and a green one before them lets it land" "0" "$(GH_IMC="[$cancelled,$green,$red]" push "$gbase..$plain")"

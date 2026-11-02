@@ -113,6 +113,13 @@
 # Bypass: PREPUSH_SKIP=redgate. NOT gating: the Identity findings report (a recording's own suspects and
 # corpus-shape findings, red after 3 days untriaged) -- no push makes or mends a recording's data.
 #
+# A STRANDED TRAILER REFUSES EVERY PUSH TO MAIN, green or red, a dry run (--checks-only, --fast-only) too: a pushed
+# commit's `Fixes-Red:`, `Red-Unrelated:`, `New-Check:` or `Retires:` line outside the message's closing trailer block
+# (a paragraph of its own above `Co-Authored-By:`) is prose to git's trailer parser, the only reader the red gate and
+# agentctl's red bookkeeping have. 38 of main's 204 Fixes-Red commits from 2026-10-20 to 11-02 had theirs there: Main
+# #2164's and #2547's fixes landed unlinked, the reds stayed open and fixers were sent at them again. Bypass:
+# PREPUSH_SKIP=trailers.
+#
 # THE KNOWN-RED BASELINE: with $PREPUSH_BASELINE_DIR set (agentctl sets it), a check that fails is held against the push
 # only when it fails in a way plain main does not. `<dir>/<base commit sha>` is the hook's own output of the same checks
 # on the base's tree, its first line `pre-push baseline <base commit sha>` (agentctl's `land` writes it when a change's
@@ -598,6 +605,28 @@ unproven_only() { # <workflow index> <run id>
         python3 scripts/ci/gating_checks.py report-only --workflow-file "${GatingWorkflowFiles[$1]}" --run "$2" 2>/dev/null
 }
 
+# Refuses a pushed commit with a trailer line git reads no trailer from (A STRANDED TRAILER, above): more `<key>:` lines
+# in its message than `%(trailers:key=<key>)` values. Silent when there is none. <range>... the pushed commits.
+check_stranded_trailers() {
+    local r commit key declared parsed bad=0
+    for r in "$@"; do
+        for commit in $(git rev-list "$r"); do
+            for key in Fixes-Red Red-Unrelated New-Check Retires; do
+                declared="$(git log -1 --format=%B "$commit" | grep -ciE "^$key:" || true)"
+                [ "$declared" -gt 0 ] || continue
+                parsed="$(git log -1 --format="%(trailers:key=$key,valueonly)" "$commit" | grep -c . || true)"
+                [ "$parsed" -ge "$declared" ] && continue
+                warn "${commit:0:9}: a $key: line outside the message's closing trailer block, where git reads no trailer"
+                bad=1
+            done
+        done
+    done
+    [ "$bad" = 0 ] && return 0
+    warn "neither the red gate nor agentctl sees such a line. Put it in the message's LAST paragraph, beside"
+    warn "Co-Authored-By: with no blank line between them (git commit --amend / git rebase on unpushed commits)."
+    return 1
+}
+
 # Refuses a push to main while a gating workflow's newest verdict is red, unless every pushed commit that touches a
 # production path names one of the red runs in a `Fixes-Red: <run id>` trailer -- and while the gate cannot be read
 # at all, unless no pushed commit touches a production path (THE GATE FAILS CLOSED, above). <range>... the pushed commits.
@@ -720,6 +749,9 @@ fi
 # The red gate's state, one word a workflow (`<i>:<conclusion>:<run>`, `<i>:unread`, `<i>:none`): a key of THE REUSE below.
 gate_state="not-main"
 if [ "$to_main" = 1 ]; then
+    if skipped trailers; then warn "trailers SKIPPED (PREPUSH_SKIP)"
+    else check_stranded_trailers "${ranges[@]}" || exit 1
+    fi
     if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"; gate_state="skipped"
     elif [ -n "$fast_only" ]; then log "--fast-only: the red gate is not judged (it is when the batch is pushed)" >&2
         gate_state="fast-only"
