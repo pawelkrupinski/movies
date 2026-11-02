@@ -814,6 +814,11 @@ if [ -n "${PREPUSH_ONLY:-}${PREPUSH_ELSEWHERE:-}" ]; then
     [ -z "$for_others" ] || log "left to the landing check's other job(s):$for_others" >&2
     checks="$(printf '%s' "$kept" | grep -v '^$' || true)"
 fi
+# THE LANDING CHECK'S PLAN (.github/workflows/precommit-check.yml's `plan` job and each job's own gate): PREPUSH_LIST=1 prints
+# the checks this run WOULD run -- the same selection, after the split above, so with PREPUSH_ONLY/PREPUSH_ELSEWHERE a
+# job's own share -- one a line, runs none and exits 0. A job set up only when this names a check of its share runs exactly
+# what it ran when it always set up: nothing else reads the list.
+if [ "${PREPUSH_LIST:-}" = 1 ]; then printf '%s\n' "$checks" | grep -v '^$' || true; exit 0; fi
 [ -z "$checks" ] && [ -z "$fast_only" ] && exit 0
 
 # ── THE REUSE: a passed result answers a re-push of the SAME tree ───────────────────────────────
@@ -1041,7 +1046,7 @@ local_test_lines() { # <set> <kind>
 # An area's local tests: its sbt lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, and the one
 # compiler over its target/), then its sh lines. A failure shows the failing specs; the full log stays.
 run_local_tests() { # <set>
-    local cmds=() line rc=0
+    local cmds=() line rc=0 sh_lines=1
     need_jvm "$1" || return 1
     while IFS= read -r line; do [ -n "$line" ] && cmds+=("$line"); done < <(local_test_lines "$1" sbt)
     if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
@@ -1055,10 +1060,27 @@ run_local_tests() { # <set>
             warn "identity: no test-impact selection ($(tail -1 "$tmp/identity.select.log")) -- every identity test"
         fi
     fi
+    # THE IDENTITY SHARDS (precommit-check.yml's `check (identity k/n)` jobs): PREPUSH_IDENTITY_SHARD=<k>/<n> runs shard k of
+    # the selected lines (scripts/ci/test_shards.py: every class in exactly one shard, under its own line's command and
+    # arguments; a line naming no class outright whole in one). The n jobs together run what one job ran.
+    if [ "$1" = identity ] && [ -n "${PREPUSH_IDENTITY_SHARD:-}" ] && [ "${#cmds[@]}" -gt 0 ]; then
+        local sharded=() weights=()
+        # the weights only balance the shards: without them every class weighs the same
+        [ -f scripts/ci/identity-test-weights.tsv ] && weights=(--weights scripts/ci/identity-test-weights.tsv)
+        printf '%s\n' "${cmds[@]}" | python3 scripts/ci/test_shards.py --shard "$PREPUSH_IDENTITY_SHARD" \
+            ${weights[@]+"${weights[@]}"} > "$tmp/identity.shard" \
+            || { warn "identity: shard $PREPUSH_IDENTITY_SHARD could not be cut"; return 1; }
+        while IFS= read -r line; do [ -n "$line" ] && sharded+=("$line"); done < "$tmp/identity.shard"
+        log "identity: shard $PREPUSH_IDENTITY_SHARD, $(wc -w < "$tmp/identity.shard" | tr -d ' ') words of ${#cmds[@]} line(s)"
+        cmds=(${sharded[@]+"${sharded[@]}"})
+        # the area's sh lines are no classes to split: shard 1 runs them
+        [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ] || sh_lines=0
+        if [ "${#cmds[@]}" -eq 0 ] && [ "$sh_lines" = 0 ]; then log "identity: nothing in shard $PREPUSH_IDENTITY_SHARD"; return 0; fi
+    fi
     if [ "${#cmds[@]}" -gt 0 ]; then
         scripts/sbt-warm "${cmds[@]}" > "$tmp/$1.log" 2>&1 || rc=1
     fi
-    if [ "$rc" = 0 ]; then
+    if [ "$rc" = 0 ] && [ "$sh_lines" = 1 ]; then
         while IFS= read -r line; do
             [ -n "$line" ] || continue
             bash -c "$line" >> "$tmp/$1.log" 2>&1 || { rc=1; break; }

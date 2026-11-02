@@ -343,7 +343,7 @@ area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hook
 scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
 for f in hooks/pre-push hooks-path.sh tool-conventions.sh ci/commit_rules.py; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
-cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$area/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/test_shards.py" "$area/scripts/ci/"
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
 basic sbt Test/compile
@@ -413,6 +413,26 @@ code="$(area_push web/src/main/assets/js/b.js PREPUSH_ONLY=page)"
 check "...and PREPUSH_ONLY=page runs the page set alone" "0 1 0" "$code $(calls PageTest) $(basic_ran)"
 code="$(area_push worker/src/main/scala/services/movies/B.scala PREPUSH_ONLY=page)"
 check "...which a push selecting no page check passes with nothing run" "0 0" "$code $(wc -l < "$AREA_CALLS" | tr -d ' ')"
+# THE LANDING CHECK'S PLAN: PREPUSH_LIST=1 prints the checks (the job's share of them), runs none
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala PREPUSH_LIST=1)"
+check "PREPUSH_LIST=1 prints the selected checks and runs none" "0 driftguards sbt identity 0" \
+  "$code $(grep -vE 'pre-push' "$testroot/area-out" | tr '\n' ' ' | sed 's/ $//') $(wc -l < "$AREA_CALLS" | tr -d ' ')"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala PREPUSH_LIST=1 PREPUSH_ONLY=identity)"
+check "...with PREPUSH_ONLY, the job's own share" "0 identity" "$code $(grep -vE 'pre-push' "$testroot/area-out" | tr '\n' ' ' | sed 's/ $//')"
+code="$(area_push worker/src/main/scala/services/movies/L.scala PREPUSH_LIST=1 PREPUSH_ONLY=identity)"
+check "...and nothing for a change that selects none of it" "0 " "$code $(grep -vE 'pre-push' "$testroot/area-out" | tr '\n' ' ')"
+# THE IDENTITY SHARDS: PREPUSH_IDENTITY_SHARD=k/n runs shard k of the selected classes; the shards together run them all
+shard_classes() { grep -o 'services\.identity\.[A-Za-z]*Spec' "$AREA_CALLS" | sort | tr '\n' ' '; }
+all_in_shards=""
+for k in 1 2 3; do
+  code="$(area_push identity/src/main/scala/services/identity/Resolver.scala PREPUSH_ONLY=identity PREPUSH_IDENTITY_SHARD=$k/3 \
+    IMPACT_LINES='identity services.identity.ASpec\nidentity services.identity.BSpec\nworker services.identity.CSpec\nworker services.identity.DSpec\n')"
+  check "THE IDENTITY SHARDS: shard $k/3 passes, said" "0 1" "$code $(grep -c "identity: shard $k/3" "$testroot/area-out")"
+  all_in_shards+="$(shard_classes)"
+done
+check "...and the three shards run every selected class exactly once" \
+  "services.identity.ASpec services.identity.BSpec services.identity.CSpec services.identity.DSpec" \
+  "$(printf '%s' "$all_in_shards" | tr ' ' '\n' | grep -v '^$' | sort | tr '\n' ' ' | sed 's/ $//')"
 
 # ── THE IDENTITY DRIFT CHECK: a Fixes-Red push touching a drift path is judged on the red's drift rows, on CI ──────────────
 # A fake scripts/identity-drift-ci notes its arguments; DRIFT_RC is its exit.

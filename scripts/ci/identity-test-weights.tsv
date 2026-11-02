@@ -1,0 +1,23 @@
+# The identity specs' seconds in the landing check's identity job (VictoriaLogs `kind:suite job:"check (identity)"`,
+# the median over 2026-10-30..11-02; IdentityDriftSlicesSpec as it ran after its slices were sharded, run 41373956176).
+# Only test_shards.py's balance reads them: a missing or stale row moves a class to another shard, never out of the check.
+# class	seconds
+services.identity.IncrementalResolverStoreSpec	283
+services.identity.LiveCorpusSpec	264
+scripts.IdentityDriftSlicesSpec	196
+services.identity.PopulationMonotonicitySpec	182
+services.identity.agreement.LateInputEquivalenceSpec	176
+scripts.IdentityDriftSlicesShard3Spec	164
+scripts.IdentityDriftSlicesShard1Spec	150
+scripts.IdentityDriftSlicesShard2Spec	125
+services.identity.UnmatchedClustersRatchetSpec	120
+services.identity.IdentitySliceCasesSpec	120
+services.identity.IdentityResolverPropertiesSpec	109
+services.identity.ScopedProjectionEquivalenceSpec	106
+services.identity.IncrementalResolverSpec	106
+services.identity.agreement.IncrementalWholeEquivalenceSpec	102
+scripts.IdentityUnifiedFitSpec	97
+scripts.IdentityRefitCaptureReplaySpec	84
+scripts.IdentityRefitMeasureAllSpec	81
+services.identity.NonFilmEventsFixtureSpec	29
+scripts.IdentityDriftSpec	24
