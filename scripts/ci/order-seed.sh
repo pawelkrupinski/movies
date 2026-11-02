@@ -12,3 +12,5 @@ if ! [[ "$seed" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 printf '%s\n' "$seed"
+
+# measurement only (precommit speed), never landed
