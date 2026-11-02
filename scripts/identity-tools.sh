@@ -246,6 +246,9 @@ identity_tree_layout() {
   part=$dir.part
   rm -rf "$part" "$dir"; mkdir -p "$part"
   git -C "$IDENTITY_REPO" archive "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' | tar -x -C "$part" || return 1
+  # the worker's build bundles the judgements (build.sbt's resourceGenerators): without the file its compile fails
+  ! git -C "$IDENTITY_REPO" cat-file -e "$sha:test/resources/fixtures/identity-judgements.tsv" 2>/dev/null ||
+    git -C "$IDENTITY_REPO" archive "$sha" -- test/resources/fixtures/identity-judgements.tsv | tar -x -C "$part" || return 1
   # Seed the compile from the nearest compiled code (APFS clones, no copy): sbt recompiles only what the ref changed.
   local seed apart=""
   seed=$(identity_nearest_compiled "$sha")
