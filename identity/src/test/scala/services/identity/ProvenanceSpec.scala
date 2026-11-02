@@ -77,4 +77,15 @@ class ProvenanceSpec extends AnyFlatSpec with Matchers {
     Authority.spares(credited, Denial.Kind.NotTheWork(creditOverrules = false)) shouldBe empty
     Authority.spares(uncredited, Denial.Kind.NotTheWork(creditOverrules = true)) shouldBe empty
   }
+
+  it should "let no sibling crediting the film's director withdraw it by a learned rule on its runtime and year" in {
+    // UK "Oxide Ghosts: The Brass Eye Tapes + Q&A": Cultplex's [1996] billing crediting Michael Cumming at a Q&A's length
+    // withdrew MAC's own match crediting him, and the family took nothing (drift slice quad-derby-oxide-ghosts-…)
+    val normalizer = services.movies.SingleCountryNormalizer.titleNormalizer
+    val film       = FilmTable.F(475376, "Oxide Ghosts", 2018, "Michael Cumming", 90)
+    val credited   = FilmTable.listing(models.Multikino, "Oxide Ghosts", None, Some("Michael Cumming"), Some(120))
+    val dated      = FilmTable.listing(models.KinoMuza, "Oxide Ghosts", Some(1996), Some("Michael Cumming"), Some(120))
+    val r          = IdentityResolver.resolve(Seq(credited, dated), new FilmTable(Seq(film), normalizer), normalizer, ResolveInputs.Unpinned)
+    r.decisionOf(credited.key).film shouldBe Some(475376)
+  }
 }

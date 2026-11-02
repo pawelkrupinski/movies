@@ -17,6 +17,9 @@ private[identity] object Denial {
      *  `creditOverrules` lets a billing whose credited director is the film's keep it, as the screen-namesake rule does its
      *  own listing: a credit the venue publishes names its staging's record whatever TMDB titles it. */
     case NotTheWork(creditOverrules: Boolean)
+    /** A learned listing-film rule ([[LearnedCannotLinks]]): the listing's own facts against the film, which
+     *  [[Authority.withdraws]] weighs against its own credit. */
+    case Learned
     /** The calibration's probability cut alone ([[LearnedCannotLinks]]): the weakest denial. */
     case ProbabilityCut
     /** A season production its listing's banner is not the house of ([[CandidateScoring.evidenceDenial]]). */

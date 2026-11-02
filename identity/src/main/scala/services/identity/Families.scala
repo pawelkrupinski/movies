@@ -172,5 +172,5 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
         evidenceDenies(stated, candidate.film, IdentityMeasures.listingFilm(stated, candidate.film, None, 0, 0, houses, scopeOf(node).qualifiers,
           node.country))
       }
-    })(_.denied)
+    })(scored => scored.denied && !Authority.splitDenial(scored))
 }

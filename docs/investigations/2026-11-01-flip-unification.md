@@ -791,6 +791,26 @@ solver's ambiguity). At full population they take what they take with the contes
 middle populations is right with the data then present, and no rule over the present listings can know that a
 contesting sibling will come.
 
+### 7.8 A sibling's learned denial against a film it credits withdraws nobody (Oxide Ghosts, It's Nice Up North)
+
+**Mechanism.** A learned listing-film rule (`LearnedCannotLinks`: "runtime.gap>=6 AND year.distance>=2", "runtime.gap>=36
+AND title in {none,overlap}") denies a film on the listing's own runtime or year. Read from a SIBLING, that denial
+withdrew members' own matches (`Families.siblingDenying`) and drew a denies-film cannot-link (`Families.denies`). UK
+"Oxide Ghosts: The Brass Eye Tapes + Q&A": Cultplex's billing credits Michael Cumming but dates it 21 years off and runs
+30 minutes over (the Q&A), so its rule fired and withdrew MAC's and Quad's own matches; "It's Nice Up North (20th
+Anniversary + Q&A)": Hexham's +40 minutes withdrew the others' match crediting Graham Fellows. Each went none → film →
+none as the family arrived, and ended none, wrong.
+
+**Fix.** Learned denials carry their own kind (`Denial.Kind.Learned`). One whose own scoring credits the film's
+director (`Authority.splitDenial`: the sibling's facts split, its credit naming the film) neither withdraws a member
+nor counts as the sibling denying the film. It still holds for the sibling itself. A function of each sibling alone:
+monotone.
+
+**Proof.** `ProvenanceSpec` (two "Oxide Ghosts" billings crediting Cumming, one [1996]) fails on the parent, passes
+here. Two new drift slices from recording 41379008920 (`quad-derby-oxide-ghosts-…`, `gala-cinema-durham-it-s-nice-up-north-…`)
+fail `PopulationMonotonicitySpec` on the parent and pass here; their full-population takes move none → 475376 and
+none → 197993.
+
 ### 7.9 Titans: inherent bare-borrow flip, baselined by owner decision (CinemaxX Dammtor, Raschplatz)
 
 Convergence #728 (DE takes-drift-1, seed 47; red 9400367d430f): the one node of bare "Titans" at CinemaxX Dammtor and

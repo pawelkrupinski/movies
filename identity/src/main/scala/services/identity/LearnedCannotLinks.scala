@@ -49,7 +49,7 @@ object LearnedCannotLinks {
     // The cut on a probability the film's own facts do not pull down is the title's, or the screening's length's, alone.
     lazy val factsAgree = calibration.contributionSum(ListingFilm, comparedFacts(ListingFilm, measures) - "runtime.delta") >= 0
     if (!comparesAFact(ListingFilm, measures)) None
-    else calibration.cannotLink(ListingFilm, measures).map(r => CannotLink.Learned(r.name) -> Denial.Kind.Evidence)
+    else calibration.cannotLink(ListingFilm, measures).map(r => CannotLink.Learned(r.name) -> Denial.Kind.Learned)
       .orElse(Option.when(!factsAgree && calibration.forbidsLink(ListingFilm, probability))(
         CannotLink.Learned(s"$ListingFilm probability below the cannot-link cut") -> Denial.Kind.ProbabilityCut))
   }
