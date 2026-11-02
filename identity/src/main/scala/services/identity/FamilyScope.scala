@@ -401,7 +401,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  (a short its feed links another film beside among them), a title naming it only by the venue's own name, a programme tag or
    *  slot, a title billing a film festival alone, a billing as a silent film of a sound-era film, or a relay's record a
    *  plain billing's own text contradicts ([[RelayRecords.contradictedByOwnText]]). */
-  private def denialByNode(node: EvidenceNode, id: Int): Option[Denial] =
+  private def denialByNode(node: EvidenceNode, id: Int): Option[Denial] = denialMemo.getOrElseUpdate((node.id, id), denialOf(node, id))
+  // A pure function of the node and the film within this scope (its pins, links, pool and generation fixed): a node's own
+  // score and every pooled cluster holding it ask it again for each candidate of the pool, 5.5-9% of a convergence or
+  // order row's CPU (JFR, docs/investigations/2026-11-01-twenty-runners.md section 9).
+  private val denialMemo = mutable.HashMap.empty[(String, Int), Option[Denial]]
+  private def denialOf(node: EvidenceNode, id: Int): Option[Denial] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial)).map(Denial(_))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
