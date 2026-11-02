@@ -47,4 +47,17 @@ class ParsedByContentSpec extends AnyFlatSpec with Matchers {
     ParsedByContent.Key.of(new String("<html>x</html>")) shouldBe ParsedByContent.Key.of("<html>x</html>")
     ParsedByContent.Key.of("<html>x</html>") should not be ParsedByContent.Key.of("<html>y</html>")
   }
+
+  it should "be MurmurHash3 x64_128 of the UTF-8 bytes, as the reference computes it" in {
+    // the reference's (and Python mmh3.hash64's) values, seed 0
+    ParsedByContent.Key.murmur3x64x128("hello".getBytes("UTF-8")) shouldBe ((0xcbd8a7b341bd9b02L, 0x5b1e906a48ae1d19L))
+    ParsedByContent.Key.murmur3x64x128(Array.emptyByteArray) shouldBe ((0L, 0L))
+  }
+
+  it should "tell apart texts whose difference lies past the first block, in the tail, or in a non-Latin letter" in {
+    val page = "<div>" + ("x" * 37) + "</div>"
+    val keys = Seq(page, page.updated(20, 'y'), page.updated(page.length - 1, '!'), page.updated(20, 'ł'), page.updated(20, '’'))
+      .map(ParsedByContent.Key.of)
+    keys.distinct.size shouldBe keys.size
+  }
 }
