@@ -734,8 +734,12 @@ ambiguous, never un-ambiguous.
 **Proof.** `ConstraintSolverSpec` "leave a node a stronger tier found ambiguous alone in the weaker tiers too" fails on
 the parent and passes here (seconds). `PopulationMonotonicitySpec`: Torrington's row removed from
 `identity-population-flips-known.tsv`; no new flip in any committed slice. Torrington's take at full population is now
-none (11868 → 138 → none along one chain): its best rejected candidate is Besson's 2025 "Dracula" (1246049), so the
-1958 take was most likely wrong.
+none (11868 → 138 → none along one chain).
+
+**Measure.** Run 41459539675 (base f43b1fcd5e, all five countries): one MODEL take moved, Torrington's "Dracula" 11868 →
+none; no final take moved. Judged right (87 minutes and a 12A on Halloween fit Hammer's 1958 film, not the 1931 one
+nor Besson's 2025 film), so a right → none at the model stage. Accepted under "unmatched beats wrong": the bare title's
+same-title links reach both the 1931 and the 1958 films, and only a weaker search-form link chose between them.
 
 ### 7.6 A sibling's arrival no longer withdraws a borrowed take (DCA "+ Recorded Q&A")
 
