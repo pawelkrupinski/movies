@@ -127,8 +127,7 @@ object PopulationMonotonicity {
       val keys  = members.map(_.key).toSet
       def resolve(prefix: Seq[Listing]): Map[ListingKey, Option[String]] = {
         val present = prefix.map(_.key).toSet
-        val r = IdentityResolver.resolveWith(prefix, lookups, normalizer, inputs.calibration, IdentityResolver.Mutation.None, inputs.pins,
-          inputs.decorations, Some(without(context, keys -- present)))
+        val r = resolvedPresent(prefix, lookups, normalizer, inputs, without(context, keys -- present))
         val taken = prefix.flatMap(l => r.decisionOf.get(l.key).map(d => l.key -> takeOf(d))).toMap
         if (prefix.sizeIs == members.size) apart += members.count(l => whole.decisionOf.get(l.key).map(takeOf) != taken.get(l.key))
         taken
@@ -155,6 +154,47 @@ object PopulationMonotonicity {
     val contested = whole.contested.toSeq.sortBy(_._1)(using ListingKey.ordering).map { case (key, backed) =>
       (key, whole.decisionOf.get(key).flatMap(takeOf), backed) }
     Report(families.size, walked, large.size, fits.size - walked, elapsed, flipped, apart, contested)
+  }
+
+  /** A family's `prefix` resolved whole against `context`, the corpus's with the family's absent listings taken out. */
+  private def resolvedPresent(prefix: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
+                              inputs: ResolveInputs, context: CorpusContext): Resolution =
+    IdentityResolver.resolveWith(prefix, lookups, normalizer, inputs.calibration, IdentityResolver.Mutation.None, inputs.pins,
+      inputs.decorations, Some(context))
+
+  /** A BARE listing ([[BareListing]], bare in the whole resolve) that took two decided takes along its family's arrival
+   *  chains: each distinct take, with the chain and prefix size it was first read at. */
+  final case class BareMove(key: ListingKey, takes: Seq[(String, Int, Int)]) {
+    def line: String = s"${key.venue} | ${key.rawTitle}: " + takes.map { case (take, chain, n) => s"$take@$n [chain $chain]" }.mkString(", ")
+  }
+
+  /** THE BARE-TAKE PROPERTY (the owner, 2026-11-03: a take is a pure function of the current inputs; flip-unification
+   *  §7.10): a bare listing's take is its own title's, the same at every step of every arrival chain of its family -- not
+   *  only never back to a value it left, but never moved by an arrival at all. Every family of `whole` holding a
+   *  `focus`ed listing and two listings or more, walked along `count` chains of at most `steps` steps (as [[report]]
+   *  walks them, each prefix resolved against the corpus's context with the family's absent listings taken out); a
+   *  Pending take is no take. The bare listings whose takes differ. */
+  def bareMoves(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, whole: Resolution,
+                count: Int, steps: Int, focus: ListingKey => Boolean): Seq[BareMove] = {
+    val all        = listings.sorted.distinctBy(_.key)
+    val generation = new CandidateGeneration(all, lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
+    val without    = new Without.Index(generation.nodes)
+    val families   = all.groupBy(l => whole.familyOf.getOrElse(l.key, -1)).toSeq
+      .filter { case (id, ls) => id >= 0 && ls.sizeIs >= 2 && ls.exists(l => focus(l.key) && whole.bare(l.key)) }.sortBy(_._1)
+    families.flatMap { case (_, members) =>
+      val keys = members.map(_.key).toSet
+      val seen = PopulationMonotonicity.chains(members, MurmurHash3.stringHash(members.head.sortKey).toLong, count, steps).zipWithIndex.flatMap { case (chain, c) =>
+        chain.flatMap { prefix =>
+          val present = prefix.map(_.key).toSet
+          val r = resolvedPresent(prefix, lookups, normalizer, inputs, without(generation.context, keys -- present))
+          prefix.filter(l => whole.bare(l.key)).flatMap(l => r.decisionOf.get(l.key).flatMap(takeOf).map(take => (l.key, (take, c, prefix.size))))
+        }
+      }
+      seen.groupMap(_._1)(_._2).toSeq.flatMap { case (key, takes) =>
+        val firsts = takes.groupBy(_._1).values.map(_.minBy { case (_, c, n) => (c, n) }).toSeq.sortBy { case (_, c, n) => (c, n) }
+        Option.when(firsts.sizeIs > 1)(BareMove(key, firsts))
+      }.sortBy(m => (m.key.rawTitle, m.key.venue))
+    }
   }
 
   /**

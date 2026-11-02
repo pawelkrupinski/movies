@@ -138,7 +138,10 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
                             /** Each listing of a facts-free cluster whose title family backs two films or more by its
                              *  siblings' own statements, with those films and their venues ([[ClusterVoting.ownBacked]]):
                              *  what the population report counts as a contested bare listing. No take reads it. */
-                            contested: Map[ListingKey, Map[Int, Set[String]]] = Map.empty) {
+                            contested: Map[ListingKey, Map[Int, Set[String]]] = Map.empty,
+                            /** The BARE listings: of a node publishing no fact, with no cast, pin, feed link or catalogue id
+                             *  shared with another listing of their own (the bare-take property's subjects). */
+                            bare: Set[ListingKey] = Set.empty) {
   def families: Int = familyOf.values.toSet.size
   /** The partition over listing keys — what the order-independence properties compare. */
   lazy val partition: Set[Set[ListingKey]] = decisions.map(_.listings).toSet

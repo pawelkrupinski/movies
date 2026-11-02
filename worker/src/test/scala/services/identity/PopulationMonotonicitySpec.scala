@@ -112,7 +112,10 @@ object PopulationMonotonicitySpec {
   }
 
   /** The slice in `dir` walked: its core's families along [[Chains]] arrival chains, resolved against its own answers. */
-  def walk(dir: Path, threads: Int = 1): Seq[Row] = {
+  /** A slice read for a walk: its listings (core and context), its own answers, the whole resolve and its core's keys. */
+  final case class Loaded(all: Seq[Listing], lookups: IdentityLookups, normalizer: services.movies.TitleNormalizer, inputs: ResolveInputs,
+                          whole: Resolution, core: Set[services.movies.ListingKey])
+  def load(dir: Path): Loaded = {
     val slice     = IdentitySlice.readSlice(dir)
     val replaying = new tools.SliceHttp.Replaying(slice.http)
     val reads     = new IdentitySlice.Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed,
@@ -120,10 +123,13 @@ object PopulationMonotonicitySpec {
     val lookups   = scripts.IdentityDrift.memo(reads)
     val all       = slice.core ++ slice.context
     val inputs    = ResolveInputs.Unpinned
-    val whole     = IdentityResolver.resolve(all, lookups, reads.normalizer, inputs)
-    val core      = slice.core.map(_.key).toSet
+    Loaded(all, lookups, reads.normalizer, inputs, IdentityResolver.resolve(all, lookups, reads.normalizer, inputs), slice.core.map(_.key).toSet)
+  }
+
+  def walk(dir: Path, threads: Int = 1): Seq[Row] = {
+    val Loaded(all, lookups, normalizer, inputs, whole, core) = load(dir)
     // no budget: every family is walked, so no time is read (a stopwatch that never moves)
-    val report    = PopulationMonotonicity.report(all, lookups, reads.normalizer, inputs, whole, new tools.Stopwatch(() => 0L), Chains, Steps,
+    val report    = PopulationMonotonicity.report(all, lookups, normalizer, inputs, whole, new tools.Stopwatch(() => 0L), Chains, Steps,
       budgetSeconds = Double.MaxValue, maxFamily = Int.MaxValue, focus = core, threads = threads)
     report.flips.map(_._2).map(f => Row(f.key.venue, f.key.rawTitle, f.shape, f.path, f.chain)).distinctBy(r => (r.venue, r.rawTitle))
       .sortBy(r => (r.rawTitle, r.venue))

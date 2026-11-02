@@ -1,0 +1,20 @@
+# THE KNOWN MOVED BARE TAKES (services.identity.BareTakeSpec; docs/investigations/2026-11-01-flip-unification.md §7.10): a
+# committed slice's BARE listing (no fact, cast, pin, feed link or shared catalogue id of its own) whose take differs
+# between two steps of its family's arrival chains -- what main held when the property was born, 2026-11-03. Only shrinks:
+# a row whose listing no longer moves fails the spec until it is removed. Columns: slice, venue, raw title, note (the takes).
+slice	venue	rawTitle	note
+drift-slices/de/cinemaxx-titans-inherent-08f3a19c	CinemaxX Dammtor	Titans	tmdb:10637@1 [chain 0], none@3 [chain 0], tmdb:869152@4 [chain 0], tmdb:1690206@4 [chain 2]
+drift-slices/de/cinemaxx-titans-inherent-08f3a19c	CinemaxX Regensburg	Titans	tmdb:869152@6 [chain 0], none@7 [chain 0], tmdb:10637@1 [chain 1], tmdb:1690206@5 [chain 2]
+drift-slices/de/dammtor-titans-0bd19a4c	CinemaxX Dammtor	Titans	tmdb:10637@1 [chain 0], none@3 [chain 0], tmdb:869152@4 [chain 0], tmdb:1690206@4 [chain 2]
+drift-slices/de/dammtor-titans-0bd19a4c	CinemaxX Regensburg	Titans	tmdb:869152@6 [chain 0], none@7 [chain 0], tmdb:10637@1 [chain 1], tmdb:1690206@5 [chain 2]
+drift-slices/de/werkstattkino-camouflage-07fb3fab	Cinecitta	Camouflage	tmdb:1735950@4 [chain 0], none@8 [chain 0], tmdb:56085@3 [chain 2]
+drift-slices/de/werkstattkino-camouflage-07fb3fab	Metropol Düsseldorf	Camouflage	tmdb:1735950@5 [chain 0], none@8 [chain 0], tmdb:56085@1 [chain 2]
+drift-slices/uk/-cbeebies-panto-2026-2c0694a1	Riverside Theatre Woodbridge	CBeebies: Treasure Island	Treasure Island: tmdb:1785679@168 [chain 0], none@224 [chain 0]
+drift-slices/uk/nerve-centre-londonderry-the-ladykillers-039701b7	Nerve Centre Londonderry	The Ladykillers | Cinematic Breakfast	tmdb:5516@1 [chain 0], tmdb:5506@2 [chain 0]
+identity-slices/de-werkstattkino-e-v-camouflage-312d135e	Cinecitta	Camouflage	tmdb:1735950@4 [chain 0], none@8 [chain 0], tmdb:56085@3 [chain 2]
+identity-slices/de-werkstattkino-e-v-camouflage-312d135e	Metropol Düsseldorf	Camouflage	tmdb:1735950@5 [chain 0], none@8 [chain 0], tmdb:56085@1 [chain 2]
+identity-slices/de-werkstattkino-e-v-camouflage-without-groeben-lichtspiele	Cinecitta	Camouflage	tmdb:56085@3 [chain 0], none@5 [chain 0], tmdb:1735950@5 [chain 1]
+identity-slices/de-werkstattkino-e-v-camouflage-without-groeben-lichtspiele	Metropol Düsseldorf	Camouflage	tmdb:56085@4 [chain 0], none@5 [chain 0], tmdb:1735950@3 [chain 1], tmdb:653280@2 [chain 7]
+identity-slices/uk--beebies-panto-treasure-0db3264f	Riverside Theatre Woodbridge	CBeebies: Treasure Island	Treasure Island: tmdb:1785679@168 [chain 0], none@224 [chain 0]
+identity-slices/uk-act-one-cinema-acton-royal-ballet-opera-live-alice-s-adventu-3342749e	Theatr Gwaun Fishguard	Alice's Adventures in Wonderland	none@366 [chain 0], tmdb:1702778@122 [chain 3]
+identity-slices/uk-empire-theatre-halstead-romeo-and-juliet-06f0c8a2	Theatr Gwaun Fishguard	Romeo and Juliet	none@141 [chain 0], tmdb:6003@282 [chain 0], tmdb:91745@188 [chain 6]

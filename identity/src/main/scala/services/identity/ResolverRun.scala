@@ -68,7 +68,8 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       films          = decided.flatMap(_.film).distinct.flatMap(id => candidateOf(id).map(id -> _.film)).toMap,
       scorings       = families.scorings,
       titleRelations = families.titleRelations,
-      contested      = runs.flatMap(_.contested).toMap)
+      contested      = runs.flatMap(_.contested).toMap,
+      bare           = runs.flatMap(_.bareListings).toSet)
   }
 
   /** One family's assignment: round A's clusters, the votes of those no member matched alone, the final clusters, and
@@ -119,6 +120,20 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     private val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of, linked)
 
     def decided: (Seq[ResolverEdge], Seq[ResolverDecision], Int) = (familyEdges, clusters.flatMap(decide), violations)
+
+    // ── BARE listings: nothing but their titles speak for them ──
+    private def catalogueKeysOf(node: EvidenceNode, listing: Listing): Seq[String] = listing.catalogueIds.distinct.map(edges.catalogueKey(_, node))
+    // the catalogue keys two listings of the family carry: a link of a listing's own data to another listing
+    private val sharedCatalogue: Set[String] =
+      members.flatMap(node => node.listings.flatMap(listing => catalogueKeysOf(node, listing).map(_ -> listing.key))).groupMap(_._1)(_._2)
+        .collect { case (key, keys) if keys.distinct.sizeIs > 1 => key }.toSet
+    // a listing of a node publishing no fact, with no cast, pin, feed link or shared catalogue id of its own
+    private def bareOf(node: EvidenceNode): Seq[Listing] =
+      if (node.evidence.measured.publishesAFact || families.pinnedFilm.contains(node.id)) Nil
+      else node.listings.filter(listing => listing.listedCast.isEmpty && SourceReliability.tmdbLinked(listing).isEmpty &&
+        !catalogueKeysOf(node, listing).exists(sharedCatalogue))
+    /** The family's bare listings: what the bare-take property ([[PopulationMonotonicity.bareMoves]]) walks. */
+    def bareListings: Set[ListingKey] = members.flatMap(bareOf).map(_.key).toSet
 
     /** One cluster's decisions: the cluster's own, or — where some of its members bill several works, bill its film as
      *  one piece beside another thing, or take it uncorroborated — the rest's, and each such group's as none. */
