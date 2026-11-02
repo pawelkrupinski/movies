@@ -573,3 +573,69 @@ the owner to choose:
    and a hand-written equivalent of `needs` in front of the deploy). Worth one queue wait, 0.5-2.5 min under load.
 4. Not worth it: more WebKit workers (three already run the rows at 80-89% CPU), fewer setup seconds (setup is ~45 s
    of a 5-8 min sbt row, caches hit).
+
+## 8. The whole convergence run under 10 minutes? (2026-11-02)
+
+The owner: "continue optimizing to get the whole run under 10 mins": first job start to last job end. Since 2026-11-01
+22:20Z, measurement runs (`measure/*`) run on ci-runner's 4 `movies-measure` slots and convergence on main on the hosted
+20 (section 7's option 1a, commit c04dff246c8).
+
+### Why some rows got slower after the replay hot-spot fixes
+
+Runs `measure/replay-hotspots-{before,after}-{1,2}` (41388709004, 41388736754 / 41388723663, 41388751097) ran at the
+same time on the same 4 slots. Heads: before 9e4b4b05, after 00b4c67e (LiveProjectionIndex, DecidedBy, ParsedByContent,
+RelayBanner; not yet c4c17de0bf4). Per row, against the number of other ci-runner jobs running beside it:
+
+| row | before (min) | after (min) | what decides it |
+|---|---|---|---|
+| order p01 (germany) | 8.0, 8.4 (2.8 others) | 8.2 (2.8 others), **13.6 (7.6 others)** | same pin and fills: matched inputs give 400 s vs 393 s of sbt; only the after run with 7.6 jobs beside it was slow |
+| order p01 (united-kingdom) | 6.7, 7.0 (~3 others) | 6.9 (4.1 others), **9.8 (7.4 others)** | identical inputs; the same after code ran 324 s and 483 s |
+| takes-drift-1 (united-states) | 10.4 (seed 23), 26.2 (seed 19, 8.5 others) | 12.5 (seed 25), 20.3 (seed 21, 8.2 others) | the seed follows the run number, so every run replays a different one; duration tracks the jobs beside it |
+
+**No code regression.** Each slower figure is one run under ~2.5x the contention of its pair, or another drift seed.
+ci-runner was 99% busy when sampled (11:00Z: check tier 14 cores, bitcashier builders 11.5, measure tier 2.3).
+
+### Where the wall goes (newest runs)
+
+| | convergence on main, hosted (5 runs to 41404627085) | measurement on ci-runner (6 runs to 41411465401) |
+|---|---|---|
+| wall p50 | 27:09 | 211:08 (p90 356:40) |
+| critical path: queue | 11:41 | **209:40** |
+| critical path: work | 15:25 | 8:04 (12-row runs; 26-row runs 10:44-12:38) |
+| setup per row (checkout + convergence-setup) | 0.9-1.3 min | 1.0-1.4 min |
+
+Setup and compile are not the lever (about a minute a row, sbt-deps hit 98-100%). Two things are:
+
+1. **Capacity for measurements.** Since midnight the measure slots ran 3.7-3.8 of 4 every hour and the queue held 5-6
+   runs; the hosted 20 averaged **4.8 busy** (hourly 0.3-11.6). ci-runner itself is CPU-saturated, so more slots there buy
+   nothing: a 26-row run is ~850 vCPU-min, about a whole 16-core host for 50 minutes.
+2. **The row floor.** Uncontended hosted rows (p50): drift 13.6-15.3 min (CPU 41-50% of 4 cores: the incremental replay is
+   mostly serial), takes 6-13 min (the head's resolve plus the population walk b686b6cad1b added, up to 300 s, report
+   only; the base is re-resolved when the rotating fills change its key), order DE p01 12.5. With unlimited runners a run
+   still ends ~16 min after it starts.
+
+### What changed
+
+`MOVIES_MEASURE_RUNNERS=hosted` (repository variable, default unset = no change): a measurement's legs and bisects go to
+hosted runners while landing checks stay on ci-runner. SelfHostedRunnersSpec holds both sides.
+
+Measured with the same 12-row measurements before and after the move to ci-runner (`ci-timings compare`, 6 runs each:
+hosted 41355106349 .. 41360768671, ci-runner 41374801177 .. 41411465401):
+
+| | on ci-runner | on hosted | change |
+|---|---|---|---|
+| wall p50 | 165:52 | 40:50 | -75% |
+| critical path queue p50 | 158:52 | 27:22 | -83% |
+| critical path work p50 | 7:37 | 15:36 | rows run uncontended on ci-runner once they start |
+
+### Verdict
+
+Under 10 minutes is not reachable with identical coverage on this hardware: ci-runner is saturated and the longest rows
+alone take 13-15 min. It needs, in order:
+
+1. **Owner: switch measurements back to hosted** (`gh variable set MOVIES_MEASURE_RUNNERS -R pawelkrupinski/movies --body hosted`):
+   measurement walls from ~3-6 h to ~40 min today. To keep Main from queueing behind them, **GitHub Pro** ($4/month)
+   doubles the hosted concurrency to 40.
+2. **Rows of at most ~8 min**: the drift replay (serial, 2 of 4 cores busy) and the takes row's population walk
+   (report only; it could be a row of its own) are the long poles, both identity-owned code.
+3. Then, with ~27 free runners at a run's start, wall ≈ preflight + the longest row + verdict, about 10 min.

@@ -868,7 +868,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
     // ...and a hand-dispatched runner label reaches every leg, x64 unless asked.
     caller should include ("runner:                        ${{ needs.preflight.outputs.runner }}")
-    caller should include ("runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}")
+    caller should include ("runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && vars.MOVIES_MEASURE_RUNNERS != 'hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}")
     leg should include ("runs-on: ${{ inputs.runner }}")
     // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
     RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")

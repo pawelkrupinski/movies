@@ -56,6 +56,19 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     all(labels("report-timings.yml", measure).values) shouldBe "movies"
   }
 
+  "a measurement with MOVIES_MEASURE_RUNNERS=hosted" should "run its legs and bisects on hosted runners, the landing checks still on ci-runner" in {
+    // ci-runner's 4 measurement slots queued runs 5-6 hours on 2026-11-02 while the hosted 20 sat mostly idle: the
+    // owner's switch moves measurements back without moving the landing checks.
+    val both    = SelfHosted + ("MOVIES_MEASURE_RUNNERS" -> "hosted")
+    val measure = ctx("refs/heads/measure/agent/abc-123", both)
+    legRunner(measure) shouldBe "ubuntu-22.04"
+    labels("convergence-bisect.yml", ctx(RunnerLabel.Main, both)).values.toSet should contain ("ubuntu-22.04")
+    labels("convergence-bisect.yml", ctx(RunnerLabel.Main, both)).values should not contain ("movies-measure")
+    all(labels("precommit-check.yml", ctx("refs/heads/check/x", both)).values) shouldBe "movies-check"
+    // a hand-dispatched runner still wins
+    legRunner(ctx("refs/heads/measure/y", both).copy(inputs = Map("runner" -> "ubuntu-24.04-arm"))) shouldBe "ubuntu-24.04-arm"
+  }
+
   "Main and convergence on main" should "stay on GitHub's hosted runners even when ci-runner is switched on" in {
     val onMain = ctx(RunnerLabel.Main)
     legRunner(onMain) shouldBe "ubuntu-22.04"

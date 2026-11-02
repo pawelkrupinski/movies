@@ -168,7 +168,10 @@ jobs:
             # MOVIES_CI_RUNNERS=self-hosted, ci-runner's `movies-measure` slots (infra nix/hosts/ci-runner/movies-runners.nix):
             # every run off main is a measurement (measure/*: identity-measure, identity-drift-ci, a landing check's full
             # suite) or an agent's own branch, and none of them may queue Main's hosted runners. Main's suite stays hosted.
-            runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}
+            # MOVIES_MEASURE_RUNNERS=hosted sends the legs back to hosted runners while the landing checks stay on ci-runner:
+            # its 4 measurement slots run ~240 runner-min an hour against a run's ~240, so runs queued 5-6 hours on
+            # 2026-11-02 while the hosted 20 averaged 5 busy (docs/investigations/2026-11-01-twenty-runners.md section 8).
+            runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && vars.MOVIES_MEASURE_RUNNERS != 'hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}
             # The light jobs after the legs, on the same side as the preflight.
             light-runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
             # THE REST OF THE PLAN (WorkflowPlanSpec): every later job's decision, evaluated here too, as expressions so
