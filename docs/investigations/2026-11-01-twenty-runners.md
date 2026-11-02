@@ -639,3 +639,109 @@ alone take 13-15 min. It needs, in order:
 2. **Rows of at most ~8 min**: the drift replay (serial, 2 of 4 cores busy) and the takes row's population walk
    (report only; it could be a row of its own) are the long poles, both identity-owned code.
 3. Then, with ~27 free runners at a run's start, wall ≈ preflight + the longest row + verdict, about 10 min.
+
+## 9. Every row under 8 minutes? (2026-11-02)
+
+The owner: every row of the convergence run at most 8 minutes of its own time, start to end, queue excluded — the
+step toward the whole run under 10. Before (7 green runs on main on hosted runners, 41368107199 .. 41436200288, p50):
+drift rows 11.6-14.3, takes 6-11.9, order 10-12.5, convergence 4.3-10.8, next-day 9.8.
+
+### Where a row's time went
+
+- **Drift rows compiled.** A takes or drift row restored the convergence key's exact entry or Main's e2e entry for the
+  commit (a suite row's, the e2e job's: no worker test classes) ahead of the takes family's prefix, and compiled
+  scrapers/Test and worker/Test, 891 sources: ~150-190 s of every drift row (sbt `Total time` 674-807 s against a
+  replay of 518-632 s, run 41404627085).
+- **Drift replay on one core.** JFR (drift-only run 41442178510, profiled): the replay's thread is the row; of it,
+  `IdentityResolver.resolveRegion` 45-52%, `AgreementStage.apply` 20-40%, the whole resolve 9-12%. The incremental
+  model resolved an update's packed regions one after another.
+- **Takes rows in turn.** One sbt session ran the head's ratchet (87-253 s), then its resolve (142-388 s, the
+  population walk up to 279 s of it, one family after another), then the base was resolved after it (98-252 s; the
+  rotating fills change its key every run).
+- **Order and convergence rows are the production pipeline**, CPU-bound on 3.3-3.9 of 4 cores (order) or bound on
+  the model's first projection (convergence: `identityTick` 195-255 s of a 330-400 s boot). Hosted runners' CPUs
+  differ ~2x: the same US boot took 174 s on an EPYC 9V45 and 332 s on a Xeon 8370C.
+- `FamilyScope.denialByNode`: 5.5-9% of order and convergence CPU, asked again per candidate by every pooled cluster.
+
+### What changed (landed f43b1fcd5e)
+
+| commit | what | for |
+|---|---|---|
+| FamilyScope: denialByNode memoised | per (node, film), a pure function within one scope | order, convergence CPU |
+| PopulationMonotonicity on every core | families walked side by side, findings gathered in family order (DaemonExecutors' bounded pool) | takes |
+| Takes check: final takes beside the resolve | the head's ratchet in a checkout of its own, its own sbt, while the session resolves (session heap at most 8g beside it) | takes |
+| takes-base row on main | the base's resolve and final takes on a runner of their own, as a takes-only measurement already did; the takes row waits for them (a base row still queued leaves the base to it) | takes |
+| setup: takes family key for takes and drift rows | their own key is `sbt-target-takes-…` and they skip Main's e2e entry, so the restore carries worker's test classes | drift (and takes) |
+| IncrementalResolver `regionThreads` (opt-in) | a round's regions resolved side by side, folded in batch order; LiveCorpus's read views under its lock; production and every caller but IdentityDrift keep 1 | drift |
+| Poland's order passes in their own rows | `convergencePolandWithoutOrder` + `order-independence-p01/p12 (poland)`, as DE/UK/US | PL convergence |
+| profiles | `profile=true` records JFR in takes and drift rows too, 1024-frame stacks | measuring |
+
+agentctl needed no change: its readers key on `takes`/`takes-drift-N` rows and the takes rows' verdict.txt (a `takes-base`
+row is one more `takes…` row, green when it stores the base); `convergence_reuse.py` mirrors the new matrix (34 rows) and
+the gate's verdict rows are unchanged. The new rows are registered unproven in `.github/gating-checks.tsv`.
+
+### Proof: nothing moved
+
+- **Takes**: branch runs 41444461247 and 41444484357 (takes base = main ca95b8aa31, both sides resolved), every country
+  `lost 0, changed 0, gained 0` for the model and the final takes; `scripts/identity-measure --run` LANDABLE for both.
+- **Drift**: drift-only runs on seeds 37 and 38, main ca95b8aa31 (41442986849) against the branch (41443007331), side by
+  side: all 10 rows' `drift-<cc>.tsv`, `flips-<cc>.tsv`, `pending-<cc>.tsv`, verdict and report (seconds aside) byte
+  identical. Replay seconds per seed: PL 409→184 / 331→315, DE 629→348 / 628→338, UK 518→543 / 683→410, US 622→263 /
+  606→345, ES 47→33 / 45→56 (different machines; see the CPU note below).
+- **PopulationMonotonicity**: the `kind=identity.population_flips` line, `seconds=` aside, identical to main's run
+  41436200288 in every country (DE: 9 families, 23 listings flipped; UK 5; PL 1; ES 1; US 0). Walk seconds DE 267→108,
+  UK 121→38-65, US 104→41-71, PL 84→43.
+
+### Row times (`ci-timings compare`, own time, queue excluded, hosted runners)
+
+Before: 7 green main runs 41368107199 .. 41436200288. After: branch runs 41444438573, 41444461247, 41444484357
+(runner=ubuntu-22.04, 12:24-14:00Z). Load: the account was saturated while they ran (my three runs, drift-only and
+experiment runs, Main's own convergence): critical-path queue 76 min p50 against 12, so only the per-row times compare.
+
+| row | before p50 | after p50 | after p90 |
+|---|---|---|---|
+| takes-drift-1 / -2 (US) | 11.9 / 14.3 | **6.4 / 8.1** | 8.4 / 9.5 |
+| takes-drift-1 / -2 (UK) | 13.4 / 13.7 | 11.1 / 11.3 | 11.4 / 11.4 |
+| takes-drift-1 / -2 (DE) | 11.7 / 12.4 | 9.7 / 9.4 | 9.9 / 10.1 |
+| takes-drift-1 / -2 (PL) | 8.3 / 7.6 | **7.4 / 6.7** | 7.6 / 7.5 |
+| takes-drift-1 / -2 (ES) | 4.8 / 4.9 | **2.7 / 2.4** | 2.9 / 2.7 |
+| takes (US / UK / DE / PL / ES) | 11.9 / 11.6 / 10.0 / 7.3 / 6.1 | **8.6** / **5.6** / **8.0** / **5.5** / **4.5** | 9.4 / 7.6 / 8.5 / 5.6 / 5.2 |
+| takes-base (new) | - | 0.9-1.3 | 1.0-4.0 |
+| convergence (PL) | 10.6 | **5.7** | 6.6 |
+| order-independence-p01 / -p12 (PL, new) | (in the PL convergence row) | **6.4 / 6.5** | 6.8 / 6.6 |
+| convergence (US / UK / DE / ES) | 10.8 / 9.6 / 10.6 / 4.3 | 9.2 / 8.3 / 12.6 / 4.9 | 10.1 / 9.8 / 12.7 / 5.0 |
+| next-day (US) | 9.8 | 9.5 | 10.2 |
+| order p01 / p12 (DE) | 12.5 / 10.4 | 12.2 / 12.6 | 12.9 / 12.9 |
+| order p01 / p12 (UK) | 10.0 / 10.0 | 10.2 / 8.8 (3 runs: 6.6-10.5) | |
+| order p01 / p12 (US) | 11.5 / 11.3 | 7.9 / 11.3 (3 runs: 7.8-12.4) | |
+
+**The CPU lottery decides as much as the code.** Hosted 4-core runners are AMD EPYC 7763, 9V45, 9V74 or Xeon
+8370C/8573C, and the same work differs ~2x between them: UK drift-1 replayed seed 37 in 518 s on a 9V74 (main) and 543 s
+on a 7763 (branch); US convergence's boot took 174 s on a 9V45 and 332 s on an 8370C. Three runs a side cannot separate
+less than ~20% on the CPU-bound rows; the drift-only pair on fixed seeds is the cleaner comparison.
+
+### What one order pass per row would give (experiment, not landed)
+
+`measure/rows8-onepass` (run 41441424195) ran ONE pass per order row (passes 0 and 2, nothing compared): UK 7.7 / 8.0,
+US 8.7 / 8.6, DE 9.3 min, against 10-12.5 for two concurrent passes. A pass alone uses ~2 of 4 cores (UK: 312 s,
+636 cpu-s). Landing it needs the comparison moved out of the row: each row writes its `ReplayCorpus` (serialised), and a
+light `order-independence (<country>)` job after the country's rows deserialises them and runs `CorpusComparison`
+(the same `==` and the same divergence report) — about a day's work with its wiring specs, and one more hop on the
+run's critical path.
+
+### Verdict: what is still over 8 minutes, and what it would take
+
+Under 8 now (p50): all takes rows but US (8.6), every PL and ES row, US drift-1, the new PL order rows. Still over:
+
+1. **UK drift (11)**, **DE drift (9.5)**: the replay's thread is `AgreementStage.apply` (20-40%) and regions too large
+   to split (UK's opera/ballet families exceed one region). Next: the whole resolve beside the sequence, and a look at
+   `AgreementStage.apply`'s per-projection cost — identity-owned code.
+2. **Order rows (DE 12-13, UK/US 8-12)**: the production pipeline on all four cores. One pass per row (above) brings UK
+   to ~8, US ~8.6, DE ~9.3; the rest is CPU.
+3. **Convergence DE (12.6) / US (9.2) / UK (8.3), next-day US (9.5)**: the boot's first projection (the model's restore,
+   195-255 s) runs its regions one after another. `regionThreads` would cut it ~2-2.5 min, but in the production wiring
+   the model's lookups track which question read which document (ObservationReads), and two regions asking one question
+   at once race there; making that safe is a production change for the identity owner, not done here.
+4. **Owner action, hardware**: these rows are CPU-bound on 4 vCPU. GitHub's larger runners (Team plan, 8-core Linux
+   $0.032/min) would take the order and convergence rows to roughly 60% of today (they keep 3.3-3.9 cores busy),
+   and remove the 2x CPU-model spread; ci-runner is saturated, so more self-hosted slots there buy nothing.
