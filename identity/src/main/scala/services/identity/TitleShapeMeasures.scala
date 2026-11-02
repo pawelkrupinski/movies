@@ -231,12 +231,17 @@ private[identity] object TitleShapeMeasures {
   private val CertificateWithin = (s"""(?i)(?<=\\S)\\s*${services.titlerules.TitleRulePlaceholders.all("CERT_NOTE")}(?=\\s)""").r
 
   /** The one title a long billing quotes within its prose — PL DKF's "DKF ZAPRASZA 13 LISTOPADA O GODZ. 18:00 NA FILM
-   *  „NASZA REWOLUCJA” – HISTORIĘ MIŁOŚCI …" — of six words or more around the quote: a short billing quoting a work is
-   *  a talk's or a show's about it ([[LeadingQuoted]]'s note), a long one an announcement of the film it quotes. */
+   *  „NASZA REWOLUCJA” – HISTORIĘ MIŁOŚCI …", 14 words around the quote — of [[AnnouncementWords]] words or more: a short
+   *  billing quoting a work is a talk's or a show's about it ([[LeadingQuoted]]'s note), or another screening's beside it
+   *  (DE "Mystery-Vorfilm als Warm-up zu „Miles Davis – Birth of The Cool“", 6 words: a short before the feature it
+   *  quotes), a long one an announcement of the film it quotes. */
   private def quotedWithin(title: String, quotesOne: Boolean): Seq[String] =
     if (!quotesOne || Quoted.findAllMatchIn(title).size != 1) Nil
     else QuotedTitle.findFirstMatchIn(title).filter(m =>
-      TitleContainment.tokens(title.substring(0, m.start) + " " + title.substring(m.end)).count(_.length > 1) >= 6).map(_.group(1)).toSeq
+      TitleContainment.tokens(title.substring(0, m.start) + " " + title.substring(m.end)).count(_.length > 1) >= AnnouncementWords)
+      .map(_.group(1)).toSeq
+  /** How many words around its one quoted title make a billing an announcement of that film ([[quotedWithin]]). */
+  private val AnnouncementWords = 10
   /** Whether a title can match a pattern anchored at its end, read off its last characters before the pattern scans it
    *  from the start: anchored at the end, a scan backtracks over every title that does not end so (11.8% of a
    *  convergence leg's single-threaded take-up, JFR run 38553692147). A `$` also matches before a final line break, so a

@@ -96,6 +96,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     shapes("The Final Cut") shouldBe Seq("The Final Cut")
     // a short billing quoting a work bills a talk or a show about it
     shapes("Wojciech Cejrowski i „Prawo Dżungli”") should not contain "Prawo Dżungli"
+    // a short screened before the feature it quotes is no announcement of that feature
+    shapes("Mystery-Vorfilm als Warm-up zu „Miles Davis – Birth of The Cool“") should not contain "Miles Davis – Birth of The Cool"
     // a bracketed number is no certificate
     shapes("Sweet Sixteen (16) 2002") should not contain "Sweet Sixteen"
   }
