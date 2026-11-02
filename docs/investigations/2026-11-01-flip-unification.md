@@ -680,3 +680,42 @@ The cause: `siblingDenying` read the unified tier's shared-original clause, so "
 
 **Drift.** Rows at seeds 9 and 10 in all five countries, run 41386009340: all 10 clean. An earlier run at seeds 53 and 54
 (41368259117) was clean too.
+
+### 7.4 Stage 4: a decision awaits its whole read set (no take moved)
+
+**What landed.**
+
+- `ResolverDecisions`: a cluster's decision awaits every open question of its FAMILY, not only its own cluster's and
+  its must-links' reach (589a6e3ea, #595 Torrington). A decision reads its family's evidence beyond its cluster: the
+  family's pool (every member's searches), a sibling's denial withdrawing a member's own match, the family majority a
+  facts-free cluster follows, a sibling's own match the group vote may not take back, and the solver's reach. So the
+  take is Pending while any search, venue page or awaited record of its family is open. Pending only: the film is
+  served all the same, so no take moves.
+- `ReadSetClosureSpec`, over every committed slice:
+  - the outcome property: the slice's answers withheld and filed in four rounds of two seeded orders, and its
+    listings arriving along arrival chains with their pages unread and then read; no decided take may move by a
+    filing. It passes on the commit before as well, because the slices' moves were Torrington's, already covered by
+    the reach;
+  - the read-set property, which has the teeth: for each family the whole resolve splits into clusters, one listing
+    per cluster has its venue page withheld; where its own take then awaits that page, no listing of its family may
+    be decided. On the commit before it fails on 7 slices: UK CBeebies "Treasure Island" (two slices), Halstead
+    "Così", the two BTS "Arirang" slices, RBO "Romeo and Juliet" and Penrith "Carmen".
+
+**Measure.** Run 41389164653, base = stage 3: 0 model and 0 final takes moved in pl, de, uk, us and es. LANDABLE.
+
+**Drift.** Rows at seeds 9 and 10 in all five countries, run 41411465401: all 10 clean. An earlier run at seeds 57 and
+58 (41368390631, UK seed 58 being the Addams seed) was clean too.
+
+**The cost of the wider waits.** Stage 3's drift at the same seeds (41386009340) against stage 4's, with the mean listings
+Pending per projection:
+
+| cc | seed 9: stage 3 → 4 | seed 10: stage 3 → 4 |
+|----|---------------------|----------------------|
+| de | 2730 → 2753 (+0.8%) | 2777 → 2787 (+0.4%)  |
+| uk | 17166 → 17204 (+0.2%) | 17160 → 17210 (+0.3%) |
+| pl | 6795 → 6800 (+0.1%) | 6803 → 6817 (+0.2%)  |
+| us | 39612 → 39636 (+0.1%) | 40238 → 40239 (0%) |
+| es | 2458 → 2458 (0%)    | 2748 → 2748 (0%)     |
+
+The listings ever Pending rose by at most 70 (DE seed 9). The minutes a listing stays Pending (p50 and p90) did not
+move in any country.
