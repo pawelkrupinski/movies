@@ -18,6 +18,9 @@ object RuleAblation {
     try run finally off.remove()
   }
 
+  /** The rules switched off on this thread: what a caller hands its own worker threads ([[disabling]] there). */
+  def switchedOff: Set[String] = off.get
+
   /** Is the rule the trace names `ruleId` switched off? */
   def disables(ruleId: String): Boolean = {
     val names = off.get

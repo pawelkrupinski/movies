@@ -105,10 +105,13 @@ object PopulationMonotonicity {
 
   /** Every family of `whole` (the corpus resolve of `listings`) holding two listings or more, one of them `focus`ed, at most `maxFamily`, walked
    *  along `count` arrival chains of at most `steps` steps, smallest family id first, until `budgetSeconds` is spent on
-   *  `stopwatch` (the caller's: a tool's composition root hands down its own). */
+   *  `stopwatch` (the caller's: a tool's composition root hands down its own). On `threads` threads: each family's walk
+   *  reads the corpus's context and answers and writes nothing they hold (its resolves build their own generation and
+   *  scope), so families walk side by side and their findings are gathered in family order -- the same report as one
+   *  thread's while the budget is not spent (a family starts, on any thread, only while it is not). */
   def report(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, whole: Resolution,
              stopwatch: tools.Stopwatch, count: Int = 4, steps: Int = 6, budgetSeconds: Double = 900, maxFamily: Int = 300,
-             focus: ListingKey => Boolean = _ => true): Report = {
+             focus: ListingKey => Boolean = _ => true, threads: Int = 1): Report = {
     val started    = stopwatch.start()
     def elapsed    = started.seconds
     val all        = listings.sorted.distinctBy(_.key)
@@ -118,30 +121,40 @@ object PopulationMonotonicity {
     val without    = new Without.Index(generation.nodes)
     val families   = all.groupBy(l => whole.familyOf.getOrElse(l.key, -1)).toSeq.filter { case (id, ls) => id >= 0 && ls.sizeIs >= 2 && ls.exists(l => focus(l.key)) }.sortBy(_._1)
     val (fits, large) = families.partition(_._2.sizeIs <= maxFamily)
-    var apart      = 0
-    var walked     = 0
-    val flipped    = Seq.newBuilder[FamilyFlips]
-    fits.foreach { case (_, members) =>
-      if (elapsed < budgetSeconds) {
-        walked += 1
-        val keys = members.map(_.key).toSet
-        def resolve(prefix: Seq[Listing]): Map[ListingKey, Option[String]] = {
-          val present = prefix.map(_.key).toSet
-          val r = IdentityResolver.resolveWith(prefix, lookups, normalizer, inputs.calibration, IdentityResolver.Mutation.None, inputs.pins,
-            inputs.decorations, Some(without(context, keys -- present)))
-          val taken = prefix.flatMap(l => r.decisionOf.get(l.key).map(d => l.key -> takeOf(d))).toMap
-          if (prefix.sizeIs == members.size) apart += members.count(l => whole.decisionOf.get(l.key).map(takeOf) != taken.get(l.key))
-          taken
-        }
-        val seed  = MurmurHash3.stringHash(members.head.sortKey).toLong
-        val found = flips(members, resolve, seed, count, steps)
-        if (found.nonEmpty) flipped += FamilyFlips(members.head.rawTitle, members.size, found,
-          keys.filter(key => nodeOf.get(key).exists(!_.evidence.measured.publishesAFact)))
+    // one family walked: its flips, if any, and how many of its listings' whole-family take differed from the corpus's
+    def walk(members: Seq[Listing]): (Option[FamilyFlips], Int) = {
+      var apart = 0
+      val keys  = members.map(_.key).toSet
+      def resolve(prefix: Seq[Listing]): Map[ListingKey, Option[String]] = {
+        val present = prefix.map(_.key).toSet
+        val r = IdentityResolver.resolveWith(prefix, lookups, normalizer, inputs.calibration, IdentityResolver.Mutation.None, inputs.pins,
+          inputs.decorations, Some(without(context, keys -- present)))
+        val taken = prefix.flatMap(l => r.decisionOf.get(l.key).map(d => l.key -> takeOf(d))).toMap
+        if (prefix.sizeIs == members.size) apart += members.count(l => whole.decisionOf.get(l.key).map(takeOf) != taken.get(l.key))
+        taken
       }
+      val seed  = MurmurHash3.stringHash(members.head.sortKey).toLong
+      val found = flips(members, resolve, seed, count, steps)
+      (Option.when(found.nonEmpty)(FamilyFlips(members.head.rawTitle, members.size, found,
+        keys.filter(key => nodeOf.get(key).exists(!_.evidence.measured.publishesAFact)))), apart)
     }
+    // a family is walked only when it starts inside the budget; none when it does not
+    def walkedInTime(members: Seq[Listing]): Option[(Option[FamilyFlips], Int)] = Option.when(elapsed < budgetSeconds)(walk(members))
+    val walks: Seq[Option[(Option[FamilyFlips], Int)]] =
+      if (threads <= 1 || fits.sizeIs < 2) fits.map { case (_, members) => walkedInTime(members) }
+      else {
+        // the caller's switched-off rules, on every thread the walk runs on (RuleAblation holds per thread)
+        val off  = RuleAblation.switchedOff
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+        try fits.map { case (_, members) => pool.submit(() => RuleAblation.disabling(off)(walkedInTime(members))) }.map(_.get)
+        finally { val _ = pool.shutdownNow() }
+      }
+    val walked    = walks.count(_.isDefined)
+    val apart     = walks.flatten.map(_._2).sum
+    val flipped   = walks.flatten.flatMap(_._1)
     val contested = whole.contested.toSeq.sortBy(_._1)(using ListingKey.ordering).map { case (key, backed) =>
       (key, whole.decisionOf.get(key).flatMap(takeOf), backed) }
-    Report(families.size, walked, large.size, fits.size - walked, elapsed, flipped.result(), apart, contested)
+    Report(families.size, walked, large.size, fits.size - walked, elapsed, flipped, apart, contested)
   }
 
   /**

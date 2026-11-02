@@ -49,6 +49,13 @@ class PopulationMonotonicitySpec extends AnyFlatSpec with Matchers with tools.Co
     known.map(_.slice).filter(names) should not be empty
   }
 
+  // The corpus report walks families on every core (IdentityResolveDump): side by side, the same findings as one by one.
+  "The population walk on several threads" should "find what one thread finds, family for family" in {
+    val flipping = known.map(_.slice).distinct.flatMap(name => slices.find(dir => relative(dir) == name)).take(2)
+    flipping should not be empty
+    flipping.foreach(dir => withClue(s"${relative(dir)}: ")(walk(dir, threads = 3) shouldBe found(dir).get))
+  }
+
   slices.foreach { dir =>
     "A real family" should s"take no listing back to a value it left as its listings arrive: ${relative(dir)}" in {
       val rows  = found(dir).get
@@ -105,7 +112,7 @@ object PopulationMonotonicitySpec {
   }
 
   /** The slice in `dir` walked: its core's families along [[Chains]] arrival chains, resolved against its own answers. */
-  def walk(dir: Path): Seq[Row] = {
+  def walk(dir: Path, threads: Int = 1): Seq[Row] = {
     val slice     = IdentitySlice.readSlice(dir)
     val replaying = new tools.SliceHttp.Replaying(slice.http)
     val reads     = new IdentitySlice.Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed,
@@ -117,7 +124,7 @@ object PopulationMonotonicitySpec {
     val core      = slice.core.map(_.key).toSet
     // no budget: every family is walked, so no time is read (a stopwatch that never moves)
     val report    = PopulationMonotonicity.report(all, lookups, reads.normalizer, inputs, whole, new tools.Stopwatch(() => 0L), Chains, Steps,
-      budgetSeconds = Double.MaxValue, maxFamily = Int.MaxValue, focus = core)
+      budgetSeconds = Double.MaxValue, maxFamily = Int.MaxValue, focus = core, threads = threads)
     report.flips.map(_._2).map(f => Row(f.key.venue, f.key.rawTitle, f.shape, f.path, f.chain)).distinctBy(r => (r.venue, r.rawTitle))
       .sortBy(r => (r.rawTitle, r.venue))
   }

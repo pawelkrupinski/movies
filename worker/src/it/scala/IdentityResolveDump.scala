@@ -141,7 +141,7 @@ object IdentityResolveDump {
   private def populationReport(c: Corpus, listings: Seq[Listing], lookups: IdentityLookups, resolved: Resolution, chains: Int, budget: Double,
                                dir: Path): Unit = {
     val report = PopulationMonotonicity.report(listings, lookups, c.normalizer, ResolveInputs.Unpinned, resolved, tools.Stopwatch.System, chains,
-      budgetSeconds = budget)
+      budgetSeconds = budget, threads = Runtime.getRuntime.availableProcessors)
     def film(take: Option[String]) = take.fold[play.api.libs.json.JsValue](JsString("pending"))(JsString(_))
     val json = JsObject(Seq(
       "country"   -> JsString(c.country.code),
