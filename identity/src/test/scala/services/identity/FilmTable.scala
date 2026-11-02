@@ -36,7 +36,8 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer, tmdb
     Answer.Known(found.map(f =>
       IdentityMeasures.Film(f.title, f.original, f.alternatives ++ (if (f.imdbOnly) f.imdbTitles else Nil), Some(f.year), Some(f.runtime).filter(_ > 0),
         Some(Seq(f.director).filter(_.nonEmpty)), Some(f.countries).filter(_.nonEmpty), if (f.imdbOnly) None else Some(f.popularity),
-        imdbNumber = f.id, released = f.released, releaseCountries = f.releaseCountries, releases = f.releases)))
+        imdbNumber = f.id, released = f.released, releaseCountries = f.releaseCountries, releases = f.releases,
+        certificates = f.certificates)))
   }
 }
 
@@ -57,7 +58,7 @@ object FilmTable {
                      directorAliases: Seq[String] = Nil, imdbTitles: Seq[String] = Nil, imdbOnly: Boolean = false,
                      released: Option[java.time.LocalDate] = None, releaseCountries: Option[String] = None,
                      releases: Option[String] = None, original: Option[String] = None, unindexed: Seq[String] = Nil,
-                     suggested: Boolean = true)
+                     suggested: Boolean = true, certificates: Option[String] = None)
 
   /** A listing publishing only its title and what it is given, keyed as a page-less venue keys it. */
   def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,

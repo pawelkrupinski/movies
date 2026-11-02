@@ -85,14 +85,15 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     // The title family: the round's title must-links (same title, search form, original title, segment), however the
     // solver then split the nodes they join.
     private lazy val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
-    // A facts-free cluster whose title family is CONTESTED -- two films or more, each backed by more than one venue's own
-    // statements (ClusterVoting.contested) -- takes no film: neither the family's majority nor its pooled vote (stage 5).
+    // A facts-free cluster whose every member's title family is CONTESTED -- two plausible readings of its title or more,
+    // each backed by more than one source's own statements (ClusterVoting.rivals, .contested) -- takes no film: neither
+    // the family's majority nor its pooled vote (stage 5).
     private val contestedBy: Map[String, Map[Int, Set[String]]] =
       if (mutation == Mutation.NoVoting) Map.empty
-      else unaccepted.flatMap { cluster =>
-        val backed = voting.ownBacked(cluster, members, accepted, links.titleLinked)
-        if (voting.contested(backed)) cluster.map(_.id -> backed) else Nil
-      }.toMap
+      else unaccepted.flatMap(_.flatMap(node => contestedRivals(node).map(node.id -> _))).toMap
+    /** The node's rival readings ([[ClusterVoting.rivals]]) when they contest it. */
+    private def contestedRivals(node: EvidenceNode): Option[Map[Int, Set[String]]] =
+      Some(voting.rivals(node, members, accepted, links.titleLinked, candidateOf(_).map(_.film))).filter(voting.contested)
     private def contestedCluster(cluster: Seq[EvidenceNode]): Boolean = cluster.nonEmpty && cluster.forall(node => contestedBy.contains(node.id))
     private val familyTaken: Map[String, (Int, Double, String)] =
       if (mutation == Mutation.NoVoting) Map.empty
@@ -140,7 +141,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
 
     private def contestedWhy(backed: Map[Int, Set[String]]): String =
       "contested title family: " + backed.toSeq.sortBy { case (film, venues) => (-venues.size, film) }
-        .map { case (film, venues) => s"$film by ${venues.size} venue(s)' own statements" }.mkString(", ") + " -- a bare listing takes none"
+        .map { case (film, venues) => s"$film by ${venues.size} source(s)' own statements" }.mkString(", ") + " -- a bare listing takes none"
 
     /** Does `node` BORROW its cluster's film: no fact of its own, no own match, no feed link, no catalogue id another
      *  listing of the family shares (a chain's one film; a venue's own booking id joins nothing), no pin -- nothing but its
@@ -164,8 +165,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       // "Dracula (12A)": in 11868's cluster, then alone and contested, then back)
       val contestedOf = if (film.isEmpty || pinned || mutation == Mutation.NoVoting) Map.empty[EvidenceNode, String]
         else unplaced.filter(borrows).flatMap { node =>
-          val backed = voting.ownBacked(Seq(node), members, accepted, links.titleLinked)
-          Option.when(voting.contested(backed))(node -> contestedWhy(backed))
+          contestedRivals(node).map(node -> contestedWhy(_))
         }.toMap
       val placed = unplaced.filterNot(contestedOf.contains)
       // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against

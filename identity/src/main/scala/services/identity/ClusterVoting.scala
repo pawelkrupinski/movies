@@ -1,6 +1,8 @@
 package services.identity
 
+import services.billing.Credits
 import services.identity.Scored.Accepted
+import services.movies.TitleContainment
 
 /** GROUP-LEVEL VOTING for the clusters no member matched alone: a facts-free cluster in a split
  *  title family follows the family's clear majority ([[familyMajority]]); every other cluster votes
@@ -101,8 +103,33 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
         sibling.evidence.measured.seasonYear.isEmpty).groupMapReduce(sibling => accepted(sibling.id))(_.venues.toSet)(_ ++ _)
     }
 
-  /** Is a facts-free cluster's title family CONTESTED ([[ownBacked]]'s films): two films or more each backed by
-   *  [[ClusterVoting.WellSupported]] venues' own statements or more? A bare listing there has nothing of its own to tell
+  /** The RIVAL READINGS of a bare `node` (no fact of its own): the films its title family backs by own statements that
+   *  are plausible readings of THIS listing, each with the SOURCES whose statements back it. A rival is a sibling's film
+   *  where the sibling
+   *  - relates to the node by title (`titled`: the one title relation, a function of the titles alone),
+   *  - publishes a fact of its own (a year, a director, a runtime), took the film ALONE on it (`accepted`), and bills no
+   *    season,
+   *  - is the same KIND of screening as the node: both relay a broadcast ([[ListingShape.relays]]: a stage work, a
+   *    house's season, a concert film) or neither does;
+   *  and where the node's own title does not rule the film out ([[readable]]). A source is whose claim the sibling's
+   *  facts are ([[SourceReliability.claimOf]]): a feed's or a listings site's entry, copied to every venue it lists,
+   *  counts once (UK "Fallen Angels" [1995] {Wong Kar Wai} ×11, one feed's credit, is no second reading of Coward's play).
+   *
+   *  A pure function of the node and its siblings, each sibling read alone: as listings arrive a film's sources only
+   *  grow, so a contested node stays contested ([[contested]]). `filmOf`: the candidate's record, for its titles. */
+  def rivals(node: EvidenceNode, members: Seq[EvidenceNode], accepted: Map[String, Int], titled: (EvidenceNode, EvidenceNode) => Boolean,
+             filmOf: Int => Option[IdentityMeasures.Film]): Map[Int, Set[String]] =
+    if (node.evidence.measured.publishesAFact) Map.empty
+    else {
+      val relays = ClusterVoting.relays(node)
+      members.filter(sibling => sibling.id != node.id && accepted.contains(sibling.id) && sibling.evidence.measured.publishesAFact &&
+        sibling.evidence.measured.seasonYear.isEmpty && ClusterVoting.relays(sibling) == relays && titled(node, sibling))
+        .groupMapReduce(sibling => accepted(sibling.id))(_.listings.map(SourceReliability.claimOf).toSet)(_ ++ _)
+        .filter { case (film, _) => filmOf(film).forall(ClusterVoting.readable(node, _)) }
+    }
+
+  /** Is a bare listing's title family CONTESTED ([[rivals]]): two films or more each backed by
+   *  [[ClusterVoting.WellSupported]] sources' own statements or more? A bare listing there has nothing of its own to tell
    *  the works apart by, and takes no film rather than a majority's (the flip-unification design's stage 5, the owner's
    *  rule "unmatched beats wrong": UK Beehive Honiton's "Nostalgic Cinema: The Addams Family" went 2907 -> 481084 -> 2907
    *  as venues crediting Sonnenfeld's 1991 film and Vernon's 2019 one arrived, the family majority's bound crossed each
@@ -147,7 +174,32 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
 }
 
 private[identity] object ClusterVoting {
-  /** How many venues' own statements make a film WELL SUPPORTED in a title family ([[ClusterVoting.contested]]): more than
-   *  one venue -- one venue's credit or year may be its own slip. */
+  /** How many sources' own statements make a film WELL SUPPORTED in a title family ([[ClusterVoting.contested]]): more
+   *  than one -- one venue's credit or year, or one feed's copied to its venues, may be its own slip. */
   val WellSupported = 2
+
+  /** Does the node bill a relayed broadcast ([[ListingShape.relays]])? Its listings share their evidence. */
+  private[identity] def relays(node: EvidenceNode): Boolean =
+    node.listings.exists(listing => ListingShape.relays(listing, listing.rawTitle.toLowerCase(java.util.Locale.ROOT)))
+
+  /** Can a bare node's own title read as `film`? Not when
+   *  - it credits its work to an author the film is an older namesake of ([[ListingShape.creditDenies]]: "Fallen Angels by
+   *    Noël Coward" is no reading of Wong Kar-wai's 1995 "Fallen Angels"), nor
+   *  - its title and each of the film's (its title, its original title) EACH name something the other does not: a place,
+   *    an edition, a performer ("BTS WORLD TOUR 'ARIRANG' IN SÃO PAULO: LIVE" is no reading of "… in Buenos Aires").
+   *    A title naming more than the film's (a banner: "Nostalgic Cinema: The Addams Family"), or less ("Shaun the Sheep"
+   *    beside "Shaun the Sheep Movie"), still reads as it; nor
+   *  - its venue's certificate stands on another step than the film's in the venue's country ([[Certificates.otherStep]]:
+   *    "Dracula (12A)" is no reading of Browning's PG 1931 film beside the 12A Hammer restoration).
+   *  A function of the node and the film alone. */
+  private[identity] def readable(node: EvidenceNode, film: IdentityMeasures.Film): Boolean = {
+    val measured = node.evidence.measured
+    val spellings = (measured.rawTitle.toSeq :+ measured.title).distinct
+    val credited  = spellings.exists(billed => Credits.authorCredited(billed).exists(ListingShape.creditDenies(_, film, measured.screeningsSeason)))
+    def words(title: String) = TitleContainment.tokens(title).toSet
+    !credited && !node.listings.exists(Certificates.otherStep(_, film)) && (Seq(film.title) ++ film.originalTitle).exists { named =>
+      val theirs = words(named)
+      spellings.exists { own => val ours = words(own); !((theirs -- ours).nonEmpty && (ours -- theirs).nonEmpty) }
+    }
+  }
 }
