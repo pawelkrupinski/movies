@@ -554,10 +554,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       "matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command")
   }
 
-  it should "split only the countries whose order replay ran past 10 minutes" in {
+  // Poland too since 2026-11-02: its three replays beside the boot kept the row on all four cores, 8.7-10.6 minutes on
+  // hosted runners, past the 8-minute row target (docs/investigations/2026-11-01-twenty-runners.md section 9).
+  it should "split only the countries whose order replay ran past their row's target" in {
     val convergence = RepoFile.read(".github/workflows/identity-model-convergence.yml")
     val split = RepoFile.matrixRows(convergence).filter(_.get("order-split").contains("true")).flatMap(_.get("code")).toSet
-    split shouldBe Set("de", "uk", "us")
+    split shouldBe Set("pl", "de", "uk", "us")
     convergence should include("order-split:                   ${{ matrix.order-split == true }}")
   }
 

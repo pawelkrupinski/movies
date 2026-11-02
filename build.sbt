@@ -708,5 +708,9 @@ addCommandAlias("convergenceUsOrder", "e2e/Test/testOnly services.movies.UnitedS
 // behind a ~2-minute boot), which bounded the whole lane. Two rows, one runner more per push.
 addCommandAlias("convergenceGermanyWithoutOrder", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec -- -l services.movies.OrderIndependence")
 addCommandAlias("convergenceGermanyOrder",        "e2e/Test/testOnly services.movies.GermanyConvergenceSpec -- -n services.movies.OrderIndependence")
+// And Poland (2026-11-02): its three replays beside the boot kept the row on all four cores, 8.7-10.6 minutes on hosted
+// runners (docs/investigations/2026-11-01-twenty-runners.md section 9). The same two rows of the order passes.
+addCommandAlias("convergencePolandWithoutOrder", "e2e/Test/testOnly services.movies.PolandConvergenceSpec -- -l services.movies.OrderIndependence")
+addCommandAlias("convergencePolandOrder",        "e2e/Test/testOnly services.movies.PolandConvergenceSpec -- -n services.movies.OrderIndependence")
 addCommandAlias("convergenceSpain",    "e2e/Test/testOnly services.movies.SpainConvergenceSpec")
 

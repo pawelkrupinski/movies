@@ -43,6 +43,8 @@ job	identity-model-convergence.yml	takes-drift-1 (germany)	2691
 job	identity-model-convergence.yml	takes-drift-2 (germany)	2691
 job	identity-model-convergence.yml	leg (poland)	aggregate
 job	identity-model-convergence.yml	convergence (poland)	aggregate
+job	identity-model-convergence.yml	order-independence-p01 (poland)	unproven	Poland's order passes in rows of their own (2026-11-02, rows under 8 min); owner: convergence
+job	identity-model-convergence.yml	order-independence-p12 (poland)	unproven	Poland's order passes in rows of their own (2026-11-02, rows under 8 min); owner: convergence
 job	identity-model-convergence.yml	takes (poland)	2691
 job	identity-model-convergence.yml	takes-base (poland)	unproven	the takes check's base side on main (2026-11-02, rows under 8 min); owner: convergence
 job	identity-model-convergence.yml	takes-drift-1 (poland)	2691
