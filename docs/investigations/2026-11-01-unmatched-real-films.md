@@ -62,17 +62,29 @@ was searched and read as a shape like any other. "Q&A" found Q & A (1990), which
 - and "Panel", "Interval", "reception", "Gäste" and "Filmgespräch" were missing from the side-event words, so "The
   Odyssey + Interval" and "Was haben wir gelacht + Gäste" were read as bills of two works.
 
-**Change.**
+**Change** (as landed; the first two attempts are below).
 
-- A shape that names nothing but an event (`IdentityMeasures.namesOnlyAnEvent`: an event or side-event word, every
-  other word one billed around a film) is dropped from the listing's shapes and from the bill's searched works. The
-  listing's own titles are always shapes, so a film called "Q&A" is still billed by its title.
+- `IdentityMeasures.namesOnlyAnEvent`: a piece a billing JOINS with a "+" that names nothing but an event (an event or
+  side-event word, every other word one billed around a film): "Q&A", "Panel", "Interval", "Live Q&A".
+- `IdentityMeasures.eventNamed`: a film the listing names ONLY by such a piece (Q & A, 1990, of "The Assassin + Q&A")
+  stays in the pool as a rival but is untaken (`Scored.EventNamed`): no rule takes it, and the favoured rule skips it
+  as the runner-up the film's own facts must outweigh. The listing's own titles are always shapes, so a film called
+  "Q&A" is still billed by its title.
 - `title-words.tsv` side-event rows: panel, interval, reception, ScreenTalk, Gäste, Filmgespräch.
-- A guard for the near-tie the Q&A candidate used to hide: a bare billing joined to an event, with no year or
-  director, names the newer of two namesakes no fact tells apart (`ListingShape.eventsOlderNamesake`, the festival
-  rule's twin). Without it UK "Premature + Writer/Director Q&A" took Dan Beers's 2014 comedy (judged wrong). With it,
-  the take is Kevin Walls's 2026 film, whose writer-director is at the screening. UK "The Assassin + Q&A" (Hou
-  Hsiao-hsien's, a cinematographer's Q&A) stays unmatched under the guard.
+
+Attempts that did not land:
+
+1. Dropping the event piece from the shapes and searches, with a newer-namesake guard (measure 41348646489): lost Q & A
+   (1990) as the namesake rival that kept a bare billing from a pooled pick on the ranking. "Amazing Grace + Q&A" took
+   Apted's film, "Premature + Writer/Director Q&A" Dan Beers's 2014 comedy, both wrong.
+2. Keeping the drop but refusing any pooled pick among namesakes for a bare billing joined to an event (measure
+   41355106349): lost "Dracula + Q&A" (Fisher 1958), "The Birthday Party"'s model take and Amazing Grace's fill.
+
+The pre-commit check of the final shape (41382479306) flagged "The Phantom of the Opera + live score" at The Garden
+Cinema as a wrong take (2004 musical; the live score accompanies the 1925 silent). That take is main's too. The unified
+rows (recording 38713274617) hold it, and on the pinned recording this change leaves it unmatched (a cure in measure
+41360747818). It is judged known-wrong in scope `rows` until the rows are re-emitted. The same check found one more
+recovery in the capture: "London Breeze: Silent Grace + Panel: …" → Silent Grace (Maeve Murphy, 2001), judged right.
 
 **Slice (prod-latest recording, prod mirror).** 16 listings recovered: UK It's Nice Up North ×4, Premature, The Fall
 of Otrar, Chess of the Wind, Inside Gaza, Who Are You Polly Maggoo, My Daughter Is a Zombie, The Odyssey ×2, Nina Roza;
