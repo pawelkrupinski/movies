@@ -156,3 +156,39 @@ bisect put them on that one line (shapes only, run 41956587308, clean; with it, 
 row until held takes land.
 
 **Measure.** _pending_
+
+## 6. Fix D: IMDb's only suggestion under a venue's slip
+
+**Cause.** 40 listings reach their film only through IMDb's suggestion (`Scored.suggestedOnly`), and only the IMDb
+rule may take such a film. In all eleven traced titles the rule's rungs refused: no year or director is stated, and the
+title only overlaps the film's (`titleNamesIt` false). 34 of the 40 are IMDb's ONLY suggestion with a slipped title:
+
+- UK "The Hunger Games Sunrise of the Reaping" ×25 ("of" for "on");
+- UK "Ebeneezer" ×4;
+- DE "LA VIE DE CHÂTEAU, MON ENFACE À VERSEILLES" ×2;
+- DE "Caspar und Emmas wunderbare Weihnacht";
+- a translation (Kardeş Türküler) and an ICA festival billing.
+
+**Change.** `AcceptanceTitleRules.slippedTitle` adds a fifth rung: the only film IMDb suggests, not outranked, whose own
+or original title one of the listing's titles is word for word but for a slip. A slip is:
+
+- at most two words, never half;
+- of four words or more;
+- letters only, no numeral;
+- at most one edit per four letters.
+
+A billing so slipped numbers what the film's title numbers, so the instalment guard is not read on that path. TMDB's
+numbered alias of "Sunrise on the Reaping" otherwise refused it as another instalment.
+
+Kept out on purpose:
+
+- one-word titles ("Ebeneezer");
+- translations;
+- several suggestions;
+- "A Boy and His Dog" against "… Her Dog";
+- "Part II" against "Part III".
+
+**Slice** (recording 41379008920): Hunger Games (Cinebowl Uttoxeter, pinned as a slice case), La Vie de château and
+Casper und Emma now taken. All three are judged right.
+
+**Measure.** _pending_
