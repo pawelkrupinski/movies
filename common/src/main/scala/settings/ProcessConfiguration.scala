@@ -285,6 +285,10 @@ final class ProcessConfiguration(val env: Env) {
     OrderPasses(list.split(',').toSeq.map(_.trim).map(pass =>
       pass.toIntOption.getOrElse(throw new IllegalArgumentException(s"KINOWO_CONVERGENCE_ORDER_PASSES: '$pass' is not a pass number in '$list'"))))
   }
+  /** `KINOWO_CONVERGENCE_ORDER_PASS_OUT`: a one-pass order row writes its pass's corpus here. */
+  def orderPassOut: Option[OrderPassOut] = text("KINOWO_CONVERGENCE_ORDER_PASS_OUT").map(dir => OrderPassOut(Path.of(dir)))
+  /** `KINOWO_CONVERGENCE_ORDER_PASS_IN`: a comparison job reads the passes' corpora here instead of replaying them. */
+  def orderPassIn: Option[OrderPassIn] = text("KINOWO_CONVERGENCE_ORDER_PASS_IN").map(dir => OrderPassIn(Path.of(dir)))
 
   /** `KINOWO_IDENTITY_LOOKUPS` (`1` or `true`). */
   def identityLookupSweep: IdentityLookupSweepEnabled = IdentityLookupSweepEnabled(env.flag("KINOWO_IDENTITY_LOOKUPS"))

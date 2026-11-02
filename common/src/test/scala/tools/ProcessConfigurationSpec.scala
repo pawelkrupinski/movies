@@ -45,6 +45,13 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASSES" -> " 1, 2 ").orderPasses shouldBe Some(OrderPasses(Seq(1, 2)))
   }
 
+  it should "resolve where a one-pass order row writes its corpus and where a comparison reads them" in {
+    resolvedFrom().orderPassOut shouldBe None
+    resolvedFrom().orderPassIn shouldBe None
+    resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASS_OUT" -> "/tmp/out").orderPassOut shouldBe Some(OrderPassOut(Path.of("/tmp/out")))
+    resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASS_IN" -> "/tmp/in").orderPassIn shouldBe Some(OrderPassIn(Path.of("/tmp/in")))
+  }
+
   it should "refuse an order-pass list it cannot read, rather than replay passes nobody asked for" in {
     an[IllegalArgumentException] should be thrownBy resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASSES" -> "0,x").orderPasses
   }

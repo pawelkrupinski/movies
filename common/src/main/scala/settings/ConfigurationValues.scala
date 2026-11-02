@@ -142,6 +142,12 @@ final case class GapFill(value: Boolean) extends AnyVal
 /** `KINOWO_CONVERGENCE_ORDER_PASSES` — the order-independence passes (`0,1`) a split order row replays
  *  and compares; every pass when unset. A leg over its time budget splits its passes across rows. */
 final case class OrderPasses(indices: Seq[Int]) extends AnyVal
+/** `KINOWO_CONVERGENCE_ORDER_PASS_OUT` — where a ONE-PASS order row writes its pass's corpus (`pass<N>.bin.gz`) for the
+ *  comparison job, which compares the passes rather than this row. */
+final case class OrderPassOut(value: Path) extends AnyVal
+/** `KINOWO_CONVERGENCE_ORDER_PASS_IN` — the order passes' corpora a COMPARISON job reads (`pass<N>.bin.gz`, as the
+ *  one-pass rows wrote them) and compares, in place of replaying them. */
+final case class OrderPassIn(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_RATING_GATE` — forces the identity phase-3 rating gate on (cards below the
  *  calibrated identity confidence served without ratings) for a country the worker wiring does not
  *  already gate (`ReadModelWiring.RatingGateCountries`: Germany, Spain). It cannot turn the gate off. */

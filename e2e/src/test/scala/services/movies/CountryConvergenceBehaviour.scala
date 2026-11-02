@@ -164,9 +164,12 @@ abstract class CountryConvergenceBehaviour(
     }
     // What this leg asked each external service, for the job summary and Prometheus (scripts/ci/ci_http_calls.py).
     Try(tools.CiHttpCalls.write())
-    enrichmentCacheStore.close()
-    passStorages.synchronized(passStorages.foreach(p => Try(p.close())))
-    storage.close()
+    // A comparison job opened no store (it replays nothing, and holds no TMDB key to open the enrichment one with).
+    if (configuration.orderPassIn.isEmpty) {
+      enrichmentCacheStore.close()
+      passStorages.synchronized(passStorages.foreach(p => Try(p.close())))
+      storage.close()
+    }
     super.afterAll()
   }
 
@@ -325,10 +328,15 @@ abstract class CountryConvergenceBehaviour(
    *  (`KINOWO_CONVERGENCE_ORDER_PASSES`) when one row of all three runs past the leg's
    *  10-minute budget. A pass keeps its seed whichever row replays it, and each row must
    *  hold two, since a pass is only ever compared with the others in its own row:
-   *  overlapping rows (`0,1` and `1,2`) still hold every pass to the same corpus. */
+   *  overlapping rows (`0,1` and `1,2`) still hold every pass to the same corpus.
+   *
+   *  ONE PASS PER ROW (`KINOWO_CONVERGENCE_ORDER_PASS_OUT`): a row replays its one pass and writes the corpus out, and
+   *  the comparison job (`KINOWO_CONVERGENCE_ORDER_PASS_IN`) reads the two passes its row names and compares them here,
+   *  as the row that replayed both did. */
   private lazy val passes: Seq[Int] = configuration.orderPasses.fold(0 until Passes: Seq[Int]) { chosen =>
-    require(chosen.indices.distinct.sizeIs >= 2 && chosen.indices.forall(i => i >= 0 && i < Passes),
-      s"KINOWO_CONVERGENCE_ORDER_PASSES names ${chosen.indices.mkString(",")}: a row needs two distinct passes of 0..${Passes - 1}")
+    val least = if (configuration.orderPassOut.isDefined) 1 else 2
+    require(chosen.indices.distinct.sizeIs >= least && chosen.indices.forall(i => i >= 0 && i < Passes),
+      s"KINOWO_CONVERGENCE_ORDER_PASSES names ${chosen.indices.mkString(",")}: a row needs $least distinct pass(es) of 0..${Passes - 1}")
     chosen.indices.distinct
   }
 
@@ -1115,7 +1123,11 @@ abstract class CountryConvergenceBehaviour(
       val screenings = ids.screenings(w.screeningsRepository.findAll())
       val service = new MovieControllerService(w.webReadModel, w.clock)
       val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt)).map(ids.row)
-      ReplayCorpus(records, screenings, rows)
+      val corpus = ReplayCorpus(records, screenings, rows)
+      // A one-pass row: the comparison job compares this pass with its partner (ReplayCorpusFile proves the copy equal).
+      configuration.orderPassOut.foreach(out =>
+        PhaseTimer.timed(scope, "replayWriteCorpus")(ReplayCorpusFile.writeVerified(corpus, ReplayCorpusFile.of(out.value, (seed - OrderSeed).toInt))))
+      corpus
     }
   }
 
@@ -1148,29 +1160,40 @@ abstract class CountryConvergenceBehaviour(
 
   private def startOrderReplays(): Alongside.Started[CorpusComparison] = synchronized {
     orderReplays.getOrElse {
-      val started = Alongside.start(s"order-replays-${country.code}") {
-        val orderStorage = ConvergenceStorage.fromConfiguration(configuration, s"convergence-$corpusKey-order",
-          TitleNormalizer.forCountry(country), MovieChangeStream.Debounce.forCountry(country))
-        passStorages.synchronized(passStorages += orderStorage)
-        val archive = orderStorage.archive
-        seedArchive(archive)
-        // Concurrently: the passes are independent whole-corpus replays and running
-        // them back-to-back made this the leg's long pole (three boots serially, on
-        // top of the shared one). Same helper the fixture determinism specs use.
-        //
-        // Each pass folds ITSELF into `comparison` as it finishes rather than handing
-        // a corpus back to be diffed afterwards, so only the baseline and the pass
-        // being compared are ever resident. Everything before that stays concurrent;
-        // only the materialise-and-diff tail is one-at-a-time. See [[CorpusComparison]]
-        // for the leg that ran out of heap holding all three.
-        val comparison = new CorpusComparison
-        val _ = ParallelReplays(passes.map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
-        comparison
+      val started = configuration.orderPassIn.fold(replayOrderPasses()) { in =>
+        // The comparison job: the passes were replayed in rows of their own; fold their corpora in, in pass order.
+        Alongside.start(s"order-compare-${country.code}") {
+          val comparison = new CorpusComparison
+          passes.sorted.foreach(i => comparison.submit(i)(() =>
+            PhaseTimer.timed(s"${country.code}p$i", "readPassCorpus")(ReplayCorpusFile.read(ReplayCorpusFile.of(in.value, i)))))
+          comparison
+        }
       }
       orderReplays = Some(started)
       started
     }
   }
+
+  private def replayOrderPasses(): Alongside.Started[CorpusComparison] =
+    Alongside.start(s"order-replays-${country.code}") {
+      val orderStorage = ConvergenceStorage.fromConfiguration(configuration, s"convergence-$corpusKey-order",
+        TitleNormalizer.forCountry(country), MovieChangeStream.Debounce.forCountry(country))
+      passStorages.synchronized(passStorages += orderStorage)
+      val archive = orderStorage.archive
+      seedArchive(archive)
+      // Concurrently: the passes are independent whole-corpus replays and running
+      // them back-to-back made this the leg's long pole (three boots serially, on
+      // top of the shared one). Same helper the fixture determinism specs use.
+      //
+      // Each pass folds ITSELF into `comparison` as it finishes rather than handing
+      // a corpus back to be diffed afterwards, so only the baseline and the pass
+      // being compared are ever resident. Everything before that stays concurrent;
+      // only the materialise-and-diff tail is one-at-a-time. See [[CorpusComparison]]
+      // for the leg that ran out of heap holding all three.
+      val comparison = new CorpusComparison
+      val _ = ParallelReplays(passes.map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
+      comparison
+    }
 
   s"the ${country.displayName} corpus" should
     OrderTest taggedAs OrderIndependence in {
