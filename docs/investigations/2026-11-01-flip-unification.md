@@ -527,3 +527,76 @@ Stage 1, in one change, with no take moved:
    class without a manual trace.
 
 After that, stage 2 (one title relation) is the cheapest stage that prevents cases. It has no owner decision attached.
+
+## 7. Implementation log
+
+The owner approved all five stages on 2026-11-02 ("do it"). Each stage lands on its own, with its measurement here.
+
+### 7.1 Stage 1: the population property and report (landed; no take moved)
+
+**What landed.**
+
+- `PopulationMonotonicity` (identity): arrival chains (an order of a population's listings cut into at most N nested
+  prefixes), the A → B → A test over decided takes (Pending skipped), and a corpus report that walks each family of two
+  listings or more inside the whole-corpus context. The family's absent listings are taken out of the context's title
+  groups and reached-by entries (`PopulationMonotonicity.Without`); the corpus's learned venue titles, houses and banners
+  stay as the whole corpus learned them.
+- `PopulationMonotonicitySpec` (worker): every committed slice (25 drift slices, 71 identity slices) walked along 8 chains
+  of at most 8 steps. Known flips are listed in `test/resources/fixtures/identity-population-flips-known.tsv`. The list
+  only shrinks: a new flip fails the spec, and so does a known row whose listing no longer flips.
+- `IdentityResolveDump --population N` and the takes check: on the head, 4 chains within 300 s, writing
+  `population-flips-<cc>.json` and a `kind=identity.population_flips` line in the verdict. Report only.
+- `IdentityDrift`: each flip carries a `cause` column. The seed is replayed with its flipped listings probed, and a whole
+  resolve is run at every step where one of them moved. The cause is `answer` or `population` when the model took what
+  the inputs decide (`answer+population` for both), and `lag` when it did not, or when nothing moved.
+- Report only: `ClusterVoting.ownBacked` and `Resolution.contested`, the facts-free clusters whose title family backs two
+  films or more by its siblings' own statements. Stage 5 reads these.
+
+**Teeth.** Two checks:
+
+- On #629's Keswick slices, without that fix, the walk finds 7 A → B → A listings. Among them is Keswick Alhambra's
+  none → 1462368 → none. With the fix, 1 remains (DCA's "+ Recorded Q&A" billing).
+- The cause column labelled main's UK seed-42 red (Keswick) `answer,population`.
+
+**Known at birth (6 + 1).**
+
+- CinemaxX "Titans" ×4 (none → film → none);
+- Plough Torrington "Dracula" (11868 → 138 → 11868);
+- Theatr Gwaun Fishguard "Romeo and Juliet" (6003 → none → 6003);
+- DCA "These Violent Delights + Recorded Q&A", held once #629's slice lands.
+
+**The report over the latest nightly recording** (run 41363092880, 4 chains, everything walked except families over 300
+listings):
+
+| cc | families ≥2 | walked | >300 | flipped families | listings flipped | bare | shapes | a3 apart | contested bare (taking a film) |
+|---|---|---|---|---|---|---|---|---|---|
+| pl | 386 | 383 | 3 | 3 | 6 | 2 | none→film→none 5, film→film→film 1 | 0 | 105 (105) |
+| de | 1,329 | 1,306 | 23 | 4 | 5 | 4 | none→film→none 5 | 0 | 18 (10) |
+| uk | 647 | 605 | 42 | 6 | 9 | 5 | none→film→none 6, film→none→film 2, film→film→film 1 | 0 | 3 (3) |
+| us | 940 | 867 | 73 | 0 | 0 | 0 | – | 0 | 0 |
+| es | 143 | 142 | 1 | 0 | 0 | 0 | – | 0 | 0 |
+
+- "a3 apart" is 0 everywhere: each family walked alone against the corpus context takes, at its whole population, what
+  the corpus resolve takes.
+- The flipped listings include:
+  - UK Beehive Honiton "Nostalgic Cinema: The Addams Family" (2907 → 481084 → 2907, bare);
+  - UK "Miracle on 34th Street" ×3 (facts);
+  - UK Riverside Woodbridge "La Bayadère 2027" (bare);
+  - PL Met "Samson i Dalila" ×4 (none → 1703624 → none);
+  - PL Kino Światowid "BILLY ELLIOT" (bare, 298931 → 71 → 298931);
+  - DE Cinecitta "RB&O Live: Alice im Wunderland" (bare);
+  - DE "Das Neinhorn" (bare).
+- **How many bare listings stage 5 would touch.** That depends on what "well supported" means:
+  - "two films backed by any sibling's own statement": 126 listings across PL, DE and UK, 118 of them taking a film
+    now. Nearly all of these are PL "Lalka" and "Rozważna i romantyczna", where one venue's stated fact backs an old
+    film against 186 and 107 venues backing the new one.
+  - "each film backed by two venues or more" (stage 5's rule): 5 listings taking a film:
+    - DE "Der Grinch - Adventskino" ×2 and "Adventskino: Der Grinch" (8871 by 4 venues, 360920 by 8);
+    - UK Beehive "The Addams Family" (2907 by 2, 481084 by 5);
+    - UK "Miracle on 34th Street (U)" (10510 by 7, 11881 by 3).
+
+**Measure.** `identity-measure --all-countries`, run 41362724489: 0 model and 0 final takes moved in pl, de, uk, us and
+es. LANDABLE.
+
+**Drift.** Rows at seeds 41 and 42 in all five countries, run 41362718212: 9 of 10 rows clean. UK seed 42 is red on
+Keswick Alhambra's flip. That is main's open red, fixed by #629 (waiting), and its cause reads `answer,population`.
