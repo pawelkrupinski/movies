@@ -22,7 +22,7 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
     share should include("PREPUSH_LIST=1")
     jobs("check-oldrefs") should include("KINOWO_IDENTITY_CACHE: ${{ runner.temp }}/kinowo-identity")
     jobs("check-page") should include("needs: [ plan, check, check-identity, check-oldrefs, heavy ]")
-    jobs("check-page") should include("needs.check-identity.result == 'success'")
+    jobs("check-page") should include("needs.check-identity.result != 'failure' && needs.check-identity.result != 'cancelled'")
   }
 
   /** A job sets up sbt, Node and the tools only when the hook would run a check of its share there (the hook's own
@@ -39,10 +39,11 @@ class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
 
   /** The identity module's tests ran after the sbt check in the rest's job: 292 s then 585 s, a 15.9-minute job (run
    *  41276112019; docs/investigations/2026-11-01-twenty-runners.md), then in one job of their own (~12.5 min). Three
-   *  shards at t=0 beside the rest, each a third of the selected specs (scripts/ci/shard_tests.py). */
-  "the identity check" should "run in three shards beside the rest, at once" in {
+   *  shards beside the rest, created only for a change the plan gives an identity check, each a third of the selected specs (scripts/ci/shard_tests.py). */
+  "the identity check" should "run in three shards beside the rest, only when the plan names it" in {
     val identity = jobs("check-identity")
-    identity should not include "needs:"
+    identity should include("needs: [ plan ]")
+    identity should include("if: ${{ needs.plan.outputs.identity == 'true' }}")
     identity should include("shard: [1, 2, 3]")
     identity should include("PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/3")
     RepoFile.read("scripts/hooks/pre-push") should include("scripts/ci/shard_tests.py --shard \"$PREPUSH_IDENTITY_SHARD\"")

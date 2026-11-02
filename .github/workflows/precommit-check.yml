@@ -34,8 +34,8 @@ env:
 jobs:
     # WHAT THE CHANGE SELECTS (scripts/ci/precommit-share.sh checks plan: the hook's own selection, PREPUSH_LIST=1, with
     # PREPUSH_HEAVY_ROWS=1), for the jobs that run only when it names their share: the old refs, the page area and Main's
-    # heavy rows (`itrest`, `itidentity`, `e2e`, `e2ecorpus`). A job the plan does not name is skipped, never set up. The rest
-    # and the identity shards start at once beside it and select for themselves, so they wait for no plan.
+    # heavy rows (`itrest`, `itidentity`, `e2e`, `e2ecorpus`), and identity's three shards. A job the plan does not name is
+    # skipped, never created: under load a created job waits for a slot even to do nothing. The rest starts beside it.
     plan:
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         timeout-minutes: 10
@@ -44,6 +44,7 @@ jobs:
             heavy-groups: ${{ steps.plan.outputs.heavy-groups }}
             page: ${{ steps.plan.outputs.page }}
             oldrefs: ${{ steps.plan.outputs.oldrefs }}
+            identity: ${{ steps.plan.outputs.identity }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -69,7 +70,7 @@ jobs:
                   # THE HEAVY ROWS IN TWO JOBS: `itrest` (~4.5 min with its compile) alone, the other rows (~1.5-2 min each) together
                   groups="$(python3 -c 'import json, sys; r = sys.argv[1].split(); g = [x for x in (["itrest"] if "itrest" in r else []) + [" ".join(x for x in r if x != "itrest")] if x]; print(json.dumps(g or [""]))' "$rows")"
                   echo "heavy-groups=$groups" >> "$GITHUB_OUTPUT"
-                  for share in page oldrefs; do
+                  for share in page oldrefs identity; do
                       case "$checks" in *" $share "*) echo "$share=true" ;; *) echo "$share=false" ;; esac >> "$GITHUB_OUTPUT"
                   done
                   echo "heavy rows: ${rows:-none} as $groups"
@@ -202,11 +203,15 @@ jobs:
 
     # THE IDENTITY SHARDS: the identity module's tests ran after the sbt check in the rest's job (292 s then 585 s, a
     # 15.9-minute job, run 41276112019), then in one job of their own beside it (~12.5 min: 2.5 min selecting, 10 min of
-    # ~300 specs, run 41373956176). Now in three, each at t=0: every shard selects the same specs (the hook's test-impact
+    # ~300 specs, run 41373956176). Now in three, after the plan: every shard selects the same specs (the hook's test-impact
     # selection) and runs a third of them (PREPUSH_IDENTITY_SHARD, scripts/ci/shard_tests.py: each class in exactly one shard,
     # balanced on scripts/ci/shard-weights-identity.tsv). A change the hook gives no identity check sets nothing up.
     check-identity:
         name: check (identity ${{ matrix.shard }}/3)
+        # only for a change the plan gives an identity check: three shards created at t=0 for a scripts change waited up
+        # to 20 min for a slot under load, to do nothing (precommit-check run 41403785550: 26 min wall, 10 runner-min)
+        needs: [ plan ]
+        if: ${{ needs.plan.outputs.identity == 'true' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         timeout-minutes: 90
         strategy:
@@ -442,7 +447,7 @@ jobs:
         # after the heavy rows and the old refs' compile, which run beside the rest and would starve it the same way. Only for
         # a change the plan gives a page check: any other change no longer waits ~2 min at the end for a job with nothing to do.
         needs: [ plan, check, check-identity, check-oldrefs, heavy ]
-        if: ${{ !cancelled() && needs.plan.outputs.page == 'true' && needs.check.result == 'success' && needs.check-identity.result == 'success' && needs.check-oldrefs.result != 'failure' && needs.check-oldrefs.result != 'cancelled' && needs.heavy.result != 'failure' }}
+        if: ${{ !cancelled() && needs.plan.outputs.page == 'true' && needs.check.result == 'success' && needs.check-identity.result != 'failure' && needs.check-identity.result != 'cancelled' && needs.check-oldrefs.result != 'failure' && needs.check-oldrefs.result != 'cancelled' && needs.heavy.result != 'failure' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-check' || 'ubuntu-26.04' }}
         timeout-minutes: 90
         steps:
