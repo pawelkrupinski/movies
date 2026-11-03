@@ -27,10 +27,63 @@ private[identity] object BareListing {
     scored.filter(s => (s.titleNamesIt || s.imdbTitled.nonEmpty) && s.untaken.isEmpty && (!s.denied || s.deniedByCutOnly))
       .map(_.candidate.tmdbId).distinct.sorted
 
-  /** The bare node's film: the one plausible work, when its own alone rules took that work (`takenAlone`); else none. */
-  def take(scored: Seq[Scored], takenAlone: Option[Int]): Option[Int] = plausible(scored) match {
-    case Seq(only) if takenAlone.contains(only) => Some(only)
-    case _                                       => None
+  /** The bare node's film: the one plausible work, when its own alone rules took that work (`takenAlone`); among several,
+   *  the one its own facts single out ([[singledOut]]); else none. */
+  def take(scored: Seq[Scored], takenAlone: Option[Int], country: Option[String]): Option[Int] = plausible(scored) match {
+    case Seq(only)                 => Some(only).filter(takenAlone.contains)
+    case namesakes if namesakes.nonEmpty => singledOut(scored.filter(s => namesakes.contains(s.candidate.tmdbId)), country)
+    case _                         => None
+  }
+
+  /** Among a bare listing's NAMESAKES (several works its title names), the one its own facts and their records single out,
+   *  read in turn, each narrowing only where it leaves some (the owner, 2026-11-03: decide from inputs that are the same
+   *  whichever siblings are present; near-ties stay unmatched):
+   *   1. its title STATES an original title: billed "Local (Original)" or "Local / Original", the works whose original
+   *      title the second piece is, which the first piece does not title -- PL "Lalka (Dolly)" is Stone's "Dolly", not
+   *      the Polish "Lalka" its first piece names;
+   *   2. its venue's COUNTRY: the works TMDB dates a release of there, when every other's release dates are known and date
+   *      none there -- DE "Casablanca MASCHEN & MOVIES" is Curtiz's, the one of four namesakes Germany saw;
+   *   3. the SEASON it screens in: the work TMDB dates a cinema release of in that country in that season (or the next
+   *      year), when every other's releases are known -- PL's bare "Lalka" in 2026 is the 2026 Lalka, not Has's 1968.
+   *  A work whose record is not fetched is unknown to each, never ruled out by it. */
+  def singledOut(namesakes: Seq[Scored], country: Option[String]): Option[Int] = {
+    val listing = namesakes.head.listing
+    def narrowed(works: Seq[Scored], keep: Seq[Scored] => Seq[Scored]) = Option(keep(works)).filter(_.nonEmpty).getOrElse(works)
+    val stated  = narrowed(namesakes, statesOriginal(listing, _))
+    val shown   = country.fold(stated)(c => narrowed(stated, releasedIn(c, _)))
+    val current = (country zip listing.screeningsSeason).fold(shown) { case (c, season) => narrowed(shown, currentIn(c, season, _)) }
+    current.map(_.candidate.tmdbId).distinct match {
+      case Seq(only) => Some(only)
+      case _         => None
+    }
+  }
+
+  // "Local (Original)" or "Local / Original": the two titles a billing states, as keys -- a bracket the venue's
+  // qualifiers fill ("(Napisy)", "(OmU)") names no work's original title, and so narrows nothing
+  private val TwoTitles = """^(.+?)\s*(?:\((.+)\)|\s/\s(.+))\s*$""".r
+  private[identity] def statedTitles(listing: IdentityMeasures.Listing): Seq[(String, String)] =
+    listing.ownTitles.collect { case TwoTitles(local, bracketed, slashed) =>
+      (IdentityMeasures.key(local), IdentityMeasures.key(Option(bracketed).getOrElse(slashed)))
+    }.filter { case (local, original) => local.nonEmpty && original.nonEmpty && local != original }.distinct
+
+  private def statesOriginal(listing: IdentityMeasures.Listing, works: Seq[Scored]): Seq[Scored] = {
+    val stated = statedTitles(listing)
+    works.filter { s =>
+      val film = s.candidate.film
+      film.originalTitle.map(IdentityMeasures.key).exists(original => stated.exists { case (local, second) =>
+        second == original && !film.titleKeys.contains(local) })
+    }
+  }
+
+  private def releasedIn(country: String, works: Seq[Scored]): Seq[Scored] = {
+    val (shown, unshown) = works.partition(_.candidate.film.knownReleasedIn(country, dated = true))
+    if (unshown.forall(_.candidate.film.knownReleasedIn(country, dated = false))) shown else Nil
+  }
+
+  private def currentIn(country: String, season: Int, works: Seq[Scored]): Seq[Scored] = {
+    def cinema(s: Scored) = s.candidate.film.releases.map(TmdbFilmRecord.Release.all(_).filter(_.country == country))
+    if (works.exists(cinema(_).isEmpty)) Nil
+    else works.filter(cinema(_).exists(_.exists(r => r.year == season || r.year == season + 1)))
   }
 
   /** Why a bare node took no film: its title's namesakes, or no work its own rules took. */

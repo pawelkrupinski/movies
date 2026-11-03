@@ -141,7 +141,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
           val own  = new FamilyScope(Seq(node), scoring, acceptance, () => (), titleOnly = true)
           // a billing of several works is none of them, as in a cluster
           val take = if (acceptance.billsSeveralWorks(own.of(node))) None
-                     else BareListing.take(own.of(node), own.takenAlone(node).map(_._1._1.candidate.tmdbId)).filterNot(billedApart(node, own, _))
+                     else BareListing.take(own.of(node), own.takenAlone(node).map(_._1._1.candidate.tmdbId), node.country).filterNot(billedApart(node, own, _))
           node.id -> (listings.map(_.key).toSet, own, take)
         }
       }.toMap
