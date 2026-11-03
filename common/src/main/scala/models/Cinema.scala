@@ -914,6 +914,20 @@ final class UkCinema(venueDisplayName: String, venuePillName: String, name: Stri
   override def hashCode: Int = name.hashCode
 }
 
+// ── The data-driven rosters' venues (Germany, the United States, Spain) ──────────
+// One instance per venue and identity equality, like a `case object` — but a HASH OF ITS CONTENT, as a
+// `case object`'s (its name's) and a `UkCinema`'s are. Object's own `hashCode` is the JVM's identity hash,
+// which differs between JVMs (and between two runs of one): every hash-keyed collection of these venues --
+// a film's `data: Map[Source, SourceData]` first -- iterated in a different order in each, and whatever read
+// that order (the first of two tied listings, a first-wins merge) decided differently on identical inputs.
+// Germany's order passes, once in separate JVMs, disagreed on 6 films' TMDB title searches exactly so
+// (`MovieService.measureTitleSearches` measuring "Der Fremde" under "The Stranger" in one JVM and
+// "L'Etranger" in the other). The display name is unique across every roster (`Cinema.displayNamesClaimedBy`).
+sealed abstract class RosterCinema(venueDisplayName: String, venuePillName: String)
+  extends Cinema(venueDisplayName, venuePillName) {
+  final override def hashCode: Int = displayName.hashCode
+}
+
 // ── Germany (Filmstarts) — data-driven from the full roster ──────────────────
 // `GermanRosterData` (generated from data/germany/pages.json + venues.json) carries
 // 436 town and cluster pages / 1,515 cinemas. Each venue is a `GermanCinema` instance
@@ -921,7 +935,7 @@ final class UkCinema(venueDisplayName: String, venuePillName: String, name: Stri
 // `Cinema.byCity`, and the scrape catalog) — so the same `Source` instance is used
 // throughout and identity equality holds like the hand-authored `case object` cinemas did.
 final class GermanCinema(venueDisplayName: String, venuePillName: String, override val opening: Opening = Opening.YearRound)
-  extends Cinema(venueDisplayName, venuePillName)
+  extends RosterCinema(venueDisplayName, venuePillName)
 
 // ── United States (Flicks) — data-driven from the full roster ────────────────
 // `UsRosterData` (generated from data/us/pages.json) carries 1,995 town and
@@ -930,7 +944,7 @@ final class GermanCinema(venueDisplayName: String, venuePillName: String, overri
 // serves the page, `Cinema.byCity` and the scrape catalog, and identity
 // equality holds like the hand-authored `case object` cinemas.
 final class UsCinema(venueDisplayName: String, venuePillName: String, override val opening: Opening = Opening.YearRound)
-  extends Cinema(venueDisplayName, venuePillName)
+  extends RosterCinema(venueDisplayName, venuePillName)
 
 // ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
 // `SpanishRosterData` (generated from data/spain/pages.json + provinces.json + ocine.json)
@@ -939,7 +953,7 @@ final class UsCinema(venueDisplayName: String, venuePillName: String, override v
 // `Source` instance serves the page, `Cinema.byCity` and the scrape catalog, and
 // identity equality holds like the hand-authored `case object` cinemas.
 final class SpanishCinema(venueDisplayName: String, venuePillName: String, override val opening: Opening = Opening.YearRound)
-  extends Cinema(venueDisplayName, venuePillName)
+  extends RosterCinema(venueDisplayName, venuePillName)
 
 object Cinema {
   /** The display names a generated roster may NOT reuse: every Polish and UK venue's

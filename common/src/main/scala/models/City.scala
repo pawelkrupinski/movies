@@ -439,6 +439,9 @@ case object Konin extends MajorPolishCity(
 final class PolishPage private[models] (row: PolishPages.Row)
   extends City(row.slug, CityLabels(row.nominative, genitivePlural = "", row.locative), row.lat, row.lon,
                TimeZones.Poland) {
+  // Its content's hash, as a `case object` city's is (its name's): Object's identity hash differs between JVMs, and
+  // so would every hash-keyed collection of pages' iteration order (`SourceHashDeterminismSpec`).
+  override def hashCode: Int = slug.hashCode
   val cinemas: Seq[Cinema] = row.cinemas
   /** The town the page is named after first, then the rest of its towns — the
    *  venue table alone would rank a cluster's one-venue towns alphabetically and
@@ -468,6 +471,9 @@ final class PolishPage private[models] (row: PolishPages.Row)
  *  areas. */
 final class UkPage private[models] (row: UkPages.Row)
   extends City(row.slug, UkPage.labels(row), row.lat, row.lon, TimeZones.UnitedKingdom) {
+  // Its content's hash, as a `case object` city's is (its name's): Object's identity hash differs between JVMs, and
+  // so would every hash-keyed collection of pages' iteration order (`SourceHashDeterminismSpec`).
+  override def hashCode: Int = slug.hashCode
   val cinemas: Seq[Cinema] = row.cinemas
   /** The town the page is named after first, then the rest of its towns, then
    *  the places its venues' addresses name. */
@@ -508,6 +514,9 @@ case object London extends City("london", CityLabels.undeclined("London"),
  *  a cluster ([[RosterStyle]]). The zone is the place's: the US spans six and Spain two. */
 final class RosterPage private[models] (pageSlug: String, place: RosterPlace, style: RosterStyle)
   extends City(pageSlug, RosterPage.labels(place, style), place.lat, place.lon, place.zoneId) {
+  // Its content's hash, as a `case object` city's is (its name's): Object's identity hash differs between JVMs, and
+  // so would every hash-keyed collection of pages' iteration order (`SourceHashDeterminismSpec`).
+  override def hashCode: Int = slug.hashCode
   val cinemas: Seq[Cinema] = place.cinemas
   /** The town the page is named after first, then the rest of its towns. */
   override protected val extraPlaces: Seq[String] = (place.name +: place.towns).distinct
