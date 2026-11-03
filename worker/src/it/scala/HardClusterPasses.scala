@@ -32,13 +32,20 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
 
   def close(): Unit = storages.synchronized(storages.foreach(s => Try(s.close())))
 
-  lazy val responses: Map[Country, RecordedResponses] = countries.map { country =>
-    country -> (
+  // Each country's file parsed on a thread of its own (pl/uk/us are ~4 MB gzipped): read in a row, the first boot thread
+  // parsed all five while the pool's other seven waited on this lazy val.
+  lazy val responses: Map[Country, RecordedResponses] = {
+    val pool = Executors.newFixedThreadPool(countries.size max 1)
+    try countries.map(c => c -> java.util.concurrent.CompletableFuture.supplyAsync(() => responsesOf(c), pool))
+      .map { case (c, f) => c -> f.join() }.toMap
+    finally pool.shutdown()
+  }
+
+  private def responsesOf(country: Country): RecordedResponses = (
       if (recording) RecordedResponses.recording(new FallbackHttpFetch(Seq(
         "tree"       -> new clients.tools.FakeHttpFetch(s"enrichment-${country.code}", strict = true, foldYear = false, root = fixtureRoot),
         "unrecorded" -> new clients.tools.FailingHttpFetch(404)), _root_.tools.Stopwatch.System), prior = Some(RecordedResponses.pathFor(country.code)))
       else RecordedResponses.replaying(RecordedResponses.pathFor(country.code)))
-  }.toMap
 
   /** One film as the public sees it, keyed by what does NOT follow arrival order: the
    *  stored key, never the opaque id (which is minted from whichever key a row was first
@@ -119,13 +126,17 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
     (new Pass(label, w, scrapers), films(w, TitleNormalizer.forCountry(country)))
   }
 
-  /** Every pass of every country, concurrently — each in its own database and wiring. */
+  /** Every pass of every country, concurrently — each in its own database and wiring — and, beside them on the same pool,
+   *  each country's outage pass ([[outages]]), which reads no other pass while it runs: after the boot, one country at a
+   *  time, the outages were ~65 s of one busy thread (precommit-check run 41627361428). Started first, the longest jobs
+   *  (two settles and a fill round) are not the boot's tail. A failed outage fails the outage tests, not the boot. */
   // Held as a Try: a lazy val whose initialiser throws is re-run on the next access, so one failed
   // boot re-ran every pass of every country for each test after it.
-  private lazy val bootAttempt: Try[Map[Country, Seq[(Pass, Seq[Film])]]] = Try {
+  private lazy val bootAttempt: Try[(Map[Country, Seq[(Pass, Seq[Film])]], Map[Country, Try[OutageRun]])] = Try {
     val pool = Executors.newFixedThreadPool(8)
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
     try {
+      val outageRuns = Future.traverse(countries)(c => Future(c -> Try(outageRun(c))))
       val jobs = countries.flatMap { c =>
         (0 until Permutations).map(i => c -> (() => boot(c, s"p$i", OrderSeed + i, split = false))) :+
           (c -> (() => boot(c, "split", OrderSeed, split = true))) :+
@@ -136,12 +147,12 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
       // Bounded by progress: the passes' boot is minutes on a free runner and past SpecTimeouts.Run on a loaded one
       // (it-e2e-measure #2748, #2776, #2800), every pass still projecting; a window with no venue landed and no
       // projection run anywhere is a hang, and fails.
-      val done = ProgressAwait.result("the hard-cluster passes' boot", Future.traverse(jobs) { case (c, job) => Future(c -> job()) },
-        SpecTimeouts.Run, () => progress.get)()
-      done.groupMap(_._1)(_._2)
+      val (done, outs) = ProgressAwait.result("the hard-cluster passes' boot",
+        Future.traverse(jobs) { case (c, job) => Future(c -> job()) }.zip(outageRuns), SpecTimeouts.Run, () => progress.get)()
+      (done.groupMap(_._1)(_._2), outs.toMap)
     } finally pool.shutdown()
   }
-  def booted: Map[Country, Seq[(Pass, Seq[Film])]] = bootAttempt.get
+  def booted: Map[Country, Seq[(Pass, Seq[Film])]] = bootAttempt.get._1
 
   /** RECORD MODE: also ask the identity resolver's query set (`IdentityLookupSweep`) of each
    *  country's clusters, so the responses file answers the phase-1 gate
@@ -192,10 +203,9 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
    * open, and the lookup fill asks it again — so once TMDB answers and a fill round has run, the
    * corpus must come out as the undisturbed reference did.
    *
-   * Returns the films matched in the reference that the outage left unmatched (reported), the films
-   * after the recovery, and how many TMDB requests the outage refused.
+   * Returns the films while TMDB was down, the films after the recovery, and how many TMDB requests the outage refused.
    */
-  private def outage(country: Country): Outage = {
+  private def outageRun(country: Country): OutageRun = {
     val down  = new java.util.concurrent.atomic.AtomicBoolean(true)
     val refused = new java.util.concurrent.atomic.AtomicLong()
     val clock = new MutableClock(TestWiring.FixedInstant)
@@ -209,25 +219,30 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
       override def post(url: String, body: String, contentType: String): String = { check(url); inner.post(url, body, contentType) }
     }
     val normalizer = TitleNormalizer.forCountry(country)
-    val reference  = booted(country).head._2.filter(_.tmdbId.isDefined).map(_.key).toSet
     val (w, _)     = wiringFor(country, "outage", flaky, Some(clock))
     arrive(w, arrivals(w, new Random(OrderSeed)))
     settle(w)
-    val unmatched = films(w, normalizer).collect { case f if f.tmdbId.isEmpty && reference.contains(f.key) => f.toString }
+    val during = films(w, normalizer)
     // TMDB answers again; the fill's next round asks what the outage left open, as production's
     // refresh schedule does, and the projection takes the answers in.
     down.set(false)
     clock.advance(java.time.Duration.ofHours(1))
     w.lookupFill.round()
     settle(w)
-    Outage(unmatched, films(w, normalizer), refused.get)
+    OutageRun(during, films(w, normalizer), refused.get)
   }
+  private final case class OutageRun(during: Seq[Film], recovered: Seq[Film], refused: Long)
 
   /** The films concluded unmatched during the outage, the films after it recovered, and how many
    *  TMDB requests the outage refused — zero would make "nothing concluded unmatched" vacuous. */
   final case class Outage(unmatched: Seq[String], recovered: Seq[Film], refused: Long)
 
-  lazy val outages: Map[Country, Outage] = countries.map(c => c -> outage(c)).toMap
+  /** Each country's outage, its unmatched films read against its reference pass (the first boot pass). */
+  lazy val outages: Map[Country, Outage] = countries.map { c =>
+    val run       = bootAttempt.get._2(c).get
+    val reference = booted(c).head._2.filter(_.tmdbId.isDefined).map(_.key).toSet
+    c -> Outage(run.during.collect { case f if f.tmdbId.isEmpty && reference.contains(f.key) => f.toString }, run.recovered, run.refused)
+  }.toMap
 
   /** What moved between two passes, by film key — named so a failure says WHICH cluster. */
   private def diff(a: Seq[Film], b: Seq[Film], la: String, lb: String): Seq[(String, String)] = {
