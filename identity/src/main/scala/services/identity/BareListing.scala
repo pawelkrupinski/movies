@@ -41,18 +41,19 @@ private[identity] object BareListing {
    *   1. its title STATES an original title: billed "Local (Original)" or "Local / Original", the works whose original
    *      title the second piece is, which the first piece does not title -- PL "Lalka (Dolly)" is Stone's "Dolly", not
    *      the Polish "Lalka" its first piece names;
-   *   2. its venue's COUNTRY: the works TMDB dates a release of there, when every other's release dates are known and date
-   *      none there -- DE "Casablanca MASCHEN & MOVIES" is Curtiz's, the one of four namesakes Germany saw;
-   *   3. the SEASON it screens in: the work TMDB dates a cinema release of in that country in that season (or the next
-   *      year), when every other's releases are known -- PL's bare "Lalka" in 2026 is the 2026 Lalka, not Has's 1968.
+   *   2. its venue's COUNTRY: the works TMDB dates a release of there, when every other is an OLDER work (from before the
+   *      season before the one it screens in) whose release dates are known and date none there -- DE "Casablanca
+   *      MASCHEN & MOVIES" is Curtiz's, the one of four namesakes Germany saw. A recent or upcoming work may not be dated
+   *      there yet (UK "Royal Ballet & Opera: The Nutcracker" is the 2026/27 relay, not 2025/26's released one), so it is
+   *      never ruled out by it; nor is the season's own release preferred to a classic (DE Delphi's "Possession" is
+   *      Zulawski's 1981 film, not 2027's): the screening season dates no work.
    *  A work whose record is not fetched is unknown to each, never ruled out by it. */
   def singledOut(namesakes: Seq[Scored], country: Option[String]): Option[Int] = {
     val listing = namesakes.head.listing
     def narrowed(works: Seq[Scored], keep: Seq[Scored] => Seq[Scored]) = Option(keep(works)).filter(_.nonEmpty).getOrElse(works)
     val stated  = narrowed(namesakes, statesOriginal(listing, _))
-    val shown   = country.fold(stated)(c => narrowed(stated, releasedIn(c, _)))
-    val current = (country zip listing.screeningsSeason).fold(shown) { case (c, season) => narrowed(shown, currentIn(c, season, _)) }
-    current.map(_.candidate.tmdbId).distinct match {
+    val shown   = (country zip listing.screeningsSeason).fold(stated) { case (c, season) => narrowed(stated, releasedIn(c, season, _)) }
+    shown.map(_.candidate.tmdbId).distinct match {
       case Seq(only) => Some(only)
       case _         => None
     }
@@ -75,15 +76,10 @@ private[identity] object BareListing {
     }
   }
 
-  private def releasedIn(country: String, works: Seq[Scored]): Seq[Scored] = {
+  private def releasedIn(country: String, season: Int, works: Seq[Scored]): Seq[Scored] = {
     val (shown, unshown) = works.partition(_.candidate.film.knownReleasedIn(country, dated = true))
-    if (unshown.forall(_.candidate.film.knownReleasedIn(country, dated = false))) shown else Nil
-  }
-
-  private def currentIn(country: String, season: Int, works: Seq[Scored]): Seq[Scored] = {
-    def cinema(s: Scored) = s.candidate.film.releases.map(TmdbFilmRecord.Release.all(_).filter(_.country == country))
-    if (works.exists(cinema(_).isEmpty)) Nil
-    else works.filter(cinema(_).exists(_.exists(r => r.year == season || r.year == season + 1)))
+    def older(s: Scored) = s.candidate.film.year.exists(_ < season - 1)
+    if (unshown.forall(s => older(s) && s.candidate.film.knownReleasedIn(country, dated = false))) shown else Nil
   }
 
   /** Why a bare node took no film: its title's namesakes, or no work its own rules took. */

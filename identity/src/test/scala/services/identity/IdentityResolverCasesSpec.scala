@@ -2438,7 +2438,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val withDates = IdentityResolver.resolve(Seq(banner), new FilmTable(Seq(released, namesake), normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5)))
       .decisionOf(banner.key)
     vetoFree.film shouldBe None
-    withClue(withDates.render)((withDates.film, withDates.render.contains("vetoed")) shouldBe ((Some(923171), false)))
+    withClue(withDates.render)((withDates.film, withDates.render.contains("vetoed")) shouldBe ((vetoFree.film, false)))
   }
 
   it should "leave a broadcast's bare listing on the old film its own pool names, the class undoing no sibling's denial" in {
@@ -3148,7 +3148,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       linked.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(68030)))
   }
 
-  "A bare title its credited siblings' facts give another record than the one carrying it" should "leave the credited siblings the record their facts single out, the bare ones keeping their own pool's" in {
+  "A bare title its credited siblings' facts give another record than the one carrying it" should "leave the credited siblings the record their facts single out, the bare ones none of the two" in {
     // PL "Ktoś całkiem obcy", prod 2026-10-13: Kino Marzenie's [2026] {Brandt Andersen} [103′] and Kino Chatka Żaka's
     // programme listing [2024] [103′] are Andersen's "I Was a Stranger" (1193128), which TMDB titles in Arabic and
     // English only; Kino Seniora's bare "Ktoś całkiem obcy" at three venues and Kryterium's "DKF: …" took Foley's 2007
@@ -3157,7 +3157,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // stage's correction (Filmweb's programmes, a venue poster) then moved Seniora's to 1193128 and the fresh card was
     // retired by overlap: 63 re-matches from 10-09. IMDb suggests "I Was a Stranger" first for the Polish title, then "Perfect Stranger"; TMDB's search finds only the latter.
     // A bare listing decides from its own node's pool alone (the credited listings' facts no longer reach it, as they change
-    // with the listings present): the one work its title names there is the 2007 film, so the bare ones keep it.
+    // with the listings present): its title names both works there (TMDB's Polish title, IMDb's AKA), and nothing of its
+    // own -- no stated original title, no screening season to read the releases against -- tells them apart: no film.
     val films = Seq(F(1193128, "قضية الغرباء", 2025, "Brandt Andersen", 103, 3.7663, alternatives = Seq("The Strangers' Case", "The Passage"),
         releaseCountries = Some("ARBRCACZDEESFIFRGRGTIDKRNLPESESKUS"), releases = Some("DE2024-DE2026-FR2024-FR2026-US2025-US2026-"),
         searched = false, imdbTitles = Seq("Ktoś całkiem obcy")),
@@ -3171,7 +3172,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r = shipped(credited ++ bare :+ club, films)
     withClue((credited ++ bare :+ club).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       credited.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1193128))
-      bare.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(7183))
+      bare.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(None)
     }
   }
 
