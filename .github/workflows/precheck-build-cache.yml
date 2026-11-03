@@ -1,0 +1,69 @@
+name: Landing check build cache
+
+# THE LANDING CHECK'S BUILD CACHE (docs/investigations/2026-11-01-twenty-runners.md §11). Every sbt job of
+# precommit-check.yml restores a build of main and compiles only what the change moved. It used to restore the shared
+# `sbt-target-<os>-` family, which no Main job writes any more (each Main row keys a family of its own) -- only the
+# occasional identity/discovery workflow does, each compiling a different part -- so on 2026-11-03 every landing check
+# restored a 16-hour-old build without web, web's tests or e2e's tests and each of its 5-6 sbt jobs recompiled ~700
+# sources: ~3 min and ~600 CPU-seconds per job, all at once, on ci-runner's one saturated host.
+#
+# This job compiles, after each green-or-red Main run on main, everything a landing check's sbt jobs compile -- the
+# identity test-impact selection's every module's main, fixtures and tests (identityImpact), and the integration-test
+# classes the heavy rows run -- and saves it as the `sbt-target-precheck-<os>-` family, which only it writes. A landing
+# check restores the newest entry (an EXACT hit for a change touching no Scala source: nothing compiles).
+#
+# After Main, never beside it: on a GitHub-hosted runner, so it takes none of ci-runner's check slots, and none of the
+# 20 Main starts with (CiRunnerBudgetSpec). Runs queue rather than cancel: the cache is saved at the job's end, so a
+# cancelled run would save nothing. Off the gate: a red here costs the landing check speed, never correctness.
+on:
+    workflow_run:
+        workflows: [Main]
+        types: [completed]
+        branches: [main]
+    workflow_dispatch:
+
+concurrency:
+    group: precheck-build-cache
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    build:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 45
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+            - uses: ./.github/actions/setup-sbt-build
+              with:
+                  target-cache-key: sbt-target-precheck-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/it/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-restore-keys: |
+                      sbt-target-precheck-${{ runner.os }}-
+                      sbt-target-unit-worker-identity-${{ runner.os }}-
+                  # Only this job writes the family, from a key over every source it compiles.
+                  target-cache-exact-hit-is-current: 'true'
+            - name: Compile what a landing check compiles
+              run: |
+                  : > "$RUNNER_TEMP/no-changes"
+                  sbt "identityImpact $RUNNER_TEMP/no-changes $RUNNER_TEMP/impact" \
+                      "web/IntegrationTest/compile" "worker/IntegrationTest/compile"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+
+    timings:
+        needs: [build]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        secrets: inherit

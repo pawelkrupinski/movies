@@ -790,3 +790,27 @@ flight, not the shard count.
 
 **Next lever.** Cut the work rather than spread it: skip identity shards whose inputs a change cannot touch (plan-level
 selection by path, as 5fc05de190d did for the whole group), or raise the slot count on ci-runner if memory allows.
+
+## 11. The landing check under 10 minutes: where the minutes go, and a build cache of its own (2026-11-03)
+
+**Where they go** (`ci-timings report --workflow precommit-check.yml --by change --per-run`, identity changes after
+`5fc05de190d`, 13 runs): wall p50 17.0 / p90 22.0 min; critical path p50 queue 0.7 + execution 16.2 min. At the median
+it is execution, not waiting. One identity shard (run 41604183761, shard 2/3, 16:20): set-up 1:25; `sbt identityImpact`
+(compile + selection) 3:02 at ~600 CPU-seconds; its third of the identity specs 11:48 at ~2,000 CPU-seconds. ci-runner
+is one 32-thread Ryzen 9 5950X with 6 check slots: during an identity check it is 85-95% busy with 30-50 runnable
+threads, and the same shard's tests took 6:02 when it started after the others (≈2× from contention). An identity check
+burns ~10,300 CPU-seconds. The shards are even (suite time 2,739 / 2,832 / 2,685 s); single "real family" tests of
+TitleRelationSpec, ReadSetClosureSpec and PopulationMonotonicitySpec take 400-570 s each under that load.
+
+**Why every job compiled ~700 sources.** The check's sbt jobs restored the shared `sbt-target-<os>-` family, which no
+Main job writes since each Main row keyed a family of its own; only occasional identity/discovery workflows wrote it.
+On 2026-11-03 every check restored `sbt-target-Linux-abc71c15…`, saved 2026-11-02 16:55 (108 MB, no web, web tests or
+e2e tests), so each of a check's 5-6 sbt jobs recompiled common's tests (234 sources), web (237), web's tests (220) and
+e2e's tests: ~3 min and ~600 CPU-seconds a job, ~30% of the check's CPU, all at once on the saturated host.
+
+**What changed.** `precheck-build-cache.yml` runs after every Main run on main, on a hosted runner: it compiles what a
+check compiles (identityImpact's every module's main, fixtures and tests, plus web's and worker's integration tests) and
+saves the `sbt-target-precheck-<os>-` family, which only it writes. Every sbt job of `precommit-check.yml` restores that
+family first (an exact hit when the change touches no Scala source), the old shared family only until its first entry.
+
+**Before/after**: below, once checks have run on the new family.
