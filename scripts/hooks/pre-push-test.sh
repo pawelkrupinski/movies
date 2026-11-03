@@ -33,9 +33,9 @@ check "the gating-checks registry runs its lint, and the lint specs" "newchecks 
 heavy() { printf '%s\n' "$@" | PREPUSH_HEAVY_ROWS=1 "$REPO_ROOT/scripts/hooks/pre-push" --plan | grep -xE 'itrest|itidentity|e2ecorpus|e2e' | tr '\n' ' ' | sed 's/ $//'; }
 check "THE HEAVY ROWS: none without PREPUSH_HEAVY_ROWS (the laptop's push)" "driftguards sbt" "$(plan worker/src/main/scala/services/movies/A.scala)"
 check "...a worker change runs the rest integration row and the e2e rest row" "itrest e2e" "$(heavy worker/src/main/scala/services/movies/A.scala)"
-check "...an identity change the identity rows too" "itrest itidentity e2ecorpus e2e" "$(heavy identity/src/main/scala/services/identity/R.scala)"
+check "...an identity change the identity row too (e2e corpus's spec already runs in basic)" "itrest itidentity e2e" "$(heavy identity/src/main/scala/services/identity/R.scala)"
 check "...an integration spec runs the integration rows" "itrest" "$(heavy worker/src/it/scala/services/XIntegrationSpec.scala | sed 's/ e2e//')"
-check "...the build runs every row" "itrest itidentity e2ecorpus e2e" "$(heavy build.sbt)"
+check "...the build runs every row but e2e corpus (basic runs its spec)" "itrest itidentity e2e" "$(heavy build.sbt)"
 check "...a docs change none" "" "$(heavy docs/landing-process.md)"
 check "...a script no row runs none" "" "$(heavy scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and the self-tests, its own among them" "newchecks scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"

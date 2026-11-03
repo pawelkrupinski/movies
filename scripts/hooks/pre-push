@@ -399,8 +399,17 @@ plan() {
 #   itrest      any change the sbt check selects that reaches compiled code or what the specs read: every integration
 #               spec but the identity row's (build.sbt's IT_ROW split)
 #   itidentity  an identity path, the build, or the fixtures the hard-cluster convergence replays
-#   e2ecorpus   with itidentity: `sbt e2eCorpus`, e2e (corpus)'s whole-corpus replays, the identity cutover's among them
+#   e2ecorpus   with itidentity: `sbt e2eCorpus`, e2e (corpus)'s whole-corpus replays, the identity cutover's among them --
+#               only while `basic` does not already run them (corpus_in_basic)
 #   e2e         what ci.yml's own scope (scripts/ci/ci-row-scope.sh e2e) says the e2e rows can move
+# build.sbt's e2eCorpus specs, every one named on local-tests.txt's `basic` e2e lines; an alias it cannot read: no (the row runs)
+corpus_in_basic() {
+    local specs spec basic
+    specs="$(sed -nE 's|^addCommandAlias\("e2eCorpus", *"e2e/Test/testOnly ([^"-]+)"\).*|\1|p' "$(dirname "${BASH_SOURCE[0]}")/../../build.sbt" 2>/dev/null)"
+    [ -n "${specs// /}" ] || return 1
+    basic=" $(sed -nE 's|^basic[[:space:]]+sbt[[:space:]]+e2e/(Test/)?testOnly ||p' "$LocalTests" 2>/dev/null | tr '\n' ' ') "
+    for spec in $specs; do case "$basic" in *" $spec "*) ;; *) return 1 ;; esac; done
+}
 heavy_rows() { # <paths, one per line>
     local itrest=0 itidentity=0 path
     while IFS= read -r path; do
@@ -412,8 +421,10 @@ heavy_rows() { # <paths, one per line>
     done <<< "$1"
     [ $itrest = 1 ] && echo itrest
     [ $itidentity = 1 ] && echo itidentity
-    # e2e (corpus)'s identity-cutover replay: the identity row's paths (FilmScheduleEndToEnd also runs in `basic`)
-    [ $itidentity = 1 ] && echo e2ecorpus
+    # e2e (corpus)'s identity-cutover replay: the identity row's paths -- unless its specs already run in `basic`, which
+    # rides the `sbt` check every heavy row comes with (none without it: plan): once there, not twice (FilmScheduleEndToEnd
+    # ran 252 s in the rest's sbt AND 160 s on this row: precommit-check run 41627361428)
+    [ $itidentity = 1 ] && ! corpus_in_basic && echo e2ecorpus
     # unreadable: every row runs, as ci.yml's scope job does
     [ "$(printf '%s\n' "$1" | bash scripts/ci/ci-row-scope.sh e2e 2>/dev/null || echo true)" = false ] || echo e2e
 }

@@ -190,7 +190,8 @@ that cannot be fetched block (the checkout left behind is stale).
 jobs: `check (rest)`, `check (identity)` (the identity module's tests, beside the rest since 2026-11-01),
 `check (oldrefs)`, `check (page)`, and the `heavy rows` job running each of Main's heavy rows the change can move
 (`PREPUSH_HEAVY_ROWS=1`): `itrest` / `itidentity` (`IT_ROW=<row> sbt itAll` against a throwaway MongoDB), `e2e`
-(`sbt e2eRest`) and `e2ecorpus` (`sbt e2eCorpus`). Before 2026-10-30 Main was the first place those rows ran, and 8 of
+(`sbt e2eRest`) and `e2ecorpus` (`sbt e2eCorpus`, only while `basic` does not already run its spec: it does, so it is not
+selected). Before 2026-10-30 Main was the first place those rows ran, and 8 of
 its 14 code reds in five days were there. The laptop's own push never selects them.
 
 **Check-only mode.** `scripts/hooks/pre-push --range A..B` runs the whole hook — gate and checks — over the commits in

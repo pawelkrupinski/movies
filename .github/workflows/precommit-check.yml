@@ -575,6 +575,8 @@ jobs:
 
     # MAIN'S HEAVY ROWS the change can move, in two jobs (the plan's heavy-groups): `itrest` alone, the others together. One
     # job ran them one after another, 9-10 min (itrest 264 s, itidentity 74, e2ecorpus 111, e2e 98: run 41373956176).
+    # `e2ecorpus` runs here only while `basic` does not already run its spec (the hook's corpus_in_basic): it does, in the
+    # rest's sbt check, so the row is not selected (it ran FilmScheduleEndToEnd a second time, 160 s: run 41627361428).
     heavy:
         name: heavy rows (${{ matrix.rows }})
         needs: [ plan ]

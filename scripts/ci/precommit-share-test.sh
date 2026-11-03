@@ -14,6 +14,7 @@ for f in hooks/pre-push hooks/local-tests.txt hooks-path.sh tool-conventions.sh 
          ci/precommit-share.sh; do
     cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"
 done
+cp "$REPO_ROOT/build.sbt" "$repo/build.sbt" # the e2eCorpus alias the hook reads (corpus_in_basic)
 g() { scratch_git "$repo" "$@"; }
 scratch_repo "$repo" -b main; g add -A; g commit -qm base; g update-ref refs/remotes/origin/main HEAD
 change() { # <path>: a branch off main touching <path>
@@ -27,9 +28,9 @@ change identity/src/main/scala/services/identity/Resolver.scala
 check "an identity change: the rest's share leaves identity to its own jobs" "driftguards sbt" "$(share checks rest)"
 check "...the identity share is identity" "identity" "$(share checks identity)"
 check "...no page or old-ref share" "|" "$(share checks page)|$(share checks oldrefs)"
-check "...the plan names every check, the heavy rows among them" "driftguards sbt identity itrest itidentity e2ecorpus e2e" \
+check "...the plan names every check, the heavy rows among them" "driftguards sbt identity itrest itidentity e2e" \
     "$(share checks plan)"
-check "...the heavy job runs the rows it is given" "itidentity e2ecorpus" "$(ROWS='itidentity e2ecorpus' share checks heavy)"
+check "...the heavy job runs the rows it is given" "itidentity e2e" "$(ROWS='itidentity e2e' share checks heavy)"
 check "...the rest's environment" "PREPUSH_MODE=--checks-only PREPUSH_RANGE=$(g merge-base HEAD origin/main)..HEAD PREPUSH_ELSEWHERE=page oldrefs identity" \
     "$(share env rest | tr '\n' ' ' | sed 's/ $//')"
 check "...an identity shard's" "PREPUSH_ONLY=identity" "$(share env identity | tail -1)"
