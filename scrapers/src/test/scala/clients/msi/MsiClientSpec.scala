@@ -486,7 +486,7 @@ class MsiClientSharedPortalSpec extends AnyFlatSpec with Matchers {
   private lazy val recorded = new FakeHttpFetch("kino-charlie-msi")
   private lazy val split    = charlie(recorded, Set("Kino Spójna"))
   private lazy val unsplit  = charlie(recorded, Set.empty)
-  private def titles(movies: Seq[CinemaMovie]) = movies.map(_.movie.title.toLowerCase).toSet
+  private def titles(movies: Seq[CinemaMovie]) = movies.map(_.movie.title.toLowerCase(java.util.Locale.ROOT)).toSet
 
   "MsiClient (shared portal)" should "drop the other venue's films from Charlie's feed" in {
     val spojniaOnly = Set("chmurka i burza", "poznaj swojego teścia", "warsztat świętego mikołaja")
@@ -496,7 +496,7 @@ class MsiClientSharedPortalSpec extends AnyFlatSpec with Matchers {
 
   it should "keep Charlie's own screenings of a film both venues show, and only those" in {
     def times(movies: Seq[CinemaMovie]) =
-      movies.filter(_.movie.title.toLowerCase.startsWith("jak żyć")).flatMap(_.showtimes).map(_.dateTime).toSet
+      movies.filter(_.movie.title.toLowerCase(java.util.Locale.ROOT).startsWith("jak żyć")).flatMap(_.showtimes).map(_.dateTime).toSet
     val charlieOwn = LocalDateTime.of(2026, 11, 6, 17, 50)
     val spojnias   = LocalDateTime.of(2026, 11, 6, 19, 45)
     times(unsplit) should contain allOf (charlieOwn, spojnias)

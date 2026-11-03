@@ -267,9 +267,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("scrapers/src/main/scala/services/cinemas/es/OcineParser.scala", "filmIds",
       "val root = Try(Json.parse(json)).getOrElse(JsNull)") ->
       "not a swallow into data: a body that is not JSON yields None, which OcineClient turns into a failed scrape; only a parsed pelicules array is an answer",
-    ("scrapers/src/main/scala/services/cinemas/pl/CharlieClient.scala", "parseEvent",
-      "Try(Json.parse(block)).toOption") ->
-      "one JSON-LD block of many on a page that answered — most are not ScreeningEvents at all; a malformed one is skipped",
     ("scrapers/src/main/scala/services/cinemas/pl/CinemaCityClient.scala", "parseDetails",
       "val js  = FilmDetailsRe.findFirstMatchIn(html).flatMap(m => Try(Json.parse(m.group(1))).toOption)") ->
       "optional fields (cast, runtime) off a film-details page; a missing or malformed embedded JSON leaves them empty, the listing comes from the dates/events API",
