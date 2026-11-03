@@ -404,11 +404,17 @@ plan() {
 #   e2e         what ci.yml's own scope (scripts/ci/ci-row-scope.sh e2e) says the e2e rows can move
 # build.sbt's e2eCorpus specs, every one named on local-tests.txt's `basic` e2e lines; an alias it cannot read: no (the row runs)
 corpus_in_basic() {
-    local specs spec basic
-    specs="$(sed -nE 's|^addCommandAlias\("e2eCorpus", *"e2e/Test/testOnly ([^"-]+)"\).*|\1|p' "$(dirname "${BASH_SOURCE[0]}")/../../build.sbt" 2>/dev/null)"
+    local build line specs="" basic=" " spec
+    build="$(dirname "${BASH_SOURCE[0]}")/../../build.sbt"
+    [ -f "$build" ] && [ -f "$LocalTests" ] || return 1
+    while IFS= read -r line; do
+        case "$line" in 'addCommandAlias("e2eCorpus",'*'"e2e/Test/testOnly '*) specs="${line#*testOnly }"; specs="${specs%%\"*}" ;; esac
+    done < "$build"
+    while IFS= read -r line; do
+        case "$line" in basic*sbt*' e2e/testOnly '*|basic*sbt*' e2e/Test/testOnly '*) basic+="${line#*testOnly } " ;; esac
+    done < "$LocalTests"
     [ -n "${specs// /}" ] || return 1
-    basic=" $(sed -nE 's|^basic[[:space:]]+sbt[[:space:]]+e2e/(Test/)?testOnly ||p' "$LocalTests" 2>/dev/null | tr '\n' ' ') "
-    for spec in $specs; do case "$basic" in *" $spec "*) ;; *) return 1 ;; esac; done
+    for spec in $specs; do case "$spec" in -*) return 1 ;; esac; case "$basic" in *" $spec "*) ;; *) return 1 ;; esac; done
 }
 heavy_rows() { # <paths, one per line>
     local itrest=0 itidentity=0 path
