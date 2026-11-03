@@ -122,10 +122,13 @@ object LateInputEquivalenceSpec {
   private def near(bits: Int) = PosterHash(shown.bits ^ ((1L << bits) - 1))
   private val lalkas = new FilmTable(Seq(FilmTable.F(1001, "Lalka", 2026, "Maciej Kawalski", 120), FilmTable.F(1002, "Lalka", 1968, "Wojciech Has", 159)), normalizer)
   private val bareLalka = FilmTable.listing(Multikino, "Lalka").copy(poster = Some(venuePoster))
+  /** Not bare: a bare listing decides from its own node alone, so it never takes what a poster vote shows. This one states
+   *  a country, which singles out neither Lalka. */
+  private val countryLalka = bareLalka.copy(countries = Seq("Poland"))
   private val lalkaPosters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(PosterHash(0L), near(3)), 1002 -> Seq(PosterHash(-1L))))
 
   /** The venue's poster votes for the 2026 Lalka (AgreementPosterSpec); and vetoes the 1968 one IMDb, Wikidata and RT agree on. */
-  val posters: Seq[Scenario] = everyAbsence(Scenario("Lalka's poster vote", Kind.Poster, Seq(bareLalka), lalkas, silent, posters = lalkaPosters,
+  val posters: Seq[Scenario] = everyAbsence(Scenario("Lalka's poster vote", Kind.Poster, Seq(countryLalka), lalkas, silent, posters = lalkaPosters,
     late = of(Kind.Poster)))
 
   /** The venue's detail page states the year and director: the 1968 Lalka. */
@@ -184,7 +187,7 @@ object LateInputEquivalenceSpec {
       def film(tmdbId: Int) = Answer.Known(Map(855156 -> shamte, 577285 -> migom).get(tmdbId))
       override def overview(tmdbId: Int) = Answer.Known(overviews.get(tmdbId).map(text => ProseWords.ofDescription(Seq(text))))
     }
-    Scenario("Binti's TMDB descriptions", Kind.Synopsis, Seq(FilmTable.listing(KinoMuza, "Binti")), tmdb, families,
+    Scenario("Binti's TMDB descriptions", Kind.Synopsis, Seq(FilmTable.listing(KinoMuza, "Binti").copy(countries = Seq("Belgium"))), tmdb, families,
       finds = imdb => Answer.Known(Option.when(imdb == "tt11867140")(855156)), late = of(Kind.Synopsis))
   }
 
@@ -193,7 +196,7 @@ object LateInputEquivalenceSpec {
   private def samson(name: String, kind: Kind, late: Input => Boolean): Scenario = {
     val met  = FilmTable.F(1703624, "The Metropolitan Opera 2026/27: Samson et Dalila", 2026, "", 0, popularity = 1.0, released = Some(LocalDate.of(2026, 12, 5)))
     val film = FilmTable.F(29993, "Samson and Delilah", 1949, "Cecil B. DeMille", 131, alternatives = Seq("Samson i Dalila"), released = Some(LocalDate.of(1949, 12, 21)))
-    Scenario(name, kind, Seq(FilmTable.listing(Multikino, "Samson i Dalila").copy(screenings = ScreeningDays.of(Seq(LocalDate.parse("2026-12-05"))))),
+    Scenario(name, kind, Seq(FilmTable.listing(Multikino, "Samson i Dalila", runtime = Some(131)).copy(screenings = ScreeningDays.of(Seq(LocalDate.parse("2026-12-05"))))),
       new FilmTable(Seq(met, film), normalizer), silent, late = late)
   }
   /** The Met's air date: DeMille's 1949 film, the model's take, is corrected to the broadcast screening that day. */
@@ -211,7 +214,7 @@ object LateInputEquivalenceSpec {
       def mapped(id: CatalogueId): Answer[Seq[CatalogueHit]] = Answer.Known(hits.getOrElse(id, Nil))
     }
     Scenario("Fantasy's catalogue id", Kind.Catalogue,
-      Seq(FilmTable.listing(Multikino, "Fantasy").copy(catalogueIds = Seq(fantasy))),
+      Seq(FilmTable.listing(Multikino, "Fantasy").copy(countries = Seq("Poland"), catalogueIds = Seq(fantasy))),
       // two Fantasies the model cannot tell apart; the listing's feed id, corroborated by the title's most popular hit, can
       new FilmTable(Seq(FilmTable.F(1318829, "Fantasy", 2025, "Kukla Kesterović", 99, popularity = 20.0), FilmTable.F(9999, "Fantasy", 1999, "Someone Else", 90, popularity = 5.0)), normalizer),
       holding(VoterFamily.Wiki -> Map("Q135441923" -> item)), finds = imdb => Answer.Known(Option.when(imdb == "tt36112899")(1318829)),
@@ -254,7 +257,7 @@ object LateInputEquivalenceSpec {
       val held    = holding(families.map(family => family -> Map(s"${family.label}-$imdb" -> record))*)
       val listing = Seq(KinoMuza, Multikino, KinoPalacowe, models.Rialto, models.Helios, models.KinoApollo, models.CinemaCityKinepolis,
         models.KinoAmok, models.KinoKijow, models.KinoPowisle, models.KinoTon)
-      Seq(Absence.Attempted, Absence.Missing).map(absence => Scenario(name, Kind.TmdbFind, listing.take(venues).map(FilmTable.listing(_, title)),
+      Seq(Absence.Attempted, Absence.Missing).map(absence => Scenario(name, Kind.TmdbFind, listing.take(venues).map(FilmTable.listing(_, title, year = Some(year))),
         table, held, finds = found => Answer.Known(Option.when(found == imdb)(tmdb)), late = of(Kind.TmdbFind)).withAbsence(absence))
     }
     private val reviewers = Seq(VoterFamily.Filmweb, VoterFamily.Metacritic, VoterFamily.RottenTomatoes)
@@ -278,8 +281,8 @@ object LateInputEquivalenceSpec {
       val table   = new FilmTable(Seq(FilmTable.F(42845, "Ostrze", 1995, "Tsui Hark", 105), FilmTable.F(42846, "Ostrze", 2024, "Jan Kowalski", 95)), normalizer)
       val url     = "https://ec1lodz.pl/ostrze.jpg"
       val record  = SourceRecord(other, Map("tmdb" -> "42846"))
-      val listing = Seq(FilmTable.listing(KinoPalacowe, "Festiwal Pięć Smaków: Ostrze").copy(poster = Some(url)),
-        FilmTable.listing(Multikino, "Festiwal Pięć Smaków: Ostrze").copy(poster = Some(url)))
+      val listing = Seq(FilmTable.listing(KinoPalacowe, "Festiwal Pięć Smaków: Ostrze", runtime = Some(100)).copy(poster = Some(url)),
+        FilmTable.listing(Multikino, "Festiwal Pięć Smaków: Ostrze", runtime = Some(100)).copy(poster = Some(url)))
       Seq(Absence.Unfiled, Absence.Attempted).map(absence => Scenario("Ostrze ×2 (Festiwal Pięć Smaków)", Kind.Poster, listing, table,
         holding(VoterFamily.Imdb -> Map("tt1" -> record), VoterFamily.Wiki -> Map("Q1" -> record)),
         posters = new HeldPosters(Map(url -> Some(shown)), Map(42845 -> Seq(PosterHash(-1L)), 42846 -> Seq(near(3)))),

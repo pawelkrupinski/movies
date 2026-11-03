@@ -41,9 +41,10 @@ class RuleAblationSpec extends AnyFlatSpec with Matchers {
 
   "a must-link switched off" should "no longer join two listings by it" in {
     val credited = listing(Rialto, "Mulholland Drive", Some(2001), Some("David Lynch"), Some(146))
-    val bare     = listing(KinoApollo, "Mulholland Drive")
-    resolve(Seq(credited, bare)).decisionOf(bare.key).trace.rulesOf(bare.key) should contain ("join:same-film")
-    val ablated = RuleAblation.disabling(Set("join:same-film"))(resolve(Seq(credited, bare))).decisionOf(bare.key)
-    withClue(ablated.render)(ablated.trace.rulesOf(bare.key) should not contain "join:same-film")
+    // dated, so not a bare listing (which decides from its own node alone and is never joined to its siblings)
+    val dated    = listing(KinoApollo, "Mulholland Drive", Some(2001))
+    resolve(Seq(credited, dated)).decisionOf(dated.key).trace.rulesOf(dated.key) should contain ("join:same-film")
+    val ablated = RuleAblation.disabling(Set("join:same-film"))(resolve(Seq(credited, dated))).decisionOf(dated.key)
+    withClue(ablated.render)(ablated.trace.rulesOf(dated.key) should not contain "join:same-film")
   }
 }

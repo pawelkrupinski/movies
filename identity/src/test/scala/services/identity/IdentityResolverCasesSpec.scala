@@ -297,14 +297,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film should not be Some(474350))
   }
 
-  "A decorated spelling" should "take the film its plain siblings' own evidence matched" in {
+  "A decorated spelling" should "take the film its plain siblings' own evidence matched, once it publishes a fact of its own" in {
+    val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
+    val plain = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))
+    val decorated = listing(KinoMuza, "Oficjalna premiera: Lalka", Some(2026))
+    val r = resolve(plain :+ decorated, films)
+    r.decisionOf(plain.head.key).film shouldBe Some(1)
+    r.decisionOf(decorated.key).film shouldBe Some(1)
+    together(r, plain.head, decorated) shouldBe true
+  }
+
+  it should "take no film its plain siblings alone evidence, while it is bare: its title names two Lalkas" in {
+    // A bare listing decides from its own node's pool: two works carry the title, a near-tie its siblings no longer break
     val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
     val plain = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))
     val decorated = listing(KinoMuza, "Oficjalna premiera: Lalka")
     val r = resolve(plain :+ decorated, films)
     r.decisionOf(plain.head.key).film shouldBe Some(1)
-    r.decisionOf(decorated.key).film shouldBe Some(1)
-    together(r, plain.head, decorated) shouldBe true
+    r.decisionOf(decorated.key).film shouldBe None
+    together(r, plain.head, decorated) shouldBe false
   }
 
   "A listing whose own title search is empty" should
@@ -335,7 +346,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // empty and the plain "Shrek" the other venues list never reaches it. "(Retro Rewind)" is a
     // LEARNED decoration (it recurs around other films' titles and no record carries it), so
     // "Shrek" is one of its title shapes: searched and read by the title relation, and the film
-    // it then takes on its own joins it to its plain siblings.
+    // it then takes on its own (the one work its title names, in its own node's pool) is the plain siblings' film,
+    // though a bare listing is never joined to them.
     val films     = Seq(F(808, "Shrek", 2001, "Andrew Adamson", 90, 60), F(809, "Shrek 2", 2004, "Andrew Adamson", 93, 50))
     val plain     = Seq(Multikino, Helios).map(listing(_, "Shrek", Some(2001), Some("Andrew Adamson")))
     val decorated = Seq(KinoApollo, KinoMuza).map(listing(_, "(Retro Rewind) Shrek"))
@@ -344,19 +356,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r = run(learned)
     withClue((plain ++ decorated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       (plain ++ decorated).map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(4)(Some(808))
-      together(r, plain.head, decorated.head) shouldBe true
+      together(r, plain.head, decorated.head) shouldBe false
+      together(r, decorated.head, decorated(1)) shouldBe true
     }
     r.violations shouldBe 0
     // Without the learned decoration the spelling names nothing, as before.
     decorated.map(l => run(TitleDecorations.None).decisionOf(l.key).film) shouldBe Seq(None, None)
   }
 
-  it should "be corroborated by the venues listing the title it wraps, as a bare listing of that title is" in {
+  it should "take no film the venues listing the title it wraps alone corroborate, as a bare listing of that title takes none" in {
     // PL, Ekobilet's "Mistyczka 2D PL": nothing but the title. Undecorated it is a bare
-    // "Mistyczka", which the other venues list with the film's year and director; they corroborate
-    // it as they corroborate each other's bare listings. It is not title-linked to them (a learned
-    // decoration relates it to a FILM, never to a listing), so without their corroboration it
-    // stays below the cut.
+    // "Mistyczka", which the other venues list with the film's year and director. A bare listing
+    // decides from its own node's pool, where two works carry the title: a near-tie, so no film
+    // (their corroboration no longer reaches it); they still take the film.
     val films     = Seq(F(1731866, "Mistyczka", 2026, "Jan Sobierajski", 100, 1), F(2, "Mistyczka", 1994, "Someone Else", 90, 2))
     val plain     = Seq(Multikino, Helios, Rialto).map(listing(_, "Mistyczka", Some(2026), Some("Jan Sobierajski")))
     val decorated = listing(KinoApollo, "Mistyczka 2D PL")
@@ -364,7 +376,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r = IdentityResolver.resolve(plain :+ decorated, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(decorations = learned))
     withClue((plain :+ decorated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(plain.head.key).film shouldBe Some(1731866)
-      r.decisionOf(decorated.key).film shouldBe Some(1731866)
+      r.decisionOf(decorated.key).film shouldBe None
     }
     r.violations shouldBe 0
   }
@@ -463,11 +475,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   }
 
   "A listing that publishes only a title" should
-    "not be denied its credited siblings' film by the title relation alone" in {
+    "take no film only its credited siblings reach: a bare listing decides from its own node's pool" in {
     // PL, the Polish title of a foreign film: TMDB's record carries only the original title, so a
-    // bare listing's title shares no word with it (`title=none`). The credited siblings reach it
-    // through their director; the bare same-titled one and the bannered one must follow them —
-    // nothing they publish contradicts the film, and a title relation is a score, not a veto.
+    // bare listing's title shares no word with it (`title=none`) and its own searches reach no work its
+    // title names. The credited siblings reach it through their director; the bare same-titled one and
+    // the bannered one no longer borrow it from them: unmatched beats wrong.
     val films     = Seq(F(677558, "The Last Whale Singer", 2025, "Reza Memari", 91, 5))
     val credited  = Seq(Multikino, Helios).map(listing(_, "Vincent. Legenda oceanu", Some(2025), Some("Reza Memari")))
     val bare      = listing(KinoApollo, "VINCENT. LEGENDA OCEANU")
@@ -475,9 +487,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r = resolve(credited ++ Seq(bare, bannered), films)
     val shown = (credited ++ Seq(bare, bannered)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")
     withClue(shown) {
-      (credited ++ Seq(bare, bannered)).map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(4)(Some(677558))
-      together(r, credited.head, bare) shouldBe true
-      together(r, credited.head, bannered) shouldBe true
+      (credited ++ Seq(bare, bannered)).map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(677558), Some(677558), None, None)
+      together(r, credited.head, bare) shouldBe false
+      together(r, credited.head, bannered) shouldBe false
     }
     r.violations shouldBe 0
   }
@@ -500,22 +512,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private val strictPairCut = weights.copy(scopes = weights.scopes.updatedWith(IdentityMeasures.ListingListing)(_.map(s =>
     s.copy(thresholds = s.thresholds.updated("cannotLink", IdentityCalibration.Threshold(0.5))))))
 
-  "A bare listing beside its credited decorated siblings" should
+  "A listing publishing only a running time beside its credited decorated siblings" should
     "take their film when the two publish no fact to compare" in {
-    // PL, ADA Kino Studyjne's bare "Tony": every other venue lists it under a programme banner
+    // PL, ADA Kino Studyjne's "Tony": every other venue lists it under a programme banner
     // with an access-format suffix. The pair's titles only overlap one way round, but nothing the
-    // bare one publishes can contradict its siblings, so the pair's score is no veto and the
-    // title-segment must-link joins them. (The bare listing's venue sorts first, so the pair is
+    // listing publishes (a running time its siblings do not state) can contradict its siblings, so the pair's score is
+    // no veto and the title-segment must-link joins them. (Its venue sorts first, so the pair is
     // measured from its side: the order the veto used to depend on.)
+    val films     = Seq(F(1329016, "Tony", 2026, "Matt Johnson", 106, 5), F(2, "Tony", 2003, "Someone Else", 90, 8))
+    val decorated = Seq(Multikino, KinoMuza).map(listing(_, "Kino bez barier: Tony (AD + CC)", Some(2026), Some("Matt Johnson")))
+    val timed     = listing(Helios, "Tony", runtime = Some(106))
+    val r = IdentityResolver.resolve(decorated :+ timed, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = strictPairCut))
+    withClue((decorated :+ timed).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(decorated.head.key).film shouldBe Some(1329016)
+      r.decisionOf(timed.key).film shouldBe Some(1329016)
+      together(r, decorated.head, timed) shouldBe true
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "leave a bare spelling of the title to its own node's pool: two Tonys, a near-tie, no film" in {
     val films     = Seq(F(1329016, "Tony", 2026, "Matt Johnson", 106, 5), F(2, "Tony", 2003, "Someone Else", 90, 8))
     val decorated = Seq(Multikino, KinoMuza).map(listing(_, "Kino bez barier: Tony (AD + CC)", Some(2026), Some("Matt Johnson")))
     val bare      = listing(Helios, "Tony")
     val r = IdentityResolver.resolve(decorated :+ bare, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = strictPairCut))
-    withClue((decorated :+ bare).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
-      r.decisionOf(decorated.head.key).film shouldBe Some(1329016)
-      r.decisionOf(bare.key).film shouldBe Some(1329016)
-      together(r, decorated.head, bare) shouldBe true
-    }
+    r.decisionOf(decorated.head.key).film shouldBe Some(1329016)
+    r.decisionOf(bare.key).film shouldBe None
+    together(r, decorated.head, bare) shouldBe false
     r.violations shouldBe 0
   }
 
@@ -546,12 +569,22 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "join a decorated spelling to its plain sibling when neither publishes a fact to compare" in {
+  it should "join a decorated spelling to its plain sibling when the facts they publish do not contradict" in {
+    val plain     = listing(Helios, "Lalka", runtime = Some(100))
+    val decorated = listing(KinoMuza, "Astra Seniora - Lalka", runtime = Some(100))
+    for (cut <- Seq(weights, strictPairCut)) {
+      val r = IdentityResolver.resolve(Seq(plain, decorated), new FilmTable(Nil, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = cut))
+      together(r, plain, decorated) shouldBe true
+      r.violations shouldBe 0
+    }
+  }
+
+  it should "join no two bare listings by their titles: each decides from its own node alone" in {
     val plain     = listing(Helios, "Lalka")
     val decorated = listing(KinoMuza, "Astra Seniora - Lalka")
     for (cut <- Seq(weights, strictPairCut)) {
       val r = IdentityResolver.resolve(Seq(plain, decorated), new FilmTable(Nil, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = cut))
-      together(r, plain, decorated) shouldBe true
+      together(r, plain, decorated) shouldBe false
       r.violations shouldBe 0
     }
   }
@@ -569,32 +602,32 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   }
 
   "A bare listing its own evidence cannot separate between two films" should
-    "follow its title's credited siblings, not the database's popularity ranking" in {
-    // Four 2026 films TMDB titles "Lalka"; the one the venue credits ranks LAST in the search, so
-    // on ranking priors alone a bare listing scores it below the cannot-link cut — which is
-    // ambiguity, not evidence of another film, and must not veto it.
+    "take none of them, neither its title's credited siblings' film nor the database's popularity ranking" in {
+    // Four 2026 films TMDB titles "Lalka"; the one the venue credits ranks LAST in the search. A bare listing's own
+    // pool holds four namesakes its facts do not single out: a near-tie, so no film (its credited sibling still takes film 1).
     val films = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 2026, "Someone Else", 95, 80),
       F(3, "Lalka", 2026, "A Third", 100, 60), F(4, "Lalka", 2026, "A Fourth", 90, 40))
     val credited = Seq(Multikino).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")))
     val bare     = Seq(KinoApollo, KinoMuza, Rialto).map(listing(_, "Lalka"))
     val r = resolve(credited ++ bare, films)
     r.decisionOf(credited.head.key).film shouldBe Some(1)
-    bare.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(3)(Some(1))
+    bare.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(3)(None)
     r.violations shouldBe 0
   }
 
-  it should "not take a namesake its title names only as another country's title, beside a credited sibling of the film it names" in {
+  it should "take no namesake its title names only as another country's title, nor the film a credited sibling takes" in {
     // DE CinemaxX "Titans" ×3 (recording 573, Identity model convergence #2375): TMDB's search for "Titans" ranks "Remember
     // the Titans" (2000), whose Danish title it is, first and the 2026 Malayalam "Titans" ninth; CinemaxX Essen credits
     // that film's director. The bare listings took the 2000 film alone whenever no UNTAKEN sibling denied it, and went
-    // back to the 2026 film once one came: the drift replay's seed-1 flip.
+    // back to the 2026 film once one came: the drift replay's seed-1 flip. A bare listing decides from its own node's
+    // pool: two works carry the title, a near-tie, so no film at all, whichever siblings are present.
     val films    = Seq(F(10637, "Remember the Titans", 2000, "Boaz Yakin", 113, 14, alternatives = Seq("Titans")),
       F(869152, "Titans", 2026, "Prince Joy", 0, 1))
     val credited = listing(Multikino, "Titans", director = Some("Prince Joy"))
     val bare     = Seq(Helios, KinoApollo, Rialto).map(listing(_, "Titans"))
     val r = shipped(credited +: bare, films)
     r.decisionOf(credited.key).film shouldBe Some(869152)
-    bare.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(869152)))
+    bare.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
   }
 
   it should "keep the film its own feed links, beside a credited sibling of the namesake its title names" in {
@@ -610,14 +643,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(r.decisionOf(linked.key).render)(r.decisionOf(linked.key).film shouldBe Some(649137))
   }
 
-  "A broadcast's bare listing" should "not take an old film its title-linked sibling's season denies" in {
+  "A broadcast's bare listing" should "take the old film its own pool names, no title-linked sibling's season denying it" in {
     // The Met's 2026/27 "Samson et Dalila": one venue names the season, another lists the bare
-    // title. TMDB's search for the Polish title returns only DeMille's 1949 film.
+    // title. TMDB's search for the Polish title returns only DeMille's 1949 film. A bare listing decides from its own
+    // node's pool alone, so the season sibling's denial no longer reaches it (the broadcast's day corrects it later);
+    // the sibling naming the season still takes no 1949 film.
     val films  = Seq(F(29993, "Samson i Dalila", 1949, "Cecil B. DeMille", 131, 20))
     val season = listing(Multikino, "Samson i dalila | metropolitan opera: live in hd 2026/27")
     val bare   = Seq(Helios, KinoApollo).map(listing(_, "Samson i Dalila"))
     val r = resolve(season +: bare, films)
-    (season +: bare).foreach(l => withClue(l.title + "\n" + (season +: bare).map(x => r.decisionOf(x.key).render).distinct.mkString("\n"))(r.decisionOf(l.key).film should not be Some(29993)))
+    withClue((season +: bare).map(x => r.decisionOf(x.key).render).distinct.mkString("\n")) {
+      r.decisionOf(season.key).film should not be Some(29993)
+      bare.foreach(l => r.decisionOf(l.key).film shouldBe Some(29993))
+    }
     r.violations shouldBe 0
   }
 
@@ -764,15 +802,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
-  it should "still be withdrawn from a record of its own house that a sibling naming that house denies" in {
+  it should "keep a bare banner's own house record, though a sibling naming that house denies it to the credited listings" in {
     // The same shape, the sibling billing the SAME house: UK's "Met Opera: La Fanciulla Del West" {Richard Jones}, this
-    // season's staging, denies the Met's 2018 record the bare-banner "The Metropolitan Opera: La Fanciulla Del West" ×3
-    // took on its own banner — one house's two productions, which nothing the bare-banner listing publishes tells apart.
+    // season's staging, denies the Met's 2018 record to itself and its siblings. The bare-banner "The Metropolitan Opera:
+    // La Fanciulla Del West" ×3 takes the record on its own banner: a bare listing decides from its own node's pool, so
+    // the sibling's denial no longer reaches it.
     val films  = Seq(F(543704, "The Metropolitan Opera: La Fanciulla del West", 2018, "Gary Halvorson", 180, 3))
     val jones  = Seq(Helios, KinoApollo).map(listing(_, "Met Opera: La Fanciulla Del West", director = Some("Richard Jones")))
     val housed = Seq(KinoMuza, KinoMikro).map(listing(_, "The Metropolitan Opera: La Fanciulla Del West"))
     val r      = shipped(jones ++ housed, films)
-    (jones ++ housed).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(543704)))
+    jones.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(543704)))
+    housed.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(543704)))
   }
 
   it should "take its own house's record of the work once the database returns it" in {
@@ -894,10 +934,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     listings.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(844), Some(9), Some(2018), Some(1977))
   }
 
-  "A listing that publishes only its title" should "follow its title family's clear majority film, not the database's ranking" in {
+  "A listing that publishes only its title" should "take no film among its namesakes: neither its title family's majority film nor the database's ranking" in {
     // US Landmark Ritz Five's bare "Sense and Sensibility" (and UK Everyman's "Relaxed Screening:
     // …"): the credited siblings are split between the current release and Ang Lee's 1995 film,
-    // which TMDB ranks first. The bare listing's own vote took the 1995 film on that ranking.
+    // which TMDB ranks first. A bare listing decides from its own node's pool, where two works carry the title: a
+    // near-tie, so no film, however large a majority its siblings make (a majority changes as listings arrive).
     val films = Seq(F(4584, "Sense and Sensibility", 1995, "Ang Lee", 136, 20), F(1503762, "Sense and Sensibility", 2026, "Georgia Oakley", 132, 10))
     val current = Seq(Helios, KinoApollo, Rialto, CharlieMonroe, CinemaCityKinepolis, KinoPalacowe, CinemaCityPoznanPlaza,
       CinemaCityWroclavia, CinemaCityKorona).map(listing(_, "Sense and Sensibility", Some(2026), Some("Georgia Oakley")))
@@ -908,16 +949,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue((current.head +: Seq(lee, bare, relaxed)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(current.head.key).film shouldBe Some(1503762)
       r.decisionOf(lee.key).film shouldBe Some(4584)
-      r.decisionOf(bare.key).film shouldBe Some(1503762)
-      r.decisionOf(relaxed.key).film shouldBe Some(1503762)
+      r.decisionOf(bare.key).film shouldBe None
+      r.decisionOf(relaxed.key).film shouldBe None
     }
     r.violations shouldBe 0
   }
 
-  it should "keep its own vote when the family is too thin to outweigh it" in {
+  it should "take no film among its namesakes, however thin or thick the family's majority" in {
     // UK, 78 Cineworld venues' bare "The Omen" (the 1976 film's 50th-anniversary re-release)
-    // beside 2 venues crediting Donner's 1976 film and 4 crediting the 2006 remake: 4 of the
-    // family's 84 venues is no majority, and the bare listings vote on their own evidence.
+    // beside 2 venues crediting Donner's 1976 film and 4 crediting the 2006 remake: a bare listing decides from its own
+    // node's pool, where two Omens are a near-tie, whatever the family's numbers.
     val films = Seq(F(794, "The Omen", 1976, "Richard Donner", 111, 20), F(806, "The Omen", 2006, "John Moore", 110, 10))
     val donner   = Seq(Multikino, Rialto).map(listing(_, "The Omen", Some(1976), Some("Richard Donner")))
     val moore    = Seq(Helios, KinoApollo, CinemaCityKinepolis, KinoPalacowe).map(listing(_, "The Omen", Some(2006), Some("John Moore")))
@@ -927,7 +968,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(r.decisionOf(chain.head.key).render) {
       r.decisionOf(donner.head.key).film shouldBe Some(794)
       r.decisionOf(moore.head.key).film shouldBe Some(806)
-      chain.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(794))
+      chain.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(None)
     }
     r.violations shouldBe 0
   }
@@ -1182,20 +1223,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe Some(1284046))
   }
 
-  it should "take the film its cluster's listing billed under the same title credits" in {
-    // a bare listing beside one crediting the year and director under the very title is that cluster's film
+  it should "take no film its cluster's listing billed under the same title alone credits, which still takes it" in {
+    // a bare listing beside one crediting the year and director under the very title: its own pool holds two Escape Room 2s,
+    // a near-tie its sibling's credit no longer breaks; the credited listing takes its film
     val films = Seq(F(585216, "Escape Room 2", 2021, "Adam Robitel", 88, 40), F(1573952, "Escape Room 2", 2026, "Hèctor Claramunt", 88, 2))
     val bare  = listing(Multikino, "Escape Room 2")
     val dated = listing(Helios, "Escape Room 2", Some(2026), Some("Hèctor Claramunt"))
     val r = shipped(Seq(bare, dated), films)
-    withClue(Seq(bare, dated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(r.decisionOf(bare.key).film shouldBe Some(1573952))
+    withClue(Seq(bare, dated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")){
+      r.decisionOf(dated.key).film shouldBe Some(1573952)
+      r.decisionOf(bare.key).film shouldBe None
+    }
   }
 
-  "A bare title heading a subtitled film its family's nodes take on their own facts" should "be that film's namesake, unless a node evidences the film the bare title names whole" in {
+  "A bare title heading a subtitled film its family's nodes take on their own facts" should "leave the bare title to the film its own pool names whole, whatever its family's nodes take" in {
     // [[Corroboration.headedBy]]: "Avatar" heads "Avatar: Fire and Ash". Two venues bill the sequel by its head alone,
     // dated and timed (two nodes, so two nodes of the family take it on their own facts, as DE's 23 venues linking
     // Hufnagel's "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes & Amir" under its head). A bare
-    // "Avatar" nothing of its own places is then as much the sequel as the 2009 film, and stays unmatched.
+    // "Avatar" decides from its own node's pool alone, where the one work its title names whole is the 2009 film: it takes
+    // that film, the sequel's nodes neither lending it the sequel nor withdrawing it.
     val films   = Seq(F(19995, "Avatar", 2009, "James Cameron", 162, 60), F(83533, "Avatar: Fire and Ash", 2025, "James Cameron", 197, 90))
     val bare    = listing(Multikino, "Avatar")
     val sequel  = Seq(listing(Helios, "Avatar", Some(2025), Some("James Cameron"), Some(197)), listing(KinoApollo, "Avatar", Some(2025), None, Some(197)))
@@ -1203,10 +1249,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       val r = shipped(listings, films)
       withClue(listings.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(listings.map(l => r.decisionOf(l.key).film) shouldBe expected)
     }
-    takes(bare +: sequel, None, Some(83533), Some(83533))
-    // A node dating the 2009 film under the bare title evidences the re-release in the family: the bare title names it
-    // whole, the sequel only by its head, so the re-release keeps its take — the head stands only against a take no
-    // node evidences.
+    takes(bare +: sequel, Some(19995), Some(83533), Some(83533))
+    // A node dating the 2009 film under the bare title joins the family: the bare title takes the same film either way.
     val reissue = listing(KinoMikro, "Avatar", Some(2009), Some("James Cameron"))
     takes(Seq(bare, reissue) ++ sequel, Some(19995), Some(19995), Some(83533), Some(83533))
   }
@@ -1351,10 +1395,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(withFilm.decisionOf(whistle.key).render)(Seq(bills(2), whistle).map(l => withFilm.decisionOf(l.key).film) shouldBe Seq(None, None))
   }
 
-  "A programme of shorts" should "be no feature it is named like, nor are its siblings billing it under its banner" in {
+  "A programme of shorts" should "be no feature it is named like, though its bare siblings billing it under its banner take the feature their own pool names" in {
     // DE recording 38355584482: Kino Central Berlin's and Moviemento's "Pornfilmfestival: The more the merrier" took
     // Stevens' 1943 "The More the Merrier" (favoured-calibrated, 39.1%); their sibling "Pornfilmfestival Warm Up: The
-    // more the merrier - shortfilms presented by Paulita Pappel" says what it is, a block of shorts
+    // more the merrier - shortfilms presented by Paulita Pappel" says what it is, a block of shorts. The banner listings
+    // are bare and decide from their own node's pool alone, so the shorts sibling's denial no longer reaches them (it
+    // is population-dependent): they take the one work their title names, as the contract has it.
     val films   = Seq(F(80616, "The More the Merrier", 1943, "George Stevens", 104, 10), F(155, "The Dark Knight", 2008, "Christopher Nolan", 152, 48))
     val shorts  = listing(Rialto, "Pornfilmfestival Warm Up: The more the merrier - shortfilms presented by Paulita Pappel")
     val banners = Seq(KinoApollo, Helios).map(listing(_, "Pornfilmfestival: The more the merrier"))
@@ -1362,7 +1408,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val all     = shorts +: banners :+ bare
     val r = shipped(all, films)
     withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
-      (shorts +: banners).map(l => r.decisionOf(l.key).film) shouldBe Seq(None, None, None)
+      (shorts +: banners).map(l => r.decisionOf(l.key).film) shouldBe Seq(None, Some(80616), Some(80616))
       // the film billed by its own title alone, as the venue credits it, stays the film
       r.decisionOf(bare.key).film shouldBe Some(80616)
     }
@@ -1450,8 +1496,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   it should "still name the film elsewhere, and as the whole title at the venue itself" in {
     val chicago = Seq(F(1574, "Chicago", 2002, "Rob Marshall", 113, 6), F(128298, "Chicago", 1927, "Frank Urson", 103, 1))
     val here    = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.labels.nominative == "Chicago")).get
-    val banner  = listing(KinoMuza, "Dismember the Alamo 2026 - Chicago")
-    val whole   = listing(here, "Chicago")
+    // each states the year (a bare listing among two namesakes takes none): the film is the 2002 one
+    val banner  = listing(KinoMuza, "Dismember the Alamo 2026 - Chicago", Some(2002))
+    val whole   = listing(here, "Chicago", Some(2002))
     shipped(Seq(banner), chicago).decisionOf(banner.key).film shouldBe Some(1574)
     shipped(Seq(whole), chicago).decisionOf(whole.key).film shouldBe Some(1574)
     // US, "Charlotte (2021)" at a Charlotte venue: the city and a year are the whole title.
@@ -1666,8 +1713,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       F(6004, "Juliet", 2015, "Another One", 95, 2), F(6005, "Romeo and Juliet", 1968, "Franco Zeffirelli", 138, 15))
     val furious = Seq(F(13804, "Fast & Furious", 2009, "Justin Lin", 107, 40), F(6006, "Fast", 2010, "Someone Else", 80, 2),
       F(6007, "Furious", 2017, "Another One", 110, 3))
-    val bareRomeo   = listing(KinoApollo, "Romeo + Juliet")
-    val bareFurious = listing(KinoApollo, "Fast & Furious")
+    // each states its year: a bare listing whose title names three works (the whole title and its two pieces) takes none
+    val bareRomeo   = listing(KinoApollo, "Romeo + Juliet", Some(1996))
+    val bareFurious = listing(KinoApollo, "Fast & Furious", Some(2009))
     withClue(shipped(Seq(bareRomeo), romeo).decisionOf(bareRomeo.key).render)(shipped(Seq(bareRomeo), romeo).decisionOf(bareRomeo.key).film shouldBe Some(454))
     withClue(shipped(Seq(bareFurious), furious).decisionOf(bareFurious.key).render)(
       shipped(Seq(bareFurious), furious).decisionOf(bareFurious.key).film shouldBe Some(13804))
@@ -1676,19 +1724,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   it should "still join a decorated spelling whose other pieces name no film to its plain siblings" in {
     val films    = Seq(F(1321666, "Lalka", 2026, "Maciej Kawalski", 162, 3), F(81315, "Lalka", 1968, "Wojciech Has", 152, 2.5))
     val credited = Seq(Multikino, Helios).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski"), Some(162)))
-    val premiere = listing(KinoMuza, "Oficjalna premiera: Lalka")
+    val premiere = listing(KinoMuza, "Oficjalna premiera: Lalka", Some(2026))
     val r = shipped(credited :+ premiere, films)
     withClue(r.decisionOf(premiere.key).render)(r.decisionOf(premiere.key).film shouldBe Some(1321666))
+    // bare, it would decide from its own node's pool, where two Lalkas are a near-tie
+    val bare = listing(KinoMuza, "Oficjalna premiera: Lalka")
+    val alone = shipped(credited :+ bare, films)
+    withClue(alone.decisionOf(bare.key).render)(alone.decisionOf(bare.key).film shouldBe None)
   }
 
   "A title a venue publishes beside a record's own title as its original" should
-    "name that record wherever the title is listed" in {
+    "name that record wherever the title is listed with a fact, and not for a bare listing of the Polish title alone" in {
     // PL, André Rieu's 2026 Maastricht concert: TMDB titles it in English only, so "Andre Rieu. Niech
     // żyje Maastricht!" relates to it by a few shared words (`overlap`, 5.1%). Multikino's detail
     // page publishes the English title as the original: the Polish title is that record's title in
     // Polish at Cinema City too, which credits the production company and the country the concert
     // is staged in (the Netherlands; TMDB's origin is Belgium): read by those shared words, its own
-    // facts denied the record, and the bare listings, title-linked to both, followed neither.
+    // facts denied the record, and the bare listings, title-linked to both, followed neither. A bare listing decides from
+    // its own node's pool alone: the record is titled in English only, so its own searches name no work its title names, and
+    // it takes no film, whatever record its siblings take.
     val films = Seq(F(1702801, "André Rieu's 2026 Summer Concert: Viva Maastricht!", 2026, "", 0, 0.5, countries = Seq("BE")))
     val multikino = Seq(Multikino, Helios).map(listing(_, "Andre Rieu. Niech żyje Maastricht!", runtime = Some(185))
       .copy(originalTitle = Some("Andre Rieu's 2026 Summer Concert: Viva Maastricht!")))
@@ -1698,7 +1752,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val all = multikino ++ Seq(cinemaCity) ++ bare
     val r = shipped(all, films)
     withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
-      all.foreach(l => r.decisionOf(l.key).film shouldBe Some(1702801))
+      (multikino :+ cinemaCity).foreach(l => r.decisionOf(l.key).film shouldBe Some(1702801))
+      bare.foreach(l => r.decisionOf(l.key).film shouldBe None)
     }
     r.violations shouldBe 0
   }
@@ -1763,7 +1818,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // a billing naming no staging is read as before: a widely screened film whose title is a talk's word ("Rozmowa", The
     // Conversation) at its farewell screening (the fixture corpus's Kino za Rogiem Cafe)
     val conversation = Seq(F(592, "Rozmowa", 1974, "Francis Ford Coppola", 113, 20, countries = Seq("US")))
-    val farewell = listing(KinoMuza, "Rozmowa - pożegnanie z filmem")
+    val farewell = listing(KinoMuza, "Rozmowa - pożegnanie z filmem", Some(1974)) // stating its year: a bare listing is not carried by its siblings
     val plain = Seq(Multikino, Helios, KinoApollo, Rialto, KinoMikro, Kinoteka).map(listing(_, "Rozmowa", Some(1974), Some("Francis Ford Coppola"), Some(113)))
     val f = shipped(farewell +: plain, conversation).decisionOf(farewell.key)
     withClue(f.render)(f.film shouldBe Some(592))
@@ -1820,11 +1875,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe None)
     // a billing's words in the film's order still take it ("Dzień Dziecka księdza Kaczkowskiego")
     val kaczkowski = Seq(F(1395000, "Dzień Dziecka księdza Jana Kaczkowskiego", 2024, "Someone", 80, 1))
-    val ordered = listing(KinoMuza, "Dzień Dziecka księdza Kaczkowskiego")
+    val ordered = listing(KinoMuza, "Dzień Dziecka księdza Kaczkowskiego", Some(2024)) // stating its year: a bare listing needs more than a fuzzy title
     shipped(Seq(ordered), kaczkowski).decisionOf(ordered.key).film shouldBe Some(1395000)
     // a billing of one piece, its banner after the work (UK Hebden Bridge's "GÖTTERDÄMMERUNG Royal Opera"), still does
     val ring = Seq(F(1702769, "Royal Ballet & Opera 2026/27: Götterdämmerung", 2027, "", 0, 0.5))
-    val banner = listing(PictureHouseUckfield, "GÖTTERDÄMMERUNG Royal Opera")
+    val banner = listing(PictureHouseUckfield, "GÖTTERDÄMMERUNG Royal Opera", Some(2027))
     shipped(Seq(banner), ring).decisionOf(banner.key).film shouldBe Some(1702769)
     // nor a piece whose words one part of the title holds in a translation's order: DE Cinema Wolfhagen's "National Opera
     // Paris: Schwanensee" is TMDB's "Opéra national de Paris 2024: Schwanensee", its search's only film (convergence
@@ -1948,7 +2003,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     def billed(raw: String, year: Option[Int] = None) = listing(KinoMuza, raw, year)
     val reading = decided(billed("Jens Wawrczeck - Immer Ärger mit Harry"))
     withClue(reading.render)(reading.film shouldBe None)
-    reading.explanation.mkString(" ") should include("'jens wawrczeck' is billed beside 'Immer Ärger mit Harry'")
+    // a bare listing: its own rules do not take the one work its title names (the billing beside it is no fact of the film's)
+    reading.explanation.mkString(" ") should include("its own evidence does not take 11219")
     decided(billed("Immer Ärger mit Harry")).film shouldBe Some(11219)
     // PL (MatchedTakesLabelSpec's known wrong): a talk on the Day of the Dead at a travel festival, its title the film's
     // original title
@@ -2265,14 +2321,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     (rest +: deniers).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
   }
 
-  it should "still veto the film for bare siblings whose own facts cannot carry it" in {
-    // The same denial beside listings that publish only the title: nothing of their own names the
-    // film, so the database's ranking alone never outvotes the credited member.
+  it should "veto the film for the credited denier alone: bare siblings keep the one work their own pool names" in {
+    // The same denial beside listings that publish only the title: a bare listing decides from its own node's pool, so
+    // the credited member's denial no longer reaches them (it is population-dependent); they take the one work their
+    // title names, and the denier takes none.
     val films  = Seq(F(1515139, "Back to the Beginning", 2026, "Paul Dugdale", 100, 20))
     val bare   = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Back to the Beginning"))
     val denier = listing(Rialto, "Back to the Beginning", None, Some("Tim Van Someren"), Some(140))
     val r = resolve(bare :+ denier, films)
-    (bare :+ denier).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
+    withClue(r.decisionOf(denier.key).render)(r.decisionOf(denier.key).film shouldBe None)
+    bare.foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe Some(1515139)))
   }
 
   /** The shipped artefact without its evidence classes: what a bare title scores signal by signal. */
@@ -2371,23 +2429,27 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     film(listing(Rialto, "Obcy w domu"), Seq(released, namesake.copy(releaseCountries = None))) shouldBe None
     // Neither is released in the venue's country: nothing to tell them apart by.
     film(listing(Rialto, "Obcy w domu"), Seq(released.copy(releaseCountries = Some("DE")), namesake)) shouldBe None
-    // A title naming its film only by a piece beside a banner is no namesake's: the veto stays out of it, and the
-    // listing is decided as if TMDB had dated no release at all.
+    // A bare listing naming its film only by a piece beside a banner is decided from its own node's pool: without TMDB's
+    // release dates the two namesakes are a near-tie, no film; with them, the namesake released in the venue's country is
+    // the one its own facts single out ([[BareListing.singledOut]]), taken with no veto.
     val banner = listing(Rialto, "Kino Nocne: Obcy w domu")
     val vetoFree = IdentityResolver.resolve(Seq(banner), new FilmTable(Seq(released, namesake).map(_.copy(releaseCountries = None)), normalizer),
       normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5))).decisionOf(banner.key)
     val withDates = IdentityResolver.resolve(Seq(banner), new FilmTable(Seq(released, namesake), normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5)))
       .decisionOf(banner.key)
-    withClue(withDates.render)((withDates.film, withDates.render.contains("vetoed")) shouldBe ((vetoFree.film, false)))
+    vetoFree.film shouldBe None
+    withClue(withDates.render)((withDates.film, withDates.render.contains("vetoed")) shouldBe ((Some(923171), false)))
   }
 
-  it should "still leave a broadcast's bare listing off the old film its title-linked sibling's season denies" in {
+  it should "leave a broadcast's bare listing on the old film its own pool names, the class undoing no sibling's denial" in {
     val films  = Seq(F(29993, "Samson i Dalila", 1949, "Cecil B. DeMille", 131, 20))
     val season = listing(Multikino, "Samson i dalila | metropolitan opera: live in hd 2026/27")
     val bare   = Seq(Helios, KinoApollo).map(listing(_, "Samson i Dalila"))
-    // On the case's own weights, where the sibling's season denies the film: the class must not undo that.
+    // On the case's own weights, where the sibling's season denies the film to itself: a bare listing decides from its own
+    // node's pool alone, so that denial no longer reaches it (the broadcast's day corrects it later) and the class changes nothing.
     val r = IdentityResolver.resolve(season +: bare, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned.copy(calibration = withTopHitClass(0.5, weights)))
-    (season +: bare).foreach(l => withClue(l.title)(r.decisionOf(l.key).film should not be Some(29993)))
+    withClue(season.title)(r.decisionOf(season.key).film should not be Some(29993))
+    bare.foreach(l => withClue(l.title)(r.decisionOf(l.key).film shouldBe Some(29993)))
     r.violations shouldBe 0
   }
 
@@ -2635,13 +2697,15 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   }
 
   "A spelling whose original title reaches its OWN film" should
-    "still join the plain listings that share its search form" in {
+    "still join the plain listing crediting the director that shares its search form, and leave the bare ones to their own pool" in {
     // PL, main 5424e7874 lost 40 "Pieśni lasu" listings: the plain ones carry no fact and their
     // Polish title is not the record's, so they took the film only through Kinoteka's decorated
     // "Pieśni lasu | Pokaz z kompozycją zapachową od Alba1913", which publishes the original title
     // "Whispers in the Woods". The festival rule dropped their same-search-form link: it read the
     // spelling's OWN segment "Pieśni lasu" — sanitised, without spaces — as another listing's title
-    // sharing no word with the form, and its original title's own film as a film named beside it.
+    // sharing no word with the form, and its original title's own film as a film named beside it. The bare ones (no
+    // fact of their own) decide from their own node's pool alone now, which holds no work their title names: no film,
+    // whichever siblings take the record.
     val films = Seq(F(1309373, "Le Chant des forêts", 2025, "Vincent Munier", 95, 3.0, alternatives = Seq("Whispers in the Woods")))
     def scraped(venue: Cinema, title: String) =
       listing(venue, title).copy(cleanTitle = services.movies.ScrapeListing.cleanTitle(venue, title, normalizer)._1)
@@ -2655,7 +2719,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r = IdentityResolver.resolve(all, new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned)
     withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(decorated.key).film shouldBe Some(1309373)
-      plain.foreach(l => r.decisionOf(l.key).film shouldBe Some(1309373))
+      r.decisionOf(plain.head.key).film shouldBe Some(1309373)
+      together(r, decorated, plain.head) shouldBe true
+      plain.tail.foreach(l => r.decisionOf(l.key).film shouldBe None)
     }
   }
 
@@ -3082,14 +3148,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       linked.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(68030)))
   }
 
-  "A bare title its credited siblings' facts give another record than the one carrying it" should "take the record their facts single out" in {
+  "A bare title its credited siblings' facts give another record than the one carrying it" should "leave the credited siblings the record their facts single out, the bare ones keeping their own pool's" in {
     // PL "Ktoś całkiem obcy", prod 2026-10-13: Kino Marzenie's [2026] {Brandt Andersen} [103′] and Kino Chatka Żaka's
     // programme listing [2024] [103′] are Andersen's "I Was a Stranger" (1193128), which TMDB titles in Arabic and
     // English only; Kino Seniora's bare "Ktoś całkiem obcy" at three venues and Kryterium's "DKF: …" took Foley's 2007
     // "Perfect Stranger", the one record carrying the Polish title, which every credited listing's year and director rule
     // out. Every cycle the projection wrote that split, a fresh card for 1193128 beside Kino Seniora's, and the agreement
     // stage's correction (Filmweb's programmes, a venue poster) then moved Seniora's to 1193128 and the fresh card was
-    // retired by overlap: 63 re-matches from 10-09. IMDb suggests "I Was a Stranger" first for the Polish title, then "Perfect Stranger"; TMDB's search finds only the latter
+    // retired by overlap: 63 re-matches from 10-09. IMDb suggests "I Was a Stranger" first for the Polish title, then "Perfect Stranger"; TMDB's search finds only the latter.
+    // A bare listing decides from its own node's pool alone (the credited listings' facts no longer reach it, as they change
+    // with the listings present): the one work its title names there is the 2007 film, so the bare ones keep it.
     val films = Seq(F(1193128, "قضية الغرباء", 2025, "Brandt Andersen", 103, 3.7663, alternatives = Seq("The Strangers' Case", "The Passage"),
         releaseCountries = Some("ARBRCACZDEESFIFRGRGTIDKRNLPESESKUS"), releases = Some("DE2024-DE2026-FR2024-FR2026-US2025-US2026-"),
         searched = false, imdbTitles = Seq("Ktoś całkiem obcy")),
@@ -3101,8 +3169,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // Kryterium's "DKF: …" names the record only by a piece of its title, beside IMDb's suggestion: not decided here
     val club = listing(Kinoteka, "DKF: Ktoś całkiem obcy").copy(searchTitle = Some("Ktoś całkiem obcy"))
     val r = shipped(credited ++ bare :+ club, films)
-    withClue((credited ++ bare :+ club).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
-      (credited ++ bare).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1193128)))
+    withClue((credited ++ bare :+ club).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      credited.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1193128))
+      bare.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(7183))
+    }
   }
 
   "A stage house's relay of a work" should "not take a screen namesake of the work" in {
@@ -3257,7 +3327,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private def namesakes(title: String, ids: Int*) =
     ids.zipWithIndex.map { case (id, i) => F(id, title, 1970 + i * 7, s"Director $i", 90 + i, 1.8 - i * 0.05) }
 
-  "A relay a box office bills with its certificate" should "take the record its uncertified siblings take" in {
+  /** The listings publishing no year, director or running time: bare, so deciding from their own node's pool alone. */
+  private def bareOnes(ls: Seq[Listing]) = ls.filter(l => l.year.isEmpty && l.directors.isEmpty && l.runtime.isEmpty)
+
+  "A relay a box office bills with its certificate" should "take the record its uncertified siblings take, once it publishes a fact of its own" in {
     // UK "NT LIVE: Golden Boy (15)" ×10 and its "(15 tbc)", "- Cert 15" spellings, recording 38363428661: once the
     // certificate was peeled at ingest they were kept apart from "Golden Boy (NT Live)" {Sam Yates} and "National Theatre
     // Live: Golden Boy" by the learned listing-listing cut, and 1723978 was rejected. TMDB's record as it holds it (en-GB),
@@ -3275,7 +3348,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       scraped(uk(20), "NT Live: Golden Boy"))
     val ls = siblings ++ certified
     val r  = shipped(ls, records)
-    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1723978)))
+    // a bare listing (no year, director or running time) decides from its own node's pool, where Golden Boy's eight
+    // namesakes are a near-tie: no film, whatever record its siblings take
+    withClue(rendered(r, ls)) {
+      films(r, ls.diff(bareOnes(ls))) shouldBe Seq(Some(1723978))
+      films(r, bareOnes(ls)) shouldBe Seq(None)
+    }
   }
 
   it should "take it beside a sibling billing another running time" in {
@@ -3291,7 +3369,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val certified = Seq(scraped(uk(12), "NT Live: The Misanthrope (15)", runtime = Some(106)))
     val ls = siblings ++ certified
     val r  = shipped(ls, records)
-    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1693710)))
+    withClue(rendered(r, ls)) {
+      films(r, ls.diff(bareOnes(ls))) shouldBe Seq(Some(1693710))
+      films(r, bareOnes(ls)) shouldBe Seq(None)
+    }
   }
 
   it should "take it billed as a screening with its running time" in {
@@ -3307,7 +3388,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       scraped(uk(16), "On Screen: National Theatre Live: Hay Fever (12A)", runtime = Some(160)))
     val ls = siblings ++ screened
     val r  = shipped(ls, records)
-    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1791571)))
+    withClue(rendered(r, ls)) {
+      films(r, ls.diff(bareOnes(ls))) shouldBe Seq(Some(1791571))
+      films(r, bareOnes(ls)) shouldBe Seq(None)
+    }
   }
 
   it should "take no house's record from long before the season it screens in, billing no house in particular" in {
@@ -3336,7 +3420,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     F(654317, "Tosca", 2019, "Patrizia Carmine", 0, 0.773, released = Some(java.time.LocalDate.of(2019, 12, 7))))
   private val toscaDays = Seq(java.time.LocalDate.of(2027, 5, 5), java.time.LocalDate.of(2027, 5, 9))
 
-  "A relay dated by its production's premiere" should "take the house's record of the season it screens in, and its siblings with it" in {
+  "A relay dated by its production's premiere" should "take the house's record of the season it screens in, its bare siblings taking none" in {
     // UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025] {Choreography: Kenneth MacMillan} [170′], recording
     // 38363428661, screens on 25 May 2027 — the day TMDB's "Royal Ballet & Opera 2026/27: Romeo and Juliet" airs. Its 2025
     // denied that record (title overlap, two years off) and, title-linked, withdrew it from Lighthouse Poole's, Pocklington's
@@ -3360,7 +3444,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       scraped(uk(3), "The Royal Ballet: Romeo & Juliet", days = Seq(day)))
     val ls = aldeburgh ++ siblings
     val r  = shipped(ls, records)
-    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1702789)))
+    // the siblings publish only a title and their days: bare, they decide from their own node's pool, where the title names
+    // no work their own evidence takes (the season's record is the day's, not theirs to borrow): no film
+    withClue(rendered(r, ls)) {
+      films(r, aldeburgh) shouldBe Seq(Some(1702789))
+      films(r, siblings) shouldBe Seq(None)
+    }
   }
 
   "A relay billed under its house's former name" should "take the house's record of the season it screens in" in {
@@ -3373,7 +3462,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(rendered(r, roh))(films(r, roh) shouldBe Seq(Some(1702784)))
   }
 
-  "Two records of one broadcast" should "be one card: every listing takes the one dating its season, never the other" in {
+  "Two records of one broadcast" should "be one card: every listing but the bare ones takes the one dating its season, never the other" in {
     // TMDB holds the Royal Opera's 10 November 2026 "Carmen" twice, recording 38363428661: 1151422 under the house's
     // former name, crediting Michieletto, and 1702759 in the season's "Royal Ballet & Opera 2026/27" series. UK "Carmen
     // (ROH)" took the first while ~500 listings took the second: two cards of one broadcast.
@@ -3391,7 +3480,13 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // Flicks' page dates the production by its 2024 premiere: another season than the record's, it takes neither
     val dated = Seq(scraped(uk(6), "Royal Opera House: Carmen", Some(2024), runtime = Some(220), days = broadcast))
     val r  = shipped(season ++ roh, records)
-    withClue(rendered(r, season ++ roh))(films(r, season ++ roh) shouldBe Seq(Some(1702759)))
+    // the two "Royal Opera House: Carmen" listings stating nothing else are bare: they decide from their own node's pool,
+    // where the title names a 2018 and a 2026 record alike, a near-tie, no film
+    val bareRoh = Seq(roh(1), roh(2))
+    withClue(rendered(r, season ++ roh)) {
+      films(r, (season ++ roh).diff(bareRoh)) shouldBe Seq(Some(1702759))
+      films(r, bareRoh) shouldBe Seq(None)
+    }
     val withDated = shipped(season ++ roh ++ dated, records)
     withClue(rendered(withDated, season ++ roh ++ dated))(films(withDated, season ++ roh ++ dated).flatten should not contain 1151422)
   }

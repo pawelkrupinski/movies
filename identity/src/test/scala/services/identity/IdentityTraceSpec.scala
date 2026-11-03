@@ -15,16 +15,16 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
 
   private val lynch = Seq(F(1018, "Mulholland Drive", 2001, "David Lynch", 146), F(2, "Mulholland Falls", 1996, "Lee Tamahori", 107, 4))
   private val credited = listing(Rialto, "Mulholland Drive", Some(2001), Some("David Lynch"), Some(146))
-  private val bare     = listing(KinoApollo, "Mulholland Drive")
+  private val dated    = listing(KinoApollo, "Mulholland Drive", Some(2001))
 
   "a decision" should "name the rule each member was accepted by and what joined it" in {
-    val r = IdentityResolver.resolve(Seq(credited, bare), new FilmTable(lynch, normalizer), normalizer, ResolveInputs.Unpinned)
+    val r = IdentityResolver.resolve(Seq(credited, dated), new FilmTable(lynch, normalizer), normalizer, ResolveInputs.Unpinned)
     val decision = r.decisionOf(credited.key)
     decision.film shouldBe Some(1018)
     val rules = decision.trace.rulesOf(credited.key)
     rules.filter(_.startsWith("accept:")) should not be empty
     // joined to it by the strongest link the pair has: here both took the film alone
-    decision.trace.rulesOf(bare.key) should contain ("join:same-film")
+    decision.trace.rulesOf(dated.key) should contain ("join:same-film")
   }
 
   it should "name the member whose own evidence vetoed the cluster's film" in {
@@ -121,21 +121,35 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     (both.candidate.toSet ++ both.runnerUp.map(_.film)) shouldBe Set(1, 2)
   }
 
-  "a listing whose own match a sibling's evidence withdrew" should "say so, naming the sibling and its denial" in {
-    // PL Kino Głębocka 66's "WAJDA: re-wizje | Bez znieczulenia (1978)" took the film at 88.1% by its own rules, and
-    // its trace said only "below the rating cut": a title-linked sibling, Kino Światowid's, was denying the film
+  "a bare listing" should "keep its own match, no sibling's denial reaching it" in {
+    // PL Kino Głębocka 66's "WAJDA: re-wizje | Bez znieczulenia (1978)" took the film by its own rules, and a title-linked
+    // sibling, Kino Światowid's, denied the film: a bare listing decides from its own node alone, so the denial neither
+    // withdraws its film nor shows in its trace
     val tatarak = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85))
     val bare    = listing(Rialto, "Tatarak")
     val denying = listing(KinoApollo, "Tatarak", Some(1961), Some("Lee Tamahori"), Some(62))
     val r = IdentityResolver.resolve(Seq(bare, denying), new FilmTable(tatarak, normalizer), normalizer, ResolveInputs.Unpinned)
     val node = r.decisionOf(bare.key).trace.nodes(bare.key)
     withClue(r.decisionOf(bare.key).render + "\n" + node.refusals.mkString("\n")) {
-      if (r.decisionOf(bare.key).film.isEmpty) {
+      r.decisionOf(bare.key).film shouldBe Some(1)
+      node.refusals.exists(_.rule == "withdrawn") shouldBe false
+    }
+  }
+
+  "a listing whose own match a sibling's evidence withdrew" should "say so, naming the sibling and its denial" in {
+    // a listing that publishes only its running time is not bare: a title-linked sibling denying its film withdraws it
+    val tatarak = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85))
+    val own     = listing(Rialto, "Tatarak", runtime = Some(85))
+    val denying = listing(KinoApollo, "Tatarak", Some(1961), Some("Lee Tamahori"), Some(62))
+    val r = IdentityResolver.resolve(Seq(own, denying), new FilmTable(tatarak, normalizer), normalizer, ResolveInputs.Unpinned)
+    val node = r.decisionOf(own.key).trace.nodes(own.key)
+    withClue(r.decisionOf(own.key).render + "\n" + node.refusals.mkString("\n")) {
+      if (r.decisionOf(own.key).film.isEmpty) {
         node.blocker shouldBe Some("withdrawn:sibling-denies-film")
         val withdrawn = node.refusals.find(_.rule == "withdrawn").get
         withdrawn.film shouldBe Some(1)
         withdrawn.detail should include ("Tatarak")
-      } else fail("expected the bare listing's own match to be withdrawn")
+      } else fail("expected the listing's own match to be withdrawn")
     }
   }
 
@@ -174,8 +188,8 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
       }
     }
     val model = new IncrementalResolver(new FilmTable(lynch, normalizer), normalizer, IdentityCalibration.resolver, traces = sink)
-    model.batch(seen = Seq(credited, bare))
-    filed.keySet shouldBe Set(credited.key, bare.key)
+    model.batch(seen = Seq(credited, dated))
+    filed.keySet shouldBe Set(credited.key, dated.key)
     filed(credited.key).film shouldBe Some(1018)
     filed(credited.key).rules.exists(_.startsWith("accept:")) shouldBe true
     // why, with the numbers: each measure against the film it was decided on, and its weight
@@ -183,7 +197,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     filed(credited.key).evidence.exists(_.startsWith("director=same_person +")) shouldBe true
     filed(credited.key).evidence.exists(_.startsWith("year.delta=")) shouldBe true
     model.decisions.map(_.trace) shouldBe Seq(DecisionTrace.Empty)
-    model.batch(gone = Seq(bare.key))
+    model.batch(gone = Seq(dated.key))
     dropped should not be empty
     filed.keySet shouldBe Set(credited.key)
   }
