@@ -693,7 +693,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     scrapers.head.scrapeHosts shouldBe Set("www.taquilla.com")
     c.spanishSensacineFallback.get(ingenio) shouldBe Some("E0433")
     c.sensacineScraper("E0433", ingenio).scrapeHosts shouldBe Set("www.sensacine.com")
-    c.spanishSensacineFallback.size shouldBe 71   // 60 Taquilla venues, 11 Artesiete
+    c.spanishSensacineFallback.size shouldBe 70   // 60 Taquilla venues, 10 Artesiete
     // A pair the name rule left for review, decided by the page's address: the
     // Campanar page is the row SensaCine serves, not its idle duplicate.
     c.all.find(_.cinema == spanishVenue("E0773")).value.scrapeHosts shouldBe Set("www.taquilla.com")
@@ -724,7 +724,6 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       "E0716" -> "https://segovia.artesiete.es/Cine/13/Artesiete-Segovia",
       "E0723" -> "https://terrazas.artesiete.es/Cine/1/Artesiete-terrazas",
       "E1041" -> "https://latorre.artesiete.es/Cine/21/Artesiete-La-Torre",
-      "E0722" -> "https://www.artesiete.es/Cine/26/Artesiete-Alhsur",
       "E0538" -> "https://ubeda.artesiete.es/Cine/20/Cines-Ubeda",
       "E0491" -> "https://bahia.artesiete.es/Cine/33/Artesiete-Bahia",
     ).foreach { case (theaterId, page) =>

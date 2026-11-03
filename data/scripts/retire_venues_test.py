@@ -68,6 +68,19 @@ def test_never_rewrites_the_count_inside_a_string_literal():
     assert rv.rewrite_count(text, 599, 598) == 'full roster (240 pages / 598 cinemas): Seq(c("599"), k("599", "/kino"))'
 
 
+def test_rewrites_the_count_only_on_a_line_about_the_roster():
+    # Retiring Artesiete Alhsur (599 -> 598) also took an HTTP status range, a seconds offset and an
+    # OMDb budget that happened to be 599.
+    text = ("  // Spain: 240 town pages / 599 cinemas\n"
+            "    (400 to 599).filterNot(Set(404, 410))\n"
+            "    budget.usedToday(now) shouldBe 599\n"
+            "    onPages should have size 599\n")
+    assert rv.rewrite_count(text, 599, 598) == ("  // Spain: 240 town pages / 598 cinemas\n"
+                                                "    (400 to 599).filterNot(Set(404, 410))\n"
+                                                "    budget.usedToday(now) shouldBe 599\n"
+                                                "    onPages should have size 598\n")
+
+
 def test_rewrites_the_count_only_in_prose_files():
     # Spain's 602 has no thousands comma, so a bare `git grep 602` also took fonts, OG images and a
     # roster-audit fixture: read_text() crashed on the binaries after retired.json was written, and
@@ -79,7 +92,8 @@ def test_rewrites_the_count_only_in_prose_files():
     # the scrapers' catalogue quotes each roster's size too, and moved out of worker/ on 2026-10-19
     assert "scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala" in files, files
     assert "data/spain/README.md" in files, files
-    assert all(f.endswith(".scala") or f.endswith("README.md") for f in files), files
+    assert "data/spain/scripts/build_pages_test.py" in files, files
+    assert all(f.endswith(".scala") or f.endswith("README.md") or f.endswith("_test.py") for f in files), files
 
 
 def test_retries_a_page_that_did_not_answer_but_not_one_that_did():

@@ -218,19 +218,26 @@ def whole_number(count: int) -> str:
     return rf"(?<![\d,\"]){re.escape(f'{count:,}')}(?![\d,\"])"
 
 
+# A line that quotes the roster's size names what it counts. Spain's 599 was also an HTTP status range
+# bound, a seconds offset and an OMDb budget in specs that say nothing of venues (2026-11-03).
+ROSTER_WORDS = re.compile(r"venue|cinema|roster|onPages", re.IGNORECASE)
+
+
 def rewrite_count(text: str, old: int, new: int) -> str:
-    """`old` as prose writes it becomes `new`, only as a whole number."""
-    return re.sub(whole_number(old), f"{new:,}", text)
+    """`old` as prose writes it becomes `new`, only as a whole number and only on a line that speaks of
+    venues, cinemas or the roster."""
+    return "".join(re.sub(whole_number(old), f"{new:,}", line) if ROSTER_WORDS.search(line) else line
+                   for line in text.splitlines(keepends=True))
 
 
 def files_quoting(count: int, roster: str) -> list[str]:
-    """The prose that quotes the roster size: Scala sources (their comments and CountrySpec) and the
-    roster's README. Only text files, and only the count as a whole number — a size under 1,000
+    """The prose that quotes the roster size: Scala sources (their comments and CountrySpec), the
+    roster's README and its generator tests (Spain's build_pages_test pins the venue count too). Only text files, and only the count as a whole number — a size under 1,000
     has no comma to tell it apart, and Spain's 602 also sits in fonts, images and test fixtures."""
     return subprocess.run(
         ["git", "grep", "-I", "-l", "-P", whole_number(count), "--",
          "common/*.scala", "geodata/*.scala", "scrapers/*.scala", "worker/*.scala", "web/*.scala",
-         f"data/{roster}/README.md"],
+         f"data/{roster}/README.md", f"data/{roster}/scripts/*_test.py"],
         cwd=ROOT, capture_output=True, text=True).stdout.split()
 
 

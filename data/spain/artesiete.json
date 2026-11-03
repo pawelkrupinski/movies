@@ -1,8 +1,8 @@
 {
  "_comment": [
   "The Artesiete chain's venues, read off the chain's own venue pages (services.cinemas.es.ArtesieteClient) instead of SensaCine. Hand-kept like ocine.json; generate_own_sources.py turns it into SpanishOwnSourcesData.scala and refuses a theaterId the roster lacks.",
-  "Built 2026-10-12 from the chain's own venue list (the `:theaters` prop every artesiete.es page embeds: ID_Centro, name, postcode, GPS, urlredir), matched to the roster by postcode and address: all eleven venues are SensaCine-listed. Two trade under other names on SensaCine: Multicines Úbeda (E0538, the chain's 'MULTICINES Ubeda', Av. de Linares s/n, 23400) and Multicines Bahia Mar (E0491, 'ARTESIETE BAHIA' in CC Bahía Mar, 11500 El Puerto de Santa María).",
-  "page: the venue's page on its own subdomain — where www.artesiete.es/Cine/<id>/<slug> redirects — except Alhsur, which www serves itself. Each embeds every session on sale (`:fullsessionsinfo`), measured 2026-10-12 to reach 2026-12-15..12-20 (two months; SensaCine lists a week to a month), with room and format on every session.",
+  "Built 2026-10-12 from the chain's own venue list (the `:theaters` prop every artesiete.es page embeds: ID_Centro, name, postcode, GPS, urlredir), matched to the roster by postcode and address: all eleven venues are SensaCine-listed. Artesiete Alhsur (E0722, ID_Centro 26, La Zubia) was dropped on 2026-11-03: the chain no longer lists it, its page stopped answering around 2026-10-15, and it is retired as feedless in retired.json. Two trade under other names on SensaCine: Multicines Úbeda (E0538, the chain's 'MULTICINES Ubeda', Av. de Linares s/n, 23400) and Multicines Bahia Mar (E0491, 'ARTESIETE BAHIA' in CC Bahía Mar, 11500 El Puerto de Santa María).",
+  "page: the venue's page on its own subdomain — where www.artesiete.es/Cine/<id>/<slug> redirects. Each embeds every session on sale (`:fullsessionsinfo`), measured 2026-10-12 to reach 2026-12-15..12-20 (two months; SensaCine lists a week to a month), with room and format on every session.",
   "Artesiete Segovia (E0716, the chain's ID_Centro 13, C/ Dámaso Alonso 54, 40006) timed out twice on the first pass (60s, 2026-10-12) and answered in 0.5s on the retry the same day, from the worker's IP too: 108 sessions to 2026-12-23, where SensaCine listed four days."
  ],
  "venues": {
@@ -14,7 +14,6 @@
   "E0489": {"name": "Artesiete Lucena", "page": "https://lucena.artesiete.es/Cine/19/Artesiete-Lucena"},
   "E0538": {"name": "Multicines Úbeda", "page": "https://ubeda.artesiete.es/Cine/20/Cines-Ubeda"},
   "E1041": {"name": "Artesiete La Torre", "page": "https://latorre.artesiete.es/Cine/21/Artesiete-La-Torre"},
-  "E0722": {"name": "Artesiete Alhsur", "page": "https://www.artesiete.es/Cine/26/Artesiete-Alhsur"},
   "E0491": {"name": "Multicines Bahia Mar", "page": "https://bahia.artesiete.es/Cine/33/Artesiete-Bahia"},
   "E0716": {"name": "Artesiete Segovia", "page": "https://segovia.artesiete.es/Cine/13/Artesiete-Segovia"}
  }

@@ -1301,6 +1301,28 @@
    "qualifiedSlug": "arenas-de-san-pedro-castilla-y-leon"
   },
   {
+   "slug": "armilla",
+   "kind": "cluster",
+   "name": "Armilla",
+   "anchor": "Armilla",
+   "province": "Granada",
+   "community": "Andalucía",
+   "zoneId": "Europe/Madrid",
+   "lat": 37.1439,
+   "lon": -3.6253,
+   "towns": [
+    "Armilla",
+    "La Zubia",
+    "Pulianas"
+   ],
+   "cinemas": [
+    "Cine Liszt Terraza de verano",
+    "Kinépolis Granada",
+    "Kinépolis Nevada"
+   ],
+   "qualifiedSlug": "armilla-andalucia"
+  },
+  {
    "slug": "arrecife",
    "kind": "town",
    "name": "Arrecife",
@@ -2711,29 +2733,6 @@
     "Cinemes Guiu"
    ],
    "qualifiedSlug": "la-seu-d-urgell-cataluna"
-  },
-  {
-   "slug": "la-zubia",
-   "kind": "cluster",
-   "name": "La Zubia",
-   "anchor": "La Zubia",
-   "province": "Granada",
-   "community": "Andalucía",
-   "zoneId": "Europe/Madrid",
-   "lat": 37.112,
-   "lon": -3.5714,
-   "towns": [
-    "La Zubia",
-    "Armilla",
-    "Pulianas"
-   ],
-   "cinemas": [
-    "Artesiete Alhsur",
-    "Cine Liszt Terraza de verano",
-    "Kinépolis Granada",
-    "Kinépolis Nevada"
-   ],
-   "qualifiedSlug": "la-zubia-andalucia"
   },
   {
    "slug": "laredo",
@@ -4891,6 +4890,10 @@
   "la-rioja": {
    "page": "logrono",
    "qualifiedSlug": "la-rioja-la-rioja"
+  },
+  "la-zubia": {
+   "page": "armilla",
+   "qualifiedSlug": "la-zubia-andalucia"
   },
   "las-palmas": {
    "page": "las-palmas-de-gran-canaria",

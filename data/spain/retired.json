@@ -28,5 +28,11 @@
     "reason": "closed",
     "retiredOn": "2026-10-12",
     "evidence": "Closed for good end of June 2026 after 27 years, web sales ran to 2026-06-25 (COPE, 2026-06-12): https://www.cope.es/emisoras/extremadura/badajoz-provincia/badajoz/noticias/cines-conquistadores-badajoz-dicen-adios-siempre-20260612_3382751.html ; Digital Extremadura: https://digitalextremadura.com/los-cines-pacenses-conquistadores-apagan-el-proyector-tras-27-anos-de-historia/"
+  },
+  "E0722": {
+    "name": "Artesiete Alhsur",
+    "reason": "feedless",
+    "retiredOn": "2026-11-03",
+    "evidence": "No source has carried it since ~2026-10-15: its own page www.artesiete.es/Cine/26/Artesiete-Alhsur hangs with no answer (the chain's other venue pages answer in ~1 s), Artesiete's home page dropped it from its 10-cinema list, alhsur.artesiete.es serves a bare Plesk default page, and SensaCine (E0722, data-showtimes-dates=\"[]\") and eCartelera list no sessions. Probably closed, but no dated closure notice was found; relabel to closed if one appears."
   }
 }

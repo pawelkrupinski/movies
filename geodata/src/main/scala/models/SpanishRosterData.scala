@@ -1,5 +1,5 @@
 // GENERATED from data/spain/pages.json by data/spain/scripts/generate_roster.py
-// — do NOT edit by hand. Full Spanish cinema roster: 240 pages / 599 cinemas (SensaCine, plus the Ocine
+// — do NOT edit by hand. Full Spanish cinema roster: 240 pages / 598 cinemas (SensaCine, plus the Ocine
 // venues it does not list, from data/spain/ocine.json).
 // Regenerate with `python3 data/spain/scripts/generate_roster.py` after re-clustering;
 // see data/spain/README.md.
@@ -342,6 +342,11 @@ private[models] object SpanishRosterData {
     ("Cine Arenas", "Cine Arenas", Some("E0828"), None),
     ("Cine Candeleda", "Cine Candeleda", Some("E0861"), None)
   ))
+  private def p_armilla: R = ("armilla", "armilla-andalucia", "Armilla", "Granada", 37.1439, -3.6253, "Europe/Madrid", true, Seq("Armilla", "La Zubia", "Pulianas"), Seq(
+    ("Cine Liszt Terraza de verano", "Cine Liszt Terraza de verano", Some("E0743"), None),
+    ("Kinépolis Granada", "Kinépolis Granada", Some("E0452"), None),
+    ("Kinépolis Nevada", "Kinépolis Nevada", Some("E0866"), None)
+  ))
   private def p_arrecife: R = ("arrecife", "arrecife-canarias", "Arrecife", "Las Palmas", 28.963, -13.5477, "Atlantic/Canary", false, Seq("Arrecife"), Seq(
     ("Deiland Multicines", "Deiland Multicines", Some("E0785"), None),
     ("Multicine Atlántida", "Multicine Atlántida", Some("E0484"), None),
@@ -635,12 +640,6 @@ private[models] object SpanishRosterData {
   ))
   private def p_la_seu_d_urgell: R = ("la-seu-d-urgell", "la-seu-d-urgell-cataluna", "La Seu d'Urgell", "Lérida", 42.3588, 1.4614, "Europe/Madrid", false, Seq("La Seu d'Urgell"), Seq(
     ("Cinemes Guiu", "Cinemes Guiu", Some("E0319"), None)
-  ))
-  private def p_la_zubia: R = ("la-zubia", "la-zubia-andalucia", "La Zubia", "Granada", 37.112, -3.5714, "Europe/Madrid", true, Seq("La Zubia", "Armilla", "Pulianas"), Seq(
-    ("Artesiete Alhsur", "Artesiete Alhsur", Some("E0722"), None),
-    ("Cine Liszt Terraza de verano", "Cine Liszt Terraza de verano", Some("E0743"), None),
-    ("Kinépolis Granada", "Kinépolis Granada", Some("E0452"), None),
-    ("Kinépolis Nevada", "Kinépolis Nevada", Some("E0866"), None)
   ))
   private def p_laredo: R = ("laredo", "laredo-cantabria", "Laredo", "Cantabria", 43.4098, -3.4161, "Europe/Madrid", true, Seq("Laredo", "Santoña", "Noja"), Seq(
     ("Casa de Cultura Doctor Velasco ", "Casa de Cultura Doctor Velasco ", Some("E0917"), None),
@@ -1094,9 +1093,9 @@ private[models] object SpanishRosterData {
   ))
 
   private def chunk0: Seq[R] = Seq(p_madrid, p_barcelona, p_valencia, p_sevilla, p_zaragoza, p_malaga, p_murcia, p_palma_de_mallorca, p_las_palmas_de_gran_canaria, p_bilbao, p_alicante, p_cordoba, p_valladolid, p_vigo, p_gijon, p_l_hospitalet_de_llobregat, p_a_coruna, p_vitoria_gasteiz, p_granada, p_elche, p_oviedo, p_badalona, p_terrassa, p_cartagena, p_jerez_de_la_frontera, p_sabadell, p_santa_cruz_de_tenerife, p_mostoles, p_alcala_de_henares, p_pamplona, p_fuenlabrada, p_almeria, p_leganes, p_san_sebastian, p_getafe, p_castellon_de_la_plana, p_burgos, p_santander, p_albacete, p_alcorcon)
-  private def chunk1: Seq[R] = Seq(p_san_cristobal_de_la_laguna, p_salamanca, p_logrono, p_adeje, p_aguilar_de_campoo, p_aguilas, p_alcala_de_xivert, p_alcala_la_real, p_alcaniz, p_alcazar_de_san_juan, p_alcobendas, p_alcoy, p_algeciras, p_alhaurin_el_grande, p_almazan, p_almendralejo, p_alzira, p_amposta, p_andujar, p_antequera, p_aranda_de_duero, p_arcos_de_la_frontera, p_arenas_de_san_pedro, p_arrecife, p_arroyo_de_la_encomienda, p_astorga, p_avila, p_ayamonte, p_badajoz, p_barakaldo, p_barbastro, p_barbate, p_baza, p_beasain, p_bejar, p_benidorm, p_berga, p_binefar, p_blanes, p_boltana)
-  private def chunk2: Seq[R] = Seq(p_bunol, p_burgo_de_osma, p_caceres, p_cadiz, p_calahorra, p_calatayud, p_calpe, p_camargo, p_carballo, p_cee, p_ceuta, p_ciudad_real, p_ciudad_rodrigo, p_ciutadella_de_menorca, p_coria, p_cornella_de_llobregat, p_cortegana, p_corvera_de_asturias, p_coslada, p_cuenca, p_daimiel, p_don_benito, p_dos_hermanas, p_ecija, p_eibar, p_el_ejido, p_el_pont_de_suert, p_el_puerto_de_santa_maria, p_el_vendrell, p_estella_lizarra, p_estepa, p_ferrol, p_figueres, p_fuengirola, p_galdakao, p_gandia, p_girona, p_golmayo, p_granollers, p_guadalajara)
-  private def chunk3: Seq[R] = Seq(p_guardo, p_herrera_del_duque, p_huarte, p_huelva, p_huesca, p_huetor_tajar, p_ibiza, p_iniesta, p_irun, p_jaraiz_de_la_vera, p_javea, p_la_orotava, p_la_palma_del_condado, p_la_seu_d_urgell, p_la_zubia, p_laredo, p_leiro, p_leon, p_linares, p_lleida, p_lorca, p_los_llanos_de_aridane, p_lucena, p_lugo, p_mairena_del_aljarafe, p_majadahonda, p_manacor, p_manresa, p_mao, p_marbella, p_marchena, p_marratxi, p_martos, p_mazarron, p_medina_de_rioseco, p_medina_del_campo, p_melilla, p_mequinenza, p_merida, p_miranda_de_ebro)
+  private def chunk1: Seq[R] = Seq(p_san_cristobal_de_la_laguna, p_salamanca, p_logrono, p_adeje, p_aguilar_de_campoo, p_aguilas, p_alcala_de_xivert, p_alcala_la_real, p_alcaniz, p_alcazar_de_san_juan, p_alcobendas, p_alcoy, p_algeciras, p_alhaurin_el_grande, p_almazan, p_almendralejo, p_alzira, p_amposta, p_andujar, p_antequera, p_aranda_de_duero, p_arcos_de_la_frontera, p_arenas_de_san_pedro, p_armilla, p_arrecife, p_arroyo_de_la_encomienda, p_astorga, p_avila, p_ayamonte, p_badajoz, p_barakaldo, p_barbastro, p_barbate, p_baza, p_beasain, p_bejar, p_benidorm, p_berga, p_binefar, p_blanes)
+  private def chunk2: Seq[R] = Seq(p_boltana, p_bunol, p_burgo_de_osma, p_caceres, p_cadiz, p_calahorra, p_calatayud, p_calpe, p_camargo, p_carballo, p_cee, p_ceuta, p_ciudad_real, p_ciudad_rodrigo, p_ciutadella_de_menorca, p_coria, p_cornella_de_llobregat, p_cortegana, p_corvera_de_asturias, p_coslada, p_cuenca, p_daimiel, p_don_benito, p_dos_hermanas, p_ecija, p_eibar, p_el_ejido, p_el_pont_de_suert, p_el_puerto_de_santa_maria, p_el_vendrell, p_estella_lizarra, p_estepa, p_ferrol, p_figueres, p_fuengirola, p_galdakao, p_gandia, p_girona, p_golmayo, p_granollers)
+  private def chunk3: Seq[R] = Seq(p_guadalajara, p_guardo, p_herrera_del_duque, p_huarte, p_huelva, p_huesca, p_huetor_tajar, p_ibiza, p_iniesta, p_irun, p_jaraiz_de_la_vera, p_javea, p_la_orotava, p_la_palma_del_condado, p_la_seu_d_urgell, p_laredo, p_leiro, p_leon, p_linares, p_lleida, p_lorca, p_los_llanos_de_aridane, p_lucena, p_lugo, p_mairena_del_aljarafe, p_majadahonda, p_manacor, p_manresa, p_mao, p_marbella, p_marchena, p_marratxi, p_martos, p_mazarron, p_medina_de_rioseco, p_medina_del_campo, p_melilla, p_mequinenza, p_merida, p_miranda_de_ebro)
   private def chunk4: Seq[R] = Seq(p_molina_de_segura, p_mollerussa, p_monforte_de_lemos, p_motril, p_mungia, p_navalmoral_de_la_mata, p_navia, p_oliva, p_olot, p_orihuela, p_ourense, p_palafrugell, p_palencia, p_paterna, p_pedrajas_de_san_esteban, p_penaranda_de_bracamonte, p_penarroya_pueblonuevo, p_petrer, p_pilar_de_la_horadada, p_plasencia, p_ponferrada, p_pontevedra, p_pozoblanco, p_premia_de_mar, p_puerto_del_rosario, p_puertollano, p_requena, p_reus, p_ribadeo, p_ronda, p_roquetas_de_mar, p_rota, p_sabinanigo, p_sagunto, p_san_fernando, p_san_javier, p_san_martin_de_valdeiglesias, p_san_vicente_del_raspeig, p_sant_boi_de_llobregat, p_sant_cugat_del_valles)
   private def chunk5: Seq[R] = Seq(p_santa_maria_del_paramo, p_santa_marta_de_tormes, p_santiago_de_compostela, p_segovia, p_siero, p_sitges, p_solsona, p_talavera_de_la_reina, p_tarancon, p_tarragona, p_tarrega, p_telde, p_teruel, p_toledo, p_tomelloso, p_torrelodones, p_totana, p_tremp, p_tudela, p_ubrique, p_valdemorillo, p_valdemoro, p_valdepenas, p_velez_malaga, p_viana, p_vic, p_vielha, p_vila_real, p_vilafranca_del_penedes, p_vilagarcia_de_arousa, p_villablino, p_villarrobledo, p_villaviciosa_de_odon, p_villena, p_vinaros, p_viveiro, p_xinzo_de_limia, p_zamora, p_zuera, p_zumaia)
   val pages: Seq[R] = chunk0 ++ chunk1 ++ chunk2 ++ chunk3 ++ chunk4 ++ chunk5
@@ -1113,6 +1112,7 @@ private[models] object SpanishRosterData {
     ("islas-baleares", "islas-baleares-islas-baleares", "palma-de-mallorca"),
     ("jaen", "jaen-andalucia", "linares"),
     ("la-rioja", "la-rioja-la-rioja", "logrono"),
+    ("la-zubia", "la-zubia-andalucia", "armilla"),
     ("las-palmas", "las-palmas-canarias", "las-palmas-de-gran-canaria"),
     ("lerida", "lerida-cataluna", "lleida"),
     ("navarra", "navarra-navarra", "pamplona"),
