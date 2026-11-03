@@ -95,7 +95,7 @@ private[identity] object TitleRelationMeasures {
                           shapeWords: Seq[Seq[String]] = Nil, undecorated: Seq[Seq[String]]): Option[Category] = {
     val otherKeys = others.map(_.key).filter(_.nonEmpty).toSet
     // a title closing on an author's credit is read without it: the author's name is no edge a film's title decorates
-    val ow = own.map(form => creditedWork(form.text).fold(form.words)(words)).filter(_.nonEmpty)
+    val ow = own.map(_.creditedWords).filter(_.nonEmpty)
     val fw = others.map(_.words).filter(_.nonEmpty)
     // A shape one venue typo from the film's title is a segment too ("Pradhama Drishtiya Kuttakkar
     // (Malayalam)" of "Pradhama Drishtya Kuttakkar", `oneTypoApart`).

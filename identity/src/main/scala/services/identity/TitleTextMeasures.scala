@@ -192,6 +192,10 @@ private[identity] object TitleTextMeasures {
     lazy val key: String            = IdentityMeasures.key(text)
     lazy val words: Seq[String]     = IdentityMeasures.words(text)
     lazy val wordSet: Set[String]   = words.toSet
+    /** Its words without the author's credit closing it ([[IdentityMeasures.creditedWork]]: "Fallen Angels by Noël
+     *  Coward" is "fallen angels"), its [[words]] when it has none: once per title, as the credit's regex was nearly a
+     *  quarter of a resolve when every (listing, film) pair re-ran it. */
+    lazy val creditedWords: Seq[String] = IdentityMeasures.creditedWork(text).fold(words)(IdentityMeasures.words)
     lazy val yearlessWords: Seq[String] = yearlessTokens(text)
     lazy val yearless: String       = yearlessWords.mkString
     lazy val latinKey: String       = IdentityMeasures.latinKey(text)

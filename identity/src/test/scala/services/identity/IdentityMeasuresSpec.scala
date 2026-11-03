@@ -122,6 +122,30 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.creditedWork("On Screen: Fallen Angels by Noel Coward (15)") shouldBe None
   }
 
+  "a title's credited-work words" should "be its credit-stripped words, read once per title and alike from any thread" in {
+    // owner-approved 2026-11-03: `containment` once re-ran the credit's regex for every (listing, film) pair; the form now
+    // holds it. Seeded random titles over authorship words, names, brackets and accompaniments: the memo must give
+    // exactly the per-pair expression it replaced, the same on every read and from parallel first reads.
+    val vocabulary = Seq("Fallen", "Angels", "by", "von", "autorstwa", "Noël", "Coward", "Friedrich", "Dürrenmatt", "Stand",
+      "Me", "death", "Chocolate", "mit", "Klavierbegleitung", "live", "music", "Andreas", "Benz", "(15)", "-", ":", "The",
+      "Wesele", "Stanisława", "Wyspiańskiego", "Ken", "Russell's", "2026", "&", "Żyć", "tańczyć", "de", "la", "Dracula")
+    val random = new scala.util.Random(20261103L)
+    val titles = Seq.fill(4000)(Seq.fill(1 + random.nextInt(7))(vocabulary(random.nextInt(vocabulary.size))).mkString(" "))
+    def before(text: String) = IdentityMeasures.creditedWork(text).fold(IdentityMeasures.words(text))(IdentityMeasures.words)
+    titles.count(t => IdentityMeasures.creditedWork(t).isDefined) should be > 100
+    titles.foreach { t =>
+      val form = IdentityMeasures.TitleForm(t)
+      form.creditedWords shouldBe before(t)
+      form.creditedWords shouldBe before(t)
+    }
+    val shared = titles.map(IdentityMeasures.TitleForm(_))
+    val read   = java.util.concurrent.Executors.newFixedThreadPool(8)
+    try {
+      val reads = (1 to 8).map(_ => read.submit(() => shared.map(_.creditedWords)))
+      reads.map(_.get).distinct shouldBe Seq(titles.map(before))
+    } finally read.shutdown()
+  }
+
   "a bracket dating the title beside a name" should "date the film by a studio's, never by a month, an event or an edition" in {
     IdentityMeasures.titleYearOf(Seq("DRACULA (Hammer 1958) 4K Restoration - Directors Cut")) shouldBe Some(1958)
     IdentityMeasures.titleYearOf(Seq("Der Physiopath (März 2027)")) shouldBe None
