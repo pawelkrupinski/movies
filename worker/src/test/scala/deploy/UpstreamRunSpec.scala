@@ -20,7 +20,8 @@ class UpstreamRunSpec extends AnyFlatSpec with Matchers {
 
   /** Triggered by another workflow's run, and reading no run of it: what they do instead. */
   private val ReadNoRun = Map(
-    "prune-actions-caches.yml" -> "prunes superseded caches after any of its workflows; it reads nothing they produced"
+    "prune-actions-caches.yml" -> "prunes superseded caches after any of its workflows; it reads nothing they produced",
+    "precheck-build-cache.yml" -> "compiles main's newest tree after each Main run; it reads nothing Main produced"
   )
 
   private def code(file: String) = RepoFile.withoutComments(RepoFile.read(s".github/workflows/$file"))
