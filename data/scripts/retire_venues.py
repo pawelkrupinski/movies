@@ -58,14 +58,18 @@ PAGE = {
 }
 # The commands that rebuild each roster without the retired venues, in order. A
 # country with town pages rebuilds them first: its generator refuses a page that
-# still lists a venue the roster dropped.
+# still lists a venue the roster dropped. Every country ends with the city-slug
+# index, built from every pages.json: a town whose only venue retires turns from a
+# page into a redirect there (La Zubia, 2026-11-03, failed CI's generated-artefacts
+# drift check when this list stopped at the roster).
+SLUG_INDEX = ["python3", "data/scripts/generate_slug_index.py"]
 GENERATE = {
     "germany": [["python3", "data/germany/scripts/build_pages.py"],
-                ["python3", "data/germany/scripts/generate_roster.py"]],
+                ["python3", "data/germany/scripts/generate_roster.py"], SLUG_INDEX],
     "spain":   [["python3", "data/spain/scripts/build_pages.py"],
-                ["python3", "data/spain/scripts/generate_roster.py"]],
+                ["python3", "data/spain/scripts/generate_roster.py"], SLUG_INDEX],
     "us":      [["python3", "data/us/scripts/build_pages.py"],
-                ["python3", "data/us/scripts/generate_roster.py"]],
+                ["python3", "data/us/scripts/generate_roster.py"], SLUG_INDEX],
 }
 # The line in CountrySpec that pins each roster's size.
 PINNED_SIZE = {

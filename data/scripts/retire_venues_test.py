@@ -172,8 +172,15 @@ def test_shares_its_notices_with_the_worker():
     assert "dauerhaft geschlossen" in rv.NOTICES["closure"] and "this domain is for sale" in rv.NOTICES["parked"]
 
 
+def test_regenerates_the_city_slug_index_after_every_roster():
+    # Retiring La Zubia's only venue turned its slug into a redirect, which only generate_slug_index.py writes.
+    for roster, commands in rv.GENERATE.items():
+        assert commands[-1] == ["python3", "data/scripts/generate_slug_index.py"], roster
+
+
 if __name__ == "__main__":
     for name, test in list(globals().items()):
         if name.startswith("test_"):
             test()
             print(f"ok  {name}")
+
