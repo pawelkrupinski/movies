@@ -18,25 +18,29 @@ import scala.util.Try
  * UK "The Ladykillers (1955)" beside "The Ladykillers | Cinematic Breakfast" (8dfe17752), DE "BLACK WATER (2025)" beside
  * "Black Water (GLOBALE)" (5959ba7bf) -- each went and came back with the order answers arrived in.
  */
-class TitleRelationSpec extends AnyFlatSpec with Matchers with tools.CountryScope {
+abstract class TitleRelationSpec(part: Int) extends AnyFlatSpec with Matchers with tools.CountryScope {
   import TitleRelationSpec._
 
   override protected def countriesOf(testName: String): Seq[String] =
     if (testName.contains("slices/")) Seq(PopulationMonotonicitySpec.countryOf(Path.of(testName.split(' ').last))) else Nil
 
-  private val slices = PopulationMonotonicitySpec.sliceDirs
+  // this part's slices ([[SliceParts]]): the spec is TitleRelationPart<k>Spec, k = 1 to SliceParts.Count
+  private val slices = SliceParts.of(part, PopulationMonotonicitySpec.sliceDirs)
 
+  // the slices in the change's countries only: a test of another country cancels before it reads its slice's result
   private lazy val found: Map[Path, Try[Seq[String]]] = {
+    val dirs = SliceParts.inScope(slices, countriesInScope)
     val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    try slices.zip(scripts.ParallelTasks.all(slices)(dir => Try(apart(dir)))(using
+    try dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(apart(dir)))(using
       scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
     finally pool.shutdown()
   }
 
-  "The pairs a slice relates by title" should "be found: not vacuous" in {
-    val dir = slices.find(_.toString.contains("nerve-centre-londonderry-the-ladykillers")).get
-    related(dir).linked should be > 0
-  }
+  if (SliceParts.holdsWholeChecks(part))
+    "The pairs a slice relates by title" should "be found: not vacuous" in {
+      val dir = PopulationMonotonicitySpec.sliceDirs.find(_.toString.contains("nerve-centre-londonderry-the-ladykillers")).get
+      related(dir).linked should be > 0
+    }
 
   slices.foreach { dir =>
     "A real family" should s"keep, when one leaves, every pair the model joins or backs by title: ${PopulationMonotonicitySpec.relative(dir)}" in {
@@ -44,6 +48,12 @@ class TitleRelationSpec extends AnyFlatSpec with Matchers with tools.CountryScop
     }
   }
 }
+
+/** The parts of [[TitleRelationSpec]] ([[SliceParts]]): each its own class, so the identity shards spread them. */
+class TitleRelationPart1Spec extends TitleRelationSpec(1)
+class TitleRelationPart2Spec extends TitleRelationSpec(2)
+class TitleRelationPart3Spec extends TitleRelationSpec(3)
+class TitleRelationPart4Spec extends TitleRelationSpec(4)
 
 object TitleRelationSpec {
 

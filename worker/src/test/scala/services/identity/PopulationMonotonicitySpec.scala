@@ -23,38 +23,52 @@ import scala.util.Try
  * row passes, a new flip fails, and a known row whose listing no longer flips fails too until its row is removed -- the
  * list only shrinks. Stage 5 of the design (a contested family gives a bare listing no film) is what empties it.
  */
-class PopulationMonotonicitySpec extends AnyFlatSpec with Matchers with tools.CountryScope {
+abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Matchers with tools.CountryScope {
   import PopulationMonotonicitySpec._
 
   override protected def countriesOf(testName: String): Seq[String] =
     if (testName.contains("drift-slices/") || testName.contains("identity-slices/")) Seq(countryOf(Path.of(testName.split(' ').last)))
     else Nil
 
-  private val slices = sliceDirs
+  // this part's slices ([[SliceParts]]): the spec is PopulationMonotonicityPart<k>Spec, k = 1 to SliceParts.Count
+  private val slices = SliceParts.of(part, sliceDirs)
   private val known  = Known.read(KnownFile)
 
-  /** Every slice's flips, the slices side by side: each walks its own answers and shares nothing with another. */
+  // the two flipping slices the walk on several threads compares (of every part's slices), and this part's of them
+  private val flipping = known.map(_.slice).distinct.flatMap(name => sliceDirs.find(dir => relative(dir) == name)).take(2)
+  private[identity] val flippingHere = flipping.filter(slices.contains)
+
+  /** Every slice's flips, the slices side by side: each walks its own answers and shares nothing with another. The
+   *  slices in the change's countries only (a test of another country cancels before it reads its slice's result), and
+   *  the flipping ones the walk on several threads compares. */
   private lazy val found: Map[Path, Try[Seq[Row]]] = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    try slices.zip(scripts.ParallelTasks.all(slices)(dir => Try(walk(dir)))(using
+    val inScope = SliceParts.inScope(slices, countriesInScope).toSet
+    val dirs    = slices.filter(dir => inScope(dir) || flippingHere.contains(dir))
+    val pool    = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
+    try dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(walk(dir)))(using
       scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
     finally pool.shutdown()
   }
 
-  // A known row may name a slice another change brings (the #629 Keswick slices land beside this list): it is held once
-  // its slice is committed, and said meanwhile, never failed.
-  "The known population flips" should "name committed slices, or be said to wait for theirs" in {
-    val names = slices.map(relative).toSet
-    known.map(_.slice).filterNot(names).distinct.foreach(slice => info(s"known row(s) for a slice not committed yet: $slice"))
-    known.map(_.slice).filter(names) should not be empty
+  if (SliceParts.holdsWholeChecks(part)) {
+    // A known row may name a slice another change brings (the #629 Keswick slices land beside this list): it is held once
+    // its slice is committed, and said meanwhile, never failed.
+    "The known population flips" should "name committed slices, or be said to wait for theirs" in {
+      val names = sliceDirs.map(relative).toSet
+      known.map(_.slice).filterNot(names).distinct.foreach(slice => info(s"known row(s) for a slice not committed yet: $slice"))
+      known.map(_.slice).filter(names) should not be empty
+    }
+
+    "The population walk on several threads" should "have flipping slices to compare" in {
+      flipping should not be empty
+    }
   }
 
   // The corpus report walks families on every core (IdentityResolveDump): side by side, the same findings as one by one.
-  "The population walk on several threads" should "find what one thread finds, family for family" in {
-    val flipping = known.map(_.slice).distinct.flatMap(name => slices.find(dir => relative(dir) == name)).take(2)
-    flipping should not be empty
-    flipping.foreach(dir => withClue(s"${relative(dir)}: ")(walk(dir, threads = 3) shouldBe found(dir).get))
-  }
+  if (flippingHere.nonEmpty)
+    "The population walk on several threads" should s"find what one thread finds, family for family (part $part)" in {
+      flippingHere.foreach(dir => withClue(s"${relative(dir)}: ")(walk(dir, threads = 3) shouldBe found(dir).get))
+    }
 
   slices.foreach { dir =>
     "A real family" should s"take no listing back to a value it left as its listings arrive: ${relative(dir)}" in {
@@ -69,6 +83,12 @@ class PopulationMonotonicitySpec extends AnyFlatSpec with Matchers with tools.Co
     }
   }
 }
+
+/** The parts of [[PopulationMonotonicitySpec]] ([[SliceParts]]): each its own class, so the identity shards spread them. */
+class PopulationMonotonicityPart1Spec extends PopulationMonotonicitySpec(1)
+class PopulationMonotonicityPart2Spec extends PopulationMonotonicitySpec(2)
+class PopulationMonotonicityPart3Spec extends PopulationMonotonicitySpec(3)
+class PopulationMonotonicityPart4Spec extends PopulationMonotonicitySpec(4)
 
 object PopulationMonotonicitySpec {
 

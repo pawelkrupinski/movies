@@ -1,29 +1,44 @@
-# The identity specs' seconds in the landing check's identity shards, all from one run under one load (precommit-check run
-# 41389472643, 2026-11-02, 315 classes selected; ci-metrics `suite` lines), so they compare with each other: the slowest
-# fifteen of each shard. Only shard_tests.py's balance reads them: a missing or stale row moves a class to another
-# shard, never out of the check (an unknown class weighs 3).
+# The identity specs' seconds in the landing check's identity shards, from one run under one load (precommit-check run
+# 41611692664, 2026-11-03, ci-metrics `suite` lines: the slowest of each shard), so they compare with each other; the few
+# small rows that run did not list are kept from run 41389472643. The real-family specs (TitleRelation, ReadSetClosure,
+# PopulationMonotonicity: 629 / 689 / 461 s whole) run as SliceParts.Count = 4 part classes, each weighed a quarter of
+# its whole. Only shard_tests.py's balance reads them: a missing or stale row moves a class to another shard, never out
+# of the check (an unknown class weighs 3).
 # class	seconds
-services.identity.PopulationMonotonicitySpec	391
-scripts.IdentityDriftSlicesSpec	368
-scripts.IdentityDriftSlicesShard1Spec	310
-scripts.IdentityDriftSlicesShard2Spec	182
-services.identity.agreement.IncrementalWholeEquivalenceSpec	161
-scripts.IdentityDriftSlicesShard3Spec	146
-services.identity.IncrementalResolverSpec	136
-services.identity.ScopedProjectionEquivalenceSpec	133
-scripts.IdentityRefitMeasureAllSpec	129
-scripts.IdentityUnifiedFitSpec	101
-scripts.IdentityRefitCaptureReplaySpec	82
-services.identity.UnmatchedClustersRatchetSpec	77
-services.identity.IncrementalWholeDivergenceSpec	71
-services.identity.IdentitySliceCasesSpec	63
-services.identity.IncrementalResolverStoreSpec	57
-services.identity.IdentityResolverPropertiesSpec	52
-services.identity.agreement.LateInputEquivalenceSpec	40
-services.identity.NonFilmEventsFixtureSpec	38
-services.identity.LiveCorpusSpec	32
-scripts.IdentityDriftSpec	20
+scripts.IdentityDriftSlicesShard1Spec	349
+scripts.IdentityDriftSlicesSpec	340
+scripts.IdentityDriftSlicesShard3Spec	321
+scripts.IdentityDriftSlicesShard2Spec	309
+services.identity.agreement.IncrementalWholeEquivalenceSpec	208
+scripts.IdentityRefitMeasureAllSpec	186
+services.identity.ReadSetClosurePart1Spec	172
+services.identity.ReadSetClosurePart2Spec	172
+services.identity.ReadSetClosurePart3Spec	172
+services.identity.ReadSetClosurePart4Spec	172
+services.identity.TitleRelationPart1Spec	157
+services.identity.TitleRelationPart2Spec	157
+services.identity.TitleRelationPart3Spec	157
+services.identity.TitleRelationPart4Spec	157
+scripts.IdentityUnifiedFitSpec	156
+services.identity.IncrementalResolverSpec	150
+services.identity.agreement.LateInputEquivalenceSpec	143
+services.identity.ScopedProjectionEquivalenceSpec	140
+services.identity.IdentitySliceCasesSpec	134
+services.identity.IdentityResolverPropertiesSpec	131
+scripts.IdentityRefitCaptureReplaySpec	126
+services.identity.PopulationMonotonicityPart1Spec	115
+services.identity.PopulationMonotonicityPart2Spec	115
+services.identity.PopulationMonotonicityPart3Spec	115
+services.identity.PopulationMonotonicityPart4Spec	115
+services.identity.LiveCorpusSpec	96
+services.identity.UnmatchedClustersRatchetSpec	85
+services.identity.IncrementalWholeDivergenceSpec	84
+services.identity.NonFilmEventsFixtureSpec	83
+services.identity.IncrementalResolverStoreSpec	55
+scripts.IdentityDriftSpec	51
+services.identity.IdentityResolverCasesSpec	26
 services.identity.MatchedTakesLabelSpec	17
 scripts.DecorationDiscoverySpec	15
+services.identity.IncrementalResolverFamilyIdSpec	15
 services.identity.adapters.TmdbChangesSweepSpec	9
 services.identity.IdentityMeasuresSpec	6
