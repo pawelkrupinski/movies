@@ -1,13 +1,13 @@
 # White-cinema investigations
 
-> **Summary.** An append-only log, newest run first (30 runs, 2026-06-25 → 2026-10-30). Before
+> **Summary.** An append-only log, newest run first (31 runs, 2026-06-25 → 2026-11-03). Before
 > investigating a white (parsed-but-empty) or red venue, search this file for the venue's name: its last verdict
 > (`fixed` / `unfixable` / `intentionally-dormant` / `needs-human` / `recovered` / `transient`) is in the newest run
 > that names it. The [methodology](#how-to-find-the-white-list-methodology) section is current; run entries are
 > dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists, and those
 > before 2026-10-23 read prod Mongo directly, which is user-only now (runs read the local prod mirror).
 >
-> **Runs:** [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
+> **Runs:** [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
 
 Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
@@ -80,6 +80,11 @@ US ~5,000 (flicks.us). Cut them down with signals, and hand-probe only survivors
   white bar. So a fresh `G…GZZZ` at a low-cadence country can just mean "today is
   over, and the next scrape hasn't run". Read the venue's `chunked scrape run` /
   `Refreshed` lines in VictoriaLogs before calling it broken.
+- **An aggregator page that lists days NOW said nothing at our scrape** (found 2026-11-03, 8 venues across US/DE/ES).
+  Read the venue's `cinema_scrapes.lastBarren`: `noScheduleListed: true` means the planner saw the aggregator's own
+  page list no day at all (`ChunkScrapePlanner.publishEmpty`, logged as `Refreshed <venue>: 0 entries` with no
+  `chunked scrape run` line). Days appearing afterwards are publication lag, not a parser bug. Only a venue that DID
+  plan chunks and still read 0 needs its per-day payload read (e.g. SensaCine's `"movie": null` placeholder slots).
 
 ### Two ways a broken scraper hides from this sweep
 
@@ -321,6 +326,162 @@ print(JSON.stringify(out));
 A venue with a `filmwebFallback` doc reading `UNCOVERED` and `fallbackRef: null`
 has NO Filmweb cover. Before 2026-09-29 that was every venue outside the five
 big cities (see that entry). It is now only venues Filmweb itself doesn't list.
+
+---
+
+## 2026-11-03
+
+**Fifteenth all-five-country sweep**, read from the local prod mirror (all five fresh, synced 00:10 UTC). The newest
+bucket is 2026-11-03 00:00 UTC, a **Monday night**, the same weekday as 10-27, and the night after the 11-01/02
+holidays (Wszystkich Świętych, Zaduszki). The sweep is the checked-in script, unchanged.
+
+Cuts:
+- **PL:** fully probed, all 17 whites, both reds and all 5 active fallback venues.
+- **UK / DE / ES:** non-seasonal whites with an archive of 10 days or less, plus every green→white. That gives UK 19, DE 27 and ES 39.
+- **US:** non-seasonal whites with an archive of 3 days or less **and at least 3 films**, plus every green→white. That gives 21.
+
+All 106 aggregator candidates were probed, against one busy control per country (all four populated).
+
+**No code fixes this run.** No parser bug was found in any country:
+- **Red:** PL's 2 reds are upstream outages 3 h old, still inside the fallback's grace window, and Filmweb can cover both.
+- **ES red:** unchanged (Artesiete Alhsur).
+- **The aggregator suspects** were all the aggregator's own empty page at our last scrape (below).
+
+| DB | services | white | white % | red | green→white | seasonal | `thin` | fallback venues | probed |
+|---|---|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 544 | **17** | 3.1% | 2 | 2 | 0 | 84 | 2 (Filmweb), 5 active | all 17 + 2 red + 5 on the fallback |
+| `kinowo_uk` | 857 | **49** | 5.7% | 0 | 0 | 2 | 21 | 1 | 19 |
+| `kinowo_de` | 1,549 | **294** | 19.0% | 0 | 1 | 115 | 26 | 25 (kinoprogramm.com) | 27 |
+| `kinowo_us` | 5,012 | **1,135** | 22.6% | 0 | 0 | 272 | 0 | 0 | 21 |
+| `kinowo_es` | 608 | **192** | 31.6% | 1 | 9 | 25 | 10 | 0 | 39 |
+
+Compared with 10-27, also a Monday night: PL 19 → 17, UK 40 → 49, DE 297 → 294, US 1,113 → 1,135, ES 188 → 192. Each is
+within a few percent of last Monday, and no client clusters. Against Friday 10-30 everything but PL is up, which is the
+weekday sawtooth again. PL `thin` is 84, against 61 last Monday. The 72 h after a holiday Monday night hold little,
+and most small venues' next week starts on Friday 11-06 (Kino Praha, Kino Mazur, ADA all start 11-06).
+
+### New methodology finding: read `cinema_scrapes.lastBarren.noScheduleListed` before calling an aggregator venue a suspect
+
+The aggregator probe found 6 venues whose page **now** lists showtimes from today or tomorrow, though our last 2–3
+buckets were white:
+- **US:** EVO Cinemas Santa Fe (52 days), Coyote Entertainment Center, Track Cinema Auburn, City Cinemas Newport and
+  Hollywood Cinemas Martinsville.
+- **DE:** Blitz-Lichtspiele Schönberg.
+- **ES:** Cineapolis El Teler and Multicines Cáceres.
+
+VictoriaLogs (via mongo-1) shows every one of them, all through 11-02, logging only `Refreshed <venue>: 0 entries` with
+**no** `chunked scrape run`. That is `ChunkScrapePlanner.publishEmpty`: the plan found no days. Their archive doc's
+`lastBarren` says **`noScheduleListed: true`** for each, meaning the aggregator's own venue page (Flicks' day tabs,
+Webedia's `data-showtimes-dates`) listed **no day at all** at every 11-02 scrape. The programmes reappeared overnight
+(weekly feeds published on Monday). So this is LAG, not a bug. Those three facts take 3 queries per venue:
+1. `lastBarren.noScheduleListed`;
+2. no `chunked scrape run` line;
+3. the page populated now.
+
+That beats re-running the parser. The exception was **Multicines Cáceres** (ES, green→white). It *did* plan 2 chunks,
+11-03 and 11-10. SensaCine's per-day JSON answers each with one showtime whose **`"movie": null`**: the only film
+reference is the ticketing URL's `gid_entity=movie.movie._.272221`, "Vengadores: Doomsday", which is not released
+yet. `parseResult` correctly drops a movie-less result. Verdict: **aggregator gap** (SensaCine placeholder slots), not
+a parser bug.
+
+### Filmweb-fallback sweep (PL only): 5 active, none a scraper bug
+
+| Venue | Since | Last reason | Verdict |
+|---|---|---|---|
+| Wybrzeże (Kołobrzeg, MSI `bilety.rck.kolobrzeg.pl`) | 10-23 14:57 | was "primary returned no screenings"; now `TimeoutException … 8000ms adaptive budget` (the portal also answers 403 to the laptop) | **`needs-human: retire Kino Wybrzeże?`** (as 10-30). `rck.kolobrzeg.pl/repertuar-kina` still says "KINO WYBRZEŻE NIECZYNNE DO ODWOŁANIA". Filmweb 276 carries one DKF night (11-04 19:00), which the fallback serves (24/24 buckets `fallback: true`). |
+| Kino MDK Myszków (own site) | 10-27 15:38 | primary returned no screenings | **intentionally-dormant** (as 10-30). "Brak wydarzeń w tej kategorii". `fallbackRef: null`, so "active" covers nothing. |
+| Kino Warszawa (Przeworsk, MSI `bilety-kino.przeworsk.um.gov.pl`) | 11-01 01:18 | primary returned no screenings | **intentionally-dormant** (new). The November and December month pages are empty, and `Repertoire/GetShortEventsWithFilters` returns `"repertoireEvents":[]`. Its last films were on 10-31. `fallbackRef: null`. |
+| Kino Tatry (Łódź, own site) | 11-01 05:01 | primary returned no screenings | **intentionally-dormant** (as 10-27). Its last programme was the 10-31 Halloween night (Substancja / Opętanie / Głowa do wycierania). Prod fetches `kinotatrylodz.pl` in ~3 s and reads no cards. The site refuses TCP from the laptop and from mongo-1, so the page itself was not read this run. `fallbackRef: null`. |
+| Kino Ton (Żuromin, ekobilet `kinoton`) | 11-01 05:07 | primary returned no screenings | **intentionally-dormant** (new). ekobilet lists a concert (11-06) and a play (11-07), and no film. `fallbackRef: null`. |
+
+ENTER→RECOVERED since 10-30, all **transient** and all green now:
+- **Kino SCK:** 11-01 06:47 → 11-02 00:33, no screenings over the holiday.
+- **Kinoteatr Gwiazda:** 11-01 03:49 → 11-02 02:19.
+- **Kino za Rogiem Chmielno:** 10-31 20:15 → 11-02 12:29.
+- **Kozienicki DK:** circuit open, 11-01 08:04 → 11-02 09:05. Red again since 21:00, see below.
+- **Kino Domu Sztuki:** RECOVERED 11-02 09:43 and green since. That resolves 10-30's `needs-human`, because biletyna lists films again.
+- **Kultura Bełchatów:** RECOVERED 10-30 13:41. 10-30's "re-check" is done: sales loaded, and it is green.
+- **Cinema N 3D:** RECOVERED 10-30 09:09.
+
+### Poland: 17 white, 2 red
+
+| Venue | Source | Verdict |
+|---|---|---|
+| Kino Warszawa, Kino Tatry, Kino Ton, Kino MDK Myszków | see the fallback table | **intentionally-dormant** |
+| Baszta (Braniewo) | Filmweb 2352 | **intentionally-dormant** (green→white within the last day). Filmweb `/seances` (the undated whole-programme call) is `[]`, and no other source was found. |
+| Teatr im. Andreasa Gryphiusa (Głogów) | biletyna | **intentionally-dormant** (green→white). The place page has 2 TheaterEvent, 1 MusicEvent, 1 ComedyEvent and 0 `ScreeningEvent`. |
+| Kino Sokół Sokołów Podlaski | Filmweb 2073 | **intentionally-dormant** (new). Filmweb `[]`. |
+| Kino Zachęta (Kleczew) | Filmweb 2405 | **intentionally-dormant** (as 10-30). Filmweb `[]`. |
+| Kino Książka, Kino Wisła Brzeszcze | biletyna / bilety24 1539 | **intentionally-dormant** (as before). The own-site re-check for Książka is **still owed**. |
+| OK Jastrowie, Nowotomyski OK, GOK Lipka, MGOK Recz, Drawieński OK, Choszczeński DK, CKiS Sępólno | biletyna | **intentionally-dormant** (as 10-30). 0 `ScreeningEvent` each, with 1/14/3/0/0/3/3 other events. |
+
+| Venue | Host | Error class | Red since | Covered? | Verdict |
+|---|---|---|---|---|---|
+| Kino MCSW Elektrownia (Radom) | kino.mcswelektrownia.pl | 10.1 s adaptive budget | 11-02 21:00 UTC (4 buckets) | Filmweb 1910 has seances (DKF 11-02/03); it enters after the grace window | **transient (upstream)**. The root 302s in 0.2 s, but `/MSI/mvc/pl?sort=Date&date=…` hangs for 30 s from the laptop too. MSI's app is down, not us. Re-check next run. |
+| Kozienicki Dom Kultury | bilety.dkkozienice.pl | 8 s adaptive budget (connect timeout) | 11-02 21:00 UTC (4 buckets) | Filmweb 1913 has seances (Kino dla Seniora 11-03/04); it enters after the grace window | **transient (upstream)**. The host refuses TCP from the laptop too. It was out on 11-01 as well. If it flaps again next run, consider `needs-human`. |
+
+Both hosts went red in the same hour, but they are different hosts on different networks, and the other 16 failing
+hosts that hour were one-bucket blips. They are not one cause.
+
+**`thin`, one real finding: Kino Charlie (Łódź) only ever shows today.** `CharlieClient` reads the `www.charlie.pl`
+homepage, which holds the current day only. Its own doc says "there's no public multi-day route". But its MSI portal,
+`https://bilety.charlie.pl/MSI/mvc/pl?sort=Name&date=2026-11`, renders the whole month: 680 booking links, days 11-03..11-09.
+So Charlie's users never see tomorrow, the horizon cap `feedback_never_limit_scrape_horizon` forbids. It reads green
+and `thin` each night after the day's last show. **`needs-human: move Kino Charlie onto MsiClient(https://bilety.charlie.pl)`.**
+It was not done this run because Charlie is in the 08-06-2026 e2e corpus as a `www.charlie.pl` homepage capture. An
+MSI client would read no recorded month page there, so Charlie's corpus listings would vanish. That moves identity
+takes and needs a snapshot and identity-ratchet pass, not a white-venue fix. Options: re-record Charlie's corpus input
+as MSI month pages for 2026-08, or keep the homepage parser for the corpus clock only. The MSI route is
+`MsiClient`'s standard one, so the catalog change itself is one line.
+
+### UK: 49 white, 19 probed, 0 bugs
+
+All 19 are EMPTY: `no-streaming-sessions`, no `data-date` tabs. The control, Finsbury Park Picturehouse, has 72 tabs.
+Hyde Park Picture House (Leeds) reads `F G R` (fallback, green, red) in its 3 buckets, and is not on the red list yet.
+Re-check next run.
+
+### DE: 294 white, 27 probed, 0 bugs
+
+- **24 EMPTY** (`[]`), including Filmtheater am Sandwall (a `G011C` id).
+- **1 LAG:** Metropol am Postplatz, only 11-08.
+- **Blitz-Lichtspiele Schönberg:** `noScheduleListed` LAG (above). Its page now lists 11-05..11-08, one film.
+- **Kino am Campingpark Rerik:** a Cineamo entry, not Filmstarts.
+- **Magic Cinema im Europa Park:** the probe errored; not followed up.
+
+The control, CinemaxX Kiel, lists 19 days. The kinoprogramm.com fallback count is **25, flat** against 10-30. Of the 7
+fallback venues sampled, 6 have Filmstarts `[]`, so the fallback is legitimately covering an aggregator gap. Kinobar
+(A1759) lists 11-14 and 11-20 only, which is lag. Onikon, Lindenkino and Kinobar have no kinoprogramm.com row in
+`GermanSourcesData.scala`; their `fallback: true` buckets come from their other feeds.
+
+### US: 1,135 white, 21 probed, 0 bugs
+
+- **14 EMPTY**, each showing `no-streaming-sessions`.
+- **Giant Screen Theatre: LAG.** Its first day is 11-27.
+- **5 `noScheduleListed` LAG:** EVO Santa Fe, Coyote, Track Cinema Auburn, City Cinemas Newport and Hollywood Cinemas
+  Martinsville (above). Their next scrape picks the new days up.
+- **The control**, AMC Empire 25, has 77 tabs.
+
+### ES: 192 white, 39 probed, 0 bugs; 1 red, unchanged
+
+- **36 EMPTY**, including 8 of the 9 green→whites.
+- **JCA Cinemes Valls: LAG.** It lists 11-19 and 11-22 only.
+- **Cineapolis El Teler: `noScheduleListed` LAG.**
+- **Multicines Cáceres: aggregator gap.** Its slots are movie-less (above).
+- **The control**, Cines Princesa, lists 8 days.
+
+| Venue | Host | Error class | Red since | Covered? | Verdict |
+|---|---|---|---|---|---|
+| Artesiete Alhsur E0722 | www.artesiete.es | 45 s adaptive budget (the page still hangs 50 s from the laptop) | ≥10-15 (last content 19.3 d ago) | no | **`needs-human: probably closed — retire E0722`** (as 10-27, 10-30) |
+
+### Left for next run
+- **Kino Charlie:** decide the MSI move (above). It is the one horizon cap found.
+- **Elektrownia / Kozienice:** did they enter the fallback, and are they back?
+- **Wybrzeże:** retire it, or keep it on Filmweb for its DKF nights (third run asking).
+- **Artesiete Alhsur:** retire it (third run asking).
+- **Kino Sokół Strzyżów:** `bilety.dksokol.eu` still holds only "TESTOWE WYDARZENIE". The venue is green on its own site again.
+- **Own-site re-check owed:** Krobia, Harmonia, Książka.
+- **Kino Tatry:** its site refuses the laptop and mongo-1. If it stays white after a weekend, read it through the prod proxy.
+- **UK Hyde Park Picture House:** last bucket red.
 
 ---
 
