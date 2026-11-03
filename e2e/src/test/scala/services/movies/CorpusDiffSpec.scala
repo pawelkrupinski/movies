@@ -85,6 +85,18 @@ class CorpusDiffSpec extends AnyFlatSpec with Matchers {
     diff should include ("scalar tmdbId: pass0=Some(1) pass1=Some(2)")
   }
 
+  // PL convergence #798: two orders' films differed only in `tmdbProvisional` (one pass ended with the take Pending), and
+  // the FILMS axis printed its header and nothing else -- the diff named a fixed list of fields that left it out.
+  it should "name every field two films differ in, not only the ones it lists" in {
+    import models.Kinoteka
+    val a = film("Tajemnica", Kinoteka, "Tajemnica", tmdb = Some(1))
+    val b = a.copy(record = a.record.copy(tmdbProvisional = Some(true)))
+
+    val diff = CorpusDiff.records(Seq(a), Seq(b), "pass1", "pass2")
+    diff should include ("tmdbProvisional: pass1=None pass2=Some(true)")
+    diff.linesIterator.next() shouldBe "1 film(s) differ — tmdbProvisional ×1"
+  }
+
   it should "lead with which fields differ and how often, then show the first films, capped" in {
     import models.Kinoteka
     val a = (1 to 5).map(i => film(s"Film $i", Kinoteka, s"Film $i", tmdb = Some(i)))

@@ -47,13 +47,11 @@ object CorpusDiff {
     // Each differing film's field names (for the tally) and its lines.
     val differing: Seq[(Seq[String], Seq[String])] = a.filter(r => namesakes.contains(keyOf(r))).flatMap { ra =>
       val ea = ra.record; val eb = counterpart(ra, namesakes(keyOf(ra))).record
-      val scalars = Seq[(String, Any, Any)](
-        ("tmdbId", ea.tmdbId, eb.tmdbId), ("imdbId", ea.imdbId, eb.imdbId),
-        ("imdbRating", ea.imdbRating, eb.imdbRating), ("metascore", ea.metascore, eb.metascore),
-        ("rottenTomatoes", ea.rottenTomatoes, eb.rottenTomatoes), ("filmwebRating", ea.filmwebRating, eb.filmwebRating),
-        ("filmwebUrl", ea.filmwebUrl, eb.filmwebUrl), ("metacriticUrl", ea.metacriticUrl, eb.metacriticUrl),
-        ("rottenTomatoesUrl", ea.rottenTomatoesUrl, eb.rottenTomatoesUrl)
-      ).collect { case (n, x, y) if x != y => n -> s"  scalar $n: $labelA=${short(x)} $labelB=${short(y)}" }
+      // every field of the record but its per-source `data` (diffed below), by its name: a fixed list of them hid PL
+      // #798's `tmdbProvisional` (a pass ending with the take Pending), and the FILMS axis printed its header alone
+      val scalars = ea.productElementNames.zip(ea.productIterator.zip(eb.productIterator)).collect {
+        case (n, (x, y)) if x != y && n != "data" => n -> s"  scalar $n: $labelA=${short(x)} $labelB=${short(y)}"
+      }.toSeq
       val srcDiffs = (ea.data.keySet ++ eb.data.keySet).toSeq.sortBy(_.displayName).flatMap { src =>
         (ea.data.get(src), eb.data.get(src)) match {
           case (Some(da), Some(db)) if da != db =>
