@@ -3,19 +3,21 @@
 # of a real-family spec (SliceParts) that run did not list weighs its listed parts' mean, and the small rows it did not
 # list are kept from runs 41611692664 / 41389472643. Only shard_tests.py's balance reads them: a missing or stale row
 # moves a class to another shard, never out of the check (an unknown class weighs 3).
+# TitleRelationPart1-4: that run's seconds x 0.2 (2026-11-03: the spec reads each listing's title forms once per slice, not
+# three times per related pair; laptop 490 -> 91 cpu-s over every slice), Part1 + 24 s of its whole checks.
 # class	seconds
 scripts.IdentityDriftSlicesSpec	481
 scripts.IdentityDriftSlicesShard1Spec	407
 scripts.IdentityDriftSlicesShard3Spec	374
 services.identity.ReadSetClosurePart2Spec	328
-services.identity.TitleRelationPart4Spec	310
+services.identity.TitleRelationPart4Spec	62
 scripts.IdentityDriftSlicesShard2Spec	283
-services.identity.TitleRelationPart1Spec	282
-services.identity.TitleRelationPart2Spec	248
+services.identity.TitleRelationPart1Spec	80
+services.identity.TitleRelationPart2Spec	50
 services.identity.PopulationMonotonicityPart1Spec	243
 services.identity.PopulationMonotonicityPart2Spec	234
 services.identity.ReadSetClosurePart4Spec	220
-services.identity.TitleRelationPart3Spec	219
+services.identity.TitleRelationPart3Spec	44
 services.identity.PopulationMonotonicityPart3Spec	211
 services.identity.ReadSetClosurePart1Spec	210
 services.identity.IncrementalResolverSpec	157

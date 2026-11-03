@@ -42,6 +42,14 @@ abstract class TitleRelationSpec(part: Int) extends AnyFlatSpec with Matchers wi
       related(dir).linked should be > 0
     }
 
+  if (SliceParts.holdsWholeChecks(part))
+    "The pairs' retention, the forms read once" should "decide as ListingRetention.leave does, pair for pair" in {
+      val dir             = PopulationMonotonicitySpec.sliceDirs.find(_.toString.contains("werkstattkino-camouflage")).get
+      val (alike, pairs)  = keptAlike(dir)
+      pairs should be > 0
+      alike shouldBe pairs
+    }
+
   slices.foreach { dir =>
     "A real family" should s"keep, when one leaves, every pair the model joins or backs by title: ${PopulationMonotonicitySpec.relative(dir)}" in {
       withClue("pairs related by title that retention drops: ")(found(dir).get shouldBe empty)
@@ -92,11 +100,34 @@ object TitleRelationSpec {
 
   def related(dir: Path): Related = { val (l, b) = pairs(read(dir)); Related(l.size, b.size) }
 
+  /** Whether retention keeps `gone` beside `present`: [[ListingRetention.leave]] of the one pair, each listing's title forms
+   *  read ONCE per slice. The three-argument `leave` reads them again on every call -- three [[TitleRelation.of]] (the
+   *  title shapes' regexes) per pair -- and a UK slice relates up to ~320k pairs: 88% of this spec's CPU, ~1,000 s of the
+   *  identity shards' (profiled 2026-11-03). Same Showing, same forms: the very decision `leave(Seq(gone), Seq(present),
+   *  Nil, normalizer)` takes, which "the forms read once" below holds pair for pair. */
+  private def keeps(r: Read): (Listing, Listing) => Boolean = {
+    val formsOf = r.all.map(l => l.key -> TitleRelation.of(l, r.normalizer)).toMap
+    val forms   = (l: Listing) => formsOf(l.key)
+    (gone, present) =>
+      ListingRetention.leave(Seq(gone), Nil, new TitleRelation.Showing(Seq(forms(present)), Seq(forms(gone)), r.normalizer), forms).kept.nonEmpty
+  }
+
+  /** How many of the slice's related pairs `keeps` and the three-argument `leave` decide alike, of how many. */
+  def keptAlike(dir: Path): (Int, Int) = {
+    val r                = read(dir)
+    val (linked, backed) = pairs(r)
+    val kept             = keeps(r)
+    val all              = (linked.flatMap { case (a, b, _) => Seq((a, b), (b, a)) } ++ backed.map { case (a, b, _) => (a, b) }).distinctBy {
+      case (a, b) => (a.key, b.key)
+    }
+    (all.count { case (gone, present) => kept(gone, present) == ListingRetention.leave(Seq(gone), Seq(present), Nil, r.normalizer).kept.nonEmpty }, all.size)
+  }
+
   /** Every related pair whose one listing retention drops while the other is billed. */
   def apart(dir: Path): Seq[String] = {
     val r = read(dir)
     val (linked, backed) = pairs(r)
-    def kept(gone: Listing, present: Listing) = ListingRetention.leave(Seq(gone), Seq(present), Nil, r.normalizer).kept.nonEmpty
+    val kept = keeps(r)
     (linked.flatMap { case (a, b, why) => Seq((a, b, why), (b, a, why)) } ++ backed).distinctBy { case (a, b, _) => (a.key, b.key) }
       .collect { case (gone, present, why) if !kept(gone, present) =>
         s"${gone.venue} | ${gone.rawTitle} dropped beside ${present.venue} | ${present.rawTitle} ($why)" }
