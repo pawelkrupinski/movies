@@ -772,3 +772,18 @@ it left". On main, 17 bare takes in 11 slices moved (`identity-bare-moves-known.
 Titans (Dammtor, Regensburg; both Titans slices), Werkstattkino's Camouflage siblings (Cinecitta, Metropol; 4 slices),
 the Beehive's Addams, Fishguard's "Romeo and Juliet" and "Alice's Adventures in Wonderland", Woodbridge's CBeebies
 "Treasure Island" (2 slices), Nerve Centre's "The Ladykillers | Cinematic Breakfast". With the rule: 0 of 101 slices.
+
+**Measured** (run 41548110532, base 2d37f05312, head d3432fc5a3, all five countries, recording 573): right→wrong 0,
+new wrong 0. Cost, served (final) takes: 35 right films lost (PL 7: "Lalka (Dolly)" ×4, Spa Weekend, Biao ren,
+Wymarzony; DE 21: Casablanca ×3, Bad Apples ×2, the Schaubühne's "ADDAMS FAMILY" 1991 and 15 repertory titles the
+agreement stage's families had taken; UK 7: Ciné Lumière's FFFL titles, Garden's "The Cremator", Watershed's "The
+Store"). Model takes: 1,390 lost (308 judged right, 1,080 unjudged; PL "Lalka" 2026 ×149, "Rozważna i romantyczna"
+×40, DE BTS São Paulo ×27, "Unsafe" ×20, the Lord of the Rings ×16+, UK NT Live "Golden Boy" ×23, "Sense and
+Sensibility" ×18). Cures: 2 model takes (UK "Così fan tutte" ×2), 0 served. Gains: 7 (1 judged right). Population walk,
+listings flipped (main 6bae0e60e7 → head): PL 1 → 0, DE 23 → 17, UK 6 → 2, US 0 → 0, ES 1 → 1 (31 → 20). The DE
+rest is Momo ×11 and Geister ×7: facts-free listings that carry a SHARED catalogue id, so not bare by the rule's
+definition. Slices: 15 moved bare takes → 0; Titans' drift slice (seed 20) clean without its two baseline rows.
+Compared with stage 5's strict rule (~38 right films, counting rival listings), the served loss is the same size and
+the model loss far larger: a bare title with TMDB namesakes ("Lalka", "Sense and Sensibility", "Tony") is the commonest
+billing of a current release. **Not landed**: the cost is large against 2 cures and 11 flipped listings; the owner
+decides.
