@@ -28,7 +28,7 @@
 # JdkVersionParitySpec holds JAVA_VERSION's major to the JDK CI builds the stage with, and to this tag.
 # Both stages' base comes through mirror.gcr.io, Docker Hub's pull-through cache: CI's anonymous
 # pulls from Docker Hub hit its rate limit and its token endpoint's 504s (CiImageMirrorSpec).
-FROM mirror.gcr.io/library/eclipse-temurin:27-jdk@sha256:4a02e0ee713d13bb7974f4e19b7bea1746668603c3557fe09c4681784a86bb52 AS jdk
+FROM mirror.gcr.io/library/eclipse-temurin:27-jdk@sha256:473d02d477a8152a05dc42fde10b965754f1863d45e586a97763ef298965c48b AS jdk
 RUN $JAVA_HOME/bin/jlink --output /opt/jre --no-man-pages --no-header-files \
       --add-modules java.base,java.compiler,java.datatransfer,java.desktop,java.instrument,java.logging,java.management,java.management.rmi,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.se,java.security.jgss,java.security.sasl,java.smartcardio,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.accessibility,jdk.charsets,jdk.crypto.cryptoki,jdk.dynalink,jdk.httpserver,jdk.incubator.vector,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.management.jfr,jdk.naming.dns,jdk.naming.rmi,jdk.net,jdk.nio.mapmode,jdk.sctp,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.xml.dom,jdk.zipfs,jdk.jcmd,jdk.attach
 
