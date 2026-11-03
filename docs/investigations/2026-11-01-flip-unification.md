@@ -865,3 +865,33 @@ owner (2026-11-02) chose to baseline the two rows as a named exception. `scripts
 admits a baseline row only from a commit carrying `Owner-Approved: <date> <why>`, with each row's note reading
 `OWNER-APPROVED <date>: <why>`. The rows go when that rule lands. Seed 31 of the same slice flips Regensburg the same
 way, and it is NOT baselined.
+
+### 7.10 Retention as a pure function (G1 of the flip audit; no take moved)
+
+**The violation.** `ListingRetention.leave` decided, at the moment a listing left, whether a present listing related
+to it; one none related to was deleted from `identity_retained` for good. A related listing arriving later did not bring
+it back, so "A leaves, then B arrives" kept less than "B arrives, then A leaves": a kept set built by the path, which a
+whole resolve could reproduce only by reading the path-built store (the owner's R1; commits 4100740a00, 7def2dde08,
+5959ba7bf2, 9cbba4bd1a, 5313dbeba3, 87da35799f).
+
+**What landed.**
+
+- The input: `identity_retained` holds every listing that left (`ListingRetention.Departed`: its last-seen facts and
+  `departedAt`), written at the leave with no keep/drop decision. It goes only when the listing is billed again (its
+  current data wins) or when it left more than `MaxAge` (60 days) ago: a bound by the departure's age alone.
+- The function: `ListingRetention.retained(departed, present)` keeps every departed listing no present one is under
+  whose title a present listing relates to by the one `TitleRelation` (stage 2). The worker's drain recomputes it whole
+  on every drain and moves the model by the difference; the take-up, the replays (`ArchiveReplayWiring`,
+  `IdentityLiveDrift`), the drift harness and `IncrementalWholeEquivalenceSpec` read the same function. `leave` and
+  `restored` are gone.
+- Migration: a document written before (no `departedAt`) reads as `Unknown`, is dated to the take-up that reads it and
+  written back, so nothing the store held is lost.
+- The property (`IdentityModelServiceSpec`, "whatever order the leaves and arrivals come in"): three venues' leaves and
+  arrivals in all six orders over the same final inputs. On main the orders kept different listings (Multikino's "Lalka
+  (2025)" left before Kinoteka billed "Lalka": dropped for good); now every order holds the same listings and decisions,
+  each the same as a fresh take-up of the same inputs (the whole resolve).
+
+**Measure.** Run 41546582027, base 2d37f05312, full, all five countries: 0 model and 0 final takes moved. LANDABLE.
+The recordings' whole resolve already read the stored set through the same relation; what changed is the path.
+
+**Drift.** Seeds 1 and 2 in all five countries, run 41546626205: all 10 rows clean (0 divergences, 0 flips).
