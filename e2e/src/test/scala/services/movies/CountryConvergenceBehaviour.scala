@@ -640,8 +640,7 @@ abstract class CountryConvergenceBehaviour(
       // (an IMDb year can complete a yearless film's key), which the next one takes in — as the
       // pipeline boot's conclude pass completes rows its settle made. The boot settles to that steady
       // state, bounded, and says how long it took: a model that never gets there fails the claims.
-      val further = step("settleCutover")(Iterator.continually(w.projectIdentity()).take(CutoverSettleProjections)
-        .indexWhere(_.atRest))
+      val further = step("settleCutover")(settleToRest(w))
       info(s"${country.displayName}: identity projection at rest after " +
         (if (further < 0) s"MORE than ${CutoverSettleProjections + 1} projections" else s"${further + 2} projection(s)"))
       step("project")(tools.WholeReconcile(w.readModelSweeper))
@@ -667,6 +666,14 @@ abstract class CountryConvergenceBehaviour(
    *  every model take at its budget an apply (`AgreementStage.CorrectionsPerApply`, 200) — the US's 2,024 (run 563) take
    *  eleven — with the enrichment's own few on top. */
   private val CutoverSettleProjections = 16
+
+  /** Projections until one is at rest -- taken, writing nothing, nothing queued -- at most [[CutoverSettleProjections]]:
+   *  how many it took after the first, or -1 when none was. The boot settles so, and each order pass after its landing:
+   *  a pass compared one projection in compared whatever its enrichment had filed by then -- PL #798's "Tajemnica
+   *  śpiewających ptaków" served provisional in one of two passes over the same order, an answer filed after that
+   *  pass's last projection and before the other's. */
+  private def settleToRest(w: ArchiveReplayWiring): Int =
+    Iterator.continually(w.projectIdentity()).take(CutoverSettleProjections).indexWhere(_.atRest)
 
   private def settleOnce(w: ArchiveReplayWiring): Unit = {
       // A projection that would drop more than ProjectionGuard's share of the films is REFUSED, and
@@ -1087,6 +1094,9 @@ abstract class CountryConvergenceBehaviour(
       PhaseTimer.timed(scope, "replayCutover")(rescrapeCutover(w, rnd, failures))
       if (failures.nonEmpty) fail(s"$scope: ${failures.size} venue(s) failed to land: ${failures.take(5).mkString("; ")}")
     }
+    // Compared at rest, as the boot is: the corpus production converges to, never one projection's interim state.
+    if (PhaseTimer.timed(scope, "replaySettle")(settleToRest(w)) < 0)
+      fail(s"$scope: the identity projection was not at rest after ${CutoverSettleProjections + 1} projections")
     PhaseTimer.timed(scope, "replayProject")(tools.WholeReconcile(w.readModelSweeper))
     // Reload AND materialise inside the comparison's lock: this is the step that
     // allocates the corpus, so it is the step that has to be one-at-a-time.
