@@ -813,4 +813,22 @@ check compiles (identityImpact's every module's main, fixtures and tests, plus w
 saves the `sbt-target-precheck-<os>-` family, which only it writes. Every sbt job of `precommit-check.yml` restores that
 family first (an exact hit when the change touches no Scala source), the old shared family only until its first entry.
 
-**Before/after**: below, once checks have run on the new family.
+**Before/after** (CI; before = run 41604183761, a 25-path identity change; after = measurement run 41611692664, a
+comment-only change to IdentityMeasures.scala on main c5d450409c3, the only landing check running; seeded by
+precheck-build-cache run 41611023906, 3:46 on a hosted runner, entry 67 MB):
+
+| | before | after |
+|---|---|---|
+| build cache restored | `sbt-target-Linux-abc71c15…` (2026-11-02 16:55, partial) | `sbt-target-precheck-Linux-82867c69…` (minutes old, complete) |
+| identity shards: `identityImpact` (compile + selection) | 3:02 / 2:30 / 2:54 | 1:31 / 1:34 / 1:30 |
+| identity shards: tests | 11:48 / 6:02 / 11:30 | 16:00 / 9:44 / 14:46 |
+| check (rest): pre-push sbt | 445 s | 445 s |
+| wall | 19:41 | 20:51 |
+| ci-runner during the run | busy 86-95%, run queue ~40 | busy 94-97%, run queue ~60 |
+
+The compile step halved in every shard (−1.5 min a job on the critical path, about −1,000 CPU-seconds a check), but
+the wall did not move: the test phase ran ~40% slower because the host was busier. The after run was the ONLY landing
+check, yet three convergence measure legs (`ci-runner-movies-measure-1/2/4`, run 41608446529's takes-drift rows) ran
+on the same 32 threads. The landing check's wall now follows what else runs on ci-runner, not its own work: the next
+lever is CPU priority for the check slots over the measure slots (infra: cgroup `cpu.weight` per runner pool, or fewer
+measure slots while checks run), then splitting the single 400-570 s identity tests so no shard waits on one.
