@@ -832,3 +832,26 @@ check, yet three convergence measure legs (`ci-runner-movies-measure-1/2/4`, run
 on the same 32 threads. The landing check's wall now follows what else runs on ci-runner, not its own work: the next
 lever is CPU priority for the check slots over the measure slots (infra: cgroup `cpu.weight` per runner pool, or fewer
 measure slots while checks run), then splitting the single 400-570 s identity tests so no shard waits on one.
+
+## 12. A title's credited-work words, once per title (2026-11-03, owner-approved)
+
+**Why.** The shard-CPU profiles (§11's follow-up; PopMono, ReadSetClosure, drift replay) put ~20-25% of each resolver
+spec's CPU in `TitleRelationMeasures.containment`, nearly all of it the author-credit regex `creditedWork(form.text)`,
+re-run on every own form of the listing for every candidate film of every resolve.
+
+**Change.** `TitleForm.creditedWords`, a lazy val of the form's credit-stripped words (`creditedWork(text)`'s words, or
+`words` when the title closes on no credit); `containment` reads it. A pure function of the form's own text: TitleForm
+is a content-keyed case class, nothing is cached across listings, and a lazy val's first read is synchronised, so the
+parallel resolves read one value. It moves the identity-rules digest (the next deploy re-resolves stored families once);
+the owner approved that on 2026-11-03.
+
+**Proof: nothing moved.** IdentityMeasuresSpec checks the memo against the per-pair expression over 4,000 seeded random
+titles (credits in three languages, one-word names, brackets, accompaniments), twice per form and from 8 threads at
+once. Whole-corpus measure (identity-measure, all countries, run 41674758328, 185,197 listings over pl/de/uk/us/es): 0 takes moved in every country, model and final stage (LANDABLE). Drift CI
+(identity-drift-ci --against main, run 41674804919): CLEAN.
+
+**Gain.** One concurrent precheck pair (`ci-timings report --by change --per-run --critical`): before 41675753879
+(main + comments in the same files), after 41675756995. The identity shards' pre-push step: 12:15 / 11:48 / 9:53
+before vs 11:52 / 13:43 / 5:47 after (sum 33:56 vs 31:22, -8%); exec critical path 12:36 vs 8:08. The after run's jobs
+queued 26 min to the before's 15, on a busier host, so the pair is noisy. Local ReadSetClosurePart1Spec user-s (188/188
+before, 172/194 after) was taken at load average 58 on 14 cores: no signal.
