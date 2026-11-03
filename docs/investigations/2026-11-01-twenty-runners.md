@@ -745,3 +745,38 @@ Under 8 now (p50): all takes rows but US (8.6), every PL and ES row, US drift-1,
 4. **Owner action, hardware**: these rows are CPU-bound on 4 vCPU. GitHub's larger runners (Team plan, 8-core Linux
    $0.032/min) would take the order and convergence rows to roughly 60% of today (they keep 3.3-3.9 cores busy),
    and remove the 2x CPU-model spread; ci-runner is saturated, so more self-hosted slots there buy nothing.
+
+## 10. The landing check's wall time, before and after the speed-up (2026-11-03)
+
+**What changed** (all on main): `fbfbe220f4b`, `326a136e39e`, `b84fa13bdae`, `be5a6b1812f` -- blobless checkout, set-up only
+for the selected shares, identity in 3 shards, heavy rows in 2 jobs, optional jobs gated by the plan -- and `5fc05de190d`
+(identity shards only when the plan gives an identity check).
+
+**Method.** Existing `precommit-check.yml` runs only, green only, no new dispatches. Wall time = first step start to last
+step end over the run's jobs (step timestamps only; the `timings / report` job is left out). Change type: identity =
+the run has identity-check jobs; other = scripts/docs-only (no identity job). Before = runs created before `fbfbe220f4b`
+(2026-11-02 06:09Z; the API listing reaches back to 2026-11-01 18:53Z); transition = between the two commits (the
+changes landing one by one); after = from `5fc05de190d` (08:10Z). Queue wait = first job's first step minus its creation.
+
+| change type | window | n | wall p50 | wall p90 | queue wait p50 (first job) |
+|---|---|---|---|---|---|
+| identity | before | 18 | 17.1 min | 32.6 min | 0.1 min |
+| identity | transition | 13 | 26.0 min | 42.6 min | 0.6 min |
+| identity | after | 12 | 16.4 min | 21.4 min | 0.1 min |
+| other | before | 1 | 3.5 min | 3.5 min | 2.0 min |
+| other | after | 10 | 6.5 min | 9.4 min | 0.1 min |
+
+**Reading it.** For identity changes the median barely moves (17.1 to 16.4 min) but the tail shrinks by a third (p90
+32.6 to 21.4 min), and the baseline's own 17:08 p50 is reproduced. The transition window is slower (26 min p50) because
+it ran under heavy slot contention (the last job of a run waited 18 min p50 for a slot), not because of the change; the
+first job's queue wait stays near zero throughout, so wait shows up as later jobs starting late, not as a late start.
+"Other" has only one before-run, so no before/after claim for it: after, scripts/docs-only checks take 6.5 min p50.
+`ci-timings compare` was not usable for this split (it keys on branch/range, not on change type, and takes minutes per
+selection); the numbers come from the Actions jobs API directly.
+
+**What limits it now.** The 6 check slots on ci-runner. Sharding adds parallelism only while slots are free: under load
+the identity suites run about 2x slower and the extra jobs queue for slots, so the p90 follows the number of checks in
+flight, not the shard count.
+
+**Next lever.** Cut the work rather than spread it: skip identity shards whose inputs a change cannot touch (plan-level
+selection by path, as 5fc05de190d did for the whole group), or raise the slot count on ci-runner if memory allows.
