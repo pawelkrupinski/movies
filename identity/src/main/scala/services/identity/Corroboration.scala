@@ -14,7 +14,8 @@ package services.identity
  *    2026 "Hope" taken by 4 nodes' facts);
  *  - `original title`: an original title of its own (not its title restated) that is the film's;
  *  - `runtime`: a running time within [[RuntimeBand]] minutes of the film's that no namesake's fits as well — 90 minutes
- *    fit both "Escape Room 2"s, so they tell neither apart;
+ *    fit both "Escape Room 2"s, so they tell neither apart; nor does a time longer than a namesake's, a slot's adverts
+ *    and introduction ([[fits]]);
  *  - `feed id`: a TMDB-keyed feed's id linking it to `f` (`linked`: [[FamilyScope.feedLinked]], none where the resolve's
  *    films are a family's own numbers);
  *  - `season`: a stage relay's screening days placing it in the season its record names ([[Scored.seasonProduction]]);
@@ -34,6 +35,13 @@ private[identity] object Corroboration {
   /** Minutes a venue's running time may stand off the film's and still corroborate it: trailers and rounding. */
   val RuntimeBand = 10
 
+  /** Does the venue's running time fit `rival` as a namesake: within [[RuntimeBand]] of it, or LONGER — a slot runs the
+   *  film and more (adverts, trailers, an intro), so a longer one says nothing against it ([[agreement.Agreement.runsShort]]).
+   *  UK Mowlem's "Purbeck Film Festival - Hen" at 110 minutes fits Pálfi's 96-minute "Hen" as well as the 108-minute
+   *  Afrikaans one: its runtime tells neither apart (convergence #792). */
+  private def fits(rival: Scored): Boolean =
+    rival.number("runtime.delta").exists(delta => math.abs(delta) <= RuntimeBand || delta > 0)
+
   /** The facts by which `own` — the node's scoring of the film — corroborates it, `rivals` being the node's other
    *  scored candidates, by name; empty when none does. */
   def facts(node: EvidenceNode, own: Scored, rivals: Seq[Scored], linked: EvidenceNode => Option[Int]): Seq[String] = {
@@ -41,7 +49,7 @@ private[identity] object Corroboration {
     val original   = agree("originalTitle") && node.listings.exists(listing => listing.originalTitle.exists(original =>
       IdentityMeasures.key(original) != IdentityMeasures.key(listing.title) && IdentityMeasures.key(original) != IdentityMeasures.key(listing.rawTitle)))
     def inBand(scored: Scored) = IdentityMeasures.runtimeGap(scored.measures).exists(_ <= RuntimeBand)
-    val runtime    = inBand(own) && !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && inBand(rival))
+    val runtime    = inBand(own) && !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && fits(rival))
     val feedId     = linked(node).contains(own.candidate.tmdbId)
     val season     = own.seasonProduction || own.number("season.delta").contains(0.0)
     def castNamed(scored: Scored) = scored.candidate.film.cast.exists(cast => node.listings.exists(listing =>
