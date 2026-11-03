@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{BroadwayCinemaNottingham, DundeeContemporaryArtsDCA, GalaCinemaDurham, HydeParkPictureHouse, InstituteOfContemporaryArts, OldMarketHallShrewsbury, TauntonBrewhouse}
+import models.{BroadwayCinemaNottingham, DundeeContemporaryArtsDCA, GalaCinemaDurham, HydeParkPictureHouse, InstituteOfContemporaryArts, LighthousePoole, OldMarketHallShrewsbury, TauntonBrewhouse, TheDukesLancaster}
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.uk.SpektrixClient
 
@@ -161,4 +161,71 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   private def objects(json: String): Seq[JsObject] = Json.parse(json).as[Seq[JsObject]]
+
+  // 2026-11-03 captures of `lighthousepoole` (`duration: 0` on every event, the film's running time as text in
+  // `attribute_RunningTime`) and `dukeslancaster` (`attribute_AgeCertificate`).
+  private val november = LocalDate.of(2026, 11, 3)
+  private lazy val lighthouse =
+    new SpektrixClient(new FakeHttpFetch("spektrix"), "lighthousepoole", LighthousePoole, november).fetch()
+  private def lighthouseFilm(prefix: String) = lighthouse.find(_.movie.title.startsWith(prefix)).value
+
+  "SpektrixClient.fetch (Lighthouse Poole)" should "read the film's running time off the text the box office states it in" in {
+    lighthouseFilm("Anna & The Apocalypse").movie.runtimeMinutes shouldBe Some(93)  // "1h 33m (+short film, Q+A)"
+    lighthouseFilm("Fjord").movie.runtimeMinutes shouldBe Some(146)                 // "2h 26m (plus ads and trailers)"
+    lighthouseFilm("Dementia Friendly: White Christmas").movie.runtimeMinutes shouldBe Some(120) // "2h (plus 15m interval)"
+    lighthouse.count(_.movie.runtimeMinutes.isDefined) should be > 20
+  }
+
+  it should "state no running time where the figure includes an interval or is not settled" in {
+    lighthouseFilm("NT Live: Golden Boy").movie.runtimeMinutes shouldBe None    // "3h TBC (no ads or trailers)"
+    lighthouseFilm("RBO: Romeo & Juliet").movie.runtimeMinutes shouldBe None    // "2h 50m (… incl two intervals)"
+  }
+
+  "SpektrixClient.fetch (Broadway)" should "take the film's own duration over the slot it is booked into" in {
+    // Broadway's `duration` is the slot, ads and trailers included: Die Hard (132 min) is booked for 152.
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "broadwaynottingham", BroadwayCinemaNottingham, today)
+      .fetch().map(cm => cm.movie.title -> cm).toMap
+    films("Die Hard").movie.runtimeMinutes shouldBe Some(132)
+    films("Elf").movie.runtimeMinutes shouldBe Some(97)
+    // "99min / 87", a double bill's two films, states no one runtime: the slot stands, as before.
+    films("Double-bill: Candyman (1992 & 2021)").movie.runtimeMinutes shouldBe Some(236)
+  }
+
+  "SpektrixClient.fetch (Leeds Heritage)" should "read the original title a box office files" in {
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "leedsheritagetheatres", HydeParkPictureHouse,
+      LocalDate.of(2026, 10, 16), Some("Hyde Park Picture House")).fetch().map(cm => cm.movie.title -> cm).toMap
+    films("The Secret World of Arrietty").movie.originalTitle shouldBe Some("Karigurashi no Arietti")
+    films("Case 137").movie.originalTitle shouldBe Some("Ddossier 137")
+    films("Blue Velvet").movie.originalTitle shouldBe None
+  }
+
+  "SpektrixClient.fetch (The Dukes)" should "read the certificate off `attribute_AgeCertificate`" in {
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "dukeslancaster", TheDukesLancaster, november)
+      .fetch().map(cm => cm.movie.title -> cm).toMap
+    films("Fjord (15)").ageRating shouldBe Some("15")
+    films("Wildwood (12A)").ageRating shouldBe Some("12A")
+  }
+
+  "SpektrixClient.parse" should "read the production country a box office files as `attribute_Country`" in {
+    // MAC Birmingham files `attribute_Country: "Switzerland"`.
+    val events    = Json.arr(Json.obj("id" -> "1", "name" -> "A Talent For Murder", "duration" -> 121,
+      "attribute_Category" -> "Film", "attribute_Country" -> "Switzerland"))
+    val instances = Json.arr(Json.obj("start" -> "2026-11-04T18:00:00", "event" -> Json.obj("id" -> "1")))
+    SpektrixClient.parse(events, instances, LighthousePoole, november).map(_.movie.countries) shouldBe Seq(Seq("Switzerland"))
+  }
+
+  "SpektrixClient.runtimeIn" should "read the minutes a running-time attribute states for the film alone" in {
+    Seq("106" -> Some(106), "140 minutes" -> Some(140), "1h" -> Some(60), "1h 33m" -> Some(93),
+      "1hr 50 mins" -> Some(110), "2hrs 15mins (plus ads and trailers)" -> Some(135),
+      "1h 39m (no ads and trailers, plus Q&A)" -> Some(99)).foreach { case (text, minutes) =>
+      withClue(text)(SpektrixClient.runtimeIn(text) shouldBe minutes)
+    }
+  }
+
+  it should "read nothing from a figure that is not the film's alone, not settled or not a time" in {
+    Seq("2h (including interval)", "1hr 31mins (incl interval)", "3h TBC (no ads or trailers)", "TBC", "0",
+      "99min / 87", "approx 2h", "2h (approx)", "", "Ninety minutes", "1h 30m (a) (b)").foreach { text =>
+      withClue(text)(SpektrixClient.runtimeIn(text) shouldBe None)
+    }
+  }
 }

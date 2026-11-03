@@ -49,9 +49,20 @@ import scala.util.matching.Regex
  * `venue` names the building as the client's own venue/site/location attribute spells
  * it, on the performance or on its event; `None` keeps every building.
  *
- * Credits, year, countries and certificate are read when the client keeps them in attributes
- * named so (`attribute_DirectedBy`, `attribute_FilmDirector`, `attribute_YearOfRelease`,
- * `attribute_CountryOfOrigin`, `attribute_Certificate`, …).
+ * Credits, year, countries, certificate, original title and running time are read when the client
+ * keeps them in attributes named so (`attribute_DirectedBy`, `attribute_FilmDirector`,
+ * `attribute_YearOfRelease`, `attribute_CountryOfOrigin`, `attribute_Country`, `attribute_Certificate`,
+ * `attribute_AgeCertificate`, `attribute_OriginalLanguageTitle`, `attribute_RunningTime`,
+ * `attribute_FilmDuration`, …).
+ *
+ * RUNNING TIME. The event's own `duration` is the performance's slot, not the film: Broadway
+ * books Die Hard (132 min) for `duration: 152` with `attribute_FilmDuration: "132"`, the
+ * twenty minutes of ads and trailers added on; Lighthouse Poole sets `duration: 0` and states
+ * the film as text, `attribute_RunningTime: "1h 33m (plus ads and trailers)"`. So the film's
+ * running-time attribute wins where it reads as the film's alone, and `duration` is the
+ * fallback. A figure that includes an interval ("1hr 31mins (incl interval)"), is not settled
+ * ("3h TBC") or does not read as a time at all states nothing: the slot `duration`, or no
+ * runtime, stands rather than a guess.
  *
  * @param client the Spektrix client name, the first path segment of its API.
  */
@@ -110,9 +121,23 @@ object SpektrixClient {
 
   private val DirectorAttribute = """(?i)attribute_(film)?(director|directedby)""".r
   private val CastAttribute     = """(?i)attribute_(film)?cast(details)?""".r
-  private val CountryAttribute  = """(?i)attribute_(film)?countryoforigin""".r
+  private val CountryAttribute  = """(?i)attribute_(film)?country(oforigin)?""".r
   private val YearAttribute     = """(?i)attribute_(film)?year(ofproduction|ofrelease)?""".r
-  private val RatingAttribute   = """(?i)attribute_(film)?(certificate|certification|rating|agerating|certificateageguidance)""".r
+  private val RatingAttribute   =
+    """(?i)attribute_(film)?(certificate|certification|classification|rating|agerating|agecertificate|certificateageguidance)""".r
+  private val OriginalTitleAttribute = """(?i)attribute_(film)?original(language)?title""".r
+  /** The film's own running time: `attribute_RunningTime` (Lighthouse Poole), `attribute_FilmDuration` (Broadway,
+   *  the Hippodrome), `attribute_Duration` (the ICA). Not Campus West's `attribute_ApproxRunningMinutes`, which is
+   *  the slot again and says it is approximate. */
+  private val RuntimeAttribute  = """(?i)attribute_(film)?(runningtime|duration)""".r
+
+  /** A running time as a box office writes it: "106", "140 minutes", "2h", "1h 33m", "1hr 50 mins", then at most
+   *  one parenthesised note ("(plus ads and trailers)", "(+short film, Q+A)"). */
+  private val RunningTimeText =
+    """(?i)\s*(?:(\d{1,2})\s*(?:h|hrs?|hours?)\.?(?:\s*(\d{1,2})\s*(?:m|mins?|minutes?)\.?)?|(\d{1,3})\s*(?:m|mins?|minutes?)?\.?)\s*(?:\(([^()]*)\))?\s*""".r
+
+  /** A note saying the figure is not the film's alone, or not settled: "(incl interval)", "(including interval)". */
+  private val NotTheFilmAlone = """(?i)\b(incl\w*|tbc|tba|approx\w*)\b""".r
   private val Bbfc              = s"""(?i)(?<!\\w)${BbfcCertificate.alternation(BbfcCertificate.Public)}(?!\\w)""".r
 
   /** What a box office files under its films that is not a screening: a bundle of
@@ -148,9 +173,12 @@ object SpektrixClient {
         movie = Movie(
           title          = title,
           rawTitle       = jsonText(event \ "name").filterNot(_ == title),
-          runtimeMinutes = (event \ "duration").asOpt[Int].filter(_ > 0),
+          runtimeMinutes = attribute(event, RuntimeAttribute).flatMap(runtimeIn)
+                             .orElse((event \ "duration").asOpt[Int].filter(_ > 0)),
           releaseYear    = attribute(event, YearAttribute).flatMap(ScraperParse.yearIn),
-          countries      = attribute(event, CountryAttribute).toSeq.flatMap(ScraperParse.listItems)
+          countries      = attribute(event, CountryAttribute).toSeq.flatMap(ScraperParse.listItems),
+          originalTitle  = attribute(event, OriginalTitleAttribute).map(_.collapsedSpaces)
+                             .filterNot(_.equalsIgnoreCase(title))
         ),
         cinema      = cinema,
         posterUrl   = jsonText(event \ "imageUrl"),
@@ -217,6 +245,16 @@ object SpektrixClient {
 
   private def attribute(o: JsObject, key: Regex): Option[String] =
     o.fields.collectFirst { case (key(_*), JsString(value)) if value.trim.nonEmpty => value.trim }
+
+  /** The minutes a running-time attribute states for the film alone; None when it states anything else (see the
+   *  class doc). */
+  def runtimeIn(text: String): Option[Int] = text match {
+    case RunningTimeText(hours, minutes, bare, note) if !Option(note).exists(NotTheFilmAlone.findFirstIn(_).isDefined) =>
+      Option(bare).map(_.toInt)
+        .orElse(Option(hours).map(h => h.toInt * 60 + Option(minutes).fold(0)(_.toInt)))
+        .filter(m => m > 0 && m <= 600)
+    case _ => None
+  }
 
   private def names(value: Option[String]): Seq[String] =
     value.toSeq.flatMap(_.split("[,;]")).map(_.trim).filter(_.nonEmpty)
