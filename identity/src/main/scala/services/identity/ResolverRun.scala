@@ -127,10 +127,10 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     private val sharedCatalogue: Set[String] =
       members.flatMap(node => node.listings.flatMap(listing => catalogueKeysOf(node, listing).map(_ -> listing.key))).groupMap(_._1)(_._2)
         .collect { case (key, keys) if keys.distinct.sizeIs > 1 => key }.toSet
-    // a listing of a node publishing no fact, with no cast, pin, feed link or shared catalogue id of its own
+    // a listing of a node publishing no fact, with no cast, pin (of a film, or to another listing), feed link or shared catalogue id of its own
     private def bareOf(node: EvidenceNode): Seq[Listing] =
       if (node.evidence.measured.publishesAFact || families.pinnedFilm.contains(node.id)) Nil
-      else node.listings.filter(listing => listing.listedCast.isEmpty && SourceReliability.tmdbLinked(listing).isEmpty &&
+      else node.listings.filter(listing => listing.listedCast.isEmpty && SourceReliability.tmdbLinked(listing).isEmpty && !scoring.pins.pinnedTogether(listing.key) &&
         !catalogueKeysOf(node, listing).exists(sharedCatalogue))
     /** Each node holding bare listings: those listings, the node's own scope read for them alone, and their film. */
     private val bare: Map[String, (Set[ListingKey], FamilyScope, Option[Int])] =
