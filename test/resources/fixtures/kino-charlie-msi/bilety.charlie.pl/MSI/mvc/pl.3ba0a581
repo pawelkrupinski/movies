@@ -1,0 +1,1435 @@
+
+
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="version" content="1.8.74.0 | 29.10.2026 23:33:46">
+    <meta name="format-detection" content="telephone=no">
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+             <link rel="stylesheet" href="/MSI/Themes/light/Styles/global.min.css?v=102926111857"/>
+
+             <link rel="stylesheet" href="/MSI/Themes/light/Vendors/Styles/font-awesome.min.css?v=100526085758"/>
+         <link rel="stylesheet" href="/MSI/Themes/light/Vendors/Styles/jquery.fancybox.min.css?v=100526085758"/>
+
+            <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery-3.7.1.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/slick.min.js?v=100526085758"></script>
+
+             <script type="text/javascript" src="/MSI/Themes/light/Vendors/Scripts/handlebars.min-v4.7.7.js?v=100526085758"></script>
+         <script type="text/javascript" src="/MSI/Themes/light/Vendors/Scripts/jquery.fancybox.min.js?v=100526085758"></script>
+
+    <title>Lista wydarzeń: - Kino-Galeria Charlie</title>
+
+    <script>
+        var hostUrl = '/MSI/';
+        var currentLanguage = 'pl';
+        var newTabAnnouncement = 'otwiera sie w nowej karcie';
+    </script>
+    
+</head>
+
+<body>
+    
+    <div class="skip-links">
+        <a href="#main-content" class="show-on-focus js-skip-link">Przejdź do gł&#243;wnej treści</a>
+    </div>
+
+            <div id="preloader" class="preloader"></div>
+
+
+        <!-- Fixed navbar -->
+    <header class="navigation-bar" aria-label="Menu">
+        <div class="position-fixed">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-8 col-md-6 ">
+                        <a href="/MSI/" class="navigation-bar-logo">
+                            <img src="/MSI/Themes/light/images/logo.png" alt="Kino-Galeria Charlie" title="Kino-Galeria Charlie" class="navigation-bar-logo__image">
+                        </a>
+                    </div>
+                    <div class="col-4 col-md-6  navigation-bar-info justify-content-end">
+                        <app-header-menu class="order-12 order-lg-0">
+                            <nav class="navigation-bar-menu d-none d-lg-block" aria-label="Menu">
+                                <ul>
+                                                                                                                                            </ul>
+                            </nav>
+                            <button class="navigation-bar-menu__button js-mobile-menu-open d-block d-lg-none" type="button" aria-label="Menu">
+                                <svg-icon name="menu"></svg-icon>
+                            </button>
+                        </app-header-menu>
+                            <a href="/MSI/mvc/pl/Customer/Login?partnerMode=False" id="loginLink" class="navigation-bar-login" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zaloguj" aria-label="Zaloguj">
+        <span class="user fas fa-user-alt"></span>
+    </a>
+                        <a href="/MSI/ShoppingCart.aspx" class="navigation-bar-shop" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Wyświetl koszyk" aria-label="Wyświetl koszyk" aria-haspopup="true" aria-expanded="false" aria-controls="shoppingCartPreview">
+                            <div class="navigation-bar-shop__basket">
+                            </div>
+                                <span class="cart fas fa-shopping-cart"></span>
+                        </a>
+                        <div class="shopping_cart_preview" id="shoppingCartPreview">
+                        </div>
+                        <div class="navigation-bar-switches d-md-flex d-none">
+                            <button class="js-change-fontsize" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień rozmiar czcionki" aria-label="Zmień rozmiar czcionki">
+                                <span class="fontSize fas fa-text-height"></span>
+                            </button>
+                            <button class="js-change-contrast" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień kontrast" aria-label="Zmień kontrast">
+                                <span class="contrast fas fa-adjust"></span>
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    <menu class="navigation-mobile js-mobile-menu d-flex d-lg-none m-0 p-5 align-items-center">
+        <button class="position-absolute navigation-mobile--close js-mobile-menu-close" type="button" aria-label="Zamknij Menu">
+            <svg-icon name="filterXClose"></svg-icon>
+        </button>
+        <nav class="navigation-mobile-menu" aria-label="Menu">
+            <ul>
+                    <li class="navigation-bar-menu__element navigation-bar-menu__element--active">
+                        <a href="/MSI/">
+                            <span>
+                                Zaplanuj wizytę
+                            </span>
+                        </a>
+                    </li>
+                
+
+            </ul>
+        </nav>
+        <div class="navigation-bar-switches mt-3 d-md-none d-flex row align-items-center justify-content-center text-center">
+            <div class="col-3 col-sm-2">
+                <button class="js-change-fontsize-mobile" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień rozmiar czcionki" aria-label="Zmień rozmiar czcionki">
+                    <span class="fontSize fas fa-text-height"></span>
+                </button>
+            </div>
+            <div class="col-3 col-sm-2">
+                <button class="js-change-contrast-mobile" type="button" data-toggle="tooltip" data-tooltip-trigger="hover focus" title="Zmień kontrast" aria-label="Zmień kontrast">
+                    <span class="contrast fas fa-adjust"></span>
+                </button>
+            </div>
+        </div>
+    </menu>
+    <div class="shopping-cart-expired-modal modal fade" id="shoppingCartExpiredModal" data-backdrop="static" data-keyboard="false" tabindex="-1" aria-labelledby="shoppingCartExpiredModalTitle" aria-describedby="shoppingCartExpiredModalBody" aria-hidden="true" hidden>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title" id="shoppingCartExpiredModalTitle">
+                        <span class="fa fa-warning"></span>Zakończył się czas koszyka!
+                    </div>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij" title="Zamknij">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div id="shoppingCartExpiredModalBody" class="modal-body">
+                    Czas na zrealizowanie zam&#243;wienia niestety dobiegł końca. Prosimy o ponowne wybranie bilet&#243;w i dodanie ich do koszyka.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="btnCloseModalCart" class="btn btn-warning" data-dismiss="modal">Zamknij</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        function closeShoppingCart() {
+            $(function () {
+                $.ajax({
+                    type: "POST",
+                    url: "../Ajax.aspx/CloseShoppingCart",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+                        var names = response.d;
+                        window.location.reload();
+                    },
+                    error: function (response) {
+                        window.location.reload();
+                    }
+                });
+            });
+        };
+
+    </script>
+
+
+    <div id="body">
+
+        <input type="hidden" id="randomWindowName" value="d13c026d55db40d990d457546fb2213e" />
+        <input type="hidden" id="isNewSessionWindowName" value="False" />
+        <input type="hidden" id="sessionWindowName" value="4aca55690be74615841634424f3df7c7" />
+        <input type="hidden" id="absoluteHomeUrl" value="/MSI/" />
+
+        <main id="main-content">
+            <div class="row">
+
+
+            </div>
+
+            
+
+
+
+<div class="row">
+    <div class="col-sm-12 no-gutter padding-0">
+        
+    <div class="movies-filters">
+        <div class="container movies-filters__bar">
+            <div class="row align-items-stretch">
+                <div class="col-xl-9 col-lg-9 col-9 col-md-9 js-slider-dates">
+                    <div class="container movies-filters__dates">
+                        <ul class="movies-filters__dates__list row flex-nowrap w-100">
+                                    <li class="js-filters-dates__21.11.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-11-21&amp;datestart=0" class="" aria-label="sobota 21 listopada 2026" title="sobota 21 listopada 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">sobota</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">21</span>
+                                                    <sup class="sup " style="top: 0 !important">lis</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__22.11.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-11-22&amp;datestart=0" class="" aria-label="niedziela 22 listopada 2026" title="niedziela 22 listopada 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">niedziela</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">22</span>
+                                                    <sup class="sup " style="top: 0 !important">lis</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__26.11.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-11-26&amp;datestart=0" class="" aria-label="czwartek 26 listopada 2026" title="czwartek 26 listopada 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">czwartek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">26</span>
+                                                    <sup class="sup " style="top: 0 !important">lis</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__27.11.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-11-27&amp;datestart=0" class="" aria-label="piątek 27 listopada 2026" title="piątek 27 listopada 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">piątek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">27</span>
+                                                    <sup class="sup " style="top: 0 !important">lis</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__28.11.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-11-28&amp;datestart=0" class="" aria-label="sobota 28 listopada 2026" title="sobota 28 listopada 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">sobota</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">28</span>
+                                                    <sup class="sup " style="top: 0 !important">lis</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__29.11.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-11-29&amp;datestart=0" class="" aria-label="niedziela 29 listopada 2026" title="niedziela 29 listopada 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">niedziela</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">29</span>
+                                                    <sup class="sup " style="top: 0 !important">lis</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                                    <li class="js-filters-dates__4.12.2026 00:00:00 movies-filters__dates__list__date">
+                                        <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-12-04&amp;datestart=0" class="" aria-label="piątek 4 grudnia 2026" title="piątek 4 grudnia 2026">
+                                                <div aria-hidden="true">
+                                                    <span class="d-none d-lg-inline daynumbertop ">piątek</span>
+                                                </div>
+                                                <div aria-hidden="true">
+                                                    <span class="daynumber ">04</span>
+                                                    <sup class="sup " style="top: 0 !important">gru</sup>
+                                                </div>
+                                            <div aria-hidden="true">
+                                                <span class="d-none d-lg-inline yearnumber ">2026</span>
+                                            </div>
+                                        </a>
+                                    </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-3 col-3 col-md-3">
+                    <div class="d-flex align-items-stretch justify-content-end movies-filters__buttons">
+                            <div class="">
+                                <div class="movies-filters__calendar" id="datePickerMovieFilters">
+                                    <button class="movies-filters__button justify-content-start justify-content-md-center pr-lg-3 js-calendar-button" type="button" data-target="#datePickerMovieFilters" data-toggle="datetimepicker" aria-haspopup="dialog" aria-expanded="false">
+                                        <span class="fas fa-calendar-alt mr-1"></span>
+                                        <span class="d-none d-lg-block movies-filters__button__label">KALENDARZ</span>
+                                    </button>
+                                </div>
+                            </div>
+                        <div class="movies-filters__filters">
+                            <button class="movies-filters__button justify-content-start justify-content-md-center pr-lg-3 js-filters-button" type="button" aria-expanded="false" aria-controls="repertoireFiltersPanel">
+                                <span class="fas fa-filter mr-1"></span>
+                                <span class="d-none d-lg-block">Filtry</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="container-max-width">
+        <div class="position-relative">
+<div class="movies-filters--opened position-absolute w-100">
+    <div class="row">
+        <div class="container">
+            <div class="col-12 position-relative flex-wrap js-filters d-none" id="repertoireFiltersPanel">
+                <button class="position-absolute movies-filters--close offset-11 mt-3 mt-md-5 js-filters-close" type="button" aria-label="Zamknij Filtry" aria-controls="repertoireFiltersPanel" style="z-index:300;">
+                    <svg-icon name="filterXClose"></svg-icon>
+                </button>
+                    <div class="p-3 col-12 col-md-6 col-lg-4 col-xl-3 p-md-5  categories filter-container">
+                        <p><strong> Darmowe/Płatne:</strong></p>
+                        <ul>
+                                <li>
+                                    <button class="js-filter row w-100 js-filter-selection"  filter-type="free-event-filter" filter-value="1" filter-name="Darmowe">
+                                            <svg-icon name="filterDot" class=""></svg-icon>Darmowe
+                                    </button>
+                                </li>
+                                <li>
+                                    <button class="js-filter row w-100 js-filter-selection"  filter-type="free-event-filter" filter-value="0" filter-name="Płatne">
+                                            <svg-icon name="filterDot" class=""></svg-icon>Płatne
+                                    </button>
+                                </li>
+                        </ul>
+                    </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong>Lokalizacja: </strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=localization-group-filter filter-type="localization-group-filter" filter-value="1" filter-name="Kino Sp&#243;jna">
+                                        <svg-icon name="filterDot" class=""></svg-icon>
+                                        Kino Sp&#243;jna
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong> Podkategoria: </strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="5" filter-name="dramat">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    dramat
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="21" filter-name="animacja">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    animacja
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="163" filter-name="animacja, familijny, fantasy">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    animacja, familijny, fantasy
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="17" filter-name="komedia">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    komedia
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="9" filter-name="dokumentalny">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    dokumentalny
+                                </button>
+                            </li>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=event-details-type-filter filter-type="event-details-type-filter" filter-value="129" filter-name="komedia, familijny">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    komedia, familijny
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+                <div class="p-3 p-md-5 col-12 col-md-6 col-lg-4 col-xl-3 categories filter-container">
+
+                    <p><strong>Odbiorca</strong></p>
+                    <ul>
+                            <li>
+                                <button class="js-filter row w-100 js-filter-selection" category-filter=age-group-filter filter-type="age-group-filter" filter-value="10" filter-name="bez ograniczeń">
+                                    <svg-icon name="filterDot" class=""></svg-icon>
+                                    bez ograniczeń
+                                </button>
+                            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        </div>
+        <div class="movies-selected">
+            <div class="container">
+                <div class="row">
+                    <div class="col-12 movies-selected__filters">
+                        <ul class="js-filters-selected">
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <template id="js-filters-selected-template">
+            <li>
+                <button>
+                    <span>{{name}}</span>
+                    <svg-icon name="filterX"></svg-icon>
+                </button>
+            </li>
+        </template>
+
+    </div>
+
+    </div>
+</div>
+<div class="repertoire main-container container-max-width">
+    <div class="wrapper">
+        <div class="container" style="display:flex; flex-direction:column;">
+            <h1 class="sr-only">Lista wydarzeń:</h1>
+            <div class="float-right">
+                
+        <div class="dropdown sorting-buttons float-right btn">
+            <button class="btn dropdown-toggle event-sort-btn" type="button" id="dropdownSort" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-exchange-alt fa-rotate-90">  </i>
+                Sortuj
+            </button>
+
+            <div class="dropdown-menu dropdown-menu-sort" aria-labelledby="dropdownSort">
+                    <a href="?sort=Name&amp;date=2026-11-21&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Tytuły rosnąco
+                    </a>
+                    <a href="?sort=NameDesc&amp;date=2026-11-21&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Tytuły malejąco
+                    </a>
+                    <a href="?sort=Date&amp;date=2026-11-21&amp;datestart=0"
+                       class="dropdown-item"
+                       style="font-size: 1rem">
+                        Data/godzina
+                    </a>
+            </div>
+        </div>
+
+            </div>
+
+
+
+    <div class="col-10">
+        <div class="row">
+            <div class="col-10">
+                <h2 class="movie-section">grudzień 2026</h2>
+            </div>
+        </div>
+    </div>
+
+<div class="movie-list">
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('3062')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia 12 obraz&#243;w zniewolenia" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia 12 obraz&#243;w zniewolenia" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=3103&mode=thumb" alt="12 obraz&#243;w zniewolenia">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="12 obraz&#243;w zniewolenia">12 obraz&#243;w zniewolenia</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 83 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('3062')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia 12 obraz&#243;w zniewolenia" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia 12 obraz&#243;w zniewolenia" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3062)" event-filter="96248" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96248&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup " data-event="96248" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;12 obraz&amp;#243;w zniewolenia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="12 obraz&#243;w zniewolenia, termin: piątek 11 grudnia 2026, 19:00. Kliknij aby kupić bilet">
+11 gru 19:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3062">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3062)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96248&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup " data-event="96248" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;12 obraz&amp;#243;w zniewolenia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet" aria-label="12 obraz&#243;w zniewolenia, termin: piątek 11 grudnia 2026, 19:00. Kliknij aby kupić bilet">
+11 gru 19:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3062">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('3069')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Asteriks i Obeliks: Kr&#243;lestwo Nubii" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Asteriks i Obeliks: Kr&#243;lestwo Nubii" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=3115&mode=thumb" alt="Asteriks i Obeliks: Kr&#243;lestwo Nubii">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Asteriks i Obeliks: Kr&#243;lestwo Nubii">Asteriks i Obeliks: Kr&#243;lestwo Nubii</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 86 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('3069')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Asteriks i Obeliks: Kr&#243;lestwo Nubii" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Asteriks i Obeliks: Kr&#243;lestwo Nubii" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3069)" event-filter="97028" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97028&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97028" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Asteriks i Obeliks: Kr&amp;#243;lestwo Nubii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Asteriks i Obeliks: Kr&#243;lestwo Nubii, termin: sobota 5 grudnia 2026, 14:25. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 14:25    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3069)" event-filter="97029" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97029&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97029" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Asteriks i Obeliks: Kr&amp;#243;lestwo Nubii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Asteriks i Obeliks: Kr&#243;lestwo Nubii, termin: niedziela 6 grudnia 2026, 14:20. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 14:20    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3069)" event-filter="97030" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97030&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97030" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Asteriks i Obeliks: Kr&amp;#243;lestwo Nubii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Asteriks i Obeliks: Kr&#243;lestwo Nubii, termin: niedziela 13 grudnia 2026, 14:20. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 14:20    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3069">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3069)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97028&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97028" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Asteriks i Obeliks: Kr&amp;#243;lestwo Nubii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Asteriks i Obeliks: Kr&#243;lestwo Nubii, termin: sobota 5 grudnia 2026, 14:25. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 14:25    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3069)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97029&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97029" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Asteriks i Obeliks: Kr&amp;#243;lestwo Nubii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Asteriks i Obeliks: Kr&#243;lestwo Nubii, termin: niedziela 6 grudnia 2026, 14:20. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 14:20    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3069)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97030&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97030" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Asteriks i Obeliks: Kr&amp;#243;lestwo Nubii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Asteriks i Obeliks: Kr&#243;lestwo Nubii, termin: niedziela 13 grudnia 2026, 14:20. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 14:20    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3069">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2849')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Chmurka i Burza" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Chmurka i Burza" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=3112&mode=thumb" alt="Chmurka i Burza">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Chmurka i Burza">Chmurka i Burza</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 55 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2849')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Chmurka i Burza" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Chmurka i Burza" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2849)" event-filter="96609" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96609&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96609" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Chmurka i Burza&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Chmurka i Burza, termin: sobota 5 grudnia 2026, 13:25. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 13:25    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2849)" event-filter="96611" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96611&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96611" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Chmurka i Burza&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Chmurka i Burza, termin: niedziela 6 grudnia 2026, 11:25. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 11:25    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2849)" event-filter="96630" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96630&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96630" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Chmurka i Burza&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Chmurka i Burza, termin: niedziela 13 grudnia 2026, 11:25. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 11:25    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2849">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2849)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96609&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96609" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Chmurka i Burza&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Chmurka i Burza, termin: sobota 5 grudnia 2026, 13:25. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 13:25    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2849)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96611&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96611" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Chmurka i Burza&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Chmurka i Burza, termin: niedziela 6 grudnia 2026, 11:25. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 11:25    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2849)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96630&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96630" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Chmurka i Burza&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Chmurka i Burza, termin: niedziela 13 grudnia 2026, 11:25. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 11:25    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2849">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('2373')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Hokus: Kr&#243;lestwo magii" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Hokus: Kr&#243;lestwo magii" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=3106&mode=thumb" alt="Hokus: Kr&#243;lestwo magii">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Hokus: Kr&#243;lestwo magii">Hokus: Kr&#243;lestwo magii</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 105 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('2373')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Hokus: Kr&#243;lestwo magii" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Hokus: Kr&#243;lestwo magii" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse2373)" event-filter="96605" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96605&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96605" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: sobota 5 grudnia 2026, 16:00. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 16:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2373)" event-filter="96606" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96606&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96606" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: sobota 5 grudnia 2026, 17:50. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 17:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2373)" event-filter="96608" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96608&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96608" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: niedziela 6 grudnia 2026, 15:50. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 15:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2373)" event-filter="96607" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96607&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96607" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: niedziela 6 grudnia 2026, 17:40. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 17:40    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2373)" event-filter="96634" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96634&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96634" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: niedziela 13 grudnia 2026, 15:50. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 15:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse2373)" event-filter="96635" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96635&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96635" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: niedziela 13 grudnia 2026, 17:40. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 17:40    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse2373">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse2373)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96605&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96605" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: sobota 5 grudnia 2026, 16:00. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 16:00    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2373)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96606&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96606" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: sobota 5 grudnia 2026, 17:50. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 17:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2373)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96608&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96608" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: niedziela 6 grudnia 2026, 15:50. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 15:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2373)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96607&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96607" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: niedziela 6 grudnia 2026, 17:40. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 17:40    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2373)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96634&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96634" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: niedziela 13 grudnia 2026, 15:50. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 15:50    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse2373)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96635&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96635" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Hokus: Kr&amp;#243;lestwo magii&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Hokus: Kr&#243;lestwo magii, termin: niedziela 13 grudnia 2026, 17:40. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 17:40    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse2373">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('3019')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Poznaj swojego teścia" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Poznaj swojego teścia" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=3105&mode=thumb" alt="Poznaj swojego teścia">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Poznaj swojego teścia">Poznaj swojego teścia</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 105 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('3019')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Poznaj swojego teścia" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Poznaj swojego teścia" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3019)" event-filter="96598" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96598&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96598" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: piątek 4 grudnia 2026, 19:45. Kliknij aby kupić lub zarezerwować bilet.">
+04 gru 19:45    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3019)" event-filter="96599" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96599&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96599" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: sobota 5 grudnia 2026, 19:35. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 19:35    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3019)" event-filter="96600" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96600&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96600" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: niedziela 6 grudnia 2026, 19:30. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 19:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3019)" event-filter="96629" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96629&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96629" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: piątek 11 grudnia 2026, 19:45. Kliknij aby kupić lub zarezerwować bilet.">
+11 gru 19:45    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3019)" event-filter="96636" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96636&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96636" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: niedziela 13 grudnia 2026, 19:30. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 19:30    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3019">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3019)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96598&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96598" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: piątek 4 grudnia 2026, 19:45. Kliknij aby kupić lub zarezerwować bilet.">
+04 gru 19:45    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3019)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96599&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96599" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: sobota 5 grudnia 2026, 19:35. Kliknij aby kupić lub zarezerwować bilet.">
+05 gru 19:35    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3019)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96600&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96600" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: niedziela 6 grudnia 2026, 19:30. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 19:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3019)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96629&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96629" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: piątek 11 grudnia 2026, 19:45. Kliknij aby kupić lub zarezerwować bilet.">
+11 gru 19:45    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3019)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=96636&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="96636" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Poznaj swojego teścia&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Poznaj swojego teścia, termin: niedziela 13 grudnia 2026, 19:30. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 19:30    </a>
+
+                                                </li>
+
+                            </ul>
+                                <button class="movies-movie__single__options__add js-event-hours-more" aria-label="Pokaż więcej termin&#243;w" title="Pokaż więcej termin&#243;w" data-toggle="tooltip" data-tooltip-trigger="hover focus" data-more-showtimes="Pokaż więcej termin&#243;w" data-less-showtimes="Pokaż mniej termin&#243;w">
+                                    <span class="fa fa-plus-circle"></span>
+                                </button>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3019">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('3056')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Spotkać Buddę" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Spotkać Buddę" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=3096&mode=thumb" alt="Spotkać Buddę">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Spotkać Buddę">Spotkać Buddę</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 144 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('3056')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Spotkać Buddę" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Spotkać Buddę" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3056)" event-filter="97384" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97384&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97384" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Spotkać Buddę&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Spotkać Buddę, termin: niedziela 6 grudnia 2026, 12:00. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 12:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3056">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3056)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97384&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97384" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Spotkać Buddę&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Spotkać Buddę, termin: niedziela 6 grudnia 2026, 12:00. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 12:00    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3056">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="movies-movie col-12 col-sm-12 col-md-6 col-lg-4 col-xl-3">
+            <div class="js-event-details-filter row movies-movie__single js-event">
+                <div class="movies-movie__single__tags">
+                </div>
+                    <div class="col-12">
+                        <div class="movies-movie__single__poster">
+                                <button type="button" class="movies-movie__single__poster-button" onclick="showEventDetails('3012')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Struś pędziwiatr i zemsta kojota" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Struś pędziwiatr i zemsta kojota" data-toggle="tooltip" data-tooltip-trigger="hover focus" style="padding:0;border:0;background:none;width:100%;">
+                                    <img src="/MSI/ImageData.ashx?id=3049&mode=thumb" alt="Struś pędziwiatr i zemsta kojota">
+                                </button>
+                        </div>
+                    </div>
+                <div class="col-12 movies-movie__single__info">
+                    <h3 class="movies-movie__single__title" title="Struś pędziwiatr i zemsta kojota">Struś pędziwiatr i zemsta kojota</h3>
+                    <ul class="movies-movie__single__moreinfo">
+                        <li>czas: 105 min.</li>
+                    </ul>
+                    <div class="movies-movie__single__description js-movie-description">
+                        <button type="button" class="more js-more-info" onclick="showEventDetails('3012')" aria-label="Przejdź do szczeg&#243;ł&#243;w wydarzenia Struś pędziwiatr i zemsta kojota" title="Przejdź do szczeg&#243;ł&#243;w wydarzenia Struś pędziwiatr i zemsta kojota" data-toggle="tooltip" data-tooltip-trigger="hover focus">
+                            <span class="more-text-more">Więcej <i class="fas fa-caret-right" aria-hidden="true"></i></span>
+                        </button>
+                    </div>
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-none d-md-block d-lg-flex">
+                        <div class=" d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesCollapse3012)" event-filter="97377" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97377&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97377" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Struś pędziwiatr i zemsta kojota&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Struś pędziwiatr i zemsta kojota, termin: niedziela 6 grudnia 2026, 12:30. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 12:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesCollapse3012)" event-filter="97378" class="js-event-filter ">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97378&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97378" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Struś pędziwiatr i zemsta kojota&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Struś pędziwiatr i zemsta kojota, termin: niedziela 13 grudnia 2026, 12:30. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 12:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesCollapse3012">
+                                    <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                        Rezerwuj
+                                    </button>
+                                    <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                        Kup bilet
+                                    </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 d-md-none">
+                    <div class="movies-movie__single__options js-movie-single-reservoir-options d-block d-lg-flex">
+                        <div class="d-flex movies-movie__single__options__hcontainer">
+                            <ul class="movies-movie__single__options__hours d-flex js-event-hours">
+                                                <li onclick="showContentButtons(moviesMobileCollapse3012)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97377&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97377" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Struś pędziwiatr i zemsta kojota&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Struś pędziwiatr i zemsta kojota, termin: niedziela 6 grudnia 2026, 12:30. Kliknij aby kupić lub zarezerwować bilet.">
+06 gru 12:30    </a>
+
+                                                </li>
+                                                <li onclick="showContentButtons(moviesMobileCollapse3012)">
+                                                    
+
+    <a href="/MSI/Default.aspx?event_id=97378&amp;typetran=1&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-12" class="js-link-popup js-repo-popup" data-event="97378" data-toggle="tooltip" data-html="true" data-original-title="&lt;strong&gt;Struś pędziwiatr i zemsta kojota&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić lub zarezerwować bilet." aria-label="Struś pędziwiatr i zemsta kojota, termin: niedziela 13 grudnia 2026, 12:30. Kliknij aby kupić lub zarezerwować bilet.">
+13 gru 12:30    </a>
+
+                                                </li>
+
+                            </ul>
+                        </div>
+                        <div class="movies-movie__single__options__reservations collapse" id="moviesMobileCollapse3012">
+                                <button class="js-reservation-button movies-movie__single__options__reservation invisible">
+                                    Rezerwuj
+                                </button>
+                            <button class="js-buyticket-button movies-movie__single__options__buyticket disabled">
+                                Kup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+</div>
+
+
+
+            <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-labelledby="modalEventTitle" aria-describedby="eventDetailsModalBody">
+    <div class="modal-dialog modal-dialog-centered event-details">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Zamknij">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div id="eventDetailsModalBody" class="modal-body">
+                <div class="container">
+                    <div class="row">
+                        <div class="poster col-12 col-md-4 col-lg-3 mb-3 mb-md-0">
+                            <div class="modalEventPoster text-center">
+                                <img id="modalEventPoster" src="" alt="" />
+                            </div>
+                            <p class="modalEventYtLink mt-3 mb-0 font-weight-bold text-uppercase d-flex justify-content-center align-items-center">
+                                <a id="modalEventYtLink" class="d-flex justify-content-center align-items-center" href="" target="_blank" rel="noopener noreferrer" aria-label="Zobacz zwiastun:">
+                                    <span>Zobacz zwiastun:</span>
+                                    <i class="fa fa-play-circle ml-2" aria-hidden="true"></i>
+                                </a>
+                            </p>
+                        </div>
+                        <div class="details col-12 col-md-8 col-lg-9">
+                            <div id="modalEventTitle" class="modal-title modalEventTitle"></div>
+                            <div class="row mt-3 mb-4">
+                                <div class="modalEventPremiere col-12 col-md-6 mb-2 mb-md-0 d-flex align-items-center">
+                                    <div>
+                                        <i class="fa fa-calendar-alt" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="pl-2 font-weight-bold">
+                                        <p class="text-uppercase m-0">Data premiery:</p>
+                                        <p id="modalEventPremiere" class="m-0"></p>
+                                    </div>
+                                </div>
+                                <div class="modalEventLength col-12 col-md-6 d-flex align-items-center">
+                                    <div>
+                                        <i class="fa fa-clock" aria-hidden="true"></i>
+                                    </div>
+                                    <div class="pl-2 font-weight-bold">
+                                        <p class="text-uppercase m-0">Czas trwania:</p>
+                                        <p id="modalEventLength" class="m-0"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="modalEventDescription"><span id="modalEventDescription"></span></p>
+                            <p class="modalEventType mb-0">Gatunek: <strong id="modalEventType"></strong></p>
+                            <p class="modalEventAgeCategory mb-0">Ograniczenia wiekowe: <span id="modalEventAgeCategory"></span></p>
+                            <p class="modalEventAdditionalInfo mb-0">Wersja: <span id="modalEventAdditionalInfo"></span></p>
+                            <p class="modalEventWwwLink mb-0">Strona www: <strong><a id="modalEventWwwLink" href="" target="_blank" rel="noopener noreferrer" aria-label="Strona www:"></a></strong></p>
+                            <div class="col-xs-12 event-gallery-background" id="modalEventImageGallery">
+                                <h2 class=""><span class="fa fa-camera" aria-hidden="true"></span> Galeria</h2>
+                                <div id="modalEventImageGalleryItems" style="display: flex; flex-wrap: wrap;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" data-dismiss="modal">Zamknij</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        localStorage.removeItem('carouselIndex');
+    });
+</script>
+
+
+            <div class="row">
+            </div>
+        </main>
+    </div>
+
+    
+<footer class="footer"><div class="container"><div class="row"><div class="col-12 col-md-4 col-lg-4 col-xl-4"><section id="cms" class="hidden" data-document-link-suffix=" (plik dokumentu)" data-new-tab-suffix=" (otwiera sie w nowej karcie)"><div id="cmstitle" class="footer__section-title text-uppercase"></div><ul id="onas"></ul></section></div><div class="col-12 col-md-4 col-lg-4 col-xl-4 offset-xl-12"><div class="footer__section-title">Kontakt</div><ul><li><span class="fa fa-phone text-color" aria-hidden="true"></span> 42 636 00 92</li><li><span class="fa fa-envelope text-color" aria-hidden="true"></span><span class="word-wrap" style="word-wrap: break-word;"><a class="link" href="mailto:charlie@kinosfera.pl
+">charlie@kinosfera.pl
+</a></span></li><li class="get-ticket"><a class="text-uppercase link" href="/MSI/mvc/pl/GetTicket/Index"><span class="fas fa-ticket-alt" aria-hidden="true"></span>Pobierz swoje bilety</a></li><li><a class="link" href="/MSI/mvc/pl/Sitemap/Index">Mapa strony</a></li></ul></div><div class="col-12 col-md-4 col-lg-3 col-xl-4 offset-xl-13"><ul class="footer__social"><li><a target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/KinoCharlie/" title="Facebook (otwiera sie w nowej karcie)" class="fab fa-facebook-square fa-2x text-color"><span class="sr-only"><span lang="en">Facebook</span> (otwiera sie w nowej karcie)</span></a></li></ul><address class="footer__address"><div class="footer__section-title">Kino-Galeria Charlie</div><span class="fa fa-map-marker text-color" aria-hidden="true"></span> ul. Piotrkowska 203/205, 90-451 Ł&#243;dź<br><span class="fa fa-book text-color" aria-hidden="true"></span> 727-153-60-06<br></address></div></div><div class="row justify-content-center"><div class="col-12 footer__info"><div id="footer-logos"></div></div></div></div></footer>
+
+
+
+    
+
+    <script id="repo-template" type="text/x-handlebars-template">
+        <div class="modal  fade in dialog" id="RepoModal" style="display: block">
+
+            <button id="trap-top-focus" type="button" title="Początek okna dialogowego" aria-label="Początek okna dialogowego" style="opacity:0;cursor:pointer;" tabindex="0">
+                Początek okna dialogowego
+            </button>
+            <div class="dialog-backdrop active fade in" style="bottom: 0">
+                <div class="modal-dialog" id="modalDialog" role="dialog" aria-modal="true">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <button type="button" class="close modal-Focus first-element-in-modal" data-dismiss="modal" aria-label="Zamknij" title="Zamknij" id="closeModalBtn">
+                                <span class="sr-only">Zamknij </span>
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                            <h3 class="modal-title dialog-title " tabindex="0">
+                                <span class="glyphicon glyphicon-tag"></span>
+                                {{Name}}
+                            </h3>
+                        </div>
+                        <div class="modal-body" style=" word-wrap:break-word;">
+                            <div class="media">
+                                {{#ifCond PosterId '>' 0}}
+                                <div class="media-left hidden-xs" tabindex="0">
+                                    <button type="button" class="modal-Focus btn btn-link p-0" aria-label="Data: {{Name}}">
+                                        <img src="/MSI/ImageData.ashx?id={{PosterId}}&amp;mode=thumb" alt="{{Name}}" class="" />
+                                    </button>
+                                </div>
+                                {{/ifCond}}
+                                <div class="media-body" style=" word-wrap:break-word;" tabindex="0">
+                                    Data: <strong class="dialog-strong">{{Date}}</strong>
+                                    {{#if Hour}}
+                                    <div>Godzina: <strong class="dialog-strong">{{Hour}}</strong></div>
+                                    {{/if}}
+                                    {{#if Description}}
+                                    <br />
+                                    <div class="hidden-xs">{{{Description}}}</div>
+                                    {{/if}}
+                                </div>
+                                <div class="modal-footer">
+                                    <div class="row">
+                                        <div class="col-sm-3">
+                                            <button type="button" class="btn btn-anuluj btn-block modal-Focus" data-dismiss="modal" aria-label="Zamknij" title="Zamknij">
+                                                <span class="sr-only">Zamknij  </span>
+                                                <span class="glyphicon glyphicon-remove"></span>ANULUJ
+                                            </button>
+                                        </div>
+
+                                        {{#if ShowFreeEventButton}}
+                                        <div class="col-sm-4">
+                                            <a href="{{ UrlBuy }}" class="btn btn-kup btn-block modal-Focus">
+                                                <span class="glyphicon glyphicon-star"></span>WYBIERAM
+                                            </a>
+                                        </div>
+                                        {{/if}}
+                                        {{#if ShowBuyButton}}
+                                        <div class="col-sm-4">
+                                            <a href="{{ UrlBuy }}" class="btn btn-kup btn-block  modal-Focus">
+                                                <span class="glyphicon glyphicon-credit-card"></span>KUP BILET
+                                            </a>
+                                        </div>
+                                        {{/if}}
+                                        {{#if ShowReservationButton}}
+                                        <div class="col-sm-5">
+                                            <a href="{{ UrlRez }}" class="btn btn-rezerwuj btn-block modal-Focus">
+                                                <span class="glyphicon glyphicon-star"></span>REZERWUJ MIEJSCE
+                                            </a>
+                                        </div>
+                                        {{/if}}
+
+                                    </div>
+                                    <div class="row" tabindex="0" id="modalLastItem">
+                                        <div class="col-12" style="margin-top: 15px; text-align: justify">
+                                            <div class="alert alert-warning last-element-on-modal" style="margin-bottom: 0">
+                                                Uwaga! W następnym kroku nie ma już możliwości wyboru pomiędzy Kupnem bilet&#243;w a Rezerwacją miejsc.
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="trap-down-focus" type="button" title="Koniec okna dialogowego" aria-label="Koniec okna dialogowego" style="opacity:0;cursor:pointer;position:absolute;left:-100px;">
+                Koniec okna dialogowego
+            </button>
+        </div>
+    </script>
+    <script type="text/javascript">
+        var RepertoireEvents = [{ 'Id': 96248, 'Name': '12 obrazów zniewolenia', 'Date': '11.12.2026', 'Hour': '19:00', 'PosterId': '3103', 'Description': 'Lech Majewski otwiera w swoim filmie świat Jacka Malczewskiego, malarza-symbolisty, który na przełomie XIX i XX wieku malował Polskę – kraj nie istniejący wówczas na mapie. Jego terytorium było podzielone między Rosję, Austro-Węgry i Prusy. Eksplorując fantasmagoryczne imaginarium malarza w wizualnym dialogu bez słów, Majewski...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 97028, 'Name': 'Asteriks i Obeliks: Królestwo Nubii', 'Date': '05.12.2026', 'Hour': '14:25', 'PosterId': '3115', 'Description': 'Panoramiks niechcący dodaje do napoju magicznego składnik, który powoduje, że większość mieszkańców osady zmienia się w dzieci. Druid postanawia wysłać Asteriksa i Obeliksa na odległą Afrykę, by odnaleźć odtrutkę.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 97029, 'Name': 'Asteriks i Obeliks: Królestwo Nubii', 'Date': '06.12.2026', 'Hour': '14:20', 'PosterId': '3115', 'Description': 'Panoramiks niechcący dodaje do napoju magicznego składnik, który powoduje, że większość mieszkańców osady zmienia się w dzieci. Druid postanawia wysłać Asteriksa i Obeliksa na odległą Afrykę, by odnaleźć odtrutkę.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 97030, 'Name': 'Asteriks i Obeliks: Królestwo Nubii', 'Date': '13.12.2026', 'Hour': '14:20', 'PosterId': '3115', 'Description': 'Panoramiks niechcący dodaje do napoju magicznego składnik, który powoduje, że większość mieszkańców osady zmienia się w dzieci. Druid postanawia wysłać Asteriksa i Obeliksa na odległą Afrykę, by odnaleźć odtrutkę.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96609, 'Name': 'Chmurka i Burza', 'Date': '05.12.2026', 'Hour': '13:25', 'PosterId': '3112', 'Description': '\"Chmurka i Burza\" to opowieść o przygodach dwóch psich sióstr - Chmurki i Burzy, które wyruszają w kolejne dni pełne odkryć. Różnią się wyglądem i charakterem, ale z taką samą ekscytacją odkrywają świat! Z psiej perspektywy pokazują codzienne wyzwania, które zmieniają się w zabawne perypetie, a kreatywne pomysły ratują je z...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96611, 'Name': 'Chmurka i Burza', 'Date': '06.12.2026', 'Hour': '11:25', 'PosterId': '3112', 'Description': '\"Chmurka i Burza\" to opowieść o przygodach dwóch psich sióstr - Chmurki i Burzy, które wyruszają w kolejne dni pełne odkryć. Różnią się wyglądem i charakterem, ale z taką samą ekscytacją odkrywają świat! Z psiej perspektywy pokazują codzienne wyzwania, które zmieniają się w zabawne perypetie, a kreatywne pomysły ratują je z...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96630, 'Name': 'Chmurka i Burza', 'Date': '13.12.2026', 'Hour': '11:25', 'PosterId': '3112', 'Description': '\"Chmurka i Burza\" to opowieść o przygodach dwóch psich sióstr - Chmurki i Burzy, które wyruszają w kolejne dni pełne odkryć. Różnią się wyglądem i charakterem, ale z taką samą ekscytacją odkrywają świat! Z psiej perspektywy pokazują codzienne wyzwania, które zmieniają się w zabawne perypetie, a kreatywne pomysły ratują je z...', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96605, 'Name': 'Hokus: Królestwo magii', 'Date': '05.12.2026', 'Hour': '16:00', 'PosterId': '3106', 'Description': 'Impulsywna i niezwykła nastolatka o imieniu Billy nagle odkrywa w sobie magiczne zdolności. Wkrótce w cudowny sposób przenosi się do magicznego królestwa, gdzie musi połączyć siły ze swoją rozważną matką. Razem badają rodzinne tajemnice, które mogą na zawsze zmienić dotychczasowy porządek rzeczy.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96606, 'Name': 'Hokus: Królestwo magii', 'Date': '05.12.2026', 'Hour': '17:50', 'PosterId': '3106', 'Description': 'Impulsywna i niezwykła nastolatka o imieniu Billy nagle odkrywa w sobie magiczne zdolności. Wkrótce w cudowny sposób przenosi się do magicznego królestwa, gdzie musi połączyć siły ze swoją rozważną matką. Razem badają rodzinne tajemnice, które mogą na zawsze zmienić dotychczasowy porządek rzeczy.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96607, 'Name': 'Hokus: Królestwo magii', 'Date': '06.12.2026', 'Hour': '17:40', 'PosterId': '3106', 'Description': 'Impulsywna i niezwykła nastolatka o imieniu Billy nagle odkrywa w sobie magiczne zdolności. Wkrótce w cudowny sposób przenosi się do magicznego królestwa, gdzie musi połączyć siły ze swoją rozważną matką. Razem badają rodzinne tajemnice, które mogą na zawsze zmienić dotychczasowy porządek rzeczy.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96608, 'Name': 'Hokus: Królestwo magii', 'Date': '06.12.2026', 'Hour': '15:50', 'PosterId': '3106', 'Description': 'Impulsywna i niezwykła nastolatka o imieniu Billy nagle odkrywa w sobie magiczne zdolności. Wkrótce w cudowny sposób przenosi się do magicznego królestwa, gdzie musi połączyć siły ze swoją rozważną matką. Razem badają rodzinne tajemnice, które mogą na zawsze zmienić dotychczasowy porządek rzeczy.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96634, 'Name': 'Hokus: Królestwo magii', 'Date': '13.12.2026', 'Hour': '15:50', 'PosterId': '3106', 'Description': 'Impulsywna i niezwykła nastolatka o imieniu Billy nagle odkrywa w sobie magiczne zdolności. Wkrótce w cudowny sposób przenosi się do magicznego królestwa, gdzie musi połączyć siły ze swoją rozważną matką. Razem badają rodzinne tajemnice, które mogą na zawsze zmienić dotychczasowy porządek rzeczy.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96635, 'Name': 'Hokus: Królestwo magii', 'Date': '13.12.2026', 'Hour': '17:40', 'PosterId': '3106', 'Description': 'Impulsywna i niezwykła nastolatka o imieniu Billy nagle odkrywa w sobie magiczne zdolności. Wkrótce w cudowny sposób przenosi się do magicznego królestwa, gdzie musi połączyć siły ze swoją rozważną matką. Razem badają rodzinne tajemnice, które mogą na zawsze zmienić dotychczasowy porządek rzeczy.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96598, 'Name': 'Poznaj swojego teścia', 'Date': '04.12.2026', 'Hour': '19:45', 'PosterId': '3105', 'Description': 'Henry, syn Grega i Pam Fockerów, staje w obliczu rodzinnego chaosu, gdy postanawia poślubić silną i niezależną kobietę, która na pierwszy rzut oka wydaje się do niego nie pasować.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96599, 'Name': 'Poznaj swojego teścia', 'Date': '05.12.2026', 'Hour': '19:35', 'PosterId': '3105', 'Description': 'Henry, syn Grega i Pam Fockerów, staje w obliczu rodzinnego chaosu, gdy postanawia poślubić silną i niezależną kobietę, która na pierwszy rzut oka wydaje się do niego nie pasować.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96600, 'Name': 'Poznaj swojego teścia', 'Date': '06.12.2026', 'Hour': '19:30', 'PosterId': '3105', 'Description': 'Henry, syn Grega i Pam Fockerów, staje w obliczu rodzinnego chaosu, gdy postanawia poślubić silną i niezależną kobietę, która na pierwszy rzut oka wydaje się do niego nie pasować.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96629, 'Name': 'Poznaj swojego teścia', 'Date': '11.12.2026', 'Hour': '19:45', 'PosterId': '3105', 'Description': 'Henry, syn Grega i Pam Fockerów, staje w obliczu rodzinnego chaosu, gdy postanawia poślubić silną i niezależną kobietę, która na pierwszy rzut oka wydaje się do niego nie pasować.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 96636, 'Name': 'Poznaj swojego teścia', 'Date': '13.12.2026', 'Hour': '19:30', 'PosterId': '3105', 'Description': 'Henry, syn Grega i Pam Fockerów, staje w obliczu rodzinnego chaosu, gdy postanawia poślubić silną i niezależną kobietę, która na pierwszy rzut oka wydaje się do niego nie pasować.', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 97384, 'Name': 'Spotkać Buddę', 'Date': '06.12.2026', 'Hour': '12:00', 'PosterId': '3096', 'Description': '', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 97377, 'Name': 'Struś pędziwiatr i zemsta kojota', 'Date': '06.12.2026', 'Hour': '12:30', 'PosterId': '3049', 'Description': 'Wiluś Kojot od lat ściga Strusia Pędziwiatra. Takie hobby… na granicy obłędu. Zastawił na niego setki pułapek, przemierzył tysiące mil i wszystko na nic. I nagle olśnienie! Czy to przypadek, że w chwili każdej bolesnej porażki posługiwał się osławionymi produktami firmy Acme? Za stary z Wilusia kojot, by wierzył w takie przypadki....', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false},{ 'Id': 97378, 'Name': 'Struś pędziwiatr i zemsta kojota', 'Date': '13.12.2026', 'Hour': '12:30', 'PosterId': '3049', 'Description': 'Wiluś Kojot od lat ściga Strusia Pędziwiatra. Takie hobby… na granicy obłędu. Zastawił na niego setki pułapek, przemierzył tysiące mil i wszystko na nic. I nagle olśnienie! Czy to przypadek, że w chwili każdej bolesnej porażki posługiwał się osławionymi produktami firmy Acme? Za stary z Wilusia kojot, by wierzył w takie przypadki....', 'ShowBuyButton': true, 'ShowReservationButton': true, 'ShowFreeEventButton': false}];
+    </script>
+<script>
+    $(document).ready(function () {
+        $("#RepoModal").on('shown.bs.modal', function () {
+            $(this).find('#closeModalBtn').focus();
+        });
+    });
+</script>
+
+
+            <script type="text/javascript" src="/MSI/Themes/light/Scripts/repertoire_filters.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/glide.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery.countdown.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/moment-with-locales.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/bootstrap.bundle.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/tempusdominus-bootstrap-4.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/repertoire.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/passes.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/svgicons.class.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/global.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/main.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery-cookie.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/cookies.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/calendar.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/cms.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/jquery.inputmask.bundle.min.js?v=100526085758"></script>
+        <script type="text/javascript" src="/MSI/Themes/light/Scripts/slick.min.js?v=100526085758"></script>
+
+
+
+    <script>
+        getCms(currentLanguage);
+        getFooterImages();
+        initSkipLinks();
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            $(window).on('load', function () {
+                $('#preloader').fadeOut('slow', function () { $(this).remove(); });
+            });
+            $("#scrollToVodButton").click(function () {
+                $([document.documentElement, document.body]).animate({
+                    scrollTop: $("#eventsVod").offset().top
+                }, 2000);
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            var lng = "pl";
+            var theMonths;
+            var theDays;
+
+            theMonths = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+
+            theDays = ["P", "W", "Ś", "C", "P", "S", "N"];
+
+            Global.init({
+                months: theMonths,
+                days: theDays,
+                allDatesUrl: window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/AllDates?sort=Name",
+                currentLocale: 'pl'
+            });
+
+            Filter.init({
+                currentLocale: 'pl',
+                getShortEventsWithFiltersUrl: window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/Repertoire/GetShortEventsWithFilters"
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        $(window).on('load', function () {
+            $(".se-pre-con").fadeOut("slow");
+        });
+    </script>
+
+</body>
+</html>

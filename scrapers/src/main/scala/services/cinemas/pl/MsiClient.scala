@@ -101,7 +101,16 @@ class MsiClient(
   // bilety.scksieradz.pl) and leave a classic or a broadcast unlabelled. When
   // set, a leading `<label>:` is stripped where present and no row is dropped —
   // see [[MsiClient.cleanTitleStripLabel]].
-  filmLabel: Option[String] = None
+  filmLabel: Option[String] = None,
+  // A few portals sell a SECOND venue's screenings under the same month pages
+  // and tell them apart only by the event-labels feed's "Lokalizacja" filter
+  // (bilety.charlie.pl carries Kino Spójnia's programme, filed under "Kino
+  // Spójna", beside Kino Charlie's own unlabelled events). The month HTML names
+  // no venue, so when set, a screening filed under one of these location labels
+  // is dropped — and a feed that cannot be read FAILS the scrape, since the
+  // portal then cannot be split and listing the other venue's films here would
+  // be wrong rather than merely incomplete.
+  otherVenueLocations: Set[String] = Set.empty
 ) extends CinemaScraper with OnlyMovieEventsFilter with Logging {
 
   import MsiClient._
@@ -149,19 +158,23 @@ class MsiClient(
     val found  = slots.result()
     // Only a portal with screenings is asked for their labels, so a dormant venue
     // still costs just its month walk.
-    val labels: Map[Long, Seq[String]] =
-      if (found.isEmpty) Map.empty
+    val labels: EventLabels =
+      if (found.isEmpty) EventLabels.Empty
       else HttpRead.jsonObject(http, eventLabelsUrl(baseUrl, mvcPath))(feed => ReadOutcome.Answered(parseEventLabels(feed))) match {
         case ReadOutcome.Answered(byEvent) => byEvent
+        case unread if otherVenueLocations.nonEmpty =>
+          throw new IllegalStateException(
+            s"${cinema.displayName}: no event labels, so the shared portal cannot be split from ${otherVenueLocations.mkString(", ")}: ${unread.explain}")
         // Unread labels leave every screening's kind unknown, and an unknown kind
         // is kept — what the scrape did before it read labels — since dropping a
         // film costs more than listing a play. Logged, so a portal that stops
         // serving the feed is seen rather than silently unfiltered.
         case unread =>
           logger.info(s"${cinema.displayName}: no event labels, so only titles filter its stage events: ${unread.explain}")
-          Map.empty
+          EventLabels.Empty
       }
-    MsiScraper.toMovies(found.filterNot(slot => isStagedSlot(slot, labels)), cinema)
+    val ownSlots = found.filterNot(slot => slot.eventId.exists(id => labels.locations.getOrElse(id, Nil).exists(otherVenueLocations)))
+    MsiScraper.toMovies(ownSlots.filterNot(slot => isStagedSlot(slot, labels.kinds)), cinema)
   }
 }
 
@@ -184,20 +197,28 @@ object MsiClient {
    *  (`{"filtersForEvent":[{"eventId":10959,"filters":[{"filterName":
    *  "category-filter","filterItems":[{"name":"Spektakl Teatralny"}]},…]}]}`).
    *  An event missing a field simply carries fewer labels. */
-  private def parseEventLabels(feed: JsObject): Map[Long, Seq[String]] = {
+  private[cinemas] def parseEventLabels(feed: JsObject): EventLabels = {
     def array(value: play.api.libs.json.JsLookupResult): Seq[JsValue] = value.asOpt[JsArray].toSeq.flatMap(_.value)
-    def labelsOf(event: JsValue): Seq[String] =
+    def labelsOf(event: JsValue, filterNames: Set[String]): Seq[String] =
       array(event \ "filters")
-        .filter(filter => (filter \ "filterName").asOpt[String].exists(LabelFilters.contains))
+        .filter(filter => (filter \ "filterName").asOpt[String].exists(filterNames.contains))
         .flatMap(filter => array(filter \ "filterItems"))
         .flatMap(item => (item \ "name").asOpt[String])
-    array(feed \ "filtersForEvent")
-      .flatMap(event => (event \ "eventId").asOpt[Long].map(_ -> labelsOf(event)))
-      .toMap
+    val events = array(feed \ "filtersForEvent").flatMap(event => (event \ "eventId").asOpt[Long].map(_ -> event))
+    EventLabels(
+      kinds     = events.map { case (id, event) => id -> labelsOf(event, KindFilters) }.toMap,
+      locations = events.map { case (id, event) => id -> labelsOf(event, Set(LocationFilter)).filter(_.nonEmpty) }.toMap)
   }
 
-  /** The two filters that say what an event is; the others are its audience and price. */
-  private val LabelFilters = Set("category-filter", "event-details-type-filter")
+  /** What the event-labels feed says of each event, by event id: its `kinds`
+   *  (category and sub-category, read by [[isStagedEvent]]) and its `locations`
+   *  (the portal's "Lokalizacja" — empty for a single-venue portal). */
+  private[cinemas] case class EventLabels(kinds: Map[Long, Seq[String]], locations: Map[Long, Seq[String]])
+  private[cinemas] object EventLabels { val Empty: EventLabels = EventLabels(Map.empty, Map.empty) }
+
+  /** The two filters that say what an event is; the others are its audience, price and location. */
+  private val KindFilters    = Set("category-filter", "event-details-type-filter")
+  private val LocationFilter = "localization-group-filter"
 
   /** Whether an event filed under `labels` is performed on the venue's stage
    *  rather than screened: a label carrying the stage vocabulary

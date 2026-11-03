@@ -24,8 +24,8 @@ import scala.util.Try
  *                       from the Polish-month day headers needed.
  *   - a gray metadata line ("135', USA, 2026, Sci-fi") → release year.
  *
- * (Booking routes through `bilety.charlie.pl`, the same MSI ticketing instance
- * Kino Charlie Łódź uses, but Spójnia's own `repertuar.php` is the cleaner,
+ * (Booking routes through `bilety.charlie.pl`, the same MSI ticketing portal
+ * Kino Charlie Łódź is scraped from (its Spójnia events filtered out by location), but Spójnia's own `repertuar.php` is the cleaner,
  * single-venue source, so we scrape that rather than the shared portal.)
  *
  * Previously scraped from Filmweb, which had silently gone empty for the venue

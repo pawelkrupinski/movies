@@ -441,6 +441,13 @@ takes and needs a snapshot and identity-ratchet pass, not a white-venue fix. Opt
 as MSI month pages for 2026-08, or keep the homepage parser for the corpus clock only. The MSI route is
 `MsiClient`'s standard one, so the catalog change itself is one line.
 
+**Done later on 11-03, at the user's request:** Charlie now scrapes `bilety.charlie.pl` through `MsiClient`, and
+`CharlieClient` is deleted. The portal also sells Kino Spójnia's screenings, which the month pages do not mark, so
+`MsiClient` gained `otherVenueLocations`. It drops events that the labels feed files under another venue's
+"Lokalizacja" ("Kino Spójna"). If the feed is unreadable, the scrape fails rather than listing Spójnia's films at
+Charlie. The 08-06 corpus lost its `www.charlie.pl` capture: 17 lines of `expected-schedules.txt` moved, and no film
+appeared or vanished.
+
 ### UK: 49 white, 19 probed, 0 bugs
 
 All 19 are EMPTY: `no-streaming-sessions`, no `data-date` tabs. The control, Finsbury Park Picturehouse, has 72 tabs.

@@ -1235,7 +1235,6 @@ cinemaScrapes:
   Kino Atlantic / Klasyka w kinie Atlantic: Zawieście czerwone latarnie / 1991
   Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
-  Kino Charlie / Zawieście czerwone latarnie / —
   Kino Iluzjon / Zawieście czerwone latarnie / 1991
   Kino Kinematograf / Zawieście czerwone latarnie / 1991
   Kino Kultura / Zawieście czerwone latarnie / —
@@ -1493,7 +1492,6 @@ cinemaScrapes:
   Helios Łódź / Diabeł ubiera się u Prady 2 / 2026
   Kino Amok / Diabeł ubiera się u Prady 2 / —
   Kino Atlantic / Diabeł ubiera się u Prady 2 / 2026
-  Kino Charlie / Diabeł ubiera się u Prady 2 / —
   Kino Echo / Diabeł ubiera się u Prady 2 / —
   Kino GCK / Diabeł ubiera się u Prady 2 / —
   Kino Kijów / Diabeł ubiera się u Prady 2 / —
@@ -1980,7 +1978,7 @@ showings:
 
 === Drzewo magii ===
 displayTitle:      Drzewo magii
-cinemaTitles:      DRZEWO MAGII | Drzewo Magii | Drzewo magii | Kino przyjazne sensorycznie: drzewo magii
+cinemaTitles:      DRZEWO MAGII | Drzewo magii | Kino przyjazne sensorycznie: drzewo magii
 runtimeMinutes:    110
 releaseYear:       2026
 countries:         Francja, USA, Wielka Brytania
@@ -2092,7 +2090,6 @@ cinemaScrapes:
   Kino Atlantic / Drzewo magii / 2026
   Kino Baszta Środa / Drzewo magii / —
   Kino Bułgarska 19 / DRZEWO MAGII / 2026
-  Kino Charlie / Drzewo Magii / —
   Kino DK / Drzewo magii / —
   Kino Diana / Drzewo magii / —
   Kino Echo / Drzewo magii / —
@@ -2570,7 +2567,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Erupcja / —
   KINOMUZEUM / Erupcja / 2025
   Kino Amok / Erupcja / —
-  Kino Charlie / Erupcja / —
   Kino Kika / ERUPCJA / —
   Kino Kępa / Erupcja / —
   Kino Luna / Erupcja / —
@@ -3288,7 +3284,6 @@ cinemaScrapes:
   Helios Tczew / Mandalorian & Grogu / 2025
   Helios Łódź / Mandalorian & Grogu / 2025
   Helios Żory / Mandalorian & Grogu / 2025
-  Kino Charlie / Gwiezdne wojny: Mandalorian i Grogu / —
   Kino Diana / Gwiezdne wojny: mandalorian i grogu / —
   Kino Echo / Gwiezdne wojny: Mandalorian i Grogu / —
   Kino GCK / Mandalorian i Grogu / —
@@ -4878,7 +4873,6 @@ cinemaScrapes:
   Helios Łódź / Michael / 2026
   Helios Żory / Michael / 2026
   Kino Atlantic / Michael / 2026
-  Kino Charlie / Michael / —
   Kino Nowe Horyzonty / Michael / 2026
   Kino Promień / Michael / —
   Kino Wisła / Michael / 2026
@@ -5094,7 +5088,6 @@ cinemaScrapes:
   Kino Atlantic / Milcząca przyjaciółka / 2025
   Kino Bułgarska 19 / MILCZĄCA PRZYJACIÓŁKA / 2025
   Kino CK Lublin / Filmoterapia z Inspirą: Milcząca przyjaciółka / —
-  Kino Charlie / Milcząca przyjaciółka / —
   Kino Fenomen (WDK) / „Milcząca przyjaciółka” / 2025
   Kino Forum / Milcząca przyjaciółka / —
   Kino Kika / MILCZĄCA PRZYJACIÓŁKA / —
@@ -5949,7 +5942,6 @@ cinemaScrapes:
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Bułgarska 19 / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino CK Lublin / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Charlie / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Cytadela / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino IKM / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Ignacy / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -7678,7 +7670,6 @@ cinemaScrapes:
   Janosik / Klasyka na TOPie: Podziemny krąg / —
   Kino 60 Krzeseł / Podziemny krąg (pokaz w DKF Megaron) / —
   Kino Apollo Wałbrzych / Podziemny krąg | DKF / —
-  Kino Charlie / Podziemny krąg / —
   Kino Fenomen (WDK) / Podziemny krąg / —
   Kino Kika / PODZIEMNY KRĄG / —
   Kino Kultura / Podziemny krąg / —
@@ -7929,7 +7920,6 @@ cinemaScrapes:
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Bułgarska 19 / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino CK Lublin / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Charlie / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Cytadela / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino IKM / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Ignacy / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -8507,7 +8497,6 @@ cinemaScrapes:
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
   Kino Baszta Środa / Tom i Jerry: Przygoda w muzeum / —
-  Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
   Kino Cytadela / Tom i Jerry. Przygoda w muzeum / 2026
   Kino DK / Tom i Jerry: Przygoda w muzeum / —
   Kino Echo / Tom i Jerry: Przygoda w muzeum / —
@@ -8943,7 +8932,6 @@ cinemaScrapes:
   Helios Forum / Sprawiedliwość owiec / 2026
   Helios Łódź / Sprawiedliwość owiec / 2026
   Kino Atlantic / Sprawiedliwość owiec / 2026
-  Kino Charlie / Sprawiedliwość owiec / —
   Kino Nowe Horyzonty / Sprawiedliwość owiec / 2026
   Kino Sokół / SPRAWIEDLIWOŚĆ OWIEC / —
   Kino Wawel / Sprawiedliwość owiec / —
@@ -9805,7 +9793,6 @@ cinemaScrapes:
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
   Kino Baszta Środa / Tom i Jerry: Przygoda w muzeum / —
-  Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
   Kino Cytadela / Tom i Jerry. Przygoda w muzeum / 2026
   Kino DK / Tom i Jerry: Przygoda w muzeum / —
   Kino Echo / Tom i Jerry: Przygoda w muzeum / —
@@ -10791,7 +10778,6 @@ cinemaScrapes:
   Kino Atlantic / Klasyka w kinie Atlantic: Zawieście czerwone latarnie / 1991
   Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
-  Kino Charlie / Zawieście czerwone latarnie / —
   Kino Iluzjon / Zawieście czerwone latarnie / 1991
   Kino Kinematograf / Zawieście czerwone latarnie / 1991
   Kino Kultura / Zawieście czerwone latarnie / —
@@ -11060,7 +11046,6 @@ cinemaScrapes:
   Kino 60 Krzeseł / Znaki Pana Śliwki / —
   Kino Agrafka / ZNAKI PANA ŚLIWKI / 2025
   Kino Amok / Znaki Pana Śliwki / —
-  Kino Charlie / Znaki Pana Śliwki / —
   Kino IKM / Znaki Pana Śliwki / —
   Kino Kika / ZNAKI PANA ŚLIWKI / —
   Kino Kinematograf / Znaki Pana Śliwki / 2025

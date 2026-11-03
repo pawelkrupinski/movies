@@ -3480,7 +3480,7 @@
     "title" : "Kokuho",
     "originalTitle" : "国宝",
     "posterUrl" : "https://medstore.kinoteka.pl/KokuhoPlakatPLONLINELQ.jpg",
-    "fallbackPosterUrls" : [ "https://www.charlie.pl/grafika/filmy/plakaty/8/8985.jpg", "https://image.tmdb.org/t/p/w500/mHzok6x9rd8dGdUxuhRXX9R7Qqy.jpg", "https://m.media-amazon.com/images/M/MV5BMzIzNzZlMGItMzg3OC00MmI0LWE4NGEtNzQwZDczOGI0NGIwXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/mHzok6x9rd8dGdUxuhRXX9R7Qqy.jpg", "https://m.media-amazon.com/images/M/MV5BMzIzNzZlMGItMzg3OC00MmI0LWE4NGEtNzQwZDczOGI0NGIwXkEyXkFqcGc@._V1_.jpg" ],
     "runtimeMinutes" : 175,
     "releaseYear" : 2025,
     "genres" : [ "Dramat" ],
@@ -31011,26 +31011,6 @@
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/filmy/diabel-ubiera-sie-u-prady-2-4401\u0000Diabeł ubiera się u Prady 2" ]
   }, {
-    "_id" : "f15ec75f88ed98ac|lodz|Kino Charlie",
-    "filmId" : "f15ec75f88ed98ac",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1772640506",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T15:10:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89474&typetran=0",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-08T17:35:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89475&typetran=0",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-08T20:00:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89476&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1772640506\u0000Diabeł ubiera się u Prady 2" ]
-  }, {
     "_id" : "f15ec75f88ed98ac|lubin|Helios Lubin",
     "filmId" : "f15ec75f88ed98ac",
     "city" : "lubin",
@@ -35205,18 +35185,6 @@
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/wydarzenie/podziemny-krag-w-helios-replay-2575\u0000Podziemny krąg w Helios RePlay" ]
   }, {
-    "_id" : "f1d34c02e614a4ec|lodz|Kino Charlie",
-    "filmId" : "f1d34c02e614a4ec",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1775659255",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T19:30:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89503&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1775659255\u0000Podziemny krąg" ]
-  }, {
     "_id" : "f1d34c02e614a4ec|lubin|Helios Lubin",
     "filmId" : "f1d34c02e614a4ec",
     "city" : "lubin",
@@ -37139,22 +37107,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Pod Baranami\u0000https://kinopodbaranami.pl/film.php?film_id=6676\u0000Zawieście czerwone latarnie" ]
-  }, {
-    "_id" : "f1fca10abd56e3cf|lodz|Kino Charlie",
-    "filmId" : "f1fca10abd56e3cf",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1776866240",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T16:10:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89595&typetran=0",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-08T20:15:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89533&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1776866240\u0000Zawieście czerwone latarnie" ]
   }, {
     "_id" : "f1fca10abd56e3cf|lodz|Kino Kinematograf",
     "filmId" : "f1fca10abd56e3cf",
@@ -39634,18 +39586,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000KINOkawiarnia Stacja Falenica\u0000https://stacjafalenica.pl/filmy/do-utraty-tchu/\u0000Do utraty tchu" ]
-  }, {
-    "_id" : "f25def22239ccc8b|lodz|Kino Charlie",
-    "filmId" : "f25def22239ccc8b",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1774273226",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T17:05:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89706&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1774273226\u0000Kokuho" ]
   }, {
     "_id" : "f25def22239ccc8b|slupsk|Kino Rejs",
     "filmId" : "f25def22239ccc8b",
@@ -43740,18 +43680,6 @@
       "format" : [ "2D", "DUB" ]
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/filmy/sprawiedliwosc-owiec-4466\u0000Sprawiedliwość owiec" ]
-  }, {
-    "_id" : "f33fd36bf837eae1|lodz|Kino Charlie",
-    "filmId" : "f33fd36bf837eae1",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1775580000",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T17:20:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89502&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1775580000\u0000Sprawiedliwość owiec" ]
   }, {
     "_id" : "f33fd36bf837eae1|lubin|Muza",
     "filmId" : "f33fd36bf837eae1",
@@ -49675,18 +49603,6 @@
       "format" : [ "2D", "DUB" ]
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/filmy/drzewo-magii-4413\u0000Drzewo magii" ]
-  }, {
-    "_id" : "f41d3a5b34e49ed3|lodz|Kino Charlie",
-    "filmId" : "f41d3a5b34e49ed3",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1779376373",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T13:55:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89563&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1779376373\u0000Drzewo Magii" ]
   }, {
     "_id" : "f41d3a5b34e49ed3|lodz|Kino NCKF EC1",
     "filmId" : "f41d3a5b34e49ed3",
@@ -79766,22 +79682,6 @@
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/filmy/tom-i-jerry-przygoda-w-muzeum-4394\u0000Tom i Jerry: Przygoda w muzeum" ]
   }, {
-    "_id" : "f650fb00745169cf|lodz|Kino Charlie",
-    "filmId" : "f650fb00745169cf",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1779210308",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T15:35:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89626&typetran=0",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-08T18:10:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89565&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1779210308\u0000Tom i Jerry: Przygoda w muzeum" ]
-  }, {
     "_id" : "f650fb00745169cf|lodz|Kino NCKF EC1",
     "filmId" : "f650fb00745169cf",
     "city" : "lodz",
@@ -85349,18 +85249,6 @@
       "format" : [ "2D", "NAP" ]
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/filmy/michael-4308\u0000Michael" ]
-  }, {
-    "_id" : "f6d3e7dd54249523|lodz|Kino Charlie",
-    "filmId" : "f6d3e7dd54249523",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1778149450",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T17:40:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89532&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1778149450\u0000Michael" ]
   }, {
     "_id" : "f6d3e7dd54249523|lubin|Helios Lubin",
     "filmId" : "f6d3e7dd54249523",
@@ -95438,22 +95326,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "P\u0000Kino Kika\u0000ZNAKI PANA ŚLIWKI\u0000" ]
-  }, {
-    "_id" : "f84636251b6677c2|lodz|Kino Charlie",
-    "filmId" : "f84636251b6677c2",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1775582210",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T15:35:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89704&typetran=0",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-08T18:45:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89702&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1775582210\u0000Znaki Pana Śliwki" ]
   }, {
     "_id" : "f84636251b6677c2|lodz|Kino Kinematograf",
     "filmId" : "f84636251b6677c2",
@@ -127544,22 +127416,6 @@
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/filmy/mandalorian-grogu-4347\u0000Mandalorian & Grogu" ]
   }, {
-    "_id" : "fa1763cbe0401d95|lodz|Kino Charlie",
-    "filmId" : "fa1763cbe0401d95",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1779116711",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T17:40:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89627&typetran=0",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-08T20:20:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89628&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1779116711\u0000Gwiezdne wojny: Mandalorian i Grogu" ]
-  }, {
     "_id" : "fa1763cbe0401d95|lubin|Helios Lubin",
     "filmId" : "fa1763cbe0401d95",
     "city" : "lubin",
@@ -142001,18 +141857,6 @@
     } ],
     "listingKeys" : [ "P\u0000Kino Kika\u0000ERUPCJA\u0000" ]
   }, {
-    "_id" : "fa2434e92a9273ab|lodz|Kino Charlie",
-    "filmId" : "fa2434e92a9273ab",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1776432692",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T20:15:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89701&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1776432692\u0000Erupcja" ]
-  }, {
     "_id" : "fa2434e92a9273ab|lodz|Kino NCKF EC1",
     "filmId" : "fa2434e92a9273ab",
     "city" : "lodz",
@@ -144240,22 +144084,6 @@
       "format" : [ "2D", "DUB" ]
     } ],
     "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158\u0000Niesamowite przygody skarpetek 3. Ale kosmos!" ]
-  }, {
-    "_id" : "fa37191800ada1c1|lodz|Kino Charlie",
-    "filmId" : "fa37191800ada1c1",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1776850816",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T14:20:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89625&typetran=0",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-08T15:30:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89699&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1776850816\u0000Niesamowite przygody skarpetek 3. Ale kosmos!" ]
   }, {
     "_id" : "fa37191800ada1c1|lodz|Kino NCKF EC1",
     "filmId" : "fa37191800ada1c1",
@@ -170745,18 +170573,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino Pod Baranami\u0000https://kinopodbaranami.pl/film.php?film_id=12885\u0000Milcząca przyjaciółka" ]
-  }, {
-    "_id" : "ff5c8b638a5195de|lodz|Kino Charlie",
-    "filmId" : "ff5c8b638a5195de",
-    "city" : "lodz",
-    "cinema" : "Kino Charlie",
-    "filmUrl" : "https://www.charlie.pl/index.php?i=film&id=1775581104",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T13:25:00",
-      "bookingUrl" : "https://bilety.charlie.pl/MSI/Default.aspx?event_id=89594&typetran=0",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Charlie\u0000https://www.charlie.pl/index.php?i=film&id=1775581104\u0000Milcząca przyjaciółka" ]
   }, {
     "_id" : "ff5c8b638a5195de|lodz|Kino Kinematograf",
     "filmId" : "ff5c8b638a5195de",

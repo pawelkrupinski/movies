@@ -134,15 +134,6 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
     services.cinemas.pl.KinoDianaClient.parseFeed("[]") shouldBe empty
   }
 
-  // 2026-10-22/23: charlie.pl answered 200 with only its PHP's database error for 7 h,
-  // which read as a white (empty) day instead of a red (failed) one.
-  "CharlieClient.parse" should "throw on the site's database-error page but read its homepage with no screenings as empty" in {
-    an[Exception] should be thrownBy services.cinemas.pl.CharlieClient.parse("Blad polaczenia z baza danych", models.KinoCharlie)
-    services.cinemas.pl.CharlieClient.parse(
-      "<html><head><title>Kino CHARLIE w Łodzi, ul. Piotrkowska 203/205</title></head><body></body></html>",
-      models.KinoCharlie) shouldBe empty
-  }
-
   "WebediaShowtimesClient.parsePage" should "throw on a body that is not JSON" in {
     an[Exception] should be thrownBy services.cinemas.common.WebediaShowtimesClient.parsePage(ErrorPage, services.cinemas.common.WebediaMarket.Germany)
   }

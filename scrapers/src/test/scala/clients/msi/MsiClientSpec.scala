@@ -471,3 +471,49 @@ class MsiClientSpec
       .fetch().map(_.movie.title).sorted shouldBe Seq("Bonobo", "Lalka", "Luna i rozgadana świnka")
   }
 }
+
+class MsiClientSharedPortalSpec extends AnyFlatSpec with Matchers {
+
+  // bilety.charlie.pl sells Kino Charlie's programme AND Kino Spójnia's (Aleksandrów
+  // Łódzki) on the same month pages; only the labels feed's "Lokalizacja" filter
+  // says which is which ("Kino Spójna" on Spójnia's events, nothing on Charlie's).
+  // Recorded 2026-11-03 by `clients.tools.WriteKinoCharlie` (the feed trimmed to
+  // its `filtersForEvent`, the only part the client reads).
+  private val captured = LocalDate.of(2026, 11, 3)
+  private def charlie(http: tools.HttpFetch, otherVenues: Set[String]) =
+    new MsiClient(http, "https://bilety.charlie.pl", KinoCharlie, today = captured,
+      otherVenueLocations = otherVenues).fetch()
+  private lazy val recorded = new FakeHttpFetch("kino-charlie-msi")
+  private lazy val split    = charlie(recorded, Set("Kino Spójna"))
+  private lazy val unsplit  = charlie(recorded, Set.empty)
+  private def titles(movies: Seq[CinemaMovie]) = movies.map(_.movie.title.toLowerCase).toSet
+
+  "MsiClient (shared portal)" should "drop the other venue's films from Charlie's feed" in {
+    val spojniaOnly = Set("chmurka i burza", "poznaj swojego teścia", "warsztat świętego mikołaja")
+    titles(unsplit).intersect(spojniaOnly) shouldBe spojniaOnly
+    titles(split).intersect(spojniaOnly) shouldBe empty
+  }
+
+  it should "keep Charlie's own screenings of a film both venues show, and only those" in {
+    def times(movies: Seq[CinemaMovie]) =
+      movies.filter(_.movie.title.toLowerCase.startsWith("jak żyć")).flatMap(_.showtimes).map(_.dateTime).toSet
+    val charlieOwn = LocalDateTime.of(2026, 11, 6, 17, 50)
+    val spojnias   = LocalDateTime.of(2026, 11, 6, 19, 45)
+    times(unsplit) should contain allOf (charlieOwn, spojnias)
+    times(split) should contain(charlieOwn)
+    times(split) should not contain spojnias
+  }
+
+  // The reason Charlie moved here off its homepage, which renders today only.
+  it should "list Charlie's programme beyond today" in {
+    split.flatMap(_.showtimes).map(_.dateTime.toLocalDate).distinct.size should be >= 10
+  }
+
+  it should "fail rather than list the other venue's films when the labels feed is unreadable" in {
+    val noLabels = new tools.GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/Repertoire/GetShortEventsWithFilters")) "<html><body>Repertuar</body></html>" else recorded.get(url)
+    }
+    an[IllegalStateException] should be thrownBy charlie(noLabels, Set("Kino Spójna"))
+  }
+}

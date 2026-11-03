@@ -72,12 +72,13 @@ final class PolishScraperCatalog(
   // MSI / VisualTicket portals (29). `fetch` is Zyte's residential egress for
   // the one venue whose origin firewall blocks both our Fly IP and the Decodo
   // proxy (see [[CinemaEgress.zyte]]); `mvcPath` / `titlePrefix` / `titleSuffix` /
-  // `filmLabel` are the per-install quirks `MsiClient` documents.
+  // `filmLabel` / `otherVenueLocations` are the per-install quirks `MsiClient` documents.
   private case class MsiVenue(baseUrl:     String,
                               mvcPath:     String         = MsiClient.DefaultMvcPath,
                               titlePrefix: Option[String] = None,
                               titleSuffix: Option[String] = None,
                               filmLabel:   Option[String] = None,
+                              otherVenueLocations: Set[String] = Set.empty,
                               fetch:       HttpFetch      = http)
   private val msiVenues: Map[Cinema, MsiVenue] = Map(
     KinoKryterium                -> MsiVenue(CinemaScraperCatalog.KinoKryteriumUrl, fetch = zyteFetch),
@@ -130,12 +131,16 @@ final class PolishScraperCatalog(
     KinoGornikLeczyca        -> MsiVenue("https://kinogornik.eurobilet.pl"),
     GoKinoOlawa              -> MsiVenue("https://olawa.gokino.pl"),
     KinoGrazyna              -> MsiVenue("https://bilety.kinostrzelin.pl"),
+    // Charlie's homepage (the old CharlieClient) renders today only; its portal lists
+    // every booked day. The portal also sells Kino Spójnia's screenings, which
+    // KinoSpojniaClient scrapes from Spójnia's own site.
+    KinoCharlie              -> MsiVenue("https://bilety.charlie.pl", otherVenueLocations = Set("Kino Spójna")),
   )
   private def msi(cinema: Cinema): MsiClient = {
     val venue = msiVenues(cinema)
     new MsiClient(venue.fetch, venue.baseUrl, cinema, today,
       mvcPath = venue.mvcPath, titlePrefix = venue.titlePrefix, titleSuffix = venue.titleSuffix,
-      filmLabel = venue.filmLabel)
+      filmLabel = venue.filmLabel, otherVenueLocations = venue.otherVenueLocations)
   }
 
   // biletyna.pl venue pages (plus Końskie's two below). biletyna.pl 403s our datacenter IP (Cloudflare
@@ -685,7 +690,7 @@ final class PolishScraperCatalog(
     cinemaCity("1080", CinemaCityManufaktura),
     multikino("0023", MultikinoLodz),
     helios(HeliosNuxt.Lodz),
-    new CharlieClient(http, KinoCharlie),
+    msi(KinoCharlie),
     new KinematografLodzClient(http, KinematografLodz, today, titles = titles),
     new NckfClient(http, Nckf, today),
     new KinoTatryClient(http, KinoTatry, today),
