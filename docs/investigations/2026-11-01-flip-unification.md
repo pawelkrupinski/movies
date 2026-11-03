@@ -741,6 +741,8 @@ none; no final take moved. Judged right (87 minutes and a 12A on Halloween fit H
 nor Besson's 2025 film), so a right → none at the model stage. Accepted under "unmatched beats wrong": the bare title's
 same-title links reach both the 1931 and the 1958 films, and only a weaker search-form link chose between them.
 
+**Cumulative measure.** See §7.8's end: with §7.5–7.7 landed together, only Torrington's model take moved.
+
 ### 7.6 A sibling's arrival no longer withdraws a borrowed take (DCA "+ Recorded Q&A")
 
 **Mechanism.** DCA's "These Violent Delights + Recorded Q&A" bills no fact of its own that fits (its runtime is the
@@ -802,6 +804,8 @@ solver's ambiguity). At full population they take what they take with the contes
 middle populations is right with the data then present, and no rule over the present listings can know that a
 contesting sibling will come.
 
+**Cumulative measure.** See §7.8's end: with §7.5–7.7 landed together, only Torrington's model take moved.
+
 ### 7.8 A sibling's learned denial against a film it credits withdraws nobody (Oxide Ghosts, It's Nice Up North)
 
 **Mechanism.** A learned listing-film rule (`LearnedCannotLinks`: "runtime.gap>=6 AND year.distance>=2", "runtime.gap>=36
@@ -831,6 +835,12 @@ longer kept the double bill out of Teil 1's family. A slice bisect over the bran
 +30′ from a second feature, and no fix by the evidence was quick, so the code is reverted. The two drift slices stay;
 their three listings are known rows in `identity-population-flips-known.tsv` until a fix can tell an event's length
 from a double bill's.
+
+**Cumulative measure (2026-11-03, §7.5–7.8 as landed).** Run 41550488381 (base 2d37f0531, head e94ef5df8, all five
+countries, both stages): one take moved, Torrington's MODEL "Dracula" 11868 → none (§7.5, accepted: the title reaches
+both the 1931 and 1958 films and only a weaker link chose); no final take moved; no right → wrong, no new wrong. Drift
+run 41534283799 (seeds 11, 12, ten rows): clean. The §7.8 run before the back-out (41500994372) had also gained the
+four "It's Nice Up North" billings (judged right, 197993) and Wittenberg's double bill (wrong); both went with it.
 
 ### 7.9 Titans: inherent bare-borrow flip, baselined by owner decision (CinemaxX Dammtor, Raschplatz)
 
