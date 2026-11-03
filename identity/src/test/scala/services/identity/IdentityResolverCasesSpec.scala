@@ -357,6 +357,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.decisionOf(bare.key).film shouldBe None
   }
 
+  it should "take nothing from an anchor whose fact only one namesake's record can be read against" in {
+    // UK Pershore's bare "Royal Ballet: The Nutcracker" took the 2013 relay: its sibling's running time agreed with that
+    // record, while the 2026/27 one held no running time yet. A namesake no stated fact contradicts is not ruled out.
+    val films  = Seq(F(1, "Lalka", 2026, "", 0, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
+    val season = ScreeningDays.ofSeason(java.time.LocalDate.of(2026, 10, 1))
+    val timed  = Seq(Multikino, Helios).map(listing(_, "Lalka", runtime = Some(159)).copy(screenings = season))
+    val bare   = listing(KinoMuza, "Lalka").copy(screenings = season)
+    val r = resolve(timed :+ bare, films)
+    withClue((timed :+ bare).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(bare.key).film shouldBe None
+    }
+  }
+
   "A listing whose own title search is empty" should
     "be offered the film its identical title's siblings reached, and take it on its own facts" in {
     // PL, "Vincent. Legenda oceanu": TMDB titles the film "The Last Whale Singer", so the Polish

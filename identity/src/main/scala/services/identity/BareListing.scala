@@ -95,7 +95,10 @@ private[identity] object BareListing {
 
   /** An ANCHOR's film by its own FACTS ([[anchored]]): the one work its title names, of a kind its own rules leave, that
    *  the facts it states agree with -- its year within one, its director the same person, its running time within ten
-   *  minutes, each where the work's record holds it too, at least one of them read -- none when no such fact is read. Read off the listing-film measures alone, never the calibrated
+   *  minutes, each where the work's record holds it too, at least one of them read -- when a fact it states contradicts
+   *  every other such work. A work whose record holds none of its facts is not ruled out: UK Pershore's bare "Royal
+   *  Ballet: The Nutcracker" took the 2013 relay its sibling's running time agreed with, beside the 2026/27 one whose
+   *  record held no running time yet. Read off the listing-film measures alone, never the calibrated
    *  probability: that weighs `venues.corroborating`, a count of the venues present, which moved the anchors of DE
    *  Cinecitta's "Camouflage" from one namesake to the other as listings arrived. */
   def factMatch(listing: IdentityMeasures.Listing, scored: Seq[Scored]): Option[Int] = {
@@ -105,9 +108,12 @@ private[identity] object BareListing {
       Option.when(listing.directors.nonEmpty)(s.category("director").map(_ == IdentityMeasures.SamePersonMeasure.value)).flatten,
       Option.when(listing.runtime.nonEmpty)(s.number("runtime.delta").map(d => math.abs(d) <= 10)).flatten)
     def agrees(s: Scored) = { val read = readings(s).flatten; read.nonEmpty && read.forall(identity) }
-    scored.filter(s => plausible(Seq(s)).nonEmpty && agrees(s)).map(_.candidate.tmdbId).distinct match {
-      case Seq(only) => Some(only)
-      case _         => None
+    def contradicted(s: Scored) = readings(s).flatten.contains(false)
+    val works = scored.filter(s => plausible(Seq(s)).nonEmpty)
+    works.filter(agrees).map(_.candidate.tmdbId).distinct match {
+      // every other work a fact it states contradicts: one whose record holds none of them is not ruled out
+      case Seq(only) if works.forall(s => s.candidate.tmdbId == only || contradicted(s)) => Some(only)
+      case _ => None
     }
   }
 
