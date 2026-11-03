@@ -35,8 +35,16 @@ final class FilteredForTests: XCTestCase {
         }
     }
 
-    private let today: String = DateFilter.iso(Date())
-    private let tomorrow: String = DateFilter.iso(Date().addingTimeInterval(86_400))
+    // Pinned, never read off the wall clock: XCTest builds every test instance before the
+    // first test runs, so a day read from `Date()` here is stale once a run crosses Warsaw
+    // midnight, while `filteredFor`'s default `now` has moved on (iOS #500).
+    private let now: Date = {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = .warsaw
+        return cal.date(from: DateComponents(year: 2020, month: 6, day: 15, hour: 12))!
+    }()
+    private let today = "2020-06-15"
+    private let tomorrow = "2020-06-16"
 
     private func fixture() -> [Film] {
         let mandalorian = film("Mandalorian and Grogu", [
@@ -64,7 +72,7 @@ final class FilteredForTests: XCTestCase {
     func testDateTodayFiltersToTodayOnly() {
         let result = fixture().filteredFor(
             date: .today, format: .empty, query: "",
-            hidden: []
+            hidden: [], now: now
         )
         XCTAssertEqual(result.map(\.title).sorted(), ["Mandalorian and Grogu", "Title2"])
         for f in result {
@@ -206,7 +214,7 @@ final class FilteredForTests: XCTestCase {
     func testCombinedFiltersIntersect() {
         let result = fixture().filteredFor(
             date: .today, format: .empty, query: "Mand",
-            hidden: ["Title2"], disabledCinemas: ["Apollo", "Muza"]
+            hidden: ["Title2"], disabledCinemas: ["Apollo", "Muza"], now: now
         )
         XCTAssertEqual(result.map(\.title), ["Mandalorian and Grogu"])
         let todayDay = result[0].showings[0]
@@ -214,15 +222,9 @@ final class FilteredForTests: XCTestCase {
     }
 
     func testTodayFilterUsesProvidedNowNotSystemClock() {
-        let fixedToday = "2020-06-15"
-        let fixedTomorrow = "2020-06-16"
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = TimeZone(identifier: "Europe/Warsaw")!
-        let now = cal.date(from: DateComponents(year: 2020, month: 6, day: 15, hour: 12))!
-
         let films = [
-            film("A", [day(fixedToday, [cinema("X", [slot("18:00")])])]),
-            film("B", [day(fixedTomorrow, [cinema("X", [slot("19:00")])])]),
+            film("A", [day(today, [cinema("X", [slot("18:00")])])]),
+            film("B", [day(tomorrow, [cinema("X", [slot("19:00")])])]),
         ]
 
         let filtered = films.filteredFor(
@@ -231,7 +233,7 @@ final class FilteredForTests: XCTestCase {
             now: now
         )
         XCTAssertEqual(filtered.map(\.title), ["A"])
-        XCTAssertEqual(filtered[0].showings.map(\.date), [fixedToday])
+        XCTAssertEqual(filtered[0].showings.map(\.date), [today])
     }
 
     // MARK: - Country filter (excluded semantics)
