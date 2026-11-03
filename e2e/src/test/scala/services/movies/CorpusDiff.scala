@@ -72,7 +72,14 @@ object CorpusDiff {
               ("posterUrl", da.posterUrl, db.posterUrl), ("releaseYear", da.releaseYear, db.releaseYear),
               ("runtimeMinutes", da.runtimeMinutes, db.runtimeMinutes), ("countries", da.countries, db.countries),
               ("genres", da.genres, db.genres), ("filmUrl", da.filmUrl, db.filmUrl),
-              ("showtimes.size", da.showtimes.size, db.showtimes.size), ("showtimes", da.showtimes, db.showtimes)
+              ("showtimes.size", da.showtimes.size, db.showtimes.size), ("showtimes", da.showtimes, db.showtimes),
+              // Every other field `SourceData.equals` reads, so a slot that differs always names its field (Germany's
+              // order passes printed "source 'TMDB' differs:" and nothing: the difference was its titleSearches).
+              ("rawTitle", da.rawTitle, db.rawTitle), ("originalTitle", da.originalTitle, db.originalTitle),
+              ("englishTitle", da.englishTitle, db.englishTitle), ("trailerUrl", da.trailerUrl, db.trailerUrl),
+              ("language", da.language, db.language), ("ageRating", da.ageRating, db.ageRating),
+              // Only the entries that differ: a film's searches run to a dozen titles, past `short`'s cut.
+              ("titleSearches", da.titleSearches.diff(db.titleSearches), db.titleSearches.diff(da.titleSearches))
             ).collect { case (n, x, y) if x != y => n -> s"      $n: $labelA=${short(x)} $labelB=${short(y)}" }
             Some(fields.map(field => s"slot ${field._1}") -> s"  source '${src.displayName}' differs:\n${fields.map(_._2).mkString("\n")}")
           case (Some(_), None) => Some(Seq(s"slot only in $labelA") -> s"  source '${src.displayName}': only in $labelA")

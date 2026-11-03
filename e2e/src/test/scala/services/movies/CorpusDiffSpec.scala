@@ -102,6 +102,17 @@ class CorpusDiffSpec extends AnyFlatSpec with Matchers {
     lines shouldBe Seq("Kino A | Kino B awaits q1; q2", "…and 1 more take(s)")
   }
 
+  // Germany's order passes in two JVMs: 6 films printed "source 'TMDB' differs:" and no field -- the TMDB slot's
+  // titleSearches, a field the slot diff did not list.
+  "the slot diff" should "name every field two slots differ in" in {
+    import models.{MovieRecord, Source, SourceData, TitleSearch, Tmdb}
+    def row(rank: Option[Int]) = StoredMovieRecord("Der Fremde", Some(2025), MovieRecord(data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Der Fremde"), titleSearches = Seq(TitleSearch("derfremde", rank, 2))))), FilmId("fremde"))
+
+    val diff = CorpusDiff.records(Seq(row(Some(4))), Seq(row(Some(5))), "pass0", "pass1")
+    diff should include ("titleSearches: pass0=List(TitleSearch(derfremde,Some(4),2)) pass1=List(TitleSearch(derfremde,Some(5),2))")
+  }
+
   "the film diff" should "lead with which fields differ and how often, then show the first films, capped" in {
     import models.Kinoteka
     val a = (1 to 5).map(i => film(s"Film $i", Kinoteka, s"Film $i", tmdb = Some(i)))
