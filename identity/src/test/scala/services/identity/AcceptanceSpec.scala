@@ -766,6 +766,22 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.pooled(pooledAt(ranked(worlds26, worlds26Record))).map(_._1.candidate.tmdbId) shouldBe Some(1)
   }
 
+  "the pooled vote" should "take neither film its scoring ties exactly at the top, in whatever order they arrive" in {
+    // DE Metropol-Kino-Center's bare "Madoka Magica - Der Film: Rebellion" (drift slice, 11 of 12 seeds): pooled, 1962's
+    // "Rebellion" (42997) and 2013's Madoka film (212162) measured `segment` alike at 46.3%. A tie the pooled population
+    // makes is no evidence for either; breaking it (by id, or by title coverage) took a film only some arrival states tie.
+    val madoka   = Listing("Madoka Magica - Der Film: Rebellion")
+    val defiant  = (42997, Film("Rebellion", year = Some(1962), runtime = Some(101)), Some(2))
+    val rebellion = (212162, Film("Puella Magi Madoka Magica - Der Film 3 - Rebellion", year = Some(2013), runtime = Some(116)), Some(1))
+    def pooledAt(scored: Seq[Scored]) = scored.map(_.copy(probability = 0.463))
+    val tied = pooledAt(ranked(madoka, defiant, rebellion))
+    acceptance.pooled(tied) shouldBe None
+    acceptance.pooled(tied.reverse) shouldBe None
+    // one point apart, the better-scored film is taken as before
+    val apart = tied.map(scored => if (scored.candidate.tmdbId == 212162) scored.copy(probability = 0.473) else scored)
+    acceptance.pooled(apart.sortBy(-_.probability)).map(_._1.candidate.tmdbId) shouldBe Some(212162)
+  }
+
   "directors-work" should "not read a broadcast's screening label as the work two concerts' titles bill" in {
     // UK, 2026-10-18 00:18–00:20 (IdentityTakeOscillating): TMDB renamed its Buenos Aires record to "BTS WORLD TOUR
     // [ARIRANG] in Buenos Aires" two minutes before the São Paulo one, which still read "…In São Paulo: Live Viewing"

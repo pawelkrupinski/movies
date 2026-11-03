@@ -224,12 +224,6 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
       model.batch(seen = arriving)
       check(step)
     }
-    def gone(step: String, venues: String => Boolean): Unit = {
-      val leaving = seen.filter(listing => venues(listing.venue))
-      seen = seen.filterNot(listing => venues(listing.venue))
-      model.batch(gone = leaving.map(_.key))
-      check(step)
-    }
     /** `venues`' listings leave as the worker's drain has them leave ([[services.identity.ListingRetention]]): kept, marked
      *  so, while a present listing bills their title, else gone. */
     def left(step: String, venues: String => Boolean): Unit = {
@@ -283,8 +277,8 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val replay = new SliceReplay("test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc")
     replay.lookups.held = Set("f:42997")
     replay.scraped("boot", _ == "Metropol-Kino-Center")
-    // the pooled tie goes to the title covering more of the listing's (the next case), the rival's record pending or not
-    replay.takes("Madoka Magica - Der Film: Rebellion") shouldBe Map("Metropol-Kino-Center" -> "tmdb:212162")
+    // alone, the pooled vote ties the two films exactly (the next case): neither is taken, the rival's record pending or not
+    replay.takes("Madoka Magica - Der Film: Rebellion") shouldBe Map("Metropol-Kino-Center" -> "none")
     replay.filed("the rival's record filed", Set.empty, Set(42997))
     replay.scraped("Filmhaus's listing", _ => true)
     replay.flips.flips.map(_.line) shouldBe empty
@@ -306,21 +300,22 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     replay.takes("The Ties That Bind Us").values.toSet shouldBe Set("tmdb:1096642")
   }
 
-  "a bare title its pooled scoring ties between two films" should "take the one whose title covers more of its own" in {
+  "a bare title its pooled scoring ties between two films" should "take neither while they tie, and its film once a fact separates them" in {
     // The drift slice of DE Metropol-Kino-Center's bare "Madoka Magica - Der Film: Rebellion" (11 of 12 seeds): alone it
     // measured 1962's "Rebellion" (42997) and 2013's Madoka film (212162) `segment` alike, 46.3% each, and the pooled vote
     // took 42997 by its lower id -- 212162 -> 42997 -> 212162 as Filmhaus (Langerringen)'s dated listing left and came
-    // back. The owner's decision (identity design): an exact top tie goes to the title covering more of the listing's.
+    // back. A tie the pool makes is no evidence for either film: unmatched, until Filmhaus's dated listing separates them
+    // (gone outright, not kept, Metropol is alone again and unmatched again, as a whole resolve of it alone is).
     val replay = new SliceReplay("test/resources/fixtures/drift-slices/de/metropol-madoka-6a9b3bcc")
     val title  = "Madoka Magica - Der Film: Rebellion"
     replay.scraped("boot", _ == "Metropol-Kino-Center")
-    replay.takes(title) shouldBe Map("Metropol-Kino-Center" -> "tmdb:212162")
+    replay.takes(title) shouldBe Map("Metropol-Kino-Center" -> "none")
     replay.scraped("Filmhaus's listing", _ => true)
-    replay.gone("Filmhaus's listing gone", _ == "Filmhaus (Langerringen)")
-    replay.takes(title) shouldBe Map("Metropol-Kino-Center" -> "tmdb:212162")
-    replay.scraped("Filmhaus's listing back", _ == "Filmhaus (Langerringen)")
-    replay.flips.flips.map(_.line) shouldBe empty
     replay.takes(title).values.toSet shouldBe Set("tmdb:212162")
+    // leaving as the worker's drain has it leave, its facts kept, it still separates them (the next case)
+    replay.left("Filmhaus's listing leaves", _ == "Filmhaus (Langerringen)")
+    replay.takes(title)("Metropol-Kino-Center") shouldBe "tmdb:212162"
+    replay.flips.flips.map(_.line) shouldBe empty
   }
 
   // The owner's lifetime of identity facts, beside the kept-apart rule (identity design, 2026-11-01, "B"): a kept listing

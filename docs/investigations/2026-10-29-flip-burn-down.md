@@ -170,6 +170,16 @@ them down". They were baselined at the check's birth (`New-Check:`), generated b
 | de 1, de 2 | "Do You Love Me", "Scott & Lila" | X → none (6 gone) → X | open |
 | pl 1, pl 2 | "Siostry (1972)", "Festiwal Korelacje: „Zemsta”…" | none → X → none → X | open |
 
+
+### Madoka, revisited: a top tie takes nothing (flip audit G3, 2026-11-03)
+
+`Acceptance.tieBroken` is gone. It broke a tie the POOL makes, and the pool depends on which listings are present, so
+the tie (and the take it broke it to) existed only in some arrival states -- the opposite of the owner's rules: no
+stickiness, a near or exact tie stays unmatched, unmatched beats wrong. Now when the two best takeable candidates of the
+pooled scoring are one score (within 1e-9, float noise of the pool's summing order), the pooled rules take nothing
+(`Acceptance.tiedAtTop`); a season record still pre-empts as before. Metropol alone is unmatched; Filmhaus's dated
+listing (present, or kept by retention) separates the films and 212162 is taken. AcceptanceSpec holds the tie untaken
+in either order; IdentityDriftSpec replays the slice.
 ### 2026-10-30: what the pending detection clears, and what stays
 
 - Drift 4133 (the tip, with the awaited-record line and held venue pages) names six rows fixed: UK "Royal Ballet: Swan

@@ -378,7 +378,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     // stage-production pooled: one member's stated year is not the cluster's broadcast — it took UK Aldeburgh's
     // "Royal Ballet: The Nutcracker" [2025] as the 2025/26 record, and split Savoy Worksop's "MET:Manon" off the Met's
     takenBy(ranked)(broadcastSeasonRecord(ranked).map(_ -> "season-record").filterNot(_ => Acceptance.ablated("season-record"))
-      .orElse(firstOf(Acceptance.tieBroken(ranked), pooledRules)))
+      .orElse(if (Acceptance.tiedAtTop(ranked)) None else firstOf(ranked, pooledRules)))
 
   /** What both ways of taking a film share: nothing for a bill of several works; the season's production when there is
    *  one (it pre-empts every rule, and a season production refused takes nothing), else what `rules` take — either only
@@ -458,27 +458,19 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
 }
 
 private[identity] object Acceptance {
-  /** `ranked` (best first, ties by TMDB id) with an EXACT tie at the top of the takeable broken by the title instead:
-   *  the tied candidate whose best title form covers more of the listing's title -- the share of the listing's title
-   *  tokens one of its forms carries -- first, the TMDB id the last resort. Nothing else moves. The owner's decision
-   *  (2026-10-30, identity design): DE Metropol-Kino-Center's bare "Madoka Magica - Der Film: Rebellion", alone, measured
-   *  1962's "Rebellion" (42997, one token of five) and 2013's "Puella Magi Madoka Magica - Der Film 3 - Rebellion"
-   *  (212162, all five) `segment` alike at 46.3%, and the pooled vote took the 1962 film by its lower id. */
-  private[identity] def tieBroken(ranked: Seq[Scored]): Seq[Scored] = {
-    val takeable = ranked.filter(_.takeable)
-    takeable.headOption.filter(top => takeable.lift(1).exists(_.probability == top.probability)).fold(ranked) { top =>
-      val (above, from) = ranked.span(_.probability > top.probability)
-      val (tied, below) = from.span(_.probability == top.probability)
-      above ++ tied.sortBy(scored => (-titleCoverage(scored), scored.candidate.tmdbId)) ++ below
-    }
+  /** Do the two best TAKEABLE candidates of `ranked` score alike (within float noise)? Then the pooled vote takes
+   *  neither: a tie the pooled population makes is no evidence for either, and any tie-break (the lower id, the title
+   *  covering more of the listing's) takes a film only the arrival states that tie it pick -- DE Metropol-Kino-Center's
+   *  bare "Madoka Magica - Der Film: Rebellion" went 212162 -> 42997 -> 212162 as Filmhaus's listing left and came back,
+   *  1962's "Rebellion" and the 2013 Madoka film at 46.3% each. Unmatched beats a guess; the listing's own facts, or a
+   *  pool that separates them, decide. */
+  private[identity] def tiedAtTop(ranked: Seq[Scored]): Boolean =
+  {
+    val takeable = ranked.filter(_.takeable).map(_.probability)
+    takeable.maxOption.exists(top => takeable.count(probability => top - probability < TieTolerance) > 1)
   }
-
-  /** The largest share of the listing's title tokens (any of its own titles) one of the film's title forms carries. */
-  private[identity] def titleCoverage(scored: Scored): Double = {
-    val titles = scored.listing.ownForms.map(_.wordSet).filter(_.nonEmpty)
-    val forms  = scored.candidate.film.forms.map(_.wordSet)
-    titles.iterator.flatMap(title => forms.iterator.map(form => (title intersect form).size.toDouble / title.size)).maxOption.getOrElse(0.0)
-  }
+  /** Two pooled probabilities closer than this are one score: the pool sums in arrival order. */
+  private[identity] val TieTolerance = 1e-9
 
   /** Is the acceptance rule called `rule` switched off for an ablation run ([[RuleAblation]], as `accept:<rule>`)? */
   def ablated(rule: String): Boolean = RuleAblation.disables("accept:" + rule)
