@@ -318,6 +318,45 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     together(r, plain.head, decorated) shouldBe false
   }
 
+  "A bare listing its own facts leave undecided" should "take the one film its anchors take, screening in its country and season" in {
+    // ANCHORED UNANIMITY (BareListing.anchored): a bare "Lalka" names two works; the siblings its title links it to, publishing
+    // Kawalski's year and credit, take his 2026 film on their own facts, and screen in its season: it takes that film.
+    val films  = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
+    val season = ScreeningDays.ofSeason(java.time.LocalDate.of(2026, 10, 1))
+    val plain  = Seq(Multikino, Helios, KinoApollo).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")).copy(screenings = season))
+    val bare   = listing(KinoMuza, "Lalka").copy(screenings = season)
+    val r = resolve(plain :+ bare, films)
+    withClue((plain :+ bare).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(plain.head.key).film shouldBe Some(1)
+      r.decisionOf(bare.key).film shouldBe Some(1)
+      r.anchorConflicts shouldBe empty
+    }
+  }
+
+  it should "take no film when its anchors took two: a namesake screening beside it" in {
+    val films  = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
+    val season = ScreeningDays.ofSeason(java.time.LocalDate.of(2026, 10, 1))
+    val plain  = Seq(Multikino, Helios).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski")).copy(screenings = season))
+    val has    = listing(KinoApollo, "Lalka", Some(1968), Some("Wojciech Has")).copy(screenings = season)
+    val bare   = listing(KinoMuza, "Lalka").copy(screenings = season)
+    val r = resolve(plain ++ Seq(has, bare), films)
+    withClue((plain ++ Seq(has, bare)).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(has.key).film shouldBe Some(2)
+      r.decisionOf(bare.key).film shouldBe None
+      r.anchorConflicts shouldBe Set(bare.key)
+    }
+  }
+
+  it should "take nothing from siblings screening in another season" in {
+    val films  = Seq(F(1, "Lalka", 2026, "Maciej Kawalski", 150, 5), F(2, "Lalka", 1968, "Wojciech Has", 159, 8))
+    val plain  = Seq(Multikino, Helios).map(listing(_, "Lalka", Some(2026), Some("Maciej Kawalski"))
+      .copy(screenings = ScreeningDays.ofSeason(java.time.LocalDate.of(2026, 10, 1))))
+    val bare   = listing(KinoMuza, "Lalka").copy(screenings = ScreeningDays.ofSeason(java.time.LocalDate.of(2025, 10, 1)))
+    val r = resolve(plain :+ bare, films)
+    r.decisionOf(plain.head.key).film shouldBe Some(1)
+    r.decisionOf(bare.key).film shouldBe None
+  }
+
   "A listing whose own title search is empty" should
     "be offered the film its identical title's siblings reached, and take it on its own facts" in {
     // PL, "Vincent. Legenda oceanu": TMDB titles the film "The Last Whale Singer", so the Polish
@@ -3353,7 +3392,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // namesakes are a near-tie: no film, whatever record its siblings take
     withClue(rendered(r, ls)) {
       films(r, ls.diff(bareOnes(ls))) shouldBe Seq(Some(1723978))
-      films(r, bareOnes(ls)) shouldBe Seq(None)
+      // its bare billings: their anchors, the siblings taking the record on their own facts, all took it (BareListing.anchored)
+      films(r, bareOnes(ls)) shouldBe Seq(Some(1723978))
     }
   }
 
@@ -3372,7 +3412,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r  = shipped(ls, records)
     withClue(rendered(r, ls)) {
       films(r, ls.diff(bareOnes(ls))) shouldBe Seq(Some(1693710))
-      films(r, bareOnes(ls)) shouldBe Seq(None)
+      // its bare billings: their anchors, the siblings taking the record on their own facts, all took it (BareListing.anchored)
+      films(r, bareOnes(ls)) shouldBe Seq(Some(1693710))
     }
   }
 
@@ -3391,7 +3432,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r  = shipped(ls, records)
     withClue(rendered(r, ls)) {
       films(r, ls.diff(bareOnes(ls))) shouldBe Seq(Some(1791571))
-      films(r, bareOnes(ls)) shouldBe Seq(None)
+      // its bare billings: their anchors, the siblings taking the record on their own facts, all took it (BareListing.anchored)
+      films(r, bareOnes(ls)) shouldBe Seq(Some(1791571))
     }
   }
 

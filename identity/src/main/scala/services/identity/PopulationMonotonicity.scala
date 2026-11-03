@@ -175,26 +175,57 @@ object PopulationMonotonicity {
    *  walks them, each prefix resolved against the corpus's context with the family's absent listings taken out); a
    *  Pending take is no take. The bare listings whose takes differ. */
   def bareMoves(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, whole: Resolution,
-                count: Int, steps: Int, focus: ListingKey => Boolean): Seq[BareMove] = {
+                count: Int, steps: Int, focus: ListingKey => Boolean): Seq[BareMove] =
+    bareWalk(listings, lookups, normalizer, inputs, whole, count, steps, focus).moves
+
+  /** A bare listing whose take FLIPPED along one arrival chain: its decided takes in arrival order (Pending skipped), at
+   *  the prefix sizes they were read at. */
+  final case class BareFlip(key: ListingKey, chain: Int, takes: Seq[(String, Int)]) {
+    def line: String = s"${key.venue} | ${key.rawTitle} [chain $chain]: " + takes.map { case (take, n) => s"$take@$n" }.mkString(" -> ")
+  }
+  /** What a walk of the bare listings saw: the takes that moved at all ([[BareMove]]), the takes that FLIPPED along a
+   *  chain ([[BareFlip]]). */
+  final case class BareWalk(moves: Seq[BareMove], flips: Seq[BareFlip])
+
+  /** Does a chain's run of takes (in arrival order) FLIP -- take two different films, or a film twice with something
+   *  else between? ANCHORED UNANIMITY ([[BareListing.anchored]]) allows none -> X -> none and nothing more. */
+  def flips(takes: Seq[String]): Boolean = {
+    val runs  = collapsed(takes)
+    val films = runs.filter(_ != TakeFlips.NoFilm)
+    films.distinct.sizeIs > 1 || films.sizeIs > 1
+  }
+
+  /** [[bareMoves]] and the FLIPS of the same walk: every bare listing's take at every prefix of every chain, none included. */
+  def bareWalk(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, whole: Resolution,
+               count: Int, steps: Int, focus: ListingKey => Boolean): BareWalk = {
     val all        = listings.sorted.distinctBy(_.key)
     val generation = new CandidateGeneration(all, lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
     val without    = new Without.Index(generation.nodes)
     val families   = all.groupBy(l => whole.familyOf.getOrElse(l.key, -1)).toSeq
       .filter { case (id, ls) => id >= 0 && ls.sizeIs >= 2 && ls.exists(l => focus(l.key) && whole.bare(l.key)) }.sortBy(_._1)
-    families.flatMap { case (_, members) =>
+    val walked = families.map { case (_, members) =>
       val keys = members.map(_.key).toSet
       val seen = PopulationMonotonicity.chains(members, MurmurHash3.stringHash(members.head.sortKey).toLong, count, steps).zipWithIndex.flatMap { case (chain, c) =>
         chain.flatMap { prefix =>
           val present = prefix.map(_.key).toSet
           val r = resolvedPresent(prefix, lookups, normalizer, inputs, without(generation.context, keys -- present))
-          prefix.filter(l => whole.bare(l.key)).flatMap(l => r.decisionOf.get(l.key).flatMap(takeOf).map(take => (l.key, (take, c, prefix.size))))
+          prefix.filter(l => whole.bare(l.key)).map(l => (l.key, (r.decisionOf.get(l.key).flatMap(takeOf), c, prefix.size)))
         }
       }
-      seen.groupMap(_._1)(_._2).toSeq.flatMap { case (key, takes) =>
-        val firsts = takes.groupBy(_._1).values.map(_.minBy { case (_, c, n) => (c, n) }).toSeq.sortBy { case (_, c, n) => (c, n) }
+      val byKey = seen.groupMap(_._1)(_._2).toSeq
+      val moves = byKey.flatMap { case (key, takes) =>
+        val firsts = takes.collect { case (Some(take), c, n) => (take, c, n) }.groupBy(_._1).values.map(_.minBy { case (_, c, n) => (c, n) }).toSeq.sortBy { case (_, c, n) => (c, n) }
         Option.when(firsts.sizeIs > 1)(BareMove(key, firsts))
       }.sortBy(m => (m.key.rawTitle, m.key.venue))
+      val flipped = byKey.flatMap { case (key, takes) =>
+        takes.groupBy(_._2).toSeq.sortBy(_._1).flatMap { case (c, inChain) =>
+          val ordered = inChain.sortBy(_._3).collect { case (Some(take), _, n) => (take, n) }
+          Option.when(flips(ordered.map(_._1)))(BareFlip(key, c, ordered))
+        }
+      }.sortBy(f => (f.key.rawTitle, f.key.venue, f.chain))
+      (moves, flipped)
     }
+    BareWalk(walked.flatMap(_._1), walked.flatMap(_._2))
   }
 
   /**

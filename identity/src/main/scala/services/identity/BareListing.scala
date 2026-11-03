@@ -82,6 +82,43 @@ private[identity] object BareListing {
     if (unshown.forall(s => older(s) && s.candidate.film.knownReleasedIn(country, dated = false))) shown else Nil
   }
 
+  /** ANCHORED UNANIMITY (the owner, 2026-11-03: "can there be sibling dependence without flips?"): a bare listing its own
+   *  facts leave undecided takes film X when its ANCHORS -- the siblings a title must-link joins it to, screening in its
+   *  country and season, whose take is their OWN (a pin, a feed link, a fact or a cast of theirs, read on a scope of that
+   *  sibling alone; never a vote, a borrowing or a fill) -- took X, and none took another film; and X is a work its title
+   *  names, of a kind its own rules leave (`plausible`). No majority, venue count or lowest-id tie-break: an anchor's take
+   *  is the same whichever listings are present, so as listings arrive the set of anchor films only grows, and the take
+   *  is its one element or none -- none -> X, then X -> none once a conflicting anchor arrives (a real namesake screening
+   *  beside it), never back. */
+  def anchored(anchors: Set[Int], plausible: Set[Int]): Option[Int] =
+    Option.when(anchors.sizeIs == 1)(anchors.head).filter(plausible)
+
+  /** An ANCHOR's film by its own FACTS ([[anchored]]): the one work its title names, of a kind its own rules leave, that
+   *  the facts it states agree with -- its year within one, its director the same person, its running time within ten
+   *  minutes, each where the work's record holds it too, at least one of them read -- none when no such fact is read. Read off the listing-film measures alone, never the calibrated
+   *  probability: that weighs `venues.corroborating`, a count of the venues present, which moved the anchors of DE
+   *  Cinecitta's "Camouflage" from one namesake to the other as listings arrived. */
+  def factMatch(listing: IdentityMeasures.Listing, scored: Seq[Scored]): Option[Int] = {
+    // each fact it states: Some(agrees) where the film's record holds it too, None where the record holds it not (unknown)
+    def readings(s: Scored): Seq[Option[Boolean]] = Seq(
+      Option.when(listing.year.nonEmpty)(s.number("year.delta").map(d => math.abs(d) <= 1)).flatten.map(Some(_)).getOrElse(None),
+      Option.when(listing.directors.nonEmpty)(s.category("director").map(_ == IdentityMeasures.SamePersonMeasure.value)).flatten,
+      Option.when(listing.runtime.nonEmpty)(s.number("runtime.delta").map(d => math.abs(d) <= 10)).flatten)
+    def agrees(s: Scored) = { val read = readings(s).flatten; read.nonEmpty && read.forall(identity) }
+    scored.filter(s => plausible(Seq(s)).nonEmpty && agrees(s)).map(_.candidate.tmdbId).distinct match {
+      case Seq(only) => Some(only)
+      case _         => None
+    }
+  }
+
+  /** Why a bare listing took what it took: nothing for its own take; its anchors' film, or why they gave none. */
+  def why(scored: Seq[Scored], take: Option[Int], anchors: Set[Int]): Seq[String] = (take, anchors.toSeq.sorted) match {
+    case (Some(film), Seq(only)) if film == only => Seq(s"${DecisionTrace.Bare}: its anchors, siblings taking a film on their own facts, all took $film")
+    case (Some(_), _)                            => Nil
+    case (None, several) if several.sizeIs > 1   => Seq(s"${DecisionTrace.Bare}: its anchors took ${several.mkString(", ")}: a namesake tie, no film")
+    case (None, _)                               => Seq(whyNone(scored))
+  }
+
   /** Why a bare node took no film: its title's namesakes, or no work its own rules took. */
   def whyNone(scored: Seq[Scored]): String = plausible(scored) match {
     case Seq()      => s"${DecisionTrace.Bare}: no work its title names that its own evidence takes"

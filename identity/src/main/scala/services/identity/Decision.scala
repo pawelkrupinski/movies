@@ -140,7 +140,10 @@ final case class Resolution(decisions: Seq[ResolverDecision], nodes: Int, family
                              *  what the population report counts as a contested bare listing. No take reads it. */
                             contested: Map[ListingKey, Map[Int, Set[String]]] = Map.empty,
                             /** The listings of BARE nodes ([[BareListing]]): each decided by its own title alone. */
-                            bare: Set[ListingKey] = Set.empty) {
+                            bare: Set[ListingKey] = Set.empty,
+                            /** The bare listings whose ANCHORS ([[BareListing.anchored]]) took different films: none, a real
+                             *  namesake tie. No take reads it; the measure counts it. */
+                            anchorConflicts: Set[ListingKey] = Set.empty) {
   def families: Int = familyOf.values.toSet.size
   /** The partition over listing keys — what the order-independence properties compare. */
   lazy val partition: Set[Set[ListingKey]] = decisions.map(_.listings).toSet

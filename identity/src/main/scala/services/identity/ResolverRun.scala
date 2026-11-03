@@ -49,6 +49,30 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
   if (crossings.nonEmpty) throw new FamilyCrossing(crossings.size, s"${crossings.size} edge(s) cross a family, e.g. ${crossings.head}")
   private val roundAByFamily = roundAEdges.groupBy(edge => familyOf(edge.a))
 
+  // ── ANCHORS ([[BareListing.anchored]]): the siblings a bare listing may take its film from ──
+  private lazy val nodesByTitleKey: Map[String, Seq[EvidenceNode]] = nodes.flatMap(node => links.titleKeys(node).map(_ -> node)).groupMap(_._1)(_._2)
+  private val anchorMemo = scala.collection.mutable.HashMap.empty[String, Option[Int]]
+  /** An ANCHOR's film: its pin's, its feed link's, or the one its own stated facts agree with ([[BareListing.factMatch]]),
+   *  read on a scope of that node alone -- never a vote, a borrowing, a fill or a count of the venues present, so the same
+   *  whichever listings are present. None for a node billing several works. */
+  private def anchorFilm(node: EvidenceNode): Option[Int] = anchorMemo.getOrElseUpdate(node.id,
+    families.pinnedFilm.get(node.id).orElse {
+      val own = new FamilyScope(Seq(node), scoring, acceptance, () => ())
+      if (acceptance.billsSeveralWorks(own.of(node))) None
+      else own.feedLinked(node).map(_._2).orElse(BareListing.factMatch(node.evidence.measured, own.of(node)))
+    })
+  /** The films the ANCHORS of `node`'s bare `listing` took: the nodes a title must-link joins it to ([[TitleLinks.titleLinked]],
+   *  read for the pair alone) holding a listing in its venue's country screening in its season. */
+  private def anchorFilms(node: EvidenceNode, listing: Listing): Set[Int] = {
+    val country = EvidenceNode.countryOf(listing.cinema)
+    val season  = listing.screenings.season
+    if (country.isEmpty || season.isEmpty) Set.empty
+    else links.titleKeys(node).toSeq.flatMap(nodesByTitleKey.getOrElse(_, Nil)).distinctBy(_.id)
+      .filter(other => other.id != node.id && other.listings.exists(l => EvidenceNode.countryOf(l.cinema) == country && l.screenings.season == season) &&
+        links.titleLinked(node, other))
+      .flatMap(anchorFilm).toSet
+  }
+
   /** The resolution: every family's decisions, and the resolve's counts. */
   def resolution: Resolution = {
     val runs      = nodes.groupBy(node => familyOf(node.id)).toSeq.sortBy(_._1).map { case (family, members0) => new FamilyRun(family, members0.sortBy(_.id)) }
@@ -69,7 +93,8 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       scorings       = families.scorings,
       titleRelations = families.titleRelations,
       contested      = runs.flatMap(_.contested).toMap,
-      bare           = runs.flatMap(_.bareListings).toSet)
+      bare           = runs.flatMap(_.bareListings).toSet,
+      anchorConflicts = runs.flatMap(_.anchorConflicts).toSet)
   }
 
   /** One family's assignment: round A's clusters, the votes of those no member matched alone, the final clusters, and
@@ -132,17 +157,26 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       if (node.evidence.measured.publishesAFact || families.pinnedFilm.contains(node.id)) Nil
       else node.listings.filter(listing => listing.listedCast.isEmpty && SourceReliability.tmdbLinked(listing).isEmpty && !scoring.pins.pinnedTogether(listing.key) &&
         !catalogueKeysOf(node, listing).exists(sharedCatalogue))
-    /** Each node holding bare listings: those listings, the node's own scope read for them alone, and their film. */
-    private val bare: Map[String, (Set[ListingKey], FamilyScope, Option[Int])] =
+    /** Each node holding bare listings: its own scope read for them alone, and its listings' takes, grouped -- each
+     *  group's listings, film, and the films their anchors took ([[BareListing.anchored]]). */
+    private val bare: Map[String, (FamilyScope, Seq[(Set[ListingKey], Option[Int], Set[Int])])] =
       if (mutation == Mutation.NoVoting) Map.empty
       else members.flatMap { node =>
         val listings = bareOf(node)
         Option.when(listings.nonEmpty) {
           val own  = new FamilyScope(Seq(node), scoring, acceptance, () => (), titleOnly = true)
           // a billing of several works is none of them, as in a cluster
-          val take = if (acceptance.billsSeveralWorks(own.of(node))) None
-                     else BareListing.take(own.of(node), own.takenAlone(node).map(_._1._1.candidate.tmdbId), node.country).filterNot(billedApart(node, own, _))
-          node.id -> (listings.map(_.key).toSet, own, take)
+          val several = acceptance.billsSeveralWorks(own.of(node))
+          val take    = if (several) None
+                        else BareListing.take(own.of(node), own.takenAlone(node).map(_._1._1.candidate.tmdbId), node.country).filterNot(billedApart(node, own, _))
+          val groups  =
+            if (several || take.isDefined) Seq((listings.map(_.key).toSet, take, Set.empty[Int]))
+            else {
+              val plausible = BareListing.plausible(own.of(node)).toSet
+              listings.map(listing => listing.key -> anchorFilms(node, listing)).groupMap(_._2)(_._1).toSeq.sortBy(_._2.min)(using ListingKey.ordering)
+                .map { case (anchors, keys) => (keys.toSet, BareListing.anchored(anchors, plausible).filterNot(billedApart(node, own, _)), anchors) }
+            }
+          node.id -> (own, groups)
         }
       }.toMap
     // a bare node billing `film` as one piece beside another thing, or beside its screening, read on its own scope: none of it
@@ -151,8 +185,9 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       scored.exists(s => IdentityResolver.billedAsPiece(node, s, s.number("venues.corroborating").getOrElse(0.0), recurs, answered).isDefined) ||
         IdentityResolver.besideItsScreening(Seq(node)).nonEmpty
     }
-    private val bareKeys: Set[ListingKey] = bare.values.flatMap(_._1).toSet
+    private val bareKeys: Set[ListingKey] = bare.values.flatMap(_._2.flatMap(_._1)).toSet
     def bareListings: Set[ListingKey] = bareKeys
+    def anchorConflicts: Set[ListingKey] = bare.values.flatMap(_._2.collect { case (keys, None, anchors) if anchors.sizeIs > 1 => keys }.flatten).toSet
 
     /** A cluster's decisions with its bare listings taken out: each node's bare listings decided by their own title alone,
      *  the rest as the cluster would be, its film kept (a bare node lends the rest the film it was joined by). */
@@ -161,7 +196,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       if (holding.isEmpty) decide(cluster)
       else {
         val film = cluster.iterator.flatMap(node => filmOf(node.id)).nextOption()
-        val rest = cluster.filterNot(node => bare.get(node.id).exists(_._1.size == node.listings.size))
+        val rest = cluster.filterNot(node => bare.get(node.id).exists(_._2.map(_._1.size).sum == node.listings.size))
         Option.when(rest.nonEmpty)(rest).toSeq.flatMap(decide(_, id => filmOf(id).orElse(film))).flatMap(without(bareKeys)) ++
           holding.flatMap(bareDecision)
       }
@@ -177,12 +212,14 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       decision.copy(members = members)(decision.trace.copy(nodes = decision.trace.nodes.filter { case (key, _) => kept(key) }))
     }
 
-    private def bareDecision(node: EvidenceNode): Option[ResolverDecision] = {
-      val (keys, own, take) = bare(node.id)
-      val decided = decisions.of(Seq(node), own, _ => take, take.map(node.id -> _).toMap, Map.empty, familyEdges, clusterIndex)
-      val why     = if (take.isDefined) Nil else Seq(BareListing.whyNone(own.of(node)))
-      val marked  = decided.copy(explanation = why ++ decided.explanation, fallback = None)(decided.trace.copy(bare = true))
-      Some(keeping(marked, marked.members.filter(keys)))
+    private def bareDecision(node: EvidenceNode): Seq[ResolverDecision] = {
+      val (own, groups) = bare(node.id)
+      groups.map { case (keys, take, anchors) =>
+        val decided = decisions.of(Seq(node), own, _ => take, take.map(node.id -> _).toMap, Map.empty, familyEdges, clusterIndex)
+        val why     = BareListing.why(own.of(node), take, anchors)
+        val marked  = decided.copy(explanation = why ++ decided.explanation, fallback = None)(decided.trace.copy(bare = true))
+        keeping(marked, marked.members.filter(keys))
+      }
     }
 
     /** One cluster's decisions: the cluster's own, or — where some of its members bill several works, bill its film as
