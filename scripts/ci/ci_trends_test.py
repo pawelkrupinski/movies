@@ -8,7 +8,7 @@ import json
 import os
 import sys
 import tempfile
-import time
+import threading
 import unittest
 import unittest.mock
 
@@ -380,18 +380,31 @@ class ExportTest(unittest.TestCase):
 
 class FetchTest(unittest.TestCase):
     def test_runs_are_fetched_side_by_side_in_order(self):
+        # Side by side is proved by the calls meeting: each waits at a barrier until FETCH_THREADS of them are in
+        # flight at once, so a serial fetch never fills it and fails at the deadline -- not by timing the fetch, which a
+        # loaded runner stretches (Main #2113: the 50 ms sleep per call it timed was a guessed wait).
+        meeting = threading.Barrier(t.FETCH_THREADS, timeout=30)
+        lock = threading.Lock()
+        flight = {"now": 0, "most": 0}
+
         class Fake:
             repo = "o/r"
 
             def jobs(self, run):
-                time.sleep(0.05)
+                with lock:
+                    flight["now"] += 1
+                    flight["most"] = max(flight["most"], flight["now"])
+                try:
+                    meeting.wait()
+                finally:
+                    with lock:
+                        flight["now"] -= 1
                 return [api_job("check (rest) %s" % run["id"], 0, 10)]
 
-        runs = [{"id": i, "status": "completed", "conclusion": "success", "run_attempt": 1} for i in range(16)]
-        started = time.time()
+        runs = [{"id": i, "status": "completed", "conclusion": "success", "run_attempt": 1} for i in range(2 * t.FETCH_THREADS)]
         records = t.Source(Fake(), with_metrics=False).fetch(runs)
-        self.assertLess(time.time() - started, 16 * 0.05 / 2)
-        self.assertEqual(list(range(16)), [r["id"] for r in records])
+        self.assertEqual(t.FETCH_THREADS, flight["most"])
+        self.assertEqual(list(range(2 * t.FETCH_THREADS)), [r["id"] for r in records])
 
 
 class CliTest(unittest.TestCase):
