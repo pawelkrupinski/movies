@@ -169,6 +169,13 @@ is genuinely gone while Filmweb is complete is
 fallback run after run. Baseline 2026-09-26: 2 active (both Mikro screens,
 fixed the same day). See that entry's fallback table.
 
+**Standing decisions (do not ask again):**
+- **Kino Wybrzeże (Kołobrzeg): keep it on the Filmweb fallback.** The user decided this on 2026-11-03. RCK's cinema is
+  "NIECZYNNE DO ODWOŁANIA" (closed until further notice), but Filmweb 276 carries its DKF film-club nights, which the
+  fallback serves. Log it as `intentionally-dormant (closed; Filmweb covers DKF)`. Only raise it again if Filmweb
+  stops listing it, or if its own MSI portal (`bilety.rck.kolobrzeg.pl`) lists screenings again. A reopened portal
+  should recover on its own.
+
 ### A fourth target: RED venues (last 3 active buckets all red)
 
 Added 2026-09-29. A red venue serves NOTHING unless a fallback covers it, which
@@ -474,10 +481,12 @@ fallback venues sampled, 6 have Filmstarts `[]`, so the fallback is legitimately
 | Artesiete Alhsur E0722 | www.artesiete.es | 45 s adaptive budget (the page still hangs 50 s from the laptop) | ≥10-15 (last content 19.3 d ago) | no | **`needs-human: probably closed — retire E0722`** (as 10-27, 10-30) |
 
 ### Left for next run
-- **Kino Charlie:** decide the MSI move (above). It is the one horizon cap found.
+- **Kino Charlie:** done on 11-03. It now scrapes `bilety.charlie.pl` through `MsiClient`, with Spójnia's events
+  filtered out. Check that it shows more than today and stays green.
 - **Elektrownia / Kozienice:** did they enter the fallback, and are they back?
-- **Wybrzeże:** retire it, or keep it on Filmweb for its DKF nights (third run asking).
-- **Artesiete Alhsur:** retire it (third run asking).
+- **Wybrzeże:** decided on 11-03: keep it on the Filmweb fallback (see the standing decisions under the fallback target).
+- **Artesiete Alhsur:** retired on 11-03 as `feedless` (E0722 in `data/spain/retired.json`). Relabel it `closed` if a
+  dated closure notice turns up.
 - **Kino Sokół Strzyżów:** `bilety.dksokol.eu` still holds only "TESTOWE WYDARZENIE". The venue is green on its own site again.
 - **Own-site re-check owed:** Krobia, Harmonia, Książka.
 - **Kino Tatry:** its site refuses the laptop and mongo-1. If it stays white after a weekend, read it through the prod proxy.
