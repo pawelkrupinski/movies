@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 import unittest.mock
 
@@ -92,6 +93,32 @@ class RunMeasuresTest(unittest.TestCase):
                           "timings / report (timings)"], [hop[0] for hop in path])
         self.assertEqual([0, 55, 60, 30], [round(hop[1]) for hop in path])
 
+    def test_queue_wait_beside_execution_and_wall(self):
+        m = t.run_measures(self.record)
+        self.assertEqual(55 + 60 + 30, round(m["queue_total"]))  # every job's queue, not only the critical path's
+        self.assertEqual((145, 574), (round(m["path_queue"]), round(m["path_work"])))
+        self.assertEqual(720, m["elapsed"])
+        early = api_run(2, [api_job("check (rest)", 0, 100, created=0)], created_offset=-30)
+        self.assertEqual((100, 130), (t.run_measures(early)["wall"], t.run_measures(early)["elapsed"]))
+
+    def test_the_per_run_table_and_summary_show_the_queue(self):
+        summary = t.summarize([t.run_measures(self.record)])
+        self.assertEqual(145, round(summary["queue_total"]["p50"]))
+        text = t.format_report(summary, "precommit-check.yml", runs=True)
+        self.assertIn("every job's queue summed p50 2:25", text)
+        row = [line for line in text.splitlines() if line.strip().startswith("1 ")][0]
+        cells = row.split()  # id, sha, change, date, time, wall, created→end, path queue, exec, all queues
+        self.assertEqual(("12:00", "12:00", "2:25", "2:25"), (cells[5], cells[6], cells[7], cells[9]))
+        self.assertIn(("run: all-jobs queue p50", 145.0), [(n, round(v, 1)) for n, v in t.metric_rows(summary)
+                                                            if n == "run: all-jobs queue p50"])
+
+    def test_change_type_keeps_runs_whole(self):
+        other = api_run(2, [api_job("check (rest)", 0, 100), api_job("plan", 0, 10)])
+        identity = api_run(3, [api_job("check (identity 1/3)", 0, 100), api_job("check (rest)", 0, 50)])
+        parts = t.partition([self.record, other, identity], "change")
+        self.assertEqual({"identity": [3], "other": [1, 2]}, {k: [r["id"] for r in v] for k, v in parts.items()})
+        self.assertEqual(2, len(parts["identity"][0]["jobs"]))
+
     def test_categories_split_setup_from_work(self):
         job = self.record["jobs"][1]
         categories = t.job_categories(job)
@@ -162,6 +189,17 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual("webkit", job["label"])
         self.assertEqual({"start": 900, "end": 880}, job["rate"])
         self.assertEqual("partial", job["cache"]["sbt-target"]["status"])
+
+    def test_one_runner_serving_several_jobs_gives_each_its_own_metrics(self):
+        def lines(label, start):
+            return [{"kind": "job_start", "runner_name": "r1", "label": label, "t": T0 + start}]
+        run = {"id": 9, "name": "Landing", "run_attempt": 1, "status": "completed", "conclusion": "success",
+               "created_at": at(0)}
+        jobs = [api_job("plan", 0, 30, runner="r1", job_id=1), api_job("heavy rows", 40, 300, runner="r1", job_id=2),
+                api_job("check (identity 1/3)", 310, 900, runner="r1", job_id=3)]
+        record = t.run_record(run, jobs, {"ci-metrics-heavy-r1": lines("heavy", 45),
+                                          "ci-metrics-check-identity-r1": lines("identity", 315)})
+        self.assertEqual([None, "heavy", "identity"], [job.get("label") for job in record["jobs"]])
 
     def test_resources_gc_and_the_bound(self):
         job = self.record()["jobs"][0]
@@ -338,6 +376,22 @@ class ExportTest(unittest.TestCase):
             self.assertEqual([1, "fail-once", 2], posted)
             with open(state) as handle:
                 self.assertEqual({"1/1", "2/1"}, set(json.load(handle)["done"]))
+
+
+class FetchTest(unittest.TestCase):
+    def test_runs_are_fetched_side_by_side_in_order(self):
+        class Fake:
+            repo = "o/r"
+
+            def jobs(self, run):
+                time.sleep(0.05)
+                return [api_job("check (rest) %s" % run["id"], 0, 10)]
+
+        runs = [{"id": i, "status": "completed", "conclusion": "success", "run_attempt": 1} for i in range(16)]
+        started = time.time()
+        records = t.Source(Fake(), with_metrics=False).fetch(runs)
+        self.assertLess(time.time() - started, 16 * 0.05 / 2)
+        self.assertEqual(list(range(16)), [r["id"] for r in records])
 
 
 class CliTest(unittest.TestCase):

@@ -41,6 +41,7 @@ Run:  scripts/ci/ci-timings --help
 Test: python3 scripts/ci/ci_trends_test.py
 """
 import argparse
+import concurrent.futures
 import csv
 import datetime
 import io
@@ -63,6 +64,8 @@ SLOTS = 20
 SATURATION_SAMPLE_SECONDS = 10
 METRICS_ARTIFACT_PREFIX = "ci-metrics-"
 VL_STREAM_FIELDS = "source,repo,workflow"
+# Runs fetched side by side (Source.fetch): GitHub's secondary rate limit allows far more concurrent reads than this.
+FETCH_THREADS = 8
 # Where completed runs' jobs and metrics are kept: CI_TIMINGS_CACHE, else systemd's STATE_DIRECTORY (the collector),
 # else the user's cache. A cache that cannot be written is skipped, never an error.
 CACHE_DIR = os.environ.get("CI_TIMINGS_CACHE") or (
@@ -223,15 +226,31 @@ def attach_metrics(job, lines):
     return job
 
 
+def metrics_for(record, runner, metrics):
+    """The metrics lines of the job `record` ran on `runner`. One runner serves several jobs of a run (the landing check's
+    `plan`, a heavy row and an identity shard all on ci-runner-movies-check-5, run 41604183761), so the runner's name
+    alone attached one job's figures to all three: the set is the one whose `job_start` falls in this job's window."""
+    if not runner or not metrics:
+        return None
+    for lines in metrics.values():
+        start = next((line for line in lines if line.get("kind") == "job_start"), None)
+        if start is None or start.get("runner_name") != runner:
+            continue
+        if start.get("t") is None or record["s"] - 60 <= start["t"] <= record["e"]:
+            return lines
+    return None
+
+
 def run_record(run, jobs, metrics=None):
-    """One run as the analysis reads it (see the header). `metrics` maps a runner name to that job's metrics lines."""
+    """One run as the analysis reads it (see the header). `metrics` maps each metrics artifact's name (older caches: a
+    runner name) to its lines; a job takes the set from its runner that STARTED inside its window (metrics_for)."""
     records = []
     for job in jobs:
         record = job_record(job)
         if record is None:
             continue
         record["runner"] = job.get("runner_name")
-        lines = (metrics or {}).get(job.get("runner_name") or "")
+        lines = metrics_for(record, job.get("runner_name"), metrics)
         if lines:
             attach_metrics(record, lines)
         records.append(record)
@@ -451,6 +470,12 @@ def bound_by(resources, gc):
     return verdict, notes
 
 
+def run_change(record):
+    """What kind of change a landing check ran on: `identity` when any of its jobs is an identity check, else `other`
+    (the plan selects the identity shards only for a change that can touch them)."""
+    return "identity" if any("identity" in job["n"] for job in record["jobs"]) else "other"
+
+
 def run_measures(record):
     """Everything one run contributes to an aggregate."""
     jobs = record["jobs"]
@@ -464,6 +489,9 @@ def run_measures(record):
         "runner_min": sum(job["e"] - job["s"] for job in jobs) / 60.0,
         "peak": peak_concurrency([(job["s"], job["e"]) for job in jobs]),
         "path": path, "path_queue": sum(hop[1] for hop in path), "path_work": sum(hop[2] for hop in path),
+        "queue_total": sum(max(0.0, job["s"] - job["r"]) for job in jobs),
+        "elapsed": end - min([start] + ([record["created"]] if record.get("created") else [])),
+        "change": run_change(record),
         "sat": record.get("sat"), "skewed_jobs": sum(1 for job in jobs if job.get("skew")),
         "jobs": {}, "categories": {}, "cache": {},
     }
@@ -541,6 +569,10 @@ def summarize(measures_list):
         "wall": stats([m["wall"] for m in runs]), "runner_min": stats([m["runner_min"] for m in runs]),
         "peak": stats([m["peak"] for m in runs]),
         "path_queue": stats([m["path_queue"] for m in runs]), "path_work": stats([m["path_work"] for m in runs]),
+        "queue_total": stats([m.get("queue_total") for m in runs]), "elapsed": stats([m.get("elapsed") for m in runs]),
+        "per_run": [{key: m.get(key) for key in ("id", "sha", "change", "start", "wall", "elapsed", "path_queue",
+                                                 "path_work", "queue_total", "runner_min")}
+                    | {"path": " → ".join(hop[0] for hop in m["path"])} for m in runs],
         "sat_mean": stats([(m["sat"] or {}).get("mean") for m in runs]),
         "sat_full": stats([(m["sat"] or {}).get("full") for m in runs]),
         "skewed_jobs": sum(m["skewed_jobs"] for m in runs),
@@ -653,6 +685,8 @@ def metric_rows(summary):
     rows = [("run: wall p50", summary["wall"]["p50"]), ("run: wall p90", summary["wall"]["p90"]),
             ("run: critical-path queue p50", summary["path_queue"]["p50"]),
             ("run: critical-path work p50", summary["path_work"]["p50"]),
+            ("run: all-jobs queue p50", summary["queue_total"]["p50"]),
+            ("run: created-to-end p50", summary["elapsed"]["p50"]),
             ("run: runner-min p50", summary["runner_min"]["p50"]), ("run: peak jobs p50", summary["peak"]["p50"]),
             ("run: slots busy mean", summary["sat_mean"]["p50"]),
             ("run: slots full share", summary["sat_full"]["p50"])]
@@ -923,7 +957,8 @@ class GitHub:
         return fetch()
 
     def metrics(self, run):
-        """Every job's metrics lines from the run's `ci-metrics-*` artifacts, by the runner name they name."""
+        """Every job's metrics lines from the run's `ci-metrics-*` artifacts, by artifact name (one runner can upload
+        several: metrics_for picks a job's by its runner and start)."""
         def fetch():
             found = {}
             pages = self.api("actions/runs/%s/artifacts?per_page=100" % run["id"], pages=3)
@@ -937,12 +972,11 @@ class GitHub:
                 except Exception:  # noqa: BLE001 -- one unreadable artifact never loses the run
                     continue
                 lines = parse_metrics(text)
-                runner = next((l.get("runner_name") for l in lines if l.get("runner_name")), None)
-                if runner:
-                    found[runner] = lines
+                if any(l.get("runner_name") for l in lines):
+                    found[artifact["name"]] = lines
             return found
         if run.get("status") == "completed":
-            return self._cached("metrics-%s-%s.json" % (run["id"], run.get("run_attempt") or 1), fetch)
+            return self._cached("metrics2-%s-%s.json" % (run["id"], run.get("run_attempt") or 1), fetch)
         return fetch()
 
 
@@ -1198,7 +1232,13 @@ class Source:
             return []
 
     def fetch(self, runs):
-        return [record_of(self.github, run, self.with_metrics) for run in runs]
+        """Every run's record, FETCH_THREADS at a time: one run is 1-3 sequential API calls (jobs, artifacts, their
+        zips), so a cold selection of 40 runs took minutes one by one. Completed runs are cached on disk after."""
+        runs = list(runs)
+        if len(runs) < 2:
+            return [record_of(self.github, run, self.with_metrics) for run in runs]
+        with concurrent.futures.ThreadPoolExecutor(FETCH_THREADS) as pool:
+            return list(pool.map(lambda run: record_of(self.github, run, self.with_metrics), runs))
 
     def select(self, spec, workflow):
         """A selection (the header's forms) as records, oldest first."""
@@ -1206,7 +1246,10 @@ class Source:
         if spec.startswith("runs:"):
             ids = [int(x) for x in spec[5:].split(",") if x.strip()]
             held = {r["id"]: r for r in self.from_vl(None, None, None, ids)}
-            records = [held.get(i) or record_of(self.github, self.github.run(i), self.with_metrics) for i in ids]
+            missing = [i for i in ids if i not in held]
+            with concurrent.futures.ThreadPoolExecutor(FETCH_THREADS) as pool:
+                fetched = dict(zip(missing, self.fetch(list(pool.map(self.github.run, missing)))))
+            records = [held.get(i) or fetched[i] for i in ids]
         elif re.fullmatch(r"[0-9a-fA-F]{6,40}\.\.[0-9a-fA-F]{6,40}", spec):
             shas = commits_in(spec)
             candidates = [r for r in self.github.runs(workflow=workflow) if r.get("head_sha") in shas and self._keep(r)]
@@ -1219,7 +1262,8 @@ class Source:
             count = int(count or 10)
             runs = [r for r in self.github.runs(workflow=workflow, branch=branch, limit=count * 3) if self._keep(r)]
             held = {r["id"]: r for r in self.from_vl(None, None, workflow, [run["id"] for run in runs[:count]])}
-            records = [held.get(run["id"]) or record_of(self.github, run, self.with_metrics) for run in runs[:count]]
+            fetched = {r["id"]: r for r in self.fetch([run for run in runs[:count] if run["id"] not in held])}
+            records = [held.get(run["id"]) or fetched[run["id"]] for run in runs[:count]]
         records = [r for r in records if r and r["jobs"] and workflow_matches(r, workflow)]
         return sorted(latest_attempts(records), key=lambda r: run_window(r)[0] or 0)
 
@@ -1231,9 +1275,8 @@ class Source:
             runs = self.github.runs(workflow=workflow, created=created)
         except Exception:  # noqa: BLE001 -- VictoriaLogs' runs still stand
             runs = []
-        for run in runs:
-            if run["id"] not in held and self._keep(run):
-                held[run["id"]] = record_of(self.github, run, self.with_metrics)
+        for record in self.fetch([run for run in runs if run["id"] not in held and self._keep(run)]):
+            held[record["id"]] = record
         return [r for r in held.values() if r["jobs"] and since <= run_window(r)[0] <= until]
 
 
@@ -1273,8 +1316,17 @@ ATTRIBUTES = {
 }
 
 
+# Attributes of a whole run: `--by` on one keeps each run whole in its group.
+RUN_ATTRIBUTES = {"change": run_change}
+
+
 def partition(records, attribute):
     """{value: records holding only that value's jobs}, for `--by <attribute>`."""
+    if attribute in RUN_ATTRIBUTES:
+        parts = {}
+        for record in records:
+            parts.setdefault(RUN_ATTRIBUTES[attribute](record) or "(unknown)", []).append(record)
+        return dict(sorted(parts.items()))
     pick = ATTRIBUTES[attribute]
     parts = {}
     for record in records:
@@ -1352,14 +1404,30 @@ def pct(value):
     return "-" if value is None else "%.0f%%" % (value * 100)
 
 
-def format_report(summary, workflow, critical=False, steps=True):
+def format_runs(summary):
+    """One row per run: its wall, what the critical path spent queued and executing, every job's queue summed."""
+    lines = ["  %-12s %-7s %-8s %-11s %6s %6s %6s %6s %6s %6s  %s" % (
+        "run", "sha", "change", "started", "wall", "c→end", "path q", "exec", "all q", "r-min", "critical path")]
+    for row in summary["per_run"]:
+        lines.append("  %-12s %-7s %-8s %-11s %6s %6s %6s %6s %6s %6.0f  %s" % (
+            row["id"], (row["sha"] or "")[:7], row["change"], iso(row["start"])[5:16].replace("T", " "),
+            mins(row["wall"]), mins(row["elapsed"]), mins(row["path_queue"]), mins(row["path_work"]),
+            mins(row["queue_total"]), row["runner_min"] or 0, row["path"]))
+    return lines
+
+
+def format_report(summary, workflow, critical=False, steps=True, runs=False):
     lines = ["%s: %d runs (%s)" % (workflow or "all workflows", summary["runs"],
                                    ", ".join(str(i) for i in summary["run_ids"][-12:])),
              "  wall p50 %s p90 %s max %s · runner-min p50 %.0f · peak jobs p50 %s" % (
                  mins(summary["wall"]["p50"]), mins(summary["wall"]["p90"]), mins(summary["wall"]["max"]),
                  summary["runner_min"]["p50"] or 0, summary["peak"]["p50"]),
-             "  critical path p50: queue %s + work %s" % (mins(summary["path_queue"]["p50"]),
-                                                          mins(summary["path_work"]["p50"]))]
+             "  critical path p50: queue %s + work %s (p90: queue %s + work %s) · every job's queue summed p50 %s p90 %s"
+             % (mins(summary["path_queue"]["p50"]), mins(summary["path_work"]["p50"]),
+                mins(summary["path_queue"]["p90"]), mins(summary["path_work"]["p90"]),
+                mins(summary["queue_total"]["p50"]), mins(summary["queue_total"]["p90"])),
+             "  created to last job's end p50 %s p90 %s (wall plus the first job's queue)" % (
+                 mins(summary["elapsed"]["p50"]), mins(summary["elapsed"]["p90"]))]
     if summary["sat_mean"]["n"]:
         lines.append("  account slots during the run: mean %.1f of %d busy, all %d busy %s of the time (p50)" % (
             summary["sat_mean"]["p50"], SLOTS, SLOTS, pct(summary["sat_full"]["p50"])))
@@ -1398,6 +1466,11 @@ def format_report(summary, workflow, critical=False, steps=True):
                 if (figures["p50"] or 0) >= 15:
                     lines.append("      %-62s %6s %6s  [%s]" % (step[:62], mins(figures["p50"]), mins(figures["p90"]),
                                                                categorize(step)))
+    if runs:
+        lines.append("")
+        lines.append("  per run (wall: first step to last; c→end: created to last; path q/exec: the critical path's "
+                     "queue and execution; all q: every job's queue summed):")
+        lines += format_runs(summary)
     if critical:
         lines.append("")
         lines.append("  critical paths (runs · queue p50 · work p50):")
@@ -1514,10 +1587,12 @@ def report_text(records, args):
         for value, part in parts.items():
             summary = summarize([run_measures(r) for r in part])
             chunks.append("── %s = %s ──\n%s" % (args.by, value, format_report(summary, args.workflow,
-                                                                                 critical=False, steps=False)))
+                                                                                 critical=args.critical, steps=False,
+                                                                                 runs=args.per_run)))
         return {value: summarize([run_measures(r) for r in part]) for value, part in parts.items()}, "\n\n".join(chunks)
     summary = summarize([run_measures(r) for r in records])
-    return summary, format_report(summary, args.workflow, critical=args.critical, steps=not args.no_steps)
+    return summary, format_report(summary, args.workflow, critical=args.critical, steps=not args.no_steps,
+                                  runs=args.per_run)
 
 
 def command_report(args, source, out):
@@ -1685,7 +1760,7 @@ def main(argv=None, out=sys.stdout):
         common(made, top=False)
         return made
     sub.add_parser = add_parser
-    by_help = "hour|day|week (time buckets) or %s (groups)" % "|".join(sorted(ATTRIBUTES))
+    by_help = "hour|day|week (time buckets) or %s (groups)" % "|".join(sorted(set(ATTRIBUTES) | set(RUN_ATTRIBUTES)))
 
     report = sub.add_parser("report", help="one aggregate over a selection of runs")
     report.add_argument("--workflow", default="main.yml")
@@ -1695,8 +1770,9 @@ def main(argv=None, out=sys.stdout):
     report.add_argument("--select", help="a selection (see the header)")
     report.add_argument("--since")
     report.add_argument("--until")
-    report.add_argument("--by", choices=sorted(ATTRIBUTES), help="one report per group")
+    report.add_argument("--by", choices=sorted(set(ATTRIBUTES) | set(RUN_ATTRIBUTES)), help="one report per group")
     report.add_argument("--critical", action="store_true", help="list the critical paths")
+    report.add_argument("--per-run", action="store_true", help="one row per run: wall, queue and execution")
     report.add_argument("--saturation", action="store_true", help="measure slot saturation for runs VictoriaLogs "
                                                                   "does not hold (more API calls)")
     report.add_argument("--no-steps", action="store_true")
@@ -1705,7 +1781,7 @@ def main(argv=None, out=sys.stdout):
     trend_.add_argument("--workflow", default="main.yml")
     trend_.add_argument("--since", default="14d")
     trend_.add_argument("--until")
-    trend_.add_argument("--by", default="day", choices=list(TIME_UNITS) + sorted(ATTRIBUTES), help=by_help)
+    trend_.add_argument("--by", default="day", choices=list(TIME_UNITS) + sorted(set(ATTRIBUTES) | set(RUN_ATTRIBUTES)), help=by_help)
     trend_.add_argument("--every", default="day", choices=TIME_UNITS, help="the time bucket under a group --by")
     trend_.add_argument("--threshold", type=float, default=20.0, help="regression: p50 up more than this %%")
     trend_.add_argument("--match", help="only rows matching this regex")

@@ -288,8 +288,11 @@ def summary(lines):
     return "metrics: " + (", ".join(parts) if parts else "nothing sampled")
 
 
-def artifact_name():
-    raw = "ci-metrics-%s-%s" % (os.environ.get("GITHUB_JOB") or "job", os.environ.get("RUNNER_NAME") or str(os.getpid()))
+def artifact_name(now=None):
+    """`ci-metrics-<job>-<runner>-<finish epoch>`: one runner runs several jobs of a run, the matrix rows of one job id
+    among them (the landing check's identity shards), and without the time the second upload overwrote the first."""
+    raw = "ci-metrics-%s-%s-%d" % (os.environ.get("GITHUB_JOB") or "job", os.environ.get("RUNNER_NAME") or str(os.getpid()),
+                                  int(now if now is not None else time.time()))
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", raw)[:200]
 
 

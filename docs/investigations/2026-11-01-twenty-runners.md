@@ -412,6 +412,8 @@ scripts/ci/ci-timings trend --workflow identity-model-convergence.yml --since 7d
 scripts/ci/ci-timings --format json|csv trend ...
 # One run's per-leg tables
 scripts/ci/ci-timings legs 41298328467
+# The landing check: identity changes apart from the rest, one row per run with its queue beside its execution
+scripts/ci/ci-timings report --workflow precommit-check.yml --branch '' --last 40 --by change --per-run --critical
 ```
 
 `--vl-url https://vlogs-ci.jebaka.com` (or `CI_TIMINGS_VL_URL`) reads VictoriaLogs first (LogsQL), and the API only for
@@ -758,21 +760,29 @@ the run has identity-check jobs; other = scripts/docs-only (no identity job). Be
 (2026-11-02 06:09Z; the API listing reaches back to 2026-11-01 18:53Z); transition = between the two commits (the
 changes landing one by one); after = from `5fc05de190d` (08:10Z). Queue wait = first job's first step minus its creation.
 
-| change type | window | n | wall p50 | wall p90 | queue wait p50 (first job) |
-|---|---|---|---|---|---|
-| identity | before | 18 | 17.1 min | 32.6 min | 0.1 min |
-| identity | transition | 13 | 26.0 min | 42.6 min | 0.6 min |
-| identity | after | 12 | 16.4 min | 21.4 min | 0.1 min |
-| other | before | 1 | 3.5 min | 3.5 min | 2.0 min |
-| other | after | 10 | 6.5 min | 9.4 min | 0.1 min |
+| change type | window | n | wall p50 | wall p90 | queue wait p50 (first job) | critical-path queue p50 / p90 | every job's queue summed p50 / p90 |
+|---|---|---|---|---|---|---|---|
+| identity | before | 18 | 17.1 min | 32.6 min | 0.1 min | 0.6 / 18.1 min | 4.7 / 38.9 min |
+| identity | transition | 13 | 26.0 min | 42.6 min | 0.6 min | 21.7 / 37.1 min | 52.7 / 105.7 min |
+| identity | after | 12 | 16.4 min | 21.4 min | 0.1 min | 0.7 / 8.1 min | 1.3 / 15.4 min |
+| other | before | 1 | 3.5 min | 3.5 min | 2.0 min | 2.0 / 2.0 min | 2.0 / 2.0 min |
+| other | after | 10 | 6.5 min | 9.4 min | 0.1 min | 0.6 / 7.5 min | 1.0 / 9.0 min |
+
+The two queue columns (added 2026-11-03) come from `ci-timings report --by change --per-run` over the same windows
+(`--since/--until`; its window is the first job's start, so its n differs by one or two from the table's: 20/13/13
+identity, 1/11 other). Critical-path queue = the waits of the jobs on the run's critical path (from the job that ended
+last back through the job that released it); every job's queue = all of the run's jobs' waits added up, a measure of
+slot contention rather than of wall time.
 
 **Reading it.** For identity changes the median barely moves (17.1 to 16.4 min) but the tail shrinks by a third (p90
 32.6 to 21.4 min), and the baseline's own 17:08 p50 is reproduced. The transition window is slower (26 min p50) because
 it ran under heavy slot contention (the last job of a run waited 18 min p50 for a slot), not because of the change; the
 first job's queue wait stays near zero throughout, so wait shows up as later jobs starting late, not as a late start.
 "Other" has only one before-run, so no before/after claim for it: after, scripts/docs-only checks take 6.5 min p50.
-`ci-timings compare` was not usable for this split (it keys on branch/range, not on change type, and takes minutes per
-selection); the numbers come from the Actions jobs API directly.
+`ci-timings compare` was not usable for this split then (it keyed on branch/range, not on change type, and took minutes
+per cold selection); the numbers came from the Actions jobs API directly. Now `report --by change` splits identity from
+other runs, `--per-run` prints one row per run (wall, created-to-end, critical-path queue and execution, every job's
+queue summed), and a cold 40-run selection with metrics takes ~35 s (runs fetched 8 at a time) instead of minutes.
 
 **What limits it now.** The 6 check slots on ci-runner. Sharding adds parallelism only while slots are free: under load
 the identity suites run about 2x slower and the extra jobs queue for slots, so the p90 follows the number of checks in
