@@ -3,10 +3,11 @@
 # answer filed -- the shapes main held when the property was born, 2026-11-02. Only shrinks: a row whose listing no longer
 # flips fails the spec until it is removed. Columns: slice, venue, raw title, note (the shape and path the walk found).
 slice	venue	rawTitle	note
-drift-slices/de/dammtor-titans-0bd19a4c	CinemaxX Dammtor	Titans	none-film-none: bare, Remember the Titans alone, none beside the credited sibling, the 2026 film beside Luxor's (stage 5)
 drift-slices/de/dammtor-titans-0bd19a4c	CinemaxX Raschplatz	Titans	none-film-none: as Dammtor's (stage 5)
 drift-slices/de/dammtor-titans-0bd19a4c	Filmwelt Grünstadt	Titans	none-film-none: none, then tmdb:1690206, then none (stage 5)
 drift-slices/de/dammtor-titans-0bd19a4c	Luxor Filmpalast Heidelberg	Titans, Malayalam/english	none-film-none: none, the 2026 film, none (stage 5)
+drift-slices/de/cinemaxx-titans-inherent-08f3a19c	CinemaxX Raschplatz	Titans	none-film-none: as Dammtor's (stage 5) (the same 7 listings as dammtor-titans-0bd19a4c, cut again for seed 20; not bare: a fact or its own feed link)
+drift-slices/de/cinemaxx-titans-inherent-08f3a19c	Filmwelt Grünstadt	Titans	none-film-none: none, then tmdb:1690206, then none (stage 5) (the same 7 listings as dammtor-titans-0bd19a4c, cut again for seed 20; not bare: a fact or its own feed link)
+drift-slices/de/cinemaxx-titans-inherent-08f3a19c	Luxor Filmpalast Heidelberg	Titans, Malayalam/english	none-film-none: none, the 2026 film, none (stage 5) (the same 7 listings as dammtor-titans-0bd19a4c, cut again for seed 20; not bare: a fact or its own feed link)
 drift-slices/uk/plough-arts-centre-torrington-dracula-625b65d9	Plough Arts Centre Torrington	Dracula	film-film-film: 11868 -> 138 -> 11868 as Quad Derby's and the strand billings arrive (stages 4, 5)
-identity-slices/uk-empire-theatre-halstead-romeo-and-juliet-06f0c8a2	Theatr Gwaun Fishguard	Romeo and Juliet	film-none-film: 6003 -> none -> 6003 in the 375-listing family (stage 5)
 identity-slices/uk-keswick-alhambra-these-violent-delights-hexham	Dundee Contemporary Arts (DCA)	These Violent Delights + Recorded Q&A	none-film-none: none -> 1462368 -> none, the "+ Recorded Q&A" piece beside the credited billings (#629 spares the credited ones; this one stays, stage 5)
