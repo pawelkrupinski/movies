@@ -9438,6 +9438,8 @@ services.cinemas.pl.ModernEventsCalendarPage
 services.cinemas.pl.ModernEventsCalendarPage$
 services.cinemas.pl.MsiClient
 services.cinemas.pl.MsiClient$
+services.cinemas.pl.MsiClient$EventLabels
+services.cinemas.pl.MsiClient$EventLabels$
 services.cinemas.pl.MsiScraper
 services.cinemas.pl.MsiScraper$
 services.cinemas.pl.MsiScraper$FilmMeta
