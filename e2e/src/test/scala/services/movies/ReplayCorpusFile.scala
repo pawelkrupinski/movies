@@ -49,7 +49,12 @@ object ReplayCorpusFile {
   /** The awaiting-prefix sentinel as written: a string (a String field holds only a string), one no URL can be. */
   private val AwaitingPrefixRef = "\u0000awaiting-row-prefix\u0000"
 
-  private def keyOf(c: Cinema): String = s"${c.getClass.getName}|${c.displayName}|${c.pillName}|$c"
+  /** Class, names, and `toString` only where the class gives one: Object's own carries the identity hash, which differs
+   *  between the JVM that wrote the file and the one that reads it. */
+  private[movies] def keyOf(c: Cinema): String = {
+    val own = c.getClass.getMethod("toString").getDeclaringClass != classOf[Object]
+    s"${c.getClass.getName}|${c.displayName}|${c.pillName}" + (if (own) s"|$c" else "")
+  }
 
   /** Every venue a corpus can name, by key; a key two venues share is ambiguous, and naming one fails the write. */
   private lazy val roster: Map[String, Seq[Cinema]] = {

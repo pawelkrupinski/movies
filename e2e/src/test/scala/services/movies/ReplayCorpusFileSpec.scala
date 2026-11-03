@@ -59,5 +59,7 @@ class ReplayCorpusFileSpec extends AnyFlatSpec with Matchers {
 
   it should "name every venue a corpus can hold by a key no other venue shares" in {
     ReplayCorpusFile.ambiguousKeys shouldBe empty
+    // ...and one the reading JVM computes alike: no identity hash in it (run 41462794907's DE/US comparisons).
+    (Cinema.all ++ models.CinemaNetworks.all).map(ReplayCorpusFile.keyOf).filter(_.matches(".*@[0-9a-f]+$")) shouldBe empty
   }
 }
