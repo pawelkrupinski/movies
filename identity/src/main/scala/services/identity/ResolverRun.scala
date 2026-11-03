@@ -141,10 +141,16 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
           val own  = new FamilyScope(Seq(node), scoring, acceptance, () => (), titleOnly = true)
           // a billing of several works is none of them, as in a cluster
           val take = if (acceptance.billsSeveralWorks(own.of(node))) None
-                     else BareListing.take(own.of(node), own.takenAlone(node).map(_._1._1.candidate.tmdbId))
+                     else BareListing.take(own.of(node), own.takenAlone(node).map(_._1._1.candidate.tmdbId)).filterNot(billedApart(node, own, _))
           node.id -> (listings.map(_.key).toSet, own, take)
         }
       }.toMap
+    // a bare node billing `film` as one piece beside another thing, or beside its screening, read on its own scope: none of it
+    private def billedApart(node: EvidenceNode, own: FamilyScope, film: Int): Boolean = pieces && {
+      val scored = own.of(node).find(_.candidate.tmdbId == film)
+      scored.exists(s => IdentityResolver.billedAsPiece(node, s, s.number("venues.corroborating").getOrElse(0.0), recurs, answered).isDefined) ||
+        IdentityResolver.besideItsScreening(Seq(node)).nonEmpty
+    }
     private val bareKeys: Set[ListingKey] = bare.values.flatMap(_._1).toSet
     def bareListings: Set[ListingKey] = bareKeys
 
