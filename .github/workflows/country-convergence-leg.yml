@@ -465,7 +465,46 @@ jobs:
             # The row's leg-verdict and identity-takes statuses.
             statuses: write
         steps:
-            - uses: actions/checkout@v5
+            # The commit, fetched here rather than by actions/checkout so that a stalled fetch is asked again: GitHub's git
+            # server leaves some of a run's ~50 simultaneous depth-1 fetches silent for 5-7 minutes while fetches started
+            # later go through in seconds (run 41872808505: 10 of the 18 rows starting at 17:08:16 waited 303-422 s, the
+            # other 8 took 14-20 s; p99 of 1,068 row checkouts 303 s, p50 13 s). An attempt that has not finished in
+            # 100 s is ended and made again; the third runs under the job's own ceiling. Everything actions/checkout
+            # left that a row reads is here: the tree at the run's commit, its branch checked out by name, and the
+            # token a later `git fetch` / `git push` authenticates with. .github/scripts/row-checkout-test.sh runs
+            # this step.
+            - name: Check out the commit
+              shell: bash
+              env:
+                  CHECKOUT_TOKEN: ${{ github.token }}
+              run: |
+                  set -euo pipefail
+                  bound=${CHECKOUT_ATTEMPT_SECONDS:-100}
+                  cd "$GITHUB_WORKSPACE"
+                  # A self-hosted runner's workspace outlives the job: start from nothing, as actions/checkout does.
+                  find . -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+                  git init -q .
+                  git config --local gc.auto 0
+                  git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+                  git config --local "http.$GITHUB_SERVER_URL/.extraheader" \
+                      "AUTHORIZATION: basic $(printf 'x-access-token:%s' "$CHECKOUT_TOKEN" | base64 | tr -d '\n')"
+                  case "$GITHUB_REF" in
+                      refs/heads/*) branch=${GITHUB_REF#refs/heads/}; target="refs/remotes/origin/$branch" ;;
+                      *)            branch="";                        target="refs/remotes/origin/checkout" ;;
+                  esac
+                  for attempt in 1 2 3; do
+                      limit=$bound; [ "$attempt" = 3 ] && limit=0 # 0: no limit but the job's
+                      started=$(date +%s) rc=0
+                      timeout -k 10 "$limit" git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules \
+                          --depth=1 origin "+$GITHUB_SHA:$target" || rc=$?
+                      if [ "$rc" = 0 ]; then echo "fetched $GITHUB_SHA in $(( $(date +%s) - started )) s (attempt $attempt)"; break; fi
+                      [ "$attempt" = 3 ] && { echo "::error::could not fetch $GITHUB_SHA (exit $rc)"; exit "$rc"; }
+                      echo "::warning::fetch attempt $attempt ended after $(( $(date +%s) - started )) s (exit $rc): asking again"
+                      rm -f .git/shallow.lock .git/index.lock
+                  done
+                  if [ -n "$branch" ]; then git checkout -q --force -B "$branch" "$target"
+                  else git checkout -q --force --detach "$GITHUB_SHA"; fi
+                  echo "checked out $(git rev-parse HEAD)${branch:+ as $branch}"
             # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
             # It starts cgroup-sampler.sh too: the job's memory and disk writes from its own cgroup, reported in the
             # row's last step -- what decides whether a country's Mongo fits on a tmpfs beside its heap.
