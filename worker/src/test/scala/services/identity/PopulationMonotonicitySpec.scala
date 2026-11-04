@@ -26,6 +26,11 @@ import scala.util.Try
  * row passes, a new flip fails, and a known row whose listing no longer flips fails too until its row is removed -- the
  * list only shrinks. Stage 5 of the design (a contested family gives a bare listing no film) is what empties it.
  *
+ * THE RULE CONTRACT ([[RuleContract]], structural step 4) is held over the same walk, at no resolve of its own: every rule
+ * that decides a take declares its kind, a population-independent rule decides a listing one way, the populations kind
+ * (i) and (ii) rules decide hold no A -> B -> A (only a non-monotone rule goes back), and no kind (iii) rule decides a
+ * namesake-ambiguous listing ([[Walked.breaches]]; not judged against the base: a breach is the change's).
+ *
  * THE LANDING CHECK JUDGES IT AGAINST THE CHANGE'S BASE (convergence-reds root cause 2, fix C): with ScalaTest's
  * config map entry [[CandidatesKey]] (the pre-push hook's identity check sets it), a slice whose flips differ from the
  * known rows does not fail here: its rows are written to that directory ([[Candidate]]) and
@@ -61,12 +66,12 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
   /** Every slice's flips, the slices side by side: each walks its own answers and shares nothing with another. The
    *  slices in the change's countries only (a test of another country cancels before it reads its slice's result), and
    *  the flipping ones the walk on several threads compares. */
-  private lazy val found: Map[Path, Try[Seq[Row]]] = {
+  private lazy val found: Map[Path, Try[Walked]] = {
     val inScope = SliceParts.inScope(slices, countriesInScope).toSet
     val dirs    = slices.filter(dir => inScope(dir) || flippingHere.contains(dir))
     val pool    = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    val walked = cache.fold((dir: Path) => walk(dir))(at => (dir: Path) => Cached.walk(at, dir))
-    try dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(walked(dir)))(using
+    val walking = cache.fold((dir: Path) => walked(dir))(at => (dir: Path) => Cached.walk(at, dir))
+    try dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(walking(dir)))(using
       scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
     finally pool.shutdown()
   }
@@ -88,12 +93,12 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
   // The corpus report walks families on every core (IdentityResolveDump): side by side, the same findings as one by one.
   if (flippingHere.nonEmpty)
     "The population walk on several threads" should s"find what one thread finds, family for family (part $part)" in {
-      flippingHere.foreach(dir => withClue(s"${relative(dir)}: ")(walk(dir, threads = 3) shouldBe found(dir).get))
+      flippingHere.foreach(dir => withClue(s"${relative(dir)}: ")(walk(dir, threads = 3) shouldBe found(dir).get.rows))
     }
 
   slices.foreach { dir =>
     "A real family" should s"take no listing back to a value it left as its listings arrive: ${relative(dir)}" in {
-      val rows  = found(dir).get
+      val rows  = found(dir).get.rows
       val name  = relative(dir)
       val fresh = rows.filterNot(row => known.exists(_.covers(name, row)))
       val fixed = known.filter(k => k.slice == name && !rows.exists(k.covers(name, _)))
@@ -107,6 +112,12 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
         withClue("known rows whose listing no longer flips -- remove them from identity-flip-backlog.tsv: ")(
           fixed.map(k => s"${k.venue} | ${k.rawTitle} (${k.note})") shouldBe empty)
       }
+    }
+
+    // THE RULE CONTRACT ([[RuleContract]]) over the same walk: no rule decides a take undeclared, a population-independent
+    // rule decides a listing one way, only a non-monotone rule goes back, and none decides a namesake-ambiguous listing
+    "A real family's rules" should s"keep the kinds they declare as its listings arrive: ${relative(dir)}" in {
+      withClue("rule contract breaches (declare the rule's kind in RuleContract, or fix the rule): ")(found(dir).get.breaches shouldBe empty)
     }
   }
 }
@@ -178,27 +189,31 @@ object PopulationMonotonicitySpec {
       }
       out.toString
     }
-    def encode(rows: Seq[Row]): Seq[String] = "population-walk-rows 1" +: rows.map(r =>
-      Seq(r.venue, r.rawTitle, r.shape, r.path, r.stage, r.where).map(escape).mkString("\t"))
-    def decode(lines: Seq[String]): Option[Seq[Row]] =
-      if (lines.headOption.contains("population-walk-rows 1")) {
-        val rows = lines.tail.map(_.split("\t", -1).toSeq.map(unescape))
-        Option.when(rows.forall(_.size == 6))(rows.map { case Seq(v, t, sh, p, st, w) => Row(v, t, sh, p, st, w) })
+    // version 2: a walk's rows, then its rule-contract breaches (`breach <line>`)
+    private val Header = "population-walk-rows 2"
+    def encode(walk: Walked): Seq[String] = Header +: (walk.rows.map(r =>
+      Seq(r.venue, r.rawTitle, r.shape, r.path, r.stage, r.where).map(escape).mkString("\t")) ++ walk.breaches.map(b => s"breach\t${escape(b)}"))
+    def decode(lines: Seq[String]): Option[Walked] =
+      if (lines.headOption.contains(Header)) {
+        val fields             = lines.tail.map(_.split("\t", -1).toSeq.map(unescape))
+        val (breaches, rows)   = fields.partition(f => f.size == 2 && f.head == "breach")
+        Option.when(rows.forall(_.size == 6))(Walked(rows.map { case Seq(v, t, sh, p, st, w) => Row(v, t, sh, p, st, w) }, breaches.map(_(1))))
       } else None
 
-    /** The rows of the slice in `dir`, read back from `at` when kept there, else walked ([[walk]]) and kept. */
-    def walk(at: Path, dir: Path, walking: Path => Seq[Row] = PopulationMonotonicitySpec.walk(_)): Seq[Row] = {
+    /** The walk of the slice in `dir` (its rows and contract breaches), read back from `at` when kept there, else walked
+     *  ([[walked]]) and kept. */
+    def walk(at: Path, dir: Path, walking: Path => Walked = PopulationMonotonicitySpec.walked(_)): Walked = {
       val file = fileOf(at, dir)
       val kept = Try(Files.readAllLines(file, StandardCharsets.UTF_8).asScala.toSeq).toOption.flatMap(decode)
       kept.getOrElse {
-        val rows = walking(dir)
+        val found = walking(dir)
         Try {
           Files.createDirectories(at)
           val part = at.resolve(s"${file.getFileName}.${ProcessHandle.current.pid}.${Thread.currentThread.threadId}.part")
-          Files.write(part, encode(rows).asJava, StandardCharsets.UTF_8)
+          Files.write(part, encode(found).asJava, StandardCharsets.UTF_8)
           Files.move(part, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
         }
-        rows
+        found
       }
     }
   }
@@ -248,7 +263,34 @@ object PopulationMonotonicitySpec {
    *    with the absent listings taken out ([[PopulationMonotonicity.report]]), the final one with the rest present (the
    *    nightly explorer walks them further).
    */
-  def walk(dir: Path, threads: Int = 1): Seq[Row] = {
+  def walk(dir: Path, threads: Int = 1): Seq[Row] = walked(dir, threads).rows
+
+  /** What a walk found: its flips, and its breaches of the rule contract ([[RuleContract]], [[contractBreaches]]). */
+  final case class Walked(rows: Seq[Row], breaches: Seq[String])
+
+  /** A listing's take in one population (None while Pending) and the rule that decided it ([[DecidedBy.of]]). */
+  final case class Decided(take: Option[String], rule: String)
+
+  /**
+   * THE RULE CONTRACT along one listing's populations (`decided`: each population's size or mask, in walk order, and what
+   * the listing took there), in one take (`stage`):
+   *  - every rule that decided it declares a kind ([[RuleContract.kindOf]]);
+   *  - a population-independent rule (i) decided it the same way wherever it decided it;
+   *  - the populations a kind (i) or (ii) rule decided hold no A -> B -> A (`flips`: [[PopulationMonotonicity.latticeFlip]]
+   *    over a family's lattice, [[PopulationMonotonicity.returns]] along a chain): only a kind (iii) rule may go back.
+   */
+  def contractBreaches(listing: String, stage: String, decided: Seq[(Int, Decided)], flips: Seq[(Int, String)] => Boolean): Seq[String] = {
+    def said(what: String) = s"$listing: $what [$stage]"
+    val ruled      = decided.collect { case (at, Decided(Some(take), rule)) => (at, take, rule) }
+    val undeclared = ruled.map(_._3).distinct.filter(RuleContract.kindOf(_).isEmpty).map(rule => said(s"rule $rule declares no kind"))
+    val varying    = ruled.filter(r => RuleContract.kindOf(r._3).contains(RuleKind.PopulationIndependent)).groupMap(_._3)(_._2)
+      .collect { case (rule, takes) if takes.distinct.sizeIs > 1 => said(s"population-independent rule $rule took ${takes.distinct.sorted.mkString(" and ")}") }
+    val held       = ruled.filter(r => RuleContract.kindOf(r._3).exists(_ != RuleKind.NonMonotone))
+    val reversed   = Option.when(flips(held.map(r => r._1 -> r._2)))(said(s"went back under kind (i)/(ii) rules ${held.map(_._3).distinct.sorted.mkString(", ")}"))
+    undeclared ++ varying.toSeq.sorted ++ reversed
+  }
+
+  def walked(dir: Path, threads: Int = 1): Walked = {
     val slice     = IdentitySlice.readSlice(dir)
     val replaying = new tools.SliceHttp.Replaying(slice.http)
     def readsAt(clock: Clock) = new IdentitySlice.Reads(slice.country, replaying, replaying.gaps, clock, slice.filed, tools.ProdState.none)
@@ -262,18 +304,25 @@ object PopulationMonotonicitySpec {
       .filter { case (id, ls) => id >= 0 && ls.sizeIs >= 2 && ls.exists(l => core(l.key)) }.sortBy(_._1).map(_._2)
     val (small, large) = families.partition(_.sizeIs <= PopulationMonotonicity.ExhaustiveMax)
     val subsets   = new PopulationMonotonicity.Subsets(all, lookups, reads.normalizer, inputs)
-    type Takes    = Map[ListingKey, Option[String]]
+    type Takes    = Map[ListingKey, Decided]
+    // a population's namesake-ambiguous listings a kind (iii) rule decided ([[RuleContract.namesakeBreaches]]), by take
+    val namesakes = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    def namesakeBreaches(r: Resolution, stage: String): Unit =
+      RuleContract.namesakeBreaches(r).foreach { case (key, rule) => namesakes.add(s"${key.venue} | ${key.rawTitle}: namesake-ambiguous, decided by kind (iii) rule $rule [$stage]") }
 
     // both takes of `present` of `family`'s listings, the rest of the slice fixed ([[PopulationMonotonicity.Subsets]]): the
-    // model's, and the final one -- the model's resolve, then a fresh stage settled over it (Pending: None)
+    // model's, and the final one -- the model's resolve, then a fresh stage settled over it (Pending: None) -- each with
+    // the rule that decided it
     def bothTakes(family: Seq[Listing], present: Seq[Listing]): (Takes, Takes) = {
       val model = subsets.resolve(family.map(_.key).toSet, present)
       val clock = new tools.MutableClock(slice.recordedAt)
       val r     = scripts.IdentityDrift.whole(readsAt(clock), present, clock, scripts.IdentityDrift.WholeLookups(lookups, _ => None),
         resolved = Some(model), log = false)
       val pend  = scripts.IdentityDrift.pendingOf(r.decisions)
-      (present.flatMap(l => model.decisionOf.get(l.key).map(d => l.key -> PopulationMonotonicity.takeOf(d))).toMap,
-        scripts.IdentityDrift.takesOf(r).map { case (k, t) => k -> Option.when(!pend(k))(t.film) })
+      namesakeBreaches(model, "model")
+      namesakeBreaches(r, "final")
+      (present.flatMap(l => model.decisionOf.get(l.key).map(d => l.key -> Decided(PopulationMonotonicity.takeOf(d), DecidedBy.of(d, l.key)))).toMap,
+        scripts.IdentityDrift.takesOf(r).map { case (k, t) => k -> Decided(Option.when(!pend(k))(t.film), r.decisionOf.get(k).fold("")(DecidedBy.of(_, k))) })
     }
     // every family's subsets resolved, side by side on `threads` (each resolve builds its own scope and stage)
     def resolved[A](jobs: Seq[A])(run: A => (Takes, Takes)): Map[A, (Takes, Takes)] =
@@ -286,15 +335,18 @@ object PopulationMonotonicitySpec {
     val stages = Seq[(String, ((Takes, Takes)) => Takes)]("model" -> (_._1), "final" -> (_._2))
 
     // the small families: every subset
+    val latticeTakes = {
+      val jobs = small.indices.flatMap(f => PopulationMonotonicity.subsets(small(f).size).filter(_ != 0).map(f -> _))
+      resolved(jobs) { case (f, mask) => bothTakes(small(f), small(f).indices.filter(i => (mask & (1 << i)) != 0).map(small(f))) }
+    }
     val lattice: Seq[Row] = {
-      val jobs  = small.indices.flatMap(f => PopulationMonotonicity.subsets(small(f).size).filter(_ != 0).map(f -> _))
-      val takes = resolved(jobs) { case (f, mask) => bothTakes(small(f), small(f).indices.filter(i => (mask & (1 << i)) != 0).map(small(f))) }
+      val takes = latticeTakes
       small.zipWithIndex.flatMap { case (members, f) =>
         def label(mask: Int) = members.indices.filter(i => (mask & (1 << i)) != 0).map(members(_).venue).mkString("{", ", ", "}")
         for {
           (stage, pick) <- stages
           (member, own) <- members.zipWithIndex
-          witness       <- PopulationMonotonicity.latticeFlip(members.size, own, mask => pick(takes((f, mask))).get(member.key).flatten)
+          witness       <- PopulationMonotonicity.latticeFlip(members.size, own, mask => pick(takes((f, mask))).get(member.key).flatMap(_.take))
         } yield {
           val flip = PopulationMonotonicity.Flip(member.key, -1, witness.map { case (m, t) => Integer.bitCount(m) -> Some(t) })
           Row(member.venue, member.rawTitle, flip.shape, witness.map { case (m, t) => s"$t@${label(m)}" }.mkString(" -> "), stage,
@@ -304,17 +356,20 @@ object PopulationMonotonicitySpec {
     }
 
     // the large families: seeded arrival chains (the report's: its seed, its cut), both takes along each
-    val chained: Seq[Row] = {
-      val chains = large.indices.map(f => PopulationMonotonicity.chains(large(f), MurmurHash3.stringHash(large(f).head.sortKey).toLong, Chains, Steps))
+    val chains     = large.indices.map(f => PopulationMonotonicity.chains(large(f), MurmurHash3.stringHash(large(f).head.sortKey).toLong, Chains, Steps))
+    val chainTakes = {
       // a chain's prefix of a size is one subset per chain: keyed by family, chain and size
-      val keyed  = chains.indices.flatMap(f => chains(f).zipWithIndex.flatMap { case (chain, c) => chain.map(prefix => (f, c, prefix.size) -> prefix) }).toMap
-      val takes  = resolved(keyed.keys.toSeq.sorted) { case (f, c, n) => bothTakes(large(f), keyed((f, c, n))) }
+      val keyed = chains.indices.flatMap(f => chains(f).zipWithIndex.flatMap { case (chain, c) => chain.map(prefix => (f, c, prefix.size) -> prefix) }).toMap
+      resolved(keyed.keys.toSeq.sorted) { case (f, c, n) => bothTakes(large(f), keyed((f, c, n))) }
+    }
+    val chained: Seq[Row] = {
+      val takes = chainTakes
       for {
         (stage, pick)  <- stages
         f              <- large.indices
         (chain, c)     <- chains(f).zipWithIndex
         member         <- large(f)
-        sequence        = chain.flatMap(prefix => pick(takes((f, c, prefix.size))).get(member.key).map(prefix.size -> _))
+        sequence        = chain.flatMap(prefix => pick(takes((f, c, prefix.size))).get(member.key).map(prefix.size -> _.take))
         if PopulationMonotonicity.returns(sequence.map(_._2))
       } yield {
         val flip = PopulationMonotonicity.Flip(member.key, c, sequence)
@@ -322,7 +377,28 @@ object PopulationMonotonicitySpec {
       }
     }
 
-    (lattice ++ chained).distinctBy(r => (r.venue, r.rawTitle)).sortBy(r => (r.rawTitle, r.venue))
+    // the rule contract, over the same populations: every subset of a small family, every chain of a large one
+    val latticeContract: Seq[String] = for {
+      (stage, pick) <- stages
+      (members, f)  <- small.zipWithIndex
+      (member, own) <- members.zipWithIndex
+      masks          = PopulationMonotonicity.subsets(members.size).filter(m => (m & (1 << own)) != 0)
+      breach        <- contractBreaches(s"${member.venue} | ${member.rawTitle}", stage, masks.flatMap(m => pick(latticeTakes((f, m))).get(member.key).map(m -> _)), held => {
+                         val byMask = held.toMap
+                         PopulationMonotonicity.latticeFlip(members.size, own, byMask.get).isDefined
+                       })
+    } yield breach
+    val chainContract: Seq[String] = for {
+      (stage, pick) <- stages
+      f             <- large.indices
+      (chain, c)    <- chains(f).zipWithIndex
+      member        <- large(f)
+      breach        <- contractBreaches(s"${member.venue} | ${member.rawTitle}", stage, chain.flatMap(prefix => pick(chainTakes((f, c, prefix.size))).get(member.key).map(prefix.size -> _)),
+                         held => PopulationMonotonicity.returns(held.map(h => Some(h._2))))
+    } yield breach
+
+    Walked((lattice ++ chained).distinctBy(r => (r.venue, r.rawTitle)).sortBy(r => (r.rawTitle, r.venue)),
+      (latticeContract ++ chainContract ++ namesakes.asScala).distinct.sorted)
   }
 
   /** `PopulationMonotonicitySpec [slice dir...]`: each slice's flips as TSV rows of the known file (every slice without

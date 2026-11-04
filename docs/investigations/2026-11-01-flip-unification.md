@@ -895,3 +895,24 @@ whole resolve could reproduce only by reading the path-built store (the owner's 
 The recordings' whole resolve already read the stored set through the same relation; what changed is the path.
 
 **Drift.** Seeds 1 and 2 in all five countries, run 41546626205: all 10 rows clean (0 divergences, 0 flips).
+
+### 7.11 A per-rule monotonicity contract (structural step 4; no take moved)
+
+- **The registry** (`RuleContract`): every rule that can decide a take declares one kind, by the id `DecidedBy.of`
+  names it (the id take-change lines, the rule-firing count and the identity trace carry): (i) population-independent
+  (the listing's own facts and TMDB), (ii) monotone (reads the population one way only), (iii) non-monotone. Exact ids,
+  or `*` patterns for ids filled in at run time (a feed, a country, a learned cannot-link a refit renames, agreeing
+  families). From the 2026-11-04 inventory: 46 (i), 14 (ii), 71 (iii) declarations. Every `accept:` and `pooled:`
+  rule is (iii) at the decision: a take by it is dropped when a corroborated suggested-only rival outweighs it, its
+  catalogue id is contested or a sibling denies its film. So today the only kind (i)/(ii) rule that TAKES a film is
+  `pin`; the others decide no film.
+- **Undeclared fails:** `RuleContractSpec` (every alone and pooled rule, every basis, the apart vetoes, every learned
+  cannot-link, every family agreement, correction and withdrawal) and the population walk (a rule it sees decide a real
+  take).
+- **The property** (`PopulationMonotonicitySpec`, the same walk, no resolve of its own): over every committed slice, in
+  the model's take and the final one, a kind (i) rule decides a listing one way wherever it decides it, and the
+  populations kind (i)/(ii) rules decide hold no A -> B -> A. Green on main's slices; teeth: declaring `accept:*` and
+  `pooled:*` monotone fails it on Heidelberg "Titans" (model and final) and Fishguard "Romeo and Juliet" (model).
+- **The namesake hook:** `RuleContract.namesakeAmbiguous(resolution)` is empty until structural step 3
+  (identity/namesake-ambiguous) lands; it then reads `Resolution.namesakeAmbiguous`, and the walk fails any such listing
+  a kind (iii) rule decided (`namesakeBreaches`).

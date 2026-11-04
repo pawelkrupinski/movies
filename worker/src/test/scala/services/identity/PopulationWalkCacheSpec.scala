@@ -8,13 +8,14 @@ import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicInteger
 
 /** The population walk's row cache ([[PopulationMonotonicitySpec.Cached]]): a slice kept under a digest is read back, the
- *  same rows; a slice whose files differ, or another digest, walks again; a failed walk is not kept. */
+ *  same walked; a slice whose files differ, or another digest, walks again; a failed walk is not kept. */
 class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
-  import PopulationMonotonicitySpec.{Cached, Row}
+  import PopulationMonotonicitySpec.{Cached, Row, Walked}
 
-  private val rows = Seq(
+  private val walked = Walked(Seq(
     Row("Kino\tA", "Title \\ with\nbreaks\r", "film-none-film", "a@{x} -> b@{x, y}", "final", "lattice 2^3"),
-    Row("", "", "", "", "model", "chain 0"))
+    Row("", "", "", "", "model", "chain 0")),
+    Seq("Kino A | Titans: rule accept:x declares no kind [model]", "breach\twith a tab"))
 
   private def slice(root: Path, name: String, content: String): Path = {
     val dir = Files.createDirectories(root.resolve(name))
@@ -22,9 +23,9 @@ class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers with tools.Scrat
     dir
   }
 
-  "The cached rows" should "decode to what was encoded, tabs, line breaks and backslashes too" in {
-    Cached.decode(Cached.encode(rows)) shouldBe Some(rows)
-    Cached.decode(Cached.encode(Nil)) shouldBe Some(Nil)
+  "The cached walk" should "decode to what was encoded, walked and breaches, tabs, line breaks and backslashes too" in {
+    Cached.decode(Cached.encode(walked)) shouldBe Some(walked)
+    Cached.decode(Cached.encode(Walked(Nil, Nil))) shouldBe Some(Walked(Nil, Nil))
     Cached.decode(Seq("something else")) shouldBe None
   }
 
@@ -32,15 +33,15 @@ class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers with tools.Scrat
     val root   = tempDirectory("population-walk-cache")
     val dir    = slice(root, "s1", "one")
     val walks  = new AtomicInteger
-    def walking(@annotation.unused d: Path) = { walks.incrementAndGet(); rows }
+    def walking(@annotation.unused d: Path) = { walks.incrementAndGet(); walked }
     val digest = root.resolve("cache").resolve("digest-a")
-    Cached.walk(digest, dir, walking) shouldBe rows
-    Cached.walk(digest, dir, walking) shouldBe rows
+    Cached.walk(digest, dir, walking) shouldBe walked
+    Cached.walk(digest, dir, walking) shouldBe walked
     walks.get shouldBe 1
     Files.write(dir.resolve("http.jsonl.gz"), "more".getBytes(StandardCharsets.UTF_8))
-    Cached.walk(digest, dir, walking) shouldBe rows
+    Cached.walk(digest, dir, walking) shouldBe walked
     walks.get shouldBe 2
-    Cached.walk(root.resolve("cache").resolve("digest-b"), dir, walking) shouldBe rows
+    Cached.walk(root.resolve("cache").resolve("digest-b"), dir, walking) shouldBe walked
     walks.get shouldBe 3
   }
 
@@ -60,7 +61,7 @@ class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers with tools.Scrat
     val dir    = slice(root, "s", "z")
     val digest = root.resolve("d")
     an[IllegalStateException] should be thrownBy Cached.walk(digest, dir, _ => throw new IllegalStateException("boom"))
-    Cached.walk(digest, dir, _ => rows) shouldBe rows
+    Cached.walk(digest, dir, _ => walked) shouldBe walked
     Files.list(digest).count shouldBe 1
   }
 }
