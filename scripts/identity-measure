@@ -14,10 +14,10 @@
 #
 # usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
 #                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait | --wait] [--full] [--fresh] [--json]
-#                                 [--timeout <minutes>] [--all-countries] [--all-recordings | --one-recording] [--plan]
+#                                 [--timeout <minutes>] [--cancel-on-timeout] [--all-countries] [--all-recordings | --one-recording] [--plan]
 #                                 [--footprint [--traces DIR] | --footprint-only [--traces DIR]] [--no-cache]
 #        scripts/identity-measure --sweep
-#        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait | --wait] [--timeout <minutes>]
+#        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait | --wait] [--timeout <minutes>] [--cancel-on-timeout]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first); --head names it too
 #   --base         default the commit's merge-base with <remote>/main; the commit's parent when it is on main already
 #   --recording    a `Record scrape fixtures` run (e.g. 528), or prod-latest (the freshest complete nightly), every leg replays -- its corpus and tree as released, no
@@ -41,6 +41,9 @@
 #   --wait         say the run's id and an ETA (the median wall time of the workflow's recent measure/ runs), then wait
 #                  with ~/bin/agentctl wait's backoff -- 60 s, x1.5, at most 5 min (IDENTITY_MEASURE_WAIT_FIRST seconds
 #                  first) -- not a read every 30 s. An agent runs it in the background and ends its turn. With --run too
+#   --timeout      minutes to WAIT (default max(120, 1.5 x the ETA said below)). It only stops the waiting: the run and its
+#                  branch stay, the tool says `scripts/identity-measure --run <id>` and exits 3 (STILL RUNNING -- not a verdict)
+#   --cancel-on-timeout  the old behaviour: at --timeout cancel the run, delete its branch, exit 2
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
 #   --fresh        dispatch even when an earlier measurement of the same change answers it (below; the result cache too)
 #   --no-cache     neither answer from THE RESULT CACHE (below) nor store in it: measure afresh
@@ -48,7 +51,7 @@
 #   --take-paths   print the paths a reuse treats as able to move a take (matches.sh dialect) and exit
 #   --json         machine output (scripts/identity_measure.py --json)
 #   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch.
-#                  A run still in progress is waited for (at most --timeout); with --no-wait it exits 2 instead
+#                  A run still in progress is waited for (at most --timeout, then exit 3); with --no-wait it exits 3 at once
 #
 # THE FOOTPRINT (2026-10-22). Without --countries, only the countries whose takes the change CAN move are measured: each
 # changed take-moving file's countries as scripts/ci/identity_impact.py reads them (the identity area's test-impact
@@ -137,14 +140,15 @@
 # concurrency): it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
 # (by hand) is dispatched again until the deadline.
 #
-# Exit: 0 LANDABLE, 1 NOT LANDABLE, 2 the measurement could not be made, 3 --footprint-only could not answer.
+# Exit: 0 LANDABLE, 1 NOT LANDABLE, 2 the measurement could not be made, 3 --footprint-only could not answer, OR the run is
+# still going at --timeout (no verdict; the run and branch are kept: collect with --run <id>).
 set -uo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/identity-tools.sh
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
-ref="" base="" recording="" keep="" nowait="" wait_eta="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
+ref="" base="" recording="" keep="" nowait="" wait_eta="" full="" fresh="" json="" run="" timeout_min=120 timeout_set="" cancel_on_timeout="" take_paths="" sweep=""
 all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces="" no_cache=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -171,7 +175,8 @@ while [ "$#" -gt 0 ]; do
     --sweep) sweep=1 ;;
     --json) json=1 ;;
     --run) run=$2; shift ;;
-    --timeout) timeout_min=$2; shift ;;
+    --timeout) timeout_min=$2; timeout_set=1; shift ;;
+    --cancel-on-timeout) cancel_on_timeout=1 ;;
     -h|--help) usage_from_header; exit 0 ;;
     -*) usage_error "unknown option $1" ;;
     *) ref=$1 ;;
@@ -478,7 +483,7 @@ wait_for_takes() { # <run id> <sha> <seconds>: sets RUN_CONCLUSION -- the run's 
   while :; do
     # ten unreadable reads in a row end the wait, as scripts/ci-wait's: one is a blip, ten are no answer
     if view=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json status,conclusion | jq -er '[.status, .conclusion // ""] | @tsv'); then unread=0
-    else unread=$((unread + 1)); view=""; [ "$unread" -lt 10 ] || { say "run $id could not be read ten times in a row"; return 1; }; fi
+    else unread=$((unread + 1)); view=""; [ "$unread" -lt 10 ] || { say "run $id could not be read ten times in a row"; WAIT_UNREADABLE=1; return 1; }; fi
     if [ "${view%%$'\t'*}" = completed ]; then RUN_CONCLUSION=${view#*$'\t'}; return 0; fi
     [ -n "$early_collect" ] && takes_rows_done "$id" "$sha" && { RUN_CONCLUSION=takes-done; return 0; }
     [ "$SECONDS" -lt "$end" ] || return 1
@@ -487,16 +492,37 @@ wait_for_takes() { # <run id> <sha> <seconds>: sets RUN_CONCLUSION -- the run's 
   done
 }
 
+# The default --timeout follows the ETA (run_eta's median wall time): max(120, 1.5 x ETA) minutes; an explicit one stands.
+default_timeout() {
+  [ -z "$timeout_set" ] || return 0
+  run_eta "$workflow" measure/ > /dev/null 2>&1 || return 0
+  local eta=${RUN_ETA_SAID#\~}
+  eta=${eta%% *}
+  [[ "$eta" =~ ^[0-9]+$ ]] || return 0
+  [ $((eta * 3 / 2)) -le "$timeout_min" ] || { timeout_min=$((eta * 3 / 2)); say "--timeout $timeout_min minutes (1.5 x the ETA of $eta)"; }
+}
+# --timeout only stops the WAITING: the run and its branch stay for --run (exit 3), unless --cancel-on-timeout.
+timed_out() { # <run id>
+  local why="run $1 gave no conclusion within --timeout $timeout_min minutes"
+  [ -z "${WAIT_UNREADABLE:-}" ] || die "$why" # an unreadable run is no still-running one: cancelled with its branch
+  [ -z "$cancel_on_timeout" ] || die "$why" # the exit clean-up cancels the run and deletes the branch
+  keep=1 finished=1
+  say "$why -- STILL RUNNING, left running (no verdict)"
+  say "collect it later with  scripts/identity-measure --run $1   (it deletes ${branch:-its branch}); --cancel-on-timeout cancels instead"
+  exit 3
+}
+
 if [ -n "$run" ]; then
   view=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json status,headBranch,headSha --jq '[.status, .headBranch, .headSha] | @tsv') \
     || die "could not read run $run"
   IFS=$'\t' read -r status run_branch run_sha <<< "$view"
   if [ "$status" != completed ]; then
-    [ -z "$nowait" ] || { say "run $run is $status: collect it once it completes"; exit 2; }
+    [ -z "$nowait" ] || { keep=1 finished=1; say "run $run is $status: collect it once it completes"; exit 3; }
     # wait here, bounded, rather than leave every caller its own poll loop (agents spent ~10 min a measurement on one)
     say "waiting for run $run ($status), at most --timeout $timeout_min minutes"
     say_eta "$run"
-    wait_for_takes "$run" "$run_sha" $((timeout_min * 60)) || die "run $run gave no conclusion within --timeout $timeout_min minutes"
+    default_timeout
+    wait_for_takes "$run" "$run_sha" $((timeout_min * 60)) || timed_out "$run"
   fi
   case "$run_branch" in measure/*) branch=$run_branch ;; esac
   # its takes rows ended, the run's tail still reads the branch, and its last job deletes it
@@ -591,13 +617,14 @@ fan_out() {
     say "measuring over recording ${rec} too ($on), in parallel"
     logs+=("$dir/$rec") 
     "$0" --head "$commit" --base "$base" ${rec:+$( [ "$rec" = pinned ] || echo "--recording $rec")} --countries "$on" --one-recording \
-      ${json:+--json} --timeout "$timeout_min" > "$dir/$rec" 2>&1 &
+      ${json:+--json} ${timeout_set:+--timeout "$timeout_min"} ${cancel_on_timeout:+--cancel-on-timeout} > "$dir/$rec" 2>&1 &
     pids+=($!)
   done <<< "$2"
   for i in "${!pids[@]}"; do
     wait "${pids[$i]}"; code=$?
     echo; echo "── recording ${logs[$i]##*/} ──"; cat "${logs[$i]}"
-    if [ "$code" = 1 ] || { [ "$code" = 2 ] && [ "$worst" = 0 ]; }; then worst=$code; fi
+    # 1 (not landable) beats 2 (not made) beats 3 (still running -- no verdict, never a pass) beats 0
+    if [ "$code" = 1 ] || { [ "$code" = 2 ] && [ "$worst" != 1 ]; } || { [ "$code" = 3 ] && [ "$worst" = 0 ]; }; then worst=$code; fi
   done
   rm -rf "$dir"
   return "$worst"
@@ -847,6 +874,8 @@ dispatch() { # → measured_run
 
 attempts=1
 dispatch
+default_timeout
+deadline=$((SECONDS + timeout_min * 60))
 if [ -n "$nowait" ]; then
   keep=1 finished=1
   # its --run stores the verdict under this request's key (THE RESULT CACHE), classified with the head's judgements
@@ -859,8 +888,7 @@ fi
 
 while :; do
   # A read blip (a refused connection once ended a 20-minute measurement) is retried by wait_for_run.
-  wait_for_takes "$measured_run" "$push" $((deadline - SECONDS)) \
-    || die "run $measured_run gave no conclusion within --timeout $timeout_min minutes"
+  wait_for_takes "$measured_run" "$push" $((deadline - SECONDS)) || timed_out "$measured_run"
   conclusion=$RUN_CONCLUSION
   # Cancelled by hand, or by a lane shared after all: dispatch again until the deadline, not a fixed few times.
   if [ "$conclusion" = cancelled ] && [ "$SECONDS" -lt "$deadline" ]; then

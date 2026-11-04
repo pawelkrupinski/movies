@@ -149,6 +149,11 @@ measure() { # <artifact> <args...>: exit code; output in $work/out
       "$REPO_ROOT/scripts/identity-measure" "$@" > "$work/out" 2>&1 )
   echo $?
 }
+drop_measure_branches() { # delete every measure/ branch on origin (they nest: measure/<user>/<sha>-<random>)
+  local f
+  while read -r f; do scratch_git "$repo" push -q origin --delete "refs/heads/${f#"$origin"/refs/heads/}"; done \
+    < <(find "$origin/refs/heads/measure" -type f 2>/dev/null)
+}
 measure_branches() { find "$origin/refs/heads/measure" -type f 2>/dev/null | wc -l | tr -d ' '; }
 
 check "a commit that moved nothing is LANDABLE" "0" "$(measure landable --countries pl)"
@@ -217,9 +222,9 @@ rm -f "$work/stub/pending"; scratch_git "$repo" push -q origin "$tip:refs/heads/
 check "--run waits for a run still in progress, then collects it" "1" "$(RUN_PENDING=1 HEAD_SHA=$tip measure lost --run 777 --countries pl)"
 check "...saying it waits" "true" "$(grep -q 'waiting for run 777' "$work/out" && echo true || echo false)"
 rm -f "$work/stub/pending"; scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
-check "--run --no-wait leaves a run in progress for later" "2" "$(RUN_PENDING=1 HEAD_SHA=$tip measure lost --run 777 --no-wait --countries pl)"
+check "--run --no-wait leaves a run in progress for later" "3" "$(RUN_PENDING=1 HEAD_SHA=$tip measure lost --run 777 --no-wait --countries pl)"
 rm -f "$work/stub/pending"
-check "--run gives up on a run still in progress at --timeout" "2" "$(RUN_PENDING=1 IN_PROGRESS=1 HEAD_SHA=$tip measure lost --run 777 --timeout 0 --countries pl)"
+check "--run stops waiting for a run still in progress at --timeout: exit 3, still running" "3" "$(RUN_PENDING=1 IN_PROGRESS=1 HEAD_SHA=$tip measure lost --run 777 --timeout 0 --countries pl)"
 check "...saying so" "true" "$(grep -q 'gave no conclusion within --timeout 0 minutes' "$work/out" && echo true || echo false)"
 check "...keeping the branch of the run still going" "1" "$(measure_branches)"
 scratch_git "$repo" push -q origin --delete refs/heads/measure/abc-1
@@ -243,24 +248,29 @@ kill "$holder" 2> /dev/null; wait "$holder" 2> /dev/null
 # THE BRANCH ON EVERY EXIT PATH: whatever ends a measurement after the push, origin keeps no measure/ branch.
 check "a dispatch refused after the push is no measurement" "2" "$(DISPATCH_FAILS=1 measure landable --countries pl)"
 check "...and its branch is deleted" "0" "$(measure_branches)"
-check "a run past --timeout is no measurement" "2" "$(IN_PROGRESS=1 measure landable --timeout 0 --countries pl)"
+check "a run past --timeout is no measurement, but is not cancelled: exit 3" "3" "$(rm -f "$work/stub/cancelled"; IN_PROGRESS=1 measure landable --timeout 0 --countries pl)"
+check "...its run is left running" "none" "$(cat "$work/stub/cancelled" 2>/dev/null || echo none)"
+check "...its branch is kept for --run" "1" "$(measure_branches)"
+check "...saying how to collect it" "true" "$(grep -q 'scripts/identity-measure --run 777' "$work/out" && echo true || echo false)"
+drop_measure_branches
+check "--cancel-on-timeout: a run past --timeout is cancelled, its branch deleted, exit 2" "2 cancelled 0" \
+  "$(IN_PROGRESS=1 measure landable --timeout 0 --cancel-on-timeout --countries pl) $(cat "$work/stub/cancelled" 2>/dev/null) $(measure_branches)"
+rm -f "$work/stub/cancelled"
 check "...even collecting early, while its takes rows still run" "2" \
-  "$(IN_PROGRESS=1 IDENTITY_MEASURE_EARLY_COLLECT=1 measure landable --timeout 0 --countries pl)"
+  "$(IN_PROGRESS=1 IDENTITY_MEASURE_EARLY_COLLECT=1 measure landable --timeout 0 --cancel-on-timeout --countries pl)"
 check "a run whose takes rows have ended is collected without waiting for the run's tail" "1" \
   "$(IN_PROGRESS=1 TAKES_STATUS=completed IDENTITY_MEASURE_EARLY_COLLECT=1 measure lost --timeout 0 --countries pl)"
 check "...and says so" "1" "$(grep -c "every takes row has ended" "$work/out")"
 check "...but not where this script, not the run, deletes the branch (github.com)" "2" \
-  "$(IN_PROGRESS=1 TAKES_STATUS=completed IDENTITY_MEASURE_EARLY_COLLECT=0 measure lost --timeout 0 --countries pl)"
+  "$(IN_PROGRESS=1 TAKES_STATUS=completed IDENTITY_MEASURE_EARLY_COLLECT=0 measure lost --timeout 0 --cancel-on-timeout --countries pl)"
 check "...its run is cancelled" "cancelled" "$(cat "$work/stub/cancelled" 2>/dev/null)"
 check "...and its branch deleted" "0" "$(measure_branches)"
 check "a second signal while cleaning up does not stop the clean-up" "0" \
-  "$(IN_PROGRESS=1 SIGNAL_ON_CANCEL=1 measure landable --timeout 0 --countries pl > /dev/null; measure_branches)"
+  "$(IN_PROGRESS=1 SIGNAL_ON_CANCEL=1 measure landable --timeout 0 --cancel-on-timeout --countries pl > /dev/null; measure_branches)"
 check "a push that failed after origin took the branch still deletes it" "2" \
   "$(PUSH_FAILS_AFTER=1 measure landable --countries pl)"
 check "...leaving no branch" "0" "$(measure_branches)"
-for f in "$origin"/refs/heads/measure/*; do
-  [ -f "$f" ] && scratch_git "$repo" push -q origin --delete "refs/heads/measure/$(basename "$f")"
-done
+drop_measure_branches
 
 # REUSE: a branch measured once, then rebased onto a main that moved, is collected again -- not dispatched -- when the
 # change is the same and main moved outside the convergence paths.

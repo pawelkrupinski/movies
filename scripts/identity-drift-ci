@@ -33,7 +33,8 @@
 #                What a NEW OR TIGHTENED CHECK must show to land (scripts/ci/commit_rules.py's rule): it finds
 #                nothing main's run does not, every finding at birth on its allow-list as TEMPORARY. And what
 #                identity-landing-check asks of a change while main is red on drift
-#   --timeout    minutes to wait for the rows (default 75: the drift step's own ceiling)
+#   --timeout    minutes to WAIT for the rows (default max(75, 1.5 x the ETA of recent measure runs)). It only stops the
+#                waiting: the run is never cancelled; it says `--run <id>` and exits 3 (STILL RUNNING, no verdict)
 #   --no-wait    dispatch, print the run id, exit 0; collect with --run
 #   --run        collect an existing drift-only run
 #   --out        where each row's artifact goes (default target/identity-drift-ci/<run>)
@@ -48,7 +49,7 @@
 # `Fixes-Red: <run>` for a convergence drift red: `--for-red <run>`). Never runs anything heavy on the laptop.
 #
 # The last line on stdout is the verdict: `DRIFT CLEAN`, `DRIFT RED: <rows>`, or `NO VERDICT: <why>`.
-# Exit: 0 clean (or nothing to judge), 1 a divergence or flip beyond the allow-lists, 2 could not run.
+# Exit: 0 clean (or nothing to judge), 1 a divergence or flip beyond the allow-lists, 2 could not run, 3 still running at --timeout.
 set -uo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -65,7 +66,7 @@ workflow=identity-model-convergence.yml
 say() { echo "identity-drift-ci: $*" >&2; }
 progress() { [ -z "${KINOWO_PROGRESS_FILE:-}" ] || date +%s >> "$KINOWO_PROGRESS_FILE" 2> /dev/null || true; }
 
-ref=HEAD seeds=both for_red="" against="" timeout_min=75 out="" nowait="" run=""
+ref=HEAD seeds=both for_red="" against="" timeout_min=75 timeout_set="" out="" nowait="" run=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --head) flag_value "$@"; ref=$2; shift ;;
@@ -73,7 +74,7 @@ while [ "$#" -gt 0 ]; do
     --seeds) flag_value "$@"; seeds=$2; shift ;;
     --for-red) flag_value "$@"; for_red=${2#\#}; shift ;;
     --against) flag_value "$@"; against=${2#\#}; shift ;;
-    --timeout) flag_value "$@"; timeout_min=$2; shift ;;
+    --timeout) flag_value "$@"; timeout_min=$2; timeout_set=1; shift ;;
     --out) flag_value "$@"; out=$2; shift ;;
     --no-wait) nowait=1 ;;
     --run) flag_value "$@"; run=$2; shift ;;
@@ -237,6 +238,10 @@ if [ -z "$branch" ]; then
   # --run: the rows the run itself has (its countries and seeds were its dispatch's)
   expected=""
 fi
+if [ -z "$timeout_set" ] && run_eta "$workflow" measure/ > /dev/null 2>&1; then
+  eta=${RUN_ETA_SAID#\~}; eta=${eta%% *}
+  [[ "$eta" =~ ^[0-9]+$ ]] && [ $((eta * 3 / 2)) -gt "$timeout_min" ] && timeout_min=$((eta * 3 / 2))
+fi
 deadline=$((SECONDS + timeout_min * 60)) delay=${IDENTITY_DRIFT_FIRST_WAIT:-60} unread=0
 while :; do
   progress
@@ -252,7 +257,12 @@ while :; do
     unread=$((unread + 1))
     [ "$unread" -lt 10 ] || die "run $run: ten unreadable reads in a row"
   fi
-  [ "$SECONDS" -lt "$deadline" ] || die "run $run: the drift rows did not end within --timeout $timeout_min minutes"
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    # --timeout only stops the WAITING: the run (and its branch, the run's to delete) goes on -- never cancelled here
+    say "run $run: the drift rows did not end within --timeout $timeout_min minutes -- STILL RUNNING, left running (no verdict)"
+    say "collect it later with  scripts/identity-drift-ci --run $run"
+    exit 3
+  fi
   sleep "$delay"; delay=$(dispatch_backoff_next "$delay")
 done
 # the run's tail (timings, the branch drop) goes on; the branch is the run's to delete

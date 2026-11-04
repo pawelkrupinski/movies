@@ -19,6 +19,8 @@ locally (unless it takes longer than 15 mins) then / otherwise merge to main and
 
 - **No pre-merge CI.** Nothing waits for a branch run. `scripts/identity-landing-check` and `scripts/identity-measure`
   stay as optional tools; no LANDABLE is required anywhere. The merge queue (`agentctl queue`) is retired.
+  `identity-measure --timeout` (default max(120 min, 1.5 x the ETA it prints)) only stops the waiting: the CI run and its
+  branch stay, exit 3 = still running, collect with `--run <id>`; `--cancel-on-timeout` cancels instead.
 - **Before merging: the basic tests**, locally, by the pre-push hook: the path-selected lints and checks (stage 3) and
   `local-tests.txt`'s `basic` set, riding the `sbt` check.
 - **An area touched: its local tests**, if they fit in 15 minutes on the laptop, warm: `identity` and `page` (measured

@@ -259,7 +259,9 @@ if [ -n "$measure" ]; then
   case $measure_rc in
     0) echo "  measure     ${verdict_line:-LANDABLE}" ;;
     1) echo "  measure     NOT LANDABLE"; blocked+=("measure	NOT LANDABLE: $(sed -n '/^NOT LANDABLE/,$p' "$out/measure.txt" | sed -n '2,4p' | sed 's/^ *- //' | paste -sd';' -)	a take moved wrong or a right one was lost: the measure's table, $out/measure.txt (scripts/identity-slice --explain its listings)") ;;
-    3) echo "  measure     not answered by the footprint (--footprint-only)"; blocked+=("measure	--footprint-only could not answer	run without --footprint-only for the full measure") ;;
+    3) if grep -q 'STILL RUNNING' "$out/measure.log" 2> /dev/null; then
+         echo "  measure     still running at --timeout, left running: collect with identity-measure --run <id> ($out/measure.log)"; unknown+=(measure)
+       else echo "  measure     not answered by the footprint (--footprint-only)"; blocked+=("measure	--footprint-only could not answer	run without --footprint-only for the full measure"); fi ;;
     *) echo "  measure     could not measure$(why_not "$out/measure.log" identity-measure) ($out/measure.log)"; unknown+=(measure) ;;
   esac
 fi
