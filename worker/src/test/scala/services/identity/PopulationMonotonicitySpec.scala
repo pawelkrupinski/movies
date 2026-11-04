@@ -22,6 +22,13 @@ import scala.util.Try
  * Today's A -> B -> A shapes are KNOWN (`identity-population-flips-known.tsv`), as the flips baseline was on 10-29: a known
  * row passes, a new flip fails, and a known row whose listing no longer flips fails too until its row is removed -- the
  * list only shrinks. Stage 5 of the design (a contested family gives a bare listing no film) is what empties it.
+ *
+ * THE LANDING CHECK JUDGES IT AGAINST THE CHANGE'S BASE (convergence-reds root cause 2, fix C): with ScalaTest's
+ * config map entry [[CandidatesKey]] (the pre-push hook's identity check sets it), a slice whose flips differ from the
+ * known rows does not fail here: its rows are written to that directory ([[Candidate]]) and
+ * scripts/ci/population-walk-diff walks the same slice with the base's code. Only a flip the base does not have (the
+ * listing, the slice and the arrival chain named), or a known row the change cures, refuses the push; what main flips
+ * too is main's, said and passed. Without the entry (Main's rows, a laptop run) the known rows judge as above.
  */
 abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Matchers with tools.CountryScope {
   import PopulationMonotonicitySpec._
@@ -32,6 +39,13 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
 
   // this part's slices ([[SliceParts]]): the spec is PopulationMonotonicityPart<k>Spec, k = 1 to SliceParts.Count
   private val slices = SliceParts.of(part, sliceDirs)
+
+  // the landing check's candidates directory ([[CandidatesKey]]), read off each test's config map
+  @volatile private var candidates: Option[Path] = None
+  override def withFixture(test: NoArgTest): org.scalatest.Outcome = {
+    candidates = test.configMap.getOptional[String](CandidatesKey).map(Path.of(_))
+    super.withFixture(test)
+  }
   private val known  = Known.read(KnownFile)
 
   // the two flipping slices the walk on several threads compares (of every part's slices), and this part's of them
@@ -76,10 +90,16 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
       val name  = relative(dir)
       val fresh = rows.filterNot(row => known.exists(_.covers(name, row)))
       val fixed = known.filter(k => k.slice == name && !rows.exists(k.covers(name, _)))
-      withClue("new A -> B -> A takes along an arrival chain (add a row to identity-population-flips-known.tsv only with the owner's OK): ")(
-        fresh.map(_.line) shouldBe empty)
-      withClue("known rows whose listing no longer flips -- remove them from identity-population-flips-known.tsv: ")(
-        fixed.map(k => s"${k.venue} | ${k.rawTitle} (${k.note})") shouldBe empty)
+      candidates.filter(_ => fresh.nonEmpty || fixed.nonEmpty).foreach { dir =>
+        val file = Candidate.write(dir, name, rows, known.filter(_.slice == name))
+        info(s"${fresh.size} new and ${fixed.size} cured row(s) against the known list: judged against the change's base (${file.getFileName})")
+      }
+      if (candidates.isEmpty) {
+        withClue("new A -> B -> A takes along an arrival chain (add a row to identity-population-flips-known.tsv only with the owner's OK): ")(
+          fresh.map(_.line) shouldBe empty)
+        withClue("known rows whose listing no longer flips -- remove them from identity-population-flips-known.tsv: ")(
+          fixed.map(k => s"${k.venue} | ${k.rawTitle} (${k.note})") shouldBe empty)
+      }
     }
   }
 }
@@ -110,6 +130,23 @@ object PopulationMonotonicitySpec {
     val parts = dir.iterator().asScala.map(_.toString).toSeq
     val at    = parts.indexOf("drift-slices")
     if (at >= 0 && at + 1 < parts.size) parts(at + 1) else parts.last.takeWhile(_ != '-')
+  }
+
+  /** The config map entry naming the landing check's candidates directory (the class comment). */
+  val CandidatesKey = "identity.population.candidates"
+
+  /** A slice the landing check judges against its base: `<dir>/<slice, '/' as '__'>.tsv`, tab-separated -- `slice <name>`,
+   *  then a `head <venue> <raw title> <line>` row per flip the change's walk found and a `known <venue> <raw title> <note>`
+   *  row per known row of the slice. scripts/ci/population_walk_diff.py reads it. */
+  object Candidate {
+    def write(dir: Path, slice: String, rows: Seq[Row], known: Seq[Known]): Path = {
+      def clean(s: String) = s.replace('\t', ' ').replace('\n', ' ')
+      val lines = s"slice\t$slice" +: (rows.map(r => s"head\t${clean(r.venue)}\t${clean(r.rawTitle)}\t${clean(r.line)}") ++
+        known.map(k => s"known\t${clean(k.venue)}\t${clean(k.rawTitle)}\t${clean(k.note)}"))
+      Files.createDirectories(dir)
+      val file = dir.resolve(slice.replace("/", "__") + ".tsv")
+      Files.write(file, lines.asJava, StandardCharsets.UTF_8)
+    }
   }
 
   /** One flip found: the listing, its shape and its path along the chain. */

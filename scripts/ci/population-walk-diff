@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# THE POPULATION WALK'S BASE SIDE (the pre-push hook's identity check; scripts/ci/population_walk_diff.py says what is
+# judged): the candidate slices PopulationMonotonicitySpec wrote to <candidates dir> walked with <base>'s code, then
+# judged head against base. Nothing to do (and no sbt) when no slice is a candidate -- the usual case: every slice's
+# flips are the known rows. The base's rows are kept per base commit and slice under
+# $KINOWO_IDENTITY_CACHE/population-walk/<sha>/ (a slice's data is the head's, so its key holds the slice's tree hash):
+# a second push on the same base walks nothing again. The base's tree and classpath are identity-tools.sh's (laid out
+# once, compiled seeded from the nearest compiled tree: only what the change touched recompiles).
+#
+#   scripts/ci/population-walk-diff <candidates dir> <base ref>     exit 1: a new flip or a cured known row (named)
+set -uo pipefail
+
+dir=${1:?candidates dir}
+base_ref=${2:?base ref}
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$here" || exit 2
+judge=scripts/ci/population_walk_diff.py
+
+slices=()
+while IFS= read -r s; do [ -n "$s" ] && slices+=("$s"); done < <(python3 "$judge" slices "$dir")
+[ "${#slices[@]}" -gt 0 ] || exit 0
+
+IDENTITY_TOOL=population-walk
+# shellcheck source=scripts/identity-tools.sh
+. scripts/identity-tools.sh
+
+# no base to walk: judged on the known rows alone, as the spec itself would
+sha=$(git rev-parse --verify "$base_ref^{commit}" 2>/dev/null) ||
+  { echo "population walk: no base commit $base_ref: judged on the known rows alone" >&2; python3 "$judge" judge "$dir" /dev/null; exit $?; }
+cache=$IDENTITY_CACHE/population-walk/$sha
+mkdir -p "$cache"
+rows=$dir/base-rows.txt
+: > "$rows"
+key_of() { # <slice> -> its cache file: the slice's name and the tree hash of its data at the head
+  local tree
+  tree=$(git rev-parse --verify "HEAD:test/resources/fixtures/$1" 2>/dev/null || echo worktree)
+  # an uncommitted slice (a laptop run on edits) is never cached
+  [ "$tree" = worktree ] && { echo ""; return; }
+  echo "$cache/$(printf '%s' "$1" | tr '/' '_')-${tree:0:12}.txt"
+}
+todo=()
+for s in "${slices[@]}"; do
+  f=$(key_of "$s")
+  if [ -n "$f" ] && [ -s "$f" ]; then cat "$f" >> "$rows"; else todo+=("$s"); fi
+done
+echo "population walk: ${#slices[@]} candidate slice(s), $(( ${#slices[@]} - ${#todo[@]} )) cached for base ${sha:0:9}" >&2
+
+if [ "${#todo[@]}" -gt 0 ]; then
+  started=$(date +%s)
+  if tree=$(identity_tree "$sha") && cp=$(identity_classpath "$tree"); then
+    args=(); for s in "${todo[@]}"; do args+=("test/resources/fixtures/$s"); done
+    out=$dir/base-walk.txt
+    # the head's slices, the base's code: run here, where the slices' relative paths resolve
+    if "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.PopulationMonotonicitySpec "${args[@]}" > "$out" 2> "$dir/base-walk.err"; then
+      for s in "${todo[@]}"; do
+        f=$(key_of "$s")
+        part=$(awk -v s="$s" -F'\t' 'index($0, "# " s ": ") == 1 || $1 == s' "$out")
+        [ -n "$part" ] || continue
+        printf '%s\n' "$part" >> "$rows"
+        # a failed walk is not kept: the next push tries again
+        if [ -n "$f" ] && ! grep -q "^# $s: FAILED" <<< "$part"; then printf '%s\n' "$part" > "$f.part" && mv -f "$f.part" "$f"; fi
+      done
+    else
+      tail -20 "$dir/base-walk.err" >&2
+      echo "population walk: the base's walk failed: judged on the known rows alone" >&2
+    fi
+  else
+    echo "population walk: the base ${sha:0:9} could not be compiled: judged on the known rows alone" >&2
+  fi
+  echo "population walk: base side ${#todo[@]} slice(s) in $(( $(date +%s) - started )) s" >&2
+fi
+
+python3 "$judge" judge "$dir" "$rows"

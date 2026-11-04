@@ -50,7 +50,10 @@
 #   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (is_identity_path): the identity
 #                 specs that run in under 15 min on the laptop (measured there); convergence and the takes measure
 #                 are main's CI's. Through scripts/sbt-warm, warm. Only the specs the change can reach, over the
-#                 countries it can reach (TEST-IMPACT SELECTION, select_identity_tests; proof: identity-impact-check)
+#                 countries it can reach (TEST-IMPACT SELECTION, select_identity_tests; proof: identity-impact-check).
+#                 The population walk (PopulationMonotonicitySpec) is judged AGAINST THE MERGE BASE: a slice whose flips
+#                 differ from the known rows is walked again with the base's code (scripts/ci/population-walk-diff), and
+#                 only a flip the base lacks (or a known row cured) refuses -- the listing, slice and chain named
 #   `page`        local-tests.txt's `page` lines, on a change to the page paths (is_page_path): the page specs and the
 #                 Playwright rows CI runs (scripts/page-tests-local: Chromium and WebKit, ~11 min warm)
 #   `identitydrift` scripts/identity-drift-ci --for-red <run>, on a push to main whose commits carry `Fixes-Red: <run>` (and no
@@ -1125,8 +1128,29 @@ run_local_tests() { # <set>
         [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ] || sh_lines=0
         if [ "${#cmds[@]}" -eq 0 ] && [ "$sh_lines" = 0 ]; then log "identity: nothing in shard $PREPUSH_IDENTITY_SHARD"; return 0; fi
     fi
+    # THE POPULATION WALK AGAINST THE BASE (PopulationMonotonicitySpec's CandidatesKey, scripts/ci/population-walk-diff):
+    # every identity testOnly line names the candidates directory, so a slice whose flips differ from the known rows is
+    # judged against the change's merge base after the run -- a flip main has too passes, one the change adds refuses
+    # the push naming the listing, slice and chain. No candidate (the usual case): nothing more runs.
+    local popwalk=""
+    if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
+        popwalk="$tmp/population-walk"
+        local i
+        for i in "${!cmds[@]}"; do
+            case "${cmds[$i]}" in
+                *testOnly\ *\ --\ *) cmds[$i]="${cmds[$i]} -Didentity.population.candidates=$popwalk" ;;
+                *testOnly\ *) cmds[$i]="${cmds[$i]} -- -Didentity.population.candidates=$popwalk" ;;
+            esac
+        done
+    fi
     if [ "${#cmds[@]}" -gt 0 ]; then
         scripts/sbt-warm "${cmds[@]}" > "$tmp/$1.log" 2>&1 || rc=1
+    fi
+    if [ "$rc" = 0 ] && [ -n "$popwalk" ] && [ -d "$popwalk" ]; then
+        local walk_base
+        walk_base="$(git merge-base "$base_sha" "$head_sha" 2>/dev/null || echo "$base_sha")"
+        scripts/ci/population-walk-diff "$popwalk" "$walk_base" >> "$tmp/$1.log" 2>&1 || rc=1
+        grep '^population walk: ' "$tmp/$1.log" | tail -40 >&2
     fi
     if [ "$rc" = 0 ] && [ "$sh_lines" = 1 ]; then
         while IFS= read -r line; do
