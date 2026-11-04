@@ -470,13 +470,15 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val drift = RepoFile.step(leg, "Check that the incremental state ends where a whole resolve does")
     drift should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}")
     drift should include("DRIFT_PINS: ${{ format('{0},{1}', inputs.drift-seed-1, inputs.drift-seed-2) }}")
-    drift should include("""DRIFT_SEED=$(python3 scripts/ci/drift_seeds.py seed --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS" --run-number "$GITHUB_RUN_NUMBER")""")
+    drift should include("""DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS")""")
+    withClue("the explorer's rows replay random seeds off the gate, never the gate's: ")(
+      drift should include("""DRIFT_SEED_LIST=$(python3 scripts/ci/drift_explorer.py pick --cc "${{ inputs.code }}" --count "$DRIFT_EXPLORE" """))
     withClue("a red names its seed, in the ::error ci-why reads and the leg's commit status: ") {
       drift should include("::error title=identity drift (${{ inputs.code }}, seed $DRIFT_SEED)::")
       drift should include("""> "$RUNNER_TEMP/leg-verdict-why"""")
     }
     leg should include("name: identity-drift-${{ inputs.code }}-${{ matrix.phase }}")
-    RepoFile.read("scripts/ci/identity-drift-check.sh") should include("""[ -n "${DRIFT_SEED:-}" ] && seeds=(--seed "$DRIFT_SEED")""")
+    RepoFile.read("scripts/ci/identity-drift-check.sh") should include("""if [ -n "${DRIFT_SEED_LIST:-}" ]; then read -ra seeds <<< "${DRIFT_SEED_LIST//,/ }"""")
   }
 
   /** OFF MAIN, ONE SPLIT ORDER ROW (scripts/ci/order-phases.sh, 2026-10-23): only when the preflight positively says

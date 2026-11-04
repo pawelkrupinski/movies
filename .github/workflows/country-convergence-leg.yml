@@ -273,16 +273,16 @@ on:
                 required: false
                 type: boolean
                 default: false
-            # ROTATING SEEDS (scripts/ci/drift_seeds.py): the seed each takes-drift row replays -- the caller's run's
-            # rotation, or a dispatch's pins. The row NAMES stay `takes-drift-1` / `takes-drift-2`; the seed is in the
-            # step's ::error title, verdict.txt, the summary and the leg's status. Empty: the run number's rotation.
+            # FIXED SEEDS (scripts/ci/drift_seeds.py, 2026-11-04): a takes-drift row replays the seeds drift-gate-seeds.tsv
+            # assigns it, or a dispatch's pin. The row NAMES stay `takes-drift-1` / `takes-drift-2`; the seeds are in the
+            # step's ::error title, verdict.txt, the summary and the leg's status. Empty: the row's fixed set.
             drift-seed-1:
-                description: The seed the takes-drift-1 row replays (empty -- the run's rotation, scripts/ci/drift_seeds.py).
+                description: The seed the takes-drift-1 row replays (empty -- the row's fixed set, drift-gate-seeds.tsv).
                 required: false
                 type: string
                 default: ''
             drift-seed-2:
-                description: The seed the takes-drift-2 row replays (empty -- the run's rotation, scripts/ci/drift_seeds.py).
+                description: The seed the takes-drift-2 row replays (empty -- the row's fixed set, drift-gate-seeds.tsv).
                 required: false
                 type: string
                 default: ''
@@ -336,6 +336,14 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # THE EXPLORER (identity-drift-explorer.yml; identity-drift-check.sh's DRIFT_EXPLORE): each takes-drift row
+            # replays the head alone on N (`auto`: the country's count) random seeds off the gate, never red, and writes
+            # the flips no backlog row names to explore-<cc>.tsv in its artifact.
+            drift-explore:
+                description: Explore N (or `auto`) random seeds a takes-drift row, head alone, never red (empty -- the gate).
+                required: false
+                type: string
+                default: ''
             # A complete RECORDING becomes the hermetic pair only when this is true; false still publishes its tree
             # under its run and marks it prod-latest (`convergence-publish`'s `pin`). Record scrape fixtures passes
             # false unless a dispatch asks, while prod-latest proves itself as a landing bar.
@@ -393,7 +401,7 @@ jobs:
     # THE RUN — one PHASE per row: `convergence` for every country, plus `order-independence` (or its two split
     # rows) for a corpus whose replays no longer fit beside the boot, plus `next-day` for a leg its next-day test keeps
     # past 10 minutes, plus `takes` (the identity takes check) and `takes-drift-1` / `takes-drift-2` (the incremental =
-    # whole gate, a seed each: the run's rotating pair, scripts/ci/drift_seeds.py) in every hermetic leg. No row runs the sample (see the header).
+    # whole gate, each its fixed seeds, scripts/ci/drift_seeds.py) in every hermetic leg. No row runs the sample (see the header).
     #
     # A ROW rather than a job of its own, because "a job that exists only sometimes" is
     # not something GitHub can express. A job carrying `if: inputs.order-command != ''`
@@ -1065,15 +1073,15 @@ jobs:
             # every listing whose take at a checkpoint differs from the whole resolve's fails the row, unless
             # identity-drift-allow.tsv names it with why. And every listing's served take is recorded at each projection on
             # the way: one that FLIPS -- back to a film it left, moved more than once, or moved where none of its inputs did
-            # (prod's kinowo_identity_listing_flips; services.identity.TakeFlips) -- fails the row too, unless a known flip
-            # on the shrink-only baseline (identity-flips-baseline.tsv) or a check's TEMPORARY birth row. A property of
-            # one commit, not a base-vs-head move: red means this code drifts. Main's rows and drift-only runs
+            # (prod's kinowo_identity_listing_flips; services.identity.TakeFlips) -- fails the row only when the change ADDS
+            # it: the base replays the same seeds and a flip both show is `pre-existing (backlog)`
+            # (identity-flip-backlog.tsv), never failed (the differential gate, 2026-11-04; a TEMPORARY birth row passes too). Main's rows and drift-only runs
             # (scripts/identity-drift-ci), not a takes-only measurement's (its phases are takes and takes-base).
-            # ONE SEED A ROW (`takes-drift-1` / `takes-drift-2`), beside the takes check rather than after it: in the takes
+            # TWO ROWS (`takes-drift-1` / `takes-drift-2`), beside the takes check rather than after it: in the takes
             # row the check and the two seeds ran in turn, 30-55 minutes on main (runs 2683-2809), the 55-minute ceiling
-            # cancelling half of them. ROTATING SEEDS (the owner, 2026-10-31; scripts/ci/drift_seeds.py): the row's seed is
-            # the run's -- seeds 1 and 2 alone let UK Swan Lake's seed-3 and Cosi's seed-11 flips through -- so a red NAMES
-            # its seed: the ::error title, verdict.txt, the summary and the leg's commit status (leg-verdict-why), with
+            # cancelling half of them. FIXED SEEDS (the owner, 2026-11-04; scripts/ci/drift_seeds.py): the row's seeds are
+            # drift-gate-seeds.tsv's, grown by the nightly explorer (identity-drift-explorer.yml, `drift-explore`: random
+            # seeds, head alone, never red) -- and a red NAMES its seeds: the ::error title, verdict.txt, the summary and the leg's commit status (leg-verdict-why), with
             # its one-line reproducer and the drift slice of a red listing that has one. The job name stays.
             - name: Check that the incremental state ends where a whole resolve does
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}
@@ -1084,13 +1092,18 @@ jobs:
                   DRIFT_ROW: ${{ matrix.phase }}
                   DRIFT_PINS: ${{ format('{0},{1}', inputs.drift-seed-1, inputs.drift-seed-2) }}
                   DRIFT_TWICE: ${{ inputs.drift-twice }}
+                  DRIFT_EXPLORE: ${{ inputs.drift-explore }}
+                  DRIFT_EXPLORE_REF: ${{ format('run:{0}/identity-drift-{1}-{2}', github.run_id, inputs.code, matrix.phase) }}
                   # THE DIFFERENTIAL'S STORE (identity-drift-check.sh): each green head's flips on main, a base's anywhere
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   DRIFT_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && 'identity-drift' || '' }}
               run: |
                   . scripts/ci/bounded-step.sh
-                  DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS") \
-                      && [ -n "$DRIFT_SEED_LIST" ] \
+                  if [ -n "$DRIFT_EXPLORE" ]; then
+                      DRIFT_SEED_LIST=$(python3 scripts/ci/drift_explorer.py pick --cc "${{ inputs.code }}" --count "$DRIFT_EXPLORE" --salt "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$DRIFT_ROW")
+                  else DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS")
+                  fi
+                  [ -n "$DRIFT_SEED_LIST" ] \
                       || { echo "::error title=identity drift (${{ inputs.code }})::no seed for $DRIFT_ROW from pins '$DRIFT_PINS' or drift-gate-seeds.tsv -- nothing was judged"; exit 2; }
                   export DRIFT_SEED_LIST DRIFT_SEED="${DRIFT_SEED_LIST// /,}"
                   # A profiled dispatch: a JFR profile of every JVM the replay starts (scripts/ci/jfr-every-jvm.sh).

@@ -20,7 +20,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 repo="$work/repo" fx="$work/repo/test/resources/fixtures"
 mkdir -p "$repo/scripts/ci" "$fx/corpus" "$repo/identity/src/main" "$work/bin" "$work/tmp"
-cp "$REPO_ROOT/scripts/ci/identity-drift-check.sh" "$REPO_ROOT/scripts/ci/drift_seeds.py" "$REPO_ROOT/scripts/ci/drift_diff.py" "$repo/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/identity-drift-check.sh" "$REPO_ROOT/scripts/ci/drift_seeds.py" "$REPO_ROOT/scripts/ci/drift_diff.py" "$REPO_ROOT/scripts/ci/drift_explorer.py" "$repo/scripts/ci/"
 printf 'country\tvenue\trawTitle\treason\npl\tKino Nowe\tAllowed Film\tTEMPORARY owner: x; remove when y; z\n' > "$fx/identity-flips-allow.tsv"
 printf 'kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\ndrift\tpl\t1\t\tRiverside\tThe Stranger\t\t2026-10-29\tthe red fixer\tx\n' > "$fx/identity-flip-backlog.tsv"
 # sbt as the replay leaves it: the report on stdout, the TSVs under --out, IdentityDrift's exit. The flips are
@@ -69,6 +69,14 @@ check "...and the report names their class" "1" "$(grep -c 'incremental-only tak
 check "divergences the allow-list names all pass" "0" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 run)"
 check "a replay that never reported is no verdict" "2" "$(FAKE_REPORT=none run)"
 check "a replay that reported no flips line is no verdict" "2" "$(FAKE_FLIPS=none run)"
+
+# THE EXPLORER (DRIFT_EXPLORE): the head alone, never red, its flips no backlog row names written for agentctl
+check "the explorer never fails on a flip" "0" "$(DRIFT_EXPLORE=1 DRIFT_EXPLORE_REF=run:9/a FAKE_HEAD_FLIPS='Riverside|The Stranger;Kino Nowy|New Flip' run)"
+check "...replaying the head alone" "head 1,2" "$(cat "$FAKE_LOG")"
+check "...writing the flip no backlog row names, once, its lowest seed" "Kino Nowy New Flip pl 1 run:9/a" \
+  "$(sed 1d "$work/out/explore-pl.tsv" | cut -f1-4,6 | tr '\t' ' ')"
+check "...and naming it in the log, never as a red row" "1 0" \
+  "$(grep -c '^      explored: Kino Nowy | New Flip \[seed 1\]' "$work/stdout") $(grep -cE '^      Kino Nowy \| New Flip' "$work/stdout")"
 
 # THE SAME IDENTITY CODE (the head changed docs only): every flip is pre-existing, the base is not replayed
 check "a head with its base's identity code never fails on flips" "0" "$(FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"

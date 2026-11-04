@@ -209,6 +209,7 @@ INPUTS = {
     "takes-no-store": ("INPUT_TAKES_NO_STORE", "false"),
     "takes-skip": ("INPUT_TAKES_SKIP", "shadow"),
     "drift-twice": ("INPUT_DRIFT_TWICE", "false"),
+    "drift-explore": ("INPUT_DRIFT_EXPLORE", ""),
 }
 BOOLEANS = {"profile", "takes-only", "drift-only", "takes-no-store", "drift-twice"}
 
@@ -290,6 +291,8 @@ def inputs_unlike_main(inputs, order_phases):
     # A drift-only run (scripts/identity-drift-ci) ran the takes-drift rows alone: never a source for main's full verdict.
     if inputs.get("drift-only", "false") != "false":
         why.append("drift-only: only the takes-drift rows ran")
+    if inputs.get("drift-explore", ""):
+        why.append(f"drift-explore {inputs['drift-explore']!r}: the explorer's random seeds, not main's suite")
     if inputs.get("drift-seeds", ""):
         why.append(f"drift-seeds {inputs['drift-seeds']!r}: not main's suite")
     for name in ("takes-countries", "recording", "jvm-options", "runner"):

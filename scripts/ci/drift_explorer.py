@@ -10,12 +10,14 @@
 # change is judged on that seed too. commit_rules.py lets exactly that commit add a drift row (explorer_filing).
 #
 # usage:
-#   drift_explorer.py pick --cc CC --count N --salt S [--file SEEDS_TSV]
-#                       N seeds for CC to explore, space-separated: in 3..999, none on the gate, drawn from S (the run
+#   drift_explorer.py pick --cc CC --count N|auto --salt S [--file SEEDS_TSV]
+#                       N (auto: AUTO's) seeds for CC to explore, space-separated: in 3..999, none on the gate, drawn from S (the run
 #                       id: a rerun replays the same)
 #   drift_explorer.py new-flips --backlog TSV --date YYYY-MM-DD --ref REF FLIPS_TSV...
 #                       the asset rows (NEW_HEADER) of the flips TSVs' listings no backlog row of their country names, one
 #                       per listing (its lowest seed); REF names where the replay's output is (`run:<id>/<artifact>`)
+#   drift_explorer.py merge [--backlog TSV] EXPLORE_TSV...
+#                       one asset of a run's rows' explore-<cc>.tsv: a row per listing (its lowest seed), none the backlog names
 #   drift_explorer.py file --asset TSV [--backlog TSV] [--seeds TSV] [--owner WHO]
 #                       append each asset row whose listing no backlog row names to the backlog (kind drift) and its seed
 #                       to the gate; prints one line per filed flip (`filed <cc> <seed> <venue> | <title>`), exit 0
@@ -58,7 +60,13 @@ def known(backlog: str) -> set[tuple[str, str, str]]:
     return {(r.get("country", ""), r.get("venue", ""), r.get("rawTitle", "")) for r in read_tsv(backlog)}
 
 
-def pick(cc: str, count: int, salt: str, path: str | None = None) -> list[int]:
+# `auto`: a row's seeds by the country's replay cost (one seed: ES ~2 min, PL ~6, the US/UK ~8-12, DE ~16), each row
+# inside ~40 of its step's 75 minutes. Two rows a night: DE 4, UK 6, US 6, PL 8, ES 24 seeds walked beyond the gate's.
+AUTO = {"de": 2, "uk": 3, "us": 3, "pl": 4, "es": 12}
+
+
+def pick(cc: str, count: int | str, salt: str, path: str | None = None) -> list[int]:
+    count = AUTO.get(cc, 2) if str(count) == "auto" else int(count)
     gate = set(drift_seeds.fixed(cc, path=path))
     pool = [s for s in range(3, 1000) if s not in gate]
     return sorted(random.Random(f"{cc}:{salt}").sample(pool, min(count, len(pool))))
@@ -87,6 +95,19 @@ def new_flips(backlog: str, date: str, ref: str, paths: list[str]) -> list[list[
     return [out[k] for k in sorted(out)]
 
 
+def merge(backlog: str, paths: list[str]) -> list[list[str]]:
+    """The rows (NEW_HEADER) of several explore-<cc>.tsv, one per listing (its lowest seed), none the backlog names now."""
+    have, out = known(backlog), {}
+    for path in paths:
+        for r in read_tsv(path):
+            key = (r.get("country", ""), r.get("venue", ""), r.get("rawTitle", ""))
+            if not all(key) or key in have or not r.get("seed", "").isdigit():
+                continue
+            if key not in out or int(r["seed"]) < int(out[key][3]):
+                out[key] = [r.get(c, "") for c in NEW_HEADER]
+    return [out[k] for k in sorted(out)]
+
+
 def file(asset: str, backlog: str, seeds: str, owner: str) -> list[str]:
     have, filed, rows = known(backlog), [], []
     for r in read_tsv(asset):
@@ -106,7 +127,7 @@ def file(asset: str, backlog: str, seeds: str, owner: str) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    if not argv or argv[0] not in ("pick", "new-flips", "file"):
+    if not argv or argv[0] not in ("pick", "new-flips", "merge", "file"):
         print(__doc__ or "usage: drift_explorer.py pick|new-flips|file ...", file=sys.stderr)
         return 2
     command, rest, opts = argv[0], [], {}
@@ -118,9 +139,12 @@ def main(argv: list[str]) -> int:
             rest.append(a)
     try:
         if command == "pick":
-            print(" ".join(map(str, pick(opts["cc"], int(opts.get("count", "1")), opts.get("salt", ""), opts.get("file") or None))))
+            print(" ".join(map(str, pick(opts["cc"], opts.get("count", "auto"), opts.get("salt", ""), opts.get("file") or None))))
         elif command == "new-flips":
             rows = new_flips(opts.get("backlog") or BACKLOG, opts["date"], opts.get("ref", ""), rest)
+            sys.stdout.write("\t".join(NEW_HEADER) + "\n" + "".join("\t".join(r) + "\n" for r in rows))
+        elif command == "merge":
+            rows = merge(opts.get("backlog") or BACKLOG, rest)
             sys.stdout.write("\t".join(NEW_HEADER) + "\n" + "".join("\t".join(r) + "\n" for r in rows))
         else:
             for line in file(opts["asset"], opts.get("backlog") or BACKLOG, opts.get("seeds") or drift_seeds.SEEDS_FILE,

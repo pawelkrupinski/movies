@@ -21,25 +21,34 @@ Once this holds, the nightly live drift check (`scripts.IdentityLiveDrift`, aler
 convergence drift step (`scripts.IdentityDrift`) become weekly, and then retire. What remains for that is listed under
 "What still blocks retiring the checks".
 
-## Known flips (the owner, 2026-10-29)
+## The differential gate (the owner, 2026-11-04)
 
-"Fail build only on new flips, focus in eliminating all old flips and then fail on all flips."
+"A gate that only fails on what the change adds." Supersedes the shrink-only known-flips baseline (2026-10-29) and the
+rotating seeds (2026-10-31): 3 of 7 red streaks to 2026-11-04 ended with no identity change -- an old flip failed
+whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-reds-root-causes-2026-11-04.md`, fix B).
 
-- `test/resources/fixtures/identity-flips-baseline.tsv` holds one row per flip main's convergence showed when the gate
-  turned to failing on new flips only — country, seed, venue, raw title, the takes, first seen, owner, note — generated
-  from a run's flips by `scripts/ci/identity_flips_baseline.py from-run <run>`, never typed. Seeded from convergence
-  #2527 (run 3757): UK "Rose (2023)" at Duke of York's and Queen's Film Theatre, seed 1.
-- The drift check (`scripts/ci/identity-drift-check.sh`, `IdentityDrift --flips-baseline`) passes a baselined
-  listing's flips, saying "N known flip(s) remaining" as a ::warning and in the step summary; fails every other flip;
-  and names a baselined flip that no longer occurs in a seed the row names "remove its row". A baseline row covers its
-  listing on ANY seed: the legs' seeds rotate (`scripts/ci/drift_seeds.py`, below), so "remove its row" is said only by
-  a run that replays the row's own seed.
-- The baseline ONLY SHRINKS: `scripts/ci/commit_rules.py` refuses any added row, whatever the commit's trailers;
-  a commit fixing a flip removes its row.
-- **The end state is automatic**: with no row left, every flip fails — the strict gate.
-- DIVERGENCES (incremental ≠ whole end state) have no baseline: they always fail.
+- **Fixed seeds.** Each country's `takes-drift-1` / `takes-drift-2` rows replay the seeds
+  `test/resources/fixtures/drift-gate-seeds.tsv` assigns them (`scripts/ci/drift_seeds.py`), the same on every run;
+  a dispatch may pin others (`scripts/identity-drift-ci --seeds`).
+- **Head against base.** `scripts/ci/identity-drift-check.sh` replays the head's seeds, then its base's on the same
+  seeds (the parent on main, the merge-base on a branch; no replay when the identity code is the same, and a stored
+  result -- release `identity-drift` -- when one exists), and `scripts/ci/drift_diff.py` judges: a flip only the head
+  shows FAILS, naming the listing; one both show is `pre-existing (backlog)`, never failed; one only the base shows is
+  `removed:`. Divergences (incremental != whole end state) fail outright, as before.
+- **The backlog.** `test/resources/fixtures/identity-flip-backlog.tsv` is every known flip, a row each -- kind `drift`
+  (a seed found it) or `population` (`PopulationMonotonicitySpec`'s arrival walk did) -- with its owner. It decides
+  no drift verdict: it is the work list. A fix removes its row. Rows arrive only by the explorer's filing (below), a
+  tightened check's birth (`New-Check:`), or the owner's named decision (`Owner-Approved:`) -- `scripts/ci/commit_rules.py`.
+- **The explorer.** `.github/workflows/identity-drift-explorer.yml` dispatches main's drift rows nightly on random seeds
+  off the gate (`drift-explore: auto`: DE 4, UK 6, US 6, PL 8, ES 24 seeds a night), the head alone, never red, and
+  publishes the flips no backlog row names as `new-flips.tsv` on the release `identity-flip-explorer`. Actions cannot
+  push main, so agentctl adopts the asset: one item per flip, and one landed commit adding its backlog row and its seed
+  to the gate (`scripts/ci/drift_explorer.py file`), the only commit `commit_rules.py` lets add a drift row freely.
+- **Coverage.** No run replays fewer seeds than the rotation did (2 a country a run; ES 4 now), the base side adds
+  replays, and the explorer adds the seeds above every night.
 - A newborn check's own findings go TEMPORARY on `identity-flips-allow.tsv` (`New-Check:`), never a flip that already
   exists.
+
 ## Fixing a drift or flip red (the owner, 2026-10-29)
 
 - **A red fix names and fixes the incremental state that diverges** — a lag, a budget, the queue's order, a cache, a

@@ -66,7 +66,7 @@ on:
             drift-seeds:
                 description: >-
                     Pin the takes-drift rows' seeds -- `S1,S2`, or `S1,` / `,S2` for one row of a drift-only run (a bare `S`
-                    is `S,`). Empty -- the run number's rotating pair (scripts/ci/drift_seeds.py). Never main's suite.
+                    is `S,`). Empty -- each row's fixed seeds (drift-gate-seeds.tsv, scripts/ci/drift_seeds.py). Never main's suite.
                 required: false
                 type: string
                 default: ''
@@ -95,6 +95,13 @@ on:
                 required: false
                 type: boolean
                 default: false
+            # THE EXPLORER (identity-drift-explorer.yml): each takes-drift row replays main alone on seeds the gate does not
+            # hold -- `auto` (each country's count, scripts/ci/drift_explorer.py) or N a row -- never red; drift-only.
+            drift-explore:
+                description: Explore -- each takes-drift row replays N (or `auto`) random seeds off the gate, head alone, never red.
+                required: false
+                type: string
+                default: ''
             reuse-run:
                 description: >-
                     An earlier run of this workflow whose verdict this commit may reuse (Main's kick names a landing check's
@@ -155,8 +162,8 @@ jobs:
             takes-only: ${{ steps.legs.outputs.takes-only }}
             drift-only: ${{ steps.legs.outputs.drift-only }}
             drift-seeds: ${{ steps.legs.outputs.drift-seeds }}
-            # ROTATING SEEDS (scripts/ci/drift_seeds.py): the seed each takes-drift row replays -- this run's rotating pair,
-            # or the dispatch's pins (a row left out of a drift-only run: empty). In the reuse facts beside the inputs.
+            # FIXED SEEDS (scripts/ci/drift_seeds.py): each takes-drift row's pin -- empty: the row replays its fixed set
+            # (drift-gate-seeds.tsv) -- from the dispatch's pins (a row left out of a drift-only run: empty). In the reuse facts beside the inputs.
             drift-seed-1: ${{ steps.legs.outputs.drift-seed-1 }}
             drift-seed-2: ${{ steps.legs.outputs.drift-seed-2 }}
             recording: ${{ steps.legs.outputs.recording }}
@@ -169,6 +176,7 @@ jobs:
             takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
             takes-skip: ${{ steps.legs.outputs.takes-skip }}
             drift-twice: ${{ steps.legs.outputs.drift-twice }}
+            drift-explore: ${{ steps.legs.outputs.drift-explore }}
             # The legs' runner: ubuntu-22.04 unless a dispatch names one -- or, off main with the repository variable
             # MOVIES_CI_RUNNERS=self-hosted, ci-runner's `movies-measure` slots (infra nix/hosts/ci-runner/movies-runners.nix):
             # every run off main is a measurement (measure/*: identity-measure, identity-drift-ci, a landing check's full
@@ -212,7 +220,8 @@ jobs:
                   INPUT_TAKES_NO_STORE: ${{ inputs.takes-no-store }}
                   INPUT_TAKES_SKIP: ${{ inputs.takes-skip }}
                   INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}
-              # (GITHUB_RUN_NUMBER, the runner's own: the rotating drift seeds' run -- a rerun of it replays the same pair)
+                  INPUT_DRIFT_EXPLORE: ${{ inputs.drift-explore }}
+              # (GITHUB_RUN_NUMBER: kept for the facts; seeds no longer rotate, drift-gate-seeds.tsv)
               run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
             # THE LEG ROWS, as the `leg` job's matrix (convergence_reuse.py legs): a `country` vector the rows extend -- so a row is
             # named `leg (<country>)` by default -- narrowed to the countries a takes-only or drift-only run asks for
@@ -404,6 +413,8 @@ jobs:
             takes-skip:                    ${{ needs.preflight.outputs.takes-skip }}
             # The daily full run's determinism check (convergence-daily.yml): each drift seed replayed twice, the TSVs diffed.
             drift-twice:                   ${{ needs.preflight.outputs.drift-twice == 'true' }}
+            # The nightly explorer's (identity-drift-explorer.yml): random seeds off the gate, head alone, never red.
+            drift-explore:                 ${{ needs.preflight.outputs.drift-explore }}
             # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
             corpus-run:                    ${{ needs.preflight.outputs.recording }}
             # A proven reuse (the preflight's `reused-from`): every row of the leg skips.

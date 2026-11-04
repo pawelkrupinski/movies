@@ -41,6 +41,10 @@ class DriftExplorerTest(unittest.TestCase):
         self.assertEqual(one, explorer.pick("de", 5, "41780196052", self.seeds))
         self.assertNotEqual(one, explorer.pick("de", 5, "other", self.seeds))
 
+    def test_auto_picks_by_the_countrys_replay_cost(self):
+        self.assertEqual(2, len(explorer.pick("de", "auto", "x", self.seeds)))
+        self.assertEqual(12, len(explorer.pick("es", "auto", "x", self.seeds)))
+
     def test_new_flips_leave_out_the_backlogs_listings_one_row_per_listing_its_lowest_seed(self):
         flips = self.write("flips-de.tsv", FLIPS
                            + "de\t311\tCinemaxX Dammtor\tTitans\t\t\ta -> b -> a\n"
@@ -53,6 +57,12 @@ class DriftExplorerTest(unittest.TestCase):
     def test_a_file_that_is_no_flips_tsv_is_refused(self):
         with self.assertRaises(ValueError):
             explorer.new_flips(self.backlog, "2026-11-05", "", [self.write("x.tsv", "a\tb\n")])
+
+    def test_merge_keeps_one_row_per_listing_its_lowest_seed_none_the_backlog_names(self):
+        head = "\t".join(explorer.NEW_HEADER) + "\n"
+        one = self.write("a.tsv", head + "Kino A\tX\tde\t90\t2026-11-05\tr1\tt\n" + "CinemaxX Dammtor\tTitans\tde\t5\td\tr1\tt\n")
+        two = self.write("b.tsv", head + "Kino A\tX\tde\t40\t2026-11-05\tr2\tt\n")
+        self.assertEqual([["Kino A", "X", "de", "40", "2026-11-05", "r2", "t"]], explorer.merge(self.backlog, [one, two]))
 
     def test_filing_appends_the_new_flips_and_their_seeds_once(self):
         asset = self.write("new-flips.tsv", "\t".join(explorer.NEW_HEADER) + "\n"

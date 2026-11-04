@@ -457,6 +457,8 @@ class DriftTwice(unittest.TestCase):
 
     def test_a_double_run_is_still_mains_suite(self):
         self.assertEqual(reuse.inputs_unlike_main(dict(MAIN_INPUTS, **{"drift-twice": "true"}), "both"), [])
+        self.assertEqual(MAIN_INPUTS["drift-explore"], "")
+        self.assertEqual(len(reuse.inputs_unlike_main(dict(MAIN_INPUTS, **{"drift-explore": "auto"}), "both")), 1)
 
 
 if __name__ == "__main__":

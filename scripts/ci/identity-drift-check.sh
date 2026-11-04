@@ -38,6 +38,7 @@
 #        DRIFT_TWICE=true (the daily full run's, convergence-failures 2026-10-29 G10): replay the head's seeds a second
 #        time into <out>/again and fail when the two runs' drift and flips TSVs differ -- the replay must be a function of
 #        its inputs; HEAP (sbt -Xmx, default 6g); GITHUB_STEP_SUMMARY (optional); GH_TOKEN for the store.
+#        DRIFT_EXPLORE (the explorer: the head alone, never red, <out>/explore-<cc>.tsv; DRIFT_EXPLORE_REF names the output).
 # Writes <out>/drift-<cc>.tsv and <out>/flips-<cc>.tsv (the head's, every seed), <out>/base/ (each seed's base flips
 # and how it was had), <out>/diff.txt (the differential, per seed), <out>/new-<seed>.tsv (the flips the change adds),
 # <out>/seed (the seeds replayed, a line each, a red one first -- scripts/identity-drift-ci pins a red's seed from it),
@@ -93,6 +94,18 @@ open_divergences=$((found - allowed))
 sed '/^## [a-z]* flips: /,$d' "$out/report.txt"
 grep -m1 -E '^## [a-z]+ flips: ' "$out/report.txt" | sed -E 's/, [0-9]+ known$//'
 
+# ---- THE EXPLORER (DRIFT_EXPLORE set; .github/workflows/identity-drift-explorer.yml): the head (main) alone, on seeds the
+# gate does not hold. Never red: its flips no backlog row names go to <out>/explore-<cc>.tsv (scripts/ci/drift_explorer.py
+# new-flips), which the explorer publishes for agentctl to file -- each a backlog row and its seed onto the gate.
+if [ -n "${DRIFT_EXPLORE:-}" ]; then
+  python3 "$here/scripts/ci/drift_explorer.py" new-flips --backlog "$fixtures/identity-flip-backlog.tsv" --date "$(date -u +%F)"     --ref "${DRIFT_EXPLORE_REF:-}" "$out/flips-$cc.tsv" > "$out/explore-$cc.tsv"     || { echo "identity drift ($cc): the explorer could not read the head's flips" | tee "$out/verdict.txt"; exit 2; }
+  fresh=$(($(wc -l < "$out/explore-$cc.tsv") - 1))
+  sed 1d "$out/explore-$cc.tsv" | while IFS=$'\t' read -r v t _c s _; do echo "      explored: $v | $t [seed $s] -- not in the backlog"; done
+  echo "explorer ($cc): $fresh flip(s) no backlog row names, on seed(s) $seed_said (main, head alone; never red)" | tee "$out/verdict.txt"
+  [ -n "${GITHUB_STEP_SUMMARY:-}" ] && { echo "### explorer ($cc), seed(s) $seed_said"; echo; echo '```'; cat "$out/explore-$cc.tsv"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+  exit 0
+fi
+
 # ---- THE BASE (see the header) ----
 code_paths=(geodata/src/main common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/it/scala
             testkit/src/main build.sbt project worker/src/test/scala/scripts)
@@ -107,6 +120,7 @@ head_sha=$(git -C "$here" rev-parse HEAD)
 head_code=$(code_of HEAD)
 assets="$out/base/assets.txt"; : > "$assets"
 if [ -n "$store" ]; then
+  # allow-silenced: no store (or an unreadable one) is an empty one: every base is then replayed, never trusted
   timeout 120 gh release view "$store" --json assets --jq '.assets[].name' > "$assets" 2> /dev/null || : > "$assets"
 fi
 stored() { grep -qxF "$1" "$assets"; } # <asset>
@@ -123,17 +137,21 @@ keep() { # <file> <asset>: store a result, never failing the check
     || echo "identity drift ($cc): could not store $2 -- a later run resolves that base again"
   # only the newest are ever a base again: 48 a kind and country (best effort)
   local kind=${2#drift-}; kind=${kind%%-*}
+  # allow-silenced: pruning old results is best effort; a missed prune only leaves the store larger
   timeout 120 gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"drift-$kind-$cc-\"))) | sort_by(.createdAt) | reverse | .[48:][] | .name" 2> /dev/null \
     | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null 2>&1 || true; done
 }
 
 # the history the walk reads (trees only), and main's tip for a branch's merge-base
+# allow-silenced: a fetch that fails leaves the history the checkout has; the walk then finds fewer stored bases
 timeout 300 git -C "$here" fetch -q --no-tags --filter=blob:none --depth="$depth" origin "$head_sha" 2> /dev/null || true
 if [ -n "${DRIFT_BASE:-}" ]; then
+  # allow-silenced: a base not fetched is said below ("no base commit"), with no verdict
   timeout 300 git -C "$here" fetch -q --no-tags --depth=1 origin "$DRIFT_BASE" 2> /dev/null || true
   default_base=$(git -C "$here" rev-parse --verify -q "${DRIFT_BASE}^{commit}") || { echo "identity drift ($cc): no base commit $DRIFT_BASE" | tee "$out/verdict.txt"; exit 2; }
 else
   default_base=""
+  # allow-silenced: main not fetched leaves the merge-base to the history the checkout has (the parent, said below)
   if [ "${GITHUB_REF:-}" != refs/heads/main ] && timeout 300 git -C "$here" fetch -q --no-tags --filter=blob:none --depth="$depth" origin main 2> /dev/null; then
     default_base=$(git -C "$here" merge-base HEAD FETCH_HEAD 2> /dev/null || true)
   fi
@@ -167,6 +185,7 @@ if [ "${#recompute[@]}" -gt 0 ]; then
   base=$default_base
   base_dir="${RUNNER_TEMP:-$out}/drift-base-checkout"
   echo "identity drift ($cc): resolving the base ${base:0:12} on seed(s) ${recompute[*]} (none stored)"
+  # allow-silenced: a base not fetched fails its checkout below, which says so with no verdict
   timeout 300 git -C "$here" fetch -q --no-tags --depth=1 origin "$base" 2> /dev/null || true
   rm -rf "$base_dir"; git -C "$here" worktree prune 2> /dev/null || true
   git -C "$here" worktree add -q --detach "$base_dir" "$base" > /dev/null 2>&1 \

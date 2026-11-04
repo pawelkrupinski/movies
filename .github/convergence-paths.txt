@@ -124,6 +124,7 @@ scripts/ci/commit-rules-ci.sh
 scripts/ci/corpus_shape_diff.py
 scripts/ci/dispatch.sh
 scripts/ci/drift_diff.py
+scripts/ci/drift_explorer.py
 scripts/ci/drift_seeds.py
 scripts/ci/generated-artefacts-drift.sh
 scripts/ci/identity-drift-check.sh
