@@ -1084,19 +1084,23 @@ jobs:
                   DRIFT_ROW: ${{ matrix.phase }}
                   DRIFT_PINS: ${{ format('{0},{1}', inputs.drift-seed-1, inputs.drift-seed-2) }}
                   DRIFT_TWICE: ${{ inputs.drift-twice }}
+                  # THE DIFFERENTIAL'S STORE (identity-drift-check.sh): each green head's flips on main, a base's anywhere
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  DRIFT_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && 'identity-drift' || '' }}
               run: |
                   . scripts/ci/bounded-step.sh
-                  DRIFT_SEED=$(python3 scripts/ci/drift_seeds.py seed --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS" --run-number "$GITHUB_RUN_NUMBER") \
-                      || { echo "::error title=identity drift (${{ inputs.code }})::no seed for $DRIFT_ROW from pins '$DRIFT_PINS' -- nothing was judged"; exit 2; }
-                  export DRIFT_SEED
+                  DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS") \
+                      && [ -n "$DRIFT_SEED_LIST" ] \
+                      || { echo "::error title=identity drift (${{ inputs.code }})::no seed for $DRIFT_ROW from pins '$DRIFT_PINS' or drift-gate-seeds.tsv -- nothing was judged"; exit 2; }
+                  export DRIFT_SEED_LIST DRIFT_SEED="${DRIFT_SEED_LIST// /,}"
                   # A profiled dispatch: a JFR profile of every JVM the replay starts (scripts/ci/jfr-every-jvm.sh).
                   [ "${{ inputs.profile }}" = true ] && . scripts/ci/jfr-every-jvm.sh
-                  echo "$DRIFT_ROW (${{ inputs.code }}) replays seed $DRIFT_SEED (run #$GITHUB_RUN_NUMBER, pins '$DRIFT_PINS')"
+                  echo "$DRIFT_ROW (${{ inputs.code }}) replays its fixed seed(s) $DRIFT_SEED_LIST (pins '$DRIFT_PINS'; drift-gate-seeds.tsv), judged against its base"
                   code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
                   repro=$(cat "$RUNNER_TEMP/identity-drift/reproduce.txt" 2>/dev/null || echo "IdentityDrift ${{ inputs.code }} --seed $DRIFT_SEED")
                   case $code in
                       0) ;;
-                      1) verdict=$(cat "$RUNNER_TEMP/identity-drift/verdict.txt" 2>/dev/null || echo 'divergences or flips beyond the allow-lists')
+                      1) verdict=$(cat "$RUNNER_TEMP/identity-drift/verdict.txt" 2>/dev/null || echo 'divergences, or flips the change adds over its base')
                          echo "seed $DRIFT_SEED: $verdict -- reproduce: $repro" > "$RUNNER_TEMP/leg-verdict-why"
                          echo "::error title=identity drift (${{ inputs.code }}, seed $DRIFT_SEED)::$verdict -- each named in the step log; reproduce: $repro" ;;
                       *) echo "seed $DRIFT_SEED: the drift replay could not run" > "$RUNNER_TEMP/leg-verdict-why"

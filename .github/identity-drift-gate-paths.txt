@@ -7,8 +7,10 @@
 # The `.github/actions/changed-paths/matches.sh` dialect: `dir/**`, or an exact path.
 scripts/ci/identity-drift-check.sh
 scripts/ci/drift_seeds.py
+scripts/ci/drift_diff.py
 worker/src/test/scala/scripts/IdentityDrift.scala
 identity/src/main/scala/services/identity/TakeFlips.scala
 test/resources/fixtures/identity-drift-allow.tsv
 test/resources/fixtures/identity-flips-allow.tsv
-test/resources/fixtures/identity-flips-baseline.tsv
+test/resources/fixtures/identity-flip-backlog.tsv
+test/resources/fixtures/drift-gate-seeds.tsv

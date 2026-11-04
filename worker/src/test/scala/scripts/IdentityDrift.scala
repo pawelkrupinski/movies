@@ -58,8 +58,8 @@ import scala.util.control.NonFatal
  * with the recording behind it ([[cut]]: CLOSED, else the cut fails).
  *
  * {{{
- *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]
- *   IdentityDrift <cc> --slice DIR [--widen --recording DIR [--families CAPTURE]] [--seeds N | --seed S] [--allow TSV] [--flips-allow TSV] [--out DIR]
+ *   IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S[,S...]] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]
+ *   IdentityDrift <cc> --slice DIR [--widen --recording DIR [--families CAPTURE]] [--seeds N | --seed S[,S...]] [--allow TSV] [--flips-allow TSV] [--out DIR]
  * }}}
  * Exit: 0 no divergence nor flip beyond the allow-lists, 1 divergences or flips, 2 usage, 3 a slice lacks answers, 4 a cut
  * (`--slice --widen`) not closed ([[cut]]).
@@ -69,8 +69,8 @@ object IdentityDrift {
 
   final case class Options(country: String = "", recording: Option[Path] = None, families: Option[Path] = None, seeds: Int = 2,
                            gate: Int = 15, out: Path = Path.of("target/identity-drift"), allow: Option[Path] = None, labels: Option[Path] = None,
-                           /** `--seed S`: that seed alone, to replay one divergence. */
-                           only: Option[Int] = None,
+                           /** `--seed S` (or `S1,S2,...`): those seeds alone -- one divergence's, or a takes-drift row's fixed set. */
+                           only: Seq[Int] = Nil,
                            /** `--flips-allow TSV`: the reviewed flips ([[FlipAllowed]]) — kept empty. */
                            flipsAllow: Option[Path] = None,
                            /** `--flips-baseline TSV`: the known flips ([[BaselineFlip]]), which pass, counted, until fixed. */
@@ -85,7 +85,8 @@ object IdentityDrift {
     case "--recording" :: v :: rest     => parse(rest, o.copy(recording = Some(Path.of(v))))
     case "--families" :: v :: rest      => parse(rest, o.copy(families = Option.when(v != "none")(Path.of(v))))
     case "--seeds" :: v :: rest         => parse(rest, o.copy(seeds = v.toInt))
-    case "--seed" :: v :: rest          => parse(rest, o.copy(only = Some(v.toInt)))
+    // `--seed 8` or `--seed 2,47`: those seeds alone, in one JVM (a takes-drift row's fixed set, drift_seeds.py)
+    case "--seed" :: v :: rest          => parse(rest, o.copy(only = v.split(",").toSeq.map(_.trim).filter(_.nonEmpty).map(_.toInt)))
     case "--gate" :: v :: rest          => parse(rest, o.copy(gate = v.toInt))
     case "--out" :: v :: rest           => parse(rest, o.copy(out = Path.of(v)))
     case "--allow" :: v :: rest         => parse(rest, o.copy(allow = Some(Path.of(v))))
@@ -99,8 +100,8 @@ object IdentityDrift {
   }
 
   private def usage(why: String): Nothing = {
-    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]" +
-      "\n  IdentityDrift <cc> --slice DIR [--widen --recording DIR [--families CAPTURE]] [--seeds N | --seed S] [--allow TSV] [--flips-allow TSV] [--out DIR]")
+    System.err.println(s"IdentityDrift: $why\n  IdentityDrift <cc> --recording DIR [--families CAPTURE|none] [--seeds N | --seed S[,S...]] [--gate PERCENT] [--out DIR] [--allow TSV] [--labels TSV] [--flips-allow TSV] [--flips-baseline TSV]" +
+      "\n  IdentityDrift <cc> --slice DIR [--widen --recording DIR [--families CAPTURE]] [--seeds N | --seed S[,S...]] [--allow TSV] [--flips-allow TSV] [--out DIR]")
     sys.exit(2)
   }
 
@@ -916,7 +917,7 @@ object IdentityDrift {
     val allowed = o.allow.fold(Seq.empty[Allowed])(allowList).filter(_.country == country.code)
     val flipsAllowed = o.flipsAllow.fold(Seq.empty[FlipAllowed])(flipAllowList).filter(_.country == country.code)
     val baseline     = o.flipsBaseline.fold(Seq.empty[BaselineFlip])(flipBaseline).filter(_.country == country.code)
-    val seeds   = o.only.fold[Seq[Int]](1 to o.seeds)(Seq(_))
+    val seeds   = if (o.only.nonEmpty) o.only.distinct else 1 to o.seeds
     val started = tools.Stopwatch.start()
     def filedOf(families: Option[Path]) = families.filter(Files.exists(_)).fold(tools.FiledAnswers.of(country))(tools.FiledAnswers.ofCapture)
     val (listings, findings, lacking) = o.slice match {
