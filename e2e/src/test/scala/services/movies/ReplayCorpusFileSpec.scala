@@ -5,11 +5,11 @@ import models.{Cinema, Movie, MovieRecord, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.TestReadModel
+import tools.ScratchDirectories
 
-import java.nio.file.Files
 import java.time.{LocalDate, LocalDateTime}
 
-class ReplayCorpusFileSpec extends AnyFlatSpec with Matchers {
+class ReplayCorpusFileSpec extends AnyFlatSpec with Matchers with ScratchDirectories {
 
   private val at = LocalDateTime.of(2026, 6, 8, 18, 30)
   // A data-driven venue (reference equality) and a case-object one.
@@ -33,7 +33,7 @@ class ReplayCorpusFileSpec extends AnyFlatSpec with Matchers {
 
   "an order pass's corpus file" should "read back equal to the corpus written, each way" in {
     venues.exists(!_.isInstanceOf[Product]) shouldBe true
-    val file = Files.createTempDirectory("replay-corpus").resolve("pass0.bin.gz")
+    val file = tempDirectory("replay-corpus").resolve("pass0.bin.gz")
     ReplayCorpusFile.writeVerified(corpus, file)
     val copy = ReplayCorpusFile.read(file)
     copy shouldBe corpus
@@ -41,7 +41,7 @@ class ReplayCorpusFileSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read venues back as the roster's own instances and the awaiting prefix as this JVM's sentinel" in {
-    val file = Files.createTempDirectory("replay-corpus").resolve("pass1.bin.gz")
+    val file = tempDirectory("replay-corpus").resolve("pass1.bin.gz")
     ReplayCorpusFile.write(corpus, file)
     val copy = ReplayCorpusFile.read(file)
     copy.rows.head.cinemaFilmUrls.map(_._1).zip(venues).foreach { case (a, b) => (a eq b) shouldBe true }
@@ -52,7 +52,7 @@ class ReplayCorpusFileSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "tell a corpus that differs from the one written apart, as the in-row comparison would" in {
-    val file = Files.createTempDirectory("replay-corpus").resolve("pass2.bin.gz")
+    val file = tempDirectory("replay-corpus").resolve("pass2.bin.gz")
     ReplayCorpusFile.write(corpus, file)
     ReplayCorpusFile.read(file) should not be corpus.copy(rows = corpus.rows.reverse)
   }
