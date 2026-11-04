@@ -1099,7 +1099,10 @@ abstract class CountryConvergenceBehaviour(
       fail(s"$scope: the identity projection was not at rest after ${CutoverSettleProjections + 1} projections")
     // What each take left Pending awaits, for the log: an order divergence in `tmdbProvisional` names no question.
     CorpusDiff.awaiting(w.identityModel.current(5.minutes).toSeq.flatMap(_.resolution.decisions).map(decision =>
-      decision.members.map(_.toString) -> decision.awaits.map(_.toString))).foreach(line => println(s"[$scope] pending: $line"))
+      decision.members.map(_.toString) -> decision.awaits.map(question =>
+        // and what the question memory holds of it: a mark not yet due keeps the model from asking it live (PL #836/#851,
+        // FilmRecord(263525), a TMDB 404, awaited in one pass of two)
+        s"$question [memory: ${w.identityQuestionMemory.outcome(question).fold("none")(_.toString)}]"))).foreach(line => println(s"[$scope] pending: $line"))
     PhaseTimer.timed(scope, "replayProject")(tools.WholeReconcile(w.readModelSweeper))
     // Reload AND materialise inside the comparison's lock: this is the step that
     // allocates the corpus, so it is the step that has to be one-at-a-time.
