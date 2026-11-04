@@ -13,6 +13,7 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
+. "$REPO_ROOT/scripts/scratch-git.sh"
 
 printf '\033[36m▸\033[0m identity-drift-check.sh\n'
 
@@ -54,9 +55,9 @@ exit 0
 EOF
 chmod +x "$work/bin/sbt"
 export FAKE_LOG="$work/sbt-calls" RUNNER_TEMP="$work/tmp"
-git -C "$repo" init -q -b main && git -C "$repo" config user.email t@t && git -C "$repo" config user.name t
-echo base > "$repo/identity/src/main/Rule.scala"; git -C "$repo" add -A && git -C "$repo" commit -qm base
-echo docs > "$repo/README.md"; git -C "$repo" add -A && git -C "$repo" commit -qm "docs only"
+scratch_repo "$repo" -q -b main
+echo base > "$repo/identity/src/main/Rule.scala"; scratch_git "$repo" add -A && scratch_git "$repo" commit -qm base
+echo docs > "$repo/README.md"; scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "docs only"
 
 run() { : > "$FAKE_LOG"; rm -rf "$work/out"; PATH="$work/bin:$PATH" bash "$repo/scripts/ci/identity-drift-check.sh" pl "$work/out" > "$work/stdout" 2>&1; echo $?; }
 
@@ -87,7 +88,7 @@ check "...and not the head's raw flip rows" "0" "$(grep -c 'Head Row' "$work/std
 check "...but divergences still fail it" "1" "$(FAKE_FOUND=1 FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"
 
 # AN IDENTITY CHANGE: the base is replayed on the same seeds, one replay a seed
-echo head > "$repo/identity/src/main/Rule.scala"; git -C "$repo" commit -qam "an identity change"
+echo head > "$repo/identity/src/main/Rule.scala"; scratch_git "$repo" commit -qam "an identity change"
 check "a flip head and base both show passes" "0" "$(FAKE_HEAD_FLIPS='Riverside|The Stranger' FAKE_BASE_FLIPS='Riverside|The Stranger' run)"
 check "...the base replayed a seed at a time" "head 1,2 base 1 base 2" "$(paste -sd' ' "$FAKE_LOG")"
 check "...said pre-existing" "1" "$(grep -c 'pre-existing (backlog): Riverside | The Stranger \[seed 1\]' "$work/stdout")"
@@ -100,9 +101,9 @@ check "...the new flips written" "New Film" "$(tail -n +2 "$work/out/new-1.tsv" 
 check "a flip the head removes passes, said" "0 1" "$(FAKE_BASE_FLIPS='Riverside|The Stranger' run) $(grep -c '^      removed: Riverside | The Stranger \[seed 1\]' "$work/stdout")"
 check "a newborn check's TEMPORARY row passes its head-only flip" "0" "$(FAKE_HEAD_FLIPS='Kino Nowe|Allowed Film' run)"
 check "...said allow-listed" "1" "$(grep -c 'allow-listed (identity-flips-allow.tsv): Kino Nowe | Allowed Film \[seed 1\]' "$work/stdout")"
-check "an explicit base is the one judged against" "1" "$(DRIFT_BASE=$(git -C "$repo" rev-parse HEAD~2) FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"
+check "an explicit base is the one judged against" "1" "$(DRIFT_BASE=$(scratch_git "$repo" rev-parse HEAD~2) FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"
 check "...resolved on each seed" "head 1,2 base 1 base 2" "$(paste -sd' ' "$FAKE_LOG")"
-check "...and named" "2" "$(grep -c "head vs base $(git -C "$repo" rev-parse HEAD~2 | cut -c1-12) (resolved)" "$work/stdout")"
+check "...and named" "2" "$(grep -c "head vs base $(scratch_git "$repo" rev-parse HEAD~2 | cut -c1-12) (resolved)" "$work/stdout")"
 
 # THE ROW'S FIXED SEEDS, and a red names its seed
 mkdir -p "$fx/drift-slices/pl/muza-new-film-1"
