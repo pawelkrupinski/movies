@@ -142,6 +142,18 @@ class WorkflowScriptsRunnableSpec extends AnyFlatSpec with Matchers {
       "ci.yml (job): uses ./.github/actions/setup-sbt-build, outside its sparse checkout (scripts/ci, .github/actions/upstream-run)",
       "ci.yml (job): uses ./.github/actions/report-timings, outside its sparse checkout (scripts/ci, .github/actions/upstream-run)",
     )
+    val ownCheckout =
+      """    runs-on: ubuntu-22.04
+        |    steps:
+        |        - name: Check out the commit
+        |          run: |
+        |              git remote add origin "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+        |              git checkout -q --force -B main refs/remotes/origin/main
+        |        - uses: ./.github/actions/report-timings
+        |""".stripMargin
+    withClue("a run step fetching and checking out this repository is a checkout of it: ") {
+      localActionsOutsideCheckout("ci.yml (own)", ownCheckout) shouldBe empty
+    }
   }
 
   "the check" should "go red on a script without its executable bit, without a shebang, or missing" in {
@@ -328,10 +340,13 @@ object WorkflowScriptsRunnableSpec {
     }
 
   /** Whether `step` checks this repository out into the workspace: actions/checkout with no `repository:` and no
-   *  `path:`. */
+   *  `path:`, or a `run:` that fetches this repository into the workspace and checks it out itself (the convergence
+   *  rows' "Check out the commit", which bounds each fetch attempt as actions/checkout cannot). */
   private def checksOutThisRepository(step: String): Boolean =
-    value(step, "uses").exists(_.startsWith("actions/checkout@")) && value(step, "repository").isEmpty &&
-      value(step, "path").isEmpty
+    (value(step, "uses").exists(_.startsWith("actions/checkout@")) && value(step, "repository").isEmpty &&
+      value(step, "path").isEmpty) ||
+      (value(step, "run").nonEmpty && step.contains(OwnCheckoutRemote) && step.contains("git checkout "))
+  private val OwnCheckoutRemote = "git remote add origin \"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY\""
 
   /** Whether `job`'s checkout of this repository (its last) holds the file `path`: a whole checkout holds every file; a
    *  sparse one, cone mode, everything under a listed directory and every file at the root or directly inside a listed
