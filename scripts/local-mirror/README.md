@@ -499,6 +499,14 @@ long-lived child (supervisors, tunnel keeper, log rotator, targets poller)
 checks `parent_gone` each poll and exits, the supervisor taking its tailer and
 the keeper closing its forward on the way.
 
+For what older code (or a SIGKILL mid-poll) already left behind, the parent
+also **sweeps** at startup and on every 5-minute log-rotation pass
+(`sweep_orphans`): it stops any orphaned `mirror.sh` process (ppid 1) with its
+whole tree — that is where an orphaned tailer `mongosh` lives — and any
+orphaned forward carrying `ensure_prod_tunnel`'s exact signature (port
+27100-27899 → 127.0.0.1:27017, its `-o` set). Each stop is logged as
+`[mirror] sweep: stopping pid …`; nothing live, and no hand-made `ssh -L`, matches.
+
 `mirror.sh` is sourceable for that spec: everything below the
 `[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0` guard runs only when it is
 executed, so sourcing defines the functions and asks the vault for nothing.

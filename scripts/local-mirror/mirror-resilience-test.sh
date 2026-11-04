@@ -399,6 +399,61 @@ stamps_every_line() {
 }
 check "stamp_lines dates every line, the unterminated last one included" stamps_every_line
 
+# ── The sweep stops exactly what an earlier run left behind ─────────────────
+# Rows modelled on the 2026-11-04 process table: an orphaned mirror.sh subshell
+# with its tailer (argv rewritten to "mongosh") and that tailer's child, an
+# orphaned prod-tunnel forward — and everything that must survive: launchd's own
+# service.sh, the live run's mirror.sh tree and its forward, a hand-made ssh -L
+# with ppid 1, a forward outside prod_tunnel_free_port's range, and this process.
+sweep_selects_only_orphans() {
+  local picked
+  picked="$(
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    trap - EXIT INT TERM
+    tun='-o ExitOnForwardFailure=yes -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 root@178.105.221.61'
+    process_table() {
+      cat <<TABLE
+  1498     1 /bin/bash /Users/pawel/projects/movies/scripts/local-mirror/service.sh agent
+ 29154  1498 /bin/bash /Users/pawel/projects/movies/scripts/local-mirror/mirror.sh
+ 29310 29154 /bin/bash /Users/pawel/projects/movies/scripts/local-mirror/mirror.sh
+ 33916 29310 mongosh
+ 29400 29154 ssh -N -L 27454:127.0.0.1:27017 $tun
+ 43910     1 /bin/bash /Users/pawel/projects/movies/scripts/local-mirror/mirror.sh
+ 67194 43910 mongosh
+ 67200 67194 sleep 30
+ 16373     1 ssh -N -L 27607:127.0.0.1:27017 $tun
+ 16400     1 ssh -N -L 8080:127.0.0.1:80 somebody@example.org
+ 16401     1 ssh -N -L 27017:127.0.0.1:27017 $tun
+ $$     1 /bin/bash /Users/pawel/projects/movies/scripts/local-mirror/mirror.sh
+TABLE
+    }
+    orphan_mirror_processes | cut -f1 | sort -n | paste -sd' ' -
+  )"
+  [ "$picked" = "16373 43910 67194 67200" ] || { echo "    picked: '$picked'" >&2; return 1; }
+}
+check "the sweep picks orphaned mirror.sh trees and orphaned prod forwards, nothing live or foreign" \
+  sweep_selects_only_orphans
+
+# …and sweep_orphans stops each of them, logging what it stopped.
+sweep_stops_what_it_selects() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    trap - EXIT INT TERM
+    orphan_mirror_processes() { printf '111\torphaned prod tunnel\tssh -N -L 27607:x\n222\torphaned mirror.sh\t/bin/bash mirror.sh\n'; }
+    kill() { echo "$1" >> "$work/killed"; }
+    sweep_orphans
+  ) > "$work/out" 2>&1
+  local ok=1
+  [ "$(paste -sd' ' - < "$work/killed" 2>/dev/null)" = "111 222" ] || ok=0
+  [ "$(grep -c '^\[mirror\] sweep: stopping pid' "$work/out")" -eq 2 ] || ok=0
+  rm -rf "$work"
+  [ "$ok" -eq 1 ]
+}
+check "sweep_orphans stops every selected process and logs each one" sweep_stops_what_it_selects
+
 # ── A dead supervisor must take the whole agent down with it ─────────────────
 # The two cases above are about a supervisor RECOVERING. This one is about the
 # supervisor that doesn't: every `supervise_db` runs in a background subshell,

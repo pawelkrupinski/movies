@@ -92,6 +92,56 @@ rotate_log() {
   echo "[mirror] log passed $((MAX_LOG_BYTES / 1024 / 1024))MB — trimmed to its last $LOG_KEEP_LINES lines"
 }
 
+# ── Sweeping up what an earlier run left behind ──────────────────────────────
+# parent_gone makes a child of THIS code exit when its parent dies, but a run
+# started from older code (or one SIGKILLed mid-poll) still leaves processes
+# reparented to launchd (ppid 1) that nothing will ever stop. Found 2026-11-04: a
+# `mirror.sh` supervisor from a 2026-10-23 run alive for 12 days with its tailer
+# `mongosh`, and an `ssh -N -L 27454:…` forward whose opener had died. So the
+# parent sweeps at startup and every log-rotation pass, killing exactly:
+#   * an orphaned mirror.sh process (ppid 1 — a subshell whose parent is gone,
+#     never launchd's own `service.sh agent`) and every process under it, which is
+#     where its tailer lives: node rewrites mongosh's argv to a bare "mongosh",
+#     so the tree is the only way to recognise it as ours;
+#   * an orphaned prod-tunnel.sh forward — ppid 1 AND its exact signature: a port
+#     from prod_tunnel_free_port's 27100-27899 range forwarded to 127.0.0.1:27017
+#     with ensure_prod_tunnel's option set, so a hand-made `ssh -L` never matches.
+# Never this process or its own tree.
+process_table() { ps -Ao pid=,ppid=,args= 2>/dev/null; }
+
+# Prints "pid<TAB>reason" per process to stop. A pure filter over process_table,
+# so the selection is asserted against a fixture table.
+orphan_mirror_processes() {
+  process_table | awk -v self="$$" '
+    { pid = $1; ppid = $2; $1 = ""; $2 = ""; sub(/^  /, ""); args[pid] = $0; parent[pid] = ppid }
+    END {
+      for (p in args) {
+        if (p == self || parent[p] != 1) continue
+        if (args[p] ~ /\/scripts\/local-mirror\/mirror\.sh( |$)/) root[p] = "orphaned mirror.sh"
+        else if (args[p] ~ /^ssh -N -L 27[1-8][0-9][0-9]:127\.0\.0\.1:27017 -o ExitOnForwardFailure=yes -o BatchMode=yes .*ServerAliveCountMax=3 /) root[p] = "orphaned prod tunnel"
+      }
+      # Descendants of each orphaned mirror.sh, to any depth (a tree is shallow;
+      # the loop ends when a pass adds nothing).
+      for (p in root) pick[p] = root[p]
+      do {
+        added = 0
+        for (p in args) if (!(p in pick) && (parent[p] in pick) && pick[parent[p]] != "orphaned prod tunnel") {
+          pick[p] = "under an orphaned mirror.sh"; added = 1
+        }
+      } while (added)
+      for (p in pick) printf "%s\t%s\t%s\n", p, pick[p], args[p]
+    }'
+}
+
+sweep_orphans() {
+  local pid reason args
+  while IFS="$(printf '\t')" read -r pid reason args; do
+    [ -n "$pid" ] || continue
+    echo "[mirror] sweep: stopping pid $pid ($reason): ${args:0:120}"
+    kill "$pid" 2>/dev/null || true
+  done < <(orphan_mirror_processes)
+}
+
 # ── Resilience helpers ───────────────────────────────────────────────────────
 # Ensure the prod tunnel (sync source) is reachable, starting — and keeping
 # alive — our OWN ssh forward on a free local port (never one another script
@@ -517,7 +567,8 @@ CHILDREN+=($!)
 # each other. Startup pass first, then every 5 minutes for a run that never ends.
 # Counted after the line above so the rotator never reads as a tailer.
 rotate_log
-( until parent_gone; do sleep 300; rotate_log; done ) &
+sweep_orphans
+( until parent_gone; do sleep 300; rotate_log; sweep_orphans; done ) &
 CHILDREN+=($!)
 
 # Re-read mirror-targets.js from the PARENT only — N children each spawning a
