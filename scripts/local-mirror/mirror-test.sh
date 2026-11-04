@@ -77,7 +77,7 @@ supervised() { # <case> -> runs supervise_db with the collaborators stubbed; pri
     # shellcheck disable=SC2329 # the stubs are invoked by supervise_db
     {
       ensure_local_mongo() { return 0; }
-      ensure_tunnel() { return 0; }
+      tunnel_ready()  { return 0; }
       needs_reseed() { return 1; }
     }
     # shellcheck disable=SC2034 # read by the sourced supervise_db

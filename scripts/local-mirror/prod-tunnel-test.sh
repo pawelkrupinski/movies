@@ -69,4 +69,11 @@ check "each caller's ssh forwards its own port to prod's 27017" "2" "$(grep -c '
 check "the two callers use different ports" "2" "$(cut -d: -f1 "$scratch/ssh-forwards" | sort -u | wc -l | tr -d ' ')"
 check "one caller closing its tunnel leaves the other's up" "a-alive" "$(grep a-alive "$scratch/a")"
 check "ensure_prod_tunnel exports the port it took" "yes" "$(bash -c '. "'"$HERE"'/prod-tunnel.sh"; ensure_prod_tunnel >/dev/null; bash -c "[ -n \"\$PROD_TUNNEL_PORT\" ]" && echo yes; close_prod_tunnel')"
+# An ssh that exits at once (refused login, unreachable host) is reported as an ssh exit with its code, at once —
+# not as "did not answer within 30s", which sent the reader looking for a slow prod (2026-11-04).
+mkdir -p "$scratch/refusing"
+printf '#!/bin/sh\nexit 255\n' > "$scratch/refusing/ssh"; chmod +x "$scratch/refusing/ssh"
+refused="$(PATH="$scratch/refusing:$PATH" bash -c '. "'"$HERE"'/prod-tunnel.sh"; s=$SECONDS; ensure_prod_tunnel; echo "rc=$? took=$((SECONDS - s))"' 2>&1)"
+check "an ssh that exits at once is reported with its exit code" "1" "$(printf '%s\n' "$refused" | grep -c 'exited (code 255) before prod answered')"
+check "...and fails without waiting out the 30s" "rc=1 fast" "$(printf '%s\n' "$refused" | sed -nE 's/.*rc=([0-9]+) took=([0-9]+).*/\1 \2/p' | awk '{print "rc=" $1 ($2 < 10 ? " fast" : " slow")}')"
 spec_summary

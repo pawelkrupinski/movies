@@ -101,10 +101,71 @@ rotate_log() {
 # How that tunnel is opened — and why it is ssh to mongo-1 rather than the
 # `flyctl proxy` this used to run — lives in prod-tunnel.sh, shared with the
 # other prod-sourced scripts so there is exactly one place to repoint.
+#
+# ONE owner. The tunnel used to be (re)opened by whichever per-database supervisor
+# found it down: every supervisor inherited the parent's PROD_TUNNEL_PID, so one
+# slow probe in any of them (a swapping laptop misses a 3s ping easily) killed the
+# forward the other five were streaming through, and each then opened its own on
+# the same port. A supervisor that died left the ssh it had opened behind as an
+# orphan. The log counted 12,042 tunnel opens (2026-11-04). Now `keep_tunnel` — a
+# single background child of the parent — is the only thing that opens, restarts
+# or closes the forward; supervisors only ask whether it answers (tunnel_ready).
 TUNNEL_TAG="mirror"
-ensure_tunnel() { ensure_prod_tunnel; }
+tunnel_ready() { prod_tunnel_answers; }
 cleanup() { close_prod_tunnel; }
 trap cleanup EXIT INT TERM
+
+# How often the keeper probes, how many probes in a row may miss before a forward
+# whose ssh is still ALIVE counts as dead (a miss under load is not a dead
+# tunnel: restarting it drops every tailer's stream), and the ceiling the retry
+# interval backs off to while prod cannot be reached at all (laptop asleep or
+# offline — 11,190 "did not answer" lines when every supervisor retried every 35s).
+TUNNEL_POLL="${KINOWO_MIRROR_TUNNEL_POLL:-30}"
+TUNNEL_MISSES="${KINOWO_MIRROR_TUNNEL_MISSES:-3}"
+TUNNEL_MAX_BACKOFF="${KINOWO_MIRROR_TUNNEL_MAX_BACKOFF:-300}"
+
+# ── Noticing that the parent is gone ─────────────────────────────────────────
+# Every long-lived child (the supervisors, the tunnel keeper, the rotator, the
+# poller) is a background subshell of the parent. The parent's exit trap TERMs
+# them — but a parent that dies without running it (SIGKILL, a crash) leaves them
+# running forever: a supervisor from a 2026-10-23 run went on for 12 days beside
+# the launchd one, its tailer pointed at a tunnel that no longer existed. So each
+# child polls this and exits on its own. Empty (sourced, as the specs do) means
+# "no parent to watch".
+MIRROR_PARENT_PID=""
+parent_gone() { [ -n "$MIRROR_PARENT_PID" ] && ! kill -0 "$MIRROR_PARENT_PID" 2>/dev/null; }
+
+# The single owner of the prod forward. Runs until TERMed by the parent or until
+# the parent is gone, and closes the forward it holds either way.
+keep_tunnel() {
+  local misses=0 failures=0 wait_s="$TUNNEL_POLL"
+  trap 'close_prod_tunnel; exit 0' TERM INT
+  while true; do
+    if parent_gone; then
+      echo "[mirror] tunnel keeper: parent is gone — closing the tunnel and exiting"
+      close_prod_tunnel; exit 0
+    fi
+    if prod_tunnel_answers; then
+      [ "$failures" -eq 0 ] || echo "[mirror] tunnel keeper: prod answers again after $failures failed attempt(s)"
+      misses=0 failures=0 wait_s="$TUNNEL_POLL"
+    elif [ -n "$PROD_TUNNEL_PID" ] && kill -0 "$PROD_TUNNEL_PID" 2>/dev/null \
+         && [ $((misses + 1)) -lt "$TUNNEL_MISSES" ]; then
+      misses=$((misses + 1))
+      echo "[mirror] tunnel keeper: probe missed ($misses of $TUNNEL_MISSES) — keeping the open tunnel"
+    else
+      misses=0
+      if ensure_prod_tunnel; then
+        [ "$failures" -eq 0 ] || echo "[mirror] tunnel keeper: tunnel back after $failures failed attempt(s)"
+        failures=0 wait_s="$TUNNEL_POLL"
+      else
+        failures=$((failures + 1))
+        wait_s=$(( wait_s * 2 > TUNNEL_MAX_BACKOFF ? TUNNEL_MAX_BACKOFF : wait_s * 2 ))
+        echo "[mirror] tunnel keeper: attempt $failures failed — next try in ${wait_s}s"
+      fi
+    fi
+    sleep "$wait_s" & wait "$!"
+  done
+}
 
 
 # Which prod databases to mirror. Explicit KINOWO_MIRROR_DBS wins (space- or
@@ -134,8 +195,8 @@ reseed()   { mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'"
 # 934 films with zero cinemas apiece. Every other fallible step here already
 # wraps itself this way; this one didn't.
 reseed_or_wait() {
-  local srcdb="$1" code
-  set +e; reseed "$srcdb"; code=$?; set -e
+  local srcdb="$1" code=0
+  reseed "$srcdb" || code=$?
   [ "$code" -eq 0 ] && return 0
   echo "[mirror] $srcdb: seed failed (exit $code) — retrying in 30s"
   sleep 30
@@ -226,18 +287,26 @@ code_changed() {
 # stream can close (see staleness-rule.js for the thresholds and why). Any other
 # exit — fresh, or the check itself failing on a blip — means tail, and the next
 # cycle judges again; a broken check must never block the sync.
+#
+# `|| code=$?`, never a `set +e … set -e` pair: this runs INSIDE the tailer watch,
+# and the `set -e` that pair ended with switched errexit back on for the rest of
+# its caller. The `wait` on the tailer the audit had just killed then returned
+# 143 under errexit and ended the supervisor outright — so every drift verdict
+# restarted the whole mirror (570 restarts in the log by 2026-11-04, one every
+# ten minutes while `kinowo_fleet` read as stale).
 needs_reseed() {
-  local code
-  set +e
+  local code=0
   mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" \
-    --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/staleness.js"
-  code=$?
-  set -e
-  [ "$code" -eq 3 ]
+    --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/staleness.js" || code=$?
+  case "$code" in
+    0) return 1 ;;
+    3) return 0 ;;
+    *) echo "[mirror] $1: staleness check could not run (exit $code) — tailing anyway" >&2; return 1 ;;
+  esac
 }
 
 # ── Resilient per-database sync loop ─────────────────────────────────────────
-# Every cycle re-ensures the mirror Mongo + the tunnel, re-seeds when this
+# Every cycle re-ensures the mirror Mongo, waits for the tunnel, re-seeds when this
 # database's mirror is empty or has drifted too far (needs_reseed), then tails —
 # re-running that same gate every AUDIT_POLLS polls while the tailer streams, so
 # drift appearing mid-stream is caught in minutes rather than at the next
@@ -245,16 +314,24 @@ needs_reseed() {
 # tail.js exits 2 when its resume token has aged out of prod's oplog → full
 # re-seed; any other exit is a transient blip → resume from the saved token.
 # Nothing here is fatal: a down tunnel, a stopped Mongo, or a wiped mirror all
-# recover on the next cycle instead of killing the sync.
+# recover on the next cycle instead of killing the sync. The tunnel is not ours to
+# fix (keep_tunnel owns it): a supervisor only waits for it, saying so once when
+# it goes and once when it comes back rather than every 5 seconds.
 supervise_db() {
-  local srcdb="$1" force="$2" code fails=0 backoff tailpid=""
+  local srcdb="$1" force="$2" code fails=0 backoff tailpid="" tunnel_waits=0
   # The parent stops this supervisor with TERM (its exit trap), and the tailer is
   # OUR background child: left alone it streamed on as an orphan, and the restarted
   # daemon tailed the same database a second time beside it.
   trap '[ -z "$tailpid" ] || kill "$tailpid" 2>/dev/null; exit 143' TERM INT
   while true; do
+    stop_if_orphaned "$srcdb" "$tailpid"
     if ! ensure_local_mongo; then echo "[mirror] $srcdb: local Mongo unavailable — retrying in 5s"; sleep 5; continue; fi
-    if ! ensure_tunnel;     then echo "[mirror] $srcdb: tunnel unavailable — retrying in 5s";     sleep 5; continue; fi
+    if ! tunnel_ready; then
+      [ "$tunnel_waits" -gt 0 ] || echo "[mirror] $srcdb: prod tunnel not answering — waiting for the tunnel keeper"
+      tunnel_waits=$((tunnel_waits + 1)); sleep 5; continue
+    fi
+    [ "$tunnel_waits" -eq 0 ] || echo "[mirror] $srcdb: prod tunnel answers again (waited ~$((tunnel_waits * 5))s)"
+    tunnel_waits=0
 
     if [ "$force" = "1" ] || needs_reseed "$srcdb"; then
       # `force` stays set on failure: a forced re-seed still owes one next cycle.
@@ -267,7 +344,6 @@ supervise_db() {
     local launched_with; launched_with="$(published_fingerprint)"
     local retargeted=0 drifted=0 polls=0
 
-    set +e
     "$MONGOSH_AT" "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
       --file "$HERE/mirror-targets.js" --file "$HERE/stream-start.js" --file "$HERE/tail.js" &
     tailpid=$!
@@ -276,6 +352,7 @@ supervise_db() {
     while kill -0 "$tailpid" 2>/dev/null; do
       # Backgrounded and waited for, so a TERM is handled now, not a poll later.
       sleep "$TARGETS_POLL" & wait "$!"
+      stop_if_orphaned "$srcdb" "$tailpid"
       local now; now="$(published_fingerprint)"
       if [ -n "$now" ] && [ -n "$launched_with" ] && [ "$now" != "$launched_with" ]; then
         echo "[mirror] $srcdb: mirrored-collection list changed — restarting tailer to pick it up"
@@ -298,8 +375,10 @@ supervise_db() {
         break
       fi
     done
-    wait "$tailpid"; code=$?
-    set -e
+    # `|| code=$?`: a tailer we just killed returns 143 here, and this function
+    # runs under the daemon's `set -e` — no option toggling to get wrong.
+    code=0; wait "$tailpid" || code=$?
+    tailpid=""
 
     # A tailer WE stopped is not a failure: go straight round again, where
     # needs_reseed seeds whatever the new list added (or whatever the audit saw)
@@ -325,6 +404,15 @@ supervise_db() {
   done
 }
 
+# The child-side half of the liveness contract (parent_gone): a supervisor whose
+# parent died without TERMing it takes its tailer down and exits.
+stop_if_orphaned() {
+  parent_gone || return 0
+  echo "[mirror] $1: parent mirror.sh is gone — stopping this database's tailer"
+  [ -z "${2:-}" ] || kill "$2" 2>/dev/null || true
+  exit 0
+}
+
 # ── Parent-side liveness watch ───────────────────────────────────────────────
 # The recovery loops above are per-database, so a supervisor that dies OUTRIGHT
 # is invisible to them — and the parent only ever sits in `wait`, which the log
@@ -343,6 +431,7 @@ supervise_db() {
 await_supervisor_exit() {
   local pid
   while true; do
+    parent_gone && return 0
     for pid in "$@"; do
       if ! kill -0 "$pid" 2>/dev/null; then
         echo "[mirror] database supervisor $pid is gone — exiting so launchd restarts the sync"
@@ -363,21 +452,38 @@ await_supervisor_exit() {
 # or a caller that exported it) → used as-is; unset → start over under the vault.
 ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1
 
-# The tunnel has to be up before we can list databases, so ensure it first;
-# after that each child re-ensures it independently. `cleanup` already kills our
-# flyctl proxy on exit — extend it to take the children down with us, so Ctrl-C
-# doesn't strand N background mongosh processes.
+# Every line from here on, ours and every child's (mongosh's raw stderr
+# included), is dated on its way out — see stamp_lines. After the vault re-exec,
+# so the re-exec'd process is the one that stamps.
+exec > >(stamp_lines) 2>&1
+
 load_endpoints
 FORCE_RESEED="$([ "${1:-}" = "--reseed" ] && echo 1 || echo 0)"
-until ensure_local_mongo && ensure_tunnel; do echo "[mirror] waiting for local Mongo + tunnel…"; sleep 5; done
+# What every child watches (parent_gone). `$$` is this process even inside the
+# subshells, so each of them reads the same value.
+MIRROR_PARENT_PID=$$
+
+# The exit trap takes every child down with us — the tunnel keeper included, which
+# closes the forward it holds on that TERM — so Ctrl-C or a restart strands no
+# background mongosh or ssh.
+CHILDREN=()
+cleanup_children() { for pid in "${CHILDREN[@]:-}"; do kill "$pid" 2>/dev/null || true; done; }
+trap 'cleanup_children; rm -f "${TARGETS_FP_FILE:-}"; cleanup' EXIT INT TERM
+
+# The tunnel has to be up before we can list databases, so its keeper starts
+# first; from here on it is the only thing that opens or closes the forward.
+keep_tunnel &
+CHILDREN+=($!)
+# Said once a minute, not every 5s: an offline laptop sits here for hours.
+startup_waits=0
+until ensure_local_mongo && tunnel_ready; do
+  [ $((startup_waits % 12)) -ne 0 ] || echo "[mirror] waiting for local Mongo + tunnel (~$((startup_waits * 5))s so far)…"
+  startup_waits=$((startup_waits + 1)); sleep 5
+done
 
 DBS="$(discover_dbs)"
 [ -n "$DBS" ] || { echo "[mirror] no kinowo* databases found via the tunnel — is MONGODB_URI right?" >&2; exit 1; }
 echo "[mirror] mirroring: $DBS"
-
-CHILDREN=()
-cleanup_children() { for pid in "${CHILDREN[@]:-}"; do kill "$pid" 2>/dev/null || true; done; }
-trap 'cleanup_children; rm -f "${TARGETS_FP_FILE:-}"; cleanup' EXIT INT TERM
 # Made only once the trap above removes it: made earlier, every exit before here (no
 # database found, Ctrl-C while waiting for the tunnel) left one behind in $TMPDIR.
 TARGETS_FP_FILE="$(mktemp "${TMPDIR:-/tmp}/kinowo-mirror-targets.XXXXXX")"
@@ -398,7 +504,7 @@ for srcdb in $DBS; do
   DB_CHILDREN+=($!)
 done
 
-echo "[mirror] ${#CHILDREN[@]} tailer(s) running (Ctrl-C to stop)…"
+echo "[mirror] ${#DB_CHILDREN[@]} tailer(s) running (Ctrl-C to stop)…"
 
 # `$$` is the parent, not this subshell, so its EXIT trap takes the surviving
 # children down on the way out — the same handover the code-change branch below
@@ -411,7 +517,7 @@ CHILDREN+=($!)
 # each other. Startup pass first, then every 5 minutes for a run that never ends.
 # Counted after the line above so the rotator never reads as a tailer.
 rotate_log
-( while true; do sleep 300; rotate_log; done ) &
+( until parent_gone; do sleep 300; rotate_log; done ) &
 CHILDREN+=($!)
 
 # Re-read mirror-targets.js from the PARENT only — N children each spawning a
@@ -419,7 +525,7 @@ CHILDREN+=($!)
 # comes back empty (mid-edit file, mongosh hiccup) leaves the last good digest in
 # place, so a half-written file can't be mistaken for an edit and bounce every
 # tailer.
-( while true; do
+( until parent_gone; do
     sleep "$TARGETS_POLL"
     fp="$(targets_fingerprint)"
     [ -n "$fp" ] && printf '%s\n' "$fp" > "$TARGETS_FP_FILE"

@@ -112,7 +112,7 @@ PLIST
       child=$!
       wait "$child" || true
       child=""
-      echo "[service] mirror.sh exited — restarting it in 10s"
+      echo "[service] mirror.sh exited — restarting it in 10s" | stamp_lines
       sleep 10
     done
     ;;

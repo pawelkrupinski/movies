@@ -77,7 +77,7 @@ survives_a_failing_seed() {
     . "$HERE/mirror.sh"                       # functions only — the startup body is guarded
 
     ensure_local_mongo() { return 0; }
-    ensure_tunnel()      { return 0; }
+    tunnel_ready()       { return 0; }
     needs_reseed()       { return 0; }        # always due a seed, so the loop always reaches it
     sleep()              { return 0; }        # no real waiting: backoffs are what we skip past
 
@@ -123,7 +123,7 @@ reseeds_when_it_drifts_while_tailing() {
     . "$HERE/mirror.sh"                       # functions only — the startup body is guarded
 
     ensure_local_mongo()      { return 0; }
-    ensure_tunnel()           { return 0; }
+    tunnel_ready()            { return 0; }
     published_fingerprint()   { echo unchanged; }   # no retarget: the audit is the only exit
     # A SHORT wait, not none: the poll loop forks a subshell per iteration, and
     # a no-op `sleep` turns it into a hot spin that pins a core.
@@ -138,7 +138,12 @@ reseeds_when_it_drifts_while_tailing() {
 
     # Fresh the first time, so the loop gets past the gate and reaches the
     # tailer. Every answer after that is the drift appearing mid-stream.
-    needs_reseed() { echo x >> "$asked"; [ "$(wc -l < "$asked")" -gt 1 ]; }
+    # Stubbed one level DOWN — staleness.js's exit code (0 fresh, 3 stale) — so the
+    # REAL needs_reseed runs: it once ended with a bare `set -e`, which re-armed
+    # errexit inside this watch, so the `wait` on the tailer the audit had just
+    # killed (143) ended the supervisor before it could re-seed. A needs_reseed
+    # stub hid that for as long as it existed (570 full restarts, 2026-11-04).
+    mongosh_at() { echo x >> "$asked"; [ "$(wc -l < "$asked")" -gt 1 ] && return 3; return 0; }
 
     # Stands in for tail.js — a stream that never ends on its own (it records its
     # pid and blocks until killed), so a supervisor with no mid-stream audit never
@@ -242,7 +247,7 @@ tailer_dies_with_its_supervisor() {
     # swallow the TERM instead.
     trap - EXIT INT TERM
     ensure_local_mongo()    { return 0; }
-    ensure_tunnel()         { return 0; }
+    tunnel_ready()          { return 0; }
     needs_reseed()          { return 1; }
     published_fingerprint() { echo unchanged; }
     SRCZ=stub-source-uri DST=stub-mirror-uri MONGOSH_AT="$work/tailer" TARGETS_POLL=30
@@ -263,6 +268,136 @@ tailer_dies_with_its_supervisor() {
 
 check "a supervisor stopped by the parent stops its tailer too" \
   tailer_dies_with_its_supervisor
+
+# ── A supervisor whose parent died must not run on as an orphan ──────────────
+# The parent's exit trap TERMs its children, but a parent that dies WITHOUT
+# running it (SIGKILL, a crash) used to leave each supervisor looping forever: one
+# from a 2026-10-23 run tailed on for 12 days beside the launchd agent, its tailer
+# pointed at a tunnel that no longer existed. A stand-in parent is killed under a
+# supervisor whose tailer never ends on its own; the supervisor has to notice,
+# take the tailer down and exit BY ITSELF (the cap kills it only on a failure).
+supervisor_stops_when_its_parent_dies() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
+  printf '#!/bin/sh\necho $$ > "%s/tailer.pid"\nexec sleep 86400\n' "$work" > "$work/tailer"; chmod +x "$work/tailer"
+  command sleep 86400 & local parent=$!
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    trap - EXIT INT TERM
+    ensure_local_mongo()    { return 0; }
+    tunnel_ready()          { return 0; }
+    needs_reseed()          { return 1; }
+    published_fingerprint() { echo unchanged; }
+    SRCZ=stub-source-uri DST=stub-mirror-uri MONGOSH_AT="$work/tailer" TARGETS_POLL=0.1
+    MIRROR_PARENT_PID="$parent"
+    supervise_db kinowo 0
+  ) >/dev/null 2>&1 &
+  local supervisor=$! deadline=$((SECONDS + SpecCapSeconds))
+  while [ ! -s "$work/tailer.pid" ] && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
+  local tailer; tailer="$(cat "$work/tailer.pid" 2>/dev/null)"
+  kill "$parent" 2>/dev/null; wait "$parent" 2>/dev/null
+  deadline=$((SECONDS + SpecCapSeconds))
+  while kill -0 "$supervisor" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
+  local exited=no orphaned=no
+  kill -0 "$supervisor" 2>/dev/null || exited=yes
+  await_child "$supervisor" 1
+  [ -n "$tailer" ] && kill -0 "$tailer" 2>/dev/null && { orphaned=yes; kill "$tailer" 2>/dev/null; }
+  rm -rf "$work"
+  [ -n "$tailer" ] && [ "$exited" = yes ] && [ "$orphaned" = no ]
+}
+
+check "a supervisor whose parent died stops its tailer and exits on its own" \
+  supervisor_stops_when_its_parent_dies
+
+# ── Only the tunnel keeper opens the tunnel ──────────────────────────────────
+# Every supervisor used to (re)open the shared forward when its own probe missed,
+# killing the one its siblings were streaming through: 12,042 tunnel opens in the
+# log (2026-11-04). A supervisor now only WAITS for the keeper — and says so once
+# when the tunnel goes and once when it is back, not every 5 seconds.
+supervisor_waits_for_the_tunnel_without_opening_it() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    trap - EXIT INT TERM   # mirror.sh's own exit trap would call close_prod_tunnel below as this subshell ends
+    ensure_local_mongo() { return 0; }
+    # Down for three probes, then up — the real tunnel_ready runs over this.
+    prod_tunnel_answers() { echo x >> "$work/probes"; [ "$(wc -l < "$work/probes")" -gt 3 ]; }
+    ensure_prod_tunnel()  { echo opened >> "$work/opened"; return 0; }
+    close_prod_tunnel()   { echo closed >> "$work/opened"; return 0; }
+    sleep()               { return 0; }
+    needs_reseed()        { return 0; }
+    reseed()              { touch "$work/reached"; exit 0; }
+    supervise_db kinowo 0
+  ) > "$work/out" 2>&1 &
+  await_child $!
+  local ok=1
+  [ -f "$work/reached" ] || ok=0
+  [ ! -s "$work/opened" ] || ok=0
+  [ "$(grep -c 'not answering' "$work/out")" -eq 1 ] || ok=0
+  [ "$(grep -c 'answers again' "$work/out")" -eq 1 ] || ok=0
+  rm -rf "$work"
+  [ "$ok" -eq 1 ]
+}
+
+check "a supervisor waits for the tunnel, never opens or closes it, and logs the outage once" \
+  supervisor_waits_for_the_tunnel_without_opening_it
+
+# ── The keeper rides out a missed probe, and closes the tunnel when orphaned ──
+# A missed ping on a swapping laptop is not a dead tunnel; restarting a forward
+# whose ssh is still alive drops every database's stream at once. So a live ssh
+# gets TUNNEL_MISSES probes in a row before it is replaced, a dead one none — and a
+# keeper whose parent is gone closes the forward it holds rather than leaving the
+# ssh behind (the orphaned forward found with ppid 1 on 2026-11-04).
+#
+# Probes: miss (nothing open → open #1), miss, miss (live ssh: kept twice), miss
+# (third in a row → open #2), answer, answer — then the parent dies.
+keeper_rides_out_misses_and_closes_when_orphaned() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
+  command sleep 86400 & local parent=$!
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    trap - EXIT INT TERM
+    sleep() { command sleep 0.02; }
+    TUNNEL_MISSES=3 MIRROR_PARENT_PID="$parent"
+    prod_tunnel_answers() {
+      echo x >> "$work/probes"
+      local n; n="$(wc -l < "$work/probes" | tr -d ' ')"
+      [ "$n" -ge 6 ] && { kill "$parent" 2>/dev/null; return 0; }
+      [ "$n" -ge 5 ]
+    }
+    # Stands in for the ssh forward: a process that lives until killed.
+    ensure_prod_tunnel() {
+      [ -z "$PROD_TUNNEL_PID" ] || kill "$PROD_TUNNEL_PID" 2>/dev/null
+      command sleep 86400 & PROD_TUNNEL_PID=$!
+      echo "$PROD_TUNNEL_PID" >> "$work/ssh"
+    }
+    keep_tunnel
+  ) > "$work/out" 2>&1 &
+  local keeper=$! deadline=$((SECONDS + SpecCapSeconds))
+  while kill -0 "$keeper" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
+  local exited=no live=0 pid
+  kill -0 "$keeper" 2>/dev/null || exited=yes
+  await_child "$keeper" 1
+  kill "$parent" 2>/dev/null; wait "$parent" 2>/dev/null
+  while read -r pid; do kill -0 "$pid" 2>/dev/null && { live=$((live + 1)); kill "$pid" 2>/dev/null; }; done < <(cat "$work/ssh" 2>/dev/null)
+  local opens; opens="$(wc -l < "$work/ssh" 2>/dev/null | tr -d ' ')"
+  rm -rf "$work"
+  [ "$exited" = yes ] && [ "$opens" = 2 ] && [ "$live" -eq 0 ]
+}
+
+check "the tunnel keeper keeps a live tunnel through missed probes and closes it when orphaned" \
+  keeper_rides_out_misses_and_closes_when_orphaned
+
+# ── Every log line is dated ──────────────────────────────────────────────────
+# The log had no timestamps, so a burst of MongoServerSelectionError could not be
+# placed in time or tied to a restart (2026-11-04).
+stamps_every_line() {
+  local out; out="$( (. "$HERE/log-path.sh"; printf 'first\nlast-without-newline' | stamp_lines) )"
+  [ "$(printf '%s\n' "$out" | grep -cE '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+-][0-9]{4} (first|last-without-newline)$')" -eq 2 ]
+}
+check "stamp_lines dates every line, the unterminated last one included" stamps_every_line
 
 # ── A dead supervisor must take the whole agent down with it ─────────────────
 # The two cases above are about a supervisor RECOVERING. This one is about the

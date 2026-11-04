@@ -174,7 +174,7 @@ plist or the log.
 `mirror.sh` is a self-healing daemon: it brings up its **own**
 ssh tunnel on a free local port of its own (`PROD_TUNNEL_PORT`, 27100-27899; and uses an existing
 one — e.g. `sbt run`'s — when there is, never fighting it), re-ensures the native
-Mongo via `brew services` if it's stopped, re-seeds when a mirror is empty **or
+Mongo via `brew services` if it's stopped, re-seeds when a mirror is empty (while prod is not) **or
 has drifted** (below), and reconnects the tunnel / change stream on every drop.
 So a dropped tunnel, a stopped Mongo, or a stale resume token all recover on
 their own instead of leaving `/debug` empty. The Mongo itself also restarts at
@@ -183,7 +183,10 @@ for whichever `mongodb-community[@X.Y]` formula is installed, and when `brew
 services` cannot start it falls back to `mongod --config $(brew --prefix)/etc/mongod.conf
 --fork` (same config, but no restart at login) — both paths asserted against stubs by
 `scripts/local-mirror/start-local-mongo-test.sh`. Logs:
-`~/Library/Logs/kinowo-local-mirror.log`, trimmed to its last 2000 lines
+`~/Library/Logs/kinowo-local-mirror.log`, every line prefixed with its local
+time (`2026-11-04T10:08:57+0100 [mirror] …` — `stamp_lines` in `log-path.sh`,
+applied to all of an executed `mirror.sh`'s output, mongosh's raw stderr
+included), trimmed to its last 2000 lines
 whenever it passes 8MB (in place — launchd holds an append fd on it, so renaming
 would strand the agent writing to the old inode). Prereqs: `MONGODB_URI` in the
 Touch ID vault and non-interactive ssh to the Mongo host working.
@@ -444,6 +447,19 @@ later), `BatchMode=yes` (launchd has nobody to answer a passphrase prompt) and
 neither errors nor carries data). Only a tunnel the script *started* is ever
 killed, and it is killed on every exit path — no strays.
 
+**One owner.** The forward belongs to `keep_tunnel`, a single background child
+of `mirror.sh`; the per-database supervisors only ask whether prod answers
+(`tunnel_ready`) and wait, logging once when it goes and once when it is back.
+Until 2026-11-04 every supervisor (re)opened the shared forward when its own
+probe missed — one slow ping on a swapping laptop killed the tunnel the others
+were streaming through, and a supervisor that died left its ssh as an orphan
+(12,042 opens in the log). The keeper probes every `KINOWO_MIRROR_TUNNEL_POLL`
+seconds (30), keeps a forward whose ssh is still alive through
+`KINOWO_MIRROR_TUNNEL_MISSES` (3) missed probes in a row before replacing it,
+and backs off to `KINOWO_MIRROR_TUNNEL_MAX_BACKOFF` (300 s) while prod cannot be
+reached at all. An ssh that exits at once is logged with its exit code (255:
+connection or login failure).
+
 ### Recovery paths are the daemon — so they're tested
 
 `mirror.sh` runs under `set -euo pipefail` with each database's `supervise_db`
@@ -452,8 +468,11 @@ supervisor silently, and the parent goes on `wait`ing — which launchd reads as
 healthy process and never restarts. That is exactly what a dropped tunnel did on
 2026-08-02: the seed's `mongosh` exited non-zero, all three supervisors died at
 once, and the mirror sat frozen mid-seed for two days. Every fallible step
-therefore wraps itself (`set +e` … `set -e`, or `|| continue`), and the shape is
-asserted against stubs — no Mongo, no tunnel:
+therefore wraps itself (`|| code=$?`, or `|| continue`) — never a `set +e` …
+`set -e` pair, which re-arms errexit for whatever called it: `needs_reseed`
+did, inside the tailer watch, so each drift verdict ended its supervisor and
+restarted the whole mirror (570 restarts by 2026-11-04). The shape is asserted
+against stubs — no Mongo, no tunnel:
 
 ```
 scripts/local-mirror/mirror-resilience-test.sh
@@ -472,6 +491,13 @@ supervisors' pids (`await_supervisor_exit`, every `KINOWO_MIRROR_LIVENESS_POLL`
 seconds) and takes the whole process down as soon as one is gone; launchd starts
 a clean one. `launchctl kickstart -k gui/$(id -u)/pl.kinowo.local-mirror` stays
 the manual lever, but a wedge no longer needs it.
+
+The other direction is covered too: a parent that dies **without** running its
+exit trap (SIGKILL, a crash) used to leave its children running — a supervisor
+from a 2026-10-23 run tailed on for 12 days beside the launchd one. Every
+long-lived child (supervisors, tunnel keeper, log rotator, targets poller)
+checks `parent_gone` each poll and exits, the supervisor taking its tailer and
+the keeper closing its forward on the way.
 
 `mirror.sh` is sourceable for that spec: everything below the
 `[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0` guard runs only when it is

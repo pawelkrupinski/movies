@@ -202,8 +202,15 @@ ensure_prod_tunnel() {
   for _ in $(seq 1 30); do
     prod_tunnel_answers && return 0
     # A tunnel that died on its own (bad key, host down) will never answer —
-    # stop waiting out the full 30s for a process that is already gone.
-    kill -0 "$PROD_TUNNEL_PID" 2>/dev/null || { PROD_TUNNEL_PID=""; break; }
+    # stop waiting out the full 30s for a process that is already gone, and say
+    # that is what happened: "did not answer within 30s" after a 0s ssh exit sent
+    # the reader looking for a slow prod instead of a refused login.
+    if ! kill -0 "$PROD_TUNNEL_PID" 2>/dev/null; then
+      local code=0; wait "$PROD_TUNNEL_PID" 2>/dev/null || code=$?
+      PROD_TUNNEL_PID=""
+      echo "[$tag] ssh to $target exited (code $code) before prod answered — 255 is a connection or login failure" >&2
+      return 1
+    fi
     sleep 1
   done
   echo "[$tag] prod Mongo did not answer via $target within 30s" >&2
