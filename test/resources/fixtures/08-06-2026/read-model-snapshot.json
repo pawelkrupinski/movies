@@ -738,6 +738,31 @@
     "searchTitles" : [ ],
     "provisional" : true
   }, {
+    "_id" : "f095aadb2be9f90c",
+    "title" : "Czarne i białe w kolorze – klasyka kina z Grzegorzem Pieńkowskim",
+    "originalTitle" : "La Victoire en chantant",
+    "posterUrl" : "https://image.tmdb.org/t/p/w500/guTjqPvGeykhGmOT5zpNjBdHNOi.jpg",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 90,
+    "releaseYear" : 1976,
+    "genres" : [ "Dramat", "Komedia", "Wojenny" ],
+    "countries" : [ "Francja", "Niemcy", "Szwajcaria" ],
+    "directors" : [ "Jean-Jacques Annaud" ],
+    "cast" : [ "Jean Carmet", "Jacques Dufilho", "Catherine Rouvel", "Jacques Spiesser", "Dora Doll" ],
+    "synopsis" : "Podczas gdy w styczniu 1915 roku w Europie szalała wojna, grupa francuskich osadników, nieświadoma zbliżającego się konfliktu, wiodła spokojne życie w Forcie Caulais, odległym punkcie handlowym w Afryce. Po początkowym wywołaniu niepokojów w małej społeczności, ogłoszenie konfliktu wywołało falę patriotyzmu i szybko ogłoszono powszechną mobilizację, by stawić czoła sąsiedniej placówce, zajmowanej przez kilku Niemców. Sztab generalny tworzyli kupcy z żonami, dwaj misjonarze, sierżant i młody geograf. Sama armia, po obu stronach, składała się wyłącznie z Afrykanów, przymusowo wcielonych do wojska. Pierwsza bitwa została przegrana. Wyciągnąwszy wnioski z tego doświadczenia, Francuzi zaakceptowali nowego przywódcę, który, choć nie poprowadził ich do zdecydowanego zwycięstwa, przywrócił im honor i godność poprzez dyscyplinę, równie skuteczną, co rygorystyczną.",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdbUrl" : "https://www.imdb.com/title/tt0074972/",
+      "metacriticUrl" : "https://www.metacritic.com/search/La+Victoire+en+chantant/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=La+Victoire+en+chantant",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=La+Victoire+en+chantant"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false,
+    "searchTitles" : [ "La Victoire en chantant", "Black and White in Color" ],
+    "provisional" : true
+  }, {
     "_id" : "f0a8ba4000ef7999",
     "title" : "Sunny Dancer",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/08/f1.jpg",
@@ -760,27 +785,6 @@
     "shareCardPending" : false,
     "searchTitles" : [ ],
     "provisional" : false
-  }, {
-    "_id" : "f0a95a8bfd168465",
-    "title" : "Czarne i białe w kolorze – klasyka kina z Grzegorzem Pieńkowskim",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ "Jean-Jacques Annaud" ],
-    "cast" : [ "Jean Carmet", "Jacques Dufilho", "Catherine Rouvel" ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Czarne+i+bia%C5%82e+w+kolorze+%E2%80%93+klasyka+kina+z+Grzegorzem+Pie%C5%84kowskim/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Czarne+i+bia%C5%82e+w+kolorze+%E2%80%93+klasyka+kina+z+Grzegorzem+Pie%C5%84kowskim",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Czarne+i+bia%C5%82e+w+kolorze+%E2%80%93+klasyka+kina+z+Grzegorzem+Pie%C5%84kowskim"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "czestochowa" : "W dwa lata po wybuchu I Wojny Światowej koloniści francuscy w Afryce postanawiają zaatakować niemieckich sąsiadów – oczywiście rękami Murzynów. Świat białych ludzi pokazany jako absurdalny obraz bezmyślności. O swoich panach tubylcy śpiewają: „Mój biały jest ciężki jak słoń. – A mojemu potwornie śmierdzą nogi…”"
-    },
-    "shareCardPending" : false,
-    "searchTitles" : [ ],
-    "provisional" : true
   }, {
     "_id" : "f0a9d414a9eaf309",
     "title" : "Oni",
@@ -27233,6 +27237,16 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/playboy-zachodniego-swiata-national-theatre-live-2026/8211s2r\u0000Playboy zachodniego świata - National Theatre Live 2026" ]
   }, {
+    "_id" : "f095aadb2be9f90c|czestochowa|DKF Rumcajs",
+    "filmId" : "f095aadb2be9f90c",
+    "city" : "czestochowa",
+    "cinema" : "DKF Rumcajs",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-22T18:00:00",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "P\u0000DKF Rumcajs\u0000Czarne i białe w kolorze – klasyka kina z Grzegorzem Pieńkowskim\u0000\u0000Jean-Jacques Annaud" ]
+  }, {
     "_id" : "f0a8ba4000ef7999|warszawa|KINOkawiarnia Stacja Falenica",
     "filmId" : "f0a8ba4000ef7999",
     "city" : "warszawa",
@@ -27244,16 +27258,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000KINOkawiarnia Stacja Falenica\u0000https://stacjafalenica.pl/filmy/sunny-dancer/\u0000Sunny Dancer" ]
-  }, {
-    "_id" : "f0a95a8bfd168465|czestochowa|DKF Rumcajs",
-    "filmId" : "f0a95a8bfd168465",
-    "city" : "czestochowa",
-    "cinema" : "DKF Rumcajs",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-22T18:00:00",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000DKF Rumcajs\u0000Czarne i białe w kolorze – klasyka kina z Grzegorzem Pieńkowskim\u0000\u0000Jean-Jacques Annaud" ]
   }, {
     "_id" : "f0a9d414a9eaf309|lublin|Kino CK Lublin",
     "filmId" : "f0a9d414a9eaf309",
