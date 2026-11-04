@@ -159,7 +159,7 @@ object PopulationMonotonicitySpec {
     def key(dir: Path): String = {
       val digest = java.security.MessageDigest.getInstance("SHA-256")
       def add(s: String): Unit = { val b = s.getBytes(StandardCharsets.UTF_8); digest.update(BigInt(b.length).toByteArray); digest.update(b) }
-      Seq("java.version", "java.vm.version", "user.language", "user.country", "file.encoding").foreach(p => add(s"$p=${System.getProperty(p)}"))
+      add(s"jvm=${Runtime.version} locale=${java.util.Locale.getDefault} charset=${java.nio.charset.Charset.defaultCharset}")
       val files = Files.walk(dir).iterator().asScala.filter(Files.isRegularFile(_)).toSeq.sortBy(f => dir.relativize(f).toString)
       files.foreach { f => add(dir.relativize(f).toString); digest.update(Files.readAllBytes(f)) ; add("") }
       digest.digest().map("%02x".format(_)).mkString
