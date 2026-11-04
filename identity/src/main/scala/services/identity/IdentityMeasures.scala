@@ -384,7 +384,8 @@ object IdentityMeasures {
   /** The listing-film measures read from a GUARD that weigh as well: the venue's certificate against the film's in its
    *  country ([[Certificates.below]]). They weigh in the calibrated probability only: no fact a rule counts
    *  ([[FactMeasures]]), nothing the listing's own-evidence sums read ([[EvidenceWeights]]), so every guard and rule
-   *  reading those stays as it was. */
+   *  reading those stays as it was. One rule reads the certificate as a fact of its own, ruling namesakes out with the
+   *  running time ([[Corroboration.certifiedAlone]], the `certified-title` rule): a decision, not a weight. */
   val GuardMeasures: Set[String] = Set("certificate")
 
   /** The title relations under which a listing's certificate is its film's: the billing names the film as a WHOLE title

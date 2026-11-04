@@ -173,6 +173,17 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
       "no film of its title from the year its title dates", "two films of its title from that year",
       if (ranked.exists(_.number("titleYear.delta").isDefined)) "" else "the title dates no year").map(atOwn)
 
+  /** The one eligible candidate the venue's OWN certificate and running time leave of the namesakes its title names
+   *  ([[Corroboration.certifiedAlone]]), when nothing it publishes contradicts it — a credited director included: UK
+   *  Plough Arts Centre Torrington's bare "Dracula" (87′, 12A) is Hammer's 1958 film, the 1931 one rated on another
+   *  step and the 2002 one too long. A certificate TMDB does not record rules no namesake out, so two left standing
+   *  are no answer. The listing's own facts and TMDB's records alone: the same whichever other listings are present. */
+  private[identity] def certifiedTitleWhy(ranked: Seq[Scored]): Verdict =
+    one(eligibleOf(ranked).filter(candidate => !MultiFilmBill.billsTwoWorks(candidate.listing) &&
+      Corroboration.certifiedAlone(candidate, ranked) && !contradicted(candidate) && !candidate.category("director").contains("different")),
+      "no namesake its certificate and running time leave alone", "two namesakes its certificate and running time leave",
+      ranked.headOption.flatMap(_.listing.certificate).fold("the listing states no certificate")(c => s"rated $c")).map(atOwn)
+
   /** Is the listing's title, years aside, the candidate's own title or original title — or that
    *  title decorated along one edge ("La Fanciulla del West Encore" of the Met's "… 2026/27: La
    *  Fanciulla del West")? Asked only beside a title year that agrees ([[datedTitleWhy]]). */

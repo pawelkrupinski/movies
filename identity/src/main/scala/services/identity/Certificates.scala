@@ -37,6 +37,11 @@ object Certificates {
    *  (recording 38713274617), and a step or two apart is as often a re-rating, a cut for the matinee, or a venue's slip. */
   val StepsBelow = 3
 
+  /** The `certificate` relations ([[IdentityMeasures.certificateRelation]]) placing a film on another step of the
+   *  venue's scale than the venue's own certificate: what rules a namesake out where the certificate decides
+   *  ([[Corroboration.certifiedAlone]]), however near. */
+  val Apart: Set[String] = Set("near", "below", "above")
+
   private val Words = """(?i)^(?:bbfc|fsk|cert(?:ificate)?\.?)\s*""".r
   /** `certificate` as the ladders spell it. */
   def normalised(certificate: String): String = Words.replaceFirstIn(certificate.trim, "").replace(" ", "").toUpperCase(java.util.Locale.ROOT)

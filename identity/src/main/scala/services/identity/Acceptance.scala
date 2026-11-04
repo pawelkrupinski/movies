@@ -235,7 +235,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] val aloneRules = Seq(Rule("sole-work", soleWorkWhy), Rule("favoured-calibrated", favouredCalibratedWhy), Rule("exact-top-hit", topHitWhy),
     Rule("segment-top-hit", segmentTopHitWhy), Rule("sole-result", soleResultWhy), Rule("imdb-suggested", imdbSuggestedWhy),
     Rule("directors-work", directorsWorkWhy), Rule("directors-title", directorsTitleWhy), Rule("dated-title", datedTitleWhy),
-    Rule("house-production", houseProductionWhy), Rule("season-record", seasonRecordWhy),
+    Rule("certified-title", certifiedTitleWhy), Rule("house-production", houseProductionWhy), Rule("season-record", seasonRecordWhy),
     Rule("relay-record", relayRecordWhy))
 
   private[identity] val pooledRules = Seq(Rule("unrivalled-calibrated", unrivalledCalibratedWhy), Rule("exact-top-hit", topHitWhy),

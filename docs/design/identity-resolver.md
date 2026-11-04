@@ -3314,9 +3314,10 @@ code as registries (`Acceptance`'s alone rules, in the order `Acceptance.refusal
 | alone | 8 | directors-work | the credited director's film sharing the title's work |
 | alone | 9 | directors-title | the credited director's film of the exact title |
 | alone | 10 | dated-title | the film of the title from the year the title dates |
-| alone | 11 | house-production | the record billing the work under the listing's house |
-| alone | 12 | season-record | the one season record carrying the title, or of the season its screenings broadcast it in naming its work under its house (pre-empts the rest when of that season) |
-| alone | 13 | relay-record | the one record of the relay's house, its stage work and the season its title, field or banner dates, learned vetoes lifted for a house named in particular (`RelayStage`; pre-empts the rest) |
+| alone | 11 | certified-title | the one namesake the venue's own certificate and running time leave, each ruling the rest out (`Corroboration.certifiedAlone`) |
+| alone | 12 | house-production | the record billing the work under the listing's house |
+| alone | 13 | season-record | the one season record carrying the title, or of the season its screenings broadcast it in naming its work under its house (pre-empts the rest when of that season) |
+| alone | 14 | relay-record | the one record of the relay's house, its stage work and the season its title, field or banner dates, learned vetoes lifted for a house named in particular (`RelayStage`; pre-empts the rest) |
 | pooled | 1 | season-production | as alone, over the cluster's pooled evidence |
 | pooled | 2 | unrivalled-calibrated | the calibration accepts it and no namesake out-fits it |
 | pooled | 3 | exact-top-hit | as alone |

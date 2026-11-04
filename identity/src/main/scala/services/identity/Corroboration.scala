@@ -57,8 +57,28 @@ private[identity] object Corroboration {
     val cast       = castNamed(own) && CastEvidence.castIsTheFilms(node.listings) &&
       !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && castNamed(rival))
     Seq("year" -> agree("year"), "director" -> agree("director"), "original title" -> original, "runtime" -> runtime, "feed id" -> feedId,
-      "season" -> season, "cast" -> cast)
+      "season" -> season, "cast" -> cast, "certificate" -> certifiedAlone(own, rivals))
       .collect { case (name, true) => name }
+  }
+
+  /** Does the venue's OWN certificate, with its own running time, leave `own` the ONLY one of the namesakes its title
+   *  names? Each namesake is ruled out by the running time as [[fits]] reads it (a time shorter by more than
+   *  [[RuntimeBand]]), or by the certificate: TMDB rating it on another step of the venue's country's scale than the
+   *  venue does (`certificate`, [[IdentityMeasures.certificateRelation]]: [[Certificates.Apart]]). A certificate TMDB
+   *  does not record there, a country with no scale, a billing naming the film by a piece only (`missing`) rules out
+   *  nothing. `own` stands when neither rules it out and one of them agrees with it (the very step, or a running time
+   *  within the band), and the certificate must rule out a namesake the running time leaves: a running time alone is
+   *  the `runtime` fact's. UK Plough Arts Centre Torrington's "Dracula" (87′, 12A) is Hammer's 1958 film (82′, 12A):
+   *  the 1931 one (74′) fits a longer slot but TMDB rates it on another step, the 2002 one is 12A but runs 104′. Two
+   *  namesakes standing are no answer. Read off the listing's own facts and TMDB's records alone. */
+  def certifiedAlone(own: Scored, rivals: Seq[Scored]): Boolean = {
+    def offScale(scored: Scored) = scored.category("certificate").exists(Certificates.Apart)
+    def tooShort(scored: Scored) = scored.number("runtime.delta").exists(_ < -RuntimeBand)
+    own.titleNamesIt && !offScale(own) && !tooShort(own) &&
+      (own.category("certificate").contains("match") || IdentityMeasures.runtimeGap(own.measures).exists(_ <= RuntimeBand)) && {
+        val namesakes = rivals.filter(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt)
+        namesakes.forall(rival => offScale(rival) || tooShort(rival)) && namesakes.exists(rival => offScale(rival) && !tooShort(rival))
+      }
   }
 
   /** The must-links that vouch a node to a corroborated one: its title, clean or search title, catalogue id or a

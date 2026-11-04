@@ -107,7 +107,7 @@ object UnifiedEvidence {
   /** The rule groups an acceptance rule's name falls in ([[Acceptance]]'s rules, by the name a trace gives them). */
   val RuleGroups: Map[String, String] = Map(
     "exact-top-hit" -> "rule.title", "segment-top-hit" -> "rule.title", "sole-result" -> "rule.title", "sole-work" -> "rule.title",
-    "dated-title" -> "rule.title", "directors-work" -> "rule.director", "directors-title" -> "rule.director",
+    "dated-title" -> "rule.title", "certified-title" -> "rule.title", "directors-work" -> "rule.director", "directors-title" -> "rule.director",
     "favoured-calibrated" -> "rule.calibrated", "unrivalled-calibrated" -> "rule.calibrated", "imdb-suggested" -> "rule.imdb",
     "house-production" -> "rule.stage", "season-record" -> "rule.stage", "season-production" -> "rule.stage",
     "relay-record" -> "rule.stage")
