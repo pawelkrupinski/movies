@@ -59,9 +59,17 @@ final class EnvGatedFeatureMetrics(registry: PrometheusRegistry) {
 
   private def flag(feature: EnvGatedFeature): Double = if (feature.enabled) 1.0 else 0.0
 
+  /** One series per alerter; a country that runs NONE publishes `alerter="none"` at 1 (nothing is off), so the family
+   *  exists in every country and `AppMetricAbsent` does not read "no alerters here" as "the gauge is unwired". */
   def recordAlerters(country: String, features: Seq[EnvGatedFeature]): Unit =
-    features.foreach(f => alerters.labelValues(country, f.name).set(flag(f)))
+    if (features.isEmpty) alerters.labelValues(country, EnvGatedFeatureMetrics.NoAlerter).set(1.0)
+    else features.foreach(f => alerters.labelValues(country, f.name).set(flag(f)))
 
   def recordIntegrations(features: Seq[EnvGatedFeature]): Unit =
     features.foreach(f => integrations.labelValues(f.name).set(flag(f)))
+}
+
+object EnvGatedFeatureMetrics {
+  /** The `alerter` label of the one series a country with no alerters publishes. */
+  val NoAlerter = "none"
 }

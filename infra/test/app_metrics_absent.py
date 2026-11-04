@@ -19,6 +19,16 @@ is: it requires the checked-in files to equal what this writes, and every app fa
 THE SHAPE. Per country: the tier's scrape target is up, and has published no series of the family for 15 minutes.
 A tier that is DOWN is WorkerDown's / TargetDown's to report, so `up == 1` gates it.
 
+ONE MISSED SCRAPE CHANGES NOTHING. Both sides are read over 10 minutes (`max_over_time(up[10m])`,
+`last_over_time(<sample>[10m])`), and a firing rule holds 10 more (`keep_firing_for`). Until 2026-11-04 they read the
+instant: every missed worker scrape (2-7 a day a country) emptied the `up == 1` side, resolved the alert, and `for:`
+re-armed it -- 166 of 186 firings in a week were that resolve/re-fire pair, 16-17 minutes apart.
+
+A LABELLED FAMILY MUST BE SEEDED AT BOOT for this to hold: a Prometheus counter with labels publishes nothing until its
+first child. `kinowo_web_mongo_write_errors` (seeded only on a tier's first write: never, on a web with no users) and
+`kinowo_worker_alerter_enabled` (no child in a country without alerters) fired permanently in four countries until the
+application seeded them (MongoWriteErrors.seed, EnvGatedFeatureMetrics.recordAlerters).
+
 Run: python3 infra/test/app_metrics_absent.py --write   (rewrites both files below; without --write, prints a diff
 verdict and exits 1 when they are stale)
 """
@@ -38,6 +48,8 @@ RULES_OUT = os.path.join(promql_selectors.MONITORING, "rules", "app-metrics-abse
 TESTS_OUT = os.path.join(HERE, "alert-rules", "app-metrics-absent.yml")
 ALERT = "AppMetricAbsent"
 HOLD = "15m"
+# How long a missed scrape is bridged, on both sides of the expression and after a firing (keep_firing_for).
+BRIDGE = "10m"
 
 # Which scrape job publishes a family, by name prefix.
 TIERS = (("kinowo_worker_", "kinowo-worker", "worker"),
@@ -144,9 +156,11 @@ def rules_document():
         job, tier = tier_of(family)
         rules.append({
             "alert": ALERT,
-            "expr": "max by (country) (up{job=\"%s\"} == 1)\nunless on (country)\ncount by (country) (%s)" % (job, sample),
+            "expr": ("max by (country) (max_over_time(up{job=\"%s\"}[%s]) == 1)\nunless on (country)\n"
+                     "count by (country) (last_over_time(%s[%s]))" % (job, BRIDGE, sample, BRIDGE)),
             "for": HOLD,
-            "labels": {"severity": "warning", "metric": family},
+            "keep_firing_for": BRIDGE,
+            "labels": {"severity": "warning", "domain": "monitoring", "metric": family},
             "annotations": {"summary": _summary(family, tier), "description": _description(family, tier, readers)},
         })
     return {"groups": [{"name": "app-metrics-absent", "rules": rules}]}
@@ -163,7 +177,7 @@ def tests_document():
         return [{"series": '%s{job="%s",country="%s"}' % (sample, tier_of(f)[0], country), "values": "0x30"}
                 for f, (sample, _) in families.items()]
 
-    firing = [{"exp_labels": {"country": "de", "metric": f, "severity": "warning"},
+    firing = [{"exp_labels": {"country": "de", "domain": "monitoring", "metric": f, "severity": "warning"},
                "exp_annotations": {"summary": _summary(f, tier_of(f)[1]).replace("{{ $labels.country }}", "de"),
                                    "description": _description(f, tier_of(f)[1], readers)}}
               for f, (_, readers) in families.items()]
@@ -181,6 +195,11 @@ def tests_document():
             {"interval": "1m",
              "input_series": up("pl", 1) + present("pl"),
              "alert_rule_test": [{"eval_time": "20m", "alertname": ALERT, "exp_alerts": []}]},
+            # ONE MISSED SCRAPE (DE's `up` 0 at minute 6) neither resets the hold nor resolves: still firing at 20m.
+            {"interval": "1m",
+             "input_series": up("pl", 1) + [{"series": 'up{job="%s",country="de"}' % job, "values": "1x5 0 1x24"}
+                                            for job in jobs] + present("pl"),
+             "alert_rule_test": [{"eval_time": "20m", "alertname": ALERT, "exp_alerts": firing}]},
             # QUIET: a tier that is down publishes nothing, and that is WorkerDown's / TargetDown's to say.
             {"interval": "1m",
              "input_series": up("de", 0),

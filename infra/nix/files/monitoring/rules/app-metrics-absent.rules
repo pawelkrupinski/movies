@@ -6,12 +6,14 @@ groups:
   rules:
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-web"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-web"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_uptime_recent_failures)
+      count by (country) (last_over_time(kinowo_uptime_recent_failures[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_uptime_recent_failures
     annotations:
       summary: '{{ $labels.country }}''s web is up but publishes no kinowo_uptime_recent_failures'
@@ -21,12 +23,14 @@ groups:
         ChainEnrichmentFailing, cinema-scrape.rules CinemaScrapeFailureShareHigh, residential-proxy.rules ResidentialProxyFailing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-web"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-web"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_uptime_recent_successes)
+      count by (country) (last_over_time(kinowo_uptime_recent_successes[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_uptime_recent_successes
     annotations:
       summary: '{{ $labels.country }}''s web is up but publishes no kinowo_uptime_recent_successes'
@@ -36,12 +40,14 @@ groups:
         residential-proxy.rules ResidentialProxyFailing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-web"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-web"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_web_decode_failures_total)
+      count by (country) (last_over_time(kinowo_web_decode_failures_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_web_decode_failures
     annotations:
       summary: '{{ $labels.country }}''s web is up but publishes no kinowo_web_decode_failures'
@@ -51,12 +57,14 @@ groups:
         DocumentsUndecodable.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-web"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-web"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_web_http_request_duration_seconds_count)
+      count by (country) (last_over_time(kinowo_web_http_request_duration_seconds_count[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_web_http_request_duration_seconds
     annotations:
       summary: '{{ $labels.country }}''s web is up but publishes no kinowo_web_http_request_duration_seconds'
@@ -66,12 +74,14 @@ groups:
         cannot fire: web-latency.rules WebEndpointLatencyHigh, web-latency.rules WebPageLatencyHigh.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-web"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-web"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_web_mongo_unauthorized_total)
+      count by (country) (last_over_time(kinowo_web_mongo_unauthorized_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_web_mongo_unauthorized
     annotations:
       summary: '{{ $labels.country }}''s web is up but publishes no kinowo_web_mongo_unauthorized'
@@ -81,12 +91,14 @@ groups:
         MongoUnauthorized.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-web"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-web"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_web_mongo_write_errors_total)
+      count by (country) (last_over_time(kinowo_web_mongo_write_errors_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_web_mongo_write_errors
     annotations:
       summary: '{{ $labels.country }}''s web is up but publishes no kinowo_web_mongo_write_errors'
@@ -96,12 +108,14 @@ groups:
         MongoWriteErrors.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-web"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-web"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_web_scheduled_tick_interval_seconds)
+      count by (country) (last_over_time(kinowo_web_scheduled_tick_interval_seconds[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_web_scheduled_tick_interval_seconds
     annotations:
       summary: '{{ $labels.country }}''s web is up but publishes no kinowo_web_scheduled_tick_interval_seconds'
@@ -111,12 +125,14 @@ groups:
         cannot fire: scheduled-ticks.rules WebScheduledTickStale.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-web"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-web"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_web_user_state_userid_index_unique)
+      count by (country) (last_over_time(kinowo_web_user_state_userid_index_unique[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_web_user_state_userid_index_unique
     annotations:
       summary: '{{ $labels.country }}''s web is up but publishes no kinowo_web_user_state_userid_index_unique'
@@ -126,12 +142,14 @@ groups:
         cannot fire: web-errors.rules UserStateUniqueIndexMissing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_alerter_enabled)
+      count by (country) (last_over_time(kinowo_worker_alerter_enabled[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_alerter_enabled
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_alerter_enabled'
@@ -141,12 +159,14 @@ groups:
         fire: worker-pipeline.rules WorkerAlerterDisabled.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_change_stream_apply_lag_seconds)
+      count by (country) (last_over_time(kinowo_worker_change_stream_apply_lag_seconds[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_change_stream_apply_lag_seconds
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_change_stream_apply_lag_seconds'
@@ -156,12 +176,14 @@ groups:
         nothing and cannot fire: read-model-projection.rules ChangeStreamApplyFallingBehind, read-model-projection.rules ChangeStreamApplyLagging.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_change_stream_last_event_age_seconds)
+      count by (country) (last_over_time(kinowo_worker_change_stream_last_event_age_seconds[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_change_stream_last_event_age_seconds
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_change_stream_last_event_age_seconds'
@@ -171,12 +193,14 @@ groups:
         nothing and cannot fire: read-model-projection.rules ChangeStreamMoviesCursorSilent.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_cinema_content_stale_venues)
+      count by (country) (last_over_time(kinowo_worker_cinema_content_stale_venues[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_cinema_content_stale_venues
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_cinema_content_stale_venues'
@@ -186,12 +210,14 @@ groups:
         cannot fire: runtime-invariants.rules CinemaContentStaleVenuesGrowing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_cinema_scrape_never_scraped)
+      count by (country) (last_over_time(kinowo_worker_cinema_scrape_never_scraped[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_cinema_scrape_never_scraped
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_cinema_scrape_never_scraped'
@@ -201,12 +227,14 @@ groups:
         cannot fire: cinema-scrape.rules CinemaScrapeNeverScraped.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_city_off_season)
+      count by (country) (last_over_time(kinowo_worker_city_off_season[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_city_off_season
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_city_off_season'
@@ -216,12 +244,14 @@ groups:
         fire: runtime-invariants.rules CityDarkInBothTiers.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_copied_feed_pairs)
+      count by (country) (last_over_time(kinowo_worker_copied_feed_pairs[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_copied_feed_pairs
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_copied_feed_pairs'
@@ -231,12 +261,14 @@ groups:
         fire: cinema-scrape.rules DuplicateVenueListing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_corpus_movies)
+      count by (country) (last_over_time(kinowo_worker_corpus_movies[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_corpus_movies
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_corpus_movies'
@@ -247,12 +279,14 @@ groups:
         read-model-projection.rules ReadModelFilmsInvisibleWithScreenings.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_decode_failures_total)
+      count by (country) (last_over_time(kinowo_worker_decode_failures_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_decode_failures
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_decode_failures'
@@ -262,12 +296,14 @@ groups:
         fire: worker-pipeline.rules DocumentsUndecodable.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_http_total)
+      count by (country) (last_over_time(kinowo_worker_http_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_http
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_http'
@@ -277,12 +313,14 @@ groups:
         EnrichmentApiKeyRefused, worker-pipeline.rules WorkerExternalServiceAuthFailing, worker-pipeline.rules WorkerExternalServiceRateLimited.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_identity_cutover_listings)
+      count by (country) (last_over_time(kinowo_worker_identity_cutover_listings[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_identity_cutover_listings
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_cutover_listings'
@@ -292,12 +330,14 @@ groups:
         cannot fire: identity-matching.rules IdentityTakeChangesBurst, identity-matching.rules IdentityTakesLost.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_identity_staging_dropped_total)
+      count by (country) (last_over_time(kinowo_worker_identity_staging_dropped_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_identity_staging_dropped
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_staging_dropped'
@@ -307,12 +347,14 @@ groups:
         cannot fire: identity-agreement.rules IdentityStagingEventsDropped.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_identity_suspect_takes)
+      count by (country) (last_over_time(kinowo_worker_identity_suspect_takes[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_identity_suspect_takes
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_suspect_takes'
@@ -322,12 +364,14 @@ groups:
         cannot fire: identity-matching.rules IdentitySuspectTakesRising.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_identity_take_changes_total)
+      count by (country) (last_over_time(kinowo_worker_identity_take_changes_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_identity_take_changes
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_take_changes'
@@ -337,12 +381,14 @@ groups:
         cannot fire: identity-matching.rules IdentityTakeChangesBurst, identity-matching.rules IdentityTakesLost.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_identity_take_reversals_total)
+      count by (country) (last_over_time(kinowo_worker_identity_take_reversals_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_identity_take_reversals
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_take_reversals'
@@ -352,12 +398,14 @@ groups:
         cannot fire: identity-matching.rules IdentityTakeOscillating.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_integration_enabled)
+      count by (country) (last_over_time(kinowo_worker_integration_enabled[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_integration_enabled
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_integration_enabled'
@@ -367,12 +415,14 @@ groups:
         cannot fire: worker-pipeline.rules WorkerIntegrationDisabled.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_mongo_unauthorized_total)
+      count by (country) (last_over_time(kinowo_worker_mongo_unauthorized_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_mongo_unauthorized
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_mongo_unauthorized'
@@ -382,12 +432,14 @@ groups:
         cannot fire: mongodb-app.rules MongoUnauthorized.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_mongo_write_errors_total)
+      count by (country) (last_over_time(kinowo_worker_mongo_write_errors_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_mongo_write_errors
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_mongo_write_errors'
@@ -397,12 +449,14 @@ groups:
         cannot fire: mongodb-app.rules MongoWriteErrors.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_movie_change_events_total)
+      count by (country) (last_over_time(kinowo_worker_movie_change_events_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_movie_change_events
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_movie_change_events'
@@ -412,12 +466,14 @@ groups:
         cannot fire: read-model-projection.rules ReadModelProjectionTriggerUnaccounted.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_movie_slots_change_events_total)
+      count by (country) (last_over_time(kinowo_worker_movie_slots_change_events_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_movie_slots_change_events
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_movie_slots_change_events'
@@ -427,12 +483,14 @@ groups:
         cannot fire: read-model-projection.rules ReadModelProjectionTriggerUnaccounted.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_native_memory_bytes)
+      count by (country) (last_over_time(kinowo_worker_native_memory_bytes[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_native_memory_bytes
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_native_memory_bytes'
@@ -442,12 +500,14 @@ groups:
         cannot fire: jvm-heap.rules JvmStringDedupTableLarge.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_paid_egress_total)
+      count by (country) (last_over_time(kinowo_worker_paid_egress_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_paid_egress
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_paid_egress'
@@ -457,12 +517,14 @@ groups:
         residential-proxy.rules PaidEgressFailing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_queue_oldest_waiting_age_seconds)
+      count by (country) (last_over_time(kinowo_worker_queue_oldest_waiting_age_seconds[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_queue_oldest_waiting_age_seconds
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_queue_oldest_waiting_age_seconds'
@@ -472,12 +534,14 @@ groups:
         nothing and cannot fire: worker-pipeline.rules WorkerQueueHeadOld.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_queue_parked_max_seconds)
+      count by (country) (last_over_time(kinowo_worker_queue_parked_max_seconds[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_queue_parked_max_seconds
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_queue_parked_max_seconds'
@@ -487,12 +551,14 @@ groups:
         cannot fire: worker-pipeline.rules WorkerTaskParkedTooLong.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_readmodel_content_audit_confirmed_total)
+      count by (country) (last_over_time(kinowo_worker_readmodel_content_audit_confirmed_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_readmodel_content_audit_confirmed
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_readmodel_content_audit_confirmed'
@@ -502,12 +568,14 @@ groups:
         nothing and cannot fire: runtime-invariants.rules ReadModelContentMismatch.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_readmodel_content_audited_total)
+      count by (country) (last_over_time(kinowo_worker_readmodel_content_audited_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_readmodel_content_audited
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_readmodel_content_audited'
@@ -517,12 +585,14 @@ groups:
         cannot fire: runtime-invariants.rules ReadModelContentMismatch.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_readmodel_films_pruned_total)
+      count by (country) (last_over_time(kinowo_worker_readmodel_films_pruned_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_readmodel_films_pruned
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_readmodel_films_pruned'
@@ -532,12 +602,14 @@ groups:
         cannot fire: read-model-projection.rules ReadModelFilmPruneBurst, read-model-projection.rules ReadModelServingDiffersFromCorpus.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_readmodel_heals_total)
+      count by (country) (last_over_time(kinowo_worker_readmodel_heals_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_readmodel_heals
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_readmodel_heals'
@@ -547,12 +619,14 @@ groups:
         fire: read-model-projection.rules BootHealLarge, read-model-projection.rules ReadModelHealsRecurring.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_readmodel_venue_projections_total)
+      count by (country) (last_over_time(kinowo_worker_readmodel_venue_projections_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_readmodel_venue_projections
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_readmodel_venue_projections'
@@ -562,12 +636,14 @@ groups:
         cannot fire: read-model-projection.rules ReadModelVenueRebuildShareHigh.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_readmodel_write_burst_seconds_count)
+      count by (country) (last_over_time(kinowo_worker_readmodel_write_burst_seconds_count[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_readmodel_write_burst_seconds
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_readmodel_write_burst_seconds'
@@ -577,12 +653,14 @@ groups:
         nothing and cannot fire: read-model-projection.rules ReadModelProjectionWritePerCallHigh.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_repository_write_failed_total)
+      count by (country) (last_over_time(kinowo_worker_repository_write_failed_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_repository_write_failed
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_repository_write_failed'
@@ -592,12 +670,14 @@ groups:
         cannot fire: worker-pipeline.rules RepositoryWritesFailing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_retired_venue_side_rows)
+      count by (country) (last_over_time(kinowo_worker_retired_venue_side_rows[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_retired_venue_side_rows
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_retired_venue_side_rows'
@@ -607,12 +687,14 @@ groups:
         cannot fire: cinema-scrape.rules RetiredVenueRowsLingering.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_scheduled_tick_interval_seconds)
+      count by (country) (last_over_time(kinowo_worker_scheduled_tick_interval_seconds[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_scheduled_tick_interval_seconds
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_scheduled_tick_interval_seconds'
@@ -622,12 +704,14 @@ groups:
         nothing and cannot fire: scheduled-ticks.rules WorkerScheduledTickStale.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_scrape_guard_verdicts_total)
+      count by (country) (last_over_time(kinowo_worker_scrape_guard_verdicts_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_scrape_guard_verdicts
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_scrape_guard_verdicts'
@@ -637,12 +721,14 @@ groups:
         cannot fire: cinema-scrape.rules ScrapeGuardStuckRejecting.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_scrape_write_skipped_total)
+      count by (country) (last_over_time(kinowo_worker_scrape_write_skipped_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_scrape_write_skipped
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_scrape_write_skipped'
@@ -652,12 +738,14 @@ groups:
         cannot fire: cinema-scrape.rules ScrapeWritesSkipped.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_screenings_change_events_total)
+      count by (country) (last_over_time(kinowo_worker_screenings_change_events_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_screenings_change_events
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_screenings_change_events'
@@ -667,12 +755,14 @@ groups:
         cannot fire: read-model-projection.rules ReadModelProjectionTriggerUnaccounted.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_seasonal_venues_not_reopened)
+      count by (country) (last_over_time(kinowo_worker_seasonal_venues_not_reopened[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_seasonal_venues_not_reopened
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_seasonal_venues_not_reopened'
@@ -682,12 +772,14 @@ groups:
         cannot fire: runtime-invariants.rules SeasonalVenuesNotReopened.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_audit_confirmed_total)
+      count by (country) (last_over_time(kinowo_worker_share_cards_audit_confirmed_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_audit_confirmed
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_audit_confirmed'
@@ -697,12 +789,14 @@ groups:
         cannot fire: runtime-invariants.rules ShareCardPointersUnresolvable.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_audited_total)
+      count by (country) (last_over_time(kinowo_worker_share_cards_audited_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_audited
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_audited'
@@ -712,12 +806,14 @@ groups:
         cannot fire: runtime-invariants.rules ShareCardPointersUnresolvable.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_budget_bytes)
+      count by (country) (last_over_time(kinowo_worker_share_cards_budget_bytes[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_budget_bytes
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_budget_bytes'
@@ -727,12 +823,14 @@ groups:
         cannot fire: share-cards.rules ShareCardsNearBudget, share-cards.rules ShareCardsOverBudget.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_bytes)
+      count by (country) (last_over_time(kinowo_worker_share_cards_bytes[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_bytes
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_bytes'
@@ -742,12 +840,14 @@ groups:
         fire: share-cards.rules ShareCardsNearBudget.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_city_coverage_ratio)
+      count by (country) (last_over_time(kinowo_worker_share_cards_city_coverage_ratio[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_city_coverage_ratio
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_city_coverage_ratio'
@@ -757,12 +857,14 @@ groups:
         nothing and cannot fire: share-cards.rules ShareCardCityCoverageLow.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_current_bytes)
+      count by (country) (last_over_time(kinowo_worker_share_cards_current_bytes[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_current_bytes
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_current_bytes'
@@ -772,12 +874,14 @@ groups:
         cannot fire: share-cards.rules ShareCardsOverBudget.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_min_free_bytes)
+      count by (country) (last_over_time(kinowo_worker_share_cards_min_free_bytes[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_min_free_bytes
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_min_free_bytes'
@@ -787,12 +891,14 @@ groups:
         cannot fire: share-cards.rules ShareCardVolumeLowSpace.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_poster_load_total)
+      count by (country) (last_over_time(kinowo_worker_share_cards_poster_load_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_poster_load
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_poster_load'
@@ -802,12 +908,14 @@ groups:
         cannot fire: share-cards.rules ShareCardPosterFetchFailing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_refused_total)
+      count by (country) (last_over_time(kinowo_worker_share_cards_refused_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_refused
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_refused'
@@ -817,12 +925,14 @@ groups:
         cannot fire: share-cards.rules ShareCardWritesRefused.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_render_total)
+      count by (country) (last_over_time(kinowo_worker_share_cards_render_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_render
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_render'
@@ -832,12 +942,14 @@ groups:
         cannot fire: share-cards.rules ShareCardRendersFailing.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_rescrape_total)
+      count by (country) (last_over_time(kinowo_worker_share_cards_rescrape_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_rescrape
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_rescrape'
@@ -847,12 +959,14 @@ groups:
         cannot fire: share-cards.rules ShareCardFacebookRateLimited, share-cards.rules ShareCardRescrapesNotDraining.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_rescrape_waiting)
+      count by (country) (last_over_time(kinowo_worker_share_cards_rescrape_waiting[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_rescrape_waiting
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_rescrape_waiting'
@@ -862,12 +976,14 @@ groups:
         cannot fire: share-cards.rules ShareCardRescrapesNotDraining.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_share_cards_volume_free_bytes)
+      count by (country) (last_over_time(kinowo_worker_share_cards_volume_free_bytes[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_share_cards_volume_free_bytes
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_share_cards_volume_free_bytes'
@@ -877,12 +993,14 @@ groups:
         nothing and cannot fire: share-cards.rules ShareCardVolumeLowSpace.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_tasks_finished_total)
+      count by (country) (last_over_time(kinowo_worker_tasks_finished_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_tasks_finished
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_tasks_finished'
@@ -893,12 +1011,14 @@ groups:
         WorkerTasksFailingRepeatedly.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_tasks_started_total)
+      count by (country) (last_over_time(kinowo_worker_tasks_started_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_tasks_started
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_tasks_started'
@@ -908,12 +1028,14 @@ groups:
         fire: worker-pipeline.rules WorkerQueueStalled.'
   - alert: AppMetricAbsent
     expr: |-
-      max by (country) (up{job="kinowo-worker"} == 1)
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
-      count by (country) (kinowo_worker_telegram_notifications_total)
+      count by (country) (last_over_time(kinowo_worker_telegram_notifications_total[10m]))
     for: 15m
+    keep_firing_for: 10m
     labels:
       severity: warning
+      domain: monitoring
       metric: kinowo_worker_telegram_notifications
     annotations:
       summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_telegram_notifications'

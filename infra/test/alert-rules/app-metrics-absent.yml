@@ -143,9 +143,10 @@ tests:
     exp_alerts: []
   - eval_time: 20m
     alertname: AppMetricAbsent
-    exp_alerts:
+    exp_alerts: &id001
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_uptime_recent_failures
         severity: warning
       exp_annotations:
@@ -157,6 +158,7 @@ tests:
           ResidentialProxyFailing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_uptime_recent_successes
         severity: warning
       exp_annotations:
@@ -167,6 +169,7 @@ tests:
           residential-proxy.rules ResidentialProxyFailing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_web_decode_failures
         severity: warning
       exp_annotations:
@@ -177,6 +180,7 @@ tests:
           worker-pipeline.rules DocumentsUndecodable.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_web_http_request_duration_seconds
         severity: warning
       exp_annotations:
@@ -187,6 +191,7 @@ tests:
           and cannot fire: web-latency.rules WebEndpointLatencyHigh, web-latency.rules WebPageLatencyHigh.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_web_mongo_unauthorized
         severity: warning
       exp_annotations:
@@ -197,6 +202,7 @@ tests:
           mongodb-app.rules MongoUnauthorized.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_web_mongo_write_errors
         severity: warning
       exp_annotations:
@@ -207,6 +213,7 @@ tests:
           mongodb-app.rules MongoWriteErrors.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_web_scheduled_tick_interval_seconds
         severity: warning
       exp_annotations:
@@ -217,6 +224,7 @@ tests:
           and cannot fire: scheduled-ticks.rules WebScheduledTickStale.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_web_user_state_userid_index_unique
         severity: warning
       exp_annotations:
@@ -227,6 +235,7 @@ tests:
           and cannot fire: web-errors.rules UserStateUniqueIndexMissing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_alerter_enabled
         severity: warning
       exp_annotations:
@@ -237,6 +246,7 @@ tests:
           cannot fire: worker-pipeline.rules WorkerAlerterDisabled.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_change_stream_apply_lag_seconds
         severity: warning
       exp_annotations:
@@ -248,6 +258,7 @@ tests:
           ChangeStreamApplyLagging.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_change_stream_last_event_age_seconds
         severity: warning
       exp_annotations:
@@ -258,6 +269,7 @@ tests:
           nothing and cannot fire: read-model-projection.rules ChangeStreamMoviesCursorSilent.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_cinema_content_stale_venues
         severity: warning
       exp_annotations:
@@ -268,6 +280,7 @@ tests:
           nothing and cannot fire: runtime-invariants.rules CinemaContentStaleVenuesGrowing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_cinema_scrape_never_scraped
         severity: warning
       exp_annotations:
@@ -278,6 +291,7 @@ tests:
           nothing and cannot fire: cinema-scrape.rules CinemaScrapeNeverScraped.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_city_off_season
         severity: warning
       exp_annotations:
@@ -288,6 +302,7 @@ tests:
           cannot fire: runtime-invariants.rules CityDarkInBothTiers.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_copied_feed_pairs
         severity: warning
       exp_annotations:
@@ -298,6 +313,7 @@ tests:
           and cannot fire: cinema-scrape.rules DuplicateVenueListing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_corpus_movies
         severity: warning
       exp_annotations:
@@ -309,6 +325,7 @@ tests:
           read-model-projection.rules ReadModelFilmsInvisibleWithScreenings.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_decode_failures
         severity: warning
       exp_annotations:
@@ -319,6 +336,7 @@ tests:
           cannot fire: worker-pipeline.rules DocumentsUndecodable.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_http
         severity: warning
       exp_annotations:
@@ -330,6 +348,7 @@ tests:
           WorkerExternalServiceRateLimited.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_identity_cutover_listings
         severity: warning
       exp_annotations:
@@ -340,6 +359,7 @@ tests:
           nothing and cannot fire: identity-matching.rules IdentityTakeChangesBurst, identity-matching.rules IdentityTakesLost.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_identity_staging_dropped
         severity: warning
       exp_annotations:
@@ -350,6 +370,7 @@ tests:
           nothing and cannot fire: identity-agreement.rules IdentityStagingEventsDropped.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_identity_suspect_takes
         severity: warning
       exp_annotations:
@@ -360,6 +381,7 @@ tests:
           nothing and cannot fire: identity-matching.rules IdentitySuspectTakesRising.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_identity_take_changes
         severity: warning
       exp_annotations:
@@ -370,6 +392,7 @@ tests:
           nothing and cannot fire: identity-matching.rules IdentityTakeChangesBurst, identity-matching.rules IdentityTakesLost.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_identity_take_reversals
         severity: warning
       exp_annotations:
@@ -380,6 +403,7 @@ tests:
           nothing and cannot fire: identity-matching.rules IdentityTakeOscillating.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_integration_enabled
         severity: warning
       exp_annotations:
@@ -390,6 +414,7 @@ tests:
           and cannot fire: worker-pipeline.rules WorkerIntegrationDisabled.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_mongo_unauthorized
         severity: warning
       exp_annotations:
@@ -400,6 +425,7 @@ tests:
           and cannot fire: mongodb-app.rules MongoUnauthorized.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_mongo_write_errors
         severity: warning
       exp_annotations:
@@ -410,6 +436,7 @@ tests:
           and cannot fire: mongodb-app.rules MongoWriteErrors.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_movie_change_events
         severity: warning
       exp_annotations:
@@ -420,6 +447,7 @@ tests:
           and cannot fire: read-model-projection.rules ReadModelProjectionTriggerUnaccounted.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_movie_slots_change_events
         severity: warning
       exp_annotations:
@@ -430,6 +458,7 @@ tests:
           nothing and cannot fire: read-model-projection.rules ReadModelProjectionTriggerUnaccounted.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_native_memory_bytes
         severity: warning
       exp_annotations:
@@ -440,6 +469,7 @@ tests:
           and cannot fire: jvm-heap.rules JvmStringDedupTableLarge.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_paid_egress
         severity: warning
       exp_annotations:
@@ -450,6 +480,7 @@ tests:
           cannot fire: residential-proxy.rules PaidEgressFailing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_queue_oldest_waiting_age_seconds
         severity: warning
       exp_annotations:
@@ -460,6 +491,7 @@ tests:
           nothing and cannot fire: worker-pipeline.rules WorkerQueueHeadOld.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_queue_parked_max_seconds
         severity: warning
       exp_annotations:
@@ -470,6 +502,7 @@ tests:
           nothing and cannot fire: worker-pipeline.rules WorkerTaskParkedTooLong.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_readmodel_content_audit_confirmed
         severity: warning
       exp_annotations:
@@ -480,6 +513,7 @@ tests:
           nothing and cannot fire: runtime-invariants.rules ReadModelContentMismatch.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_readmodel_content_audited
         severity: warning
       exp_annotations:
@@ -490,6 +524,7 @@ tests:
           nothing and cannot fire: runtime-invariants.rules ReadModelContentMismatch.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_readmodel_films_pruned
         severity: warning
       exp_annotations:
@@ -500,6 +535,7 @@ tests:
           nothing and cannot fire: read-model-projection.rules ReadModelFilmPruneBurst, read-model-projection.rules ReadModelServingDiffersFromCorpus.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_readmodel_heals
         severity: warning
       exp_annotations:
@@ -510,6 +546,7 @@ tests:
           cannot fire: read-model-projection.rules BootHealLarge, read-model-projection.rules ReadModelHealsRecurring.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_readmodel_venue_projections
         severity: warning
       exp_annotations:
@@ -520,6 +557,7 @@ tests:
           nothing and cannot fire: read-model-projection.rules ReadModelVenueRebuildShareHigh.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_readmodel_write_burst_seconds
         severity: warning
       exp_annotations:
@@ -530,6 +568,7 @@ tests:
           nothing and cannot fire: read-model-projection.rules ReadModelProjectionWritePerCallHigh.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_repository_write_failed
         severity: warning
       exp_annotations:
@@ -540,6 +579,7 @@ tests:
           nothing and cannot fire: worker-pipeline.rules RepositoryWritesFailing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_retired_venue_side_rows
         severity: warning
       exp_annotations:
@@ -550,6 +590,7 @@ tests:
           nothing and cannot fire: cinema-scrape.rules RetiredVenueRowsLingering.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_scheduled_tick_interval_seconds
         severity: warning
       exp_annotations:
@@ -560,6 +601,7 @@ tests:
           nothing and cannot fire: scheduled-ticks.rules WorkerScheduledTickStale.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_scrape_guard_verdicts
         severity: warning
       exp_annotations:
@@ -570,6 +612,7 @@ tests:
           nothing and cannot fire: cinema-scrape.rules ScrapeGuardStuckRejecting.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_scrape_write_skipped
         severity: warning
       exp_annotations:
@@ -580,6 +623,7 @@ tests:
           nothing and cannot fire: cinema-scrape.rules ScrapeWritesSkipped.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_screenings_change_events
         severity: warning
       exp_annotations:
@@ -590,6 +634,7 @@ tests:
           nothing and cannot fire: read-model-projection.rules ReadModelProjectionTriggerUnaccounted.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_seasonal_venues_not_reopened
         severity: warning
       exp_annotations:
@@ -600,6 +645,7 @@ tests:
           nothing and cannot fire: runtime-invariants.rules SeasonalVenuesNotReopened.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_audit_confirmed
         severity: warning
       exp_annotations:
@@ -610,6 +656,7 @@ tests:
           nothing and cannot fire: runtime-invariants.rules ShareCardPointersUnresolvable.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_audited
         severity: warning
       exp_annotations:
@@ -620,6 +667,7 @@ tests:
           and cannot fire: runtime-invariants.rules ShareCardPointersUnresolvable.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_budget_bytes
         severity: warning
       exp_annotations:
@@ -630,6 +678,7 @@ tests:
           nothing and cannot fire: share-cards.rules ShareCardsNearBudget, share-cards.rules ShareCardsOverBudget.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_bytes
         severity: warning
       exp_annotations:
@@ -640,6 +689,7 @@ tests:
           and cannot fire: share-cards.rules ShareCardsNearBudget.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_city_coverage_ratio
         severity: warning
       exp_annotations:
@@ -650,6 +700,7 @@ tests:
           nothing and cannot fire: share-cards.rules ShareCardCityCoverageLow.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_current_bytes
         severity: warning
       exp_annotations:
@@ -660,6 +711,7 @@ tests:
           nothing and cannot fire: share-cards.rules ShareCardsOverBudget.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_min_free_bytes
         severity: warning
       exp_annotations:
@@ -670,6 +722,7 @@ tests:
           nothing and cannot fire: share-cards.rules ShareCardVolumeLowSpace.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_poster_load
         severity: warning
       exp_annotations:
@@ -680,6 +733,7 @@ tests:
           nothing and cannot fire: share-cards.rules ShareCardPosterFetchFailing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_refused
         severity: warning
       exp_annotations:
@@ -690,6 +744,7 @@ tests:
           and cannot fire: share-cards.rules ShareCardWritesRefused.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_render
         severity: warning
       exp_annotations:
@@ -700,6 +755,7 @@ tests:
           and cannot fire: share-cards.rules ShareCardRendersFailing.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_rescrape
         severity: warning
       exp_annotations:
@@ -710,6 +766,7 @@ tests:
           nothing and cannot fire: share-cards.rules ShareCardFacebookRateLimited, share-cards.rules ShareCardRescrapesNotDraining.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_rescrape_waiting
         severity: warning
       exp_annotations:
@@ -720,6 +777,7 @@ tests:
           nothing and cannot fire: share-cards.rules ShareCardRescrapesNotDraining.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_share_cards_volume_free_bytes
         severity: warning
       exp_annotations:
@@ -730,6 +788,7 @@ tests:
           nothing and cannot fire: share-cards.rules ShareCardVolumeLowSpace.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_tasks_finished
         severity: warning
       exp_annotations:
@@ -741,6 +800,7 @@ tests:
           worker-pipeline.rules WorkerTasksFailingRepeatedly.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_tasks_started
         severity: warning
       exp_annotations:
@@ -751,6 +811,7 @@ tests:
           cannot fire: worker-pipeline.rules WorkerQueueStalled.'
     - exp_labels:
         country: de
+        domain: monitoring
         metric: kinowo_worker_telegram_notifications
         severity: warning
       exp_annotations:
@@ -891,6 +952,142 @@ tests:
   - eval_time: 20m
     alertname: AppMetricAbsent
     exp_alerts: []
+- interval: 1m
+  input_series:
+  - series: up{job="kinowo-web",country="pl"}
+    values: 1x30
+  - series: up{job="kinowo-worker",country="pl"}
+    values: 1x30
+  - series: up{job="kinowo-web",country="de"}
+    values: 1x5 0 1x24
+  - series: up{job="kinowo-worker",country="de"}
+    values: 1x5 0 1x24
+  - series: kinowo_uptime_recent_failures{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_uptime_recent_successes{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_web_decode_failures_total{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_web_mongo_unauthorized_total{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_web_mongo_write_errors_total{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_web_scheduled_tick_interval_seconds{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_web_user_state_userid_index_unique{job="kinowo-web",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_alerter_enabled{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_change_stream_apply_lag_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_change_stream_last_event_age_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_cinema_content_stale_venues{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_cinema_scrape_never_scraped{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_city_off_season{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_copied_feed_pairs{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_corpus_movies{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_decode_failures_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_http_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_cutover_listings{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_suspect_takes{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_take_changes_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_take_reversals_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_integration_enabled{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_mongo_unauthorized_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_mongo_write_errors_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_movie_change_events_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_movie_slots_change_events_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_native_memory_bytes{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_paid_egress_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_queue_oldest_waiting_age_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_queue_parked_max_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_readmodel_content_audit_confirmed_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_readmodel_content_audited_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_readmodel_films_pruned_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_readmodel_heals_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_readmodel_venue_projections_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_readmodel_write_burst_seconds_count{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_repository_write_failed_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_retired_venue_side_rows{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_scheduled_tick_interval_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_scrape_guard_verdicts_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_scrape_write_skipped_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_screenings_change_events_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_seasonal_venues_not_reopened{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_audit_confirmed_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_audited_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_budget_bytes{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_bytes{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_city_coverage_ratio{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_current_bytes{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_min_free_bytes{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_poster_load_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_refused_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_render_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_rescrape_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_rescrape_waiting{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_share_cards_volume_free_bytes{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_tasks_finished_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_tasks_started_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_telegram_notifications_total{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  alert_rule_test:
+  - eval_time: 20m
+    alertname: AppMetricAbsent
+    exp_alerts: *id001
 - interval: 1m
   input_series:
   - series: up{job="kinowo-web",country="de"}

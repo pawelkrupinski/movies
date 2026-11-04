@@ -117,6 +117,9 @@ class MongoUserStateRepository(
 
   private lazy val coll: Option[MongoCollection[UserState]] = database.map { db =>
     val c = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState](UserStateRepository.Collection)
+    // The web's only write path: seeded here, at boot, or a country nobody has signed in to publishes no write-error
+    // series at all, which AppMetricAbsent reads as the counter unwired.
+    services.MongoWriteErrors.seed(c)
     uniqueUserIdIndexOrReport(db)
     c
   }

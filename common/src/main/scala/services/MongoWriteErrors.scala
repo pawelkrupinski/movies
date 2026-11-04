@@ -15,7 +15,8 @@ import scala.jdk.CollectionConverters._
  *    the document: a NUL in a field name, a codec missing), `rejected` (the server refused the document: a validator, a
  *    write concern; never a duplicate key alone, see [[kindOf]]) or `failed` (the write command itself failed). Alerted by `MongoWriteErrors`
  *    (mongodb-app.rules). Every collection a write reaches is seeded at 0 for each kind on its first write, so the first
- *    failure moves `increase()`;
+ *    failure moves `increase()`, and a store built at boot seeds its collection then ([[seed]]), so the family exists
+ *    before the first write;
  *  - `kinowo_<tier>_mongo_unauthorized_total{database}` — a command answered "not authorized on <db>" (code 13): the
  *    per-database grant `scripts/mongo-grants` gives is missing, and the pod stays healthy doing nothing. Seeded at 0 for
  *    each database a connection opens. Alerted (paged) by `MongoUnauthorized`.
@@ -76,6 +77,12 @@ object MongoWriteErrors {
   /** `body`, a write to `collection`, counted into the bound sink ([[Sink.counting]]). */
   def counted[A](collection: MongoCollection[?])(body: => A): A =
     sink.counting(collection.namespace.getDatabaseName, collection.namespace.getCollectionName)(body)
+
+  /** Seed `collection`'s series at 0 now, before any write: for a store built at boot whose first write may never come
+   *  (the web's `userStates` in a country with no signed-in visitor). Without it the family has no series at all, and
+   *  `AppMetricAbsent` (app-metrics-absent.rules) reads that as the counter unwired. Call after [[bind]]. */
+  def seed(collection: MongoCollection[?]): Unit =
+    sink.touched(collection.namespace.getDatabaseName, collection.namespace.getCollectionName)
 
   /** [[Sink.observe]] on the bound sink. */
   def observe(database: String, collection: String, exception: Throwable): Unit = sink.observe(database, collection, exception)
