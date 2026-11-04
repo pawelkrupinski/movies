@@ -97,7 +97,12 @@ class CorpusDiffSpec extends AnyFlatSpec with Matchers {
     diff.linesIterator.next() shouldBe "1 film(s) differ — tmdbProvisional ×1"
   }
 
-  it should "lead with which fields differ and how often, then show the first films, capped" in {
+  "the pending takes a pass ended with" should "name each take's listings and what it awaits, capped, and nothing decided" in {
+    val lines = CorpusDiff.awaiting(Seq(Seq("Kino B", "Kino A") -> Set("q2", "q1"), Seq("Kino C") -> Set.empty, Seq("Kino D") -> Set("q3")), limit = 1)
+    lines shouldBe Seq("Kino A | Kino B awaits q1; q2", "…and 1 more take(s)")
+  }
+
+  "the film diff" should "lead with which fields differ and how often, then show the first films, capped" in {
     import models.Kinoteka
     val a = (1 to 5).map(i => film(s"Film $i", Kinoteka, s"Film $i", tmdb = Some(i)))
     val b = (1 to 5).map(i => film(s"Film $i", Kinoteka, s"Film $i", tmdb = Some(100 + i)))

@@ -20,6 +20,15 @@ import models.{Showtime, SourceData}
  */
 object CorpusDiff {
 
+  /** Each take a pass ended Pending with, its listings and what it awaits, sorted so two passes' lines compare, capped.
+   *  What the film diff cannot say: `tmdbProvisional` differing names no question, and PL #798 and #824 ("Tajemnica
+   *  śpiewających ptaków", provisional in one pass of two, at rest) left nothing else to go on. */
+  def awaiting(pending: Seq[(Seq[String], Set[String])], limit: Int = 500): Seq[String] = {
+    val lines = pending.filter(_._2.nonEmpty).map { case (listings, questions) =>
+      s"${listings.sorted.take(3).mkString(" | ")} awaits ${questions.toSeq.sorted.take(6).mkString("; ")}" }.sorted
+    lines.take(limit) ++ Option.when(lines.sizeIs > limit)(s"…and ${lines.size - limit} more take(s)")
+  }
+
   private def short(x: Any): String = {
     val t = x.toString
     if (t.length > 140) s"${t.take(140)}…(len ${t.length})" else t
