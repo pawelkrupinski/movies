@@ -81,8 +81,12 @@ private[identity] object SearchMeasures {
    *  a one-word piece is many films' title ("Bhutan – Trails of Happiness" is not the 1928 "Bhutan") — and no
    *  Roman numeral in the rest: a numbered set ("Bolek i Lolek – zestaw IV") is an instalment, not the film;
    *  and a year the rest states agrees with the record's. */
-  def standsForTheWhole(l: Listing, f: Film): Boolean = {
-    val pieces = namingPieces(l, f).filter(_.sizeIs >= 2)
+  def standsForTheWhole(l: Listing, f: Film): Boolean = pieceStandsForTheWhole(l, f, words = 2)
+
+  /** [[standsForTheWhole]] for a piece of `words` words at least: one, where a fact of the listing's own (the director
+   *  it credits) tells the word's many films apart ([[AcceptanceFactRules.directorsTitleWhy]]). */
+  def pieceStandsForTheWhole(l: Listing, f: Film, words: Int): Boolean = {
+    val pieces = namingPieces(l, f).filter(_.sizeIs >= words)
     pieces.nonEmpty && {
       val rest  = l.ownForms.flatMap(_.words).toSet -- pieces.flatten
       // a year the rest states is the record's: "Disney Junior Cinema Club 2026" is not the 2024 edition

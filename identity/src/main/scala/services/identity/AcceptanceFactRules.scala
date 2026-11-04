@@ -127,16 +127,38 @@ private[identity] trait AcceptanceFactRules { this: Acceptance =>
    *  and the billed title names no eligible record exactly: a ticket page that copies the original title and director of
    *  the record a search for its billing hit states nothing that record does not, so the two cannot confirm it (DE
    *  kinoheld's "Tino Bomelino" as Tino {Anna Lucía Alcalá Pérez}, "Ganes" as Ganges; Fontane Klub's "Ich bin Dein",
-   *  Iram Haq's film by its title and runtime, credited to another "Jeg er din"'s director — run 38578038277). */
+   *  Iram Haq's film by its title and runtime, credited to another "Jeg er din"'s director — run 38578038277).
+   *
+   *  A whole delimited piece of the billing names it as its bare title does, the rest a banner, as `segment-top-hit` reads
+   *  it ([[byPiece]]) — one word too, the credited director telling the word's films apart: UK Keswick Alhambra's "KFC
+   *  Presents: Hen" {György Pálfi} is his 2026 "Hen", not the Afrikaans 2025 one TMDB ranks first. */
   private[identity] def directorsTitleWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     lazy val titled = eligible.exists(_.category("title").contains("exact"))
     def byOriginal(candidate: Scored) =
       candidate.category("originalTitle").contains("match") && candidate.listing.originalStandsApart && !titled
     one(withoutHollow(eligible.filter(candidate =>
-      (candidate.category("title").contains("exact") || byOriginal(candidate)) &&
+      (candidate.category("title").contains("exact") || byOriginal(candidate) || byPiece(candidate)) &&
       candidate.ownCredit && !contradicted(candidate))),
       "no film of its exact title by its credited director", "two films of its title by its director", credited(ranked)).map(atOwn)
+  }
+
+  /** Does a whole delimited piece of the listing's OWN billing (a banner's rest, after its colon, dash or pipe:
+   *  `SearchTitles.candidates` of its title alone) name the candidate, standing for the whole
+   *  ([[SearchMeasures.pieceStandsForTheWhole]], one word enough) in a billing of one work? Not a shape its published
+   *  original title or its search titles give it: a ticket page copying the original title and director of the record a
+   *  search hit (DE kinoheld's "DAS PACK" as Pack {Peiqi Peng}) states nothing that record does not. */
+  private[identity] def byPiece(candidate: Scored): Boolean =
+    candidate.category("title").contains("segment") && billedAsAPiece(candidate) && !MultiFilmBill.billsTwoWorks(candidate.listing) &&
+      !IdentityMeasures.joinsAnotherWork(candidate.listing, candidate.candidate.film) &&
+      SearchMeasures.pieceStandsForTheWhole(candidate.listing, candidate.candidate.film, words = 1)
+
+  private def billedAsAPiece(candidate: Scored): Boolean = {
+    val listing = candidate.listing
+    val whole   = listing.ownTitles.map(IdentityMeasures.key).toSet
+    val pieces  = listing.ownTitles.flatMap(services.resolution.SearchTitles.candidates(_, None)).map(IdentityMeasures.key)
+      .filter(key => key.nonEmpty && !whole(key)).toSet
+    candidate.candidate.film.ownTitles.exists(title => pieces(IdentityMeasures.key(title)))
   }
 
   /** The one eligible candidate the listing's title names EXACTLY from the year its title dates it

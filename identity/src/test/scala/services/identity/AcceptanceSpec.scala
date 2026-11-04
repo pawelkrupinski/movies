@@ -256,6 +256,20 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.byRule("directors-title")(ranked(listing, first, longer)) shouldBe None
   }
 
+  it should "take the one record by that director a whole delimited piece of the billing names, one word too" in {
+    // UK Keswick Alhambra's "KFC Presents: Hen" {György Pálfi}, 118′: TMDB ranks the Afrikaans 2025 "Hen" first; Pálfi's
+    // 2026 "Hen" is the only one he directed. A banner's rest names the film as its bare title does.
+    val keswick   = Listing("KFC Presents: Hen", runtime = Some(118), directors = Seq("György Pálfi"))
+    val afrikaans = (1534155, Film("Hen", year = Some(2025), runtime = Some(108), directors = Some(Seq("Someone Else"))), Some(1))
+    val palfi     = (1382513, Film("Hen", year = Some(2026), runtime = Some(96), directors = Some(Seq("György Pálfi"))), Some(2))
+    acceptance.byRule("directors-title")(ranked(keswick, afrikaans, palfi)).map(_._1.candidate.tmdbId) shouldBe Some(1382513)
+    // a piece beside a second work, or a word merely ending the billing, names no film alone
+    acceptance.byRule("directors-title")(ranked(Listing("KFC Presents: Hen + Taxidermia", directors = Seq("György Pálfi")), afrikaans, palfi)) shouldBe None
+    acceptance.byRule("directors-title")(ranked(Listing("Little Red Hen", directors = Seq("György Pálfi")), afrikaans, palfi)) shouldBe None
+    // the director credited by the venue's text alone is no billed credit
+    acceptance.byRule("directors-title")(ranked(Listing("KFC Presents: Hen", runtime = Some(118)), afrikaans, palfi)) shouldBe None
+  }
+
   it should "take nothing by a published original title that is a part or a near-spelling of the billing, or beside a record the billing names" in {
     // DE kinoheld's event tickets (run 38578038277), each published with the original title and director of the record a
     // search for the billing hit — the "facts" are that record's, so they cannot confirm it: a word of the billing
