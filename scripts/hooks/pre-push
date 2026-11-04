@@ -54,6 +54,8 @@
 #                 The population walk (PopulationMonotonicitySpec) is judged AGAINST THE MERGE BASE: a slice whose flips
 #                 differ from the known rows is walked again with the base's code (scripts/ci/population-walk-diff), and
 #                 only a flip the base lacks (or a known row cured) refuses -- the listing, slice and chain named
+#                 Its rows are kept per digest of its code and data (sbt identityWalkDigest) and per slice content:
+#                 a change leaving both as a checked commit had them walks only the slices whose files differ
 #   `page`        local-tests.txt's `page` lines, on a change to the page paths (is_page_path): the page specs and the
 #                 Playwright rows CI runs (scripts/page-tests-local: Chromium and WebKit, ~11 min warm)
 #   `identitydrift` scripts/identity-drift-ci --for-red <run>, on a push to main whose commits carry `Fixes-Red: <run>` (and no
