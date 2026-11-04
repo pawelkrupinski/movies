@@ -28,9 +28,12 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
    *  time five minutes off is no backing beside a year that dates another film — UK Tower Cinema Skegness's "Hocus Pocus"
    *  [2026] [96′], its year the screening's, took the Slovak "Hocus-pocus" (2025, 101′, released in Czechia and Slovakia
    *  alone) past the veto on that running time while the 1993 film stood released in Britain beside it. */
-  def factsSupport(scored: Scored): Boolean = {
+  def factsSupport(scored: Scored): Boolean = factsSupport(scored, Set.empty)
+
+  /** [[factsSupport]] leaving `silent` out: published facts that say nothing between this film and another. */
+  def factsSupport(scored: Scored, silent: Set[String]): Boolean = {
     // summed in place, as every rule asks it per candidate: no tuple or option per signal
-    val published: IdentityCalibration.Weighed = (name, _) => !NotOwn(name) && name != "title" && !missing(scored, name)
+    val published: IdentityCalibration.Weighed = (name, _) => !NotOwn(name) && name != "title" && !silent(name) && !missing(scored, name)
     calibration.contributionSumWhere(ListingFilm, scored.measures, (name, weight) => weight > 0 && published(name, weight), (_, _) => 1.0) > 0 &&
       calibration.contributionSumWhere(ListingFilm, scored.measures, published) > 0
   }

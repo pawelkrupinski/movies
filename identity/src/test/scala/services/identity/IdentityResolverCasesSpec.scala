@@ -2345,6 +2345,30 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "veto a film a banner's segment names beside one released there that season, a longer slot backing neither" in {
+    // UK Mowlem's "Purbeck Film Festival - Hen" [110′], October 2026: the 108′ Afrikaans "Hen" dates no British release,
+    // Pálfi's 96′ opened that February, and the banner's segment names both alike. A slot runs the film and more.
+    val unreleased = F(1534155, "Stan wyjątkowy", 2025, "", 108, 3, releaseCountries = Some("CZ"))
+    def decided(runtime: Int, opened: Int, others: Seq[F] = Nil, title: String = "Kino Nocne: Stan wyjątkowy") = {
+      val released = F(1382513, "Stan wyjątkowy", opened, "", runtime, 1, releaseCountries = Some("PLHR"), releases = Some(s"PL$opened-"))
+      val billed = listing(Rialto, title, runtime = Some(110)).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 29))))
+      IdentityResolver.resolve(Seq(billed), new FilmTable(Seq(unreleased, released) ++ others, normalizer), normalizer,
+        ResolveInputs.Unpinned.copy(calibration = withoutClasses)).decisionOf(billed.key)
+    }
+    val veto = "vetoed: not released in PL, as namesake 1382513 is"
+    val slot = decided(96, 2026)
+    withClue(slot.render)(slot.explanation.mkString should include (veto))
+    // a programme shows films with no release there as a matter of course: an old release beside it says nothing
+    val old = decided(96, 2018)
+    withClue(old.render)(old.explanation.mkString should not include veto)
+    // a running time the released film cannot fill -- its 130′ will not go into 110′ -- does tell them apart
+    val shorter = decided(130, 2026)
+    withClue(shorter.render)(shorter.explanation.mkString should not include veto)
+    // PL "Lalka (DOLLY)" bills two works, no banner: the film its other piece names keeps the veto off
+    val two = decided(96, 2026, Seq(F(1309083, "Dolly", 2026, "", 90, 2)), title = "Stan wyjątkowy / Dolly")
+    withClue(two.render)(two.explanation.mkString should not include veto)
+  }
+
   it should "make the record a reused page copied no TMDB vote when it takes nothing" in {
     // DE Kino in der Scheune Dresden's "Regio Tales" (prod 2026-10-21): kinoheld's page copies the original title "Heads and
     // Tales" and its director onto an event of the culture centre. The model refused the record (its page reads as reused),

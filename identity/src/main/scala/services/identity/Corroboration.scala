@@ -39,7 +39,7 @@ private[identity] object Corroboration {
    *  film and more (adverts, trailers, an intro), so a longer one says nothing against it ([[agreement.Agreement.runsShort]]).
    *  UK Mowlem's "Purbeck Film Festival - Hen" at 110 minutes fits Pálfi's 96-minute "Hen" as well as the 108-minute
    *  Afrikaans one: its runtime tells neither apart (convergence #792). */
-  private def fits(rival: Scored): Boolean =
+  def fits(rival: Scored): Boolean =
     rival.number("runtime.delta").exists(delta => math.abs(delta) <= RuntimeBand || delta > 0)
 
   /** The facts by which `own` — the node's scoring of the film — corroborates it, `rivals` being the node's other

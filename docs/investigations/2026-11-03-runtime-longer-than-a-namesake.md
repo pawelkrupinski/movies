@@ -27,3 +27,22 @@ existing `support` count decides only as it did before.
 PL, DE, UK, US, ES -- 0 lost, 0 right->wrong, 0 new wrong; the one move is UK model: Purbeck "Hen" tmdb:1534155 -> none
 (a cure); every country's final takes unchanged. Pinned: `identity-slices/uk-mowlem-theatre-purbeck-film-festival-hen-*`
 (IdentitySliceCasesSpec: fails before, passes after); drift slices (IdentityDriftSlicesSpec) all clean.
+
+## Second step (red #818): the release veto, so the fix needs no other listing
+The refusal above needs a namesake taken on their own facts by two other nodes. 84cba51ce03 (the solver) left Keswick's and
+Lighthouse's billings alone, that support fell below two, and Purbeck took 1534155 again: the fix had leaned on the
+population. TMDB's own record separates the two films: 1382513 opened in Britain in February 2026, the season the listing
+screens in; 1534155 dates no British release. `ReleaseVeto` says so and missed Purbeck twice: a title naming its film by a
+segment beside a banner was no namesake, and the 110′ backed 1534155 past it. `ReleaseVeto.ofBanner` is that veto for a title
+naming no film whole and ONE work beside its banner: a film that segment names, beside one released there IN THE SCREENING
+SEASON, unbacked by the listing's facts, a running time the released film fits too backing nothing. It reads only the listing
+and the records.
+
+Measured wider first and refused: every shared segment, at any release date, and the silent runtime on exact titles too
+(run 41735463398) lost German right takes and moved "Felix": a programme shows films with no local release as a matter of
+course (a sneak, a retrospective). Beside a title naming more than one work it lost UK "The Metropolitan Opera: Macbeth"
+(41740049168), which names the Met's record by its house too, and Poland's four "Lalka / Dolly" billings at the final stage
+(41750159492, reproduced by 41755227388), the veto of a "Lalka" namesake disturbing the vote that took "Dolly".
+
+Final form: run 41755999199, all five countries, both stages: 0 lost, 0 right->wrong, 0 new wrong; UK model cure Purbeck
+"Hen" 1534155 -> 1382513, and one gain judged right (Old Market Hall "Starlight Express - Live On Stage"); no final take moved.
