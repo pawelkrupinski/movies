@@ -166,9 +166,9 @@ class LogCaptureSpec extends AnyFlatSpec with Matchers {
     LogCapture.capture(Logger) {
       resetter.start()
       attempted.await()
-      withClue("an exclusive section must not start while a capture runs: ")(entered.await(150, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe false)
+      withClue("an exclusive section must not start while a capture runs: ")(entered.await(SpecTimeouts.quiet(scala.concurrent.duration.DurationInt(150).millis).toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe false)
     }
-    withClue("and must start once the capture is done: ")(entered.await(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe true)
+    withClue("and must start once the capture is done: ")(entered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true)
     resetter.join()
   }
 }
