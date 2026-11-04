@@ -1146,7 +1146,8 @@ run_local_tests() { # <set>
     if [ "${#cmds[@]}" -gt 0 ]; then
         scripts/sbt-warm "${cmds[@]}" > "$tmp/$1.log" 2>&1 || rc=1
     fi
-    if [ "$rc" = 0 ] && [ -n "$popwalk" ] && [ -d "$popwalk" ]; then
+    # judged even when another spec failed: the refusal names its listings beside the other failures
+    if [ -n "$popwalk" ] && [ -d "$popwalk" ]; then
         local walk_base
         walk_base="$(git merge-base "$base_sha" "$head_sha" 2>/dev/null || echo "$base_sha")"
         scripts/ci/population-walk-diff "$popwalk" "$walk_base" >> "$tmp/$1.log" 2>&1 || rc=1
