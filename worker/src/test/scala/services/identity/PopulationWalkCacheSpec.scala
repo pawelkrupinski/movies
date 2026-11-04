@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 /** The population walk's row cache ([[PopulationMonotonicitySpec.Cached]]): a slice kept under a digest is read back, the
  *  same rows; a slice whose files differ, or another digest, walks again; a failed walk is not kept. */
-class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers {
+class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
   import PopulationMonotonicitySpec.{Cached, Row}
 
   private val rows = Seq(
@@ -29,7 +29,7 @@ class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   "A kept slice" should "be read back, not walked again, until its files or the digest differ" in {
-    val root   = Files.createTempDirectory("population-walk-cache")
+    val root   = tempDirectory("population-walk-cache")
     val dir    = slice(root, "s1", "one")
     val walks  = new AtomicInteger
     def walking(@annotation.unused d: Path) = { walks.incrementAndGet(); rows }
@@ -45,7 +45,7 @@ class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "key a file's bytes and its name" in {
-    val root = Files.createTempDirectory("population-walk-key")
+    val root = tempDirectory("population-walk-key")
     val a    = Cached.key(slice(root, "a", "x"))
     val b    = Cached.key(slice(root, "b", "y"))
     val c    = slice(root, "c", "x")
@@ -56,7 +56,7 @@ class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   "A failed walk" should "not be kept" in {
-    val root   = Files.createTempDirectory("population-walk-failed")
+    val root   = tempDirectory("population-walk-failed")
     val dir    = slice(root, "s", "z")
     val digest = root.resolve("d")
     an[IllegalStateException] should be thrownBy Cached.walk(digest, dir, _ => throw new IllegalStateException("boom"))
