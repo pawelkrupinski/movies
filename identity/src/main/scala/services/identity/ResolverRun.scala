@@ -50,7 +50,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
   private val roundAByFamily = roundAEdges.groupBy(edge => familyOf(edge.a))
 
   /** Is the namesake rule on ([[NamesakeAmbiguity]]): each namesake-ambiguous listing decided apart, as no film. */
-  private val NamesakeRule = false
+  private val NamesakeRule = true
   private lazy val evidenceOf: Map[ListingKey, Evidence] = generation.withEvidence.map { case (listing, evidence) => listing.key -> evidence }.toMap
 
   /** The resolution: every family's decisions, and the resolve's counts. */
