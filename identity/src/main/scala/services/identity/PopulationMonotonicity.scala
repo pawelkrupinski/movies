@@ -194,6 +194,54 @@ object PopulationMonotonicity {
     Report(families.size, walked, large.size, fits.size - walked, elapsed, flipped, apart, contested)
   }
 
+  /** A NAMESAKE-AMBIGUOUS listing ([[NamesakeAmbiguity]]) whose take MOVED along its family's arrival chains: each
+   *  distinct take, with the chain and prefix size it was first read at. */
+  final case class NamesakeMove(key: ListingKey, takes: Seq[(String, Int, Int)]) {
+    def line: String = s"${key.venue} | ${key.rawTitle}: " + takes.map { case (take, chain, n) => s"$take@$n [chain $chain]" }.mkString(", ")
+  }
+  /** A listing whose namesake-ambiguity a prefix read otherwise than the whole resolve: at that prefix size and chain. */
+  final case class NamesakeReclassed(key: ListingKey, whole: Boolean, chain: Int, size: Int) {
+    def line: String = s"${key.venue} | ${key.rawTitle}: ${if (whole) "ambiguous" else "decidable"} whole, ${if (whole) "decidable" else "ambiguous"} at $size [chain $chain]"
+  }
+  /** What a walk of the namesakes saw: the ambiguous listings' takes that moved, the listings classified otherwise. */
+  final case class NamesakeWalk(moves: Seq[NamesakeMove], reclassed: Seq[NamesakeReclassed])
+
+  /** THE NAMESAKE PROPERTIES (the owner, 2026-11-04: a take is a pure function of the current inputs; "incremental ==
+   *  whole"): (a) a listing namesake-ambiguous in the whole resolve takes the same at every prefix of every arrival chain
+   *  of its family -- not only never back to a value it left, but never moved by an arrival at all; (b) whether a listing
+   *  is namesake-ambiguous is the same in every prefix as in the whole resolve: a function of the listing and TMDB alone.
+   *  Every family of `whole` holding a `focus`ed listing and two listings or more, walked along `count` chains of at most
+   *  `steps` steps (as [[report]] walks them); a Pending take is no take. */
+  def namesakeWalk(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs, whole: Resolution,
+                   count: Int, steps: Int, focus: ListingKey => Boolean): NamesakeWalk = {
+    val all        = listings.sorted.distinctBy(_.key)
+    val generation = new CandidateGeneration(all, lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
+    val without    = new Without.Index(generation.nodes)
+    val families   = all.groupBy(l => whole.familyOf.getOrElse(l.key, -1)).toSeq
+      .filter { case (id, ls) => id >= 0 && ls.sizeIs >= 2 && ls.exists(l => focus(l.key)) }.sortBy(_._1)
+    val walked = families.map { case (_, members) =>
+      val keys = members.map(_.key).toSet
+      val seen = chains(members, MurmurHash3.stringHash(members.head.sortKey).toLong, count, steps).zipWithIndex.flatMap { case (chain, c) =>
+        chain.map { prefix =>
+          val present = prefix.map(_.key).toSet
+          val r = IdentityResolver.resolveWith(prefix, lookups, normalizer, inputs.calibration, IdentityResolver.Mutation.None, inputs.pins,
+            inputs.decorations, Some(without(generation.context, keys -- present)))
+          (c, prefix.size, prefix.map(l => (l.key, r.decisionOf.get(l.key).flatMap(takeOf), r.namesakeAmbiguous(l.key))))
+        }
+      }
+      val takes = seen.flatMap { case (c, n, read) => read.collect { case (key, take, _) if whole.namesakeAmbiguous(key) => (key, (take, c, n)) } }
+      val moves = takes.groupMap(_._1)(_._2).toSeq.flatMap { case (key, read) =>
+        val firsts = read.collect { case (Some(take), c, n) => (take, c, n) }.groupBy(_._1).values.map(_.minBy { case (_, c, n) => (c, n) }).toSeq.sortBy { case (_, c, n) => (c, n) }
+        Option.when(firsts.sizeIs > 1)(NamesakeMove(key, firsts))
+      }.sortBy(m => (m.key.rawTitle, m.key.venue))
+      val reclassed = seen.flatMap { case (c, n, read) => read.collect {
+        case (key, _, ambiguous) if focus(key) && ambiguous != whole.namesakeAmbiguous(key) => NamesakeReclassed(key, whole.namesakeAmbiguous(key), c, n) } }
+        .distinctBy(_.key).sortBy(r => (r.key.rawTitle, r.key.venue))
+      (moves, reclassed)
+    }
+    NamesakeWalk(walked.flatMap(_._1), walked.flatMap(_._2))
+  }
+
   /**
    * The corpus's context with some listings ABSENT: their title-group entries ([[CorpusContext.titleGroup]], what a film's
    * backing reads) and their nodes' reached candidates ([[CorpusContext.reachedBy]]) gone, a node that keeps a present

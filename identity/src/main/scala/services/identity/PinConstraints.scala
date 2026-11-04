@@ -69,6 +69,10 @@ final case class PinConstraints(pins: Seq[Pin]) {
   def filmOf(k: ListingKey): Option[Int] =
     groupOf.get(k).flatMap(pinnedFilms.get).filter(_.sizeIs == 1).map(_.head)
 
+  /** Is `k` pinned together with another listing (a same-film pin, or a pin of both to one film)? A curator's link of its
+   *  own to another listing: no namesake-ambiguous listing ([[NamesakeAmbiguity]]). */
+  def pinnedTogether(k: ListingKey): Boolean = members(k).sizeIs > 1
+
   /** The films the pins say `k` never is (its whole group's). */
   def deniedFilms(k: ListingKey): Set[Int] = deniedByGroup.getOrElse(groupOf.getOrElse(k, k), Set.empty)
 

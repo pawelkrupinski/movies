@@ -18,14 +18,24 @@ import scala.collection.mutable
  *  AGREE OR NONE (2026-10-29), which took no film where the pool with and without the pending films disagreed: UK
  *  flicks.co.uk "Rose (2023)" now serves "Rose Parade 2023", its search's one hit, provisionally until the parade's record
  *  denies it, and the pending tally (IdentityDrift) counts how often such a take differs from the final one. */
+/* `titleOnly`: a ONE-LISTING node's scope read for its own facts alone ([[NamesakeAmbiguity]]): its own queries' reach,
+ * no feed link (a link is a fact [[NamesakeAmbiguity.ownDecided]] reads apart) and no candidate another same-titled node
+ * of the corpus reached ([[CorpusContext.sharedOf]]: the listings present). */
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
-                                          counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false) {
+                                          counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false,
+                                          titleOnly: Boolean = false) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyAProgrammeSlot, namesOnlyATag, namesOnlyItsVenue, pins}
   import scoring.generation.{candidateById, candidateOf, fallbackOf, sharedOf}
 
+  // the films `node`'s own queries reached: read afresh for a one-listing node of a `titleOnly` scope, no node of the generation
+  private def reachedBy(node: EvidenceNode): Seq[Int] =
+    if (!titleOnly) scoring.generation.reached(node)
+    else { val own = scoring.generation.reachOf(CandidateQueries.of(node.evidence)); CandidateGeneration.reached(own.search, own.walk) }
+
   val pool: Seq[Candidate] =
     if (fallback) members.flatMap(member => fallbackOf(member.id)).distinct.sorted.flatMap(candidateOf)
-    else members.flatMap(member => scoring.generation.reached(member)).distinct.sorted.map(candidateById)
+    else members.flatMap(reachedBy)
+      .distinct.sorted.map(candidateById)
 
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
    *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
@@ -219,7 +229,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLink.linked]]) — none where this resolve's films are a
    *  family's own numbers, which no TMDB id names ([[IdentityLookups.numbersFilmsByTmdbId]]). */
   private[identity] def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    if (scoring.generation.numbersFilmsByTmdbId) FeedLink.linked(node.listings) else None
+    if (scoring.generation.numbersFilmsByTmdbId && !titleOnly) FeedLink.linked(node.listings) else None
 
   /** [[feedLinked]], where the original title on `node` is the feed's copy, only Support ([[SourceReliability.Fact.OriginalTitle]]):
    *  the link the copied-title and short denials read — a venue's own original title is its claim, never a copy's pull. */
@@ -302,7 +312,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  ranked Kiselyov's 2022 film first and let IMDb's suggestion take it. Its pool stays the family's: a candidate the
    *  link alone reached is scored as any other the title names, with no rank. */
   private[identity] def reach(node: EvidenceNode): CandidateGeneration.Reach =
-    if (overruled(node).isEmpty) scoring.generation.reach(node.id)
+    if (titleOnly) reachMemo.getOrElseUpdate(node.id, scoring.generation.reachOf(CandidateQueries.of(node.evidence)))
+    else if (overruled(node).isEmpty) scoring.generation.reach(node.id)
     else reachMemo.getOrElseUpdate(node.id, scoring.generation.reachOf(CandidateQueries.of(node.evidence.titlesOnly)))
   private val reachMemo = mutable.HashMap.empty[String, CandidateGeneration.Reach]
 
@@ -314,7 +325,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def scoreOf(node: EvidenceNode): Seq[Scored] = {
     val reached = reach(node)
     val soles   = soleResultsOf(evidenceOf(node).measured, reached)
-    score(evidenceOf(node).measured, node.venue, sourceOf(node), reached.search, reached.walk, sharedOf(node),
+    score(evidenceOf(node).measured, node.venue, sourceOf(node), reached.search, reached.walk, if (titleOnly) Set.empty else sharedOf(node),
       id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet,
       textNames(Seq(node))).map(placedByImdb(Seq(node)))
       .map(scored => if (soles(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
@@ -433,7 +444,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         billingOf(node).castIsTheFilms))
       // a plain billing whose own text credits another film's director, never the relay's
       .orElse(Option.when(RelayRecords.contradictedByOwnText(node.listings, candidateById(id).film,
-        scoring.generation.reached(node).filterNot(_ == id).map(other => candidateById(other).film)))(RelayRecords.OwnTextDenial)).map(Denial(_)))
+        reachedBy(node).filterNot(_ == id).map(other => candidateById(other).film)))(RelayRecords.OwnTextDenial)).map(Denial(_)))
 
   /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
    *  festival billed by its name alone ([[services.billing.BillingParse.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),

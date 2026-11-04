@@ -570,7 +570,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       pass.correcting += key
       corrected(decision, listingOf, key, pass)
     }
-    else if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
+    // a namesake-ambiguous listing's decision is its own facts' ([[services.identity.NamesakeAmbiguity]]): no family,
+    // poster, fill or catalogue reads the listings around it again
+    else if (decision.trace.namesake || decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
     else {
       val now = eventOf(decision, listingOf) match {
         // an event no film database holds: no family is asked about it, no poster hashed, no verdict kept

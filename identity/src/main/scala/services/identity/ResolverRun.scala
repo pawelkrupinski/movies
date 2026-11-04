@@ -49,6 +49,10 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
   if (crossings.nonEmpty) throw new FamilyCrossing(crossings.size, s"${crossings.size} edge(s) cross a family, e.g. ${crossings.head}")
   private val roundAByFamily = roundAEdges.groupBy(edge => familyOf(edge.a))
 
+  /** Is the namesake rule on ([[NamesakeAmbiguity]]): each namesake-ambiguous listing decided apart, as no film. */
+  private val NamesakeRule = false
+  private lazy val evidenceOf: Map[ListingKey, Evidence] = generation.withEvidence.map { case (listing, evidence) => listing.key -> evidence }.toMap
+
   /** The resolution: every family's decisions, and the resolve's counts. */
   def resolution: Resolution = {
     val runs      = nodes.groupBy(node => familyOf(node.id)).toSeq.sortBy(_._1).map { case (family, members0) => new FamilyRun(family, members0.sortBy(_.id)) }
@@ -68,7 +72,8 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       films          = decided.flatMap(_.film).distinct.flatMap(id => candidateOf(id).map(id -> _.film)).toMap,
       scorings       = families.scorings,
       titleRelations = families.titleRelations,
-      contested      = runs.flatMap(_.contested).toMap)
+      contested      = runs.flatMap(_.contested).toMap,
+      namesakeAmbiguous = runs.flatMap(_.namesakeAmbiguous).toSet)
   }
 
   /** One family's assignment: round A's clusters, the votes of those no member matched alone, the final clusters, and
@@ -118,14 +123,61 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     private def linked(node: EvidenceNode) = scope.feedLinked(node).map(_._2)
     private val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of, linked)
 
-    def decided: (Seq[ResolverEdge], Seq[ResolverDecision], Int) = (familyEdges, clusters.flatMap(decide), violations)
+    def decided: (Seq[ResolverEdge], Seq[ResolverDecision], Int) = (familyEdges, clusters.flatMap(decideWithNamesakes), violations)
+
+    // ── NAMESAKE-AMBIGUOUS listings ([[NamesakeAmbiguity]]): each node read on a scope of its own, apart from its family ──
+    private val namesakes: Map[String, (Set[ListingKey], Seq[Int])] =
+      if (mutation == Mutation.NoVoting) Map.empty
+      else members.filterNot(node => families.pinnedFilm.contains(node.id)).flatMap { node =>
+        val read = node.listings.filterNot(NamesakeAmbiguity.ownDecided(_, scoring.pins)).flatMap { listing =>
+          // the listing read as a node of its own: its own text, venue and cast, never its node's other listings'
+          val alone  = new EvidenceNode(evidenceOf(listing.key), Seq(listing))
+          val scored = new FamilyScope(Seq(alone), scoring, acceptance, () => (), titleOnly = true).of(alone)
+          // a billing of several works is none of them, as in a cluster
+          val works  = if (acceptance.billsSeveralWorks(scored)) Nil else NamesakeAmbiguity.namesakes(alone, scored)
+          Option.when(works.nonEmpty)(listing.key -> works)
+        }
+        Option.when(read.nonEmpty)(node.id -> (read.map(_._1).toSet, read.flatMap(_._2).distinct.sorted))
+      }.toMap
+    private val namesakeKeys: Set[ListingKey] = namesakes.values.flatMap(_._1).toSet
+    def namesakeAmbiguous: Set[ListingKey] = namesakeKeys
+
+    /** A cluster's decisions with its namesake-ambiguous listings taken out, each as no film: the rest decided as the
+     *  cluster would be, its film kept. */
+    private def decideWithNamesakes(cluster: Seq[EvidenceNode]): Seq[ResolverDecision] = {
+      val holding = if (NamesakeRule) cluster.filter(node => namesakes.contains(node.id)) else Nil
+      if (holding.isEmpty) decide(cluster)
+      else {
+        val film = cluster.iterator.flatMap(node => filmOf(node.id)).nextOption()
+        val rest = cluster.filterNot(node => namesakes.get(node.id).exists(_._1.size == node.listings.size))
+        Option.when(rest.nonEmpty)(rest).toSeq.flatMap(decide(_, id => filmOf(id).orElse(film))).flatMap(without(namesakeKeys)) ++
+          holding.map(namesakeNone)
+      }
+    }
+
+    // a decision with `keys` taken out of its members, none when it keeps none
+    private def without(keys: Set[ListingKey])(decision: ResolverDecision): Option[ResolverDecision] =
+      if (!decision.members.exists(keys)) Some(decision)
+      else Option.when(decision.members.exists(key => !keys(key)))(keeping(decision, decision.members.filterNot(keys)))
+
+    private def keeping(decision: ResolverDecision, members: Seq[ListingKey]): ResolverDecision = {
+      val kept = members.toSet
+      decision.copy(members = members)(decision.trace.copy(nodes = decision.trace.nodes.filter { case (key, _) => kept(key) }))
+    }
+
+    private def namesakeNone(node: EvidenceNode): ResolverDecision = {
+      val (keys, works) = namesakes(node.id)
+      val neither = decisions.of(Seq(node), scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex)
+      val marked  = neither.copy(explanation = NamesakeAmbiguity.why(works) +: neither.explanation, fallback = None)(neither.trace.copy(namesake = true))
+      keeping(marked, marked.members.filter(keys))
+    }
 
     /** One cluster's decisions: the cluster's own, or — where some of its members bill several works, bill its film as
      *  one piece beside another thing, or take it uncorroborated — the rest's, and each such group's as none. */
-    private def decide(cluster: Seq[EvidenceNode]): Seq[ResolverDecision] = {
+    private def decide(cluster: Seq[EvidenceNode], taking: String => Option[Int] = id => filmOf(id)): Seq[ResolverDecision] = {
       val (bills, unbilled) = cluster.partition(node => billing(node.id))
       // a member billing its cluster's film as one piece beside another thing is none of it either — unless a pin took it
-      val film   = cluster.iterator.flatMap(node => filmOf(node.id)).nextOption()
+      val film   = cluster.iterator.flatMap(node => taking(node.id)).nextOption()
       val pinned = cluster.exists(node => families.pinnedFilm.contains(node.id))
       val piecesOf = billedAsPieces(unbilled, film, pinned)
       val placed = unbilled.filterNot(piecesOf.contains)
@@ -133,7 +185,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, linked, familyEdges, backed)).toMap
       val rest   = placed.filterNot(weak.contains)
       if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
-        Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
+        Seq(decisions.of(cluster, scope, taking, accepted, votes, familyEdges, clusterIndex))
       else
         restDecided(rest, film) ++
           Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), DecisionTrace.BillsBoth)) ++
