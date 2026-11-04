@@ -358,6 +358,8 @@ printf 'sbt-warm' >> "$AREA_CALLS"; printf ' [%s]' "$@" >> "$AREA_CALLS"; echo >
 case "$*" in *"${SBTWARM_FAILS:-no such}"*) echo "[error] Failed: Total 3, Failed 1"; exit 1 ;; esac
 # the test-impact task: the classes $IMPACT_LINES names (unset: no answer, and the hook runs every identity test)
 case "$1" in identityImpact\ *) [ -n "${IMPACT_LINES+x}" ] && printf '%b' "$IMPACT_LINES" > "${1##* }" ;; esac
+# the population walk's digest task: $WALK_DIGEST (unset: an empty answer, no rows kept)
+case "$1" in identityWalkDigest\ *) printf '%s' "${WALK_DIGEST:-}" > "${1##* }" ;; esac
 # the population walk's candidate (PopulationMonotonicitySpec): $SBTWARM_CANDIDATE written into the line's directory
 for a in "$@"; do case "$a" in *-Didentity.population.candidates=*) [ -n "${SBTWARM_CANDIDATE:-}" ] && { d="${a##*-Didentity.population.candidates=}"
   d="${d%% *}"; mkdir -p "$d" && printf '%b' "$SBTWARM_CANDIDATE" > "$d/s.tsv"; } ;; esac; done
@@ -391,6 +393,13 @@ check "an identity change runs the identity set in one sbt-warm call, and the ba
   "$code $(calls '\[identity/test\] \[worker/testOnly services.identity.\* -- -Didentity.population.candidates=[^]]*/population-walk\]') $(basic_ran) $(calls PageTest) $(calls playwright)"
 check "...and no longer asks whether identity-landing-check said LANDABLE" "0 0" \
   "$(grep -c 'LANDABLE' "$testroot/area-out") $(grep -c 'identity-landing-check' "$testroot/area-out")"
+walk_digest=abababababababababababababababababababababababababababababababab
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala WALK_DIGEST=$walk_digest KINOWO_POPULATION_WALK_ROWS="$testroot/walk-rows")"
+check "a walk digest keeps the population walk's rows under it: every identity line names the digest's directory" "0 1 1" \
+  "$code $(calls "\\[worker/testOnly services.identity.\\* -- -Didentity.population.candidates=[^] ]*/population-walk -Didentity.population.cache=$testroot/walk-rows/$walk_digest\\]") $([ -d "$testroot/walk-rows/$walk_digest" ] && echo 1 || echo 0)"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala KINOWO_POPULATION_WALK_ROWS="$testroot/walk-rows")"
+check "...and none without one: every slice walks" "0 0 1" \
+  "$code $(calls 'population.cache=') $(grep -c 'no population walk digest' "$testroot/area-out")"
 code="$(area_push web/src/main/assets/js/a.js)"
 check "a page change runs the page set -- its sbt lines, then its sh lines -- and the basic set, not the identity set" \
   "0 1 1 1 0" "$code $(calls '\[web/PageTest/test\]') $(calls playwright-chromium) $(basic_ran) $(calls identity/test)"
