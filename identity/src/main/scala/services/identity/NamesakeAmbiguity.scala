@@ -57,9 +57,11 @@ private[identity] object NamesakeAmbiguity {
   }
 
   /** Does a fact of `listing`'s own, read apart from its node, decide it -- a pin (to a film, or with another listing) or
-   *  a TMDB-keyed feed's link? Then it is no namesake-ambiguous listing: the cluster's rules for pins and links decide it. */
+   *  a TMDB-keyed feed's link that decides on its own ([[SourceReliability.linkDecides]]; a copy's link needs a confirmation
+   *  that only siblings gave: CinemaxX Raschplatz's "Titans" took both namesakes by turns as listings arrived)? Then it is no namesake-ambiguous listing: the cluster's rules for pins and links decide it. */
   def ownDecided(listing: Listing, pins: PinConstraints): Boolean =
-    SourceReliability.tmdbLinked(listing).isDefined || pins.filmOf(listing.key).isDefined || pins.pinnedTogether(listing.key)
+    SourceReliability.tmdbLinked(listing).exists { case (id, _) => SourceReliability.linkDecides(id) } || pins.filmOf(listing.key).isDefined ||
+      pins.pinnedTogether(listing.key)
 
   // "Local (Original)" or "Local / Original": the two titles a billing states, as keys -- a bracket the venue's
   // qualifiers fill ("(Napisy)", "(OmU)") names no work's original title, and so narrows nothing
