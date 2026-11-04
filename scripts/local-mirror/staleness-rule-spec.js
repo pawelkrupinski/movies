@@ -40,6 +40,8 @@ check("an empty mirror re-seeds",
 // positive a wall-clock threshold would produce.
 check("an idle prod does not re-seed",
   { ...caughtUp, prodMaxUpdatedAtMs: NOW - 6 * 60 * MINUTE, mirrorMaxUpdatedAtMs: NOW - 6 * 60 * MINUTE }, false);
+check("an empty source with an empty mirror does not re-seed — the kinowo_fleet loop",
+  { prodCount: 0, mirrorCount: 0, prodMaxUpdatedAtMs: null, mirrorMaxUpdatedAtMs: null }, false);
 check("a not-yet-scraped country does not re-seed",
   { prodCount: 0, mirrorCount: 3, prodMaxUpdatedAtMs: null, mirrorMaxUpdatedAtMs: null }, false);
 

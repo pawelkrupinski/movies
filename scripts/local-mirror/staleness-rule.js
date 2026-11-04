@@ -45,7 +45,11 @@ function stalenessVerdict(observed, limits) {
   if (observed.seedIncomplete)
     return { stale: true, reason: "last seed did not finish — snapshot is torn" };
 
-  if (mirrorCount === 0) return { stale: true, reason: "mirror is empty" };
+  // Empty is only stale when there is something to copy. An empty SOURCE (a
+  // database created ahead of its first scrape — `kinowo_fleet`, 2026-11-04) left
+  // an equally empty mirror, which this called stale: every audit re-seeded the
+  // same nothing, ten minutes apart, for as long as prod stayed empty.
+  if (mirrorCount === 0 && prodCount > 0) return { stale: true, reason: "mirror is empty" };
 
   // A collection newly added to MIRRORED_COLLECTIONS exists in prod but has
   // never been copied, and the tailer only carries CHANGES — so without this
