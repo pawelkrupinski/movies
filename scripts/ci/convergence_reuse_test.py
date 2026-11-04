@@ -248,10 +248,11 @@ class RotatingSeedsTest(unittest.TestCase):
         with open(out) as f:
             return res.returncode, lines, json.load(f)
 
-    def test_main_hands_the_legs_its_runs_rotating_pair(self):
+    def test_main_hands_the_legs_no_pin_so_each_row_replays_its_fixed_set(self):
+        # FIXED SEEDS (2026-11-04): no seed moves with the run number; an unpinned row replays drift-gate-seeds.tsv's set
         code, lines, legs = self.run_inputs({"GITHUB_RUN_NUMBER": "2"})
-        self.assertEqual((code, lines["drift-seed-1"], lines["drift-seed-2"]), (0, "3", "4"))
-        self.assertEqual((legs["drift-seed-1"], legs["drift-seed-2"]), ("3", "4"))
+        self.assertEqual((code, lines["drift-seed-1"], lines["drift-seed-2"]), (0, "", ""))
+        self.assertEqual((legs["drift-seed-1"], legs["drift-seed-2"]), ("", ""))
         # the seeds are no input main lacks: main's own run is main's suite
         self.assertEqual(reuse.inputs_unlike_main(legs, "both"), [])
 

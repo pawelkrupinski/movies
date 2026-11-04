@@ -268,7 +268,7 @@ def leg_matrix(rows, inputs):
 
 
 def run_seeds(env, inputs):
-    """This run's two takes-drift seeds (drift_seeds.resolve): the run number's rotation, or the dispatch's pins."""
+    """This run's two takes-drift pins (drift_seeds.resolve): the dispatch's, or none -- each row then replays its fixed set."""
     one, two = drift_seeds.resolve(int(env.get("GITHUB_RUN_NUMBER") or 1), inputs.get("drift-seeds", ""),
                                    inputs.get("drift-only") == "true")
     return {"drift-seed-1": str(one or ""), "drift-seed-2": str(two or "")}
@@ -578,7 +578,7 @@ def cmd_inputs(_):
         print(f"{name}={value}")
     summary([f"Takes-drift seeds this run: takes-drift-1 replays seed {inputs['drift-seed-1'] or '(none)'}, takes-drift-2 "
              f"seed {inputs['drift-seed-2'] or '(none)'} (run #{os.environ.get('GITHUB_RUN_NUMBER', '?')}"
-             f"{', pinned ' + repr(inputs['drift-seeds']) if inputs['drift-seeds'] else ', rotating'}; scripts/ci/drift_seeds.py)"])
+             f"{', pinned ' + repr(inputs['drift-seeds']) if inputs['drift-seeds'] else ', each row its fixed set'}; scripts/ci/drift_seeds.py)"])
     if os.environ.get("LEG_INPUTS_FILE"):
         with open(os.environ["LEG_INPUTS_FILE"], "w") as f:
             json.dump(inputs, f, sort_keys=True)

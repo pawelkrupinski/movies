@@ -1,0 +1,19 @@
+# THE DRIFT GATE'S FIXED SEEDS (the owner, 2026-11-04: "a gate that only fails on what the change adds"). Each country's
+# `takes-drift-1` / `takes-drift-2` rows replay the seeds this file assigns them (column `row`), on every run, and fail
+# only on a flip the change adds over its base on the same seeds (scripts/ci/identity-drift-check.sh). The explorer
+# (.github/workflows/identity-drift-explorer.yml) appends a seed that found a NEW flip (scripts/ci/drift_seeds.py add),
+# so the gate grows. Each seed costs its row one replay (ES ~2 min, PL ~6, the US/UK ~8-12, DE ~16): the initial set is
+# the seeds that ever found a flip that fit today's rows, plus spread seeds where none had. Read by scripts/ci/drift_seeds.py.
+country	seed	row	added	why
+de	8	1	2026-11-04	CinemaxX Regensburg / Dammtor / Raschplatz "Titans" (convergence #836); the Titans family seeds 1, 20 and 47 found
+de	64	2	2026-11-04	Programmkino Lichtblick e.V. "Buddies" (backlog, 2026-11-03)
+uk	11	1	2026-11-04	Theatr Gwaun Fishguard "Cosi Fan Tutte" (seed 11 only, 2026-10-31)
+uk	37	2	2026-11-04	Plough Arts Centre Torrington "Dracula" (red #595) and a takes-drift-1 red on seed 37
+us	1	1	2026-11-04	Parkway Drive: Home at ~40 Cinemark venues (the 10-29 baseline)
+us	2	2	2026-11-04	the old fixed pair's second seed
+pl	1	1	2026-11-04	Kino Kameralne Cafe "Siostry (1972)" (the 10-29 baseline)
+pl	2	2	2026-11-04	Cinema City Kinepolis / Punkt 44 "Piesek", Nowy Pafawag "Zemsta" (the 10-29 baseline)
+es	1	1	2026-11-04	spread: no ES seed has found a flip
+es	23	1	2026-11-04	spread
+es	2	2	2026-11-04	spread
+es	47	2	2026-11-04	spread

@@ -1,28 +1,35 @@
 #!/usr/bin/env python3
-# ROTATING DRIFT SEEDS (the owner, 2026-10-31): each convergence leg keeps its two incremental = whole rows,
-# `takes-drift-1 (<country>)` and `takes-drift-2 (<country>)` -- the job NAMES stay, the gate, agentctl and the ruleset
-# match them -- but the seed each row replays is the RUN's, not the row number. On seeds 1 and 2 alone order-dependent
-# bugs on any other seed slipped through: UK "Swan Lake" flipped on seed 3 only, a Cosi/Fishguard flip on seed 11 only,
-# both found by slices replaying seeds 1-12.
+# FIXED DRIFT SEEDS (the owner, 2026-11-04: "a gate that only fails on what the change adds"; supersedes the rotating seeds
+# of 2026-10-31). Each convergence leg keeps its two incremental = whole rows, `takes-drift-1 (<country>)` and
+# `takes-drift-2 (<country>)` -- the job NAMES stay, the gate, agentctl and the ruleset match them -- and each row replays
+# the COMMITTED seeds test/resources/fixtures/drift-gate-seeds.tsv assigns it for its country, the same on every run.
+# Rotating seeds made the gate a random sampler of old defects: a flip that had always been there failed whichever
+# unrelated commit drew its seed (3 of 7 red streaks to 2026-11-04 ended with no identity change). Fixed seeds make
+# a row's verdict a property of the change (scripts/ci/identity-drift-check.sh judges it against its BASE on the same
+# seeds: only a flip the head adds fails), and THE EXPLORER (.github/workflows/identity-drift-explorer.yml) walks many
+# random seeds nightly, appending each seed that found a NEW flip here (`add`), so the gate grows without turning random.
 #
-# THE SCHEME: run number N's rows replay seeds((N-1)*2 mod 64)+1 and +2: run 1 seeds 1 and 2, run 2 seeds 3 and 4, ...
-# run 32 seeds 63 and 64, run 33 seeds 1 and 2 again. The two rows always differ, every seed of 1..64 is replayed once
-# every 32 runs, and the same run -- a rerun of it included (`github.run_number` stays) -- replays the same two.
+# THE SET: initially every seed that ever found a flip (the baselines, the drift slices, the commit history) that fits
+# the rows' time (one replay is 3-16 minutes a seed: ES 2 a row, the others 1), the rest replayed by the explorer.
 #
 # PINS: a dispatch's `drift-seeds` names seeds instead -- `S1,S2`, `S1,` (row 1 alone on a drift-only run) or `,S2`
 # (row 2 alone); a bare `S` is `S,`. scripts/identity-drift-ci pins a red run's own seeds to replay exactly what it
-# failed, and `--against main` pins main's. On a full (not drift-only) run an empty side still replays the run's seed.
+# failed. An unpinned row replays its fixed set.
 #
 # A red names its seed (identity-drift-check.sh: the ::error title, verdict.txt, the step summary, the leg's commit
 # status) with a one-line reproducer, and every seed found red anywhere is cut into a drift slice
 # (docs/design/identity-slice.md, "A red seed becomes a slice") so IdentityDriftSlicesSpec covers it on every run.
 #
 # usage:
-#   drift_seeds.py outputs --run-number N [--pins P] [--drift-only true|false]
-#                                       `drift-seed-1=S1` and `drift-seed-2=S2` for $GITHUB_OUTPUT (a side left out of a
-#                                       drift-only run is empty)
-#   drift_seeds.py seed --row 1|2 --run-number N [--pins P]
-#                                       the one seed that row replays
+#   drift_seeds.py outputs [--pins P] [--drift-only true|false] [--run-number N]
+#                                       `drift-seed-1=S1` and `drift-seed-2=S2` for $GITHUB_OUTPUT: the pins (empty: the
+#                                       row's fixed set)
+#   drift_seeds.py seeds --cc CC --row 1|2 [--pins P] [--file TSV]
+#                                       the seeds that row replays, space-separated: its pin, else its fixed set
+#   drift_seeds.py gate --cc CC [--file TSV]
+#                                       every fixed seed of CC, space-separated
+#   drift_seeds.py add --cc CC --seed S --why TEXT [--date YYYY-MM-DD] [--file TSV]
+#                                       append S to CC's fixed set, on the row holding fewer (no-op when already there)
 #   drift_seeds.py pins P               P normalised to `S1,S2` (either side may be empty); exit 2 when malformed
 #   drift_seeds.py slices <cc> <fixtures dir> <tsv>...
 #                                       the committed drift slices (test/resources/fixtures/drift-slices/<cc>/<name>/)
@@ -38,16 +45,10 @@ import json
 import os
 import sys
 
-RANGE = 64
 ROWS = (1, 2)
-
-
-def rotation(run_number: int) -> tuple[int, int]:
-    """The two seeds run `run_number` replays: distinct, deterministic per run, all of 1..RANGE every RANGE/2 runs."""
-    if run_number < 1:
-        raise ValueError(f"run number {run_number}: runs count from 1")
-    first = (2 * (run_number - 1)) % RANGE + 1
-    return first, first + 1
+HERE = os.path.dirname(os.path.abspath(__file__))
+SEEDS_FILE = os.path.join(HERE, "..", "..", "test", "resources", "fixtures", "drift-gate-seeds.tsv")
+COLUMNS = ("country", "seed", "row", "added", "why")
 
 
 def parse_pins(text: str | None) -> tuple[int | None, int | None]:
@@ -72,18 +73,62 @@ def parse_pins(text: str | None) -> tuple[int | None, int | None]:
     return seed(parts[0]), seed(parts[1])
 
 
-def resolve(run_number: int, pins: str | None = "", drift_only: bool = False) -> tuple[int | None, int | None]:
-    """Each row's seed: a pinned one as pinned; an unpinned one the run's rotation -- or, on a drift-only run naming any
-    pin, none (the row does not run). The two rows never replay the same seed."""
+def resolve(run_number: int = 1, pins: str | None = "", drift_only: bool = False) -> tuple[int | None, int | None]:
+    """Each row's PIN, or None: an unpinned row replays its fixed set (`fixed`). The two pins never name one seed.
+    (`run_number` and `drift_only` are kept for the callers: neither moves a seed any more.)"""
     one, two = parse_pins(pins)
     if one is not None and one == two:
         raise ValueError(f"drift seeds {pins!r}: the two rows replay two different seeds")
-    if one is None and two is None:
-        return rotation(run_number)
-    if drift_only:
-        return one, two
-    spare = [s for s in rotation(run_number) + (rotation(run_number + 1)) if s not in (one, two)]
-    return (one if one is not None else spare[0]), (two if two is not None else spare[0])
+    return one, two
+
+
+def read_set(path: str | None = None) -> list[dict]:
+    """The committed fixed seeds: one dict a row of drift-gate-seeds.tsv (`#` lines and the header aside)."""
+    rows = []
+    with open(path or SEEDS_FILE, newline="") as f:
+        lines = [line for line in f if line.strip() and not line.startswith("#")]
+    for row in csv.DictReader(lines, delimiter="\t"):
+        if not row.get("seed", "").strip().isdigit() or row.get("row", "").strip() not in ("1", "2"):
+            raise ValueError(f"drift-gate-seeds: every row names a country, a positive seed and row 1 or 2: {row}")
+        rows.append({k: (row.get(k) or "").strip() for k in COLUMNS})
+    return rows
+
+
+def fixed(cc: str, row: int | None = None, path: str | None = None) -> list[int]:
+    """CC's fixed seeds (row 1's, row 2's, or both), in file order, each once."""
+    out = []
+    for r in read_set(path):
+        if r["country"] == cc and (row is None or int(r["row"]) == row) and int(r["seed"]) not in out:
+            out.append(int(r["seed"]))
+    return out
+
+
+def seeds_of_row(cc: str, row: int, pins: str | None = "", path: str | None = None) -> list[int]:
+    """What row `row` replays: its pin, else its fixed set."""
+    if row not in ROWS:
+        raise ValueError(f"row {row}: takes-drift-1 or takes-drift-2")
+    pinned = resolve(1, pins)[row - 1]
+    if pinned is not None:
+        return [pinned]
+    if parse_pins(pins) != (None, None):
+        return []  # the other row is pinned: a pinned dispatch replays its pins alone
+    return fixed(cc, row, path)
+
+
+def add(cc: str, seed: int, why: str, date: str, path: str | None = None) -> bool:
+    """Append `seed` to CC's fixed set, on the row holding fewer of CC's seeds (row 1 on a tie); False when there."""
+    path = path or SEEDS_FILE
+    if seed in fixed(cc, None, path):
+        return False
+    counts = {r: len(fixed(cc, r, path)) for r in ROWS}
+    row = min(ROWS, key=lambda r: (counts[r], r))
+    with open(path) as f:
+        text = f.read()
+    with open(path, "a") as f:
+        if text and not text.endswith("\n"):
+            f.write("\n")
+        f.write("\t".join([cc, str(seed), str(row), date, " ".join(why.split())]) + "\n")
+    return True
 
 
 def slices(cc: str, fixtures: str, tsvs: list[str]) -> list[str]:
@@ -132,21 +177,28 @@ def options(argv):
 
 def main(argv):
     if not argv:
-        print("usage: drift_seeds.py outputs|seed|pins|slices ... (see the header)", file=sys.stderr)
+        print("usage: drift_seeds.py outputs|seeds|gate|add|pins|slices ... (see the header)", file=sys.stderr)
         return 2
     command, (opts, rest) = argv[0], options(argv[1:])
     try:
         if command == "outputs":
-            one, two = resolve(int(opts["run-number"]), opts.get("pins", ""), opts.get("drift-only", "") == "true")
+            one, two = resolve(1, opts.get("pins", ""))
             print(f"drift-seed-1={one or ''}")
             print(f"drift-seed-2={two or ''}")
             return 0
-        if command == "seed":
-            row = int(opts["row"])
-            if row not in ROWS:
-                raise ValueError(f"row {row}: takes-drift-1 or takes-drift-2")
-            seed = resolve(int(opts["run-number"]), opts.get("pins", ""))[row - 1]
-            print(seed)
+        if command == "seeds":
+            print(" ".join(map(str, seeds_of_row(opts["cc"], int(opts["row"]), opts.get("pins", ""), opts.get("file")))))
+            return 0
+        if command == "gate":
+            print(" ".join(map(str, fixed(opts["cc"], None, opts.get("file")))))
+            return 0
+        if command == "add":
+            import datetime
+            seed = int(opts["seed"])
+            if seed < 1:
+                raise ValueError(f"seed {seed}: seeds are positive")
+            added = add(opts["cc"], seed, opts.get("why", ""), opts.get("date") or datetime.date.today().isoformat(), opts.get("file"))
+            print("added" if added else "already there")
             return 0
         if command == "pins":
             one, two = parse_pins(rest[0] if rest else "")
