@@ -159,6 +159,9 @@ def workflow_ceilings(path, root=WORKFLOWS, seen=()):
         name = attrs.get("name") or key
         literal = EXPRESSION.split(name)
         pattern = re.compile(".+".join(re.escape(part) for part in literal))
+        if not attrs.get("name") and "strategy" in attrs:
+            # A matrix job with no `name:` is `<key> (<row>)` on github.com (plain `<key>` if skipped before it starts).
+            pattern = re.compile(re.escape(key) + r"(?: \(.+\))?")
         uses = attrs.get("uses", "")
         timeout = attrs.get("timeout-minutes")
         if uses.startswith("./.github/workflows/"):
