@@ -22,6 +22,8 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# shellcheck source=/dev/null
+. "$HERE/../shell-spec.sh" # wait_until only; check() below is this file's own
 failures=0
 
 # Runs a case and reports it. The indirection is load-bearing: bash disables
@@ -296,8 +298,7 @@ supervisor_stops_when_its_parent_dies() {
   while [ ! -s "$work/tailer.pid" ] && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
   local tailer; tailer="$(cat "$work/tailer.pid" 2>/dev/null)"
   kill "$parent" 2>/dev/null; wait "$parent" 2>/dev/null
-  deadline=$((SECONDS + SpecCapSeconds))
-  while kill -0 "$supervisor" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
+  wait_until "supervisor exits after its parent dies" "! kill -0 $supervisor 2>/dev/null" || return 1
   local exited=no orphaned=no
   kill -0 "$supervisor" 2>/dev/null || exited=yes
   await_child "$supervisor" 1
@@ -375,8 +376,8 @@ keeper_rides_out_misses_and_closes_when_orphaned() {
     }
     keep_tunnel
   ) > "$work/out" 2>&1 &
-  local keeper=$! deadline=$((SECONDS + SpecCapSeconds))
-  while kill -0 "$keeper" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
+  local keeper=$!
+  wait_until "keeper exits after its parent dies" "! kill -0 $keeper 2>/dev/null" || return 1
   local exited=no live=0 pid
   kill -0 "$keeper" 2>/dev/null || exited=yes
   await_child "$keeper" 1

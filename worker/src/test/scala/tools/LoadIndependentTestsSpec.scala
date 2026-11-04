@@ -89,6 +89,8 @@ class LoadIndependentTestsSpec extends AnyFlatSpec with Matchers {
       OwnDeadline,
     s"scripts/local-mirror/mirror-resilience-test.sh: while [ -n \"$$tailer\" ] && kill -0 \"$$tailer\" 2>/dev/null && [ \"$$SECONDS\" -lt \"$$deadline\" ]; do command sleep 0.05; done" ->
       OwnDeadline,
+    s"scripts/local-mirror/mirror-resilience-test.sh: sleep() { command sleep 0.02; }" ->
+      "the tool's `sleep` stubbed shorter: the tool's back-off, not the spec's wait",
     s"scripts/local-mirror/mirror-resilience-test.sh: command sleep 0.5" ->
       "an absence check: the watch must not return while both pids live; a slow machine makes it vacuous, never red",
     s"scripts/local-mirror/mirror-resilience-test.sh: while kill -0 \"$$watch\" 2>/dev/null && [ \"$$SECONDS\" -lt \"$$deadline\" ]; do command sleep 0.05; done" ->
