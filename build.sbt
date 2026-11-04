@@ -197,7 +197,8 @@ lazy val HeavyRows: Map[String, Set[String]] = Map(
     "services.identity.UnmatchedClustersRatchetSpec", // the ratchet: the five captures replayed
     "scripts.IdentityRefitCaptureReplaySpec",         // the refit's re-resolve of a capture
     "services.identity.MatchedTakesLabelSpec",        // every capture's matched takes against the labels
-    "scripts.IdentityDriftSlicesShard2Spec"))         // the drift slices' third shard (IdentityDriftSlicesSpec)
+    "scripts.IdentityDriftSlicesShard2Spec",          // the drift slices' third shard (IdentityDriftSlicesSpec)
+    "services.identity.FamilyIndexCompletenessSpec")) // every slice's family index, against corpora a population apart
 lazy val HeavySuites: Set[String] = HeavyRows.values.flatten.toSet
 // Identity suites the catch-all `rest` row (CI's `worker`) runs instead: a drift-slice shard (IdentityDriftSlicesSpec).
 lazy val WorkerRestSuites: Set[String] = Set("scripts.IdentityDriftSlicesShard3Spec")

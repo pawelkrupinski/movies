@@ -465,6 +465,42 @@ Each step lands with its specs. `IncrementalWholeEquivalenceSpec`, `LateInputEqu
    on the feed, and the stage would drop `attemptsMarked`, `awaiting` and `awaitingMarks`. This waits for a harness
    change: every spec world that marks attempts would publish them too.
 
+## One family index (2026-11-04)
+
+The owner approved this on 2026-11-04, after the family replay prototype (a family plus its read set, replayed in
+isolation over its population lattice, reproduced 15 of the 16 known flips still live on main).
+`services.identity.FamilyIndex` records, for every family of a resolve:
+
+- **members**: each listing key with the digest of its whole input (every field, the stage's too);
+- **block keys**: the title and film keys it merges under; a listing outside it carrying one means a merge;
+- **context reads**: every read of the corpus-learned context (`CorpusContext`) by the digest of its VALUE: a record with
+  its venue titles (`candidate`, CorpusContext.scala:211), a banner's house (`houses`, :94), a piece's spread
+  (`segmentSpread`, :136 -- the raw count, so `repeatedSegment`'s threshold of 2 is covered, which `CorpusContext.Slice`
+  does not hold), a title group, a whole title, a reached set, a search's ranking;
+- **answers**: every lookup as its typed `Dependency`, digested by `Dependency.digest` (an unanswered one too);
+- **pins** naming a member;
+- **takes and rules**: each member's take and its `DecisionTrace` rule ids (`rulesOf`, the stage's): the ids the
+  per-rule registry is keyed by.
+
+It is recorded by resolving each family ALONE against the corpus's context (A3) through recording wrappers of the
+context and the lookups (one read function each, shared with the replay: what is recorded is what was read). A measure:
+nothing reads it to take.
+
+Query API: `familyOf(listing)`, `readersOf(ContextRead | Dependency)`, `holdersOf(blockKey)`, `firing(ruleId)`,
+`stale(now)` (each moved input named).
+
+**Completeness** (`FamilyIndexCompletenessSpec`, every drift and identity slice): (1) every recorded read digests as
+recorded against its own corpus; (2) A3: each family alone takes what the corpus took; (3) each family REPLAYED from its
+recorded reads alone -- no corpus, no lookup beyond them, a read outside fails (`replayAlone`) -- takes the same; (4) for
+corpora differing by a removed or added population (another family, one listing, a quarter, a half), every family whose
+entry stands keeps its members together and alone, and every take. A failure names a read the index lacks.
+
+**Not yet in it** (the final take): the agreement stage's reads -- family answers (the venue programme,
+`agreement/VenueListings.scala:46`), Broadcast's namesake records, the shared ask memory, the year; stored verdicts by
+digest (`AgreementStage.scala:518`, `:638`) and apply budgets are path state and stay out (a check proves the take
+independent of them). Then: (a) the per-family convergence check keyed by the index; (b) affected-only recompute on the
+local prod mirror.
+
 ## What still blocks retiring the checks
 
 1. Item 7's open parts (the first draft's `searchTitle` -- since Main #2617 the IMDb-id resolver falls back to every venue
