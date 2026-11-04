@@ -126,10 +126,10 @@ object FamilyIndex {
   /** Lookups recording every read as its [[Dependency]]: the answer, and its digest as a receipt digests it
    *  ([[Dependency.digest]]); and which listings' venues publish a detail page. */
   private[identity] final class RecordingLookups(underlying: IdentityLookups) extends ReadingLookups {
-    val values: TrieMap[Dependency, Answer[?]] = TrieMap.empty
+    val answers: TrieMap[Dependency, Answer[?]] = TrieMap.empty
     val detailed: TrieMap[ListingKey, Boolean] = TrieMap.empty
-    protected def read[A](dependency: Dependency, ask: => Answer[A]): Answer[A] = { val answer = ask; values.update(dependency, answer); answer }
-    def reads: Map[Dependency, Long] = values.toMap.map { case (dependency, answer) => dependency -> Dependency.digest(answer) }
+    protected def read[A](dependency: Dependency, ask: => Answer[A]): Answer[A] = { val answer = ask; answers.update(dependency, answer); answer }
+    def reads: Map[Dependency, Long] = answers.toMap.map { case (dependency, answer) => dependency -> Dependency.digest(answer) }
     def hasDetail(listing: Listing): Boolean = { val has = underlying.hasDetail(listing); detailed.update(listing.key, has); has }
     override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit =
       underlying.prefetch(queries, films, details)
@@ -250,7 +250,7 @@ object FamilyIndex {
       val apart    = keys.filter(key => whole.decisionOf.get(key).flatMap(PopulationMonotonicity.takeOf) != takes(key))
       (Entry(members.map(l => l.key -> ContentHash.of(l)).toMap, regions.flatMap(_.blockKeys).toSet, context.reads,
         recorded.reads, pinsOf(inputs.pins, keys.toSet), takes, rules), apart,
-        Option.when(values)(Recorded(members, context.values.toMap, recorded.values.toMap, recorded.detailed.toMap)))
+        Option.when(values)(Recorded(members, context.values.toMap, recorded.answers.toMap, recorded.detailed.toMap)))
     }
     val built =
       if (threads <= 1 || families.sizeIs < 2) families.map(entryOf)

@@ -94,6 +94,9 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}Memo.scala#checks"                   -> Digested("value", "each check holds the stamp (the caller's content digest) it was found standing under"),
     s"${I}Memo.scala#readers"                  -> Content("the dirty index: by dependency filing"),
     s"${I}Memo.scala#filings"                  -> Pass("the filings since a version, read once per pass (newPass clears it)"),
+    // ── the family index: a measure, recorded per family resolve, deciding nothing
+    s"${I}FamilyIndex.scala#values"   -> Pass("the reads one family's resolve made, by what they read (a context fact or a lookup); its recorder is built per family resolve"),
+    s"${I}FamilyIndex.scala#detailed" -> Pass("whether each member's venue publishes a detail page, as one family's resolve asked; its recorder is built per family resolve"),
     // ── the model
     s"${I}IncrementalResolver.scala#byKey"         -> Name("each held listing's current listing and family, kept current by hold/release/remember/forget"),
     s"${I}IncrementalResolver.scala#atVenue"       -> Name("each venue's held listing keys"),
