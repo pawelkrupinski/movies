@@ -351,6 +351,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # THE RUN'S PAIRS (the caller's preflight, convergence-setup.sh `pins`): `{"<code>": "<pair>"}`. This leg's
+            # order-pass rows replay its code's pair, fills included, as given -- never the release as each row finds it.
+            pinned-pairs:
+                description: The pairs pinned once for the run, as JSON by country code; the order-pass rows replay this leg's.
+                required: false
+                type: string
+                default: '{}'
             corpus-run:
                 description: >-
                     The `Record scrape fixtures` run whose corpus a RECORDING leg replays — the
@@ -476,6 +483,8 @@ jobs:
                   dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
                   dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
                   mode:          ${{ inputs.mode }}
+                  # An order-pass row replays the run's pinned pair (the caller's preflight), so the passes compared were fed alike.
+                  hermetic-pair: ${{ inputs.mode == 'hermetic' && contains(matrix.phase, '-pass') && fromJson(inputs.pinned-pairs || '{}')[inputs.code] || '' }}
                   # A recording leg's own run when no corpus run is named.
                   corpus-run:    ${{ inputs.corpus-run || (inputs.mode == 'record' && github.run_id || '') }}
                   mongo-tmpfs:   ${{ (inputs.mongo-tmpfs-order != 'false' || !startsWith(matrix.phase, 'order-independence')) && inputs.mongo-tmpfs || '' }}

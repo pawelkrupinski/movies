@@ -105,6 +105,13 @@ check "no pinned pair fails the hermetic leg" "1|yes" "$status|$(logged '::error
 step pair es hermetic
 check "a malformed pin fails the hermetic leg" "1|yes" "$status|$(logged '::error::No recorded pair pinned for es')"
 
+# ---- pins: the run's pairs, once
+step pins de,uk,es
+check "pins names each country's pair with its fills, leaving out one it cannot resolve" \
+  '0|{"de":"42 2026-10-11T02:00:00Z enrichment-de-42.tar.zst fill-de-42-77-1-convergence.tar.zst"}|yes' \
+  "$status|$(grep '^{' "$work/log")|$(logged "could not pin uk's pair")"
+check "…and exports nothing of its own" "|" "$(cat "$work/env")|$(cat "$work/output")"
+
 # ---- corpus
 mkdir -p "$runs/42/scrape-fixtures-de" "$runs/50/scrape-fixtures-de"
 echo pinned > "$runs/42/scrape-fixtures-de/scrapes-de.tar.gz"

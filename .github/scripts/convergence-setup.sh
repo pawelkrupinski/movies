@@ -19,6 +19,13 @@
 #       every fill published over its tree — and with none, fails: no pin is never a quiet
 #       fall-back to live filling.
 #
+#   convergence-setup.sh pins <codes, comma-separated>
+#       THE RUN'S PAIRS, pinned once (identity-model-convergence.yml's preflight): `{"<code>": "<pair>", ...}`, each
+#       country's pinned pair with the fills published over its tree as `pair` resolves it now. A leg's order-pass rows
+#       replay exactly that (`hermetic-pair`), not what the release holds when each row starts: a fill another row
+#       publishes mid-run otherwise reaches one pass and not the next (2026-11-03, UK p12: pass 1 and pass 2 restored
+#       two fill sets and diverged). A country `pair` cannot resolve is left out: its rows resolve, and fail, alone.
+#
 #   convergence-setup.sh corpus <code>
 #       "Restore the recorded scrape corpus" into ./scrape-archive: this job's own recording (no
 #       download), the pinned run's artifact (gone or unreadable = exit 1, each said apart), else the newest of the last 10 green
@@ -91,6 +98,21 @@ pair() {
     [ -z "$named" ] || echo "KINOWO_CONVERGENCE_NAMED_RECORDING=$corpus"
   } >> "$GITHUB_ENV"
   echo "pair=$pair" >> "$GITHUB_OUTPUT"
+}
+
+pins() {
+  local codes="$1" code json="" out env pair
+  out=$(mktemp) env=$(mktemp)
+  for code in ${codes//,/ }; do
+    : > "$out"
+    if (GITHUB_OUTPUT="$out" GITHUB_ENV="$env" pair "$code" hermetic) >&2 && pair=$(sed -n 's/^pair=//p' "$out") && [ -n "$pair" ]; then
+      json="${json:+$json,}\"$code\":\"$pair\""
+    else
+      echo "::warning::could not pin $code's pair once for the run -- its rows resolve it each" >&2
+    fi
+  done
+  rm -f "$out" "$env"
+  echo "{$json}"
 }
 
 # corpus_from <run> <recorded at> <label>: the provenance of a downloaded corpus, logged and exported
@@ -229,7 +251,8 @@ command="${1:-}"
 case "$command" in
   pinned) [ "$#" -eq 1 ] || { echo "usage: $0 pinned <code>" >&2; exit 64; }; pinned "$@" ;;
   pair)   [ "$#" -ge 2 ] || { echo "usage: $0 pair <code> <mode> [given pair] [corpus run]" >&2; exit 64; }; pair "$@" ;;
+  pins)   [ "$#" -eq 1 ] || { echo "usage: $0 pins <codes>" >&2; exit 64; }; pins "$@" ;;
   corpus) [ "$#" -eq 1 ] || { echo "usage: $0 corpus <code>" >&2; exit 64; }; corpus "$@" ;;
   unpack) [ "$#" -eq 2 ] || { echo "usage: $0 unpack <code> <mode>" >&2; exit 64; }; unpack "$@" ;;
-  *) echo "usage: $0 <pinned|pair|corpus|unpack> ..." >&2; exit 64 ;;
+  *) echo "usage: $0 <pinned|pair|pins|corpus|unpack> ..." >&2; exit 64 ;;
 esac

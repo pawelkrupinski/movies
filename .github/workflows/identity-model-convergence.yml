@@ -162,6 +162,9 @@ jobs:
             recording: ${{ steps.legs.outputs.recording }}
             takes-countries: ${{ steps.legs.outputs.takes-countries }}
             leg-matrix: ${{ steps.plan.outputs.leg-matrix || '{"country":[],"include":[]}' }}
+            # Each country's pair and fills, pinned once for the run (convergence-setup.sh `pins`): every order-pass row
+            # replays exactly these, so the passes a comparison judges were fed alike.
+            pinned-pairs: ${{ steps.pins.outputs.pinned-pairs || '{}' }}
             any-leg: ${{ steps.plan.outputs.any-leg || 'false' }}
             takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
             takes-skip: ${{ steps.legs.outputs.takes-skip }}
@@ -251,6 +254,20 @@ jobs:
                   CODES: ${{ (inputs.takes-only == true || inputs.takes-only == 'true' || inputs.drift-only == true || inputs.drift-only == 'true') && inputs.takes-countries || 'pl,de,uk,es,us' }}
                   RECORDING: ${{ inputs.recording || '' }}
               run: scripts/ci/convergence-preflight.sh "$CODES" "$RECORDING"
+            # THE RUN'S PAIRS, ONCE: what each leg's order-pass rows replay, by name. A fill published mid-run (another
+            # row's pre-suite fill, a fold) reached one pass row and not its partner, and the comparison judged two fill
+            # sets (2026-11-03, UK p12). A named recording replays its bare pair anyway; failing here pins nothing and
+            # each row resolves its own, as before.
+            - name: Pin every leg's pair for the run
+              id: pins
+              if: ${{ inputs.recording == '' }}
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  CODES: ${{ (inputs.takes-only == true || inputs.takes-only == 'true' || inputs.drift-only == true || inputs.drift-only == 'true') && inputs.takes-countries || 'pl,de,uk,es,us' }}
+              run: echo "pinned-pairs=$(.github/scripts/convergence-setup.sh pins "$CODES")" >> "$GITHUB_OUTPUT"
             # REUSE ONLY WHAT IS PROVEN (scripts/ci/convergence_reuse.py): the named run covered every row this one would,
             # over the same tree, pairs, inputs and takes bases, and every row passed. Anything else -- this step failing
             # included -- names no run, and the whole suite runs. The daily full run never names one.
@@ -391,6 +408,8 @@ jobs:
             corpus-run:                    ${{ needs.preflight.outputs.recording }}
             # A proven reuse (the preflight's `reused-from`): every row of the leg skips.
             reused-from:                   ${{ needs.preflight.outputs.reused-from }}
+            # The pairs the preflight pinned for the run: the order-pass rows replay these, by name.
+            pinned-pairs:                  ${{ needs.preflight.outputs.pinned-pairs }}
         # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the
         # fill asks what an origin refuses CI again through the residential proxy), and the GITHUB_TOKEN the setup
         # and publish actions read.
