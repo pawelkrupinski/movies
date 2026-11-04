@@ -59,8 +59,62 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
+    # THE POPULATION WALK'S ROWS for the landing check (PopulationMonotonicitySpec.Cached, scripts/hooks/pre-push): main's
+    # every slice walked under main's walk digest (sbt identityWalkDigest) and saved as `population-walk-rows-main-<sha>`,
+    # which the identity shards restore (a check/ branch reads the default branch's caches only). Starts from the previous
+    # entry: a main commit that leaves the walk's code and data as they were walks only the slices whose files moved. Rows
+    # are kept whether or not the spec passes (main's own flips are the identity tests' to judge, not this cache's).
+    population-walk:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 45
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+            - uses: ./.github/actions/setup-sbt-build
+              with:
+                  target-cache-restore-only: 'true'
+                  target-cache-key: sbt-target-precheck-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/fixtures/**/*.scala', '**/src/it/**/*.scala', '**/src/page/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-restore-keys: |
+                      sbt-target-precheck-${{ runner.os }}-
+                      sbt-target-unit-worker-identity-${{ runner.os }}-
+            - name: Restore the previous population walk rows
+              uses: actions/cache/restore@v5
+              with:
+                  path: ${{ runner.temp }}/population-walk-rows
+                  key: population-walk-rows-main-${{ github.sha }}
+                  restore-keys: |
+                      population-walk-rows-main-
+            - name: Walk every slice under main's walk digest
+              env:
+                  ROWS: ${{ runner.temp }}/population-walk-rows
+              run: |
+                  sbt "identityWalkDigest $RUNNER_TEMP/walk-digest"
+                  digest="$(tr -cd '0-9a-f' < "$RUNNER_TEMP/walk-digest")"
+                  [ "${#digest}" = 64 ] || { echo "::error::no walk digest"; exit 1; }
+                  mkdir -p "$ROWS/$digest" && touch "$ROWS/$digest"
+                  # the newest 8 digests only
+                  find "$ROWS" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' | sort -rn | tail -n +9 | cut -d' ' -f2- | xargs -r rm -rf
+                  before=$(find "$ROWS/$digest" -name '*.tsv' | wc -l)
+                  sbt "worker/testOnly services.identity.PopulationMonotonicityPart*Spec -- -Didentity.population.cache=$ROWS/$digest" \
+                      || echo "::warning::the population walk spec failed on main: its rows are kept all the same"
+                  echo "population walk rows: digest ${digest:0:12}, $before kept before, $(find "$ROWS/$digest" -name '*.tsv' | wc -l) now"
+            - name: Save the population walk rows
+              uses: actions/cache/save@v5
+              with:
+                  path: ${{ runner.temp }}/population-walk-rows
+                  key: population-walk-rows-main-${{ github.sha }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+
     timings:
-        needs: [build]
+        needs: [build, population-walk]
         if: ${{ !cancelled() }}
         permissions:
             actions: read
