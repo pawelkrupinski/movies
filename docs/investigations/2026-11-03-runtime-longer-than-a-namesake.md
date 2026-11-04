@@ -27,3 +27,26 @@ existing `support` count decides only as it did before.
 PL, DE, UK, US, ES -- 0 lost, 0 right->wrong, 0 new wrong; the one move is UK model: Purbeck "Hen" tmdb:1534155 -> none
 (a cure); every country's final takes unchanged. Pinned: `identity-slices/uk-mowlem-theatre-purbeck-film-festival-hen-*`
 (IdentitySliceCasesSpec: fails before, passes after); drift slices (IdentityDriftSlicesSpec) all clean.
+
+## 2026-11-04 — a node's own facts stand for its film whatever the solver joined it to (Main #2128, convergence #834)
+
+**Owner's decision:** keep 84cba51ce03 (the solver's ambiguity kept across tiers; Torrington "Dracula" cured); the Hen
+family takes Pálfi's film from its OWN facts, else unmatched; no arrival-order flip.
+
+After 84cba51ce03 Keswick's "KFC Presents: Hen" {György Pálfi} reaches two components in a stronger tier (Mwldan's
+"Hen", Pálfi's film, and Mowlem's bare "Purbeck Film Festival - Hen", the Afrikaans one by search rank) and stays alone
+in the weaker title-segment tier that used to join it to Mwldan. Alone its credit is below the model's rating cut, so its
+cluster takes no film -- and `Corroboration.support` counted a node only for the film its CLUSTER took. Pálfi's film fell
+to one node on its own facts, under `EvidencedNamesake`, the uncorroborated-namesake refusal no longer applied, and
+Purbeck took the 2025 film (judged wrong).
+
+**The rule.** A node of a cluster that took no film still counts for the one film its title names that a fact of its own
+corroborates (`ownlyNamed`; none when its facts corroborate no namesake or several). The facts are the node's own; only
+how the solver grouped them no longer decides whether they count. Keswick's director credit counts for 1382513 again,
+Purbeck's own facts (110′ fits both Hens) tell neither apart, the refusal applies, and the agreement takes Pálfi's film
+by Purbeck's own poster. Lighthouse Poole's "PFF: Hen" has no fact of its own and the solver leaves it apart: none.
+Keswick (below the cut alone), Poole and Torrington "Dracula" lose takes judged right to 84cba51ce03 -- recorded
+`accepted-right-loss` under this decision, for the owner to confirm.
+
+Pinned: `identity-slices/uk-mowlem-theatre-purbeck-film-festival-hen-*` re-pinned (it lacked the answers the new
+solver's lookups read); IdentitySliceCasesSpec and its population walk pass; slice --orders 24 / --modes 12 clean.

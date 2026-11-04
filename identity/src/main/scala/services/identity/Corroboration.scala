@@ -68,11 +68,30 @@ private[identity] object Corroboration {
   val Vouching: Set[String] = Set(ConstraintEdges.SameTitle, ConstraintEdges.SameCatalogueId, ConstraintEdges.SameSearchForm, ConstraintEdges.TitleSegment)
 
   /** How many nodes of `clusters` take each film on a fact of their own ([[facts]]) — a film's standing in its title
-   *  family, against which a bare node's namesake take is weighed ([[refused]]). `filmOf` is a cluster's film. */
+   *  family, against which a bare node's namesake take is weighed ([[refused]]). `filmOf` is a cluster's film.
+   *
+   *  A node of a cluster that took NO film still stands for the one film its title names that its own facts corroborate
+   *  ([[ownlyNamed]]): a node's facts are its own whatever the solver joined it to. UK Keswick's "KFC Presents: Hen"
+   *  credits Pálfi; once the solver left it alone as ambiguous across tiers (84cba51ce03) it took nothing, Pálfi's
+   *  film lost its standing, and Mowlem's bare 110-minute "Purbeck Film Festival - Hen" took the Afrikaans namesake by
+   *  search rank alone (Main #2128). */
   def support(clusters: Seq[Seq[EvidenceNode]], filmOf: Seq[EvidenceNode] => Option[Int], scored: EvidenceNode => Seq[Scored],
               linked: EvidenceNode => Option[Int]): Map[Int, Int] =
-    clusters.flatMap(cluster => filmOf(cluster).toSeq.flatMap(film => cluster.filter(node =>
-      scored(node).find(_.candidate.tmdbId == film).exists(facts(node, _, scored(node), linked).nonEmpty)).map(_ => film))).groupMapReduce(identity)(_ => 1)(_ + _)
+    clusters.flatMap(cluster => filmOf(cluster) match {
+      case Some(film) => cluster.filter(node =>
+        scored(node).find(_.candidate.tmdbId == film).exists(facts(node, _, scored(node), linked).nonEmpty)).map(_ => film)
+      case None       => cluster.flatMap(ownlyNamed(_, scored, linked))
+    }).groupMapReduce(identity)(_ => 1)(_ + _)
+
+  /** The one film a node's title names that a fact of its own corroborates — none where its facts corroborate no such
+   *  film, or two (they tell the namesakes apart no better than its title). */
+  private def ownlyNamed(node: EvidenceNode, scored: EvidenceNode => Seq[Scored], linked: EvidenceNode => Option[Int]): Option[Int] = {
+    val all = scored(node)
+    all.filter(candidate => candidate.titleNamesIt && facts(node, candidate, all, linked).nonEmpty).map(_.candidate.tmdbId).distinct match {
+      case Seq(film) => Some(film)
+      case _         => None
+    }
+  }
 
   /** How closely a candidate's title names the listing's: whole (or its original), an alternative title, a delimited
    *  piece of it — a rival is a NAMESAKE only when it names the listing at least as closely as the film taken (PL
