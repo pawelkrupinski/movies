@@ -111,8 +111,8 @@ rm -rf "$work/state/artifacts-3726" "$work/state/dispatches"
 echo 2517 > "$work/state/number-3726"
 drift nobase --for-red 3726
 check "a red row with no baseline to hold it against is no verdict, exit 2" "2" "$(cat "$work/nobase.rc")"
-check "...its seeds, no artifact left to name them, its run number's rotation (#2517: 41 and 42)" "true" \
-  "$(grep -q -- '-f drift-seeds=41,42$' "$work/state/dispatches" && echo true || echo false)"
+check "...its seeds, no artifact left to name them, its rows' fixed sets (no drift-seeds pin)" "false" \
+  "$(grep -q -- 'drift-seeds' "$work/state/dispatches" && echo true || echo false)"
 
 # --against main: A CHECK'S BIRTH LANDS ONLY IF IT FINDS NOTHING MAIN'S RUN DOES NOT (commit_rules.py's rule), and an
 # identity change while main is red is held to "no worse". Main's newest decided run with drift rows is 3726.

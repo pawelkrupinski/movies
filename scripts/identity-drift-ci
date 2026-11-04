@@ -15,13 +15,12 @@
 #   <commit>     default HEAD (committed only; a commit whose workflows predate drift-only gets main's .github/ and
 #                scripts/ci/ laid over it, as identity-measure does)
 #   --countries  the countries whose drift rows run (the workflow's takes-countries); default all five
-#   --seeds      the seeds the rows replay (ROTATING SEEDS, scripts/ci/drift_seeds.py: a row's seed is its run's, not its
-#                number): `S1,S2` both rows, `S1` (= `S1,`) row 1 alone, `,S2` row 2 alone; `both` (the default) both
-#                rows on the dispatched run's own rotating pair. --for-red and --against pin their baseline run's seeds
+#   --seeds      the seeds the rows replay (pins, scripts/ci/drift_seeds.py): `S1,S2` both rows, `S1` (= `S1,`) row 1
+#                alone, `,S2` row 2 alone; `both` (the default) both rows on their FIXED seeds (drift-gate-seeds.tsv). --for-red and --against pin their baseline run's seeds
 #                themselves, so a row is only ever held against the same seed
 #   --for-red    only the rows a red convergence run failed: its failed `takes-drift-1|2 (<country>)` jobs name the
 #                countries and rows, the red run's own seeds the seeds they replay (its rows' `seed` artifact files; a run
-#                from before the rotation replayed seeds 1 and 2) (a run id, or the run's number as its URL shows it). A red with no failed drift row
+#                from before the rotation replayed seeds 1 and 2; a run with none left, the rows' fixed seeds) (a run id, or the run's number as its URL shows it). A red with no failed drift row
 #                has nothing to judge here: exit 0, said so. A FIX MAY BE PARTIAL (5df3295bd cleared PL's flips while DE
 #                seed 2's stayed): each row still red is held against the red run's own verdict.txt for it -- open
 #                divergences plus flips beyond the allow-lists. Fewer in some row and more in none is PROGRESS (exit 0,
@@ -105,22 +104,23 @@ base_download() {
     || say "could not download run $1's identity-drift artifacts"
 }
 # row_seed <run id> <row 1|2> -> the seed that row of the run replayed: its artifacts' `seed` file; a run whose artifacts
-# name none predates the rotation (row N replayed seed N); a run with no artifacts left, its run number's rotation
+# name none predates the rotation (row N replayed seed N); a run with no artifacts left names nothing (empty): its row
+# replays its FIXED set (scripts/ci/drift_seeds.py, drift-gate-seeds.tsv) -- what every run since the fixed seeds replays
 row_seed() {
-  local seed number
+  local seed
   base_download "$1"
   seed=$(cat "$base_root/base-$1"/identity-drift-*-takes-drift-"$2"/seed 2> /dev/null | head -1)
   if [ -n "$seed" ]; then echo "$seed"; return; fi
   if compgen -G "$base_root/base-$1/identity-drift-*-takes-drift-*" > /dev/null; then echo "$2"; return; fi
-  number=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$1" --json number --jq .number) || return 1
-  python3 "$here/ci/drift_seeds.py" seed --row "$2" --run-number "$number"
+  say "run $1 left no takes-drift-$2 artifact naming its seed: the row replays its fixed seeds"
 }
-# pins_of <run id> <rows> -> `S1,S2` for the run's rows named (1, 2 or `1 2`), the others' sides empty
+# pins_of <run id> <rows> -> `S1,S2` for the run's rows named (1, 2 or `1 2`), the others' sides empty; nothing at all
+# when no row named a seed (every row its fixed set)
 pins_of() {
   local id=$1 one="" two=""
   case " $2 " in *" 1 "*) one=$(row_seed "$id" 1) || return 1 ;; esac
   case " $2 " in *" 2 "*) two=$(row_seed "$id" 2) || return 1 ;; esac
-  echo "$one,$two"
+  [ -z "$one$two" ] || echo "$one,$two"
 }
 # drift_jobs <run id> -> "<name>\t<status>\t<conclusion>" for each takes-drift row of the run (none yet: nothing)
 drift_jobs() {
