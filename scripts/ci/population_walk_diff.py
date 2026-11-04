@@ -4,7 +4,7 @@ services.identity.PopulationMonotonicitySpec; convergence-reds root cause 2, fix
 
 The spec, run by the pre-push hook's identity check, writes a CANDIDATE file for each committed slice whose flips
 (a listing's take going A -> B -> A, none -> A -> none, along an arrival chain) differ from the known rows
-(identity-population-flips-known.tsv): `slice <name>`, `head <venue> <raw title> <line>` per flip at the change's
+(identity-flip-backlog.tsv): `slice <name>`, `head <venue> <raw title> <line>` per flip at the change's
 head, `known <venue> <raw title> <note>` per known row. scripts/ci/population-walk-diff walks the same slices with the
 base's code (PopulationMonotonicitySpec.main: `<slice> <venue> <raw title> <shape: path>` rows, `# <slice>: ...` lines)
 and this judges, listing by listing (venue, raw title):
@@ -92,7 +92,7 @@ def judge(candidates, walked, failed):
                     refusals.append(f"NEW flip (base unwalked): {name}: {line}")
             for k, note in known.items():
                 if k not in head:
-                    refusals.append(f"CURED known row (base unwalked) -- remove it from identity-population-flips-known.tsv: "
+                    refusals.append(f"CURED known row (base unwalked) -- remove it from identity-flip-backlog.tsv: "
                                     f"{name}: {k[0]} | {k[1]} ({note})")
             continue
         base = walked[name]
@@ -107,7 +107,7 @@ def judge(candidates, walked, failed):
                 continue
             if k in base:
                 refusals.append(f"CURED known row (the base flips it, this change does not) -- remove it from "
-                                f"identity-population-flips-known.tsv: {name}: {k[0]} | {k[1]} ({note})")
+                                f"identity-flip-backlog.tsv: {name}: {k[0]} | {k[1]} ({note})")
             else:
                 notes.append(f"stale known row (the base does not flip it either, main's): {name}: {k[0]} | {k[1]}")
     return refusals, notes
