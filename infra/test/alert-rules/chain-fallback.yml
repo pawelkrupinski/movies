@@ -19,7 +19,7 @@ tests:
       - eval_time: 65m
         alertname: ChainFallbackSaturated
         exp_alerts:
-          - exp_labels: { severity: warning, country: uk, client: CineworldClient, job: kinowo-web }
+          - exp_labels: { domain: pipeline, severity: warning, country: uk, client: CineworldClient, job: kinowo-web }
             exp_annotations:
               summary: "CineworldClient (uk) is mostly running on fallback — 100% of its venues"
               description: >-

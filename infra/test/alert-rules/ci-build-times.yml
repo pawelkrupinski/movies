@@ -32,6 +32,7 @@ tests:
         alertname: CiJobDurationRegressed
         exp_alerts:
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Identity model convergence
@@ -43,13 +44,14 @@ tests:
               description: >-
                 The latest successful main run of takes (poland) (Identity model convergence) took 45m 0s, against a
                 median of 25m 30s over the fortnight before the last two days. Last run at baseline #1069, first slow
-                run after it #1070: the regression is in the commits between them. Every job of a workflow slowing at
+                run after it #1070: the regression is in the commits between them. Steps regressed in it (their own alerts are inhibited by this one): none. Every job of a workflow slowing at
                 once is the runner host, not a commit. A job that times out has no successful run to judge:
                 CiJobNearTimeout is the alert for that.
       - eval_time: 426h
         alertname: CiStepDurationRegressed
         exp_alerts:
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Identity model convergence
@@ -117,6 +119,7 @@ tests:
         alertname: CiJobDurationRegressed
         exp_alerts:
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Record scrape fixtures
@@ -128,13 +131,14 @@ tests:
               description: >-
                 The latest successful main run of convergence (germany) (Record scrape fixtures) took 2h 5m 0s, against
                 a median of 18m 0s over the fortnight before the last two days. Last run at baseline #1071, first slow
-                run after it #1072: the regression is in the commits between them. Every job of a workflow slowing at
+                run after it #1072: the regression is in the commits between them. Steps regressed in it (their own alerts are inhibited by this one): none. Every job of a workflow slowing at
                 once is the runner host, not a commit. A job that times out has no successful run to judge:
                 CiJobNearTimeout is the alert for that.
       - eval_time: 432h
         alertname: CiRunWallClockRegressed
         exp_alerts:
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Main
@@ -146,8 +150,9 @@ tests:
               description: >-
                 The latest successful main run of Main took 42m 0s from its first job's start to its last job's end,
                 against a median of 28m 0s over the fortnight before the last two days. Last run at baseline #1070,
-                first slow run after it #1071: the regression is in the commits between them. Compare the two runs' jobs
-                on the "CI — build timings" dashboard; the job and step alerts beside this one name which part grew.
+                first slow run after it #1071: the regression is in the commits between them. Jobs regressed in it (their
+                own alerts are inhibited by this one): none. Compare the two runs' jobs on the "CI — build timings"
+                dashboard.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # NEAR THE CEILING: US takes at 46.5 of 55 minutes fires (80% is 44); a landing check's takes row cancelled at its
@@ -186,6 +191,7 @@ tests:
         alertname: CiJobNearTimeout
         exp_alerts:
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Main
@@ -199,6 +205,7 @@ tests:
                 steps and phases on the "CI — build timings" dashboard) before raising the ceiling: a leg near its limit
                 is a signal to re-measure, not to raise the number again (country-convergence-leg.yml).
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Identity model convergence
@@ -213,6 +220,7 @@ tests:
                 raising the ceiling: a leg near its limit is a signal to re-measure, not to raise the number again
                 (country-convergence-leg.yml).
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Identity model convergence
@@ -230,6 +238,7 @@ tests:
         alertname: CiJobNearTimeout
         exp_alerts:
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Identity model convergence
@@ -244,6 +253,7 @@ tests:
                 raising the ceiling: a leg near its limit is a signal to re-measure, not to raise the number again
                 (country-convergence-leg.yml).
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Identity model convergence
@@ -308,6 +318,7 @@ tests:
         alertname: MainCiRunnerWaitHigh
         exp_alerts:
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Main
@@ -328,6 +339,7 @@ tests:
         alertname: MainCiRunnerWaitHigh
         exp_alerts:
           - exp_labels:
+              domain: ci
               severity: warning
               job: kinowo-ci
               workflow: Main

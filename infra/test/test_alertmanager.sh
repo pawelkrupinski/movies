@@ -182,7 +182,9 @@ route_is telegram-and-email alertname=WorkerQueueMetricsAbsent severity=warning
 # The two rules that watch whether the movement ACHIEVES anything, added 2026-09-06.
 route_is telegram-and-email alertname=WorkerTasksFailingRepeatedly severity=warning country=pl
 route_is telegram-and-email alertname=WorkerTaskTypeUnhandled severity=warning country=de
-route_is telegram-and-email alertname=WorkerHttpHostCircuitOpen severity=warning country=pl leg=scrape host=restapi.helios.pl
+# ONE CINEMA'S TICKET HOST tripping its breaker is not a production outage: domain third-party, the daily digest
+# (115 Telegram messages in the week to 2026-11-04), even though the Worker.* email prefix would match it.
+route_is digest-email alertname=WorkerHttpHostCircuitOpen severity=warning domain=third-party country=pl leg=scrape host=restapi.helios.pl
 # The in-app Telegram bot failing: the email half is what still reaches someone if Telegram is
 # the thing broken. See worker-pipeline.rules.
 route_is telegram-and-email alertname=WorkerTelegramAlertsFailing severity=warning country=us kind=gone_venue
@@ -235,15 +237,25 @@ route_is telegram alertname=ReadModelProjectionTriggerUnaccounted severity=warni
 route_is telegram alertname=ReadModelFilmsInvisibleWithScreenings severity=warning country=de
 route_is telegram alertname=ReadModelHealsRecurring severity=warning country=us
 route_is telegram alertname=ChangeStreamApplyLagging severity=warning country=pl
-# The identity matching alarms (identity-matching.rules): warnings, so telegram -- a live receiver.
-route_is telegram alertname=IdentityTakeChangesBurst severity=warning country=pl
-route_is telegram alertname=IdentityTakesLost severity=warning country=uk
-route_is telegram alertname=IdentitySuspectTakesRising severity=warning country=de
-# ...and their per-film / per-build / per-listing half (identity-regressions.rules), the same receiver.
-route_is telegram alertname=IdentityFilmListingsLost severity=warning country=pl
-route_is telegram alertname=IdentityBuildNetLosses severity=warning country=de
-route_is telegram alertname=IdentityListingFlipFlop severity=warning country=uk
-route_is telegram alertname=IdentityRegressionWatchStale severity=warning
+# The identity matching alarms (identity-matching.rules, identity-regressions.rules): model quality, not an outage --
+# domain identity, the daily email digest, never Telegram.
+route_is digest-email alertname=IdentityTakeChangesBurst severity=warning domain=identity country=pl
+route_is digest-email alertname=IdentityTakesLost severity=warning domain=identity country=uk
+route_is digest-email alertname=IdentitySuspectTakesRising severity=warning domain=identity country=de
+route_is digest-email alertname=IdentityFilmListingsLost severity=warning domain=identity country=pl
+route_is digest-email alertname=IdentityBuildNetLosses severity=warning domain=identity country=de
+route_is digest-email alertname=IdentityListingFlipFlop severity=warning domain=identity country=uk
+route_is digest-email alertname=IdentityRegressionWatchStale severity=warning domain=identity
+# CI telemetry and the landing gate (ci-build-times.rules, ci-gates.rules): the digest too.
+route_is digest-email alertname=CiJobDurationRegressed severity=warning domain=ci workflow=Main ci_job=test
+route_is digest-email alertname=LandingGateRed severity=warning domain=ci
+# THE DEPLOY PIPELINE STUCK reaches Telegram on its own route (4-hourly), not the 12-hourly warning one.
+route_is telegram alertname=AutoApplyRefusingChange severity=warning domain=deploy host=mongo-1 reason=classifier_disagreement
+route_is telegram alertname=StagedClosureNotActivated severity=warning domain=deploy host=monitoring-1
+# A production domain still reaches its usual receiver, and an alert with no domain at all still pages.
+route_is telegram alertname=JvmFullGcRateHigh severity=warning domain=platform host=k3s-worker-1
+route_is telegram-and-email alertname=ResidentialProxyFailing severity=warning domain=pipeline country=uk
+route_is telegram alertname=SomethingNew severity=warning
 route_is telegram alertname=RetiredVenueRowsLingering severity=warning country=pl
 route_is telegram alertname=DuplicateVenueListing severity=warning country=uk
 route_is telegram alertname=CinemaScrapeFailureShareHigh severity=warning country=uk
@@ -294,6 +306,43 @@ route_is telegram-and-email alertname=PosterSharedImageJump severity=warning cou
 route_is telegram-and-email alertname=PosterProbesMissing severity=warning country=es
 route_is telegram-and-email alertname=FluxObjectNotReady severity=warning name=web-pl-config
 route_is telegram-and-email alertname=FluxObjectSuspended severity=warning name=web-pl-config
+
+# THE TELEGRAM MESSAGE IS BOUNDED. Telegram cuts at 4096 characters, and 303 messages in the week to
+# 2026-11-04 were cut (Alertmanager's "Truncated message" warning). Render the receiver's own template
+# over a 40-alert group whose every description is 3000 characters, and require it under 4096 with
+# the count and the "...and N more" tail in it.
+step "telegram message stays under Telegram's 4096 characters"
+if ! python3 - "$rendered" <<'PY'
+import json, subprocess, sys, tempfile, yaml
+document = yaml.safe_load(open(sys.argv[1]))
+message = next(c["message"] for r in document["receivers"] if r["name"] == "telegram" for c in r["telegram_configs"])
+def alert(i, status):
+    return {"status": status, "labels": {"alertname": "CiStepDurationRegressed", "severity": "warning", "domain": "ci",
+            "step": "step %d" % i, "host": "k3s-worker-1"},
+            "annotations": {"summary": ("summary %d ü " % i) * 60, "description": "d\u00e9scription " * 300},
+            "startsAt": "2026-11-04T10:00:00Z", "endsAt": "0001-01-01T00:00:00Z", "generatorURL": "", "fingerprint": str(i)}
+data = {"receiver": "telegram", "status": "firing",
+        "alerts": [alert(i, "firing") for i in range(40)] + [alert(100 + i, "resolved") for i in range(3)],
+        "groupLabels": {"alertname": "CiStepDurationRegressed"}, "commonLabels": {"severity": "warning", "domain": "ci"},
+        "commonAnnotations": {}, "externalURL": "https://alertmanager.kinowo.net"}
+with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+    json.dump(data, handle)
+# amtool insists on a template glob; the message needs none of its own, so an empty file.
+with tempfile.NamedTemporaryFile("w", suffix=".tmpl", delete=False) as empty:
+    pass
+out = subprocess.run(["amtool", "template", "render", "--template.glob", empty.name, "--template.text", message,
+                      "--template.data", handle.name], capture_output=True, text=True)
+text = out.stdout
+bad = out.returncode != 0 or len(text) >= 4096 or "[FIRING:40]" not in text or "…and 32 more" not in text \
+      or "(+3 resolved)" not in text
+print(("  FAILED" if bad else "  ok ") + " a 40-alert group renders to %d characters%s" % (len(text), (": " + out.stderr.strip()[:300]) if out.returncode else ""))
+if bad:
+    print(text[:600])
+sys.exit(1 if bad else 0)
+PY
+then
+  failed=1
+fi
 
 # ------------------------------------------------------------------------------------------------
 # INHIBITION, WHICH `amtool` CANNOT TEST AND WHICH SILENTLY DELETES ALERTS WHEN IT IS WRONG.

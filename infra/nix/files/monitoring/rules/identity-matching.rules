@@ -61,6 +61,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of its listings lost their film within an hour"
           description: >-
@@ -92,6 +93,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of its listings changed their film within an hour"
           description: >-
@@ -144,6 +146,7 @@ groups:
         for: 2h
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: {{ $value }} more suspect takes than a day ago"
           description: >-
@@ -172,6 +175,7 @@ groups:
           ) >= 2
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: listings moved back to a film they held, in {{ $value }} of the last 6 hours"
           description: >-
@@ -199,6 +203,7 @@ groups:
           ) >= 3
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: '{{ $labels.billing }}' moved back to a film it held, in {{ $value }} hours of the last 24"
           description: >-
@@ -222,6 +227,7 @@ groups:
           delta(kinowo_worker_identity_agreement_clusters{state="incomplete"}[3h]) >= 0
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: {{ $value }} agreement verdicts still to decide again, none in 3 hours"
           description: >-
@@ -235,6 +241,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "no worker reports the agreement backfill's incomplete count"
           description: >-

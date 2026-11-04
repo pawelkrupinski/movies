@@ -38,6 +38,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}'s share cards and posters use {{ $value | humanizePercentage }} of their disk budget"
           description: >-
@@ -62,6 +63,7 @@ groups:
         for: 15m
         labels:
           severity: critical
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}'s current share cards and posters alone exceed their disk budget"
           description: >-
@@ -91,6 +93,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}'s share-card posters are failing for {{ $value | humanizePercentage }} of films"
           description: >-
@@ -116,6 +119,7 @@ groups:
         for: 6h
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} has share cards for only {{ $value | humanizePercentage }} of its films on screen"
           description: >-
@@ -144,6 +148,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}'s worker is up but publishes no share-card coverage"
           description: >-
@@ -173,6 +178,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}'s share-card renders are failing: {{ $value | humanizePercentage }} of the last half hour's"
           description: >-
@@ -228,6 +234,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "The fleet's Facebook re-scrape queue cannot clear within 36 hours at the pace it is draining"
           description: >-
@@ -252,6 +259,7 @@ groups:
           sum by (country) (increase(kinowo_worker_share_cards_rescrape_total{outcome="rate_limited"}[30m])) > 0
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "Facebook rate-limited the app on {{ $labels.country }}'s re-scrape: the fleet's re-scrapes wait an hour"
           description: >-
@@ -275,6 +283,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}'s share-card volume has {{ $value | humanize1024 }}B free, under twice the floor the cards keep"
           description: >-
@@ -295,6 +304,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}'s worker is refusing new share-card files: no room"
           description: >-
@@ -315,6 +325,7 @@ groups:
         for: 6h
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} has a current share card for only {{ $value | humanizePercentage }} of its cities"
           description: >-

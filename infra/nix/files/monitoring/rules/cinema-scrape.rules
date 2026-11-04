@@ -93,6 +93,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s oldest cinema has not scraped in {{ $value | humanizeDuration }}"
           description: >-
@@ -131,6 +132,7 @@ groups:
         for: 24h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $value }} cinema(s) in {{ $labels.country }} have never been scraped successfully"
           description: >-
@@ -158,6 +160,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "No worker is publishing the cinema-scrape census"
           description: >-
@@ -203,6 +206,7 @@ groups:
         for: 50h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} still holds {{ $value }} side row(s) under a venue its roster no longer lists"
           description: >-
@@ -243,6 +247,7 @@ groups:
         for: 6h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $value }} venue pair(s) in {{ $labels.country }} list one venue's booking sessions under another's name"
           description: >-
@@ -298,6 +303,7 @@ groups:
         for: 2h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $value | humanizePercentage }} of {{ $labels.country }}'s cinema scrape checks have been failing for two hours"
           description: >-
@@ -340,6 +346,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.service }} ({{ $labels.country }}) has failed {{ $value | humanizePercentage }} of its detail fetches for an hour"
           description: >-
@@ -375,6 +382,7 @@ groups:
           ) > 0
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: {{ $value | humanize }} scraped listings did not reach the store ({{ $labels.reason }})"
           description: >-
@@ -421,6 +429,7 @@ groups:
           ) >= 72
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s {{ $labels.guard }} scrape guard has rejected ticks every hour for 12 hours"
           description: >-

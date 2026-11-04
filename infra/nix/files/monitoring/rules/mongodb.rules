@@ -74,6 +74,7 @@ groups:
         for: 3m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "mongod is not running on {{ $labels.host }}"
           description: >-
@@ -89,6 +90,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Nothing is reporting the state of mongod's unit"
           description: >-
@@ -109,6 +111,7 @@ groups:
         # the wrong moment does not page.
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "No successful mongodump for over 36 hours"
           description: >-
@@ -126,6 +129,7 @@ groups:
         for: 6h
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Nothing is publishing mongodump's success timestamp"
           description: >-
@@ -148,6 +152,7 @@ groups:
         expr: kinowo_mongodump_last_size_bytes < 0.5 * min_over_time(kinowo_mongodump_last_size_bytes[7d] offset 1d)
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "The last mongodump is less than half the size of the smallest in the past week"
           description: >-
@@ -172,6 +177,7 @@ groups:
         # 26h old; 36h is one missed pull plus most of a day.
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "The newest off-box copy of the database is over 36 hours old"
           description: >-
@@ -189,6 +195,7 @@ groups:
         for: 6h
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Nothing is publishing the off-box mongodump copy's age"
           description: >-
@@ -224,6 +231,7 @@ groups:
         for: 3m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "mongodb_exporter cannot reach mongod on {{ $labels.host }}"
           description: >-
@@ -266,6 +274,7 @@ groups:
         for: 2m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "mongod on {{ $labels.host }} is not PRIMARY (state {{ $value }})"
           description: >-
@@ -310,6 +319,7 @@ groups:
         for: 2m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "no mongod in rs0 is PRIMARY"
           description: >-
@@ -330,6 +340,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Nothing is reporting mongod's replica-set member state"
           description: >-
@@ -376,6 +387,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "The oplog window on {{ $labels.host }} is down to {{ $value | humanizeDuration }}"
           description: >-
@@ -394,6 +406,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Nothing is reporting the oplog window on mongo-1"
           description: >-
@@ -424,6 +437,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "mongod on {{ $labels.host }} is using {{ $value | humanizePercentage }} of its connection ceiling"
           description: >-
@@ -460,6 +474,7 @@ groups:
         for: 10m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "mongod on {{ $labels.host }} holds {{ $value | humanizePercentage }} of the machine's memory"
           description: >-
@@ -503,6 +518,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: platform
         annotations:
           # FORMATTED, because a raw rate reaches Telegram as "0.19999999999999998 internal
           # assertions/s". The rule this replaced paged with "1.5057471264367817 assertions/s".
@@ -527,6 +543,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "mongod on {{ $labels.host }} is rejecting {{ $value | printf \"%.2f\" }} client operations/s"
           description: >-
@@ -546,6 +563,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Nothing is reporting mongod's serverStatus counters"
           description: >-

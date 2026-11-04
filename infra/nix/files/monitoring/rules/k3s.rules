@@ -61,6 +61,7 @@ groups:
         for: 5m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "The k3s control plane is not running on {{ $labels.host }}"
           description: >-
@@ -79,6 +80,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "The k3s agent is not running on {{ $labels.host }}"
           description: >-
@@ -102,6 +104,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Nothing is reporting the state of any k3s unit"
           description: >-
@@ -135,6 +138,7 @@ groups:
         # disk was full. A day uncollected is ~54 GB, leaving roughly 80 GB and a day to act in.
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has not collected its container images for over a day"
           description: >-
@@ -162,6 +166,7 @@ groups:
         for: 2d
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has never reported a successful container image collection"
           description: >-
@@ -184,6 +189,7 @@ groups:
         # budget. A day's pushes are a few GB of layers, so three days is room, not an emergency.
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has not pruned the image registry for over 3 days"
           description: >-
@@ -204,6 +210,7 @@ groups:
         for: 2d
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has never reported a successful registry prune"
           description: >-
@@ -244,6 +251,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Kubernetes node {{ $labels.node }} is not Ready"
           description: >-
@@ -270,6 +278,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has {{ $value }} replica(s) short"
           description: >-
@@ -304,6 +313,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} is in CrashLoopBackOff"
           description: >-
@@ -338,6 +348,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.namespace }}/{{ $labels.pod }} cannot pull the image for {{ $labels.container }}"
           description: >-
@@ -367,6 +378,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} was OOMKilled"
           description: >-
@@ -409,6 +421,7 @@ groups:
               (kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1)
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "{{ $labels.pod }} restarted without being OOM-killed"
           description: >-
@@ -452,6 +465,7 @@ groups:
           ) > 2.5
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.namespace }}/{{ $labels.deployment }} restarted {{ printf \"%.0f\" $value }} times in the last hour"
           description: >-
@@ -477,6 +491,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Nothing is reporting Kubernetes object state"
           description: >-

@@ -74,6 +74,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $value }} {{ $labels.country }} cit(y/ies) serve at least 20% (and 5+) fewer films than the corpus has"
           description: >-
@@ -125,6 +126,7 @@ groups:
         for: 24h
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} has {{ $value }} more venue(s) a week without a film than at any point the day before"
           description: >-
@@ -155,6 +157,7 @@ groups:
         for: 1d
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} has {{ $value }} seasonal venue(s) that listed nothing by midseason"
           description: >-
@@ -190,6 +193,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of sampled read-model cards differ from a fresh projection of their row"
           description: >-
@@ -234,6 +238,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of sampled share-card pointers do not resolve"
           description: >-
@@ -306,6 +311,7 @@ groups:
         for: 12h
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.city }} ({{ $labels.country }}) has served no film for 12 hours, after six days that all had films"
           description: >-

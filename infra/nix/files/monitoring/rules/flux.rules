@@ -92,6 +92,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "flux {{ $labels.kind }}/{{ $labels.name }} has not reconciled for an hour"
           description: >-
@@ -116,6 +117,7 @@ groups:
         for: 15m
         labels:
           severity: critical
+          domain: deploy
         annotations:
           summary: "flux {{ $labels.controller }} is not answering its metrics port"
           description: >-
@@ -184,6 +186,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "flux {{ $labels.customresource_kind }}/{{ $labels.name }} has been NotReady for 30 minutes"
           description: >-
@@ -205,6 +208,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "flux {{ $labels.customresource_kind }}/{{ $labels.name }} has been suspended for an hour"
           description: >-
@@ -224,6 +228,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "Flux object state is not published -- kube-state-metrics has stopped serving the gotk_<kind>_info series"
           description: >-

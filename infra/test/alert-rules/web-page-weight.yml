@@ -52,6 +52,7 @@ tests:
         alertname: WebPageTooHeavy
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: us
               route: /us/:city/movies
@@ -152,6 +153,7 @@ tests:
         alertname: WebResponseSizeJumped
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: uk
               route: /:city/api/repertoire
@@ -190,6 +192,7 @@ tests:
         alertname: WebResponseSizeCollapsed
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: de
               route: /:city/
@@ -224,6 +227,7 @@ tests:
         alertname: WebResponseSizeUnobserved
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
             exp_annotations:
               summary: "No web response-size samples at all"

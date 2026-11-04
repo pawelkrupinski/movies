@@ -63,6 +63,7 @@ groups:
         for: 45m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s Decodo residential proxy is mostly failing"
           description: >-
@@ -105,6 +106,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of paid {{ $labels.provider }} requests are failing"
           description: >-

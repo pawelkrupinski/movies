@@ -135,6 +135,56 @@ CASES = [
 
     # FLUX HAS NO RULE, and the case is here so re-adding one has to argue with a test. A suspended
     # reconciliation is somebody's deliberate act; a controller being down does not explain it.
+    ("the residential proxy failing silences its country's chain fallbacks",
+     {"alertname": "ResidentialProxyFailing", "severity": "warning", "country": "uk"},
+     {"alertname": "ChainFallbackSaturated", "severity": "warning", "country": "uk", "client": "CineworldClient"},
+     True),
+
+    ("...and its country's paid egress failing, the same outage read twice",
+     {"alertname": "ResidentialProxyFailing", "severity": "warning", "country": "pl"},
+     {"alertname": "PaidEgressFailing", "severity": "warning", "country": "pl", "provider": "decodo"},
+     True),
+
+    ("paid egress failing silences its country's queue backing up behind the retries",
+     {"alertname": "PaidEgressFailing", "severity": "warning", "country": "us", "provider": "zyte"},
+     {"alertname": "WorkerQueueHeadOld", "severity": "warning", "country": "us", "task_type": "ScrapeCinema"},
+     True),
+
+    ("...and NOT another country's",
+     {"alertname": "PaidEgressFailing", "severity": "warning", "country": "us", "provider": "zyte"},
+     {"alertname": "WorkerQueueHeadOld", "severity": "warning", "country": "de", "task_type": "ScrapeCinema"},
+     False),
+
+    ("a slower CI run silences its own jobs' regressions",
+     {"alertname": "CiRunWallClockRegressed", "severity": "warning", "workflow": "Main"},
+     {"alertname": "CiJobDurationRegressed", "severity": "warning", "workflow": "Main", "ci_job": "test"},
+     True),
+
+    ("...and NOT another workflow's",
+     {"alertname": "CiRunWallClockRegressed", "severity": "warning", "workflow": "Main"},
+     {"alertname": "CiJobDurationRegressed", "severity": "warning", "workflow": "Identity model convergence", "ci_job": "takes"},
+     False),
+
+    ("a slower CI job silences its own steps' regressions",
+     {"alertname": "CiJobDurationRegressed", "severity": "warning", "workflow": "Main", "ci_job": "test"},
+     {"alertname": "CiStepDurationRegressed", "severity": "warning", "workflow": "Main", "ci_job": "test", "step": "sbt"},
+     True),
+
+    ("...and NOT another job's",
+     {"alertname": "CiJobDurationRegressed", "severity": "warning", "workflow": "Main", "ci_job": "test"},
+     {"alertname": "CiStepDurationRegressed", "severity": "warning", "workflow": "Main", "ci_job": "lint", "step": "sbt"},
+     False),
+
+    ("a sustained probe failure silences its own 10-minute warning",
+     {"alertname": "ProbeFailing", "severity": "critical", "instance": "https://kinowo.net/", "country": "pl"},
+     {"alertname": "ProbeFailing", "severity": "warning", "instance": "https://kinowo.net/", "country": "pl"},
+     True),
+
+    ("...and NOT another URL's",
+     {"alertname": "ProbeFailing", "severity": "critical", "instance": "https://kinowo.net/", "country": "pl"},
+     {"alertname": "ProbeFailing", "severity": "warning", "instance": "https://showtimes.cc/uk", "country": "uk"},
+     False),
+
     ("a down Flux controller does NOT silence a deliberate suspension",
      {"alertname": "FluxControllerDown", "severity": "critical", "controller": "source-controller"},
      {"alertname": "FluxObjectSuspended", "severity": "warning", "customresource_kind": "Kustomization",

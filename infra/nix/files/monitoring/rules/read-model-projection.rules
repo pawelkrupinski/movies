@@ -101,6 +101,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} is projecting {{ $value | printf \"%.2f\" }}/s more than its change streams can explain"
           description: >-
@@ -210,6 +211,7 @@ groups:
         for: 2h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} has {{ $value }} film(s) screening but invisible on the site"
           description: >-
@@ -242,6 +244,7 @@ groups:
         for: 15m
         labels:
           severity: critical
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} dropped {{ $value | humanizePercentage }} of its films from the read model in an hour"
           description: >-
@@ -538,6 +541,7 @@ groups:
         for: 1m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: the corpus and the site disagree on {{ $value }} film-in-a-city, expected 0"
           description: >-
@@ -582,6 +586,7 @@ groups:
         for: 45m
         labels:
           severity: critical
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} is serving {{ $value | humanizePercentage }} fewer films than its corpus holds"
           description: >-
@@ -616,6 +621,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "No worker is publishing read-model projection metrics"
           description: >-
@@ -642,6 +648,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "One side of the read-model drift comparison has stopped publishing"
           description: >-
@@ -675,6 +682,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: {{ $value }} TTL index(es) do not match what the code asks for"
           description: >-
@@ -696,6 +704,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "No worker is publishing the TTL-index reconciliation gauge"
           description: >-
@@ -763,6 +772,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s movies change stream has delivered nothing for {{ $value | humanizeDuration }} while the collection kept changing"
           description: >-
@@ -839,6 +849,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s read-model sweep keeps healing cards the change stream did not write"
           description: >-
@@ -879,6 +890,7 @@ groups:
           sum by (country) (increase(kinowo_worker_readmodel_heals_total{trigger="boot"}[1h])) > 50
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s worker boot re-projected {{ $value | humanize }} films the read model was missing"
           description: >-
@@ -917,6 +929,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s {{ $labels.collection }} change events have waited {{ $value | humanizeDuration }} to be applied"
           description: >-
@@ -985,6 +998,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} is rebuilding {{ $value | humanizePercentage }} of the venue rows it projects"
           description: >-
@@ -1037,6 +1051,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s read-model projections spend {{ $value | humanizeDuration }} writing per call"
           description: >-
@@ -1072,6 +1087,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s {{ $labels.collection }} change events have waited {{ $value | humanizeDuration }} and the wait is growing"
           description: >-

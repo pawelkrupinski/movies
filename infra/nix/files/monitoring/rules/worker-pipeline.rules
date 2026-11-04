@@ -47,6 +47,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s task queue has grown for an hour straight ({{ $value | printf \"%.3f\" }} tasks/s)"
           description: >-
@@ -98,6 +99,7 @@ groups:
         for: 5m
         labels:
           severity: critical
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s worker has claimed no task for ten minutes with work waiting"
           description: >-
@@ -134,6 +136,7 @@ groups:
         for: 5m
         labels:
           severity: critical
+          domain: pipeline
         annotations:
           summary: "The {{ $labels.country }} worker has been unreachable for 5 minutes"
           description: >-
@@ -197,6 +200,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s worker is failing or retrying {{ $value | humanizePercentage }} of the tasks it finishes"
           description: >-
@@ -233,6 +237,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} is claiming {{ $labels.task_type }} tasks with no handler wired for them"
           description: >-
@@ -261,6 +266,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} dropped {{ $labels.task_type }} task(s) on a deterministic failure"
           description: >-
@@ -290,6 +296,7 @@ groups:
         for: 2m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} has a {{ $labels.task_type }} task parked past the 30-minute backoff cap"
           description: >-
@@ -311,6 +318,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "No worker is publishing task-queue metrics"
           description: >-
@@ -343,6 +351,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s worker has been failing repository writes for 10 minutes"
           description: >-
@@ -382,6 +391,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}'s oldest claimable {{ $labels.task_type }} task has waited {{ $value | humanizeDuration }}"
           description: >-
@@ -403,6 +413,7 @@ groups:
           sum by (country, collection) (increase(kinowo_web_decode_failures_total[1h])) > 0
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: documents in {{ $labels.collection }} could not be decoded"
           description: >-
@@ -446,6 +457,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: the worker's {{ $labels.alerter }} Telegram alerter is switched off"
           description: >-
@@ -462,6 +474,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: the worker is running without {{ $labels.integration }}"
           description: >-
@@ -500,6 +513,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: the worker's {{ $labels.kind }} Telegram pages are failing to send"
           description: >-
@@ -537,6 +551,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: {{ $labels.service }} is refusing the worker ({{ $value | humanizePercentage }} of calls 401/403)"
           description: >-
@@ -575,6 +590,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }}: {{ $labels.service }} has rate-limited the worker for 30m ({{ $value | humanizePercentage }} of calls 429)"
           description: >-
@@ -611,6 +627,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: third-party
         annotations:
           summary: "{{ $labels.country }}: {{ $labels.host }} has had its circuit breaker open for over an hour -- cinema listings for that host are being held incomplete (nothing pruned)"
           description: >-

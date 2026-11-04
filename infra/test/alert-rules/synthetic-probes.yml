@@ -11,7 +11,8 @@ evaluation_interval: 1m
 
 tests:
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # THE FRONT DOOR STOPS ANSWERING at 6m and stays down: five one-minute probes later it pages. A
+  # THE FRONT DOOR STOPS ANSWERING at 6m and stays down: ten minutes later it warns, twenty minutes
+  # later it pages critical (the warning stays; Alertmanager inhibits it under the critical). A
   # single failed probe on London at 3m is the internet, not the site, and must not.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
@@ -27,16 +28,55 @@ tests:
         exp_alerts: []
       - eval_time: 15m
         alertname: ProbeFailing
+        exp_alerts: []
+      - eval_time: 17m
+        alertname: ProbeFailing
         exp_alerts:
           - exp_labels:
+              domain: serving
+              country: "pl"
+              instance: "https://kinowo.net/"
+              job: "blackbox"
+              kind: "front-door"
+              severity: "warning"
+            exp_annotations:
+              summary: "https://kinowo.net/ has failed from outside for 10 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for ten minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A CITY PAGE IS PROBED EVERY FIVE MINUTES, not every minute (each is ~600 KB). London is down
+  # from the first probe; the third lands a minute late (11.5m, not 10.5m), so at 11m the newest
+  # sample is 5.5m old -- past Prometheus's 5m lookback. Read raw, the series vanishes there and
+  # the `for` hold starts over; read through last_over_time it holds, and the page still fires.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+      - eval_time: 27m
+        alertname: ProbeFailing
+        exp_alerts:
+          - exp_labels:
+              domain: serving
               country: "pl"
               instance: "https://kinowo.net/"
               job: "blackbox"
               kind: "front-door"
               severity: "critical"
             exp_annotations:
-              summary: "https://kinowo.net/ has failed from outside for 5 minutes"
-              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+              summary: "https://kinowo.net/ has failed from outside for 20 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for twenty minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A CITY PAGE IS PROBED EVERY FIVE MINUTES, not every minute (each is ~600 KB). London is down
+  # from the first probe; the third lands a minute late (11.5m, not 10.5m), so at 11m the newest
+  # sample is 5.5m old -- past Prometheus's 5m lookback. Read raw, the series vanishes there and
+  # the `for` hold starts over; read through last_over_time it holds, and the page still fires.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+          - exp_labels:
+              domain: serving
+              country: "pl"
+              instance: "https://kinowo.net/"
+              job: "blackbox"
+              kind: "front-door"
+              severity: "warning"
+            exp_annotations:
+              summary: "https://kinowo.net/ has failed from outside for 10 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for ten minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A CITY PAGE IS PROBED EVERY FIVE MINUTES, not every minute (each is ~600 KB). London is down
   # from the first probe; the third lands a minute late (11.5m, not 10.5m), so at 11m the newest
@@ -55,14 +95,15 @@ tests:
         alertname: ProbeFailing
         exp_alerts:
           - exp_labels:
+              domain: serving
               country: "uk"
               instance: "https://showtimes.cc/uk/london/"
               job: "blackbox-city"
               kind: "city"
-              severity: "critical"
+              severity: "warning"
             exp_annotations:
-              summary: "https://showtimes.cc/uk/london/ has failed from outside for 5 minutes"
-              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://showtimes.cc/uk/london/ (city, uk) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+              summary: "https://showtimes.cc/uk/london/ has failed from outside for 10 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://showtimes.cc/uk/london/ (city, uk) through Cloudflare for ten minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A PAGE THAT ANSWERS SLOWLY. London takes 5s a fetch and succeeds: past the 4s average for twenty
   # minutes it warns. The front door takes 12s because it is timing out -- ProbeFailing's, not this
@@ -91,6 +132,7 @@ tests:
         alertname: ProbeSlow
         exp_alerts:
           - exp_labels:
+              domain: serving
               country: "uk"
               instance: "https://showtimes.cc/uk/london/"
               job: "blackbox"
@@ -119,6 +161,7 @@ tests:
         alertname: ProbeDiscoveryStale
         exp_alerts:
           - exp_labels:
+              domain: serving
               host: "monitoring-1"
               instance: "10.20.0.11:9100"
               job: "node"
@@ -154,6 +197,7 @@ tests:
         alertname: ProbeDiscoveryStale
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: "warning"
             exp_annotations:
               summary: "The synthetic probes have not found a live film page for every country in 30 minutes"
@@ -165,6 +209,7 @@ tests:
         alertname: ProbeResultsAbsent
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: "warning"
             exp_annotations:
               summary: "Nothing is reporting the synthetic probes"
@@ -197,6 +242,7 @@ tests:
         alertname: ProbeBlockedByEdge
         exp_alerts:
           - exp_labels:
+              domain: serving
               country: "uk"
               instance: "https://showtimes.cc/uk/london/"
               job: "blackbox"
@@ -205,18 +251,19 @@ tests:
             exp_annotations:
               summary: "Cloudflare is refusing the synthetic probe of https://showtimes.cc/uk/london/ (403)"
               description: "The probe from monitoring-1 got a 403 from Cloudflare -- so this URL is NOT being watched from outside, and ProbeFailing cannot fire for it. `curl -sI` it from monitoring-1: `cf-mitigated: challenge` on every URL is Bot Fight Mode challenging a Hetzner address, and the fix (one-time) is an IP Access Rule for 128.140.49.167 (monitoring-1) with action Allow, in BOTH zones (kinowo.net and showtimes.cc), Security > WAF > Tools > IP Access Rules. On some URLs only, a custom or crawler rule is matching the path or the probe's User-Agent (`kinowo-synthetic-probe/1`): the showtimes.cc custom rule \"Challenge non-verified-bot traffic on catalog paths\" challenges `/movie/` and exempts monitoring-1 by address (`ip.src ne 128.140.49.167`), so a showtimes.cc film page here means that exemption was lost -- put it back in the rule's expression (Security > WAF > Custom rules). If real visitors report the same 403, this is an outage, not a probe problem."
-      - eval_time: 20m
+      - eval_time: 15m
         alertname: ProbeFailing
         exp_alerts:
           - exp_labels:
+              domain: serving
               country: "pl"
               instance: "https://kinowo.net/"
               job: "blackbox"
               kind: "front-door"
-              severity: "critical"
+              severity: "warning"
             exp_annotations:
-              summary: "https://kinowo.net/ has failed from outside for 5 minutes"
-              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+              summary: "https://kinowo.net/ has failed from outside for 10 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for ten minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # THE showtimes.cc `/movie/` EXEMPTION LOST. The film page is probed through the edge again
   # (2026-09-25); if the custom rule stops exempting monitoring-1 the film probe reads 403 while
@@ -241,6 +288,7 @@ tests:
         alertname: ProbeBlockedByEdge
         exp_alerts:
           - exp_labels:
+              domain: serving
               country: "us"
               instance: "https://showtimes.cc/us/new-york/movie/coyote-vs-acme"
               job: "blackbox"
@@ -279,6 +327,7 @@ tests:
         alertname: ProbeSourceDegraded
         exp_alerts:
           - exp_labels:
+              domain: serving
               country: "all"
               instance: "https://www.cloudflare.com/cdn-cgi/trace"
               job: "blackbox"
@@ -312,11 +361,27 @@ tests:
         alertname: ProbeFailing
         exp_alerts:
           - exp_labels:
+              domain: serving
               country: "pl"
               instance: "https://kinowo.net/"
               job: "blackbox"
               kind: "front-door"
-              severity: "critical"
+              severity: "warning"
             exp_annotations:
-              summary: "https://kinowo.net/ has failed from outside for 5 minutes"
-              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for five minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+              summary: "https://kinowo.net/ has failed from outside for 10 minutes"
+              description: "blackbox_exporter on monitoring-1 has been unable to fetch https://kinowo.net/ (front-door, pl) through Cloudflare for ten minutes. `probe_http_status_code` for this instance says which kind (403 is excluded here -- that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable -- `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or `share-card` target that 404s alone is a film that left the schedule and a discovery that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ONE POSTER URL FAILING IS NOT THE SITE DOWN (2026-11-04): all eight ProbeFailing pages of the
+  # week before were single weserv poster URLs, healed in 5-15 minutes. Posters are judged per
+  # poster host by PosterProbeFailing (posters.rules); ProbeFailing leaves kind="poster" alone.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a failing poster probe does not fire ProbeFailing
+    input_series:
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=x",job="blackbox-poster",country="de",kind="poster",poster_host="arsenal-berlin.de"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: ProbeFailing
+        exp_alerts: []

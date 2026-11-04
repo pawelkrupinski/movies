@@ -98,6 +98,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} page {{ $labels.route }} p95 is {{ $value | humanizeDuration }}"
           description: >-
@@ -128,6 +129,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} endpoint {{ $labels.route }} p95 is {{ $value | humanizeDuration }}"
           description: >-

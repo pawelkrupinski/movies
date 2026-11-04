@@ -48,6 +48,7 @@ tests:
         alertname: CityServingShortOfCorpus
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: us
             exp_annotations:
@@ -92,6 +93,7 @@ tests:
         alertname: CinemaContentStaleVenuesGrowing
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
             exp_annotations:
@@ -133,6 +135,7 @@ tests:
         alertname: SeasonalVenuesNotReopened
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
             exp_annotations:
@@ -175,6 +178,7 @@ tests:
         alertname: ReadModelContentMismatch
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
             exp_annotations:
@@ -187,6 +191,7 @@ tests:
         alertname: ShareCardPointersUnresolvable
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: uk
             exp_annotations:
@@ -238,6 +243,7 @@ tests:
         alertname: CityDarkInBothTiers
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: us
               city: butte

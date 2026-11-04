@@ -61,6 +61,7 @@ tests:
         alertname: WorkerScheduledTickStale
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: warning
               country: uk
               tick: scrape-reaper
@@ -98,6 +99,7 @@ tests:
         alertname: WorkerScheduledTickStale
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: warning
               country: de
               tick: settle
@@ -118,6 +120,7 @@ tests:
         alertname: WebScheduledTickStale
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: warning
               country: de
               tick: read-model-backstop
@@ -163,6 +166,7 @@ tests:
         alertname: WorkerScheduledTickMetricsAbsent
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: warning
             exp_annotations:
               summary: "No worker is publishing its periodic loops' last runs"
@@ -176,6 +180,7 @@ tests:
         alertname: WebScheduledTickMetricsAbsent
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: warning
             exp_annotations:
               summary: "No web pod is publishing its periodic loops' last runs"

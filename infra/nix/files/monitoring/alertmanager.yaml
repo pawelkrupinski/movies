@@ -2,9 +2,11 @@
 # Alertmanager's configuration, installed at /etc/alertmanager/alertmanager.yaml by
 # nix/modules/roles/prometheus.nix. `@TELEGRAM_BOT_TOKEN_FILE@` is substituted at build time.
 #
-# EVERYTHING GOES TO TELEGRAM, to the same @kinowobot channel the application's own alerts and the
-# Grafana rules use. One channel is a deliberate choice for a one-operator fleet: a second
-# destination is a second thing to notice has stopped working.
+# EVERY PRODUCTION ALERT GOES TO TELEGRAM, to the same @kinowobot channel the application's own
+# alerts and the Grafana rules use. One channel is a deliberate choice for a one-operator fleet: a
+# second destination is a second thing to notice has stopped working. What is NOT production -- CI
+# telemetry, identity-model quality, one cinema's ticket host -- goes to a daily email digest
+# instead, by the rules' `domain` label (the first routes below).
 #
 # ------------------------------------------------------------------------------------------------
 # THE CHAT ID IS A NUMBER HERE AND A QUOTED STRING IN GRAFANA. THAT IS NOT AN INCONSISTENCY.
@@ -27,20 +29,22 @@ global:
   resolve_timeout: 15m
 
 route:
-  # GROUPED BY HOST FIRST, AND THAT ORDERING IS THE WHOLE POINT ON A FLEET THIS SHAPE. A machine in
-  # trouble trips several rules at once -- a host that fills its disk produces
-  # FilesystemSpaceCritical, FilesystemInodesLow, SystemdUnitFailed and probably MongodNotRunning,
-  # which is ONE incident and should arrive as one message. On a Fly app the equivalent grouping key
-  # was `app`; here the unit of trouble is a machine, so it is `host`.
+  # GROUPED BY `alertname, country` (2026-11-04). It used to be `[host, alertname]`, and on this fleet
+  # that key was wrong both ways round. The CI and AppMetricAbsent alerts carry NO `host`, so 60-odd
+  # series fell into one group per alertname, re-sent whole on every member change: 303 messages in
+  # a week ran past Telegram's 4096 characters and were cut off unread. And WorkerHttpHostCircuitOpen's
+  # `host` is a CINEMA'S domain, so each cinema became its own group titled as if it were a machine.
+  # `country` is the unit of trouble for every application alert; a machine's alerts carry no country
+  # and group per alertname across the three hosts, which the message below lists by host.
   #
   # WHAT IS NOT IN THE GROUPING KEY, deliberately: `severity`. Grouping by it would split one
-  # machine's incident into a critical message and a warning message, which is exactly the split
-  # that makes somebody chase two problems.
+  # incident into a critical message and a warning message, which is exactly the split that makes
+  # somebody chase two problems.
   #
-  # ALERTS WITH NO `host` LABEL still group, on the empty value -- `absent()` companions and the
-  # heartbeat have no host, and they land together in one "fleet-wide" group, which is the right
-  # place for them: they are statements about the monitoring, not about a machine.
-  group_by: ["host", "alertname"]
+  # THE MESSAGE IS BOUNDED, whatever the group's size: a count, the first alert in full (its
+  # description cut at 900 characters), the next seven by summary, then "...and N more". Worst case
+  # about 3000 characters, under Telegram's 4096 (test_alertmanager.sh renders a 40-alert group).
+  group_by: ["alertname", "country"]
   group_wait: 30s
   group_interval: 5m
   # Re-nag every four hours while an alert still holds. Matches the Grafana notification policy
@@ -87,6 +91,43 @@ route:
       receiver: telegram-heartbeat
       group_wait: 0s
       repeat_interval: 24h
+
+    # ROUTED BY DOMAIN FIRST, SEVERITY SECOND (2026-11-04). Every rule carries a `domain` label
+    # (test_alert_rule_coverage.py refuses one without it):
+    #
+    #   serving, pipeline, platform, deploy, monitoring -- production: the site, the scrape and
+    #       read-model pipeline, the hosts/k3s/mongod/JVMs, the deploy path, the monitoring itself.
+    #       These reach Telegram, by the severity routes below.
+    #   ci, identity, third-party -- NOT production outages: CI build-time telemetry and landing
+    #       gates (agentctl already owns a red build), identity-model quality regressions, and one
+    #       cinema's ticket host tripping its circuit breaker. A DAILY EMAIL DIGEST, never Telegram.
+    #
+    # WHY. In the week to 2026-11-04 Telegram carried 766 messages, about 110 a day: CI telemetry
+    # 51%, AppMetricAbsent 16%, cinema-host circuits 15%, identity warnings 10%. The deploy pipeline
+    # stuck for 2.5 days and the 10-28 egress incident were in there, and read like the rest.
+    #
+    # THE DIGEST: one group per domain, sent at most once a day. `group_wait: 1h` lets a new burst
+    # gather; `group_interval` and `repeat_interval` of 24h make the group's re-sends daily, whatever
+    # joins or leaves it. No `send_resolved`: a digest is a list of what is firing now.
+    - matchers:
+        - domain =~ "ci|identity|third-party"
+      receiver: digest-email
+      group_by: ["domain"]
+      group_wait: 1h
+      group_interval: 24h
+      repeat_interval: 24h
+
+    # THE DEPLOY PIPELINE IS STUCK: its own route, so it is never a twelve-hourly warning in a busy
+    # chat. 2026-10-30 to 11-02 a classifier disagreement held every merge off all three hosts for
+    # about 2.5 days (AutoApplyRefusingChange, AutoApplyBlocked, StagedClosureNotActivated), and it
+    # was 21 of 766 messages. Re-sent every four hours while it holds, grouped across hosts (these
+    # carry no country) so three blocked hosts are one message naming them.
+    - matchers:
+        - domain = "deploy"
+      receiver: telegram
+      group_wait: 30s
+      group_interval: 15m
+      repeat_interval: 4h
 
     # THE DISK AND WORKER-PIPELINE ALERTS ALSO GO TO EMAIL, and they are the only ones that do.
     #
@@ -212,7 +253,7 @@ route:
     # seconds of delay. `group_wait: 10s` still catches the common case where two criticals fire in
     # the same evaluation cycle (`evaluation_interval` is 15s) without holding the first one back.
     #
-    # STILL GROUPED BY HOST, and it inherits the root `group_by` rather than restating it: a route
+    # STILL GROUPED BY THE ROOT'S KEY, and it inherits the root `group_by` rather than restating it: a route
     # that omits `group_by` uses its parent's, and restating it here would be a second copy to keep
     # in step.
     #
@@ -256,11 +297,19 @@ receivers:
         # cannot fail that way; the cost is that nothing can be bolded.
         parse_mode: ""
         send_resolved: true
-        message: |-
-          {{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Labels.alertname }}{{ if .Labels.host }} on {{ .Labels.host }}{{ end }}
-          {{ .Annotations.summary }}
-          {{ .Annotations.description }}
-          {{ end }}
+        # BOUNDED, NOT EVERY ALERT IN FULL. Telegram cuts a message at 4096 characters, and the old
+        # template (every alert's summary and description) ran past it 303 times in one week. Now:
+        # a header with the count, the first alert's summary and description (cut at 300 and 900
+        # characters), the next seven alerts by summary (200 each), then "...and N more". Firing
+        # alerts first; resolved ones are counted, and listed only when nothing is firing. Cuts are
+        # by regex on whole characters (`.` is a rune), never mid-character. The same text is the
+        # Telegram half of `telegram-and-email` (the YAML anchor), so the two cannot drift.
+        message: &telegram_message |-
+          {{ $firing := .Alerts.Firing }}{{ $resolved := .Alerts.Resolved }}{{ $shown := $firing }}{{ if not $firing }}{{ $shown = $resolved }}{{ end }}{{ if $firing }}[FIRING:{{ len $firing }}]{{ else }}[RESOLVED:{{ len $resolved }}]{{ end }} {{ .GroupLabels.alertname }}{{ with .GroupLabels.country }} ({{ . }}){{ end }}{{ with .CommonLabels.severity }} {{ . }}{{ end }}{{ with .CommonLabels.domain }} / {{ . }}{{ end }}{{ if and $firing $resolved }} (+{{ len $resolved }} resolved){{ end }}
+          {{ with index $shown 0 }}{{ with .Labels.host }}[{{ . }}] {{ end }}{{ .Annotations.summary | reReplaceAll "(?s)^(.{300}).+$" "$1…" }}
+          {{ .Annotations.description | reReplaceAll "(?s)^(.{900}).+$" "$1…" }}{{ end }}{{ range $i, $a := $shown }}{{ if and (gt $i 0) (lt $i 8) }}
+          - {{ with $a.Labels.host }}[{{ . }}] {{ end }}{{ $a.Annotations.summary | reReplaceAll "(?s)^(.{200}).+$" "$1…" }}{{ end }}{{ end }}{{ if gt (len $shown) 8 }}
+          …and {{ len (slice $shown 8) }} more{{ end }}
 
   # ONE RECEIVER THAT DOES BOTH, rather than a route with `continue: true` into a second one.
   # `continue` would work and is how this is usually written; it also means the Telegram message
@@ -276,11 +325,7 @@ receivers:
         # at delivery.
         parse_mode: ""
         send_resolved: true
-        message: |-
-          {{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Labels.alertname }}{{ if .Labels.host }} on {{ .Labels.host }}{{ end }}
-          {{ .Annotations.summary }}
-          {{ .Annotations.description }}
-          {{ end }}
+        message: *telegram_message
     email_configs:
       - to: "@ALERT_EMAIL_TO@"
         from: "@ALERT_EMAIL_FROM@"
@@ -322,6 +367,27 @@ receivers:
           {{ .Annotations.description }}
 
           {{ end }}
+          Silence or inspect: {{ .ExternalURL }}
+
+  # THE DAILY DIGEST of the non-production domains (the `domain =~ "ci|identity|third-party"`
+  # route). Email only: these are worth reading once a day and never worth a phone buzzing. One
+  # message per domain, every alert in it listed (a mailbox has no 4096-character cut).
+  - name: digest-email
+    email_configs:
+      - to: "@ALERT_EMAIL_TO@"
+        from: "@ALERT_EMAIL_FROM@"
+        smarthost: "@SMTP_SMARTHOST@"
+        auth_username: "@SMTP_USERNAME@"
+        auth_password_file: "@SMTP_PASSWORD_FILE@"
+        require_tls: true
+        send_resolved: false
+        headers:
+          subject: "[kinowo digest] {{ .CommonLabels.domain }}: {{ len .Alerts.Firing }} firing"
+        text: |-
+          Daily digest, domain {{ .CommonLabels.domain }}: not production outages, so not on Telegram.
+          {{ range .Alerts.Firing }}
+          - {{ .Labels.alertname }}{{ with .Labels.country }} ({{ . }}){{ end }}: {{ .Annotations.summary }}{{ end }}
+
           Silence or inspect: {{ .ExternalURL }}
 
   # BEGIN dead-mans-switch
@@ -484,6 +550,64 @@ inhibit_rules:
       - severity = "warning"
       - alertname =~ "WorkerQueueGrowingUnbounded|WorkerTasksFailingRepeatedly|CinemaScrapeOldestAgeHigh|ReadModelProjectionTriggerUnaccounted"
     equal: ["country"]
+
+  # THE EGRESS CHAIN: THE CAUSE SILENCES ITS SYMPTOMS, per country (2026-11-04). On 2026-10-28 one
+  # proxy/egress outage fired five alertnames in each of pl, uk and us at once:
+  # ResidentialProxyFailing and PaidEgressFailing (the cause), then ChainFallbackSaturated,
+  # ChainEnrichmentFailing and WorkerQueueHeadOld (scrapes failing over, enrichment failing, the
+  # queue backing up behind the retries) -- and every decodo-leg WorkerHttpHostCircuitOpen. While
+  # the cause fires for a country, its symptoms for THAT country are the same news. `country =~ ".+"`
+  # on the source for the empty-join reason the rules above give.
+  #
+  # THE RISK, named: a WorkerQueueHeadOld for an unrelated reason during an egress outage is hidden
+  # until the outage clears. It reappears the moment the cause resolves, and the cause is paging.
+  - source_matchers:
+      - alertname =~ "ResidentialProxyFailing|PaidEgressFailing"
+      - country =~ ".+"
+    target_matchers:
+      - alertname =~ "ChainFallbackSaturated|ChainEnrichmentFailing|WorkerQueueHeadOld|WorkerHttpHostCircuitOpen"
+    equal: ["country"]
+
+  # ...AND THE RESIDENTIAL PROXY FAILING EXPLAINS PAID EGRESS FAILING: Decodo is the paid egress for
+  # the proxied chains, so the two are one outage read twice. Separate from the rule above so no
+  # alertname is both a source and a target of one rule (Alertmanager's own advice).
+  - source_matchers:
+      - alertname = "ResidentialProxyFailing"
+      - country =~ ".+"
+    target_matchers:
+      - alertname = "PaidEgressFailing"
+    equal: ["country"]
+
+  # ONE CI REGRESSION, ONE ALERT. A slower step makes its job slower and the job makes the run
+  # slower, so the three tiers (CiStep, CiJob, CiRunWallClock -- 430 episodes a week) fired together
+  # for one cause. The widest that fires speaks: the run silences its jobs, a job its steps. Their
+  # descriptions list the narrower alerts still firing beneath them (ci-build-times.rules), so the
+  # specific job and step are not lost -- only the separate messages are.
+  - source_matchers:
+      - alertname = "CiRunWallClockRegressed"
+      - workflow =~ ".+"
+    target_matchers:
+      - alertname = "CiJobDurationRegressed"
+    equal: ["workflow"]
+  - source_matchers:
+      - alertname = "CiJobDurationRegressed"
+      - workflow =~ ".+"
+      - ci_job =~ ".+"
+    target_matchers:
+      - alertname = "CiStepDurationRegressed"
+    equal: ["workflow", "ci_job"]
+
+  # A SUSTAINED PROBE FAILURE (critical, 20 minutes) SILENCES ITS OWN 10-MINUTE WARNING on the same
+  # URL. synthetic-probes.rules: a probe failing for 10 minutes is a warning, and only 20 minutes
+  # pages critical -- every ProbeFailing in the week to 11-04 healed within 5-15 minutes.
+  - source_matchers:
+      - alertname = "ProbeFailing"
+      - severity = "critical"
+      - instance =~ ".+"
+    target_matchers:
+      - alertname = "ProbeFailing"
+      - severity = "warning"
+    equal: ["instance"]
 
   # NO FLUX RULE, deliberately, and this is the second time that has been decided. A rule joining
   # `FluxControllerDown` to its warnings on `controller` reads obviously right and earns nothing:

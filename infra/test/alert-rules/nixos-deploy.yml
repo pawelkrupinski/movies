@@ -94,6 +94,7 @@ tests:
         alertname: AutoApplyStatePublisherStale
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: mongo-1
               severity: warning
             exp_annotations:
@@ -131,6 +132,7 @@ tests:
         alertname: AutoApplyNotReporting
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: mongo-1
               role: mongodb
               env: prod
@@ -150,6 +152,7 @@ tests:
         alertname: NixGarbageCollectionMetricAbsent
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: mongo-1
               role: mongodb
               env: prod
@@ -182,10 +185,11 @@ tests:
         alertname: AutoApplyStalled
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: k3s-worker-1
               severity: warning
             exp_annotations:
-              summary: "nixos-auto-apply has not completed a pass on k3s-worker-1 for over 3 hours"
+              summary: "DEPLOY PIPELINE STUCK: nixos-auto-apply has not completed a pass on k3s-worker-1 for over 3 hours"
               description: >-
                 Merges to main are not reaching this host, and nothing else would say so -- the machine
                 keeps running its old closure perfectly happily. `systemctl status nixos-auto-apply` and
@@ -220,11 +224,12 @@ tests:
         alertname: AutoApplyBlocked
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: k3s-worker-1
               reason: restart-not-allowed
               severity: warning
             exp_annotations:
-              summary: "k3s-worker-1 has been blocked from auto-applying for a day (restart-not-allowed)"
+              summary: "DEPLOY PIPELINE STUCK for a day: k3s-worker-1 will not auto-apply (restart-not-allowed); every merge since is not live there"
               description: >-
                 The applier found a change it will not make on its own. `reason` says which class;
                 `nixos_auto_apply_info`'s `detail` label carries the specifics. Resolve it by switching by
@@ -235,10 +240,11 @@ tests:
         alertname: StagedClosureNotActivated
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: k3s-worker-1
               severity: warning
             exp_annotations:
-              summary: "k3s-worker-1 has been running a closure older than the staged one for a day"
+              summary: "DEPLOY PIPELINE STUCK for a day: k3s-worker-1 is running a closure older than the staged one"
               description: >-
                 CI has put a closure on this host that it is not running. Look at `AutoApplyBlocked` first
                 -- if that is also firing, this is its consequence and there is one problem, not two. If it
@@ -262,6 +268,7 @@ tests:
         alertname: RebootOwed
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: mongo-1
               severity: warning
             exp_annotations:
@@ -293,6 +300,7 @@ tests:
         alertname: NixGarbageCollectionStale
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: mongo-1
               severity: warning
             exp_annotations:
@@ -331,11 +339,12 @@ tests:
         alertname: AutoApplyRefusingChange
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: k3s-worker-1
               reason: units_would_change
               severity: warning
             exp_annotations:
-              summary: "k3s-worker-1 has refused to auto-apply for an hour (units_would_change)"
+              summary: "DEPLOY PIPELINE STUCK: k3s-worker-1 has refused to auto-apply for an hour (units_would_change); merges are not going live"
               description: >-
                 A merged change is staged on this host and the applier will not activate it on its
                 own, so it is not live -- and every later merge for this host queues behind it.
@@ -365,10 +374,11 @@ tests:
         alertname: StagedClosureNotLive
         exp_alerts:
           - exp_labels:
+              domain: deploy
               host: mongo-1
               severity: warning
             exp_annotations:
-              summary: "mongo-1 has had a staged closure it is not running for 2 hours"
+              summary: "DEPLOY PIPELINE STUCK: mongo-1 has had a staged closure it is not running for 2 hours"
               description: >-
                 CI staged a closure here two hours ago and the host is still on the old one, and the
                 applier has NOT said it is blocked -- so it is not deciding at all. Check

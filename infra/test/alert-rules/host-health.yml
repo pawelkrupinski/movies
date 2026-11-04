@@ -100,6 +100,7 @@ tests:
         alertname: MemoryAvailableLow
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               role: mongodb
               severity: warning
@@ -136,6 +137,7 @@ tests:
         alertname: MemoryAvailableCritical
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               role: mongodb
               severity: critical
@@ -151,6 +153,7 @@ tests:
         alertname: MemoryAvailableLow
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               role: mongodb
               severity: warning
@@ -181,6 +184,7 @@ tests:
         alertname: MemoryAvailableLow
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: k3s-worker-1
               role: k3s-worker
               severity: warning
@@ -221,6 +225,7 @@ tests:
         alertname: MemoryStallHigh
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               role: mongodb
               severity: warning
@@ -263,6 +268,7 @@ tests:
         alertname: SwapTrafficSustained
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: k3s-worker-1
               role: k3s-agent
               severity: warning
@@ -301,6 +307,7 @@ tests:
         alertname: SwapUsedHigh
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: k3s-worker-1
               role: k3s-agent
               severity: warning
@@ -330,6 +337,7 @@ tests:
         alertname: HostOomKilled
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               role: mongodb
               severity: critical
@@ -405,6 +413,7 @@ tests:
         alertname: HostOomKilled
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: k3s-worker-1
               role: k3s-worker
               instance: 10.20.0.12:9100
@@ -451,6 +460,7 @@ tests:
         alertname: HostOomKilled
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: k3s-worker-1
               role: k3s-worker
               instance: 10.20.0.12:9100
@@ -487,6 +497,7 @@ tests:
         alertname: OomKillMetricAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
             exp_annotations:
               summary: "No host is publishing the kernel's OOM-kill counter"
@@ -518,6 +529,7 @@ tests:
         alertname: CpuBusySustained
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               role: mongodb
               severity: warning
@@ -574,6 +586,7 @@ tests:
         alertname: CpuRunQueueDeep
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               role: mongodb
               severity: warning
@@ -605,6 +618,7 @@ tests:
         alertname: SystemdUnitFailed
         exp_alerts:
           - exp_labels:
+              domain: platform
               name: fleet-nix-gc.service
               state: failed
               host: mongo-1
@@ -637,6 +651,7 @@ tests:
         alertname: FilesystemReadOnly
         exp_alerts:
           - exp_labels:
+              domain: platform
               mountpoint: /
               fstype: ext4
               device: /dev/sda1
@@ -667,6 +682,7 @@ tests:
         alertname: HostRecentlyRebooted
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               role: mongodb
               severity: warning

@@ -24,7 +24,7 @@ tests:
       - eval_time: 6h30m
         alertname: IdentityAgreementBackfillStalled
         exp_alerts:
-          - exp_labels: { severity: warning, country: de }
+          - exp_labels: { domain: identity, severity: warning, country: de }
             exp_annotations:
               summary: "de: 510 agreement clusters have stayed incomplete for 6 hours"
               description: "The agreement stage has had clusters with unread verdicts for six hours without draining them. Its per-projection progress is in VictoriaLogs `country:<cc> \"agreement\"`; the worker diagnostics dashboard draws the clusters by state."
@@ -62,7 +62,7 @@ tests:
       - eval_time: 25h30m
         alertname: IdentityAgreementCostRegression
         exp_alerts:
-          - exp_labels: { severity: warning, country: de, mode: periodic }
+          - exp_labels: { domain: identity, severity: warning, country: de, mode: periodic }
             exp_annotations:
               summary: "de: the periodic agreement phase's hourly median is 1m 15s, over twice its week"
               description: "The identity projection's agreement phase has doubled its weekly median. Find the build and the projections: VictoriaLogs `country:<cc> \"identity projection:\"`, whose phase list names each phase's seconds and MB; the worker diagnostics dashboard draws the hour against the week."
@@ -72,7 +72,7 @@ tests:
       - eval_time: 25h30m
         alertname: IdentityAgreementAllocationRegression
         exp_alerts:
-          - exp_labels: { severity: warning, country: de, mode: periodic }
+          - exp_labels: { domain: identity, severity: warning, country: de, mode: periodic }
             exp_annotations:
               summary: "de: the periodic agreement phase's hourly median allocation is 6GB, over twice its week"
               description: "The identity projection's agreement phase allocates twice its weekly median. VictoriaLogs `country:<cc> \"identity projection:\"` names each projection's phases with their MB; compare the build before and after."
@@ -115,7 +115,7 @@ tests:
       - eval_time: 15m
         alertname: IdentityStagingEventsDropped
         exp_alerts:
-          - exp_labels: { severity: warning, country: pl }
+          - exp_labels: { domain: identity, severity: warning, country: pl }
             exp_annotations:
               summary: "pl: the identity staging publisher dropped events"
               description: "Identity staging events (take changes, waits) were let go before a publish wrote them -- the feed let them go, or publishes kept failing -- so the staging screen misses them. VictoriaLogs `country:<cc> \"identity staging\"` has the WARN line per drop and the failed publishes before it."

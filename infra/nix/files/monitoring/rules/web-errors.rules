@@ -67,6 +67,7 @@ groups:
         for: 10m
         labels:
           severity: critical
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} web is serving {{ $value | humanizePercentage }} 5xx"
           description: >-
@@ -101,6 +102,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} {{ $labels.route }} is answering 5xx to {{ $value | humanizePercentage }} of requests"
           description: >-
@@ -121,6 +123,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} userStates has no unique userId index"
           description: >-
@@ -142,6 +145,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} web is 404ing its own assets"
           description: >-
@@ -158,6 +162,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "The web tier's request metric has stopped arriving"
           description: >-

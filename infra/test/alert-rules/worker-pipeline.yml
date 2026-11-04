@@ -46,7 +46,7 @@ tests:
       - eval_time: 90m
         alertname: WorkerQueueGrowingUnbounded
         exp_alerts:
-          - exp_labels: { severity: warning, country: uk, state: waiting, job: kinowo-worker }
+          - exp_labels: { domain: pipeline, severity: warning, country: uk, state: waiting, job: kinowo-worker }
             exp_annotations:
               summary: "uk's task queue has grown for an hour straight (0.100 tasks/s)"
               description: "The WAITING set has climbed continuously for an hour at more than 180 tasks/hour net, which is a queue the pool is not keeping up with rather than a burst it is working through. THE DEPTH ITSELF IS NOT THE PROBLEM and is not worth reacting to -- the US worker sits at ~450 waiting in normal operation. Look at what is ENQUEUEING: a reaper that has started scheduling faster than the pool can drain (panels 20/30 on the application dashboard split enqueued from worked), or a task type failing and being retried forever (panel 25, waiting by type — its held series). `WorkerQueueStalled` below is the other half of this: if nothing is being claimed at all, that one fires instead and is the more urgent of the two."
@@ -77,7 +77,7 @@ tests:
       - eval_time: 90m
         alertname: WorkerQueueGrowingUnbounded
         exp_alerts:
-          - exp_labels: { severity: warning, country: uk, state: waiting, job: kinowo-worker }
+          - exp_labels: { domain: pipeline, severity: warning, country: uk, state: waiting, job: kinowo-worker }
             exp_annotations:
               summary: "uk's task queue has grown for an hour straight (0.100 tasks/s)"
               description: "The WAITING set has climbed continuously for an hour at more than 180 tasks/hour net, which is a queue the pool is not keeping up with rather than a burst it is working through. THE DEPTH ITSELF IS NOT THE PROBLEM and is not worth reacting to -- the US worker sits at ~450 waiting in normal operation. Look at what is ENQUEUEING: a reaper that has started scheduling faster than the pool can drain (panels 20/30 on the application dashboard split enqueued from worked), or a task type failing and being retried forever (panel 25, waiting by type — its held series). `WorkerQueueStalled` below is the other half of this: if nothing is being claimed at all, that one fires instead and is the more urgent of the two."
@@ -97,7 +97,7 @@ tests:
       - eval_time: 20m
         alertname: WorkerQueueStalled
         exp_alerts:
-          - exp_labels: { severity: critical, country: pl }
+          - exp_labels: { domain: pipeline, severity: critical, country: pl }
             exp_annotations:
               summary: "pl's worker has claimed no task for ten minutes with work waiting"
               description: "Tasks are queued and NOTHING is picking them up, so every scrape, rating refresh and read-model projection for this country has stopped. A healthy worker claims 13-143 tasks a minute. Check, in order: is the pod up and past its hydrate (`WorkerDown` fires separately if the target is gone); is the whole pool stuck on handlers that never return (`kinowo_worker_queue_depth{state=\"worked_on\"}` pinned at the pool size of 4 is that shape, and the task-duration panels name the type); and is `TaskQueue.claim` failing in the logs -- a Mongo stall shows up here first because claim is a `findOneAndUpdate` that blocks."
@@ -156,7 +156,7 @@ tests:
       - eval_time: 20m
         alertname: WorkerDown
         exp_alerts:
-          - exp_labels: { severity: critical, country: de, job: kinowo-worker, instance: "10.20.0.12:30902" }
+          - exp_labels: { domain: pipeline, severity: critical, country: de, job: kinowo-worker, instance: "10.20.0.12:30902" }
             exp_annotations:
               summary: "The de worker has been unreachable for 5 minutes"
               description: "Prometheus cannot scrape this worker, so it is either crash-looping, wedged, or gone. Nothing is scraping cinemas, refreshing ratings or projecting the read model for de while this holds. A rollout takes it down for under three minutes, so five means something other than a deploy. `kubectl -n kinowo logs deploy/worker-de` and the JVM heap panels are the first two places to look -- an OOM kill presents exactly like this."
@@ -173,7 +173,7 @@ tests:
       - eval_time: 90m
         alertname: WorkerQueueMetricsAbsent
         exp_alerts:
-          - exp_labels: { severity: warning }
+          - exp_labels: { domain: pipeline, severity: warning }
             exp_annotations:
               summary: "No worker is publishing task-queue metrics"
               description: "`kinowo_worker_queue_depth` has no series from any country, so neither WorkerQueueGrowingUnbounded nor WorkerQueueStalled can fire and the pipeline is unwatched. If the workers were simply down, `WorkerDown` would be firing too and is the better alert to read; if they are up, the queue gauges have stopped being refreshed from the per-country `QueueSnapshot`, which no target-level check would catch."
@@ -195,7 +195,7 @@ tests:
       - eval_time: 60m
         alertname: WorkerTasksFailingRepeatedly
         exp_alerts:
-          - exp_labels: { severity: warning, country: uk }
+          - exp_labels: { domain: pipeline, severity: warning, country: uk }
             exp_annotations:
               summary: "uk's worker is failing or retrying 50% of the tasks it finishes"
               description: "The pool is busy and the work is not sticking. Over 24h of normal operation this share is 0.000 in every country -- 13 failures in 464,903 tasks -- so a quarter is a loop, not a bad afternoon. Panel 25 (waiting by type) and the per-type finish counters name WHICH type: `sum by (task_type) (rate(kinowo_worker_tasks_finished_total{outcome=~\"failed|rescheduled\"}[15m]))`. The usual causes are an upstream that has started refusing us (the scraper types), a handler throwing on a data shape it has not seen, and a task whose precondition can never be met so it reschedules itself forever. NOTE `deferred` IS EXCLUDED: a circuit breaker refusing tasks is an upstream being down and reads on the scrape dashboards."
@@ -247,7 +247,7 @@ tests:
       - eval_time: 30m
         alertname: WorkerTaskTypeUnhandled
         exp_alerts:
-          - exp_labels: { severity: warning, country: de, task_type: RefreshRatings }
+          - exp_labels: { domain: pipeline, severity: warning, country: de, task_type: RefreshRatings }
             exp_annotations:
               summary: "de is claiming RefreshRatings tasks with no handler wired for them"
               description: "Something is enqueueing `RefreshRatings` and nothing is running it -- the tasks are claimed, counted, and discarded, so the work silently never happens while every throughput metric looks healthy. The baseline for this counter is zero across the whole fleet. Look at the handler registration in `WorkerWiring` for this type, and at whatever enqueues it: either the registration was lost in a rename or the enqueue outlived the handler it was written for."
@@ -269,7 +269,7 @@ tests:
       - eval_time: 30m
         alertname: WorkerTasksFailingPermanently
         exp_alerts:
-          - exp_labels: { severity: warning, country: es, task_type: ResolveImdbId }
+          - exp_labels: { domain: pipeline, severity: warning, country: es, task_type: ResolveImdbId }
             exp_annotations:
               summary: "es dropped ResolveImdbId task(s) on a deterministic failure"
               description: "A `ResolveImdbId` handler threw a bare IllegalArgumentException (a violated `require`), so `TaskWorker` dropped the task on its first attempt rather than retrying a failure every retry would replay. That is a bug in the code or in the task's data, and the work did not happen. The worker log line \"failed permanently on attempt\" names the task's dedup key and the message; a reaper that still finds the work due will re-enqueue it and hit the same failure until the bug is fixed."
@@ -301,7 +301,7 @@ tests:
       - eval_time: 40m
         alertname: WorkerTasksFailingPermanently
         exp_alerts:
-          - exp_labels: { severity: warning, country: uk, task_type: ScrapeChunk }
+          - exp_labels: { domain: pipeline, severity: warning, country: uk, task_type: ScrapeChunk }
             exp_annotations:
               summary: "uk dropped ScrapeChunk task(s) on a deterministic failure"
               description: "A `ScrapeChunk` handler threw a bare IllegalArgumentException (a violated `require`), so `TaskWorker` dropped the task on its first attempt rather than retrying a failure every retry would replay. That is a bug in the code or in the task's data, and the work did not happen. The worker log line \"failed permanently on attempt\" names the task's dedup key and the message; a reaper that still finds the work due will re-enqueue it and hit the same failure until the bug is fixed."
@@ -341,7 +341,7 @@ tests:
       - eval_time: 60m
         alertname: WorkerTasksFailingRepeatedly
         exp_alerts:
-          - exp_labels: { severity: warning, country: de }
+          - exp_labels: { domain: pipeline, severity: warning, country: de }
             exp_annotations:
               summary: "de's worker is failing or retrying 50% of the tasks it finishes"
               description: "The pool is busy and the work is not sticking. Over 24h of normal operation this share is 0.000 in every country -- 13 failures in 464,903 tasks -- so a quarter is a loop, not a bad afternoon. Panel 25 (waiting by type) and the per-type finish counters name WHICH type: `sum by (task_type) (rate(kinowo_worker_tasks_finished_total{outcome=~\"failed|rescheduled\"}[15m]))`. The usual causes are an upstream that has started refusing us (the scraper types), a handler throwing on a data shape it has not seen, and a task whose precondition can never be met so it reschedules itself forever. NOTE `deferred` IS EXCLUDED: a circuit breaker refusing tasks is an upstream being down and reads on the scrape dashboards."
@@ -359,7 +359,7 @@ tests:
       - eval_time: 20m
         alertname: RepositoryWritesFailing
         exp_alerts:
-          - exp_labels: { severity: warning, country: pl }
+          - exp_labels: { domain: pipeline, severity: warning, country: pl }
             exp_annotations:
               summary: "pl's worker has been failing repository writes for 10 minutes"
               description: "Writes to `movies`, `movie_slots` or `screenings` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
@@ -378,7 +378,7 @@ tests:
       - eval_time: 21m
         alertname: RepositoryWritesFailing
         exp_alerts:
-          - exp_labels: { severity: warning, country: es }
+          - exp_labels: { domain: pipeline, severity: warning, country: es }
             exp_annotations:
               summary: "es's worker has been failing repository writes for 10 minutes"
               description: "Writes to `movies`, `movie_slots` or `screenings` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
@@ -411,7 +411,7 @@ tests:
       - eval_time: 14m
         alertname: RepositoryWritesFailing
         exp_alerts:
-          - exp_labels: { severity: warning, country: de }
+          - exp_labels: { domain: pipeline, severity: warning, country: de }
             exp_annotations:
               summary: "de's worker has been failing repository writes for 10 minutes"
               description: "Writes to `movies`, `movie_slots` or `screenings` are throwing. Nothing is lost silently -- each failed row is rolled out of the worker's cache and retried by its next scrape -- but until the cause clears, new films and changed showtimes do not reach the site. The worker's WARN lines name each write (`MovieRepository.upsert(<title>, <year>) failed: ...`), and the counter's `collection`, `op` and `exception` labels (worker diagnostics dashboard, \"Repository writes that FAILED\") say which store and why: a codec exception is a model field the DTO cannot encode, a MongoWriteException a validator or duplicate key, a timeout the database itself."
@@ -432,7 +432,7 @@ tests:
       - eval_time: 5m
         alertname: WorkerTaskParkedTooLong
         exp_alerts:
-          - exp_labels: { severity: warning, country: uk, task_type: ScrapeChunk }
+          - exp_labels: { domain: pipeline, severity: warning, country: uk, task_type: ScrapeChunk }
             exp_annotations:
               summary: "uk has a ScrapeChunk task parked past the 30-minute backoff cap"
               description: "A waiting `ScrapeChunk` task is held back from claim for another 5h 55m 0s, past the 30-minute cap every retry backoff, Deferred and chunk stagger is held to (TaskWorker.MaxBackoff). Nothing will run it until then. Find it on the worker's /tasks page (its next-eligible time is the far one) and look at what released it: a handler naming a far-off instant through a path that skips the clamp, or a queue write setting `nextEligibleAt` directly."
@@ -484,6 +484,7 @@ tests:
         alertname: WorkerQueueHeadOld
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: "es"
               severity: "warning"
               task_type: "ResolveImdbId"
@@ -506,7 +507,7 @@ tests:
       - eval_time: 15m
         alertname: DocumentsUndecodable
         exp_alerts:
-          - exp_labels: { severity: warning, country: pl, collection: web_movies }
+          - exp_labels: { domain: pipeline, severity: warning, country: pl, collection: web_movies }
             exp_annotations:
               summary: "pl: documents in web_movies could not be decoded"
               description: "A full scan of `web_movies` skipped at least one document in the last hour because it could not be decoded, so the process that read it serves or projects without that film or screening. The WARN line names each one (\"skipping undecodable document _id=...\"), with the exception; the worker diagnostics dashboard (\"Documents skipped as UNDECODABLE\") says whether the worker, the web or both saw it. A wrong-typed field is usually a writer that changed shape: the read-model sweeper's reconcile rewrites the document once the writer is fixed. In `movies` nothing is skipped: every read that meets the document FAILS (its film's point read, and the whole corpus scan), and the WARN line is that read's failure — fix or remove the document by hand. A change stream that meets one skips that event (\"skipping undecodable document\", rate-limited) and stays open."
@@ -523,7 +524,7 @@ tests:
       - eval_time: 20m
         alertname: DocumentsUndecodable
         exp_alerts:
-          - exp_labels: { severity: warning, country: de, collection: web_screenings }
+          - exp_labels: { domain: pipeline, severity: warning, country: de, collection: web_screenings }
             exp_annotations:
               summary: "de: documents in web_screenings could not be decoded"
               description: "A full scan of `web_screenings` skipped at least one document in the last hour because it could not be decoded, so the process that read it serves or projects without that film or screening. The WARN line names each one (\"skipping undecodable document _id=...\"), with the exception; the worker diagnostics dashboard (\"Documents skipped as UNDECODABLE\") says whether the worker, the web or both saw it. A wrong-typed field is usually a writer that changed shape: the read-model sweeper's reconcile rewrites the document once the writer is fixed. In `movies` nothing is skipped: every read that meets the document FAILS (its film's point read, and the whole corpus scan), and the WARN line is that read's failure — fix or remove the document by hand. A change stream that meets one skips that event (\"skipping undecodable document\", rate-limited) and stays open."
@@ -574,6 +575,7 @@ tests:
         alertname: WorkerAlerterDisabled
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               alerter: filmweb_drop
               country: pl
               severity: warning
@@ -593,6 +595,7 @@ tests:
         alertname: WorkerAlerterDisabled
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               alerter: filmweb_fallback
               country: uk
               severity: warning
@@ -615,6 +618,7 @@ tests:
         alertname: WorkerIntegrationDisabled
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               integration: residential_proxy
               country: de
               severity: warning
@@ -654,6 +658,7 @@ tests:
         alertname: WorkerTelegramAlertsFailing
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: us
               kind: gone_venue
               severity: warning
@@ -710,6 +715,7 @@ tests:
         alertname: WorkerExternalServiceAuthFailing
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: de
               service: omdb
               severity: warning
@@ -736,6 +742,7 @@ tests:
         alertname: WorkerExternalServiceRateLimited
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: us
               service: tmdb
               severity: warning
@@ -779,7 +786,7 @@ tests:
       - eval_time: 80m
         alertname: WorkerHttpHostCircuitOpen
         exp_alerts:
-          - exp_labels: { severity: warning, country: pl, leg: scrape, host: restapi.helios.pl }
+          - exp_labels: { domain: third-party, severity: warning, country: pl, leg: scrape, host: restapi.helios.pl }
             exp_annotations:
               summary: "pl: restapi.helios.pl has had its circuit breaker open for over an hour -- cinema listings for that host are being held incomplete (nothing pruned)"
               description: "Every call to restapi.helios.pl (scrape leg) has been fast-failing for an hour: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25 Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then the \"Circuit OPEN for restapi.helios.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."

@@ -61,6 +61,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "Less than 15% of {{ $labels.host }}'s memory is available"
           description: >-
@@ -80,6 +81,7 @@ groups:
         for: 5m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} is nearly out of memory ({{ $value | humanizePercentage }} available)"
           description: >-
@@ -112,6 +114,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} is spending over 10% of its time stalled on memory"
           description: >-
@@ -145,6 +148,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has been swapping continuously for 15 minutes ({{ $value | humanize }} pages/s)"
           description: >-
@@ -161,6 +165,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has used {{ $value | humanizePercentage }} of its swap"
           description: >-
@@ -215,6 +220,7 @@ groups:
         for: 1m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "The kernel OOM-killed a process on {{ $labels.host }}"
           description: >-
@@ -235,6 +241,7 @@ groups:
         for: 6h
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "No host is publishing the kernel's OOM-kill counter"
           description: >-
@@ -263,6 +270,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has been over 90% busy for half an hour"
           description: >-
@@ -287,6 +295,7 @@ groups:
         for: 20m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has more than 2 runnable tasks per core (15m load)"
           description: >-
@@ -309,6 +318,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.name }} has failed on {{ $labels.host }}"
           description: >-
@@ -325,6 +335,7 @@ groups:
         for: 5m
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "{{ $labels.mountpoint }} on {{ $labels.host }} is mounted read-only"
           description: >-
@@ -345,6 +356,7 @@ groups:
         # trade is worth taking; on a fleet with rolling reboots it would not be.
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} rebooted within the last 15 minutes"
           description: >-

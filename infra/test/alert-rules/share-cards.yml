@@ -31,6 +31,7 @@ tests:
         alertname: ShareCardsNearBudget
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
               kind: poster
@@ -80,6 +81,7 @@ tests:
         alertname: ShareCardsOverBudget
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: critical
               country: de
               kind: card
@@ -102,6 +104,7 @@ tests:
         alertname: ShareCardPosterFetchFailing
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: es
             exp_annotations:
@@ -170,6 +173,7 @@ tests:
         alertname: ShareCardCoverageLow
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
             exp_annotations:
@@ -216,6 +220,7 @@ tests:
         alertname: ShareCardCoverageAbsent
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: uk
             exp_annotations:
@@ -249,6 +254,7 @@ tests:
         alertname: ShareCardRendersFailing
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: us
             exp_annotations:
@@ -347,6 +353,7 @@ tests:
         alertname: ShareCardRescrapesNotDraining
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
             exp_annotations: &rescrapes_not_draining
               summary: "The fleet's Facebook re-scrape queue cannot clear within 36 hours at the pace it is draining"
@@ -374,6 +381,7 @@ tests:
         alertname: ShareCardRescrapesNotDraining
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
             exp_annotations: *rescrapes_not_draining
 
@@ -388,6 +396,7 @@ tests:
         alertname: ShareCardRescrapesNotDraining
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
             exp_annotations: *rescrapes_not_draining
 
@@ -423,6 +432,7 @@ tests:
         alertname: ShareCardVolumeLowSpace
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
             exp_annotations:
@@ -445,6 +455,7 @@ tests:
         alertname: ShareCardWritesRefused
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
             exp_annotations:
@@ -467,6 +478,7 @@ tests:
         alertname: ShareCardCityCoverageLow
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: us
             exp_annotations:
@@ -491,6 +503,7 @@ tests:
         alertname: ShareCardFacebookRateLimited
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: de
             exp_annotations:

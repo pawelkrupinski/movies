@@ -36,6 +36,7 @@ tests:
         alertname: JvmOldGenNearCap
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               instance: web-us:9000
               job: kinowo-web
@@ -87,6 +88,7 @@ tests:
         alertname: JvmOldGenNearCap
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               instance: worker-us:9000
               job: kinowo-worker
@@ -135,6 +137,7 @@ tests:
         alertname: JvmResidentNearContainerLimit
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               tier: web
               country: pl
@@ -195,6 +198,7 @@ tests:
         alertname: JvmResidentNearContainerLimit
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               tier: worker
               country: uk
@@ -219,6 +223,7 @@ tests:
         alertname: HeapDumpWritten
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               dir: web-pl
@@ -229,6 +234,7 @@ tests:
         alertname: HeapDumpWritten
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               dir: web-pl
@@ -257,6 +263,7 @@ tests:
         alertname: HeapDumpBudgetStale
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               job: node
@@ -283,6 +290,7 @@ tests:
         alertname: HeapDumpBudgetMetricAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               instance: 10.20.0.12:9100
@@ -320,6 +328,7 @@ tests:
         alertname: JvmStringDedupTableLarge
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               country: uk
             exp_annotations:

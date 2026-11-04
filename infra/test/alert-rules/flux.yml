@@ -71,6 +71,7 @@ tests:
         alertname: FluxReconciliationStopped
         exp_alerts:
           - exp_labels:
+              domain: deploy
               severity: warning
               kind: Kustomization
               name: web-pl-config
@@ -109,6 +110,7 @@ tests:
         alertname: FluxControllerDown
         exp_alerts:
           - exp_labels:
+              domain: deploy
               severity: critical
               job: flux
             exp_annotations:
@@ -166,6 +168,7 @@ tests:
         alertname: FluxReconciliationStopped
         exp_alerts:
           - exp_labels:
+              domain: deploy
               severity: warning
               kind: ImageRepository
               name: movies-web
@@ -205,6 +208,7 @@ tests:
         alertname: FluxObjectNotReady
         exp_alerts:
           - exp_labels:
+              domain: deploy
               customresource_kind: "Kustomization"
               name: "web-pl-config"
               namespace: "flux-system"
@@ -213,6 +217,7 @@ tests:
               summary: "flux Kustomization/web-pl-config has been NotReady for 30 minutes"
               description: "The object reconciles and FAILS -- the case `FluxReconciliationStopped` cannot see, because the reconcile counter keeps moving. For a Kustomization this means merged changes are not reaching the cluster: the pods keep serving the last image that did apply, with CI green. `flux get all -A` on monitoring-1 names the object and its message; `kubectl -n flux-system describe kustomization web-pl-config` has the condition's full text. A health-check timeout usually means a pod that will not become Ready (see `K3sDeploymentReplicasMissing`); a build error means a bad manifest in movies-gitops."
           - exp_labels:
+              domain: deploy
               customresource_kind: "ImageRepository"
               name: "movies-web"
               namespace: "flux-system"
@@ -227,6 +232,7 @@ tests:
         alertname: FluxObjectSuspended
         exp_alerts:
           - exp_labels:
+              domain: deploy
               customresource_kind: "Kustomization"
               name: "headlamp"
               namespace: "flux-system"
@@ -256,6 +262,7 @@ tests:
         alertname: FluxObjectStateAbsent
         exp_alerts:
           - exp_labels:
+              domain: deploy
               severity: "warning"
             exp_annotations:
               summary: "Flux object state is not published -- kube-state-metrics has stopped serving the gotk_<kind>_info series"

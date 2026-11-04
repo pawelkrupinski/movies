@@ -41,18 +41,18 @@ tests:
       - eval_time: 25m
         alertname: IdentityFilmListingsLost
         exp_alerts:
-          - exp_labels: { severity: warning, country: pl, tmdb: "1778515", title: "Świąteczna zabawa z Peppą", build: "96fb23c6c38a", host: monitoring-1 }
+          - exp_labels: { domain: identity, severity: warning, country: pl, tmdb: "1778515", title: "Świąteczna zabawa z Peppą", build: "96fb23c6c38a", host: monitoring-1 }
             exp_annotations:
               summary: "pl: 'Świąteczna zabawa z Peppą' (tmdb 1778515) lost 123 listings in 6h, build 96fb23c6c38a"
               description: "123 pl listings held 'Świąteczna zabawa z Peppą' (tmdb 1778515) six hours ago and now show no film (no rating, poster or synopsis), net of listings newly matched to it; most were unmatched by build 96fb23c6c38a. Dig in (logs.kinowo.net): `_time:6h country:pl kind:* (tmdb_before:=1778515 or tmdb_after:=1778515) | stats by (kind, build, basis, venue) count() n | sort by (n desc)` -- each line's `repro` reproduces one listing at the build; `scripts/listing-history pl --title '...'` gives the per-deploy history."
-          - exp_labels: { severity: warning, country: de, tmdb: "309809", title: "Der kleine Prinz", build: "627fa9416268", host: monitoring-1 }
+          - exp_labels: { domain: identity, severity: warning, country: de, tmdb: "309809", title: "Der kleine Prinz", build: "627fa9416268", host: monitoring-1 }
             exp_annotations:
               summary: "de: 'Der kleine Prinz' (tmdb 309809) lost 16 listings in 6h, build 627fa9416268"
               description: "16 de listings held 'Der kleine Prinz' (tmdb 309809) six hours ago and now show no film (no rating, poster or synopsis), net of listings newly matched to it; most were unmatched by build 627fa9416268. Dig in (logs.kinowo.net): `_time:6h country:de kind:* (tmdb_before:=309809 or tmdb_after:=309809) | stats by (kind, build, basis, venue) count() n | sort by (n desc)` -- each line's `repro` reproduces one listing at the build; `scripts/listing-history de --title '...'` gives the per-deploy history."
       - eval_time: 25m
         alertname: IdentityBuildNetLosses
         exp_alerts:
-          - exp_labels: { severity: warning, country: pl, build: "96fb23c6c38a", cause: code, tmdb: "1778515", title: "Świąteczna zabawa z Peppą", host: monitoring-1 }
+          - exp_labels: { domain: identity, severity: warning, country: pl, build: "96fb23c6c38a", cause: code, tmdb: "1778515", title: "Świąteczna zabawa z Peppą", host: monitoring-1 }
             exp_annotations:
               summary: "pl: build 96fb23c6c38a's code unmatched 123 more listings than it matched (most: 'Świąteczna zabawa z Peppą')"
               description: "Over its last 24h in pl, build 96fb23c6c38a took the film away from 123 more listings than it gave one to on inputs that did not move (cause code) -- above the country's normal deploy churn (DE 65, UK 25, elsewhere 10). The film that lost most: 'Świąteczna zabawa z Peppą' (tmdb 1778515). Dig in: `_time:24h country:pl build:=96fb23c6c38a cause:code kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)` then the listings' `repro` lines. If the build is still deployed, CI's identity takes check for it should have listed these takes."
@@ -76,7 +76,7 @@ tests:
       - eval_time: 30m
         alertname: IdentityBuildNetLosses
         exp_alerts:
-          - exp_labels: { severity: warning, country: pl, build: "0e41a4812", cause: code, tmdb: "41153", title: "Kupiłem motocykl, który jest wampirem", host: monitoring-1 }
+          - exp_labels: { domain: identity, severity: warning, country: pl, build: "0e41a4812", cause: code, tmdb: "41153", title: "Kupiłem motocykl, który jest wampirem", host: monitoring-1 }
             exp_annotations:
               summary: "pl: build 0e41a4812's code unmatched 11 more listings than it matched (most: 'Kupiłem motocykl, który jest wampirem')"
               description: "Over its last 24h in pl, build 0e41a4812 took the film away from 11 more listings than it gave one to on inputs that did not move (cause code) -- above the country's normal deploy churn (DE 65, UK 25, elsewhere 10). The film that lost most: 'Kupiłem motocykl, który jest wampirem' (tmdb 41153). Dig in: `_time:24h country:pl build:=0e41a4812 cause:code kind:* | stats by (kind, tmdb_before, title_before) count() n | sort by (n desc)` then the listings' `repro` lines. If the build is still deployed, CI's identity takes check for it should have listed these takes."
@@ -95,7 +95,7 @@ tests:
       - eval_time: 8m
         alertname: IdentityListingFlipFlop
         exp_alerts:
-          - exp_labels: { severity: warning, country: uk, tmdb_a: "1096642", tmdb_b: "1460982", title: "The Ties That Bind Us", build: afa874093, venue: "Chichester Cinema at New Park", host: monitoring-1 }
+          - exp_labels: { domain: identity, severity: warning, country: uk, tmdb_a: "1096642", tmdb_b: "1460982", title: "The Ties That Bind Us", build: afa874093, venue: "Chichester Cinema at New Park", host: monitoring-1 }
             exp_annotations:
               summary: "uk: 'The Ties That Bind Us' flipped 3 times in 24h between tmdb 1096642 and 1460982 (build afa874093)"
               description: "A uk listing (e.g. at Chichester Cinema at New Park) moved between films 1096642 and 1460982 3 times in the last 24h, the latest under build afa874093: two rules undoing each other. Dig in: `_time:24h country:uk kind:changed (tmdb_before:=1096642 or tmdb_before:=1460982) | fields _time, venue, listing, tmdb_before, tmdb_after, basis, projection_mode, build, repro`"
@@ -113,7 +113,7 @@ tests:
       - eval_time: 50m
         alertname: IdentityRegressionWatchStale
         exp_alerts:
-          - exp_labels: { severity: warning, host: monitoring-1 }
+          - exp_labels: { domain: identity, severity: warning, host: monitoring-1 }
             exp_annotations:
               summary: "The identity regression watch has not read the take-change log for over 30 minutes"
               description: "identity-regressions.timer on monitoring-1 publishes kinowo_identity_* gauges from VictoriaLogs every 5 minutes; IdentityFilmListingsLost, IdentityBuildNetLosses and IdentityListingFlipFlop read them. `journalctl -u identity-regressions -n 50` on monitoring-1 (VictoriaLogs down, or a query error)."
@@ -125,7 +125,7 @@ tests:
       - eval_time: 20m
         alertname: IdentityRegressionWatchStale
         exp_alerts:
-          - exp_labels: { severity: warning }
+          - exp_labels: { domain: identity, severity: warning }
             exp_annotations:
               summary: "The identity regression watch has not read the take-change log for over 30 minutes"
               description: "identity-regressions.timer on monitoring-1 publishes kinowo_identity_* gauges from VictoriaLogs every 5 minutes; IdentityFilmListingsLost, IdentityBuildNetLosses and IdentityListingFlipFlop read them. `journalctl -u identity-regressions -n 50` on monitoring-1 (VictoriaLogs down, or a query error)."
@@ -143,7 +143,7 @@ tests:
       - eval_time: 20m
         alertname: IdentityListingFlipsAbsent
         exp_alerts:
-          - exp_labels: { severity: warning }
+          - exp_labels: { domain: identity, severity: warning }
             exp_annotations:
               summary: "The identity regression watch runs but publishes no kinowo_identity_listing_flips"
               description: "identity-regressions on monitoring-1 reads the take-change log (kinowo_identity_regressions_last_success_timestamp_seconds is present) but its textfile has no kinowo_identity_listing_flips sample, so IdentityListingFlipFlop and the fleet dashboard's flip-flop panel are blind. render() in nix/files/identity-regressions.py must write the gauge every run (0 when nothing flips): `grep listing_flips /etc/node-exporter/textfile.d/identity-regressions.prom`."
@@ -188,7 +188,7 @@ tests:
       - eval_time: 23h
         alertname: IdentityIncrementalDrift
         exp_alerts:
-          - exp_labels: { severity: warning, country: de }
+          - exp_labels: { domain: identity, severity: warning, country: de }
             exp_annotations:
               summary: "de: 7 listings' live identity takes differ from a whole resolve of the same listings"
               description: "The nightly drift check found 7 de listings whose live film (what prod screened them as when the newest recording was made) is not what a whole resolve with nothing kept takes. The listings: the newest \"Identity live drift\" run's `identity-live-drift` artifact, live-drift-de.tsv; `scripts/identity-slice de --key 'venue|title'` slices one, and `scripts/identity-slice de --drift` replays the incremental sequence on a recording."
@@ -210,7 +210,7 @@ tests:
       - eval_time: 50h
         alertname: IdentityLiveDriftStale
         exp_alerts:
-          - exp_labels: { severity: warning, country: de }
+          - exp_labels: { domain: identity, severity: warning, country: de }
             exp_annotations:
               summary: "de: the identity drift check has compared nothing for over two days"
               description: "kinowo_identity_drift_recorded_timestamp_seconds{country=\"de\"} is over two days old: the nightly \"Record scrape fixtures\" run or the \"Identity live drift\" run after it failed for de, so IdentityIncrementalDrift reads nothing new. `agentctl ci-why` or the \"Identity live drift\" run's log."

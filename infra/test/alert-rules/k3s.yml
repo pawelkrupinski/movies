@@ -65,6 +65,7 @@ tests:
         alertname: ContainerImageGarbageCollectionStale
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
             exp_annotations:
@@ -105,6 +106,7 @@ tests:
         alertname: ContainerImageGarbageCollectionMetricAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               name: k3s.service
@@ -171,6 +173,7 @@ tests:
         alertname: RegistryPruneStale
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
             exp_annotations:
@@ -201,6 +204,7 @@ tests:
         alertname: RegistryPruneMetricAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               name: registry-prune.timer
@@ -285,6 +289,7 @@ tests:
         alertname: K3sServerNotRunning
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "monitoring-1"
               name: "k3s.service"
               role: "monitoring"
@@ -300,6 +305,7 @@ tests:
         alertname: K3sAgentNotRunning
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "k3s-worker-1"
               name: "k3s.service"
               role: "k3s-worker"
@@ -326,6 +332,7 @@ tests:
         alertname: K3sUnitStateAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               name: "k3s.service"
               severity: "warning"
             exp_annotations:
@@ -338,6 +345,7 @@ tests:
         alertname: KubeStateMetricsSeriesAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: "warning"
             exp_annotations:
               description: "Every rule in this group is a comparison and none of them can fire without kube-state-metrics, so the cluster's workloads are currently unwatched -- node conditions, replica counts, crash loops and OOM kills all included. If `TargetDown` is silent alongside this, the exporter IS answering and the problem is inside it: either the ClusterRole in movies-gitops/kube-state-metrics/rbac.yaml no longer grants `nodes`, or the `--resources=` list in the Deployment stopped naming them, or the image was bumped across a rename. Those two files are written to agree with each other and nothing enforces it. IT DOES NOT MEAN THE CLUSTER IS HEALTHY."
@@ -366,6 +374,7 @@ tests:
         alertname: K3sNodeNotReady
         exp_alerts:
           - exp_labels:
+              domain: platform
               condition: "Ready"
               node: "k3s-worker-1"
               severity: "warning"
@@ -380,6 +389,7 @@ tests:
         alertname: K3sDeploymentReplicasMissing
         exp_alerts:
           - exp_labels:
+              domain: platform
               deployment: "web"
               namespace: "kinowo"
               severity: "warning"
@@ -396,6 +406,7 @@ tests:
         alertname: K3sPodCrashLooping
         exp_alerts:
           - exp_labels:
+              domain: platform
               container: "worker"
               namespace: "kinowo"
               pod: "worker-pl-5d8f"
@@ -428,6 +439,7 @@ tests:
         alertname: K3sImagePullFailing
         exp_alerts:
           - exp_labels:
+              domain: platform
               container: "worker"
               namespace: "kinowo"
               pod: "worker-us-6cc6"
@@ -456,6 +468,7 @@ tests:
         alertname: K3sContainerOOMKilled
         exp_alerts:
           - exp_labels:
+              domain: platform
               container: "worker"
               namespace: "kinowo"
               pod: "worker-pl-5d8f"
@@ -486,6 +499,7 @@ tests:
         alertname: WebRestartNotOOMKilled
         exp_alerts:
           - exp_labels:
+              domain: platform
               container: "web"
               namespace: "kinowo"
               pod: "web-pl-5c55"
@@ -539,6 +553,7 @@ tests:
         alertname: WorkerRestartingRepeatedly
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               namespace: kinowo
               deployment: worker-us

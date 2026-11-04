@@ -81,8 +81,12 @@ groups:
             last_over_time(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success"}[2d])
               - ci:run_wall_seconds:baseline > 600
           )
+        # HELD SIX HOURS PAST THE LAST RUN THAT SHOWED IT. Each main run re-judges the latest sample, so
+        # a regression resolved and re-fired run by run (median episode 1.8h, 28 flaps a week).
+        keep_firing_for: 6h
         labels:
           severity: warning
+          domain: ci
         annotations:
           summary: "{{ $labels.workflow }} on main got slower: {{ $value | humanizeDuration }} end to end"
           description: >-
@@ -91,8 +95,9 @@ groups:
             {{ with printf `ci:run_wall_seconds:baseline{workflow=%q}` $labels.workflow | query }}{{ . | first | value | humanizeDuration }}{{ end }}
             over the fortnight before the last two days.
             {{ with printf `max_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) and on () (last_over_time(kinowo_ci_run_seconds{workflow=%q,ref="main",measure="wall",conclusion="success"}[5m]) <= ci:run_wall_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $labels.workflow | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) > %f and on () (last_over_time(kinowo_ci_run_seconds{workflow=%q,ref="main",measure="wall",conclusion="success"}[5m]) > ci:run_wall_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $good $labels.workflow | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in 16 days was at baseline.{{ end }}
-            Compare the two runs' jobs on the "CI — build timings" dashboard; the job and step alerts beside this one name
-            which part grew.
+            Jobs regressed in it (their own alerts are inhibited by this one):
+            {{ range printf `ALERTS{alertname="CiJobDurationRegressed",alertstate="firing",workflow=%q}` $labels.workflow | query }}{{ .Labels.ci_job }}; {{ else }}none.{{ end }}
+            Compare the two runs' jobs on the "CI — build timings" dashboard.
 
       # A JOB: the convergence `takes` rows, a capture leg, a CI shard.
       - alert: CiJobDurationRegressed
@@ -110,8 +115,12 @@ groups:
             and
             last_over_time(kinowo_ci_job_seconds{ref="main",conclusion="success"}[2d]) - ci:job_seconds:baseline > 600
           )
+        # HELD SIX HOURS PAST THE LAST RUN THAT SHOWED IT. Each main run re-judges the latest sample, so
+        # a regression resolved and re-fired run by run (median episode 1.8h, 28 flaps a week).
+        keep_firing_for: 6h
         labels:
           severity: warning
+          domain: ci
         annotations:
           summary: "{{ $labels.workflow }} / {{ $labels.ci_job }} on main got slower: {{ $value | humanizeDuration }}"
           description: >-
@@ -120,6 +129,8 @@ groups:
             {{ with printf `ci:job_seconds:baseline{workflow=%q,ci_job=%q}` $labels.workflow $labels.ci_job | query }}{{ . | first | value | humanizeDuration }}{{ end }}
             over the fortnight before the last two days.
             {{ with printf `max_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) and on () (last_over_time(kinowo_ci_job_seconds{workflow=%q,ref="main",conclusion="success",ci_job=%q}[5m]) <= ci:job_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $labels.workflow $labels.ci_job | query }}{{ $good := . | first | value }}Last run at baseline #{{ printf "%.0f" $good }}{{ with printf `min_over_time((last_over_time(kinowo_ci_run_number{workflow=%q,ref="main"}[5m]) > %f and on () (last_over_time(kinowo_ci_job_seconds{workflow=%q,ref="main",conclusion="success",ci_job=%q}[5m]) > ci:job_seconds:regression_threshold @ end()))[16d:5m])` $labels.workflow $good $labels.workflow $labels.ci_job | query }}, first slow run after it #{{ . | first | value | printf "%.0f" }}{{ end }}: the regression is in the commits between them.{{ else }}No run in 16 days was at baseline.{{ end }}
+            Steps regressed in it (their own alerts are inhibited by this one):
+            {{ range printf `ALERTS{alertname="CiStepDurationRegressed",alertstate="firing",workflow=%q,ci_job=%q}` $labels.workflow $labels.ci_job | query }}{{ .Labels.step }}; {{ else }}none.{{ end }}
             Every job of a workflow slowing at once is the runner host, not a commit. A job that times out has no
             successful run to judge: CiJobNearTimeout is the alert for that.
 
@@ -139,8 +150,12 @@ groups:
             and
             last_over_time(kinowo_ci_step_seconds{ref="main"}[2d]) - ci:step_seconds:baseline > 600
           )
+        # HELD SIX HOURS PAST THE LAST RUN THAT SHOWED IT. Each main run re-judges the latest sample, so
+        # a regression resolved and re-fired run by run (median episode 1.8h, 28 flaps a week).
+        keep_firing_for: 6h
         labels:
           severity: warning
+          domain: ci
         annotations:
           summary: "{{ $labels.workflow }} / {{ $labels.ci_job }} step `{{ $labels.step }}` on main got slower: {{ $value | humanizeDuration }}"
           description: >-
@@ -164,6 +179,7 @@ groups:
           >= 0.8 * last_over_time(kinowo_ci_job_timeout_seconds[1d])
         labels:
           severity: warning
+          domain: ci
         annotations:
           summary: "{{ $labels.workflow }} / {{ $labels.ci_job }} ({{ $labels.ref }}) took {{ $value | humanizeDuration }}, within 80% of its timeout"
           description: >-
@@ -195,6 +211,7 @@ groups:
             )[6h:1m]) > 900
         labels:
           severity: warning
+          domain: ci
         annotations:
           summary: "Main's first job waited {{ $value | humanizeDuration }} for a runner"
           description: >-

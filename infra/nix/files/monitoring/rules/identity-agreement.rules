@@ -28,6 +28,7 @@ groups:
         for: 6h
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: {{ $value }} agreement clusters have stayed incomplete for 6 hours"
           description: >-
@@ -52,6 +53,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: the {{ $labels.mode }} agreement phase's hourly median is {{ $value | humanizeDuration }}, over twice its week"
           description: >-
@@ -74,6 +76,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: the {{ $labels.mode }} agreement phase's hourly median allocation is {{ $value | humanize }}B, over twice its week"
           description: >-
@@ -87,6 +90,7 @@ groups:
         expr: sum by (country) (increase(kinowo_worker_identity_staging_dropped_total[30m])) > 0
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: the identity staging publisher dropped events"
           description: >-

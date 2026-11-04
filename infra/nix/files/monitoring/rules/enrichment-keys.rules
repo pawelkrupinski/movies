@@ -20,6 +20,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.service }} has refused every worker call with HTTP 401 for over an hour"
           description: >-

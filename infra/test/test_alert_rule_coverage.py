@@ -228,6 +228,21 @@ class EveryAlertFiresAndStaysQuiet(unittest.TestCase):
         self.assertEqual([], missing, "\n" + "\n".join(missing))
 
 
+# THE ROUTING KEY (alertmanager.yaml): production domains reach Telegram, the rest a daily email digest. An alert with
+# no `domain`, or a misspelt one, falls through to the severity routes and pages -- the 2026-11-04 noise again.
+DOMAINS = {"serving", "pipeline", "platform", "deploy", "monitoring", "ci", "identity", "third-party"}
+
+
+class EveryAlertNamesItsDomain(unittest.TestCase):
+
+    def test_every_prometheus_alert_carries_a_known_domain(self):
+        bad = ["%s %s: %r" % (os.path.basename(path), rule["alert"], rule.get("labels", {}).get("domain"))
+               for path in promql_selectors.RULE_FILES
+               for group in load(path)["groups"] for rule in group["rules"]
+               if "alert" in rule and rule.get("labels", {}).get("domain") not in DOMAINS]
+        self.assertEqual([], bad, "every alert needs `domain:` one of %s (alertmanager.yaml routes on it)" % sorted(DOMAINS))
+
+
 class LongHoldsSurviveAWorkerRestart(unittest.TestCase):
 
     def test_the_check_follows_a_recorded_series_to_its_raw_gauge(self):

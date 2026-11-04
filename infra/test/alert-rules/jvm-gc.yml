@@ -26,7 +26,7 @@ tests:
       - eval_time: 20m
         alertname: JvmFullGcRateHigh
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-worker, country: us}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-worker, country: us}
             exp_annotations:
               summary: "kinowo-worker us runs 369 full GCs an hour"
               description: >-
@@ -64,7 +64,7 @@ tests:
       - eval_time: 30m
         alertname: JvmFullGcRateHigh
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-worker, country: de}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-worker, country: de}
             exp_annotations:
               summary: "kinowo-worker de runs 517.2 full GCs an hour"
               description: >-
@@ -101,7 +101,7 @@ tests:
       - eval_time: 30m
         alertname: JvmFullGcRateHigh
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-web, country: us}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-web, country: us}
             exp_annotations:
               summary: "kinowo-web us runs 120 full GCs an hour"
               description: >-
@@ -132,7 +132,7 @@ tests:
       - eval_time: 40m
         alertname: JvmFullGcRateHigh
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-worker, country: de}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-worker, country: de}
             exp_annotations:
               summary: "kinowo-worker de runs 300 full GCs an hour"
               description: >-
@@ -148,7 +148,7 @@ tests:
       - eval_time: 45m
         alertname: JvmOldGenAfterGcNearCap
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-worker, country: de, pool: 'PS Old Gen'}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-worker, country: de, pool: 'PS Old Gen'}
             exp_annotations:
               summary: "kinowo-worker de PS Old Gen is 95% full after collections"
               description: >-
@@ -187,7 +187,7 @@ tests:
       - eval_time: 55m
         alertname: JvmGcTimeShareHigh
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-worker, country: uk}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-worker, country: uk}
             exp_annotations:
               summary: "kinowo-worker uk spends 20% of its wall clock paused for GC"
               description: >-
@@ -228,7 +228,7 @@ tests:
       - eval_time: 40m
         alertname: JvmOldGenAfterGcNearCap
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-web, country: de, pool: 'G1 Old Gen'}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-web, country: de, pool: 'G1 Old Gen'}
             exp_annotations:
               summary: "kinowo-web de G1 Old Gen is 94.37% full after collections"
               description: >-
@@ -271,7 +271,7 @@ tests:
       - eval_time: 45m
         alertname: JvmOldGenAfterGcNearCap
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-worker, country: us, pool: 'Tenured Gen'}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-worker, country: us, pool: 'Tenured Gen'}
             exp_annotations:
               summary: "kinowo-worker us Tenured Gen is 99.96% full after collections"
               description: >-

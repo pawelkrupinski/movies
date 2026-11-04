@@ -27,6 +27,7 @@ groups:
         for: 2h
         labels:
           severity: warning
+          domain: ci
         annotations:
           summary: "{{ $labels.workflow }} has been red on main for 2 hours"
           description: >-

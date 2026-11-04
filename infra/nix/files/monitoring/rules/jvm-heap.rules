@@ -108,6 +108,7 @@ groups:
         for: 2h
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.job }} {{ $labels.country }} old gen is {{ $value | humanizePercentage }} of its cap"
           description: >-
@@ -179,6 +180,7 @@ groups:
         for: 2m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.tier }}-{{ $labels.country }} RSS is {{ $value | humanizePercentage }} of its container memory limit and climbing toward it"
           description: >-
@@ -213,6 +215,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "worker-{{ $labels.country }}'s String Deduplication table is {{ $value | humanize1024 }}B of native memory"
           description: >-
@@ -257,6 +260,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.job }} {{ $labels.country }} runs {{ $value | humanize }} full GCs an hour"
           description: >-
@@ -290,6 +294,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.job }} {{ $labels.country }} spends {{ $value | humanizePercentage }} of its wall clock paused for GC"
           description: >-
@@ -336,6 +341,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.job }} {{ $labels.country }} {{ $labels.pool }} is {{ $value | humanizePercentage }} full after collections"
           description: >-
@@ -408,6 +414,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.job }} {{ $labels.country }} old gen after GC is {{ $value | humanize1024 }}B (24h median), up from {{ with printf `quantile_over_time(0.5, (max by (job, country) (jvm_memory_pool_collection_used_bytes{job=%q, country=%q, pool=~\"G1 Old Gen|Tenured Gen|PS Old Gen\"}))[24h:5m] offset 7d)` $labels.job $labels.country | query }}{{ . | first | value | humanize1024 }}B{{ end }} a week ago"
           description: >-
@@ -456,6 +463,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.job }} {{ $labels.country }} resident memory is {{ $value | humanize1024 }}B (24h median), up from {{ with printf `quantile_over_time(0.5, (max by (job, country) (process_resident_memory_bytes{job=%q, country=%q}))[24h:5m] offset 7d)` $labels.job $labels.country | query }}{{ . | first | value | humanize1024 }}B{{ end }} a week ago"
           description: >-
@@ -487,6 +495,7 @@ groups:
             > (kinowo_heapdumps_newest_timestamp_seconds offset 30m)
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.dir }} wrote a heap dump on {{ $labels.host }}"
           description: >-
@@ -507,6 +516,7 @@ groups:
         expr: time() - kinowo_heapdumps_prune_last_success_timestamp_seconds > 2 * 3600
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has not pruned or reported its heap dumps for over 2 hours"
           description: >-
@@ -531,6 +541,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.host }} has never reported its heap-dump budget"
           description: >-

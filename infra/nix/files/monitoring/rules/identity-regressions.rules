@@ -46,6 +46,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: '{{ $labels.title }}' (tmdb {{ $labels.tmdb }}) lost {{ $value }} listings in 6h, build {{ $labels.build }}"
           description: >-
@@ -87,6 +88,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: build {{ $labels.build }}'s code unmatched {{ $value }} more listings than it matched (most: '{{ $labels.title }}')"
           description: >-
@@ -109,6 +111,7 @@ groups:
         expr: kinowo_identity_listing_flips >= 3
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: '{{ $labels.title }}' flipped {{ $value }} times in 24h between tmdb {{ $labels.tmdb_a }} and {{ $labels.tmdb_b }} (build {{ $labels.build }})"
           description: >-
@@ -126,6 +129,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "The identity regression watch runs but publishes no kinowo_identity_listing_flips"
           description: >-
@@ -153,6 +157,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: {{ $value }} listings' live identity takes differ from a whole resolve of the same listings"
           description: >-
@@ -170,6 +175,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "{{ $labels.country }}: the identity drift check has compared nothing for over two days"
           description: >-
@@ -188,6 +194,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: identity
         annotations:
           summary: "The identity regression watch has not read the take-change log for over 30 minutes"
           description: >-

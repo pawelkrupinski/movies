@@ -37,6 +37,7 @@ groups:
         expr: vector(1)
         labels:
           severity: none
+          domain: monitoring
         annotations:
           summary: "Monitoring heartbeat"
           description: >-
@@ -52,6 +53,7 @@ groups:
         for: 10m
         labels:
           severity: critical
+          domain: monitoring
         annotations:
           summary: "Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}"
           description: >-
@@ -70,6 +72,7 @@ groups:
         for: 5m
         labels:
           severity: critical
+          domain: monitoring
         annotations:
           summary: "Prometheus is running with a configuration it failed to load"
           description: >-
@@ -85,6 +88,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: monitoring
         annotations:
           summary: "Prometheus is failing to evaluate one or more rules"
           description: >-
@@ -96,6 +100,7 @@ groups:
         for: 15m
         labels:
           severity: critical
+          domain: monitoring
         annotations:
           summary: "Alertmanager is failing to deliver notifications to {{ $labels.integration }}"
           description: >-

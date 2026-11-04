@@ -63,6 +63,7 @@ tests:
         alertname: WebEndpointLatencyHigh
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: uk
               route: /uk/:city/api/details
@@ -148,6 +149,7 @@ tests:
         alertname: WebPageLatencyHigh
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
               route: /:city/movie/:slug

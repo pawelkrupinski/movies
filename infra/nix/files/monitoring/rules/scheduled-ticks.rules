@@ -50,6 +50,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} worker loop {{ $labels.tick }} has not completed a run in over three of its periods"
           description: >-
@@ -70,6 +71,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.country }} web loop {{ $labels.tick }} has not completed a run in over three of its periods"
           description: >-
@@ -91,6 +93,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "No worker is publishing its periodic loops' last runs"
           description: >-
@@ -104,6 +107,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "No web pod is publishing its periodic loops' last runs"
           description: >-

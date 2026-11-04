@@ -28,7 +28,7 @@ tests:
       - eval_time: 2h45m
         alertname: LandingGateRed
         exp_alerts:
-          - exp_labels: { severity: warning, workflow: Main }
+          - exp_labels: { domain: ci, severity: warning, workflow: Main }
             exp_annotations:
               summary: "Main has been red on main for 2 hours"
               description: "The newest finished Main run on main failed and no later one has passed, for two hours. Every production push now needs a `Fixes-Red:` trailer naming that run, or waits for green. `~/bin/agentctl ci-why` names the run, its failed jobs and whether the failure is a test or the CI itself."

@@ -27,6 +27,7 @@ tests:
         alertname: WebServerErrorsServed
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: critical
               country: pl
             exp_annotations:
@@ -84,6 +85,7 @@ tests:
         alertname: WebAssetsNotFound
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: uk
             exp_annotations:
@@ -115,6 +117,7 @@ tests:
         alertname: WebHttpMetricsAbsent
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
             exp_annotations:
               summary: "The web tier's request metric has stopped arriving"
@@ -150,6 +153,7 @@ tests:
         alertname: UserStateWritesFailing
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: pl
               route: /api/me/:country/hidden-films/:title
@@ -205,6 +209,7 @@ tests:
         alertname: UserStateWritesFailing
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: uk
               route: /uk/api/me/:country/hidden-films/:title
@@ -235,6 +240,7 @@ tests:
         alertname: UserStateUniqueIndexMissing
         exp_alerts:
           - exp_labels:
+              domain: serving
               severity: warning
               country: uk
             exp_annotations:

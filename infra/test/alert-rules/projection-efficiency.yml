@@ -35,6 +35,7 @@ tests:
         alertname: ReadModelVenueRebuildShareHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
             exp_annotations:
@@ -58,6 +59,7 @@ tests:
         alertname: ReadModelVenueRebuildShareHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
             exp_annotations:
@@ -113,6 +115,7 @@ tests:
         alertname: ReadModelVenueRebuildShareHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
             exp_annotations:
@@ -125,6 +128,7 @@ tests:
         alertname: ReadModelVenueRebuildShareHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
             exp_annotations:
@@ -147,6 +151,7 @@ tests:
         alertname: ReadModelProjectionWritePerCallHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
             exp_annotations:
@@ -228,6 +233,7 @@ tests:
         alertname: ReadModelProjectionWritePerCallHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
             exp_annotations:
@@ -247,6 +253,7 @@ tests:
         alertname: ReadModelProjectionWritePerCallHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
             exp_annotations:
@@ -256,6 +263,7 @@ tests:
         alertname: ReadModelProjectionWritePerCallHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
             exp_annotations:
@@ -277,6 +285,7 @@ tests:
         alertname: ChangeStreamApplyFallingBehind
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
               collection: "screenings"
@@ -323,6 +332,7 @@ tests:
         alertname: ChangeStreamApplyFallingBehind
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
               collection: "screenings"
@@ -333,6 +343,7 @@ tests:
         alertname: ChangeStreamApplyFallingBehind
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: "warning"
               country: "us"
               collection: "screenings"

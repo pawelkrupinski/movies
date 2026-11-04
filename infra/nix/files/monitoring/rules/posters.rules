@@ -77,9 +77,12 @@ groups:
               * (last_over_time(probe_http_uncompressed_body_length{kind="poster"}[11m]) >= bool 1024)
           ) == 0
           unless on () probe:control_failing:any
-        for: 10m
+        # TWENTY MINUTES, not ten (2026-11-04): this pages critical and by email, and its one firing
+        # in the week to 11-04 healed in five. A poster host down for 20 minutes is still news.
+        for: 20m
         labels:
           severity: critical
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}: every {{ $labels.poster_host }} poster probed from outside fails to load"
           description: >-
@@ -106,6 +109,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}'s city page names no poster to probe"
           description: >-
@@ -135,6 +139,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}: films drawing a {{ $labels.poster_host }} poster fell to {{ $value | humanizePercentage }} of the country's, from over twice that yesterday"
           description: >-
@@ -158,6 +163,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} more of the served films have no poster than yesterday"
           description: >-
@@ -179,6 +185,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }}: {{ $value }} served films now draw a poster image three or more films share"
           description: >-

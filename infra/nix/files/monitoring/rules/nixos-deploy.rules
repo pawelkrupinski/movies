@@ -55,6 +55,7 @@ groups:
         # patience twice and would silently double the real threshold.
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "{{ $labels.host }} has not published its deploy state for over 30 minutes"
           description: >-
@@ -78,6 +79,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "{{ $labels.host }} is scraped but is publishing no deploy state at all"
           description: >-
@@ -99,8 +101,9 @@ groups:
         # If both fire together, suspect node_exporter's textfile collector rather than two units.
         labels:
           severity: warning
+          domain: deploy
         annotations:
-          summary: "nixos-auto-apply has not completed a pass on {{ $labels.host }} for over 3 hours"
+          summary: "DEPLOY PIPELINE STUCK: nixos-auto-apply has not completed a pass on {{ $labels.host }} for over 3 hours"
           description: >-
             Merges to main are not reaching this host, and nothing else would say so -- the machine
             keeps running its old closure perfectly happily. `systemctl status nixos-auto-apply`
@@ -126,8 +129,9 @@ groups:
         for: 24h
         labels:
           severity: warning
+          domain: deploy
         annotations:
-          summary: "{{ $labels.host }} has been blocked from auto-applying for a day ({{ $labels.reason }})"
+          summary: "DEPLOY PIPELINE STUCK for a day: {{ $labels.host }} will not auto-apply ({{ $labels.reason }}); every merge since is not live there"
           description: >-
             The applier found a change it will not make on its own. `reason` says which class;
             `nixos_auto_apply_info`'s `detail` label carries the specifics. Resolve it by switching
@@ -148,8 +152,9 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: deploy
         annotations:
-          summary: "{{ $labels.host }} has refused to auto-apply for an hour ({{ $labels.reason }})"
+          summary: "DEPLOY PIPELINE STUCK: {{ $labels.host }} has refused to auto-apply for an hour ({{ $labels.reason }}); merges are not going live"
           description: >-
             A merged change is staged on this host and the applier will not activate it on its
             own, so it is not live -- and every later merge for this host queues behind it.
@@ -174,8 +179,9 @@ groups:
         for: 2h
         labels:
           severity: warning
+          domain: deploy
         annotations:
-          summary: "{{ $labels.host }} has had a staged closure it is not running for 2 hours"
+          summary: "DEPLOY PIPELINE STUCK: {{ $labels.host }} has had a staged closure it is not running for 2 hours"
           description: >-
             CI staged a closure here two hours ago and the host is still on the old one, and the
             applier has NOT said it is blocked -- so it is not deciding at all. Check
@@ -192,8 +198,9 @@ groups:
         for: 24h
         labels:
           severity: warning
+          domain: deploy
         annotations:
-          summary: "{{ $labels.host }} has been running a closure older than the staged one for a day"
+          summary: "DEPLOY PIPELINE STUCK for a day: {{ $labels.host }} is running a closure older than the staged one"
           description: >-
             CI has put a closure on this host that it is not running. Look at `AutoApplyBlocked`
             first -- if that is also firing, this is its consequence and there is one problem, not
@@ -215,6 +222,7 @@ groups:
         for: 7d
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "{{ $labels.host }} has owed a reboot for a week"
           description: >-
@@ -242,6 +250,7 @@ groups:
         # at zero inodes, when it cannot take its own lock.
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "{{ $labels.host }} has not collected its Nix store for over 3 days"
           description: >-
@@ -261,6 +270,7 @@ groups:
         for: 2d
         labels:
           severity: warning
+          domain: deploy
         annotations:
           summary: "{{ $labels.host }} has never reported a successful Nix store collection"
           description: >-

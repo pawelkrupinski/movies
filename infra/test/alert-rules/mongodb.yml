@@ -79,6 +79,7 @@ tests:
         alertname: MongodNoPrimary
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: critical
             exp_annotations: &no_primary_annotations
               summary: "no mongod in rs0 is PRIMARY"
@@ -98,6 +99,7 @@ tests:
         alertname: MongodNotPrimary
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               instance: "10.20.0.13:9216"
               job: mongodb
@@ -110,6 +112,7 @@ tests:
         alertname: MongodNoPrimary
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: critical
             exp_annotations: *no_primary_annotations
 
@@ -128,6 +131,7 @@ tests:
         alertname: MongodNoPrimary
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: critical
             exp_annotations: *no_primary_annotations
 
@@ -175,6 +179,7 @@ tests:
         alertname: MongodUserAssertionsRising
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               severity: warning
             exp_annotations:
@@ -202,6 +207,7 @@ tests:
         alertname: MongodInternalAssertionsRising
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: mongo-1
               severity: warning
             exp_annotations:
@@ -302,6 +308,7 @@ tests:
         alertname: MongodUnitStateAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               name: "mongodb.service"
               severity: "warning"
             exp_annotations:
@@ -314,6 +321,7 @@ tests:
         alertname: MongodReplsetStateAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: "warning"
             exp_annotations:
               description: "`MongodNotPrimary` above is a comparison and cannot fire without this series, so the single failure this exporter was deployed to catch is currently uncovered. THE MOST LIKELY CAUSE IS NOT AN OUTAGE, it is a name: this series exists only because roles/mongodb-exporter.nix passes `--compatible-mode`, and it is one of the names this file's header says to verify against a live /metrics on first deploy. Check the flag and the spelling before looking for a fault. If the exporter itself were down, `TargetDown` would have said so first."
@@ -325,6 +333,7 @@ tests:
         alertname: MongodOplogWindowMetricAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: "warning"
             exp_annotations:
               description: "`MongodOplogWindowShort` is a comparison and cannot fire without this series. As with the replica-set state above, suspect the METRIC NAME first -- these are `--compatible-mode` names this file's header says to verify once against a live /metrics. The other candidate is the `kinowo_monitor` user having been created without `clusterMonitor`: the oplog is measured out of `local.oplog.rs`, and `clusterMonitor` is what grants read on `local`. A user with a narrower role authenticates and scrapes perfectly well, and simply publishes fewer series."
@@ -336,6 +345,7 @@ tests:
         alertname: MongodServerStatusSeriesAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: "warning"
             exp_annotations:
               description: "`MongodConnectionsSaturated` and both `Mongod*AssertionsRising` rules are comparisons against this collector's output and none of them can fire without it. This one series stands in for the whole `diagnosticdata` collector: if it is absent, `--collector.diagnosticdata` has been dropped from the exporter's ExecStart, the metric names have moved, or the `kinowo_monitor` user lost the role that lets it run `serverStatus`. IT DOES NOT MEAN THE DATABASE IS HEALTHY."
@@ -347,6 +357,7 @@ tests:
         alertname: MongodumpMetricAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: "warning"
             exp_annotations:
               description: "`MongodumpStale` cannot fire without this series, so the backup is unwatched. Either the dump has never run on this host, or node_exporter is not reading the textfile directory the dump writes to (`--collector.textfile.directory` must point at fleet.mongodb.backup.textfileDirectory). AN ABSENT SERIES IS NOT A HEALTHY BACKUP."
@@ -358,6 +369,7 @@ tests:
         alertname: MongodumpOffboxMetricAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: "warning"
             exp_annotations:
               description: "`MongodumpOffboxStale` cannot fire without this series, so the only copy of the database that survives losing mongo-1 is unwatched. Either the pull has never succeeded on monitoring-1 (`systemctl start mongodb-offbox-pull` and read its journal), or node_exporter is not reading the textfile directory it writes to. AN ABSENT SERIES IS NOT A HEALTHY BACKUP."
@@ -391,6 +403,7 @@ tests:
         alertname: MongodNotRunning
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "mongo-1"
               name: "mongodb.service"
               severity: "critical"
@@ -405,6 +418,7 @@ tests:
         alertname: MongodExporterCannotReachMongod
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "mongo-1"
               severity: "critical"
             exp_annotations:
@@ -417,6 +431,7 @@ tests:
         alertname: MongodOplogWindowShort
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "mongo-1"
               severity: "warning"
             exp_annotations:
@@ -429,6 +444,7 @@ tests:
         alertname: MongodConnectionsSaturated
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "mongo-1"
               severity: "warning"
             exp_annotations:
@@ -452,6 +468,7 @@ tests:
         alertname: MongodumpStale
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "mongo-1"
               severity: "warning"
             exp_annotations:
@@ -476,6 +493,7 @@ tests:
         alertname: MongodumpOffboxStale
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "monitoring-1"
               severity: "warning"
             exp_annotations:
@@ -500,6 +518,7 @@ tests:
         alertname: MongodumpShrankSharply
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "mongo-1"
               severity: "warning"
             exp_annotations:
@@ -537,6 +556,7 @@ tests:
         alertname: MongodMemoryNearLimit
         exp_alerts:
           - exp_labels:
+              domain: platform
               host: "mongo-1"
               severity: "critical"
             exp_annotations:

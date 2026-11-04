@@ -27,6 +27,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: platform
         annotations:
           summary: "{{ $labels.job }}: writes to {{ $labels.database }}.{{ $labels.collection }} keep failing ({{ $labels.kind }})"
           description: >-
@@ -45,6 +46,7 @@ groups:
           sum by (job, database) (increase(kinowo_web_mongo_unauthorized_total[15m])) > 0
         labels:
           severity: critical
+          domain: platform
         annotations:
           summary: "{{ $labels.job }} is not authorized on Mongo database {{ $labels.database }}"
           description: >-

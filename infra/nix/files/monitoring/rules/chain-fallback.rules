@@ -54,6 +54,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: pipeline
         annotations:
           summary: "{{ $labels.client }} ({{ $labels.country }}) is mostly running on fallback — {{ $value | humanizePercentage }} of its venues"
           description: >-

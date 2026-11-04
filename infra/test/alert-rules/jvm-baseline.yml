@@ -41,7 +41,7 @@ tests:
       - eval_time: 206h
         alertname: JvmLiveHeapBaselineRising
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-worker, country: de}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-worker, country: de}
             exp_annotations:
               summary: "kinowo-worker de old gen after GC is 540MiB (24h median), up from 400MiB a week ago"
               description: >-
@@ -80,7 +80,7 @@ tests:
       - eval_time: 206h
         alertname: ProcessResidentBaselineRising
         exp_alerts:
-          - exp_labels: {severity: warning, job: kinowo-web, country: de}
+          - exp_labels: {domain: platform, severity: warning, job: kinowo-web, country: de}
             exp_annotations:
               summary: "kinowo-web de resident memory is 1.27GiB (24h median), up from 1000MiB a week ago"
               description: >-

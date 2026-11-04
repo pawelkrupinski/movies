@@ -25,7 +25,7 @@ tests:
       - eval_time: 80m
         alertname: EnrichmentApiKeyRefused
         exp_alerts:
-          - exp_labels: { severity: warning, service: omdb }
+          - exp_labels: { domain: pipeline, severity: warning, service: omdb }
             exp_annotations:
               summary: "omdb has refused every worker call with HTTP 401 for over an hour"
               description: "The workers' omdb calls have drawn HTTP 401s and not one success in every hour for over an hour. For TMDB that is the key (TMDB_API_KEY) revoked or wrong. For OMDb it is the key or its spent daily quota (shared with CI's recording legs), which resets daily; a 401 right after the reset is the key. VictoriaLogs `tier:worker \"refused its key\"`."

@@ -29,7 +29,7 @@ tests:
       - eval_time: 35m
         alertname: MongoWriteErrors
         exp_alerts:
-          - exp_labels: { severity: warning, job: kinowo-worker, database: kinowo_de, collection: identity_agreements, kind: serialization }
+          - exp_labels: { domain: platform, severity: warning, job: kinowo-worker, database: kinowo_de, collection: identity_agreements, kind: serialization }
             exp_annotations:
               summary: "kinowo-worker: writes to kinowo_de.identity_agreements keep failing (serialization)"
               description: "Mongo writes to this collection have thrown for 10 minutes. `serialization`: the driver could not encode the document (a NUL or a dot in a field name, a codec missing) and the same write will fail every time until the code changes. `rejected`: the server refused the document (a validator, a write concern). `failed`: the write command failed. The writer's WARN lines carry the exception; VictoriaLogs `tier:<worker|web> \"<collection>\"`."
@@ -39,7 +39,7 @@ tests:
       - eval_time: 12m
         alertname: MongoUnauthorized
         exp_alerts:
-          - exp_labels: { severity: critical, job: kinowo-web, database: kinowo_es }
+          - exp_labels: { domain: platform, severity: critical, job: kinowo-web, database: kinowo_es }
             exp_annotations:
               summary: "kinowo-web is not authorized on Mongo database kinowo_es"
               description: "Mongo answered \"not authorized on kinowo_es\" (code 13): the application's user lacks its per-database grant. The pod stays healthy and does nothing with that database. Grant it with scripts/mongo-grants (docs/adding-a-country.md), then restart the pod."

@@ -34,6 +34,7 @@ tests:
         alertname: FilesystemSpaceLow
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: mongo-1
               mountpoint: /var/lib/mongodb
@@ -111,6 +112,7 @@ tests:
         alertname: FilesystemInodesCritical
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: critical
               host: monitoring-1
               mountpoint: /
@@ -140,6 +142,7 @@ tests:
         alertname: FilesystemMetricsAbsent
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
             exp_annotations:
               summary: "No host is publishing filesystem metrics"
@@ -164,6 +167,7 @@ tests:
         alertname: FilesystemSpaceCritical
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: critical
               host: mongo-1
               mountpoint: /var/lib/mongodb
@@ -196,6 +200,7 @@ tests:
         alertname: FilesystemInodesLow
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: monitoring-1
               mountpoint: /
@@ -232,6 +237,7 @@ tests:
         alertname: FilesystemWillFillWithin7Days
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: mongo-1
               mountpoint: /var/lib/mongodb
@@ -279,6 +285,7 @@ tests:
         alertname: FilesystemWillFillWithin3Days
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               mountpoint: /
@@ -310,6 +317,7 @@ tests:
         alertname: FilesystemWillFillWithin3Days
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               mountpoint: /
@@ -346,6 +354,7 @@ tests:
         alertname: FilesystemWillFillWithin3Days
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               mountpoint: /
@@ -396,6 +405,7 @@ tests:
         alertname: FilesystemWillFillWithin3Days
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               mountpoint: /
@@ -443,6 +453,7 @@ tests:
         alertname: FilesystemWillFillWithin3Days
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               mountpoint: /
@@ -466,6 +477,7 @@ tests:
         alertname: FilesystemWillFillWithin3Days
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               mountpoint: /
@@ -510,6 +522,7 @@ tests:
         alertname: FilesystemSpaceLow
         exp_alerts:
           - exp_labels:
+              domain: platform
               severity: warning
               host: k3s-worker-1
               mountpoint: /

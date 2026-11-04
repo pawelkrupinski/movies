@@ -68,6 +68,7 @@ groups:
         for: 1h
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} {{ $labels.route }} is serving {{ $value | humanize1024 }}B pages"
           description: >-
@@ -142,6 +143,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} {{ $labels.route }} responses are {{ $value | humanize }}x yesterday's size"
           description: >-
@@ -188,6 +190,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.country }} {{ $labels.route }} responses are {{ $value | humanizePercentage }} of yesterday's size"
           description: >-
@@ -208,6 +211,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "No web response-size samples at all"
           description: >-

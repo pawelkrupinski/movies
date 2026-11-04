@@ -64,6 +64,7 @@ groups:
         for: 5m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "monitoring-1 cannot reliably reach {{ $labels.instance }}, so the synthetic probes are held"
           description: >-
@@ -82,21 +83,52 @@ groups:
       # A 403 IS NOT THIS ALERT. Cloudflare's Bot Fight Mode answers every Hetzner address with a
       # 403 challenge unless monitoring-1 has an IP Access Rule, so without it every probe fails
       # -- and that must not page. `ProbeBlockedByEdge` below is the 403 case.
+      # TWO TIERS, ONE NAME (2026-11-04). In the week to 11-04 all eight ProbeFailing firings were
+      # critical, paged Telegram AND email, and healed by themselves within 5-15 minutes (for: 5m).
+      # Now: 10 minutes failing is a warning, 20 minutes is the critical page, and the critical
+      # inhibits its own warning on the same instance (alertmanager.yaml), so a real outage is one
+      # warning then one critical. POSTERS ARE NOT HERE: every one of those eight was a single
+      # weserv poster URL, which PosterProbeFailing (posters.rules) judges per poster host -- one
+      # image of many failing is not the site down.
       - alert: ProbeFailing
         expr: >-
           (
-            last_over_time(probe_success{kind!="control"}[6m]) == 0
+            last_over_time(probe_success{kind!~"control|poster"}[6m]) == 0
               unless on (instance) last_over_time(probe_http_status_code[6m]) == 403
           )
           unless on () probe:control_failing:any
-        for: 5m
+        for: 10m
         labels:
-          severity: critical
+          severity: warning
+          domain: serving
         annotations:
-          summary: "{{ $labels.instance }} has failed from outside for 5 minutes"
+          summary: "{{ $labels.instance }} has failed from outside for 10 minutes"
           description: >-
             blackbox_exporter on monitoring-1 has been unable to fetch {{ $labels.instance }}
-            ({{ $labels.kind }}, {{ $labels.country }}) through Cloudflare for five minutes.
+            ({{ $labels.kind }}, {{ $labels.country }}) through Cloudflare for ten minutes.
+            `probe_http_status_code` for this instance says which kind (403 is excluded here --
+            that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's
+            readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable --
+            `probe_failed_due_to_regex` 1 means a 200 that stopped short of `</html>`). A `film` or
+            `share-card` target that 404s alone is a film that left the schedule and a discovery
+            that has not replaced it -- `ProbeDiscoveryStale` fires alongside if so.
+
+      - alert: ProbeFailing
+        expr: >-
+          (
+            last_over_time(probe_success{kind!~"control|poster"}[6m]) == 0
+              unless on (instance) last_over_time(probe_http_status_code[6m]) == 403
+          )
+          unless on () probe:control_failing:any
+        for: 20m
+        labels:
+          severity: critical
+          domain: serving
+        annotations:
+          summary: "{{ $labels.instance }} has failed from outside for 20 minutes"
+          description: >-
+            blackbox_exporter on monitoring-1 has been unable to fetch {{ $labels.instance }}
+            ({{ $labels.kind }}, {{ $labels.country }}) through Cloudflare for twenty minutes.
             `probe_http_status_code` for this instance says which kind (403 is excluded here --
             that is ProbeBlockedByEdge): 5xx is the origin (Caddy or the pod -- check `WebServerErrorsServed` and the pod's
             readiness); 0 is no HTTP answer at all (DNS, TLS, or the node unreachable --
@@ -112,6 +144,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "Cloudflare is refusing the synthetic probe of {{ $labels.instance }} (403)"
           description: >-
@@ -144,6 +177,7 @@ groups:
         for: 10m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "{{ $labels.instance }} is taking {{ $value | humanize }}s to fetch from outside"
           description: >-
@@ -166,6 +200,7 @@ groups:
         for: 15m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "The synthetic probes have not found a live film page for every country in 30 minutes"
           description: >-
@@ -182,6 +217,7 @@ groups:
         for: 30m
         labels:
           severity: warning
+          domain: serving
         annotations:
           summary: "Nothing is reporting the synthetic probes"
           description: >-

@@ -67,6 +67,7 @@ tests:
         alertname: CinemaScrapeOldestAgeHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: pl
               severity: warning
             exp_annotations:
@@ -100,6 +101,7 @@ tests:
         alertname: CinemaScrapeOldestAgeHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: pl
               severity: warning
             exp_annotations:
@@ -133,6 +135,7 @@ tests:
         alertname: CinemaScrapeOldestAgeHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: de
               severity: warning
             exp_annotations:
@@ -150,6 +153,7 @@ tests:
                 in July 2026 with every other panel clean. If the sweep is simply too slow for the window,
                 the cadence is the lever, and `WorkerScrapeCadenceConfigSpec` asserts the arithmetic.
           - exp_labels:
+              domain: pipeline
               country: uk
               severity: warning
             exp_annotations:
@@ -205,6 +209,7 @@ tests:
         alertname: CinemaScrapeNeverScraped
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: us
               severity: warning
             exp_annotations:
@@ -239,6 +244,7 @@ tests:
         alertname: CinemaScrapeCensusAbsent
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               severity: warning
             exp_annotations:
               summary: "No worker is publishing the cinema-scrape census"
@@ -274,6 +280,7 @@ tests:
         alertname: RetiredVenueRowsLingering
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: pl
               severity: warning
             exp_annotations:
@@ -313,6 +320,7 @@ tests:
         alertname: DuplicateVenueListing
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: us
               severity: warning
             exp_annotations:
@@ -375,6 +383,7 @@ tests:
         alertname: CinemaScrapeFailureShareHigh
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: uk
               severity: warning
             exp_annotations:
@@ -424,6 +433,7 @@ tests:
         alertname: ChainEnrichmentFailing
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: uk
               service: Cineworld Enrichment
               severity: warning
@@ -456,6 +466,7 @@ tests:
         alertname: ScrapeWritesSkipped
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: "pl"
               reason: "repository-write-failed"
               severity: "warning"
@@ -484,6 +495,7 @@ tests:
         alertname: ScrapeGuardStuckRejecting
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: "pl"
               guard: "depth"
               severity: "warning"
@@ -509,6 +521,7 @@ tests:
         alertname: DuplicateVenueListing
         exp_alerts:
           - exp_labels:
+              domain: pipeline
               country: de
               severity: warning
             exp_annotations:
