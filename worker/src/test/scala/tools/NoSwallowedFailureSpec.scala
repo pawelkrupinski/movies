@@ -217,9 +217,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("web/src/main/scala/services/MirrorFreshness.scala", "newestIn",
       ".recover { case exception => logger.debug(s\"Mirror freshness read failed: ${exception.getMessage}\"); Seq.empty }") ->
       "the local mirror's age for a dev page: None renders as unknown age, and nothing is decided from it",
-    ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "findCard",
-      "case Failure(exception) =>") ->
-      "read only by ReadModelContentAudit, which skips a card it could not read and audits it on the next pass",
     ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
       "}.recover { case exception =>") ->
       "the count only feeds an INFO line; a forget that failed leaves the entry, which the next forget retries",

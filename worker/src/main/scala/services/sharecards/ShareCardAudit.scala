@@ -31,7 +31,7 @@ object ShareCardAudit {
   /** The audit's check of one film: None when its document could not be read, is gone, or names
    *  no card (a film with no card yet is the coverage gauge's business, not this invariant's). */
   def check(filmId: String, reader: ReadModelReader, store: ShareCardStore): Option[Seq[String]] =
-    reader.findCard(filmId).flatMap(_.movie).flatMap(_.shareCard).map(problems(filmId, _, store))
+    reader.findCard(filmId).answered.flatMap(_.movie).flatMap(_.shareCard).map(problems(filmId, _, store))
 
   /** The films whose document names a card, or None when `web_movies` could not be read whole. */
   def ids(reader: ReadModelReader): Option[Seq[String]] =

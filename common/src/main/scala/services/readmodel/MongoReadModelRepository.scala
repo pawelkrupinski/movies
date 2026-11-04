@@ -40,6 +40,9 @@ class MongoReadModelRepository(
   findAllBatchSize:     Int            = 500,
   findAllBatchAttempts: Int            = 4,
   findAllBatchBackoff:  FiniteDuration = 500.millis,
+  // The wait for each of findCard's two reads by `_id`. Injectable so a test can make a read run out.
+  findCardMovieTimeout:      FiniteDuration = 10.seconds,
+  findCardScreeningsTimeout: FiniteDuration = 30.seconds,
   // Counts each document a full scan skips as undecodable (see [[decodeTolerant]]).
   decodeFailures:       DecodeFailureMetrics = DecodeFailureMetrics.noop
 ) extends ReadModelReader with ReadModelWriter with Logging {
@@ -217,20 +220,19 @@ class MongoReadModelRepository(
   // range [`<card>|`, `<card>}`) — `}` is the character after `|` — and a variant card's rows
   // (`<card>~<variant>|…`) sort after that range, never inside it. Decoded strictly: a document
   // that cannot be decoded fails the read rather than reading as absent.
-  override def findCard(id: String): Option[StoredCard] = (movies, screenings) match {
+  override def findCard(id: String): tools.ReadOutcome[StoredCard] = (movies, screenings) match {
     case (Some(movieColl), Some(screeningColl)) =>
-      Try {
-        val movie = Await.result(movieColl.find(Filters.eq("_id", id)).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).headOption
-        val rows  = Await.result(
-          screeningColl.find(Filters.and(Filters.gte("_id", s"$id|"), Filters.lt("_id", s"$id}"))).batchSize(tools.MongoReplies.Default).toFuture(), 30.seconds)
-        StoredCard(movie, rows.filter(_.filmId == id))
-      } match {
-        case Success(card) => Some(card)
-        case Failure(exception) =>
-          logger.warn(s"ReadModelRepository.findCard($id) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
-          None
+      val outcome = for {
+        movie <- tools.MongoRead(findCardMovieTimeout)(movieColl.find(Filters.eq("_id", id)).batchSize(tools.MongoReplies.Default).toFuture())
+        rows  <- tools.MongoRead(findCardScreeningsTimeout)(
+          screeningColl.find(Filters.and(Filters.gte("_id", s"$id|"), Filters.lt("_id", s"$id}"))).batchSize(tools.MongoReplies.Default).toFuture())
+      } yield StoredCard(movie.headOption, rows.filter(_.filmId == id))
+      outcome match {
+        case tools.ReadOutcome.Failed(cause) => logger.warn(s"ReadModelRepository.findCard($id) failed: ${cause.explain}")
+        case _                               => ()
       }
-    case _ => None
+      outcome
+    case _ => tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new IllegalStateException(s"ReadModelRepository.findCard($id): no read model configured")))
   }
 
   // Server-side document counts — the read model's cheap integrity probe, so the web's

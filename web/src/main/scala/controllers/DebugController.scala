@@ -211,9 +211,9 @@ class DebugController(cc: ControllerComponents,
   def debugReadModelScreenings(id: String): Action[AnyContent] = Action { request =>
     devOnly {
       readModels(readModels.resolve(request)).reader.findCard(id) match {
-        case Some(card) => Ok(views.html.debugReadModelScreenings(id, card.screenings))
+        case tools.ReadOutcome.Answered(card) => Ok(views.html.debugReadModelScreenings(id, card.screenings))
         // Not an empty list: that reads as "this film has no screenings".
-        case None       => ServiceUnavailable(s"could not read the screenings of $id")
+        case _                                 => ServiceUnavailable(s"could not read the screenings of $id")
       }
     }
   }

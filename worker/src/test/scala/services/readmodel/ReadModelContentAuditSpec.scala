@@ -148,7 +148,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     val rm         = new InMemoryReadModelRepository()
     new ReadModelProjector(repository, rm, rm, clock = tools.SpecClock.Pinned).onMovieUpsert({
       repository.upsert("Foo", Some(2024), record(8.0, Seq(at("2026-06-12T20:00")))); repository.findAll().head })
-    val blind = new InMemoryReadModelRepository { override def findCard(id: String): Option[StoredCard] = None }
+    val blind = new InMemoryReadModelRepository { override def findCard(id: String): tools.ReadOutcome[StoredCard] = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new RuntimeException("down"))) }
     audit(cardOf(repository), repository, blind) shouldBe None
   }
 

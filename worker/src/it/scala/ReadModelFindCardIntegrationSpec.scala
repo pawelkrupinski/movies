@@ -31,8 +31,9 @@ class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers with to
       val wrong = snapshot.movies.flatMap { movie =>
         val expectedRows = rowsByCard.getOrElse(movie._id, Nil)
         rm.findCard(movie._id) match {
-          case None => Seq(s"${movie._id}: read failed")
-          case Some(StoredCard(stored, rows)) =>
+          case tools.ReadOutcome.Failed(cause) => Seq(s"${movie._id}: read failed: ${cause.explain}")
+          case tools.ReadOutcome.Absent(reason) => Seq(s"${movie._id}: read absent: ${reason.explain}")
+          case tools.ReadOutcome.Answered(StoredCard(stored, rows)) =>
             val shape =
               if (stored.isEmpty) Seq(s"${movie._id}: no document")
               else if (rows.map(_._id).sorted != expectedRows.map(_._id).sorted)
@@ -43,7 +44,16 @@ class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers with to
         }
       }
       wrong shouldBe empty
-      rm.findCard("__no-such-card__") shouldBe Some(StoredCard(None, Nil))
+      rm.findCard("__no-such-card__") shouldBe tools.ReadOutcome.Answered(StoredCard(None, Nil))
+      rm.close()
+    }
+  }
+
+  it should "answer an unread outcome carrying its cause, when a read runs out of time -- never the fact that there is no such card" in {
+    IntegrationCorpusDatabase.withDatabase(mongoTarget, "readmodel-findcard-timeout") { db =>
+      val rm = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System, findCardMovieTimeout = scala.concurrent.duration.Duration.fromNanos(1))
+      val outcome = rm.findCard("__no-such-card__")
+      withClue(outcome.explain + ": ") { outcome.isFailed shouldBe true }
       rm.close()
     }
   }

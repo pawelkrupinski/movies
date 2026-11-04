@@ -36,7 +36,7 @@ object ReadModelContentAudit {
     for {
       stored   <- movies.findByIdChecked(FilmId(rowIdOf(cardId))).answered.filter(_.record.readyToProject)
       expected <- ReadModelProjection.projectAll(stored, movies.normalizer).find(_._1._id == cardId)
-      card     <- reader.findCard(cardId)
+      card     <- reader.findCard(cardId).answered
       movie    <- card.movie
     } yield differences(expected.copy(_1 = ratingGate(stored, expected._1)), (movie, card.screenings))
   }

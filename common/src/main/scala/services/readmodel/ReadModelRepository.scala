@@ -133,11 +133,12 @@ trait ReadModelReader {
     tools.ReadOutcome.Answered(findAllMovies().map(m => ShareCardRef(m._id, m.shareCard)))
 
   /** One card's stored documents — what the worker's content audit compares with a fresh
-   *  projection — or None when the read FAILED, which is not the fact "no such card". The default
+   *  projection — or a FAILED outcome (with its cause) when the read failed, which is not the fact
+   *  "no such card" (that is an answer: a card with no movie and no rows). The default
    *  derives from the whole-collection reads (fine for the in-memory store); the Mongo reader
    *  makes two reads by `_id`. */
-  def findCard(id: String): Option[StoredCard] =
-    Some(StoredCard(findAllMovies().find(_._id == id), findAllScreenings().filter(_.filmId == id)))
+  def findCard(id: String): tools.ReadOutcome[StoredCard] =
+    tools.ReadOutcome.Answered(StoredCard(findAllMovies().find(_._id == id), findAllScreenings().filter(_.filmId == id)))
 
   /** The server-side document counts — the backstop's drift check — failed when the count could
    *  not be taken, which is no evidence about the model either way. */

@@ -88,11 +88,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelPro
     val projector = new ReadModelProjector(repository, rm, rm, clock = specClock, ratingGate = gate)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
-    rm.findCard(fid).flatMap(_.movie).flatMap(_.ratings.imdb) shouldBe Some(8.0)
+    rm.findCard(fid).required.movie.flatMap(_.ratings.imdb) shouldBe Some(8.0)
 
     withhold = true
     projector.onMovieUpsert(repository.findAll().head)
-    rm.findCard(fid).flatMap(_.movie).map(_.ratings.imdb) shouldBe Some(None)
+    rm.findCard(fid).required.movie.map(_.ratings.imdb) shouldBe Some(None)
     projector.stop()
   }
 

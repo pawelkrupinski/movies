@@ -116,7 +116,7 @@ class DebugReadModelSpec extends AnyFlatSpec with Matchers {
   }
 
   "GET /debug/readmodel/screenings" should "503 a film whose screenings could not be read, rather than list it as screening nowhere" in {
-    val failing = new InMemoryReadModelRepository() { override def findCard(id: String) = None }
+    val failing = new InMemoryReadModelRepository() { override def findCard(id: String) = tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new RuntimeException("down"))) }
     status(controller(single(failing)).debugReadModelScreenings("x")
       .apply(FakeRequest(GET, "/debug/readmodel/screenings?id=x"))) shouldBe SERVICE_UNAVAILABLE
   }

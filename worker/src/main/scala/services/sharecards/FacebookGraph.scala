@@ -95,7 +95,7 @@ class FilmPageUrls(reader: ReadModelReader, country: Country, clock: Clock) exte
    *  cities come from the film's own screenings ([[ReadModelReader.findCard]], a read by `_id`
    *  range), not a scan of every screening: a burst re-scrapes hundreds of films. */
   def apply(filmId: String): Seq[String] = {
-    val card   = reader.findCard(filmId).getOrElse(throw new IllegalStateException(s"read-model card $filmId unreadable"))
+    val card   = reader.findCard(filmId).required
     val cities = card.screenings.map(_._id.stripPrefix(s"$filmId|").takeWhile(_ != '|')).toSet
     val pagesIn = country.cities.filter(c => cities(c.slug))
     // A film screening nowhere (retired since its render) has no page: no slug read for it.

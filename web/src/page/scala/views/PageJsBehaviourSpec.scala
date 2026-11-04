@@ -318,7 +318,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           showtimes = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(2).atTime(18, 30), bookingUrl = Some("https://book.example/readmodel")))))))))
       val readModelHtml: String =
         views.html.debugReadModel(controllers.ReadModelDump.read(readModelFixture).get, models.Country.Poland, "the serving database").body
-      readModelScreenings = id => readModelFixture.findCard(id)
+      readModelScreenings = id => readModelFixture.findCard(id).answered
         .map(card => views.html.debugReadModelScreenings(id, card.screenings).body).getOrElse("")
       readModelPage = readModelHtml
       // Change-stream frames for the no-op-guard test, rendered by the SAME

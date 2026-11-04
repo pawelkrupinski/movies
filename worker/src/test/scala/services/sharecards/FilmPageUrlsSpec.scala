@@ -31,7 +31,7 @@ class FilmPageUrlsSpec extends AnyFlatSpec with Matchers {
       readModel.failingReads = true
       readModel.screeningsReadable = screeningsReadable   // true: only web_movies (the slugs) is unreadable
       withClue(s"screeningsReadable=$screeningsReadable: ") {
-        an[IllegalStateException] should be thrownBy pages(movie._id)
+        an[Exception] should be thrownBy pages(movie._id)
       }
     }
   }

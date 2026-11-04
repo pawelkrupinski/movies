@@ -58,7 +58,7 @@ class UnreadableReadModelRepository extends InMemoryReadModelRepository with Fai
     if (screeningsFail) failed("web_screenings") else super.findAllScreeningRefsChecked()
   override def streamCheckpoint(): tools.ReadOutcome[StreamCheckpoint] =
     if (failingCheckpoint) failed("stream checkpoint") else super.streamCheckpoint()
-  // A card is read from both collections, and the Mongo store answers a failed read None.
-  override def findCard(id: String): Option[StoredCard] =
-    if (moviesFail || screeningsFail) None else super.findCard(id)
+  // A card is read from both collections, and the Mongo store fails the read when either fails.
+  override def findCard(id: String): tools.ReadOutcome[StoredCard] =
+    if (moviesFail) failed("web_movies") else if (screeningsFail) failed("web_screenings") else super.findCard(id)
 }
