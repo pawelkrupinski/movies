@@ -73,6 +73,47 @@ object PopulationMonotonicity {
       }
     }
 
+  // ── the exhaustive lattice ─────────────────────────────────────────────────────────────────
+
+  /** A population small enough to walk EXHAUSTIVELY (every subset of its listings, [[latticeFlip]]): at most this many
+   *  listings, 2^7 = 128 subsets. 72% of the corpus's multi-listing families (FAMILY-REPLAY 2026-11-04). */
+  val ExhaustiveMax = 7
+
+  /** Every subset of `n` listings, as bit masks, smallest first (the empty one too). */
+  def subsets(n: Int): Seq[Int] = {
+    require(n <= 20, s"$n listings: too many to walk every subset")
+    (0 until (1 << n)).sortBy(m => (Integer.bitCount(m), m))
+  }
+
+  /**
+   * An ARRIVAL flip over a population's whole LATTICE: since incremental == whole, the state after any arrival order is
+   * the whole resolve of the listings present, so the lattice holds every order's states at once. Listing `own` (its
+   * index among the `n`) flips when S1 < S2 < S3, each holding it, take decided at each, take(S1) == take(S3) !=
+   * take(S2): exactly "some arrival order goes A -> B -> A". `takes(mask)`: the subset's take of the listing (None:
+   * Pending, or not decided). The witness: (mask, take) of S1, S2, S3, the first in (size, mask) order -- deterministic.
+   */
+  def latticeFlip(n: Int, own: Int, takes: Int => Option[String]): Option[Seq[(Int, String)]] = {
+    val vals = subsets(n).filter(m => (m & (1 << own)) != 0).flatMap(m => takes(m).map(m -> _))
+    def within(a: Int, b: Int) = a != b && (a & ~b) == 0
+    vals.iterator.flatMap { case (m2, b) =>
+      vals.iterator.filter { case (m1, a) => a != b && within(m1, m2) }.flatMap { case (m1, a) =>
+        vals.find { case (m3, c) => c == a && within(m2, m3) }.map { case (m3, _) => Seq(m1 -> a, m2 -> b, m3 -> a) }
+      }
+    }.nextOption()
+  }
+
+  /** A corpus's context, built once, for resolving a family's SUBSETS: `present` of `family`'s listings resolved alone
+   *  against it with the family's absent listings taken out ([[Without]]), the rest of the corpus fixed -- what the
+   *  report's walk resolves, and the population walk's model under both its takes (a resolve of a few listings, not of
+   *  the corpus beside them). */
+  final class Subsets(listings: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs) {
+    val generation  = new CandidateGeneration(listings.sorted.distinctBy(_.key), lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
+    private val without = new Without.Index(generation.nodes)
+    def resolve(family: Set[ListingKey], present: Seq[Listing]): Resolution =
+      IdentityResolver.resolveWith(present, lookups, normalizer, inputs.calibration, IdentityResolver.Mutation.None, inputs.pins,
+        inputs.decorations, Some(without(generation.context, family -- present.map(_.key))))
+  }
+
   /** A whole resolve of `listings` (no corpus beyond them), every listing's take as [[takeOf]] reads it. */
   def wholeTakes(lookups: IdentityLookups, normalizer: TitleNormalizer, inputs: ResolveInputs)(listings: Seq[Listing]): Map[ListingKey, Option[String]] = {
     val r = IdentityResolver.resolve(listings, lookups, normalizer, inputs)
@@ -115,10 +156,8 @@ object PopulationMonotonicity {
     val started    = stopwatch.start()
     def elapsed    = started.seconds
     val all        = listings.sorted.distinctBy(_.key)
-    val generation = new CandidateGeneration(all, lookups, normalizer, inputs.pins, inputs.decorations, lazyLookups = false)
-    val context    = generation.context
-    val nodeOf     = generation.nodes.flatMap(node => node.listings.map(_.key -> node)).toMap
-    val without    = new Without.Index(generation.nodes)
+    val subsets    = new Subsets(all, lookups, normalizer, inputs)
+    val nodeOf     = subsets.generation.nodes.flatMap(node => node.listings.map(_.key -> node)).toMap
     val families   = all.groupBy(l => whole.familyOf.getOrElse(l.key, -1)).toSeq.filter { case (id, ls) => id >= 0 && ls.sizeIs >= 2 && ls.exists(l => focus(l.key)) }.sortBy(_._1)
     val (fits, large) = families.partition(_._2.sizeIs <= maxFamily)
     // one family walked: its flips, if any, and how many of its listings' whole-family take differed from the corpus's
@@ -126,9 +165,7 @@ object PopulationMonotonicity {
       var apart = 0
       val keys  = members.map(_.key).toSet
       def resolve(prefix: Seq[Listing]): Map[ListingKey, Option[String]] = {
-        val present = prefix.map(_.key).toSet
-        val r = IdentityResolver.resolveWith(prefix, lookups, normalizer, inputs.calibration, IdentityResolver.Mutation.None, inputs.pins,
-          inputs.decorations, Some(without(context, keys -- present)))
+        val r = subsets.resolve(keys, prefix)
         val taken = prefix.flatMap(l => r.decisionOf.get(l.key).map(d => l.key -> takeOf(d))).toMap
         if (prefix.sizeIs == members.size) apart += members.count(l => whole.decisionOf.get(l.key).map(takeOf) != taken.get(l.key))
         taken

@@ -428,16 +428,17 @@ object IdentityDrift {
   }
 
   /** The whole resolve of `listings`: the model's resolve, then a fresh stage asked to its fixpoint — what a worker with
-   *  nothing kept would take — answered from `answering`. */
+   *  nothing kept would take — answered from `answering`. `resolved`: the model's resolve of `listings` when the caller
+   *  holds it already (the population walk reads both takes), else resolved here; `log`: the settle rounds said. */
   def whole(reads: Reads, listings: Seq[Listing], clock: MutableClock, answering: WholeLookups, ask: Boolean = true,
-            filedDocs: FiledDocs = Noted): Resolution = {
+            filedDocs: FiledDocs = Noted, resolved: Option[Resolution] = None, log: Boolean = true): Resolution = {
     val answers  = new Answers(reads, filedDocs(reads.filed), clock, answering.found)
     val lookups  = answering.lookups
-    val model    = UnmatchedClusters.resolutionOf(IdentityResolver.resolve(listings, lookups, reads.normalizer, inputsOf(reads)).decisions)
+    val model    = UnmatchedClusters.resolutionOf(resolved.getOrElse(IdentityResolver.resolve(listings, lookups, reads.normalizer, inputsOf(reads))).decisions)
     val stage    = answers.stage(lookups, new services.identity.agreement.InMemoryAgreementVerdicts, budgets = false)
     val byKey    = listings.map(l => l.key -> l).toMap
     val apply    = () => stage.apply(model, byKey.get, answers.store.version)
-    if (ask) settle(stage, apply, answers, clock, _ => false) else filedOnly(stage, apply)
+    if (ask) settle(stage, apply, answers, clock, _ => false, log = log) else filedOnly(stage, apply)
   }
 
   /** Applies until the stage holds no backlog, answering nothing: what the filed answers alone decide, every cluster
@@ -452,13 +453,13 @@ object IdentityDrift {
   /** Applies until the stage asks nothing and holds no backlog — answering between applies: what a round could not
    *  answer is attempted, and the clusters waiting on it settle as production's do. */
   def settle(stage: AgreementStage, apply: () => Resolution, answers: Answers, clock: MutableClock, release: String => Boolean,
-             rounds: Int = 60): Resolution = {
+             rounds: Int = 60, log: Boolean = true): Resolution = {
     var now = apply()
     var n   = 0
     def quiet = !answers.open(stage) && !stage.backlog
     while (!quiet && n < rounds) {
       n += 1
-      System.err.println(s"[identity-drift] settle round $n: ${answers.described(stage)}")
+      if (log) System.err.println(s"[identity-drift] settle round $n: ${answers.described(stage)}")
       answers.answer(stage, release); clock.advance(Duration.ofMinutes(1)); now = apply()
     }
     if (!quiet) System.err.println(s"[identity-drift] the stage did not settle in $rounds rounds: ${answers.described(stage)}")

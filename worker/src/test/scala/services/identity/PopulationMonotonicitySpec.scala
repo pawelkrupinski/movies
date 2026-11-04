@@ -7,6 +7,8 @@ import scripts.{IdentityDriftSlicesSpec, IdentitySlice}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.time.{Clock, ZoneOffset}
+import services.movies.ListingKey
+import scala.util.hashing.MurmurHash3
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -14,10 +16,11 @@ import scala.util.Try
  * THE POPULATION PROPERTY over REAL families (docs/investigations/2026-11-01-flip-unification.md, stage 1): every
  * committed slice -- the drift slices (`test/resources/fixtures/drift-slices/`, each a listing that once diverged or
  * flipped) and the identity slices (`identity-slices/`, each a pinned case) -- is a recording's family with its corpus
- * context and every answer it reads. Its families are walked along arrival chains ([[PopulationMonotonicity]]): an order
- * of their listings cut into nested prefixes, each resolved whole against the slice's context with the absent listings
- * taken out, every answer filed. No listing's decided take may go back to a value it left (A -> B -> A) as listings only
- * ARRIVE: Addams, Keswick, Prima Facie and Torrington flipped so, with nothing departing.
+ * context and every answer it reads. Its families' subsets are resolved whole against the slice's context with the
+ * absent listings taken out, every answer filed, in the MODEL's take and in the FINAL one (the agreement stage settled
+ * over it: what is served) -- a family of at most 7 listings over EVERY subset (every arrival order at once), a larger one
+ * along seeded arrival chains ([[walk]]). No listing's decided take may go back to a value it left (A -> B -> A) as
+ * listings only ARRIVE: Addams, Keswick, Prima Facie and Torrington flipped so, with nothing departing.
  *
  * Today's A -> B -> A shapes are KNOWN (`identity-population-flips-known.tsv`), as the flips baseline was on 10-29: a known
  * row passes, a new flip fails, and a known row whose listing no longer flips fails too until its row is removed -- the
@@ -149,9 +152,10 @@ object PopulationMonotonicitySpec {
     }
   }
 
-  /** One flip found: the listing, its shape and its path along the chain. */
-  final case class Row(venue: String, rawTitle: String, shape: String, path: String, chain: Int) {
-    def line: String = s"$venue | $rawTitle: $path [chain $chain, $shape]"
+  /** One flip found: the listing, its shape, the take it flips in (`model`, or `final`: the model then the agreement
+   *  stage settled -- what is served), its path, and where the walk found it (`chain <k>`, or `lattice 2^<n>`). */
+  final case class Row(venue: String, rawTitle: String, shape: String, path: String, stage: String, where: String) {
+    def line: String = s"$venue | $rawTitle: $path [$stage, $where, $shape]"
   }
 
   /** A known A -> B -> A take: the slice, the listing, and why it stands. */
@@ -168,22 +172,93 @@ object PopulationMonotonicitySpec {
         }
   }
 
-  /** The slice in `dir` walked: its core's families along [[Chains]] arrival chains, resolved against its own answers. */
+  /**
+   * The slice in `dir` walked, against its own answers: each family of its core, in TWO takes -- the MODEL's
+   * ([[IdentityResolver.resolve]]) and the FINAL one (the model, then a fresh agreement stage settled to its fixpoint,
+   * [[scripts.IdentityDrift.whole]]: what is served; Lichtblick "Buddies" and Grünstadt "Titans" flip in it alone).
+   *
+   *  - a family of at most [[PopulationMonotonicity.ExhaustiveMax]] listings: EXHAUSTIVELY, every subset of its listings
+   *    resolved whole with the rest of the slice present ([[PopulationMonotonicity.latticeFlip]]: every arrival order at
+   *    once; Buddies is clean on every seed and flips on its 8 subsets);
+   *  - a larger one: [[Chains]] seeded arrival chains of at most [[Steps]] steps, the model's against the slice's context
+   *    with the absent listings taken out ([[PopulationMonotonicity.report]]), the final one with the rest present (the
+   *    nightly explorer walks them further).
+   */
   def walk(dir: Path, threads: Int = 1): Seq[Row] = {
     val slice     = IdentitySlice.readSlice(dir)
     val replaying = new tools.SliceHttp.Replaying(slice.http)
-    val reads     = new IdentitySlice.Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed,
-      tools.ProdState.none)
+    def readsAt(clock: Clock) = new IdentitySlice.Reads(slice.country, replaying, replaying.gaps, clock, slice.filed, tools.ProdState.none)
+    val reads     = readsAt(Clock.fixed(slice.recordedAt, ZoneOffset.UTC))
     val lookups   = scripts.IdentityDrift.memo(reads)
-    val all       = slice.core ++ slice.context
+    val all       = (slice.core ++ slice.context).sorted.distinctBy(_.key)
     val inputs    = ResolveInputs.Unpinned
     val whole     = IdentityResolver.resolve(all, lookups, reads.normalizer, inputs)
     val core      = slice.core.map(_.key).toSet
-    // no budget: every family is walked, so no time is read (a stopwatch that never moves)
-    val report    = PopulationMonotonicity.report(all, lookups, reads.normalizer, inputs, whole, new tools.Stopwatch(() => 0L), Chains, Steps,
-      budgetSeconds = Double.MaxValue, maxFamily = Int.MaxValue, focus = core, threads = threads)
-    report.flips.map(_._2).map(f => Row(f.key.venue, f.key.rawTitle, f.shape, f.path, f.chain)).distinctBy(r => (r.venue, r.rawTitle))
-      .sortBy(r => (r.rawTitle, r.venue))
+    val families  = all.groupBy(l => whole.familyOf.getOrElse(l.key, -1)).toSeq
+      .filter { case (id, ls) => id >= 0 && ls.sizeIs >= 2 && ls.exists(l => core(l.key)) }.sortBy(_._1).map(_._2)
+    val (small, large) = families.partition(_.sizeIs <= PopulationMonotonicity.ExhaustiveMax)
+    val subsets   = new PopulationMonotonicity.Subsets(all, lookups, reads.normalizer, inputs)
+    type Takes    = Map[ListingKey, Option[String]]
+
+    // both takes of `present` of `family`'s listings, the rest of the slice fixed ([[PopulationMonotonicity.Subsets]]): the
+    // model's, and the final one -- the model's resolve, then a fresh stage settled over it (Pending: None)
+    def bothTakes(family: Seq[Listing], present: Seq[Listing]): (Takes, Takes) = {
+      val model = subsets.resolve(family.map(_.key).toSet, present)
+      val clock = new tools.MutableClock(slice.recordedAt)
+      val r     = scripts.IdentityDrift.whole(readsAt(clock), present, clock, scripts.IdentityDrift.WholeLookups(lookups, _ => None),
+        resolved = Some(model), log = false)
+      val pend  = scripts.IdentityDrift.pendingOf(r.decisions)
+      (present.flatMap(l => model.decisionOf.get(l.key).map(d => l.key -> PopulationMonotonicity.takeOf(d))).toMap,
+        scripts.IdentityDrift.takesOf(r).map { case (k, t) => k -> Option.when(!pend(k))(t.film) })
+    }
+    // every family's subsets resolved, side by side on `threads` (each resolve builds its own scope and stage)
+    def resolved[A](jobs: Seq[A])(run: A => (Takes, Takes)): Map[A, (Takes, Takes)] =
+      if (threads <= 1) jobs.map(j => j -> run(j)).toMap
+      else {
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+        try jobs.zip(scripts.ParallelTasks.all(jobs)(run)(using scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
+        finally pool.shutdown()
+      }
+    val stages = Seq[(String, ((Takes, Takes)) => Takes)]("model" -> (_._1), "final" -> (_._2))
+
+    // the small families: every subset
+    val lattice: Seq[Row] = {
+      val jobs  = small.indices.flatMap(f => PopulationMonotonicity.subsets(small(f).size).filter(_ != 0).map(f -> _))
+      val takes = resolved(jobs) { case (f, mask) => bothTakes(small(f), small(f).indices.filter(i => (mask & (1 << i)) != 0).map(small(f))) }
+      small.zipWithIndex.flatMap { case (members, f) =>
+        def label(mask: Int) = members.indices.filter(i => (mask & (1 << i)) != 0).map(members(_).venue).mkString("{", ", ", "}")
+        for {
+          (stage, pick) <- stages
+          (member, own) <- members.zipWithIndex
+          witness       <- PopulationMonotonicity.latticeFlip(members.size, own, mask => pick(takes((f, mask))).get(member.key).flatten)
+        } yield {
+          val flip = PopulationMonotonicity.Flip(member.key, -1, witness.map { case (m, t) => Integer.bitCount(m) -> Some(t) })
+          Row(member.venue, member.rawTitle, flip.shape, witness.map { case (m, t) => s"$t@${label(m)}" }.mkString(" -> "), stage,
+            s"lattice 2^${members.size}")
+        }
+      }
+    }
+
+    // the large families: seeded arrival chains (the report's: its seed, its cut), both takes along each
+    val chained: Seq[Row] = {
+      val chains = large.indices.map(f => PopulationMonotonicity.chains(large(f), MurmurHash3.stringHash(large(f).head.sortKey).toLong, Chains, Steps))
+      // a chain's prefix of a size is one subset per chain: keyed by family, chain and size
+      val keyed  = chains.indices.flatMap(f => chains(f).zipWithIndex.flatMap { case (chain, c) => chain.map(prefix => (f, c, prefix.size) -> prefix) }).toMap
+      val takes  = resolved(keyed.keys.toSeq.sorted) { case (f, c, n) => bothTakes(large(f), keyed((f, c, n))) }
+      for {
+        (stage, pick)  <- stages
+        f              <- large.indices
+        (chain, c)     <- chains(f).zipWithIndex
+        member         <- large(f)
+        sequence        = chain.flatMap(prefix => pick(takes((f, c, prefix.size))).get(member.key).map(prefix.size -> _))
+        if PopulationMonotonicity.returns(sequence.map(_._2))
+      } yield {
+        val flip = PopulationMonotonicity.Flip(member.key, c, sequence)
+        Row(member.venue, member.rawTitle, flip.shape, flip.path, stage, s"chain $c")
+      }
+    }
+
+    (lattice ++ chained).distinctBy(r => (r.venue, r.rawTitle)).sortBy(r => (r.rawTitle, r.venue))
   }
 
   /** `PopulationMonotonicitySpec [slice dir...]`: each slice's flips as TSV rows of the known file (every slice without
@@ -196,7 +271,7 @@ object PopulationMonotonicitySpec {
       val seconds = (System.nanoTime() - started) / 1e9
       rows.fold(e => println(s"# ${relative(dir)}: FAILED $e"), rs => {
         println(f"# ${relative(dir)}: ${rs.size} flip(s) in $seconds%.1fs")
-        rs.foreach(r => println(s"${relative(dir)}\t${r.venue}\t${r.rawTitle}\t${r.shape}: ${r.path}"))
+        rs.foreach(r => println(s"${relative(dir)}\t${r.venue}\t${r.rawTitle}\t${r.shape}: ${r.stage} ${r.path} [${r.where}]"))
       })
     }
   }
