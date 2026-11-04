@@ -8,6 +8,7 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
+. "$REPO_ROOT/scripts/scratch-git.sh" # every git here acts on a scratch repository, never this checkout
 leg="$REPO_ROOT/.github/workflows/country-convergence-leg.yml"
 printf '\033[36m▸\033[0m country-convergence-leg.yml: Check out the commit\n'
 work=$(mktemp -d)
@@ -22,12 +23,12 @@ awk '
 check "the leg has the step" "yes" "$([ -s "$work/step.sh" ] && echo yes || echo no)"
 
 # The origin: one commit on main, served from disk as $GITHUB_SERVER_URL/$GITHUB_REPOSITORY.
-git init -q -b main "$work/src"
+scratch_repo "$work/src" -b main
 echo tree > "$work/src/file.txt"
-git -C "$work/src" add file.txt
-git -C "$work/src" -c user.name=t -c user.email=t@t commit -q -m one
-sha=$(git -C "$work/src" rev-parse HEAD)
-git clone -q --bare "$work/src" "$work/server/movies.git"
+scratch_git "$work/src" add file.txt
+scratch_git "$work/src" commit -q -m one
+sha=$(scratch_git "$work/src" rev-parse HEAD)
+scratch_git "$work/src" clone -q --bare . "$work/server/movies.git"
 
 real_git=$(command -v git)
 mkdir -p "$work/bin"
@@ -66,18 +67,18 @@ run_step() {
 # A plain fetch: one attempt, the branch checked out by name at the commit, the token kept for later fetches.
 check "a fetch that answers: the step passes" 0 "$(run_step "$work/ws1" refs/heads/main)"
 check "  ...in one attempt" 1 "$(grep -c 'attempt 1)' "$work/out")"
-check "  ...at the run's commit" "$sha" "$(git -C "$work/ws1" rev-parse HEAD)"
-check "  ...on the branch by name" main "$(git -C "$work/ws1" rev-parse --abbrev-ref HEAD)"
+check "  ...at the run's commit" "$sha" "$(scratch_git "$work/ws1" rev-parse HEAD)"
+check "  ...on the branch by name" main "$(scratch_git "$work/ws1" rev-parse --abbrev-ref HEAD)"
 check "  ...with the tree" tree "$(cat "$work/ws1/file.txt")"
 check "  ...and the token for later fetches" "AUTHORIZATION: basic $(printf 'x-access-token:token' | base64)" \
-  "$(git -C "$work/ws1" config --get "http.file://$work/server/.extraheader")"
+  "$(scratch_git "$work/ws1" config --get "http.file://$work/server/.extraheader")"
 
 # The first fetch hangs: ended at its bound and asked again.
 echo 1 > "$work/hangs"; : > "$work/hung"
 check "a hung fetch: the step passes" 0 "$(run_step "$work/ws2" refs/heads/main CHECKOUT_ATTEMPT_SECONDS=2)"
 check "  ...after its bound ended the first attempt" 1 "$(grep -c '::warning::fetch attempt 1 ended' "$work/out")"
 check "  ...and the second fetched it" 1 "$(grep -c 'attempt 2)' "$work/out")"
-check "  ...at the run's commit" "$sha" "$(git -C "$work/ws2" rev-parse HEAD)"
+check "  ...at the run's commit" "$sha" "$(scratch_git "$work/ws2" rev-parse HEAD)"
 check "  ...leaving no hung fetch behind" 0 "$(spec_still_running "$work/hung")"
 
 # A workspace a self-hosted runner left: emptied before the fetch, as actions/checkout does.
@@ -87,7 +88,7 @@ check "  ...without what the last job left" "no" "$([ -e "$work/ws3/target" ] ||
 
 # Not a branch (a tag, a pull request ref): the commit detached.
 check "a ref that is no branch: the step passes" 0 "$(run_step "$work/ws4" refs/tags/v1)"
-check "  ...detached at the commit" "HEAD $sha" "$(git -C "$work/ws4" rev-parse --abbrev-ref HEAD) $(git -C "$work/ws4" rev-parse HEAD)"
+check "  ...detached at the commit" "HEAD $sha" "$(scratch_git "$work/ws4" rev-parse --abbrev-ref HEAD) $(scratch_git "$work/ws4" rev-parse HEAD)"
 
 # Every attempt fails: so does the step, naming it.
 check "a fetch that never succeeds: the step fails" 128 "$(run_step "$work/ws5" refs/heads/main CHECKOUT_ATTEMPT_SECONDS=2 FAIL_FETCH=1)"
