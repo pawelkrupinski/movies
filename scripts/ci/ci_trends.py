@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Where CI's time goes, across many runs: per job and step, setup against work, the critical path, queueing, the
-account's 20 runner slots, caches, machines, CPU/memory/GC, tests -- over a selection of runs, per time bucket with
+account's runner slots (20, or --slots), caches, machines, CPU/memory/GC, tests -- over a selection of runs, per time bucket with
 trends and regression flags, grouped by leg/machine/CPU model, or as a before/after comparison.
 `scripts/ci/ci-timings` runs it; docs/investigations/2026-11-01-twenty-runners.md ("How to measure") is the manual
 and holds the event schema.
@@ -35,7 +35,7 @@ that ended last before it became runnable (the `needs` that released it), and so
 that job's queue wait plus its own time.
 
 SLOT SATURATION counts every job of the repository's runs (every workflow, not just the one asked about) running in
-the run's window, sampled every 10 s: the mean busy slots, the peak, and the share of the window all 20 were busy.
+the run's window, sampled every 10 s: the mean busy slots, the peak, and the share of the window all slots were busy (--slots, default 20).
 
 Run:  scripts/ci/ci-timings --help
 Test: python3 scripts/ci/ci_trends_test.py
@@ -60,7 +60,7 @@ import zipfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 RECORD_VERSION = 1
-SLOTS = 20
+SLOTS = 20  # movies' runner count; --slots / CI_TIMINGS_SLOTS overrides it (bitcashier's collector passes 12)
 SATURATION_SAMPLE_SECONDS = 10
 METRICS_ARTIFACT_PREFIX = "ci-metrics-"
 VL_STREAM_FIELDS = "source,repo,workflow"
@@ -1282,7 +1282,7 @@ class Source:
         return [r for r in held.values() if r["jobs"] and since <= run_window(r)[0] <= until]
 
 
-def add_saturation(records, github, everything=None):
+def add_saturation(records, github, everything=None, slots=SLOTS):
     """Each record's slot saturation (see the header), from every job of the repository's runs in its window."""
     records = [r for r in records if r["jobs"]]
     if not records:
@@ -1299,7 +1299,7 @@ def add_saturation(records, github, everything=None):
                 if record:
                     everything.append((record["s"], record["e"]))
     for record in records:
-        record["sat"] = saturation(run_window(record), everything)
+        record["sat"] = saturation(run_window(record), everything, slots)
     return records
 
 
@@ -1418,7 +1418,7 @@ def format_runs(summary):
     return lines
 
 
-def format_report(summary, workflow, critical=False, steps=True, runs=False):
+def format_report(summary, workflow, critical=False, steps=True, runs=False, slots=SLOTS):
     lines = ["%s: %d runs (%s)" % (workflow or "all workflows", summary["runs"],
                                    ", ".join(str(i) for i in summary["run_ids"][-12:])),
              "  wall p50 %s p90 %s max %s · runner-min p50 %.0f · peak jobs p50 %s" % (
@@ -1432,7 +1432,7 @@ def format_report(summary, workflow, critical=False, steps=True, runs=False):
                  mins(summary["elapsed"]["p50"]), mins(summary["elapsed"]["p90"]))]
     if summary["sat_mean"]["n"]:
         lines.append("  account slots during the run: mean %.1f of %d busy, all %d busy %s of the time (p50)" % (
-            summary["sat_mean"]["p50"], SLOTS, SLOTS, pct(summary["sat_full"]["p50"])))
+            summary["sat_mean"]["p50"], slots, slots, pct(summary["sat_full"]["p50"])))
     if summary["skewed_jobs"]:
         lines.append("  clock skew: %d jobs' GitHub timestamps were off; corrected from their steps" % summary["skewed_jobs"])
     if summary["cache"]:
@@ -1590,11 +1590,11 @@ def report_text(records, args):
             summary = summarize([run_measures(r) for r in part])
             chunks.append("── %s = %s ──\n%s" % (args.by, value, format_report(summary, args.workflow,
                                                                                  critical=args.critical, steps=False,
-                                                                                 runs=args.per_run)))
+                                                                                 runs=args.per_run, slots=args.slots)))
         return {value: summarize([run_measures(r) for r in part]) for value, part in parts.items()}, "\n\n".join(chunks)
     summary = summarize([run_measures(r) for r in records])
     return summary, format_report(summary, args.workflow, critical=args.critical, steps=not args.no_steps,
-                                  runs=args.per_run)
+                                  runs=args.per_run, slots=args.slots)
 
 
 def command_report(args, source, out):
@@ -1603,7 +1603,7 @@ def command_report(args, source, out):
         spec = "%s..%s" % (args.since, args.until or "now")
     records = source.select(spec, args.workflow)
     if args.saturation:
-        add_saturation([r for r in records if not r.get("sat")], source.github)
+        add_saturation([r for r in records if not r.get("sat")], source.github, slots=args.slots)
     data, text = report_text(records, args)
     emit(data, args.format, text, out)
 
@@ -1613,7 +1613,7 @@ def command_trend(args, source, out):
     since = parse_when(args.since or "14d")
     records = source.window(args.workflow, since, until)
     if args.saturation:
-        add_saturation([r for r in records if not r.get("sat")], source.github)
+        add_saturation([r for r in records if not r.get("sat")], source.github, slots=args.slots)
     previous = [] if args.no_previous else source.window(args.workflow, since - (until - since), since)
     every = args.by if args.by in TIME_UNITS else args.every
     parts = {"": (records, previous)}
@@ -1701,7 +1701,7 @@ def command_export(args, source, out, post=post_events):
         try:
             record = record_of(github, run)
             if record["jobs"]:
-                record["sat"] = saturation(run_window(record), everything)
+                record["sat"] = saturation(run_window(record), everything, args.slots)
             record["change"] = commit_change(github, record.get("sha"))
             events = events_of(record)
             if args.dry_run:
@@ -1745,6 +1745,9 @@ def main(argv=None, out=sys.stdout):
         target.add_argument("--repo", default=default(None), help="OWNER/REPO (default: origin's)")
         target.add_argument("--vl-url", default=default(os.environ.get("CI_TIMINGS_VL_URL")),
                             help="VictoriaLogs base URL (env CI_TIMINGS_VL_URL); none: the API alone")
+        target.add_argument("--slots", type=int, default=default(int(os.environ.get("CI_TIMINGS_SLOTS") or SLOTS)),
+                            help="the account's runner slots, for the saturation figures (env CI_TIMINGS_SLOTS; "
+                                 "default %d, movies')" % SLOTS)
         target.add_argument("--include-red", action="store_true", default=default(False),
                             help="count failed runs too (default: green only)")
         target.add_argument("--no-metrics", action="store_true", default=default(False),

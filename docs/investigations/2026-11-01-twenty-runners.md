@@ -416,6 +416,9 @@ scripts/ci/ci-timings legs 41298328467
 scripts/ci/ci-timings report --workflow precommit-check.yml --branch '' --last 40 --by change --per-run --critical
 ```
 
+`--slots N` (or `CI_TIMINGS_SLOTS`; default 20, movies' runner count) sets the slot count behind `sat_mean`/`sat_peak`/`sat_full`
+and the "account slots" report line; bitcashier's collector runs `--repo bitcashier/core --slots 12`.
+
 `--vl-url https://vlogs-ci.jebaka.com` (or `CI_TIMINGS_VL_URL`) reads VictoriaLogs first (LogsQL), and the API only for
 runs not yet ingested, so a range older than the API's 90 days needs no refetching. Without it every command reads the
 API through `gh` and keeps completed runs in `~/.cache/ci-timings`. Selections: `<branch>:<N>`, `<sha>..<sha>`,

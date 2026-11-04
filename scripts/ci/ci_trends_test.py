@@ -154,6 +154,21 @@ class SaturationTest(unittest.TestCase):
         self.assertEqual(25, figures["peak"])
         self.assertEqual(1.0, figures["full"])
 
+    def test_slots_option_changes_the_full_share(self):
+        # 12 jobs busy for the whole window: every sample is full at --slots 12, none at the default 20.
+        full = {}
+        for slots in (20, 12):
+            record = {"jobs": [object()]}
+            with unittest.mock.patch.object(t, "run_window", return_value=(0, 100)):
+                t.add_saturation([record], None, everything=[(0, 100)] * 12, slots=slots)
+            full[slots] = record["sat"]["full"]
+        self.assertEqual({20: 0.0, 12: 1.0}, full)
+
+    def test_report_line_names_the_slot_count(self):
+        summary = t.summarize([])
+        summary["sat_mean"], summary["sat_full"] = {"p50": 3, "n": 1}, {"p50": 0.5, "n": 1}
+        self.assertIn("of 12 busy, all 12 busy", t.format_report(summary, "main.yml", slots=12))
+
     def test_idle(self):
         self.assertEqual(0, t.saturation((0, 100), [(200, 300)], every=10)["peak"])
 
@@ -365,7 +380,8 @@ class ExportTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as folder:
             state = os.path.join(folder, "state.json")
-            args = type("A", (), {"since": "2d", "until": None, "state": state, "dry_run": False, "vl_url": "http://vl"})
+            args = type("A", (), {"since": "2d", "until": None, "state": state, "dry_run": False, "vl_url": "http://vl",
+                                       "slots": 20})
             source = t.Source(Fake())
             err = io.StringIO()
             sys_stderr, sys.stderr = sys.stderr, err
