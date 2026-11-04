@@ -279,12 +279,52 @@ jobs:
                   echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
                   python3 -m pip install --quiet timezonefinder || python3 -m pip install --quiet --break-system-packages timezonefinder
                   for tool in shellcheck jq; do command -v "$tool" > /dev/null || scripts/ci/install-apt-package.sh "$tool"; done
+            # THE POPULATION WALK'S ROWS KEPT (scripts/hooks/pre-push, PopulationMonotonicitySpec.Cached): rows per digest of
+            # the walk's code and data and per slice content. Each shard keeps its own chain of cache entries (a run's three
+            # shards save at once: one entry for all would keep one shard's new rows), and reads every shard's, merged.
+            - name: Restore the population walk's rows (shard 1's)
+              if: steps.share.outputs.checks != ''
+              uses: actions/cache/restore@v5
+              with:
+                  path: ${{ runner.temp }}/population-walk-rows-1
+                  key: population-walk-rows-1-${{ github.run_id }}-${{ github.run_attempt }}
+                  restore-keys: |
+                      population-walk-rows-1-
+            - name: Restore the population walk's rows (shard 2's)
+              if: steps.share.outputs.checks != ''
+              uses: actions/cache/restore@v5
+              with:
+                  path: ${{ runner.temp }}/population-walk-rows-2
+                  key: population-walk-rows-2-${{ github.run_id }}-${{ github.run_attempt }}
+                  restore-keys: |
+                      population-walk-rows-2-
+            - name: Restore the population walk's rows (shard 3's)
+              if: steps.share.outputs.checks != ''
+              uses: actions/cache/restore@v5
+              with:
+                  path: ${{ runner.temp }}/population-walk-rows-3
+                  key: population-walk-rows-3-${{ github.run_id }}-${{ github.run_attempt }}
+                  restore-keys: |
+                      population-walk-rows-3-
+            - name: The population walk's rows, every shard's in one
+              if: steps.share.outputs.checks != ''
+              env:
+                  SHARD: ${{ matrix.shard }}
+              run: |
+                  own="$RUNNER_TEMP/population-walk-rows-$SHARD"
+                  mkdir -p "$own"
+                  for k in 1 2 3; do
+                      src="$RUNNER_TEMP/population-walk-rows-$k"
+                      [ "$k" = "$SHARD" ] || [ ! -d "$src" ] || cp -Rpn "$src/." "$own/"
+                  done
+                  echo "population walk rows: $(find "$own" -name '*.tsv' | wc -l) slice row file(s) in $(find "$own" -mindepth 1 -maxdepth 1 -type d | wc -l) digest(s)"
             - name: The pre-push hook's checks of the change
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   TMPDIR: ${{ runner.temp }}/hook
                   SHARE: identity
                   PREPUSH_IDENTITY_SHARD: ${{ matrix.shard }}/3
+                  KINOWO_POPULATION_WALK_ROWS: ${{ runner.temp }}/population-walk-rows-${{ matrix.shard }}
               run: |
                   mkdir -p "$TMPDIR"
                   # inside the job's 90 minutes, so the two failure steps below still print and upload its logs: the
@@ -297,6 +337,12 @@ jobs:
                   timeout --kill-after=60 80m scripts/hooks/pre-push "$PREPUSH_MODE" "$PREPUSH_RANGE" || rc=$?
                   [ "$rc" != 124 ] || echo "::error::the pre-push checks ran past 80 minutes and were stopped"
                   exit "$rc"
+            - name: Keep the population walk's rows
+              if: ${{ !cancelled() && steps.share.outputs.checks != '' }}
+              uses: actions/cache/save@v5
+              with:
+                  path: ${{ runner.temp }}/population-walk-rows-${{ matrix.shard }}
+                  key: population-walk-rows-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
             # A failed check keeps the hook's logs (its temp dir): their failure lines AND their tail here, as agentctl's
             # verdict reads them, so a remote check never fails output-less. Each log's errors first (Playwright's
             # `Error:` blocks, sbt's FAILED/[error]: run 3342's 60 `✘` lines filled every head and its error never

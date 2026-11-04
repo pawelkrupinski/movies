@@ -45,8 +45,11 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
 
   // the landing check's candidates directory ([[CandidatesKey]]), read off each test's config map
   @volatile private var candidates: Option[Path] = None
+  // and the walk's row cache ([[CacheKey]])
+  @volatile private var cache: Option[Path] = None
   override def withFixture(test: NoArgTest): org.scalatest.Outcome = {
     candidates = test.configMap.getOptional[String](CandidatesKey).map(Path.of(_))
+    cache = test.configMap.getOptional[String](CacheKey).filter(_.nonEmpty).map(Path.of(_))
     super.withFixture(test)
   }
   private val known  = Known.read(KnownFile)
@@ -62,7 +65,8 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
     val inScope = SliceParts.inScope(slices, countriesInScope).toSet
     val dirs    = slices.filter(dir => inScope(dir) || flippingHere.contains(dir))
     val pool    = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    try dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(walk(dir)))(using
+    val walked = cache.fold((dir: Path) => walk(dir))(at => (dir: Path) => Cached.walk(at, dir))
+    try dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(walked(dir)))(using
       scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
     finally pool.shutdown()
   }
@@ -137,6 +141,67 @@ object PopulationMonotonicitySpec {
 
   /** The config map entry naming the landing check's candidates directory (the class comment). */
   val CandidatesKey = "identity.population.candidates"
+
+  /** The config map entry naming the walk's row cache: `<cache root>/<the walk's digest>` (the pre-push hook's identity
+   *  check, from sbt's `identityWalkDigest`: every path the walk's code and data are, the slices and the known list
+   *  apart). The class comment of [[Cached]]. */
+  val CacheKey = "identity.population.cache"
+
+  /**
+   * THE WALK'S ROWS KEPT (the landing check): [[walk]] of a slice is a function of the walk's code and data -- what the
+   * cache directory's digest names, `identityWalkDigest` -- and of the slice's own files. Under that directory a slice's
+   * rows are kept by its name and the SHA-256 of its files (every file's relative path and bytes) and of the JVM's version
+   * and locale; a slice kept is read back, not walked again: the same code over the same data walks to the same rows. A
+   * walk that fails is not kept. Judging the rows (the known list, the candidates against the base) is the spec's, every
+   * run.
+   */
+  object Cached {
+    def key(dir: Path): String = {
+      val digest = java.security.MessageDigest.getInstance("SHA-256")
+      def add(s: String): Unit = { val b = s.getBytes(StandardCharsets.UTF_8); digest.update(BigInt(b.length).toByteArray); digest.update(b) }
+      Seq("java.version", "java.vm.version", "user.language", "user.country", "file.encoding").foreach(p => add(s"$p=${System.getProperty(p)}"))
+      val files = Files.walk(dir).iterator().asScala.filter(Files.isRegularFile(_)).toSeq.sortBy(f => dir.relativize(f).toString)
+      files.foreach { f => add(dir.relativize(f).toString); digest.update(Files.readAllBytes(f)) ; add("") }
+      digest.digest().map("%02x".format(_)).mkString
+    }
+
+    def fileOf(at: Path, dir: Path): Path =
+      at.resolve(s"${Try(relative(dir)).getOrElse(dir.getFileName.toString).replace("/", "__")}-${key(dir)}.tsv")
+
+    private def escape(s: String)   = s.replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n").replace("\r", "\\r")
+    private def unescape(s: String) = {
+      val out = new StringBuilder; var i = 0
+      while (i < s.length) {
+        if (s.charAt(i) == '\\' && i + 1 < s.length) {
+          out.append(s.charAt(i + 1) match { case 't' => '\t'; case 'n' => '\n'; case 'r' => '\r'; case c => c }); i += 2
+        } else { out.append(s.charAt(i)); i += 1 }
+      }
+      out.toString
+    }
+    def encode(rows: Seq[Row]): Seq[String] = "population-walk-rows 1" +: rows.map(r =>
+      Seq(r.venue, r.rawTitle, r.shape, r.path, r.stage, r.where).map(escape).mkString("\t"))
+    def decode(lines: Seq[String]): Option[Seq[Row]] =
+      if (lines.headOption.contains("population-walk-rows 1")) {
+        val rows = lines.tail.map(_.split("\t", -1).toSeq.map(unescape))
+        Option.when(rows.forall(_.size == 6))(rows.map { case Seq(v, t, sh, p, st, w) => Row(v, t, sh, p, st, w) })
+      } else None
+
+    /** The rows of the slice in `dir`, read back from `at` when kept there, else walked ([[walk]]) and kept. */
+    def walk(at: Path, dir: Path, walking: Path => Seq[Row] = PopulationMonotonicitySpec.walk(_)): Seq[Row] = {
+      val file = fileOf(at, dir)
+      val kept = Try(Files.readAllLines(file, StandardCharsets.UTF_8).asScala.toSeq).toOption.flatMap(decode)
+      kept.getOrElse {
+        val rows = walking(dir)
+        Try {
+          Files.createDirectories(at)
+          val part = at.resolve(s"${file.getFileName}.${ProcessHandle.current.pid}.${Thread.currentThread.threadId}.part")
+          Files.write(part, encode(rows).asJava, StandardCharsets.UTF_8)
+          Files.move(part, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        }
+        rows
+      }
+    }
+  }
 
   /** A slice the landing check judges against its base: `<dir>/<slice, '/' as '__'>.tsv`, tab-separated -- `slice <name>`,
    *  then a `head <venue> <raw title> <line>` row per flip the change's walk found and a `known <venue> <raw title> <note>`

@@ -1132,14 +1132,32 @@ run_local_tests() { # <set>
     # every identity testOnly line names the candidates directory, so a slice whose flips differ from the known rows is
     # judged against the change's merge base after the run -- a flip main has too passes, one the change adds refuses
     # the push naming the listing, slice and chain. No candidate (the usual case): nothing more runs.
-    local popwalk=""
+    # THE WALK'S ROWS KEPT (PopulationMonotonicitySpec's CacheKey, sbt's identityWalkDigest): the walk's rows of a slice
+    # are kept per digest of every path the walk's code and data are (the slices apart: each keyed by its own files)
+    # under $KINOWO_POPULATION_WALK_ROWS (default $KINOWO_IDENTITY_CACHE/population-walk-rows)/<digest>/ -- a change that leaves the walk's code and data as a
+    # walked commit had them walks only the slices whose files differ; the rows are judged as walked ones, every run.
+    # No digest (a working tree with changes, the task failed): every slice walks. The landing check keeps the directory
+    # between runs (precommit-check.yml's actions/cache); a digest unused for 5 days is dropped.
+    local popwalk="" walkcache=""
     if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
         popwalk="$tmp/population-walk"
-        local i
+        local rows_root="${KINOWO_POPULATION_WALK_ROWS:-${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/population-walk-rows}" digest=""
+        if scripts/sbt-warm "identityWalkDigest $tmp/identity.walk-digest" > "$tmp/identity.walk-digest.log" 2>&1; then
+            digest="$(tr -cd '0-9a-f' < "$tmp/identity.walk-digest")"
+        fi
+        if [ "${#digest}" = 64 ]; then
+            walkcache="$rows_root/$digest"
+            mkdir -p "$walkcache" && touch "$walkcache"
+            find "$rows_root" -mindepth 1 -maxdepth 1 -type d -mtime +5 -exec rm -rf {} + 2> /dev/null
+            log "identity: the population walk's rows kept under digest ${digest:0:12} ($(find "$walkcache" -name '*.tsv' | wc -l | tr -d ' ') slice(s) kept)"
+        else
+            log "identity: no population walk digest ($(tail -1 "$tmp/identity.walk-digest.log" 2> /dev/null)): every slice walks"
+        fi
+        local i extra="-Didentity.population.candidates=$popwalk${walkcache:+ -Didentity.population.cache=$walkcache}"
         for i in "${!cmds[@]}"; do
             case "${cmds[$i]}" in
-                *testOnly\ *\ --\ *) cmds[$i]="${cmds[$i]} -Didentity.population.candidates=$popwalk" ;;
-                *testOnly\ *) cmds[$i]="${cmds[$i]} -- -Didentity.population.candidates=$popwalk" ;;
+                *testOnly\ *\ --\ *) cmds[$i]="${cmds[$i]} $extra" ;;
+                *testOnly\ *) cmds[$i]="${cmds[$i]} -- $extra" ;;
             esac
         done
     fi

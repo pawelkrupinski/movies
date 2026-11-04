@@ -79,6 +79,49 @@ object TestImpact {
     (Set(name, under) ++ runs ++ dirs ++ (if (stem.length >= 4) Set(stem) else Set.empty)).filter(_.nonEmpty)
   }
 
+  /**
+   * THE REVERSE OF [[select]]: every path a change to which [[select]] would let reach a class of `roots` (repository paths
+   * of sources) -- what `roots` can read, by the same rules: the sources its classes reach through every dependency Zinc
+   * keeps, transitively, across every unit; the data files their string literals name (by [[tokens]]); every data file no
+   * source's literal names (its reader is unknown); the build; and, of a stamp a reached literal names, every path it
+   * digests. A path [[select]] would not let reach `roots` is none of these, so a commit whose `reach` holds the same
+   * content as another's runs `roots`' classes on the same code and the same data. `exclude`d paths are left out (what the
+   * caller keys apart); `tracked` is every file the repository tracks (`git ls-files`). Sorted repository paths.
+   */
+  def reach(repo: File, units: Seq[Unit], stamps: Seq[File], tracked: Seq[String], roots: Set[String],
+            exclude: String => Boolean): Seq[String] = {
+    val all = units.map(u => u -> u.analysis.asInstanceOf[sbt.internal.inc.Analysis].relations)
+    val classesOf: Map[String, Set[String]] = all.flatMap { case (_, r) =>
+      r.classes.forwardMap.toSeq.map { case (src, cls) => repoPath(repo, src) -> cls.toSet }
+    }.groupBy(_._1).map { case (k, v) => k -> v.flatMap(_._2).toSet }
+    val sourceOf: Map[String, Set[String]] =
+      classesOf.toSeq.flatMap { case (src, cls) => cls.map(_ -> src) }.groupBy(_._1).map { case (k, v) => k -> v.map(_._2).toSet }
+    val sourceNameOf: Map[String, String] = all.flatMap { case (_, r) =>
+      r.productClassName.all.map { case (sourceName, binaryName) => binaryName -> sourceName } }.toMap
+    val missing = roots -- classesOf.keySet
+    require(missing.isEmpty, s"reach: roots no analysis compiled: ${missing.mkString(", ")}")
+    def depends(cls: String): Set[String] = all.flatMap { case (_, r) =>
+      r.internalClassDep.forward(cls) ++ r.externalClassDep.forward(cls).map(c => sourceNameOf.getOrElse(c, c))
+    }.toSet.filter(sourceOf.contains)
+    var classes = roots.flatMap(classesOf); var frontier = classes
+    while (frontier.nonEmpty) { val next = frontier.flatMap(depends) -- classes; classes ++= next; frontier = next }
+    val reached = classes.flatMap(sourceOf) ++ roots
+    val sources: Seq[(String, Set[String])] = (repo * "*").get.filter(_.isDirectory).flatMap { module =>
+      ((module / "src") ** ("*.scala" || "*.java")).get
+    }.map(f => IO.relativize(repo, f).get -> literals(IO.read(f)).toSet)
+    val reachedLiterals = sources.collect { case (src, lits) if reached(src) => lits }.flatten.toSet
+    val anyLiterals     = sources.flatMap(_._2).toSet
+    // every tracked file but a source: one a reached literal names, and data no literal names
+    val data = tracked.filterNot(p => p.endsWith(".scala") || p.endsWith(".java")).filter { path =>
+      val names = tokens(path)
+      names.exists(reachedLiterals) || (isResource(path) && !names.exists(anyLiterals))
+    }
+    val build = (repo * "*.sbt").get ++ (repo / "project" * ("*.scala" || "*.sbt" || "*.properties")).get
+    val stamped = stamps.filter(_.exists).filter(list => tokens(list.getName.stripSuffix("-sources.txt") + "-version.txt").exists(reachedLiterals))
+      .flatMap(IO.readLines(_)).filter(_.nonEmpty)
+    (reached.toSeq ++ data ++ build.map(f => IO.relativize(repo, f).get) ++ stamped).distinct.filterNot(exclude).sorted
+  }
+
   /** The verdict: `ALL <why>` lines (every test), else the affected test classes as `<module> <class>` lines. */
   def select(repo: File, units: Seq[Unit], tests: Map[String, Seq[String]], stamps: Seq[File],
              changed: Seq[String]): Seq[String] = {
