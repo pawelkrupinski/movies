@@ -171,22 +171,24 @@ object IdentitySlice {
     val normalizer: TitleNormalizer = TitleNormalizer.forCountry(country)
     val tmdb = OlderRefs.tmdbClient(fetch, settings.TmdbApiKey(StubTmdbKey), country.language)
     private val venueClock = new models.VenueClock(clock)
-    /** The country's venue detail pages, read by its scrapers' own detail enrichers over the same fetch. */
-    val enrichers: Seq[services.cinemas.common.DetailEnricher] = {
+    /** The country's venue detail pages, read by its scrapers' own detail enrichers over the same fetch. Lazy, as the
+     *  answers built on them: a stage's reads (`IdentityDrift.whole` over a model handed in) never ask a venue page, and
+     *  the country's scraper catalog was a quarter of the population walk's CPU, built once per subset (2026-11-04). */
+    lazy val enrichers: Seq[services.cinemas.common.DetailEnricher] = {
       val catalog = new services.cinemas.CinemaScraperCatalog(fetch, venueClock, clock, normalizer)
       // filed by City since 89fc69800, by the city's slug before it: this file is dropped into refs from either side
       def filedUnder(key: Any, city: models.City) = key match { case slug: String => slug == city.slug; case other => other == city }
       country.cities.flatMap(c => catalog.byCity.collect { case (key, scrapers) if filedUnder(key, c) => scrapers }.flatten)
         .collect { case de: services.cinemas.common.DetailEnricher => de }.distinct
     }
-    private val recorded = new TmdbIdentityLookups(tmdb, new services.enrichment.ImdbClient(fetch), enrichers, gaps)
+    private lazy val recorded = new TmdbIdentityLookups(tmdb, new services.enrichment.ImdbClient(fetch), enrichers, gaps)
     /** The recording's answers, and the filed ones where it has none — each filed one read noted. */
-    val filedLookups: Option[tools.FiledAnswers.Lookups] = Option.when(!filed.isEmpty)(new tools.FiledAnswers.Lookups(recorded, filed))
+    lazy val filedLookups: Option[tools.FiledAnswers.Lookups] = Option.when(!filed.isEmpty)(new tools.FiledAnswers.Lookups(recorded, filed))
     /** Every question the decisions over these reads asked and got no answer to: not the recording's, not filed. */
-    val asking = new Asking(filedLookups.getOrElse(recorded))
+    lazy val asking = new Asking(filedLookups.getOrElse(recorded))
     // the lookups a newer ref added, which no wrapper here overrides (an overview's words): the recording's, as the
     // capture's fill read them
-    val lookups: IdentityLookups = OlderRefs.passing(classOf[IdentityLookups], asking, recorded, OlderRefs.NewerLookups)
+    lazy val lookups: IdentityLookups = OlderRefs.passing(classOf[IdentityLookups], asking, recorded, OlderRefs.NewerLookups)
     /** The filed IMDb finds read ([[filedFind]]): a drift slice keeps them as it keeps every other filed answer it read. */
     val findsRead = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
     /** Prod's filed find of `imdb`, read noted. */
