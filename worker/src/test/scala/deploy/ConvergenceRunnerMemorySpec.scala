@@ -64,6 +64,17 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
     if (row.get("mongo-tmpfs-order").contains("false")) tmpfsCacheGb(row) max defaultCacheGb.max else tmpfsCacheGb(row)
   private lazy val wiredTigerGb: Seq[Double] = defaultCacheGb ++ rows.map(tmpfsCacheGb)
 
+  // Germany's recording holds the boot AND its three order passes in one JVM (`order: ''`, the whole `convergenceGermany`),
+  // where a hermetic leg splits them into rows: at 4g it thrashed in GC and died in the passes' first projection (runs 322,
+  // 408, and Record scrape fixtures #168, an override of 8g having been left empty since Forgejo).
+  "Germany's recording" should "have the heap its whole boot and order passes need, and fit the runner with it" in {
+    val recording = RepoFile.read(".github/workflows/record-scrape-fixtures.yml")
+    val heap = """country: germany,[^}]*\bheap: (\d+g)""".r.findFirstMatchIn(recording).map(_.group(1)).getOrElse(fail("no germany row"))
+    gb(heap) should be >= 8.0
+    gb(heap) + defaultCacheGb.max + OverheadGb should be <= RunnerGb.toDouble
+    withClue("the row's heap reaches the leg as written: ")(recording should include ("heap: ${{ matrix.heap }}"))
+  }
+
   "the convergence runner" should "cap mongod's WiredTiger cache rather than let it size for the whole box" in {
     withClue("`docker run … mongo` in convergence-setup must name --wiredTigerCacheSizeGB; " +
              "mongod otherwise takes ~7.5GB of a 16GB runner the sbt JVM is sharing:\n") {
