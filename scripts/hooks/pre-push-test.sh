@@ -358,8 +358,19 @@ printf 'sbt-warm' >> "$AREA_CALLS"; printf ' [%s]' "$@" >> "$AREA_CALLS"; echo >
 case "$*" in *"${SBTWARM_FAILS:-no such}"*) echo "[error] Failed: Total 3, Failed 1"; exit 1 ;; esac
 # the test-impact task: the classes $IMPACT_LINES names (unset: no answer, and the hook runs every identity test)
 case "$1" in identityImpact\ *) [ -n "${IMPACT_LINES+x}" ] && printf '%b' "$IMPACT_LINES" > "${1##* }" ;; esac
+# the population walk's candidate (PopulationMonotonicitySpec): $SBTWARM_CANDIDATE written into the line's directory
+for a in "$@"; do case "$a" in *-Didentity.population.candidates=*) [ -n "${SBTWARM_CANDIDATE:-}" ] && { d="${a##*-Didentity.population.candidates=}"
+  d="${d%% *}"; mkdir -p "$d" && printf '%b' "$SBTWARM_CANDIDATE" > "$d/s.tsv"; } ;; esac; done
 echo "[info] All tests passed."
 STUB
+# the base side (scripts/ci/population-walk-diff): its call recorded; $POPWALK_REFUSES refuses, naming a listing
+cat > "$area/scripts/ci/population-walk-diff" <<'STUB'
+#!/usr/bin/env bash
+printf 'population-walk-diff [%s]\n' "$(ls "$1")" >> "$AREA_CALLS"
+[ -z "${POPWALK_REFUSES:-}" ] || { echo "population walk: NEW flip the base does not have: $POPWALK_REFUSES"; exit 1; }
+echo "population walk: 1 slice(s) judged against the base: nothing new"
+STUB
+chmod +x "$area/scripts/ci/population-walk-diff"
 printf '#!/usr/bin/env bash\nprintf sbt >> "$AREA_CALLS"; printf " [%%s]" "$@" >> "$AREA_CALLS"; echo >> "$AREA_CALLS"\n' > "$areabin/sbt"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$areabin/java"
 chmod +x "$area/scripts/sbt-warm" "$areabin/sbt" "$areabin/java"
@@ -377,7 +388,7 @@ calls() { grep -c -- "$1" "$AREA_CALLS"; }
 basic_ran() { grep -cE '(\[|; )Test/compile(\]|;)' "$AREA_CALLS"; } # the basic line, in the sbt check's run (plain or warm)
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala)"
 check "an identity change runs the identity set in one sbt-warm call, and the basic set in the sbt check's run" "0 1 1 0 0" \
-  "$code $(calls '\[identity/test\] \[worker/testOnly services.identity.\*\]') $(basic_ran) $(calls PageTest) $(calls playwright)"
+  "$code $(calls '\[identity/test\] \[worker/testOnly services.identity.\* -- -Didentity.population.candidates=[^]]*/population-walk\]') $(basic_ran) $(calls PageTest) $(calls playwright)"
 check "...and no longer asks whether identity-landing-check said LANDABLE" "0 0" \
   "$(grep -c 'LANDABLE' "$testroot/area-out") $(grep -c 'identity-landing-check' "$testroot/area-out")"
 code="$(area_push web/src/main/assets/js/a.js)"
@@ -390,10 +401,18 @@ check "a code change outside the areas runs the basic set only" "0 1 0 0" \
   "$code $(basic_ran) $(calls identity/test) $(calls PageTest)"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='identity services.identity.ResolverSpec\nworker services.identity.AdapterSpec\nworker tools.OtherSpec\n')"
 check "TEST-IMPACT SELECTION: the identity set narrowed to the classes the change reaches, each line's own" "0 1 0 0" \
-  "$code $(calls '\[identity/testOnly services.identity.ResolverSpec\] \[worker/testOnly services.identity.AdapterSpec\]') $(calls '\[identity/test\]') $(calls OtherSpec)"
+  "$code $(calls '\[identity/testOnly services.identity.ResolverSpec -- -Didentity.population.candidates=[^]]*\] \[worker/testOnly services.identity.AdapterSpec -- -Didentity.population.candidates=[^]]*\]') $(calls '\[identity/test\]') $(calls OtherSpec)"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala IMPACT_LINES='web services.movies.ElsewhereSpec\n')"
 check "...and none at all when it reaches no identity spec, said" "0 0 1" \
   "$code $(grep -cE '\[(identity|worker|web)/testOnly' "$AREA_CALLS") $(grep -c 'reaches no identity spec' "$testroot/area-out")"
+check "...and no population walk against the base while no slice is a candidate" "0" "$(calls population-walk-diff)"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_CANDIDATE='slice\tdrift-slices/uk/x\n')"
+check "THE POPULATION WALK: a candidate slice is judged against the base, and passes when it adds nothing" "0 1" \
+  "$code $(calls 'population-walk-diff \[s.tsv\]')"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_CANDIDATE='slice\tdrift-slices/uk/x\n' \
+  POPWALK_REFUSES='drift-slices/uk/x: Lighthouse Poole | PFF: Hen [chain 3]')"
+check "...and a flip the base lacks blocks the push, the listing named" "1 1 1" \
+  "$code $(grep -c 'blocked by: identity' "$testroot/area-out") $(grep -c 'NEW flip the base does not have: drift-slices/uk/x: Lighthouse Poole' "$testroot/area-out")"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala SBTWARM_FAILS=identity/test)"
 check "a failing identity set blocks the push, naming the check and the failure" "1 1 1" \
   "$code $(grep -c 'blocked by: identity' "$testroot/area-out") $(grep -c 'Failed 1' "$testroot/area-out")"
