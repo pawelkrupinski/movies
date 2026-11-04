@@ -186,7 +186,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   }
 
   it should "read the checked-in baseline, every row with its seed, first sighting and owner" in {
-    val path = java.nio.file.Path.of("test/resources/fixtures/identity-flips-baseline.tsv")
+    val path = java.nio.file.Path.of("test/resources/fixtures/identity-flip-backlog.tsv")
     deploy.RepoFile.exists(path.toString) shouldBe true
     noException should be thrownBy IdentityDrift.flipBaseline(path)
   }

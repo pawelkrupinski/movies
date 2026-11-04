@@ -23,10 +23,10 @@ abstract class IdentityDriftSlicesShard(shard: Int) extends AnyFlatSpec with Mat
   protected val fixtures = Fixtures
   private val allowed  = IdentityDrift.allowList(fixtures.resolve("identity-drift-allow.tsv"))
   private val flipsOk  = IdentityDrift.flipAllowList(fixtures.resolve("identity-flips-allow.tsv"))
-  /** The known flips (identity-flips-baseline.tsv): a slice of a baselined listing may flip, on any seed, while its row
+  /** The known flips (identity-flip-backlog.tsv's drift rows): a slice of a baselined listing may flip, on any seed, while its row
    *  stands -- the corpus gate's own rule -- and is held strictly once the fix removes it. A tightened check's birth
    *  baselines what it newly sees (a229501a7's precise none: CinemaxX "Titans" goes to no film and back). */
-  private val baselined = IdentityDrift.flipBaseline(fixtures.resolve("identity-flips-baseline.tsv"))
+  private val baselined = IdentityDrift.flipBaseline(fixtures.resolve("identity-flip-backlog.tsv"))
   private val parts    = shards(AllSlices, costs(CostsFile))(shard)
 
   /** This shard's parts' findings, side by side: each replays its own answers and shares nothing with another. */

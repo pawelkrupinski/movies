@@ -14,6 +14,10 @@
 #   - never in a commit carrying `Fixes-Red:`: a red is fixed, not listed;
 #   - never, on the flips or drift list, a listing already known: one any earlier revision of either list or the
 #     baseline named, or one a committed drift slice holds (test/resources/fixtures/drift-slices/).
+#   THE FLIP BACKLOG (test/resources/fixtures/identity-flip-backlog.tsv, 2026-11-04; it merged the known-flips baseline,
+#   identity-flips-baseline.tsv, and the population walk's known flips) takes rows as the baseline did, below, and by
+#   THE EXPLORER'S FILING: a commit changing only the backlog and drift-gate-seeds.tsv, adding only `drift` rows
+#   (explorer_filing). The baseline's rules, as they were:
 #   THE KNOWN-FLIPS BASELINE ONLY SHRINKS (test/resources/fixtures/identity-flips-baseline.tsv; the owner, 2026-10-29:
 #   "fail build only on new flips, focus in eliminating all old flips and then fail on all flips"). Rows are written only
 #   by its creation, once (a file that existed before is never made again), and by a TIGHTENED CHECK's birth: a commit
@@ -56,7 +60,10 @@ from typing import Callable
 
 REGISTRY = ".github/allow-lists.txt"
 DRIFT_LISTS = ("test/resources/fixtures/identity-flips-allow.tsv", "test/resources/fixtures/identity-drift-allow.tsv")
-BASELINES = ("test/resources/fixtures/identity-flips-baseline.tsv",)
+BACKLOG = "test/resources/fixtures/identity-flip-backlog.tsv"
+SEEDS = "test/resources/fixtures/drift-gate-seeds.tsv"
+# the old known-flips baseline (merged into the backlog 2026-11-04) stays for `known`'s history reads
+BASELINES = ("test/resources/fixtures/identity-flips-baseline.tsv", BACKLOG)
 GATE_PATHS = ".github/identity-drift-gate-paths.txt"
 WORKFLOW_ROWS = (".github/workflows/country-convergence-leg.yml", ".github/workflows/identity-model-convergence.yml")
 SLICES = "test/resources/fixtures/drift-slices/"
@@ -155,9 +162,21 @@ def check_paths(rev: str) -> set[str]:
     return {p for p in listed if not p.endswith("-allow.tsv") and p not in BASELINES} | set(WORKFLOW_ROWS)
 
 
+BACKLOG_KINDS = ("drift", "population")
+
+
+def explorer_filing(c: "Commit", added: list[str]) -> bool:
+    """THE EXPLORER'S FILING (.github/workflows/identity-drift-explorer.yml, filed by agentctl): a commit changing nothing
+    but the backlog and the gate's seeds, adding only `drift` rows -- a flip main already shows on a seed the gate did not
+    replay. The differential drift gate passes a flip its base shows, so the row hides nothing a change adds."""
+    return c.changed <= {BACKLOG, SEEDS} and all(r.split("\t")[0].strip() == "drift" for r in added)
+
+
 def listing(row: str) -> tuple[str, str, str]:
     """A drift or flips row's listing: country, venue, raw title (a baseline row's seed, its second column, aside)."""
     cols = row.split("\t")
+    if cols[0].strip() in BACKLOG_KINDS:  # a backlog row: kind, country, seed, slice, venue, rawTitle, ...
+        return tuple(c.strip() for c in ([cols[1]] + cols[4:6] + ["", "", ""])[:3])
     if len(cols) > 1 and cols[1].strip().isdigit():
         cols = [cols[0]] + cols[2:]
     return tuple(c.strip() for c in (cols + ["", "", ""])[:3])
@@ -264,7 +283,7 @@ def allow_lists(c: Commit, opts: dict) -> list[str]:
         added = [r for r in rows(at(c.sha, path)) if r not in before]
         if path in BASELINES:
             born = not before and not at(c.parent, path) and not existed_before(c.sha, path)
-            if not added or born:
+            if not added or born or (path == BACKLOG and explorer_filing(c, added)):
                 continue
             if c.has("Owner-Approved"):
                 refused += [f"{path}: {why}" for why in owner_approved(added, c.trailers["owner-approved"])]

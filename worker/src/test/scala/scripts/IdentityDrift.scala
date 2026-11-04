@@ -42,7 +42,7 @@ import scala.util.control.NonFatal
  * deciding inputs did ([[TakeFlips]]) is a FLIP (`flips-<cc>.tsv`): what prod's regression watch counts
  * (`kinowo_identity_listing_flips`) and a checkpoint's end state cannot show. A NEW flip fails the run: one neither
  * `test/resources/fixtures/identity-flips-allow.tsv` (a newborn check's TEMPORARY rows only) nor the KNOWN-FLIPS
- * BASELINE (`--flips-baseline`, `test/resources/fixtures/identity-flips-baseline.tsv`, [[BaselineFlip]]) names. A
+ * BASELINE (`--flips-baseline`, the `drift` rows of `test/resources/fixtures/identity-flip-backlog.tsv`, [[BaselineFlip]]) names. A
  * baselined flip passes, counted loudly ("N known flip(s) remaining"), and a baseline row of a seed this run replayed
  * whose listing flipped in none of them is named "fixed — remove its row" (the owner, 2026-10-29: "fail build only on
  * new flips, focus in eliminating all old flips and then fail on all flips"). The baseline only shrinks; once it is
@@ -224,20 +224,30 @@ object IdentityDrift {
       flip.takes.drop(1).map(t => causes.getOrElse((flip.key, t.step), "unreproduced")).distinct.mkString(",")
   }
 
-  /** A KNOWN flip (`identity-flips-baseline.tsv`, written by scripts/ci/identity_flips_baseline.py from a run's flips):
-   *  the listing flipped on main before the gate failed on new flips only. It covers its listing's flips in any seed; it
-   *  is FIXED when a run replayed its seed and the listing flipped in none of that run's seeds. */
+  /** THE FLIP BACKLOG (`test/resources/fixtures/identity-flip-backlog.tsv`): every flip known on main, a row each, read by
+   *  its header -- `kind` `drift` (a takes-drift seed found it) or `population` (PopulationMonotonicitySpec's walk did). */
+  val BacklogFile: Path = Path.of("test", "resources", "fixtures", "identity-flip-backlog.tsv")
+  val BacklogHeader     = Seq("kind", "country", "seed", "slice", "venue", "rawTitle", "takes", "firstSeen", "owner", "note")
+  def backlog(path: Path, kind: String): Seq[Map[String, String]] = if (!Files.exists(path)) Nil else {
+    val lines  = Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.filter(l => l.nonEmpty && !l.startsWith("#"))
+    val header = lines.headOption.map(_.split("\t", -1).toSeq).getOrElse(Nil)
+    if (header.nonEmpty && !BacklogHeader.forall(header.contains))
+      sys.error(s"identity-flip-backlog: the header names ${BacklogHeader.mkString(", ")}: ${header.mkString("|")}")
+    lines.drop(1).map(l => header.zipAll(l.split("\t", -1).toSeq, "", "").toMap).filter(_.getOrElse("kind", "") == kind)
+  }
+
+  /** A KNOWN flip (a `drift` row of the backlog): the listing flipped on main. It covers its listing's flips in any seed;
+   *  it is FIXED when a run replayed its seed and the listing flipped in none of that run's seeds. */
   final case class BaselineFlip(country: String, seed: Int, venue: String, rawTitle: String, takes: String, firstSeen: String, owner: String,
                                 note: String) {
     def covers(country: String, f: TakeFlips.Flip): Boolean = this.country == country && venue == f.key.venue && rawTitle == f.key.rawTitle
   }
-  val BaselineHeader = "country\tseed\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote"
-  def flipBaseline(path: Path): Seq[BaselineFlip] = if (!Files.exists(path)) Nil else
-    Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.filter(l => l.nonEmpty && !l.startsWith("#")).drop(1).map(_.split("\t", -1)).map {
-      case Array(cc, seed, venue, title, takes, first, owner, note, _*) if seed.toIntOption.isDefined && first.trim.nonEmpty && owner.trim.nonEmpty =>
-        BaselineFlip(cc, seed.toInt, venue, title, takes, first, owner, note)
-      case row => sys.error(s"identity-flips-baseline: every row names cc, seed, venue, raw title, takes, first seen and an OWNER: ${row.mkString("|")}")
-    }
+  def flipBaseline(path: Path): Seq[BaselineFlip] = backlog(path, "drift").map { r =>
+    val seed = r("seed").toIntOption
+    if (seed.isEmpty || r("firstSeen").trim.isEmpty || r("owner").trim.isEmpty)
+      sys.error(s"identity-flip-backlog: every drift row names its country, seed, venue, raw title, takes, first seen and an OWNER: ${r.values.mkString("|")}")
+    BaselineFlip(r("country"), seed.get, r("venue"), r("rawTitle"), r("takes"), r("firstSeen"), r("owner"), r("note"))
+  }
 
   /** Of `flips` (by seed) beyond the allow-list: the KNOWN ones `baseline` covers, the NEW ones it does not, and the
    *  baseline rows of `seeds` whose listing flipped in none of them — fixed, their rows to remove. */
@@ -981,7 +991,7 @@ object IdentityDrift {
     println(s"## ${country.code} flips: ${flipped.size} flip(s) (${flipped.map(_._2.key).distinct.size} listings), ${flipped.size - open.flips.size} allow-listed, " +
       s"${verdict.known.size} known")
     println(s"## ${country.code} known flips: ${verdict.known.size} known flip(s) remaining (${verdict.known.map(_._2.key).distinct.size} listings in " +
-      s"identity-flips-baseline.tsv), ${verdict.fixed.size} fixed")
+      s"identity-flip-backlog.tsv), ${verdict.fixed.size} fixed")
     verdict.fixed.sortBy(b => (b.rawTitle, b.venue)).foreach(b => println(s"      FIXED, remove its row: ${b.venue} | ${b.rawTitle} [seed ${b.seed}] — no flip in this run"))
     // each flip's cause (answer, population, lag), counted: what the flip-unification design's stage 1 tallies
     println(s"## ${country.code} flip causes: " + flipped.map { case (seed, f) => findings.causes.getOrElse((seed, f.key), "unclassified") }

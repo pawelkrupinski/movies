@@ -2,10 +2,9 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scripts.{IdentityDriftSlicesSpec, IdentitySlice}
+import scripts.{IdentityDrift, IdentityDriftSlicesSpec, IdentitySlice}
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 import java.time.{Clock, ZoneOffset}
 import services.movies.ListingKey
 import scala.util.hashing.MurmurHash3
@@ -22,7 +21,7 @@ import scala.util.Try
  * along seeded arrival chains ([[walk]]). No listing's decided take may go back to a value it left (A -> B -> A) as
  * listings only ARRIVE: Addams, Keswick, Prima Facie and Torrington flipped so, with nothing departing.
  *
- * Today's A -> B -> A shapes are KNOWN (`identity-population-flips-known.tsv`), as the flips baseline was on 10-29: a known
+ * Today's A -> B -> A shapes are KNOWN (the `population` rows of `identity-flip-backlog.tsv`), as the flips baseline was on 10-29: a known
  * row passes, a new flip fails, and a known row whose listing no longer flips fails too until its row is removed -- the
  * list only shrinks. Stage 5 of the design (a contested family gives a bare listing no film) is what empties it.
  *
@@ -98,9 +97,9 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
         info(s"${fresh.size} new and ${fixed.size} cured row(s) against the known list: judged against the change's base (${file.getFileName})")
       }
       if (candidates.isEmpty) {
-        withClue("new A -> B -> A takes along an arrival chain (add a row to identity-population-flips-known.tsv only with the owner's OK): ")(
+        withClue("new A -> B -> A takes along an arrival chain (add a population row to identity-flip-backlog.tsv only with the owner's OK): ")(
           fresh.map(_.line) shouldBe empty)
-        withClue("known rows whose listing no longer flips -- remove them from identity-population-flips-known.tsv: ")(
+        withClue("known rows whose listing no longer flips -- remove them from identity-flip-backlog.tsv: ")(
           fixed.map(k => s"${k.venue} | ${k.rawTitle} (${k.note})") shouldBe empty)
       }
     }
@@ -116,7 +115,7 @@ class PopulationMonotonicityPart4Spec extends PopulationMonotonicitySpec(4)
 object PopulationMonotonicitySpec {
 
   private val Fixtures = Path.of("test", "resources", "fixtures")
-  val KnownFile: Path  = Fixtures.resolve("identity-population-flips-known.tsv")
+  val KnownFile: Path  = Fixtures.resolve("identity-flip-backlog.tsv")
 
   /** How many arrival chains each slice's families walk, and at most how many steps each. */
   val Chains = 8
@@ -163,13 +162,12 @@ object PopulationMonotonicitySpec {
     def covers(name: String, row: Row): Boolean = slice == name && venue == row.venue && rawTitle == row.rawTitle
   }
   object Known {
-    def read(file: Path): Seq[Known] =
-      if (!Files.exists(file)) Nil
-      else Files.readAllLines(file, StandardCharsets.UTF_8).asScala.toSeq.filter(l => l.nonEmpty && !l.startsWith("#") && !l.startsWith("slice\t"))
-        .map(_.split("\t", -1)).map {
-          case Array(slice, venue, title, note, _*) if note.trim.nonEmpty => Known(slice, venue, title, note)
-          case row => sys.error(s"identity-population-flips-known: every row names the slice, venue, raw title and a NOTE: ${row.mkString("|")}")
-        }
+    /** The backlog's `population` rows (scripts.IdentityDrift.backlog). */
+    def read(file: Path): Seq[Known] = IdentityDrift.backlog(file, "population").map { r =>
+      if (r("slice").trim.isEmpty || r("note").trim.isEmpty)
+        sys.error(s"identity-flip-backlog: every population row names the slice, venue, raw title and a NOTE: ${r.values.mkString("|")}")
+      Known(r("slice"), r("venue"), r("rawTitle"), r("note"))
+    }
   }
 
   /**

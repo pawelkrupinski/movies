@@ -176,6 +176,23 @@ class RatchetTest(unittest.TestCase):
             self.assertIn("only shrinks", err)
             self.scratch("scratch_git", "reset", "-q", "--hard", reg)
 
+    def test_the_explorers_filing_adds_drift_rows_to_the_backlog_with_their_seeds_alone(self):
+        # 2026-11-04: the nightly explorer finds a flip main shows on a seed the gate did not replay; agentctl files it
+        backlog, seeds = "test/resources/fixtures/identity-flip-backlog.tsv", "test/resources/fixtures/drift-gate-seeds.tsv"
+        head_ = "kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n"
+        row = "drift\tde\t8\t\tCinemaxX Regensburg\tTitans\t\t2026-11-04\tconvergence-fixer\texplorer run 1\n"
+        pop = row.replace("drift\t", "population\t", 1)
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{backlog}\n", backlog: head_,
+                           seeds: "country\tseed\trow\tadded\twhy\n"}, "born")
+        for files, ok in (({backlog: head_ + row, seeds: "country\tseed\trow\tadded\twhy\nde\t8\t1\t2026-11-04\tx\n"}, True),
+                          ({backlog: head_ + row}, True),
+                          ({backlog: head_ + pop}, False),
+                          ({backlog: head_ + row, PREDICATE: "a fix\n"}, False)):
+            head = self.commit(files, "Drift explorer: file a flip")
+            rc, err = self.ratchet(f"{reg}..{head}")
+            self.assertEqual(0 if ok else 1, rc, (files.keys(), err))
+            self.scratch("scratch_git", "reset", "-q", "--hard", reg)
+
     def test_the_owners_named_decision_baselines_a_flip(self):
         # the owner, 2026-11-02: CinemaxX Dammtor/Raschplatz "Titans", inherent to which listings are present, baselined
         reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")
