@@ -156,4 +156,19 @@ class LogCaptureSpec extends AnyFlatSpec with Matchers {
       withClue("the forced level must be restored afterwards: ")(logger.getLevel shouldBe Level.WARN)
     } finally logger.setLevel(null)
   }
+
+  // The race itself (a reset detaching the hub mid-capture) cannot be driven here without resetting the JVM-global
+  // context under every other suite; what is proved is the exclusion that prevents it.
+  it should "hold back a context reset until the captures in flight have finished" in {
+    val entered   = new java.util.concurrent.CountDownLatch(1)
+    val attempted = new java.util.concurrent.CountDownLatch(1)
+    val resetter  = new Thread(() => { attempted.countDown(); LogCapture.exclusively(entered.countDown()) }, "log-capture-spec-resetter")
+    LogCapture.capture(Logger) {
+      resetter.start()
+      attempted.await()
+      withClue("an exclusive section must not start while a capture runs: ")(entered.await(150, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe false)
+    }
+    withClue("and must start once the capture is done: ")(entered.await(10, java.util.concurrent.TimeUnit.SECONDS) shouldBe true)
+    resetter.join()
+  }
 }

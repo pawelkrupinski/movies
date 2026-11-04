@@ -23,7 +23,7 @@ import play.core.server.{PekkoHttpServer, ServerConfig}
  */
 class RequestHeaderSizeSpec extends AnyFlatSpec with Matchers {
 
-  "the web server" should "serve a request whose Cookie header is far past the 8k default" in {
+  "the web server" should "serve a request whose Cookie header is far past the 8k default" in tools.LogCapture.exclusively {
     val server = PekkoHttpServer.fromRouterWithComponents(
       ServerConfig(port = Some(0), address = "127.0.0.1", mode = Mode.Test)
         .copy(configuration = Configuration.load(Environment.simple(mode = Mode.Test)))
@@ -40,7 +40,8 @@ class RequestHeaderSizeSpec extends AnyFlatSpec with Matchers {
     } finally {
       server.stop()
       // `Server.stop` shuts logback down for the whole test JVM; put logback.xml back
-      // so the specs that run after this one (LogbackConfigSpec) see the real config.
+      // so the specs that run after this one (LogbackConfigSpec) see the real config. All of it inside
+      // `LogCapture.exclusively`: a log capture running meanwhile would lose its events to the reset.
       val logback = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
       logback.reset()
       new ContextInitializer(logback).autoConfig()

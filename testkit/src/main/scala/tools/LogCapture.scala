@@ -36,6 +36,13 @@ import scala.jdk.CollectionConverters.*
  * detach by anyone else cannot drop it: a stale snapshot is at worst one taken after the
  * hub's own `add`.
  *
+ * THE RESET RACE: a spec that resets or shuts down the JVM-global logback context (a Play `Server.stop`, a
+ * `LoggerContext.reset()`) detaches every hub and appender and drops the events logged meanwhile, so a capture
+ * running on another suite's thread came back empty although its line was logged
+ * (`MongoUserRepositoriesUnreachableSpec`, "List() was empty", beside `RequestHeaderSizeSpec`). Captures hold the
+ * read side of [[contextLock]] for their whole run; such a spec wraps itself in [[exclusively]] and so waits for
+ * the captures in flight, and holds new ones back until it has put the configuration back.
+ *
  * Lives in testkit so worker, web and e2e share one copy. `common`'s own tests cannot
  * reach it — testkit depends on `common`, and the reverse would be a project cycle — so
  * `RemovalAuditSpec` carries the same appender inline; keep the two in step.
@@ -67,7 +74,22 @@ object LogCapture {
     LoggerFactory.getLogger(name).asInstanceOf[LogbackLogger]
   }
 
+  private val contextLock = new java.util.concurrent.locks.ReentrantReadWriteLock()
+
+  /** Runs `body`, which resets or stops the global logging context, with no capture running and none starting. */
+  def exclusively[A](body: => A): A = {
+    val write = contextLock.writeLock()
+    write.lock()
+    try body finally write.unlock()
+  }
+
   def capture(loggerName: String, level: Option[Level] = None)(body: => Unit): Seq[ILoggingEvent] = {
+    val read = contextLock.readLock()
+    read.lock()
+    try captureLocked(loggerName, level)(body) finally read.unlock()
+  }
+
+  private def captureLocked(loggerName: String, level: Option[Level])(body: => Unit): Seq[ILoggingEvent] = {
     val logger    = logbackLogger(loggerName)
     val hub       = hubOf(logger)
     val collector = new CollectingAppender
