@@ -41,6 +41,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   change re-evaluates everything as if all data had been there from the start), the audit of every carried state (one
   file per item in `design/identity-no-drift/state/`), the equivalence harness, and what still blocks retiring the drift
   checks.
+- [design/identity-structural-fixes.md](design/identity-structural-fixes.md) — the owner's four structural fixes of
+  2026-11-05 (typed unknown, asking apart from deciding, one replay world, rule burn-down): plan, owner rules served,
+  measurements, order; the `Identity-Design:` reference of the rule burn-down commits.
 - [design/convergence-fixture-fill.md](design/convergence-fixture-fill.md) — how a hermetic convergence leg's
   missing fixtures get recorded, and what that does to a verdict.
 - [design/identity-known-wrongs-and-todos.md](design/identity-known-wrongs-and-todos.md) — SUPERSEDED snapshot of
