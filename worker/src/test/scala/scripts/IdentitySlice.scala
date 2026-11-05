@@ -331,6 +331,9 @@ object IdentitySlice {
   def writeSlice(dir: Path, slice: Slice): Unit = {
     val part = dir.resolveSibling(s"${dir.getFileName}.part-${ProcessHandle.current.pid}")
     writeSliceFiles(part, slice)
+    // what else the slice's directory holds (its `seeds`, IdentityDriftSlicesSpec's pinned seeds) stays with it
+    if (Files.isDirectory(dir)) Files.list(dir).iterator.asScala.filter(Files.isRegularFile(_))
+      .filterNot(f => Files.exists(part.resolve(f.getFileName))).foreach(f => Files.copy(f, part.resolve(f.getFileName)))
     deleteTree(dir)
     Files.move(part, dir, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
   }

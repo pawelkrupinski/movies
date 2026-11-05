@@ -408,6 +408,10 @@ object IdentityDrift {
      *  reads its answers for at its first apply waited here for the queue's next round, served the model's film meanwhile. */
     def inline(release: String => Boolean): AgreementStage.AskNow = (questions, _) =>
       file(asks(store, (Question.families(questions) -- unreachable).toSeq.sortBy { case (f, q) => (f.ordinal, q) }, release))
+    /** One family question filed as a round files it, unless the store holds it already: what a sub-population's
+     *  settle asked, read again alone ([[services.identity.agreement.FamilyFinalReads.AnswerOracle]]). */
+    def fileOne(family: VoterFamily, asked: String): Unit =
+      if (store.wanted(FamilyAnswerStore.questionId(family, asked))) file(Seq(family -> asked))
     private def file(open: Seq[(VoterFamily, String)]): Unit =
       tools.ConcurrentAsks.inLanes(open.groupBy(_._1).values, 4) { case question @ (family, asked) =>
         try { AgreementQuestions.file(store, family, reads.sources(family), asked); answered.add(question); () }
@@ -866,7 +870,9 @@ object IdentityDrift {
     private val noting    = widenFrom.map(w => new tools.SliceHttp.Noting(w.fetch, w.metOnThread))
     val replaying         = new tools.SliceHttp.Replaying(slice.http, noting)
     private val filed     = widenFrom.fold(slice.filed)(_.filed)
-    private val notings   = new java.util.concurrent.ConcurrentLinkedQueue[tools.FiledAnswers.Noting]
+    // each store's READ answers alone: a store holds the whole capture's family answers, and a family check's lattice
+    // makes one a subset (hundreds a slice) -- kept whole, they ran a cut out of heap
+    private val notings   = new java.util.concurrent.ConcurrentLinkedQueue[java.util.Map[String, org.bson.BsonDocument]]
     private val reads     = new java.util.concurrent.ConcurrentLinkedQueue[Reads]
     val listings: Seq[Listing] = (slice.core ++ slice.context).sortBy(_.sortKey)
     def readsAt(clock: java.time.Clock): Reads = {
@@ -874,13 +880,13 @@ object IdentityDrift {
       reads.add(made)
       made
     }
-    val filedDocs: FiledDocs = f => { val n = new tools.FiledAnswers.Noting(f); notings.add(n); n }
+    val filedDocs: FiledDocs = f => { val n = new tools.FiledAnswers.Noting(f); notings.add(n.read); n }
     def run(seeds: Seq[Int], gate: Int): Findings = replay(slice.country, listings, slice.recordedAt, seeds, gate, readsAt, filedDocs, leaveOne = true)
     /** The requests the slice lacked (none read from a recording): a replay of it is not the cut's. */
     def lacking: Seq[String] = replaying.lacking.asScala.map(_.render).toSeq.sorted
     /** The slice with what this run read beside it — the recording's answers it lacked, the filed answers read — written back. */
     def keep(): Unit = {
-      val families = notings.asScala.flatMap(_.read.asScala).toMap
+      val families = notings.asScala.flatMap(_.asScala).toMap
       val finds    = reads.asScala.flatMap(_.findsRead.asScala).toMap
       val read     = reads.asScala.flatMap(_.filedLookups).foldLeft(tools.FiledAnswers.read(filed, families, finds, None)) { (sofar, l) =>
         tools.FiledAnswers.merge(sofar, tools.FiledAnswers.read(filed, Map.empty, Map.empty, Some(l)))
@@ -905,30 +911,45 @@ object IdentityDrift {
    *  listings replayed with the recording and prod's filed answers behind it (`widened`) — the slice CLOSED when it lacks
    *  nothing and the two find the same divergences and flips. A slice is then green exactly when its listings' replay
    *  over everything the recording holds is: no red (or green) of the cut's own. */
-  final case class Cut(rounds: Int, widened: Findings, alone: Findings, lacking: Seq[String]) {
+  final case class Cut(rounds: Int, widened: Findings, alone: Findings, lacking: Seq[String],
+                       /** The family check's flips over the slice's lattice ([[latticeOf]]), with the recording behind it and alone. */
+                       latticeWidened: Set[String] = Set.empty, latticeAlone: Set[String] = Set.empty) {
     def differences: Seq[String] = {
       // by film, not prose: a take's explanation names what it read, which the two read through other stores
       def lines(f: Findings) = f.divergences.map(d => s"divergence ${d.key.venue} | ${d.key.rawTitle}: whole ${d.whole.film}, incremental " +
         s"${d.incremental.film} [${d.checkpoint}, seed ${d.seed}]").toSet ++
         f.flips.map { case (seed, flip) => s"flip ${flip.key.venue} | ${flip.key.rawTitle}: ${flip.films} [seed $seed]" }
       val (w, a) = (lines(widened), lines(alone))
-      (w -- a).toSeq.sorted.map(l => s"only with the recording: $l") ++ (a -- w).toSeq.sorted.map(l => s"only in the slice: $l")
+      val (lw, la) = (latticeWidened, latticeAlone)
+      ((w -- a) ++ (lw -- la)).toSeq.sorted.map(l => s"only with the recording: $l") ++
+        ((a -- w) ++ (la -- lw)).toSeq.sorted.map(l => s"only in the slice: $l")
     }
     def closed: Boolean = lacking.isEmpty && differences.isEmpty
   }
 
-  /** Cuts the slice in `dir` CLOSED: replays it with `widen` behind it and keeps everything that read (the transitive
-   *  closure of what its listings' resolution asks — searches, records, venue pages, the families' answers, finds, fills),
-   *  then replays it alone; again, from what it holds now, while the replay alone lacks a request or finds otherwise, at
-   *  most `rounds` times. The last round's verdict: a [[Cut]] not [[Cut.closed]] fails the cut. */
+  /** The family check's flips over `run`'s slice: its families' whole population lattice walked
+   *  ([[services.identity.FamilyConvergence]]), each sub-population's own answers read through `run` -- what a cut keeps,
+   *  so a subset's answers are the slice's too, not only those the incremental sequence's seeds happened to ask. */
+  def latticeOf(run: SliceRun): Set[String] =
+    services.identity.FamilyConvergence.check(services.identity.FamilyConvergence.sliceCorpus(run, "cut"), Map.empty,
+      services.identity.FamilyConvergence.Options()).flips.map { case (_, f) => s"family ${f.stage} ${f.kind} ${f.listing}" }.toSet
+
+  /** Cuts the slice in `dir` CLOSED: replays it with `widen` behind it -- the incremental sequence and the family check's
+   *  lattice ([[latticeOf]]) -- and keeps everything that read (the transitive closure of what its listings' resolution
+   *  and every sub-population's asks — searches, records, venue pages, the families' answers, finds, fills), then replays
+   *  both alone; again, from what it holds now, while the replay alone lacks a request or finds otherwise, at most `rounds`
+   *  times. The last round's verdict: a [[Cut]] not [[Cut.closed]] fails the cut. */
   def cut(dir: Path, seeds: Seq[Int], gate: Int, widen: SliceRun.Widen, rounds: Int = 3): Cut = {
     def round(n: Int): Cut = {
       val widening = new SliceRun(dir, Some(widen))
       val widened  = widening.run(seeds, gate)
+      val wideFlips = latticeOf(widening)
       widening.keep()
       System.err.println(s"[identity-drift] cut round $n: the slice kept ${widening.replaying.widened.size} answer(s) read from the recording")
       val alone    = new SliceRun(dir)
-      val verdict  = Cut(n, widened, alone.run(seeds, gate), alone.lacking)
+      val replayed = alone.run(seeds, gate)
+      val flips    = latticeOf(alone)
+      val verdict  = Cut(n, widened, replayed, alone.lacking, wideFlips, flips)
       if (verdict.closed || n >= rounds) verdict else round(n + 1)
     }
     round(1)

@@ -191,7 +191,8 @@ lazy val HeavyRows: Map[String, Set[String]] = Map(
     "scripts.IdentityUnifiedFitSpec",                 // the unified model's weights fitted again from every capture's rows
     "services.identity.NonFilmEventsFixtureSpec",     // the non-film events over every capture's unmatched clusters
     "tools.UnmatchedClustersGapsSpec",                // a capture replayed for the lookups it lacks
-    "scripts.IdentityDriftSlicesShard1Spec"),         // the drift slices' second shard (IdentityDriftSlicesSpec)
+    "scripts.IdentityDriftSlicesShard1Spec",          // the drift slices' second shard (IdentityDriftSlicesSpec)
+    "services.identity.FamilyConvergenceSlicesSpec"), // every drift slice's families walked over their population lattice
   "heavy2" -> Set(
     "scripts.IdentityRefitMeasureAllSpec",            // the refit's whole-vs-sharded measure over two captures
     "services.identity.UnmatchedClustersRatchetSpec", // the ratchet: the five captures replayed

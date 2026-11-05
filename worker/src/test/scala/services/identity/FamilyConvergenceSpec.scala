@@ -39,6 +39,35 @@ class FamilyConvergenceSpec extends AnyFlatSpec with Matchers with tools.Scratch
     FamilyConvergence.check(FamilyConvergence.sliceCorpus(buddies, "rules-2"), cache, options).walked shouldBe first.verdicts.size
   }
 
+  it should "hold in a family's closure the answers only a sub-population asks, and walk it again when one reads otherwise" in {
+    // Kinepolis "Piesek": a subset of the family asks Filmweb of records no settle of the whole family files -- the
+    // closure keeps them by what they read asked alone, and a cache read under another answer is walked again
+    val piesek = FamilyConvergence.sliceCorpus(slices.resolve("pl/cinema-city-kinepolis-piesek-1d2222d6"), "rules-1")
+    val run    = FamilyConvergence.check(piesek, Map.empty, options)
+    val asked  = run.verdicts.filter(_.closure.exists(_.kind == "answer"))
+    asked should not be empty
+    FamilyConvergence.check(FamilyConvergence.sliceCorpus(slices.resolve("pl/cinema-city-kinepolis-piesek-1d2222d6"), "rules-1"),
+      run.verdicts.map(v => v.key -> v).toMap, options).walked shouldBe 0
+    val one   = asked.head
+    val moved = one.copy(closure = one.closure.map(r => if (r.kind == "answer") r.copy(digest = r.digest + 1) else r))
+    FamilyConvergence.check(FamilyConvergence.sliceCorpus(slices.resolve("pl/cinema-city-kinepolis-piesek-1d2222d6"), "rules-1"),
+      run.verdicts.map(v => v.key -> v).toMap.updated(one.key, moved), options).walked shouldBe 1
+  }
+
+  "A corpus run's shards" should "split its families, each walked by exactly one, and its flips be the backlog's rows" in {
+    // a CI row walks one shard of a country (scripts/ci/identity-family-check.sh): together they walk every family once
+    val corpus = FamilyConvergence.sliceCorpus(slices.resolve("uk/nerve-centre-londonderry-the-ladykillers-039701b7"), "rules-1")
+    val whole  = FamilyConvergence.check(corpus, Map.empty, options)
+    val parts  = (1 to 3).map(i => FamilyConvergence.check(corpus, Map.empty, options.copy(shard = Some(i -> 3))))
+    parts.flatMap(_.verdicts.map(_.family)).sorted shouldBe whole.verdicts.map(_.family).sorted
+    parts.flatMap(_.flips.map(_._2)).toSet shouldBe whole.flips.map(_._2).toSet
+    // identity-flip-backlog.tsv's shape, kind `family`: one row a listing, its venue and raw title apart
+    val rows = FamilyConvergence.flipsTsv("uk", whole).linesIterator.toSeq
+    rows.head shouldBe "kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote"
+    val ladykillers = rows.tail.map(_.split("\t", -1).toSeq).find(_(5) == "The Ladykillers | Cinematic Breakfast")
+    ladykillers.map(r => (r(0), r(1), r(4))) shouldBe Some(("family", "uk", "Nerve Centre Londonderry"))
+  }
+
   "A cache" should "read back what it wrote" in {
     val file = tempFile("family-convergence", ".json")
     FamilyConvergence.save(file, first.verdicts)

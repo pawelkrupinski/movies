@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{ContentHash, Dependency, FamilyIndex, IdentityLookups, Listing, Resolution}
+import services.identity.{ContentHash, Dependency, FamilyIndex, IdentityLookups, Listing, Question, Resolution}
 import services.movies.ListingKey
 import tools.{MutableClock, UnmatchedClusters}
 
@@ -24,9 +24,9 @@ object FamilyFinalReads {
 
   /** `listings`, their model `resolution`, settled through a fresh stage over the recording's answers `reads`. */
   def settle(reads: scripts.IdentitySlice.Reads, listings: Seq[Listing], resolution: Resolution, lookups: IdentityLookups,
-             recordedAt: java.time.Instant): Settled = {
+             recordedAt: java.time.Instant, docs: scripts.IdentityDrift.FiledDocs = scripts.IdentityDrift.Noted): Settled = {
     val clock    = new MutableClock(recordedAt)
-    val answers  = new scripts.IdentityDrift.Answers(reads, scripts.IdentityDrift.Noted(reads.filed), clock, _ => None)
+    val answers  = new scripts.IdentityDrift.Answers(reads, docs(reads.filed), clock, _ => None)
     val verdicts = new InMemoryAgreementVerdicts
     val recorded = new FamilyIndex.RecordingLookups(lookups)
     val stage    = answers.stage(recorded, verdicts, budgets = false)
@@ -53,4 +53,19 @@ object FamilyFinalReads {
     } ++ was.lookups.toSeq.collect {
       case (read, digest) if !FamilyIndex.Lookups.digestIn(read, now.source, now.listingOf).contains(digest) => "lookup|" + Dependency.encode(read)
     }
+
+  /** What a FAMILY ANSWER digests to when asked of the corpus's answers alone (`reads`, prod's filed ones through `docs`):
+   *  one question filed into a fresh store of its own, read through a stage over it. A sub-population's settle asks
+   *  questions no settle of the whole family does -- the whole's stage reads them unfiled -- so the family check's closure
+   *  records them by this digest, and reads them again by it ([[services.identity.FamilyConvergence]]). */
+  final class AnswerOracle(reads: scripts.IdentitySlice.Reads, lookups: IdentityLookups, recordedAt: java.time.Instant,
+                           docs: scripts.IdentityDrift.FiledDocs = scripts.IdentityDrift.Noted) {
+    private val answers = new scripts.IdentityDrift.Answers(reads, docs(reads.filed), new MutableClock(recordedAt), _ => None)
+    private val stage   = answers.stage(lookups, new InMemoryAgreementVerdicts, budgets = false)
+    def digest(read: Dependency): Option[Long] = read match {
+      case Dependency.Answer(Question.Family(family, asked)) =>
+        synchronized { answers.fileOne(family, asked); stage.digestNow(read, _ => None) }
+      case _ => None
+    }
+  }
 }

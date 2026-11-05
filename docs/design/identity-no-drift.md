@@ -521,7 +521,13 @@ the family's absent listings out, the final take by a fresh stage per subset; a 
 digest and its final reads, with its CLOSURE: the reads a subset made beyond the whole family's (context reads by the
 whole corpus's value, lookups, the year). A run walks again only a family whose key or closure moved: over the 29 drift
 slices a first run walks 50 families (66 flips, Buddies, Durham, Oxide Ghosts and Titans among them) and a second walks
-none. Not in the closure yet: a family answer only a sub-population asks, which no settle of the whole family reads.
+none. A family answer only a sub-population asks -- no settle of the whole family files it -- is in the closure too
+(kind `answer`), digested as it reads asked alone of the corpus's answers (`FamilyFinalReads.AnswerOracle`). A drift
+slice is cut over its families' lattice as well as the incremental sequence (`IdentityDrift.cut`, `latticeOf`), so a
+subset's question is the slice's answer, never a gap read as unknown: before that cut, 5 of the 29 slices lacked the
+lattice's answers (Hasetor "Scott & Lila" 5, Halstead's three 2-3, Torrington 2). `FamilyConvergenceSlicesSpec` (heavy1)
+walks every slice and holds that it lacks nothing. A CORPUS run (`--corpus <cc> --recording DIR --families CAPTURE
+[--shard i/n]`) walks a recording's whole country, the families split into shards by their first member's key.
 
 ## Held takes (proposal, 2026-11-05; not implemented -- the owner decides)
 
