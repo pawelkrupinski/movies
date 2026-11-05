@@ -32,7 +32,9 @@ class ReviewController(cc: ControllerComponents,
                        // Why the pages may be empty or answers not kept, for the banner (no mirror, answers in memory).
                        notices: Seq[String] = Nil,
                        // A candidate's TMDB poster asked live when no stored read gives one; none without a TMDB key.
-                       tmdbPosters: Option[TmdbPosterLookup] = None) extends AbstractController(cc) {
+                       tmdbPosters: Option[TmdbPosterLookup] = None,
+                       // False when no labels file was configured (`REVIEW_LABELS_FILE`): answers are kept, never written.
+                       labelsWritable: Boolean = true) extends AbstractController(cc) {
 
   private def devOnly(result: => Result): Result = DevMode.gate(environment)(result)
 
@@ -239,6 +241,7 @@ class ReviewController(cc: ControllerComponents,
   /** The labels file brought up to every answer given: what the export did. */
   private def exported(): Try[LabelsExport.Summary] = exporting.synchronized {
     Try {
+      if (!labelsWritable) throw new IllegalStateException(ReviewController.LabelsNotConfigured)
       val history = answers.history()
       LabelsExport.exportTo(labelsPath, history, FilmIdentity.linking(history, sources))
     }
@@ -256,6 +259,8 @@ class ReviewController(cc: ControllerComponents,
 
 object ReviewController {
   val DefaultLimit = 20
+  val LabelsNotConfigured = "REVIEW_LABELS_FILE is not set, so no judgements file is written (start the server with scripts/review-server, " +
+    "from the review worktree); the answer is kept and the next export catches the file up"
 }
 
 /** Everything `review.scala.html` renders. */

@@ -218,7 +218,10 @@ scope filmTitle reason judged evidence` (documented in `scripts/ci/identity_judg
   "for the user" list buried in a report or `docs/identity-experiments.md` alone. The digest lists it until a row judges it.
 - The user's digest answers (right / wrong / not a film) are written into this file as each is given, as `review page:`
   rows: a confirmed or overruled agent row is rewritten in place, its agent evidence kept after "was:". The user
-  commits them with `scripts/review-commit`.
+  commits them with `scripts/review-commit`. The server that writes them is `scripts/review-server`, which runs in a
+  worktree of its own (`~/projects/movies-review-labels`, branch `review/labels`) and tells the app its file through
+  `REVIEW_LABELS_FILE`; never `sbt web/run` in the root checkout (the root-checkout guard refuses it). Land with
+  `~/bin/agentctl land` from that worktree.
 
 The lint (`python3 scripts/ci/identity_judgements_lint.py`, a second) fails a second row for one key — a listing judged
 both ways, or a `merge=union` merge (`.gitattributes`) that kept both sides of one edited row — keys not normalised, a

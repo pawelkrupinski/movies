@@ -30,25 +30,28 @@ object ReviewLabelsCli {
       val answers = new ReviewAnswers(new MongoReviewAnswerStore(client.getDatabase(MongoReviewAnswerStore.Database)))
       val sources: Map[models.Country, ReviewSource] = models.Country.all.map(c =>
         c -> (new MongoReviewSource(client.getDatabase(MongoConnection.mirrorDbFor(c.mongoDb))): ReviewSource)).toMap
-      println(run(answers, args.toList, sources))
+      println(run(answers, args.toList, sources, configuration.reviewLabelsFile.map(_.value)))
     } finally client.close()
   }
 
+  private def noLabelsFile: Nothing = sys.error("no judgements file: set REVIEW_LABELS_FILE (scripts/review-server does) or pass the path")
+
   /** One command against `answers`, its report as text. */
-  def run(answers: ReviewAnswers, args: List[String], sources: Map[models.Country, ReviewSource] = Map.empty): String = args match {
+  def run(answers: ReviewAnswers, args: List[String], sources: Map[models.Country, ReviewSource] = Map.empty,
+          labelsFile: Option[java.nio.file.Path] = None): String = args match {
     case "import" :: path :: Nil =>
       val parsed = ReviewImport.parse(new String(Files.readAllBytes(Paths.get(path)), StandardCharsets.UTF_8))
       val added  = answers.importAll(parsed)
       (s"imported $added of ${parsed.size} answers (${parsed.size - added} already there)" +:
         parsed.flatMap(a => a.warnings.map(w => s"WARNING: ${a.country} ${a.title}: $w"))).mkString("\n")
     case "export" :: rest =>
-      val path = rest.headOption.map(Paths.get(_)).getOrElse(LabelsTsv.locate())
+      val path = rest.headOption.map(Paths.get(_)).orElse(labelsFile).getOrElse(noLabelsFile)
       val history = answers.history()
       s"$path\n" + LabelsExport.exportTo(path, history, FilmIdentity.linking(history, sources)).render
     case "queue" :: rest =>
       val top     = rest.headOption.flatMap(_.toIntOption).getOrElse(50)
       val first   = rest.drop(1).headOption.flatMap(_.toIntOption).getOrElse(170)
-      val judged  = new JudgedListings(LabelsTsv.read(LabelsTsv.locate()))
+      val judged  = new JudgedListings(LabelsTsv.read(labelsFile.getOrElse(noLabelsFile)))
       val index   = new ReviewAnswers.Index(answers.current())
       ReviewQueueReport.render(sources.toSeq.sortBy(_._1.code).map { case (c, s) => ReviewQueueReport.queued(c, s, judged, index) }, top, first)
     case _ =>

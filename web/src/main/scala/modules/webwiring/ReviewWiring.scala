@@ -4,7 +4,8 @@ import controllers.ReviewController
 import modules.Wiring
 import play.api.Mode
 import services.MongoConnection
-import services.review.{CachingReviewSource, InMemoryReviewAnswerStore, LabelsTsv, MongoReviewAnswerStore, MongoReviewSource, ReviewAnswers, ReviewSource, TmdbPosterLookup}
+import java.nio.file.Paths
+import services.review.{CachingReviewSource, InMemoryReviewAnswerStore, MongoReviewAnswerStore, MongoReviewSource, ReviewAnswers, ReviewSource, TmdbPosterLookup}
 
 /** ── /debug/review ─────────────────────────────────────────────────────────
  *  The dev-only identity review pages. They read the LOCAL read-mirror and nothing else: with
@@ -29,9 +30,10 @@ trait ReviewWiring { self: Wiring =>
     client => new MongoReviewAnswerStore(client.getDatabase(MongoReviewAnswerStore.Database))))
 
   lazy val reviewController: ReviewController = new ReviewController(controllerComponents, environmentMode, reviewSources, reviewAnswers,
-    LabelsTsv.locate(), clock,
+    processConfiguration.reviewLabelsFile.map(_.value).getOrElse(Paths.get("REVIEW_LABELS_FILE-not-set")), clock,
     tmdbPosters = Option.when(environmentMode != Mode.Prod)(processConfiguration.tmdbApiKey.map(new TmdbPosterLookup(httpFetch, _))).flatten,
-    notices = if (reviewMirrorClient.isEmpty)
+    labelsWritable = processConfiguration.reviewLabelsFile.isDefined,
+    notices = (if (reviewMirrorClient.isEmpty)
       Seq("MONGODB_MOVIES_MIRROR_URI is not set: these pages read only the local mirror (scripts/local-mirror/README.md), so they list nothing, and answers are kept in memory only.")
-    else Nil)
+    else Nil) ++ (if (processConfiguration.reviewLabelsFile.isEmpty) Seq(ReviewController.LabelsNotConfigured.capitalize) else Nil))
 }

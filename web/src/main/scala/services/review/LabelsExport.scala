@@ -20,19 +20,13 @@ final case class LabelRow(country: String, venue: String, rawTitle: String, film
 
 object LabelsTsv {
   val Header = "country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence"
-  /** Where the checkout keeps it, relative to the repository root. */
+  /** Where a checkout keeps it, relative to its root; the review server is told which checkout's (`REVIEW_LABELS_FILE`). */
   val RelativePath: Path = Paths.get("test", "resources", "fixtures", "identity-judgements.tsv")
 
   /** A billing as every judgement keys it -- runs of whitespace one space, none at the ends -- as the judgements' own
    *  readers key it (tools.IdentityJudgements, scripts/ci/identity_judgements.py), all three held to the same cases
    *  (`identity-judgements-normalise.jsonl`). */
   def normalise(raw: String): String = raw.replaceAll("(?U)\\s+", " ").stripPrefix(" ").stripSuffix(" ")
-
-  /** The checkout's labels file, from the working directory or one above it (`sbt web/run` runs from the root,
-   *  a forked `web` process from `web/`). */
-  def locate(from: Path = Paths.get("").toAbsolutePath): Path =
-    Iterator.iterate(from)(_.getParent).takeWhile(_ != null).take(3).map(_.resolve(RelativePath))
-      .find(Files.exists(_)).getOrElse(from.resolve(RelativePath))
 
   def parse(lines: Seq[String]): Seq[LabelRow] =
     lines.filter(_.nonEmpty).filterNot(_.startsWith("#")).filterNot(_ == Header).map { line =>

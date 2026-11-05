@@ -24,6 +24,12 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom().mongoAddress shouldBe MongoAddress.Disabled
   }
 
+  it should "resolve the review labels file only from REVIEW_LABELS_FILE, never from the working directory" in {
+    resolvedFrom("REVIEW_LABELS_FILE" -> "/tmp/wt/identity-judgements.tsv").reviewLabelsFile shouldBe Some(ReviewLabelsFile(Path.of("/tmp/wt/identity-judgements.tsv")))
+    resolvedFrom().reviewLabelsFile shouldBe None
+    resolvedFrom("REVIEW_LABELS_FILE" -> "  ").reviewLabelsFile shouldBe None
+  }
+
   it should "resolve a worker's countries, skipping and naming unknown codes" in {
     val resolved = resolvedFrom("KINOWO_COUNTRIES" -> "uk, xx ,de")
     resolved.workerCountries shouldBe WorkerCountries(Seq(Country.UnitedKingdom, Country.Germany))

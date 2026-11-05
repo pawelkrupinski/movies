@@ -46,6 +46,8 @@ final case class MirrorMongoUri(value: String) extends AnyVal {
   /** The mirror is a Mongo cluster like any other, once chosen. */
   def asMongoUri: MongoUri = MongoUri(value)
 }
+/** `REVIEW_LABELS_FILE` — the `identity-judgements.tsv` the /debug review pages write their answers into. */
+final case class ReviewLabelsFile(value: Path) extends AnyVal
 /** `MONGODB_PROBE_TIMEOUT_SECONDS` — how long a boot waits for Mongo to answer. */
 final case class MongoProbeTimeout(value: FiniteDuration) extends AnyVal
 /** `KINOWO_MONGO_MAX_POOL_SIZE` — connections per MongoClient. */

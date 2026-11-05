@@ -5,21 +5,29 @@
 #
 #   scripts/review-commit [-m "<subject>"]
 #
-# Run it in the checkout the dev server (`sbt web/run`) writes: the root checkout, or a worktree. It commits; push as
-# usual. An answer given while no page was writing the file: `sbt "web/runMain services.review.ReviewLabelsCli export"`.
+# Run it in the review worktree scripts/review-server serves from (~/projects/movies-review-labels, branch
+# review/labels) -- never the root checkout, which it refuses. It commits; land with `~/bin/agentctl land` from
+# there. An answer given while no page was writing the file (REVIEW_LABELS_FILE unset, or the server down):
+# `REVIEW_LABELS_FILE=$PWD/test/resources/fixtures/identity-judgements.tsv sbt "web/runMain services.review.ReviewLabelsCli export"`.
 set -euo pipefail
 
 subject="Judgements: the user's review answers"
 while [ $# -gt 0 ]; do
   case "$1" in
     -m) subject="$2"; shift 2 ;;
-    -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "review-commit: unknown argument $1" >&2; exit 2 ;;
   esac
 done
 
 root=$(git rev-parse --show-toplevel)
 cd "$root"
+if [ "$(git rev-parse --path-format=absolute --git-dir)" = "$(git rev-parse --path-format=absolute --git-common-dir)" ] && [ "${REVIEW_COMMIT_IN_ROOT:-}" != 1 ]; then
+  echo "review-commit: $root is the shared root checkout; the review answers belong in the review worktree." >&2
+  echo "  Run scripts/review-server (it makes ~/projects/movies-review-labels on review/labels), answer there," >&2
+  echo "  then run scripts/review-commit from that worktree and land with ~/bin/agentctl land." >&2
+  exit 1
+fi
 tsv=test/resources/fixtures/identity-judgements.tsv
 used="$tsv.used-until"
 
@@ -48,3 +56,4 @@ $added rows written or rewritten, $removed replaced or taken back ($confirmed of
 confirmed or overruled), from the dev review pages' answers (review_local.review_answers).
 MSG
 git log --oneline -1
+echo "review-commit: land it: ~/bin/agentctl land (from $root)"

@@ -9,7 +9,10 @@ clean -- CLAUDE.md's "don't work in the root checkout". A rule in prose was not 
   edit       PreToolUse on Edit|Write|NotebookEdit: DENIES a write to a path of the root checkout that git
              would report (tracked, or untracked and not ignored). Ignored files (.claude/settings.local.json,
              target/, ...) and every other worktree -- .claude/worktrees/* included -- are allowed.
-  bash-pre   PreToolUse on Bash: remembers what the root checkout's `git status` and branch were...
+  bash-pre   PreToolUse on Bash: DENIES launching the dev server (`sbt web/run`, scripts/dev-server.sh) from the root
+             checkout -- its /debug review pages write the user's hand labels into the checkout they run in
+             (scripts/review-server runs it in the dedicated review worktree). Otherwise remembers what the root
+             checkout's `git status` and branch were...
   bash-post  PostToolUse on Bash: ...and, when the command dirtied a new root path or switched its branch,
              says so to the agent (exit 2), which then moves the change into its worktree and undoes it.
              A Bash command cannot be read reliably before it runs, so this one reports after it.
@@ -23,6 +26,7 @@ it exits 0 (a broken guard must not wedge every session). Stdin is the hook's JS
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -118,8 +122,32 @@ def guard_session_start(event, repo):
     return 0
 
 
+DEV_SERVER = re.compile(r"(?:^|[;&|(\s])(?:sbt\b[^;&|]*\bweb/run\b|(?:\S*/)?scripts/dev-server\.sh\b|\./dev-server\.sh\b)")
+CHANGES_DIRECTORY = re.compile(r"(?:^|[;&|(]\s*)(?:cd|pushd)\s")
+REVIEW_ADVICE = (
+    "The dev server's /debug review pages write the user's hand labels into identity-judgements.tsv of the checkout "
+    "they run in, which must never be the root. Run `scripts/review-server` instead: it keeps a worktree of its own "
+    "(~/projects/movies-review-labels, branch review/labels) and serves from there; commit the answers with "
+    "`scripts/review-commit` and land them with `~/bin/agentctl land`. Any other dev server: run it from your own worktree."
+)
+
+
+def launches_dev_server_in_root(event, root):
+    """True when the Bash command starts the dev server with the root checkout as its working directory (a command
+    that `cd`s first is judged to know where it goes)."""
+    command = (event.get("tool_input") or {}).get("command") or ""
+    cwd = event.get("cwd") or os.getcwd()
+    if not DEV_SERVER.search(command) or CHANGES_DIRECTORY.search(command):
+        return False
+    code, top = git(nearest_dir(cwd), "rev-parse", "--show-toplevel")
+    return code == 0 and real(top.strip()) == root
+
+
 def guard_bash_pre(event, repo):
     root = root_checkout(repo)
+    if root and launches_dev_server_in_root(event, root):
+        sys.stderr.write("BLOCKED: that starts the dev server in the shared ROOT checkout (%s). %s\n" % (root, REVIEW_ADVICE))
+        return 2
     if root:
         branch, status = root_state(root)
         with open(state_file(event), "w") as f:

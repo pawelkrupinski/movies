@@ -195,8 +195,12 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers with ScratchDirectories
     } finally { Files.deleteIfExists(LabelsTsv.usedPath(path)); Files.deleteIfExists(path); Files.deleteIfExists(dir): Unit }
   }
 
+  // The checkout's own file, to read (never to write): the test JVM runs from the root or from `web/`.
+  private def checkoutLabels: java.nio.file.Path =
+    Iterator.iterate(java.nio.file.Paths.get("").toAbsolutePath)(_.getParent).take(3).map(_.resolve(LabelsTsv.RelativePath)).find(Files.exists(_)).get
+
   "the judgements file" should "round-trip byte for byte through read and write, its opening comments kept" in {
-    val path  = LabelsTsv.locate()
+    val path  = checkoutLabels
     val bytes = Files.readAllBytes(path)
     val copy  = tempFile("identity-judgements", ".tsv")
     try {
@@ -209,7 +213,7 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers with ScratchDirectories
   }
 
   "a billing" should "be keyed as the judgements' own readers key it, by the cases they all read" in {
-    val cases = Files.readAllLines(LabelsTsv.locate().resolveSibling("identity-judgements-normalise.jsonl")).toArray.toSeq.map(_.toString)
+    val cases = Files.readAllLines(checkoutLabels.resolveSibling("identity-judgements-normalise.jsonl")).toArray.toSeq.map(_.toString)
       .filter(_.nonEmpty).map(line => play.api.libs.json.Json.parse(line).as[Seq[String]])
     cases should not be empty
     cases.foreach { case Seq(raw, normalised) => withClue(raw)(LabelsTsv.normalise(raw) shouldBe normalised) }

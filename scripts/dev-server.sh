@@ -40,6 +40,11 @@
 # TMDB. The /debug/review cards ask TMDB live for a poster no stored read has; without TMDB_API_KEY
 # every one is "no TMDB poster". So it comes from the vault (one Touch ID per launch) unless already
 # exported; with no `secrets` CLI the server still boots, without those posters.
+#
+# REVIEW LABELS. The /debug review pages write the user's answers into the file named by REVIEW_LABELS_FILE and refuse
+# to write when it is unset (they never search the working directory). To answer review cards, run scripts/review-server,
+# which runs this in the review worktree with that file set -- not this script from the root checkout (the Claude
+# root-checkout guard refuses that).
 set -euo pipefail
 . "$(dirname "$0")/vault-env.sh"
 # shellcheck source=scripts/tool-conventions.sh

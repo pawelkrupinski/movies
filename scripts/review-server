@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# The dev server for the /debug review pages, run from the review worktree -- never from the root checkout.
+#
+# WHY. The pages write the user's hand labels into test/resources/fixtures/identity-judgements.tsv (+ `.used-until`)
+# as each answer is given, into the file named by REVIEW_LABELS_FILE (the server never searches for it from its working
+# directory: unset, it refuses to write). Run from the root checkout, those writes left the shared root dirty on a
+# detached HEAD for days. So the labels have ONE home: a worktree of their own, on a `review/labels` branch made from
+# origin/main, where scripts/review-commit commits them and `~/bin/agentctl land` lands them.
+#
+#   scripts/review-server [sbt flags...]       # creates/refreshes the worktree, then runs scripts/dev-server.sh in it
+#
+# REVIEW_WORKTREE overrides the worktree (default: movies-review-labels beside the root checkout, ~/projects/movies-review-labels),
+# REVIEW_BRANCH its branch (default review/labels), REVIEW_BASE what it starts from and is fast-forwarded to while it
+# holds no unlanded commit (default origin/main). Run it from any checkout or worktree of the repository.
+set -euo pipefail
+
+here=$(cd "$(dirname "$0")/.." && pwd)
+root=$(git -C "$here" worktree list --porcelain | sed -n '1s/^worktree //p')
+worktree="${REVIEW_WORKTREE:-$(dirname "$root")/movies-review-labels}"
+branch="${REVIEW_BRANCH:-review/labels}"
+base="${REVIEW_BASE:-origin/main}"
+
+git -C "$root" fetch -q origin 2>/dev/null || echo "[review-server] could not fetch origin; using $base as last fetched" >&2
+if [ ! -e "$worktree/.git" ]; then
+  if git -C "$root" show-ref -q --verify "refs/heads/$branch"; then
+    git -C "$root" worktree add -q "$worktree" "$branch"
+  else
+    git -C "$root" worktree add -q -b "$branch" "$worktree" "$base"
+  fi
+  echo "[review-server] made worktree $worktree on $branch from $base" >&2
+elif [ -z "$(git -C "$worktree" status --porcelain)" ] && [ -z "$(git -C "$worktree" log --oneline "$base..HEAD")" ]; then
+  git -C "$worktree" merge -q --ff-only "$base" # nothing of the user's in it: catch up with main
+else
+  echo "[review-server] $worktree holds answers or commits not on $base yet: scripts/review-commit, then ~/bin/agentctl land" >&2
+fi
+
+export REVIEW_LABELS_FILE="$worktree/test/resources/fixtures/identity-judgements.tsv"
+echo "[review-server] answers are written to $REVIEW_LABELS_FILE" >&2
+cd "$worktree"
+exec scripts/dev-server.sh "$@"

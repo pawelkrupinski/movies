@@ -99,6 +99,11 @@ final class ProcessConfiguration(val env: Env) {
   /** `MONGODB_MOVIES_MIRROR_URI`. */
   def mirrorMongoUri: Option[MirrorMongoUri] = text("MONGODB_MOVIES_MIRROR_URI").map(MirrorMongoUri(_))
 
+  /** `REVIEW_LABELS_FILE`: the `identity-judgements.tsv` the dev review pages write their answers into -- the one a
+   *  review worktree holds (`scripts/review-server`). Never searched for from the working directory: unset, the
+   *  pages refuse to write rather than edit whatever checkout the server happened to start in. */
+  def reviewLabelsFile: Option[ReviewLabelsFile] = text("REVIEW_LABELS_FILE").map(file => ReviewLabelsFile(Path.of(file)))
+
   // ── Third-party credentials and ids ─────────────────────────────────────────
   def tmdbApiKey: Option[TmdbApiKey]                         = text("TMDB_API_KEY").map(TmdbApiKey(_))
   def omdbApiKey: Option[OmdbApiKey]                         = text("OMDB_API_KEY").map(OmdbApiKey(_))

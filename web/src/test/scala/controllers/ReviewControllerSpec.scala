@@ -33,6 +33,20 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     status(controller(Mode.Prod, tmdbPosters = Some(howlsLookup)).tmdbPoster(4935, Some("pl"))(FakeRequest())) shouldBe NOT_FOUND
   }
 
+  "an answer with no labels file configured" should "be kept, refused for the file with the fix named, and write nowhere" in {
+    val labels  = tempDirectory("unconfigured").resolve("identity-judgements.tsv")
+    val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
+    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock,
+      labelsWritable = false)
+    val card = ReviewDigest.pending(Seq(LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right",
+      "agent judged 2026-10-22 (test): x", judged = "2026-10-22")), Nil, Set.empty).head.payload
+    val reply = contentAsJson(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "right"))))
+    (reply \ "exportError").as[String] should include("REVIEW_LABELS_FILE is not set")
+    answers.history() should have size 1
+    status(c.exportLabels()(FakeRequest())) shouldBe INTERNAL_SERVER_ERROR
+    Files.exists(labels) shouldBe false
+  }
+
   // TMDB's recorded answer for "Howl's Moving Castle" (4935): the poster a card shows when no stored read gives one
   private def howlsLookup = TmdbPosterLookupSpec.lookup
 

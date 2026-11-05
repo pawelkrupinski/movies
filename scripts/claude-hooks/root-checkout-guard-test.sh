@@ -64,6 +64,23 @@ check "a call's dirt is reported though another call of its session began after 
 check "...and not blamed on that other call" 0 "$(pre_post post call-b; echo $?)"
 check "a post with no pre for its session never blocks" 0 "$(printf '{"session_id":"none"}' | python3 "$guard" bash-post --repo "$wt"; echo $?)"
 
+launch() { # <cwd> <command> -> the exit code of the bash-pre guard for that command run in that directory
+  jq -nc --arg cwd "$1" --arg cmd "$2" '{session_id:"dev",cwd:$cwd,tool_name:"Bash",tool_input:{command:$cmd}}' |
+    python3 "$guard" bash-pre --repo "$wt" 2>/dev/null; echo $?
+}
+printf '\033[36m▸\033[0m dev server\n'
+check "sbt web/run in the root checkout is denied" 2 "$(launch "$root" 'sbt web/run')"
+check "...with flags and an environment prefix" 2 "$(launch "$root" 'FOO=1 sbt -J-Xmx2500m web/run')"
+check "scripts/dev-server.sh in the root checkout is denied" 2 "$(launch "$root" 'scripts/dev-server.sh')"
+check "...from a subdirectory of it, through an absolute path" 2 "$(launch "$root/target" "$root/scripts/dev-server.sh")"
+check "...and the fix names scripts/review-server" 1 "$(jq -nc --arg cwd "$root" '{cwd:$cwd,tool_input:{command:"sbt web/run"}}' |
+  python3 "$guard" bash-pre --repo "$wt" 2>&1 | grep -c 'scripts/review-server')"
+check "sbt web/run in a linked worktree is allowed" 0 "$(launch "$wt" 'sbt web/run')"
+check "...and in a nested worktree" 0 "$(launch "$root/.claude/worktrees/agent" 'scripts/dev-server.sh')"
+check "a command that cd's into a worktree first is allowed" 0 "$(launch "$root" "cd $wt && sbt web/run")"
+check "scripts/review-server in the root checkout is allowed (it works in its own worktree)" 0 "$(launch "$root" 'scripts/review-server')"
+check "an unrelated sbt command in the root checkout is allowed" 0 "$(launch "$root" 'sbt web/test')"
+
 start() { # <cwd> -> how many times the session-start context names the root checkout
   printf '{"session_id":"s2","cwd":"%s"}' "$1" | python3 "$guard" session-start --repo "$wt" | grep -c 'started in the shared ROOT checkout'
 }
