@@ -277,13 +277,13 @@ class ArchiveReplayWiring(
    *  `Seq[CinemaMovie]`, which is precisely the "identical re-scrape" the
    *  convergence assertion needs — a prod tick that finds nothing changed. */
   lazy val archivedListings: Map[Cinema, Seq[CinemaMovie]] =
-    archive.findAll()
-      .filter(row => countryCinemas.contains(row.cinema))
+    countryRows
       .map(row => row.cinema -> row.films)
       .filter(_._2.nonEmpty)
       .toMap
 
   private lazy val countryCinemas: Set[Cinema] = CountryScrapeCorpus.cinemasOf(country).toSet
+  private def countryRows: Seq[services.scrapes.ArchivedScrape] = archive.findAll().filter(row => countryCinemas.contains(row.cinema))
 
   /** The recording's capture of the listings prod's model kept for their facts alone ([[ProdRetained]]): none unless
    *  the replay names its recording's. Overridden where a recording is replayed (the convergence rows, the takes
@@ -296,7 +296,12 @@ class ArchiveReplayWiring(
   // The model's take-up reads the recorded set as prod's reads its store (ListingRetention.retainedAt): the model's
   // input is the listings billed AND those kept, never the billed alone. No history behind a recording's set.
   override lazy val identityRetainedStore: services.identity.adapters.RetainedListingStore =
-    new services.identity.adapters.RetainedListingStore.InMemory(Some(services.identity.adapters.RetainedListingStore.undated(retainedOfReplay)))
+    new services.identity.adapters.RetainedListingStore.InMemory(Some(ProdRetained.departures(retainedOfReplay, recordedAt)))
+
+
+  /** When the replayed recording was made: its newest scrape (none archived: now, as a take-up dates an undated one). */
+  private def recordedAt: java.time.Instant = countryRows.flatMap(_.lastSuccess.map(_.at)).maxOption.getOrElse(clock.instant())
+
   override protected def identityHeldBefore(): Seq[services.identity.Listing] = Nil
 
   /** The kept listings a resolve of this replay reads beside the listings billed ([[services.identity.ModelRead.corpus]]

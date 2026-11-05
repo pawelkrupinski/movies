@@ -59,10 +59,11 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     var retained: RetainedListingStore = new RetainedListingStore.InMemory()
     var scrapes = Map.empty[Cinema, Seq[CinemaMovie]]
     var pageWait: PageWait = PageWait.Never
+    var clock: java.time.Clock = _root_.tools.SpecClock.Pinned
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
       reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), pageWait = pageWait,
-      clock = _root_.tools.SpecClock.Pinned, retainedStore = retained)
+      clock = clock, retainedStore = retained)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
       scrapes += cinema -> films; service.venueScraped(cinema, films)
     }
@@ -229,6 +230,29 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     service.peek(10.seconds).get.listings.map(_.key.venue) shouldBe Seq(Helios.displayName)
     // migrated, not lost: dated to the take-up, an input a later "Lalka" keeps again
     world.retained.read().get.map(d => (d.listing.key, d.at)) shouldBe stored.map(_.key -> _root_.tools.SpecClock.Pinned.millis())
+  }
+
+  // A replay of a recording takes up its capture of the kept set on the harness's fixed day, months before the corpus's
+  // next day, where the next-day row moves its clock. Dated to the take-up, every recorded listing aged past MaxAge at
+  // that move and left its family: Verify scrape recording #11 (run 42034527957), US "Reservoir Dogs", "Cape Fear" and
+  // "Play Misty for Me" lost the Pending a kept listing's unread page held, their own listings unchanged. Dated at the
+  // recording (ProdRetained.departures), a day after it ages them by a day, as in production.
+  it should "still hold a recorded kept listing a day after the recording, whatever day the replay took it up on" in {
+    val world      = new World
+    val recordedAt = java.time.Instant.parse("2026-11-05T03:38:04Z")
+    val clock      = new _root_.tools.MutableClock(java.time.Instant.parse("2026-06-08T12:00:00Z"))
+    world.clock    = clock
+    world.scrapes  = Map(Helios -> Seq(movie(Helios, "Lalka")))
+    val stored     = listingsOf(Map(Multikino -> Seq(movie(Multikino, "Lalka", Some(2025)))))
+    world.retained = new RetainedListingStore.InMemory(Some(_root_.tools.ProdRetained.departures(stored, recordedAt)))
+    val service    = world.service()
+    service.takeUp()
+    val kept = ListingKey.of(Multikino, movie(Multikino, "Lalka", Some(2025)))
+    service.peek(10.seconds).get.listings.map(_.key) should contain(kept)
+    clock.setTo(recordedAt.plus(java.time.Duration.ofDays(1)))                      // the next day
+    world.scrape(service, Helios, Seq(movie(Helios, "Lalka")))
+    service.drain()
+    service.peek(10.seconds).get.listings.map(_.key) should contain(kept)           // Helios still bills "Lalka"
   }
 
   it should "forget, in the reads index, the questions of a film no venue lists any more" in {
