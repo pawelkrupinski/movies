@@ -60,6 +60,21 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     (imdb.asked.get, projections.get) shouldBe ((1, 1))
   }
 
+  // A family this worker has no source for was skipped with nothing filed or remembered: never attempted, so a cluster
+  // waiting on it waited for good, and the stage handed it over -- and OutstandingQuestions queued it -- every 10 min.
+  it should "file a family it has no source for once as no film, attempted, and skip it after" in {
+    val store = world(); val remembered = newMemory(); val projections = new AtomicInteger
+    val dune    = Question.Family(VoterFamily.Wiki, "title|Dune")
+    val handler = asker(store, Map(VoterFamily.Imdb -> new Answering(VoterFamily.Imdb)), () => { projections.incrementAndGet(); () },
+      memory = remembered)
+    handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Done
+    store.answers(VoterFamily.Wiki).titled("Dune") shouldBe Answer.Known(Nil)
+    remembered.attempted(dune) shouldBe true
+    projections.get shouldBe 1
+    handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Skipped   // filed: fresh for the family's age
+    projections.get shouldBe 1
+  }
+
   it should "file a venue's programme the family's site lists" in {
     val store     = world()
     val programme = Seq(services.identity.agreement.Showing("10085635", ScreeningDays.of(Seq(java.time.LocalDate.parse("2026-10-07")))))

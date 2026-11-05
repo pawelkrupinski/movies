@@ -196,9 +196,17 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
 
   private def ask(question: Question, filed: () => Unit): HandlerOutcome = question match {
     case Question.Family(family, asked) =>
-      sources.get(family).fold[HandlerOutcome](Skipped) { source =>
-        if (!families.wanted(FamilyAnswerStore.questionId(family, asked))) fresh(family.label)
-        else asking(Seq(question), family.label, s"${family.label} '$asked'", filed)(AgreementQuestions.file(families, family, source, asked))
+      if (!families.wanted(FamilyAnswerStore.questionId(family, asked))) fresh(family.label)
+      else sources.get(family) match {
+        case Some(source) =>
+          asking(Seq(question), family.label, s"${family.label} '$asked'", filed)(AgreementQuestions.file(families, family, source, asked))
+        // a family this worker has no source for answers nothing: filed once as no film, as an empty answer is, so the
+        // question is attempted and fresh for the family's age, never left open for a cluster to wait on
+        case None =>
+          asking(Seq(question), family.label, s"${family.label} '$asked' (no source)", filed) {
+            AgreementQuestions.file(families, family, FamilySource.answeringNothing(family), asked)
+            AgreementQuestionMetrics.Nothing
+          }
       }
     case Question.Find(imdbId) =>
       answered(question, AgreementQuestionMetrics.TmdbFind, s"TMDB find '$imdbId'", filed)(find(imdbId))

@@ -27,9 +27,10 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
   "inline family asks" should "file each family's answer before returning" in {
     val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
     val pool  = Executors.newFixedThreadPool(4)
-    asks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, Seq(hit))), pool)(Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Family(VoterFamily.Wiki, "title|Klondike")), 5.seconds)   // no Wiki source: not asked
+    asks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, Seq(hit))), pool)(Set(Question.Family(VoterFamily.Imdb, "title|Klondike"), Question.Family(VoterFamily.Wiki, "title|Klondike")), 5.seconds)   // no Wiki source: filed as no film
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.Imdb, "title|Klondike")) shouldBe false
-    store.wanted(FamilyAnswerStore.questionId(VoterFamily.Wiki, "title|Klondike")) shouldBe true
+    store.wanted(FamilyAnswerStore.questionId(VoterFamily.Wiki, "title|Klondike")) shouldBe false
+    store.answers(VoterFamily.Wiki).titled("Klondike") shouldBe Answer.Known(Nil)
     pool.shutdown()
   }
 

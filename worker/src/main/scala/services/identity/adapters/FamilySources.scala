@@ -18,6 +18,16 @@ trait FamilySource {
   def showing(venue: String): Seq[Showing] = Nil
 }
 
+object FamilySource {
+  /** A source for `family` that answers nothing: what a family this worker has no source for files. */
+  def answeringNothing(of: VoterFamily): FamilySource = new FamilySource {
+    val family: VoterFamily = of
+    def titled(text: String): Seq[SourceHit]     = Nil
+    def directedBy(name: String): Seq[SourceHit] = Nil
+    def record(id: String): Option[SourceRecord] = None
+  }
+}
+
 object FamilySources {
   /** How many of a search's films are read: the experiment read the first eight. */
   val SearchedFilms = 8
