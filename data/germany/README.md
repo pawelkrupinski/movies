@@ -170,7 +170,9 @@ ahead; **kinoprogramm.com** (`KinoprogrammClient`) mirrors Filmstarts' window.
    kinoheld on every scrape, for FACTS only: a showing Cineamo bills bare (its
    film unlinked: no year, runtime, director) takes the year, runtime, director,
    countries, original title and film page of kinoheld's show of the same
-   screening — same start time, same billed words (`SecondFeedFacts`, wired in
+   screening — same start time, same billed words, a year the venue bills
+   agreeing, and an entry kinoheld dates (a venue's own undated entry carries
+   credits kinoheld guessed by name) (`SecondFeedFacts`, wired in
    `CinemaScraperCatalog.germanPrimary`). 700 of the 1,184 venues with a row.
 
 **The design is the per-venue choice, measured 2026-10-11** (1,142 rostered venues

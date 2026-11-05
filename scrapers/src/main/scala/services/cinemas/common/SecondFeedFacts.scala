@@ -14,7 +14,7 @@ import scala.util.{Failure, Success, Try}
  * showing is a bare title: no year, running time, director or original title. A bare title cannot be told from its
  * namesakes by anything of its own, so it stays unmatched or takes the wrong one. Most of those venues sell through
  * kinoheld.de too, whose show for the same screening often states the facts (Cinema Borken's "Bad Apples FK": 2026,
- * Jonatan Etzler, 100 minutes; Babylon's "Cicle Gaudí: LA FURIA": 107 minutes).
+ * Jonatan Etzler, 100 minutes; Capitol Mainz's "THEMENGESPRÄCH. The Broken Circle": 2013, Felix van Groeningen).
  *
  * A second-feed row lends its facts to a primary row only when it is the same screening of the same billing:
  *  - it shares a start time with the primary row — a fact of THIS listing, never borrowed across dates;
@@ -24,7 +24,7 @@ import scala.util.{Failure, Success, Try}
  *    the 2021 film) or other words ("Tour du cinéma - Cinéma! Berberian Sound Studio" linked to "Orelsan - Civilisation
  *    Tour au cinéma" at Thalia Dresden) is another film's facts;
  *  - a year the primary bills is the entry's too;
- *  - it is the only second-feed film doing so.
+ *  - it is the only second-feed film doing so, and a dated one ([[states]]).
  * Only a row that states no fact of its own and links nothing (no catalogue id, no page) takes them, and it takes the
  * second feed's page with them: the facts stay that feed's claim (`SourceReliability.factsOf` reads the page — kinoheld's
  * `/film/` pages are a feed's, trusted to support a take and never to decide one alone), exactly as they are on a venue
@@ -67,15 +67,11 @@ object SecondFeedFacts {
         movie.originalTitle.forall(original => words(original) == words(movie.title))
     }
 
-  /** `row` with the facts of the one second-feed row screening it ([[sameScreening]]), when it is bare and that row
-   *  states any; else `row` itself. An entry kinoheld dates no production year is a venue's own, made for its event and
-   *  filled by kinoheld from a film database by name (as [[KinoheldClient.entryGuessed]]'s): only its running time, which
-   *  the venue typed, is lent — Kino Aurich's "Der Herr der Ringe - Die Rückkehr des Königs (Extended Version)" entry
-   *  credits James Cameron, its "Dune" Villeneuve's "Dune Double Feature", Thalia Dresden's "Matinee" McTiernan's "Last
-   *  Action Hero". */
+  /** `row` with the facts of the one second-feed row screening it ([[sameScreening]]), when it is bare and that row is a
+   *  dated film's ([[states]]); else `row` itself. */
   def lend(row: CinemaMovie, secondRows: Seq[CinemaMovie]): CinemaMovie =
     if (!bare(row)) row
-    else secondRows.filter(sameScreening(row, _)).map(credited) match {
+    else secondRows.filter(sameScreening(row, _)) match {
       case Seq(only) if states(only) =>
         row.copy(
           movie    = row.movie.copy(runtimeMinutes = only.movie.runtimeMinutes, releaseYear = only.movie.releaseYear,
@@ -86,11 +82,6 @@ object SecondFeedFacts {
           filmUrl  = only.filmUrl)
       case _ => row
     }
-
-  /** The facts of a second-feed row that are the screening's: all of a dated entry's, only the running time of an undated one. */
-  private def credited(secondRow: CinemaMovie): CinemaMovie =
-    if (secondRow.movie.releaseYear.isDefined) secondRow
-    else secondRow.copy(director = Nil, movie = secondRow.movie.copy(countries = Nil, originalTitle = None))
 
   /** Is `secondRow` a screening of `row`: a start time in common, and its title (or original title) billing the very
    *  words `row` bills? */
@@ -108,10 +99,14 @@ object SecondFeedFacts {
   }
   private def years(title: String): Set[Int] = KinoheldClient.words(title).filter(Year.matches).map(_.toInt)
 
-  /** Does the row state a fact the identity reads — and a page to carry them as its feed's claim? */
-  private def states(row: CinemaMovie): Boolean =
-    row.filmUrl.isDefined && (row.movie.runtimeMinutes.isDefined || row.movie.releaseYear.isDefined ||
-      row.director.exists(_.trim.nonEmpty) || row.movie.countries.nonEmpty || row.movie.originalTitle.isDefined)
+  /** Is the row a dated film's entry, with a page to carry its facts as its feed's claim? An entry kinoheld dates no
+   *  production year is a venue's own, made for its event and filled by kinoheld from a film database by name (as
+   *  [[KinoheldClient.entryGuessed]]'s): Kino Aurich's "Der Herr der Ringe - Die Rückkehr des Königs (Extended Version)"
+   *  credits James Cameron, its "Dune" Villeneuve's "Dune Double Feature", Thalia Dresden's "Matinee" McTiernan's "Last
+   *  Action Hero"; even its running time, the venue's own, is an event's (Zeughauskino's "SHOAH (TEIL I)": 292 minutes).
+   *  Lent to the recorded DE corpus of 2026-11-04, undated entries' running times alone moved 30 takes to none and 30 more
+   *  to a film; dated entries' facts lost none. */
+  private def states(row: CinemaMovie): Boolean = row.filmUrl.isDefined && row.movie.releaseYear.isDefined
 
   private def startTimes(row: CinemaMovie): Set[LocalDateTime] = row.showtimes.map(_.dateTime).toSet
 

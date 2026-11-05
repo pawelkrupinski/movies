@@ -13,11 +13,12 @@ import scala.concurrent.duration._
  *  a shape the lending has to get right:
  *
  *   - Cinema Borken: "Bad Apples FK", bare on Cineamo; kinoheld states 2026, Jonatan Etzler, 100 minutes;
- *   - Babylon (Mitte), Berlin: venue-made kinoheld entries ("Cicle Gaudí: LA FURIA", 107 minutes), and a "MetFilm"
- *     strand whose entries each name another film;
+ *   - Babylon (Mitte), Berlin: venue-made kinoheld entries, undated ("Cicle Gaudí: LA FURIA", 107 minutes), whose
+ *     facts are never lent;
  *   - Universum-City Karlsruhe: "Lauras Stern" (the 2021 film), which kinoheld links to the 2009 "Lauras Stern und der
  *     geheimnisvolle Drache Nian" — another film's facts, never lent;
- *   - Neues Arena, München: "IN THE MOOD FOR LOVE", kinoheld's entry "In the Mood for Love (2000)".
+ *   - Neues Arena, München: "IN THE MOOD FOR LOVE", Cineamo's record restating it, kinoheld's undated entry "In the
+ *     Mood for Love (2000)".
  *
  *  Replay-first, like [[WriteKinoheld]]. Pass the recording day, which the spec pins. */
 object WriteSecondFeedFacts {

@@ -56,25 +56,26 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
   }
 
   // Cineamo's record name restating the venue's title in other letters is no fact (Neues Arena's "IN THE MOOD FOR LOVE",
-  // unlinked in the recording of 2026-11-04, its record "In the Mood for Love"); kinoheld's entry, named with a year the
-  // venue does not bill, is still the same billing.
-  it should "lend to a showing whose original title only restates its title, past a year the entry's name adds, an undated entry's running time alone" in {
+  // unlinked in the recording of 2026-11-04, its record "In the Mood for Love"); kinoheld's entry for it, though, dates
+  // no production year: a venue-made entry whose credits kinoheld filled by name.
+  it should "take a showing whose original title only restates its title as bare, and lend it nothing from an undated entry" in {
     val (primary, second) = feeds("Neues Arena")
     val listed = row(primary.fetch(), "IN THE MOOD FOR LOVE")
     listed.movie.originalTitle shouldBe Some("In the Mood for Love")
     val unlinked = listed.copy(externalIds = Map.empty)
     SecondFeedFacts.bare(unlinked) shouldBe true
-    val mood = SecondFeedFacts.lend(unlinked, second.fetch())
-    mood.movie.runtimeMinutes shouldBe Some(98)
-    mood.filmUrl shouldBe Some("https://www.kinoheld.de/film/in-the-mood-for-love-2000")
-    // the entry dates no production year: its credits are kinoheld's guess by name, not the venue's
-    mood.director shouldBe empty
-    mood.movie.originalTitle shouldBe Some("In the Mood for Love")
+    val kinoheld = second.fetch().filter(SecondFeedFacts.sameScreening(unlinked, _)).loneElement
+    kinoheld.movie.releaseYear shouldBe None
+    kinoheld.director shouldBe Seq("Wong Kar-Wai")
+    SecondFeedFacts.lend(unlinked, second.fetch()) shouldBe theSameInstanceAs(unlinked)
   }
 
-  it should "lend the running time a venue typed into its own kinoheld entry" in {
-    row(babylon, "Cicle Gaudí: LA FURIA").movie.runtimeMinutes shouldBe Some(107)
-    row(babylon, "City Lights live mit Babylon Orchester Berlin").movie.runtimeMinutes shouldBe Some(81)
+  it should "lend nothing from a venue's own undated entry, not even the running time it typed" in {
+    val (primary, _) = feeds("Babylon (Mitte)")
+    val furia = row(primary.fetch(), "Cicle Gaudí: LA FURIA")
+    SecondFeedFacts.bare(furia) shouldBe true
+    row(babylon, "Cicle Gaudí: LA FURIA").filmUrl shouldBe None
+    row(babylon, "Cicle Gaudí: LA FURIA").movie.runtimeMinutes shouldBe None
   }
 
   it should "leave a showing that states facts of its own, or links a film, as Cineamo listed it" in {
@@ -83,7 +84,6 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
     val lent   = new SecondFeedFacts(primary, second).fetch()
     listed.filterNot(SecondFeedFacts.bare) should not be empty
     lent.zip(listed).foreach { (after, before) => if (!SecondFeedFacts.bare(before)) after shouldBe before }
-    lent.count(_.filmUrl.exists(_.startsWith(KinoheldClient.FilmPagePrefix))) should be > 0
   }
 
   // kinoheld links a show to a catalogue entry by guess. Universum-City Karlsruhe bills the 2021 "Lauras Stern"; kinoheld
