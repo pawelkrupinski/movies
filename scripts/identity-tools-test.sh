@@ -312,7 +312,7 @@ args = data.decode().split("\0")
 c.sendall(("got " + " ".join(args) + "\n").encode() + b"\0EXIT 7\n"); c.close()
 PY
 server=$!
-for _ in $(seq 1 50); do [ -S "$sock" ] && break; sleep 0.1; done
+wait_until "the stub JVM listens on its socket" '[ -S "$sock" ]'
 check "...a request's args reach the JVM, its answer streams back and its exit code is returned" "got de --out /x two words|7" \
   "$(bash -c '. "$1"; kept_jvm_call "$2" de --out /x "two words"; echo "|$?"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$sock" 2> /dev/null | tr -d '\n')"
 wait "$server" 2> /dev/null
