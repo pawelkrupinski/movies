@@ -26,3 +26,9 @@
   with the same four Geister flips. So the Geister flips follow the numeral narrowing (a shape-set change moving a DE
   title's searches, hence the family's pool), and the relay change is parked for its own reason (population-dependent
   denial, held takes), not for these flips.
+- **Root cause (later the same day): neither change.** The drift harness drew each fill's held answers from the stream
+  that also draws every re-scrape's half, one number per held question; any change asking one question more or fewer
+  (the numeral narrowing stops searching "Halloween" for Babylon's "Halloween II [OV]") re-rolled seed 8's arrangement
+  country-wide. With fills drawn by question id (`IdentityDrift.Share.filed`), main and the shapes branch with the
+  numeral commit show the SAME DE flips (seed 8 Buddies + Titans x2, seed 64 Buddies; drift runs 42027698490 and
+  42027914659): no Geister flip. The relay change may deserve a re-run under the fixed harness.
