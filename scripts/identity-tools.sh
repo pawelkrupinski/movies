@@ -449,3 +449,34 @@ IDENTITY_JAVA=(java -Xmx6g "${IDENTITY_LOCALE[@]}" --sun-misc-unsafe-memory-acce
 identity_cpus=$(jvm_cpu_options); [ -z "$identity_cpus" ] || IDENTITY_JAVA+=("$identity_cpus")
 # shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_SBT=(sbt "${IDENTITY_LOCALE[@]/#/-J}")
+
+# kept_jvm_call <socket> <args...> -> one request to a kept JVM (tools.KeptJvm: the args NUL-separated behind their
+# length), its answer on stdout as it streams, and the request's exit code; 111 when nothing listens at <socket>, 112
+# when the JVM went away mid-request. identity-slice's and identity-what-if's kept JVMs.
+kept_jvm_call() {
+  python3 -I - "$@" <<'PY'
+import socket, struct, sys
+path, args = sys.argv[1], sys.argv[2:]
+s = socket.socket(socket.AF_UNIX)
+try:
+    s.connect(path)
+except OSError:
+    sys.exit(111)
+payload = "\0".join(args).encode()
+s.sendall(struct.pack(">i", len(payload)) + payload)
+marker, held, out = b"\0EXIT ", b"", sys.stdout.buffer
+while True:
+    chunk = s.recv(65536)
+    if not chunk:
+        break
+    held += chunk
+    at = held.find(marker)
+    if at >= 0:
+        out.write(held[:at]); out.flush()
+        sys.exit(int(held[at + len(marker):].split(b"\n")[0] or b"1"))
+    keep = len(marker) - 1
+    out.write(held[:-keep]); held = held[-keep:]
+out.write(held); out.flush()
+sys.exit(112)
+PY
+}

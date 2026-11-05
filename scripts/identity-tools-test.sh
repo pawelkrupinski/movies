@@ -297,4 +297,24 @@ check "...a dispatch refused says so, and records nothing" "failed: could not di
   "$(dispatch_case 1 0)|$([ -f "$work/recorded" ] && echo recorded || echo none)"
 check "...a run not found is told apart: the branch is the run's to delete" "failed: dispatched" "$(dispatch_case 0 1 | cut -c1-18)"
 
+# kept_jvm_call: one request to a kept JVM (tools.KeptJvm's framing), its answer streamed, its exit code returned
+check "kept_jvm_call: nothing listening is 111" "111" "$(bash -c '. "$1"; kept_jvm_call "$2/none.sock" a; echo $?' _ "$REPO_ROOT/scripts/identity-tools.sh" "$work" 2> /dev/null)"
+sock="$work/kept.sock"
+python3 -I - "$sock" <<'PY' &
+import os, socket, struct, sys
+s = socket.socket(socket.AF_UNIX); s.bind(sys.argv[1]); s.listen(1)
+c, _ = s.accept()
+n = struct.unpack(">i", c.recv(4))[0]
+data = b""
+while len(data) < n:
+    data += c.recv(n - len(data))
+args = data.decode().split("\0")
+c.sendall(("got " + " ".join(args) + "\n").encode() + b"\0EXIT 7\n"); c.close()
+PY
+server=$!
+for _ in $(seq 1 50); do [ -S "$sock" ] && break; sleep 0.1; done
+check "...a request's args reach the JVM, its answer streams back and its exit code is returned" "got de --out /x two words|7" \
+  "$(bash -c '. "$1"; kept_jvm_call "$2" de --out /x "two words"; echo "|$?"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$sock" 2> /dev/null | tr -d '\n')"
+wait "$server" 2> /dev/null
+
 spec_summary

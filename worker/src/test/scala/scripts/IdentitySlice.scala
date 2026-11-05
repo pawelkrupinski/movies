@@ -599,37 +599,8 @@ object IdentitySlice {
    *  --threads, --results, --widen/--orders/--modes), NUL-separated after their length; the answer streams the batch's
    *  output, then `\u0000EXIT <code>`. One request at a time; stops after `--idle-minutes` without one. */
   def serve(socket: Path, session: Session, base: Options): Unit = {
-    import java.nio.channels.{Channels, ServerSocketChannel}
-    Files.createDirectories(socket.toAbsolutePath.getParent)
-    Files.deleteIfExists(socket)
-    val server = ServerSocketChannel.open(java.net.StandardProtocolFamily.UNIX)
-    server.bind(java.net.UnixDomainSocketAddress.of(socket))
-    // Since the last request ended; None while one is being served.
-    val idleSince = new java.util.concurrent.atomic.AtomicReference(Option(tools.Stopwatch.start()))
-    val idle = base.idleMinutes * 60000L
-    val watchdog = new Thread(() => while (server.isOpen) {
-      Thread.sleep(5000)
-      if (idleSince.get.exists(_.millis > idle)) { Files.deleteIfExists(socket); server.close() }
-    })
-    watchdog.setDaemon(true)
-    watchdog.start()
-    System.err.println(s"[identity-slice] serving ${session.recording.root} (${session.listings.size} listings) at ${base.ref} on $socket, " +
-      s"stopping after ${base.idleMinutes} idle minute(s)")
-    try while (true) {
-      val client = server.accept()
-      idleSince.set(None)
-      try {
-        val in   = new java.io.DataInputStream(Channels.newInputStream(client))
-        val args = new String(in.readNBytes(in.readInt()), StandardCharsets.UTF_8).split('\u0000').toList.filter(_.nonEmpty)
-        val answer = new java.io.PrintStream(Channels.newOutputStream(client), true, StandardCharsets.UTF_8)
-        val code = Try(Console.withOut(answer)(request(session, base, args))).recover { case e =>
-          answer.println(s"[identity-slice] the request failed: $e"); 1 }.get
-        answer.print(s"\u0000EXIT $code\n")
-        answer.flush()
-      } catch { case e: java.io.IOException => System.err.println(s"[identity-slice] a client went away: $e") }
-      finally { client.close(); idleSince.set(Some(tools.Stopwatch.start())) }
-    } catch { case _: java.nio.channels.ClosedChannelException => System.err.println("[identity-slice] idle: stopped") }
-    finally Files.deleteIfExists(socket)
+    System.err.println(s"[identity-slice] serving ${session.recording.root} (${session.listings.size} listings) at ${base.ref}")
+    tools.KeptJvm.serve(socket, base.idleMinutes, "identity-slice")(request(session, base, _))
   }
 
   /** One batch asked of a served session; its exit code (3: some slice lacked a request). */

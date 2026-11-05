@@ -122,7 +122,8 @@ TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/t
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala
   worker/src/fixtures/scala/tools/ProdMirror.scala worker/src/fixtures/scala/tools/IdentityJudgements.scala
-  worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala common/src/main/scala/tools/TempDirectories.scala)
+  worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala common/src/main/scala/tools/TempDirectories.scala
+  worker/src/fixtures/scala/tools/KeptJvm.scala)
 
 self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
 # A kept JVM's idle exit: as sbt-warm's kept server's (KINOWO_SBT_WARM_IDLE_MINUTES), 10 minutes, not 30 -- each holds a
@@ -337,31 +338,7 @@ serve_at() { # <tree> <ref key> <out.tsv> <args...>
       done
     fi
     rc=0
-    python3 -I - "$sock" --labels "$labels" --out "$out" "$@" <<'PY' || rc=$?
-import socket, struct, sys
-path, args = sys.argv[1], sys.argv[2:]
-s = socket.socket(socket.AF_UNIX)
-try:
-    s.connect(path)
-except OSError:
-    sys.exit(111)
-payload = "\0".join(args).encode()
-s.sendall(struct.pack(">i", len(payload)) + payload)
-marker, held, out = b"\0EXIT ", b"", sys.stdout.buffer
-while True:
-    chunk = s.recv(65536)
-    if not chunk:
-        break
-    held += chunk
-    at = held.find(marker)
-    if at >= 0:
-        out.write(held[:at]); out.flush()
-        sys.exit(int(held[at + len(marker):].split(b"\n")[0] or b"1"))
-    keep = len(marker) - 1
-    out.write(held[:-keep]); held = held[-keep:]
-out.write(held); out.flush()
-sys.exit(112)
-PY
+    kept_jvm_call "$sock" --labels "$labels" --out "$out" "$@" || rc=$?
     [ "$rc" = 111 ] || [ "$rc" = 112 ] || return "$rc"
     identity_log "the kept JVM went away ($rc): starting another"
     rm -f "$sock"
