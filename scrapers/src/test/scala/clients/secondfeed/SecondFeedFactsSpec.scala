@@ -58,17 +58,18 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
   // Cineamo's record name restating the venue's title in other letters is no fact (Neues Arena's "IN THE MOOD FOR LOVE",
   // unlinked in the recording of 2026-11-04, its record "In the Mood for Love"); kinoheld's entry, named with a year the
   // venue does not bill, is still the same billing.
-  it should "lend to a showing whose original title only restates its title, and past a year the entry's name adds" in {
+  it should "lend to a showing whose original title only restates its title, past a year the entry's name adds, an undated entry's running time alone" in {
     val (primary, second) = feeds("Neues Arena")
     val listed = row(primary.fetch(), "IN THE MOOD FOR LOVE")
     listed.movie.originalTitle shouldBe Some("In the Mood for Love")
     val unlinked = listed.copy(externalIds = Map.empty)
     SecondFeedFacts.bare(unlinked) shouldBe true
     val mood = SecondFeedFacts.lend(unlinked, second.fetch())
-    mood.director shouldBe Seq("Wong Kar-Wai")
     mood.movie.runtimeMinutes shouldBe Some(98)
-    mood.movie.originalTitle shouldBe Some("Fa yeung nin wah")
     mood.filmUrl shouldBe Some("https://www.kinoheld.de/film/in-the-mood-for-love-2000")
+    // the entry dates no production year: its credits are kinoheld's guess by name, not the venue's
+    mood.director shouldBe empty
+    mood.movie.originalTitle shouldBe Some("In the Mood for Love")
   }
 
   it should "lend the running time a venue typed into its own kinoheld entry" in {
@@ -97,6 +98,16 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
     SecondFeedFacts.bare(bareStern) shouldBe true
     bareStern.showtimes.map(_.dateTime).toSet.intersect(kinoheld.showtimes.map(_.dateTime).toSet) should not be empty
     SecondFeedFacts.lend(bareStern, Seq(kinoheld)) shouldBe theSameInstanceAs(bareStern)
+  }
+
+  // A venue billing "Der Grinch (2000)" screens the 2000 film, whatever kinoheld's "Der Grinch" entry (the 2018 one) states.
+  it should "lend nothing from an entry not stating the year the venue bills" in {
+    val (primary, second) = feeds("Cinema Borken")
+    val apples   = row(primary.fetch(), "Bad Apples FK")
+    val kinoheld = second.fetch()
+    val misdated = apples.copy(movie = apples.movie.copy(title = "Bad Apples (2019)"))
+    SecondFeedFacts.lend(misdated, kinoheld) shouldBe theSameInstanceAs(misdated)
+    SecondFeedFacts.lend(apples.copy(movie = apples.movie.copy(title = "Bad Apples (2026)")), kinoheld).movie.releaseYear shouldBe Some(2026)
   }
 
   it should "lend nothing across dates: a show of the same title at another time is not this screening" in {
