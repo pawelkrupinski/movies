@@ -132,25 +132,26 @@ object WhatIfAnswers {
 
   /** `body`, asked again (up to `times`, a pause between) when a read of the mirror timed out: a mirror's `mongod` on a
    *  loaded laptop answers a batch past its 30 s now and then, and a run waited for its JVM slot for longer than that
-   *  read (the parked-items review's UK run, 2026-11-05). Any other failure is the caller's. */
-  def patient[A](body: => A, times: Int = 4): A =
+   *  read (the parked-items review's UK run, 2026-11-05). Any other failure is the caller's. `pause`: between tries (the
+   *  program's own wait, WhatIfResolve.Pause). */
+  def patient[A](pause: () => Unit, times: Int = 4)(body: => A): A =
     try body
     catch {
       case e: java.util.concurrent.TimeoutException if times > 1 =>
         System.err.println(s"[what-if] a mirror read timed out ($e): asked again")
-        Thread.sleep(2000)
-        patient(body, times - 1)
+        pause()
+        patient(pause, times - 1)(body)
     }
 
   /** `inner`'s documents, each read once and kept, a missing one too: a stage settled over a whole corpus reads its family
    *  answers one cluster at a time, and through the mirror's replay each read was a round trip (ES: 254 s of one apply).
    *  [[warm]] reads a kind's ids in batches up front; a write goes through to `inner` and is kept. */
-  final class Memoised(inner: TmdbDocuments) extends TmdbDocuments {
+  final class Memoised(inner: TmdbDocuments, pause: () => Unit) extends TmdbDocuments {
     private val held = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, Option[BsonDocument]]()).toMap
     private def through(kind: TmdbKind, ids: Seq[String])(read: Seq[String] => Map[String, BsonDocument]): Map[String, BsonDocument] = {
       val missing = ids.distinct.filterNot(held(kind).containsKey)
       if (missing.nonEmpty) {
-        val found = missing.grouped(1000).flatMap(batch => patient(read(batch))).toMap
+        val found = missing.grouped(1000).flatMap(batch => patient(pause)(read(batch))).toMap
         missing.foreach(id => held(kind).putIfAbsent(id, found.get(id)))
       }
       ids.flatMap(id => Option(held(kind).get(id)).flatten.map(id -> _.clone())).toMap

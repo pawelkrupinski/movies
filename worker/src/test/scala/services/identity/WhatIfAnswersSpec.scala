@@ -11,7 +11,7 @@ import java.nio.file.{Files, Path}
 /** Where a what-if's answers come from ([[WhatIfAnswers]]): a question the mirror's store lacks is asked of the real
  *  service once, through the worker's own client and parser, filed into the LOCAL store (never the mirror) keyed as
  *  production keys it, and read from there by every later run; offline, it stays the gap it is. */
-class WhatIfAnswersSpec extends AnyFlatSpec with Matchers {
+class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
   import WhatIfAnswers.{DiskTmdbDocuments, Layered, Throttled}
 
   private val clock   = java.time.Clock.fixed(java.time.Instant.parse("2026-11-05T12:00:00Z"), java.time.ZoneOffset.UTC)
@@ -19,7 +19,7 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers {
   private val query   = CandidateQuery.Title("Lalka")
   // TMDB's answer to a title search, as recorded (test/resources/fixtures/tmdb/search_lalka_2026.json)
   private val search  = new String(Files.readAllBytes(Path.of("test/resources/fixtures/tmdb/search_lalka_2026.json")), java.nio.charset.StandardCharsets.UTF_8)
-  private def scratch(): Path = Files.createTempDirectory("what-if-answers")
+  private def scratch(): Path = tempDirectory("what-if-answers")
 
   private def modelLookups(source: WhatIfAnswers.Source): IdentityLookups =
     tools.ProdLookupInputs.lookups(source.docs, Nil, Nil, source.live, poland, clock)
@@ -80,7 +80,7 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers {
       def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = { reads.incrementAndGet(); inner.get(kind, ids) }
       def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = inner.put(kind, docs)
     }
-    val memo = new WhatIfAnswers.Memoised(counted)
+    val memo = new WhatIfAnswers.Memoised(counted, () => ())
     memo.warm(TmdbKind.Family, Seq("a", "b"))
     memo.get(TmdbKind.Family, Seq("a", "b")).keySet shouldBe Set("a")
     memo.get(TmdbKind.Family, Seq("b")) shouldBe empty
@@ -93,11 +93,12 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers {
 
   "a mirror read" should "be asked again when it times out, and the timeout thrown once it keeps timing out" in {
     val tries = new java.util.concurrent.atomic.AtomicInteger
-    WhatIfAnswers.patient({ if (tries.incrementAndGet() < 2) throw new java.util.concurrent.TimeoutException("Future timed out after [30 seconds]"); "read" },
-      times = 3) shouldBe "read"
+    WhatIfAnswers.patient(() => (), times = 3) {
+      if (tries.incrementAndGet() < 2) throw new java.util.concurrent.TimeoutException("Future timed out after [30 seconds]"); "read"
+    } shouldBe "read"
     tries.set(0)
     a[java.util.concurrent.TimeoutException] should be thrownBy
-      WhatIfAnswers.patient[String]({ tries.incrementAndGet(); throw new java.util.concurrent.TimeoutException("again") }, times = 2)
+      WhatIfAnswers.patient[String](() => (), times = 2) { tries.incrementAndGet(); throw new java.util.concurrent.TimeoutException("again") }
     tries.get shouldBe 2
   }
 
@@ -109,7 +110,9 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String = {
         most.accumulateAndGet(inFlight.incrementAndGet(), math.max)
         try {
-          Thread.sleep(20)
+          // lingers until another request is in flight (or a second passes): requests that took turns never overlap
+          val until = System.nanoTime() + 1_000_000_000L
+          while (inFlight.get < 2 && System.nanoTime() < until) Thread.onSpinWait()
           if (refuse.getAndSet(false)) throw new tools.HttpStatusException(429, "GET", url, None)
           "{}"
         } finally { inFlight.decrementAndGet(); () }

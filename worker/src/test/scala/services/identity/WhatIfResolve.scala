@@ -93,6 +93,9 @@ object WhatIfResolve {
 
   final case class Corpus(listings: Seq[Listing], lookups: IdentityLookups, answers: WhatIfAnswers.Source)
 
+  /** Between two tries of a mirror read that timed out ([[WhatIfAnswers.patient]]). */
+  val Pause: () => Unit = () => Thread.sleep(2000)
+
   /** The country's corpus as the mirror's history held it at `at`: listings, venue pages and TMDB documents; a question
    *  the mirror's store lacks answered by `answering` (the composition root's pick: [[WhatIfAnswers.offline]] refuses,
    *  [[WhatIfAnswers.live]] asks the real services and files into the local what-if store). */
@@ -104,8 +107,8 @@ object WhatIfResolve {
     val pages    = replay.pages(Await.result(db.getCollection[BsonDocument](services.venuepages.MongoVenuePageStore.Collection).find()
       .batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
     // the mirror's store as it stood at `at`, each document read once: its family answers all read up front, in batches
-    val mirror   = new WhatIfAnswers.Memoised(replay.documents(new MongoTmdbDocuments(db)))
-    mirror.warm(adapters.TmdbKind.Family, WhatIfAnswers.patient(Await.result(db.getCollection[BsonDocument](adapters.TmdbKind.Family.collection).find()
+    val mirror   = new WhatIfAnswers.Memoised(replay.documents(new MongoTmdbDocuments(db)), Pause)
+    mirror.warm(adapters.TmdbKind.Family, WhatIfAnswers.patient(Pause)(Await.result(db.getCollection[BsonDocument](adapters.TmdbKind.Family.collection).find()
       .projection(new BsonDocument("_id", new org.bson.BsonInt32(1))).batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
       .map(_.getString("_id").getValue))
     val answers  = answering(mirror)
@@ -243,7 +246,7 @@ object WhatIfResolve {
       val db         = kept.client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
       val normalizer = TitleNormalizer.forCountry(country)
       val loadKey    = Seq(cc, at.toString, opt("--answers").getOrElse("offline"), opt("--answers-dir").getOrElse("")).mkString("|")
-      val (loaded, warm) = kept.loaded(loadKey) { WhatIfAnswers.patient {
+      val (loaded, warm) = kept.loaded(loadKey) { WhatIfAnswers.patient(Pause) {
         val inputs  = ResolveInputs.of(new MongoPinStore(Some(db)).all())
         val corpus  = timed("corpus")(corpusAt(db, country, at, normalizer, clock, answering(args.toSeq, country, clock)))
         val context = timed("context")(new CandidateGeneration(corpus.listings, corpus.lookups, normalizer, inputs.pins, inputs.decorations,
@@ -270,7 +273,7 @@ object WhatIfResolve {
           tsv(out.resolve("families.tsv"), "family\tblockKeys", families.map(f => Seq(keyOf(f.listings.minBy(keyOf)), list(f.blockKeys))))
           finalOf(families, "final.tsv", "settle-all")
           val prod  = tools.ProdMirror.open(uri, country)
-          val sides = timed("prod")(try WhatIfAnswers.patient(prod.sides(corpus.listings.map(_.key))) finally prod.close())
+          val sides = timed("prod")(try WhatIfAnswers.patient(Pause)(prod.sides(corpus.listings.map(_.key))) finally prod.close())
           tsv(out.resolve("prod.tsv"), "key\tprod\tbasis", corpus.listings.map { l =>
             val (film, basis) = sides.get(l.key).fold(("missing", "-"))(_.take)
             Seq(keyOf(l.key), film, clean(basis))

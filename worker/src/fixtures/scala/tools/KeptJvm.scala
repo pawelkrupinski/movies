@@ -22,12 +22,11 @@ object KeptJvm {
     // Since the last request ended; None while one is being served.
     val idleSince = new java.util.concurrent.atomic.AtomicReference(Option(Stopwatch.start()))
     val idle = idleMinutes * 60000L
-    val watchdog = new Thread(() => while (server.isOpen) {
-      Thread.sleep(5000)
-      if (idleSince.get.exists(_.millis > idle)) { Files.deleteIfExists(socket); server.close() }
-    })
-    watchdog.setDaemon(true)
-    watchdog.start()
+    val watchdog = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { task =>
+      val thread = new Thread(task, s"$label-idle"); thread.setDaemon(true); thread
+    }
+    watchdog.scheduleAtFixedRate(() => if (idleSince.get.exists(_.millis > idle)) { Files.deleteIfExists(socket); server.close() },
+      5, 5, java.util.concurrent.TimeUnit.SECONDS)
     System.err.println(s"[$label] serving on $socket, stopping after $idleMinutes idle minute(s)")
     val ownErr = System.err
     try while (true) {
@@ -46,6 +45,6 @@ object KeptJvm {
       } catch { case e: java.io.IOException => ownErr.println(s"[$label] a client went away: $e") }
       finally { client.close(); idleSince.set(Some(Stopwatch.start())) }
     } catch { case _: java.nio.channels.ClosedChannelException => ownErr.println(s"[$label] idle: stopped") }
-    finally Files.deleteIfExists(socket)
+    finally { watchdog.shutdownNow(); Files.deleteIfExists(socket) }
   }
 }
