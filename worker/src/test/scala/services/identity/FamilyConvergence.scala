@@ -176,21 +176,23 @@ object FamilyConvergence {
   private def MurmurHashOf(s: String): Long = scala.util.hashing.MurmurHash3.stringHash(s).toLong
 
   /**
-   *   worker/Test/runMain services.identity.FamilyConvergence [--cache FILE] [--exhaustive 7] [--levels 1] [--threads 4] SLICE_DIR...
+   *   worker/Test/runMain services.identity.FamilyConvergence [--cache FILE] [--rules VERSION] [--exhaustive 7] [--levels 1] [--threads 4] SLICE_DIR...
    * Each slice's families checked against the cache, the cache written back.
    */
   def main(args: Array[String]): Unit = {
-    def parse(rest: List[String], o: Options, cache: Option[Path], dirs: Seq[Path]): (Options, Option[Path], Seq[Path]) = rest match {
-      case Nil                          => (o, cache, dirs)
-      case "--cache" :: v :: more       => parse(more, o, Some(Path.of(v)), dirs)
-      case "--exhaustive" :: v :: more  => parse(more, o.copy(exhaustive = v.toInt), cache, dirs)
-      case "--levels" :: v :: more      => parse(more, o.copy(levels = v.toInt), cache, dirs)
-      case "--threads" :: v :: more     => parse(more, o.copy(threads = v.toInt), cache, dirs)
-      case dir :: more                  => parse(more, o, cache, dirs :+ Path.of(dir))
-    }
-    val (options, cachePath, dirs) = parse(args.toList, Options(), None, Nil)
+    def parse(rest: List[String], o: Options, cache: Option[Path], rules: String, dirs: Seq[Path]): (Options, Option[Path], String, Seq[Path]) =
+      rest match {
+        case Nil                          => (o, cache, rules, dirs)
+        case "--cache" :: v :: more       => parse(more, o, Some(Path.of(v)), rules, dirs)
+        case "--rules" :: v :: more       => parse(more, o, cache, v, dirs)
+        case "--exhaustive" :: v :: more  => parse(more, o.copy(exhaustive = v.toInt), cache, rules, dirs)
+        case "--levels" :: v :: more      => parse(more, o.copy(levels = v.toInt), cache, rules, dirs)
+        case "--threads" :: v :: more     => parse(more, o.copy(threads = v.toInt), cache, rules, dirs)
+        case dir :: more                  => parse(more, o, cache, rules, dirs :+ Path.of(dir))
+      }
+    // the rules version a cached verdict stands under: the caller's (a code digest), `head` when it names none
+    val (options, cachePath, rules, dirs) = parse(args.toList, Options(), None, "head", Nil)
     var cache = cachePath.fold(Map.empty[Long, Verdict])(load)
-    val rules = sys.env.getOrElse("FAMILY_CONVERGENCE_RULES", "head")
     dirs.foreach { dir =>
       val started = System.nanoTime()
       val run     = check(sliceCorpus(dir, rules), cache, options)
