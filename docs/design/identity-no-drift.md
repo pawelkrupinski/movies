@@ -597,6 +597,64 @@ in a row disagree and a third agrees with the first: an intermediate population 
 5. Hiding a bad rule: a hold must not become the fix for a rule whose decision is wrong at the FINAL population; the
    ratchet still judges final takes.
 
+## Predicting flips (backtest, 2026-11-05)
+
+The owner (2026-11-05): postpone or hide flipping takes only once they can be predicted. Backtest over the local prod
+mirror's `identity_history` (read-only), DE, UK, ES and US. The history holds 7 days (2026-10-29 00:08Z to 11-05
+04:10Z), not a month. Training is on changes before 11-03 00:00Z, using only reversals that had completed by then;
+the test is 11-03 to 11-05 04:10Z. A **reversal** is a non-deploy take change A to B whose next change goes back to A.
+DE had 116, UK 96, ES 1 and US 2. US history records takes for only 3 listings, and PL has no history in the mirror.
+Scripts, data and full tables: the flip-prediction state directory (`FLIP-PREDICTION-STATE.md`, `flip-prediction/*.py`).
+
+**What the reversals are.** 151 of the 215 (70%) are one pattern. A scrape-triggered projection's model stage drops
+the take to none (`pooled:no-film`, from `accept:joined` or a fill). The next projection, 5 to 7 s later and
+triggered by `answer` or `answer+scrape`, restores the same film through a later stage (`fill:venues.current`,
+`poster:vote`, `agreed:*`, `fill:family.feedLink`). The middle take lasts under a minute: the later stage is waiting
+on answers the new population asked for. Of the rest, DE has 20 `accept:joined` changed-and-back within 24 h, and UK
+has 9 `poster:vote` gains undone and a few fills. 18 last longer than 24 h. The prod-wide "71% under 1 h" is mostly
+this sub-minute class.
+
+**Predictors.** They are scored two ways: at the change (will this new take reverse within 24 h?) and ahead, at
+00:00Z of each day (will this listing reverse today?).
+
+| predictor | framing | precision | recall | lead | flagged |
+|---|---|---|---|---|---|
+| R-lost: the model stage takes none where a film stood | at the change, whole week (nothing fitted) | 0.57 | 0.77 (151/195) | 0 (at the change) | 37 changes/day |
+| R-lost | at the change, test days | 0.39 | 0.89 (40/45) | 0 | 47/day |
+| P3 risk score (logistic: rule, previous rule, stage, kind, family size, corroborating venues, rivals, probability near the cut, bare title, prior flips, family churn) | at the change, test | 0.07 (base rate 0.065) | 0.82 at >= 0.7 | 0 | 258/day |
+| P2 scheduled departures (a sibling or the listing leaves for good within 24 h) | at the change, whole week | 0.39 | 0.11 (22/195) | <= 24 h | 8/day |
+| P2 | ahead, test | 0.000 | 0/24 | - | 258 listings/day |
+| P3 risk, top 5% of listing-days | ahead, test | <= 0.001 | 0.17 to 0.62 (unstable between fits) | 2.8 to 5.5 h | ~9,000 listings/day |
+| "flipped in the last 7 days" | ahead, test | 0.002 | 0.17 (4/24) | median 5.5 h | 875 listings/day |
+| P1 counterfactual (`FamilyCounterfactual`, branch `flip-counterfactual`: each family of 2+ at 00:00Z re-resolved with each member removed and up to 10 outside listings added, model take) | ahead, DE 11-03/04 | 0.000 | 0/6 | - | 218 listings/day |
+| P1 | at the change, DE 11-03/04 + UK 11-03 | 0.00 | 0/26 | - | 15 changes in 2 country-days |
+
+The ahead framing has ~107k live listings a day, with 24 listing-days that reversed in the test. Ahead of time,
+nothing tried predicts a reversal at a usable cost: the risk score flags ~9% of all listings every day and its recall
+swings between fits. The counterfactual flags 0.7% of the listings it covers and caught none of the six reversals. The
+reversals are not one-sibling perturbations of the 00:00 population: they come from listings that arrive during the
+day (all 21 UK reversals on 11-03 were BTS live-viewing listings that arrived at 11:45) and from the two-phase write
+above. A start-of-day snapshot does not hold either. At the
+change, one deterministic rule (R-lost) catches three quarters. The fitted score adds nothing over it: test
+precision sits at the base rate, and the test window held mass waves (DE `accept:joined` re-keys on 11-03, UK
+`pooled:unnamed` gains on 11-04) that the training days did not have.
+
+**Settle trade-off** (whole week; DE+UK+ES+US; 195 reversals undone within 24 h, 1,177 non-deploy changes):
+
+| policy | reversals never shown | takes shown late |
+|---|---|---|
+| blanket display settle 1 h (every new take) | 159/195 (82%) | 1,018 takes, 1 h each (gains included: every new film appears an hour later) |
+| blanket 4 h | 177/195 (91%) | 1,000, 4 h each |
+| settle only R-lost changes, 1 min | 150/195 (77%) | 114 losses, 1 min each (the previous film stays up a minute longer) |
+| R-lost, 1 h or 4 h | 150 / 151 of 195 | 114 / 113 |
+
+Recommendation: settle only R-lost changes, i.e. hold a model-stage loss for about a minute. That hides 77% of
+user-visible reversals, against 82% for a blanket 1 h settle, and delays 9x fewer takes by 60x less time. It never
+delays a gain. The structural form is the same rule stated exactly: do not publish a model-stage loss while answers
+the projection asked for are still unfiled, i.e. the decision's `awaits` / `unanswered`, which the history does not
+record yet. The remaining ~23% (model-model re-keys, poster votes undone, departures days apart) is not predictable
+ahead from history features; the per-family convergence check and own facts remain the route there.
+
 ## What still blocks retiring the checks
 
 1. Item 7's open parts (the first draft's `searchTitle` -- since Main #2617 the IMDb-id resolver falls back to every venue
