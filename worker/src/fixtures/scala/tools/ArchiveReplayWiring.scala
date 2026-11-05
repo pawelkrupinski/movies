@@ -223,6 +223,16 @@ class ArchiveReplayWiring(
    *  the writer itself. */
   override protected lazy val identityTraces: services.identity.IdentityTraceStore = services.identity.IdentityTraceStore.Discard
 
+  /** The TMDB and IMDb answers the replay files and reads (`tmdb_films`, `tmdb_queries`, `tmdb_people`, the question
+   *  markers) held in memory, as their BSON bytes (`InMemoryTmdbDocuments`), not in the run's Mongo. Every rule over
+   *  them is [[services.identity.adapters.TmdbStore]]'s, above the seam, and the two stores pass one contract
+   *  (`TmdbDocumentRetentionBehaviour`: `TmdbDocumentsSpec`, `MongoTmdbDocumentsIntegrationSpec`). Over Mongo they
+   *  were the replay's largest read cost: ~150k reads and writes of `tmdb_films` and ~160k reads of `tmdb_queries`,
+   *  ~100 s of mongod beside the JVM on Germany's 4-core row, with the driver in 23% of the suite's CPU samples (JFR,
+   *  run 41438546199). The history the worker files every answer into is kept. */
+  override protected lazy val identityTmdbLayer: services.identity.adapters.IdentityTmdbLayer =
+    new services.identity.adapters.IdentityTmdbLayer(None, clock, identityHistory, configuration.commit.value)
+
   // Production's storage SHAPE either way — showtimes in `screenings`, slots in
   // `movie_slots`, neither inlined on the `movies` row. A fake that inlined everything
   // would carry showtimes across a rename for free, and a merge is a rename, so it
