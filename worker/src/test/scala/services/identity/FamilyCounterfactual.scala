@@ -20,10 +20,7 @@ import java.time.{Clock, Instant}
  *
  * TSV: listingKey (venue|rawTitle), takeAt, canFlip, nPerturbationsFlipping, firstTrigger, familySize, nPerturbations.
  *
- * One thread by default: the stored TMDB lookups hold one prefetch's documents per instance, so concurrent family
- * resolves over them race (an NPE in StoredTmdbLookups.load).
- *
- *   worker/Test/runMain services.identity.FamilyCounterfactual <cc> --at ISO [--out FILE] [--threads 1] [--max-adds 10]
+ *   worker/Test/runMain services.identity.FamilyCounterfactual <cc> --at ISO [--out FILE] [--threads 4] [--max-adds 10]
  */
 object FamilyCounterfactual {
 
@@ -80,7 +77,7 @@ object FamilyCounterfactual {
     val country = Country.all.find(_.code == cc).getOrElse(sys.error(s"no country $cc"))
     def opt(name: String) = args.toList.sliding(2).collectFirst { case List(`name`, value) => value }
     val at      = Instant.parse(opt("--at").getOrElse(sys.error("--at ISO")))
-    val threads = opt("--threads").fold(1)(_.toInt)
+    val threads = opt("--threads").fold(4)(_.toInt)
     val maxAdds = opt("--max-adds").fold(10)(_.toInt)
     val out     = java.nio.file.Path.of(opt("--out").getOrElse(s"target/family-counterfactual-$cc.tsv"))
     val client  = MongoClient("mongodb://127.0.0.1:28017/?directConnection=true")

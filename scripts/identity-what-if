@@ -6,7 +6,7 @@
 # served take beside each.
 #
 #   scripts/identity-what-if [--base REF] [--head REF|.] [--at ISO] [--max-age HOURS] [--all] [--verify]
-#                            [--threads N] [--out DIR] [--json] cc...
+#                            [--threads N] [--out DIR] [--judgements F] [--json] cc...
 #
 #   --base REF     the code the change is measured against (default origin/main)
 #   --head REF|.   the change: a commit, or `.` (default) for this checkout's code with its uncommitted edits
@@ -17,6 +17,7 @@
 #                  proof that the selection missed nothing
 #   --threads N    head families resolved at once (default 6)
 #   --out DIR      where the per-country diff TSVs go (default target/identity-what-if/<head>)
+#   --judgements F the judgements the moves are bucketed by (default the head's own, as identity-measure classifies)
 #
 # HOW. Each ref's sources are laid out once under the shared cache (scripts/identity-tools.sh's identity_tree, this
 # checkout's WhatIfResolve.scala and MemoLookups.scala dropped in, so a ref from before the tool works) and compiled once.
@@ -43,7 +44,7 @@ IDENTITY_TOOL=identity-what-if
 . "$(dirname "$0")/identity-tools.sh"
 repo=$IDENTITY_REPO
 
-base=origin/main head=. at="" max_age=6 all=0 verify=0 threads=6 out="" json=0 ccs=()
+base=origin/main head=. at="" max_age=6 all=0 verify=0 threads=6 out="" json=0 judgements="" ccs=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) flag_value "$@"; base=$2; shift 2 ;;
@@ -55,6 +56,7 @@ while [ "$#" -gt 0 ]; do
     --threads) flag_value "$@"; threads=$2; shift 2 ;;
     --out) flag_value "$@"; out=$2; shift 2 ;;
     --json) json=1; shift ;;
+    --judgements) flag_value "$@"; judgements=$2; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     -*) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
     *) ccs+=("$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"); shift ;;
@@ -103,7 +105,7 @@ PY
 identity_log "base $base_sha, head $head_label; laying out and compiling the refs (once each)"
 base_tree=$(tree_of "$base_sha") || exit 2
 head_tree=$(tree_of "$head_sha") || exit 2
-judgements=$head_tree/test/resources/fixtures/identity-judgements.tsv
+judgements=${judgements:-$head_tree/test/resources/fixtures/identity-judgements.tsv}
 status=0
 for cc in "${ccs[@]}"; do
   fresh_rc=0; scripts/local-mirror/freshness "$cc" --quiet >&2 || fresh_rc=$?
