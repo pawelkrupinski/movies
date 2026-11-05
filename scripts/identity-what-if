@@ -258,6 +258,8 @@ if [ -n "$bisect_good" ]; then
   # alike there, the code did not move it: the corpus did, and the take at --since and at the snapshot is shown.
   [ "${#ccs[@]}" = 1 ] || { echo "--bisect: one country" >&2; exit 2; }
   cc=${ccs[0]}
+  # each step's tree is resolved once: a kept JVM per step would hold a JVM slot idle for nothing
+  serve=0
   good=$(git -C "$repo" rev-parse --verify "$bisect_good^{commit}") || { echo "--bisect: no commit $bisect_good" >&2; exit 2; }
   bad=$(git -C "$repo" rev-parse --verify "$bisect_bad^{commit}") || { echo "--bisect: no commit $bisect_bad" >&2; exit 2; }
   scripts/local-mirror/freshness "$cc" --quiet >&2 || [ "$?" != 2 ] || { identity_log "$cc: the local prod mirror does not answer"; exit 2; }
