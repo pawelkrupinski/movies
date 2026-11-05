@@ -133,3 +133,26 @@ Ballet: These Violent Delights" at Keswick Alhambra. Fix A's unrelated branch sh
 so it is main's, not this change's (control run 41355445466 on main).
 
 Cross-recording (recording 528, run 41355500669): the same 8 gains in DE and UK, nothing lost.
+
+## 5. Fix C: a banner or strand around the film's title
+
+**Cause.** About 40 banners, each its own, left text around the film's title that the searches carried: an edition
+after a stop ("TOUCH OF EVIL: THE RESTORED CUT" searched only "THE RESTORED CUT"), a certificate note the billing runs
+on past ("Wicker (15) 105 mins 05.01.27"), a strand in capitals ("Lalka.  DZIEŃ KINA POLSKIEGO"), a quoted film in an
+announcement, and local banners with no stop ("Kino 60+", "On Screen", "Literaturverfilmung nach …", "zum 80. Geb.",
+"Menü mit dem Film").
+
+**Change.** `TitleShapeMeasures.shapesOf` gains four shapes: the title before an edition tail (`editionHead`), before
+an inner certificate note (`beforeCertificate`), the halves at a case change (`caseSplit`: only where the half after
+the change opens as a title, never inside an open bracket, never a half in capitals holding stops of its own, never a
+half only of words billed around a film, no Roman numeral as a word in capitals), and the one title quoted in an
+announcement of ten words or more (`quotedWithin`). Five `title-rules.tsv` rows: xtra-kino-60-prefix,
+xtra-on-screen-bare-prefix, xtra-literaturverfilmung-suffix, xtra-geburtstag-suffix, xtra-mit-dem-film-prefix.
+
+**Split.** The first form of this fix also dropped "screen" from a relay's work words (Lowther's "On Screen: The Royal
+Ballet SWAN LAKE" took the 2024 relay). That opened four new DE seed-8 flips (Geister x4, drift run 41898476540); the
+bisect put them on that one line (shapes only, run 41956587308, clean; with it, run 41958722825, red). It is parked
+(`docs/identity-experiments/2026-11-05-stage-relays-screen.md`), so Lowther's Swan Lake 2024 take stands as a known-wrong
+row until held takes land.
+
+**Measure.** _pending_
