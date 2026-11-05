@@ -155,11 +155,12 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).flatMap(_.filmwebRating) shouldBe Some(6.7)
   }
 
-  it should "skip search + info when the URL is present (cheap rating-only path)" in {
+  it should "skip search + info when the URL and its slot are present (cheap rating-only path)" in {
     // Verify by stubbing ONLY the rating endpoint; any other call would throw
     // "unstubbed URL".
     val url = "https://www.filmweb.pl/film/Title-9999"
-    val repository = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt1", filmwebUrl = Some(url)))), normalizer = titleNormalizer)
+    val repository = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt1", filmwebUrl = Some(url))
+      .copy(data = Map[Source, SourceData](Filmweb -> SourceData(originalTitle = Some("Title")))))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val filmweb = new FilmwebClient(filmwebSite(Map(
       "/film/9999/rating" -> """{"rate":7.5,"count":1}"""
@@ -168,6 +169,35 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("X", None))
     cache.get(cache.keyOf("X", None)).flatMap(_.filmwebRating) shouldBe Some(7.5)
+  }
+
+  // A page the projection linked -- the resolver's Filmweb fallback for a film TMDB has no record of
+  // (ProjectionDrafting.heldLinks, which drops the slot of the page it replaces) -- arrives as a URL alone. The
+  // rating-only refresh never read its content, so PL "Flow" (2024) showed no original title, genres or plot; the
+  // same page found by a title search first kept them. A URL with no slot is read whole, as a discovery is.
+  it should "read the whole page of a stored URL the row holds no Filmweb slot for" in {
+    val url = "https://www.filmweb.pl/film/Flow-2024-10052360"
+    val repository = new InMemoryMovieRepository(Seq(("Flow", Some(2024), MovieRecord(filmwebUrl = Some(url),
+      data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Flow"), releaseYear = Some(2024)))))), normalizer = titleNormalizer)
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val filmweb = new FilmwebClient(filmwebSite(Map(
+      "/film/10052360/info"    -> """{"title":"Flow","originalTitle":"Straume","year":2024}""",
+      "/film/10052360/preview" -> """{"directors":[{"id":1,"name":"Gints Zilbalodis"}],"genres":[{"id":2,"name":{"text":"Animacja"}}],"plot":{"synopsis":"Kot w łódce."}}""",
+      "/film/10052360/rating"  -> """{"rate":8.04,"count":900}"""
+    )))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    ratings.refreshOneSync(cache.keyOf("Flow", Some(2024)))
+
+    val row = cache.get(cache.keyOf("Flow", Some(2024))).get
+    row.filmwebUrl    shouldBe Some(url)
+    row.filmwebRating shouldBe Some(8.0)
+    val slot = row.data(Filmweb)
+    slot.originalTitle shouldBe Some("Straume")
+    slot.releaseYear   shouldBe Some(2024)
+    slot.director      shouldBe Seq("Gints Zilbalodis")
+    slot.genres        shouldBe Seq("Animacja")
+    slot.synopsis      shouldBe Some("Kot w łódce.")
   }
 
   // ── refreshOneSync: missing URL → full lookup ──────────────────────────────

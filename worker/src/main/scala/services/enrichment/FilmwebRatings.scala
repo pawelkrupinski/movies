@@ -113,7 +113,8 @@ class FilmwebRatings(
   // Look up Filmweb data for the row, write back any changes. Two paths:
   //   - Row already has filmwebUrl → cheap: rating-only refresh via the
   //     URL's id. Skips the search/info round-trips that the original
-  //     resolution paid for.
+  //     resolution paid for -- unless the row holds no Filmweb slot for it,
+  //     when the page is read whole (`readWhole`).
   //   - Row doesn't have filmwebUrl → expensive: full lookup with TMDB-
   //     derived fallback title + director set (search → /info per candidate
   //     → /preview per candidate when verifying directors → rating).
@@ -149,7 +150,7 @@ class FilmwebRatings(
       cache.putIfPresent(key, r => r.copy(filmwebUrl = None, filmwebRating = None, data = r.data - (Filmweb: Source)))
       return None
     }
-    val change = filmweb.ratingFor(url) match {
+    val change = if (!e.data.contains(models.Filmweb)) readWhole(key, e, url, label) else filmweb.ratingFor(url) match {
       case Some(rating) =>
         // Store at the precision the badge shows (`%.1f`): a sub-decimal vote
         // drift the user can't see isn't a change — see RatingDisplay.
@@ -165,6 +166,19 @@ class FilmwebRatings(
   }
 
   private def withFilmwebRating(row: MovieRecord, rating: Option[Double]): MovieRecord = row.copy(filmwebRating = rating)
+
+  // A stored URL the row holds no Filmweb slot for, read whole as a discovery is: a page the projection linked (the
+  // resolver's Filmweb fallback, `ProjectionDrafting.heldLinks`, drops the slot of the page it replaces) arrives as a
+  // URL alone, and a rating-only refresh never read its content -- PL "Flow" (2024) showed no original title, genres
+  // or plot, which the same page found by a title search first had stored. Returns the new badge text if it changed.
+  private def readWhole(key: CacheKey, e: models.MovieRecord, url: String, label: String): Option[String] =
+    filmweb.detailsFor(url).flatMap { read =>
+      val fw = read.copy(rating = read.rating.map(RatingDisplay.oneDecimal))
+      logger.info(s"Filmweb: $label $url → page read whole rating=${fw.rating.getOrElse("—")}")
+      cache.putIfPresent(key, r => r.copy(filmwebRating = fw.rating, data = withFilmwebData(r.data, fw)))
+      cache.get(key).foreach(after => cache.retriggerAfterEnrichment(key, e, after))
+      Option.when(fw.rating != e.filmwebRating)(fw.rating.map(RatingDisplay.label)).flatten
+    }
 
   // Full URL discovery — only called when the row has no stored filmwebUrl.
   // Passes TMDB's originalTitle / englishTitle as `fallback` so non-Polish
