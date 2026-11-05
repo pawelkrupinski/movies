@@ -48,12 +48,15 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   private val prefetching = new Object
   def sizes: (Int, Int, Int) = (details.size, queries.size, films.size)
   /** Whether `l`'s venue detail was asked through it and had no answer: its page unread. */
-  def unreadDetail(l: Listing): Boolean = Option(details.get((l.venue, l.page.getOrElse("")))).exists(!_.isAnswered)
+  def unreadDetail(l: Listing): Boolean = Option(details.get((l.venue, l.page.getOrElse("")))).exists(!answered(_))
   /** Every candidate question and film record asked through it, with the answer it got. */
   def asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]]) =
     (queries.asScala.toMap, films.asScala.toMap)
-  def unknown: (Int, Int, Int) = (details.values.asScala.count(!_.isAnswered), queries.values.asScala.count(!_.isAnswered),
-    films.values.asScala.count(!_.isAnswered))
+  // a tool file, dropped into old refs (scripts/identity-slice TOOL_FILES): read through `Known`, which every ref has, not
+  // `Answer.isAnswered` (2026-11-06) nor the `isKnown` before it
+  private def answered(answer: services.identity.Answer[?]): Boolean = answer.isInstanceOf[services.identity.Answer.Known[?]]
+  def unknown: (Int, Int, Int) = (details.values.asScala.count(!answered(_)), queries.values.asScala.count(!answered(_)),
+    films.values.asScala.count(!answered(_)))
 }
 
 object MemoLookups { val PrefetchThreads = 8 }

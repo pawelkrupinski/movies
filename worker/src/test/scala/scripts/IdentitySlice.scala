@@ -716,7 +716,8 @@ object IdentitySlice {
     val started   = tools.Stopwatch.start()
     val decided   = decide(slice.core, slice.context, reads, slice.selector)
     val wanted    = slice.seeds.toSeq.sortBy(ListingKey.serialised)
-    val films     = (id: Int) => reads.lookups.film(id).answered.flatten
+    // a tool file: `Known`, which every ref it is dropped into has, not `Answer.answered` (2026-11-06)
+    val films     = (id: Int) => reads.lookups.film(id) match { case services.identity.Answer.Known(film) => film; case _ => None }
     val takes     = rows(slice.selector, wanted, decided, labels, slice.country, films)
     println(s"\n## ${slice.selector}: ${wanted.size} listing(s); slice core ${slice.core.size}, context ${slice.context.size}, " +
       s"${slice.http.size} answers (${slice.http.values.count(_ == SliceHttp.Outcome.Gap)} recording gaps); decided in " +

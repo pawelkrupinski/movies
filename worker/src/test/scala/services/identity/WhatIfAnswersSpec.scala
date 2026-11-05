@@ -29,8 +29,8 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val mirror = new InMemoryTmdbDocuments
     val wire   = tools.RoutingHttpFetch.getOnly(Seq("/search/movie" -> search))
     val first  = modelLookups(WhatIfAnswers.live(mirror, dir, wire, settings.TmdbApiKey("replay"), poland, clock)).candidates(query)
-    first.isKnown shouldBe true
-    first.toOption.get should not be empty
+    first.isAnswered shouldBe true
+    first.answered.get should not be empty
     wire.calls.count(_._2.contains("/search/movie")) shouldBe 1
     mirror.size(TmdbKind.Query) shouldBe 0
     // a later run: a fresh process over the same store, every request refused
