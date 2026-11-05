@@ -21,8 +21,10 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
   }
   private val hit = SourceHit("tt16315948", "Klondike", None, Some(2022))
   private def asks(store: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], pool: java.util.concurrent.ExecutorService,
-                   filed: () => Unit = () => (), memory: QuestionMemory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", SpecClock.Pinned)) =
-    new InlineFamilyAsks(AgreementAskers.over(store, SpecClock.Pinned)(sources = sources, filed = filed, memory = memory), pool, _root_.tools.SpecStopwatch.Frozen)
+                   filed: () => Unit = () => (), memory: QuestionMemory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", SpecClock.Pinned),
+                   stopwatch: _root_.tools.Stopwatch = _root_.tools.SpecStopwatch.Frozen,
+                   metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) =
+    new InlineFamilyAsks(AgreementAskers.over(store, SpecClock.Pinned)(sources = sources, filed = filed, memory = memory), pool, stopwatch, metrics)
 
   "inline family asks" should "file each family's answer before returning" in {
     val store = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
@@ -49,6 +51,33 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
     pool.awaitTermination(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     store.wanted(FamilyAnswerStore.questionId(VoterFamily.RottenTomatoes, "title|Klondike")) shouldBe false
     filed.get shouldBe 1
+  }
+
+  // Inline asks filed a median 6.5 s after their agreement phase began against <= 0.5 s for the same asker on the queue
+  // (prod, 7 days to 11-05), and nothing told the shared pool's wait from the ask itself: each inline ask is timed in two
+  // parts, by family -- waiting for the pool, then asking (the host's pace, the wire, its retries).
+  it should "time each ask's wait for the pool apart from the ask itself, by family" in {
+    val store   = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
+    val clock   = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-05T12:00:00Z"))
+    val pool    = Executors.newFixedThreadPool(1)
+    val busy    = new CountDownLatch(1)
+    pool.submit(new Runnable { def run(): Unit = { busy.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); () } })   // the pool's one thread taken
+    val timed   = new java.util.concurrent.ConcurrentLinkedQueue[(String, Double, Double)]
+    val metrics = new AgreementQuestionMetrics {
+      def enqueued(family: String, added: Boolean): Unit = ()
+      def asked(family: String, outcome: String): Unit   = ()
+      override def inlineAsk(family: String, queuedSeconds: Double, askingSeconds: Double): Unit = { timed.add((family, queuedSeconds, askingSeconds)); () }
+    }
+    val slow  = source(VoterFamily.RottenTomatoes, { clock.advanceSeconds(3); Seq(hit) })   // 3 s on the wire
+    val asker = new Thread(() => asks(store, Map(VoterFamily.RottenTomatoes -> slow), pool, stopwatch = _root_.tools.SpecStopwatch.of(clock),
+      metrics = metrics)(Set(Question.Family(VoterFamily.RottenTomatoes, "title|Klondike")), SpecTimeouts.Io))
+    asker.start()
+    while (pool.asInstanceOf[java.util.concurrent.ThreadPoolExecutor].getQueue.isEmpty) Thread.onSpinWait()
+    clock.advanceSeconds(2)                                                                      // 2 s waiting for the pool
+    busy.countDown()
+    asker.join(SpecTimeouts.Io.toMillis)
+    timed.toArray.toSeq shouldBe Seq(("rt", 2.0, 3.0))
+    pool.shutdown()
   }
 
   it should "remember a failed ask, as the queue's asker does, and not ask it inline again inside its wait" in {

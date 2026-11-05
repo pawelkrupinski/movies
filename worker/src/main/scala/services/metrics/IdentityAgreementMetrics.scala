@@ -1,6 +1,6 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.{Counter, Gauge}
+import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.identity.adapters.AgreementQuestionMetrics
 import services.identity.agreement.{AgreementStage, VoterFamily}
@@ -31,7 +31,11 @@ import services.identity.agreement.{AgreementStage, VoterFamily}
  *  - `kinowo_worker_identity_agreement_enqueued_total{family,result}` — questions put on the task queue (`added`, or
  *    `duplicate`: one already queued);
  *  - `kinowo_worker_identity_agreement_answers_total{family,outcome}` — questions asked: answered, nothing (filed as no
- *    film), fresh (skipped), deferred (the host's breaker open), failed (asked again later).
+ *    film), fresh (skipped), deferred (the host's breaker open or its pace turned it away: remembered as failed), failed
+ *    (asked again later);
+ *  - `kinowo_worker_identity_agreement_inline_ask_seconds{family,part}` — each inline ask of a new cluster's families
+ *    (`InlineFamilyAsks`), in two parts: `queued` (waiting for the inline pool) and `asking` (the host's pace, the wire and
+ *    its retries, the filing) -- what an inline ask past the stage's 5 s wait (`AgreementStage.AskNowWithin`) spent its time on.
  * Every series is exported at 0 from boot.
  */
 final class IdentityAgreementMetrics(countryCodes: Seq[String], registry: PrometheusRegistry) {
@@ -50,6 +54,14 @@ final class IdentityAgreementMetrics(countryCodes: Seq[String], registry: Promet
     .name("kinowo_worker_identity_agreement_open_questions")
     .help("Agreement questions with no answer filed yet, per family (tmdb-find: agreed IMDb ids TMDB was not asked about).")
     .labelNames("country", "family").register(registry)
+
+  private val inlineAsks: Histogram = Histogram.builder()
+    .name("kinowo_worker_identity_agreement_inline_ask_seconds")
+    .help("Each inline ask of a new cluster's family questions, by part: queued (waiting for the inline pool), asking (the host's pace, the wire and its retries, the filing).")
+    .labelNames("country", "family", "part")
+    .classicUpperBounds(IdentityAgreementMetrics.InlineAskBuckets*)
+    .classicOnly()
+    .register(registry)
 
   private val resolves: Counter = Counter.builder()
     .name("kinowo_worker_identity_agreement_resolves_total")
@@ -140,12 +152,17 @@ final class IdentityAgreementMetrics(countryCodes: Seq[String], registry: Promet
       Seq("added", "duplicate").foreach(enqueued.labelValues(country, family, _))
       AgreementQuestionMetrics.Outcomes.foreach(answers.labelValues(country, family, _))
     }
+    VoterFamily.values.foreach(family => Seq("queued", "asking").foreach(inlineAsks.labelValues(country, family.label, _)))
 
   def questions(country: String): AgreementQuestionMetrics = {
     seedQuestions(country)
     new AgreementQuestionMetrics {
       def enqueued(family: String, added: Boolean): Unit = IdentityAgreementMetrics.this.enqueued.labelValues(country, family, if (added) "added" else "duplicate").inc()
       def asked(family: String, outcome: String): Unit   = answers.labelValues(country, family, outcome).inc()
+      override def inlineAsk(family: String, queuedSeconds: Double, askingSeconds: Double): Unit = {
+        inlineAsks.labelValues(country, family, "queued").observe(queuedSeconds)
+        inlineAsks.labelValues(country, family, "asking").observe(askingSeconds)
+      }
     }
   }
 
@@ -158,6 +175,8 @@ final class IdentityAgreementMetrics(countryCodes: Seq[String], registry: Promet
 }
 
 object IdentityAgreementMetrics {
+  /** The inline ask buckets: around the stage's 5 s wait, to the 35 s one request may take and the minutes a backlog can. */
+  val InlineAskBuckets: Seq[Double] = Seq(0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 35, 60, 120, 300, 600)
   /** The `archive` values of `kinowo_worker_identity_relay_days_unread_total`: the scrape archive and the accepted relay. */
   val RelayArchives: Seq[String] = Seq("archive", "accepted")
 }

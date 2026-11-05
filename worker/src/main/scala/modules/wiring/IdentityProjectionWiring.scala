@@ -127,7 +127,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       askNow = new services.identity.adapters.InlineFamilyAsks(agreementAsker,
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
           threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),
-        stopwatch = stopwatch),
+        stopwatch = stopwatch, metrics = agreementQuestionMetrics),
       staging = Some(identityStagingEvents.offer), keys = agreementKeys)
     familyAnswerStore.awaitedBy(question => stage.wanted.contains(question))
     familyAnswerStore.readBy(stage.reads)
