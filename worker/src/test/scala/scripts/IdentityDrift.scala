@@ -263,6 +263,14 @@ object IdentityDrift {
   /** Whether a question is one a deploy's worker has not filed yet: a fixed share (`percent`) of every kind, by its id. */
   final class Share(seed: Long, percent: Int) {
     def held(id: String): Boolean = percent > 0 && math.floorMod(scala.util.hashing.MurmurHash3.stringHash(id, seed.toInt), 100) < percent
+    /** Is the held question `id` filed by the `round`-th fill, which files a random `fraction` of them? Drawn by the
+     *  question's own id, never from a stream shared by every question asked: one draw a question from one `Random` made a
+     *  change asking ONE question more or fewer (DE Babylon's "Halloween II [OV]" no longer searched as "Halloween") file a
+     *  different half of every later question, and move every venue a re-scrape's half drew after it -- DE seed 8's
+     *  Geister, four venues, flipped under the head and not the base for an arrangement neither change's code made
+     *  (drift 42003442640). */
+    def filed(id: String, round: Int, fraction: Double): Boolean =
+      fraction >= 1.0 || math.floorMod(scala.util.hashing.MurmurHash3.stringHash(s"$round:$id", seed.toInt), 1000000) < fraction * 1000000
   }
 
   /** `inner`'s TMDB searches, records and venue pages, a [[Share]] of them `Unknown` until [[release]]d — each asked
@@ -280,10 +288,14 @@ object IdentityDrift {
       if (held(s"f:$tmdbId")) { films.add(tmdbId); Answer.Unknown } else inner.film(tmdbId)
     override def detail(listing: Listing): Answer[Option[DetailFacts]] =
       if (held(s"d:${ListingKey.serialised(listing.key)}")) { details.add(listing.key); Answer.Unknown } else inner.detail(listing)
-    /** Files the answers to the held questions asked so far — a random `fraction` of them — as one event. */
-    def release(fraction: Double, rng: scala.util.Random): AnswersChanged = {
+    private var rounds = 0
+    /** Files the answers to the held questions asked so far — a random `fraction` of them, each drawn by its own id
+     *  ([[Share.filed]]) — as one event. */
+    def release(fraction: Double): AnswersChanged = {
+      rounds += 1
+      val round = rounds
       def some[A](asked: java.util.Set[A], id: A => String): Set[A] = {
-        val now = asked.asScala.toSeq.sortBy(id).filter(_ => rng.nextDouble() < fraction).toSet
+        val now = asked.asScala.toSeq.filter(a => share.filed(id(a), round, fraction)).toSet
         now.foreach { a => asked.remove(a); released.add(id(a)) }
         now
       }
@@ -635,7 +647,7 @@ object IdentityDrift {
       held --= keys; retained --= keys
       retaining(Nil, keys)
     }
-    def filled(fraction: Double, rng: scala.util.Random): Unit = { event("fill"); model.batch(answered = filed(gate.release(fraction, rng))) }
+    def filled(fraction: Double): Unit = { event("fill"); model.batch(answered = filed(gate.release(fraction))) }
     /** `changed` filed as production's fill files it: each answer announced on the feed the TMDB store publishes to --
      *  the stage's version moving for a search or record it read or waits on, as the live stage's wiring has it -- before
      *  the model is told. Unannounced, a search the stage read blind stayed blind while the version stood: UK Swan Lake,
@@ -657,7 +669,7 @@ object IdentityDrift {
     /** Every answer filed, and the stage asked until it settles. */
     def settled(): Resolution = {
       gate.open = true; docs.openAll(answers.store.noteFiled)
-      model.batch(answered = filed(gate.release(1.0, new scala.util.Random(0))))
+      model.batch(answered = filed(gate.release(1.0)))
       settle(stage, () => { event("settle"); project(checkpoint = "settled") }, answers, clock, releaseFamily)
     }
   }
@@ -749,6 +761,8 @@ object IdentityDrift {
                leaveOne: Boolean = false,
                /** The listings whose served-take moves are classified ([[Cause]]): a second pass over a seed that flipped. */
                probe: Set[ListingKey] = Set.empty): Replay = {
+    // the arrangement's draws (venues, who leaves, each re-scrape's half) alone: a fill draws by question ([[Share.filed]]),
+    // so the arrangement is the seed's whatever the code asks
     val rng     = new scala.util.Random(seed)
     val venues  = rng.shuffle(listings.map(_.venue).distinct.sorted)
     val (first, later) = venues.splitAt((venues.size * 0.7).toInt)
@@ -767,17 +781,17 @@ object IdentityDrift {
       val vs = half; val again = listings.filter(l => vs(l.venue) && w.held.contains(l.key) && !w.retained(l.key)); w.scraped(again); w.project(again.map(_.key), checkpoint)
     }
     w.boot(initial); w.project()
-    w.filled(0.5, rng); w.project()
+    w.filled(0.5); w.project()
     w.answered(); w.project()
     w.scraped(of(arrivals(0))); w.project()
     rescrape()
     w.gone(leaving.map(_.key)); w.project()
     w.deploy(outrule = false); w.project()
-    w.filled(1.0, rng); w.answered(); w.project()
+    w.filled(1.0); w.answered(); w.project()
     w.scraped(of(arrivals(1))); w.project()
     w.scraped(leaving); w.project()
     w.deploy(outrule = true); w.project()
-    w.filled(0.5, rng); w.project()
+    w.filled(0.5); w.project()
     w.scraped(of(arrivals(2))); w.project()
     checkpoints += { val r = w.settled(); ("settled", r, w.lastPending) }
     for (run <- 1 to 2) {

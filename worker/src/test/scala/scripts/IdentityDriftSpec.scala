@@ -71,6 +71,27 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     summary.line should (include("peak 2 of 2") and include("1 still Pending at the end"))
   }
 
+  // DE seed 8 (drift 42003442640): the head no longer searching "Halloween" for Babylon's "Halloween II [OV]" filed a
+  // different half of every later question, and Geister at four venues flipped under an arrangement the base never met
+  "a fill" should "file each held question by its own draw, whatever else was asked" in {
+    def filedFilms(asked: Seq[Int]): Set[Int] = {
+      val gate = new IdentityDrift.Gate(new IdentityLookups {
+        def hasDetail(listing: services.identity.Listing)              = false
+        def detail(listing: services.identity.Listing)                 = Answer.Known(None)
+        def candidates(query: CandidateQuery): Answer[Seq[Hit]]        = Answer.Known(Nil)
+        def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]   = Answer.Known(None)
+      }, new IdentityDrift.Share(8, 100))
+      asked.foreach(film => gate.film(film) shouldBe Answer.Unknown)
+      gate.release(0.5).films
+    }
+    val asked = (1 to 200).toSeq
+    val alone = filedFilms(asked)
+    alone.size should (be > 50 and be < 150)
+    // one question more, asked first: every other question's fate is the one it had without it
+    filedFilms(0 +: asked) - 0 shouldBe alone
+    filedFilms(asked.reverse) shouldBe alone
+  }
+
   "asks" should "release a held answer rather than ask for it" in {
     val clock         = new MutableClock(Instant.parse("2026-10-20T13:26:32Z"))
     val (docs, store) = filed(clock)
