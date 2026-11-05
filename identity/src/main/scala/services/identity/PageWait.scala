@@ -1,8 +1,8 @@
 package services.identity
 
 /**
- * Which NEW listings' venue detail pages (director, runtime, original title) are not read yet: each is asked
- * for once as its listing is taken in. The listing is decided at once on what is known, its page read as no
+ * Which listings' venue detail pages (director, runtime, original title) are not read yet: each is asked for
+ * as its listing is taken in new, or taken up with the model (a restart, a kept listing resumed). The listing is decided at once on what is known, its page read as no
  * detail, and its take is Pending on the page (`ResolverDecision.awaits`) until it is read or gone (step 6,
  * the owner 2026-10-31: decide from the inputs as they stand; it was held out of the model before).
  */

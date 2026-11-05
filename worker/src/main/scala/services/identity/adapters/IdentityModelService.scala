@@ -69,7 +69,7 @@ final class IdentityModelService(
    *  (`VenuePageIndex.settle`), so the drain that follows takes them in. One that throws is logged, and
    *  the drain goes on: it must leave what it could not read for its next run. */
   beforeDrain: () => Unit = () => (),
-  /** Which new listings' venue pages are unread, each asked for once as it is taken in (a cut-over country). */
+  /** Which listings' venue pages are unread, each asked for as it is taken in or taken up (a cut-over country). */
   pageWait:   PageWait = PageWait.Never,
   /** Told each time the model is taken up — at boot, and a take-up retried after one failed: the first moment a
    *  projection of it can run (the boot's, which every projection on scrapes waits for). On the model's thread. */
@@ -353,7 +353,13 @@ final class IdentityModelService(
     val started = tools.Stopwatch.start()
     val engine  = newModel()
     val present = archive()
-    engine.restore(present ++ resumed(present))
+    val held    = present ++ resumed(present)
+    engine.restore(held)
+    // Each listing taken up whose venue page is unread has it asked, as `admit` asks a new one's: it is decided Pending on
+    // the page, and nothing else asks for it -- a kept listing no film row names, or one billed before the take-up whose
+    // ask a restart dropped. Never asked, its family's take stayed provisional at rest until some later scrape moved it
+    // (Verify scrape recording #10, US kept Alamo Drafthouse listings). The queue keeps one task per page.
+    held.filter(pageWait.awaiting).foreach(pageWait.request)
     model = Some(engine)
     retryAt = scala.None; retryDelay = IdentityModelService.FirstRetry
     // The gauges from the moment the model is up, not from its first event.

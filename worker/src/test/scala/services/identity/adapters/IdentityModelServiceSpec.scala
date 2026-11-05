@@ -58,10 +58,11 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     /** The kept listings' store, which outlives a service as `identity_retained` outlives a worker. */
     var retained: RetainedListingStore = new RetainedListingStore.InMemory()
     var scrapes = Map.empty[Cinema, Seq[CinemaMovie]]
+    var pageWait: PageWait = PageWait.Never
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
-      reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), clock = _root_.tools.SpecClock.Pinned,
-      retainedStore = retained)
+      reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), pageWait = pageWait,
+      clock = _root_.tools.SpecClock.Pinned, retainedStore = retained)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
       scrapes += cinema -> films; service.venueScraped(cinema, films)
     }
@@ -192,6 +193,30 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val kept = ListingKey.of(Multikino, movie(Multikino, "Lalka", Some(2025)))
     all(outcomes.map(_._2._1)) should contain(kept)                   // Kinoteka bills "Lalka": Multikino's facts stay
     outcomes.map(_._2).distinct.size shouldBe 1
+  }
+
+  // A take-up asks every unread page of what it takes up, as `admit` asks a new listing's: a listing taken up -- billed
+  // in the archive, or kept after its showtimes ended -- is decided Pending on its page, and nothing else asks for it.
+  // Verify scrape recording #10 (US): kept Alamo Drafthouse listings no film row names held their families' takes
+  // provisional at rest, their pages never asked, until the next day's re-scrape moved the families.
+  it should "ask, at take-up, the unread venue page of every listing it takes up, billed or kept" in {
+    val world = new World
+    val first = world.service()
+    first.takeUp()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")))
+    world.scrape(first, Helios, Seq(movie(Helios, "Lalka")))
+    first.drain()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Matilda")))                 // Lalka's showtimes at Multikino end
+    first.drain()
+    val kept   = ListingKey.of(Multikino, movie(Multikino, "Lalka", Some(2025)))
+    val billed = ListingKey.of(Helios, movie(Helios, "Lalka"))
+    val pages  = new Pages
+    pages.unread   = Set(kept, billed)
+    world.pageWait = pages
+    val again = world.service()                                                     // a deploy: the model taken up anew
+    again.takeUp()
+    again.peek(10.seconds).get.listings.map(_.key) should contain allOf (kept, billed)
+    pages.requested.toSet shouldBe Set(kept, billed)
   }
 
   it should "resume no recorded kept listing whose title no venue bills" in {
