@@ -300,9 +300,10 @@ object AgreementQuestionMetrics {
 
 /** The agreement's [[services.identity.agreement.AgreementStage.AskNow]]: a new cluster's family questions, each asked
  *  through `asker` — as the queue asks it — on `pool` at once, waited on for at most `within`, each timed to `metrics`
- *  ([[AgreementQuestionMetrics.inlineAsk]]: its wait for the pool, then the ask). One still out by then is
- *  filed when it comes and asks for a projection, as on the queue; the queue holds it too, and skips it once it is
- *  filed. A failure is remembered by the asker, as on the queue, and asked again once its wait ends; one still inside
+ *  ([[AgreementQuestionMetrics.inlineAsk]]: its wait for the pool, then the ask). One the pool has not started by then
+ *  is dropped, so it holds no thread the next cluster's asks wait for: the stage hands every question still open to the
+ *  queue, which asks it. One already asking is filed when it comes and asks for a projection, as on the queue; the queue
+ *  holds it too, and skips it once it is filed. A failure is remembered by the asker, as on the queue, and asked again once its wait ends; one still inside
  *  its wait is not asked. */
 final class InlineFamilyAsks(asker: AgreementAsker, pool: java.util.concurrent.ExecutorService, stopwatch: tools.Stopwatch,
                              metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent)
@@ -325,5 +326,6 @@ final class InlineFamilyAsks(asker: AgreementAsker, pool: java.util.concurrent.E
       catch { case _: java.util.concurrent.TimeoutException | _: java.util.concurrent.ExecutionException => () }
     }
     late.set(true)
+    asked.foreach(_.cancel(false))   // unstarted: never runs, the pool's thread left to the next cluster; asking: runs on
   }
 }

@@ -54,6 +54,25 @@ class InlineFamilyAsksSpec extends AnyFlatSpec with Matchers {
   }
 
   // Inline asks filed a median 6.5 s after their agreement phase began against <= 0.5 s for the same asker on the queue
+  // (prod, 7 days to 11-05): an ask the wait gave up on before the pool started it still took a pool thread later, so the
+  // next cluster's asks queued behind work the queue already held. At the deadline an unstarted ask is dropped (the queue
+  // asks it); one already asking runs on and is filed, as before.
+  it should "drop an ask the pool has not started by the deadline, leaving it to the queue" in {
+    val store   = new FamilyAnswerStore(new InMemoryTmdbDocuments, SpecClock.Pinned)
+    val pool    = Executors.newFixedThreadPool(1)
+    val busy    = new CountDownLatch(1)
+    pool.submit(new Runnable { def run(): Unit = { busy.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); () } })   // the pool's one thread taken
+    val asked   = new AtomicInteger()
+    asks(store, Map(VoterFamily.Imdb -> source(VoterFamily.Imdb, { asked.incrementAndGet(); Seq(hit) })), pool)(
+      Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), Duration.Zero)
+    busy.countDown()
+    pool.shutdown()
+    pool.awaitTermination(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
+    asked.get shouldBe 0
+    store.wanted(FamilyAnswerStore.questionId(VoterFamily.Imdb, "title|Klondike")) shouldBe true
+  }
+
+  // Inline asks filed a median 6.5 s after their agreement phase began against <= 0.5 s for the same asker on the queue
   // (prod, 7 days to 11-05), and nothing told the shared pool's wait from the ask itself: each inline ask is timed in two
   // parts, by family -- waiting for the pool, then asking (the host's pace, the wire, its retries).
   it should "time each ask's wait for the pool apart from the ask itself, by family" in {
