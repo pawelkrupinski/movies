@@ -49,12 +49,16 @@ class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers with to
     }
   }
 
+  // A Mongo that never answers (nothing listens on port 1; the driver keeps selecting a server for a minute), so the read
+  // cannot finish inside its timeout: over the suite's own fast mongod a 1 ns timeout raced the reply, and a loaded
+  // runner's Await found the read already answered (precommit-check run 42005125331, "no such card").
   it should "answer an unread outcome carrying its cause, when a read runs out of time -- never the fact that there is no such card" in {
-    IntegrationCorpusDatabase.withDatabase(mongoTarget, "readmodel-findcard-timeout") { db =>
-      val rm = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System, findCardMovieTimeout = scala.concurrent.duration.Duration.fromNanos(1))
+    val silent = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=60000")
+    try {
+      val rm = new MongoReadModelRepository(Some(silent.getDatabase("readmodel-findcard-timeout")), stopwatch = _root_.tools.Stopwatch.System,
+        findCardMovieTimeout = scala.concurrent.duration.Duration.fromNanos(1))
       val outcome = rm.findCard("__no-such-card__")
       withClue(outcome.explain + ": ") { outcome.isFailed shouldBe true }
-      rm.close()
-    }
+    } finally silent.close()
   }
 }
