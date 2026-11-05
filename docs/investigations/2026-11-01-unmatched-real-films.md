@@ -191,4 +191,8 @@ Kept out on purpose:
 **Slice** (recording 41379008920): Hunger Games (Cinebowl Uttoxeter, pinned as a slice case), La Vie de château and
 Casper und Emma now taken. All three are judged right.
 
-**Measure.** _pending_
+**Measure.** LANDABLE, run 42051692411 (all five countries, base f805949e5): right→wrong 0, no right take lost, no new
+wrong. DE model 2 gained right (Caspar und Emma, La Vie de château); UK model lets go of Lowther's 2023 Nutcracker relay
+(a cure, judged known-wrong in the rows); PL, US, ES unmoved; final takes unmoved. Drift 42051731189 clean on all ten
+rows. The what-if over prod's mirror also moved UK Cinebowl Uttoxeter's Hunger Games and Gala Durham's "The MET
+Opera: La Fancuilla del West" (the Met's 2026/27 relay), both judged right.
