@@ -14,3 +14,4 @@
   year/director/runtime against TMDB) and its own facts clear the cut with the population features
   (`venues.corroborating`, rivals, released-as-namesake) masked. A design choice, it fits held takes plus own facts.
 - **Code:** none (sort only; table and script were scratch). Related: `2026-11-04-namesake-ambiguous-no-window.md`.
+- **Closed 2026-11-05 (parked-items review)** with the no-window variant: see `2026-11-04-namesake-ambiguous-no-window.md`, "Re-checked 2026-11-05".

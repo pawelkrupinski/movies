@@ -1,4 +1,4 @@
-# 2026-11-04 — the window only rules out rivals; the one work left is taken on the listing's own fact — PARKED (head `2f864590ad37`)
+# 2026-11-04 — the window only rules out rivals; the one work left is taken on the listing's own fact — CLOSED 2026-11-05 (head `2f864590ad37`)
 
 - **What:** fixes the Titans regression of the release window: the window only rules rivals out; if it leaves one work
   the listing stays held apart and takes that work per listing only when its own facts corroborate it
@@ -15,3 +15,4 @@
   `accept:season-record`, `pooled:unrivalled-calibrated`); a single window-surviving work with a thin own fact (an
   undated "?" film passes the window) is no evidence against the classic. Owner changed approach to held takes and own facts.
 - **Code:** local tag `experiment/namesake-ambiguous-rework` (`2f864590ad37`); branch `identity/namesake-ambiguous`.
+- **Closed 2026-11-05 (parked-items review)** with the no-window variant: see `2026-11-04-namesake-ambiguous-no-window.md`, "Re-checked 2026-11-05".

@@ -1,4 +1,4 @@
-# 2026-11-05 — approach B: a namesake listing takes the work TMDB prominence leads by a margin — PARKED, no flip-safe margin recovers a served loss (head `5c4308469c94`)
+# 2026-11-05 — approach B: a namesake listing takes the work TMDB prominence leads by a margin — CLOSED 2026-11-05, no flip-safe margin recovers a served loss (head `5c4308469c94`)
 
 - **What:** `NamesakeAmbiguity.prominent`: take a work whose TMDB popularity bucket leads every other by
   `ProminenceMargin` (margin 6 buckets, i.e. >= 64x popularity, in the wip commit); ported per-listing reading from the
@@ -19,3 +19,4 @@
   read itself, so it conflicts with the owner's held-takes direction.
 - **Code:** local tag `experiment/namesake-prominence` (`5c4308469c94`); branch `identity/namesake-prominence` kept
   (`git branch -d` refuses: unmerged into main).
+- **Closed 2026-11-05 (parked-items review)** with the no-window variant: see `2026-11-04-namesake-ambiguous-no-window.md`, "Re-checked 2026-11-05".

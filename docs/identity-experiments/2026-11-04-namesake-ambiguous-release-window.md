@@ -1,4 +1,4 @@
-# 2026-11-04 — namesake plausible only inside a TMDB release window — PARKED, Titans flips return (head `82d9dcb5faa`, base `40bacafcc`)
+# 2026-11-04 — namesake plausible only inside a TMDB release window — CLOSED 2026-11-05, Titans flips return (head `82d9dcb5faa`, base `40bacafcc`)
 
 - **What:** on top of the no-window rule (see `2026-11-04-namesake-ambiguous-no-window.md`), a namesake counts as a
   rival only when TMDB dates it (film year or own-country cinema release) within a year of the listing's own screenings;
@@ -13,3 +13,4 @@
   decide again. Drift CI was clean only because it never replays seed 47. Seeds 47/64 de also ran 75 min and timed out
   (run 41898541448; "takes recorded" stalls, cause not established).
 - **Code:** local tag `experiment/namesake-ambiguous-window` (`82d9dcb5faa`). Next step taken: the rework.
+- **Closed 2026-11-05 (parked-items review)** with the no-window variant: see `2026-11-04-namesake-ambiguous-no-window.md`, "Re-checked 2026-11-05".
