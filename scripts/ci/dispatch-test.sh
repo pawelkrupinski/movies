@@ -87,6 +87,9 @@ view() { printf '{"databaseId":7,"headSha":"%s","headBranch":"b","workflowName":
   "$(printf 'a%.0s' $(seq 40))" "$1" "${2:-}"; }
 reset; answer 1 "fail connection refused"; answer 2 "$(view in_progress)"; DEFAULT=$(view completed failure)
 wait_for_run 7 60 2> /dev/null; check "a run is waited on through a read blip to its conclusion" "0 failure 3" "$? $RUN_CONCLUSION $(calls)"
+reset; DEFAULT=$(view completed failure)
+check "...and a failed run is a conclusion under the caller's set -e (the drift explorer's step), never its exit" "0 failure" \
+  "$(set -e; wait_for_run 7 60 2> /dev/null; echo "$? $RUN_CONCLUSION")"
 reset; answer 1 'null'; answer 2 '{"databaseId":null,"headSha":null,"status":null}'; DEFAULT=$(view completed success)
 wait_for_run 7 60 2> /dev/null; check "...through null answers, never taken for one" "0 success 3" "$? $RUN_CONCLUSION $(calls)"
 reset; DEFAULT=$(view completed cancelled)

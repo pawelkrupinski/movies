@@ -136,8 +136,9 @@ wait_for_run() {
   # ci-wait, its parent gone, stops at its next poll.
   "$(dirname "${BASH_SOURCE[0]}")/../ci-wait" --run "$run" --no-follow --timeout "${timeout}s" \
     --interval "${DISPATCH_POLL_SECONDS:-30}s" > "$out" &
-  wait $!
-  status=$?
+  # `|| status=$?`: a failed run is ci-wait's exit 1, and a bare `wait` would end a `set -e` caller right there
+  status=0
+  wait $! || status=$?
   RUN_CONCLUSION=$(cut -f3 "$out")
   rm -f "$out"
   case "$status" in
