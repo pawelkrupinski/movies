@@ -21,6 +21,12 @@ Measured through the CI measure (`scripts/identity-measure`) with JFR, each agai
 - **Why stopped:** prod take-up (~250 s) runs while `k3s-worker-1` is at 7.9/8 cores with five workers booting, so a
   second thread only competes. Don't re-push without a measured wall-clock gain.
 - **Code:** branch `perf/parallel-regions-scoped`, never pushed and not in this clone; no `experiment/*` tag.
+- **2026-11-05, landed for the take-up only:** the race the earlier forms hit was TrackedLookups' (two regions asking
+  one question at once each asked it and dropped the other's reads; one region's prefetch released another's held
+  documents). Fixed (one ask per question in flight, per-thread prefetches, the store handed one prefetch at a time),
+  then `IncrementalResolver.restore` resolves its regions on `takeUpThreads` (worker: min(4, cores)); later drains stay
+  serial. Measure run 41964603288: every take bucket 0 in all five countries, drift and convergence rows green; the
+  take-up's non-context wall DE ~57 -> 29 s, US ~81 -> 46 s, US next-day ~66 -> 48 s (means of three main runs).
 - **Next angle:** the levers are boot CPU contention (stagger rollouts) and GC (prod UK was GC-bound: SerialGC full
   GCs 28/min, 0.72 of wall time — the live set during a full take-up), not scoring CPU.
 
