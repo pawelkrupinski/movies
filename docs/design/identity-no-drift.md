@@ -35,6 +35,13 @@ whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-red
   result -- release `identity-drift` -- when one exists), and `scripts/ci/drift_diff.py` judges: a flip only the head
   shows FAILS, naming the listing; one both show is `pre-existing (backlog)`, never failed; one only the base shows is
   `removed:`. Divergences (incremental != whole end state) fail outright, as before.
+- **One seed, one arrangement, whatever the code asks** (2026-11-05). Head and base are comparable only if a seed hands
+  both the same arrangement: the venues, who leaves, each re-scrape's half, and which held answers each fill files. The
+  fills drew one number per held question from the arrangement's own stream, so a head asking ONE question more or fewer
+  re-rolled everything after it: DE seed 8 (drift 42003442640) flipped Geister at four venues under a Roman-numeral
+  narrowing that reads no Geister title, while two Titans and Buddies flips "went away" -- the same reshuffle a parked
+  StageRelays change had shown. A fill now draws each question by its own id (`IdentityDrift.Share.filed`), and the
+  stream draws the arrangement alone.
 - **The backlog.** `test/resources/fixtures/identity-flip-backlog.tsv` is every known flip, a row each -- kind `drift`
   (a seed found it) or `population` (`PopulationMonotonicitySpec`'s arrival walk did) -- with its owner. It decides
   no drift verdict: it is the work list. A fix removes its row. Rows arrive only by the explorer's filing (below), a
