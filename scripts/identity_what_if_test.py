@@ -223,6 +223,29 @@ class SelectAndDiffTest(unittest.TestCase):
         report, _ = w.diff("de", self.BASE, head, {}, self.judgements(), [dict(r) for r in self.BASE])
         self.assertEqual(report["unsound"], [])
 
+    def test_a_take_the_head_awaits_an_answer_for_is_no_move(self):
+        # the head's rules ask a search prod's store never held; the what-if refuses live asks, so the family is Pending.
+        # A real resolve would ask it and answer: the listing is reported as awaiting, never as a lost take.
+        head = [row("A|Hen", "A|Hen", "pending", "search:unanswered"), row("B|Hen", "A|Hen", "pending", "search:unanswered"),
+                row("C|Lalka", "C|Lalka", "tmdb:5"), row("D|Obcy", "D|Obcy", "none"), row("E|Betty", "E|Betty", "pending", "search:unanswered")]
+        report, rows = w.diff("de", self.BASE, head, {}, self.judgements())
+        self.assertEqual((report["moved"], report["buckets"], rows), (0, {}, []))
+        self.assertEqual(report["awaiting"], 2)
+        self.assertIn("2 listing(s) await an answer", w.render(report))
+        self.assertIn("CLEAN", w.render(report))
+        # --verify compares the head's own takes, awaiting included, with the whole head resolve's
+        whole = [dict(r) for r in head]
+        report, _ = w.diff("de", self.BASE, head, {}, self.judgements(), whole)
+        self.assertEqual(report["unsound"], [])
+
+    def test_verify_lets_a_listing_the_head_corpus_drops_stand(self):
+        # the head's rules fold two listings to one key: the head corpus (distinctBy key) holds one, so neither the
+        # what-if's re-resolve nor the whole resolve takes the other -- the base's row stands in the what-if, absent in whole
+        head = [row("A|Hen", "A|Hen", "tmdb:1"), row("B|Hen", "A|Hen", "tmdb:1")]
+        whole = [dict(r) for r in self.BASE if r["key"] != "C|Lalka"]
+        report, _ = w.diff("de", self.BASE, head, {}, self.judgements(), whole)
+        self.assertEqual(report["unsound"], [])
+
     def test_a_clean_change(self):
         report, rows = w.diff("de", self.BASE, [row("A|Hen", "A|Hen", "tmdb:1")], {}, self.judgements())
         self.assertEqual((report["moved"], rows), (0, []))

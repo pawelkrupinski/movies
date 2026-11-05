@@ -79,6 +79,13 @@ check "...sbt not run while no source is newer" "0" "$(grep -c '^sbt' "$work/cal
 touch -t 209901010000 "$tree/worker/src/A.scala"
 tools identity_classpath "$tree" > /dev/null
 check "...and compiled again once a source changes" "1" "$(grep -c '^sbt' "$work/calls" 2>/dev/null || echo 0)"
+rm -f "$work/calls"
+touch -t 200001010000 "$tree/worker/src/A.scala"
+mkdir -p "$tree/common/src/main/resources"
+echo 'row' > "$tree/common/src/main/resources/title-rules.tsv"
+touch -t 209901020000 "$tree/common/src/main/resources/title-rules.tsv"
+tools identity_classpath "$tree" > /dev/null
+check "...and again once a resource (title-rules.tsv, no .s* extension) changes" "1" "$(grep -c '^sbt' "$work/calls" 2>/dev/null || echo 0)"
 
 # The default recording is the newest run holding the country's corpus: the newest run has no UK artifact, an older does.
 cat > "$work/bin/gh" <<'STUB'

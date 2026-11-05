@@ -314,6 +314,13 @@ def merged_head(base_rows, head_rows):
 def diff(cc, base_rows, head_rows, prod, judgement_rows, whole_rows=None):
     head_taken, reresolved = merged_head(base_rows, head_rows)
     base_by, head_by = {r["key"]: r for r in base_rows}, {r["key"]: r for r in head_taken}
+    # A head Pending where the base had a take is a question the head asks that prod's store never held (new query text,
+    # a new shape's search): the what-if refuses every live ask, a real resolve would ask and answer it. Not a lost take --
+    # the listing reads as the base's, counted apart, so the verdict is of the takes the head can decide.
+    awaiting = {k for k, h in head_by.items() if h["take"] == "pending" and base_by[k]["take"] != "pending"}
+    resolved_by = head_by
+    head_taken = [base_by[r["key"]] if r["key"] in awaiting else r for r in head_taken]
+    head_by = {r["key"]: r for r in head_taken}
     buckets = measure.classify(cc, [as_row(r, r["take"]) for r in base_rows], [as_row(r, r["take"]) for r in head_taken],
                                judgement_rows)
     moved_keys = {r["key"] for r in base_rows if r["take"] != head_by[r["key"]]["take"]}
@@ -322,7 +329,7 @@ def diff(cc, base_rows, head_rows, prod, judgement_rows, whole_rows=None):
         for e in entries:
             bucket_of[(e["venue"], e["rawTitle"])] = bucket
     report = {"country": cc, "listings": len(base_rows), "reresolved": len(reresolved & set(base_by)),
-              "moved": len(moved_keys), "buckets": {b: len(v) for b, v in buckets.items() if v},
+              "moved": len(moved_keys), "awaiting": len(awaiting), "buckets": {b: len(v) for b, v in buckets.items() if v},
               "pending": sum(1 for k in moved_keys if "pending" in (base_by[k]["take"], head_by[k]["take"]))}
     compared = [k for k in base_by if prod.get(k, "missing") != "missing"]
     report["prod"] = {"compared": len(compared), "base agrees": sum(base_by[k]["take"] == prod[k] for k in compared),
@@ -339,9 +346,10 @@ def diff(cc, base_rows, head_rows, prod, judgement_rows, whole_rows=None):
     report["unsound"] = []
     if whole_rows is not None:
         whole = {r["key"]: r["take"] for r in whole_rows}
-        report["unsound"] = [{"venue": base_by[k]["venue"], "rawTitle": base_by[k]["rawTitle"], "what-if": head_by[k]["take"],
+        report["unsound"] = [{"venue": base_by[k]["venue"], "rawTitle": base_by[k]["rawTitle"], "what-if": resolved_by[k]["take"],
                               "whole": whole.get(k, "absent"), "selected": k in reresolved}
-                             for k in sorted(base_by) if whole.get(k, "absent") != head_by[k]["take"]]
+                             for k in sorted(base_by)
+                             if whole.get(k, "absent") != resolved_by[k]["take"] and (k in whole or k in reresolved)]
     report["examples"] = {b: [f"{e['venue']} | {e['rawTitle']}: {e['before']} -> {e['after']}" for e in v[:3]]
                           for b, v in buckets.items() if v}
     return report, rows
@@ -353,6 +361,9 @@ TSV_COLUMNS = ("country", "venue", "rawTitle", "base", "head", "prod", "bucket",
 def render(report):
     out = [f"== {report['country']}: {report['listings']} listings, {report['reresolved']} re-resolved at the head; "
            f"{report['moved']} take(s) moved ({report['pending']} to or from pending)"]
+    if report["awaiting"]:
+        out.append(f"  {report['awaiting']} listing(s) await an answer the head asks and prod's store does not hold (new query text): "
+                   "counted as no move; a CI measure fills them")
     if report["buckets"]:
         out.append("  " + ", ".join(f"{b} {n}" for b, n in report["buckets"].items()))
     for b, examples in report["examples"].items():

@@ -128,6 +128,10 @@ Design and limits: docs/design/identity-slice.md.
   keeps selecting ALL; `--verify` then proves it.
 - **`--verify`** also resolves every family at the head and fails (exit 1) on any listing whose take differs from the
   what-if's — inside the selection (the region resolve is not the whole one) or outside it (the selection missed it).
+- **Awaiting is no move.** A head that asks a question prod's store never held (title-rule / shape changes alter query
+  text) leaves that family Pending: every live ask is refused, a real resolve would ask and answer. Such listings are
+  counted apart ("N listing(s) await an answer"), read as the base's take, and never reported as lost; a CI measure fills
+  them. `--verify` still compares the head's own (pending) takes with the whole resolve's.
 - **What it is not.** The agreement stage (final takes) is not recomputed. It is prod's CURRENT corpus, not the pinned
   recording: listings a measurement moved may be gone or billed otherwise now, and new ones move. `scripts/identity-measure`
   stays the verdict of record.
