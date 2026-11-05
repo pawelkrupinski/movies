@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# One listing's flip timeline: every projection that wrote a take of it (trigger: scrape / answer / boot …), each take
+# change (stage, basis, decided_by, the trace's rules, who joined or left its decision), every ask filed for its
+# cluster (family, answered or failed, inline or queued), the asks filed after the projection that needed them gave up
+# waiting — and, at the end, each reversal (X -> Y -> X) classified LATE-ANSWER, SIBLING/POPULATION, RULE or
+# DEPLOY/RESTART, with why.
+#
+#   scripts/flip-timeline <cc> --venue S --title S [--since 7d] [--dump FILE | --from FILE]
+#
+#   --venue, --title  substrings of the venue and the billed title (case aside); every matching listing
+#   --since           how far back: Nd, Nh or Nm (default 7d; identity_history keeps about a week)
+#   --dump FILE       keep everything read (mirror rows, log lines) as JSON; --from FILE prints from such a file
+#
+# Reads the LOCAL prod mirror (127.0.0.1:28017, identity_history, read-only, after scripts/local-mirror/freshness) and
+# VictoriaLogs / Prometheus over `ssh monitoring-1`; never prod. The logic and its tests: scripts/flip_timeline.py,
+# scripts/flip_timeline_test.py.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >&2; exit 2 ;; esac
+exec python3 -I "$(dirname "$0")/flip_timeline.py" "$@"

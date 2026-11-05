@@ -1,0 +1,920 @@
+{
+"cc": "uk",
+"venue": "ARC Stockton",
+"title": "Hay Fever",
+"since": "7d",
+"now": 1793908420.472874,
+"notes": [
+"the mirror is not fresh: the newest history may be missing"
+],
+"freshness": "uk  kinowo_uk_prod_mirror: synced 2026-11-05T19:36:25Z (17m ago) — WARN: a seed is in flight — the copy is a fragment until it finishes",
+"history": {
+"takes": [
+{
+"at": 1793361639851,
+"id": "P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"build": "ee31642511b14771d9a0fab338e39cfbb8299e18",
+"after": {
+"kind": "lost",
+"venue": "ARC Stockton-on-Tees",
+"listing": "National Theatre Live: Hay Fever",
+"film_before": "ffb05d99f4e9053a",
+"film_after": "ffd6d88a74b68975",
+"tmdb_before": 1791571,
+"title_before": "National Theatre Live: Hay Fever",
+"title_after": "National Theatre Live: Hay Fever",
+"basis": "BelowThreshold",
+"confidence": 0.589,
+"reason_first": "kept apart from 'National Theatre Live: Hay Fever' ×1 (cluster 1): Learned(listing-listing probability below the cannot-link cut)",
+"reason_last": "node Published(ARC Stockton-on-Tees,National Theatre Live: Hay Fever,None,List())",
+"stage": "model",
+"decided_by": "pooled:no-film",
+"trigger": "scrape",
+"cause": "code",
+"previous_basis": "OwnMatch",
+"previous_confidence": 0.972,
+"previous_reason": "node Published(ARC Stockton-on-Tees,National Theatre Live: Hay Fever,None,List())",
+"previous_decided_by": "accept:joined",
+"listing_runtime": 160,
+"repro": "scripts/identity-slice uk --key 'ARC Stockton-on-Tees|National Theatre Live: Hay Fever' --ref ee31642511b14771d9a0fab338e39cfbb8299e18",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+}
+},
+{
+"at": 1793361648787,
+"id": "P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"build": "ee31642511b14771d9a0fab338e39cfbb8299e18",
+"after": {
+"kind": "gained",
+"venue": "ARC Stockton-on-Tees",
+"listing": "National Theatre Live: Hay Fever",
+"film_before": "ffd6d88a74b68975",
+"film_after": "ffb05d99f4e9053a",
+"tmdb_after": 1791571,
+"title_before": "National Theatre Live: Hay Fever",
+"title_after": "National Theatre Live: Hay Fever",
+"basis": "Poster",
+"confidence": 0.589,
+"reason_first": "kept apart from 'National Theatre Live: Hay Fever' ×1 (cluster 1): Learned(listing-listing probability below the cannot-link cut)",
+"reason_last": "the venue's poster matches 'National Theatre Live: Hay Fever' (2027) (0 bits), no other candidate's within 4",
+"stage": "poster",
+"decided_by": "poster:vote",
+"trigger": "answer+scrape",
+"cause": "evidence",
+"previous_basis": "BelowThreshold",
+"previous_confidence": 0.589,
+"previous_reason": "node Published(ARC Stockton-on-Tees,National Theatre Live: Hay Fever,None,List())",
+"previous_decided_by": "pooled:no-film",
+"listing_runtime": 160,
+"repro": "scripts/identity-slice uk --key 'ARC Stockton-on-Tees|National Theatre Live: Hay Fever' --ref ee31642511b14771d9a0fab338e39cfbb8299e18",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+}
+},
+{
+"at": 1793367562679,
+"id": "P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"build": "201e45bfc1cc019ad4c08113ad2e44bc5df5abed",
+"after": {
+"kind": "lost",
+"venue": "ARC Stockton-on-Tees",
+"listing": "National Theatre Live: Hay Fever",
+"film_before": "ffb05d99f4e9053a",
+"film_after": "fa9ed04d32d40196",
+"tmdb_before": 1791571,
+"title_before": "National Theatre Live: Hay Fever",
+"title_after": "National Theatre Live: Hay Fever",
+"basis": "BelowThreshold",
+"confidence": 0.574,
+"reason_first": "kept apart from 'National Theatre Live: Hay Fever' ×1 (cluster 1): Learned(listing-listing probability below the cannot-link cut)",
+"reason_last": "node Published(ARC Stockton-on-Tees,National Theatre Live: Hay Fever,None,List())",
+"stage": "model",
+"decided_by": "pooled:no-film",
+"trigger": "scrape",
+"cause": "code",
+"previous_basis": "Poster",
+"previous_confidence": 0.574,
+"previous_reason": "the venue's poster matches 'National Theatre Live: Hay Fever' (2027) (0 bits), no other candidate's within 4",
+"previous_decided_by": "poster:vote",
+"listing_runtime": 160,
+"repro": "scripts/identity-slice uk --key 'ARC Stockton-on-Tees|National Theatre Live: Hay Fever' --ref 201e45bfc1cc019ad4c08113ad2e44bc5df5abed",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+}
+},
+{
+"at": 1793367567569,
+"id": "P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"build": "201e45bfc1cc019ad4c08113ad2e44bc5df5abed",
+"after": {
+"kind": "gained",
+"venue": "ARC Stockton-on-Tees",
+"listing": "National Theatre Live: Hay Fever",
+"film_before": "fa9ed04d32d40196",
+"film_after": "ffb05d99f4e9053a",
+"tmdb_after": 1791571,
+"title_before": "National Theatre Live: Hay Fever",
+"title_after": "National Theatre Live: Hay Fever",
+"basis": "Poster",
+"confidence": 0.574,
+"reason_first": "kept apart from 'National Theatre Live: Hay Fever' ×1 (cluster 1): Learned(listing-listing probability below the cannot-link cut)",
+"reason_last": "the venue's poster matches 'National Theatre Live: Hay Fever' (2027) (0 bits), no other candidate's within 4",
+"stage": "poster",
+"decided_by": "poster:vote",
+"trigger": "answer",
+"cause": "evidence",
+"previous_basis": "BelowThreshold",
+"previous_confidence": 0.574,
+"previous_reason": "node Published(ARC Stockton-on-Tees,National Theatre Live: Hay Fever,None,List())",
+"previous_decided_by": "pooled:no-film",
+"listing_runtime": 160,
+"repro": "scripts/identity-slice uk --key 'ARC Stockton-on-Tees|National Theatre Live: Hay Fever' --ref 201e45bfc1cc019ad4c08113ad2e44bc5df5abed",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+}
+}
+],
+"siblings": [
+{
+"at": 1793361639851,
+"id": "P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361639851,
+"id": "N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361639851,
+"id": "N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361639851,
+"id": "N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361639851,
+"id": "N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361639851,
+"id": "N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361639851,
+"id": "N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361639851,
+"id": "N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361639851,
+"id": "P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793361648787,
+"id": "P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367562679,
+"id": "P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+},
+{
+"at": 1793367567569,
+"id": "P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000",
+"members": [
+"P\u0000ARC Stockton-on-Tees\u0000National Theatre Live: Hay Fever\u0000",
+"N\u0000Loewen Cinema\u0000https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3440792\u0000National Theatre Live: Hay Fever",
+"N\u0000Nova Cinema Woking\u0000https://www.novacinema.com/shows/national-theatre-live-hay-fever.html\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Boston\u0000https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82155399\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Catterick Garrison\u0000https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3815117\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Cinema Corby\u0000https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn?f=49482850\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Doncaster\u0000https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19731866\u0000National Theatre Live: Hay Fever",
+"N\u0000Savoy Worksop\u0000https://savoyworksop.co.uk/SavoyWorksop.dll/WhatsOn?f=55757223\u0000National Theatre Live: Hay Fever",
+"P\u0000Towner Eastbourne Cinema\u0000National Theatre Live: Hay Fever\u0000"
+]
+}
+],
+"asks": [],
+"answers": [],
+"listings": [],
+"members_capped": false
+},
+"changes": [
+{
+"_time": "2026-10-30T12:00:39.840235938Z",
+"basis": "BelowThreshold",
+"build": "ee31642511b14771d9a0fab338e39cfbb8299e18",
+"cause": "code",
+"decided_by": "pooled:no-film",
+"kind": "lost",
+"listing": "National Theatre Live: Hay Fever",
+"members": "9",
+"pod": "worker-uk-74d56c6784-cht2g",
+"projection_id": "2026-10-30T12:00:28.942527908Z",
+"projection_mode": "changed",
+"projection_trigger": "scrape",
+"stage": "model",
+"tmdb_before": "1791571",
+"venue": "ARC Stockton-on-Tees"
+},
+{
+"_time": "2026-10-30T12:00:48.784813824Z",
+"basis": "Poster",
+"build": "ee31642511b14771d9a0fab338e39cfbb8299e18",
+"cause": "evidence",
+"decided_by": "poster:vote",
+"kind": "gained",
+"listing": "National Theatre Live: Hay Fever",
+"members": "9",
+"pod": "worker-uk-74d56c6784-cht2g",
+"projection_id": "2026-10-30T12:00:44.807333742Z",
+"projection_mode": "changed",
+"projection_trigger": "answer+scrape",
+"stage": "poster",
+"tmdb_after": "1791571",
+"venue": "ARC Stockton-on-Tees"
+},
+{
+"_time": "2026-10-30T13:39:22.668258587Z",
+"basis": "BelowThreshold",
+"build": "201e45bfc1cc019ad4c08113ad2e44bc5df5abed",
+"cause": "code",
+"decided_by": "pooled:no-film",
+"kind": "lost",
+"listing": "National Theatre Live: Hay Fever",
+"members": "9",
+"pod": "worker-uk-796cf684bd-l59sc",
+"projection_id": "2026-10-30T13:39:16.644833006Z",
+"projection_mode": "changed",
+"projection_trigger": "scrape",
+"stage": "model",
+"tmdb_before": "1791571",
+"venue": "ARC Stockton-on-Tees"
+},
+{
+"_time": "2026-10-30T13:39:27.567830436Z",
+"basis": "Poster",
+"build": "201e45bfc1cc019ad4c08113ad2e44bc5df5abed",
+"cause": "evidence",
+"decided_by": "poster:vote",
+"kind": "gained",
+"listing": "National Theatre Live: Hay Fever",
+"members": "9",
+"pod": "worker-uk-796cf684bd-l59sc",
+"projection_id": "2026-10-30T13:39:25.196243750Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"stage": "poster",
+"tmdb_after": "1791571",
+"venue": "ARC Stockton-on-Tees"
+}
+],
+"projections": [
+{
+"_msg": "identity projection: 35667 listings → 2580 films; wrote 12, retired 1, declined 0; Regroupings(1,2,18,8,1) in 10.8s (listings 0.1s/5MB, snapshot 0.0s/4MB, resolve 0.0s/0MB, agreement 10.1s/1615MB, seed 0.0s/0MB, index 0.0s/3MB, scope 0.0s/0MB, draft 0.1s/9MB, details 0.0s/0MB, finish 0.0s/2MB, guard 0.0s/2MB, compare 0.1s/1MB, writes 0.2s/5MB, venue slots reused 1135, built 2 (rows moved 2, priors moved 0, new 0), scope 5 stored films, 12 clusters, 1767 listings)",
+"_time": "2026-10-30T12:00:39.731530487Z",
+"app": "worker-uk",
+"build": "ee31642511b14771d9a0fab338e39cfbb8299e18",
+"container": "worker",
+"country": "uk",
+"declined": "0",
+"env": "kinowo",
+"films": "2580",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "35667",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-uk-74d56c6784-cht2g",
+"projection_id": "2026-10-30T12:00:28.942527908Z",
+"projection_mode": "changed",
+"projection_trigger": "scrape",
+"retired": "1",
+"retired_films": "f4b40bbd2cc84b0c",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "10.8",
+"source_type": "file",
+"thread": "identity-projection-uk",
+"tier": "worker",
+"type": "stdout",
+"written": "12"
+},
+{
+"_msg": "identity projection: 35668 listings → 2577 films; wrote 10, retired 3, declined 0; Regroupings(3,0,12,0,3) in 3.9s (listings 0.1s/2MB, snapshot 0.0s/4MB, resolve 0.0s/0MB, agreement 1.9s/255MB, seed 0.0s/0MB, index 0.0s/3MB, draft 0.8s/173MB, details 0.0s/3MB, finish 0.2s/63MB, guard 0.0s/6MB, compare 0.1s/3MB, writes 0.7s/20MB, venue slots reused 35244, built 26 (rows moved 7, priors moved 18, new 1))",
+"_time": "2026-10-30T12:00:48.742134055Z",
+"app": "worker-uk",
+"build": "ee31642511b14771d9a0fab338e39cfbb8299e18",
+"container": "worker",
+"country": "uk",
+"declined": "0",
+"env": "kinowo",
+"films": "2577",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "35668",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-uk-74d56c6784-cht2g",
+"projection_id": "2026-10-30T12:00:44.807333742Z",
+"projection_mode": "changed",
+"projection_trigger": "answer+scrape",
+"retired": "3",
+"retired_films": "f0072432c453d310 f0460f77fa51fd9b ffd6d88a74b68975",
+"role": "k3s-worker",
+"scoped": "false",
+"seconds": "3.9",
+"source_type": "file",
+"thread": "identity-projection-uk",
+"tier": "worker",
+"type": "stdout",
+"written": "10"
+},
+{
+"_msg": "identity projection: 35681 listings → 2579 films; wrote 39, retired 0, declined 0; Regroupings(0,1,11,2,0) in 5.9s (listings 0.1s/5MB, snapshot 0.0s/4MB, resolve 0.0s/0MB, agreement 4.1s/939MB, seed 0.0s/0MB, index 0.1s/5MB, scope 0.0s/3MB, draft 0.3s/42MB, details 0.0s/0MB, finish 0.0s/18MB, draft 0.3s/32MB, details 0.0s/0MB, finish 0.1s/18MB, guard 0.0s/3MB, compare 0.1s/4MB, writes 0.7s/21MB, venue slots reused 1416, built 142 (rows moved 138, priors moved 0, new 4), scope 40 stored films, 42 clusters, 11237 listings)",
+"_time": "2026-10-30T13:39:22.569949735Z",
+"app": "worker-uk",
+"build": "201e45bfc1cc019ad4c08113ad2e44bc5df5abed",
+"container": "worker",
+"country": "uk",
+"declined": "0",
+"env": "kinowo",
+"films": "2579",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "35681",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-uk-796cf684bd-l59sc",
+"projection_id": "2026-10-30T13:39:16.644833006Z",
+"projection_mode": "changed",
+"projection_trigger": "scrape",
+"retired": "0",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "5.9",
+"source_type": "file",
+"thread": "identity-projection-uk",
+"tier": "worker",
+"type": "stdout",
+"written": "39"
+},
+{
+"_msg": "identity projection: 35681 listings → 2577 films; wrote 1, retired 2, declined 0; Regroupings(2,0,11,0,2) in 2.3s (listings 0.0s/1MB, snapshot 0.0s/4MB, resolve 0.1s/0MB, agreement 1.8s/254MB, seed 0.0s/0MB, index 0.0s/3MB, scope 0.0s/0MB, draft 0.1s/4MB, details 0.0s/0MB, finish 0.0s/1MB, draft 0.1s/3MB, details 0.0s/0MB, finish 0.0s/1MB, guard 0.0s/2MB, compare 0.0s/1MB, writes 0.1s/2MB, venue slots reused 992, built 22 (rows moved 0, priors moved 22, new 0), scope 6 stored films, 4 clusters, 511 listings)",
+"_time": "2026-10-30T13:39:27.538212519Z",
+"app": "worker-uk",
+"build": "201e45bfc1cc019ad4c08113ad2e44bc5df5abed",
+"container": "worker",
+"country": "uk",
+"declined": "0",
+"env": "kinowo",
+"films": "2577",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "35681",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-uk-796cf684bd-l59sc",
+"projection_id": "2026-10-30T13:39:25.196243750Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"retired": "2",
+"retired_films": "fa9ed04d32d40196 fdda23ca89d1edd2",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "2.3",
+"source_type": "file",
+"thread": "identity-projection-uk",
+"tier": "worker",
+"type": "stdout",
+"written": "1"
+}
+],
+"histogram": {
+"2026-10-30T12:00:28.942527908Z": "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[]}}",
+"2026-10-30T13:39:16.644833006Z": "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[]}}"
+}
+}

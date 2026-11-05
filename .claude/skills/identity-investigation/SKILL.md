@@ -77,6 +77,7 @@ Design and limits: docs/design/identity-slice.md.
 | Why did prod's take of a listing change film at a moment (a flip on the `kinowo_identity_listing_flips` panel)? | `scripts/identity-why uk --listing "Riverside Theatre Woodbridge\|The Stranger" [--at 2026-10-26T22:10:30Z]` — from the identity history alone (`identity_history`, a month, on the local mirror): the take, the take before, the listings that joined or left its decision, and every input it read that moved between them (an answer changed or deleted, a TMDB/IMDb read that failed — 429, timeout —, a listing taken in or let go) |
 | What did prod's model take at a past moment, over exactly the answers and listings it had then? | `scripts/identity-replay uk --at 2026-10-26T22:10:30Z --listing "Riverside\|Stranger"` — every answer, venue page and listing rebuilt as it stood then from `identity_history` (`IdentityHistoryReplay`), resolved under this checkout's code; the model's take (the agreement stage is not replayed) |
 | When and why did prod's take of a listing change, per deploy? Would CI have reproduced it? | `scripts/listing-history uk --title "ties that bind" [--venue X] [--since 7d] [--replay]` (below) |
+| Why did a listing flip (X → Y → X): a late answer, a sibling's arrival, a rule, a deploy? | `scripts/flip-timeline de --venue Abaton --title Geister [--since 7d]` — one timeline of its projections, take changes, asks and late answers, each reversal classified (below) |
 
 ## Fast batches, fast iteration
 
@@ -335,6 +336,33 @@ one listing's take over time, ~15 s without `--replay`:
   `Capture.live`, which refs before it lack: every ref before it fails to compile).
   Where the local prod mirror is readable a third view replays with **prod's state now** (`--prod-mirror`).
   `--replay-limit N` (default 6) bounds how many deploys are replayed.
+
+## flip-timeline
+
+`scripts/flip-timeline <cc> --venue S --title S [--since 7d] [--dump FILE | --from FILE]` — ONE timeline of what moved
+a listing's take, ~30 s, read-only: the mirror's `identity_history` (after `scripts/local-mirror/freshness`) and
+VictoriaLogs / Prometheus over `ssh monitoring-1`. Rows, in time order:
+
+- **PROJ** each projection that wrote a take of it: trigger (scrape / answer / film-change / boot / periodic / retry),
+  start → end, agreement phase, pod, build (the `identity projection:` summary lines);
+- **TAKE** each take change: before → after, stage, basis, decided_by (and what it was), the trace's rules, members of
+  its decision and who **joined** or **left** it, cause, build; `awaits` / `unanswered` when the history keeps them; a
+  change older than the history's week comes from its take-change log line (`VictoriaLogs only`);
+- **ASK** every family ask filed for its title (the agreement question markers) and the record asks filed during a
+  projection of it: family, answered or failed, **inline** (filed while a projection of it ran, from its agreement phase
+  on; sent ≈ the phase's start) or **queued**; **LATE** under one filed after that projection gave up waiting
+  (agreement start + `AgreementStage.AskNowWithin`, 5 s) — the two-step write;
+- **LIST** a member listing published within a minute of a projection of it; **READ** a TMDB answer its take read;
+  **HIST** the inline-ask histogram around a dropping projection, where it has samples.
+
+**REVERSALS** classifies every X → Y → X, first match wins: **DEPLOY/RESTART** (a boot projection on either side, or the
+build or pod changed), **LATE-ANSWER** (the restoring projection answer-triggered and an ask of the cluster filed late;
+for a `poster:vote` restore it says *inferred* — poster answers are not in `identity_history`), **SIBLING/POPULATION**
+(the decision's members moved, or a member was re-published between them), else **RULE** (the same inputs decided
+otherwise). Validated 2026-11-05 on the hand-reconstructed cases: DE Abaton «Geister» 11-02 LATE-ANSWER (metacritic's
+title answer +8.8 s into the agreement phase), UK ARC Stockton «Hay Fever» 10-30 ×2 LATE-ANSWER (inferred, poster),
+DE Abaton «Eternity» 10-31 DEPLOY/RESTART, Lichtblick «Buddies» (the drift lattice) SIBLING/POPULATION.
+`--dump` keeps what was read; `--from` prints from it (the self-test's fixtures, `scripts/testdata/flip-timeline/`).
 
 ## identity-slice --explain
 

@@ -1,0 +1,1020 @@
+{
+"cc": "de",
+"venue": "Abaton",
+"title": "Eternity",
+"since": "7d",
+"now": 1793908457.10561,
+"notes": [],
+"freshness": "de  kinowo_de_prod_mirror: synced 2026-11-05T19:51:28Z (3m ago) — fresh",
+"history": {
+"takes": [
+{
+"at": 1793443745408,
+"id": "P\u0000Abaton\u0000Eternity\u00002025",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"after": {
+"kind": "lost",
+"venue": "Abaton",
+"listing": "Eternity",
+"film_before": "eternity|2025",
+"film_after": "eternity|2025",
+"tmdb_before": 1259102,
+"title_before": "Eternity",
+"title_after": "Eternity",
+"basis": "Vetoed",
+"confidence": 0.541,
+"reason_first": "'Eternity' [2025] ×9: feed cineamo 1259102m links 1259102, overruled: 2 other source(s) back 1769681 and none backs 1259102 — its copied facts set aside",
+"reason_last": "node Published(Abaton,Eternity,Some(2025),List())",
+"stage": "model",
+"decided_by": "veto:denied",
+"trigger": "deploy",
+"cause": "code",
+"listing_year": 2025,
+"repro": "scripts/identity-slice de --key 'Abaton|Eternity' --ref d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+}
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Abaton\u0000Eternity\u00002025",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"after": {
+"kind": "gained",
+"venue": "Abaton",
+"listing": "Eternity",
+"film_before": "eternity|2025",
+"film_after": "eternity|2025",
+"tmdb_after": 1259102,
+"title_before": "Eternity",
+"title_after": "Eternity",
+"basis": "Agreed",
+"confidence": 0.541,
+"reason_first": "'Eternity' [2025] ×9: feed cineamo 1259102m links 1259102, overruled: 2 other source(s) back 1769681 and none backs 1259102 — its copied facts set aside",
+"reason_last": "filmweb, imdb, metacritic, rt, corroborated by venues agree on 'Eternity' (2025) tt24950660",
+"stage": "agreement",
+"decided_by": "agreed:filmweb+imdb+metacritic+rt",
+"trigger": "answer",
+"cause": "evidence",
+"previous_basis": "Vetoed",
+"previous_confidence": 0.541,
+"previous_reason": "node Published(Abaton,Eternity,Some(2025),List())",
+"previous_decided_by": "veto:denied",
+"listing_year": 2025,
+"repro": "scripts/identity-slice de --key 'Abaton|Eternity' --ref d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+}
+}
+],
+"siblings": [
+{
+"at": 1793443745408,
+"id": "P\u0000Abaton\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443745408,
+"id": "P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443745408,
+"id": "P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443745408,
+"id": "P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443745408,
+"id": "P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443745408,
+"id": "P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443745408,
+"id": "P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443745408,
+"id": "P\u0000Ostentor\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443745408,
+"id": "P\u0000Schauburg Bremen\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Abaton\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Ostentor\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+},
+{
+"at": 1793443772279,
+"id": "P\u0000Schauburg Bremen\u0000Eternity\u00002025",
+"members": [
+"P\u0000Abaton\u0000Eternity\u00002025",
+"P\u0000Casablanca Nürnberg\u0000Eternity\u00002025",
+"P\u0000Casablanca-Programmkino\u0000Eternity\u00002025",
+"P\u0000Central-Kino Rottweil\u0000Eternity\u00002025",
+"P\u0000Cinema &amp; Kurbelkiste Münster\u0000Eternity\u00002025",
+"P\u0000Cinema Ostertor\u0000Eternity\u00002025",
+"P\u0000Harmonie in Sachsenhausen\u0000Eternity\u00002025",
+"P\u0000Ostentor\u0000Eternity\u00002025",
+"P\u0000Schauburg Bremen\u0000Eternity\u00002025"
+]
+}
+],
+"asks": [
+{
+"at": 1793443740394,
+"id": "unanswered|imdb|title|ETERNITY",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443740400,
+"id": "unanswered|imdb|title|Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443740732,
+"id": "unanswered|imdb|title|Eternity - Florentina Holzinger",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443741534,
+"id": "unanswered|imdb|title|Special Screening: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443742012,
+"id": "unanswered|imdb|title|Special: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443743685,
+"id": "unanswered|wiki|title|ETERNITY",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443744929,
+"id": "unanswered|wiki|title|Eternity - Florentina Holzinger",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443746052,
+"id": "unanswered|wiki|title|Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443751588,
+"id": "unanswered|filmweb|title|ETERNITY",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443751656,
+"id": "unanswered|filmweb|title|Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443752130,
+"id": "unanswered|filmweb|title|Eternity - Florentina Holzinger",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443752529,
+"id": "unanswered|wiki|title|Special Screening: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443752850,
+"id": "unanswered|filmweb|title|Special Screening: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443752872,
+"id": "unanswered|filmweb|title|Special: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443753067,
+"id": "unanswered|wiki|title|Special: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443753639,
+"id": "unanswered|metacritic|title|ETERNITY",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443754150,
+"id": "unanswered|metacritic|title|Eternity - Florentina Holzinger",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443755767,
+"id": "unanswered|metacritic|title|Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443755931,
+"id": "unanswered|metacritic|title|Special Screening: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443756436,
+"id": "unanswered|rt|title|Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443756445,
+"id": "unanswered|rt|title|ETERNITY",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443756588,
+"id": "unanswered|rt|title|Eternity - Florentina Holzinger",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443757083,
+"id": "unanswered|rt|title|Special Screening: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443757118,
+"id": "unanswered|rt|title|Special: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443760097,
+"id": "unanswered|imdb|record|tt0045793",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443760107,
+"id": "unanswered|imdb|record|tt0156794",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443760213,
+"id": "unanswered|imdb|record|tt10567914",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443760368,
+"id": "unanswered|imdb|record|tt24950660",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443760493,
+"id": "unanswered|imdb|record|tt34001092",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443760589,
+"id": "unanswered|imdb|record|tt1740482",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443760765,
+"id": "unanswered|imdb|record|tt36068226",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443760812,
+"id": "unanswered|imdb|record|tt3564574",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443761001,
+"id": "unanswered|imdb|record|tt37008134",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443761050,
+"id": "unanswered|imdb|record|tt36339931",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443761237,
+"id": "unanswered|filmweb|record|10090602",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443761362,
+"id": "unanswered|filmweb|record|168808",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443761495,
+"id": "unanswered|filmweb|record|31023",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443761625,
+"id": "unanswered|filmweb|record|35263",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443761751,
+"id": "unanswered|filmweb|record|652422",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443761875,
+"id": "unanswered|filmweb|record|664571",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443762027,
+"id": "unanswered|filmweb|record|710284",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443762151,
+"id": "unanswered|filmweb|record|842261",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443762271,
+"id": "unanswered|filmweb|record|94612",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443762420,
+"id": "unanswered|metacritic|record|eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443764309,
+"id": "unanswered|metacritic|title|Special: Eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443764599,
+"id": "unanswered|metacritic|record|eternity-and-a-day",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443764638,
+"id": "unanswered|wiki|record|Q1268001",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443765911,
+"id": "unanswered|metacritic|record|into-eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443766212,
+"id": "unanswered|wiki|record|Q23767842",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443766390,
+"id": "unanswered|metacritic|record|rabindranath-tagore-the-poet-of-eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443766479,
+"id": "unanswered|rt|record|eternity_2025",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443766577,
+"id": "unanswered|rt|record|at_eternitys_gate",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443766830,
+"id": "unanswered|rt|record|1007931-from_here_to_eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443767262,
+"id": "unanswered|rt|record|hell_to_eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443767300,
+"id": "unanswered|metacritic|record|from-here-to-eternity-re-release",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443767344,
+"id": "unanswered|rt|record|eternity_and_a_day",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443767689,
+"id": "unanswered|rt|record|moon_2024",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443767709,
+"id": "unanswered|imdb|record|tt6118746",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443767709,
+"id": "unanswered|imdb|record|tt12695130",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443767842,
+"id": "unanswered|rt|record|the_yin_yang_master_dream_of_eternity",
+"outcome": "answered",
+"failures": 0
+},
+{
+"at": 1793443767936,
+"id": "unanswered|imdb|record|tt6122072",
+"outcome": "answered",
+"failures": 0
+}
+],
+"answers": [
+{
+"at": 1793443771321,
+"kind": "answer:tmdb_queries",
+"id": "movie|de-DE|Eternity"
+}
+],
+"listings": [],
+"members_capped": false
+},
+"changes": [
+{
+"_time": "2026-10-31T10:49:05.389279654Z",
+"basis": "Vetoed",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"cause": "code",
+"decided_by": "veto:denied",
+"kind": "lost",
+"listing": "Eternity",
+"members": "9",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:48:49.214740410Z",
+"projection_mode": "periodic",
+"projection_trigger": "deploy",
+"stage": "model",
+"tmdb_before": "1259102",
+"venue": "Abaton"
+},
+{
+"_time": "2026-10-31T10:49:32.273351967Z",
+"basis": "Agreed",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"cause": "evidence",
+"decided_by": "agreed:filmweb+imdb+metacritic+rt",
+"kind": "gained",
+"listing": "Eternity",
+"members": "9",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:49:28.937014901Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"stage": "agreement",
+"tmdb_after": "1259102",
+"venue": "Abaton"
+}
+],
+"projections": [
+{
+"_msg": "identity projection: 33739 listings → 4656 films; wrote 5, retired 0, declined 0; Regroupings(0,1,9,4,0) in 16.0s (listings 1.3s/3MB, snapshot 0.0s/8MB, resolve 0.1s/0MB, agreement 8.7s/521MB, seed 0.2s/4MB, index 1.4s/112MB, draft 2.5s/235MB, details 0.2s/6MB, finish 0.3s/74MB, fingerprints 0.2s/5MB, guard 0.1s/15MB, compare 0.1s/5MB, writes 0.2s/4MB, venue slots reused 33209, built 115 (rows moved 0, priors moved 0, new 115))",
+"_time": "2026-10-31T10:49:05.272762077Z",
+"app": "worker-de",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"container": "worker",
+"country": "de",
+"declined": "0",
+"env": "kinowo",
+"films": "4656",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "33739",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:48:49.214740410Z",
+"projection_mode": "periodic",
+"projection_trigger": "deploy",
+"retired": "0",
+"role": "k3s-worker",
+"scoped": "false",
+"seconds": "16.0",
+"source_type": "file",
+"thread": "identity-projection-de",
+"tier": "worker",
+"type": "stdout",
+"written": "5"
+},
+{
+"_msg": "identity projection: 33739 listings → 4656 films; wrote 0, retired 0, declined 0; Regroupings(0,0,0,0,0) in 3.1s (listings 0.1s/2MB, snapshot 0.0s/8MB, resolve 0.1s/0MB, agreement 2.0s/99MB, seed 0.0s/0MB, index 0.6s/101MB, scope 0.0s/0MB, draft 0.0s/1MB, details 0.0s/0MB, finish 0.0s/0MB, guard 0.0s/5MB, compare 0.0s/0MB, writes 0.0s/2MB, venue slots reused 0, built 0 (rows moved 0, priors moved 0, new 0), scope 1 stored films, 1 clusters, 1 listings)",
+"_time": "2026-10-31T10:49:08.555863388Z",
+"app": "worker-de",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"container": "worker",
+"country": "de",
+"declined": "0",
+"env": "kinowo",
+"films": "4656",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "33739",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:49:05.455879361Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"retired": "0",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "3.1",
+"source_type": "file",
+"thread": "identity-projection-de",
+"tier": "worker",
+"type": "stdout",
+"written": "0"
+},
+{
+"_msg": "identity projection: 33739 listings → 4656 films; wrote 0, retired 0, declined 0; Regroupings(0,0,0,0,0) in 1.2s (listings 0.1s/1MB, snapshot 0.0s/8MB, resolve 0.1s/0MB, agreement 0.8s/95MB, seed 0.0s/0MB, index 0.0s/2MB, scope 0.0s/0MB, draft 0.0s/1MB, details 0.0s/0MB, finish 0.0s/0MB, guard 0.0s/5MB, compare 0.0s/0MB, writes 0.0s/2MB, venue slots reused 0, built 0 (rows moved 0, priors moved 0, new 0), scope 1 stored films, 1 clusters, 1 listings)",
+"_time": "2026-10-31T10:49:09.759917014Z",
+"app": "worker-de",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"container": "worker",
+"country": "de",
+"declined": "0",
+"env": "kinowo",
+"films": "4656",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "33739",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:49:08.556451182Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"retired": "0",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "1.2",
+"source_type": "file",
+"thread": "identity-projection-de",
+"tier": "worker",
+"type": "stdout",
+"written": "0"
+},
+{
+"_msg": "identity projection: 33739 listings → 4656 films; wrote 0, retired 0, declined 0; Regroupings(0,0,0,0,0) in 1.6s (listings 0.1s/1MB, snapshot 0.0s/8MB, resolve 0.1s/0MB, agreement 1.0s/95MB, seed 0.0s/0MB, index 0.0s/2MB, scope 0.0s/0MB, draft 0.1s/1MB, details 0.1s/0MB, finish 0.0s/0MB, draft 0.1s/1MB, details 0.0s/0MB, finish 0.0s/0MB, guard 0.0s/5MB, compare 0.0s/0MB, writes 0.0s/2MB, venue slots reused 0, built 14 (rows moved 0, priors moved 14, new 0), scope 6 stored films, 6 clusters, 19 listings)",
+"_time": "2026-10-31T10:49:16.761524453Z",
+"app": "worker-de",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"container": "worker",
+"country": "de",
+"declined": "0",
+"env": "kinowo",
+"films": "4656",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "33739",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:49:15.151383268Z",
+"projection_mode": "changed",
+"projection_trigger": "answer+film-change",
+"retired": "0",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "1.6",
+"source_type": "file",
+"thread": "identity-projection-de",
+"tier": "worker",
+"type": "stdout",
+"written": "0"
+},
+{
+"_msg": "identity projection: 33739 listings → 4656 films; wrote 0, retired 0, declined 0; Regroupings(0,0,0,0,0) in 2.2s (listings 0.1s/1MB, snapshot 0.0s/8MB, resolve 0.1s/0MB, agreement 1.8s/117MB, seed 0.0s/0MB, index 0.0s/2MB, scope 0.0s/0MB, draft 0.0s/1MB, details 0.0s/0MB, finish 0.0s/0MB, guard 0.0s/5MB, compare 0.0s/0MB, writes 0.0s/2MB, venue slots reused 0, built 0 (rows moved 0, priors moved 0, new 0), scope 1 stored films, 1 clusters, 1 listings)",
+"_time": "2026-10-31T10:49:20.292165056Z",
+"app": "worker-de",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"container": "worker",
+"country": "de",
+"declined": "0",
+"env": "kinowo",
+"films": "4656",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "33739",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:49:18.118912002Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"retired": "0",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "2.2",
+"source_type": "file",
+"thread": "identity-projection-de",
+"tier": "worker",
+"type": "stdout",
+"written": "0"
+},
+{
+"_msg": "identity projection: 33739 listings → 4656 films; wrote 0, retired 0, declined 0; Regroupings(0,0,0,0,0) in 1.3s (listings 0.1s/1MB, snapshot 0.0s/8MB, resolve 0.1s/0MB, agreement 0.9s/95MB, seed 0.0s/0MB, index 0.0s/2MB, scope 0.0s/0MB, draft 0.0s/1MB, details 0.0s/0MB, finish 0.0s/0MB, guard 0.0s/5MB, compare 0.0s/0MB, writes 0.0s/2MB, venue slots reused 0, built 0 (rows moved 0, priors moved 0, new 0), scope 1 stored films, 1 clusters, 1 listings)",
+"_time": "2026-10-31T10:49:24.751248409Z",
+"app": "worker-de",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"container": "worker",
+"country": "de",
+"declined": "0",
+"env": "kinowo",
+"films": "4656",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "33739",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:49:23.421372481Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"retired": "0",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "1.3",
+"source_type": "file",
+"thread": "identity-projection-de",
+"tier": "worker",
+"type": "stdout",
+"written": "0"
+},
+{
+"_msg": "identity projection: 33739 listings → 4656 films; wrote 0, retired 0, declined 0; Regroupings(0,0,0,0,0) in 1.4s (listings 0.1s/1MB, snapshot 0.0s/8MB, resolve 0.1s/0MB, agreement 0.9s/102MB, seed 0.0s/0MB, index 0.0s/2MB, scope 0.0s/0MB, draft 0.0s/1MB, details 0.1s/0MB, finish 0.0s/0MB, guard 0.0s/1MB, compare 0.0s/0MB, writes 0.0s/2MB, venue slots reused 0, built 0 (rows moved 0, priors moved 0, new 0), scope 1 stored films, 1 clusters, 1 listings)",
+"_time": "2026-10-31T10:49:27.029364424Z",
+"app": "worker-de",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"container": "worker",
+"country": "de",
+"declined": "0",
+"env": "kinowo",
+"films": "4656",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "33739",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:49:25.639108313Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"retired": "0",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "1.4",
+"source_type": "file",
+"thread": "identity-projection-de",
+"tier": "worker",
+"type": "stdout",
+"written": "0"
+},
+{
+"_msg": "identity projection: 33739 listings → 4652 films; wrote 1, retired 4, declined 0; Regroupings(4,0,9,0,4) in 3.3s (listings 0.1s/1MB, snapshot 0.0s/8MB, resolve 0.1s/0MB, agreement 1.2s/133MB, seed 0.0s/0MB, index 0.0s/2MB, scope 0.0s/0MB, draft 0.0s/1MB, details 1.5s/0MB, finish 0.0s/0MB, guard 0.0s/1MB, compare 0.0s/0MB, writes 0.2s/3MB, venue slots reused 18, built 0 (rows moved 0, priors moved 0, new 0), scope 6 stored films, 2 clusters, 19 listings)",
+"_time": "2026-10-31T10:49:32.230625016Z",
+"app": "worker-de",
+"build": "d677b1bb6c392169ab13e9e63f3b2375c8559826",
+"container": "worker",
+"country": "de",
+"declined": "0",
+"env": "kinowo",
+"films": "4652",
+"host": "k3s-worker-1",
+"job": "kubernetes",
+"level": "INFO",
+"listings": "33739",
+"logger": "services.identity.adapters.IdentityProjection",
+"namespace": "kinowo",
+"pod": "worker-de-64c77646-wln9w",
+"projection_id": "2026-10-31T10:49:28.937014901Z",
+"projection_mode": "changed",
+"projection_trigger": "answer",
+"retired": "4",
+"retired_films": "f56385991849b918 f95f1a29d584c7d1 fc509bd4939dc0fd fea82ab186019a89",
+"role": "k3s-worker",
+"scoped": "true",
+"seconds": "3.3",
+"source_type": "file",
+"thread": "identity-projection-de",
+"tier": "worker",
+"type": "stdout",
+"written": "1"
+}
+],
+"histogram": {
+"2026-10-31T10:48:49.214740410Z": "{\"status\":\"success\",\"data\":{\"resultType\":\"vector\",\"result\":[]}}"
+}
+}
