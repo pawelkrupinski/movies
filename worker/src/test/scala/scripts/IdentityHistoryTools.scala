@@ -74,7 +74,7 @@ object IdentityHistoryTools {
   }
 
   /** Every live ask refused: a replay reads what the store held, never TMDB now. */
-  private object Refused extends IdentityLookups {
+  object Refused extends IdentityLookups {
     def hasDetail(listing: Listing): Boolean                      = false
     def detail(listing: Listing): Answer[Option[DetailFacts]]     = Answer.Unknown
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]       = Answer.Unknown

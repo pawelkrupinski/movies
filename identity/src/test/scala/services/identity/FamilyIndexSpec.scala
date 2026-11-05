@@ -67,4 +67,11 @@ class FamilyIndexSpec extends AnyFlatSpec with Matchers {
     readsAll should not be empty
     readsAll.foreach(read => FamilyIndex.ContextRead.parse(read.id) shouldBe Some(read))
   }
+
+  it should "digest a member as the model reads it: a showtime or a poster moves nothing, a year does" in {
+    val dune   = listings.head
+    val digest = FamilyIndex.modelDigest(dune)
+    FamilyIndex.modelDigest(dune.copy(poster = Some("https://example.org/p.jpg"))) shouldBe digest
+    FamilyIndex.modelDigest(dune.copy(year = Some(2022))) should not be digest
+  }
 }

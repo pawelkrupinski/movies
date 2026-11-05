@@ -217,7 +217,7 @@ object FamilyIndex {
     def outsideBlockKeys(entry: Entry): Set[String] = entry.blockKeys.filter(key => (blockKeyHolders(key) -- entry.members.keySet).nonEmpty)
   }
 
-  /** One family's entry. `members`: each listing's input digest (every field, the stage's too); `blockKeys`: the title and
+  /** One family's entry. `members`: each listing's input digest as the model reads it ([[modelDigest]]); `blockKeys`: the title and
    *  film keys it merges under; `context`/`answers`: each read with the digest of what it read; `pins`: the ids of the
    *  pins naming a member; `takes`/`rules`: each member's take ([[PopulationMonotonicity.takeOf]], `None` pending) and
    *  the rule ids that decided it. */
@@ -232,7 +232,7 @@ object FamilyIndex {
     /** Why this entry no longer stands against `now`, each moved input named; empty: every read digests as recorded,
      *  no member moved, and no listing outside it shares a block key — it decides as it decided. */
     private[identity] def stale(now: Now): Seq[String] = {
-      val membersMoved = members.toSeq.collect { case (key, d) if !now.listingOf(key).map(ContentHash.of).contains(d) => s"member|$key" }
+      val membersMoved = members.toSeq.collect { case (key, d) if !now.listingOf(key).map(modelDigest).contains(d) => s"member|$key" }
       val contextMoved = context.toSeq.collect { case (read, d) if read.digestIn(now.context) != d => read.id }
       val answersMoved = answers.toSeq.collect { case (dependency, d) if !Lookups.digestIn(dependency, now.lookups, now.listingOf).contains(d) =>
         Dependency.encode(dependency) }
@@ -240,6 +240,13 @@ object FamilyIndex {
       membersMoved ++ contextMoved ++ answersMoved ++ pinsMoved ++ now.outsideBlockKeys(this).toSeq.map("block|" + _)
     }
   }
+
+  /** A listing's input as the MODEL reads it: every field inside its equality ([[Listing.equals]]: the screening days by
+   *  the season they place a relay in), none of the stage's alone (its poster, days, names, words) -- a venue adding a
+   *  showtime moves no family's model entry. The final take's reads digest the whole listing. */
+  def modelDigest(listing: Listing): Long =
+    ContentHash.of((listing.copy(poster = None, screenings = ScreeningDays.None, names = VenueNames.None, words = ProseWords.None,
+      pageFacts = false), listing.screenedSeason))
 
   private def pinsOf(pins: PinConstraints, members: Set[ListingKey]): Set[String] = pins.pins.filter(_.listings.exists(members)).map(_.id).toSet
 
@@ -264,7 +271,7 @@ object FamilyIndex {
       val takes    = keys.map(key => key -> decided.get(key).flatMap(PopulationMonotonicity.takeOf)).toMap
       val rules    = keys.map(key => key -> decided.get(key).toSeq.flatMap(d => d.trace.rulesOf(key) ++ d.trace.stage)).toMap
       val apart    = keys.filter(key => whole.decisionOf.get(key).flatMap(PopulationMonotonicity.takeOf) != takes(key))
-      (Entry(members.map(l => l.key -> ContentHash.of(l)).toMap, regions.flatMap(_.blockKeys).toSet, context.reads,
+      (Entry(members.map(l => l.key -> modelDigest(l)).toMap, regions.flatMap(_.blockKeys).toSet, context.reads,
         recorded.reads, pinsOf(inputs.pins, keys.toSet), takes, rules), apart,
         Option.when(values)(Recorded(members, context.values.toMap, recorded.answers.toMap, recorded.detailed.toMap)))
     }

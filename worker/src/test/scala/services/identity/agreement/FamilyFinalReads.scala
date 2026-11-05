@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Dependency, FamilyIndex, IdentityLookups, Listing, Resolution}
+import services.identity.{ContentHash, Dependency, FamilyIndex, IdentityLookups, Listing, Resolution}
 import services.movies.ListingKey
 import tools.{MutableClock, UnmatchedClusters}
 
@@ -19,6 +19,7 @@ object FamilyFinalReads {
   /** A settled stage: each listing's final take (`None` pending), the receipts its verdicts hold, and the stage itself,
    *  whose current reads a receipt is compared against ([[moved]]). */
   final case class Settled(takes: Map[ListingKey, Option[String]], receipts: Map[Dependency, Long], lookups: Map[Dependency, Long],
+                           members: Map[ListingKey, Long],
                            stage: AgreementStage, source: IdentityLookups, listingOf: ListingKey => Option[Listing])
 
   /** `listings`, their model `resolution`, settled through a fresh stage over the recording's answers `reads`. */
@@ -35,16 +36,18 @@ object FamilyFinalReads {
       log = false)
     val pending  = scripts.IdentityDrift.pendingOf(result.decisions)
     val takes    = scripts.IdentityDrift.takesOf(result).collect { case (key, take) if byKey.contains(key) => key -> Option.when(!pending(key))(take.film) }
-    Settled(takes, verdicts.all().flatMap(_.reads).toMap, recorded.reads, stage, lookups, byKey.get)
+    Settled(takes, verdicts.all().flatMap(_.reads).toMap, recorded.reads, listings.map(l => l.key -> ContentHash.of(l)).toMap, stage,
+      lookups, byKey.get)
   }
 
   /** What `read`, a receipt's, digests to in `now`'s stage. */
   def digestNow(read: Dependency, now: Settled): Option[Long] = now.stage.digestNow(read, now.listingOf)
 
   /** What of `was`'s reads digests otherwise in `now`: a receipted read through `now`'s stage (a filed answer, an attempt,
-   *  the year, a lookup), and every lookup through `now`'s lookups. `Asked` names a question to read again on its filing,
+   *  the year, a lookup), every lookup through `now`'s lookups, and each member's whole listing (its days, poster, names). `Asked` names a question to read again on its filing,
    *  no value: its answer is its own receipt entry. */
   def moved(was: Settled, now: Settled): Seq[String] =
+    was.members.toSeq.collect { case (key, digest) if !now.listingOf(key).map(ContentHash.of).contains(digest) => s"member|$key" } ++
     was.receipts.toSeq.collect {
       case (read, digest) if !read.isInstanceOf[Dependency.Asked] && !digestNow(read, now).contains(digest) => Dependency.encode(read)
     } ++ was.lookups.toSeq.collect {
