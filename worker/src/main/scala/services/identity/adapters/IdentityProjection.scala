@@ -67,6 +67,8 @@ trait IdentityProjectionMetrics {
   /** A written projection's change list ([[TakeChange]]): the listings whose TMDB film it moved — the live alarm on match
    *  changes — and those it decided first, each with its basis. */
   def takesChanged(changes: Seq[TakeChange]): Unit
+  /** The match changes of a written projection that undid the listing's last film change ([[TakeReversals]]). */
+  def takesReversed(reversals: Seq[TakeReversals.Reversal]): Unit = ()
   /** One projection's agreement phase, by its mode ([[IdentityProjection.Mode]]'s label): what it took and allocated on the
    *  projecting thread — the cost the `IdentityAgreementCostRegression` alert compares with its week. */
   def agreementPhase(mode: String, phase: ProjectionPhase): Unit
@@ -165,7 +167,7 @@ final class IdentityProjection(
 
   private val mapping = new FilmIdMapping(filmIds)
   private val writes  = new ProjectedFilmWrites(cache, logger)
-  private val takeReports = new ProjectionTakeReports(metrics, changeFeed, takeLines, takeHistory, logger)
+  private val takeReports = new ProjectionTakeReports(metrics, changeFeed, takeLines, takeHistory, new TakeReversals(clock), logger)
   private var consecutiveShrinks = 0
   /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
   private val slotMemo = slotMemoOf(VenueSlotMemo.environment(normalizer))

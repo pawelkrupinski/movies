@@ -42,6 +42,8 @@ private[identity] final class ProjectionWorld(
   val reconciles = scala.collection.mutable.ListBuffer.empty[Boolean]
   /** Every listing whose TMDB film a written projection moved, in the order they were reported. */
   val takes      = scala.collection.mutable.ListBuffer.empty[TakeChange]
+  /** Every reversal of a listing's last film change a written projection reported ([[TakeReversals]]). */
+  val reversed   = scala.collection.mutable.ListBuffer.empty[TakeReversals.Reversal]
   /** Each count of suspect takes the projection asked for: how many decisions and listings it was handed. */
   val suspected  = scala.collection.mutable.ListBuffer.empty[(Int, Int)]
   /** What the last projection reported: its films. */
@@ -65,6 +67,7 @@ private[identity] final class ProjectionWorld(
       def drifted(films: Int): Unit = { drifts += films; () }
       def reconciled(measured: Boolean): Unit = { reconciles += measured; () }
       def takesChanged(changes: Seq[TakeChange]): Unit = { takes ++= changes; () }
+      override def takesReversed(reversals: Seq[TakeReversals.Reversal]): Unit = { reversed ++= reversals; () }
       def agreementPhase(mode: String, phase: services.identity.adapters.ProjectionPhase): Unit = ()
     }, clock = clock, fingerprints = fingerprints, takeLines = new TakeChangeLines(Country.Poland, settings.CommitSha("0e41a4812")),
     scopedBetweenWhole = scopedBetweenWhole, agreementBacklog = backlog,

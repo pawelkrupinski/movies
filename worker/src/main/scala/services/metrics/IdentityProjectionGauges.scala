@@ -40,8 +40,18 @@ import services.identity.adapters.IdentityProjectionMetrics
  *    decision did) or `regrouped` (the store moved the listing). The worker dashboard shows the losses by cause; the build
  *    alert reads the same cause off the logged lines.
  *  - `kinowo_worker_identity_take_reversals_total` — take changes that move a listing BACK to the film (or no-film) it held
- *    before its last change ([[services.identity.TakeReversals]]): two rules undoing each other, an oscillation. UK
- *    Chichester's "The Ties That Bind Us" flipped between two films on every pod start of 2026-10-13/14;
+ *    before its last change at most three projections earlier ([[services.identity.TakeReversals]]'s oscillations): two
+ *    rules undoing each other. UK Chichester's "The Ties That Bind Us" flipped between two films on every pod start of
+ *    2026-10-13/14;
+ *  - `kinowo_worker_identity_take_flips_total{pattern,class,dropped_by,restored_by,lasted}` — every reversal within a
+ *    day ([[services.identity.TakeReversals]]), by `scripts/flip-timeline`'s `class` (`DEPLOY/RESTART`, `LATE-ANSWER`,
+ *    `SIBLING/POPULATION`, `RULE`); all but `DEPLOY/RESTART` are the flip backtest's count (195 in the week to 2026-11-05
+ *    undone within a day): the `pattern` (`film-none-film`, `none-film-none`, `film-film-film`), the stage that took the
+ *    listing off its take and the one that put it back (`services.identity.DecidedBy.stage`: model, relay, agreement,
+ *    fill, correction, poster, …, `none`), and how long the undone take stood (`lasted`: `1m` under a minute, `1h` under
+ *    an hour, `24h` under a day). A deploy's before/after flip rate; `kinowo_worker_identity_take_flip_seconds{pattern}`
+ *    the flips' (not `DEPLOY/RESTART`) time to reverse, its `_count` exported at 0 from boot. A flip whose two changes straddle a worker
+ *    restart is not counted (the memory is the worker's);
  *  - `kinowo_worker_identity_billing_reversals_total{billing}` — written projections that reversed a take of the BILLING
  *    (its title folded, [[services.identity.BillingReversals]]), once a projection however many venues bill it: what the
  *    per-billing oscillation alert reads. Bounded: the [[services.identity.BillingReversals.Capacity]] billings that
@@ -130,6 +140,20 @@ final class IdentityProjectionGauges(countryCodes: Seq[String], registry: Promet
     .labelNames("country")
     .register(registry)
 
+  private val takeFlips: Counter = Counter.builder()
+    .name("kinowo_worker_identity_take_flips_total")
+    .help("Published listings a written identity projection moved back to the film (or no-film) they held before their last take change, within a day (the flip backtest's reversal), by pattern, scripts/flip-timeline's class (DEPLOY/RESTART is a deploy's, which the backtest leaves out), the stage that dropped and that restored the take, and how long the undone take stood (1m, 1h, 24h).")
+    .labelNames("country", "pattern", "class", "dropped_by", "restored_by", "lasted")
+    .register(registry)
+
+  private val takeFlipSeconds: Histogram = Histogram.builder()
+    .name("kinowo_worker_identity_take_flip_seconds")
+    .help("Seconds the take a flip undid stood (kinowo_worker_identity_take_flips_total), by pattern.")
+    .labelNames("country", "pattern")
+    .classicUpperBounds(IdentityProjectionGauges.FlipSecondsBuckets*)
+    .classicOnly()
+    .register(registry)
+
   private val billingReversals: Counter = Counter.builder()
     .name("kinowo_worker_identity_billing_reversals_total")
     .help("Written identity projections that moved a billing's listings back to the film (or no-film) they held before: once a projection per billing (title folded), the 25 most recently reversed billings labelled.")
@@ -200,11 +224,13 @@ final class IdentityProjectionGauges(countryCodes: Seq[String], registry: Promet
     for (kind <- services.identity.TakeChange.Kind.Moves; cause <- services.identity.TakeChange.Cause.values)
       takeCauses.labelValues(country, kind.label, cause.label)
     takeReversals.labelValues(country)
+    services.identity.TakeReversals.Patterns.foreach(takeFlipSeconds.labelValues(country, _))
   }
 
   // Every country's series from boot: the counters at 0, the measured gauges at NaN until the first projection (a 0
   // would read as an empty corpus or a clean one). Not the billing reversals (one series per billing, removed when
-  // forgotten), the rule firings (per rule fired) or the phase histograms (per run mode).
+  // forgotten), the rule firings (per rule fired), the flips (per pattern and stages; their histogram is seeded per pattern)
+  // or the phase histograms (per run mode).
   countryCodes.foreach { c =>
     seed(c)
     Seq(films, listings).foreach(_.labelValues(c, "projection").set(Double.NaN))
@@ -218,18 +244,23 @@ final class IdentityProjectionGauges(countryCodes: Seq[String], registry: Promet
 
   def forCountry(country: String): IdentityProjectionMetrics = new IdentityProjectionMetrics {
     seed(country)
-    private val reversals = new services.identity.TakeReversals
     private val billings  = new services.identity.BillingReversals
     def takesChanged(changes: Seq[services.identity.TakeChange]): Unit = {
       changes.groupMapReduce(t => (t.basisAfter.fold(IdentityProjectionGauges.NoDecision)(_.toString), t.kind.label))(_ => 1)(_ + _)
         .foreach { case ((basis, kind), n) => takeChanges.labelValues(country, basis, kind).inc(n.toDouble) }
       changes.flatMap(t => t.cause.filter(_ => t.moved).map(t.kind.label -> _.label)).groupMapReduce(identity)(_ => 1)(_ + _)
         .foreach { case ((kind, cause), n) => takeCauses.labelValues(country, kind, cause).inc(n.toDouble) }
-      val reversed = reversals.note(changes.filter(_.moved))
-      takeReversals.labelValues(country).inc(reversed.size.toDouble)
-      val noted = billings.note(reversed)
+    }
+    override def takesReversed(reversals: Seq[services.identity.TakeReversals.Reversal]): Unit = {
+      val oscillations = reversals.filter(_.oscillation).map(_.change)
+      takeReversals.labelValues(country).inc(oscillations.size.toDouble)
+      val noted = billings.note(oscillations)
       noted.forgotten.foreach(billing => billingReversals.remove(country, billing))
       noted.reversed.foreach(billing => billingReversals.labelValues(country, billing).inc())
+      reversals.foreach { r =>
+        takeFlips.labelValues(country, r.pattern, r.cause, r.droppedBy, r.restoredBy, r.lasted).inc()
+        if (r.flip) takeFlipSeconds.labelValues(country, r.pattern).observe(r.seconds)
+      }
     }
     def reconciled(measured: Boolean): Unit = reconciles.labelValues(country, measured.toString).inc()
     def projected(filmCount: Int, listingCount: Int, moved: Regroupings, took: Double): Unit = {
@@ -254,6 +285,10 @@ object IdentityProjectionGauges {
 
   /** The `kind` values of `kinowo_worker_identity_regroupings_total`, in the order a projection reports them. */
   val RegroupingKinds: Seq[String] = Seq("merge", "split", "move", "fresh", "retire")
+
+  /** A flip's time to reverse: most a later stage's restore in the next projection, 5-7 s on (the backtest's week), the
+   *  rest up to the day [[services.identity.TakeReversals.Horizon]] holds a change for. */
+  val FlipSecondsBuckets: Seq[Double] = Seq(5, 10, 30, 60, 300, 900, 3600, 4 * 3600, 12 * 3600, 24 * 3600)
 
   /** The agreement phase's seconds: a scoped projection's is about a second, a whole one's past a minute on a large corpus. */
   val AgreementSecondsBuckets: Seq[Double] = Seq(0.25, 0.5, 1, 2.5, 5, 10, 20, 40, 60, 90, 120, 180, 300, 600)

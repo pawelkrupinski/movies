@@ -39,6 +39,7 @@ class WorkerMetricsAtBootSpec extends AnyFlatSpec with Matchers {
         "kinowo_worker_http_circuit_open" -> "one series per (leg, host) whose breaker opened: the hosts are unbounded, and a closed breaker's series goes",
         "kinowo_worker_share_cards_coverage_ratio" -> "withdrawn while no film on screen is tracked, and ShareCardCoverageAbsent pages on that absence",
         "kinowo_worker_identity_billing_reversals" -> "one series per billing that reversed, removed once forgotten (BillingReversals)",
+        "kinowo_worker_identity_take_flips" -> "one series per flip's pattern, stages and duration, made by its first flip: the stage pairs would be ~1,000 series a country; its time-to-reverse histogram is seeded per pattern and reads 0 instead",
         "kinowo_worker_identity_rule_fires" -> "one series per resolver rule that fired: the rule names are the resolver's trace, not an enumeration",
         "kinowo_worker_identity_agreement_phase_seconds" -> "observed per projection run mode, an enum private to IdentityProjection",
         "kinowo_worker_identity_agreement_phase_allocated_bytes" -> "observed per projection run mode, an enum private to IdentityProjection")

@@ -4797,6 +4797,147 @@
           "legendFormat": "{{family}} {{part}} p90"
         }
       ]
+    },
+    {
+      "id": 85,
+      "title": "Identity flips per bar (at least an hour) — takes undone within a day, by pattern, flip-timeline class and stages; p50 / p90 time to reverse",
+      "description": "`kinowo_worker_identity_take_flips_total{pattern,dropped_by,restored_by,lasted}` per bar (at least an hour): published listings a written projection moved back to the film (or no-film) they held before their last take change, within a day (services.identity.TakeReversals) — the flip backtest's reversal, and `scripts/flip-timeline`'s (docs/design/identity-no-drift.md, \"Predicting flips\": 215 in the week to 2026-11-05, DE 116, UK 96; 70% a model-stage loss a later stage restored 5-7 s later). Each bar by `class`, the timeline's (`DEPLOY/RESTART`: a deploy's projection on either side, which the backtest leaves out; `LATE-ANSWER`: restored by an answer-triggered projection; `SIBLING/POPULATION`: the two decisions hold other listings; `RULE`: the same inputs decided otherwise), by pattern (`film-none-film`: a take lost and regained, `none-film-none`, `film-film-film`), the stage that dropped the take and the one that restored it, and how long the undone take stood (`1m`, `1h`, `24h`). The purple marks are deploys: compare the bars' rate before and after one. The lines (right axis) are the p50 / p90 seconds to reverse (`kinowo_worker_identity_take_flip_seconds`). Not counted: a flip whose two changes straddle a worker restart (the worker holds each listing's last change in memory). Which listings, and the timeline's own classification of each: `scripts/flip-timeline <cc> --venue V --title T`.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 470
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none",
+                  "group": "B"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "none",
+                  "group": "B"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "sum",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, class, pattern, dropped_by, restored_by, lasted) (increase(kinowo_worker_identity_take_flips_total{country=~\"$country\"}[$__interval]))",
+          "legendFormat": "{{country}} {{class}} · {{pattern}} · {{dropped_by}} → {{restored_by}} · <{{lasted}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (country, le) (increase(kinowo_worker_identity_take_flip_seconds_bucket{country=~\"$country\"}[$__interval])))",
+          "legendFormat": "{{country}} p50 seconds to reverse"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "histogram_quantile(0.9, sum by (country, le) (increase(kinowo_worker_identity_take_flip_seconds_bucket{country=~\"$country\"}[$__interval])))",
+          "legendFormat": "{{country}} p90 seconds to reverse"
+        }
+      ],
+      "interval": "1h"
     }
   ],
   "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. There is no CPU-credit panel: shared-CPU credit was a Fly billing concept and the whole throttle path it drove was deleted on 2026-09-04, so no series behind it exists. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",

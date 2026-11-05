@@ -663,6 +663,19 @@ the projection asked for are still unfiled, i.e. the decision's `awaits` / `unan
 record yet. The remaining ~23% (model-model re-keys, poster votes undone, departures days apart) is not predictable
 ahead from history features; the per-family convergence check and own facts remain the route there.
 
+**The prod monitor** (2026-11-05). The worker counts the same reversals as its projection writes them
+(`services.identity.TakeReversals`), so every identity deploy has a before/after flip rate with no reader of the history:
+`kinowo_worker_identity_take_flips_total{country,pattern,class,dropped_by,restored_by,lasted}` (pattern
+`film-none-film`, `none-film-none` or `film-film-film`; `class` as `scripts/flip-timeline` names it -- `DEPLOY/RESTART`,
+which the backtest leaves out, `LATE-ANSWER` (an answer-triggered restore: the timeline's upper bound, as it also wants the
+late ask), `SIBLING/POPULATION` (the two decisions hold other listings) or `RULE`; the stages, `DecidedBy.stage`, that
+dropped and restored the take; `lasted` `1m`, `1h` or `24h`) and the time to reverse, `kinowo_worker_identity_take_flip_seconds{country,pattern}`, drawn on the worker
+dashboard's "Identity flips" panel against the deploy marks. It holds each listing's last film change for 24 h (at most
+20,000 listings a country), so it compares with the backtest's 195 a week undone within 24 h, not its 215; and it
+forgets on a restart, so a flip whose two changes straddle a worker restart is not counted (the history would count one
+whose second change is not the boot's own deploy projection). Those, and flips over 24 h, are what a scheduled read of
+the local mirror's `identity_history` would add.
+
 ## A fill that counts venues counts only those its film is open at (the owner, 2026-11-05: "Buddies, properly")
 
 The `venues.current` signal (`UnifiedEvidence`: at least `Agreement.WidelyBilled` = 3 venues bill the title, the film this

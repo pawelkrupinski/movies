@@ -607,6 +607,10 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.projection.tick()
     w.takes.map(_.kind).distinct shouldBe Seq(TakeChange.Kind.Gained)
     w.takes should have size 3
+    // Lalka's three listings got back the film the last projection took from them: three flips, each a take lost and
+    // regained, the model stage dropping and restoring it (the prod flip monitor's count)
+    w.reversed.map(r => (r.change.listing.venue, r.pattern, r.droppedBy, r.restoredBy, r.flip)).sortBy(_._1) shouldBe
+      Seq(Helios, KinoApollo, Multikino).map(_.displayName).sorted.map((_, "film-none-film", "model", "model", true))
   }
 
   /** Why a take moved, for the build alert to page only on the code's: PL "Kupiłem motocykl, który jest wampirem"

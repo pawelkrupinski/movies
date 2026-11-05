@@ -3,10 +3,12 @@ package adapters
 
 import services.movies.{FilmId, ListingKey, StoredMovieRecord}
 
-/** How a written identity projection's take changes are told ([[IdentityProjection]]): to the metrics, the change feed,
- *  the log (a line each, then a summary) and the take history. Logs under the projection's `logger`. */
+/** How a written identity projection's take changes are told ([[IdentityProjection]]): to the metrics (the changes, and
+ *  those that undid the listing's last change, `reversals`), the change feed, the log (a line each, then a summary) and the
+ *  take history. Logs under the projection's `logger`. */
 private[identity] final class ProjectionTakeReports(metrics: IdentityProjectionMetrics, changeFeed: Seq[TakeChange] => Unit,
-                                                    takeLines: TakeChangeLines, takeHistory: TakeHistory, logger: play.api.Logger) {
+                                                    takeLines: TakeChangeLines, takeHistory: TakeHistory, reversals: TakeReversals,
+                                                    logger: play.api.Logger) {
 
   /** The projection's CHANGE LIST ([[LiveProjectionIndex.written]]: each listing whose stored film the writes moved to
    *  another TMDB film, or placed on one for the first time — what the site shows for it, read off the store as written,
@@ -33,6 +35,7 @@ private[identity] final class ProjectionTakeReports(metrics: IdentityProjectionM
       metrics.takesChanged(changes)
       changeFeed(changes)
       val takes     = changes.filter(_.moved)
+      metrics.takesReversed(reversals.note(takes, decisions.get))
       if (takes.nonEmpty) {
         val moved  = takes.iterator.map(_.listing).toSet
         val now    = written.iterator.flatMap(f => f.members.iterator.filter(moved).map(_ -> f)).toMap
