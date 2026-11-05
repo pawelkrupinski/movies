@@ -40,8 +40,8 @@ class UnmatchedClustersRecordedSpec extends AnyFlatSpec with Matchers with Scrat
       UnmatchedClusters.write(file, filled)
       val replay = new UnmatchedClusters.Replay(UnmatchedClusters.read(file))
       replay.cast(kawalski) shouldBe Answer.Known(Some(castOf(kawalski)))
-      replay.film(has).toOption.flatten.flatMap(_.originalLanguage) shouldBe Some("pl")
-      replay.film(has).toOption.flatten.exists(_.hasGenre(18)) shouldBe true
+      replay.film(has).answered.flatten.flatMap(_.originalLanguage) shouldBe Some("pl")
+      replay.film(has).answered.flatten.exists(_.hasGenre(18)) shouldBe true
     } finally Files.deleteIfExists(file)
   }
 

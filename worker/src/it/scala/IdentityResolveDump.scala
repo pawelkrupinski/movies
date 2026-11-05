@@ -242,7 +242,7 @@ object IdentityResolveDump {
       catalogue.file(open)
     }
     val lines = clusters.flatMap { case (d, ls) =>
-      Catalogue.named(ls, catalogue.answers, mutable.Set.empty).toOption.flatten.map(Some(_)).map { named =>
+      Catalogue.named(ls, catalogue.answers, mutable.Set.empty).answered.flatten.map(Some(_)).map { named =>
         val mapped = named.flatMap(n => n.imdb.fold(n.tmdb)(find))
         val verdict = (d.film, named, mapped) match {
           case (_, None, _)                          => "unmapped"

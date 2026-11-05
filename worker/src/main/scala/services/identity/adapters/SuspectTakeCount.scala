@@ -97,7 +97,7 @@ object SuspectTakeCount {
    *  once read: `lookups` must be the caller's own, as a prefetch drops whatever the last one held. */
   def recordsOf(lookups: IdentityLookups): Seq[Int] => Map[Int, IdentityMeasures.Film] = films => {
     lookups.prefetch(Nil, films, Nil)
-    try films.flatMap(id => lookups.film(id).toOption.flatten.map(id -> _)).toMap
+    try films.flatMap(id => lookups.film(id).answered.flatten.map(id -> _)).toMap
     finally lookups.prefetchAnswered()
   }
 }

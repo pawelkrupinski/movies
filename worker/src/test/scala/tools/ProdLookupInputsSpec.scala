@@ -41,9 +41,9 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
   "the worker's lookups over a capture" should "answer from prod's store ahead of the recording's live answer, and the recording's on a gap" in {
     val live    = new Recording(Map(CandidateQuery.Title("Der kleine Prinz") -> Seq(prinz2015), CandidateQuery.Title("Neu") -> Seq(Hit(5, "Neu", None, None, 1.0))))
     val lookups = lookupsOver(new ProdLookupInputs.Held(prod), live)
-    lookups.candidates(CandidateQuery.Title("Der kleine Prinz")).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(1001))
+    lookups.candidates(CandidateQuery.Title("Der kleine Prinz")).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(1001))
     live.asked.get shouldBe 0
-    lookups.candidates(CandidateQuery.Title("Neu")).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(5))
+    lookups.candidates(CandidateQuery.Title("Neu")).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(5))
   }
 
   it should "leave a gap prod's question memory holds back a gap, never asking the recording" in {
@@ -64,7 +64,7 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
       .append("readAt", new BsonDateTime(clock.millis())).append("director", new BsonArray(Seq(new BsonString("Na Hong-jin")).asJava))
       .append("releaseYear", new BsonInt32(2026))
     val lookups = ProdLookupInputs.lookups(new ProdLookupInputs.Held(prod.copy(pages = Seq(read))), Seq(read), enrichers, new Recording(Map.empty), poland, clock)
-    val facts   = lookups.detail(listing).toOption.flatten.getOrElse(fail(s"no detail for $listing"))
+    val facts   = lookups.detail(listing).answered.flatten.getOrElse(fail(s"no detail for $listing"))
     (facts.directors, facts.year) shouldBe (Seq("Na Hong-jin"), Some(2026))
   }
 

@@ -147,7 +147,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       // best candidates — enough to tell a search that found nothing from a veto from a rule that would not take it;
       // for one a rule took, the runner-up it beat. Strings, like the refusals, so nothing scored is kept.
       val searched = if (accepted.isDefined) Nil else queriesOf(node.id).map(query => s"${DecisionTrace.renderQuery(query)}: " +
-        answers.get(query).flatMap(_.toOption).fold("unanswered")(hits => s"${hits.size} film(s)"))
+        answers.get(query).flatMap(_.answered).fold("unanswered")(hits => s"${hits.size} film(s)"))
       val shown    = if (accepted.isDefined) own.filterNot(scored => weighed.exists(_ eq scored)).take(1) else own.take(5)
       val blocker  = Option.when(accepted.isEmpty)(withdrawn.map(_ => "withdrawn:sibling-denies-film")
         .getOrElse(DecisionTrace.blockerOf(own, searched.exists(_.endsWith(": unanswered")), refusals)))

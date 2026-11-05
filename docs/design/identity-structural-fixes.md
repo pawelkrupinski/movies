@@ -130,13 +130,24 @@ measuring worlds hold one: the local prod mirror does not sync `identity_questio
 and recordings answer a gap as never asked. So what-if, the CI measure and drift replay 4b as 0 moved by construction;
 in prod it moves only takes whose TMDB question failed 8 times in a row (~16 h of failures, an outage-only case).
 
+**4d: every remaining collapse named.** `Answer.toOption` and `isKnown` are gone (renamed `answered` / `isAnswered`,
+whose doc says a decision may read an unanswered one as none only where it is typed as awaiting it); the compiler listed
+every reader, 58 in main sources (15 files). By what makes the collapse sound, or not:
+
+| group | readers | `Unknown` read as none is | verdict |
+|---|---|---|---|
+| model decisions | `CandidateGeneration` (hits, reach, details), `ResolverRun`, `ResolverDecisions`, `Candidate.of`, `LiveCorpus`, `SuspectTakes` | typed: the decision `awaits` the search, record or page (`TakeOutcome.Pending`) | sound |
+| stage verdicts and corrections | `AgreementStage` (verdicts, fill), `AgreementCorrections` (families, posters, programme, ids), `AgreementCandidates` (posters), `Agreement` (records), `Catalogue` | typed: a gap holds the cluster (`waiting`) or the correction (`correctionWaits`); `Failed` enters only through `settled` | sound until fix 1 deletes `settled` |
+| stage reads never waited on | the venue page in `AgreementCandidates.measured` / `AgreementCorrections`' stated listings / `AgreementTakes`; TMDB cast and descriptions (`AgreementTakes`' synopsis and people); records read for a title or an edition (`looked.film`) | NOT typed: decided on as none with no wait | OPEN: fix 1 asks these before the cluster is projected (they join its question set) |
+| bookkeeping | `ResolverRun` counts, `LiveCorpus.AnswersChanged`, `IdentityProjectionWiring`, `LookupFill`, `ModelLookups`, `SuspectTakeCount` | no decision | n/a |
+
 **Measured by:** no take moves (what-if `--verify` on every country; a CI identity-measure with right->wrong 0 and
 0 moved; drift clean) except at a site classified (c), whose moves are listed, judged and tested failing-first.
 `IncrementalWholeEquivalenceSpec`, `LateInputEquivalenceSpec` and `ScopedProjectionEquivalenceSpec` stay green.
 
 **Milestones.** 4a the three-case type, nothing producing `Failed` yet, every exhaustive match given its `Failed` arm
 (a terminal failure read as no evidence through `Answer.failedAs`, the one function that may) (0 moved: no producer); 4b the model's sites; 4c the stage's sites (`decideWithout` the one collapse);
-4d the shims deleted. STOP after 4 lands: report the list and the numbers.
+4d `toOption`/`isKnown` renamed so the compiler lists every reader (table above). STOP after 4 lands: report the list and the numbers.
 
 ## Fix 1: asking apart from deciding (second)
 

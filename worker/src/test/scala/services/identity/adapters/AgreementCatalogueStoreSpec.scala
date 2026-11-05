@@ -101,11 +101,11 @@ class AgreementCatalogueStoreSpec extends AnyFlatSpec with Matchers {
       pages = reader(fetch), filed = () => { projections.incrementAndGet(); () })
     val ids         = AgreementAskers.task(Seq("325279", "144766").map(id => Question.Catalogue(CatalogueQuestion.Id(CatalogueId("webedia", id))))*)()
     handler.handle(ids) shouldBe HandlerOutcome.Done
-    (s.mapped(CatalogueId("webedia", "325279")).toOption.map(_.flatMap(_.tmdb)), s.mapped(CatalogueId("webedia", "144766"))) shouldBe
+    (s.mapped(CatalogueId("webedia", "325279")).answered.map(_.flatMap(_.tmdb)), s.mapped(CatalogueId("webedia", "144766"))) shouldBe
       ((Some(Seq(1318829)), Answer.Known(Nil)))
     val page = AgreementAskers.task(Question.Catalogue(CatalogueQuestion.Page(empire)))()
     handler.handle(page) shouldBe HandlerOutcome.Done
-    s.linked(empire).toOption.map(_.size) shouldBe Some(2)
+    s.linked(empire).answered.map(_.size) shouldBe Some(2)
     handler.handle(page) shouldBe HandlerOutcome.Skipped
     fetch.calls.size shouldBe 1
     projections.get shouldBe 2

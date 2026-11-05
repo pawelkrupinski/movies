@@ -18,7 +18,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
   private val lookups = new TmdbIdentityLookups(tmdb, new services.enrichment.ImdbClient(fetch), Nil)
 
   "a film's identity record" should "carry what the calibrated measures read: title, year, runtime, directors, countries" in {
-    val film = lookups.film(1018).toOption.flatten.get
+    val film = lookups.film(1018).answered.flatten.get
     film.title should not be empty
     film.year shouldBe defined
     film.runtime shouldBe defined
@@ -36,7 +36,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
       "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/search/movie.f25d5a92")), java.nio.charset.StandardCharsets.UTF_8)
     val recorded = (play.api.libs.json.Json.parse(body) \ "results").as[Seq[play.api.libs.json.JsObject]].map(r => (r \ "id").as[Int])
     val client = new TmdbClient(tools.RoutingHttpFetch.getOnly(Seq("/search/movie" -> body)), apiKey = Some(settings.TmdbApiKey("replay")))
-    val hits = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(tools.RoutingHttpFetch.dead("imdb")), Nil).candidates(CandidateQuery.Title("anything")).toOption.get
+    val hits = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(tools.RoutingHttpFetch.dead("imdb")), Nil).candidates(CandidateQuery.Title("anything")).answered.get
     hits.map(_.tmdbId) shouldBe recorded
     hits.head.tmdbId shouldBe 946306
   }
@@ -53,7 +53,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
       "/find/tt0080491"       -> fixture("test/resources/fixtures/tmdb/find_tt0080491.json")))
     val client = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay")))
     val hits = new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(fetch), Nil)
-      .candidates(CandidateQuery.Imdb("Caligula: The Ultimate Cut")).toOption.get
+      .candidates(CandidateQuery.Imdb("Caligula: The Ultimate Cut")).answered.get
     hits.map(h => (h.tmdbId, h.title, h.year)) shouldBe Seq((1774981, "Caligula: The Ultimate Cut", Some(2024)), (9453, "Caligula", Some(1979)))
     fetch.calls.map(_._2).filter(_.contains("/find/")) should have size 2
   }
@@ -104,7 +104,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     val fetch   = new SuggestionReads(n => if (n == 1) throw new java.io.IOException("HTTP 503"))
     val lookups = fetch.lookups
     lookups.candidates(CandidateQuery.Imdb(Caligula)) shouldBe Answer.Unknown
-    lookups.candidates(CandidateQuery.Imdb(Caligula)).toOption.get.map(_.tmdbId) shouldBe Seq(1774981, 9453)
+    lookups.candidates(CandidateQuery.Imdb(Caligula)).answered.get.map(_.tmdbId) shouldBe Seq(1774981, 9453)
     fetch.reads.get shouldBe 2
   }
 
@@ -124,7 +124,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
       def parked = Option(waiter.get).exists(t => Set(Thread.State.WAITING, Thread.State.TIMED_WAITING)(t.getState))
       while (!parked && System.nanoTime() < until) Thread.onSpinWait()
       release.countDown()
-      first.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS).toOption.get.map(_.tmdbId) shouldBe Seq(1774981, 9453)
+      first.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS).answered.get.map(_.tmdbId) shouldBe Seq(1774981, 9453)
       second.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe Answer.Known(Nil)
     } finally pool.shutdownNow()
     fetch.reads.get shouldBe 1

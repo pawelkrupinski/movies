@@ -76,8 +76,8 @@ object IdentityConjunctionProbe {
         else {
           val nodes    = IdentityResolver.evidenceOf(listings, replay, normalizer)(_ => true)
           val verdicts = answers.flatMap { case (family, fa) =>
-            Agreement.verdict(listings, fa, replay, normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).toOption }
-          def page(x: Listing) = if (replay.hasDetail(x)) replay.detail(x).toOption.flatten else None
+            Agreement.verdict(listings, fa, replay, normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).answered }
+          def page(x: Listing) = if (replay.hasDetail(x)) replay.detail(x).answered.flatten else None
           val stated = listings.map { x =>
             page(x).fold(x) { detail =>
               val e = Evidence.of(x, Some(detail))
@@ -85,19 +85,19 @@ object IdentityConjunctionProbe {
             }
           }
           val distances = {
-            val shown = PosterEvidence.urls(listings).flatMap(url => posterStore.venue(url).toOption.flatten)
+            val shown = PosterEvidence.urls(listings).flatMap(url => posterStore.venue(url).answered.flatten)
             if (shown.isEmpty) Nil else {
               val scored = nodes.flatMap(_.candidates).filterNot(k => k.denied || FallbackIds.isFallback(k.tmdbId)).map(_.tmdbId)
               val named  = verdicts.flatMap(v => v.pick.map(_.record) ++ v.leaning).flatMap(r => r.crossIds.get("tmdb").flatMap(_.toIntOption)
                 .orElse(r.crossIds.get("imdb").flatMap(capture.finds.get).flatten))
               val films  = (scored ++ named).distinct.sorted
-              val hashes = films.map(f => f -> posterStore.film(f).toOption.getOrElse(Nil))
+              val hashes = films.map(f => f -> posterStore.film(f).answered.getOrElse(Nil))
               shown.map(poster => hashes.map { case (f, held) => f -> PosterEvidence.nearest(Seq(poster), held) }.toMap)
             }
           }
           val contenders = UnifiedEvidence.contenders(UnifiedEvidence.ClusterEvidence(listings, model, nodes, verdicts, distances,
             imdb => capture.finds.get(imdb).flatten, today.getYear, stated, Some(x => Evidence.of(x, page(x)).measured)))
-          val listed = programmes.flatMap(p => VenueListings.listed(listings, p).toOption.flatten)
+          val listed = programmes.flatMap(p => VenueListings.listed(listings, p).answered.flatten)
           val candidates = nodes.flatMap(_.candidates).groupBy(_.tmdbId)
           val rawTitle = listings.map(_.rawTitle).groupBy(identity).toSeq.sortBy(t => (-t._2.size, t._1)).head._1
           contenders.map { k =>

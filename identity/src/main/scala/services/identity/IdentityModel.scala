@@ -520,7 +520,7 @@ object Candidate {
     val best = Hit.best(hits)
     // A record that carries its popularity is the candidate's film itself: a copy restating it was a second Film per
     // recorded film beside the corpus's `records` (30k on worker-uk, 2026-10-07).
-    Candidate(tmdbId, record.toOption.flatten.map(f => if (f.popularity.isDefined) f else f.copy(popularity = popularity)).getOrElse(
+    Candidate(tmdbId, record.answered.flatten.map(f => if (f.popularity.isDefined) f else f.copy(popularity = popularity)).getOrElse(
       IdentityMeasures.Film(best.fold("")(_.title), best.flatMap(_.originalTitle), Nil, best.flatMap(_.year),
         popularity = popularity)), awaitingRecord = record.isAwaited)
   }
@@ -539,12 +539,16 @@ enum Answer[+A] {
   case Failed
   case Unknown
 
-  def toOption: Option[A] = this match {
+  /** The answer given, else none -- a failure for good and a question not answered yet alike. A reader that DECIDES on
+   *  it reads both as no evidence: for `Failed` that is the rule ([[failedAs]]), for `Unknown` only where the decision is
+   *  typed as awaiting it ([[ResolverDecision.awaits]], the stage's waits); every such reader is listed in
+   *  docs/design/identity-structural-fixes.md, fix 4d. (Was `toOption`, which named no such duty.) */
+  def answered: Option[A] = this match {
     case Known(v)         => Some(v)
     case Failed | Unknown => None
   }
-  /** Answered: neither failed nor still awaited. */
-  def isKnown: Boolean = this match {
+  /** Answered: neither failed nor still awaited. (Was `isKnown`.) */
+  def isAnswered: Boolean = this match {
     case Known(_)         => true
     case Failed | Unknown => false
   }
@@ -569,13 +573,13 @@ enum Answer[+A] {
     case other  => other
   }
   /** This answer, or -- the source not answering it -- `other`'s. */
-  def orElse[B >: A](other: => Answer[B]): Answer[B] = if (isKnown) this else other
+  def orElse[B >: A](other: => Answer[B]): Answer[B] = if (isAnswered) this else other
 }
 
 object Answer {
   /** Every answer's value; else Unknown when any one is still awaited, else Failed. */
   def sequence[A](answers: Seq[Answer[A]]): Answer[Seq[A]] =
-    if (answers.forall(_.isKnown)) Known(answers.flatMap(_.toOption))
+    if (answers.forall(_.isAnswered)) Known(answers.flatMap(_.answered))
     else if (answers.contains(Unknown)) Unknown
     else Failed
 }

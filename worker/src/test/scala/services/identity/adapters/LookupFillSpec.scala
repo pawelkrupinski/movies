@@ -400,7 +400,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
         fillClock = clock).round()
       clock.advance(java.time.Duration.ofHours(7))
     }
-    new StoredTmdbLookups(tmdb, "pl-PL", UnansweredTmdbLookups, new ObservationReads).film(77).toOption.flatten.map(_.title) shouldBe
+    new StoredTmdbLookups(tmdb, "pl-PL", UnansweredTmdbLookups, new ObservationReads).film(77).answered.flatten.map(_.title) shouldBe
       Some("Siedemdziesiąt siedem")
   }
 }

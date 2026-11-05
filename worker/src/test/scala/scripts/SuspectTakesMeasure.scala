@@ -86,7 +86,7 @@ object SuspectTakesMeasure {
       val venues = new UnmatchedClusters.Replay(dump)
       val corpus = SuspectTakes.corpus(UnmatchedClusters.resolutionOf(dump.decisions), dump.listings, venues, films.get)
       val todayOf = corpus.takes.map(t => t.listing.key -> t).toMap
-      val stated  = (l: services.identity.Listing) => if (venues.hasDetail(l)) venues.detail(l).toOption.flatten.fold(l)(l.withPage) else l
+      val stated  = (l: services.identity.Listing) => if (venues.hasDetail(l)) venues.detail(l).answered.flatten.fold(l)(l.withPage) else l
 
       // every labelled pair as a take
       val byTitle = dump.listings.groupBy(l => UnmatchedClusters.singleSpaced(l.rawTitle))

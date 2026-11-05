@@ -45,7 +45,7 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     val lookups = new StoredTmdbLookups(store, language, UnansweredTmdbLookups, new ObservationReads)
     def tick(queries: Seq[CandidateQuery]): Seq[Option[Seq[Int]]] = {
       lookups.prefetch(queries, Nil, Nil)
-      val answered = queries.map(q => lookups.candidates(q).toOption.map(_.map(_.tmdbId)))
+      val answered = queries.map(q => lookups.candidates(q).answered.map(_.map(_.tmdbId)))
       lookups.prefetchAnswered()
       answered
     }
@@ -109,7 +109,7 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     w.tick(Seq(q))
     w.cached.put(TmdbKind.Film, Seq("1018" -> recordDoc(lalka.copy(title = "Lalka (2025)", popularity = Some(9.9)))))
     w.lookups.prefetch(Seq(q), Nil, Nil)
-    w.lookups.candidates(q).toOption.toSeq.flatten.map(h => h.title -> h.popularity) shouldBe Seq("Lalka (2025)" -> 9.9)
+    w.lookups.candidates(q).answered.toSeq.flatten.map(h => h.title -> h.popularity) shouldBe Seq("Lalka (2025)" -> 9.9)
   }
 
   // The corpus decodes each record it loads and keeps that ([[LiveCorpus]]'s `records`): the cache keeping its bytes too
@@ -118,7 +118,7 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     val w = new World
     w.backend.put(TmdbKind.Film, Seq("1018" -> recordDoc(lalka)))
     w.lookups.prefetch(Nil, Seq(1018), Nil)
-    w.lookups.film(1018).toOption.flatten.map(_.title) shouldBe Some("Lalka")
+    w.lookups.film(1018).answered.flatten.map(_.title) shouldBe Some("Lalka")
     w.lookups.prefetchAnswered()
     w.heldNoAnswer(TmdbKind.Film, "1018")
   }
@@ -126,9 +126,9 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
   "a record asked alone" should "still be answered from the cache when asked again" in {
     val w = new World
     w.backend.put(TmdbKind.Film, Seq("1018" -> recordDoc(lalka)))
-    w.lookups.film(1018).toOption.flatten.map(_.title) shouldBe Some("Lalka")
+    w.lookups.film(1018).answered.flatten.map(_.title) shouldBe Some("Lalka")
     w.backend.drain()
-    w.lookups.film(1018).toOption.flatten.map(_.title) shouldBe Some("Lalka")
+    w.lookups.film(1018).answered.flatten.map(_.title) shouldBe Some("Lalka")
     w.backend.drain() shouldBe empty
   }
 

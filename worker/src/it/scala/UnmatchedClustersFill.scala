@@ -83,7 +83,7 @@ object UnmatchedClustersFill {
     // the casts, original languages and genres a capture taken without them lacks, off the same tree
     def recordedOf(tree: TmdbIdentityLookups, asked: Iterable[Int]): Unit = {
       val before = capture
-      capture = UnmatchedClusters.withRecorded(capture, asked, id => tree.cast(id).toOption.flatten, id => tree.film(id).toOption.flatten)
+      capture = UnmatchedClusters.withRecorded(capture, asked, id => tree.cast(id).answered.flatten, id => tree.film(id).answered.flatten)
       def held(c: UnmatchedClusters.Capture)(has: IdentityMeasures.Film => Boolean) = c.films.count(_._2.exists(has))
       println(s"[${country.code}] fill: ${capture.casts.count(_._2.isDefined) - before.casts.count(_._2.isDefined)} cast(s), " +
         s"${held(capture)(_.originalLanguage.isDefined) - held(before)(_.originalLanguage.isDefined)} original language(s) and " +
@@ -128,14 +128,14 @@ object UnmatchedClustersFill {
         catalogue.file(wantedCatalogue)
         wantedFinds.foreach(tmdbOf)
         live.foreach { tmdbLookups =>
-          val queries = lookups.queries.asScala.toSeq.flatMap(query => tmdbLookups.candidates(query).toOption.map(query -> _))
-          val films   = lookups.films.asScala.toSeq.flatMap(id => tmdbLookups.film(id).toOption.map(id -> _))
+          val queries = lookups.queries.asScala.toSeq.flatMap(query => tmdbLookups.candidates(query).answered.map(query -> _))
+          val films   = lookups.films.asScala.toSeq.flatMap(id => tmdbLookups.film(id).answered.map(id -> _))
           println(s"[${country.code}] fill: ${queries.size} TMDB search(es), ${films.size} TMDB record(s) answered live")
           capture = capture.copy(queries = capture.queries ++ queries, films = capture.films ++ films)
         }
         overviewsOf.foreach { tree =>
           // an overview the tree does not hold is none: asked again, it would be no more known
-          val read = lookups.overviews.asScala.toSeq.filterNot(capture.overviews.contains).map(id => id -> tree.overview(id).toOption.flatten)
+          val read = lookups.overviews.asScala.toSeq.filterNot(capture.overviews.contains).map(id => id -> tree.overview(id).answered.flatten)
           println(s"[${country.code}] fill: ${read.size} TMDB overview(s) read from the recording, ${read.count(_._2.isDefined)} held")
           capture = capture.copy(overviews = capture.overviews ++ read)
           // and the cast of each film the evidence reads, where the capture holds none: a synopsis naming a film's cast

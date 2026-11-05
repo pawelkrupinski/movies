@@ -39,7 +39,7 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
   /** The store's day of a record it holds — `Unknown` for one it holds dated by its year alone, which the agreement
    *  stage asks TMDB to read again (`agreement.AgreementStage.wanted`, its `Question.Record`s) — else the day of the record asked live. */
   override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId) match {
-    case Answer.Known(_) if stored.film(tmdbId).isKnown => stored.releaseDay(tmdbId)
+    case Answer.Known(_) if stored.film(tmdbId).isAnswered => stored.releaseDay(tmdbId)
     case answer                                         => answer.map(_.flatMap(_.released))
   }
   // a film's facts, cast and overview are one record: one question
@@ -61,7 +61,7 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
         val requested    = new tools.RequestedHost.Recording
         val liveAnswer   = tools.RequestedHost.within(requested)(tools.HttpPath.within(tools.HttpPath.Live)(asked))
         val answer       = fromStore.orElse(liveAnswer)
-        if (!answer.isKnown) {
+        if (!answer.isAnswered) {
           val failed = LiveAsks.failures != failedBefore
           asks.unanswered(question, failed, if (failed) LiveAsks.failedHost(requested) else None)
         }

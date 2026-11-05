@@ -130,12 +130,12 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     val handler     = asker(store, hashing(download), () => { projections.incrementAndGet(); () })
     val task        = venueTask()
     handler.handle(task) shouldBe HandlerOutcome.Done
-    store.venue(patria).toOption.flatten shouldBe defined
+    store.venue(patria).answered.flatten shouldBe defined
     projections.get shouldBe 1
     handler.handle(task) shouldBe HandlerOutcome.Skipped
     download.fetched.get shouldBe 1
     handler.handle(filmTask(1483477)) shouldBe HandlerOutcome.Done
-    store.film(1483477).toOption.map(_.size) shouldBe Some(3)
+    store.film(1483477).answered.map(_.size) shouldBe Some(3)
   }
 
   // the review pages show a candidate's TMDB poster: the paths hashed, filed beside their hashes, in their order — one
@@ -148,7 +148,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     val paths = PosterHashing.chosen(tmdb.posters(1483477, also = Seq("en")), "pl")
     PosterAnswers.pathsOf(filed) shouldBe paths
     paths should have size 3
-    store.film(1483477).toOption.map(_.size) shouldBe Some(3)
+    store.film(1483477).answered.map(_.size) shouldBe Some(3)
     families.version shouldBe 1
     // a venue's poster is filed under its own URL: no path beside it
     store.file(PosterQuestion.Venue(patria), Seq(HashedPoster(patria, PosterHash(-7L))))

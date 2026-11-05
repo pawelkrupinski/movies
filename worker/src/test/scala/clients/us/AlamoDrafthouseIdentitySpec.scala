@@ -32,12 +32,12 @@ class AlamoDrafthouseIdentitySpec extends AnyFlatSpec with Matchers with OptionV
 
   "a re-release's venue facts" should "state no year, so it can never deny the film it re-releases" in {
     new VenueDetails(Seq(client), TmdbIdentityLookups.NoGaps).detail(listing("Avengers Endgame: Encore", "avengers-endgame-encore"))
-      .toOption.flatten.value.year shouldBe None
+      .answered.flatten.value.year shouldBe None
   }
 
   "a show's detail" should "be the VENUE's stated facts, read by identity through its own detail page" in {
     val facts = new VenueDetails(Seq(client), TmdbIdentityLookups.NoGaps).detail(listing("Last Shot", "last-shot"))
-    facts.toOption.flatten.map(f => (f.year, f.runtime)) shouldBe Some((Some(2026), Some(105)))
+    facts.answered.flatten.map(f => (f.year, f.runtime)) shouldBe Some((Some(2026), Some(105)))
   }
 
   "a show's IMDb id" should "be the venue's own catalogue link to the film" in {

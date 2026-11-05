@@ -47,7 +47,7 @@ object SuspectTakesDump {
         outcome.toSeq.flatMap(_.agreed.films) ++ model.films).toMap
       val taken = decisions.filter(d => d.film.isDefined || d.fallback.isDefined).flatMap(_.members).toSet
       val details = l.listings.filter(x => taken(x.key) && l.lookups.hasDetail(x)).flatMap(x =>
-        l.lookups.detail(x).toOption.map(ListingKey.serialised(x.key) -> _))
+        l.lookups.detail(x).answered.map(ListingKey.serialised(x.key) -> _))
       val dump = UnmatchedClusters.Capture(c.country, l.listings, decisions, Map.empty, films.view.mapValues(Option(_)).toMap, details.toMap,
         details.map(_._1).toSet, Map.empty, Map.empty)
       UnmatchedClusters.write(out.resolve(s"${c.country.code}.json.gz"), dump)

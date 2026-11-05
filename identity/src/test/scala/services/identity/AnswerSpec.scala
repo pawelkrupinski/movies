@@ -30,7 +30,7 @@ class AnswerSpec extends AnyFlatSpec with Matchers {
     Answer.Failed.isSettled shouldBe true
     Answer.Unknown.isSettled shouldBe false
     Answer.Known(None).isSettled shouldBe true
-    Answer.Failed.isKnown shouldBe false
+    Answer.Failed.isAnswered shouldBe false
     Answer.sequence(Seq(Answer.Known(1), Answer.Failed)) shouldBe Answer.Failed
     Answer.sequence(Seq(Answer.Failed, Answer.Unknown)) shouldBe Answer.Unknown
     Dependency.digest(Answer.Failed) should not be Dependency.Unanswered

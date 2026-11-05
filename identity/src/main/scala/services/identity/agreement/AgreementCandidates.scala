@@ -15,7 +15,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
    *  stage applies on one thread at a time (`apply` is synchronized). */
   private[agreement] var blindReads = 0L
   /** The listing as the model measures it, its venue's detail page read: what the broadcast join reads. */
-  private[agreement] def measured(listing: Listing): IdentityMeasures.Listing = Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
+  private[agreement] def measured(listing: Listing): IdentityMeasures.Listing = Evidence.of(listing, venues.detail(listing).answered.flatten).measured
   /** Is a record of the billed work dated by its year alone, its day still to be read before the broadcast join decides
    *  ([[waitsOn]])? What the stage's take and the fill's `broadcast.take` signal both wait on. */
   private[agreement] def undatedOf(lookups: IdentityLookups): Int => Boolean =
@@ -49,7 +49,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
         asked += gap
         if (!attempted(gap)) unknown = true
       }
-      answer.toOption
+      answer.answered
     }
     val found = familiesInOrder.flatMap { case (family, answers) =>
       queries.filterNot(text => family.latinTitlesOnly && !tools.LatinScript.hasLetter(text)).flatMap { text =>
@@ -89,15 +89,15 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
       val venue = urls.map(url => url -> posterRead(AgreementStage.PosterQuestion.Venue(url), hashes.venue(url), None, hashes, asked))
       if (venue.exists(_._2 == Answer.Unknown)) Answer.Unknown
       else {
-        val shown: Seq[PosterHash] = venue.flatMap(_._2.toOption.flatten)
+        val shown: Seq[PosterHash] = venue.flatMap(_._2.answered.flatten)
         if (shown.isEmpty) Answer.Known(Nil)
         else {
           val showing = listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.isDefined)
-          def apart(film: Int) = looked.flatMap(_.film(film).toOption.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
+          def apart(film: Int) = looked.flatMap(_.film(film).answered.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
           val films  = (candidates(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
           val filmHashes = films.map(film => film -> posterRead(AgreementStage.PosterQuestion.Film(film), hashes.film(film), Nil, hashes, asked))
           if (filmHashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
-          else Answer.Known(shown.map(poster => filmHashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.toOption.getOrElse(Nil)) }.toMap))
+          else Answer.Known(shown.map(poster => filmHashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.answered.getOrElse(Nil)) }.toMap))
         }
       }
     }
@@ -157,7 +157,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
       val found = queries.map(lookups.candidates)
       if (found.contains(Answer.Unknown)) blindReads += 1
       if (found.contains(Answer.Unknown) && !answeredOnly) Nil
-      else found.flatMap(_.toOption.getOrElse(Nil)).map(_.tmdbId).filterNot(FallbackIds.isFallback).distinct.sorted
+      else found.flatMap(_.answered.getOrElse(Nil)).map(_.tmdbId).filterNot(FallbackIds.isFallback).distinct.sorted
     }
 
   /** The films the listings' own titles pick — as published, as the venue's rules clean them, as they are searched — each
@@ -166,7 +166,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   private[agreement] def titlePicks(listings: Seq[Listing]): Set[Int] =
     looked.fold(Set.empty[Int]) { lookups =>
       listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(_.trim).filter(_.nonEmpty).distinct.flatMap { text =>
-        lookups.candidates(CandidateQuery.Title(text)).toOption.flatMap { hits =>
+        lookups.candidates(CandidateQuery.Title(text)).answered.flatMap { hits =>
           val named = hits.filterNot(hit => FallbackIds.isFallback(hit.tmdbId))
           named.maxByOption(_.popularity).filter(best => !named.exists(hit => hit.tmdbId != best.tmdbId && hit.popularity == best.popularity)).map(_.tmdbId)
         }

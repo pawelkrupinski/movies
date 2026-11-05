@@ -164,13 +164,13 @@ object IdentityUnifiedDataset {
         val nodes    = model.members.flatMap(nodeOf.get).distinctBy(_.keys)
         if (nodes.isEmpty) count("no-nodes")
         val verdicts = answers.flatMap { case (family, familyAnswers) =>
-          Agreement.verdict(listings, familyAnswers, venues, c.normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).toOption
+          Agreement.verdict(listings, familyAnswers, venues, c.normalizer, IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).answered
         }
         if (verdicts.nonEmpty) count("with-families")
         val distances = posterDistances(listings, nodes, verdicts)
         if (distances.nonEmpty) count("with-posters")
         // the listings as their venues' pages state them, and as the model measures them — what the stage reads
-        def page(x: Listing) = if (venues.hasDetail(x)) venues.detail(x).toOption.flatten else None
+        def page(x: Listing) = if (venues.hasDetail(x)) venues.detail(x).answered.flatten else None
         val stated = listings.map(x => page(x).fold(x)(x.withPage))
         val contenders = UnifiedEvidence.contenders(UnifiedEvidence.ClusterEvidence(listings, model, nodes, verdicts, distances,
           imdb => finds.get(imdb).flatten, thisYear, stated, Some(x => Evidence.of(x, page(x)).measured)))
@@ -202,9 +202,9 @@ object IdentityUnifiedDataset {
       val urls = PosterEvidence.urls(listings)
       if (urls.isEmpty) Nil
       else {
-        def answered[A](ask: => Answer[A], question: AgreementStage.PosterQuestion): Option[A] = ask.toOption.orElse {
+        def answered[A](ask: => Answer[A], question: AgreementStage.PosterQuestion): Option[A] = ask.answered.orElse {
           posters.foreach(_.file(posterStore, Seq(question)))
-          ask.toOption
+          ask.answered
         }
         val shown = urls.flatMap(url => answered(posterStore.venue(url), AgreementStage.PosterQuestion.Venue(url)).flatten)
         if (shown.isEmpty) Nil

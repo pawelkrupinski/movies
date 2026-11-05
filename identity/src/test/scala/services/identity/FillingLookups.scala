@@ -16,7 +16,7 @@ final class FillingLookups(inner: IdentityLookups, rnd: Random) extends Identity
   def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
   def detail(l: Listing): Answer[Option[DetailFacts]] = inner.detail(l)
   def candidates(q: CandidateQuery): Answer[Seq[Hit]] =
-    if (gapQuery(q)) Answer.Unknown else { val answer = inner.candidates(q); answer.toOption.foreach(named ++= _.map(_.tmdbId)); answer }
+    if (gapQuery(q)) Answer.Unknown else { val answer = inner.candidates(q); answer.answered.foreach(named ++= _.map(_.tmdbId)); answer }
   private val named = mutable.HashSet.empty[Int]
   /** Every film an answer has named: every film a context could hold a candidate of. */
   def namedFilms: Set[Int] = named.toSet

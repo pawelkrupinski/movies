@@ -143,7 +143,7 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     queue.monitor().counts.values.sum shouldBe 1
     fails = false
     handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Done
-    store.answers(VoterFamily.Metacritic).titled("Dune").toOption.map(_.size) shouldBe Some(1)
+    store.answers(VoterFamily.Metacritic).titled("Dune").answered.map(_.size) shouldBe Some(1)
     remembered.outcome(dune) shouldBe Some(QuestionMemory.Outcome.Answered)
   }
 
@@ -214,7 +214,7 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     asked(TaskType.AgreementFind, "imdbId" -> "tt16315948") shouldBe HandlerOutcome.Done
     asked(TaskType.AgreementFind, "tmdbRecord" -> "1703624") shouldBe HandlerOutcome.Done
     asked(TaskType.AgreementCatalogue, "source" -> "webedia", "ids" -> "1,2") shouldBe HandlerOutcome.Done
-    (store.answers(VoterFamily.Imdb).titled("Klondike").toOption.map(_.size), found.toSeq, reread.toSeq, mapped.toSeq) shouldBe
+    (store.answers(VoterFamily.Imdb).titled("Klondike").answered.map(_.size), found.toSeq, reread.toSeq, mapped.toSeq) shouldBe
       ((Some(1), Seq("tt16315948"), Seq(1703624), Seq(Seq(CatalogueId("webedia", "1"), CatalogueId("webedia", "2")))))
     AgreementQuestions.questionsOf(Task("t", TaskType.AgreementPoster, "old", Map("filmPoster" -> "7"), 1)) shouldBe
       Seq(Question.Poster(services.identity.agreement.AgreementStage.PosterQuestion.Film(7)))

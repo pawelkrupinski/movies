@@ -78,7 +78,7 @@ object CopiedFactReliability {
     val calibration = IdentityCalibration.resolver
     def opt[A](a: Option[A])(f: A => JsValue): JsValue = a.fold[JsValue](JsNull)(f)
     def against(evidence: Evidence, id: Int, verdict: Option[Judged]): Option[JsObject] =
-      lookups.film(id).toOption.flatten.map { film =>
+      lookups.film(id).answered.flatten.map { film =>
         val measures = IdentityMeasures.listingFilm(evidence.measured, film, None, 0, 0, country = Some(c.country.code.toUpperCase(java.util.Locale.ROOT)))
         val weights  = calibration.contributions(IdentityMeasures.ListingFilm, measures).toMap
         JsObject(Seq(
@@ -95,7 +95,7 @@ object CopiedFactReliability {
     val nodes      = IdentityResolver.evidenceOf(listings, lookups, c.normalizer, calibration)(l => judgedKeys(l.key))
     val scored = nodes.flatMap { node =>
       val members = node.keys.flatMap(byKey.get)
-      val sources = members.map(l => SourceReliability.factsOf(l.catalogueIds, l.page, l.pageFacts || lookups.detail(l).toOption.flatten.isDefined).name).distinct
+      val sources = members.map(l => SourceReliability.factsOf(l.catalogueIds, l.page, l.pageFacts || lookups.detail(l).answered.flatten.isDefined).name).distinct
       val verdicts = members.flatMap(l => byTitle.getOrElse(l.key.rawTitle, Nil).filter(j => j.venue == "*" || j.venue == l.key.venue).map(l.key -> _))
       val takenBy  = members.map(l => resolution.decisionOf(l.key).film).distinct
       val keep     = verdicts.map(_._2.film).toSet ++ takenBy.flatten
@@ -113,7 +113,7 @@ object CopiedFactReliability {
     }
     Files.writeString(dir.resolve(s"scored-${c.country.code}.jsonl"), scored.mkString("", "\n", "\n"))
     val lines = listings.flatMap { l =>
-      val detail   = lookups.detail(l).toOption.flatten
+      val detail   = lookups.detail(l).answered.flatten
       val source   = SourceReliability.factsOf(l.catalogueIds, l.page, l.pageFacts || detail.isDefined)
       val verdicts = byTitle.getOrElse(l.key.rawTitle, Nil).filter(j => j.venue == "*" || j.venue == l.key.venue)
       if ((source eq SourceReliability.Venue) && verdicts.isEmpty) None

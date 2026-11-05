@@ -43,7 +43,7 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
   "A family's verdict" should "be handed back, read as a fresh resolve reads it, while every answer it read reads alike" in {
     val kept = verdicts
     val fresh = afresh(bare, held)
-    fresh._1.toOption.flatMap(_.pick).map(_.id) shouldBe Some("tt16315948")
+    fresh._1.answered.flatMap(_.pick).map(_.id) shouldBe Some("tt16315948")
     through(kept, bare, held) shouldBe fresh
     through(kept, bare, held) shouldBe fresh
     (kept.resolved, kept.handedBack) shouldBe ((1L, 1L))

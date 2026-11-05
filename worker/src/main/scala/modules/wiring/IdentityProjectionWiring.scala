@@ -155,7 +155,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       waitingOn = agreementStage.waitingOn, clusterKey = agreementStage.keyOf,
       outcomes = identityQuestionMemory.outcomes, clock = clock, ticks = ticks,
       takeMetrics = workerMetrics.identityTakes.forCountry(country.code),
-      storedFilm = { val records = storedLookups(); id => records.film(id).toOption.flatten },
+      storedFilm = { val records = storedLookups(); id => records.film(id).answered.flatten },
       read = () => identityProjection.lastProjected.fold(Iterator.empty[services.identity.Listing])(_.read())))
   /** How many of a new cluster's family questions are asked inline at once: one per family and kind, roughly. */
   private val InlineFamilyAskThreads = 16

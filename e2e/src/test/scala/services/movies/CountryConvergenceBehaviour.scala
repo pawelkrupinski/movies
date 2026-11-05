@@ -1462,7 +1462,7 @@ abstract class CountryConvergenceBehaviour(
     val model    = w.identityModel.current(5.minutes).getOrElse(fail("the identity model could not be read"))
     val lookups  = w.storedLookups()
     val (corpus, reading) = tools.ThreadAllocation.of(services.identity.SuspectTakes.corpus(decided, model.listings, lookups,
-      id => lookups.film(id).toOption.flatten))
+      id => lookups.film(id).answered.flatten))
     val year     = java.time.LocalDate.ofInstant(clock.instant(), CorpusCoverage.zoneOf(country)).getYear
     val judged   = tools.IdentityJudgements.read()
     val labels   = tools.IdentityJudgements.labels(judged)

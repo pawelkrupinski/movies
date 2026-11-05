@@ -48,12 +48,12 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   private val prefetching = new Object
   def sizes: (Int, Int, Int) = (details.size, queries.size, films.size)
   /** Whether `l`'s venue detail was asked through it and had no answer: its page unread. */
-  def unreadDetail(l: Listing): Boolean = Option(details.get((l.venue, l.page.getOrElse("")))).exists(!_.isKnown)
+  def unreadDetail(l: Listing): Boolean = Option(details.get((l.venue, l.page.getOrElse("")))).exists(!_.isAnswered)
   /** Every candidate question and film record asked through it, with the answer it got. */
   def asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]]) =
     (queries.asScala.toMap, films.asScala.toMap)
-  def unknown: (Int, Int, Int) = (details.values.asScala.count(!_.isKnown), queries.values.asScala.count(!_.isKnown),
-    films.values.asScala.count(!_.isKnown))
+  def unknown: (Int, Int, Int) = (details.values.asScala.count(!_.isAnswered), queries.values.asScala.count(!_.isAnswered),
+    films.values.asScala.count(!_.isAnswered))
 }
 
 object MemoLookups { val PrefetchThreads = 8 }

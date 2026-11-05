@@ -64,9 +64,9 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
     val listings = services.identity.Listing.corpus(corpus, titleNormalizer)
     // What the resolver's own definitions say it must ask, derived from the SAME functions.
     val source = new Recording
-    val evidences = listings.map(l => Evidence.of(l, if (source.hasDetail(l)) source.detail(l).toOption.flatten else None))
+    val evidences = listings.map(l => Evidence.of(l, if (source.hasDetail(l)) source.detail(l).answered.flatten else None))
     val queries   = evidences.flatMap(CandidateQueries.of).distinct
-    val films     = queries.flatMap(q => source.candidates(q).toOption.getOrElse(Nil)).map(_.tmdbId).distinct
+    val films     = queries.flatMap(q => source.candidates(q).answered.getOrElse(Nil)).map(_.tmdbId).distinct
 
     asked.filter(_.startsWith("detail")).sorted shouldBe Seq("detail https://kinoteka.pl/boom", "detail https://kinoteka.pl/film/1")
     asked.filterNot(a => a.startsWith("detail") || a.startsWith("film")).toSet shouldBe queries.map(_.sortKey).toSet

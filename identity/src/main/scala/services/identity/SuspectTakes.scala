@@ -63,7 +63,7 @@ object SuspectTakes {
    *  film's, which the model never decided) — and what `listings` bill ([[Billings]]). */
   def corpus(resolution: Resolution, listings: Seq[Listing], venues: IdentityLookups, recordOf: Int => Option[IdentityMeasures.Film]): Corpus = {
     val byKey  = listings.iterator.map(l => l.key -> l).toMap
-    val stated = (key: ListingKey) => byKey.get(key).map(l => if (venues.hasDetail(l)) venues.detail(l).toOption.flatten.fold(l)(l.withPage) else l)
+    val stated = (key: ListingKey) => byKey.get(key).map(l => if (venues.hasDetail(l)) venues.detail(l).answered.flatten.fold(l)(l.withPage) else l)
     val taken = takes(resolution.decisions, stated, id => resolution.films.get(id).orElse(recordOf(id)))
     Corpus(taken, Billings.of(listings, taken))
   }

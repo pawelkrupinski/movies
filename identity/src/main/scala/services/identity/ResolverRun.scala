@@ -61,9 +61,9 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       edges          = perFamily.flatMap(_._1),
       queries        = issued.toSeq,
       filmLookups    = if (generation.partOfCorpus) 0 else records.size,
-      unknownQueries = answers.count(!_._2.isKnown),
-      unknownDetails = details.count(!_._2.isKnown),
-      unknownFilms   = if (generation.partOfCorpus) 0 else records.count(!_._2.isKnown),
+      unknownQueries = answers.count(!_._2.isAnswered),
+      unknownDetails = details.count(!_._2.isAnswered),
+      unknownFilms   = if (generation.partOfCorpus) 0 else records.count(!_._2.isAnswered),
       violations     = perFamily.map(_._3).sum,
       films          = decided.flatMap(_.film).distinct.flatMap(id => candidateOf(id).map(id -> _.film)).toMap,
       scorings       = families.scorings,
@@ -112,7 +112,7 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
     // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
     private val bills   = members.filter(node => acceptance.billsSeveralWorks(scope.of(node))).map(_.id).toSet
     private val billing = bills ++ IdentityResolver.billingUnderBanner(members, bills, filmOf, scope.of)
-    private def answered(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.toOption).getOrElse(Nil)
+    private def answered(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.answered).getOrElse(Nil)
     // a piece the corpus bills beside two whole titles or more, whatever families they fell in
     private def recurs(shape: String) = generation.context.repeatedSegment(generation.normalizer.sanitize(shape))
     private def linked(node: EvidenceNode) = scope.feedLinked(node).map(_._2)

@@ -277,8 +277,8 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     model.gaps.isEmpty shouldBe false
     Iterator.continually(lookups.answer()).takeWhile(!_.isEmpty).foreach(changed => model.batch(answered = changed))
     // The generated source leaves some questions unanswered for good (its GAPS): only those remain.
-    model.gaps.queries.filter(query => corpus.lookups.candidates(query).isKnown) shouldBe empty
-    model.gaps.films.filter(id => corpus.lookups.film(id).isKnown) shouldBe empty
+    model.gaps.queries.filter(query => corpus.lookups.candidates(query).isAnswered) shouldBe empty
+    model.gaps.films.filter(id => corpus.lookups.film(id).isAnswered) shouldBe empty
     ResolutionSignature.of(model) shouldBe
       ResolutionSignature.of(IdentityResolver.resolveWith(corpus.listings, lookups, normalizer, calibration, IdentityResolver.Mutation.None))
   }

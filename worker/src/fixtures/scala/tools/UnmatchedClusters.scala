@@ -329,7 +329,7 @@ object UnmatchedClusters {
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = noted(casts, tmdbId)(inner.cast(tmdbId))
     override def overview(tmdbId: Int): Answer[Option[ProseWords]] = noted(overviews, tmdbId)(described.getOrElse(inner).overview(tmdbId))
     private def noted[K, A](held: ConcurrentHashMap[K, A], key: K)(ask: => Answer[A]): Answer[A] =
-      Option(held.get(key)).fold { val answer = ask; answer.toOption.foreach(held.put(key, _)); answer }(Answer.Known(_))
+      Option(held.get(key)).fold { val answer = ask; answer.answered.foreach(held.put(key, _)); answer }(Answer.Known(_))
   }
 
   /** The captured answers as the resolver's lookups, every TMDB question it holds no answer to noted — `queries` and

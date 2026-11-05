@@ -17,7 +17,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  catalogue entry ([[services.identity.SourceReliability.listingsSiteEntry]]: Flicks). */
   private[agreement] def asStated(listing: Listing): Listing =
     if (!venues.hasDetail(listing)) listing
-    else venues.detail(listing).toOption.flatten.fold(listing)(listing.withPage)
+    else venues.detail(listing).answered.flatten.fold(listing)(listing.withPage)
 
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
    *  ([[services.identity.UnifiedRules.filled]] over [[services.identity.UnifiedEvidence.contenders]]: the cluster's own
@@ -33,7 +33,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
       else {
         // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
-          Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
+          Some(measured), venueNames(listings), film => lookups.cast(film).answered.flatten,
           productions = () => productionsOf(listings, measured, asked, Some(reads)), undated = { film =>
             val attempt = services.identity.Dependency.Attempted(Question.Record(film))
             readNow(attempt).foreach(reads(attempt) = _)
@@ -56,7 +56,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  catalogue's entry ([[services.identity.SourceReliability]]) — each with its detail page's facts, where read. */
   private[agreement] def venueStated(listings: Seq[Listing]): Seq[(Listing, Option[DetailFacts])] =
     listings.filter(services.identity.SourceReliability.decides(_, services.identity.SourceReliability.Fact.Names))
-      .map(listing => listing -> venues.detail(listing).toOption.flatten)
+      .map(listing => listing -> venues.detail(listing).answered.flatten)
 
   /** The decision with the film a fill rule took — pending while TMDB was not asked about its IMDb id yet or the venue
    *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]) or
@@ -140,15 +140,15 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
       val venue = venueStated(listings).foldLeft(ProseWords.None) { case (words, (listing, page)) =>
         words ++ listing.words ++ page.fold(ProseWords.None)(_.words)
       }
-      def description(other: Int) = lookups.overview(other).toOption.flatten.filter(_.nonEmpty)
-      def record(other: Int) = lookups.film(other).toOption.flatten
+      def description(other: Int) = lookups.overview(other).answered.flatten.filter(_.nonEmpty)
+      def record(other: Int) = lookups.film(other).answered.flatten
       Option.when(venue.nonEmpty)(()).flatMap(_ => description(film)).flatMap { own =>
         // the cluster's candidates, else what its titles' searches answered: a search not answered yet (a gap the model's
         // resolve met) leaves the candidates unread, and a namesake its other searches found is a namesake still
         val namesakes = Some(candidatesOf(id, digest, listings)).filter(_.nonEmpty).getOrElse(titledFilms(listings, answeredOnly = true))
           .distinct.filter(_ != film)
           .flatMap(other => description(other).map(other -> _))
-        val people = ProseWords.ofWords(lookups.cast(film).toOption.flatten.getOrElse(Nil) ++ record(film).flatMap(_.directors).getOrElse(Nil))
+        val people = ProseWords.ofWords(lookups.cast(film).answered.flatten.getOrElse(Nil) ++ record(film).flatMap(_.directors).getOrElse(Nil))
         val titles = ProseWords.ofWords(listings.flatMap(listing => Seq(listing.rawTitle, listing.title, listing.cleanTitle)) ++
           (film +: namesakes.map(_._1)).flatMap(record(_).toSeq.flatMap(_.titles)))
         SynopsisEvidence.veto(venue, own, people, namesakes, titles).map { case (other, shared) =>
@@ -162,7 +162,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  needs is open, each noted to ask. */
   private[agreement] def catalogued(decision: ResolverDecision, listings: Seq[Listing], asked: mutable.Set[Question]): Option[ResolverDecision] =
     Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, () => titlePicks(listings), asked, attempted)
-      .toOption.flatten.map { taken =>
+      .answered.flatten.map { taken =>
       taken.film.fold(taking(decision)(ResolverDecision.Basis.Catalogue, taken.line,
         fallback = taken.fallback.map { case (source, id) => AgreementStage.fallbackOn(source, id, taken.title, taken.year) }))(film =>
         taking(decision)(ResolverDecision.Basis.Catalogue, taken.line, film = Some(film)))
@@ -170,8 +170,8 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
 
   /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
   private[agreement] def voted(decision: ResolverDecision, distances: Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
-    distances.toOption.flatMap(PosterEvidence.vote).map { case (film, bits) =>
-      val named = looked.flatMap(_.film(film).toOption.flatten).fold(s"tmdb $film")(_.titled)
+    distances.answered.flatMap(PosterEvidence.vote).map { case (film, bits) =>
+      val named = looked.flatMap(_.film(film).answered.flatten).fold(s"tmdb $film")(_.titled)
       taking(decision)(ResolverDecision.Basis.Poster,
         s"the venue's poster matches $named ($bits bits), no other candidate's within ${PosterEvidence.VoteBits}", film = Some(film))
     }
@@ -185,7 +185,7 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
     looked.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
       val records = (candidatesOf(id, digest, listings) ++ uncatalogued(listings, lookups)).distinct.map(film => film -> lookups.film(film))
       // a record given up on is decided without (fix 4b); one not answered yet holds the join
-      Option.when(!records.exists(_._2.isAwaited))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
+      Option.when(!records.exists(_._2.isAwaited))(records.flatMap { case (film, record) => record.answered.flatten.map(film -> _) })
         .flatMap { known =>
           // a record of the billed work holding only its year is read again before the day decides: it might be the one
           Broadcast.take(listings, measured, known, () => productionsOf(listings, measured, asked))(undatedOf(lookups))

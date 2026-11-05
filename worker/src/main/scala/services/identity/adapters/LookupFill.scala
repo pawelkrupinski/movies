@@ -188,7 +188,7 @@ final class LookupFill(
     def outcome[A](answer: => Answer[A]): (LookupFill.Asked, Option[String]) = {
       val (deferred, failed) = (budget.deferred.get, budget.failed.get)
       val requested = new RequestedHost.Recording
-      val known     = RequestedHost.within(requested)(answer.isKnown)
+      val known     = RequestedHost.within(requested)(answer.isAnswered)
       // A read that failed wins over the deferrals its back-off then caused within the same question.
       if (known) (LookupFill.Asked.Answered, None)
       else if (budget.failed.get != failed) (LookupFill.Asked.Failed, AgreementQuestions.hostOf(budget.lastFailure.orNull, requested.last))

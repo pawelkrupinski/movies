@@ -95,7 +95,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val w = new World
     w.normalizer.filed("GET", url("credits,release_dates", language), Success(local()))
     w.normalizer.filed("GET", url("alternative_titles", "en-US"), Success(english))
-    w.lookups.film(film).toOption.flatten.flatMap(_.released) shouldBe Some(java.time.LocalDate.of(2001, 6, 6))
+    w.lookups.film(film).answered.flatten.flatMap(_.released) shouldBe Some(java.time.LocalDate.of(2001, 6, 6))
   }
 
   // What the rating schedule holds a still-unrated film's premiere week by (`PremiereRatingWatch`).
@@ -116,7 +116,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.normalizer.filed("GET", url("credits,release_dates", language), Success(local()))
     w.normalizer.filed("GET", url("alternative_titles", "en-US"), Success(english))
     w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString).containsKey("hit") shouldBe false
-    w.lookups.candidates(CandidateQuery.Title("Mulholland")).toOption.get.map(_.title) shouldBe Seq("Mulholland Drive")
+    w.lookups.candidates(CandidateQuery.Title("Mulholland")).answered.get.map(_.title) shouldBe Seq("Mulholland Drive")
   }
 
   // A refreshed search only names its films: it is not a fetch of their records. Re-stamping each named film
@@ -154,7 +154,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val w = new World
     w.normalizer.filed("GET", url("credits,release_dates", language), Failure(new HttpStatusException(404, "GET", "…", None)))
     w.normalizer.filed("GET", url("alternative_titles", "en-US"), Success(english))
-    w.lookups.film(film).toOption.flatten.map(_.directors) shouldBe Some(Some(Nil))                 // `{"crew":[]}`: known, none
+    w.lookups.film(film).answered.flatten.map(_.directors) shouldBe Some(Some(Nil))                 // `{"crew":[]}`: known, none
     w.normalizer.filed("GET", s"https://api.themoviedb.org/3/search/movie?language=$language&include_adult=false&query=Nic",
       Failure(new HttpStatusException(404, "GET", "…", None)))
     w.lookups.candidates(CandidateQuery.Title("Nic")) shouldBe Answer.Unknown
@@ -243,7 +243,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       Success("""{"results":[{"id":77,"name":"Ulrich Schamoni","known_for_department":"Directing"}]}"""))
     w.normalizer.filed("GET", "https://api.themoviedb.org/3/person/77/movie_credits",
       Success("""{"crew":[{"id":133035,"title":"Es","original_title":"Es","release_date":"1966-03-17","popularity":0.76,"department":"Directing","job":"Director"}]}"""))
-    w.lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
+    w.lookups.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
     // a bracket naming nobody IMDb suggests as a director walks nothing
     w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("ES (ULRIKA MOUYEMA)"), Success(suggestions))
     w.lookups.candidates(CandidateQuery.TitleCredit("ES (ULRIKA MOUYEMA)")) shouldBe Answer.Known(Nil)
@@ -268,7 +268,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val query   = CandidateQuery.TitleCredit("ES (ULRICH SCHAMONI)")
     lookups.prefetch(Seq(query), Nil, Nil)
     val prefetched = gets.get
-    lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
+    lookups.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
     gets.get shouldBe prefetched
   }
 
@@ -291,8 +291,8 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
     }
     val lookups = new StoredFirstLookups(w.lookups, live)
-    lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
-    lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
+    lookups.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
+    lookups.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
     asked.get shouldBe 1
   }
 
@@ -305,7 +305,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     stored.prefetch(Seq(query), Nil, Nil)
     stored.candidates(query) shouldBe Answer.Unknown
     lalka(popularity = 12.4).foreach { case (u, b) => w.normalizer.filed("GET", u, Success(b)) }
-    stored.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(2, 1))
+    stored.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(2, 1))
   }
 
   /** A gap asked live is answered as the store now holds it -- popularity to its bucket -- not as TMDB stated it: the
@@ -313,7 +313,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a gap the model asks live" should "be answered as the store holds what that ask filed" in {
     val w       = new World
     val lookups = new StoredFirstLookups(w.lookups, new LiveTmdb(w, popularity = 12.4))
-    lookups.candidates(CandidateQuery.Title("Lalka")).toOption.map(_.map(_.popularity)) shouldBe
+    lookups.candidates(CandidateQuery.Title("Lalka")).answered.map(_.map(_.popularity)) shouldBe
       Some(Seq(PopularityBucket.rounded(12.4), PopularityBucket.rounded(3.5)))
   }
 
@@ -359,7 +359,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val queries = titles.map(CandidateQuery.Title(_))
 
     lookups.prefetch(queries, Nil, Nil)
-    queries.map(lookups.candidates).map(_.toOption.map(_.map(_.tmdbId).toSet)) shouldBe
+    queries.map(lookups.candidates).map(_.answered.map(_.map(_.tmdbId).toSet)) shouldBe
       titles.indices.map(i => Some(Set(100 + i, 200 + i)))
     gets.get should be <= 4
   }
@@ -387,7 +387,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       stored.candidates(query)
       withClue(s"the store reads that answer $query again: ")(gets.get should be > 0)
     }
-    queries.map(lookups.candidates).map(_.toOption.map(_.map(_.tmdbId))) shouldBe titles.indices.map(i => Some(Seq(100 + i)))
+    queries.map(lookups.candidates).map(_.answered.map(_.map(_.tmdbId))) shouldBe titles.indices.map(i => Some(Seq(100 + i)))
   }
 
   /** A film document carries the two partial responses its record was parsed from beside the
@@ -402,7 +402,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val lookups = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, UnansweredTmdbLookups, new ObservationReads)
     lookups.prefetch(Nil, Seq(film), Nil)
     lookups.film(film) shouldBe w.lookups.film(film)
-    lookups.film(film).toOption.flatten shouldBe defined
+    lookups.film(film).answered.flatten shouldBe defined
     wholeFilmReads.get shouldBe 0
     val answer = w.docs.answers(TmdbKind.Film, Seq(film.toString))(film.toString)
     Seq("local", "english").flatMap(partial => Option(answer.get(partial))).flatMap(_.asDocument.keySet.asScala).toSet shouldBe Set("imdb_id", "runtime")
@@ -416,9 +416,9 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k"))).identityRecord(film) shouldBe defined
     val lookups = w.lookups
     lookups.prefetch(Nil, Seq(film), Nil)
-    val first = lookups.film(film).toOption.flatten.get
-    lookups.film(film).toOption.flatten.get should be theSameInstanceAs first
-    first shouldBe w.lookups.film(film).toOption.flatten.get
+    val first = lookups.film(film).answered.flatten.get
+    lookups.film(film).answered.flatten.get should be theSameInstanceAs first
+    first shouldBe w.lookups.film(film).answered.flatten.get
     // The first run of the measured block links its lambda and loads its classes, ~38k of one-time allocation (a cold
     // 100 asks measured 56k, a second 18k) that varies with what the suite has already loaded: run it once unmeasured.
     def hundredAsks() = (1 to 100).foreach(_ => lookups.film(film))
@@ -426,7 +426,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val (_, bytes) = tools.ThreadAllocation.of(hundredAsks())
     withClue(s"$bytes bytes for 100 asks: ")(bytes should be < 30000L)   // was 239,216 (a record decoded per ask); 18,448 once linked
     lookups.prefetchAnswered()
-    lookups.film(film).toOption.flatten.get should not be theSameInstanceAs(first)
+    lookups.film(film).answered.flatten.get should not be theSameInstanceAs(first)
   }
 
   /** The Met's "Samson et Dalila" relay as TMDB's localized record states it (recorded 2026-10-05:
@@ -452,7 +452,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val yearOnly = minimalOf(recorded).as[play.api.libs.json.JsObject] + ("release_date" -> play.api.libs.json.JsString("2026"))
     w.store.filmPartial(met, TmdbStore.Partial.Local, yearOnly)
     w.store.filmPartial(met, TmdbStore.Partial.English, minimalOf(s"""{"id":$met,"title":"The Metropolitan Opera 2026/27: Samson et Dalila","release_date":"2026-12-05","alternative_titles":{"titles":[]}}"""))
-    w.lookups.film(met).toOption.flatten.map(_.year) shouldBe Some(Some(2026))
+    w.lookups.film(met).answered.flatten.map(_.year) shouldBe Some(Some(2026))
     w.lookups.releaseDay(met) shouldBe Answer.Unknown
     val fetch = new MetSamsonFetch
     new TmdbClient(new NormalizingHttpFetch(fetch, w.normalizer), apiKey = Some(settings.TmdbApiKey("k")),
@@ -477,7 +477,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     lookups.releaseDay(met) shouldBe Answer.Unknown
     w.store.filmPartial(met, TmdbStore.Partial.Local, minimalOf(recorded))
     lookups.releaseDay(met) shouldBe w.lookups.releaseDay(met)
-    lookups.releaseDay(met).toOption.flatten should not be empty
+    lookups.releaseDay(met).answered.flatten should not be empty
   }
 
   // A record filed before records carried IMDb's number holds none; the answer still names it, off the partials'
@@ -486,12 +486,12 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val w = new World
     val observed = new NormalizingHttpFetch(new FakeHttpFetch("08-06-2026", strict = true), w.normalizer)
     new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k"))).identityRecord(film) shouldBe defined
-    w.lookups.film(film).toOption.flatten.map(_.imdbNumber) shouldBe Some(166924)
+    w.lookups.film(film).answered.flatten.map(_.imdbNumber) shouldBe Some(166924)
     val filed = w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString)
     filed.getDocument("record").remove("imdbNumber")
     w.docs.put(TmdbKind.Film, Seq(film.toString -> filed))
     w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString).getDocument("record").containsKey("imdbNumber") shouldBe false
-    w.lookups.film(film).toOption.flatten.map(_.imdbNumber) shouldBe Some(166924)
+    w.lookups.film(film).answered.flatten.map(_.imdbNumber) shouldBe Some(166924)
   }
 
   // "Once Upon a Time in America": TMDB states 229 minutes in pl-PL, 139 (the US theatrical cut) in en-US. A listing running as
@@ -502,11 +502,11 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
     w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
     w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
-    w.lookups.film(onceUpon).toOption.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
+    w.lookups.film(onceUpon).answered.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
     val filed = w.docs.get(TmdbKind.Film, Seq(onceUpon.toString))(onceUpon.toString)
     filed.getDocument("record").remove("alternativeRuntimes")
     w.docs.put(TmdbKind.Film, Seq(onceUpon.toString -> filed))
-    w.lookups.film(onceUpon).toOption.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
+    w.lookups.film(onceUpon).answered.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
   }
 
   // A showing subtitled into a language asks whether that language is the film's own: TMDB's original language must
@@ -517,7 +517,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
     w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
     w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
-    w.lookups.film(onceUpon).toOption.flatten.flatMap(_.originalLanguage) shouldBe Some("en")
+    w.lookups.film(onceUpon).answered.flatten.flatMap(_.originalLanguage) shouldBe Some("en")
   }
 
   // The cast evidence asks whether a candidate's cast is a voice cast (Animation) or its contributors' (Documentary): TMDB's
@@ -528,7 +528,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
     w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
     w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
-    val film = w.lookups.film(onceUpon).toOption.flatten
+    val film = w.lookups.film(onceUpon).answered.flatten
     film.map(_.genreIds) shouldBe Some(Set(18, 80))   // Drama, Crime
     film.exists(_.hasGenre(16)) shouldBe false
   }
@@ -541,7 +541,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
     w.store.filmPartial(banden, TmdbStore.Partial.Local, minimalOf(recorded("movie-627671-de.json")))
     w.store.filmPartial(banden, TmdbStore.Partial.English, minimalOf(recorded("movie-627671-en.json")))
-    w.lookups.film(banden).toOption.flatten.map(_.taglineKey) shouldBe
+    w.lookups.film(banden).answered.flatten.map(_.taglineKey) shouldBe
       Some(IdentityMeasures.Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora"))
   }
 
@@ -556,7 +556,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     (filed \ "release_dates").toOption shouldBe None
     w.store.filmPartial(film, TmdbStore.Partial.Local, filed)
     w.store.filmPartial(film, TmdbStore.Partial.English, minimalOf(s"""{"id":$film,"title":"Hider in the House","release_date":"1989-05-13","alternative_titles":{"titles":[]}}"""))
-    val record = w.lookups.film(film).toOption.flatten.get
+    val record = w.lookups.film(film).answered.flatten.get
     record.releasedIn("US") shouldBe Some(true)
     record.releasedIn("PL") shouldBe Some(false)
     // a record whose release dates TMDB was not asked for knows nothing of them
@@ -573,7 +573,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     (filed \ TmdbFilmRecord.CertificatesField).asOpt[String] shouldBe Some("DE=16,ES=18,GB=18,US=R")
     w.store.filmPartial(film, TmdbStore.Partial.Local, filed)
     w.store.filmPartial(film, TmdbStore.Partial.English, minimalOf(s"""{"id":$film,"title":"Obsession","release_date":"2026-05-13","alternative_titles":{"titles":[]}}"""))
-    w.lookups.film(film).toOption.flatten.flatMap(_.certificates) shouldBe Some("DE=16,ES=18,GB=18,US=R")
+    w.lookups.film(film).answered.flatten.flatMap(_.certificates) shouldBe Some("DE=16,ES=18,GB=18,US=R")
   }
 
   // The cast evidence (`CastEvidence`) reads a candidate's top-billed cast: the store keeps its names, in billing order,
@@ -683,8 +683,8 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       new services.enrichment.ImdbClient(fetch), Nil)
     val query    = CandidateQuery.ImdbTitled("Camino dla opornych")
     val answered = live.candidates(query)
-    answered.toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(1404604))
-    w.lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(1404604))
+    answered.answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(1404604))
+    w.lookups.candidates(query).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(1404604))
   }
 
   it should "be unknown to the store until IMDb's titles of a suggestion it does not display under the title are filed" in {
@@ -719,10 +719,10 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       new services.enrichment.ImdbClient(fetch), Nil)
     val query = CandidateQuery.ImdbTitled("Snow Leopard")
     val wang  = FallbackIds.ofImdbId("tt13920372").get
-    live.candidates(query).toOption.map(_.map(hit => (hit.tmdbId, hit.year))) shouldBe Some(Seq((wang, Some(2020))))
+    live.candidates(query).answered.map(_.map(hit => (hit.tmdbId, hit.year))) shouldBe Some(Seq((wang, Some(2020))))
     w.lookups.candidates(query) shouldBe live.candidates(query)
     val record = live.film(wang)
-    record.toOption.flatten.map(f => (f.title, f.year, f.directors, f.countries)) shouldBe
+    record.answered.flatten.map(f => (f.title, f.year, f.directors, f.countries)) shouldBe
       Some(("Snow Leopard", Some(2020), Some(Seq("Lixing Wang")), Some(Seq("CN"))))
     w.lookups.film(wang) shouldBe record
   }
@@ -750,7 +750,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val query = CandidateQuery.ImdbTitled("Snow Leopard")
     val wang  = FallbackIds.ofImdbId("tt13920372").get
     val asked = live.candidates(query)
-    asked.toOption shouldBe defined
+    asked.answered shouldBe defined
     w.lookups.candidates(query) shouldBe asked
     val record = live.film(wang)
     record shouldBe Answer.Known(None)

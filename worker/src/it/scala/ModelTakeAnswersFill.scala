@@ -113,7 +113,7 @@ object ModelTakeAnswersFill {
       pool.submit(new java.util.concurrent.Callable[Seq[FamilyVerdict]] {
         def call(): Seq[FamilyVerdict] = families.flatMap { family =>
           Try(Agreement.verdict(listings, new Recording(store.answers(family), open), l.lookups, c.normalizer,
-            IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).toOption).toOption.flatten
+            IdentityCalibration.resolver.withPriorSpread(family.priorSpread)).answered).toOption.flatten
         }
       })
     }.map(_.get())

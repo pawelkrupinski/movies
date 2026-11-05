@@ -168,7 +168,7 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listi
   override def film(number: Int): Answer[Option[IdentityMeasures.Film]] =
     named.get(number).filter(fetched(number, _)).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { hit =>
       val answer = answers.record(hit.id)
-      answer.toOption.flatten.foreach(record => read(hit.id) = record)
+      answer.answered.flatten.foreach(record => read(hit.id) = record)
       answer.map(_.map(_.film))
     }
 }
@@ -226,7 +226,7 @@ object Agreement {
     if (resolution.unknownQueries > 0 || resolution.unknownFilms > 0) Answer.Unknown
     else resolution.decisions.flatMap(_.film).distinct match {
       case Seq(number) =>
-        (for { id <- lookups.idOf(number); answered <- answers.record(id).toOption; record <- answered }
+        (for { id <- lookups.idOf(number); answered <- answers.record(id).answered; record <- answered }
           yield FamilyVerdict(answers.family, Some(FamilyPick(answers.family, id, record)), lookups.weighed))
           .toAnswer
       case _ => // none, or the family splits the cluster: no one film
@@ -244,7 +244,7 @@ object Agreement {
       val eligible = node.candidates.filterNot(_.denied).sortBy(-_.probability)
       eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp => best.probability >= Acceptance.LeanMargin * runnerUp.probability)).map(_.tmdbId)
     }.distinct match {
-      case Seq(Some(number)) => lookups.idOf(number).flatMap(id => answers.record(id).toOption.flatten)
+      case Seq(Some(number)) => lookups.idOf(number).flatMap(id => answers.record(id).answered.flatten)
       case _                 => None
     }
 

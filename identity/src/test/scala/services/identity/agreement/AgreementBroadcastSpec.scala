@@ -57,7 +57,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     decidedIn(new FilmTable(Seq(rohCarmen, rboCarmen), normalizer))(screening("Royal Opera House: Carmen", "2026-11-10")).film shouldBe Some(rboCarmen.id)
     // …and so when the cluster's listings reach one record each, neither denied beside the other in any one's pool
     val listing = screening("Royal Opera House: Carmen", "2026-11-10")
-    def recordOf(f: FilmTable.F) = f.id -> new FilmTable(Seq(f), normalizer).film(f.id).toOption.flatten.get
+    def recordOf(f: FilmTable.F) = f.id -> new FilmTable(Seq(f), normalizer).film(f.id).answered.flatten.get
     Broadcast.take(Seq(listing), services.identity.Evidence.of(_, None).measured, Seq(recordOf(rohCarmen), recordOf(rboCarmen)))()
       .toOption.flatten.map(_.film) shouldBe Some(rboCarmen.id)
   }

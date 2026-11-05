@@ -112,7 +112,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   def nodeCount: Int = nodes.size
   /** The questions a node asked whose answer is not known, and the named films whose record is not. */
   def gaps: AnswersChanged =
-    AnswersChanged(named.collect { case (query, None) => query }.toSet, records.collect { case (id, answer) if !answer.isKnown => id.toInt }.toSet)
+    AnswersChanged(named.collect { case (query, None) => query }.toSet, records.collect { case (id, answer) if !answer.isAnswered => id.toInt }.toSet)
 
   // ── events ──────────────────────────────────────────────────────────────────────────────────
   def seen(arrived: Seq[Listing]): CorpusContext.Changed = {
@@ -155,7 +155,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   }
 
   private def derive(listing: Listing): Evidence =
-    Evidence.of(listing, if (lookups.hasDetail(listing)) lookups.detail(listing).toOption.flatten else None, decorations)
+    Evidence.of(listing, if (lookups.hasDetail(listing)) lookups.detail(listing).answered.flatten else None, decorations)
 
   /** Re-derive what the touched nodes, re-answered questions and re-recorded films reach; the keys
    *  whose facts moved. */
@@ -346,7 +346,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
    *  already asked is filed already. */
   private def link(key: NodeKey, live: Node, answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] = {
     val films = live.queries.distinct.filterNot(askers.contains).flatMap { query =>
-      val known  = answer(query).toOption
+      val known  = answer(query).answered
       val byFilm = known.getOrElse(Nil).groupBy(_.tmdbId)
       named(query) = known.map(hits => ArraySeq.from(CandidateGeneration.ranked(hits)))
       byFilm.map { case (id, hits) =>

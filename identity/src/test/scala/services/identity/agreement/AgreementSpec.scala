@@ -18,7 +18,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
   private val klondike1932 = film("Klondike", 1932, "Phil Rosen", 68)
 
   private def picks(listings: Seq[Listing], families: Seq[FamilyAnswers]): Seq[FamilyVerdict] =
-    families.flatMap(answers => Agreement.verdict(listings, answers, NoVenueDetails, normalizer, IdentityCalibration.resolver).toOption)
+    families.flatMap(answers => Agreement.verdict(listings, answers, NoVenueDetails, normalizer, IdentityCalibration.resolver).answered)
 
   "Three families each identifying the listing" should "agree on the film, by cross-id or by its facts" in {
     val bare = Seq(listing(KinoMuza, "Klondike", year = Some(2022)))
@@ -494,7 +494,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
       def record(id: String)       = { asked += id; Answer.Known(None) }
     }
     val lookups = new FamilyLookups(family, NoVenueDetails, Seq("Klondike"))
-    val numbered = lookups.candidates(services.identity.CandidateQuery.Title("Klondike")).toOption.get
+    val numbered = lookups.candidates(services.identity.CandidateQuery.Title("Klondike")).answered.get
     numbered.foreach(hit => lookups.film(hit.tmdbId))
     asked.toSeq shouldBe Seq("a", "b", "d", "k1", "k2")   // first (any title), a shared word, no title to judge; then the cap of 6
   }
@@ -527,7 +527,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
       def record(id: String)       = held.record(id)
     }
     val verdict = Agreement.verdict(bare, counted, NoVenueDetails, normalizer, IdentityCalibration.resolver)
-    verdict.toOption.map(_.pick) shouldBe Some(None)
+    verdict.answered.map(_.pick) shouldBe Some(None)
     asked.groupBy(identity).collect { case (question, times) if times.size > 1 => question } shouldBe empty
   }
 
@@ -541,7 +541,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val fed  = bare.copy(catalogueIds = Seq(services.identity.CatalogueId("cineamo", "1669788m")))
     def chosen(of: Listing) = Agreement.verdict(Seq(of), new HeldFamilyAnswers(VoterFamily.Imdb,
       Map("tt33394780" -> SourceRecord(film444, Map("imdb" -> "tt33394780")))),
-      NoVenueDetails, normalizer, IdentityCalibration.resolver).toOption.map(verdict => verdict.pick.map(_.record.film).orElse(verdict.leaning.map(_.film)))
+      NoVenueDetails, normalizer, IdentityCalibration.resolver).answered.map(verdict => verdict.pick.map(_.record.film).orElse(verdict.leaning.map(_.film)))
     chosen(bare) shouldBe Some(Some(film444))
     chosen(fed) shouldBe chosen(bare)
   }

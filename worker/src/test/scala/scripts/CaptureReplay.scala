@@ -40,8 +40,8 @@ final class CaptureReplay(val capture: UnmatchedClusters.Capture, live: Option[I
       rounds += 1
       done = result._2 == 0 || live.isEmpty || rounds > 4
       live.filterNot(_ => done).foreach { tmdb =>
-        asked(missingQ.toSeq.map(q => () => tmdb.candidates(q).toOption.foreach(queries.put(q, _))) ++
-          missingF.toSeq.map(id => () => tmdb.film(id).toOption.foreach(films.put(id, _))))
+        asked(missingQ.toSeq.map(q => () => tmdb.candidates(q).answered.foreach(queries.put(q, _))) ++
+          missingF.toSeq.map(id => () => tmdb.film(id).answered.foreach(films.put(id, _))))
       }
     }
     result

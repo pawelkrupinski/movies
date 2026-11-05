@@ -765,7 +765,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] def voteOf(decision: ResolverDecision, lookups: IdentityLookups): Option[SourceRecord] =
     decision.leaning.orElse(decision.candidate).map { vote =>
       val ids = AgreementStage.leanRecord(vote)
-      lookups.film(vote.film).toOption.flatten.fold(ids)(film => SourceRecord(film,
+      lookups.film(vote.film).answered.flatten.fold(ids)(film => SourceRecord(film,
         ids.crossIds ++ IdentityMeasures.imdbId(film.imdbNumber).map("imdb" -> _)))
     }
 
@@ -881,7 +881,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       Some {
         val thisYear = yearNow
         readNow(Dependency.Year).foreach(reads(Dependency.Year) = _)
-        val known    = verdicts.flatMap(_.toOption)
+        val known    = verdicts.flatMap(_.answered)
         val stated   = listings.map(asStated)
         val (weighed, fill) = receipting(reads) {
           // the vote's record is TMDB's: the venues' lookups answer venue pages alone, every film unknown (the worker's
@@ -897,7 +897,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
         val agreed   = weighed.agreed
         // settled: what none answered is in the receipt as unanswered ([[Recording]]), so its answer, once filed, reads
         // the verdict again
-        val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.toOption.flatten, refused = weighed.refused)
+        val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.answered.flatten, refused = weighed.refused)
         if (fill == Answer.Unknown) {
           // the fill met a TMDB question not answered yet: this pass reads the verdict, none keeps it — kept, it stood once
           // TMDB had answered (its reads are the families' only), and the fill was never read again (PL "Lalka (Dolly)" ×5).
