@@ -20,7 +20,14 @@ object BsonRoundTrip {
   private val Documents = new BsonDocumentCodec()
 
   /** `document` written to BSON bytes and read back; THROWS what the driver's write would (a NUL in a field name). */
-  def apply(document: BsonDocument): BsonDocument = new RawBsonDocument(document, Documents).decode(Documents)
+  def apply(document: BsonDocument): BsonDocument = read(bytes(document))
+
+  /** The write half: `document` as the BSON bytes the driver would write; THROWS what that write would. For a store that
+   *  keeps the bytes and decodes each read from them ([[read]]), as one holding a replay's every answer does. */
+  def bytes(document: BsonDocument): RawBsonDocument = new RawBsonDocument(document, Documents)
+
+  /** The read half: a fresh document decoded from `bytes`, its reader's own copy, as a driver read's is. */
+  def read(bytes: RawBsonDocument): BsonDocument = bytes.decode(Documents)
 
   /** `document` written to BSON bytes and read back. */
   def apply(document: Document): Document = Document(apply(document.toBsonDocument))

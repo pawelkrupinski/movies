@@ -27,6 +27,18 @@ class BsonRoundTripSpec extends AnyFlatSpec with Matchers {
       d => Instant.ofEpochMilli(d.getDateTime("at").getValue))(at) shouldBe Instant.parse("2026-10-25T10:00:00.123Z")
   }
 
+  // The halves a store keeping bytes writes and reads through (InMemoryTmdbDocuments: a replay's every answer, as bytes)
+  "Its write half" should "refuse what the driver's write refuses" in {
+    a[BsonSerializationException] should be thrownBy BsonRoundTrip.bytes(new BsonDocument("a\u0000b", new BsonInt64(1)))
+  }
+
+  "Its read half" should "hand each reader a copy of its own, as a driver read does" in {
+    val kept  = BsonRoundTrip.bytes(new BsonDocument("n", new BsonInt64(7)))
+    val first = BsonRoundTrip.read(kept)
+    first.put("n", new BsonInt64(8))
+    BsonRoundTrip.read(kept) shouldBe new BsonDocument("n", new BsonInt64(7))
+  }
+
   private object Counts extends DocCodec[Map[String, Int]] {
     def encode(value: Map[String, Int]): Document  = Document("counts" -> Document(value.map { case (k, v) => k -> v }))
     def decode(document: Document): Option[Map[String, Int]] =

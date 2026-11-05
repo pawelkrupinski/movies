@@ -108,15 +108,11 @@ final class InMemoryTmdbDocuments extends TmdbDocuments with TmdbDocumentRetenti
     deleted
   }
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
-    ids.flatMap(id => Option(byKind(kind).get(id)).map(id -> _.decode(InMemoryTmdbDocuments.Codec))).toMap
-  // Encoded as the driver's write would encode it, so a document the driver refuses (a NUL in a field name) throws here too.
+    ids.flatMap(id => Option(byKind(kind).get(id)).map(id -> services.BsonRoundTrip.read(_))).toMap
+  // Written through the round-trip base's write half, so a document the driver refuses (a NUL in a field name) throws here too.
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit =
-    docs.foreach { case (id, d) => byKind(kind).put(id, new RawBsonDocument(d, InMemoryTmdbDocuments.Codec)) }
+    docs.foreach { case (id, d) => byKind(kind).put(id, services.BsonRoundTrip.bytes(d)) }
   def size(kind: TmdbKind): Int = byKind(kind).size
-}
-
-object InMemoryTmdbDocuments {
-  private val Codec = new org.bson.codecs.BsonDocumentCodec()
 }
 
 /** `tmdb_films` / `tmdb_people` / `tmdb_queries`: one document per entity, `_id` its key. */
