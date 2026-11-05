@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# A LOCAL WHAT-IF OF A RESOLVER CHANGE over prod's current corpus, in minutes: the base's and the head's model resolve
+# the LOCAL prod mirror's snapshot of a moment (`--at`; :28017, read-only), the head re-resolving only the families the
+# change can reach, and every take that moved is bucketed by the judgements (test/resources/fixtures/identity-judgements
+# .tsv) as scripts/identity-measure buckets a CI measurement -- moved, gained, lost, right->wrong, new-wrong -- with prod's
+# served take beside each.
+#
+#   scripts/identity-what-if [--base REF] [--head REF|.] [--at ISO] [--max-age HOURS] [--all] [--verify]
+#                            [--threads N] [--out DIR] [--json] cc...
+#
+#   --base REF     the code the change is measured against (default origin/main)
+#   --head REF|.   the change: a commit, or `.` (default) for this checkout's code with its uncommitted edits
+#   --at ISO       the mirror moment both sides resolve (default: the newest snapshot the base already resolved within
+#                  --max-age hours, 6 by default, else now)
+#   --all          re-resolve every family at the head, whatever the change reaches
+#   --verify       also resolve every family at the head and FAIL (exit 1) if any take differs from the what-if's: the
+#                  proof that the selection missed nothing
+#   --threads N    head families resolved at once (default 6)
+#   --out DIR      where the per-country diff TSVs go (default target/identity-what-if/<head>)
+#
+# HOW. Each ref's sources are laid out once under the shared cache (scripts/identity-tools.sh's identity_tree, this
+# checkout's WhatIfResolve.scala and MemoLookups.scala dropped in, so a ref from before the tool works) and compiled once.
+# The base resolves every family (services.identity.WhatIfResolve: takes, rule ids, block keys, prod's served take) and is
+# KEPT, keyed by the base's sha, the tool files and the snapshot moment: a repeat run resolves only the head.
+# scripts/identity_what_if.py selects: the changed code walked up its callers to the rule roots
+# (scripts/identity-what-if-roots.tsv), the families whose base trace names one of their rules re-resolved, widened while a
+# re-resolved family blocks under another's key; a change it cannot attribute (shared resolver code, scoring, lookups,
+# normalizer) re-resolves ALL, and says why. Then it diffs.
+#
+# WHAT IT IS NOT. The model's take only: the agreement stage (the final take) is not recomputed -- a change there selects
+# nothing and says so. prod's current corpus, not a recording: CI's scripts/identity-measure replays a pinned recording
+# and stays the verdict of record; the two differ by the corpus (docs: identity-investigation skill).
+#
+# Exit 0 done (CLEAN or BLOCKING is printed per country), 1 --verify found a take the selection missed, 2 usage / a
+# side failed. Every JVM takes a slot of scripts/jvm-gate.sh.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+usage() { usage_from_header; }
+# shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
+IDENTITY_TOOL=identity-what-if
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+repo=$IDENTITY_REPO
+
+base=origin/main head=. at="" max_age=6 all=0 verify=0 threads=6 out="" json=0 ccs=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --base) flag_value "$@"; base=$2; shift 2 ;;
+    --head) flag_value "$@"; head=$2; shift 2 ;;
+    --at) flag_value "$@"; at=$2; shift 2 ;;
+    --max-age) flag_value "$@"; max_age=$2; shift 2 ;;
+    --all) all=1; shift ;;
+    --verify) verify=1; shift ;;
+    --threads) flag_value "$@"; threads=$2; shift 2 ;;
+    --out) flag_value "$@"; out=$2; shift 2 ;;
+    --json) json=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -*) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
+    *) ccs+=("$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"); shift ;;
+  esac
+done
+[ "${#ccs[@]}" -gt 0 ] || { echo "name a country (pl de uk es us)" >&2; exit 2; }
+
+TOOL_FILES=(worker/src/test/scala/services/identity/WhatIfResolve.scala worker/src/fixtures/scala/tools/MemoLookups.scala)
+base_sha=$(git -C "$repo" rev-parse --verify "$base^{commit}") || { echo "no commit $base" >&2; exit 2; }
+if [ "$head" = . ]; then head_label=worktree-$(git -C "$repo" rev-parse --short=12 HEAD); head_sha=.
+else head_sha=$(git -C "$repo" rev-parse --verify "$head^{commit}") || { echo "no commit $head" >&2; exit 2; }; head_label=${head_sha:0:12}; fi
+out=${out:-$repo/target/identity-what-if/$head_label}
+mkdir -p "$out"
+tools_hash=$(identity_tools_hash "${TOOL_FILES[@]}")
+cache=$IDENTITY_CACHE/what-if
+
+seconds() { python3 -I -c 'import time; print(f"{time.time():.1f}")'; }
+elapsed() { python3 -I -c "import sys; print(f'{float(sys.argv[2]) - float(sys.argv[1]):.0f}')" "$1" "$(seconds)"; }
+
+tree_of() { if [ "$1" = . ]; then echo "$repo"; else identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
+# resolve <tree> <cc> <out dir> <args...> -> that tree's WhatIfResolve, under a JVM slot
+resolve() {
+  local tree=$1 cc=$2 dir=$3 cp rc=0; shift 3
+  cp=$(identity_classpath "$tree") || return 2
+  mkdir -p "$dir"
+  jvm_slot_take identity-what-if
+  (cd "$tree" && "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.WhatIfResolve "$cc" --out "$dir" "$@") > "$dir/run.log" 2>&1 || rc=$?
+  jvm_slot_release
+  [ "$rc" = 0 ] || { tail -30 "$dir/run.log" >&2; identity_log "$cc: WhatIfResolve failed in $tree (log $dir/run.log)"; return 2; }
+}
+
+# The newest snapshot moment the base already resolved for <cc> within --max-age hours, if any.
+cached_at() {
+  local root=$cache/$1/$base_sha-$tools_hash
+  [ -d "$root" ] || return 0
+  python3 -I - "$root" "$max_age" <<'PY'
+import datetime, os, sys
+root, hours = sys.argv[1], float(sys.argv[2])
+now = datetime.datetime.now(datetime.timezone.utc)
+done = [d for d in os.listdir(root) if os.path.exists(os.path.join(root, d, "prod.tsv"))]
+fresh = [d for d in done if now - datetime.datetime.fromisoformat(d.replace("Z", "+00:00")) <= datetime.timedelta(hours=hours)]
+print(max(fresh) if fresh else "")
+PY
+}
+
+identity_log "base $base_sha, head $head_label; laying out and compiling the refs (once each)"
+base_tree=$(tree_of "$base_sha") || exit 2
+head_tree=$(tree_of "$head_sha") || exit 2
+judgements=$head_tree/test/resources/fixtures/identity-judgements.tsv
+status=0
+for cc in "${ccs[@]}"; do
+  fresh_rc=0; scripts/local-mirror/freshness "$cc" --quiet >&2 || fresh_rc=$?
+  [ "$fresh_rc" != 2 ] || { identity_log "$cc: the local prod mirror does not answer (scripts/local-mirror/freshness)"; exit 2; }
+  started=$(seconds)
+  snapshot=${at:-$(cached_at "$cc")}
+  base_state=kept
+  if [ -z "$snapshot" ]; then snapshot=$(date -u +%Y-%m-%dT%H:%M:00Z); fi
+  base_dir=$cache/$cc/$base_sha-$tools_hash/$snapshot
+  if [ ! -f "$base_dir/prod.tsv" ]; then
+    base_state=resolved
+    identity_log "$cc: resolving the base at $snapshot"
+    resolve "$base_tree" "$cc" "$base_dir.part" --at "$snapshot" || exit 2
+    rm -rf "$base_dir"; mv "$base_dir.part" "$base_dir"
+  fi
+  base_seconds=$(elapsed "$started")
+  head_dir=$out/$cc
+  rm -rf "$head_dir"; mkdir -p "$head_dir"
+  if [ "$all" = 1 ]; then
+    tail -n +2 "$base_dir/takes.tsv" | cut -f1 > "$head_dir/select.txt"; selected="selected: ALL (--all)"
+  else
+    selected=$(python3 -I "$repo/scripts/identity_what_if.py" select --repo "$repo" --base "$base_sha" --head "$head_sha" \
+      --takes "$base_dir/takes.tsv" --out "$head_dir/select.txt") || exit 2
+  fi
+  identity_log "$cc: $selected"
+  head_started=$(seconds)
+  more=(); [ "$verify" = 0 ] || more+=(--whole)
+  resolve "$head_tree" "$cc" "$head_dir" --at "$snapshot" --select "$head_dir/select.txt" --families "$base_dir/families.tsv" \
+    --base-takes "$base_dir/takes.tsv" --threads "$threads" ${more[@]+"${more[@]}"} || exit 2
+  head_seconds=$(elapsed "$head_started")
+  diff_args=(diff --cc "$cc" --base "$base_dir" --head "$head_dir" --judgements "$judgements" --tsv "$out/takes-diff-$cc.tsv")
+  [ "$verify" = 0 ] || diff_args+=(--verify)
+  [ "$json" = 0 ] || diff_args+=(--json)
+  rc=0; python3 -I "$repo/scripts/identity_what_if.py" "${diff_args[@]}" || rc=$?
+  [ "$rc" = 0 ] || status=$rc
+  region=$(tail -n 1 "$head_dir/region.tsv" | awk -F'\t' '{print $2 " listings in " $3 " group(s), " $4 " round(s)"}')
+  echo "  $selected; re-resolved $region"
+  echo "  snapshot $snapshot; wall: base ${base_seconds}s ($base_state), head ${head_seconds}s, total $(elapsed "$started")s; rows $out/takes-diff-$cc.tsv"
+done
+exit "$status"
