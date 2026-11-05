@@ -1,4 +1,4 @@
-# 2026-11-05 — a relay's work words drop "screen" (`ScreeningWords`) — PARKED, it opens DE seed-8 Geister/Titans flips (head `f36cb6581ae3`)
+# 2026-11-05 — a relay's work words drop "screen" (`ScreeningWords`) — PARKED; the DE seed-8 Geister flips were NOT its (head `f36cb6581ae3`)
 
 - **What:** `StageRelays.Relay.of` filters `ScreeningWords("screen")` out of a relay's `workWords`, so UK Lowther Pavilion's
   "On Screen: The Royal Ballet SWAN LAKE (12A)" no longer reads "screen" as its work and denies the house's 2026/27 record
@@ -18,3 +18,11 @@
 - **Why parked:** a population-dependent relay change is not patched per listing; it waits for the held-take work (owner,
   2026-11-05). The Lowther On Screen relays stay unmatched meanwhile.
 - **Code:** local tag `experiment/stage-relays-screen` (`f36cb6581ae3`, C whole); branch `unmatched-recover/banners` holds it.
+
+- **Correction (same day):** the first bisect (129b6c3 clean, 4c5cf3b red) spanned TWO changes, the Roman-numeral narrowing
+  of `caseSplit` (`1d4ed4`, before the StageRelays commits) and the relay one. A second bisect on the rebased shapes
+  branch isolates it: shapes without the numeral commit, drift run 42013538022, CLEAN (DE seed 8: Titans/Buddies
+  pre-existing only); the same plus the numeral commit (`7005d9bb1b30`, no StageRelays change), drift run 42003442640, RED
+  with the same four Geister flips. So the Geister flips follow the numeral narrowing (a shape-set change moving a DE
+  title's searches, hence the family's pool), and the relay change is parked for its own reason (population-dependent
+  denial, held takes), not for these flips.
