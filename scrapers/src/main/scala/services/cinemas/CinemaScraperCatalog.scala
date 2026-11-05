@@ -3,7 +3,7 @@ package services.cinemas
 import models._
 import tools.{CachingDetailFetch, HttpFetch}
 import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, WebediaMarket, WebediaShowtimesClient}
-import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient, WixEventsClient}
+import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient, SecondFeedFacts, WixEventsClient}
 import services.cinemas.de.{ArsenalBerlinClient, GermanFeed, GermanSources, RexSchifferstadtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
@@ -110,11 +110,24 @@ class CinemaScraperCatalog(
   private def germanFeeds(cinema: Cinema): Seq[GermanFeed] =
     GermanSources.of(models.GermanRoster.venueKeyByCinema(cinema), models.GermanRoster.kinoprogrammPathByCinema.get(cinema))
 
+  /** A German venue's primary scraper: its first source's — and where that is Cineamo and the venue sells through
+   *  kinoheld too, with kinoheld's facts lent to the showings Cineamo bills bare ([[SecondFeedFacts]]). */
+  private def germanPrimary(cinema: Cinema): CinemaScraper = {
+    val feeds   = germanFeeds(cinema)
+    val primary = germanFeedScraper(feeds.head, cinema)
+    feeds.head match {
+      case _: GermanFeed.Cineamo =>
+        feeds.collectFirst { case kinoheld: GermanFeed.Kinoheld => kinoheld }
+          .fold(primary)(kinoheld => new SecondFeedFacts(primary, germanFeedScraper(kinoheld, cinema)))
+      case _ => primary
+    }
+  }
+
   // Germany — data-driven from the full GermanRoster (436 town pages / 1,515 cinemas):
-  // one scraper per cinema — its primary source's ([[germanFeeds]]) — keyed by its page.
+  // one scraper per cinema — its primary source's ([[germanPrimary]]) — keyed by its page.
   private val germanBaseByCity: Map[City, Seq[CinemaScraper]] =
     models.Country.Germany.cities.map { city =>
-      city -> city.cinemas.map(c => germanFeedScraper(germanFeeds(c).head, c))
+      city -> city.cinemas.map(germanPrimary)
     }.toMap
 
   // ── Spain (AlloCiné/SensaCine website-JSON) ──────────────────────────────

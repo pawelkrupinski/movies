@@ -350,7 +350,8 @@ object KinoheldClient {
     }.toMap
   }
 
-  private def words(s: String): Set[String] =
+  /** The counted words of a title: deburred, lower-cased, three letters or more, no [[CommonWords]]. */
+  private[common] def words(s: String): Set[String] =
     TextNormalization.deburr(s.toLowerCase(Locale.ROOT))
       .split("[^\\p{L}\\p{N}]+").filter(w => w.length >= 3 && !CommonWords(w)).toSet
 

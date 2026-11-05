@@ -2,13 +2,13 @@ package clients
 
 import clients.tools.{FailingHttpFetch, FakeHttpFetch}
 import models._
-import org.scalatest.OptionValues
+import org.scalatest.{LoneElement, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{ChainFlicksFallback, CinemaEgress, CinemaScraperCatalog}
 import services.cinemas.de.{GermanFeed, GermanSources}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
+import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper, SecondFeedFacts}
 import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues}
 import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, QuadDerbyClient, SavoyClient, SpektrixClient, TicketsolveClient}
@@ -36,7 +36,7 @@ import scala.concurrent.duration._
  * Each seam's fixture-less `http` makes a leaked fetch throw / come back empty,
  * so a refactor that re-buries the fetch on `http` is caught here.
  */
-class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValues {
+class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValues with LoneElement {
 
   // `http` deliberately points at a fixture directory without any biletyna/ck105
   // capture, so any cinema that wrongly fetches through it (instead of its own
@@ -754,7 +754,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val venue    = models.GermanRoster.theaterIdByCinema.collectFirst { case (v, "A0831") => v }.value
     val scrapers = c.byCity(de("hofheim-am-taunus")).filter(_.cinema == venue)
     scrapers should have size 1
-    scrapers.head.scrapeHosts shouldBe Set("api.cineamo.com")   // its measured primary (venue-sources.json)
+    // its measured primary (venue-sources.json), Cineamo, with kinoheld's facts for the showings it bills bare
+    scrapers.head.scrapeHosts shouldBe Set("api.cineamo.com", "next-live.kinoheld.de", "www.kinoheld.de")
     c.byCity.get(de("frankfurt-am-main")).value.map(_.cinema) should not contain venue
     // Every German page the web tier serves has its scrapers under the same slug,
     // and the fallback is still found for venues that moved pages.
@@ -788,6 +789,18 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val babylon = models.Cinema.byDisplayName("Babylon (Mitte)")
     c.byCity(pageOf(babylon)).filter(_.cinema == babylon).map(_.sourceKey) shouldBe Seq(Some("api.cineamo.com/cinema/997"))
     c.germanFallbackFeeds(babylon).map(_.label) shouldBe Seq("kinoheld", "Filmstarts", "Kinoprogramm")
+  }
+
+  // Cineamo bills a film its operator never linked as a bare title; kinoheld's show of the same screening often states
+  // its year, director and running time (SecondFeedFacts).
+  it should "lend kinoheld's facts to the showings a Cineamo-primary venue bills bare, where the venue sells through kinoheld" in {
+    val c        = catalog()
+    def primary(name: String) = { val cinema = models.Cinema.byDisplayName(name); c.byCity(pageOf(cinema)).filter(_.cinema == cinema).loneElement }
+    val babylon  = primary("Babylon (Mitte)")
+    babylon shouldBe a[SecondFeedFacts]
+    babylon.scrapeHosts should contain allOf ("api.cineamo.com", "next-live.kinoheld.de")
+    // a venue kinoheld itself serves as primary lends nothing to itself
+    primary("Raststätte") should not be a[SecondFeedFacts]
   }
 
   // Bochum was on no German page until the 2026-10 harvest: Filmstarts lists its cinemas, its

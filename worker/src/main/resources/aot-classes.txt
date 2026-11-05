@@ -8627,6 +8627,7 @@ services.cinemas.CinemaEgress
 services.cinemas.CinemaEgress$
 services.cinemas.CinemaScraperCatalog
 services.cinemas.CinemaScraperCatalog$
+services.cinemas.CinemaScraperCatalog$$anon$1
 services.cinemas.CinemaScraperCatalog$Filed
 services.cinemas.CinemaScraperCatalog$Filed$
 services.cinemas.CinemaScraperCatalog$MsiVenue
@@ -8778,6 +8779,8 @@ services.cinemas.common.ScrapeOutcomeListener
 services.cinemas.common.ScrapeOutcomeListener$
 services.cinemas.common.ScraperParse
 services.cinemas.common.ScraperParse$
+services.cinemas.common.SecondFeedFacts
+services.cinemas.common.SecondFeedFacts$
 services.cinemas.common.SlotsToMovies
 services.cinemas.common.SlotsToMovies$
 services.cinemas.common.SlotsToMovies$MovieOrder
