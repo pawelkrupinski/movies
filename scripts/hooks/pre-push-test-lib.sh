@@ -95,8 +95,9 @@ red="$(run_json 38520439037 completed failure 38520439037)"
 green="$(run_json 38487614044 completed success 38487614044)"
 cancelled="$(run_json 38470049143 completed cancelled 38470049143)"
 running="$(run_json 38529260149 in_progress "" 38529260149)"
-# Only the gate is under test here: the path checks the pushed paths select are skipped (the cases above cover them).
-pathchecks="judgements eslint drift snapshot dashboards sbt scripttests actionlint shellcheck ios newchecks"
+# Only the gate is under test here: the path checks the pushed paths select are skipped (the cases above cover them),
+# driftguards too: the `fixing` commit's Fixes-Red: trailer selects it whatever the pushed paths.
+pathchecks="judgements eslint drift driftguards snapshot dashboards sbt scripttests actionlint shellcheck ios newchecks"
 push() { # <range> -> exit code; stderr in $gate/err
   (cd "$grepo" && PREPUSH_SKIP="${PREPUSH_SKIP:-} $pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$1" >/dev/null 2>"$gate/err"); echo $?; }
   all_green() { GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" "$@"; }
