@@ -8,6 +8,7 @@
 scripts/ci/identity-drift-check.sh
 scripts/ci/drift_seeds.py
 scripts/ci/drift_diff.py
+scripts/ci/drift_scenario.py
 worker/src/test/scala/scripts/IdentityDrift.scala
 identity/src/main/scala/services/identity/TakeFlips.scala
 test/resources/fixtures/identity-drift-allow.tsv

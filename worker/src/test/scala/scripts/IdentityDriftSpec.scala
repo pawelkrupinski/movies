@@ -73,14 +73,23 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
 
   // DE seed 8 (drift 42003442640): the head no longer searching "Halloween" for Babylon's "Halloween II [OV]" filed a
   // different half of every later question, and Geister at four venues flipped under an arrangement the base never met
+  /** Lookups answering nothing: every question a gate holds is the gate's to file. */
+  private val answeringNothing: IdentityLookups = new IdentityLookups {
+    def hasDetail(listing: services.identity.Listing)              = false
+    def detail(listing: services.identity.Listing)                 = Answer.Known(None)
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]]        = Answer.Known(Nil)
+    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]   = Answer.Known(None)
+  }
+
+  /** A gate holding every question, drawn as `draw` draws (the worker's: the share's own keyed draw). */
+  private def gateOf(draw: IdentityDrift.Share => IdentityDrift.FillDraw = identity): IdentityDrift.Gate = {
+    val share = new IdentityDrift.Share(8, 100)
+    new IdentityDrift.Gate(answeringNothing, share, draw(share), new IdentityDrift.Scenario)
+  }
+
   "a fill" should "file each held question by its own draw, whatever else was asked" in {
     def filedFilms(asked: Seq[Int]): Set[Int] = {
-      val gate = new IdentityDrift.Gate(new IdentityLookups {
-        def hasDetail(listing: services.identity.Listing)              = false
-        def detail(listing: services.identity.Listing)                 = Answer.Known(None)
-        def candidates(query: CandidateQuery): Answer[Seq[Hit]]        = Answer.Known(Nil)
-        def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]   = Answer.Known(None)
-      }, new IdentityDrift.Share(8, 100))
+      val gate = gateOf()
       asked.foreach(film => gate.film(film) shouldBe Answer.Unknown)
       gate.release(0.5).films
     }
@@ -90,6 +99,40 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     // one question more, asked first: every other question's fate is the one it had without it
     filedFilms(0 +: asked) - 0 shouldBe alone
     filedFilms(asked.reverse) shouldBe alone
+  }
+
+  // THE SCENARIO GUARD (scripts/ci/drift_scenario.py, identity-drift-check.sh): head and base of the differential gate
+  // must meet the same scenario on a seed. The harness before 3e97bde52 drew every fill from one stream, so a head asking
+  // one question more re-dealt every later draw (DE seed 8's Geister, drift 42003442640) -- unseen for two weeks.
+  "the scenario guard" should "pass a head asking one question more under keyed fills, and trip on a harness that couples the draws again" in {
+    /** One fill over `asked` (each a held record), the scenario's rows written as a replay writes them. */
+    def scenarioFile(name: String, asked: Seq[Int], draw: IdentityDrift.Share => IdentityDrift.FillDraw): Path = {
+      val gate = gateOf(draw)
+      asked.foreach(gate.film)
+      gate.release(0.5)
+      val file = tempDirectory("scenario").resolve(s"$name.tsv")
+      java.nio.file.Files.writeString(file, (IdentityDrift.Scenario.Header +: gate.scenario.rows(8)).mkString("", "\n", "\n"))
+      file
+    }
+    /** The old harness: one `Random` every question's draw comes from, in the questions' order. */
+    val sharedStream: IdentityDrift.Share => IdentityDrift.FillDraw = _ => {
+      val rng = new scala.util.Random(8)
+      (_: String, _: Int, fraction: Double) => rng.nextDouble() < fraction
+    }
+    def guard(head: Path, base: Path): (Int, String) = {
+      val out  = new StringBuilder
+      val code = scala.sys.process.Process(Seq("python3", "scripts/ci/drift_scenario.py", "compare", "--seed", "8", "--head", head.toString,
+        "--base", base.toString)).!(scala.sys.process.ProcessLogger(line => out.append(line).append('\n'), line => out.append(line).append('\n')))
+      (code, out.toString)
+    }
+    val asked = (1 to 200).toSeq
+    // the head asks film 0 first: one question more than its base
+    val (keyed, keyedSaid) = guard(scenarioFile("keyed-head", 0 +: asked, identity), scenarioFile("keyed-base", asked, identity))
+    withClue(keyedSaid)(keyed shouldBe 0)
+    keyedSaid should include("200 common fill draw(s), 1 head-only")
+    val (coupled, coupledSaid) = guard(scenarioFile("coupled-head", 0 +: asked, sharedStream), scenarioFile("coupled-base", asked, sharedStream))
+    withClue(coupledSaid)(coupled shouldBe 1)
+    coupledSaid should include("scenario: HARNESS ERROR on seed 8")
   }
 
   "asks" should "release a held answer rather than ask for it" in {

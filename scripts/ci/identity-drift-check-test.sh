@@ -9,7 +9,10 @@
 #   - the row's fixed seeds go to the head in one replay, to the base one replay a seed;
 #   - a red names its seed (verdict, seed file, a one-line reproducer with the red listing's drift slice);
 #   - a base that does not compile steps back to its parent (DRIFT_BASE_STEPS), saying so; one that never does is no verdict;
-#   - DRIFT_TWICE: two replays of the same seeds that differ fail.
+#   - DRIFT_TWICE: two replays of the same seeds that differ fail;
+#   - THE SCENARIO GUARD: head and base that drew differently for a question both ask (a coupled harness: the old shared
+#     rng) is a HARNESS ERROR (2), never flips; a question only the head asks is its own; a base with no scenario (from
+#     before the guard) is not compared.
 # Run: bash scripts/ci/identity-drift-check-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -22,11 +25,14 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 repo="$work/repo" fx="$work/repo/test/resources/fixtures"
 mkdir -p "$repo/scripts/ci" "$fx/corpus" "$repo/identity/src/main" "$work/bin" "$work/tmp"
-cp "$REPO_ROOT/scripts/ci/identity-drift-check.sh" "$REPO_ROOT/scripts/ci/drift_seeds.py" "$REPO_ROOT/scripts/ci/drift_diff.py" "$REPO_ROOT/scripts/ci/drift_explorer.py" "$repo/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/identity-drift-check.sh" "$REPO_ROOT/scripts/ci/drift_seeds.py" "$REPO_ROOT/scripts/ci/drift_diff.py" "$REPO_ROOT/scripts/ci/drift_explorer.py" \
+  "$REPO_ROOT/scripts/ci/drift_scenario.py" "$repo/scripts/ci/"
 printf 'country\tvenue\trawTitle\treason\npl\tKino Nowe\tAllowed Film\tTEMPORARY owner: x; remove when y; z\n' > "$fx/identity-flips-allow.tsv"
 printf 'kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\ndrift\tpl\t1\t\tRiverside\tThe Stranger\t\t2026-10-29\tthe red fixer\tx\n' > "$fx/identity-flip-backlog.tsv"
 # sbt as the replay leaves it: the report on stdout, the TSVs under --out, IdentityDrift's exit. The flips are
-# FAKE_HEAD_FLIPS at the head and FAKE_BASE_FLIPS in the base's checkout: `venue|title;venue|title`, on every seed.
+# FAKE_HEAD_FLIPS at the head and FAKE_BASE_FLIPS in the base's checkout: `venue|title;venue|title`, on every seed. Its
+# scenario: one arrangement, and the fill draws FAKE_HEAD_DRAWS / FAKE_BASE_DRAWS (`round:question=0|1,...`; default one
+# draw both sides make alike); FAKE_BASE_DRAWS=none writes no scenario (a base from before the guard).
 cat > "$work/bin/sbt" <<'EOF'
 #!/usr/bin/env bash
 args=$(printf '%s\n' "$@")
@@ -50,6 +56,15 @@ n=$(( $(cat "$out/../runs" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$out/../r
     for r in "${rows[@]}"; do [ -n "$r" ] && printf 'pl\t%s\t%s\t%s\ttmdb:1, tmdb:2\tback to a film it left\ttmdb:1 [3 scrape] -> tmdb:2 [4 answer] -> tmdb:1 [9 scrape]\tanswer\n' "$s" "${r%%|*}" "${r#*|}"; done
     [ -n "${FAKE_VARY:-}" ] && printf 'pl\t%s\tRun\t%s\ta\tb\tc\td\n' "$s" "$n"
   done; } > "$out/flips-pl.tsv"
+draws=${FAKE_HEAD_DRAWS:-1:q:shared=1}; [ "$side" = base ] && draws=${FAKE_BASE_DRAWS:-1:q:shared=1}
+if [ "$draws" != none ]; then
+  { printf 'seed\tkind\tkey\tvalue\n'
+    for s in "${seeds[@]}"; do
+      printf '%s\tarrangement\tinputs\taa11\n%s\tarrangement\thalf-1\tbb22\n' "$s" "$s"
+      IFS=, read -ra ds <<< "$draws"
+      for d in "${ds[@]}"; do printf '%s\tfill\t%s\t%s\n' "$s" "${d%=*}" "${d##*=}"; done
+    done; } > "$out/scenario-pl.tsv"
+fi
 echo "## pl: 10804 listings, 1 seed(s), ${FAKE_FOUND:-0} divergence(s) (1 listings), ${FAKE_ALLOWED:-0} allow-listed, in 191s"
 [ "${FAKE_FOUND:-0}" -gt 0 ] && echo "  1 listing(s)  deploy: incremental-only take (whole BelowThreshold, incremental Agreed)"
 [ "${FAKE_FLIPS:-}" = none ] && exit 0
@@ -116,6 +131,19 @@ check "...replaying the parent on every seed" "head 1,2 base 1 base 1 base 2" "$
 check "...saying so" "1" "$(grep -c "the base ${broken:0:12} does not compile; judged against its parent ${parent:0:12} instead" "$work/stdout")"
 check "...and judging against the parent" "2" "$(grep -c "head vs base ${parent:0:12} (resolved)" "$work/stdout")"
 check "a base that never compiles is still no verdict" "2" "$(DRIFT_BASE=$broken FAKE_BROKEN_BASE=all DRIFT_BASE_STEPS=1 FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"
+
+# THE SCENARIO GUARD: head and base must have drawn alike for what both ask, before any flip is judged
+check "head and base drawing alike pass" "0" "$(FAKE_HEAD_DRAWS='1:q:a=1,1:q:b=0' FAKE_BASE_DRAWS='1:q:a=1,1:q:b=0' run)"
+check "...said per seed" "2" "$(grep -c '^scenario: the same on seed [12]' "$work/stdout")"
+check "a question only the head asks is its own" "0" "$(FAKE_HEAD_DRAWS='1:q:new=1,1:q:a=1' FAKE_BASE_DRAWS='1:q:a=1' run)"
+check "a coupled harness (the old shared rng: one question more re-deals the draws both make) is a harness error" "2" \
+  "$(FAKE_HEAD_DRAWS='1:q:new=1,1:q:a=0,1:q:b=1' FAKE_BASE_DRAWS='1:q:a=1,1:q:b=0' FAKE_HEAD_FLIPS='Kino Muza|New Film' run)"
+check "...the verdict a harness error, never flips" "1 0" \
+  "$(grep -c '^harness error: head and base replayed different scenarios on seed(s) 1 2' "$work/out/verdict.txt") $(grep -c 'flip(s) on the way' "$work/out/verdict.txt")"
+check "...loudly, each seed named" "1 2" "$(grep -c '^::error title=identity drift harness (pl, seed 1)::harness error' "$work/stdout") $(grep -c 'HARNESS: 2 of the 2 fill draw(s) both sides made differ' "$work/stdout")"
+check "...and no flip judged" "0" "$(grep -c 'Kino Muza | New Film' "$work/stdout")"
+check "a base from before the guard (no scenario) is not compared" "0" "$(FAKE_BASE_DRAWS=none run)"
+check "...said" "2" "$(grep -c '^scenario: not compared on seed [12] -- the base wrote no scenario' "$work/stdout")"
 
 # THE ROW'S FIXED SEEDS, and a red names its seed
 mkdir -p "$fx/drift-slices/pl/muza-new-film-1"

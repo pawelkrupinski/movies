@@ -258,8 +258,47 @@ object IdentityDrift {
 
   // ── the answers production files over time ───────────────────────────────────────────────
 
+  /** Whether a fill files a held question: the replay's one random decision a question meets. [[Share.filed]] draws it by
+   *  the question's own id; a draw from a stream every question shares (the harness before 3e97bde52) is what
+   *  [[Scenario]] is there to catch. */
+  trait FillDraw { def filed(id: String, round: Int, fraction: Double): Boolean }
+
+  /** A replay's SCENARIO: what the harness drew for one seed, as against what the code under test decided -- the venue
+   *  ARRANGEMENT (the listings it was dealt, the venues' order, who boots, the three arrivals, who leaves, each re-scrape's
+   *  half) and each FILL DRAW (a held question filed or not at a fill that files a fraction of them). Head and base of the
+   *  differential gate must meet the same scenario on a seed: the arrangement whenever they were dealt the same listings,
+   *  and the draw of every question both ask. For two weeks they did not -- one `Random` drew the fills and the halves, so
+   *  a change asking one question more re-dealt every later draw (DE seed 8's Geister, drift 42003442640) -- and nobody
+   *  saw. Written as `scenario-<cc>.tsv` beside the flips (seed, kind, key, value), its [[digest]] printed per seed, and
+   *  compared by scripts/ci/drift_scenario.py in identity-drift-check.sh: a difference is a HARNESS ERROR, never flips. */
+  final class Scenario {
+    private val arranged = scala.collection.mutable.LinkedHashMap.empty[String, String]
+    private val draws    = scala.collection.mutable.TreeMap.empty[String, Boolean]
+    /** One part of the arrangement, as the digest of its values in the order drawn. */
+    def arrange(part: String, values: Iterable[String]): Unit = synchronized { arranged(part) = Scenario.hash(values) }
+    def drew(round: Int, id: String, filed: Boolean): Unit = synchronized { draws(s"$round:${Scenario.clean(id)}") = filed }
+    def arrangement: Seq[(String, String)] = synchronized(arranged.toSeq)
+    def fills: Seq[(String, Boolean)] = synchronized(draws.toSeq)
+    /** The scenario in one short line: the arrangement's digest and the fill draws'. */
+    def digest: String = s"arrangement ${Scenario.hash(arrangement.map { case (p, h) => s"$p=$h" })}, ${fills.size} fill draw(s) " +
+      Scenario.hash(fills.map { case (k, f) => s"$k=$f" })
+    /** `scenario-<cc>.tsv`'s rows of this seed. */
+    def rows(seed: Int): Seq[String] =
+      arrangement.map { case (part, h) => s"$seed\tarrangement\t$part\t$h" } ++ fills.map { case (k, f) => s"$seed\tfill\t$k\t${if (f) 1 else 0}" }
+  }
+  object Scenario {
+    val Header = "seed\tkind\tkey\tvalue"
+    /** A short digest of `values`, in their order. */
+    def hash(values: Iterable[String]): String = {
+      val md = java.security.MessageDigest.getInstance("SHA-256")
+      values.foreach(v => md.update((v + "\n").getBytes(StandardCharsets.UTF_8)))
+      md.digest().take(6).map(b => f"${b & 0xff}%02x").mkString
+    }
+    def clean(text: String): String = text.replace('\t', ' ').replace('\n', ' ')
+  }
+
   /** Whether a question is one a deploy's worker has not filed yet: a fixed share (`percent`) of every kind, by its id. */
-  final class Share(seed: Long, percent: Int) {
+  final class Share(seed: Long, percent: Int) extends FillDraw {
     def held(id: String): Boolean = percent > 0 && math.floorMod(scala.util.hashing.MurmurHash3.stringHash(id, seed.toInt), 100) < percent
     /** Is the held question `id` filed by the `round`-th fill, which files a random `fraction` of them? Drawn by the
      *  question's own id, never from a stream shared by every question asked: one draw a question from one `Random` made a
@@ -273,7 +312,9 @@ object IdentityDrift {
 
   /** `inner`'s TMDB searches, records and venue pages, a [[Share]] of them `Unknown` until [[release]]d — each asked
    *  while held noted, as the worker's fill notes a gap and files its answer later. */
-  final class Gate(inner: IdentityLookups, share: Share) extends ForwardingIdentityLookups(inner) {
+  final class Gate(inner: IdentityLookups, share: Share, draw: FillDraw, val scenario: Scenario) extends ForwardingIdentityLookups(inner) {
+    /** The worker's gate: each held question filed by its own draw ([[Share.filed]]), every draw kept in a fresh [[Scenario]]. */
+    def this(inner: IdentityLookups, share: Share) = this(inner, share, share, new Scenario)
     @volatile var open = false
     private val released = ConcurrentHashMap.newKeySet[String]()
     private val queries  = ConcurrentHashMap.newKeySet[CandidateQuery]()
@@ -293,7 +334,12 @@ object IdentityDrift {
       rounds += 1
       val round = rounds
       def some[A](asked: java.util.Set[A], id: A => String): Set[A] = {
-        val now = asked.asScala.toSeq.filter(a => share.filed(id(a), round, fraction)).toSet
+        // in the questions' order, each draw kept in the scenario (a fraction of 1 files every one: no draw)
+        val now = asked.asScala.toSeq.sortBy(id).filter { a =>
+          val filed = draw.filed(id(a), round, fraction)
+          if (fraction < 1.0) scenario.drew(round, id(a), filed)
+          filed
+        }.toSet
         now.foreach { a => asked.remove(a); released.add(id(a)) }
         now
       }
@@ -627,7 +673,9 @@ object IdentityDrift {
   final case class Replay(checkpoints: Seq[(String, Resolution, Set[ListingKey])], flips: Seq[TakeFlips.Flip],
                           pendingServed: Seq[PendingServed] = Nil, spans: PendingSpans.Summary = PendingSpans.Summary.empty,
                           /** The probed listings' moves, each with its [[Cause]] ([[Worker.probed]]). */
-                          causes: Map[(ListingKey, String), String] = Map.empty)
+                          causes: Map[(ListingKey, String), String] = Map.empty,
+                          /** What the harness drew for the seed ([[Scenario]]). */
+                          scenario: Scenario = new Scenario)
 
   /** Each listing's stretches served Pending ([[TakeOutcome.Pending]]) over a replay's projections: how many are Pending
    *  at once, and how long -- in projections and in the replay clock's minutes -- each stretch lasted before its take
@@ -677,6 +725,9 @@ object IdentityDrift {
     // the arrangement's draws (venues, who leaves, each re-scrape's half) alone: a fill draws by question ([[Share.filed]]),
     // so the arrangement is the seed's whatever the code asks
     val rng     = new scala.util.Random(seed)
+    val w = new Worker(reads, seed, gatePercent, clock, filedDocs)
+    val scenario = w.gate.scenario
+    scenario.arrange("inputs", listings.map(l => ListingKey.serialised(l.key)).sorted)
     val venues  = rng.shuffle(listings.map(_.venue).distinct.sorted)
     val (first, later) = venues.splitAt((venues.size * 0.7).toInt)
     val arrivals = later.grouped(math.max(1, later.size / 3 + 1)).toSeq.padTo(3, Nil)
@@ -685,8 +736,11 @@ object IdentityDrift {
     val initial  = of(first)
     val drawn    = initial.filter(_ => rng.nextDouble() < Leave)
     val leaving  = if (drawn.isEmpty && leaveOne && initial.nonEmpty) Seq(initial(rng.nextInt(initial.size))) else drawn
-    def half     = rng.shuffle(venues).take(venues.size / 2).toSet
-    val w = new Worker(reads, seed, gatePercent, clock, filedDocs)
+    scenario.arrange("venues", venues); scenario.arrange("boot", first)
+    arrivals.zipWithIndex.foreach { case (vs, i) => scenario.arrange(s"arrival-${i + 1}", vs) }
+    scenario.arrange("leaving", leaving.map(l => ListingKey.serialised(l.key)))
+    var halves = 0
+    def half     = { val vs = rng.shuffle(venues).take(venues.size / 2); halves += 1; scenario.arrange(s"half-$halves", vs); vs.toSet }
     w.probed = probe
     val checkpoints = Seq.newBuilder[(String, Resolution, Set[ListingKey])]
     def rescrape(checkpoint: String = ""): Resolution = {
@@ -713,7 +767,7 @@ object IdentityDrift {
       checkpoints += { val r = w.project(checkpoint = s"deploy-$run"); (s"deploy-$run", r, w.lastPending) }
       checkpoints += { val r = rescrape(s"after-deploy-$run"); (s"after-deploy-$run", r, w.lastPending) }
     }
-    Replay(checkpoints.result(), w.flips.flips, w.pendingServed.toSeq, w.pendingSpans.summary, w.causes.toMap)
+    Replay(checkpoints.result(), w.flips.flips, w.pendingServed.toSeq, w.pendingSpans.summary, w.causes.toMap, scenario)
   }
 
   /** What one replay found, over every seed: each divergence from the whole resolve, and each flip by its seed. */
@@ -721,11 +775,13 @@ object IdentityDrift {
                             /** Each seed's Pending stretches ([[PendingSpans]]). */
                             spans: Seq[(Int, PendingSpans.Summary)] = Nil,
                             /** Each flip's [[Cause]], by its seed and listing. */
-                            causes: Map[(Int, ListingKey), String] = Map.empty) {
+                            causes: Map[(Int, ListingKey), String] = Map.empty,
+                            /** Each seed's [[Scenario]]. */
+                            scenarios: Seq[(Int, Scenario)] = Nil) {
     /** The divergences no `allowed` row names, and the flips no `flipsAllowed` row does: what fails the gate. */
     def open(country: String, allowed: Seq[Allowed], flipsAllowed: Seq[FlipAllowed]): Findings =
       Findings(divergences.filterNot(d => allowed.exists(_.covers(d))), flips.filterNot { case (_, f) => flipsAllowed.exists(_.covers(country, f)) }, pending, spans,
-        causes)
+        causes, scenarios)
     def isEmpty: Boolean = divergences.isEmpty && flips.isEmpty
   }
 
@@ -739,10 +795,12 @@ object IdentityDrift {
     val causes = Map.newBuilder[(Int, ListingKey), String]
     var tally = PendingTally.Empty
     val spans = Seq.newBuilder[(Int, PendingSpans.Summary)]
+    val scenarios = Seq.newBuilder[(Int, Scenario)]
     val divergences = seeds.flatMap { seed =>
       val clock  = new MutableClock(recordedAt)
       val replay = sequence(readsAt(clock), listings, seed.toLong, gate, clock, filedDocs, leaveOne)
       flips ++= replay.flips.map(seed -> _)
+      scenarios += seed -> replay.scenario
       // each flip's cause: the seed's sequence again, the flipped listings' moves compared with a whole resolve at each
       if (classify && replay.flips.nonEmpty) {
         val again  = new MutableClock(recordedAt)
@@ -766,7 +824,7 @@ object IdentityDrift {
         }
       }
     }
-    Findings(divergences, flips.result(), tally, spans.result(), causes.result())
+    Findings(divergences, flips.result(), tally, spans.result(), causes.result(), scenarios.result())
   }
 
   /** One drift slice replayed (`test/resources/fixtures/drift-slices/<cc>/<name>/`, cut by `scripts/identity-slice
@@ -918,6 +976,10 @@ object IdentityDrift {
         println(s"      ${d.key.venue} | ${d.key.rawTitle}: whole ${d.whole.film}, incremental ${d.incremental.film} [${d.checkpoint}, seed ${d.seed}]$label")
       }
     }
+    // what the harness drew per seed: the differential gate holds head and base to the same (scripts/ci/drift_scenario.py)
+    findings.scenarios.foreach { case (seed, scenario) => println(s"## ${country.code} scenario [seed $seed]: ${scenario.digest}") }
+    Files.writeString(o.out.resolve(s"scenario-${country.code}.tsv"),
+      (Scenario.Header +: findings.scenarios.flatMap { case (seed, scenario) => scenario.rows(seed) }).mkString("", "\n", "\n"))
     val flipped = findings.flips
     Files.writeString(o.out.resolve(s"flips-${country.code}.tsv"), (FlipHeader +: flipped.map { case (seed, f) =>
       Seq(country.code, seed.toString, f.key.venue, f.key.rawTitle, f.films, f.reasons.mkString("; "), f.takes.map(_.line).mkString(" -> "),

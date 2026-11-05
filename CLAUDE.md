@@ -335,7 +335,9 @@ reds were changes `identity-measure` alone had called LANDABLE. Nothing requires
   shows fails, one both show is `pre-existing (backlog)`. Every known flip is a row of
   `test/resources/fixtures/identity-flip-backlog.tsv` (the work list, with owners); the nightly explorer
   (`identity-drift-explorer.yml`) finds old flips on other seeds and agentctl files each as a backlog row plus a gate
-  seed. Divergences always fail. Details: `docs/design/identity-no-drift.md`, "The differential gate".
+  seed. Divergences always fail. Head and base must replay the same SCENARIO per seed (the arrangement, and the fill
+  draw of every question both ask: `scripts/ci/drift_scenario.py`); a mismatch is a HARNESS ERROR (exit 2), never flips.
+  Details: `docs/design/identity-no-drift.md`, "The differential gate".
 - **The per-family convergence check is a nightly explorer, not a gate** (the owner, 2026-11-06, option A):
   `identity-family-explorer.yml` walks every family's population lattice over the pinned recording (`FamilyConvergence`, one
   row a country shard), outside THE GATE, never red for a commit. As a per-commit gate it cost +36% runner minutes (37 of

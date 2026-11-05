@@ -28,6 +28,14 @@
 # as `drift-green-<cc>-<seed>-<key>.tsv.gz`, and a base resolved here as `drift-calc-...` (any ref: the key names the
 # code, the recording and the seed, never the ref); the walk above reads only the green ones.
 #
+# THE SCENARIO GUARD: each replay writes what its harness DREW per seed (`scenario-<cc>.tsv`: the venue arrangement and
+# every fill draw, scripts.IdentityDrift.Scenario), and the base's is kept beside its flips (`drift-greenscenario-...`,
+# `drift-calcscenario-...`). Before any flip is judged, head and base must have met the same scenario on each seed --
+# the arrangement over the same listings, the draw of every question both ask (scripts/ci/drift_scenario.py): else the
+# row is a HARNESS ERROR (exit 2, no verdict on flips), loudly, never flips. For two weeks one `Random` drew the fills and
+# the halves, so a change asking one question more replayed another scenario than its base, unseen (3e97bde52). A base
+# stored before the guard has no scenario: said, not compared.
+#
 # A RED HERE is fixed in the incremental state that diverges (a lag, a budget, queue order, a cache, a restart key), never
 # by a new resolver rule (the owner, 2026-10-29: a rule is identity design, measured on the full corpus).
 # docs/design/identity-no-drift.md, "Fixing a drift or flip red"; pre-push's driftguards.
@@ -44,8 +52,11 @@
 # <out>/seed (the seeds replayed, a line each, a red one first -- scripts/identity-drift-ci pins a red's seed from it),
 # <out>/reproduce.txt (the red's one-line local reproducer, and the drift slice of each red listing that has one),
 # <out>/report.txt (the head's report) and <out>/verdict.txt: one line naming the divergences and the flips the change
-# adds apart (agentctl and the ::error read it: "... N flip(s) on the way ...").
-# Exit: 0 no divergence and no flip the change adds, 1 some, 2 it could not run (no verdict). Tested by
+# adds apart (agentctl and the ::error read it: "... N flip(s) on the way ..."; a scenario mismatch: "harness error: ...");
+# <out>/scenario-<cc>.tsv (the head's scenario), <out>/base/scenario-<seed>.tsv (the base's, where it has one) and
+# <out>/scenario.txt (their comparison, per seed).
+# Exit: 0 no divergence and no flip the change adds, 1 some, 2 it could not run or head and base met different scenarios
+# (no verdict). Tested by
 # identity-drift-check-test.sh.
 
 set -uo pipefail
@@ -173,8 +184,10 @@ for s in "${seeds[@]}"; do
   [ -n "$base_code" ] || base_code=$(code_of "$base")
   echo "$base" > "$out/base/base-$s.txt"
   if [ "$base_code" = "$head_code" ]; then how=same-code
-  elif [ "$how" = stored ] && fetch "$(asset green "$base_code" "$s")" "$out/base/flips-$s.tsv"; then :
+  elif [ "$how" = stored ] && fetch "$(asset green "$base_code" "$s")" "$out/base/flips-$s.tsv"; then
+    fetch "$(asset greenscenario "$base_code" "$s")" "$out/base/scenario-$s.tsv" || true
   elif fetch "$(asset calc "$base_code" "$s")" "$out/base/flips-$s.tsv"; then how=stored
+    fetch "$(asset calcscenario "$base_code" "$s")" "$out/base/scenario-$s.tsv" || true
   else base=$default_base how=resolved; echo "$base" > "$out/base/base-$s.txt"
        if [ "$(code_of "$base")" = "$head_code" ]; then how=same-code; else recompute+=("$s"); fi
   fi
@@ -214,8 +227,39 @@ if [ "${#recompute[@]}" -gt 0 ]; then
       || { tail -40 "$out/base/seed-$s/sbt.log" >&2; echo "identity drift ($cc): the base's replay of seed $s wrote nothing, so nothing was judged" | tee "$out/verdict.txt"; exit 2; }
     cp "$out/base/seed-$s/flips-$cc.tsv" "$out/base/flips-$s.tsv"
     keep "$out/base/flips-$s.tsv" "$(asset calc "$(code_of "$base")" "$s")"
+    # a base from before the scenario guard writes none
+    if [ -s "$out/base/seed-$s/scenario-$cc.tsv" ]; then
+      cp "$out/base/seed-$s/scenario-$cc.tsv" "$out/base/scenario-$s.tsv"
+      keep "$out/base/scenario-$s.tsv" "$(asset calcscenario "$(code_of "$base")" "$s")"
+    fi
   done
   git -C "$here" worktree remove --force "$base_dir" > /dev/null 2>&1 || true
+fi
+
+# ---- THE SCENARIO GUARD, per seed: head and base met the same scenario, or no flip is judged ----
+: > "$out/scenario.txt"
+harness_seeds=()
+for s in "${seeds[@]}"; do
+  how=$(cat "$out/base/how-$s.txt")
+  if [ "$how" = same-code ]; then echo "scenario: the base's identity code and harness are the head's on seed $s -- the same scenario" >> "$out/scenario.txt"; continue; fi
+  scenario_code=0
+  python3 "$here/scripts/ci/drift_scenario.py" compare --seed "$s" --head "$out/scenario-$cc.tsv" --base "$out/base/scenario-$s.tsv" \
+    >> "$out/scenario.txt" 2>&1 || scenario_code=$?
+  case $scenario_code in
+    0) ;;
+    1) harness_seeds+=("$s") ;;
+    *) cat "$out/scenario.txt"; echo "identity drift ($cc): the scenarios of seed $s could not be read" | tee "$out/verdict.txt"; exit 2 ;;
+  esac
+done
+grep '^scenario: ' "$out/scenario.txt"
+if [ "${#harness_seeds[@]}" -gt 0 ]; then
+  cat "$out/scenario.txt"
+  said="harness error: head and base replayed different scenarios on seed(s) ${harness_seeds[*]} -- the drift harness couples its draws to what the code asks (scripts/ci/drift_scenario.py); no flip judged"
+  echo "$said" > "$out/verdict.txt"
+  echo "::error title=identity drift harness ($cc, seed ${harness_seeds[0]})::$said"
+  [ -z "${GITHUB_STEP_SUMMARY:-}" ] || { echo "### identity drift ($cc): HARNESS ERROR"; echo; echo '```'; cat "$out/scenario.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+  echo "identity drift ($cc): $said"
+  exit 2
 fi
 
 # ---- THE DIFFERENTIAL, per seed ----
@@ -285,6 +329,8 @@ if [ $((open_divergences + new)) -eq 0 ] && [ "${GITHUB_REF:-}" = refs/heads/mai
   for s in "${seeds[@]}"; do
     awk -F'\t' -v s="$s" 'NR == 1 || $2 == s' "$out/flips-$cc.tsv" > "$out/base/head-flips-$s.tsv"
     keep "$out/base/head-flips-$s.tsv" "$(asset green "$head_code" "$s")"
+    awk -F'\t' -v s="$s" 'NR == 1 || $1 == s' "$out/scenario-$cc.tsv" > "$out/base/head-scenario-$s.tsv" 2> /dev/null \
+      && keep "$out/base/head-scenario-$s.tsv" "$(asset greenscenario "$head_code" "$s")"
   done
 fi
 [ "$open_divergences" -gt 0 ] && exit 1

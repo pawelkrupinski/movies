@@ -42,6 +42,16 @@ whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-red
   narrowing that reads no Geister title, while two Titans and Buddies flips "went away" -- the same reshuffle a parked
   StageRelays change had shown. A fill now draws each question by its own id (`IdentityDrift.Share.filed`), and the
   stream draws the arrangement alone.
+- **The scenario guard** (2026-11-05). That coupling went unseen for two weeks, so it is now checked on every row: each
+  replay writes its SCENARIO per seed (`scenario-<cc>.tsv`, `IdentityDrift.Scenario`: the venue arrangement -- the
+  listings dealt, the venues' order, boot, arrivals, who leaves, each re-scrape's half -- and every fill draw) and prints
+  its digest (`## <cc> scenario [seed N]: arrangement …, K fill draw(s) …`); the base's is kept beside its flips
+  (`drift-{green,calc}scenario-…` on the store). Before any flip is judged, `scripts/ci/drift_scenario.py` compares
+  what does not depend on the change's own questions: the arrangement whenever both were dealt the same listings, and
+  the draw of every question BOTH ask. A difference is a HARNESS ERROR (the row exits 2, `harness error: …` in
+  `verdict.txt`, an `::error` titled `identity drift harness`), never flips: fix the harness, not the code. A base stored
+  before the guard has no scenario and is not compared (said). The nightly explorer replays the head alone and only
+  prints the digest; a per-family check replacing the rows carries no seed and needs none.
 - **The backlog.** `test/resources/fixtures/identity-flip-backlog.tsv` is every known flip, a row each -- kind `drift`
   (a seed found it) or `population` (`PopulationMonotonicitySpec`'s arrival walk did) -- with its owner. It decides
   no drift verdict: it is the work list. A fix removes its row. Rows arrive only by the explorer's filing (below), a
