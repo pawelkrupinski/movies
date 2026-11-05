@@ -125,12 +125,20 @@ object WhatIfResolve {
     scripts.StageAnswers.settle(stage, () => stage.apply(model, byKey.get, answers.store.version), answers, moment, _ => false, log = true)
   }
 
+  /** A decision's take as the files hold it: its film, `none`, or `None` while Pending -- PopulationMonotonicity.takeOf's,
+   *  restated over [[TakeOutcome]] alone: this file is dropped into refs from before that helper (2026-11-01's). */
+  private def takeOf(decision: ResolverDecision): Option[String] = decision.outcome match {
+    case TakeOutcome.Pending(_)  => None
+    case TakeOutcome.Taken(film) => Some(film)
+    case TakeOutcome.NoFilm(_)   => Some("none")
+  }
+
   /** Each listing's row of `final.tsv`: key, final take (`pending` while the stage waits), its basis. */
   private def finalRows(settledTakes: Resolution, keys: Iterable[ListingKey]): Seq[Seq[String]] = {
     val decided = settledTakes.decisions.flatMap(d => d.members.map(_ -> d)).toMap
     keys.toSeq.sortBy(keyOf).map { key =>
       val decision = decided.get(key)
-      Seq(keyOf(key), decision.flatMap(PopulationMonotonicity.takeOf).getOrElse("pending"), decision.fold("-")(d => clean(d.basis.toString)))
+      Seq(keyOf(key), decision.flatMap(takeOf).getOrElse("pending"), decision.fold("-")(d => clean(d.basis.toString)))
     }
   }
 
@@ -155,7 +163,7 @@ object WhatIfResolve {
       val decided = family.decisions.flatMap(d => d.members.map(_ -> d)).toMap
       family.listings.toSeq.sortBy(keyOf).filter(byKey.contains).map { key =>
         val decision = decided.get(key)
-        Seq(keyOf(key), clean(key.venue), clean(key.rawTitle), id, decision.flatMap(PopulationMonotonicity.takeOf).getOrElse("pending"),
+        Seq(keyOf(key), clean(key.venue), clean(key.rawTitle), id, decision.flatMap(takeOf).getOrElse("pending"),
           list(decision.toSeq.flatMap(d => d.trace.rulesOf(key) ++ d.trace.stage).distinct))
       }
     }
@@ -165,7 +173,7 @@ object WhatIfResolve {
   def answering(args: Seq[String], country: Country, clock: Clock): adapters.TmdbDocuments => WhatIfAnswers.Source = {
     def opt(name: String) = args.sliding(2).collectFirst { case Seq(`name`, value) => value }
     opt("--answers").getOrElse("offline") match {
-      case "offline" => WhatIfAnswers.offline(_, country)
+      case "offline" => WhatIfAnswers.offline(_, country, clock)
       case "live" =>
         val configuration = settings.ProcessConfiguration.resolve()
         val key  = configuration.tmdbApiKey.getOrElse(sys.error("--answers live: no TMDB_API_KEY (secrets run movies TMDB_API_KEY -- ...)"))
@@ -198,19 +206,20 @@ object WhatIfResolve {
 
   def main(args: Array[String]): Unit = {
     def opt(name: String) = args.toList.sliding(2).collectFirst { case List(`name`, value) => value }
+    // the one wall clock of the program, handed to every request
+    val clock = Clock.systemUTC()
     val kept = new Kept
     try opt("--serve") match {
       case Some(socket) =>
         tools.KeptJvm.serve(Path.of(socket), opt("--idle-minutes").fold(10)(_.toInt), "what-if", errToClient = true) { request =>
-          run(request.toArray, kept); 0
+          run(request.toArray, kept, clock); 0
         }
-      case None => run(args, kept)
+      case None => run(args, kept, clock)
     } finally kept.close()
   }
 
   /** One side of a what-if (the arguments above), over `kept`'s corpus when it holds this one. */
-  def run(args: Array[String], kept: Kept): Unit = {
-    val clock   = Clock.systemUTC()
+  def run(args: Array[String], kept: Kept, clock: Clock): Unit = {
     val cc      = args.headOption.getOrElse(sys.error("a country code"))
     val country = Country.all.find(_.code == cc).getOrElse(sys.error(s"no country $cc"))
     def opt(name: String) = args.toList.sliding(2).collectFirst { case List(`name`, value) => value }

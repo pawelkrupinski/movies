@@ -47,10 +47,10 @@ object WhatIfAnswers {
   }
 
   /** The mirror's store alone, nothing asked. */
-  def offline(mirror: TmdbDocuments, country: Country): Source = new Source {
+  def offline(mirror: TmdbDocuments, country: Country, clock: java.time.Clock): Source = new Source {
     val docs: TmdbDocuments = mirror
     val live: IdentityLookups = Refused
-    val stage: scripts.StageAnswers.Sources = sources(country, Map.empty, NoFetch, _ => Nil, findIn(mirror, _ => None))
+    val stage: scripts.StageAnswers.Sources = sources(country, Map.empty, NoFetch, _ => Nil, findIn(mirror, clock, _ => None))
     def report(): String = ""
   }
 
@@ -76,7 +76,7 @@ object WhatIfAnswers {
       new adapters.RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(throttled)),
       new adapters.MetacriticFamily(new services.enrichment.MetacriticClient(throttled))).map(s => s.family -> s).toMap,
       throttled, id => scala.util.Try(tmdb.posters(id, also = Seq("en"))).getOrElse(Nil),
-      findIn(docs, imdbId => scala.util.Try(tmdb.findByImdbId(imdbId)).toOption.map(_ => ())))
+      findIn(docs, clock, imdbId => scala.util.Try(tmdb.findByImdbId(imdbId)).toOption.map(_ => ())))
     def report(): String = throttled.report()
   }
 
@@ -95,8 +95,8 @@ object WhatIfAnswers {
 
   /** An IMDb id's TMDB film as `docs` holds its find; one it does not, `ask`ed (filed into `docs` by the asking fetch)
    *  and read again. */
-  private def findIn(docs: TmdbDocuments, ask: String => Option[Unit]): String => Answer[Option[Int]] = imdb => {
-    val store = new TmdbStore(docs, java.time.Clock.systemUTC())
+  private def findIn(docs: TmdbDocuments, clock: java.time.Clock, ask: String => Option[Unit]): String => Answer[Option[Int]] = imdb => {
+    val store = new TmdbStore(docs, clock)
     store.foundFirst(imdb).orElse(ask(imdb).flatMap(_ => store.foundFirst(imdb)))
       .fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_))
   }

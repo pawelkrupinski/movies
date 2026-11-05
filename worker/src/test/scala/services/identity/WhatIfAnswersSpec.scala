@@ -40,13 +40,13 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers {
   }
 
   "an offline what-if" should "leave a search the mirror lacks unanswered, asking nothing" in {
-    modelLookups(WhatIfAnswers.offline(new InMemoryTmdbDocuments, poland)).candidates(query) shouldBe Answer.Unknown
+    modelLookups(WhatIfAnswers.offline(new InMemoryTmdbDocuments, poland, clock)).candidates(query) shouldBe Answer.Unknown
   }
 
   "a what-if's stage sources" should "ask the country's agreement families live, and none offline" in {
     val live = WhatIfAnswers.live(new InMemoryTmdbDocuments, scratch(), tools.RoutingHttpFetch.dead("sites"), settings.TmdbApiKey("replay"), poland, clock)
     live.stage.sources.keySet shouldBe tools.UnmatchedClusters.familiesOf(poland).toSet
-    WhatIfAnswers.offline(new InMemoryTmdbDocuments, poland).stage.sources shouldBe empty
+    WhatIfAnswers.offline(new InMemoryTmdbDocuments, poland, clock).stage.sources shouldBe empty
   }
 
   "the layered store" should "read the mirror first and write only to the local store" in {
