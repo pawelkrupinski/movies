@@ -279,14 +279,15 @@ subagent brief.**
 `scripts/identity-measure --base X --head Y` (pushes a `measure/<user>/…` branch the run deletes itself); any other
 heavy sbt command over a cached recording (a resolve dump, an ablation, a simulation, a replay sweep) with
 `scripts/identity-ci-run --recording RUN [--countries …] -- '<sbt command>'`. `scripts/identity-measure-local` and other
-local heavy runs are a fallback only, for what the CI route cannot do yet, and only under the shared 3-slot heavy-run
-wrapper; say so in the report.
+local heavy runs are a fallback only, for what the CI route cannot do yet, and they take the machine's shared JVM slots
+themselves (`scripts/jvm-gate.sh`, `KINOWO_JVM_SLOTS`, behind `agentctl gov`; there is no `heavy-run` wrapper to call --
+the name is the old one); never lower the slot count or bypass the gate, and say so in the report if you use a gate escape hatch.
 
 **Optional: `scripts/identity-landing-check`** — no longer a merge requirement (2026-10-26: the hook's `identity` area
 tests run before the merge, main's CI runs the rest after). For your own confidence on a risky identity change: ONE
 verdict, `LANDABLE` or `BLOCKED` with the failing spec, its test and a hint. It runs the measure (`identity-measure --footprint`, falling back to the full measure; `--full` for the landing gate,
-`--footprint-only` while iterating) AND, in parallel on CI (one `identity-ci-run` per group; `--local` = sbt-warm under
-heavy-run), exactly the identity specs Main's rows run and the measure never does: every `services.identity.*`
+`--footprint-only` while iterating) AND, in parallel on CI (one `identity-ci-run` per group; `--local` = sbt-warm, which takes
+a JVM slot), exactly the identity specs Main's rows run and the measure never does: every `services.identity.*`
 (MatchedTakesLabel, UnmatchedClustersRatchet, IdentitySliceCases), the title-rule golden/examples/mutation specs, the
 worker `scripts.*` re-resolves, DocCommentPlacement, the hard-cluster ratchet and convergence, and -- when Main's scope
 runs the e2e rows -- FilmScheduleEndToEnd, SearchQueryMarkers, IdentityCutoverEndToEnd. On 2026-10-22 at least six Main
@@ -308,7 +309,7 @@ reds were changes `identity-measure` alone had called LANDABLE. Nothing requires
 - **Don't re-measure after an unrelated rebase:** a rebase onto a main that moved only outside the take paths
   (`--take-paths`) is answered by the earlier run (REUSED, no dispatch). Never `--fresh` for that.
 - **Batch pushes** (below): each push to main is a ~20-minute run on the same runners the measurements wait for.
-- **A title-rule change: `--footprint` first** (run it under heavy-run: it compiles the head's title rules). When the
+- **A title-rule change: `--footprint` first** (it takes a JVM slot itself: it compiles the head's title rules). When the
   change touches only `title-rules.tsv`, `services/titlerules/` (not `TitleRulePlaceholders.scala`) or
   `TitleNormalizer.scala`, it replays every title reading the base's stored resolve made under your rules, in ~1
   minute and no dispatch: all alike is `measure: footprint` LANDABLE, no take can move (a rule refactor, a merge of

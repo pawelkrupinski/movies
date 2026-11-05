@@ -119,6 +119,9 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   of yours can queue another agent: `scripts/sbt-warm --stop` when you are done with a worktree
   (`identity-slice --stop-served` stops every agent's kept slice JVMs, not only yours). Never lower
   `KINOWO_JVM_SLOTS` to get ahead — wait for a slot.
+  This is the "heavy-run" the older docs named: there is no `heavy-run` command. `identity-measure-local`,
+  `identity-measure --footprint` and `identity-landing-check --local` (via sbt-warm / it-local.sh) take their slot
+  themselves, so run them directly; never route around the gate.
 - **The memory gate** (`KINOWO_MEMORY_GATE_GB` 20 paged AND `KINOWO_MEMORY_GATE_FREE_GB` 6 free) waits as long as
   memory is short, with a status line every `KINOWO_MEMORY_GATE_STATUS_SECONDS` (180); the slot wait goes ahead after
   `KINOWO_JVM_SLOT_MAX_WAIT` (1800 s) only while memory is fine. Escape hatch: `KINOWO_MEMORY_GATE_MAX_WAIT=<s>` goes

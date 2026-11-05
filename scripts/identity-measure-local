@@ -47,8 +47,8 @@
 #
 # What it does not do that CI does: read the base from the commit statuses, reuse a stored base, run the corpus-shape
 # specs. A FALLBACK ONLY (the user, 2026-10-21: heavy work runs on CI): measure with scripts/identity-measure
-# (--recording RUN for the same recording), and run this only for what that cannot do, under the agents' shared
-# 3-slot heavy-run wrapper. scripts/identity-measure is the verdict of record. AND ITS REPLAY IS NOT CI'S ON A MAC: a
+# (--recording RUN for the same recording), and run this only for what that cannot do, under the machine's JVM
+# slots (taken below by jvm_slot_take; scripts/jvm-gate.sh -- the old name was "heavy-run", no such command). scripts/identity-measure is the verdict of record. AND ITS REPLAY IS NOT CI'S ON A MAC: a
 # recording's tree holds paths that differ only by case (PL 528: 450+, e.g. suggestion/l/Lalka.json beside lalka.json),
 # and a case-insensitive APFS keeps one of each pair -- 528 PL resolved here left 568 searches unanswered that CI
 # answers, and took one listing to another film (2026-10-21).

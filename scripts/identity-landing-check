@@ -20,7 +20,7 @@
 #                    of the same tree reuses its verdict instead of running it again (scripts/ci/convergence_reuse.py)
 #   --footprint-only the footprint measure or nothing (no dispatch): a measure it cannot answer is BLOCKED, said so
 #   --local          the specs on the laptop (scripts/sbt-warm; the hard-cluster convergence through scripts/it-local.sh),
-#                    one group after another -- run the whole command under the heavy-run slot wrapper. Default: on CI,
+#                    one group after another -- each spec group's sbt-warm / it-local.sh takes a JVM slot (scripts/jvm-gate.sh). Default: on CI,
 #                    each group its own `scripts/identity-ci-run` (identity-run.yml) at the commit, all at once
 #   --no-measure     the specs only;  --no-specs  the measure only
 #   --no-cache       passed to identity-measure: measure even when its result cache holds the verdict
