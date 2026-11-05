@@ -4,7 +4,7 @@ package adapters
 import play.api.Logging
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.identity.agreement.VoterFamily
-import services.tasks.HandlerOutcome.{Deferred, Done, Skipped}
+import services.tasks.HandlerOutcome.{Done, Skipped}
 import services.tasks.{Enqueued, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
 import tools.{CircuitOpenException, HttpStatusException, RequestedHost, UnexpectedBodyException}
 
@@ -151,7 +151,8 @@ object AgreementQuestions {
  * doubling to 6 h, its kind's policy) and the task is
  * done: the stage hands the question over again once the families' answers move, and it is queued and asked once its
  * wait has ended — the queue's own backoff no longer asks it a second time. A host whose breaker is open was never asked:
- * the task gives its attempt back and waits the block out (`Deferred`), nothing remembered. A poster whose fetch has
+ * it is a failure against that host as any other (counted [[AgreementQuestionMetrics.Deferred]]), released early when the
+ * host is back ([[HostRecovery]]). A poster whose fetch has
  * failed [[QuestionPolicies.PosterGiveUpAttempts]] times in a row is given up on: filed as unread, as the stage reads it,
  * and remembered for [[QuestionPolicies.PosterUnreadAge]].
  *
@@ -160,7 +161,7 @@ object AgreementQuestions {
  */
 final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily, FamilySource], find: String => Unit, reread: Int => Unit,
                            posters: PosterAnswerStore, hashing: PosterHashing, catalogue: CatalogueAnswerStore, mapping: CatalogueMapping,
-                           pages: CatalogueLinkReader, filed: () => Unit, memory: QuestionMemory, clock: Clock,
+                           pages: CatalogueLinkReader, filed: () => Unit, memory: QuestionMemory,
                            metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent) extends TaskHandler with Logging {
   import AgreementQuestionMetrics.{Fresh, Answered, Waiting}
 
@@ -226,8 +227,8 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
   private def answered(question: Question, label: String, what: String, filed: () => Unit)(ask: => Unit): HandlerOutcome =
     asking(Seq(question), label, what, filed) { ask; Answered }
 
-  /** `questions` asked as one: `ask` run — it says how it came out — then a projection asked for (`filed`). A host whose
-   *  breaker is open defers the task (never attempted); any other failure is remembered against the host it went to
+  /** `questions` asked as one: `ask` run — it says how it came out — then a projection asked for (`filed`). Any failure —
+   *  a host whose breaker is open or whose fleet pace turned the ask away among them — is remembered against the host it went to
    *  ([[AgreementQuestions.hostOf]]: the hosts `ask` requests are noted as it runs), a poster failing for the last time
    *  given up on, and a projection asked for too: the questions were attempted. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
    *  [[AgreementQuestionMetrics.Failed]]. */
@@ -240,11 +241,11 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
       filed(); metrics.asked(label, outcome); Done
     }
     catch {
-      case open: CircuitOpenException =>
-        metrics.asked(label, AgreementQuestionMetrics.Deferred)
-        Deferred(Some(s"$what: ${open.getMessage}"), Some(clock.instant().plusMillis(open.openForMs)))
       case scala.util.control.NonFatal(e) =>
-        metrics.asked(label, AgreementQuestionMetrics.Failed)
+        // a host's open breaker or the fleet pacer turning the ask away (CircuitOpenException) is a failed attempt against
+        // that host like any other: remembered, so a cluster waiting on it settles and it reaches give-up, rather than
+        // deferred unattempted for as long as the host stays blocked
+        metrics.asked(label, if (e.isInstanceOf[CircuitOpenException]) AgreementQuestionMetrics.Deferred else AgreementQuestionMetrics.Failed)
         val failures = memory.failed(questions, AgreementQuestions.hostOf(e, requested.last))
         logger.debug(s"agreement: $what failed (${e.getMessage}), asked again once its wait ends")
         val givenUp = failures.collect {
@@ -263,7 +264,7 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
 /** Where the agreement's questions report: each one enqueued (`added`, or already queued), and each one asked, by how it
  *  came out — [[Answered]], [[Nothing]] there (a refused query, a missing page: filed as no film), [[Fresh]] (an answer
  *  already filed: skipped), [[Waiting]] (inside the wait a failed ask left it: skipped), [[Deferred]] (the host's breaker
- *  open) or [[Failed]] (remembered, asked again once its wait ends). A family is its label (`imdb`, `rt` …), TMDB's find
+ *  open or its pace turned it away: remembered as a failure) or [[Failed]] (remembered, asked again once its wait ends). A family is its label (`imdb`, `rt` …), TMDB's find
  *  of an agreed IMDb id [[TmdbFind]], a TMDB record read again for its release day [[TmdbRecord]]. */
 trait AgreementQuestionMetrics {
   def enqueued(family: String, added: Boolean): Unit
@@ -292,17 +293,13 @@ object AgreementQuestionMetrics {
  *  filed. A failure is remembered by the asker, as on the queue, and asked again once its wait ends; one still inside
  *  its wait is not asked. */
 final class InlineFamilyAsks(asker: AgreementAsker, pool: java.util.concurrent.ExecutorService, stopwatch: tools.Stopwatch)
-    extends services.identity.agreement.AgreementStage.AskNow with Logging {
+    extends services.identity.agreement.AgreementStage.AskNow {
   def apply(questions: Set[Question], within: scala.concurrent.duration.FiniteDuration): Unit = {
     val started = stopwatch.start()
     val late    = new java.util.concurrent.atomic.AtomicBoolean(false)
     val asked = questions.toSeq.collect { case question: Question.Family =>
       pool.submit(new Runnable {
-        def run(): Unit = tools.HttpPath.within(tools.HttpPath.Agreement)(asker.ask(Seq(question), announce = late.get)) match {
-          case outcome: Deferred =>
-            logger.info(s"agreement: ${question.family.label} '${question.question}' asked inline deferred ($outcome), the queue's to ask again")
-          case _ => ()
-        }
+        def run(): Unit = { tools.HttpPath.within(tools.HttpPath.Agreement)(asker.ask(Seq(question), announce = late.get)); () }
       })
     }
     asked.foreach { future =>

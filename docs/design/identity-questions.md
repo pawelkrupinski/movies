@@ -59,8 +59,9 @@ agreement answers still vote, veto or correct a take. Steps, each landed on its 
    `unanswered(questions)` (a durable non-answer, its kind's long wait), `failed(questions)` (5 min doubling to 6 h), and
    the TMDB outage/recovery release, kept for the model's questions. The model's markers keep their ids
    (`unanswered|<TmdbStore.questionId>`, `unanswered|film|<id>`) and the fallback read of old ones in `tmdb_queries`; an
-   agreement question's is `unanswered|<Question.id>`. The asker remembers a failed ask and the task is done (a host
-   whose breaker is open still defers it); `AgreementQuestions.enqueue`, the queue's asker and the inline asks skip a
+   agreement question's is `unanswered|<Question.id>`. The asker remembers a failed ask and the task is done -- one a
+   host's open breaker or its fleet pace turned away too, since 2026-11-05 (it was deferred unattempted, so a cluster
+   waited on it as long as the host stayed blocked: 366 Wikidata asks in the 14 days to 11-05); `AgreementQuestions.enqueue`, the queue's asker and the inline asks skip a
    question still inside its wait, so the queue's backoff no longer asks it a second time. The poster give-up counts
    the memory's failures in a row (`QuestionPolicies.PosterGiveUpAttempts`), files the poster unread as before and is
    remembered `PosterUnreadAge`. Venue pages stay the pipeline's (their freshness mark). `QuestionPolicies` holds every

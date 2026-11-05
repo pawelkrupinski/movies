@@ -26,7 +26,7 @@ object AgreementAskers {
       filed: () => Unit = () => (),
       memory: QuestionMemory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock),
       metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent): AgreementAsker =
-    new AgreementAsker(families, sources, find, reread, posters, hashing, catalogue, mapping, pages, filed, memory, clock, metrics)
+    new AgreementAsker(families, sources, find, reread, posters, hashing, catalogue, mapping, pages, filed, memory, metrics)
 
   /** The task asking `questions`, as [[AgreementQuestions.enqueue]] queues it, on its `attempts`th attempt. */
   def task(questions: Question*)(attempts: Int = 1): Task = {

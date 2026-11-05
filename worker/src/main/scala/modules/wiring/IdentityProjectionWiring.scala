@@ -242,7 +242,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       filed = () => {
         identityProjection.asked(IdentityProjection.Trigger.Answer)
         identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
-      }, identityQuestionMemory, clock, agreementQuestionMetrics)
+      }, identityQuestionMemory, agreementQuestionMetrics)
   /** Asks again at once the questions that failed against an enrichment host that is back: the open agreement questions
    *  queued, and a fill round for the model's gaps ([[services.identity.adapters.HostRecovery]]). */
   lazy val identityHostRecovery: services.identity.adapters.HostRecovery =

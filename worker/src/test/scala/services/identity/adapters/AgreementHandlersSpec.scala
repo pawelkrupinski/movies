@@ -78,15 +78,26 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     store.answers(VoterFamily.Filmweb).titled("Akademia Polskiego Filmu: wykład") shouldBe Answer.Known(Nil)
   }
 
-  it should "wait out a host whose breaker is open, and file nothing either way" in {
-    val store = world()
+  // An ask a host's open breaker or the fleet pacer turned away (both CircuitOpenException) was Deferred with nothing
+  // remembered: never attempted, so a cluster waiting on it waited as long as the host stayed blocked, re-run every
+  // <= 30 min (prod, 14 days to 11-05: 366 Wikidata asks). It is a failed attempt against that host now: the settle rule
+  // decides without it, it is asked again once its wait ends (or the host is back, HostRecovery), and it reaches give-up.
+  it should "count an ask a host's open breaker turned away as a failed attempt against that host, filing nothing" in {
+    val store = world(); val remembered = newMemory(); val projections = new AtomicInteger
+    val dune    = Question.Family(VoterFamily.RottenTomatoes, "title|Dune")
     val blocked = new Answering(VoterFamily.RottenTomatoes, Some(new CircuitOpenException("www.rottentomatoes.com", 60000L)))
     val down    = new Answering(VoterFamily.Metacritic, Some(new HttpStatusException(503, "GET", "https://www.metacritic.com/search/x", None)))
-    val handler = asker(store, Map(VoterFamily.RottenTomatoes -> blocked, VoterFamily.Metacritic -> down))
-    handler.handle(task(VoterFamily.RottenTomatoes, "title|Dune")) shouldBe a[HandlerOutcome.Deferred]
+    val handler = asker(store, Map(VoterFamily.RottenTomatoes -> blocked, VoterFamily.Metacritic -> down),
+      () => { projections.incrementAndGet(); () }, memory = remembered)
+    handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Done
     handler.handle(task(VoterFamily.Metacritic, "title|Dune")) shouldBe HandlerOutcome.Done
     store.answers(VoterFamily.RottenTomatoes).titled("Dune") shouldBe Answer.Unknown
     store.answers(VoterFamily.Metacritic).titled("Dune") shouldBe Answer.Unknown
+    remembered.attempted(dune) shouldBe true
+    remembered.outcome(dune).collect { case QuestionMemory.Outcome.Failed(1, _, host) => host } shouldBe Some(Some("www.rottentomatoes.com"))
+    projections.get shouldBe 2                                                       // attempted: a waiting cluster may settle
+    handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Skipped     // inside its wait: not asked again
+    blocked.asked.get shouldBe 1
   }
 
   // Until C3 a failed ask went back on the queue's backoff while the stage, the inline asks and the memory knew nothing of
