@@ -177,6 +177,9 @@ object WhatIfResolve {
     def opt(name: String) = args.sliding(2).collectFirst { case Seq(`name`, value) => value }
     opt("--answers").getOrElse("offline") match {
       case "offline" => WhatIfAnswers.offline(_, country, clock)
+      case "cached" =>
+        val dir = Path.of(opt("--answers-dir").getOrElse(sys.error("--answers cached needs --answers-dir DIR (the local what-if store)")))
+        WhatIfAnswers.cached(_, dir.resolve(country.code), country, clock)
       case "live" =>
         val configuration = settings.ProcessConfiguration.resolve()
         val key  = configuration.tmdbApiKey.getOrElse(sys.error("--answers live: no TMDB_API_KEY (secrets run movies TMDB_API_KEY -- ...)"))
@@ -184,7 +187,7 @@ object WhatIfResolve {
         val wire = modules.wiring.HttpWiring.pacedWire(new tools.RealHttpFetch(tls = tools.TlsTrust.newContext()), configuration,
           new tools.InMemoryFleetHostPace, clock, Thread.sleep)
         WhatIfAnswers.live(_, dir.resolve(country.code), wire, key, country, clock)
-      case other => sys.error(s"--answers $other: offline or live")
+      case other => sys.error(s"--answers $other: offline, cached or live")
     }
   }
 

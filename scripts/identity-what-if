@@ -138,11 +138,19 @@ TOOL_FILES=(worker/src/test/scala/services/identity/WhatIfResolve.scala worker/s
   worker/src/test/scala/scripts/StageAnswers.scala worker/src/fixtures/scala/tools/MemoLookups.scala
   worker/src/fixtures/scala/tools/KeptJvm.scala)
 answers_dir=${answers_dir:-$IDENTITY_CACHE/what-if-answers}
-if [ "$answers" = live ] && [ -z "${TMDB_API_KEY:-}" ]; then
-  # TMDB's key from the vault, for the live asks only: the whole run under it, never written anywhere
-  exec secrets run movies TMDB_API_KEY -- "$0" ${original_args[@]+"${original_args[@]}"}
+if [ "$answers" = live ] && [ -z "${TMDB_API_KEY:-}" ] && [ -z "${KINOWO_WHAT_IF_NO_VAULT:-}" ]; then
+  # TMDB's key from the vault, for the live asks only: the whole run under it, never written anywhere. A vault that will
+  # not open (locked, a Touch ID prompt nobody answers) leaves the run on the answers earlier live runs filed
+  secrets run movies TMDB_API_KEY -- env KINOWO_WHAT_IF_NO_VAULT=1 "$0" ${original_args[@]+"${original_args[@]}"} && exit 0
+  rc=$?
+  [ "$rc" = 64 ] || exit "$rc" # 64: the vault refused (locked, a Touch ID prompt timed out)
+  identity_log "the vault did not give TMDB_API_KEY (secrets unlock movies, then run again): answering from the local store only, nothing asked live"
+  answers=cached
 fi
+[ "$answers" != live ] || [ -n "${TMDB_API_KEY:-}" ] || { identity_log "no TMDB_API_KEY: answering from the local store only"; answers=cached; }
 answer_args=(--answers "$answers"); [ "$answers" = offline ] || answer_args+=(--answers-dir "$answers_dir")
+# a cached side reads what a live one asked: one kept base serves both
+side_answers=$([ "$answers" = offline ] && echo offline || echo live)
 final_args=(); [ "$final" = 0 ] || final_args+=(--final)
 base_sha=$(git -C "$repo" rev-parse --verify "$base^{commit}") || { echo "no commit $base" >&2; exit 2; }
 if [ "$head" = . ]; then head_label=worktree-$(git -C "$repo" rev-parse --short=12 HEAD); head_sha=.
@@ -217,7 +225,7 @@ served() {
 
 # The newest snapshot moment <sha> was already resolved at for <cc> within --max-age hours, if any.
 cached_at() { # <cc> [sha]
-  local root=$cache/$1/${2:-$base_sha}-$tools_hash-$answers
+  local root=$cache/$1/${2:-$base_sha}-$tools_hash-$side_answers
   [ -d "$root" ] || return 0
   python3 -I - "$root" "$max_age" "$final" <<'PY'
 import datetime, os, sys
@@ -234,7 +242,7 @@ PY
 # prod, final), KEPT per (sha, tool files, answers, snapshot): resolved here only when it is not
 whole_side() {
   local sha=$1 cc=$2 snapshot=$3 dir tree
-  dir=$cache/$cc/$sha-$tools_hash-$answers/$snapshot
+  dir=$cache/$cc/$sha-$tools_hash-$side_answers/$snapshot
   if [ ! -f "$dir/prod.tsv" ] || { [ "$final" = 1 ] && [ ! -f "$dir/final.tsv" ]; }; then
       tree=$(tree_of "$sha") || return 2
     identity_log "$cc: resolving ${sha:0:12} whole at $snapshot"
@@ -296,8 +304,8 @@ for cc in "${ccs[@]}"; do
   started=$(seconds)
   snapshot=${at:-$(cached_at "$cc")}
   if [ -z "$snapshot" ]; then snapshot=$(date -u +%Y-%m-%dT%H:%M:00Z); fi
-  base_state=$([ -f "$cache/$cc/$base_sha-$tools_hash-$answers/$snapshot/final.tsv" ] || { [ "$final" = 0 ] &&
-    [ -f "$cache/$cc/$base_sha-$tools_hash-$answers/$snapshot/prod.tsv" ]; } && echo kept || echo resolved)
+  base_state=$([ -f "$cache/$cc/$base_sha-$tools_hash-$side_answers/$snapshot/final.tsv" ] || { [ "$final" = 0 ] &&
+    [ -f "$cache/$cc/$base_sha-$tools_hash-$side_answers/$snapshot/prod.tsv" ]; } && echo kept || echo resolved)
   base_dir=$(whole_side "$base_sha" "$cc" "$snapshot") || exit 2
   base_seconds=$(elapsed "$started")
   head_dir=$out/$cc

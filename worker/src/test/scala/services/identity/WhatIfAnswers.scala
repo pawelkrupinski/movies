@@ -47,10 +47,17 @@ object WhatIfAnswers {
   }
 
   /** The mirror's store alone, nothing asked. */
-  def offline(mirror: TmdbDocuments, country: Country, clock: java.time.Clock): Source = new Source {
-    val docs: TmdbDocuments = mirror
+  def offline(mirror: TmdbDocuments, country: Country, clock: java.time.Clock): Source = refusing(mirror, country, clock)
+
+  /** The mirror's store over the local what-if store under `dir` -- what earlier live runs asked -- nothing asked now:
+   *  a live run's answers, replayed (`--answers cached`; the tool's fallback when TMDB's key cannot be had). */
+  def cached(mirror: TmdbDocuments, dir: Path, country: Country, clock: java.time.Clock): Source =
+    refusing(new Layered(mirror, new DiskTmdbDocuments(dir)), country, clock)
+
+  private def refusing(held: TmdbDocuments, country: Country, clock: java.time.Clock): Source = new Source {
+    val docs: TmdbDocuments = held
     val live: IdentityLookups = Refused
-    val stage: scripts.StageAnswers.Sources = sources(country, Map.empty, NoFetch, _ => Nil, findIn(mirror, clock, _ => None))
+    val stage: scripts.StageAnswers.Sources = sources(country, Map.empty, NoFetch, _ => Nil, findIn(held, clock, _ => None))
     def report(): String = ""
   }
 

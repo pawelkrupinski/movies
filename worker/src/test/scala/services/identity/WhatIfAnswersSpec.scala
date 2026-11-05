@@ -43,6 +43,15 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     modelLookups(WhatIfAnswers.offline(new InMemoryTmdbDocuments, poland, clock)).candidates(query) shouldBe Answer.Unknown
   }
 
+  "a cached what-if" should "answer from what an earlier live run filed, asking nothing" in {
+    val dir    = scratch()
+    val mirror = new InMemoryTmdbDocuments
+    val first  = modelLookups(WhatIfAnswers.live(mirror, dir, tools.RoutingHttpFetch.getOnly(Seq("/search/movie" -> search)),
+      settings.TmdbApiKey("replay"), poland, clock)).candidates(query)
+    modelLookups(WhatIfAnswers.cached(mirror, dir, poland, clock)).candidates(query) shouldBe first
+    modelLookups(WhatIfAnswers.cached(mirror, scratch(), poland, clock)).candidates(query) shouldBe Answer.Unknown
+  }
+
   "a what-if's stage sources" should "ask the country's agreement families live, and none offline" in {
     val live = WhatIfAnswers.live(new InMemoryTmdbDocuments, scratch(), tools.RoutingHttpFetch.dead("sites"), settings.TmdbApiKey("replay"), poland, clock)
     live.stage.sources.keySet shouldBe tools.UnmatchedClusters.familiesOf(poland).toSet

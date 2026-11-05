@@ -129,8 +129,10 @@ take, or the corpus), `--recording RUN --head REF` (a CI recording through CI's 
   into the LOCAL what-if store (`$KINOWO_IDENTITY_CACHE/what-if-answers/<cc>/<collection>.log`, keyed as production's
   `tmdb_*` / `identity_family_answers` / `identity_question_markers` key theirs) — never the mirror, never prod. A repeat run
   asks nothing. TMDB's key comes from the vault (the tool re-runs itself under `secrets run movies TMDB_API_KEY`); each
-  side prints what it asked, by host, with its rate. `--offline` keeps the old behaviour: nothing asked, a family waiting
-  on an unheld answer counted as "awaiting an answer", read as the base's take.
+  side prints what it asked, by host, with its rate. A vault that will not open (locked, a Touch ID prompt nobody
+  answers) leaves the run on the local store's answers alone, said so (`--answers cached`: what earlier live runs asked,
+  nothing new). `--offline` keeps the old behaviour: nothing asked, a family waiting on an unheld answer counted as
+  "awaiting an answer", read as the base's take. Mirror reads that time out are asked again (a loaded laptop's mongod).
 - **The final take.** Each side's model takes are settled by a fresh, unbudgeted agreement stage to its fixpoint
   (`WhatIfResolve.settled`, `scripts.StageAnswers.settle` — the CI gate's whole resolve, `IdentityDrift.whole`), its family
   questions, posters and catalogue pages answered from the same answer source: the base's every family, the head's
