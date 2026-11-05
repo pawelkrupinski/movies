@@ -54,15 +54,19 @@ class MemoLookupsSpec extends AnyFlatSpec with Matchers {
   }
 
   /** A source whose prefetch must never run beside another of its own (StoredTmdbLookups': each prefetch lets go of the
-   *  last one's documents, so two at once NPE'd in its `load`), counting what each prefetch was asked. */
+   *  last one's documents, so two at once NPE'd in its `load`), counting what each prefetch was asked; with `hold`, a
+   *  prefetch stays inside until `release`. */
   private class OnePrefetchAtATime extends CountingLookups {
     val inFlight   = new java.util.concurrent.atomic.AtomicInteger()
     val overlapped = new java.util.concurrent.atomic.AtomicBoolean()
     val asked      = new java.util.concurrent.ConcurrentLinkedQueue[CandidateQuery]()
+    val entered    = new java.util.concurrent.CountDownLatch(1)
+    val release    = new java.util.concurrent.CountDownLatch(1)
+    @volatile var hold = false
     override def prefetch(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[Listing]): Unit = {
       if (inFlight.incrementAndGet() > 1) overlapped.set(true)
       qs.foreach(asked.add)
-      Thread.sleep(5)
+      if (hold) { entered.countDown(); release.await() }
       inFlight.decrementAndGet(); ()
     }
   }
@@ -70,11 +74,18 @@ class MemoLookupsSpec extends AnyFlatSpec with Matchers {
   "A memo shared by concurrent family resolves" should "never run two of its source's prefetches at once" in {
     val inner = new OnePrefetchAtATime
     val memo  = new MemoLookups(inner)
-    val pool  = java.util.concurrent.Executors.newFixedThreadPool(8)
-    try (0 until 32).map(n => pool.submit(new java.util.concurrent.Callable[Unit] {
-      def call(): Unit = memo.prefetch(Seq(CandidateQuery.Title(s"Film $n")), Nil, Nil)
-    })).foreach(_.get()) finally pool.shutdown()
+    inner.hold = true
+    val first  = new Thread(() => memo.prefetch(Seq(CandidateQuery.Title("Film 1")), Nil, Nil))
+    val second = new Thread(() => memo.prefetch(Seq(CandidateQuery.Title("Film 2")), Nil, Nil))
+    first.start()
+    inner.entered.await()
+    second.start()
+    // the second either reaches the source beside the first (the race) or waits its turn outside it
+    tools.Eventually.poll()(inner.overlapped.get || second.getState == Thread.State.BLOCKED) shouldBe true
+    inner.release.countDown()
+    first.join(); second.join()
     inner.overlapped.get shouldBe false
+    inner.asked.size shouldBe 2
   }
 
   it should "not prefetch again what it already holds: a family's prefetch of the corpus's answers reaches no source" in {

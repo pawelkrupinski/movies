@@ -48,14 +48,17 @@ object Projection {
 ROOTS = "definition\tpatterns\twhy\nsoleWorkWhy\taccept:sole-work refused:sole-work:*\tthe rule\n"
 
 
+SCRATCH_GIT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts/scratch-git.sh")
+
+
 class Repo:
-    """A throwaway repository holding an identity source, its caller and a worker caller, with one commit to change."""
+    """A throwaway repository holding an identity source, its caller and a worker caller, with one commit to change --
+    made through scripts/scratch-git.sh, never a raw git, which under the pre-push hook inherits its GIT_DIR and writes
+    into the repository every worktree shares (the tool's own reads run with every GIT_* variable dropped, setUp)."""
 
     def __init__(self, root):
         self.root = root
-        self.git("init", "-q")
-        self.git("config", "user.email", "t@t")
-        self.git("config", "user.name", "t")
+        self.scratch("scratch_repo", "-q")
         self.write("identity/src/main/scala/services/identity/AcceptanceRules.scala", ACCEPTANCE)
         self.write("identity/src/main/scala/services/identity/Resolver.scala", RESOLVER)
         self.write("worker/src/main/scala/services/identity/Projection.scala", WORKER)
@@ -64,8 +67,12 @@ class Repo:
         with open(os.path.join(root, "roots.tsv"), "w", encoding="utf-8") as f:
             f.write(ROOTS)
 
+    def scratch(self, helper, *args):
+        return subprocess.run(["bash", "-c", '. "$1"; "$2" "$3" "${@:4}"', "_", SCRATCH_GIT, helper, self.root, *args],
+                              check=True, capture_output=True, text=True).stdout.strip()
+
     def git(self, *args):
-        return subprocess.run(["git", "-C", self.root, *args], check=True, capture_output=True, text=True).stdout.strip()
+        return self.scratch("scratch_git", *args)
 
     def write(self, path, text):
         full = os.path.join(self.root, path)
@@ -96,11 +103,13 @@ ACC = "identity/src/main/scala/services/identity/AcceptanceRules.scala"
 
 class AttributeTest(unittest.TestCase):
     def setUp(self):
+        self.saved = {k: os.environ.pop(k) for k in list(os.environ) if k.startswith("GIT_")}
         self.tmp = tempfile.TemporaryDirectory()
-        self.repo = Repo(self.tmp.name)
+        self.repo = Repo(os.path.join(self.tmp.name, "repo"))
 
     def tearDown(self):
         self.tmp.cleanup()
+        os.environ.update(self.saved)
 
     def test_a_helper_only_a_rule_calls_moves_that_rule(self):
         self.repo.edit(ACC, "val cut = 3", "val cut = 4")
