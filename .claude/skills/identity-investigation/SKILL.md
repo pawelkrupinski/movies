@@ -162,22 +162,28 @@ take, or the corpus), `--recording RUN --head REF` (a CI recording through CI's 
   otherwise now, and new ones move; and CI's final stage replays only its checked-in capture's clusters, the what-if's
   every family. `scripts/identity-measure` stays the verdict of record.
 
-Validated 2026-11-05 against CI measurements of record (model takes; the mirror's corpus of 08:00Z vs each measure's
-recording; the head's judgements):
+Validated 2026-11-05 evening against CI measurements of record, model AND final takes, snapshot 20:10Z, live answers
+(the last two over the local store's answers: the vault had locked), the head's judgements. Buckets: R-lost / r→w /
+new-wrong; CI's final replays only its capture's clusters, the what-if's every family:
 
-| Change (base → head) | Selected | CI measure | What-if |
-|---|---|---|---|
-| directors-title `5622777db~1 → 5622777db` | 33-1748 families a country (`--verify` OK ×5) | 0 lost / 0 r→w; gained right UK ICA "Pereda: Fauna", Keswick "Hen", DE 2 | 0 lost / 0 r→w; gained right ICA "Pereda: Fauna" (+ "Perpetual Motion", unjudged); the other three are not billed now |
-| pooled tie `d68bb5652~1 → d68bb5652` | 23-1613 (`--verify` OK ×5) | 2 right→none DE (Abaton "Enjo", Filmrauschpalast "MADE IN HONG KONG") | 0 moved: neither is billed now |
-| namesake C `385b1bdb4 → b030bb899` | ALL (Resolution's body) | right-lost pl 149, de 255, uk 86, us 1; r→w 0 | right-lost pl 97, de 107, uk 44, us 9; r→w 0 |
-| namesake window `40bacafcc → 82d9dcb5f` | ALL | right-lost pl 137, de 126, uk 34; r→w 0, new-wrong 0 | pl 66, de 29, uk 21; r→w 0, new-wrong 0 |
-| namesake rework `40bacafcc → 2f864590a` | ALL | right-lost pl 155, de 292, uk 103, us 20, es 4; r→w de 8, uk 1; new-wrong de 1 | pl 111, de 185, uk 59, us 580 (563 one re-release, "Romeo + Juliet"), es 0; r→w de 5, uk 1; new-wrong de 1 |
+| Change (base → head), cc | CI model | what-if model | CI final | what-if final |
+|---|---|---|---|---|
+| title rule `fc7a64ef → 7005d9bb` uk | gained-right 6; LANDABLE | cure 3, gained-right 6, new-wrong 1 (Lowther "Swan Lake", billed now) | gained-right 1 | gained-right 6, new-wrong 1 |
+| title rule `def6794a → 75d174ba` uk | 5 moved, R-lost 2 | 5 moved, R-lost 2 | 0 | R-lost 2 |
+| agreement + model `385b1bdb → b030bb89` de | R-lost 255 | R-lost 107 | R-lost 30, new-wrong 1 | R-lost 130, new-wrong 1 |
+| agreement + model `2d37f053 → 025aa73c` de | R-lost 45 | R-lost 28, new-wrong 61 ("League of Legends Worlds 26", billed now) | R-lost 21 (base's too) | R-lost 39, new-wrong 60 |
+| directors-title `5622777d~ → 5622777d` uk | gained-right 1+ | gained 1 (`--verify` OK) | — | gained 2 (`--verify` OK) |
+| pooled tie `d68bb565~ → d68bb565` de | 2 right→none (not billed now) | 0 (`--verify` OK) | — | 0 (`--verify` OK) |
+| namesake window `40bacafc → 82d9dcb5` de | R-lost 126 | R-lost 29 | — | R-lost 43 |
+| namesake rework `40bacafc → 2f864590` de | R-lost 292, r→w 8, new-wrong 1 | R-lost 185, r→w 4, new-wrong 1 | — | R-lost 207, r→w 5 |
 
-Same verdict and direction every time, the namesake variants in the measure's order (window < C < rework); the counts
-differ by corpus (today's billings, not the recording's). Wall on the laptop: a new ref compiles once (~1-3 min); then a
-country takes ~15-100 s cold (base resolved: ES 15, UK 50-60, PL 45-80, DE 55-100, US 70-100 incl. `--verify`) and ~8-46 s
-warm (base kept: ES 8, UK 24, DE 27, PL 29, US 46). JVM start, the history replay and the corpus context are most of it: the
-selected families re-resolve in 2-3 s of a 25 s head, so splitting below the family would buy nothing measurable.
+Same verdict as CI every time (LANDABLE vs not; the title-rule case's one new-wrong is a listing CI's recording did
+not hold, judged wrong since); counts differ by corpus (today's billings, not the recording's), and the final stage by
+CI's capture-only replay. `--bisect 5622777d~4 5622777d --listing 'Institute of Contemporary Arts|Pereda: Perpetual
+Motion' uk` named 5622777d in 2 steps, 320 s cold. Wall on the laptop, JVM phases of a whole side (corpus, context,
+resolve, settle, prod) on a quiet machine: PL 29 s, US 31 s, UK 26-40 s, DE 40-75 s, ES ~45 s; a ref compiles once (~1-3 min) and JVM slots are often the
+wait (the tool names who holds them). A head rerun through its kept JVM: UK 24 s (head 14 s). The stage settle was
+254 s on ES until the mirror's family answers were read in one batch (now 5-24 s a country).
 
 ## title-trace
 
