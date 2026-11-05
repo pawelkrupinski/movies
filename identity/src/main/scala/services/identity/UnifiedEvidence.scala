@@ -242,6 +242,12 @@ object UnifiedEvidence {
     // and as each listing bills it alone: a cluster can join a billing under two names to its neighbours billing one
     private lazy val listingSpans = c.listings.distinctBy(_.rawTitle).map(listing => listing -> candidateFilms.map(Agreement.billedSpans(Seq(listing), _)))
 
+    private def venuesOpenTo(contender: Building): Int = contender.tmdb.fold(venues) { id =>
+      val denying = c.nodes.filter(_.candidates.exists(candidate => candidate.tmdbId == id && candidate.denied)).flatMap(_.keys).toSet
+      c.listings.filterNot(listing => denying(listing.key)).map(_.venue).distinct.size
+    }
+    private def isCurrent(contender: Building): Boolean = contender.records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
+
     def contenders: Seq[Contender] = built.toSeq.map(contender => new Scoring(contender).signalled).sortBy(_.film)
 
     /** One contender's signals. */
@@ -263,8 +269,21 @@ object UnifiedEvidence {
       private val votes  = Agreement.factVotes(asStated, records)
       private val namesIt = c.listings.nonEmpty && c.listings.forall(Agreement.namesIt(_, records.map(_.film)))
       private val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
+      // HOW MANY VENUES bill the title, counting only those whose own listings leave the film open: a venue whose node
+      // denies it on its own facts (a year, a director, a running time against TMDB's record) bills another film, and is
+      // no venue of this one's release. DE Lichtblick's "Buddies", the screening Pollux Paderborn bills: Cineamo's 81
+      // minutes at Pollux and Lichtwerk deny kinoheld's 5-minute 2026 short, which `venues.current` took at all three
+      // once three venues billed the title, and not with two -- a take that came and went with the population (the owner,
+      // 2026-11-05: "Buddies, properly"). Each venue's part is its own facts and TMDB, and the count only grows as
+      // listings arrive: the signal stays monotone in the population.
+      private val venuesOpen = venuesOpenTo(contender)
       // released this year or last: a current release, not a one-off event an older namesake fits
-      private val current = records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
+      private val current = isCurrent(contender)
+      // another current film the venues count denied out: the fill counting every venue read both as billed widely and
+      // took neither; that one denied at venues leaves this one no likelier (UK "MET: Silent Night" x3: the Met's 2026/27
+      // relay, denied there, would leave a 2026 "Silent Night" the one current film counted)
+      private val deniedRival = venues >= Agreement.WidelyBilled && built.exists(other =>
+        (other ne contender) && isCurrent(other) && venuesOpenTo(other) < Agreement.WidelyBilled)
 
       private def flags: Seq[(String, Boolean)] = evidenceFlags ++ titleFlags ++
         rules.distinct.map(_ -> true) ++
@@ -293,7 +312,7 @@ object UnifiedEvidence {
         "listing.runsShort"   -> Agreement.runsShort(c.listings, contender.record, Some(c.thisYear)).isDefined,
         // the venue's certificate well below the one TMDB records for the film in its country: another cut, another film
         "listing.certifiedBelow" -> own.headOption.exists(tmdbFilm => c.listings.exists(Certificates.below(_, tmdbFilm.film).isDefined)),
-        "venues.current"      -> (venues >= Agreement.WidelyBilled && current))
+        "venues.current"      -> (venuesOpen >= Agreement.WidelyBilled && current && !deniedRival))
 
       /** The flags of how the billing's title names it, and of its posters. */
       private def titleFlags: Seq[(String, Boolean)] = Seq(

@@ -284,6 +284,26 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     UnifiedRules.resolver.filled(found(billed.tail)).map { case (c, rule) => c.film -> rule } shouldBe Some("tmdb:1735950" -> "venues.current")
   }
 
+  "venues.current" should "count only the venues whose own billings leave the film open" in {
+    // DE Lichtblick's "Buddies" at Pollux Paderborn beside Pollux's and Lichtwerk's own (drift slice
+    // programmkino-lichtblick-e-v-buddies-69181215): Cineamo's 81 minutes at Pollux and Lichtwerk deny the current
+    // 5-minute short kinoheld's copy at Lichtblick names. Three venues filled it there, two nothing; a venue denying the
+    // film is no venue of its release.
+    val short = IdentityMeasures.Film("Buddies", Some("Buddies"), Nil, Some(2026), Some(5), Some(Seq("Rahul Hansraj")))
+    def billing(venue: String) = listing(KinoMuza, "Buddies").copy(key = services.movies.ListingKey.Published(venue, "Buddies", None, Nil))
+    def found(billings: Seq[(Listing, Boolean)]) = {
+      val listings = billings.map(_._1)
+      val decision = ResolverDecision(listings.map(_.key), None, 0.03, ResolverDecision.Basis.Vetoed, Nil)()
+      val nodes    = billings.map { case (l, denies) => IdentityResolver.NodeEvidence(Seq(l.key), Seq(candidate(1629957, short, 0.03, denied = denies))) }
+      contenders(ClusterEvidence(listings, decision, nodes, Nil, Nil, _ => None, thisYear = 2026))
+        .find(_.film == "tmdb:1629957").flatMap(_.signals.get("venues.current"))
+    }
+    val lichtblick = billing("Programmkino Lichtblick e.V.") -> false
+    val denying    = Seq("Pollux by Cineplex Paderborn", "Lichtwerk im Ravensberger Park").map(billing(_) -> true)
+    found(lichtblick +: denying) shouldBe None
+    found(lichtblick +: Seq("Kino A", "Kino B").map(billing(_) -> false)) shouldBe Some(1.0)
+  }
+
   "a current release billed widely" should "fill no film the title names only within another candidate's title, articles aside" in {
     // DE CineStar ×43 "Herr der Ringe - Rückkehr des Königs (ext.)" (recording 38355584482), the 2003 film's re-release:
     // a 14-minute 2025 short titled "Herr der Ringe" is the one current film the billing names, and venues.current

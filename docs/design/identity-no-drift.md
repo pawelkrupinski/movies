@@ -656,6 +656,43 @@ the projection asked for are still unfiled, i.e. the decision's `awaits` / `unan
 record yet. The remaining ~23% (model-model re-keys, poster votes undone, departures days apart) is not predictable
 ahead from history features; the per-family convergence check and own facts remain the route there.
 
+## A fill that counts venues counts only those its film is open at (the owner, 2026-11-05: "Buddies, properly")
+
+The `venues.current` signal (`UnifiedEvidence`: at least `Agreement.WidelyBilled` = 3 venues bill the title, the film this
+year's or last) is the one fill input that is the POPULATION itself: how many listings arrived. It counted every venue of
+the cluster, those whose own facts deny the film too, so a film the listings' facts had left unmatched at two venues was
+taken at three -- DE Lichtblick's "Buddies" (convergence #800, seed 64; backlog rows `drift` and `population`):
+
+| listings present | take | by |
+|---|---|---|
+| Lichtblick alone | tmdb:1629957 | the lean fill on kinoheld's copied year and credit |
+| Lichtblick + Pollux, or + Lichtwerk | none | vetoed: Cineamo's 81 minutes deny a 5-minute short |
+| all three | tmdb:1629957, at ALL three | `venues.current`, two of its three venues denying it |
+
+**The rule:** a venue counts toward a film's `venues.current` only when no node of its listings denies that film on its
+own facts (`IdentityResolver.NodeEvidence`: a year, a director, a running time against TMDB's record). Each venue's part
+is its own facts and TMDB, population-independent; the count only grows as listings arrive, so the signal is monotone in
+the population and adds no A -> B -> A of its own. An IMDb-only contender (no TMDB candidate to deny) counts every venue,
+as before. One more thing keeps the fill from taking MORE than the plain count did: a fill takes only the one contender
+its rule fires on, and counting every venue fired on every current film at once; so while another current film is
+counted below three venues by its denials, this one is not taken either (UK "MET: Silent Night" x3 at Phoenix Leicester
+and two Savoys: the Met's 2026/27 relay is denied there, and a 2026 "Silent Night" would have been the one current film
+counted). Locally the unmatched-cluster ratchet is green on every capture with it.
+
+**First tried and dropped (same day):** `venues.current` only for a cluster holding a BARE listing (no
+`publishesAFact`), as `ClusterVoting.familyMajority` borrows nothing for a cluster that states facts. Locally it lost 44
+right takes of the unmatched-cluster capture: Cinema City's "HYBE CHEERING PARTY" x16 and "SEVENTEEN WORLD TOUR 'NEW_'"
+x16 (PL), "Paddington Bear: Winter Warmers" x11 (UK) -- IMDb-only events whose every venue states its running time. A
+running time the film's record never contradicts is no reason to stop counting its venues.
+
+**Buddies' facts:** Lichtblick e.V. screens at Pollux Paderborn (both bill it 2026-11-24 19:15, 81 minutes); Cineamo links
+Pollux's and Lichtwerk's billings to 259433m, Bressan's 1985 "Buddies" (81 minutes). Lichtblick's 2026 and Rahul Hansraj
+are kinoheld's copy of tmdb:1629957, a 5-minute student short: the 10-13 judgement RIGHT is re-judged wrong, 259433
+right at the three venues (AGENT-JUDGED). With the rule, Pollux and Lichtwerk take 259433 or none, Lichtblick none from
+two venues on: none of the takes comes back. Lichtblick alone still takes the short by the lean fill (the parked
+copied-credits class, `docs/identity-experiments/2026-10-23-kinoheld-s-copied-credits-a-short-taking-a.md`); the
+projection withdraws it by its judgement.
+
 ## What still blocks retiring the checks
 
 1. Item 7's open parts (the first draft's `searchTitle` -- since Main #2617 the IMDb-id resolver falls back to every venue
