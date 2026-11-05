@@ -117,7 +117,10 @@ object WhatIfResolve {
    *  with no year or director), which a trim would cut off. */
   def selection(lines: Seq[String]): Set[String] = lines.filter(_.nonEmpty).toSet
 
-  def keyOf(key: ListingKey): String = ListingKey.serialised(key).replace('\u0000', '\u001e')
+  /** A listing's key as the files hold it: [[ListingKey.serialised]], its NULs as U+001E and a line break or tab a raw
+   *  title carries escaped ("„Skrzypek na dachu”\nMusical wszech czasów…"), so a key is one field of one line. */
+  def keyOf(key: ListingKey): String =
+    ListingKey.serialised(key).replace('\u0000', '\u001e').replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
   private def clean(text: String): String = text.replaceAll("[\t\r\n]", " ")
   private def list(items: Iterable[String]): String = items.toSeq.sorted.map(clean).mkString("\u001f")
   private def items(field: String): Set[String] = if (field.isEmpty) Set.empty else field.split('\u001f').toSet

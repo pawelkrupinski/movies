@@ -51,9 +51,12 @@ class WhatIfResolveSpec extends AnyFlatSpec with Matchers {
     affected(Set("new"), base, head(Map.empty, asked)).listings shouldBe Set("new")
   }
 
-  "A selection file" should "keep every key whole: a page-less listing with no year or director ends in its separator" in {
+  "A selection file" should "keep every key whole and on one line: a page-less listing with no year or director ends in its separator, a raw title may break its line" in {
     val bare = services.movies.ListingKey.Published("Institute of Contemporary Arts", "Pereda: Fauna", None, Nil)
-    val keys = Seq(WhatIfResolve.keyOf(bare), WhatIfResolve.keyOf(services.movies.ListingKey.Native("ICA", "https://ica/1", "Fauna")))
+    val broken = services.movies.ListingKey.Published("Kino w Ratuszu", "„Skrzypek na dachu”\nMusical\twszech czasów", None, Nil)
+    val keys = Seq(WhatIfResolve.keyOf(bare), WhatIfResolve.keyOf(services.movies.ListingKey.Native("ICA", "https://ica/1", "Fauna")),
+      WhatIfResolve.keyOf(broken))
+    keys.foreach(key => key.exists(c => c == '\n' || c == '\r' || c == '\t') shouldBe false)
     WhatIfResolve.selection(keys ++ Seq("")) shouldBe keys.toSet
   }
 }
