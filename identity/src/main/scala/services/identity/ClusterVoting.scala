@@ -113,7 +113,11 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *    house's season, a concert film) or neither does;
    *  and where the node's own title does not rule the film out ([[readable]]). A source is whose claim the sibling's
    *  facts are ([[SourceReliability.claimOf]]): a feed's or a listings site's entry, copied to every venue it lists,
-   *  counts once (UK "Fallen Angels" [1995] {Wong Kar Wai} ×11, one feed's credit, is no second reading of Coward's play).
+   *  counts once (UK "Fallen Angels" [1995] {Wong Kar Wai} ×11, one feed's credit, is no second reading of Coward's play),
+   *  and so does one spelling with its facts: the siblings billing it alike are one node. A film counts its sources or
+   *  its distinct statements (nodes), whichever are more: a chain's catalogue billing the film two ways, or two venues
+   *  of one listings site's entry stating it differently, are two statements (UK "The Addams Family (1991)" [1991]
+   *  {Barry Sonnenfeld} and "RX Family- The Addams Family (1991)" [1991], recording 573).
    *
    *  A pure function of the node and its siblings, each sibling read alone: as listings arrive a film's sources only
    *  grow, so a contested node stays contested ([[contested]]). `filmOf`: the candidate's record, for its titles. */
@@ -124,8 +128,10 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
       val relays = ClusterVoting.relays(node)
       members.filter(sibling => sibling.id != node.id && accepted.contains(sibling.id) && sibling.evidence.measured.publishesAFact &&
         sibling.evidence.measured.seasonYear.isEmpty && ClusterVoting.relays(sibling) == relays && titled(node, sibling))
-        .groupMapReduce(sibling => accepted(sibling.id))(_.listings.map(SourceReliability.claimOf).toSet)(_ ++ _)
-        .filter { case (film, _) => filmOf(film).forall(ClusterVoting.readable(node, _)) }
+        .groupMapReduce(sibling => accepted(sibling.id))(sibling => (sibling.listings.map(SourceReliability.claimOf).toSet, Set(sibling.id)))(
+          (a, b) => (a._1 ++ b._1, a._2 ++ b._2))
+        .collect { case (film, (sources, statements)) if filmOf(film).forall(ClusterVoting.readable(node, _)) =>
+          film -> (if (statements.size > sources.size) statements else sources) }
     }
 
   /** Is a bare listing's title family CONTESTED ([[rivals]]): two films or more each backed by
