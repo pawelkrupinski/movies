@@ -495,11 +495,16 @@ recorded reads alone -- no corpus, no lookup beyond them, a read outside fails (
 corpora differing by a removed or added population (another family, one listing, a quarter, a half), every family whose
 entry stands keeps its members together and alone, and every take. A failure names a read the index lacks.
 
-**Not yet in it** (the final take): the agreement stage's reads -- family answers (the venue programme,
-`agreement/VenueListings.scala:46`), Broadcast's namesake records, the shared ask memory, the year; stored verdicts by
-digest (`AgreementStage.scala:518`, `:638`) and apply budgets are path state and stay out (a check proves the take
-independent of them). Then: (a) the per-family convergence check keyed by the index; (b) affected-only recompute on the
-local prod mirror.
+**The final take** (`services.identity.agreement.FamilyFinalReads`, worker tests): a fresh, unbudgeted stage settled
+over the family records its verdicts' receipts (`StoredVerdict.reads`: family answers -- the venue programme,
+`agreement/VenueListings.scala:46`, searches, records --, attempts the ask memory holds, the year) and every lookup the
+stage made (Broadcast's namesake records, casts, descriptions, release days). Stored verdicts found by digest
+(`AgreementStage.scala:518`, `:638`) and apply budgets are path state and stay out: the spec proves the take independent
+of them. The spec holds the final take as it holds the model's: each family settled alone takes what the corpus's stage
+took; its reads digest alike in the corpus's stage; and a family whose model entry and stage reads stand keeps its
+final take, over the population corpora, corpora with a stage-only lookup withheld, and the corpus a year on (dropping
+the stage reads from the comparison fails it: Purbeck "Hen" moves a year on). Then: (a) the per-family convergence
+check keyed by the index; (b) affected-only recompute on the local prod mirror.
 
 ## What still blocks retiring the checks
 
