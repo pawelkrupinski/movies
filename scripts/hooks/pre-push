@@ -49,7 +49,10 @@
 #                 the basic tests before every merge (once the merge queue's pre-check list)
 #   `identity`    local-tests.txt's `identity` lines, on a change to the identity paths (is_identity_path): the identity
 #                 specs that run in under 15 min on the laptop (measured there); convergence and the takes measure
-#                 are main's CI's. Through scripts/sbt-warm, warm. Only the specs the change can reach, over the
+#                 are main's CI's. FIRST, its `first` line: SLICE ANSWER COVERAGE (scripts/identity-slice-coverage,
+#                 ~30 s warm, ~2.5 min under load) -- every pinned slice case and drift slice replayed at the pushed code, every request one
+#                 asks that its fixture lacks named at once with the `--repin` line that pins them all from their
+#                 recordings (Unmatched C's new searches turned main red twice, #2180, found a case at a time). Through scripts/sbt-warm, warm. Only the specs the change can reach, over the
 #                 countries it can reach (TEST-IMPACT SELECTION, select_identity_tests; proof: identity-impact-check).
 #                 The population walk (PopulationMonotonicitySpec) is judged AGAINST THE MERGE BASE: a slice whose flips
 #                 differ from the known rows is walked again with the base's code (scripts/ci/population-walk-diff), and
@@ -289,7 +292,7 @@ read_by_lint_specs() { # <path>
 # nothing requires its LANDABLE.
 LocalTests="$(dirname "${BASH_SOURCE[0]}")/local-tests.txt"
 has_local_tests() { # <set>
-    [ -f "$LocalTests" ] && grep -qE "^$1[[:space:]]+(sbt|sh)[[:space:]]" "$LocalTests"
+    [ -f "$LocalTests" ] && grep -qE "^$1[[:space:]]+(sbt|sh|first)[[:space:]]" "$LocalTests"
 }
 # The identity paths: the resolver, its worker adapters and tests, title rules, the identity fixtures.
 is_identity_path() { # <path>
@@ -1149,16 +1152,29 @@ check_sbt() {
     [ "$gitops_stale" = 0 ]
 }
 
-# The commands of <set> of <kind> (sbt|sh) in the CHECKED tree's local-tests.txt, one per line.
+# The commands of <set> of <kind> (sbt|sh|first) in the CHECKED tree's local-tests.txt, one per line.
 local_test_lines() { # <set> <kind>
     [ -f scripts/hooks/local-tests.txt ] || return 0
     sed -nE "s/^$1[[:space:]]+$2[[:space:]]+//p" scripts/hooks/local-tests.txt
 }
-# An area's local tests: its sbt lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, and the one
+# An area's local tests: its first lines (each a fast check whose failure names everything at once: it fails the area
+# there, nothing else run), its sbt lines in ONE scripts/sbt-warm call (the checkout's kept server: warm, and the one
 # compiler over its target/), then its sh lines. A failure shows the failing specs; the full log stays.
 run_local_tests() { # <set>
     local cmds=() line rc=0 sh_lines=1
     need_jvm "$1" || return 1
+    # the first lines: once, never sharded (shard 1 runs them, as the sh lines)
+    if [ -z "${PREPUSH_IDENTITY_SHARD:-}" ] || [ "$1" != identity ] || [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ]; then
+        while IFS= read -r line; do
+            [ -n "$line" ] || continue
+            if ! bash -c "$line" > "$tmp/$1.first.log" 2>&1; then
+                cat "$tmp/$1.first.log" >&2
+                warn "$1: \`$line\` failed (full log: $tmp/$1.first.log)"
+                return 1
+            fi
+            grep -m1 -E '^[a-z-]+: [0-9]+ ' "$tmp/$1.first.log" || true
+        done < <(local_test_lines "$1" first)
+    fi
     while IFS= read -r line; do [ -n "$line" ] && cmds+=("$line"); done < <(local_test_lines "$1" sbt)
     if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
         local selected=()

@@ -347,6 +347,7 @@ cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment
 basic sbt Test/compile
+identity first [ -z "${FIRST_FAILS:-}" ] || { echo "SLICE ANSWERS MISSING: uk-halstead lacks 2 answer(s)"; exit 1; }; echo first-check >> "$AREA_CALLS"
 identity sbt identity/test
 identity sbt worker/testOnly services.identity.*
 page sbt web/PageTest/test
@@ -391,6 +392,12 @@ basic_ran() { grep -cE '(\[|; )Test/compile(\]|;)' "$AREA_CALLS"; } # the basic 
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala)"
 check "an identity change runs the identity set in one sbt-warm call, and the basic set in the sbt check's run" "0 1 1 0 0" \
   "$code $(calls '\[identity/test\] \[worker/testOnly services.identity.\* -- -Didentity.population.candidates=[^]]*/population-walk\]') $(basic_ran) $(calls PageTest) $(calls playwright)"
+check "...its first line before the area's sbt lines" "first-check" "$(grep -E '^first-check$|\[identity/test\]' "$AREA_CALLS" | head -1 | cut -c1-11)"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala FIRST_FAILS=1)"
+check "a first line failing fails the area there, its output shown, no identity spec run" "1 1 0" \
+  "$code $(grep -q 'SLICE ANSWERS MISSING: uk-halstead lacks 2 answer(s)' "$testroot/area-out" && echo 1) $(calls identity/test)"
+code="$(area_push identity/src/main/scala/services/identity/Resolver.scala PREPUSH_IDENTITY_SHARD=2/3 IMPACT_LINES='identity services.identity.ResolverSpec\n')"
+check "...and runs once: shard 1's, never another shard's" "0 0" "$code $(calls first-check)"
 check "...and no longer asks whether identity-landing-check said LANDABLE" "0 0" \
   "$(grep -c 'LANDABLE' "$testroot/area-out") $(grep -c 'identity-landing-check' "$testroot/area-out")"
 walk_digest=abababababababababababababababababababababababababababababababab

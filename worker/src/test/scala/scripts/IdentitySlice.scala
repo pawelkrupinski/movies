@@ -881,12 +881,18 @@ object IdentitySlice {
 
   /** Each listing of a pinned slice and the film it takes now: what [[readExpected]] is held to. */
   def takesOf(dir: Path): Map[(String, String), String] = {
-    val slice     = readSlice(dir)
-    val replaying = new SliceHttp.Replaying(slice.http)
-    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed, tools.ProdState.none)
-    val decided   = decide(slice.core, slice.context, reads, slice.selector)
-    require(replaying.lacking.isEmpty, s"the slice $dir lacks answers: ${replaying.lacking.asScala.map(_.render).toSeq.sorted.take(5).mkString("; ")}")
+    val (slice, decided, replaying) = decidePinned(readSlice(dir))
+    require(replaying.lacking.isEmpty, s"the slice $dir lacks answers (every case's: scripts/identity-slice-coverage; " +
+      s"re-pinned: scripts/identity-slice-coverage --repin): ${replaying.lacking.asScala.map(_.render).toSeq.sorted.take(5).mkString("; ")}")
     slice.seeds.toSeq.flatMap(key => decided.agreed.decisionOf.get(key).map(d => (key.venue, key.rawTitle) -> filmOf(d))).toMap
+  }
+
+  /** A pinned slice decided from its own answers alone — or, with `widen`, what it lacks read from a recording and noted —
+   *  at the recording's moment, hermetic (no prod state): what [[takesOf]] and `IdentitySliceCoverage` replay. */
+  def decidePinned(slice: Slice, widen: Option[SliceHttp.Noting] = None): (Slice, Decided, SliceHttp.Replaying) = {
+    val replaying = new SliceHttp.Replaying(slice.http, widen)
+    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed, tools.ProdState.none)
+    (slice, decide(slice.core, slice.context, reads, slice.selector), replaying)
   }
 
   // ── faithfulness: a slice's take against the whole convergence leg's ────────────────────────

@@ -101,7 +101,10 @@ production depends on: **the state kept event by event ends where a whole resolv
 At each checkpoint every listing's film is compared with the whole resolve's (`IdentityResolver.resolve`, a fresh stage
 asked to its fixpoint, past every partial wait). A divergence names its checkpoint kind and class (`deploy: incremental-
 only take (whole BelowThreshold, incremental Agreed)`); `test/resources/fixtures/identity-drift-allow.tsv` lists the
-intended ones with their reasons (none today). Every hermetic leg's `takes` row runs it on the pinned pair
+intended ones with their reasons (none today). Each seed's SCENARIO -- what the harness drew: the arrangement and every
+fill draw (`IdentityDrift.Scenario`) -- is written as `scenario-<cc>.tsv` and its digest printed, so the differential gate
+can hold head and base to the same one (`scripts/ci/drift_scenario.py`; a mismatch is a harness error, never flips:
+docs/design/identity-no-drift.md, "The scenario guard"). Every hermetic leg's `takes` row runs it on the pinned pair
 (`scripts/ci/identity-drift-check.sh`) and fails on a divergence; production's live state gets the same comparison after
 each nightly recording, on CI (`scripts.IdentityLiveDrift` in `.github/workflows/identity-live-drift.yml`: the recording
 resolved whole against the films prod was screening as it was recorded, `kinowo_identity_drift_listings`, the
@@ -131,6 +134,27 @@ correction now waits, as a fill read blind does. Over all five countries, two se
 "Notre-Dame de Paris" (the 1956 Hunchback by a same-title join) and DE "Rose" (model takes flipping while a deploy's
 new questions were unanswered) did not reproduce as a settled divergence on the recording — the nightly production
 check is what watches them.
+
+## Answer coverage: every pinned slice holds what it asks
+
+A pinned slice answers only what it was cut with. A resolver, title-rule or shape change that makes a listing ask a new
+search -- a banner head, a proper-name search, the agreement's lookups for a listing it now leaves unmatched -- fails
+`IdentitySliceCasesSpec` with "lacks answers", for the first five requests of the first case only; Unmatched C's banner
+shapes turned main red twice that way (#2180: the Halstead, then the Keswick case), each found a push after the last.
+
+`scripts/identity-slice-coverage` (`scripts.IdentitySliceCoverage`) replays EVERY pinned slice -- the cases under
+`identity-slices/` and the drift slices under `drift-slices/<cc>/` -- at the checkout's code from its own answers alone,
+and names every request each asks that its fixture lacks, all at once (exit 1, with the line to run). `--repin` tops each
+lacking slice up from ITS OWN recording (the one in its `slice.json.gz`, fetched into the shared cache when absent):
+decided again with the recording behind it, every answer it lacked noted, its `http.jsonl.gz` rewritten -- round after
+round until it decides alone lacking nothing. Only the answers move: listings, context, filed answers and `expected.tsv`
+stay as pinned (`scripts/identity-slice-refresh` re-cuts a case whole when its listings must move too). After a re-pin,
+`IdentitySliceCasesSpec` says whether the takes still hold; commit the `http.jsonl.gz` files with the change.
+
+The pre-push hook's identity area runs it FIRST (`scripts/hooks/local-tests.txt`'s `identity first` line), ~30 s warm, ~2.5 min under load,
+before the area's specs: a missing answer refuses the push naming every slice and request, not main a case at a time. A
+drift slice is replayed by the whole decision here (its spec replays the incremental sequence, 12 seeds, and reads a
+miss as unknown, saying so): a miss only the incremental sequence meets is `--emit-drift-slice`'s cut to close.
 
 ## A red seed becomes a slice
 

@@ -2,8 +2,10 @@
 # tests on every push to main, plus an AREA's own tests when the push touches it and they run in under 15 min on the
 # laptop; main's CI tests everything after the merge. This file is their one definition.
 # Lines: `<set> sbt <command>` (a set's sbt lines go to sbt in order: the basic ones inside the `sbt` check's run, an
-# area's in one scripts/sbt-warm call) or `<set> sh <command>` (run by bash from the checkout's root, after the set's
-# sbt lines). Blank and # lines are skipped. Sets:
+# area's in one scripts/sbt-warm call), `<set> sh <command>` (run by bash from the checkout's root, after the set's
+# sbt lines) or `<set> first <command>` (an area's: run by bash from the checkout's root BEFORE its sbt lines and their
+# test-impact selection; a failure fails the area there, its output shown, nothing else run). Blank and # lines are
+# skipped. Sets:
 #   basic     rides the hook's `sbt` check, whenever that runs. Deterministic, self-contained, seconds to a few minutes
 #             warm: compiles, checked-in/generated artefacts, CI/deploy wiring. Nothing needing Mongo or the network;
 #             the deploy specs needing the movies-gitops manifests stay out (the `sbt` check's lint plan runs them once
@@ -30,6 +32,10 @@ fast sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectio
 # scripts.* spec of every module plus the hard-cluster ratchet (Main's `test (worker-identity)` / `(heavy1)` / `(heavy2)`
 # identity parts; 651 tests, ~4 min). ~5 min warm, measured 2026-10-26 under a load of 17-130. NOT here (main's CI):
 # HardClusterConvergenceIntegrationSpec (IntegrationTest, Mongo), the convergence suite, the takes measure.
+# first, SLICE ANSWER COVERAGE (scripts/identity-slice-coverage, ~30 s warm, ~2.5 min under load): every pinned slice case and drift slice
+# replayed at the change's code, and every request one asks that its fixture lacks named at once, with the --repin line
+# -- not IdentitySliceCasesSpec's first "lacks answers" of one case, a push at a time (main #2180: Halstead, Keswick).
+identity first scripts/identity-slice-coverage
 identity sbt identity/test
 identity sbt testOnly services.identity.* services.titlerules.* scripts.* tools.HardClusterRatchetSpec
 # page: the Scala page specs over real Chrome (405 tests, ~2.7 min), then CI's Playwright rows -- Chromium phones,

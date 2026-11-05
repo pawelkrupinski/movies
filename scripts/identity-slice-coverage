@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# SLICE ANSWER COVERAGE: every pinned slice -- the identity slice cases (test/resources/fixtures/identity-slices/,
+# IdentitySliceCasesSpec) and the drift slices (test/resources/fixtures/drift-slices/<cc>/, IdentityDriftSlicesSpec) --
+# decided again at this checkout's code from its own answers alone, and EVERY request one asks that its fixture lacks
+# named, all slices at once (scripts.IdentitySliceCoverage). A resolver, title-rule or shape change asking a new search
+# otherwise fails IdentitySliceCasesSpec with "lacks answers", one case and five requests at a time: Unmatched C turned
+# main red twice that way (#2180, the Halstead and Keswick cases).
+#
+#   scripts/identity-slice-coverage [--repin] [SLICE_DIR...]
+#
+#   (none)    the check: exit 0 when every slice holds every answer it asks, 1 naming each slice and request it lacks
+#             (and the --repin line), 2 when it could not run (a compile failure: sbt's log tail shown)
+#   --repin   each lacking slice topped up from ITS OWN recording (the one it was cut from): its http.jsonl.gz gains the
+#             answers it asks, round after round until it decides alone lacking nothing; listings, filed answers and
+#             expected.tsv stay as pinned. A recording not in the shared cache is downloaded first (a plain run id; a
+#             recording with fills is named for scripts/identity-fetch-recording.sh --fills). Commit the http.jsonl.gz.
+#   SLICE_DIR a slice directory or a root holding them (default both fixture roots)
+#
+# Runs in this checkout's warm sbt (scripts/sbt-warm; IDENTITY_SLICE_COVERAGE_SBT names another, for its test): ~30 s
+# over the ~110 slices once compiled (~2.5 min on a loaded laptop). The pre-push hook's identity area runs it before the area's specs
+# (scripts/hooks/local-tests.txt's `identity first` line), so every missing answer is named before a push, not by main.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/tool-conventions.sh" # usage_from_header, usage_error
+repo="$(cd "$here/.." && pwd)"
+sbt=${IDENTITY_SLICE_COVERAGE_SBT:-$here/sbt-warm}
+repin=0
+slices=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --repin) repin=1 ;;
+    -h|--help) usage_from_header; exit 0 ;;
+    -*) usage_error "identity-slice-coverage: unknown option $1" ;;
+    *) case $1 in /*) slices+=(--slices "${1%/}") ;; *) slices+=(--slices "$PWD/${1%/}") ;; esac ;;
+  esac
+  shift
+done
+# absolute: sbt's forked run starts in worker/
+[ "${#slices[@]}" -gt 0 ] || slices=(--slices "$repo/test/resources/fixtures/identity-slices" --slices "$repo/test/resources/fixtures/drift-slices")
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+say() { echo "identity-slice-coverage: $*" >&2; }
+
+# <args...>: the tool in the checkout's sbt; its own lines in $work/report, sbt's in $work/sbt.log. 0, 1, or 2 (it did not run)
+coverage() {
+  local rc=0
+  : > "$work/report"
+  (cd "$repo" && "$sbt" "worker/Test/runMain scripts.IdentitySliceCoverage ${slices[*]} --report $work/report $*") > "$work/sbt.log" 2>&1 || rc=$?
+  # the tool's first line is its tally: none means it never ran (a compile failure, sbt itself)
+  if ! grep -q '^identity-slice-coverage: [0-9]* slice(s) replayed' "$work/report"; then
+    tail -40 "$work/sbt.log" >&2
+    say "the coverage did not run (sbt exit $rc) -- no verdict"
+    return 2
+  fi
+  # the checkout's paths as the fixtures name them
+  sed "s|$repo/||g" "$work/report"
+  [ "$rc" = 0 ] || return 1
+}
+
+if [ "$repin" = 0 ]; then
+  rc=0; coverage || rc=$?
+  exit "$rc"
+fi
+
+# --repin: which recordings the lacking slices were cut from, each laid out in the shared cache, then the top-up
+rc=0; coverage --needs "$work/needs" > /dev/null || rc=$?
+[ "$rc" != 2 ] || exit 2
+[ "$rc" = 1 ] || { sed "s|$repo/||g" "$work/report"; say "nothing to re-pin"; exit 0; }
+if [ -s "$work/needs" ]; then
+  # shellcheck source=scripts/identity-tools.sh
+  . "$here/identity-tools.sh"
+  while IFS=$'\t' read -r key cc; do
+    [ -n "$key" ] || continue
+    if identity_recording_cached "$key" "$cc" > /dev/null 2>&1; then continue; fi
+    case $key in
+      *[!0-9]*) say "recording $key ($cc) is not in $IDENTITY_CACHE/recordings and carries fills: fetch it with" \
+                    "scripts/identity-fetch-recording.sh --fills <its fill assets> <run> $IDENTITY_CACHE/recordings/$key $cc" ;;
+      *) identity_recording "$key" "$cc" > /dev/null || say "could not download recording $key ($cc)" ;;
+    esac
+  done < "$work/needs"
+fi
+rc=0; coverage --repin --recordings "$KINOWO_IDENTITY_CACHE/recordings" || rc=$?
+exit "$rc"
