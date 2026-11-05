@@ -67,6 +67,84 @@ class TrackedLookupsSpec extends AnyFlatSpec with Matchers {
     lookups.candidates(query) shouldBe Answer.Known(Seq(Hit(9, "Film 1", None, Some(2026), 5)))
   }
 
+  // A take-up resolves its regions side by side (IncrementalResolver's `takeUpThreads`), and two regions may ask one
+  // question at once. Each ask was its own: the second's `reads.asking` forgot the keys the first had read so far, so a
+  // change to one woke neither, and the store was asked twice. Now the second waits for the first's answer.
+  "two regions asking one question at once" should "make one ask, and get its one answer, every read filed under it" in {
+    val reads   = new ObservationReads
+    val entered = new java.util.concurrent.CountDownLatch(1)
+    val release = new java.util.concurrent.CountDownLatch(1)
+    val query   = queries.head
+    val store   = new Store(reads) {
+      private val asks = new java.util.concurrent.atomic.AtomicInteger()
+      override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = {
+        reads.read("early:" + q.sortKey)                       // read before the other region's ask began
+        if (asks.incrementAndGet() == 1) { entered.countDown(); release.await() }
+        super.candidates(q)
+      }
+    }
+    store.answers = Map(query -> Seq(Hit(7, "Film 1", None, Some(2026), 3)))
+    val lookups = new TrackedLookups(store, reads, Some(pool()))
+    val regions = Executors.newFixedThreadPool(2)
+    try {
+      val first = regions.submit(() => lookups.candidates(query))
+      entered.await()
+      val asker  = new java.util.concurrent.atomic.AtomicReference[Thread]()
+      val second = regions.submit(() => { asker.set(Thread.currentThread); lookups.candidates(query) })
+      // the second region is either asking the store too, or waiting on the first's ask
+      TrackedLookupsSpec.until(store.askedOn.size == 2 ||
+        Option(asker.get).exists(_.getState == Thread.State.WAITING) || second.isDone)
+      release.countDown()
+      Seq(first.get, second.get) shouldBe Seq.fill(2)(Answer.Known(store.answers(query)))
+      store.askedOn.size shouldBe 1
+      reads.changedBy(Seq("early:" + query.sortKey)).queries shouldBe Set(query)
+      reads.changedBy(Seq("q:" + query.sortKey)).queries shouldBe Set(query)
+    } finally { release.countDown(); val _ = regions.shutdownNow() }
+  }
+
+  "one region's prefetch" should "never drop what another region's prefetch fetched for its own asks" in {
+    val reads   = new ObservationReads
+    val store   = new Store(reads)
+    val lookups = new TrackedLookups(store, reads, Some(pool()))
+    val (mine, theirs) = (queries.take(3), queries.slice(3, 6))
+    lookups.prefetch(mine, Nil, Nil)
+    val other = Executors.newSingleThreadExecutor()
+    try other.submit(TrackedLookupsSpec.task(lookups.prefetch(theirs, Nil, Nil))).get() finally { val _ = other.shutdownNow() }
+    mine.foreach(lookups.candidates)
+    store.askedOn.asScala.map(_._1).toSeq.sortBy(_.sortKey) shouldBe (mine ++ theirs).sortBy(_.sortKey)   // each once
+  }
+
+  // The store a prefetch reads holds its documents until `prefetchAnswered` (`StoredTmdbLookups`); a second region's
+  // prefetch released them under the first's asks (the `held.clear` NPE of the 2026-09-30 parallel-regions experiment).
+  it should "hand the store one prefetch at a time" in {
+    val reads   = new ObservationReads
+    val inside  = new java.util.concurrent.atomic.AtomicInteger()
+    val most    = new java.util.concurrent.atomic.AtomicInteger()
+    val entered = new java.util.concurrent.CountDownLatch(1)
+    val release = new java.util.concurrent.CountDownLatch(1)
+    val calls   = new java.util.concurrent.atomic.AtomicInteger()
+    val store   = new Store(reads) {
+      override def prefetch(q: Iterable[CandidateQuery], f: Iterable[Int], d: Iterable[Listing]): Unit = {
+        most.accumulateAndGet(inside.incrementAndGet(), math.max)
+        if (calls.incrementAndGet() == 1) { entered.countDown(); release.await() }
+      }
+      override def prefetchAnswered(): Unit = { val _ = inside.decrementAndGet() }
+    }
+    val lookups = new TrackedLookups(store, reads, Some(pool()))
+    val regions = Executors.newFixedThreadPool(2)
+    try {
+      val first = regions.submit(TrackedLookupsSpec.task(lookups.prefetch(queries.take(2), Nil, Nil)))
+      entered.await()
+      val asker  = new java.util.concurrent.atomic.AtomicReference[Thread]()
+      val second = regions.submit(TrackedLookupsSpec.task { asker.set(Thread.currentThread); lookups.prefetch(queries.slice(2, 4), Nil, Nil) })
+      TrackedLookupsSpec.until(calls.get == 2 || Option(asker.get).exists(_.getState == Thread.State.BLOCKED) || second.isDone)
+      release.countDown()
+      first.get(); second.get()
+      most.get shouldBe 1
+      calls.get shouldBe 2
+    } finally { release.countDown(); val _ = regions.shutdownNow() }
+  }
+
   // A take-up's "reads: N prefetched in Xs" said nothing of WHICH reads: a UK restore spent 8-10 s
   // there with no way to tell detail pages from TMDB queries or film records. Each read phase asks
   // one kind, so each kind's count and time can be named.
@@ -99,5 +177,18 @@ class TrackedLookupsSpec extends AnyFlatSpec with Matchers {
     lookups.releaseDay(7) shouldBe Answer.Known(Some(day))
     lookups.releaseDay(8) shouldBe Answer.Unknown
     lookups.numbersFilmsByTmdbId shouldBe false
+  }
+}
+
+object TrackedLookupsSpec {
+  /** `body` as a task an executor runs. */
+  def task(body: => Unit): java.util.concurrent.Callable[Unit] = () => body
+
+  /** Wait until `condition` holds -- a state another thread reaches, never a time -- failing past a bound no healthy run
+   *  nears (a hang would otherwise hold the suite forever). */
+  def until(condition: => Boolean): Unit = {
+    var polls = 0
+    while (!condition && polls < 200000) { java.util.concurrent.locks.LockSupport.parkNanos(50000L); polls += 1 }
+    assert(condition, "the other thread never reached the state waited for")
   }
 }
