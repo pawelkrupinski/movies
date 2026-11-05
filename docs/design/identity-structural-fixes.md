@@ -106,6 +106,13 @@ up on: no distance, no veto), `Broadcast.take` (productions given up on: none), 
 up on names nothing, still asked), `VenueListings.listed` (a programme given up on names nothing);
 `StoredTmdbLookups.releaseDay` passes a `Failed` record on as `Failed`.
 
+**4c's sites** (stickiness audit G5's stage half): the settle rule's collapse is now typed. `AgreementStage.settled`
+returns `Failed` (not `Known(absent)`) for a question attempted and not answered, `Agreement.tmdbFound` likewise for a
+find; the readers decide on it through `failedAs` (`AgreementCandidates.posterRead`, `Catalogue.takenOn`,
+`AgreementTakes.filledTake` / `taken`) or read it as none already (`AgreementCorrections`' posters and its families'
+TMDB ids, by `toOption`). `settled` is the one place an answer still inside its retries is decided on as if given up;
+fix 1 deletes it. 0 moved: each reader reads `Failed` as it read `Known(absent)`.
+
 **Measured by:** no take moves (what-if `--verify` on every country; a CI identity-measure with right->wrong 0 and
 0 moved; drift clean) except at a site classified (c), whose moves are listed, judged and tested failing-first.
 `IncrementalWholeEquivalenceSpec`, `LateInputEquivalenceSpec` and `ScopedProjectionEquivalenceSpec` stay green.

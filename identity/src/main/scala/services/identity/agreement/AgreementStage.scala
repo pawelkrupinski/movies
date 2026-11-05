@@ -965,11 +965,14 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     case _                                 => attempted(gap)
   }
 
-  /** `answer` to `question`, or — not answered though attempted (it failed, or came to nothing durable) — `absent`: no
-   *  evidence, the take decided without it (the settle rule, docs/design/identity-questions.md step 4). The caller notes
-   *  the question asked all the same, so it is asked on every pass and read again once answered. */
-  private[agreement] def settled[A](question: Question, answer: Answer[A], absent: => A): Answer[A] =
-    if (answer == Answer.Unknown && attempted(question)) Answer.Known(absent) else answer
+  /** `answer` to `question`, or — not answered though attempted (it failed, or came to nothing durable) — `Failed`: read
+   *  as no evidence where it is decided on ([[Answer.failedAs]]), the take decided without it (the settle rule,
+   *  docs/design/identity-questions.md step 4). THE one place an answer not given yet is decided on as if given up: an
+   *  attempt still inside its retries is read as Failed too (docs/design/identity-structural-fixes.md, fix 4; fix 1
+   *  removes it). The caller notes the question asked all the same, so it is asked on every pass and read again once
+   *  answered. */
+  private[agreement] def settled[A](question: Question, answer: Answer[A]): Answer[A] =
+    if (answer == Answer.Unknown && attempted(question)) Answer.Failed else answer
 
   /** The questions a settled verdict's families never answered ([[settles]]): its receipt's unanswered entries
    *  ([[Dependency.Unanswered]]) — read off the verdict found by its listings, never kept by a key, so a restart's
@@ -1006,7 +1009,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   }
 
   /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
-   *  not answered yet, the IMDb id then noted in `finding`. */
+   *  not answered yet, the IMDb id then noted in `finding`; `Failed` once it was attempted and not answered
+   *  ([[Agreement.tmdbFound]]), which a reader decides on as naming none ([[Answer.failedAs]]). */
   private[agreement] def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String], finding: mutable.Set[Question]): Answer[Option[Int]] =
     tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None)) { id =>
       findsReading.add(AgreementStage.FindPrefix + id)

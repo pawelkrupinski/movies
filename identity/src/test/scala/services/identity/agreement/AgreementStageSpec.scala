@@ -247,6 +247,21 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     byCast(decided(stated.copy(directors = Seq("Maciej Kawalski")), known)) shouldBe false
   }
 
+  "the settle rule" should "type a question attempted and not answered as Failed, decided on as no evidence, never Known" in {
+    // docs/design/identity-structural-fixes.md fix 4c: the one collapse of a not-yet-answered question is typed, so a
+    // reader decides on it only through Answer.failedAs
+    val poster = Question.Poster(AgreementStage.PosterQuestion.Venue("https://example.org/p.jpg"))
+    def stage(tried: Boolean) = new AgreementStage(Map.empty, NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = _ => Answer.Unknown, new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, attempted = _ => tried)
+    stage(tried = true).settled(poster, Answer.Unknown) shouldBe Answer.Failed
+    stage(tried = false).settled(poster, Answer.Unknown) shouldBe Answer.Unknown
+    stage(tried = true).settled(poster, Answer.Known(1)) shouldBe Answer.Known(1)
+    val finding = scala.collection.mutable.Set.empty[Question]
+    Agreement.tmdbFound(_ => Answer.Unknown, "tt1", finding, _ => true) shouldBe Answer.Failed
+    Agreement.tmdbFound(_ => Answer.Unknown, "tt1", finding, _ => false) shouldBe Answer.Unknown
+    finding shouldBe Set(Question.Find("tt1"))
+  }
+
   "an unmatched cluster its families agree on" should "take the TMDB film the agreed IMDb id finds, and name the families" in {
     val stage = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)

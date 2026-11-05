@@ -67,11 +67,12 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   private[agreement] def waitsOn(film: Int): Boolean = !attempted(Question.Record(film))
 
   /** `answer`, `hashes`' to the poster `question`, the question noted in `asked` while it is `Unknown` or stale: a stale
-   *  answer is read, and asked again; one attempted and not answered is read as `absent` ([[settled]]). */
+   *  answer is read, and asked again; one attempted and not answered is read as `absent` ([[settled]], then
+   *  [[Answer.failedAs]]). */
   private[agreement] def posterRead[A](question: AgreementStage.PosterQuestion, answer: Answer[A], absent: => A, hashes: PosterAnswers,
                             asked: mutable.Set[Question]): Answer[A] = {
     if (answer == Answer.Unknown || !hashes.fresh(question)) asked += Question.Poster(question)
-    settled(Question.Poster(question), answer, absent)
+    settled(Question.Poster(question), answer).failedAs(absent)
   }
 
   /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to each of its

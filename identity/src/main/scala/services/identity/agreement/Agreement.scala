@@ -352,9 +352,10 @@ object Agreement {
     val answer = tmdbOf(tt)
     if (answer != Answer.Unknown) answer
     else {
-      // asked every pass; once attempted and not answered, read as TMDB holding none: the take decided without it
+      // asked every pass; once attempted and not answered, Failed: read as TMDB holding none where it is decided on
+      // (Answer.failedAs), the take decided without it
       finding += Question.Find(tt)
-      if (attempted(Question.Find(tt))) Answer.Known(None) else answer
+      if (attempted(Question.Find(tt))) Answer.Failed else answer
     }
   }
 

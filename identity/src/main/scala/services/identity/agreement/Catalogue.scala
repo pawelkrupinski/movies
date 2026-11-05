@@ -100,7 +100,7 @@ object Catalogue {
     // TMDB's own find of the IMDb id first: Wikidata's TMDB id can name a record TMDB since deleted or merged (DE
     // "Dann passiert das Leben": P4947 1517080, gone; TMDB finds its IMDb id as 1445025)
     val tmdb: Answer[Option[Int]] = imdb match {
-      case Some(tt) => Agreement.tmdbFound(tmdbOf, tt, finding, attempted)
+      case Some(tt) => Agreement.tmdbFound(tmdbOf, tt, finding, attempted).failedAs(None)
       case None     => Answer.Known(film.tmdb.orElse(facts.crossIds.get("tmdb").flatMap(_.toIntOption)))
     }
     tmdb.map {
