@@ -3735,7 +3735,7 @@
     {
       "id": 61,
       "title": "Identity agreement — answers by outcome",
-      "description": "`kinowo_worker_identity_agreement_answers_total{family,outcome}` per hour: questions asked — `answered`; `nothing` (a refused query or a missing page, filed as no film); `fresh` (an answer already filed, skipped); `deferred` (the host's breaker open: the attempt given back); `failed` (asked again on the queue's backoff). Failed or deferred climbing for one family is that site throttling or down; the others go on.",
+      "description": "`kinowo_worker_identity_agreement_answers_total{family,outcome}` per hour: questions asked — `answered`; `nothing` (a refused query or a missing page, filed as no film); `fresh` (an answer already filed, skipped); `deferred` (the host's breaker open or its pace turned it away: remembered as a failed attempt); `failed` (asked again on the queue's backoff). Failed or deferred climbing for one family is that site throttling or down; the others go on.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -4732,6 +4732,69 @@
           "refId": "B",
           "expr": "sum by (country) (increase(kinowo_worker_identity_agreement_validated_total{country=~\"$country\", result=\"drifted\"}[1h]))",
           "legendFormat": "{{country}} drifted /h"
+        }
+      ]
+    },
+    {
+      "id": 84,
+      "title": "Identity inline asks — p50 / p90 seconds per hour, by family: waiting for the pool vs asking",
+      "description": "`kinowo_worker_identity_agreement_inline_ask_seconds{family,part}`: each inline ask of a new cluster's families (`InlineFamilyAsks`), in two parts: `queued` (waiting for the 16-thread inline pool) and `asking` (the host's pace, the wire and its retries, the filing). The stage waits 5 s for them (`AgreementStage.AskNowWithin`); an answer filed later is what sets off the answer projection that undoes a published loss (docs/design/identity-no-drift.md, \"Losses awaiting answers\"). Queued dominating is the pool's backlog; asking dominating is the host.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 461
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (family, part, le) (rate(kinowo_worker_identity_agreement_inline_ask_seconds_bucket{country=~\"$country\"}[1h])))",
+          "legendFormat": "{{family}} {{part}} p50"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "histogram_quantile(0.9, sum by (family, part, le) (rate(kinowo_worker_identity_agreement_inline_ask_seconds_bucket{country=~\"$country\"}[1h])))",
+          "legendFormat": "{{family}} {{part}} p90"
         }
       ]
     }
