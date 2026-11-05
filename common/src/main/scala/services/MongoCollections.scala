@@ -136,6 +136,16 @@ object MongoCollections {
         "corpus lacks.")
       .record
       .resolveInput(SliceKey),
+    RegisteredCollection("tmdb_people", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
+      .mirror("Backs no page: the resolver's stored TMDB people (the films each directed and wrote), which MirrorRecompute reads so a recompute " +
+        "over the mirror decides as prod's model does.")
+      .record
+      .resolveInput(SliceKey),
+    RegisteredCollection("tmdb_queries", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
+      .mirror("Backs no page: the resolver's stored TMDB searches (title and person searches, finds, IMDb suggestions), which MirrorRecompute reads so a recompute " +
+        "over the mirror decides as prod's model does.")
+      .record
+      .resolveInput(SliceKey),
     RegisteredCollection("identity_family_answers", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
       .mirror("Review pages: what the other film databases answered, and each candidate's TMDB poster paths " +
         "filed beside the hashes (13 MB over the five countries, 2026-10-08).")
@@ -206,12 +216,6 @@ object MongoCollections {
       .resolveState("the projection's venue slots, a cache keyed by the venue-slot version and the slot's inputs (VenueSlotMemo)"),
     RegisteredCollection("identity_film_ids", Corpus, KeptForever("a film's id must never be reused, so its counter row outlives the film"), Set(Worker))
       .resolveState("film ids name a film only: neither rules closure reaches the code handing them out (no-drift item 5)"),
-    RegisteredCollection("tmdb_people", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
-      .record
-      .resolveInput(SliceKey),
-    RegisteredCollection("tmdb_queries", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
-      .record
-      .resolveInput(SliceKey),
     RegisteredCollection("identity_question_markers", Corpus, Sweep("TmdbStoreSweep"), Set(Worker))
       .record
       .resolveInput("the question memory: a verdict's receipt names each attempt it settled on (`tried|...`), and an " +

@@ -14,6 +14,8 @@
     { "name": "identity_retained", "why": "Backs no page: the listings the identity model keeps for their facts alone (ListingRetention) -- no venue bills them, a present listing bills their title -- which its take-up resumes and every convergence row reads." },
     { "name": "venue_pages", "why": "Review pages: each listing's own film page at its venue." },
     { "name": "tmdb_films", "why": "Review pages: the resolver's own TMDB record of each candidate film, for the candidates the corpus lacks." },
+    { "name": "tmdb_people", "why": "Backs no page: the resolver's stored TMDB people (the films each directed and wrote), which MirrorRecompute reads so a recompute over the mirror decides as prod's model does." },
+    { "name": "tmdb_queries", "why": "Backs no page: the resolver's stored TMDB searches (title and person searches, finds, IMDb suggestions), which MirrorRecompute reads so a recompute over the mirror decides as prod's model does." },
     { "name": "identity_family_answers", "why": "Review pages: what the other film databases answered, and each candidate's TMDB poster paths filed beside the hashes (13 MB over the five countries, 2026-10-08)." },
     { "name": "identity_traces", "why": "Review pages: each listing's trace (the evidence for and against the film it weighed, every rule's refusal), read when a card's Why fold-out opens." },
     { "name": "identity_agreements", "why": "Backs no page: the agreement stage's stored verdicts (the film each cluster's families agreed on, or a fill rule took). Prod state no recording holds, which `scripts/identity-slice --prod-mirror` reads so a slice decides, and explains, as prod's stage does." },
