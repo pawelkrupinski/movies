@@ -215,6 +215,30 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     } shouldBe empty
   }
 
+  // The worker's take-up (`restore`, the boot's first projection) resolves its regions side by side
+  // (`takeUpThreads`): from an empty store, and from one whose families half stand, it decides what one thread does.
+  it should "take up a corpus the same when the take-up's regions are resolved side by side" in {
+    IndependentCases.flatMap(Seeds) { seed =>
+      val corpus  = GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)
+      val stored  = new InMemoryIdentityModelStore
+      new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stored, regionBatch = 3)
+        .batch(seen = corpus.listings.take(corpus.listings.size / 2))
+      Seq("empty store" -> (() => new InMemoryIdentityModelStore), "half stood" -> (() => {
+        val copy = new InMemoryIdentityModelStore
+        copy.replace(Set.empty, stored.families()); stored.rulesVersion.foreach(copy.recordRulesVersion); copy
+      })).flatMap { case (label, store) =>
+        def takeUp(threads: Int) = {
+          val model = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None,
+            store = store(), regionBatch = 3, takeUpThreads = threads)
+          model.restore(corpus.listings)
+          model
+        }
+        val (alone, beside) = (takeUp(1), takeUp(4))
+        Option.when(ResolutionSignature.of(beside) != ResolutionSignature.of(alone) || beside.familyOf != alone.familyOf)(s"seed $seed, $label")
+      }
+    } shouldBe empty
+  }
+
   it should "count as large the families over its own region, as the model bounds one" in {
     val corpus = GeneratedIdentityCorpus.generate(7L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = 1)

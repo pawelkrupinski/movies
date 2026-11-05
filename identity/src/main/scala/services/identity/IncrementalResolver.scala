@@ -36,7 +36,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
                                 regionBatch: Int = IncrementalResolver.RegionBatch,
                                 mutation: IncrementalResolver.Mutation = IncrementalResolver.Mutation.None,
                                 traces: IdentityTraceSink = IdentityTraceSink.Discard,
-                                regionThreads: Int = 1) {
+                                regionThreads: Int = 1,
+                                takeUpThreads: Int = 1) {
   import IdentityResolver.RegionFamily
   import IncrementalResolver.Mutation
 
@@ -110,7 +111,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
    *  corpus facts read the same (its slice's digest) stands as it was; every other listing — one
    *  whose family changed while the model was not running, or that no stored family holds — is
    *  resolved anew, a title-key component at a time. What moved while it was down is exactly what
-   *  those checks find, so a restart needs no replay of what it missed. */
+   *  those checks find, so a restart needs no replay of what it missed. Its regions are resolved `takeUpThreads` side by
+   *  side: a take-up is the worker's boot, and every listing no family stands for is resolved in it. */
   def restore(taken: Seq[Listing]): Unit = {
     val listings = IncrementalResolver.onePerKey(taken)
     listings.foreach(hold)
@@ -134,7 +136,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     // compared and kept rather than deleted and written again (all ~165k US traces, every boot after
     // a rules change, when they were dropped first). In a `finally`, so a failed resolve still drops them.
     val dropped = outruled ++ fallen.map(_.id)
-    try update(Set.empty, byKey.collect { case (key, k) if k.listing != null && k.family < 0 => key }.toSet, CorpusContext.Changed.None)
+    try update(Set.empty, byKey.collect { case (key, k) if k.listing != null && k.family < 0 => key }.toSet, CorpusContext.Changed.None,
+      threads = takeUpThreads)
     finally {
       val gone = dropped -- families.valuesIterator.map(_.storeId)
       store.replace(gone, Nil)
@@ -194,7 +197,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
    *  and comparing families' context slices. */
   def timings: IncrementalResolver.Timings = clock
 
-  private def update(touched: Set[Int], arrived: Set[ListingKey], moved: CorpusContext.Changed): Unit = {
+  private def update(touched: Set[Int], arrived: Set[ListingKey], moved: CorpusContext.Changed, threads: Int = regionThreads): Unit = {
     val context: CorpusContext = corpus
     // A family reading none of the keys the event moved reads what it read before; one that does
     // is stale only if the values it reads changed.
@@ -217,10 +220,10 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     while (units.nonEmpty) {
       val next = mutable.ArrayBuffer.empty[Set[ListingKey]]
       // A round's regions read the context, the lookups and the listings held, none of which the round's own results
-      // move (they are folded in below, in batch order): resolved side by side on `regionThreads`, each region is what
-      // it would be resolved alone, and the fold is the same.
+      // move (they are folded in below, in batch order): resolved side by side on `threads` (`regionThreads`, or a
+      // take-up's `takeUpThreads`), each region is what it would be resolved alone, and the fold is the same.
       val regions = IncrementalResolver.pack(units, regionBatch).map(batch => batch.toSeq.flatMap(heldListing)).filter(_.nonEmpty)
-      val resolved = IncrementalResolver.inOrder(regions, regionThreads)(listings =>
+      val resolved = IncrementalResolver.inOrder(regions, threads)(listings =>
         clock.resolves(listings.size)(IdentityResolver.resolveRegion(listings, lookups, normalizer, calibration, pins, decorations, context)))
       resolved.foreach { result =>
         reResolved += result.size

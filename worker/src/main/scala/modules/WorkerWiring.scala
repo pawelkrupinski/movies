@@ -183,7 +183,7 @@ class WorkerWiring(
         tracked = Some(lookupsNow)
         inputs.incremental(lookupsNow, titleNormalizer,
           store = mongoConnection.database.fold[IdentityModelStore](new InMemoryIdentityModelStore)(new MongoIdentityModelStore(_)),
-          code = IdentityRules.codeVersion, traces = identityTraces)
+          code = IdentityRules.codeVersion, traces = identityTraces, takeUpThreads = WorkerWiring.IdentityTakeUpThreads)
       },
       reads      = identityReads,
       archive    = () => Listing.distinct(Listing.all(identityListingIntake.identities(liveCinemas), titleNormalizer)),
@@ -625,6 +625,12 @@ object WorkerWiring {
   /** How long the identity model lets events gather before one drain takes them together: a venue
    *  scraped twice, or a family several venues touch, in that window is resolved once. */
   val IdentityModelSettle: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "seconds")
+  /** How many of a take-up's regions the model resolves side by side (`IncrementalResolver.restore`): the boot's first
+   *  projection, whose regions read the corpus context the take-up built and ask almost nothing (DE: 62 asks over 48 s of
+   *  regions), so they are CPU-bound -- serial, 45-57 s of a convergence boot. At most four: each region in flight holds
+   *  its own working set. The same decisions however many (IncrementalResolverSpec); every later drain's regions stay
+   *  one at a time. */
+  val IdentityTakeUpThreads: Int = math.min(4, math.max(1, Runtime.getRuntime.availableProcessors))
   /** Questions the model's prefetch keeps in flight: 64 fill a coalesced read's batch about eight
    *  times as full as the eight platform threads that each held a connection. */
   val IdentityPrefetchThreads = 64
