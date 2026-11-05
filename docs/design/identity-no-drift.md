@@ -515,6 +515,88 @@ whole corpus's value, lookups, the year). A run walks again only a family whose 
 slices a first run walks 50 families (66 flips, Buddies, Durham, Oxide Ghosts and Titans among them) and a second walks
 none. Not in the closure yet: a family answer only a sub-population asks, which no settle of the whole family reads.
 
+## Held takes (proposal, 2026-11-05; not implemented -- the owner decides)
+
+The approach change of 2026-11-05, item 1: a take a population-dependent rule decides is HELD, Pending, until the
+population it read has settled; flips are fixed as a class this way, not a listing at a time by a new rule. Why: the
+rule registry (`RuleContract`, 4d9ad4ba61de) declares 71 of 131 rule ids kind (iii) and no accepting rule but `pin`
+(i) or (ii); in prod's last 7 days every take change outside a deploy (1,567 of 1,567) was decided by a kind (iii)
+rule (`accept:joined` 685, `pooled:no-film` 348, `pooled:unnamed` 170). The resolver is population-dependent almost
+everywhere, so per-listing fixes reshuffle flips (the Titans / Hen / Dracula chains of 11-01..11-04).
+
+### What "settled" means
+
+A pure function of inputs and the clock, so incremental == whole still holds (the principle above):
+
+- **The population a family read**: the listings its `FamilyIndex` entry's context reads draw on (record venue titles,
+  houses, segment spreads, title groups, reached sets, rankings: `readersOf` inverted to the listings behind each read),
+  plus its own members and its block-key holders.
+- **Settled at t** when none of those listings first arrived or left within `(t - T, t]` -- the population has been
+  quiet for T -- and every answer the take reads is answered (the existing Pending model, `ResolverDecision.awaits`).
+  A listing's first-seen and leaving times are inputs (`ListingRetention` keeps a leaving listing's days already); the
+  clock is an input as the year is. NOT a count of projections: that depends on the tick cadence, not the inputs.
+- **Held**: a take whose deciding rule (`DecidedBy.of`) is kind (iii) or undeclared, while its family is unsettled, is
+  `TakeOutcome.Pending(Population(since))`. A take a kind (i) or (ii) rule decides is never held: it cannot go back.
+- **Bound**: a family is held at most H (proposed 24 h) from its oldest unsettled arrival; past H it is decided as it
+  stands and named (`held-expired`, a metric and the drift report). Families that never go quiet -- an event billed at
+  100+ venues arriving over weeks, a scraper whose listings flap -- otherwise stay Pending forever.
+
+### Why it removes the flip class -- and where it does not
+
+`TakeFlips.Flip.reasons` drops every step served Pending before it looks for A -> B -> A
+(`takes.map(_.served).filterNot(_.pending)`), `PopulationMonotonicity.returns` skips `None`, and
+`FamilyConvergence.flipOf` reads a Pending take as no take. So Pending -> film -> Pending is no flip, nor is
+film -> (Pending, other film) -> film. A held take decided only at settled moments flips only if two SETTLED populations
+in a row disagree and a third agrees with the first: an intermediate population that lasted T or longer.
+
+- In prod, that is the timing of real arrivals: of 407 non-deploy reversals in the last 7 days, the intermediate take
+  stood < 15 min in 45 %, < 1 h in 71 %, < 2 h in 74 %, < 4 h in 85 %, < 24 h in 91 % (p50 51 min, p90 13.8 h).
+- **In a time-free check it removes nothing.** The per-family lattice (`FamilyConvergence`) and the seeded drift
+  replay give no time between arrivals. With a quiet-T hold, any sub-population can last T (the timeline may pause
+  there), so a lattice walk that respects the hold sees every flip it sees today; a replay whose clock never moves
+  holds every family to its end and sees none (vacuous). The gate must carry time: the replay advances the clock by
+  the recording's own first-seen gaps (or a gap distribution drawn from prod), and its end state is compared at a clock
+  past every hold. Without that, the hold only relabels flips as Pending.
+
+### What it costs
+
+- **What is served does not change** (the owner, 2026-10-31: a Pending take is decided on the inputs as they stand and
+  served, flagged provisional; never a previous take). The cost is the time a take stays provisional: every kind (iii)
+  take -- in prod nearly all -- is decided T after its population's last arrival. The film on the card and in the API is
+  the same; `provisional: true` lasts longer (prod mirror, `identity_history` 10-29..11-05, family = normalized title,
+  DE: time from a listing's arrival to its family's first quiet T -- T 30 min: p50 0.5 h, p90 4.3 h; T 2 h: p50 3.1 h,
+  p90 17.5 h, 1 % never settle in the week; T 6 h: p50 10 h, p90 36 h, 14 % never; T 24 h: 59 % never; UK alike), and prod's flip watch (which counts decided takes) stops counting the
+  short reversals. If the owner wants the intermediate film itself hidden, the held take must serve none (agree or
+  none, dropped 2026-10-31) -- that would add T to time-to-match (today p50 35 min, p90 ~99 min) for new listings.
+- **Final takes**: none move. At a settled moment the take is the whole resolve of the current inputs, as today; a family
+  past H is decided as it stands. Only the moment a take counts as decided moves.
+- **Compute**: one settledness read per family per projection (a max over first-seen/leaving times of the read set's
+  listings), from the family index the projection already builds.
+
+### Interaction with the namesake rule (step 3) and the Pending model
+
+- Step 3 lets a namesake-ambiguous listing be decided only by kind (i)/(ii) rules -- in practice "pinned, else no
+  film", which cost 12-50 served right takes. With the hold, a namesake-ambiguous listing may be decided by kind (iii)
+  rules again, held until its family settles: the losses come back while the population-dependence stays out of the
+  decided sequence -- to the extent T covers the intermediate populations. Approach item 3 ("what stays bare is decided
+  by the held take") is this.
+- The existing Pending reasons (search, page, record, family question) stay; Population is one more `awaits` kind,
+  and `IdentityDrift`'s pending tally (provisional != final) measures the price per kind, as it does today.
+
+### Failure modes
+
+1. A family that never settles: bounded by H; counted.
+2. A gate made vacuous by a clock that never moves (above): the replay must model time, and the check must fail a run
+   whose end state is still held.
+3. A read set the index lacks (a sub-population's family answer, "Not in the closure yet" above): the family settles too
+   early; the completeness spec names the read.
+4. Long-lived intermediate populations: still flip, by design. The backlog's own families are of this shape: "It's Nice
+   Up North" arrived 10-12, 10-12, 10-13, 10-23; "Oxide Ghosts" 10-14, 10-20, 11-02, 11-04 -- days apart, so no T of
+   hours holds them, and H (24 h) releases them before the next sibling. Prod's 407 short reversals are another
+   population (mostly a bounce within a tick or an hour) than the backlog's lattice flips.
+5. Hiding a bad rule: a hold must not become the fix for a rule whose decision is wrong at the FINAL population; the
+   ratchet still judges final takes.
+
 ## What still blocks retiring the checks
 
 1. Item 7's open parts (the first draft's `searchTitle` -- since Main #2617 the IMDb-id resolver falls back to every venue
