@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{BroadwayCinemaNottingham, DundeeContemporaryArtsDCA, GalaCinemaDurham, HydeParkPictureHouse, InstituteOfContemporaryArts, LighthousePoole, OldMarketHallShrewsbury, TauntonBrewhouse, TheDukesLancaster}
+import models.{BreweryArtsCentreKendal, BroadwayCinemaNottingham, DundeeContemporaryArtsDCA, GalaCinemaDurham, HydeParkPictureHouse, InstituteOfContemporaryArts, LighthousePoole, OldMarketHallShrewsbury, TauntonBrewhouse, TheDukesLancaster}
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.uk.SpektrixClient
 
@@ -204,6 +204,16 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       .fetch().map(cm => cm.movie.title -> cm).toMap
     films("Fjord (15)").ageRating shouldBe Some("15")
     films("Wildwood (12A)").ageRating shouldBe Some("12A")
+  }
+
+  "SpektrixClient.fetch (Brewery Arts Centre Kendal)" should "take the certificate from the attribute that holds one, not from `attribute_Classification: Cinema`" in {
+    // 2026-11-05 capture of `breweryarts`: every event files `attribute_Classification: "Cinema"` (a category) before
+    // `attribute_FilmCertificate: "12A"`.
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "breweryarts", BreweryArtsCentreKendal, LocalDate.of(2026, 11, 5))
+      .fetch().map(cm => cm.movie.title -> cm).toMap
+    films("3000 Feet +Live Q&A").ageRating shouldBe Some("12A")
+    films("Die Hard").ageRating shouldBe Some("15")
+    films.values.count(_.ageRating.isDefined) should be > 60
   }
 
   "SpektrixClient.parse" should "read the production country a box office files as `attribute_Country`" in {

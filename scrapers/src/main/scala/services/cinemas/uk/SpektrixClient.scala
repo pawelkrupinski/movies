@@ -188,7 +188,7 @@ object SpektrixClient {
         director    = names(attribute(event, DirectorAttribute)),
         showtimes   = showtimes,
         externalIds = (event \ "id").asOpt[String].map("spektrix" -> _).toMap,
-        ageRating   = attribute(event, RatingAttribute).flatMap(Bbfc.findFirstIn).map(_.toUpperCase(Locale.ROOT))
+        ageRating   = attributes(event, RatingAttribute).flatMap(Bbfc.findFirstIn).headOption.map(_.toUpperCase(Locale.ROOT))
       )
     }
   }
@@ -243,8 +243,10 @@ object SpektrixClient {
       .filter(_.nonEmpty)
   }
 
-  private def attribute(o: JsObject, key: Regex): Option[String] =
-    o.fields.collectFirst { case (key(_*), JsString(value)) if value.trim.nonEmpty => value.trim }
+  private def attributes(o: JsObject, key: Regex): Seq[String] =
+    o.fields.collect { case (key(_*), JsString(value)) if value.trim.nonEmpty => value.trim }.toSeq
+
+  private def attribute(o: JsObject, key: Regex): Option[String] = attributes(o, key).headOption
 
   /** The minutes a running-time attribute states for the film alone; None when it states anything else (see the
    *  class doc). */
