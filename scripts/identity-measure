@@ -10,7 +10,7 @@
 # (scripts/identity_measure.py) and prints LANDABLE or NOT LANDABLE.
 #
 # THE DEFAULT WAY TO MEASURE (2026-10-21): it runs on CI, not on the laptop. scripts/identity-measure-local
-# is the fallback, run only under the heavy-run slot wrapper. Typical wall time: ~25-40 minutes, most of it the takes rows.
+# is the fallback, run only for what CI cannot do (it takes the JVM slots itself, scripts/jvm-gate.sh). Typical wall time: ~25-40 minutes, most of it the takes rows.
 #
 # usage: scripts/identity-measure [<commit-or-branch> | --head <commit>] [--base <sha>] [--recording <run>]
 #                                 [--countries pl,de,uk,us,es] [--keep-branch] [--no-wait | --wait] [--full] [--fresh] [--json]
