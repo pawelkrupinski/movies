@@ -9,7 +9,7 @@ name: Identity drift explorer
 # DRIFT_EXPLORE).
 #
 # FILING. Actions cannot push main (the ruleset's bypass is the owner and agentctl's lander app). So the explorer only
-# PUBLISHES: it waits for the run it dispatched (a `workflow_run` never fires for a GITHUB_TOKEN dispatch) and merges the rows' explore-<cc>.tsv (the flips no backlog row names; columns venue
+# PUBLISHES (scripts/ci/drift-explorer-publish.sh): it waits for the run it dispatched (a `workflow_run` never fires for a GITHUB_TOKEN dispatch) and merges the rows' explore-<cc>.tsv (the flips no backlog row names; columns venue
 # rawTitle country seed firstSeen slice takes, `slice` naming the artifact the replay's output is in) into the asset
 # `new-flips.tsv` on the release `identity-flip-explorer` (and a dated copy), and never commits. AGENTCTL ADOPTS it: its
 # tick reads the newest asset and, for each flip no backlog row names, files one item and lands one commit made by
@@ -41,35 +41,8 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-              run: |
-                  set -euo pipefail
-                  . scripts/ci/dispatch.sh
-                  since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-                  dispatch_workflow identity-model-convergence.yml main -f drift-only=true -f drift-explore=auto
-                  find_dispatched_run identity-model-convergence.yml "$since" ".headSha == \"$GITHUB_SHA\"" --branch main
-                  run=$DISPATCHED_RUN
-                  echo "explorer run: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$run"
-                  wait_for_run "$run" 17400
-                  echo "run $run: $RUN_CONCLUSION"
-                  dir="$RUNNER_TEMP/explore"; mkdir -p "$dir"
-                  gh run download "$run" --pattern 'identity-drift-*' --dir "$dir"
-                  mapfile -t found < <(find "$dir" -name 'explore-*.tsv' | sort)
-                  [ "${#found[@]}" -gt 0 ] || { echo "::error title=drift explorer::run $run wrote no explore-<cc>.tsv -- nothing explored"; exit 1; }
-                  python3 scripts/ci/drift_explorer.py merge "${found[@]}" > "$RUNNER_TEMP/new-flips.tsv"
-                  n=$(($(wc -l < "$RUNNER_TEMP/new-flips.tsv") - 1))
-                  echo "run $run: $n flip(s) no backlog row names, from ${#found[@]} row(s)"
-                  { echo "### Drift explorer, run $run: $n new flip(s)"; echo; echo '```'; cat "$RUNNER_TEMP/new-flips.tsv"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
-                  rel=identity-flip-explorer
-                  if ! gh release view "$rel" > /dev/null; then
-                      scripts/ci/gh-release.sh create "$rel" --prerelease --title "Identity drift explorer (rolling)" \
-                          --notes "The nightly drift explorer's flips no backlog row names (.github/workflows/identity-drift-explorer.yml). agentctl files each as a backlog row and a gate seed. Not a version of anything."
-                  fi
-                  dated="$RUNNER_TEMP/new-flips-$(date -u +%F)-$run.tsv"
-                  cp "$RUNNER_TEMP/new-flips.tsv" "$dated"
-                  scripts/ci/gh-release.sh upload "$rel" "$RUNNER_TEMP/new-flips.tsv" "$dated" --clobber
-                  # the dated copies: the newest 30
-                  gh release view "$rel" --json assets --jq '.assets | map(select(.name | startswith("new-flips-"))) | sort_by(.createdAt) | reverse | .[30:][] | .name' \
-                      | while read -r stale; do scripts/ci/gh-release.sh delete-asset "$rel" "$stale" -y; done
+              # the dispatched drift-only run ends failure by design (G7); the script publishes its rows anyway
+              run: scripts/ci/drift-explorer-publish.sh
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
