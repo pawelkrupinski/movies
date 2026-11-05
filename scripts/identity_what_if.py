@@ -6,17 +6,17 @@ SELECT -- which base families the head must re-resolve. The changed code is mapp
 families whose base trace names one of those ids are picked; anything the mapping cannot attribute picks EVERY family,
 and says why:
 
-  inert            no change to what the MODEL takes: tests, fixtures, docs, scripts, CI, Markdown, comment-only lines,
-                   imports, and the agreement stage (identity/.../identity/agreement/: the final take, which the what-if
-                   does not recompute -- it says so)
+  inert            no change to what a take reads: tests, fixtures, docs, scripts, CI, Markdown, comment-only lines,
+                   imports
   attributed       a change inside identity/src/main/scala, walked up its callers (every identity source line naming the
                    changed definition, at the base and at the head) until each path ends in a RULE ROOT
                    (scripts/identity-what-if-roots.tsv: a definition, the rule-id patterns a change to it can move -- its
                    own accept / refusal ids and the ids of the rules it pre-empts); a path that reaches a definition
                    nobody calls without passing a root (the resolver's own machinery, scoring, families) attributes
                    nothing
-  everything else  common/, scrapers/, geodata/, worker/src/main (the lookups), resources (weights, title rules), the
-                   build: ALL
+  everything else  the agreement stage (identity/.../identity/agreement/, or a definition its code calls: the FINAL take
+                   of every family is settled again), common/, scrapers/, geodata/, worker/src/main (the lookups, the
+                   families' sites), resources (weights, title rules), the build: ALL
 
 A family is picked when any member's trace (DecisionTrace.rulesOf, the stage's id) matches a pattern (`*` any run). The
 selection is a static reading of the code, so the what-if's `--verify` also resolves every family at the head and
@@ -64,9 +64,7 @@ DEFINITION = re.compile(r"^(\s*)(?:@\w+(?:\([^)]*\))?\s+)*(?:(?:private|protecte
 # -- SELECT -----------------------------------------------------------------------------------------------------------
 
 def inert_path(path):
-    """A file whose change cannot move a model take: not code, a test tree, or the agreement stage (final takes only)."""
-    if path.startswith(AGREEMENT):
-        return True
+    """A file whose change cannot move a take: not code, or a test tree."""
     if any(f"/src/{tree}/" in path for tree in ("test", "it", "fixtures", "pagetest", "e2e")):
         return True
     return not (path.startswith(CODE_PREFIXES) or path in CODE_FILES)
@@ -154,7 +152,7 @@ class Sources:
             out = git(self.repo, "ls-files", "--cached", "--others", "--exclude-standard", "--", *roots)
         else:
             out = git(self.repo, "ls-tree", "-r", "--name-only", ref, "--", *roots)
-        return [p for p in out.splitlines() if p.endswith(".scala") and not p.startswith(AGREEMENT)]
+        return [p for p in out.splitlines() if p.endswith(".scala")]
 
     def lines(self, side, path):
         key = (side, path)
@@ -187,7 +185,8 @@ class Sources:
                         continue
                     holder = definition_at(lines, i)
                     if holder and holder != name:
-                        found.add(holder if path.startswith(IDENTITY_SOURCES) else "worker:" + holder)
+                        found.add("agreement:" + holder if path.startswith(AGREEMENT) else
+                                  holder if path.startswith(IDENTITY_SOURCES) else "worker:" + holder)
         return found
 
 
@@ -211,6 +210,8 @@ def attribute(changes, sources, roots):
     for path, side, number, text in changes:
         if inert_path(path) or comment_or_blank(text):
             continue
+        if path.startswith(AGREEMENT):
+            return None, f"{path} changed: the agreement stage, whose final take of every family is settled again"
         if not path.startswith(IDENTITY_SOURCES):
             return None, f"{path} changed: code outside the identity model's sources (lookups, normalizer, build, resources)"
         lines = sources.lines(side, path)
@@ -231,6 +232,9 @@ def attribute(changes, sources, roots):
             outside = sorted(c for c in callers if c.startswith("worker:"))
             if outside:
                 return None, f"{where} ({name}) reaches the worker's {outside[0][7:]} through {current}, past every rule root"
+            stage = sorted(c for c in callers if c.startswith("agreement:"))
+            if stage:
+                return None, f"{where} ({name}) reaches the agreement stage's {stage[0][10:]} through {current}: every family's final take"
             # nothing in the model or the worker names it: dead in production (a spec's), and this path moves no take
             for caller in callers - seen:
                 seen.add(caller)
@@ -358,12 +362,12 @@ def diff(cc, base_rows, head_rows, prod, judgement_rows, whole_rows=None):
 TSV_COLUMNS = ("country", "venue", "rawTitle", "base", "head", "prod", "bucket", "family", "headRules")
 
 
-def render(report):
-    out = [f"== {report['country']}: {report['listings']} listings, {report['reresolved']} re-resolved at the head; "
+def render(report, stage="model"):
+    out = [f"== {report['country']} {stage}: {report['listings']} listings, {report['reresolved']} re-resolved at the head; "
            f"{report['moved']} take(s) moved ({report['pending']} to or from pending)"]
     if report["awaiting"]:
-        out.append(f"  {report['awaiting']} listing(s) await an answer the head asks and prod's store does not hold (new query text): "
-                   "counted as no move; a CI measure fills them")
+        out.append(f"  {report['awaiting']} listing(s) await an answer the head asks and the answer store does not hold "
+                   "(--offline, or a live ask that failed): counted as no move; a CI measure fills them")
     if report["buckets"]:
         out.append("  " + ", ".join(f"{b} {n}" for b, n in report["buckets"].items()))
     for b, examples in report["examples"].items():
@@ -378,30 +382,89 @@ def render(report):
     return "\n".join(out)
 
 
+def final_rows(base_rows, path):
+    """`final.tsv`'s rows as take rows (the final take in `take`), each with its listing's venue, title and family from
+    the base's model rows; None when the side wrote none."""
+    if not os.path.exists(path):
+        return None
+    by = {r["key"]: r for r in base_rows}
+    return [dict(by[r["key"]], take=r["final"], rules=r.get("basis", "")) for r in read_tsv(path) if r["key"] in by]
+
+
+def write_rows(path, rows):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\t".join(TSV_COLUMNS) + "\n")
+        f.writelines("\t".join(str(r[c]) for c in TSV_COLUMNS) + "\n" for r in rows)
+
+
+def verified(report, stage):
+    """Prints the --verify verdict of one stage's report; False when a take differs from the whole head resolve."""
+    if report["unsound"]:
+        print(f"  VERIFY FAILED ({stage}): {len(report['unsound'])} listing(s) take otherwise in the whole head resolve:")
+        for u in report["unsound"][:20]:
+            print(f"    {u['venue']} | {u['rawTitle']}: what-if {u['what-if']}, whole {u['whole']}"
+                  f"{' (selected)' if u['selected'] else ' (OUTSIDE the selection)'}")
+        return False
+    print(f"  VERIFY OK ({stage}): the whole head resolve takes as the what-if on every listing")
+    return True
+
+
 def run_diff(args):
     base_rows = read_tsv(os.path.join(args.base, "takes.tsv"))
     head_rows = read_tsv(os.path.join(args.head, "takes.tsv"))
     prod = {r["key"]: r["prod"] for r in read_tsv(os.path.join(args.base, "prod.tsv"))}
     whole_path = os.path.join(args.head, "takes-whole.tsv")
-    whole = read_tsv(whole_path) if args.verify else None
+    whole = read_tsv(whole_path) if args.verify and os.path.exists(whole_path) else None
     if args.verify and whole is None:
         print("--verify: the head wrote no takes-whole.tsv", file=sys.stderr)
         return 2
-    report, rows = diff(args.cc, base_rows, head_rows, prod, read_judgements(args.judgements), whole)
+    judgements = read_judgements(args.judgements)
+    report, rows = diff(args.cc, base_rows, head_rows, prod, judgements, whole)
+    base_final = final_rows(base_rows, os.path.join(args.base, "final.tsv"))
+    head_final = final_rows(base_rows, os.path.join(args.head, "final.tsv"))
+    final_report = None
+    if base_final is not None and head_final is not None:
+        whole_final = final_rows(base_rows, os.path.join(args.head, "final-whole.tsv")) if args.verify else None
+        final_report, final_moves = diff(args.cc, base_final, head_final, prod, judgements, whole_final)
+        report["final"] = final_report
+        if args.tsv:
+            write_rows(args.tsv.replace("takes-diff-", "final-diff-"), final_moves)
     if args.tsv:
-        with open(args.tsv, "w", encoding="utf-8") as f:
-            f.write("\t".join(TSV_COLUMNS) + "\n")
-            f.writelines("\t".join(str(r[c]) for c in TSV_COLUMNS) + "\n" for r in rows)
-    print(json.dumps(report) if args.json else render(report))
+        write_rows(args.tsv, rows)
+    if args.json:
+        print(json.dumps(report))
+    else:
+        print(render(report, "model"))
+        if final_report:
+            print(render(final_report, "final"))
+        else:
+            print(f"== {args.cc} final: not settled (--model-only, or a side without final.tsv)")
     if args.verify:
-        if report["unsound"]:
-            print(f"  VERIFY FAILED: {len(report['unsound'])} listing(s) take otherwise in the whole head resolve:")
-            for u in report["unsound"][:20]:
-                print(f"    {u['venue']} | {u['rawTitle']}: what-if {u['what-if']}, whole {u['whole']}"
-                      f"{' (selected)' if u['selected'] else ' (OUTSIDE the selection)'}")
-            return 1
-        print("  VERIFY OK: the whole head resolve takes as the what-if on every listing")
+        ok = verified(report, "model")
+        if final_report:
+            if final_report["unsound"] is not None and os.path.exists(os.path.join(args.head, "final-whole.tsv")):
+                ok = verified(final_report, "final") and ok
+        return 0 if ok else 1
     return 0
+
+
+def side_take(side, listing=None):
+    """One whole side's take, as --bisect compares sides: the listing's (`[cc|]venue|raw title`) model and final take --
+    every key it bills under -- or, with none, a digest of every take."""
+    import hashlib
+    rows = read_tsv(os.path.join(side, "takes.tsv"))
+    final_path = os.path.join(side, "final.tsv")
+    finals = {r["key"]: r["final"] for r in read_tsv(final_path)} if os.path.exists(final_path) else {}
+    if listing is None:
+        digest = lambda pairs: hashlib.sha256("\n".join(sorted(pairs)).encode()).hexdigest()[:12]
+        return (f"model {digest(r['key'] + chr(9) + r['take'] for r in rows)}, "
+                f"final {digest(k + chr(9) + v for k, v in finals.items()) if finals else '-'} ({len(rows)} takes)")
+    parts = listing.split("|")
+    venue, title = (parts[-2], parts[-1]) if len(parts) >= 2 else (None, parts[0])
+    hits = sorted((r for r in rows if r["rawTitle"] == title and (venue is None or r["venue"] == venue)), key=lambda r: r["key"])
+    if not hits:
+        return "absent"
+    return "; ".join(f"model {r['take']}, final {finals.get(r['key'], '-')}" for r in hits)
 
 
 def main(argv=None):
@@ -422,7 +485,13 @@ def main(argv=None):
     d.add_argument("--verify", action="store_true")
     d.add_argument("--tsv")
     d.add_argument("--json", action="store_true")
+    t = sub.add_parser("take")
+    t.add_argument("--side", required=True)
+    t.add_argument("--listing")
     args = parser.parse_args(argv)
+    if args.command == "take":
+        print(side_take(args.side, args.listing))
+        return 0
     return run_select(args) if args.command == "select" else run_diff(args)
 
 

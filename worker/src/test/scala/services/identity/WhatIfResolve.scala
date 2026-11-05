@@ -91,26 +91,47 @@ object WhatIfResolve {
     Region(groups, groups.map(results), rounds)
   }
 
-  final case class Corpus(listings: Seq[Listing], lookups: IdentityLookups)
+  final case class Corpus(listings: Seq[Listing], lookups: IdentityLookups, answers: WhatIfAnswers.Source)
 
-  /** Every live ask refused: a gap stays the gap the mirror's store holds, nothing is fetched. */
-  private object Refused extends IdentityLookups {
-    def hasDetail(listing: Listing): Boolean                      = false
-    def detail(listing: Listing): Answer[Option[DetailFacts]]     = Answer.Unknown
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]       = Answer.Unknown
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
-  }
-
-  /** The country's corpus as the mirror's history held it at `at`: listings, venue pages and TMDB documents. */
-  def corpusAt(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer, clock: Clock): Corpus = {
+  /** The country's corpus as the mirror's history held it at `at`: listings, venue pages and TMDB documents; a question
+   *  the mirror's store lacks answered by `answering` (the composition root's pick: [[WhatIfAnswers.offline]] refuses,
+   *  [[WhatIfAnswers.live]] asks the real services and files into the local what-if store). */
+  def corpusAt(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer, clock: Clock,
+               answering: adapters.TmdbDocuments => WhatIfAnswers.Source): Corpus = {
     val replay   = IdentityHistoryReplay.from(new MongoIdentityHistory(db, new services.TtlIndexMismatches), at.toEpochMilli)
     val rows     = tools.ProdListings.read(db, tools.CountryScrapeCorpus.cinemasOf(country).toSet)
     val listings = replay.listings(ModelRead.corpus(rows.map(r => r.cinema -> r.films), normalizer))
     val pages    = replay.pages(Await.result(db.getCollection[BsonDocument](services.venuepages.MongoVenuePageStore.Collection).find()
       .batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
-    val lookups  = tools.ProdLookupInputs.lookups(replay.documents(new MongoTmdbDocuments(db)), pages,
-      tools.ProdLookupInputs.enrichersOf(country, clock), Refused, country, clock)
-    Corpus(listings.sorted.distinctBy(_.key), new tools.MemoLookups(lookups))
+    // the mirror's store as it stood at `at`, each document read once: its family answers all read up front, in batches
+    val mirror   = new WhatIfAnswers.Memoised(replay.documents(new MongoTmdbDocuments(db)))
+    mirror.warm(adapters.TmdbKind.Family, Await.result(db.getCollection[BsonDocument](adapters.TmdbKind.Family.collection).find()
+      .projection(new BsonDocument("_id", new org.bson.BsonInt32(1))).batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes)
+      .map(_.getString("_id").getValue))
+    val answers  = answering(mirror)
+    val lookups  = tools.ProdLookupInputs.lookups(answers.docs, pages, tools.ProdLookupInputs.enrichersOf(country, clock), answers.live, country, clock)
+    Corpus(listings.sorted.distinctBy(_.key), new tools.MemoLookups(lookups), answers)
+  }
+
+  /** The FINAL take of `decisions` (the model's, over `listings`): a fresh, unbudgeted agreement stage applied and asked
+   *  to its fixpoint ([[scripts.StageAnswers.settle]]) -- what a worker with nothing kept serves, as the CI gate's whole
+   *  resolve settles it (`scripts.IdentityDrift.whole`) -- its answers the corpus's ([[Corpus.answers]]). */
+  def settled(decisions: Seq[ResolverDecision], listings: Seq[Listing], corpus: Corpus, clock: Clock): Resolution = {
+    val moment  = new tools.MutableClock(clock.instant())
+    val answers = new scripts.StageAnswers(corpus.answers.stage, corpus.answers.docs, moment, _ => None)
+    val stage   = answers.stage(corpus.lookups, new services.identity.agreement.InMemoryAgreementVerdicts, budgets = false)
+    val byKey   = listings.map(l => l.key -> l).toMap
+    val model   = tools.UnmatchedClusters.resolutionOf(decisions.filter(_.members.exists(byKey.contains)))
+    scripts.StageAnswers.settle(stage, () => stage.apply(model, byKey.get, answers.store.version), answers, moment, _ => false, log = true)
+  }
+
+  /** Each listing's row of `final.tsv`: key, final take (`pending` while the stage waits), its basis. */
+  private def finalRows(settledTakes: Resolution, keys: Iterable[ListingKey]): Seq[Seq[String]] = {
+    val decided = settledTakes.decisions.flatMap(d => d.members.map(_ -> d)).toMap
+    keys.toSeq.sortBy(keyOf).map { key =>
+      val decision = decided.get(key)
+      Seq(keyOf(key), decision.flatMap(PopulationMonotonicity.takeOf).getOrElse("pending"), decision.fold("-")(d => clean(d.basis.toString)))
+    }
   }
 
   /** The keys a selection file lists, one a line, each WHOLE: a key may end in its separator (a page-less listing
@@ -139,7 +160,56 @@ object WhatIfResolve {
       }
     }
 
+  /** Which [[WhatIfAnswers.Source]] the sides read: `--answers offline` (the default here; the mirror's store alone) or
+   *  `--answers live --answers-dir DIR` (the real services asked for what it lacks, TMDB's key from `TMDB_API_KEY`). */
+  def answering(args: Seq[String], country: Country, clock: Clock): adapters.TmdbDocuments => WhatIfAnswers.Source = {
+    def opt(name: String) = args.sliding(2).collectFirst { case Seq(`name`, value) => value }
+    opt("--answers").getOrElse("offline") match {
+      case "offline" => WhatIfAnswers.offline(_, country)
+      case "live" =>
+        val configuration = settings.ProcessConfiguration.resolve()
+        val key  = configuration.tmdbApiKey.getOrElse(sys.error("--answers live: no TMDB_API_KEY (secrets run movies TMDB_API_KEY -- ...)"))
+        val dir  = Path.of(opt("--answers-dir").getOrElse(sys.error("--answers live needs --answers-dir DIR (the local what-if store)")))
+        val wire = modules.wiring.HttpWiring.pacedWire(new tools.RealHttpFetch(tls = tools.TlsTrust.newContext()), configuration,
+          new tools.InMemoryFleetHostPace, clock, Thread.sleep)
+        WhatIfAnswers.live(_, dir.resolve(country.code), wire, key, country, clock)
+      case other => sys.error(s"--answers $other: offline or live")
+    }
+  }
+
+  /** What a kept JVM holds between requests (`--serve`): the mirror's client, and each loaded corpus with its context and
+   *  pins, by (country, moment, answers) -- the two newest, the dear part of a run (a corpus and its context are most of
+   *  a head's wall time). The code is the JVM's own: one kept JVM per ref's tree. */
+  final class Kept {
+    val uri = "mongodb://127.0.0.1:28017/?directConnection=true"
+    lazy val client: MongoClient = MongoClient(uri)
+    private val held = scala.collection.mutable.LinkedHashMap.empty[String, Loaded]
+    def loaded(key: String)(load: => Loaded): (Loaded, Boolean) = synchronized {
+      held.get(key).map(_ -> true).getOrElse {
+        if (held.size >= 2) held.remove(held.head._1)
+        val fresh = load
+        held.update(key, fresh)
+        fresh -> false
+      }
+    }
+    def close(): Unit = synchronized { held.clear(); client.close() }
+  }
+  final case class Loaded(corpus: Corpus, context: CorpusContext, inputs: ResolveInputs)
+
   def main(args: Array[String]): Unit = {
+    def opt(name: String) = args.toList.sliding(2).collectFirst { case List(`name`, value) => value }
+    val kept = new Kept
+    try opt("--serve") match {
+      case Some(socket) =>
+        tools.KeptJvm.serve(Path.of(socket), opt("--idle-minutes").fold(10)(_.toInt), "what-if", errToClient = true) { request =>
+          run(request.toArray, kept); 0
+        }
+      case None => run(args, kept)
+    } finally kept.close()
+  }
+
+  /** One side of a what-if (the arguments above), over `kept`'s corpus when it holds this one. */
+  def run(args: Array[String], kept: Kept): Unit = {
     val clock   = Clock.systemUTC()
     val cc      = args.headOption.getOrElse(sys.error("a country code"))
     val country = Country.all.find(_.code == cc).getOrElse(sys.error(s"no country $cc"))
@@ -149,8 +219,8 @@ object WhatIfResolve {
     val threads = opt("--threads").fold(6)(_.toInt)
     val select  = opt("--select").map(Path.of(_))
     val whole   = args.contains("--whole")
-    val uri     = "mongodb://127.0.0.1:28017/?directConnection=true"
-    val client  = MongoClient(uri)
+    val withFinal = args.contains("--final")
+    val uri     = kept.uri
     Files.createDirectories(out)
     val timings = scala.collection.mutable.ArrayBuffer.empty[Seq[String]]
     def timed[A](phase: String)(body: => A): A = {
@@ -160,23 +230,36 @@ object WhatIfResolve {
       System.err.println(f"[what-if] $cc $phase: ${started.seconds}%.1fs")
       result
     }
-    try {
-      val db         = client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
+    {
+      val db         = kept.client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
       val normalizer = TitleNormalizer.forCountry(country)
-      val inputs     = ResolveInputs.of(new MongoPinStore(Some(db)).all())
-      val corpus     = timed("corpus")(corpusAt(db, country, at, normalizer, clock))
+      val loadKey    = Seq(cc, at.toString, opt("--answers").getOrElse("offline"), opt("--answers-dir").getOrElse("")).mkString("|")
+      val (loaded, warm) = kept.loaded(loadKey) {
+        val inputs  = ResolveInputs.of(new MongoPinStore(Some(db)).all())
+        val corpus  = timed("corpus")(corpusAt(db, country, at, normalizer, clock, answering(args.toSeq, country, clock)))
+        val context = timed("context")(new CandidateGeneration(corpus.listings, corpus.lookups, normalizer, inputs.pins, inputs.decorations,
+          lazyLookups = false).context)
+        Loaded(corpus, context, inputs)
+      }
+      if (warm) System.err.println(s"[what-if] $cc: the corpus and its context kept from an earlier request")
+      val Loaded(corpus, context, inputs) = loaded
       val byKey      = corpus.listings.map(l => l.key -> l).toMap
       val bySerial   = corpus.listings.map(l => keyOf(l.key) -> l).toMap
-      val context    = timed("context")(new CandidateGeneration(corpus.listings, corpus.lookups, normalizer, inputs.pins, inputs.decorations,
-        lazyLookups = false).context)
       def region(listings: Iterable[Listing]) = IdentityResolver.resolveRegion(listings, corpus.lookups, normalizer, inputs.calibration,
         inputs.pins, inputs.decorations, context)
       def all() = region(corpus.listings)
+      def finalOf(families: Seq[IdentityResolver.RegionFamily], file: String, phase: String): Unit = if (withFinal) {
+        val members = families.flatMap(_.listings).toSet
+        val listed  = corpus.listings.filter(l => members(l.key))
+        val agreed  = timed(phase)(settled(families.flatMap(_.decisions), listed, corpus, clock))
+        tsv(out.resolve(file), "key\tfinal\tbasis", finalRows(agreed, listed.map(_.key)))
+      }
       select match {
         case None =>
           val families = timed("resolve-all")(all())
           tsv(out.resolve("takes.tsv"), "key\tvenue\trawTitle\tfamily\ttake\trules", takeRows(families, byKey))
           tsv(out.resolve("families.tsv"), "family\tblockKeys", families.map(f => Seq(keyOf(f.listings.minBy(keyOf)), list(f.blockKeys))))
+          finalOf(families, "final.tsv", "settle-all")
           val prod  = tools.ProdMirror.open(uri, country)
           val sides = timed("prod")(try prod.sides(corpus.listings.map(_.key)) finally prod.close())
           tsv(out.resolve("prod.tsv"), "key\tprod\tbasis", corpus.listings.map { l =>
@@ -200,12 +283,18 @@ object WhatIfResolve {
           tsv(out.resolve("takes.tsv"), "key\tvenue\trawTitle\tfamily\ttake\trules", result.groups.flatMap(g => takeRows(decided.get(g), byKey)))
           tsv(out.resolve("region.tsv"), "selected\tre-resolved\tgroups\trounds",
             Seq(Seq(selected.size.toString, result.listings.size.toString, result.groups.size.toString, result.rounds.toString)))
+          finalOf(result.groups.flatMap(g => decided.get(g)), "final.tsv", "settle-selected")
           if (whole) {
             val families = timed("resolve-all")(all())
             tsv(out.resolve("takes-whole.tsv"), "key\tvenue\trawTitle\tfamily\ttake\trules", takeRows(families, byKey))
+            finalOf(families, "final-whole.tsv", "settle-all")
           }
       }
-      tsv(out.resolve("timings.tsv"), "phase\tseconds", timings.toSeq :+ Seq("listings", corpus.listings.size.toString))
-    } finally client.close()
+      val asked = corpus.answers.report()
+      if (asked.nonEmpty) System.err.println(s"[what-if] $cc answers: $asked")
+      Files.writeString(out.resolve("answers.txt"), asked + "\n", StandardCharsets.UTF_8)
+      tsv(out.resolve("timings.tsv"), "phase\tseconds", timings.toSeq :+ Seq("listings", corpus.listings.size.toString) :+
+        Seq("warm", if (warm) "1" else "0"))
+    }
   }
 }

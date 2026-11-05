@@ -6,6 +6,10 @@
 # served take beside each.
 #
 #   scripts/identity-what-if [--base REF] [--head REF|.] [--at ISO] [--max-age HOURS] [--all] [--verify]
+#                            [--offline] [--model-only] [--answers-dir DIR] [--no-serve]
+#   scripts/identity-what-if --bisect GOOD BAD [--listing 'cc|venue|raw title'] [--at ISO] [--since ISO] cc
+#   scripts/identity-what-if --recording RUN --base REF --head REF cc...
+#   scripts/identity-what-if --stop-served
 #                            [--threads N] [--out DIR] [--judgements F] [--json] cc...
 #
 #   --base REF     the code the change is measured against (default origin/main)
@@ -18,6 +22,28 @@
 #   --threads N    head families resolved at once (default 6)
 #   --out DIR      where the per-country diff TSVs go (default target/identity-what-if/<head>)
 #   --judgements F the judgements the moves are bucketed by (default the head's own, as identity-measure classifies)
+#   --offline      ask nothing: a question the mirror's store lacks stays a gap, its listing counted as awaiting an
+#                  answer (the tool before 2026-11-05). Without it, every such question -- TMDB's and IMDb's for the
+#                  model, the agreement families' (IMDb, Wikidata, Metacritic, Rotten Tomatoes, Filmweb where it votes),
+#                  posters and catalogue pages for the stage -- is asked of the REAL service once (direct requests over
+#                  production's paced wire, each host at most 8 at once, halved on a 429/503; never a proxy or paid
+#                  service; TMDB's key from the vault: `secrets run movies TMDB_API_KEY`) and filed into the LOCAL
+#                  what-if store, keyed as production's store keys it, so a repeat run asks nothing
+#   --answers-dir  that store (default $KINOWO_IDENTITY_CACHE/what-if-answers; one directory a country)
+#   --no-serve     a JVM per side; by default each ref's tree runs in a KEPT JVM (one per tree and code; stops after
+#                  $KINOWO_IDENTITY_WHAT_IF_IDLE_MINUTES, 10, idle minutes; --stop-served stops them all) holding the
+#                  corpus and its context of the last two (country, snapshot, answers): a warm rerun resolves only
+#   --bisect G B   the commit of G..B (first parent) whose code moved a take on one mirror snapshot: the listing's model
+#                  and final take with --listing (its venue and raw title as takes-diff rows name them), else every take;
+#                  each step a whole side, kept as a base is (about a minute a step cold, seconds kept). When G and B take
+#                  alike, no commit moved it: B is resolved at --since (24 h before the snapshot by default) to say
+#                  whether the CORPUS did
+#   --recording RUN  replay that cached "Record scrape fixtures" run instead of the mirror, through CI's OWN two tools
+#                  (scripts/identity-measure-local: the model's IdentityResolveDump and the ratchet's final takes): the
+#                  CI measure's numbers exactly (its recording, its capture), at a whole resolve's cost, not the what-if's
+#   --model-only   compare the model's takes only; by default the FINAL take too: a fresh agreement stage settled over
+#                  each side's model takes (the base's every family, the head's re-resolved ones), diffed as the measure
+#                  diffs its final stage
 #
 # HOW. Each ref's sources are laid out once under the shared cache (scripts/identity-tools.sh's identity_tree, this
 # checkout's WhatIfResolve.scala and MemoLookups.scala dropped in, so a ref from before the tool works) and compiled once.
@@ -28,8 +54,10 @@
 # re-resolved family blocks under another's key; a change it cannot attribute (shared resolver code, scoring, lookups,
 # normalizer) re-resolves ALL, and says why. Then it diffs.
 #
-# WHAT IT IS NOT. The model's take only: the agreement stage (the final take) is not recomputed -- a change there selects
-# nothing and says so. prod's current corpus, not a recording: CI's scripts/identity-measure replays a pinned recording
+# A change to the agreement stage (identity/.../agreement/, or a definition its code calls) selects ALL: every family's
+# final take settled again at the head, and it says why.
+#
+# WHAT IT IS NOT. prod's current corpus, not a recording: CI's scripts/identity-measure replays a pinned recording
 # and stays the verdict of record; the two differ by the corpus (docs: identity-investigation skill).
 #
 # Exit 0 done (CLEAN or BLOCKING is printed per country), 1 --verify found a take the selection missed, 2 usage / a
@@ -43,8 +71,36 @@ IDENTITY_TOOL=identity-what-if
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"
 repo=$IDENTITY_REPO
+self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+serve_dir=$IDENTITY_CACHE/what-if-serve
+# A kept JVM's idle exit, as identity-slice's: each holds a JVM slot while idle
+idle_minutes=${KINOWO_IDENTITY_WHAT_IF_IDLE_MINUTES:-10}
+# 0 while <pid> is still a what-if JVM: a pid file outlives its process, and the pid comes back as someone else's.
+is_kept() { case "$1" in ''|*[!0-9]*) return 1 ;; esac; ps -o args= -p "$1" 2>/dev/null | grep -q 'services\.identity\.WhatIfResolve'; }
+stop_kept() { is_kept "$1" || return 1; kill "$1" 2>/dev/null; }
+if [ "${1:-}" = --stop-served ]; then
+  for pidf in "$serve_dir"/*.pid; do
+    [ -f "$pidf" ] || continue
+    stop_kept "$(cat "$pidf")" && identity_log "stopped the kept JVM $(cat "$pidf")"
+    rm -f "$pidf" "${pidf%.pid}.sock" "${pidf%.pid}.tree"
+  done
+  exit 0
+fi
+# THE KEEPER of a kept JVM (as identity-slice's): holds its JVM slot for the JVM's whole life and ends once it has.
+if [ "${1:-}" = --keep-served ]; then
+  seen=0
+  while kill -0 "$2" 2>/dev/null; do
+    if is_kept "$2"; then seen=1; elif [ "$seen" = 1 ]; then break; fi
+    jvm_slot_take_if_free || true
+    sleep "${KINOWO_IDENTITY_SLICE_KEEPER_POLL:-10}"
+  done
+  exit 0
+fi
 
 base=origin/main head=. at="" max_age=6 all=0 verify=0 threads=6 out="" json=0 judgements="" ccs=()
+answers=live answers_dir="" final=1 serve=${KINOWO_IDENTITY_WHAT_IF_SERVE:-1}
+bisect_good="" bisect_bad="" bisect_listing="" bisect_since="" recording=""
+original_args=("$@")
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) flag_value "$@"; base=$2; shift 2 ;;
@@ -57,14 +113,37 @@ while [ "$#" -gt 0 ]; do
     --out) flag_value "$@"; out=$2; shift 2 ;;
     --json) json=1; shift ;;
     --judgements) flag_value "$@"; judgements=$2; shift 2 ;;
+    --offline) answers=offline; shift ;;
+    --answers-dir) flag_value "$@"; answers_dir=$2; shift 2 ;;
+    --model-only) final=0; shift ;;
+    --no-serve) serve=0; shift ;;
+    --bisect) [ "$#" -ge 3 ] || { echo "--bisect GOOD BAD" >&2; exit 2; }; bisect_good=$2; bisect_bad=$3; shift 3 ;;
+    --listing) flag_value "$@"; bisect_listing=$2; shift 2 ;;
+    --since) flag_value "$@"; bisect_since=$2; shift 2 ;;
+    --recording) flag_value "$@"; recording=$2; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     -*) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
     *) ccs+=("$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"); shift ;;
   esac
 done
 [ "${#ccs[@]}" -gt 0 ] || { echo "name a country (pl de uk es us)" >&2; exit 2; }
+if [ -n "$recording" ]; then
+  # a CI recording, replayed by CI's own two tools (scripts/identity-measure-local): the measure's numbers exactly
+  [ "$head" != . ] || { echo "--recording measures commits: name --head REF (commit the change first)" >&2; exit 2; }
+  exec "$(dirname "$0")/identity-measure-local" --base "$base" --head "$head" --recording "$recording" \
+    --countries "$(IFS=,; echo "${ccs[*]}")"
+fi
 
-TOOL_FILES=(worker/src/test/scala/services/identity/WhatIfResolve.scala worker/src/fixtures/scala/tools/MemoLookups.scala)
+TOOL_FILES=(worker/src/test/scala/services/identity/WhatIfResolve.scala worker/src/test/scala/services/identity/WhatIfAnswers.scala
+  worker/src/test/scala/scripts/StageAnswers.scala worker/src/fixtures/scala/tools/MemoLookups.scala
+  worker/src/fixtures/scala/tools/KeptJvm.scala)
+answers_dir=${answers_dir:-$IDENTITY_CACHE/what-if-answers}
+if [ "$answers" = live ] && [ -z "${TMDB_API_KEY:-}" ]; then
+  # TMDB's key from the vault, for the live asks only: the whole run under it, never written anywhere
+  exec secrets run movies TMDB_API_KEY -- "$0" ${original_args[@]+"${original_args[@]}"}
+fi
+answer_args=(--answers "$answers"); [ "$answers" = offline ] || answer_args+=(--answers-dir "$answers_dir")
+final_args=(); [ "$final" = 0 ] || final_args+=(--final)
 base_sha=$(git -C "$repo" rev-parse --verify "$base^{commit}") || { echo "no commit $base" >&2; exit 2; }
 if [ "$head" = . ]; then head_label=worktree-$(git -C "$repo" rev-parse --short=12 HEAD); head_sha=.
 else head_sha=$(git -C "$repo" rev-parse --verify "$head^{commit}") || { echo "no commit $head" >&2; exit 2; }; head_label=${head_sha:0:12}; fi
@@ -77,33 +156,137 @@ seconds() { python3 -I -c 'import time; print(f"{time.time():.1f}")'; }
 elapsed() { python3 -I -c "import sys; print(f'{float(sys.argv[2]) - float(sys.argv[1]):.0f}')" "$1" "$(seconds)"; }
 
 tree_of() { if [ "$1" = . ]; then echo "$repo"; else identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
-# resolve <tree> <cc> <out dir> <args...> -> that tree's WhatIfResolve, under a JVM slot
+# The code a tree runs: a ref's tree is its code; this checkout's, its commit and its uncommitted edits.
+code_stamp() { # <tree>
+  if [ "$1" != "$repo" ]; then basename "$1"; return; fi
+  { git -C "$repo" rev-parse HEAD; git -C "$repo" diff HEAD; git -C "$repo" ls-files --others --exclude-standard -- '*.scala' '*.tsv' |
+      while IFS= read -r f; do shasum "$repo/$f"; done; } | shasum | cut -c1-16
+}
+# resolve <tree> <cc> <out dir> <args...> -> that tree's WhatIfResolve, through its kept JVM (one per tree and code,
+# started when none is: the corpus and its context loaded once, not per run), or a JVM of its own with --no-serve
 resolve() {
   local tree=$1 cc=$2 dir=$3 cp rc=0; shift 3
-  cp=$(identity_classpath "$tree") || return 2
   mkdir -p "$dir"
+  if [ "$serve" = 1 ]; then served "$tree" "$cc" "$dir" "$@" && return 0; rc=$?; [ "$rc" = 3 ] || return "$rc"; fi
+  cp=$(identity_classpath "$tree") || return 2
   jvm_slot_take identity-what-if
+  rc=0
   (cd "$tree" && "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.WhatIfResolve "$cc" --out "$dir" "$@") > "$dir/run.log" 2>&1 || rc=$?
   jvm_slot_release
   [ "$rc" = 0 ] || { tail -30 "$dir/run.log" >&2; identity_log "$cc: WhatIfResolve failed in $tree (log $dir/run.log)"; return 2; }
 }
+# served <tree> <cc> <out dir> <args...> -> the request through the tree's kept JVM; 3 when no kept JVM could start
+served() {
+  local tree=$1 cc=$2 dir=$3 key sock pid cp rc; shift 3
+  key=$(printf '%s\n' "$tree" "$(code_stamp "$tree")" | shasum | cut -c1-16)
+  sock=$serve_dir/$key.sock
+  mkdir -p "$serve_dir"
+  for _ in 1 2; do
+    pid=$(cat "$serve_dir/$key.pid" 2>/dev/null || echo "")
+    if [ ! -S "$sock" ] || ! is_kept "$pid"; then
+      cp=$(identity_classpath "$tree") || return 2
+      rm -f "$sock"
+      # an older code of this tree (an edit of this checkout) keeps no JVM of its own
+      for f in "$serve_dir"/*.tree; do
+        [ -f "$f" ] && [ "$(basename "$f" .tree)" != "$key" ] && [ "$(cat "$f")" = "$tree" ] || continue
+        stop_kept "$(cat "${f%.tree}.pid" 2>/dev/null)" || true; rm -f "$f" "${f%.tree}.pid" "${f%.tree}.sock"
+      done
+      identity_log "starting a kept JVM for $tree (log $serve_dir/$key.log; stops after $idle_minutes idle minutes)"
+      jvm_slot_take identity-what-if
+      (cd "$tree" && set -m && { nohup "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.WhatIfResolve --serve "$sock" \
+          --idle-minutes "$idle_minutes" > "$serve_dir/$key.log" 2>&1 < /dev/null 6>&- 7>&- 8>&- &
+        echo $! > "$serve_dir/$key.pid"; printf '%s\n' "$tree" > "$serve_dir/$key.tree"; })
+      jvm_slot_keeper_start "$repo" "$serve_dir/$key.keeper.log" "$self" --keep-served "$(cat "$serve_dir/$key.pid")"
+      local started=$SECONDS
+      until [ -S "$sock" ]; do
+        kill -0 "$(cat "$serve_dir/$key.pid")" 2>/dev/null || { tail -20 "$serve_dir/$key.log" >&2; identity_log "the kept JVM did not start"; return 3; }
+        [ $(( SECONDS - started )) -lt 300 ] || { stop_kept "$(cat "$serve_dir/$key.pid")" || true; identity_log "the kept JVM did not listen in 300 s"; return 3; }
+        sleep 1
+      done
+    fi
+    rc=0
+    kept_jvm_call "$sock" "$cc" --out "$dir" "$@" > "$dir/run.log" 2>&1 || rc=$?
+    case "$rc" in
+      0) return 0 ;;
+      111|112) identity_log "the kept JVM went away ($rc): starting another"; rm -f "$sock" ;;
+      *) tail -30 "$dir/run.log" >&2; identity_log "$cc: WhatIfResolve failed in $tree (log $dir/run.log)"; return 2 ;;
+    esac
+  done
+  return 3
+}
 
-# The newest snapshot moment the base already resolved for <cc> within --max-age hours, if any.
-cached_at() {
-  local root=$cache/$1/$base_sha-$tools_hash
+# The newest snapshot moment <sha> was already resolved at for <cc> within --max-age hours, if any.
+cached_at() { # <cc> [sha]
+  local root=$cache/$1/${2:-$base_sha}-$tools_hash-$answers
   [ -d "$root" ] || return 0
-  python3 -I - "$root" "$max_age" <<'PY'
+  python3 -I - "$root" "$max_age" "$final" <<'PY'
 import datetime, os, sys
 root, hours = sys.argv[1], float(sys.argv[2])
 now = datetime.datetime.now(datetime.timezone.utc)
-done = [d for d in os.listdir(root) if os.path.exists(os.path.join(root, d, "prod.tsv"))]
+want = "final.tsv" if sys.argv[3] == "1" else "prod.tsv"
+done = [d for d in os.listdir(root) if os.path.exists(os.path.join(root, d, "prod.tsv")) and os.path.exists(os.path.join(root, d, want))]
 fresh = [d for d in done if now - datetime.datetime.fromisoformat(d.replace("Z", "+00:00")) <= datetime.timedelta(hours=hours)]
 print(max(fresh) if fresh else "")
 PY
 }
 
+# whole_side <sha> <cc> <snapshot> -> the directory of <sha>'s every family resolved at <snapshot> (takes, families,
+# prod, final), KEPT per (sha, tool files, answers, snapshot): resolved here only when it is not
+whole_side() {
+  local sha=$1 cc=$2 snapshot=$3 dir tree
+  dir=$cache/$cc/$sha-$tools_hash-$answers/$snapshot
+  if [ ! -f "$dir/prod.tsv" ] || { [ "$final" = 1 ] && [ ! -f "$dir/final.tsv" ]; }; then
+      tree=$(tree_of "$sha") || return 2
+    identity_log "$cc: resolving ${sha:0:12} whole at $snapshot"
+    resolve "$tree" "$cc" "$dir.part" --at "$snapshot" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} >&2 || return 2
+    rm -rf "$dir"; mv "$dir.part" "$dir"
+  fi
+  printf '%s\n' "$dir"
+}
+
+if [ -n "$bisect_good" ]; then
+  # BISECT: the commit of <good>..<bad> (first parent) whose code moved the take -- a listing's model and final take,
+  # or every take -- over ONE mirror snapshot, each step a whole side kept as any base is; when <good> and <bad> take
+  # alike there, the code did not move it: the corpus did, and the take at --since and at the snapshot is shown.
+  [ "${#ccs[@]}" = 1 ] || { echo "--bisect: one country" >&2; exit 2; }
+  cc=${ccs[0]}
+  good=$(git -C "$repo" rev-parse --verify "$bisect_good^{commit}") || { echo "--bisect: no commit $bisect_good" >&2; exit 2; }
+  bad=$(git -C "$repo" rev-parse --verify "$bisect_bad^{commit}") || { echo "--bisect: no commit $bisect_bad" >&2; exit 2; }
+  scripts/local-mirror/freshness "$cc" --quiet >&2 || [ "$?" != 2 ] || { identity_log "$cc: the local prod mirror does not answer"; exit 2; }
+  snapshot=${at:-$(cached_at "$cc" "$bad")}; snapshot=${snapshot:-$(date -u +%Y-%m-%dT%H:%M:00Z)}
+  commits=("$good"); while IFS= read -r c; do commits+=("$c"); done < <(git -C "$repo" rev-list --first-parent --reverse "$good..$bad")
+  take_args=(take); [ -z "$bisect_listing" ] || take_args+=(--listing "$bisect_listing")
+  take_at() { local d; d=$(whole_side "$1" "$cc" "$2") || exit 2; python3 -I "$repo/scripts/identity_what_if.py" "${take_args[@]}" --side "$d"; }
+  identity_log "$cc bisect: ${#commits[@]} commit(s) from ${good:0:12} to ${bad:0:12} at $snapshot${bisect_listing:+, listing $bisect_listing}"
+  started=$(seconds)
+  first=$(take_at "$good" "$snapshot"); last=$(take_at "$bad" "$snapshot")
+  echo "  ${good:0:12} (good): $first"
+  echo "  ${bad:0:12} (bad):  $last"
+  if [ "$first" = "$last" ]; then
+    since=${bisect_since:-$(python3 -I -c 'import datetime,sys; t=datetime.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00")); print((t-datetime.timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:00Z"))' "$snapshot")}
+    before=$(take_at "$bad" "$since")
+    echo "  no commit of the range moves it at $snapshot: the code takes alike. ${bad:0:12} at $since: $before"
+    [ "$before" = "$last" ] && echo "  CORPUS: the take stood alike at $since too -- neither the code nor the corpus moved it in that window" \
+      || echo "  CORPUS: the corpus moved it between $since and $snapshot (scripts/identity-replay / identity-why name the input)"
+    echo "  wall $(elapsed "$started")s"
+    exit 0
+  fi
+  lo=0 hi=$(( ${#commits[@]} - 1 )) step=0
+  while [ $(( hi - lo )) -gt 1 ]; do
+    mid=$(( (lo + hi) / 2 )); step=$((step + 1))
+    t=$(take_at "${commits[$mid]}" "$snapshot")
+    echo "  step $step: ${commits[$mid]:0:12} $([ "$t" = "$first" ] && echo good || echo bad): $t"
+    if [ "$t" = "$first" ]; then lo=$mid; else hi=$mid; fi
+  done
+  echo "  FIRST MOVED BY $(git -C "$repo" log -1 --format='%h %s' "${commits[$hi]}")"
+  echo "    before: $(take_at "${commits[$lo]}" "$snapshot")"
+  echo "    after:  $(take_at "${commits[$hi]}" "$snapshot")"
+  echo "  snapshot $snapshot; $step step(s); wall $(elapsed "$started")s"
+  exit 0
+fi
+
 identity_log "base $base_sha, head $head_label; laying out and compiling the refs (once each)"
-base_tree=$(tree_of "$base_sha") || exit 2
+tree_of "$base_sha" > /dev/null || exit 2
 head_tree=$(tree_of "$head_sha") || exit 2
 judgements=${judgements:-$head_tree/test/resources/fixtures/identity-judgements.tsv}
 status=0
@@ -112,15 +295,10 @@ for cc in "${ccs[@]}"; do
   [ "$fresh_rc" != 2 ] || { identity_log "$cc: the local prod mirror does not answer (scripts/local-mirror/freshness)"; exit 2; }
   started=$(seconds)
   snapshot=${at:-$(cached_at "$cc")}
-  base_state=kept
   if [ -z "$snapshot" ]; then snapshot=$(date -u +%Y-%m-%dT%H:%M:00Z); fi
-  base_dir=$cache/$cc/$base_sha-$tools_hash/$snapshot
-  if [ ! -f "$base_dir/prod.tsv" ]; then
-    base_state=resolved
-    identity_log "$cc: resolving the base at $snapshot"
-    resolve "$base_tree" "$cc" "$base_dir.part" --at "$snapshot" || exit 2
-    rm -rf "$base_dir"; mv "$base_dir.part" "$base_dir"
-  fi
+  base_state=$([ -f "$cache/$cc/$base_sha-$tools_hash-$answers/$snapshot/final.tsv" ] || { [ "$final" = 0 ] &&
+    [ -f "$cache/$cc/$base_sha-$tools_hash-$answers/$snapshot/prod.tsv" ]; } && echo kept || echo resolved)
+  base_dir=$(whole_side "$base_sha" "$cc" "$snapshot") || exit 2
   base_seconds=$(elapsed "$started")
   head_dir=$out/$cc
   rm -rf "$head_dir"; mkdir -p "$head_dir"
@@ -134,7 +312,8 @@ for cc in "${ccs[@]}"; do
   head_started=$(seconds)
   more=(); [ "$verify" = 0 ] || more+=(--whole)
   resolve "$head_tree" "$cc" "$head_dir" --at "$snapshot" --select "$head_dir/select.txt" --families "$base_dir/families.tsv" \
-    --base-takes "$base_dir/takes.tsv" --threads "$threads" ${more[@]+"${more[@]}"} || exit 2
+    --base-takes "$base_dir/takes.tsv" --threads "$threads" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
+    ${more[@]+"${more[@]}"} || exit 2
   head_seconds=$(elapsed "$head_started")
   diff_args=(diff --cc "$cc" --base "$base_dir" --head "$head_dir" --judgements "$judgements" --tsv "$out/takes-diff-$cc.tsv")
   [ "$verify" = 0 ] || diff_args+=(--verify)
@@ -143,6 +322,9 @@ for cc in "${ccs[@]}"; do
   [ "$rc" = 0 ] || status=$rc
   region=$(tail -n 1 "$head_dir/region.tsv" | awk -F'\t' '{print $2 " listings in " $3 " group(s), " $4 " round(s)"}')
   echo "  $selected; re-resolved $region"
-  echo "  snapshot $snapshot; wall: base ${base_seconds}s ($base_state), head ${head_seconds}s, total $(elapsed "$started")s; rows $out/takes-diff-$cc.tsv"
+  for side in "$base_dir" "$head_dir"; do
+    [ ! -s "$side/answers.txt" ] || [ "$(cat "$side/answers.txt")" = "" ] || echo "  answers asked live ($([ "$side" = "$head_dir" ] && echo head || echo base)): $(cat "$side/answers.txt")"
+  done
+  echo "  snapshot $snapshot; answers $answers; wall: base ${base_seconds}s ($base_state), head ${head_seconds}s, total $(elapsed "$started")s; rows $out/takes-diff-$cc.tsv"
 done
 exit "$status"

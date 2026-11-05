@@ -149,10 +149,23 @@ class AttributeTest(unittest.TestCase):
         self.repo.commit("inert")
         self.assertEqual(self.repo.attribute(), (set(), None))
 
-    def test_the_agreement_stage_is_not_the_models(self):
+    def test_the_agreement_stage_settles_every_familys_final_take_again(self):
         self.repo.write("identity/src/main/scala/services/identity/agreement/Stage.scala", "object Stage { def x = 1 }\n")
         self.repo.commit("stage")
-        self.assertEqual(self.repo.attribute(), (set(), None))
+        patterns, why = self.repo.attribute()
+        self.assertIsNone(patterns)
+        self.assertIn("the agreement stage", why)
+
+    def test_a_model_helper_the_agreement_stage_calls_selects_all(self):
+        self.repo.write("identity/src/main/scala/services/identity/agreement/Stage.scala",
+                        "object Stage {\n  def agree(film: Int): Boolean = new AcceptanceRules {}.plausible(film)\n}\n")
+        self.repo.commit("stage calls plausible")
+        self.repo.base = self.repo.git("rev-parse", "HEAD")
+        self.repo.edit(ACC, "val cut = 3", "val cut = 4")
+        self.repo.commit("cut")
+        patterns, why = self.repo.attribute()
+        self.assertIsNone(patterns)
+        self.assertIn("reaches the agreement stage's agree", why)
 
     def test_uncommitted_edits_of_the_checkout(self):
         self.repo.edit(ACC, "val cut = 3", "val cut = 5")
@@ -253,6 +266,56 @@ class SelectAndDiffTest(unittest.TestCase):
         with redirect_stdout(out):
             print(w.render(report))
         self.assertIn("CLEAN", out.getvalue())
+
+
+class FinalStageTest(unittest.TestCase):
+    """The final take: each side's final.tsv read as take rows and diffed as the model's are, beside them."""
+
+    def write(self, path, header, rows):
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\t".join(header) + "\n")
+            f.writelines("\t".join(r) + "\n" for r in rows)
+
+    def side(self, root, name, takes, final):
+        d = os.path.join(root, name)
+        os.makedirs(d)
+        self.write(os.path.join(d, "takes.tsv"), ["key", "venue", "rawTitle", "family", "take", "rules"],
+                   [[k, k.split("|")[0], k.split("|")[1], k, t, ""] for k, t in takes])
+        self.write(os.path.join(d, "final.tsv"), ["key", "final", "basis"], [[k, t, "Agreed"] for k, t in final])
+        return d
+
+    def test_a_final_take_the_stage_moves_is_bucketed_apart_from_the_models(self):
+        with tempfile.TemporaryDirectory() as root:
+            takes = [("A|Hen", "none"), ("C|Lalka", "tmdb:5")]
+            base = self.side(root, "base", takes, [("A|Hen", "tmdb:1"), ("C|Lalka", "tmdb:5")])
+            # the head re-resolved A alone: its model take stands, its final take the stage now leaves
+            head = self.side(root, "head", [("A|Hen", "none")], [("A|Hen", "none")])
+            self.write(os.path.join(base, "prod.tsv"), ["key", "prod", "basis"], [["A|Hen", "tmdb:1", "-"], ["C|Lalka", "tmdb:5", "-"]])
+            judgements = os.path.join(root, "j.tsv")
+            with open(judgements, "w", encoding="utf-8") as f:
+                f.write("country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n")
+                f.write(judged("*", "Hen", "tmdb:1", "right"))
+            out = io.StringIO()
+            tsv = os.path.join(root, "takes-diff-de.tsv")
+            with redirect_stdout(out):
+                rc = w.main(["diff", "--cc", "de", "--base", base, "--head", head, "--judgements", judgements, "--tsv", tsv])
+            self.assertEqual(rc, 0)
+            text = out.getvalue()
+            self.assertIn("== de model: 2 listings, 1 re-resolved at the head; 0 take(s) moved", text)
+            self.assertIn("== de final: 2 listings, 1 re-resolved at the head; 1 take(s) moved", text)
+            self.assertIn("right-lost 1", text)
+            with open(os.path.join(root, "final-diff-de.tsv"), encoding="utf-8") as f:
+                self.assertIn("A\tHen\ttmdb:1\tnone\ttmdb:1\tright-lost", f.read())
+
+    def test_a_sides_take_for_bisect(self):
+        with tempfile.TemporaryDirectory() as root:
+            one = self.side(root, "one", [("A|Hen", "none"), ("C|Lalka", "tmdb:5")], [("A|Hen", "tmdb:1"), ("C|Lalka", "tmdb:5")])
+            two = self.side(root, "two", [("A|Hen", "none"), ("C|Lalka", "tmdb:5")], [("A|Hen", "none"), ("C|Lalka", "tmdb:5")])
+            self.assertEqual(w.side_take(one, "de|A|Hen"), "model none, final tmdb:1")
+            self.assertEqual(w.side_take(one, "C|Lalka"), "model tmdb:5, final tmdb:5")
+            self.assertEqual(w.side_take(one, "Z|Obcy"), "absent")
+            self.assertNotEqual(w.side_take(one), w.side_take(two))
+            self.assertEqual(w.side_take(one).split(", final")[0], w.side_take(two).split(", final")[0])
 
 
 if __name__ == "__main__":

@@ -475,7 +475,7 @@ while True:
         out.write(held[:at]); out.flush()
         sys.exit(int(held[at + len(marker):].split(b"\n")[0] or b"1"))
     keep = len(marker) - 1
-    out.write(held[:-keep]); held = held[-keep:]
+    out.write(held[:-keep]); out.flush(); held = held[-keep:]
 out.write(held); out.flush()
 sys.exit(112)
 PY

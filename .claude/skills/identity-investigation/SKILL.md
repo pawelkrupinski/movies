@@ -112,30 +112,53 @@ Design and limits: docs/design/identity-slice.md.
 ## identity-what-if
 
 `scripts/identity-what-if [--base REF (origin/main)] [--head REF|. (this checkout, uncommitted edits too)] [--verify] [--all]
-[--at ISO] [--max-age H] [--threads N] [--json] cc...` — a resolver change's MODEL takes over prod's current corpus.
+[--at ISO] [--max-age H] [--threads N] [--offline] [--model-only] [--no-serve] [--json] cc...` — a resolver change's MODEL
+and FINAL takes over prod's current corpus. Also `--bisect GOOD BAD [--listing 'venue|raw title'] cc` (which commit moved a
+take, or the corpus), `--recording RUN --head REF` (a CI recording through CI's own tools) and `--stop-served`.
 
-- **One snapshot, two codes.** `services.identity.WhatIfResolve` (this checkout's copy, with `tools/MemoLookups.scala`,
-  dropped into each ref's tree under the shared cache, `identity_tree`) replays the mirror's `identity_history` to `--at`
-  (listings, venue pages, TMDB store; every live ask refused) and resolves every family against the corpus's context. The
-  base is KEPT per (base sha, tool files, snapshot) under `$KINOWO_IDENTITY_CACHE/what-if/`; without `--at` a rerun takes the
-  newest kept snapshot under `--max-age` (6 h), so only the head resolves.
+- **One snapshot, two codes.** `services.identity.WhatIfResolve` (this checkout's copy, with its tool files —
+  `WhatIfAnswers`, `scripts/StageAnswers`, `tools/MemoLookups`, `tools/KeptJvm` — dropped into each ref's tree under the
+  shared cache, `identity_tree`) replays the mirror's `identity_history` to `--at` (listings, venue pages, TMDB store,
+  family answers) and resolves every family against the corpus's context. The base is KEPT per (base sha, tool files,
+  answers mode, snapshot) under `$KINOWO_IDENTITY_CACHE/what-if/`; without `--at` a rerun takes the newest kept snapshot
+  under `--max-age` (6 h), so only the head resolves.
+- **Answers: asked, not refused** (since 2026-11-05). A question the mirror's store lacks — a head's new query text, a new
+  shape's search, a record, a family question — is asked of the REAL service once (`WhatIfAnswers.live`: the worker's own
+  TMDB / IMDb clients, normalizer and agreement family sources over production's paced wire, `HttpWiring.pacedWire`; each
+  host at most 8 requests at once, halved on a 429/503; direct requests only, never a proxy or a paid service) and filed
+  into the LOCAL what-if store (`$KINOWO_IDENTITY_CACHE/what-if-answers/<cc>/<collection>.log`, keyed as production's
+  `tmdb_*` / `identity_family_answers` / `identity_question_markers` key theirs) — never the mirror, never prod. A repeat run
+  asks nothing. TMDB's key comes from the vault (the tool re-runs itself under `secrets run movies TMDB_API_KEY`); each
+  side prints what it asked, by host, with its rate. `--offline` keeps the old behaviour: nothing asked, a family waiting
+  on an unheld answer counted as "awaiting an answer", read as the base's take.
+- **The final take.** Each side's model takes are settled by a fresh, unbudgeted agreement stage to its fixpoint
+  (`WhatIfResolve.settled`, `scripts.StageAnswers.settle` — the CI gate's whole resolve, `IdentityDrift.whole`), its family
+  questions, posters and catalogue pages answered from the same answer source: the base's every family, the head's
+  re-resolved ones (the rest keep the base's). The diff prints a `model` and a `final` section, bucketed alike, and writes
+  `final-diff-<cc>.tsv` beside `takes-diff-<cc>.tsv`. `--model-only` skips the stage.
 - **Affected only.** `scripts/identity_what_if.py select` walks every changed definition of `identity/src/main/scala` up its
-  callers (identity and worker sources, base and head) until each path ends in a rule root
+  callers (identity, agreement and worker sources, base and head) until each path ends in a rule root
   (`scripts/identity-what-if-roots.tsv`: the alone rules' `*Why`, `pooledNamed`, each with its own accept / refused / pooled
   ids and those of the rules it pre-empts), and re-resolves the base families whose trace names one of those ids, widened
-  while a re-resolved family blocks under another's key. Comments, imports, tests, docs and the agreement stage select
-  nothing; a path past every root (scoring, families, `ResolverRun`), a type's own body, or any file outside the identity
-  sources (lookups, normalizer, title rules, weights, build) selects ALL and prints why. Add a root when a rule's change
-  keeps selecting ALL; `--verify` then proves it.
-- **`--verify`** also resolves every family at the head and fails (exit 1) on any listing whose take differs from the
-  what-if's — inside the selection (the region resolve is not the whole one) or outside it (the selection missed it).
-- **Awaiting is no move.** A head that asks a question prod's store never held (title-rule / shape changes alter query
-  text) leaves that family Pending: every live ask is refused, a real resolve would ask and answer. Such listings are
-  counted apart ("N listing(s) await an answer"), read as the base's take, and never reported as lost; a CI measure fills
-  them. `--verify` still compares the head's own (pending) takes with the whole resolve's.
-- **What it is not.** The agreement stage (final takes) is not recomputed. It is prod's CURRENT corpus, not the pinned
-  recording: listings a measurement moved may be gone or billed otherwise now, and new ones move. `scripts/identity-measure`
-  stays the verdict of record.
+  while a re-resolved family blocks under another's key. Comments, imports, tests and docs select nothing; the agreement
+  stage's code, or a definition it calls, selects ALL (every family's final take settled again) and says so; a path past
+  every root (scoring, families, `ResolverRun`), a type's own body, or any file outside the identity sources (lookups,
+  normalizer, title rules, weights, build) selects ALL and prints why. Add a root when a rule's change keeps selecting
+  ALL; `--verify` then proves it.
+- **`--verify`** also resolves (and settles) every family at the head and fails (exit 1) on any listing whose model or
+  final take differs from the what-if's — inside the selection or outside it (the selection missed it).
+- **Kept JVMs.** Each ref's tree runs in a kept JVM (`tools.KeptJvm` over a Unix socket, one per tree and code, a JVM slot
+  held by a keeper; stops after `KINOWO_IDENTITY_WHAT_IF_IDLE_MINUTES`, 10) holding the corpus and context of its last two
+  (country, snapshot, answers): a warm rerun of the head only resolves and settles. `--no-serve` runs a JVM per side.
+- **`--bisect GOOD BAD`** (one country): each step resolves one commit of `GOOD..BAD` (first parent) whole on one snapshot
+  (kept as any base is, so a re-bisect is free), and binary-searches the first whose take differs from GOOD's — the
+  `--listing`'s model and final take, else a digest of every take. When GOOD and BAD take alike the code did not move
+  it; BAD is resolved at `--since` (24 h before the snapshot by default) to say whether the corpus did.
+- **`--recording RUN`** replays a cached CI recording through CI's own two tools (`scripts/identity-measure-local`):
+  the measure's numbers exactly, at a whole resolve's cost.
+- **What it is not.** prod's CURRENT corpus, not the pinned recording: listings a measurement moved may be gone or billed
+  otherwise now, and new ones move; and CI's final stage replays only its checked-in capture's clusters, the what-if's
+  every family. `scripts/identity-measure` stays the verdict of record.
 
 Validated 2026-11-05 against CI measurements of record (model takes; the mirror's corpus of 08:00Z vs each measure's
 recording; the head's judgements):
