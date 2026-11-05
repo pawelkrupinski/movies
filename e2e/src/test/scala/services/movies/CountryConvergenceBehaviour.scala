@@ -1831,6 +1831,25 @@ abstract class CountryConvergenceBehaviour(
         renamed.map(c => s"${c.slug} ← ${country.formerSlugs(c.slug).head} (${servedBefore(c).size} film(s))").mkString(", ") +
           s"; $renamedRows screening row(s) refiled"}")
 
+      // What each venue page an untouched film's day-one take still awaits left behind: stored, stamped, indexed, held
+      // by a row -- so a take the next day settles names why the first day's rest did not.
+      {
+        val unchangedListings = unchanged.iterator.flatMap(r => r.record.data.toSeq.flatMap { case (s, d) => ListingKey.ofSource(s, d) }).toSet
+        val enricherOf = w.detailEnrichers.groupBy(_.cinema.displayName)
+        val heldRefs = w.movieCache.entries.iterator.flatMap(_._2.data.valuesIterator.flatMap(services.cinemas.common.DetailEnricher.nativeRefOf)).toSet
+        val awaited = w.identityModel.current(5.minutes).toSeq.flatMap(_.resolution.decisions)
+          .filter(_.members.exists(unchangedListings)).flatMap(_.awaits).distinct
+        awaited.take(40).foreach {
+          case question @ services.identity.Question.VenuePage(ListingKey.Native(venue, page, _)) =>
+            enricherOf.getOrElse(venue, Nil).foreach { e =>
+              def stamp(key: String) = w.freshnessStore.lastFetchedAt(key).fold("none")(_.toString)
+              println(s"[${country.code}] day-one await: $question — stored ${w.venuePageStore.get(services.venuepages.VenuePageKey(e.detailGroup, page)).isDefined}" +
+                s", indexed ${w.venuePageIndex.answer(e, page).isDefined}, asked ${stamp(services.tasks.EnrichDetailsTasks.pageDedupKey(e.detailGroup, page))}" +
+                s", attempted ${stamp(services.tasks.EnrichDetailsTasks.pageAttempted(e.detailGroup, page))}, held by a row ${heldRefs(page)}, now ${clock.instant()}")
+            }
+          case question => println(s"[${country.code}] day-one await: $question")
+        }
+      }
       clock.advance(java.time.Duration.between(clock.instant(),
         cutoff.atZone(CorpusCoverage.zoneOf(country)).toInstant))
       step("nextDay") {
