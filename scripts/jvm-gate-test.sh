@@ -239,4 +239,15 @@ check "...KINOWO_JVM_GATE_FOLLOW_MAIN=0 keeps the worktree's own" "" \
 check "...and the root checkout's own gate is read once, not again" "from-main" \
   "$(KINOWO_JVM_GATE_FOLLOW_MAIN=1 bash -c '. "$1/scripts/jvm-gate.sh"; jvm_cpu_options' _ "$root")"
 
+# who holds the slots, readably: a kept sbt server named by its tool and checkout, a pid no longer running as gone
+mkdir -p "$work/holders/projects/movies-wt/foo/scripts" "$work/holderslots"
+printf '#!/usr/bin/env bash\nsleep 30\n' > "$work/holders/projects/movies-wt/foo/scripts/sbt-warm"
+chmod +x "$work/holders/projects/movies-wt/foo/scripts/sbt-warm"
+"$work/holders/projects/movies-wt/foo/scripts/sbt-warm" --keep & kept=$!
+echo "$kept" > "$work/holderslots/1.flock"; echo 999999 > "$work/holderslots/2.flock"
+check "jvm_slot_holders: each holder's tool and checkout, a gone one said" \
+  "pid $kept (sbt-warm --keep, movies-wt/foo); pid 999999 (gone)" \
+  "$(bash -c '. "$1"; jvm_slot_holders "$2" 2' _ "$REPO_ROOT/scripts/jvm-gate.sh" "$work/holderslots")"
+kill "$kept" 2> /dev/null
+
 spec_summary

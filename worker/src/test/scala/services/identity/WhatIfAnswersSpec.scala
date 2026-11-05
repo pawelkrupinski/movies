@@ -91,6 +91,16 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers {
     reads.get shouldBe 1
   }
 
+  "a mirror read" should "be asked again when it times out, and the timeout thrown once it keeps timing out" in {
+    val tries = new java.util.concurrent.atomic.AtomicInteger
+    WhatIfAnswers.patient({ if (tries.incrementAndGet() < 2) throw new java.util.concurrent.TimeoutException("Future timed out after [30 seconds]"); "read" },
+      times = 3) shouldBe "read"
+    tries.set(0)
+    a[java.util.concurrent.TimeoutException] should be thrownBy
+      WhatIfAnswers.patient[String]({ tries.incrementAndGet(); throw new java.util.concurrent.TimeoutException("again") }, times = 2)
+    tries.get shouldBe 2
+  }
+
   "the throttle" should "halve a host's concurrency on a 429 and never ask it more at once than its limit" in {
     val inFlight = new java.util.concurrent.atomic.AtomicInteger
     val most     = new java.util.concurrent.atomic.AtomicInteger

@@ -2,7 +2,7 @@ package services.identity
 
 import models.Country
 import org.bson.{BsonDocument, RawBsonDocument}
-import services.identity.adapters.{FamilySource, InMemoryTmdbDocuments, TmdbDocuments, TmdbKind, TmdbStore}
+import services.identity.adapters.{FamilySource, TmdbDocuments, TmdbKind, TmdbStore}
 import services.identity.agreement.VoterFamily
 import services.movies.TitleNormalizer
 
@@ -130,6 +130,18 @@ object WhatIfAnswers {
     def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = under.put(kind, docs)
   }
 
+  /** `body`, asked again (up to `times`, a pause between) when a read of the mirror timed out: a mirror's `mongod` on a
+   *  loaded laptop answers a batch past its 30 s now and then, and a run waited for its JVM slot for longer than that
+   *  read (the parked-items review's UK run, 2026-11-05). Any other failure is the caller's. */
+  def patient[A](body: => A, times: Int = 4): A =
+    try body
+    catch {
+      case e: java.util.concurrent.TimeoutException if times > 1 =>
+        System.err.println(s"[what-if] a mirror read timed out ($e): asked again")
+        Thread.sleep(2000)
+        patient(body, times - 1)
+    }
+
   /** `inner`'s documents, each read once and kept, a missing one too: a stage settled over a whole corpus reads its family
    *  answers one cluster at a time, and through the mirror's replay each read was a round trip (ES: 254 s of one apply).
    *  [[warm]] reads a kind's ids in batches up front; a write goes through to `inner` and is kept. */
@@ -138,7 +150,7 @@ object WhatIfAnswers {
     private def through(kind: TmdbKind, ids: Seq[String])(read: Seq[String] => Map[String, BsonDocument]): Map[String, BsonDocument] = {
       val missing = ids.distinct.filterNot(held(kind).containsKey)
       if (missing.nonEmpty) {
-        val found = missing.grouped(1000).flatMap(read).toMap
+        val found = missing.grouped(1000).flatMap(batch => patient(read(batch))).toMap
         missing.foreach(id => held(kind).putIfAbsent(id, found.get(id)))
       }
       ids.flatMap(id => Option(held(kind).get(id)).flatten.map(id -> _.clone())).toMap
@@ -153,47 +165,56 @@ object WhatIfAnswers {
   }
 
   /**
-   * The local what-if store: [[InMemoryTmdbDocuments]], every write appended to `<dir>/<collection>.log` (the kind's
+   * The local what-if store: each document's BSON bytes in memory, every write appended to `<dir>/<collection>.log` (the kind's
    * production collection) and read back on the next start — each record its id and its BSON, a later one for an id
    * replacing an earlier. A torn last record (a killed run) is dropped.
    */
   final class DiskTmdbDocuments(dir: Path) extends TmdbDocuments {
-    private val memory = new InMemoryTmdbDocuments
+    // each document kept as its BSON bytes, read back afresh: the driver's codec alone, so a ref older than any store
+    // helper of the checkout's compiles this file too
+    private val codec  = new org.bson.codecs.BsonDocumentCodec
+    private val memory = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, Array[Byte]]()).toMap
+    private def bytesOf(d: BsonDocument): Array[Byte] = {
+      val buffer = new RawBsonDocument(d, codec).getByteBuffer
+      val bytes  = new Array[Byte](buffer.remaining())
+      buffer.get(bytes)
+      bytes
+    }
     Files.createDirectories(dir)
     private def fileOf(kind: TmdbKind): Path = dir.resolve(s"${kind.collection}.log")
     TmdbKind.values.foreach { kind =>
       val file = fileOf(kind)
       if (Files.exists(file)) {
         val in = new DataInputStream(new java.io.BufferedInputStream(new FileInputStream(file.toFile)))
-        val read = Seq.newBuilder[(String, BsonDocument)]
         try {
           var more = true
           while (more) {
             try {
-              val id    = new String(in.readNBytes(in.readInt()), StandardCharsets.UTF_8)
-              val bytes = in.readNBytes(in.readInt())
-              read += id -> new RawBsonDocument(bytes)
-            } catch { case _: EOFException | _: org.bson.BsonSerializationException | _: IllegalArgumentException => more = false }
+              val idLength = in.readInt()
+              val id       = new String(in.readNBytes(idLength), StandardCharsets.UTF_8)
+              val length   = in.readInt()
+              val bytes    = in.readNBytes(length)
+              if (id.getBytes(StandardCharsets.UTF_8).length != idLength || bytes.length != length) more = false
+              else memory(kind).put(id, bytes)
+            } catch { case _: EOFException => more = false }
           }
         } finally in.close()
-        memory.put(kind, read.result())
       }
     }
     private val logs = new ConcurrentHashMap[TmdbKind, java.nio.channels.FileChannel]()
     private def logOf(kind: TmdbKind) = logs.computeIfAbsent(kind, k => java.nio.channels.FileChannel.open(fileOf(k),
       java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.WRITE, java.nio.file.StandardOpenOption.APPEND))
-    def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = memory.get(kind, ids)
+    def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
+      ids.flatMap(id => Option(memory(kind).get(id)).map(bytes => id -> new RawBsonDocument(bytes).decode(codec))).toMap
     /** Kept, and appended to the kind's log as ONE write: another what-if appending to the same store at once (two
      *  agents, one country) interleaves whole batches, never parts of a record. */
     def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = if (docs.nonEmpty) {
-      memory.put(kind, docs)
       val batch = new java.io.ByteArrayOutputStream()
       val out   = new DataOutputStream(batch)
       docs.foreach { case (id, d) =>
+        val bytes   = bytesOf(d)
         val idBytes = id.getBytes(StandardCharsets.UTF_8)
-        val buffer  = services.BsonRoundTrip.bytes(d).getByteBuffer
-        val bytes   = new Array[Byte](buffer.remaining())
-        buffer.get(bytes)
+        memory(kind).put(id, bytes)
         out.writeInt(idBytes.length); out.write(idBytes); out.writeInt(bytes.length); out.write(bytes)
       }
       out.flush()
@@ -203,7 +224,7 @@ object WhatIfAnswers {
         while (bytes.hasRemaining) channel.write(bytes)
       }
     }
-    def size(kind: TmdbKind): Int = memory.size(kind)
+    def size(kind: TmdbKind): Int = memory(kind).size
   }
 
   /** How many requests one host is asked at once: [[Start]], halved on every 429 or 503 it answers, never below 1. */

@@ -105,8 +105,8 @@ object WhatIfResolve {
       .batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
     // the mirror's store as it stood at `at`, each document read once: its family answers all read up front, in batches
     val mirror   = new WhatIfAnswers.Memoised(replay.documents(new MongoTmdbDocuments(db)))
-    mirror.warm(adapters.TmdbKind.Family, Await.result(db.getCollection[BsonDocument](adapters.TmdbKind.Family.collection).find()
-      .projection(new BsonDocument("_id", new org.bson.BsonInt32(1))).batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes)
+    mirror.warm(adapters.TmdbKind.Family, WhatIfAnswers.patient(Await.result(db.getCollection[BsonDocument](adapters.TmdbKind.Family.collection).find()
+      .projection(new BsonDocument("_id", new org.bson.BsonInt32(1))).batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
       .map(_.getString("_id").getValue))
     val answers  = answering(mirror)
     val lookups  = tools.ProdLookupInputs.lookups(answers.docs, pages, tools.ProdLookupInputs.enrichersOf(country, clock), answers.live, country, clock)
@@ -234,13 +234,13 @@ object WhatIfResolve {
       val db         = kept.client.getDatabase(services.MongoConnection.mirrorDbFor(country.mongoDb))
       val normalizer = TitleNormalizer.forCountry(country)
       val loadKey    = Seq(cc, at.toString, opt("--answers").getOrElse("offline"), opt("--answers-dir").getOrElse("")).mkString("|")
-      val (loaded, warm) = kept.loaded(loadKey) {
+      val (loaded, warm) = kept.loaded(loadKey) { WhatIfAnswers.patient {
         val inputs  = ResolveInputs.of(new MongoPinStore(Some(db)).all())
         val corpus  = timed("corpus")(corpusAt(db, country, at, normalizer, clock, answering(args.toSeq, country, clock)))
         val context = timed("context")(new CandidateGeneration(corpus.listings, corpus.lookups, normalizer, inputs.pins, inputs.decorations,
           lazyLookups = false).context)
         Loaded(corpus, context, inputs)
-      }
+      } }
       if (warm) System.err.println(s"[what-if] $cc: the corpus and its context kept from an earlier request")
       val Loaded(corpus, context, inputs) = loaded
       val byKey      = corpus.listings.map(l => l.key -> l).toMap
@@ -261,7 +261,7 @@ object WhatIfResolve {
           tsv(out.resolve("families.tsv"), "family\tblockKeys", families.map(f => Seq(keyOf(f.listings.minBy(keyOf)), list(f.blockKeys))))
           finalOf(families, "final.tsv", "settle-all")
           val prod  = tools.ProdMirror.open(uri, country)
-          val sides = timed("prod")(try prod.sides(corpus.listings.map(_.key)) finally prod.close())
+          val sides = timed("prod")(try WhatIfAnswers.patient(prod.sides(corpus.listings.map(_.key))) finally prod.close())
           tsv(out.resolve("prod.tsv"), "key\tprod\tbasis", corpus.listings.map { l =>
             val (film, basis) = sides.get(l.key).fold(("missing", "-"))(_.take)
             Seq(keyOf(l.key), film, clean(basis))

@@ -212,6 +212,20 @@ jvm_slot_try() { # [label]
   done
   return 1
 }
+# Who holds each slot, readably: each holder's pid and what it is (a kept sbt server and its checkout, a tool's keeper),
+# "pid 123 (sbt-warm --keep, movies-wt/flip-monitor)"; a pid no longer running is named gone.
+jvm_slot_holders() { # <slot dir> <slots>
+  local n pid what
+  for n in $(seq 1 "$2"); do
+    pid=$(cat "$1/$n.flock" 2>/dev/null) || continue
+    [ -n "$pid" ] || continue
+    what=$(ps -o args= -p "$pid" 2>/dev/null | awk '{
+      tool = ""; dir = ""
+      for (i = 1; i <= NF; i++) if ($i ~ /\/scripts\/[^\/]+$/ || $i ~ /^scripts\//) { tool = $i; sub(/.*\/scripts\//, "", tool); dir = $i; sub(/\/scripts\/.*/, "", dir); sub(/.*\/projects\//, "", dir); rest = (i < NF) ? " " $(i + 1) : ""; break }
+      print (tool != "" ? tool rest (dir != "" && dir != $i ? ", " dir : "") : substr($0, 1, 60)) }')
+    printf 'pid %s (%s)\n' "$pid" "${what:-gone}"
+  done | paste -sd';' - | sed 's/;/; /g'
+}
 jvm_slot_take() { # <label>
   # riding needs the slot's descriptor itself: a process outliving its starter has the name but not the lock
   jvm_slot_riding && return 0
@@ -241,9 +255,11 @@ jvm_slot_take() { # <label>
         return 0
       fi
     elif [ -z "$said" ]; then
-      echo "[$label] all $slots JVM slots busy (KINOWO_JVM_SLOTS; holders: $(for n in $(seq 1 "$slots"); do cat "$dir/$n.flock" 2>/dev/null; done | paste -sd, -)): waiting (up to ${max}s, longer while memory is short)" >&2; said=1
+      echo "[$label] all $slots JVM slots busy (KINOWO_JVM_SLOTS; holders: $(for n in $(seq 1 "$slots"); do cat "$dir/$n.flock" 2>/dev/null; done | paste -sd, -)): waiting (up to ${max}s, longer while memory is short)" >&2
+      echo "[$label] WAITING for a JVM slot, held by $(jvm_slot_holders "$dir" "$slots"); a kept sbt server holds its slot while idle (its owner frees it: scripts/sbt-warm --stop)" >&2; said=1
     elif [ "$waited" -ge "$next" ]; then
       echo "[$label] all $slots JVM slots still busy after ${waited}s (holders: $(for n in $(seq 1 "$slots"); do cat "$dir/$n.flock" 2>/dev/null; done | paste -sd, -))" >&2
+      echo "[$label] still WAITING for a JVM slot, held by $(jvm_slot_holders "$dir" "$slots")" >&2
       next=$((waited + every))
     fi
     sleep "$poll"
