@@ -81,7 +81,7 @@
 #                 diagnostic) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
 #   `driftguards` scripts/ci/commit_rules.py driftguards over the pushed commits, on a change to the identity paths, worker/src/main or
-#                 the drift harness (is_drift_path): a commit fixing a drift or flip red (`Fixes-Red:` and a message
+#                 the drift harness (is_drift_path), or on any pushed commit carrying `Fixes-Red:` (CI judges every one): a commit fixing a drift or flip red (`Fixes-Red:` and a message
 #                 about drift/flips) lands with its drift slice (test/resources/fixtures/drift-slices/, cut by
 #                 scripts/identity-slice --emit-drift-slice) or `Drift-Slice: none -- <why>`; a red fix changing
 #                 resolver or agreement RULE code names the design
@@ -824,6 +824,15 @@ checks=""; [ -z "$changed" ] || checks="$(printf '%s\n' "$changed" | plan)" # a 
 # the week to 2026-10-31 fixed a lint after landing; simplification-2026-10-31, "lints before landing").
 FastChecks='^(sbt|shellcheck|actionlint)$'
 [ -n "$fast_only" ] && checks="$(printf '%s\n' "$checks" | grep -E "$FastChecks" || true)"
+# THE DRIFT GUARDS ON A RED FIX, WHATEVER ITS PATHS: the slice rule reads the message (`Fixes-Red:` and drift/flips), and
+# CI's commit rules judge every pushed commit, so a commit claiming a fix is judged here too, in a third of a second: a
+# scripts-only drift-explorer fix the paths never selected it for turned Main #2172's commit rules red.
+if ! printf '%s\n' "$checks" | grep -qx driftguards; then
+    for r in "${ranges[@]}"; do
+        [ -n "$(git log --format='%(trailers:key=Fixes-Red,valueonly)' "$r" | grep -v '^$' || true)" ] || continue
+        checks="$(printf '%s\ndriftguards' "$checks" | grep -v '^$')"; break
+    done
+fi
 # THE IDENTITY DRIFT CHECK (the header): the runs a push to main claims to fix, when it touches a drift path. A commit carrying
 # `Red-Unrelated:` claims no fix (a speed-up landing on red under the owner's rule), so its trailer names none here.
 drift_reds="" drift_birth=""

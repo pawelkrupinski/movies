@@ -378,10 +378,10 @@ printf '#!/usr/bin/env bash\nexit 0\n' > "$areabin/java"
 chmod +x "$area/scripts/sbt-warm" "$areabin/sbt" "$areabin/java"
 scratch_git "$area" add -A; scratch_git "$area" commit -qm base
 export AREA_CALLS="$testroot/area-calls"
-area_push() { # <path> [env...]: commits <path>, runs the hook over that commit; prints the exit code
+area_push() { # <path> [env...]: commits <path> (message $AREA_MESSAGE, default "touches <path>"), runs the hook over that commit; prints the exit code
   local path="$1"; shift
   mkdir -p "$area/$(dirname "$path")"; echo "x $RANDOM" >> "$area/$path"
-  scratch_git "$area" add -A; scratch_git "$area" commit -qm "touches $path"
+  scratch_git "$area" add -A; scratch_git "$area" commit -qm "${AREA_MESSAGE:-touches $path}"
   : > "$AREA_CALLS"
   (cd "$area" && env PATH="$areabin:$PATH" PREPUSH_SKIP="eslint lintspecs" "$@" \
      bash scripts/hooks/pre-push --range HEAD~1..HEAD > "$testroot/area-out" 2>&1); echo $?
@@ -445,6 +445,14 @@ check "...which a push selecting no page check passes with nothing run" "0 0" "$
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala PREPUSH_LIST=1)"
 check "PREPUSH_LIST=1 prints the selected checks and runs none" "0 driftguards sbt identity 0" \
   "$code $(grep -vE 'pre-push' "$testroot/area-out" | tr '\n' ' ' | sed 's/ $//') $(wc -l < "$AREA_CALLS" | tr -d ' ')"
+# THE DRIFT GUARDS ON A RED FIX, WHATEVER ITS PATHS: CI's commit rules judge every pushed commit, and the slice rule reads
+# the message (`Fixes-Red:` and drift/flips), not the paths: a scripts-only "drift explorer" fix the hook never judged
+# turned Main #2172's commit rules red (cc12f1e4f, fc7a64ef3).
+code="$(AREA_MESSAGE=$'Drift explorer: survive a failed run\n\nFixes-Red: 7' area_push scripts/ci/x.sh PREPUSH_LIST=1)"
+check "a commit claiming a red fix selects the drift guards whatever paths it touches" "0 1" \
+  "$code $(grep -cx driftguards "$testroot/area-out")"
+code="$(area_push scripts/ci/y.sh PREPUSH_LIST=1)"
+check "...and a push claiming none, off the drift paths, still does not" "0 0" "$code $(grep -cx driftguards "$testroot/area-out")"
 code="$(area_push identity/src/main/scala/services/identity/Resolver.scala PREPUSH_LIST=1 PREPUSH_ONLY=identity)"
 check "...with PREPUSH_ONLY, the job's own share" "0 identity" "$code $(grep -vE 'pre-push' "$testroot/area-out" | tr '\n' ' ' | sed 's/ $//')"
 code="$(area_push worker/src/main/scala/services/movies/L.scala PREPUSH_LIST=1 PREPUSH_ONLY=identity)"
