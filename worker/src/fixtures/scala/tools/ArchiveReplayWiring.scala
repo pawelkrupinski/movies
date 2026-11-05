@@ -229,7 +229,9 @@ class ArchiveReplayWiring(
    *  (`TmdbDocumentRetentionBehaviour`: `TmdbDocumentsSpec`, `MongoTmdbDocumentsIntegrationSpec`). Over Mongo they
    *  were the replay's largest read cost: ~150k reads and writes of `tmdb_films` and ~160k reads of `tmdb_queries`,
    *  ~100 s of mongod beside the JVM on Germany's 4-core row, with the driver in 23% of the suite's CPU samples (JFR,
-   *  run 41438546199). The history the worker files every answer into is kept. */
+   *  run 41438546199). The history the worker files every answer into is kept. Their heap: the United States' row
+   *  peaked at 8.63 of its 10 GB with them (8.04-8.10 before; run 41964526286), so a pinned US recording ~15% larger
+   *  than 573 would need the heap raised or these answers bounded. */
   override protected lazy val identityTmdbLayer: services.identity.adapters.IdentityTmdbLayer =
     new services.identity.adapters.IdentityTmdbLayer(None, clock, identityHistory, configuration.commit.value)
 
