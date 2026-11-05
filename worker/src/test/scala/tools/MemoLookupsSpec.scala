@@ -52,4 +52,38 @@ class MemoLookupsSpec extends AnyFlatSpec with Matchers {
     // a lookup newer than the oldest ref a slice runs under, passed through by name where the slice wires the memo
     OlderRefs.passing(classOf[IdentityLookups], memo, inner, OlderRefs.NewerLookups).numbersFilmsByTmdbId shouldBe false
   }
+
+  /** A source whose prefetch must never run beside another of its own (StoredTmdbLookups': each prefetch lets go of the
+   *  last one's documents, so two at once NPE'd in its `load`), counting what each prefetch was asked. */
+  private class OnePrefetchAtATime extends CountingLookups {
+    val inFlight   = new java.util.concurrent.atomic.AtomicInteger()
+    val overlapped = new java.util.concurrent.atomic.AtomicBoolean()
+    val asked      = new java.util.concurrent.ConcurrentLinkedQueue[CandidateQuery]()
+    override def prefetch(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[Listing]): Unit = {
+      if (inFlight.incrementAndGet() > 1) overlapped.set(true)
+      qs.foreach(asked.add)
+      Thread.sleep(5)
+      inFlight.decrementAndGet(); ()
+    }
+  }
+
+  "A memo shared by concurrent family resolves" should "never run two of its source's prefetches at once" in {
+    val inner = new OnePrefetchAtATime
+    val memo  = new MemoLookups(inner)
+    val pool  = java.util.concurrent.Executors.newFixedThreadPool(8)
+    try (0 until 32).map(n => pool.submit(new java.util.concurrent.Callable[Unit] {
+      def call(): Unit = memo.prefetch(Seq(CandidateQuery.Title(s"Film $n")), Nil, Nil)
+    })).foreach(_.get()) finally pool.shutdown()
+    inner.overlapped.get shouldBe false
+  }
+
+  it should "not prefetch again what it already holds: a family's prefetch of the corpus's answers reaches no source" in {
+    val inner = new OnePrefetchAtATime
+    val memo  = new MemoLookups(inner)
+    memo.prefetch(Seq(CandidateQuery.Title("Film 1"), CandidateQuery.Title("Film 2")), Nil, Nil)
+    memo.prefetch(Seq(CandidateQuery.Title("Film 2"), CandidateQuery.Title("Film 3")), Nil, Nil)
+    memo.prefetch(Seq(CandidateQuery.Title("Film 1")), Nil, Nil)
+    import scala.jdk.CollectionConverters._
+    inner.asked.asScala.toSeq shouldBe Seq(CandidateQuery.Title("Film 1"), CandidateQuery.Title("Film 2"), CandidateQuery.Title("Film 3"))
+  }
 }

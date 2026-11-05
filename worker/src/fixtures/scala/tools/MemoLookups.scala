@@ -26,15 +26,26 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   // What a resolve announces it will ask, answered ahead on a few threads: a live-gap replay
   // (`settings.IdentityLiveGaps`) otherwise asks its live questions one after another, and a recorded corpus's detail
   // pages -- decompressed and parsed, a third of the US resolve's 285 s (JFR, 2026-10-15) -- are read on the idle cores.
+  //
+  // Only what the memo does not hold yet reaches the source, one prefetch at a time: a source's prefetch may let go of
+  // the last one's documents (StoredTmdbLookups' does), so two family resolves prefetching at once over one memo raced
+  // (an NPE in its `load`, FamilyCounterfactual and MirrorRecompute held to one thread), and every family re-announcing
+  // answers the corpus's resolve already memoised threw the source's documents away for nothing.
   override def prefetch(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[Listing]): Unit = {
-    inner.prefetch(qs, ids, pages)
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(MemoLookups.PrefetchThreads)
-    try {
-      (qs.toSeq.map(q => () => { candidates(q); () }) ++ ids.toSeq.map(id => () => { film(id); () }) ++
-        pages.toSeq.map(l => () => { detail(l); () }))
-        .map(task => pool.submit(new java.util.concurrent.Callable[Unit] { def call(): Unit = task() })).foreach(_.get())
-    } finally pool.shutdown()
+    val newQueries = qs.toSeq.distinct.filterNot(queries.containsKey)
+    val newFilms   = ids.toSeq.distinct.filterNot(films.containsKey)
+    val newPages   = pages.toSeq.filterNot(l => details.containsKey((l.venue, l.page.getOrElse(""))))
+    if (newQueries.nonEmpty || newFilms.nonEmpty || newPages.nonEmpty) prefetching.synchronized {
+      inner.prefetch(newQueries, newFilms, newPages)
+      val pool = java.util.concurrent.Executors.newFixedThreadPool(MemoLookups.PrefetchThreads)
+      try {
+        (newQueries.map(q => () => { candidates(q); () }) ++ newFilms.map(id => () => { film(id); () }) ++
+          newPages.map(l => () => { detail(l); () }))
+          .map(task => pool.submit(new java.util.concurrent.Callable[Unit] { def call(): Unit = task() })).foreach(_.get())
+      } finally pool.shutdown()
+    }
   }
+  private val prefetching = new Object
   def sizes: (Int, Int, Int) = (details.size, queries.size, films.size)
   /** Whether `l`'s venue detail was asked through it and had no answer: its page unread. */
   def unreadDetail(l: Listing): Boolean = Option(details.get((l.venue, l.page.getOrElse("")))).exists(!_.isKnown)
