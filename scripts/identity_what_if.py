@@ -121,12 +121,21 @@ def definition_at(lines, index):
     return holder and holder[0]
 
 
+def diff_path(header):
+    """The head-side path a `diff --git` header names: `a/x b/x`, or each side quoted (`"a/x y" "b/x y"`, a name git
+    quotes: a space, a quote, a non-ASCII byte as an octal escape) -- unquoted and its escapes decoded."""
+    if header.endswith('"') and ' "b/' in header:
+        quoted = header[header.rindex(' "b/') + 4:-1]
+        return quoted.encode("latin-1", "backslashreplace").decode("unicode_escape").encode("latin-1").decode("utf-8", "replace")
+    return header.split(" b/", 1)[1]
+
+
 def hunks(diff_text):
     """[(path, side, line numbers)] of a `git diff -U0`: each changed line's number on the base ('-') or head ('+') side."""
     out, path, old, new = [], None, None, None
     for line in diff_text.splitlines():
         if line.startswith("diff --git "):
-            path = line.split(" b/", 1)[1]
+            path = diff_path(line)
         elif line.startswith("@@"):
             m = re.match(r"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@", line)
             old, new = int(m.group(1)), int(m.group(2))

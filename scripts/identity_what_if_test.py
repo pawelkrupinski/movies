@@ -172,6 +172,13 @@ class AttributeTest(unittest.TestCase):
         self.assertEqual(self.repo.attribute(".")[0], {"accept:sole-work", "refused:sole-work:*"})
 
 
+class DiffPathTest(unittest.TestCase):
+    def test_a_header_git_quotes_is_read_unquoted(self):
+        self.assertEqual(w.diff_path('diff --git "a/fixtures/kino-\\305\\233wiatowid/x.gz" "b/fixtures/kino-\\305\\233wiatowid/x.gz"'),
+                         "fixtures/kino-\u015bwiatowid/x.gz")
+        self.assertEqual(w.diff_path("diff --git a/scripts/x.py b/scripts/x.py"), "scripts/x.py")
+
+
 class HolderTest(unittest.TestCase):
     def test_a_local_definition_is_its_members(self):
         lines = ACCEPTANCE.splitlines()
