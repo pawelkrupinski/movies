@@ -61,4 +61,10 @@ class FamilyIndexSpec extends AnyFlatSpec with Matchers {
     val dunes = kept.recorded.find(_.members.exists(_.title == "Dune")).get
     an[FamilyIndex.Unindexed] should be thrownBy FamilyIndex.replayAlone(dunes.copy(answers = Map.empty), normalizer, ResolveInputs.Unpinned)
   }
+
+  it should "name each context read by an id that parses back to it" in {
+    val readsAll = base.index.entries.flatMap(_.context.keys)
+    readsAll should not be empty
+    readsAll.foreach(read => FamilyIndex.ContextRead.parse(read.id) shouldBe Some(read))
+  }
 }

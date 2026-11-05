@@ -89,6 +89,22 @@ object FamilyIndex {
     }
   }
 
+  object ContextRead {
+    /** The read an [[ContextRead.id]] names; `None` for one it does not. */
+    def parse(id: String): Option[ContextRead] = id.split("\\|", 2) match {
+      case Array("houses")                => Some(Houses)
+      case Array("house-ranking")         => Some(HouseRanking)
+      case Array("record", film)          => film.toIntOption.map(Record(_))
+      case Array("house", banner)         => Some(House(banner))
+      case Array("group", key)            => Some(TitleGroup(key))
+      case Array("whole", sanitised)      => Some(WholeTitle(sanitised))
+      case Array("spread", sanitised)     => Some(SegmentSpread(sanitised))
+      case Array("reached", key)          => Some(ReachedBy(key))
+      case Array("ranked", query)         => Dependency.queryOf(query).map(Ranked(_))
+      case _                              => None
+    }
+  }
+
   /** A corpus's context recording every read a resolve makes of it: the value it answered, and its digest. */
   private[identity] final class RecordingContext(underlying: CorpusContext) extends ReadingContext {
     val values: TrieMap[ContextRead, Any] = TrieMap.empty

@@ -503,8 +503,17 @@ stage made (Broadcast's namesake records, casts, descriptions, release days). St
 of them. The spec holds the final take as it holds the model's: each family settled alone takes what the corpus's stage
 took; its reads digest alike in the corpus's stage; and a family whose model entry and stage reads stand keeps its
 final take, over the population corpora, corpora with a stage-only lookup withheld, and the corpus a year on (dropping
-the stage reads from the comparison fails it: Purbeck "Hen" moves a year on). Then: (a) the per-family convergence
-check keyed by the index; (b) affected-only recompute on the local prod mirror.
+the stage reads from the comparison fails it: Purbeck "Hen" moves a year on). Then: (b) affected-only recompute on the local prod mirror.
+
+**(a) The per-family convergence check** (`services.identity.FamilyConvergence`, worker tests; `worker/Test/runMain
+services.identity.FamilyConvergence --cache FILE SLICE...`): each family's population lattice walked -- every subset of
+7 or fewer listings, levels 0-1 and n-1..n up to 63, seeded orders beyond -- the model against the corpus's context with
+the family's absent listings out, the final take by a fresh stage per subset; a flip wherever a listing's takes go A -> B
+-> A along nested subsets, or A -> B one listing apart. Each verdict is cached under the rules version, the entry's
+digest and its final reads, with its CLOSURE: the reads a subset made beyond the whole family's (context reads by the
+whole corpus's value, lookups, the year). A run walks again only a family whose key or closure moved: over the 29 drift
+slices a first run walks 50 families (66 flips, Buddies, Durham, Oxide Ghosts and Titans among them) and a second walks
+none. Not in the closure yet: a family answer only a sub-population asks, which no settle of the whole family reads.
 
 ## What still blocks retiring the checks
 

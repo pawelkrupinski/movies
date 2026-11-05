@@ -38,12 +38,15 @@ object FamilyFinalReads {
     Settled(takes, verdicts.all().flatMap(_.reads).toMap, recorded.reads, stage, lookups, byKey.get)
   }
 
+  /** What `read`, a receipt's, digests to in `now`'s stage. */
+  def digestNow(read: Dependency, now: Settled): Option[Long] = now.stage.digestNow(read, now.listingOf)
+
   /** What of `was`'s reads digests otherwise in `now`: a receipted read through `now`'s stage (a filed answer, an attempt,
    *  the year, a lookup), and every lookup through `now`'s lookups. `Asked` names a question to read again on its filing,
    *  no value: its answer is its own receipt entry. */
   def moved(was: Settled, now: Settled): Seq[String] =
     was.receipts.toSeq.collect {
-      case (read, digest) if !read.isInstanceOf[Dependency.Asked] && !now.stage.digestNow(read, now.listingOf).contains(digest) => Dependency.encode(read)
+      case (read, digest) if !read.isInstanceOf[Dependency.Asked] && !digestNow(read, now).contains(digest) => Dependency.encode(read)
     } ++ was.lookups.toSeq.collect {
       case (read, digest) if !FamilyIndex.Lookups.digestIn(read, now.source, now.listingOf).contains(digest) => "lookup|" + Dependency.encode(read)
     }
