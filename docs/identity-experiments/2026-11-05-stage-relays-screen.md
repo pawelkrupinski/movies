@@ -1,4 +1,4 @@
-# 2026-11-05 — a relay's work words drop "screen" (`ScreeningWords`) — PARKED; the DE seed-8 Geister flips were NOT its (head `f36cb6581ae3`)
+# 2026-11-05 — a relay's work words drop "screen" (`ScreeningWords`) — LANDED 2026-11-05 after a re-run under keyed fills; the DE seed-8 Geister flips were the harness's (head `f36cb6581ae3`)
 
 - **What:** `StageRelays.Relay.of` filters `ScreeningWords("screen")` out of a relay's `workWords`, so UK Lowther Pavilion's
   "On Screen: The Royal Ballet SWAN LAKE (12A)" no longer reads "screen" as its work and denies the house's 2026/27 record
@@ -32,3 +32,11 @@
   country-wide. With fills drawn by question id (`IdentityDrift.Share.filed`), main and the shapes branch with the
   numeral commit show the SAME DE flips (seed 8 Buddies + Titans x2, seed 64 Buddies; drift runs 42027698490 and
   42027914659): no Geister flip. The relay change may deserve a re-run under the fixed harness.
+- **Re-run under keyed fills (2026-11-05), landed:** the relay change ALONE on main `80b59d0da8e1` (no numeral commit,
+  no shapes): drift 42039542135 (DE and UK, seeds 8 and 47) CLEAN -- DE seed 8's head flips are the base's (Titans at
+  CinemaxX Dammtor and Regensburg), no Geister flip, seed 47 none; full measure 42044743504 LANDABLE (UK model: Lowther
+  Pavilion's 2023 Nutcracker take cured to the house's 2026/27 record, 8 of its "On Screen" RBO/ROH relays gained right;
+  right-lost 0, right->wrong 0, every other country 0 moved). The red that parked it was the drift harness's arrangement
+  shift; the held-take wait it was parked for was dropped by the owner, so it landed on main after C (rebased onto
+  `f805949e59d1`; `scripts/identity-what-if` there moved only UK Lowther's Carmen, Götterdämmerung and Tosca to their
+  2026/27 records, a subset of the measure's moves, every other country 0).
