@@ -65,7 +65,8 @@ whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-red
   answer the incremental sequence reads, and `scripts.IdentityDriftSlicesSpec` replays every slice through that
   sequence on 12 seeds in the unit suite (Tier 1 of the drift gate; `IdentityDrift --slice`, at least one listing
   leaving and returning). The fix's push carries the slice, or `Drift-Slice: none -- <why>` when the red has no
-  listing (a CI script, a timeout). **The legs' seeds rotate** (the owner, 2026-10-31): `takes-drift-1` / `-2`
+  listing (a CI script, a timeout); a fix already on main without either is answered by a later commit's
+  `Drift-Slice-For: <sha> none -- <why>` (main is never amended). **The legs' seeds rotate** (the owner, 2026-10-31): `takes-drift-1` / `-2`
   replay their run's pair of 1..64 (`scripts/ci/drift_seeds.py`), a red names its seed and reproducer, and a red seed
   found anywhere becomes a committed slice — `docs/design/identity-slice.md`, "A red seed becomes a slice".
 - **The harness carries its self-test**: a change to IdentityDrift, IdentityLiveDrift, TakeFlips or

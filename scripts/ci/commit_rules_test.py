@@ -344,6 +344,22 @@ class RatchetTest(unittest.TestCase):
         head = self.commit({a: "6\n"}, "CI: the drift row times out later\n\nFixes-Red: 3134\nDrift-Slice: none")
         self.assertEqual(1, self.guards(f"{head}^..{head}"), "Drift-Slice: none without a reason")
 
+    def test_a_published_fix_without_its_slice_is_answered_by_a_later_commits_declaration(self):
+        # Main #2172: cc12f1e4f, a CI-script fix naming the drift explorer, landed with no slice and no `none`; main's
+        # history is never amended, so a later commit of the judged range declares it for that commit by its sha.
+        a = "scripts/ci/dispatch.sh"
+        fix = self.commit({a: "1\n"}, "dispatch.sh: the drift explorer survives a failed run\n\nFixes-Red: 1")
+        self.assertEqual(1, self.guards(f"{fix}^..{fix}"), "the published fix alone")
+        self.commit({"docs/x.md": "1\n"}, f"commit rules: answer {fix[:9]}\n\nDrift-Slice-For: {fix[:9]} none")
+        self.assertEqual(1, self.guards(f"{fix}^..HEAD"), "a declaration without a reason answers nothing")
+        self.commit({"docs/x.md": "2\n"}, "commit rules: answer another\n\nDrift-Slice-For: 0123456789 none -- not it")
+        self.assertEqual(1, self.guards(f"{fix}^..HEAD"), "a declaration for another commit answers nothing")
+        self.commit({"docs/x.md": "3\n"}, f"commit rules: answer it\n\nDrift-Slice-For: {fix[:4]} none -- a CI script")
+        self.assertEqual(1, self.guards(f"{fix}^..HEAD"), "a sha too short to name one commit answers nothing")
+        self.commit({"docs/x.md": "4\n"}, f"commit rules: answer it\n\nDrift-Slice-For: {fix[:9]} none -- a CI script, no listing")
+        self.assertEqual(0, self.guards(f"{fix}^..HEAD"), "a reasoned declaration later in the range answers it")
+        self.assertEqual(1, self.guards(f"{fix}^..{fix}"), "...but only where the range holds the declaration")
+
     def test_a_slice_under_a_non_ascii_name_counts(self):
         a = "identity/src/main/A.scala"
         fix = self.commit({a: "1\n"}, "Identity: Zniknięcie no longer flips\n\nFixes-Red: 555")

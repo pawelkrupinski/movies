@@ -36,7 +36,8 @@
 #     speaks of drift or flips comes with a drift slice of the listing it fixes -- a change under SLICES
 #     (scripts/identity-slice <cc> SELECTOR --emit-drift-slice) anywhere in the same push -- so IdentityDriftSlicesSpec
 #     holds the fix from then on (convergence-failures 2026-10-29, G2: E3, E4, E8 and E9's re-breaks were listings that
-#     had failed before). A fix whose red has no listing to slice (a CI script, a timeout) says `Drift-Slice: none -- <why>`.
+#     had failed before). A fix whose red has no listing to slice (a CI script, a timeout) says `Drift-Slice: none -- <why>`;
+#     for one already on main (never amended), a later commit of the judged range says `Drift-Slice-For: <sha> none -- <why>`.
 #   - A RED FIX IS NO RESOLVER RULE. A flip or drift is fixed in the incremental state that diverges -- a lag, a budget,
 #     the queue's order, a cache, a restart's key -- never by a new identity resolver rule: a rule is identity design,
 #     measured on the full corpus in every country. A commit naming a red (`Fixes-Red:`) that changes RULE_FILES carries
@@ -308,17 +309,20 @@ def allow_lists(c: Commit, opts: dict) -> list[str]:
 # ── driftguards ─────────────────────────────────────────────────────────────────────────────────────────────────────
 DRIFT_WORDS = re.compile(r"(^|[^a-z])(drift|flip)", re.I)
 SLICE_NONE = re.compile(r"^none\s*(--|\u2014|-)\s*\S", re.I)
+SLICE_FOR = re.compile(r"^([0-9a-f]{7,40})\s+(.+)$", re.I)
 
 
 def drift_fix_carries_its_slice(c: Commit, opts: dict) -> list[str]:
     if not c.claims_fix() or not DRIFT_WORDS.search(c.message):
         return []
-    if any(p.startswith(SLICES) for p in opts.get("pushed", ())) or any(SLICE_NONE.match(v) for v in c.trailers.get("drift-slice", [])):
+    declared = c.trailers.get("drift-slice", []) + [v for sha, v in opts.get("declared", ()) if c.sha.startswith(sha)]
+    if any(p.startswith(SLICES) for p in opts.get("pushed", ())) or any(SLICE_NONE.match(v) for v in declared):
         return []
     return ["fixes a drift/flip red but the push commits no drift slice.\n"
             "  A drift or flip red is not closed until its slice is committed: scripts/identity-slice <cc> --venue V --title T\n"
             "  --emit-drift-slice, then commit test/resources/fixtures/drift-slices/<cc>/<name>/ in this push. No listing to slice\n"
-            "  (a CI script, a timeout): add the trailer 'Drift-Slice: none -- <why>'."]
+            "  (a CI script, a timeout): add the trailer 'Drift-Slice: none -- <why>'; for a commit already on main, a later\n"
+            "  commit says it for that one: 'Drift-Slice-For: <sha> none -- <why>'."]
 
 
 def red_fix_is_no_rule(c: Commit, _opts: dict) -> list[str]:
@@ -356,8 +360,11 @@ def check(rule_set: str, ranges: list[str], opts: dict) -> list[str]:
     for rng in ranges:
         # what the whole push changes: a drift fix's slice may come in a later commit of it
         opts = {**opts, "pushed": set(git("diff", "--name-only", "--no-renames", rng.replace("..", "...", 1)).split("\n")) - {""}}
-        for sha in git("rev-list", "--reverse", rng).split():
-            c = Commit.read(sha)
+        commits = [Commit.read(sha) for sha in git("rev-list", "--reverse", rng).split()]
+        # a published commit's `Drift-Slice:` given by a later commit of the range, by its sha: main is never amended
+        opts["declared"] = [(m.group(1).lower(), m.group(2)) for c in commits for v in c.trailers.get("drift-slice-for", [])
+                            if (m := SLICE_FOR.match(v))]
+        for c in commits:
             for rule in RULE_SETS[rule_set]:
                 refused += [f"{c.label()}: {why}" for why in rule(c, opts)]
     return refused
