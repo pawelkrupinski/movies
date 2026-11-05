@@ -20,6 +20,42 @@ check "a red verify of the nightly recording no longer refuses it" "0" "$(GH_MAI
 check "a commit naming the red run in Fixes-Red: lands" "0" "$(GH_IMC="[$red,$green]" push "$gbase..$fixing")"
 check "every pushed commit must name it, not just one" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
 check "a Fixes-Red: naming another run is no declaration" "1" "$(GH_IMC="[$(run_json 1 completed failure 1)]" push "$gbase..$fixing")"
+# A FIX MATCHES THE RED IT FIXES, NOT ONE RUN NUMBER (2026-11-05: a fix naming Main #2164, then #2172, was refused while
+# each push landing meanwhile started a new run failing the same way, #2173, #2174; main stayed red ~5.5 h). Any run of
+# the current red episode -- failed since the last green -- failing as the newest red does counts; an older episode's
+# never does. Each run's failed jobs come from $STUB_JOBS_DIR/<run id>.json.
+jobsdir="$gate/jobs"; mkdir -p "$jobsdir"
+jobs_of() { # <run id> <failed job>...
+  local rid="$1"; shift
+  printf '{"jobs":[%s{"name":"lint","conclusion":"success"}]}' "$(for j in "$@"; do printf '{"name":"%s","conclusion":"failure"},' "$j"; done)" \
+    > "$jobsdir/$rid.json"; }
+named="$(run_json 38520439037 completed failure 38520439037 2172)"   # the run the fix names (fixing's trailer)
+newer="$(run_json 38520439099 completed failure 38520439099 2174)"   # a newer red run of the same episode
+jobs_of 38520439099 "test (a)" ci
+jobs_of 38520439037 "test (a)" ci
+check "a fix naming an earlier run of the red episode, failing the same way, lands" "0" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$newer,$cancelled,$named,$green]" GH_IMC="[$green]" push "$gbase..$fixing")"
+check "...said out loud" "1" "$(grep -c "Fixes-Red: 38520439037: a run of Main's red episode failing as run 38520439099" "$gate/err")"
+bynumber="$(commit_paths "a production fix by run number" "Fixes-Red: #2172" -- web/src/main/scala/A.scala)"
+check "...named by its run number too" "0" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$newer,$named,$green]" GH_IMC="[$green]" push "$plain..$bynumber")"
+check "...and the newest red run by its number" "0" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$(run_json 38520439037 completed failure 38520439037 2172),$green]" GH_IMC="[$green]" push "$plain..$bynumber")"
+scratch_git "$grepo" reset -q --hard "$plain"
+check "a fix naming a run of an OLDER episode (main went green since) is refused" "1" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$newer,$green,$named]" GH_IMC="[$green]" push "$gbase..$fixing")"
+jobs_of 38520439037 "test (b)"
+check "a fix naming an episode run that failed another way is refused" "1 1" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$newer,$named,$green]" GH_IMC="[$green]" push "$gbase..$fixing") $(grep -c 'failed another way than run 38520439099' "$gate/err")"
+jobs_of 38520439037 "test (b)" ci
+mkdir -p "$grepo/.github"
+printf 'kind\tworkflow\tname\tproven\tnote\njob\tmain.yml\tci\taggregate\n' > "$grepo/.github/gating-checks.tsv"
+check "...sharing only an aggregate job (gating-checks.tsv) is no shared failure" "1" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$newer,$named,$green]" GH_IMC="[$green]" push "$gbase..$fixing")"
+rm -f "$grepo/.github/gating-checks.tsv"
+rm "$jobsdir/38520439037.json"
+check "...and one whose failed jobs gh cannot read is refused, said" "1 1" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$newer,$named,$green]" GH_IMC="[$green]" push "$gbase..$fixing") $(grep -c 'gh did not say its failed jobs' "$gate/err")"
 # A STRANDED TRAILER: a Fixes-Red: line in a paragraph of its own above Co-Authored-By: is no trailer to git, so neither the
 # gate nor agentctl reads it (Main #2164, #2547: the fixes landed unlinked and fixers were sent at fixed reds). Refused on
 # every push to main -- green, the commit tools-only, a dry run too; one in the closing block, or in prose mid-line, lands.

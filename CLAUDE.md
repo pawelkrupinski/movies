@@ -40,7 +40,7 @@ warns and passes: Docker not running. The GitOps manifests
 **Red builds gate every push to main.** While the newest COMPLETED run on main of Main or Identity model convergence
 -- exactly those two, the owner's gate (2026-10-27) -- is red (running, queued and cancelled runs say nothing), a push lands only as a fix for it: every pushed
 commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`, `project/`, `infra/nix/`, `Dockerfile`)
-carries a `Fixes-Red: <run id>` trailer naming a red run. Tools-only commits (scripts, docs, `.claude/` skills,
+carries a `Fixes-Red: <run>` trailer naming any red run of the current episode (failed since the last green, failing the same way). Tools-only commits (scripts, docs, `.claude/` skills,
 `*/src/test|it|fixtures/`, `test/resources/`, `.github/`) land while red without one. The hook enforces it;
 `PREPUSH_SKIP=redgate` bypasses — say so. A gate gh cannot read refuses a production push. The gates judge only what a commit's code changed; a recording's own data
 findings go to the non-gating Identity findings report (history: `docs/agent-workflow-history.md`). The nightly

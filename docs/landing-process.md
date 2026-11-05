@@ -136,7 +136,8 @@ green, 1 not landed, 2 landed but the watch could not tell, 3 landed and main's 
    the gate is skipped with one warning. An API that does not answer is warned about and skipped for that workflow,
    never a block. If any is red, every pushed commit touching a **production path** (`*/src/main/`, `conf/`,
    `*/conf/`, `build.sbt`, `project/`, `infra/nix/`, `infra/kubernetes/`, `Dockerfile`) must carry a
-   `Fixes-Red: <run>` trailer naming one of the red runs — its number in the run URL or its API run id. Commits
+   `Fixes-Red: <run>` trailer naming any red run of the current episode — its number in the run URL or its API run
+   id (see stage 5, "A fix matches the red it fixes"). Commits
    touching no production path (scripts, docs, skills, tests, fixtures, `.github/`) land while red. The Identity
    findings report, Record scrape fixtures (the nightly capture) and Verify scrape recording (its replay) do not gate.
 4. **Changed paths**: a three-dot diff of each pushed range from its base, so commits main gained since do not count.
@@ -236,9 +237,18 @@ workflow, its failed jobs and lines, the commit, and a verdict (`TEST FAILURE`, 
 run in flight that may clear it, and the clearing rule. Exit 0 green, 1 red.
 
 A red clears only when that workflow's next **decided** run on main is green (a cancelled run says nothing), or —
-for the push itself — when every production commit in it carries `Fixes-Red:` naming the red run. If your commit
-turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final trailer block, beside
-`Co-Authored-By`.
+for the push itself — when every production commit in it carries `Fixes-Red:` naming any red run of the current
+episode. If your commit turned main red, fix it at once with a `Fixes-Red: <run>` trailer in the final trailer block,
+beside `Co-Authored-By`.
+
+**A fix matches the red it fixes, not one run number** (2026-11-05: a fix naming Main #2164, then #2172, sat WAITING
+while each push landing meanwhile started a new run failing the same way, #2173, #2174; main stayed red ~5.5 h until it
+was re-trailered by hand, twice). The red EPISODE is the gating workflow's failed runs on main since its last green. A
+`Fixes-Red:` counts when it names the newest red run, or an earlier run of the episode that failed the same way: the
+hook asks gh for main's runs since that workflow's last green (the same bounded `gh run list`) and for the named run's
+and the newest run's failed jobs, which must share one (the `aggregate` rows of `.github/gating-checks.tsv` set
+aside); agentctl's waiting and batch judge it by its red signatures (`episode_names`, `~/bin/AGENTCTL.md`). A run of an
+older episode (main went green since) never counts; failed jobs gh cannot read: not counted, the push refused.
 
 **A new check gates only once it has been green** (`.github/gating-checks.tsv`, `scripts/ci/gating_checks.py`): a new
 job in Main or the convergence workflow, a new runner label, or a new gate workflow lands with its registry row as

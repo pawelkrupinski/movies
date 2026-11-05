@@ -105,7 +105,7 @@
 # RED BUILDS GATE EVERY PUSH TO MAIN. Before any path check: when the newest COMPLETED run on main of a
 # gating workflow (Main and Identity model convergence, the owner's gate of 2026-10-27; a cancelled run says nothing
 # and is passed over) is red, the push lands only as a fix for it — every pushed commit carries a
-# `Fixes-Red: <run id>` trailer naming one of the red runs — except a commit touching no production path
+# `Fixes-Red: <run>` trailer naming a run of the current red episode (A FIX MATCHES THE RED, below) — except a commit touching no production path
 # (*/src/main/, conf/, build.sbt, project/, infra/nix/, infra/kubernetes/, Dockerfile): tools — scripts, docs,
 # skills, tests, fixtures, CI tooling — land while red (user, 2026-10-14). On 2026-10-13/14, 50 of 96 identity commits
 # landed while Identity model convergence was red: 3f11e2cc3's wrong switches hid behind a DE red for six
@@ -571,13 +571,56 @@ GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 GateAttempts="${PREPUSH_GATE_ATTEMPTS:-3}"
 GateRetrySeconds="${PREPUSH_GATE_RETRY_SECONDS:-2}"
 
-# `<conclusion> <run id> <url>` of a workflow's newest decided run on main (success or a failure of any kind; cancelled,
-# skipped and unfinished runs say nothing), empty when it has none; non-zero when gh cannot answer in time.
+# `<conclusion> <run id> <url> <episode>` of a workflow's newest decided run on main (success or a failure of any kind;
+# cancelled, skipped and unfinished runs say nothing), empty when it has none; non-zero when gh cannot answer in time.
+# <episode>: its RED EPISODE, the decided runs since the workflow's last green on main (newest first, the newest itself
+# included; none when it is green), each `<run id>/<run number>` -- what a `Fixes-Red:` may name (A FIX MATCHES THE RED).
 newest_verdict() { # <workflow name>
     bounded "$GhSeconds" \
-        gh run list --workflow "$1" --branch main --limit 30 --json databaseId,status,conclusion,url \
-        --jq '[.[] | select(.status == "completed" and (.conclusion | IN("cancelled", "skipped", "neutral", "") | not))][0] // empty
-              | "\(.conclusion) \(.databaseId) \(.url)"'
+        gh run list --workflow "$1" --branch main --limit 30 --json databaseId,number,status,conclusion,url \
+        --jq '[.[] | select(.status == "completed" and (.conclusion | IN("cancelled", "skipped", "neutral", "") | not))] as $d
+              | ($d[0] // empty) as $n
+              | ([first(range($d | length) as $i | select($d[$i].conclusion == "success") | $i)] | .[0] // ($d | length)) as $g
+              | "\($n.conclusion) \($n.databaseId) \($n.url) \([$d[:$g][] | "\(.databaseId)/\(.number // "")"] | join(" "))"'
+}
+
+# A FIX MATCHES THE RED IT FIXES, NOT ONE RUN NUMBER (2026-11-05). Every push landing while main is red (tools-only commits
+# land freely) starts a new run failing the same way: a fix naming the run it was written against was refused once the
+# next one went red (Main #2164, then #2172, named while the gate read #2173, then #2174; main red ~5.5 h until the fix
+# was re-trailered by hand, twice). A `Fixes-Red:` counts when it names the newest red run, or an earlier run of the
+# same red EPISODE (newest_verdict: failed runs since the workflow's last green on main) that shares a failed job with
+# the newest one -- the aggregates (.github/gating-checks.tsv `aggregate`: they fail whenever anything does) set aside.
+# A run of an older episode (main went green since) never counts; jobs gh cannot read in time: it does not count.
+# agentctl's waiting and batch judge the same rule by its red signatures (~/bin AGENTCTL.md, episode_names).
+# The failed jobs of <run id>, one a line, sorted, the aggregates of <workflow file> left out; non-zero when unread.
+failed_jobs() { # <run id> <workflow file>
+    local jobs aggregates=""
+    jobs="$(bounded "$GhSeconds" gh run view "$1" --json jobs \
+        --jq '.jobs[] | select(.conclusion == "failure" or .conclusion == "timed_out") | .name' 2>/dev/null)" || return 1
+    [ -f .github/gating-checks.tsv ] \
+        && aggregates="$(awk -F'\t' -v f="$2" '$1 == "job" && $2 == f && $4 == "aggregate" { print $3 }' .github/gating-checks.tsv)"
+    printf '%s\n' "$jobs" | AGGREGATES="$aggregates" \
+        awk 'BEGIN { n = split(ENVIRON["AGGREGATES"], a, "\n"); for (i = 1; i <= n; i++) skip[a[i]] = 1 } NF && !($0 in skip)' | sort -u
+}
+
+# Whether `Fixes-Red: <value>` names a run of <workflow index>'s current red episode failing as its newest red does.
+# <episode>: newest_verdict's, the newest red first. Says why when the value is of the episode and still does not count.
+episode_fix() { # <value> <workflow index> <episode>
+    local value="${1#\#}" tok rid num newest="" mine theirs
+    for tok in $3; do
+        rid="${tok%%/*}" num="${tok#*/}"
+        [ -z "$newest" ] && newest="$rid"
+        [ "$value" = "$rid" ] || [ "$value" = "$num" ] || continue
+        [ "$rid" = "$newest" ] && return 0
+        mine="$(failed_jobs "$rid" "${GatingWorkflowFiles[$2]}")" && theirs="$(failed_jobs "$newest" "${GatingWorkflowFiles[$2]}")" || {
+            warn "Fixes-Red: $value is a run of ${GatingWorkflows[$2]}'s red episode, but gh did not say its failed jobs: not counted"
+            return 1; }
+        [ -n "$mine" ] && [ -n "$(comm -12 <(printf '%s\n' "$mine") <(printf '%s\n' "$theirs"))" ] && {
+            log "Fixes-Red: $value: a run of ${GatingWorkflows[$2]}'s red episode failing as run $newest does" >&2; return 0; }
+        warn "Fixes-Red: $value is a run of ${GatingWorkflows[$2]}'s red episode that failed another way than run $newest: not counted"
+        return 1
+    done
+    return 1
 }
 
 # A production path: what reaches a running pod or a fleet host. Everything else — scripts/, docs/, .claude/, the
@@ -650,10 +693,10 @@ check_stranded_trailers() {
 }
 
 # Refuses a push to main while a gating workflow's newest verdict is red, unless every pushed commit that touches a
-# production path names one of the red runs in a `Fixes-Red: <run id>` trailer -- and while the gate cannot be read
+# production path names a run of the red episode in a `Fixes-Red: <run>` trailer (episode_fix) -- and while the gate cannot be read
 # at all, unless no pushed commit touches a production path (THE GATE FAILS CLOSED, above). <range>... the pushed commits.
 check_redgate() {
-    local workflow verdict conclusion id url reds="" commit fixes ok bad=0 r errors i unread="" prod rc
+    local workflow verdict conclusion id url episode reds="" episodes=() commit fixes ok bad=0 r errors i unread="" prod rc
     need redgate gh "brew install gh" || return 1
     if [ -z "$unread" ]; then
         # gh's stderr kept apart from its answer: a warning beside a green verdict would otherwise be read as the verdict.
@@ -670,14 +713,17 @@ check_redgate() {
                 continue
             }
             [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
-            read -r conclusion id url <<< "$verdict"
+            read -r conclusion id url episode <<< "$verdict"
             gate_state="$gate_state $i:$conclusion:$id"
             if [ "$conclusion" != success ] && only="$(unproven_only "$i" "$id")"; then
                 warn "$workflow's run $id is red only in checks no green run has proven yet: it REPORTS, it does not gate ($only; .github/gating-checks.tsv)"
                 gate_state="$gate_state:report-only"
             elif [ "$conclusion" != success ]; then
                 reds="$reds $id"
+                episodes[$i]="$episode"
                 warn "$workflow is RED on main: run $id ($conclusion) $url"
+                [ "$(wc -w <<< "$episode")" -gt 1 ] \
+                    && log "...its red episode since the last green: $(printf '%s\n' $episode | sed 's|.*/|#|' | tr '\n' ' ')(a Fixes-Red: naming one failing the same way counts)" >&2
             fi
         done
         rm -f "$errors"
@@ -701,11 +747,13 @@ check_redgate() {
                 continue
             fi
             ok=0
-            for id in $(printf '%s' "$fixes" | tr ',' ' '); do
-                case " $reds " in *" $id "*) ok=1 ;; esac
+            for id in $(printf '%s' "$fixes" | tr ',;' '  '); do
+                for i in "${!episodes[@]}"; do
+                    episode_fix "$id" "$i" "${episodes[$i]}" && { ok=1; break 2; }
+                done
             done
             [ "$ok" = 1 ] && continue
-            warn "${commit:0:9} carries no Fixes-Red: trailer naming a red run (red:$reds)"
+            warn "${commit:0:9} carries no Fixes-Red: trailer naming a run of the red episode (red:$reds)"
             bad=1
         done < <(git log --format='%H%x09%(trailers:key=Fixes-Red,valueonly,separator=%x2C)' "$r")
     done

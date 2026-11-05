@@ -48,7 +48,16 @@ cat > "$ghstub/gh" <<'STUB'
 [ -n "${GH_REWRITES_HOOKSPATH:-}" ] && { . "$REPO_ROOT/scripts/scratch-git.sh"; scratch_git "$PWD" config core.hooksPath "$GH_REWRITES_HOOKSPATH"; }
 # `gh run download RUN -p … -D DIR`: a convergence leg's served takes, as the judgements check fetches them
 # `gh run view RUN --json jobs`: a run's jobs, as gating_checks.py report-only reads them
-[ "$1 $2" = "run view" ] && { printf '%s' "${STUB_JOBS:-}"; exit 0; }
+# ...or run RUN's own jobs, $STUB_JOBS_DIR/RUN.json when there is one, through the caller's --jq (the red gate's episode)
+if [ "$1 $2" = "run view" ]; then
+  rid="$3" jqexpr=""; while [ $# -gt 0 ]; do [ "$1" = --jq ] && jqexpr="$2"; shift; done
+  if [ -n "${STUB_JOBS_DIR:-}" ] && [ -f "$STUB_JOBS_DIR/$rid.json" ]; then
+    if [ -n "$jqexpr" ]; then jq -r "$jqexpr" "$STUB_JOBS_DIR/$rid.json"; else cat "$STUB_JOBS_DIR/$rid.json"; fi
+    exit
+  fi
+  [ -n "${STUB_JOBS_DIR:-}" ] && { echo "HTTP 404: no run $rid" >&2; exit 1; }
+  printf '%s' "${STUB_JOBS:-}"; exit 0
+fi
 if [ "$1 $2" = "run download" ]; then
   while [ $# -gt 0 ]; do [ "$1" = -D ] && dir="$2"; shift; done
   mkdir -p "$dir/convergence-diagnostics-de-convergence/de-takes"; echo takes > "$dir/convergence-diagnostics-de-convergence/de-takes/de.json.gz"
@@ -90,7 +99,8 @@ commit_paths() { # <message> [<trailer line>] -- <path>...
 gbase="$(commit_paths base -- README web/src/main/scala/A.scala)"
 fixing="$(commit_paths "a production fix" "Fixes-Red: 38520439037" -- web/src/main/scala/A.scala)"
 plain="$(commit_paths "an undeclared production change" -- web/src/main/scala/A.scala)"
-run_json() { printf '{"databaseId":%s,"status":"%s","conclusion":"%s","url":"https://x/%s"}' "$1" "$2" "$3" "$1"; }
+run_json() { # <run id> <status> <conclusion> <url tail> [<run number>]
+  printf '{"databaseId":%s,"number":%s,"status":"%s","conclusion":"%s","url":"https://x/%s"}' "$1" "${5:-null}" "$2" "$3" "$1"; }
 red="$(run_json 38520439037 completed failure 38520439037)"
 green="$(run_json 38487614044 completed success 38487614044)"
 cancelled="$(run_json 38470049143 completed cancelled 38470049143)"
