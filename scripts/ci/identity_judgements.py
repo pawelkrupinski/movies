@@ -128,6 +128,23 @@ def write(path, rows, preamble=""):
             f.write("\t".join(r.cols()) + "\n")
 
 
+def edit_in_place(path, replaced, added=()):
+    """Edits the file where it stands, not re-sorted (`write` would move most of a file kept in the order it was judged in):
+    `replaced` is {line number: Row} for rows changed, `added` is [(line number, Row)] for rows inserted after that line.
+    Every other line -- comments, blanks, order -- is kept byte for byte."""
+    with open(path, encoding="utf-8") as f:
+        text = f.read().split("\n")
+    after = defaultdict(list)
+    for n, row in added:
+        after[n].append("\t".join(row.cols()))
+    out = []
+    for n, line in enumerate(text, 1):
+        out.append("\t".join(replaced[n].cols()) if n in replaced else line)
+        out.extend(after.get(n, []))
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(out))
+
+
 # ── the views every gate reads ───────────────────────────────────────────────────────────────
 
 class Labels(dict):

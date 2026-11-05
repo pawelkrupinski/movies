@@ -268,6 +268,9 @@ scope filmTitle reason judged evidence` (documented in `scripts/ci/identity_judg
   worktree of its own (`~/projects/movies-review-labels`, branch `review/labels`) and tells the app its file through
   `REVIEW_LABELS_FILE`; never `sbt web/run` in the root checkout (the root-checkout guard refuses it). Land with
   `~/bin/agentctl land` from that worktree.
+  `scripts/review-server --judgements` serves ONE page (http://127.0.0.1:9100/, `scripts/judgement_review.py`) over the same
+  file: every AGENT-JUDGED take and unanswered candidate with its evidence, confirm / reject / another film (edited in
+  place, lint-checked), and a "land my verdicts" button (`review-commit` then `agentctl land`).
 
 The lint (`python3 scripts/ci/identity_judgements_lint.py`, a second) fails a second row for one key — a listing judged
 both ways, or a `merge=union` merge (`.gitattributes`) that kept both sides of one edited row — keys not normalised, a
