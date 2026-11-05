@@ -184,7 +184,8 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
                         version: Long, asked: mutable.Set[Question]): Option[ResolverDecision] =
     looked.filter(_ => listings.exists(!_.screenings.isEmpty)).flatMap { lookups =>
       val records = (candidatesOf(id, digest, listings) ++ uncatalogued(listings, lookups)).distinct.map(film => film -> lookups.film(film))
-      Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
+      // a record given up on is decided without (fix 4b); one not answered yet holds the join
+      Option.when(!records.exists(_._2.isAwaited))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
         .flatMap { known =>
           // a record of the billed work holding only its year is read again before the day decides: it might be the one
           Broadcast.take(listings, measured, known, () => productionsOf(listings, measured, asked))(undatedOf(lookups))

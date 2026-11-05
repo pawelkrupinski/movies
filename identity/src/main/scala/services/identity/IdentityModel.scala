@@ -509,7 +509,7 @@ object Hit {
 
 /** A film some listing of a family may be: its TMDB id and what TMDB says about it — its own
  *  record when the lookup source holds one (`TmdbFilmRecord`), else what the hits naming it carry. `awaitingRecord`: its
- *  record is not answered yet, so the hits alone carry it and nothing its record states (a running time, credits, where it
+ *  record is not answered yet (a record given up on is not awaited: decided on its hits), so the hits alone carry it and nothing its record states (a running time, credits, where it
  *  was released) can deny it — a family takes a film only where its pool with and without it agree ([[FamilyScope]]). */
 final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film, awaitingRecord: Boolean = false)
 
@@ -522,7 +522,7 @@ object Candidate {
     // recorded film beside the corpus's `records` (30k on worker-uk, 2026-10-07).
     Candidate(tmdbId, record.toOption.flatten.map(f => if (f.popularity.isDefined) f else f.copy(popularity = popularity)).getOrElse(
       IdentityMeasures.Film(best.fold("")(_.title), best.flatMap(_.originalTitle), Nil, best.flatMap(_.year),
-        popularity = popularity)), awaitingRecord = !record.isKnown)
+        popularity = popularity)), awaitingRecord = record.isAwaited)
   }
 }
 
@@ -550,6 +550,8 @@ enum Answer[+A] {
   }
   /** Decided on: answered, or failed for good. */
   def isSettled: Boolean = this != Unknown
+  /** Not answered yet: what a decision awaits ([[ResolverDecision.awaits]]); a failure for good is not. */
+  def isAwaited: Boolean = this == Unknown
   def map[B](f: A => B): Answer[B] = this match {
     case Known(v) => Known(f(v))
     case Failed   => Failed

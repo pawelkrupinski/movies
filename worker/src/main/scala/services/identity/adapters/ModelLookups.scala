@@ -54,7 +54,7 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
    *  A gap still in its backoff is not asked; one asked and left unanswered is remembered, failed or not — a failure
    *  against the host its read went to ([[LiveAsks.failedHost]]: an IMDb suggestion's is IMDb's), whose recovery releases it. */
   private def storedFirst[A](question: Question, fromStore: => Answer[A], asked: => Answer[A]): Answer[A] =
-    fromStore.orElse {
+    unlessGivenUp(question, fromStore.orElse {
       if (!asks.due(question)) Answer.Unknown
       else {
         val failedBefore = LiveAsks.failures
@@ -67,7 +67,13 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups, a
         }
         answer
       }
-    }
+    })
+
+  /** A question still unanswered that the memory has GIVEN UP on (failed its kind's give-up count in a row): `Failed`,
+   *  decided on as no evidence, never awaited (docs/design/identity-structural-fixes.md fix 4b; the owner, 2026-10-31: a
+   *  take is settled once every question is answered or given up on). Asked again on its backoff all the same. */
+  private def unlessGivenUp[A](question: Question, answer: Answer[A]): Answer[A] =
+    if (answer == Answer.Unknown && asks.givenUp(question)) Answer.Failed else answer
 }
 
 /** Which of the model's gaps it asks live, and what it remembers of those left unanswered. */
@@ -77,6 +83,9 @@ trait LiveAsks {
   /** `question` was asked live and left unanswered: a durable non-answer, or a read that `failed` — against `host`, when
    *  known. */
   def unanswered(question: Question, failed: Boolean, host: Option[String]): Unit
+  /** Has `question` been asked and given up on: its last asks failed its kind's give-up count in a row? Never for one
+   *  never attempted. */
+  def givenUp(question: Question): Boolean
 }
 
 object LiveAsks {
@@ -85,6 +94,7 @@ object LiveAsks {
   val Always: LiveAsks = new LiveAsks {
     def due(question: Question): Boolean                       = true
     def unanswered(question: Question, failed: Boolean, host: Option[String]): Unit = ()
+    def givenUp(question: Question): Boolean = false
   }
 
   /** The one memory ([[QuestionMemory]]): one backoff for a gap, whoever asked it. */
@@ -92,6 +102,10 @@ object LiveAsks {
     def due(question: Question): Boolean = memory.due(Set(question)).nonEmpty
     def unanswered(question: Question, failed: Boolean, host: Option[String]): Unit =
       if (failed) { memory.failed(Seq(question), host); () } else memory.unanswered(Seq(question))
+    def givenUp(question: Question): Boolean = memory.outcome(question) match {
+      case Some(QuestionMemory.Outcome.Failed(times, _, _)) => times >= QuestionPolicies.giveUpFailures(question.kind)
+      case _                                               => false
+    }
   }
 
   private val failed      = ThreadLocal.withInitial[java.lang.Long](() => 0L)

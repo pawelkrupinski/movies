@@ -19,7 +19,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   /** Is a record of the billed work dated by its year alone, its day still to be read before the broadcast join decides
    *  ([[waitsOn]])? What the stage's take and the fill's `broadcast.take` signal both wait on. */
   private[agreement] def undatedOf(lookups: IdentityLookups): Int => Boolean =
-    film => !lookups.releaseDay(film).isKnown && waitsOn(film)
+    film => lookups.releaseDay(film).isAwaited && waitsOn(film)
 
   /** The candidates of a relay whose listings link a listings site's catalogue entry as their page, read as the venues
    *  bill them — the entry's facts left out: Flicks links an encore to an old season's page, whose year denies the

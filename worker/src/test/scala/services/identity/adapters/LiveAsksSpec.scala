@@ -62,6 +62,19 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     live.asked shouldBe 2
   }
 
+  it should "answer Failed for a gap its kind has given up on, Unknown while its retries last" in {
+    // docs/design/identity-structural-fixes.md fix 4b: given up (failed its give-up count in a row) is decided on, never awaited
+    val clock   = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    val lookups = new StoredFirstLookups(nothingStored, new Live(Answer.Unknown), LiveAsks.remembered(memory))
+    val question = Question.Candidate(lalka)
+    val giveUp   = QuestionPolicies.giveUpFailures(question.kind)
+    (1 until giveUp).foreach(_ => memory.failed(Seq(question)))
+    lookups.candidates(lalka) shouldBe Answer.Unknown
+    memory.failed(Seq(question))
+    lookups.candidates(lalka) shouldBe Answer.Failed
+  }
+
   it should "remember nothing of a question answered, and ask every gap without a memory" in {
     val clock    = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
     val docs     = new InMemoryTmdbDocuments

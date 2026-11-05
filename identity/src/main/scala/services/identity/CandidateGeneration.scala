@@ -19,7 +19,7 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
    *  a decision taking no film awaits ([[ResolverDecision.awaits]]). Read through the lookups, so an incremental model
    *  files the family as the page's reader. */
   def pagePending(listing: Listing): Boolean =
-    lookups.hasDetail(listing) && !details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).isKnown
+    lookups.hasDetail(listing) && details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).isAwaited
   def detailOf(listing: Listing): Option[DetailFacts] =
     if (!lookups.hasDetail(listing)) None
     else details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).toOption.flatten
@@ -55,9 +55,10 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   /** What each node's own queries reached ([[CandidateGeneration.Reach]]). */
   val reach: Map[String, CandidateGeneration.Reach] = nodes.map(node => node.id -> reachOf(queriesOf(node.id))).toMap
   /** What `queries` reached, from the answers this resolve holds: a node's own, or those of the evidence a family's scope
-   *  reads it by (`FamilyScope.reach`) — a query no node asked reached nothing. */
+   *  reads it by (`FamilyScope.reach`) — a query no node asked is not answered (Unknown, never "answered empty"), and
+   *  reaches nothing: [[CandidateGeneration.Reach.of]] reads only what answers hold. */
   def reachOf(queries: Seq[CandidateQuery]): CandidateGeneration.Reach =
-    CandidateGeneration.Reach.of(queries, query => answers.getOrElse(query, Answer.Known(Nil)))
+    CandidateGeneration.Reach.of(queries, query => answers.getOrElse(query, Answer.Unknown))
   /** The films a fallback source lists under a node's search titles that TMDB holds no record of (the fallback ids an
    *  [[CandidateQuery.ImdbTitled]] answer carries): never in a TMDB pool, only what a cluster no TMDB film was taken for
    *  may fall back to. */

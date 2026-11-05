@@ -23,7 +23,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val confidence =
       if (pinned) 1.0
       else film.fold(eligible.map(1 - _.probability).product)(filmId => math.max(acceptance.confidenceOf(scored, filmId), familyBound.getOrElse(0.0)))
-    val unknown = cluster.flatMap(node => queriesOf(node.id)).distinct.count(query => !answers(query).isKnown)
+    val unknown = cluster.flatMap(node => queriesOf(node.id)).distinct.count(query => answers(query).isAwaited)
     val basis =
       if (pinned) ResolverDecision.Basis.Pinned
       else if (film.isDefined && cluster.exists(node => accepted.contains(node.id))) ResolverDecision.Basis.OwnMatch
@@ -76,7 +76,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     // their unanswered questions too: Pending, served all the same, until they close.
     val reads = scope.members
     val awaits: Set[Question] =
-      reads.flatMap(node => queriesOf(node.id)).distinct.filterNot(query => answers(query).isKnown).map(Question.Candidate(_)).toSet ++
+      reads.flatMap(node => queriesOf(node.id)).distinct.filter(query => answers(query).isAwaited).map(Question.Candidate(_)).toSet ++
         awaited.map(Question.FilmRecord(_)) ++
         reads.flatMap(_.listings).filter(scoring.generation.pagePending).map(listing => Question.VenuePage(listing.key))
     // a film a reused page's copied original title and director alone name ([[Acceptance.copiedBeyondItsBilling]]): facts

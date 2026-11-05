@@ -113,6 +113,23 @@ find; the readers decide on it through `failedAs` (`AgreementCandidates.posterRe
 TMDB ids, by `toOption`). `settled` is the one place an answer still inside its retries is decided on as if given up;
 fix 1 deletes it. 0 moved: each reader reads `Failed` as it read `Known(absent)`.
 
+**4b's sites** (the model's producer, and every reader of "awaited"): `StoredFirstLookups` answers `Failed` for a gap
+the question memory has given up on (`LiveAsks.givenUp`: failed its kind's give-up count in a row, never for one never
+attempted), still asking it on its backoff. Readers of "not answered" now read `Answer.isAwaited` (`Unknown` alone),
+not `!isKnown`: `ResolverDecisions`' `unanswered` count and `awaits` (a given-up search is no longer Pending: the
+owner's 2026-10-31 rule), `Candidate.of`'s `awaitingRecord` (a record given up on: decided on its hits),
+`CandidateGeneration.pagePending`, `AgreementCandidates.undatedOf` (a release day given up on is not waited on) and
+`AgreementTakes.broadcast` (a record given up on is decided without). Classification of the inventory's two (c)
+candidates: `CandidateGeneration.reachOf`'s default `Known(Nil)` is NOT a bug -- `Reach.of` reads `Known(Nil)` and
+`Unknown` alike (no hit either way), so it moved nothing; it is `Unknown` now for honesty. `IdentityLookups.cast` /
+`overview`'s `Known(None)` defaults are only for lookups with no record source (the venues' pages, test doubles):
+TMDB's lookups override both, so they stay.
+
+**What 4b moves, and why the harnesses cannot see it.** Only a question given up on reads otherwise, and none of the
+measuring worlds hold one: the local prod mirror does not sync `identity_question_markers` (`debug-mirror-collections`),
+and recordings answer a gap as never asked. So what-if, the CI measure and drift replay 4b as 0 moved by construction;
+in prod it moves only takes whose TMDB question failed 8 times in a row (~16 h of failures, an outage-only case).
+
 **Measured by:** no take moves (what-if `--verify` on every country; a CI identity-measure with right->wrong 0 and
 0 moved; drift clean) except at a site classified (c), whose moves are listed, judged and tested failing-first.
 `IncrementalWholeEquivalenceSpec`, `LateInputEquivalenceSpec` and `ScopedProjectionEquivalenceSpec` stay green.

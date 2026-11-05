@@ -466,6 +466,29 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     held.key should be theSameInstanceAs first.key              // under the key object its families name
   }
 
+  "a search given up on" should "be decided on as finding nothing, never awaited, where one not answered yet is" in {
+    // docs/design/identity-structural-fixes.md fix 4b; the owner, 2026-10-31: settled once answered or given up on
+    import FilmTable.listing
+    def decided(searches: Answer[Seq[Hit]]) = {
+      val lookups = new IdentityLookups {
+        def hasDetail(l: Listing): Boolean                              = false
+        def detail(l: Listing): Answer[Option[DetailFacts]]            = Answer.Known(None)
+        def candidates(q: CandidateQuery): Answer[Seq[Hit]]            = searches
+        def film(id: Int): Answer[Option[IdentityMeasures.Film]]       = Answer.Known(None)
+      }
+      val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
+      model.batch(seen = Seq(listing(models.Multikino, "Zapomniany film")))
+      model.decisions.loneElement
+    }
+    val awaited = decided(Answer.Unknown)
+    awaited.awaits should not be empty
+    awaited.outcome shouldBe a[TakeOutcome.Pending]
+    val givenUp = decided(Answer.Failed)
+    givenUp.awaits shouldBe empty
+    givenUp.unanswered shouldBe 0
+    givenUp.outcome shouldBe TakeOutcome.NoFilm(ResolverDecision.Basis.NoCandidate)
+  }
+
   "a family" should "decide alone, with the corpus's context, exactly as the whole resolve does" in {
     val generated = Seeds.map(seed => GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48))
       .map(c => (s"generated", c.listings, c.lookups))
