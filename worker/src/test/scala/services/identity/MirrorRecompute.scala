@@ -93,14 +93,14 @@ object MirrorRecompute {
       val index      = FamilyIndex.build(before.listings, before.lookups, normalizer, inputs, threads)
       System.err.println(s"[mirror-recompute] $cc at $from: ${before.listings.size} listings, ${index.index.entries.size} families indexed ($seconds)")
       val after      = corpusAt(db, country, to, normalizer, clock)
-      val t0         = System.nanoTime()
+      val recomputing = tools.Stopwatch.start()
       val result     = recompute(index.index, after, normalizer, inputs)
-      val recomputeSeconds = (System.nanoTime() - t0) / 1e9
+      val recomputeSeconds = recomputing.seconds
       System.err.println(f"[mirror-recompute] $cc at $to: ${after.listings.size} listings; ${result.recomputed.size} families re-resolved " +
         f"(${result.recomputed.map(_.size).sum} listings, ${result.rounds} round(s)) in $recomputeSeconds%.0fs")
-      val t1         = System.nanoTime()
+      val resolving  = tools.Stopwatch.start()
       val whole      = IdentityResolver.resolve(after.listings, after.lookups, normalizer, inputs)
-      val wholeSeconds = (System.nanoTime() - t1) / 1e9
+      val wholeSeconds = resolving.seconds
       val wholeTakes = after.listings.map(l => l.key -> whole.decisionOf.get(l.key).flatMap(PopulationMonotonicity.takeOf)).toMap
       val unsound    = after.listings.map(_.key).filter(k => result.takes.get(k).flatten != wholeTakes(k))
       val prod       = tools.ProdMirror.open(uri, country)

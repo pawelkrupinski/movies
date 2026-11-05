@@ -8,7 +8,7 @@ import java.nio.file.Path
 /** The per-family convergence check ([[FamilyConvergence]]) over committed slices of known flips: it finds them by the
  *  lattice -- Lichtblick "Buddies", a final-take flip the drift seeds needed luck for, and Quad Derby's "Oxide Ghosts" --
  *  and a second run over its cache walks nothing again, unless a read of a family's closure moved. */
-class FamilyConvergenceSpec extends AnyFlatSpec with Matchers {
+class FamilyConvergenceSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
   private val slices  = Path.of("test", "resources", "fixtures", "drift-slices")
   private val buddies = slices.resolve("de/programmkino-lichtblick-e-v-buddies-69181215")
   private val oxide   = slices.resolve("uk/quad-derby-oxide-ghosts-the-brass-eye-tapes-q-a-18--7c64f181")
@@ -40,10 +40,8 @@ class FamilyConvergenceSpec extends AnyFlatSpec with Matchers {
   }
 
   "A cache" should "read back what it wrote" in {
-    val file = java.nio.file.Files.createTempFile("family-convergence", ".json")
-    try {
-      FamilyConvergence.save(file, first.verdicts)
-      FamilyConvergence.load(file).values.toSeq.sortBy(_.family) shouldBe first.verdicts.sortBy(_.family)
-    } finally java.nio.file.Files.deleteIfExists(file)
+    val file = tempFile("family-convergence", ".json")
+    FamilyConvergence.save(file, first.verdicts)
+    FamilyConvergence.load(file).values.toSeq.sortBy(_.family) shouldBe first.verdicts.sortBy(_.family)
   }
 }

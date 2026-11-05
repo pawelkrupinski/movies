@@ -194,11 +194,11 @@ object FamilyConvergence {
     val (options, cachePath, rules, dirs) = parse(args.toList, Options(), None, "head", Nil)
     var cache = cachePath.fold(Map.empty[Long, Verdict])(load)
     dirs.foreach { dir =>
-      val started = System.nanoTime()
+      val started = tools.Stopwatch.start()
       val run     = check(sliceCorpus(dir, rules), cache, options)
       cache ++= run.verdicts.map(v => v.key -> v)
       println(f"# ${dir.getFileName}: ${run.verdicts.size} families, ${run.walked} walked, ${run.reused} reused, ${run.flips.size} flip(s), " +
-        f"${(System.nanoTime() - started) / 1e9}%.1fs")
+        f"${started.seconds}%.1fs")
       run.flips.foreach { case (v, f) => println(s"  ${f.stage}\t${f.kind}\t${f.listing}\t${f.witness}\t[${v.tier}]") }
     }
     cachePath.foreach(save(_, cache.values.toSeq))
