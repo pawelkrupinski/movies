@@ -55,7 +55,7 @@ class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers with to
   it should "answer an unread outcome carrying its cause, when a read runs out of time -- never the fact that there is no such card" in {
     val silent = org.mongodb.scala.MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=60000")
     try {
-      val rm = new MongoReadModelRepository(Some(silent.getDatabase("readmodel-findcard-timeout")), stopwatch = _root_.tools.Stopwatch.System,
+      val rm = new MongoReadModelRepository(Some(silent.getDatabase(tools.RunScopedDatabaseName.fresh("kinowo_it_findcard_timeout"))), stopwatch = _root_.tools.Stopwatch.System,
         findCardMovieTimeout = scala.concurrent.duration.Duration.fromNanos(1))
       val outcome = rm.findCard("__no-such-card__")
       withClue(outcome.explain + ": ") { outcome.isFailed shouldBe true }
