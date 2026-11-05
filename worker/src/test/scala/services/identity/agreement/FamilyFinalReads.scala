@@ -32,7 +32,7 @@ object FamilyFinalReads {
     val stage    = answers.stage(recorded, verdicts, budgets = false)
     val byKey    = listings.map(l => l.key -> l).toMap
     val model    = UnmatchedClusters.resolutionOf(resolution.decisions.filter(_.members.exists(byKey.contains)))
-    val result   = scripts.IdentityDrift.settle(stage, () => stage.apply(model, byKey.get, answers.store.version), answers, clock, _ => false,
+    val result   = scripts.StageAnswers.settle(stage, () => stage.apply(model, byKey.get, answers.store.version), answers, clock, _ => false,
       log = false)
     val pending  = scripts.IdentityDrift.pendingOf(result.decisions)
     val takes    = scripts.IdentityDrift.takesOf(result).collect { case (key, take) if byKey.contains(key) => key -> Option.when(!pending(key))(take.film) }

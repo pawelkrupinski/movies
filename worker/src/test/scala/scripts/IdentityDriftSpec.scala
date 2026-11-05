@@ -48,10 +48,10 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   // up on. The replay gives a family question up as unreachable, as the worker's memory gives one up after its failures
   // in a row; one failed fewer times is in its backoff, and the take is Pending.
   "the replay's give-up" should "give a question up once answered, never failed or unreachable -- never in its backoff" in {
-    IdentityDrift.givenUp(answered = false, failures = None) shouldBe true
-    IdentityDrift.givenUp(answered = true, failures = Some(1)) shouldBe true
-    (1 until tools.AgreementQuestionRounds.Attempts).foreach(n => IdentityDrift.givenUp(answered = false, failures = Some(n)) shouldBe false)
-    IdentityDrift.givenUp(answered = false, failures = Some(tools.AgreementQuestionRounds.Attempts)) shouldBe true
+    StageAnswers.givenUp(answered = false, failures = None) shouldBe true
+    StageAnswers.givenUp(answered = true, failures = Some(1)) shouldBe true
+    (1 until tools.AgreementQuestionRounds.Attempts).foreach(n => StageAnswers.givenUp(answered = false, failures = Some(n)) shouldBe false)
+    StageAnswers.givenUp(answered = false, failures = Some(tools.AgreementQuestionRounds.Attempts)) shouldBe true
   }
 
   // ...and what it costs: how many listings each projection serves Pending, and for how long each stays so.
@@ -95,7 +95,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   "asks" should "release a held answer rather than ask for it" in {
     val clock         = new MutableClock(Instant.parse("2026-10-20T13:26:32Z"))
     val (docs, store) = filed(clock)
-    IdentityDrift.asks(store, Seq(question), id => docs.held(id) && { docs.release(id); true }) shouldBe empty
+    StageAnswers.asks(store, Seq(question), id => docs.held(id) && { docs.release(id); true }) shouldBe empty
     store.wanted(id) shouldBe false
   }
 
@@ -106,7 +106,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     store.wanted(id) shouldBe true
     // every answer filed, then the wait's gaps handed to the queue again
     docs.openAll(store.noteFiled)
-    IdentityDrift.asks(store, Seq(question), _ => false) shouldBe empty
+    StageAnswers.asks(store, Seq(question), _ => false) shouldBe empty
   }
 
   it should "ask a question not filed, and one filed longer ago than its kind keeps it" in {
@@ -114,9 +114,9 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val (docs, store) = filed(clock)
     docs.openAll(store.noteFiled)
     val unfiled = VoterFamily.RottenTomatoes -> "title|Halloween '26: Lalka ( Dolly)"
-    IdentityDrift.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(unfiled)
+    StageAnswers.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(unfiled)
     clock.advance(Duration.ofDays(91))
-    IdentityDrift.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(question, unfiled)
+    StageAnswers.asks(store, Seq(question, unfiled), _ => false) shouldBe Seq(question, unfiled)
   }
 
   "the replay's fill" should "announce its TMDB filings as the worker's TMDB store does: the stage's version moves for a search it read or a record it waits on" in {

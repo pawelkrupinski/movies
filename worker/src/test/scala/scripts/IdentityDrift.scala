@@ -3,18 +3,16 @@ package scripts
 import models.Country
 import org.bson.BsonDocument
 import services.identity._
-import services.identity.adapters.{AgreementQuestions, FamilyAnswerStore, PosterAnswerStore, PosterHashing, TmdbDocuments, TmdbKind, TmdbStore}
-import services.identity.agreement.{AgreementStage, AgreementStageComposition, VoterFamily}
+import services.identity.adapters.{TmdbDocuments, TmdbKind, TmdbStore}
+import services.identity.agreement.{AgreementStage, VoterFamily}
 import services.movies.ListingKey
-import tools.{CatalogueFill, IdentityJudgements, MutableClock, UnmatchedClusters}
+import tools.{IdentityJudgements, MutableClock, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
-import scala.util.Try
-import scala.util.control.NonFatal
 
 /**
  * INCREMENTAL = WHOLE, on a recording: production's identity state is kept event by event — the model
@@ -336,99 +334,26 @@ object IdentityDrift {
 
   // ── the agreement's answers: the families, the posters, the catalogue ────────────────────
 
-  /** The replay's give-up of a family question, as production's memory's (`QuestionMemory.givenUp`): answered, never
-   *  failed, or failed [[tools.AgreementQuestionRounds.Attempts]] times -- unreachable. One failed fewer times is in its
-   *  backoff, and a take settled past it is Pending (the owner, 2026-10-31). */
-  def givenUp(answered: Boolean, failures: Option[Int]): Boolean =
-    answered || failures.forall(_ >= tools.AgreementQuestionRounds.Attempts)
-
-  /** What one stage reads its answers from, and how its open questions get answered: the capture's filed answers first,
-   *  the recording's sites for the rest — as identity-slice's `agree` reads them. */
+  /** What one stage reads its answers from, and how its open questions get answered ([[StageAnswers]]): the capture's
+   *  filed answers first, the recording's sites for the rest — as identity-slice's `agree` reads them. */
   final class Answers(reads: Reads, docs: TmdbDocuments, clock: java.time.Clock,
                       /** An IMDb id's TMDB film as a store holds its find, ahead of the recording's ([[WholeLookups.found]]). */
-                      found: String => Option[Option[Int]]) {
-    val store     = new FamilyAnswerStore(docs, clock)
-    val posters   = new PosterAnswerStore(store, clock)
-    val catalogue = new CatalogueFill(store, clock, reads.fetch)
-    private val hashing = new PosterHashing(new services.sharecards.EgressPosterDownload(reads.fetch), new services.sharecards.VipsPosterShrinker(binary = None),
-      id => reads.tmdb.posters(id, also = Seq("en")), reads.country.language.getLanguage)
-    private val failures = new ConcurrentHashMap[(VoterFamily, String), Integer]()
-    /** The family questions an ask of this replay filed: answered, given up on by nothing. */
-    private val answered = ConcurrentHashMap.newKeySet[(VoterFamily, String)]()
-    /** How many attempts were marked: production's memory's marks (`QuestionMemory.marks`), which the stage reads to
-     *  tell an attempt since its last apply. */
-    private val marks = new java.util.concurrent.atomic.AtomicLong
-    /** What a round tried to answer and could not: attempted, as production's memory records a failed ask — a cluster
-     *  waiting on it settles ([[AgreementStage.settles]]). An answer filed is attempted by itself. */
-    def attempted(question: Question): Boolean = question match {
-      case Question.Family(family, asked) => failures.containsKey((family, asked))
-      case _                              => false
-    }
-    /** Answered or given up on, as production's memory reads it (`QuestionMemory.givenUp`): a family question that
-     *  failed fewer than [[tools.AgreementQuestionRounds.Attempts]] times in a row is in its backoff, and a take settled
-     *  past it is Pending until it is filed or unreachable (the owner, 2026-10-31). */
-    def givenUp(question: Question): Boolean = question match {
-      case Question.Family(family, asked) => IdentityDrift.givenUp(answered.contains((family, asked)), Option(failures.get((family, asked))).map(_.intValue))
-      case _                              => true
-    }
-    def unreachable: Set[(VoterFamily, String)] = failures.asScala.filter(_._2 >= tools.AgreementQuestionRounds.Attempts).keySet.toSet
-    def tmdbOf(imdb: String): Answer[Option[Int]] = found(imdb).fold(reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {
+                      found: String => Option[Option[Int]]) extends StageAnswers(recorded(reads), docs, clock, found)
+
+  /** A recording's sites as a stage's answer sources: its families, its fetch, its TMDB finds and posters — a find it
+   *  does not hold read from prod's filed ones. */
+  def recorded(reads: Reads): StageAnswers.Sources = new StageAnswers.Sources {
+    def country: Country                                   = reads.country
+    def normalizer: services.movies.TitleNormalizer        = reads.normalizer
+    def families: Seq[VoterFamily]                         = reads.families
+    def sources: Map[VoterFamily, services.identity.adapters.FamilySource] = reads.sources
+    def fetch: tools.HttpFetch                             = reads.fetch
+    def posterImages(tmdbId: Int): Seq[clients.TmdbClient.PosterImage] = reads.tmdb.posters(tmdbId, also = Seq("en"))
+    def find(imdb: String): Answer[Option[Int]] = reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {
       case Answer.Unknown => reads.filedFind(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(found => Answer.Known(found))
       case known          => known
-    })(Answer.Known(_))
-    def stage(lookups: IdentityLookups, verdicts: services.identity.agreement.AgreementVerdicts, budgets: Boolean,
-              keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys,
-              askNow: AgreementStage.AskNow = AgreementStage.AskNow.Never): AgreementStage =
-      AgreementStageComposition(AgreementStageComposition.Sources(reads.families.map(f => f -> store.answers(f)).toMap,
-        venuePages = lookups, tmdb = lookups, tmdbOf = tmdbOf, stored = verdicts, clock = clock, normalizer = reads.normalizer,
-        identities = modules.wiring.IdentityProjectionWiring.identities(reads.country.code),
-        listedOn = modules.wiring.IdentityProjectionWiring.listedOn(reads.country.code), changes = store, posters = posters,
-        catalogue = catalogue.answers, attempted = attempted, givenUp = givenUp, attemptsMarked = Some(() => marks.get), keys = keys),
-        AgreementStageComposition.Effects(askNow = askNow), overrides = if (budgets) Set.empty else Set(AgreementStageComposition.Override.Unbudgeted))
-    /** The family questions the stage's last apply left open, none given up as unreachable. */
-    def askable(stage: AgreementStage): Set[(VoterFamily, String)] =
-      Question.families(stage.wanted) -- unreachable
-    /** Whether the stage's last apply left something to answer. */
-    def open(stage: AgreementStage): Boolean =
-      askable(stage).nonEmpty || stage.wanted.exists { case Question.Poster(_) | Question.Catalogue(_) => true; case _ => false }
-    /** What the stage's last apply left open, for a settle round's line. */
-    def described(stage: AgreementStage): String =
-      s"${askable(stage).size} question(s), ${stage.wanted.count(_.isInstanceOf[Question.Poster])} poster(s), " +
-        s"${stage.wanted.count(_.isInstanceOf[Question.Catalogue])} catalogue question(s) open, backlog ${stage.backlog}"
-    /** One round of the queue's work: the stage's open questions answered — a held filed answer released, the rest
-     *  asked of the recording's sites — its posters hashed and its catalogue questions filed. */
-    def answer(stage: AgreementStage, release: String => Boolean): Unit = {
-      val open = asks(store, askable(stage).toSeq, release)
-      tools.ConcurrentAsks.each(stage.wanted.toSeq.collect { case Question.Poster(q) => q }, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
-      catalogue.file(stage.wanted.collect { case Question.Catalogue(q) => q })
-      file(open)
     }
-    /** The family questions a stage asks INLINE ([[AgreementStage.AskNow]]): answered before its apply reads them again,
-     *  as the worker's inline asks answer them ([[services.identity.adapters.InlineFamilyAsks]]) — else a take the worker
-     *  reads its answers for at its first apply waited here for the queue's next round, served the model's film meanwhile. */
-    def inline(release: String => Boolean): AgreementStage.AskNow = (questions, _) =>
-      file(asks(store, (Question.families(questions) -- unreachable).toSeq.sortBy { case (f, q) => (f.ordinal, q) }, release))
-    /** One family question filed as a round files it, unless the store holds it already: what a sub-population's
-     *  settle asked, read again alone ([[services.identity.agreement.FamilyFinalReads.AnswerOracle]]). */
-    def fileOne(family: VoterFamily, asked: String): Unit =
-      if (store.wanted(FamilyAnswerStore.questionId(family, asked))) file(Seq(family -> asked))
-    private def file(open: Seq[(VoterFamily, String)]): Unit =
-      tools.ConcurrentAsks.inLanes(open.groupBy(_._1).values, 4) { case question @ (family, asked) =>
-        try { AgreementQuestions.file(store, family, reads.sources(family), asked); answered.add(question); () }
-        catch { case NonFatal(_) => failures.merge(question, 1, (a, b) => a + b); marks.incrementAndGet(); () }
-      }
   }
-
-  /** Which of the family questions `open` a round asks the recording's sites: none `release` files (a held filed answer),
-   *  nor one whose answer the store holds fresh — skipped, as production's asker skips it
-   *  ([[services.identity.adapters.AgreementAsker]], `Fresh`). A wait lists the gaps it met while their answers were
-   *  held, and keeps listing them once filed; asked again, the recording's answer replaced the filed one, which no whole
-   *  resolve ever reads (PL "LALKA / DOLLY", seed 2, run 3154: RT's filed "Lalka Dolly" search read again as no hits). */
-  def asks(store: FamilyAnswerStore, open: Seq[(VoterFamily, String)], release: String => Boolean): Seq[(VoterFamily, String)] =
-    open.filter { case (family, question) =>
-      val id = FamilyAnswerStore.questionId(family, question)
-      !release(id) && store.wanted(id)
-    }
 
   /** The recording's answers, each read once: a venue page is parsed once, not on every projection. */
   def memo(reads: Reads): IdentityLookups =
@@ -465,7 +390,7 @@ object IdentityDrift {
     val stage    = answers.stage(lookups, new services.identity.agreement.InMemoryAgreementVerdicts, budgets = false)
     val byKey    = listings.map(l => l.key -> l).toMap
     val apply    = () => stage.apply(model, byKey.get, answers.store.version)
-    if (ask) settle(stage, apply, answers, clock, _ => false, log = log) else filedOnly(stage, apply)
+    if (ask) StageAnswers.settle(stage, apply, answers, clock, _ => false, log = log) else filedOnly(stage, apply)
   }
 
   /** Applies until the stage holds no backlog, answering nothing: what the filed answers alone decide, every cluster
@@ -474,22 +399,6 @@ object IdentityDrift {
     var now = apply()
     var n   = 0
     while (stage.backlog && n < rounds) { n += 1; now = apply() }
-    now
-  }
-
-  /** Applies until the stage asks nothing and holds no backlog — answering between applies: what a round could not
-   *  answer is attempted, and the clusters waiting on it settle as production's do. */
-  def settle(stage: AgreementStage, apply: () => Resolution, answers: Answers, clock: MutableClock, release: String => Boolean,
-             rounds: Int = 60, log: Boolean = true): Resolution = {
-    var now = apply()
-    var n   = 0
-    def quiet = !answers.open(stage) && !stage.backlog
-    while (!quiet && n < rounds) {
-      n += 1
-      if (log) System.err.println(s"[identity-drift] settle round $n: ${answers.described(stage)}")
-      answers.answer(stage, release); clock.advance(Duration.ofMinutes(1)); now = apply()
-    }
-    if (!quiet) System.err.println(s"[identity-drift] the stage did not settle in $rounds rounds: ${answers.described(stage)}")
     now
   }
 
@@ -674,7 +583,7 @@ object IdentityDrift {
     def settled(): Resolution = {
       gate.open = true; docs.openAll(answers.store.noteFiled)
       model.batch(answered = filed(gate.release(1.0)))
-      settle(stage, () => { event("settle"); project(checkpoint = "settled") }, answers, clock, releaseFamily)
+      StageAnswers.settle(stage, () => { event("settle"); project(checkpoint = "settled") }, answers, clock, releaseFamily)
     }
   }
 
