@@ -48,8 +48,8 @@ object Broadcast {
       // the films databases' productions are read only for a record every listing's billing fits but by its banner
       val credits = if (!records.exists { case (_, film) => billing.forall(_.fitsButTheHouse(film)) && !billing.forall(_.fits(film, Nil)) })
         Answer.Known(Nil) else productions()
-      credits match {
-        case Answer.Unknown => Left(Nil)
+      credits.failedAs(Nil) match {
+        case Answer.Unknown | Answer.Failed => Left(Nil) // failedAs leaves no Failed
         case Answer.Known(credited) =>
           val waits = records.collect { case (id, film) if film.released.isEmpty && billing.forall(_.fits(film, credited)) && undated(id) => id }.distinct
           if (waits.nonEmpty) Left(waits) else Right(chosen(days, billing, records, credited))

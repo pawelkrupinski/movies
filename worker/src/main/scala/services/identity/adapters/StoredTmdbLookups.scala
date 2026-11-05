@@ -134,6 +134,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     case Answer.Known(Some(record)) if record.released.isEmpty && wholeFilm(tmdbId).exists(yearOnly) =>
       Answer.Unknown
     case Answer.Known(record) => Answer.Known(record.flatMap(_.released))
+    case Answer.Failed        => Answer.Failed
     case Answer.Unknown       => Answer.Unknown
   }
 

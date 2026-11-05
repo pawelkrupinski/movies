@@ -47,6 +47,8 @@ object Catalogue {
     def known[A](answer: Answer[A], question: Question): Option[A] = answer match {
       case Answer.Known(value) => Some(value)
       case Answer.Unknown      => asked += question; if (!attempted(question)) open = true; None
+      // given up on: naming nothing, decided on, still asked on its backoff
+      case Answer.Failed       => asked += question; None
     }
     // the ids each listing carries, then those its venue's page links (marked: the explanation says where it came from)
     val ids: Seq[(CatalogueId, Boolean)] = (listings.flatMap(_.catalogueIds).map(_ -> false) ++ listings.flatMap(_.page).distinct.flatMap { page =>

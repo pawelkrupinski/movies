@@ -27,9 +27,10 @@ object VenueListings {
     var film    = Option.empty[SourceRecord]
     var naming  = 0
     val each    = listings.iterator
-    while (each.hasNext) named(each.next(), answers) match {
+    // a programme given up on (Failed) names nothing
+    while (each.hasNext) named(each.next(), answers).failedAs(None) match {
       case Answer.Unknown                                                    => unknown = true
-      case Answer.Known(None)                                                =>
+      case Answer.Known(None) | Answer.Failed                                =>
       case Answer.Known(Some(one)) if film.exists(_.crossIds != one.crossIds) => return Answer.Known(None)
       case Answer.Known(one)                                                 => film = one; naming += 1
     }

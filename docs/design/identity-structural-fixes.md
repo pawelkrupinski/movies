@@ -51,26 +51,31 @@ difference lives outside the answer, in the stage's `attempted` / `givenUp` (`Ag
 
 ```scala
 enum Answer[+A] {
-  case Known(value: A)            // answered: the source said this (an empty answer included)
-  case Failed(question: Question) // terminal: given up on (QuestionMemory.givenUp), decided without it
-  case Awaiting(question: Question) // not yet answered: never asked, in flight, or failed and due again
+  case Known(value: A) // answered: the source said this (an empty answer included)
+  case Failed          // terminal: given up on (QuestionMemory.givenUp), decided without it
+  case Unknown         // not yet answered: never asked, in flight, or failed and due again
 }
 ```
+
+`Unknown` keeps its name though it now means only "not yet answered": `Dependency.digest` digests an answer by its
+text, so a rename would move every stored receipt's unanswered digest (`Dependency.Unanswered`) and re-decide every
+stored verdict on the deploy. The cases carry no question: the read that returned one names it. Below, "awaiting"
+means `Unknown`.
 
 - `toOption` and `isKnown` go: a reader matches the three cases, so the compiler (`-Werror`, exhaustive matches)
   lists every site. `Failed` is the only case a decision may read as "no evidence", and it does so through ONE named
   function (`Answer.orNone` / `Answer.evidence`), never `getOrElse`.
 - The lookups (`IdentityLookups.detail`, `candidates`, `film`, `releaseDay`, `cast`, `overview`), the family, poster
   and catalogue stores' reads and the TMDB store read through `QuestionMemory`: answered -> `Known`; given up
-  (`givenUp`: durably unanswered, or failed `giveUpFailures` times in a row) -> `Failed`; anything else -> `Awaiting`.
-  A missing map entry is `Awaiting`, never `Known(Nil)`.
-- The resolver and the stage decide from `Known` and `Failed` only. A cluster with an `Awaiting` read returns an
+  (`givenUp`: durably unanswered, or failed `giveUpFailures` times in a row) -> `Failed`; anything else -> `Unknown`.
+  A missing map entry is `Unknown`, never `Known(Nil)`.
+- The resolver and the stage decide from `Known` and `Failed` only. A cluster with an `Unknown` read returns an
   explicit result naming them: the model's `ResolverDecision.awaits` already is one (`TakeOutcome.Pending`), the
   stage's `None` verdict for a waiting cluster becomes `StageVerdict.Awaiting(questions)` instead of an absent
   `Option` (`AgreementStage.scala:878`, served as the model left it at `:582`).
 - The settle rule of 2026-10-24 (decide once every question was ATTEMPTED, `AgreementStage.settled` /
   `settles` / `tried`, `:958-972`) is the one place that deliberately reads a retrying failure as "none". Fix 4 keeps
-  its behaviour but makes it explicit: the stage reads `Awaiting` with `attempted` as `Failed` through one function,
+  its behaviour but makes it explicit: the stage reads `Unknown` with `attempted` as `Failed` through one function,
   `AgreementStage.decideWithout`, and that function is the site fix 1 deletes.
 - `Dependency.digest` gives `Failed` its own digest: a receipt that read a terminal failure is told apart from one that
   read a gap. Stored verdicts that read `Unknown` re-read on the deploy through the existing backfill
@@ -95,12 +100,18 @@ with its classification: (a) already typed, a rename; (b) "unknown read as none"
 | `Catalogue.scala:44-59` | a catalogue page or id attempted as naming nothing | (b) |
 | `IdentityLookups.cast` / `overview` defaults `Known(None)` | not asked read as answered none | (c) candidate |
 
+**4a's sites** (the compiler's list, 2026-11-05; each reads `Failed` through `failedAs`): `AgreementTakes.filledTake`
+(a find given up on names no TMDB film), `AgreementTakes.taken` (likewise), `AgreementTakes.screened` (a poster given
+up on: no distance, no veto), `Broadcast.take` (productions given up on: none), `Catalogue.named` (a page or id given
+up on names nothing, still asked), `VenueListings.listed` (a programme given up on names nothing);
+`StoredTmdbLookups.releaseDay` passes a `Failed` record on as `Failed`.
+
 **Measured by:** no take moves (what-if `--verify` on every country; a CI identity-measure with right->wrong 0 and
 0 moved; drift clean) except at a site classified (c), whose moves are listed, judged and tested failing-first.
 `IncrementalWholeEquivalenceSpec`, `LateInputEquivalenceSpec` and `ScopedProjectionEquivalenceSpec` stay green.
 
-**Milestones.** 4a the three-case type with `toOption`/`isKnown` kept as deprecated shims, the lookups producing
-`Failed` / `Awaiting` (0 moved); 4b the model's sites; 4c the stage's sites (`decideWithout` the one collapse);
+**Milestones.** 4a the three-case type, nothing producing `Failed` yet, every exhaustive match given its `Failed` arm
+(a terminal failure read as no evidence through `Answer.failedAs`, the one function that may) (0 moved: no producer); 4b the model's sites; 4c the stage's sites (`decideWithout` the one collapse);
 4d the shims deleted. STOP after 4 lands: report the list and the numbers.
 
 ## Fix 1: asking apart from deciding (second)
@@ -121,12 +132,12 @@ with its classification: (a) already typed, a rename; (b) "unknown read as none"
    family with no source is filed), so this is bounded by the answers' own timeouts and retries, not by a clock of
    ours. If a hard cap proves needed, it reads the injected clock and is a named, counted outcome.
 3. **The projection is a pure function of stored inputs.** `askedInline`, `askNow`, `askedNow`, `AskNowWithin`,
-   `InlineRounds`, `InlineFamilyAsks` and the inline pool go. A cluster with an `Awaiting` question is not written:
+   `InlineRounds`, `InlineFamilyAsks` and the inline pool go. A cluster with an `Unknown` question is not written:
    its listings keep the take written before, ONLY because nothing new was written yet; there is no `Held` basis and
    nothing is substituted (the parked `experiment/pending-losses-held` stays parked). A newer trigger for the same
    cluster supersedes a waiting one (`EventTrigger` already coalesces).
 4. **Incremental equals whole by construction:** the whole resolve and the scoped projection both skip exactly the
-   clusters with an `Awaiting` read, and decide the rest from the same stored inputs.
+   clusters with an `Unknown` read, and decide the rest from the same stored inputs.
 
 **Open, for the owner, before 1 lands (STOP point):** a listing new to the site has no take written yet. Either it
 appears at once on its own card as unmatched-pending (a gain, never a reversal, when its film comes), or it is held
@@ -138,6 +149,9 @@ measurements). The default this plan builds: unmatched-pending at once, flagged 
   `decided` lines against the listing's arrival);
 - worker throughput (projections a minute, projection wall time p50/p99) and heap (the memory-budget rule: the new
   per-cluster question set is bounded and counted);
+- the reversals `scripts/flip-timeline <cc> [--since 7d]` classifies LATE-ANSWER (b242b5bda037: per-listing timelines
+  of projections, take changes and asks with their late answers), which fix 1 should drive to near zero, against
+  SIBLING/POPULATION, RULE and DEPLOY/RESTART, which it should leave as they were;
 - the flip rate from the prod flip monitor (a worker counter of reversals by pattern, built by another agent): its
   value for the 7 days before the deploy against the 7 after is the proof; the R-lost pattern should fall to ~0.
 
@@ -182,7 +196,8 @@ capture-replay case in the same commit (the `driftguards` rule).
 Each kind (iii) rule, one commit each, is either rewritten as monotone in the population (a count that only grows as
 listings arrive and counts only what the listing's own facts or TMDB do not deny, as `venues.current` was on
 2026-11-05), or demoted to a SUPPORTING vote: it may block a new take, never withdraw one unless the listing's own
-facts or TMDB contradict it. Order: by flips and served losses caused (the flip monitor's counter by `decided_by`,
+facts or TMDB contradict it. Order: by flips and served losses caused (the flip monitor's counter by `decided_by`, `scripts/flip-timeline`'s RULE
+and SIBLING/POPULATION reversals by rule,
 the backlog `identity-flip-backlog.tsv`), first `accept:joined`, `pooled:no-film`, `pooled:unnamed` (685 / 348 / 170
 of the week's 1,567 changes). Namesake step 3 and bare-borrow should fall out (`PARKED-REVIEW`).
 

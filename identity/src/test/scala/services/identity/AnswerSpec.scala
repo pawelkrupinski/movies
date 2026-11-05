@@ -24,6 +24,21 @@ class AnswerSpec extends AnyFlatSpec with Matchers {
     Answer.sequence(Seq.empty[Answer[Int]]) shouldBe Answer.Known(Nil)
   }
 
+  it should "tell a failure for good from a question not answered yet" in {
+    (Answer.Failed: Answer[Int]).map(_ * 3) shouldBe Answer.Failed
+    (Answer.Failed: Answer[Int]).flatMap(v => Answer.Known(v)) shouldBe Answer.Failed
+    Answer.Failed.isSettled shouldBe true
+    Answer.Unknown.isSettled shouldBe false
+    Answer.Known(None).isSettled shouldBe true
+    Answer.Failed.isKnown shouldBe false
+    Answer.sequence(Seq(Answer.Known(1), Answer.Failed)) shouldBe Answer.Failed
+    Answer.sequence(Seq(Answer.Failed, Answer.Unknown)) shouldBe Answer.Unknown
+    Dependency.digest(Answer.Failed) should not be Dependency.Unanswered
+    (Answer.Failed: Answer[Option[Int]]).failedAs(None) shouldBe Answer.Known(None)
+    (Answer.Unknown: Answer[Option[Int]]).failedAs(None) shouldBe Answer.Unknown
+    Answer.Known(Some(1)).failedAs(None) shouldBe Answer.Known(Some(1))
+  }
+
   "a held value" should "be known, and nothing held a gap" in {
     Some(None).toAnswer shouldBe Answer.Known(None)
     Option.empty[Int].toAnswer shouldBe Answer.Unknown

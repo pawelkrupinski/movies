@@ -78,5 +78,6 @@ object StoredLookupsEquivalence {
   private def render(a: Answer[Seq[Hit]]): String = a match {
     case Answer.Known(hits) => hits.take(4).map(h => s"${h.tmdbId}:${h.title}:${h.year.getOrElse("")}:p${PopularityBucket.of(h.popularity)}").mkString("[", ", ", if (hits.size > 4) ", …]" else "]")
     case Answer.Unknown     => "Unknown"
+    case Answer.Failed      => "Failed"
   }
 }

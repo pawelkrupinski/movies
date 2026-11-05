@@ -526,35 +526,56 @@ object Candidate {
   }
 }
 
-/** A lookup's answer: what the source KNOWS, or that it does not know. `Unknown` is not "no film":
- *  a query the store holds no answer to is a gap, and the resolver treats its would-be
- *  hits as missing evidence rather than as a definitive no-match (docs/design/identity-resolver.md
- *  §9, the gaps the recorded trees left). */
+/** A lookup's answer, one of three and nothing else (docs/design/identity-structural-fixes.md, fix 4):
+ *  - `Known`: what the source said, an empty answer (no film, no hit) included;
+ *  - `Failed`: TERMINAL -- given up on (`QuestionMemory.givenUp`: failed its kind's give-up count in a row); a decision
+ *    may read it as no evidence, and is decided on;
+ *  - `Unknown`: NOT YET answered -- never asked, in flight, or failed and due again. Never "no film": a decision that
+ *    reads one is not decided, it awaits the question ([[ResolverDecision.awaits]]).
+ *  The case keeps its name `Unknown` because [[Dependency.digest]] digests an answer by its text: every stored receipt's
+ *  unanswered read is `digest(Unknown)` ([[Dependency.Unanswered]]). */
 enum Answer[+A] {
   case Known(value: A)
+  case Failed
   case Unknown
 
   def toOption: Option[A] = this match {
-    case Known(v) => Some(v)
-    case Unknown  => None
+    case Known(v)         => Some(v)
+    case Failed | Unknown => None
   }
-  def isKnown: Boolean = this != Unknown
+  /** Answered: neither failed nor still awaited. */
+  def isKnown: Boolean = this match {
+    case Known(_)         => true
+    case Failed | Unknown => false
+  }
+  /** Decided on: answered, or failed for good. */
+  def isSettled: Boolean = this != Unknown
   def map[B](f: A => B): Answer[B] = this match {
     case Known(v) => Known(f(v))
+    case Failed   => Failed
     case Unknown  => Unknown
   }
   def flatMap[B](f: A => Answer[B]): Answer[B] = this match {
     case Known(v) => f(v)
+    case Failed   => Failed
     case Unknown  => Unknown
   }
-  /** This answer, or — the source not knowing — `other`'s. */
+  /** A terminal failure read as `absent`, no evidence -- the ONE way a decision reads a [[Failed]] (fix 4); an answer
+   *  not yet given stays Unknown, never "none". */
+  def failedAs[B >: A](absent: => B): Answer[B] = this match {
+    case Failed => Known(absent)
+    case other  => other
+  }
+  /** This answer, or -- the source not answering it -- `other`'s. */
   def orElse[B >: A](other: => Answer[B]): Answer[B] = if (isKnown) this else other
 }
 
 object Answer {
-  /** Every answer's value, or Unknown when any one is. */
+  /** Every answer's value; else Unknown when any one is still awaited, else Failed. */
   def sequence[A](answers: Seq[Answer[A]]): Answer[Seq[A]] =
-    if (answers.forall(_.isKnown)) Known(answers.flatMap(_.toOption)) else Unknown
+    if (answers.forall(_.isKnown)) Known(answers.flatMap(_.toOption))
+    else if (answers.contains(Unknown)) Unknown
+    else Failed
 }
 
 /** What a store holds, as an answer: none held is Unknown. */

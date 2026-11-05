@@ -64,8 +64,10 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
   private[agreement] def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[Question],
                          distances: AgreementStage.Distances, synopsis: Int => Option[String]): Option[ResolverDecision] =
     verdict.filled.flatMap { fill =>
-      tmdbFilmOf(fill.tmdb, fill.imdb, finding) match {
+      // a find given up on (Failed) names no TMDB film: the fill stands on its IMDb id (fix 4: decided on, never awaited)
+      tmdbFilmOf(fill.tmdb, fill.imdb, finding).failedAs(None) match {
         case Answer.Unknown => None
+        case Answer.Failed  => None // failedAs leaves none
         case Answer.Known(tmdbFilm) => screened(tmdbFilm, distances, synopsis)(()) match {
           case AgreementStage.Take.Taken(_) =>
             val rule = Some(s"fill:${fill.rule}")
@@ -102,8 +104,8 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
     // a film only review sites take — their pages name no film a card stands on, and match an event's namesake (DE "André
     // Rieus Weihnachtskonzert 2026: Let it Snow": Metacritic's and RT's 2019 "Let It Snow", the model's best candidate)
     if (!agreed.families.exists(_.namesFilms)) AgreementStage.Take.Untaken
-    else tmdb match {
-      case Answer.Unknown           => AgreementStage.Take.Pending
+    else tmdb.failedAs(None) match {
+      case Answer.Unknown | Answer.Failed => AgreementStage.Take.Pending // failedAs leaves no Failed
       case Answer.Known(Some(film)) => screened(Some(film), distances, synopsis)(taking(decision)(ResolverDecision.Basis.Agreed, line, film = Some(film), agreed = ids))
       case Answer.Known(None) => identityOf(agreed).fold[AgreementStage.Take[ResolverDecision]](AgreementStage.Take.Untaken) { case (source, id) =>
         screened(None, distances, synopsis)(taking(decision)(ResolverDecision.Basis.Agreed, line,
@@ -115,11 +117,12 @@ private[agreement] trait AgreementTakes { this: AgreementStage =>
    *  pending while a venue poster is not hashed, VETOED where one names another candidate ([[PosterEvidence.veto]]),
    *  REFUSED where the venue's synopsis names another's description (`synopsis`, [[synopsisAgainst]]), else taken. */
   private[agreement] def screened[A](film: Option[Int], distances: AgreementStage.Distances, synopsis: Int => Option[String])(take: => A): AgreementStage.Take[A] =
-    distances(film) match {
+    // a poster given up on (Failed) is no evidence for or against: as no distance found
+    distances(film).failedAs(Nil) match {
       case Answer.Known(found) =>
         if (PosterEvidence.veto(film, found).nonEmpty) AgreementStage.Take.Vetoed
         else film.flatMap(synopsis).fold[AgreementStage.Take[A]](AgreementStage.Take.Taken(take))(AgreementStage.Take.Refused(_))
-      case Answer.Unknown      => AgreementStage.Take.Pending
+      case Answer.Unknown | Answer.Failed => AgreementStage.Take.Pending // failedAs leaves no Failed
     }
 
   /** The id a film TMDB holds no record of stands on: its IMDb id, else the own id of the first of [[identities]] that
