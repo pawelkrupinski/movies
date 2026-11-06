@@ -8,6 +8,7 @@
 #   - a replay that wrote no report, no flips line, or no recording to replay is no verdict (2);
 #   - the row's fixed seeds go to the head in one replay, to the base one replay a seed;
 #   - a red names its seed (verdict, seed file, a one-line reproducer with the red listing's drift slice);
+#   - a base that does not compile steps back to its parent (DRIFT_BASE_STEPS), saying so; one that never does is no verdict;
 #   - DRIFT_TWICE: two replays of the same seeds that differ fail.
 # Run: bash scripts/ci/identity-drift-check-test.sh
 set -uo pipefail
@@ -35,6 +36,10 @@ side=head; case $PWD in *drift-base-checkout*) side=base ;; esac
 echo "$side $list" >> "$FAKE_LOG"
 printf '%s\n' "$@" > "$out.args"
 [ "${FAKE_REPORT:-}" = none ] && { echo "[error] compilation failed"; exit 1; }
+# FAKE_BROKEN_BASE: a base checkout at this commit (or `all`) fails to compile, as #950's 053f867ea9 did
+[ -n "${FAKE_BROKEN_BASE:-}" ] && . "$SCRATCH_GIT_LIB"
+case "${FAKE_BROKEN_BASE:-}" in "") ;; all|"$(scratch_git "$PWD" rev-parse HEAD 2>/dev/null)")
+  [ "$side" = base ] && { echo "[error] (worker / Test / compileIncremental) Compilation failed"; exit 1; } ;; esac
 mkdir -p "$out"; printf 'country\tseed\n' > "$out/drift-pl.tsv"
 flips=${FAKE_HEAD_FLIPS:-}; [ "$side" = base ] && flips=${FAKE_BASE_FLIPS:-}
 n=$(( $(cat "$out/../runs" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$out/../runs"
@@ -54,7 +59,7 @@ echo "      Head Row | Not The Verdict: tmdb:1 [1 boot] -> tmdb:2 [2 x] [seed 1]
 exit 0
 EOF
 chmod +x "$work/bin/sbt"
-export FAKE_LOG="$work/sbt-calls" RUNNER_TEMP="$work/tmp"
+export FAKE_LOG="$work/sbt-calls" RUNNER_TEMP="$work/tmp" SCRATCH_GIT_LIB="$REPO_ROOT/scripts/scratch-git.sh"
 scratch_repo "$repo" -q -b main
 echo base > "$repo/identity/src/main/Rule.scala"; scratch_git "$repo" add -A && scratch_git "$repo" commit -qm base
 echo docs > "$repo/README.md"; scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "docs only"
@@ -104,6 +109,13 @@ check "...said allow-listed" "1" "$(grep -c 'allow-listed (identity-flips-allow.
 check "an explicit base is the one judged against" "1" "$(DRIFT_BASE=$(scratch_git "$repo" rev-parse HEAD~2) FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"
 check "...resolved on each seed" "head 1,2 base 1 base 2" "$(paste -sd' ' "$FAKE_LOG")"
 check "...and named" "2" "$(grep -c "head vs base $(scratch_git "$repo" rev-parse HEAD~2 | cut -c1-12) (resolved)" "$work/stdout")"
+broken=$(scratch_git "$repo" rev-parse HEAD~1) parent=$(scratch_git "$repo" rev-parse HEAD~2)
+check "a base that does not compile steps back to its parent" "0" \
+  "$(DRIFT_BASE=$broken FAKE_BROKEN_BASE=$broken FAKE_HEAD_FLIPS='Riverside|The Stranger' FAKE_BASE_FLIPS='Riverside|The Stranger' run)"
+check "...replaying the parent on every seed" "head 1,2 base 1 base 1 base 2" "$(paste -sd' ' "$FAKE_LOG")"
+check "...saying so" "1" "$(grep -c "the base ${broken:0:12} does not compile; judged against its parent ${parent:0:12} instead" "$work/stdout")"
+check "...and judging against the parent" "2" "$(grep -c "head vs base ${parent:0:12} (resolved)" "$work/stdout")"
+check "a base that never compiles is still no verdict" "2" "$(DRIFT_BASE=$broken FAKE_BROKEN_BASE=all DRIFT_BASE_STEPS=1 FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"
 
 # THE ROW'S FIXED SEEDS, and a red names its seed
 mkdir -p "$fx/drift-slices/pl/muza-new-film-1"

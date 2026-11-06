@@ -184,15 +184,32 @@ done
 if [ "${#recompute[@]}" -gt 0 ]; then
   base=$default_base
   base_dir="${RUNNER_TEMP:-$out}/drift-base-checkout"
-  echo "identity drift ($cc): resolving the base ${base:0:12} on seed(s) ${recompute[*]} (none stored)"
-  # allow-silenced: a base not fetched fails its checkout below, which says so with no verdict
-  timeout 300 git -C "$here" fetch -q --no-tags --depth=1 origin "$base" 2> /dev/null || true
-  rm -rf "$base_dir"; git -C "$here" worktree prune 2> /dev/null || true
-  git -C "$here" worktree add -q --detach "$base_dir" "$base" > /dev/null 2>&1 \
-    || { echo "identity drift ($cc): could not check out the base $base" | tee "$out/verdict.txt"; exit 2; }
+  # A base that does not compile is a commit main merged broken (two landings green alone, red together: #950's
+  # 053f867ea9, its own WhatIfAnswersSpec on the names it renamed). It judges nothing, so the base steps back to its
+  # parent, at most DRIFT_BASE_STEPS (3) times, and says so; one that never compiles is still no verdict.
+  steps=0
+  while :; do
+    echo "identity drift ($cc): resolving the base ${base:0:12} on seed(s) ${recompute[*]} (none stored)"
+    # allow-silenced: a base not fetched fails its checkout below, which says so with no verdict
+    timeout 300 git -C "$here" fetch -q --no-tags --depth=$((steps + 2)) origin "$base" 2> /dev/null || true
+    rm -rf "$base_dir"; git -C "$here" worktree prune 2> /dev/null || true
+    git -C "$here" worktree add -q --detach "$base_dir" "$base" > /dev/null 2>&1 \
+      || { echo "identity drift ($cc): could not check out the base $base" | tee "$out/verdict.txt"; exit 2; }
+    first=${recompute[0]}
+    replay "$base_dir" "$out/base/seed-$first" "$first"
+    parent=""
+    if [ ! -f "$out/base/seed-$first/flips-$cc.tsv" ] && grep -q 'Compilation failed' "$out/base/seed-$first/sbt.log" \
+       && [ "$steps" -lt "${DRIFT_BASE_STEPS:-3}" ]; then
+      parent=$(git -C "$here" rev-parse --verify -q "${base}~1^{commit}") || parent=""
+    fi
+    [ -n "$parent" ] || break
+    echo "::warning title=identity drift ($cc)::the base ${base:0:12} does not compile; judged against its parent ${parent:0:12} instead"
+    base=$parent steps=$((steps + 1))
+  done
   for s in "${recompute[@]}"; do
+    echo "$base" > "$out/base/base-$s.txt"
     # one seed a replay: a base from before `--seed S1,S2` reads one seed alone
-    replay "$base_dir" "$out/base/seed-$s" "$s"
+    [ "$s" = "$first" ] || replay "$base_dir" "$out/base/seed-$s" "$s"
     [ -f "$out/base/seed-$s/flips-$cc.tsv" ] \
       || { tail -40 "$out/base/seed-$s/sbt.log" >&2; echo "identity drift ($cc): the base's replay of seed $s wrote nothing, so nothing was judged" | tee "$out/verdict.txt"; exit 2; }
     cp "$out/base/seed-$s/flips-$cc.tsv" "$out/base/flips-$s.tsv"
