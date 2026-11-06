@@ -92,7 +92,9 @@
 #                 owner, 2026-10-29); and a change to the drift harness
 #                 (IdentityDrift, IdentityLiveDrift, TakeFlips, identity-drift-check.sh) carries its self-test in the same
 #                 commit (IdentityDriftSpec, CorrectionFlipReplaySpec, TakeFlipsSpec, the check's test) or
-#                 `Drift-Harness-Refactor: <why>`. Seconds: git only
+#                 `Drift-Harness-Refactor: <why>`; and a change to what the worker serves over time (the model's
+#                 input gate, holds, settle, asks) ships its gauges/alert in the same commit or names the earlier
+#                 push's commit that did (`Gauges-Shipped: <sha>`; else `Gauges: none -- <why>`). Seconds: git only
 #   `judgements`  scripts/ci/identity_judgements_lint.py on identity-judgements.tsv, the expected
 #                 matches and hard clusters: the judgements are well formed and the files leaning on
 #                 them agree. A judgements change is also read against the takes the newest Identity

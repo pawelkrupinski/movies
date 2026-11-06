@@ -379,6 +379,46 @@ class RatchetTest(unittest.TestCase):
     def test_an_unreadable_range_is_no_verdict_to_the_guards(self):
         self.assertEqual(2, self.guards("nosuch..HEAD"))
 
+    # ── gauges before behaviour (identity-and-convergence review 2026-11-06, P4) ──
+    GATE_FILE = "worker/src/main/scala/services/identity/adapters/IdentityModelService.scala"
+    GAUGES = "worker/src/main/scala/services/metrics/IdentityModelGauges.scala"
+
+    def test_a_serving_behaviour_change_without_its_gauges_fails(self):
+        head = self.commit({self.GATE_FILE: "hold\n"}, "Identity model: hold a listing until its asks are answered")
+        rc, err = self.run_rules("driftguards", f"{self.base}..{head}")
+        self.assertEqual(1, rc, err)
+        self.assertIn("gauges", err)
+
+    def test_a_serving_behaviour_change_with_its_gauges_in_the_same_commit_passes(self):
+        head = self.commit({self.GATE_FILE: "hold\n", "infra/nix/files/monitoring/rules/identity-agreement.rules": "a\n"},
+                           "Identity model: hold, and its alert")
+        self.assertEqual(0, self.guards(f"{self.base}..{head}"))
+
+    def test_gauges_shipped_in_an_earlier_push_answer_the_behaviour(self):
+        gauges = self.commit({self.GAUGES: "g\n"}, "Identity model: the held gauges")
+        head = self.commit({self.GATE_FILE: "hold\n"}, f"Identity model: hold\n\nGauges-Shipped: {gauges}")
+        self.assertEqual(0, self.guards(f"{gauges}..{head}"), "the gauges went in an earlier push, so an earlier deploy")
+
+    def test_gauges_shipped_in_the_same_push_do_not_count(self):
+        gauges = self.commit({self.GAUGES: "g\n"}, "Identity model: the held gauges")
+        head = self.commit({self.GATE_FILE: "hold\n"}, f"Identity model: hold\n\nGauges-Shipped: {gauges}")
+        rc, err = self.run_rules("driftguards", f"{self.base}..{head}")
+        self.assertEqual(1, rc, "same push, same deploy: the gauges are not EARLIER")
+        self.assertIn("same push", err)
+
+    def test_a_gauges_shipped_commit_that_shipped_no_gauge_fails(self):
+        other = self.commit({"docs/x.md": "d\n"}, "a doc")
+        head = self.commit({self.GATE_FILE: "hold\n"}, f"Identity model: hold\n\nGauges-Shipped: {other}")
+        rc, err = self.run_rules("driftguards", f"{other}..{head}")
+        self.assertEqual(1, rc, err)
+        self.assertIn("changes no gauge", err)
+
+    def test_a_behaviour_change_needing_no_new_gauge_says_why(self):
+        head = self.commit({self.GATE_FILE: "rename\n"}, "Identity model: one name\n\nGauges: none -- a rename, the same series see it")
+        self.assertEqual(0, self.guards(f"{self.base}..{head}"))
+        head = self.commit({self.GATE_FILE: "r2\n"}, "Identity model: one name\n\nGauges: none")
+        self.assertEqual(1, self.guards(f"{head}^..{head}"), "none without a why")
+
 
 if __name__ == "__main__":
     unittest.main()

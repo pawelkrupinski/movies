@@ -45,6 +45,12 @@
 #   - A CHANGE TO THE DRIFT HARNESS CARRIES ITS SELF-TEST (G6): a commit changing HARNESS_FILES also changes one of
 #     SELF_TEST_FILES -- a third of the week's drift reds were the judge's, not the product's (91cfbe7e8, 7b586af0f,
 #     5df3295bd) -- or says `Drift-Harness-Refactor: <why>`.
+#   - GAUGES BEFORE BEHAVIOUR (identity-and-convergence review 2026-11-06, P4; the owner approved it): a commit changing
+#     what the worker serves over time (SERVING_FILES: the model's input gate, holds, settle, asks) changes a gauge,
+#     alert or dashboard (GAUGE_FILES) in the same commit, or names the EARLIER push's commit that did
+#     (`Gauges-Shipped: <sha>`, an ancestor outside this push), or says `Gauges: none -- <why>`. On 11-06 the readiness
+#     gate deployed at 07:50Z, its gauges ~12:20Z, and stuck listings went unseen ~4.5 h. Watch the roll with
+#     scripts/deploy-watch.
 #
 # usage: commit_rules.py allowlists|driftguards --range A..B [--range C..D ...] [--registry .github/allow-lists.txt]
 # Prints each refusal and why; exit 0 none, 1 some, 2 usage or an unreadable range. Tested by commit_rules_test.py.
@@ -86,6 +92,16 @@ SELF_TEST_FILES = re.compile(
     r"|identity/src/test/scala/services/identity/TakeFlipsSpec\.scala"
     r"|identity/src/test/scala/services/identity/agreement/CorrectionFlipReplaySpec\.scala"
     r"|scripts/ci/identity-drift-check-test\.sh|test/resources/fixtures/drift-slices/.*)$")
+
+# What the worker serves over time -- the model's input gate, holds, settle, asks -- and what sees it
+SERVING_FILES = re.compile(
+    r"^(worker/src/main/scala/services/identity/adapters/(IdentityModelService|AgreementReadiness|PendingListings"
+    r"|AgreementHandlers|QuestionMemory|QuestionPolicies|QuestionRenewals|OutstandingQuestions|VenuePageWait"
+    r"|RetainedListings|ProjectionTriggers)\.scala|identity/src/main/scala/services/identity/(ListingReadiness|PageWait)\.scala"
+    r"|worker/src/main/scala/services/tasks/SettleReaper\.scala)$")
+GAUGE_FILES = re.compile(
+    r"^(worker/src/main/scala/services/metrics/.*\.scala|infra/nix/files/monitoring/(rules/.*\.rules|grafana/.*)"
+    r"|infra/test/app-metrics-catalogue/.*)$")
 
 
 def git(*args: str) -> str:
@@ -349,9 +365,41 @@ def harness_carries_self_test(c: Commit, _opts: dict) -> list[str]:
             "  A pure refactor: the trailer 'Drift-Harness-Refactor: <why>'."]
 
 
+def gauges_before_behaviour(c: Commit, opts: dict) -> list[str]:
+    behaviour = sorted(p for p in c.changed if SERVING_FILES.match(p))
+    if not behaviour or any(GAUGE_FILES.match(p) for p in c.changed):
+        return []
+    why = []
+    for value in c.trailers.get("gauges", []):
+        if SLICE_NONE.match(value):
+            return []
+        why.append(f"'Gauges: {value}' gives no why (write 'Gauges: none -- <why>')")
+    for value in c.trailers.get("gauges-shipped", []):
+        sha = value.split()[0]
+        try:
+            full = git("rev-parse", "--verify", "-q", f"{sha}^{{commit}}").strip()
+        except subprocess.CalledProcessError:
+            why.append(f"Gauges-Shipped: {sha} names no commit")
+            continue
+        if full in opts["in_push"]:
+            why.append(f"Gauges-Shipped: {sha} is in the same push, so the same deploy: land the gauges first")
+        elif subprocess.run(["git", "merge-base", "--is-ancestor", full, c.parent]).returncode != 0:
+            why.append(f"Gauges-Shipped: {sha} is not an ancestor of this commit")
+        elif not any(GAUGE_FILES.match(p) for p in Commit.read(full).changed):
+            why.append(f"Gauges-Shipped: {sha} changes no gauge, alert or dashboard file")
+        else:
+            return []
+    return [f"changes what the worker serves over time ({' '.join(behaviour)}) without its gauges.\n"
+            + "".join(f"  {w}.\n" for w in why) +
+            "  A gate, hold, settle or ask change ships the gauges, alert and dashboard that see it in the same commit\n"
+            "  (worker/src/main/scala/services/metrics/, infra/nix/files/monitoring/) or in an EARLIER push, named by\n"
+            "  'Gauges-Shipped: <sha>' (review 2026-11-06 P4: the readiness gate shipped before its gauges, 4.5 h unseen).\n"
+            "  The existing series already see it: 'Gauges: none -- <which series, why>'."]
+
+
 RULE_SETS: dict[str, list[Rule]] = {
     "allowlists": [allow_lists],
-    "driftguards": [drift_fix_carries_its_slice, red_fix_is_no_rule, harness_carries_self_test],
+    "driftguards": [drift_fix_carries_its_slice, red_fix_is_no_rule, harness_carries_self_test, gauges_before_behaviour],
 }
 
 
@@ -361,6 +409,7 @@ def check(rule_set: str, ranges: list[str], opts: dict) -> list[str]:
         # what the whole push changes: a drift fix's slice may come in a later commit of it
         opts = {**opts, "pushed": set(git("diff", "--name-only", "--no-renames", rng.replace("..", "...", 1)).split("\n")) - {""}}
         commits = [Commit.read(sha) for sha in git("rev-list", "--reverse", rng).split()]
+        opts["in_push"] = {c.sha for c in commits}
         # a published commit's `Drift-Slice:` given by a later commit of the range, by its sha: main is never amended
         opts["declared"] = [(m.group(1).lower(), m.group(2)) for c in commits for v in c.trailers.get("drift-slice-for", [])
                             if (m := SLICE_FOR.match(v))]
