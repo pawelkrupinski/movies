@@ -23,8 +23,12 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
     for {
       taken <- calibratedWhy(ranked)
       // the runner-up a film's own facts must outweigh is another film the billing could name, never one it names only by
-      // the event it joins (UK "The Assassin + Q&A" beside Q & A, 1990: [[IdentityMeasures.eventNamed]])
-      _     <- noneOf(eligible.filterNot(r => (r eq taken._1) || IdentityMeasures.eventNamed(r.listing, r.candidate.film)).headOption
+      // the event it joins (UK "The Assassin + Q&A" beside Q & A, 1990: [[IdentityMeasures.eventNamed]]), nor one only a
+      // sibling's search brought into the family's pool ([[Scored.ownReach]]): that runner-up comes and goes with the
+      // sibling, and the take with it (DE Cineplex Neustadt's bare "Es" [72'], the 2017 film its own search ranks first,
+      // refused whenever Caligari's "ES (ULRICH SCHAMONI)" pulled in the 1966 "Es" its title names too -- a flip back and
+      // forth as the family's venues arrived, structural fix 2)
+      _     <- noneOf(eligible.filterNot(r => (r eq taken._1) || !r.ownReach || IdentityMeasures.eventNamed(r.listing, r.candidate.film)).headOption
                  .filterNot(favours(taken._1, _)), "its own facts do not favour it over the runner-up", taken._1)
       _     <- noneOf(closerThan(taken._1, eligible), "its title sits inside a closer record", taken._1)
     } yield taken

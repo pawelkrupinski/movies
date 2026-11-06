@@ -68,7 +68,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     private val relationOf = titledBy.fold(related) { case (id, _) =>
       related.updated(id, IdentityMeasures.titleRelation(listing, scoredPool.find(_.tmdbId == id).get.film, houses, qualifiers)) }
     private val relation   = relationOf.view.mapValues(_.value).toMap
-    private val reachable = scoredPool.filter(candidate => ranks.contains(candidate.tmdbId) || walked(candidate.tmdbId) || shared(candidate.tmdbId) ||
+    private def ownReach(id: Int) = ranks.contains(id) || walked(id) || shared(id)
+    private val reachable = scoredPool.filter(candidate => ownReach(candidate.tmdbId) ||
       IdentityMeasures.names(relation(candidate.tmdbId), listing, candidate.film))
     // A film only IMDb suggested, under a title the listing does not carry, rivals nothing: the rules other than
     // IMDb's own never see it, as before IMDb's other-language matches were followed.
@@ -89,7 +90,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       val byNode = RuleAblation.live(deniedByNode(candidate.tmdbId))
       Scored(candidate, probability, measures, byNode.orElse(RuleAblation.live(evidenceDenial(listing, candidate.film, measures))), listing, ranks.get(candidate.tmdbId),
         namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, StageRelays.billsUnderItsHouse(listing, candidate.film, houses),
-        suggestedOnly = onlySuggested(candidate.tmdbId))
+        suggestedOnly = onlySuggested(candidate.tmdbId), ownReach = ownReach(candidate.tmdbId))
     }
 
     // A namesake the venue's country never saw released, beside one it did, that nothing backs is denied, and no

@@ -12,7 +12,8 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
                                           houseProduction: Boolean = false, imdb: Option[Scored.ImdbPlace] = None,
                                           suggestedOnly: Boolean = false, soleResult: Boolean = false, imdbTitled: Set[String] = Set.empty,
-                                          vetoedRivals: Int = 0, untaken: Option[String] = None) {
+                                          vetoedRivals: Int = 0, untaken: Option[String] = None,
+                                          ownReach: Boolean = true) {
   /** Is the film ruled out for this listing — `denial` says why. */
   def denied: Boolean = denial.isDefined
   /** May a rule take it? Not a denied film, nor an UNTAKEN one — `untaken` says why: a film no rule takes that stays in
@@ -38,6 +39,10 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
   // (IMDb matched another-language title of it) — a candidate for `Acceptance.imdbSuggested` alone.
   // `vetoedRivals`: how many of the namesakes its `rivals` measure counts the release veto took away ([[ReleaseVeto]]) —
   // still counted in its calibrated probability, never in the evidence class it is accepted by (`Acceptance.classAccepted`).
+  // `ownReach`: the listing's OWN evidence reached the film -- its searches, its director walks, or an identically titled
+  // listing's -- not only its title naming a film a sibling's search brought into the family's pool. A film only a
+  // sibling reached is a candidate all the same, but no runner-up an own match must outweigh (`favoured-calibrated`):
+  // its presence hangs on which siblings are present.
   // `imdbTitled`: the listing's search titles IMDb lists the film under, in some language (an AKA: "Camino dla
   // opornych" is IMDb's Polish title of "Compostelle") — `Acceptance.imdbSuggested`'s titled rung.
 }
