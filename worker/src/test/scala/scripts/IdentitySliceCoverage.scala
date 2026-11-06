@@ -21,7 +21,7 @@ import scala.util.{Failure, Success, Try}
  * `<recordings>/<key>/pair/test/resources/fixtures`), for the wrapper to fetch before `--repin`.
  *
  * `--repin`: each lacking slice topped up from ITS OWN recording (the one it was cut from, `slice.json.gz`'s `recording`,
- * found under `--recordings`, default `$KINOWO_IDENTITY_CACHE/recordings`): decided again with the recording behind it
+ * found under `--recordings`: the wrapper passes `$KINOWO_IDENTITY_CACHE/recordings`): decided again with the recording behind it
  * ([[SliceHttp.Replaying]]'s widen), every answer it lacked noted from the recording, and its `http.jsonl.gz` written
  * with them -- round after round until it decides alone lacking nothing. Only the answers move: its listings, context,
  * filed answers and `expected.tsv` stay as pinned (scripts/identity-slice-refresh re-cuts a case whole).
@@ -70,10 +70,6 @@ object IdentitySliceCoverage {
   /** The recording cache key a slice names: `<cache>/recordings/<key>/pair/test/resources/fixtures`. */
   def recordingKey(recording: String): Option[String] =
     """(?:^|/)recordings/([^/]+)/pair/test/resources/fixtures/?$""".r.findFirstMatchIn(recording).map(_.group(1))
-
-  def recordingsDefault: Path =
-    sys.env.get("KINOWO_IDENTITY_CACHE").filter(_.nonEmpty).map(Path.of(_))
-      .getOrElse(Path.of(sys.props("user.home"), ".cache", "kinowo-identity")).resolve("recordings")
 
   /** Where a re-pin reads what a slice lacks: a fetch over its recording, noting each outcome. */
   type RecordingOf = IdentitySlice.Slice => SliceHttp.Noting
@@ -152,7 +148,7 @@ object IdentitySliceCoverage {
         "scripts/identity-slice-coverage --repin")
       throw Failed(s"${missing.size} slice(s) lack answers")
     }
-    val recordings = o.recordings.getOrElse(recordingsDefault)
+    val recordings = o.recordings.getOrElse(throw Failed("--repin reads the recordings from --recordings DIR (the shared cache's recordings/)"))
     val left = missing.flatMap { c =>
       val recording = recordingKey(c.recording).map(k => recordings.resolve(k).resolve("pair/test/resources/fixtures"))
       if (c.failed.nonEmpty) Some(s"${c.dir}: not re-pinned, ${c.failed.get}")
