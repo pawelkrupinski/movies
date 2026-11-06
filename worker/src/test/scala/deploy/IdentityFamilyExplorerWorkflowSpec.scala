@@ -34,6 +34,10 @@ class IdentityFamilyExplorerWorkflowSpec extends AnyFlatSpec with Matchers {
     workflow should include("scripts/ci/family_shards.py plan")
   }
 
+  it should "declare the release tag convergence-setup reads, which a workflow's env does not inherit from the legs" in {
+    RepoFile.block(workflow, "env") should include("FIXTURE_RELEASE_TAG: convergence-fixtures")
+  }
+
   it should "walk bounded, and end what a timed-out walk left before anything else runs" in {
     val walk = WorkflowText.steps(jobs("walk"))
     walk.exists(_.get("run").exists(_.contains("scripts/ci/identity-family-nightly.sh"))) shouldBe true

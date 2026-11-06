@@ -37,6 +37,12 @@ concurrency:
 permissions:
     contents: read
 
+env:
+    # convergence-setup reads this: the rolling release the pinned pairs and trees live in (as country-convergence-leg.yml declares it)
+    FIXTURE_RELEASE_TAG: convergence-fixtures
+    # the hosted-Ubuntu job image sets no locale; the JVM would encode a Polish file name as ASCII (SelfHostedRunnersSpec)
+    LANG: C.UTF-8
+
 jobs:
     # THE PLAN: the one place the run's inputs are read (WorkflowPlanSpec).
     plan:
