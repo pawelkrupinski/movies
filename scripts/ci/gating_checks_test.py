@@ -103,6 +103,13 @@ class Lint(unittest.TestCase):
         self.write("scripts/hooks/pre-push", HOOK.replace('"identity-model-convergence.yml")', '"identity-model-convergence.yml" "recording.yml")'))
         self.assertIn("recording.yml gates pushes", " ".join(g.lint(self.root)))
 
+    def test_the_label_mains_rows_run_on_needs_its_row(self):
+        self.write("scripts/ci/convergence_slots.py", 'SELF_HOSTED_LABEL = "movies-main"\n')
+        self.assertIn("label 'movies-main'", " ".join(g.lint(self.root)))
+        self.write(".github/gating-checks.tsv", REGISTRY + "label\tidentity-model-convergence.yml\tmovies-main\tunproven\t"
+                   "born 2026-11-06; owner: ci\n")
+        self.assertEqual(g.lint(self.root), [])
+
     def test_a_malformed_proven_is_refused(self):
         self.write(".github/gating-checks.tsv", REGISTRY.replace("\t2722\n", "\tyesterday\n", 1))
         self.assertIn("proven 'yesterday'", " ".join(g.lint(self.root)))
@@ -140,6 +147,17 @@ class ReportOnly(unittest.TestCase):
     def test_the_same_job_name_in_another_workflow_is_not_this_ones(self):
         rows = self.rows + [{"kind": "job", "workflow": "identity-model-convergence.yml", "name": "commit rules", "proven": "2691"}]
         self.assertTrue(g.report_only(rows, "main.yml", [{"name": "commit rules", "conclusion": "failure"}])[0])
+
+    def test_a_proven_job_failing_on_an_unproven_runner_label_reports(self):
+        rows = self.rows + [{"kind": "label", "workflow": "main.yml", "name": "movies-main", "proven": "unproven"}]
+        on_new = [{"name": "test (heavy1)", "conclusion": "failure", "labels": ["movies-main"]}, {"name": "ci", "conclusion": "failure"}]
+        only, why = g.report_only(rows, "main.yml", on_new)
+        self.assertTrue(only, why)
+        self.assertIn("movies-main", why)
+        # the same job failing on a hosted runner gates; and once the label is proven, so does its failure there
+        self.assertFalse(g.report_only(rows, "main.yml", [dict(on_new[0], labels=["ubuntu-22.04"])])[0])
+        rows[-1] = dict(rows[-1], proven="2900")
+        self.assertFalse(g.report_only(rows, "main.yml", on_new)[0])
 
     def test_the_cli_exit_says_it(self):
         with tempfile.TemporaryDirectory() as d:
@@ -205,6 +223,11 @@ class Prove(unittest.TestCase):
         self.assertNotIn(("job", "flaky"), state)
         g.save(f.name, rows)
         self.assertEqual(g.load(f.name)[-1]["name"], "e2e (rest)")
+        # a label is proven by a green job that ran on it
+        rows.append({"kind": "label", "workflow": "main.yml", "name": "movies-main", "proven": "unproven", "note": "x"})
+        self.assertEqual(g.prove(rows, "main.yml", [{"name": "test (heavy1)", "conclusion": "success",
+                                                     "labels": ["movies-main"]}], "2801"), ["label movies-main"])
+        self.assertEqual(rows[-1]["proven"], "2801")
         os.unlink(f.name)
 
 

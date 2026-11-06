@@ -30,6 +30,10 @@ reads: a gate workflow, and a job in one (a reusable workflow's included: they r
     and nobody edits the registry by hand for it; `lint` still fails a registry the hook did not see.
   - `prove --run <run id>` records a green gate run: every job that ran green in it and is unproven or
     missing gets that run's number. Run it after the first green run of a new check, and commit the registry.
+  - A RUNNER LABEL a gate's jobs run on is a `label` row (`name` the label): a job that fails on a label still
+    `unproven` reports, however proven the job itself, since a new kind of machine is a new check (main's convergence
+    rows on ci-runner's `movies-main`, 2026-11-06: convergence_slots.py SELF_HOSTED_LABEL, which `lint` requires a row
+    for). `prove` proves it with a green job that ran on it. Labels are read from the jobs API (`labels`).
 
 usage: gating_checks.py lint [--root DIR]
        gating_checks.py sync [--root DIR] [--owner NAME]
@@ -141,6 +145,15 @@ def hook_gate_files(root: str) -> list[str]:
     return re.findall(r'"([^"]+)"', m.group(1)) if m else []
 
 
+def planned_labels(root: str) -> list[str]:
+    """The runner labels the convergence planner hands main's rows (no workflow names them literally)."""
+    try:
+        text = open(os.path.join(root, "scripts/ci/convergence_slots.py")).read()
+    except OSError:
+        return []
+    return re.findall(r'^SELF_HOSTED_LABEL = "([^"]+)"', text, re.M)
+
+
 def lint(root: str) -> list[str]:
     try:
         rows = load(os.path.join(root, REGISTRY))
@@ -148,8 +161,8 @@ def lint(root: str) -> list[str]:
         return [str(e)]
     problems = []
     for r in rows:
-        if r["kind"] not in ("workflow", "job"):
-            problems.append(f"line {r['line']}: kind {r['kind']!r} (workflow or job)")
+        if r["kind"] not in ("workflow", "job", "label"):
+            problems.append(f"line {r['line']}: kind {r['kind']!r} (workflow, job or label)")
         if not (is_proven(r) or r["proven"] in ("unproven", "aggregate")):
             problems.append(f"line {r['line']}: proven {r['proven']!r} (a run number, `aggregate` or `unproven`)")
         if r["proven"] == "unproven" and not r["note"].strip():
@@ -159,6 +172,10 @@ def lint(root: str) -> list[str]:
     for file in hook_gate_files(root):
         if not any(r["kind"] == "workflow" and r["workflow"] == file and is_proven(r) for r in rows):
             problems.append(f"{file} gates pushes (the hook's GatingWorkflowFiles) but has no proven `workflow` row")
+    for label in planned_labels(root):
+        if not any(r["kind"] == "label" and r["name"] == label for r in rows):
+            problems.append(f"label {label!r} (convergence_slots.py SELF_HOSTED_LABEL: main's rows on ci-runner) has no row: "
+                            "add it as `unproven` (with its owner) until a green run proves it")
     for file in GATE_WORKFLOWS:
         try:
             globs = workflow_globs(root, file)
@@ -179,10 +196,18 @@ def lint(root: str) -> list[str]:
 def report_only(rows: list[dict], file: str, jobs: list[dict]) -> tuple[bool, str]:
     """(True, why) when every failed job of a red run is unproven -- or an aggregate following one -- and one is."""
     state = {r["name"]: r["proven"] for r in rows if r["kind"] == "job" and r["workflow"] == file}
-    failed = [j["name"] for j in jobs if j.get("conclusion") in ("failure", "timed_out")]
+    new_labels = {r["name"] for r in rows if r["kind"] == "label" and r["workflow"] == file and r["proven"] == "unproven"}
+    failed_jobs = [j for j in jobs if j.get("conclusion") in ("failure", "timed_out")]
+    failed = [j["name"] for j in failed_jobs]
     if not failed:
         return False, "no failed job"
-    unproven = [n for n in failed if state.get(n, "unproven") == "unproven"]
+    # a job that failed on a runner label still unproven reports, whatever its own row says
+    on_new = {j["name"]: sorted(new_labels & set(j.get("labels") or [])) for j in failed_jobs}
+    for name, labels in on_new.items():
+        if labels:
+            state = dict(state, **{name: "unproven"})
+    unproven = [n + (f" (on {', '.join(on_new[n])})" if on_new.get(n) else "") for n in failed
+                if state.get(n, "unproven") == "unproven"]
     gating = [n for n in failed if state.get(n, "unproven") not in ("unproven", "aggregate")]
     if gating:
         return False, "gates: " + ", ".join(gating)
@@ -191,10 +216,24 @@ def report_only(rows: list[dict], file: str, jobs: list[dict]) -> tuple[bool, st
     return True, "report only, unproven: " + ", ".join(unproven)
 
 
-def run_jobs(run: str) -> list[dict]:
+def run_jobs(run: str, with_labels: bool = False) -> list[dict]:
+    """The run's jobs; `with_labels` adds each job's runner `labels` from the jobs API (unreadable: none, so the job's
+    own row decides -- the stricter answer)."""
     out = subprocess.run(["gh", "run", "view", run, "--json", "jobs"],
                          check=True, capture_output=True, text=True, timeout=60).stdout
-    return json.loads(out).get("jobs", [])
+    jobs = json.loads(out).get("jobs", [])
+    if with_labels:
+        api = subprocess.run(["gh", "api", "--paginate", f"repos/{{owner}}/{{repo}}/actions/runs/{run}/jobs?per_page=100",
+                              "--jq", ".jobs[] | {id, labels}"], capture_output=True, text=True, timeout=60)
+        labels = {}
+        for line in api.stdout.splitlines() if api.returncode == 0 else []:
+            try:
+                j = json.loads(line)
+                labels[j["id"]] = j.get("labels") or []
+            except (ValueError, KeyError, TypeError):
+                continue
+        jobs = [dict(j, labels=labels.get(j.get("databaseId"), [])) for j in jobs]
+    return jobs
 
 
 def prove(rows: list[dict], file: str, jobs: list[dict], number: str) -> list[str]:
@@ -203,6 +242,11 @@ def prove(rows: list[dict], file: str, jobs: list[dict], number: str) -> list[st
     for j in jobs:
         if j.get("conclusion") != "success":
             continue
+        for r in rows:
+            if (r["kind"] == "label" and r["workflow"] == file and r["proven"] == "unproven"
+                    and r["name"] in (j.get("labels") or [])):
+                r["proven"], r["note"] = number, ""
+                changed.append(f"label {r['name']}")
         row = next((r for r in rows if r["kind"] == "job" and r["workflow"] == file and r["name"] == j["name"]), None)
         if row is None:
             rows.append({"kind": "job", "workflow": file, "name": j["name"], "proven": number, "note": ""})
@@ -265,7 +309,8 @@ def main(argv: list[str]) -> int:
             with open(args["--jobs-json"]) as f:
                 jobs = json.load(f).get("jobs", [])
         else:
-            jobs = run_jobs(args["--run"])
+            jobs = run_jobs(args["--run"], with_labels=any(r["kind"] == "label" and r["workflow"] == file
+                                                           and r["proven"] == "unproven" for r in rows))
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as e:
         print(f"gating-checks: cannot read the run's jobs or the registry: {e}", file=sys.stderr)
         return 2

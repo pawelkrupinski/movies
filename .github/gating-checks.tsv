@@ -104,3 +104,4 @@ job	identity-model-convergence.yml	timings	aggregate
 job	identity-model-convergence.yml	report (timings)	aggregate
 job	main.yml	commit rules	2855
 job	identity-model-convergence.yml	request-bisect	unproven	runs only after a red leg; owner: convergence; proven by its first green run
+label	identity-model-convergence.yml	movies-main	unproven	born 2026-11-06: main's convergence rows on ci-runner's free movies slots (runner_scheduler.py); owner: Paweł Krupiński (runner-scheduler)
