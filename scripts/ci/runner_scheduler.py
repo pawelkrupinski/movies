@@ -207,8 +207,7 @@ class Host:
                 self.idle_since.pop(slot, None)
                 continue
             cls = dict(l.split("=", 1) for l in open(env).read().splitlines() if "=" in l).get("RUNNER_CLASS", "light")
-            top = _run(["docker", "top", f"{self.cfg.unit}-{slot}", "-eo", "comm"])
-            busy = "Runner.Worker" in top.stdout
+            busy = self.runs_job(slot)
             if busy:
                 self.idle_since.pop(slot, None)
             since = self.idle_since.setdefault(slot, os.path.getmtime(env)) if not busy else now
@@ -221,9 +220,20 @@ class Host:
             f.write(f"RUNNER_CLASS={cls}\nRUNNER_LABELS={LABELS[cls]}\nRUNNER_SLICE=ci-movies-{cls}.slice\n")
         _run(["systemctl", "start", "--no-block", self.unit(slot)])
 
+    def runs_job(self, slot: int) -> bool:
+        """A Runner.Worker in the slot's container -- and True when the probe cannot tell: a runner is never stopped on
+        doubt. `docker top` keeps the container's rows by ps's PID column, so the options must name `pid` (`-eo comm`
+        alone always failed, every runner read idle, and #1005's eight convergence rows were stopped mid-job)."""
+        top = _run(["docker", "top", f"{self.cfg.unit}-{slot}", "-eo", "pid,comm"])
+        if top.returncode != 0:
+            print(f"slot {slot}: docker top failed ({top.returncode}): {top.stderr.strip()} -- read as busy",
+                  file=sys.stderr, flush=True)
+            return True
+        return any(line.split()[-1:] == ["Runner.Worker"] for line in top.stdout.splitlines())
+
     def stop(self, slot: int) -> None:
         # Never one that took a job since the tick looked: check again right before.
-        if "Runner.Worker" in _run(["docker", "top", f"{self.cfg.unit}-{slot}", "-eo", "comm"]).stdout:
+        if self.runs_job(slot):
             return
         _run(["systemctl", "stop", "--no-block", self.unit(slot)])
 

@@ -4,11 +4,14 @@ checks before measurements -- and main's jobs are never served here (the owner, 
 
     python3 scripts/ci/runner_scheduler_test.py
 """
+import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
+import unittest.mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -133,6 +136,71 @@ class ConfigTest(unittest.TestCase):
                     rs.Config.load(f.name)
             finally:
                 os.remove(f.name)
+
+
+class FakeDocker:
+    """`systemctl` and `docker top` as ci-runner answers them. `docker top` hands its ps options to ps and then looks for
+    a PID column to keep the container's own rows: without one it exits 1 ("Couldn't find PID field in ps output")."""
+
+    def __init__(self, comms, top_fails=False):
+        self.comms, self.top_fails, self.calls = comms, top_fails, []
+
+    def __call__(self, cmd, timeout=30):
+        self.calls.append(cmd)
+        if cmd[0] == "systemctl":
+            return rs.subprocess.CompletedProcess(cmd, 0, "active\n" if cmd[1] == "is-active" else "", "")
+        fields = cmd[cmd.index("-eo") + 1].split(",")
+        if self.top_fails or "pid" not in fields:
+            return rs.subprocess.CompletedProcess(cmd, 1, "", "Error response from daemon: Couldn't find PID field in ps output\n")
+        rows = [" ".join("PID" if f == "pid" else f.upper() for f in fields)]
+        rows += [" ".join(str(100 + i) if f == "pid" else c for f in fields) for i, c in enumerate(self.comms)]
+        return rs.subprocess.CompletedProcess(cmd, 0, "\n".join(rows) + "\n", "")
+
+
+class HostTest(unittest.TestCase):
+    """#1005: the probe asked `docker top <c> -eo comm`, which always fails, so every runner read idle and eight convergence
+    rows were stopped mid-job at idle_stop_seconds."""
+
+    def host(self, docker):
+        state = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, state)
+        with open(os.path.join(state, "2.env"), "w") as f:
+            f.write("RUNNER_CLASS=check\n")
+        patcher = unittest.mock.patch.object(rs, "_run", docker)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return rs.Host(rs.Config(state_dir=state))
+
+    def test_a_runner_running_a_job_reads_busy(self):
+        [i] = self.host(FakeDocker(["tini", "Runner.Listener", "Runner.Worker"])).instances(NOW)
+        self.assertTrue(i.busy)
+
+    def test_a_runner_waiting_for_a_job_reads_idle(self):
+        [i] = self.host(FakeDocker(["tini", "Runner.Listener"])).instances(NOW)
+        self.assertFalse(i.busy)
+
+    def test_a_probe_that_fails_reads_busy_and_says_so(self):
+        # never stop a runner on doubt: a failed probe is a runner that may be running a job
+        with unittest.mock.patch("sys.stderr", new_callable=io.StringIO) as err:
+            [i] = self.host(FakeDocker([], top_fails=True)).instances(NOW)
+        self.assertTrue(i.busy)
+        self.assertIn("Couldn't find PID field", err.getvalue())
+
+    def test_a_busy_runner_is_never_stopped(self):
+        docker = FakeDocker(["Runner.Worker"])
+        self.host(docker).stop(2)
+        self.assertFalse([c for c in docker.calls if c[:2] == ["systemctl", "stop"]])
+
+    def test_a_runner_whose_probe_fails_is_never_stopped(self):
+        docker = FakeDocker([], top_fails=True)
+        with unittest.mock.patch("sys.stderr", new_callable=io.StringIO):
+            self.host(docker).stop(2)
+        self.assertFalse([c for c in docker.calls if c[:2] == ["systemctl", "stop"]])
+
+    def test_an_idle_runner_is_stopped(self):
+        docker = FakeDocker(["Runner.Listener"])
+        self.host(docker).stop(2)
+        self.assertTrue([c for c in docker.calls if c[:2] == ["systemctl", "stop"]])
 
 
 if __name__ == "__main__":
