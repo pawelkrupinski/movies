@@ -54,9 +54,12 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
   /** The families' store at the input gate's boundary: which titles' questions are answered, and what was asked. */
   private final class Families extends ListingReadiness {
     var unanswered = Set.empty[String]
+    /** The questions an answer led to, by title: a title's search names films whose records the listing then waits on. */
+    var ledTo      = Map.empty[String, Set[Question]]
     val asked      = scala.collection.mutable.ArrayBuffer.empty[Question]
     private def question(listing: Listing) = Question.Family(agreement.VoterFamily.Imdb, s"title|${listing.title}")
-    def awaiting(listing: Listing): Set[Question] = if (unanswered(listing.title)) Set(question(listing)) else Set.empty
+    def awaiting(listing: Listing): Set[Question] =
+      (if (unanswered(listing.title)) Set(question(listing)) else Set.empty) ++ ledTo.getOrElse(listing.title, Set.empty)
     def ask(listing: Listing, questions: Set[Question]): Unit = asked ++= questions
   }
 
@@ -634,6 +637,24 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     service.drain()
     multikino.loneElement.year shouldBe Some(1968)
     world.pendingStore.read() shouldBe empty
+  }
+
+  it should "ask, ahead, the questions a held listing's answers led to, never leaving them to the agreement's queue" in {
+    // Prod, image 5ec9cf7 (2026-11-06 13:16-13:30Z): DE and US held listings were taken in only by the 10-minute bound
+    // while their first questions were answered -- a title's search answered names films whose records the listing then
+    // waits on, and those were never asked ahead
+    val world   = handDrained(new World)
+    val service = world.service()
+    service.takeUp()
+    world.families.unanswered = Set("Lalka")
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    service.drain()
+    val record = Question.Family(agreement.VoterFamily.Imdb, "record|tt0063215")
+    world.families.unanswered = Set.empty; world.families.ledTo = Map("Lalka" -> Set(record))  // the search filed, a record named
+    service.drain()
+    world.families.asked.toSeq shouldBe Seq(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"), record)
+    service.drain()
+    world.families.asked.count(_ == record) shouldBe 1                                            // asked once, not each drain
   }
 
   it should "show a listing new to the model on its own, Pending on its questions, never joining another's decision -- or not at all" in {

@@ -64,7 +64,8 @@ final class ModelInputGate(
           val was  = Option(pending.get(listing.key))
           val held = Held(venue, listing, was.flatMap(_.ready).orElse(prior), waits, was.fold(now)(_.since))
           pending.put(listing.key, held)
-          if (!was.exists(_.newest == listing)) {
+          if (was.exists(_.newest == listing)) askLedTo(was.get, waits)
+          else {
             readiness.ask(listing, waits)
             logger.info(s"identity model: held ${ListingKey.serialised(listing.key)} on ${waits.size} question(s) of its own " +
               s"(${waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}); the model ${if (prior.isDefined) "keeps the version it holds" else "holds no version of it"}")
@@ -144,11 +145,18 @@ final class ModelInputGate(
         if (waits.isEmpty) {
           pending.remove(h.newest.key); (if (late) bounded else promotedAfter) += held; releasedStandIns ++= h.standIn; Some(h.newest)
         }
-        else { if (waits != h.waits) pending.put(h.newest.key, h.copy(waits = waits)); None }
+        else { if (waits != h.waits) { askLedTo(h, waits); pending.put(h.newest.key, h.copy(waits = waits)) }; None }
       }
     if (promotedAfter.nonEmpty) metrics.promoted(promotedAfter.toSeq, atBoot = false)
     if (bounded.nonEmpty) { metrics.bounded(bounded.toSeq); logger.warn(s"identity model: ${bounded.size} held listing(s) taken in past the ${maxHold.toMinutes} min bound") }
     taken
+  }
+  /** The questions `held`'s listing waits on now that it did not when last asked -- those its answers led to (a title's
+   *  search names films whose records it then waits on) -- asked ahead as its first ones were. Left to the agreement's
+   *  queue, they were answered only after the bound had taken the listing in (DE, US, image 5ec9cf7, 2026-11-06). */
+  private def askLedTo(held: Held, waits: Set[Question]): Unit = {
+    val led = waits -- held.waits
+    if (led.nonEmpty) readiness.ask(held.newest, led)
   }
   /** Held past [[maxHold]], by the injected clock: taken in whatever it still waits on. */
   private def overdue(held: Held): Boolean = clock.millis() - held.since >= maxHold.toMillis
