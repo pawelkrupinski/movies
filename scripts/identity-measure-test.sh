@@ -140,13 +140,15 @@ exec "$real_git" "\$@"
 STUB
 chmod +x "$work/bin/git"
 
+# Every case but the gate's own dispatches past the what-if gate (its override); WHAT_IF_GATE=1 leaves the gate to judge.
 measure() { # <artifact> <args...>: exit code; output in $work/out
-  local art=$1; shift
+  local art=$1 gate_args=(--no-what-if "the measure spec"); shift
+  [ -z "${WHAT_IF_GATE:-}" ] || gate_args=()
   rm -rf "$work/stub"; mkdir -p "$work/stub"
   [ -n "${KEEP_CACHE:-}" ] || rm -rf "$work/cache"
   ( cd "$repo" && STUB="$work/stub" ORIGIN="$origin" ARTIFACT="$work/$art" HEAD_SHA="${HEAD_SHA:-}" \
       KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_POLL=0 GH_DOWNLOAD_BACKOFF=0 PATH="$work/bin:$PATH" \
-      "$REPO_ROOT/scripts/identity-measure" "$@" > "$work/out" 2>&1 )
+      "$REPO_ROOT/scripts/identity-measure" ${gate_args[@]+"${gate_args[@]}"} "$@" > "$work/out" 2>&1 )
   echo $?
 }
 drop_measure_branches() { # delete every measure/ branch on origin (they nest: measure/<user>/<sha>-<random>)
@@ -171,6 +173,21 @@ check "...and where its time went: the wait for runners, from the first job's st
 check "...each takes row's job" "true" "$(grep -q 'poland / takes: 582s failure' "$work/out" && echo true || echo false)"
 check "...and each row's phases, saying which a stored result spared" "true" \
   "$(grep -q 'pl phases: head-resolve 546s (resolved), base-resolve 3s (reused)' "$work/out" && echo true || echo false)"
+
+printf '\033[36m▸\033[0m the what-if gate\n'
+check "no what-if verdict for the head and base: refused before any push or dispatch" "2 0 false" \
+  "$(WHAT_IF_GATE=1 measure landable --countries pl) $(measure_branches) $([ -f "$work/stub/dispatch" ] && echo true || echo false)"
+check "...printing the what-if command for exactly that head and base" "true" \
+  "$(grep -qF "scripts/identity-what-if --base $parent --head $tip pl" "$work/out" && echo true || echo false)"
+check "...and the override" "true" "$(grep -q -- '--no-what-if' "$work/out" && echo true || echo false)"
+mkdir -p "$work/cache/what-if-verdicts"
+printf 'pl\tdone\t2026-11-06T10:00:00Z\t/x/takes-diff-pl.tsv\n' > "$work/cache/what-if-verdicts/$tip-$parent.tsv"
+check "a what-if verdict for the head and base: measured" "0 true" \
+  "$(KEEP_CACHE=1 WHAT_IF_GATE=1 measure landable --countries pl) $(grep -q "what-if done for ${tip:0:9} against ${parent:0:9}: pl done" "$work/out" && echo true || echo false)"
+mv "$work/cache/what-if-verdicts/$tip-$parent.tsv" "$work/cache/what-if-verdicts/$tip-$old.tsv"
+check "...but one against another base is not that one" "2" "$(KEEP_CACHE=1 WHAT_IF_GATE=1 measure landable --countries pl --fresh --no-cache)"
+check "--no-what-if dispatches anyway, saying why" "0 true" \
+  "$(WHAT_IF_GATE=1 measure landable --countries pl --no-what-if "live asks being added") $(grep -q 'WHAT-IF SKIPPED (--no-what-if): live asks being added' "$work/out" && echo true || echo false)"
 
 check "a run cancelled more than twice is dispatched again until it runs" "0" "$(CANCELS=3 measure landable --countries pl)"
 check "...four dispatches in all" "true" "$(grep -q 'dispatching (attempt 4)' "$work/out" && echo true || echo false)"
@@ -472,7 +489,7 @@ unset RELEASE_DIR
 rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"
 ( cd "$repo" && STUB="$work/stub" ORIGIN="$origin" ARTIFACT="$work/landable" IN_PROGRESS=1 \
     KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_POLL=1 PATH="$work/bin:$PATH" \
-    exec "$REPO_ROOT/scripts/identity-measure" --countries pl > "$work/out" 2>&1 ) &
+    exec "$REPO_ROOT/scripts/identity-measure" --no-what-if "the measure spec" --countries pl > "$work/out" 2>&1 ) &
 pid=$!
 wait_until "the tool is watching the run" '[ -f "$work/stub/watched" ]'
 # A watchdog: a script that defers the signal (a wait inside a $(...) subshell does) must fail this, not hang it.

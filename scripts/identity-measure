@@ -50,8 +50,17 @@
 #   --sweep        delete the orphaned measure/ branches on origin (below) and exit; opt-in only, never run by a measurement
 #   --take-paths   print the paths a reuse treats as able to move a take (matches.sh dialect) and exit
 #   --json         machine output (scripts/identity_measure.py --json)
+#   --no-what-if WHY  dispatch without a what-if verdict for this head and base (THE WHAT-IF GATE below); WHY is said in
+#                  the output and must be named in your report: the projection, the gate, live asks, drift, or anything
+#                  else scripts/identity-what-if cannot see
 #   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch.
 #                  A run still in progress is waited for (at most --timeout, then exit 3); with --no-wait it exits 3 at once
+#
+# THE WHAT-IF GATE (the owner's "what-if first", 2026-11-05; review 2026-11-06 P3: 40% of measure runs failed or were
+# cancelled). Nothing is dispatched for a head with no scripts/identity-what-if verdict for the same head and base:
+# what-if writes one line a country it finished (identity-tools.sh's what_if_record_verdict, under the head and base),
+# and this looks it up (a file read, no run). Without it the tool prints the what-if command and exits 2;
+# `--no-what-if "<why>"` dispatches anyway and says so. A cached, reused or footprint answer dispatches nothing, so needs none.
 #
 # THE FOOTPRINT (2026-10-22). Without --countries, only the countries whose takes the change CAN move are measured: each
 # changed take-moving file's countries as scripts/ci/identity_impact.py reads them (the identity area's test-impact
@@ -148,7 +157,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/identity-tools.sh
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
-ref="" base="" recording="" keep="" nowait="" wait_eta="" full="" fresh="" json="" run="" timeout_min=120 timeout_set="" cancel_on_timeout="" take_paths="" sweep=""
+ref="" base="" recording="" no_what_if="" keep="" nowait="" wait_eta="" full="" fresh="" json="" run="" timeout_min=120 timeout_set="" cancel_on_timeout="" take_paths="" sweep=""
 all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces="" no_cache=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -175,6 +184,7 @@ while [ "$#" -gt 0 ]; do
     --sweep) sweep=1 ;;
     --json) json=1 ;;
     --run) run=$2; shift ;;
+    --no-what-if) flag_value "$@"; no_what_if=$2; shift ;;
     --timeout) timeout_min=$2; timeout_set=1; shift ;;
     --cancel-on-timeout) cancel_on_timeout=1 ;;
     -h|--help) usage_from_header; exit 0 ;;
@@ -617,7 +627,8 @@ fan_out() {
     say "measuring over recording ${rec} too ($on), in parallel"
     logs+=("$dir/$rec") 
     "$0" --head "$commit" --base "$base" ${rec:+$( [ "$rec" = pinned ] || echo "--recording $rec")} --countries "$on" --one-recording \
-      ${json:+--json} ${timeout_set:+--timeout "$timeout_min"} ${cancel_on_timeout:+--cancel-on-timeout} > "$dir/$rec" 2>&1 &
+      ${json:+--json} ${timeout_set:+--timeout "$timeout_min"} ${cancel_on_timeout:+--cancel-on-timeout} \
+      ${no_what_if:+--no-what-if "$no_what_if"} > "$dir/$rec" 2>&1 &
     pids+=($!)
   done <<< "$2"
   for i in "${!pids[@]}"; do
@@ -817,7 +828,19 @@ if [ -n "$footprint_measure" ]; then
   say "measuring in full (measure: full)"
 fi
 
+# THE WHAT-IF GATE (the header): a lookup, before anything is pushed or dispatched
+what_if_gate() {
+  local done
+  if [ -n "$no_what_if" ]; then say "WHAT-IF SKIPPED (--no-what-if): $no_what_if -- name it in your report"; return 0; fi
+  if done=$(what_if_verdicts "$commit" "$base"); then say "what-if done for ${commit:0:9} against ${base:0:9}: $done"; return 0; fi
+  say "REFUSED: no scripts/identity-what-if verdict for ${commit:0:9} against ${base:0:9} (what-if first: minutes on the laptop, not a CI measure). Run:"
+  say "  scripts/identity-what-if --base $base --head $commit ${countries//,/ }"
+  say "then measure again; or dispatch anyway with --no-what-if \"<why what-if cannot see it>\", named in your report"
+  exit 2
+}
+
 if [ "$recordings" = all ] && [ -z "$nowait" ]; then
+  what_if_gate
   fan_out "$countries" "$(printf '%s %s\n' "${recording:-pinned}" "$countries"; other_recordings)"
   exit $?
 fi
@@ -835,6 +858,7 @@ if [ -z "$fresh$full$recording" ] && found=$(find_measurement "$base" "$commit")
   exit $?
 fi
 
+what_if_gate
 # The commit's own workflows must know the takes-only dispatch and upload the check's output; an older commit gets
 # main's laid over it.
 push=$commit

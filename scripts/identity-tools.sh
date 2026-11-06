@@ -480,3 +480,21 @@ out.write(held); out.flush()
 sys.exit(112)
 PY
 }
+
+# THE WHAT-IF VERDICT RECORD (review 2026-11-06 P3): scripts/identity-what-if writes one line a country it finished --
+# `<cc> TAB <verdict> TAB <finished, UTC> TAB <takes diff>` -- under (head, base); scripts/identity-measure refuses to
+# dispatch a CI measure without one (its what-if gate). One file read: the gate is a lookup, never a run.
+what_if_verdicts_file() { echo "$IDENTITY_CACHE/what-if-verdicts/$1-$2.tsv"; } # <head sha> <base sha>
+what_if_record_verdict() { # <head sha> <base sha> <cc> <verdict> <takes diff>
+  local file
+  file=$(what_if_verdicts_file "$1" "$2")
+  mkdir -p "$(dirname "$file")" && printf '%s\t%s\t%s\t%s\n' "$3" "$4" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$5" >> "$file"
+}
+# what_if_verdicts <head sha> <base sha> -> `pl done, de done` (each country's newest), or fails when there is none
+what_if_verdicts() {
+  local file
+  file=$(what_if_verdicts_file "$1" "$2")
+  [ -s "$file" ] || return 1
+  awk -F'\t' '{ v[$1] = $2; if (!($1 in seen)) { seen[$1] = 1; order[++n] = $1 } }
+    END { for (i = 1; i <= n; i++) printf "%s%s %s", (i > 1 ? ", " : ""), order[i], v[order[i]]; print "" }' "$file"
+}

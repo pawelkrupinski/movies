@@ -10,7 +10,7 @@
 # IdentityCutoverEndToEnd and DocCommentPlacementSpec.
 #
 # usage: scripts/identity-landing-check [<commit> | --head REF] [--base SHA] [--full | --footprint-only] [--local]
-#                                       [--no-measure | --no-specs] [--no-cache] [--drift | --no-drift]
+#                                       [--no-measure | --no-specs] [--no-cache] [--no-what-if WHY] [--drift | --no-drift]
 #   <commit>         default HEAD (committed only: uncommitted changes are neither measured nor tested)
 #   --base           default the commit's merge-base with <remote>/main (identity-measure's)
 #   (no mode flag)   the measure: `identity-measure --footprint` -- the footprint measure when the change is title rules
@@ -24,6 +24,8 @@
 #                    each group its own `scripts/identity-ci-run` (identity-run.yml) at the commit, all at once
 #   --no-measure     the specs only;  --no-specs  the measure only
 #   --no-cache       passed to identity-measure: measure even when its result cache holds the verdict
+#   --no-what-if WHY passed to identity-measure: dispatch without a scripts/identity-what-if verdict for the head and
+#                    base (identity-measure's what-if gate refuses otherwise); name it in your report
 #   --drift          the `drift` group whatever the change touches;  --no-drift  never (see THE DRIFT GROUP)
 #
 # THE SPECS: exactly the identity-relevant suites of Main's rows (ci.yml), each group as its row runs it:
@@ -54,7 +56,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/tool-conventions.sh
 . "$here/tool-conventions.sh"
 DIE_STATUS=2
-ref=HEAD base="" mode=footprint local="" measure=1 specs=1 no_cache="" drift=auto
+ref=HEAD base="" mode=footprint local="" measure=1 specs=1 no_cache="" no_what_if="" drift=auto
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --head) flag_value "$@"; ref=$2; shift 2 ;;
@@ -65,6 +67,7 @@ while [ "$#" -gt 0 ]; do
     --no-measure) measure=""; shift ;;
     --no-specs) specs=""; shift ;;
     --no-cache) no_cache=1; shift ;;
+    --no-what-if) flag_value "$@"; no_what_if=$2; shift 2 ;;
     --drift) drift=1; shift ;;
     --no-drift) drift=""; shift ;;
     -h|--help) usage_from_header; exit 0 ;;
@@ -160,6 +163,7 @@ if [ -n "$measure" ]; then
   flags=(--head "$commit" --base "$base")
   case $mode in footprint) flags+=(--footprint) ;; footprint-only) flags+=(--footprint-only) ;; full) flags+=(--full) ;; esac
   [ -z "$no_cache" ] || flags+=(--no-cache)
+  [ -z "$no_what_if" ] || flags+=(--no-what-if "$no_what_if")
   say "measure: identity-measure ${flags[*]:4}"
   "${IDENTITY_LANDING_MEASURE:-$here/identity-measure}" "${flags[@]}" > "$out/measure.txt" 2> "$out/measure.log" &
   measure_pid=$!

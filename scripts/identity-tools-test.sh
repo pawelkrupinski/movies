@@ -317,4 +317,16 @@ check "...a request's args reach the JVM, its answer streams back and its exit c
   "$(bash -c '. "$1"; kept_jvm_call "$2" de --out /x "two words"; echo "|$?"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$sock" 2> /dev/null | tr -d '\n')"
 wait "$server" 2> /dev/null
 
+printf '\033[36m▸\033[0m the what-if verdict record\n'
+wi() { KINOWO_IDENTITY_CACHE="$work/wi-cache" bash -c 'set -u; . "$1"; shift; "$@"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$@"; }
+check "none recorded for a head and base: the lookup fails" "1" "$(wi what_if_verdicts h1 b1 > /dev/null; echo $?)"
+wi what_if_record_verdict h1 b1 pl "done" /x/takes-diff-pl.tsv
+wi what_if_record_verdict h1 b1 de verify-failed /x/takes-diff-de.tsv
+wi what_if_record_verdict h1 b1 pl "done" /x/takes-diff-pl.tsv
+check "each country once, in the order first finished, its newest verdict" "pl done, de verify-failed" "$(wi what_if_verdicts h1 b1)"
+check "...under that head and base only" "1 1" \
+  "$(wi what_if_verdicts h1 b2 > /dev/null; echo $?) $(wi what_if_verdicts h2 b1 > /dev/null; echo $?)"
+check "...one line a country finished, its takes diff named" "3 /x/takes-diff-de.tsv" \
+  "$(wc -l < "$(wi what_if_verdicts_file h1 b1)" | tr -d ' ') $(sed -n 2p "$(wi what_if_verdicts_file h1 b1)" | cut -f4)"
+
 spec_summary

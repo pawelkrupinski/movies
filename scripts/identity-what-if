@@ -60,6 +60,8 @@
 # WHAT IT IS NOT. prod's current corpus, not a recording: CI's scripts/identity-measure replays a pinned recording
 # and stays the verdict of record; the two differ by the corpus (docs: identity-investigation skill).
 #
+# Each country it finishes is recorded for scripts/identity-measure's what-if gate (THE VERDICT RECORD, below).
+#
 # Exit 0 done (CLEAN or BLOCKING is printed per country), 1 --verify found a take the selection missed, 2 usage / a
 # side failed. Every JVM takes a slot of scripts/jvm-gate.sh.
 set -euo pipefail
@@ -295,6 +297,14 @@ if [ -n "$bisect_good" ]; then
   exit 0
 fi
 
+# THE VERDICT RECORD (identity-tools.sh's what_if_record_verdict; scripts/identity-measure's what-if gate reads it): a
+# line a country finished. A `.` head counts as its commit only with no uncommitted edits to tracked files.
+verdict_head=$head_sha
+[ "$head_sha" != . ] || { [ -z "$(git -C "$repo" status --porcelain --untracked-files=no)" ] && verdict_head=$(git -C "$repo" rev-parse HEAD); }
+record_verdict() { # <cc> <diff exit>
+  [ "$verdict_head" != . ] || return 0
+  what_if_record_verdict "$verdict_head" "$base_sha" "$1" "$([ "$2" = 0 ] && echo "done" || echo "verify-failed")" "$out/takes-diff-$1.tsv"
+}
 identity_log "base $base_sha, head $head_label; laying out and compiling the refs (once each)"
 tree_of "$base_sha" > /dev/null || exit 2
 head_tree=$(tree_of "$head_sha") || exit 2
@@ -330,6 +340,7 @@ for cc in "${ccs[@]}"; do
   [ "$json" = 0 ] || diff_args+=(--json)
   rc=0; python3 -I "$repo/scripts/identity_what_if.py" "${diff_args[@]}" || rc=$?
   [ "$rc" = 0 ] || status=$rc
+  record_verdict "$cc" "$rc"
   region=$(tail -n 1 "$head_dir/region.tsv" | awk -F'\t' '{print $2 " listings in " $3 " group(s), " $4 " round(s)"}')
   echo "  $selected; re-resolved $region"
   for side in "$base_dir" "$head_dir"; do

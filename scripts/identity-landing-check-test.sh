@@ -92,6 +92,8 @@ check "--footprint-only asks only the footprint" "true" \
   "$(landing --head "$judged" --base "$code" --footprint-only > /dev/null; grep -q -- '--footprint-only' "$work/logs/measure-args" && echo true || echo false)"
 check "--no-cache reaches the measure" "true" \
   "$(landing --head "$judged" --base "$code" --no-cache > /dev/null; grep -q -- '--no-cache' "$work/logs/measure-args" && echo true || echo false)"
+check "--no-what-if reaches the measure with its reason" "true" \
+  "$(landing --head "$judged" --base "$code" --no-what-if "live asks" > /dev/null; grep -q -- '--no-what-if live asks' "$work/logs/measure-args" && echo true || echo false)"
 
 cat > "$work/logs/unit.log" <<'LOG'
 [info] MatchedTakesLabelSpec:
