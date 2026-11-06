@@ -11,7 +11,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 
 SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-dev-server.XXXXXX")"
-trap 'rm -rf "$SCRATCH"' EXIT
+# A compiled exporter (IdentityMeasures, `export CreditMeasures.*`) in a target directory of this spec's own.
+STALE_DIR="$REPO_ROOT/identity/target/scala-dev-server-test/classes/services/identity"
+trap 'rm -rf "$SCRATCH" "$REPO_ROOT/identity/target/scala-dev-server-test"' EXIT
 FAKE="$SCRATCH/bin"; mkdir -p "$FAKE"
 cat > "$FAKE/sbt" <<'SBT'
 #!/usr/bin/env bash
@@ -55,4 +57,14 @@ check "with no TMDB_API_KEY set, web/run gets it from the vault (the review card
 check "an exported TMDB_API_KEY wins, with no vault lookup" \
   "TMDB=mine VAULT=" \
   "$(tmdb_key env TMDB_API_KEY=mine "$REPO_ROOT/scripts/dev-server.sh")"
+# Zinc misses a member added behind a wildcard export, so a warm target/ fails with "value X is not a member of object
+# IdentityMeasures" until the exporter's classes go (scripts/ci/sbt-invalidate-exporters.sh, which CI runs after a restore).
+mkdir -p "$STALE_DIR" && : > "$STALE_DIR/IdentityMeasures.class"
+cat > "$FAKE/sbt" <<SBT
+#!/usr/bin/env bash
+if [ -e "$STALE_DIR/IdentityMeasures.class" ]; then echo stale; else echo invalidated; fi
+SBT
+check "the wildcard exporters' compiled classes are gone before sbt starts, so zinc recompiles them" \
+  "invalidated" \
+  "$(run "$REPO_ROOT/scripts/dev-server.sh" | tail -1)"
 spec_summary

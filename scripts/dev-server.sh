@@ -45,6 +45,12 @@
 # to write when it is unset (they never search the working directory). To answer review cards, run scripts/review-server,
 # which runs this in the review worktree with that file set -- not this script from the root checkout (the Claude
 # root-checkout guard refuses that).
+#
+# STALE EXPORTERS. Zinc invalidates by name, so a member added to an object another object wildcard-exports
+# (IdentityMeasures' `export CreditMeasures.*`) leaves the exporter's forwarders stale in a warm target/, and the next
+# compile fails "value X is not a member of object IdentityMeasures" though a clean build compiles. The exporters'
+# classes are deleted before every launch (scripts/ci/sbt-invalidate-exporters.sh, as CI does after a cache restore):
+# a few sources' recompile.
 set -euo pipefail
 . "$(dirname "$0")/vault-env.sh"
 # shellcheck source=scripts/tool-conventions.sh
@@ -57,4 +63,5 @@ export MONGODB_MOVIES_MIRROR_URI="${MONGODB_MOVIES_MIRROR_URI:-$(local_mongo_uri
 if [ -z "${DEV_SERVER_MONGO_UP:-}" ] && ! (echo >"/dev/tcp/127.0.0.1/$(local_mongo_port)") 2>/dev/null; then
   scripts/local-mirror/start-local-mongo.sh >&2
 fi
+scripts/ci/sbt-invalidate-exporters.sh >&2
 exec sbt -J-Xmx2500m "$@" web/run
