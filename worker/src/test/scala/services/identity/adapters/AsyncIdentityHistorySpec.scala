@@ -43,6 +43,27 @@ class AsyncIdentityHistorySpec extends AnyFlatSpec with Matchers {
     store.written.all.map(_.id) shouldBe (1 to 11).map(i => s"u$i")
   }
 
+  "a take change" should "be in the store when append returns, so a worker killed with a backlog queued loses no take" in {
+    // The store stalls the writer's backlog (a batch of listing moves, Mongo slow), then the worker dies — an OOM or a
+    // SIGKILL, no shutdown hook, so no stop() writes the queue out. A take queued behind that backlog would be lost, and
+    // identity_history would have a gap exactly around the restart (flip-timeline, the replays and TakeReversals' boot
+    // seed read it); a take written with the projection's own write is not.
+    val durable = new InMemoryIdentityHistory
+    val stalled = new CountDownLatch(1)
+    val store   = new IdentityHistory {
+      def append(entries: Seq[HistoryEntry]): Unit =
+        if (entries.exists(_.kind == HistoryEntry.Listing)) stalled.await() else durable.append(entries)
+    }
+    def take(i: Int) = HistoryEntry(HistoryEntry.Take, s"N|Kino|page|Film $i", 1000L + i, None,
+      Some(new org.bson.BsonDocument("tmdb_after", new org.bson.BsonString(s"$i"))), "b1")
+    val dying = new AsyncIdentityHistory(store, _ => ())
+    dying.append((1 to 3).map(i => HistoryEntry(HistoryEntry.Listing, s"N|Kino|page|Film $i", i.toLong, None, None, "b1")))
+    dying.append((1 to 150).map(take))   // more than one small batch
+    // killed here: `dying` is abandoned, never stopped; a fresh worker reads the same store at boot
+    try durable.since(Seq(HistoryEntry.Take), 0L).map(_.id) shouldBe (1 to 150).map(i => s"N|Kino|page|Film $i")
+    finally stalled.countDown()
+  }
+
   "the model's drains and the TMDB store's filings" should "finish with the history's store blocked outright" in {
     val clock   = new MutableClock(TestWiring.FixedInstant)
     val store   = new Blocked
