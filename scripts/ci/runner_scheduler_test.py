@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 """runner_scheduler.py: bitcashier always wins ci-runner, movies takes what it leaves -- up to the host's memory, landing
-checks before Main's convergence rows before measurements -- and main's suite is handed only what is free now.
+checks before measurements -- and main's jobs are never served here (the owner, 2026-11-06: main always on GitHub).
 
     python3 scripts/ci/runner_scheduler_test.py
 """
 import json
 import os
-import subprocess
 import sys
 import tempfile
-import time
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -53,13 +51,13 @@ class DecideTest(unittest.TestCase):
     def test_a_runner_is_started_only_for_a_queued_job(self):
         d = rs.decide(CFG, IDLE, queued(), [], NOW)
         self.assertEqual(d.starts, ())
-        d = rs.decide(CFG, IDLE, queued(main=2), [], NOW)
-        self.assertEqual(d.starts, ((1, "main"), (2, "main")))
+        d = rs.decide(CFG, IDLE, queued(measure=2), [], NOW)
+        self.assertEqual(d.starts, ((1, "measure"), (2, "measure")))
 
-    def test_landing_checks_then_main_then_measurements(self):
+    def test_landing_checks_then_measurements_then_light_jobs(self):
         small = rs.Config(max_slots=4, ci_memory_gib=48)  # ceiling (48 - 8) // 10 = 4
-        d = rs.decide(small, IDLE, queued(measure=3, main=2, check=1, light=1), [], NOW)
-        self.assertEqual([c for _, c in d.starts], ["check", "main", "main", "measure"])
+        d = rs.decide(small, IDLE, queued(light=2, measure=2, check=1), [], NOW)
+        self.assertEqual([c for _, c in d.starts], ["check", "measure", "measure", "light"])
 
     def test_a_waiting_runner_of_the_class_counts_against_its_queue(self):
         d = rs.decide(CFG, IDLE, queued(check=2), [inst(1, "check")], NOW)
@@ -72,11 +70,10 @@ class DecideTest(unittest.TestCase):
         self.assertEqual(d.stops, ())
 
     def test_bitcashier_saturated_starts_nothing_and_frees_idle_runners(self):
-        ours = [inst(1, "main"), inst(2, "check", busy=True)]
+        ours = [inst(1, "measure"), inst(2, "check", busy=True)]
         d = rs.decide(CFG, rs.Bitcashier(12, 0), queued(check=3), ours, NOW)
         self.assertEqual(d.starts, ())
         self.assertEqual(d.stops, (1,))  # the busy one finishes its job
-        self.assertEqual(d.free_for_main, 0)
 
     def test_bitcashier_starting_work_shrinks_movies_from_the_lowest_class(self):
         # ceiling 7 with 4 bitcashier jobs busy; 9 of ours, 2 of them idle
@@ -86,10 +83,10 @@ class DecideTest(unittest.TestCase):
         self.assertEqual(d.starts, ())
 
     def test_an_idle_runner_with_nothing_queued_gives_its_slot_back(self):
-        fresh, stale = inst(1, "main", idle_for=10), inst(2, "main", idle_for=CFG.idle_stop_seconds)
+        fresh, stale = inst(1, "measure", idle_for=10), inst(2, "measure", idle_for=CFG.idle_stop_seconds)
         self.assertEqual(rs.decide(CFG, IDLE, queued(), [fresh, stale], NOW).stops, (2,))
         # ... but not while a job of its class waits for it
-        self.assertEqual(rs.decide(CFG, IDLE, queued(main=1), [stale], NOW).stops, ())
+        self.assertEqual(rs.decide(CFG, IDLE, queued(measure=1), [stale], NOW).stops, ())
 
     def test_a_stopping_slot_is_not_reused_in_the_same_tick(self):
         d = rs.decide(rs.Config(max_slots=2, ci_memory_gib=28), IDLE, queued(check=1),
@@ -97,46 +94,23 @@ class DecideTest(unittest.TestCase):
         self.assertEqual(d.stops, (1,))
         self.assertEqual(d.starts, ())
 
-    def test_main_is_offered_what_is_left_after_the_queue_less_the_check_headroom(self):
-        running = [inst(s, "check", busy=True) for s in range(1, 4)]
-        d = rs.decide(CFG, IDLE, queued(check=1, main=2), running, NOW)
-        # ceiling 10 - 3 running - 3 started = 4, less 1 kept for the next landing check
-        self.assertEqual(d.free_for_main, 3)
-        self.assertEqual(rs.decide(CFG, IDLE, queued(check=20), [], NOW).free_for_main, 0)
-
 
 class DemandTest(unittest.TestCase):
     def test_queued_jobs_count_by_their_label(self):
         jobs = [{"status": "queued", "labels": ["movies-check"]},
-                {"status": "queued", "labels": ["movies-main"]},
+                {"status": "queued", "labels": ["movies-measure"]},
                 {"status": "queued", "labels": ["movies"]},
-                {"status": "in_progress", "labels": ["movies-main"]},
+                {"status": "in_progress", "labels": ["movies-measure"]},
                 {"status": "queued", "labels": ["ubuntu-22.04"]}]
-        self.assertEqual(rs.demand_of(jobs), queued(check=1, main=1, light=1))
+        self.assertEqual(rs.demand_of(jobs), queued(check=1, measure=1, light=1))
 
-
-class RowsForMainTest(unittest.TestCase):
-    def test_a_fresh_file_hands_its_free_slots(self):
-        self.assertEqual(rs.rows_for_main({"at": NOW - 30, "free_for_main": 6}, NOW), 6)
-
-    def test_a_stale_or_broken_file_hands_nothing(self):
-        self.assertEqual(rs.rows_for_main({"at": NOW - rs.MAX_AGE_SECONDS - 1, "free_for_main": 6}, NOW), 0)
-        self.assertEqual(rs.rows_for_main({"at": NOW + 3600, "free_for_main": 6}, NOW), 0)
-        self.assertEqual(rs.rows_for_main({"free_for_main": 6}, NOW), 0)
-        self.assertEqual(rs.rows_for_main({"at": NOW, "free_for_main": "x"}, NOW), 0)
-
-    def test_the_cli_prints_an_output_line_and_zero_on_any_doubt(self):
-        with tempfile.TemporaryDirectory() as d:
-            fresh = os.path.join(d, "fresh.json")
-            with open(fresh, "w") as f:
-                json.dump({"at": time.time(), "free_for_main": 4}, f)
-            broken = os.path.join(d, "broken.json")
-            with open(broken, "w") as f:
-                f.write("not json")
-            for path, want in ((fresh, "4"), (broken, "0"), (os.path.join(d, "missing.json"), "0")):
-                out = subprocess.run([sys.executable, os.path.join(HERE, "runner_scheduler.py"), "rows-for-main",
-                                      "--file", path], capture_output=True, text=True, check=True).stdout
-                self.assertEqual(out, f"self-hosted-rows={want}\n")
+    def test_main_is_never_served_here(self):
+        # main's jobs run on GitHub's hosted runners alone (the owner, 2026-11-06): no class, no label for them, so a
+        # job asking for the retired `movies-main` label starts nothing
+        self.assertNotIn("main", rs.CLASSES)
+        self.assertNotIn("movies-main", rs.LABELS.values())
+        demand = rs.demand_of([{"status": "queued", "labels": ["movies-main"]}])
+        self.assertEqual(rs.decide(CFG, IDLE, demand, [], NOW).starts, ())
 
 
 class ConfigTest(unittest.TestCase):
@@ -148,6 +122,17 @@ class ConfigTest(unittest.TestCase):
                 rs.Config.load(f.name)
         finally:
             os.remove(f.name)
+
+    def test_the_retired_capacity_publication_keys_are_refused(self):
+        # nothing reads capacity.json any more; a config still naming its publisher or headroom is out of date
+        for key in ("publisher_app_id", "publisher_key", "check_headroom"):
+            with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
+                json.dump({key: 1}, f)
+            try:
+                with self.assertRaises(ValueError, msg=key):
+                    rs.Config.load(f.name)
+            finally:
+                os.remove(f.name)
 
 
 if __name__ == "__main__":

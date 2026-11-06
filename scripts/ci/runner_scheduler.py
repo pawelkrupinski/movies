@@ -12,15 +12,13 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
     MemoryMax leaves after bitcashier's reserve -- a floor for an idle bitcashier plus a share per busy bitcashier job
     (its builders peaked at 93 GiB together) -- in whole jobs, and never past `max_slots`. With bitcashier idle that is
     ~10 movies jobs, falling as bitcashier's jobs start.
-  * PRIORITY between movies' own jobs: landing checks (`movies-check`), then Main's convergence rows (`movies-main`),
-    then measurements (`movies-measure`), then the light jobs around them (`movies`). A runner is started for a QUEUED
-    job of a class only (ephemeral, one job, the label of that class alone), the highest class first, so a free slot
-    goes to a waiting landing check before a convergence row and to a row before a measurement.
-  * WHAT MAIN MAY TAKE is published for the convergence preflight (identity-model-convergence.yml): `capacity.json` on
-    the movies release `ci-runner-capacity`, `free_for_main` = the slots left after every queued job above is served,
-    less `check_headroom` kept for the next landing check. The preflight hands that many of main's longest rows to
-    `movies-main` (convergence_slots.plan) and the rest to GitHub's hosted 20; a file older than MAX_AGE_SECONDS (the
-    scheduler or ci-runner down) reads as 0, so main's suite never waits on ci-runner.
+  * PRIORITY between movies' own jobs: landing checks (`movies-check`), then measurements (`movies-measure`), then the
+    light jobs around them (`movies`). A runner is started for a QUEUED job of a class only (ephemeral, one job, the
+    label of that class alone), the highest class first, so a free slot goes to a waiting landing check before a
+    measurement.
+  * MAIN NEVER RUNS HERE (the owner, 2026-11-06, the same day's "main's convergence takes ci-runner's free slots"
+    reversed: "run main branch convergence and Main workflow always on gh, measurements always on ci"). Main's jobs ask
+    for GitHub's hosted runners alone, so nothing here serves them and nothing is published for them.
 
 THE RUNNERS are instances of the template unit movies-runner@<slot>.service (bitcashier infra,
 nix/hosts/ci-runner/movies-runners.nix): one container, GitHub's runner registered --ephemeral with the labels this
@@ -29,7 +27,6 @@ runs a job (a Runner.Worker in its container).
 
   runner_scheduler.py run --config FILE             the host loop (ci-runner's movies-runner-scheduler unit)
   runner_scheduler.py tick --config FILE [--dry-run] one pass, printing what it saw and did
-  runner_scheduler.py rows-for-main [--file F]      the preflight's: `self-hosted-rows=N` (0 on any doubt)
 
 Tested by runner_scheduler_test.py.
 """
@@ -46,14 +43,9 @@ import urllib.error
 import urllib.request
 
 # The job classes in priority order, and the one label a runner of each class registers with.
-CLASSES = ("check", "main", "measure", "light")
-LABELS = {"check": "movies-check", "main": "movies-main", "measure": "movies-measure", "light": "movies"}
+CLASSES = ("check", "measure", "light")
+LABELS = {"check": "movies-check", "measure": "movies-measure", "light": "movies"}
 CLASS_OF = {label: cls for cls, label in LABELS.items()}
-
-RELEASE_TAG = "ci-runner-capacity"
-ASSET = "capacity.json"
-# A capacity file older than this is the scheduler (or ci-runner) down: the preflight hands main nothing.
-MAX_AGE_SECONDS = 180
 
 
 @dataclasses.dataclass(frozen=True)
@@ -69,7 +61,6 @@ class Config:
     # cgroup directories of bitcashier's runner units (globs), whose processes say whether a job runs
     builder_cgroups: str = "/sys/fs/cgroup/ci.slice/ci-check.slice/github-runner-bitcashier-gh-builder-*.service"
     deployer_cgroups: str = "/sys/fs/cgroup/ci.slice/ci-deploy.slice/github-runner-bitcashier-gh-deployer-*.service"
-    check_headroom: int = 1
     idle_stop_seconds: int = 180
     tick_seconds: int = 30
     state_dir: str = "/run/movies-runner"
@@ -77,8 +68,6 @@ class Config:
     token_helper: str = ""
     reader_app_id: str = ""
     reader_key: str = ""
-    publisher_app_id: str = ""
-    publisher_key: str = ""
 
     @staticmethod
     def load(path: str) -> "Config":
@@ -111,7 +100,6 @@ class Decision:
     saturated: bool
     starts: tuple  # ((slot, cls), ...)
     stops: tuple  # (slot, ...)
-    free_for_main: int
 
 
 # ── the decision, pure ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -159,8 +147,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         for _ in range(min(need, room, len(free_slots))):
             starts.append((free_slots.pop(0), cls))
             room -= 1
-    free_for_main = 0 if full else max(0, room - cfg.check_headroom)
-    return Decision(top, full, tuple(starts), tuple(sorted(stops)), free_for_main)
+    return Decision(top, full, tuple(starts), tuple(sorted(stops)))
 
 
 def demand_of(jobs: list) -> dict:
@@ -173,17 +160,6 @@ def demand_of(jobs: list) -> dict:
         if classes:
             out[min(classes, key=CLASSES.index)] += 1
     return out
-
-
-def rows_for_main(capacity: dict, now: float, max_age: float = MAX_AGE_SECONDS) -> int:
-    """How many of main's convergence rows ci-runner takes now: the published `free_for_main`, 0 when stale or unreadable."""
-    try:
-        at, free = float(capacity["at"]), int(capacity["free_for_main"])
-    except (KeyError, TypeError, ValueError):
-        return 0
-    if now - at > max_age or at - now > 60 or free < 0:
-        return 0
-    return free
 
 
 # ── the host: bitcashier's runners, ours, GitHub ───────────────────────────────────────────────────────────────────
@@ -307,24 +283,10 @@ class GitHub:
                 jobs += [j for j in (page or {}).get("jobs", []) if j.get("status") == "queued"]
         return jobs
 
-    def publish(self, payload: dict) -> None:
-        """capacity.json on the release RELEASE_TAG (made once, a prerelease that is never `latest`), replaced."""
-        rel = self.request("GET", f"/repos/{self.cfg.repo}/releases/tags/{RELEASE_TAG}")
-        if rel is None:
-            rel = self.request("POST", f"/repos/{self.cfg.repo}/releases", json.dumps({
-                "tag_name": RELEASE_TAG, "name": "ci-runner capacity", "prerelease": True, "make_latest": "false",
-                "body": "What ci-runner's movies runners can take now (scripts/ci/runner_scheduler.py). Machine-written."
-            }).encode())
-        for asset in rel.get("assets", []):
-            if asset["name"] == ASSET:
-                self.request("DELETE", f"/repos/{self.cfg.repo}/releases/assets/{asset['id']}")
-        self.etags.pop(f"{self.API}/repos/{self.cfg.repo}/releases/tags/{RELEASE_TAG}", None)
-        upload = rel["upload_url"].split("{")[0] + f"?name={ASSET}"
-        self.request("POST", upload, json.dumps(payload, sort_keys=True).encode())
 
 
 # ── the loop ────────────────────────────────────────────────────────────────────────────────────────────────────────
-def tick(cfg: Config, host: Host, reader: GitHub, publisher: GitHub | None, dry_run: bool = False) -> Decision:
+def tick(cfg: Config, host: Host, reader: GitHub, dry_run: bool = False) -> Decision:
     now = time.time()
     bc = Bitcashier(busy_runners(cfg.builder_cgroups), busy_runners(cfg.deployer_cgroups))
     demand = demand_of(reader.queued_jobs())
@@ -333,32 +295,23 @@ def tick(cfg: Config, host: Host, reader: GitHub, publisher: GitHub | None, dry_
     print(f"bitcashier busy {bc.busy_builders}/{cfg.builders} builders {bc.busy_deployers}/{cfg.deployers} deployers"
           f"{' SATURATED' if d.saturated else ''}; ceiling {d.ceiling}; queued {demand}; "
           f"ours {[(i.slot, i.cls, 'busy' if i.busy else 'idle') for i in instances]}; "
-          f"start {list(d.starts)} stop {list(d.stops)}; free for main {d.free_for_main}", flush=True)
+          f"start {list(d.starts)} stop {list(d.stops)}", flush=True)
     if dry_run:
         return d
     for slot in d.stops:
         host.stop(slot)
     for slot, cls in d.starts:
         host.start(slot, cls)
-    if publisher:
-        publisher.publish({"at": int(now), "free_for_main": d.free_for_main, "ceiling": d.ceiling,
-                           "saturated": d.saturated, "queued": demand, "running": len(instances)})
     return d
 
 
 def cmd_run(cfg: Config, dry_run: bool, once: bool) -> int:
     host = Host(cfg)
     reader = GitHub(cfg, cfg.reader_app_id, cfg.reader_key)
-    publisher = GitHub(cfg, cfg.publisher_app_id, cfg.publisher_key) if cfg.publisher_app_id else None
-    last_publish = 0.0
     while True:
         started = time.time()
         try:
-            # publish at most every 60 s (two calls of the publisher's budget), well inside MAX_AGE_SECONDS
-            pub = publisher if publisher and started - last_publish >= 60 else None
-            tick(cfg, host, reader, pub, dry_run)
-            if pub:
-                last_publish = started
+            tick(cfg, host, reader, dry_run)
         except Exception as e:  # noqa: BLE001 -- one bad tick (GitHub down) must not end the loop
             print(f"tick failed: {e}", file=sys.stderr, flush=True)
         if once:
@@ -368,27 +321,10 @@ def cmd_run(cfg: Config, dry_run: bool, once: bool) -> int:
         time.sleep(max(1.0, pace - (time.time() - started)))
 
 
-def cmd_rows_for_main(path: str | None) -> int:
-    """`self-hosted-rows=N` for $GITHUB_OUTPUT; any failure (no release, gh down, a stale file) is 0."""
-    try:
-        if path:
-            text = open(path).read()
-        else:
-            out = _run(["gh", "release", "download", RELEASE_TAG, "-p", ASSET, "-O", "-"], timeout=30)
-            text = out.stdout if out.returncode == 0 else "{}"
-        rows = rows_for_main(json.loads(text or "{}"), time.time())
-    except (OSError, ValueError, subprocess.SubprocessError):
-        rows = 0
-    print(f"self-hosted-rows={rows}")
-    return 0
-
-
 def main(argv: list) -> int:
     flags = {a for a in argv[1:] if a == "--dry-run"}
     rest = [a for a in argv[1:] if a not in flags]
     args = dict(zip(rest[0::2], rest[1::2]))
-    if argv[:1] == ["rows-for-main"]:
-        return cmd_rows_for_main(args.get("--file"))
     if argv[:1] in (["run"], ["tick"]) and "--config" in args:
         return cmd_run(Config.load(args["--config"]), "--dry-run" in flags, argv[0] == "tick")
     print(__doc__, file=sys.stderr)
