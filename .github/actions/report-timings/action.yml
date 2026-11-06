@@ -16,6 +16,10 @@ inputs:
     description: The deploy marker's Grafana token, which Grafana vouches for on the metrics path
     required: false
     default: ''
+  run-id:
+    description: The run to report (a dispatched report-timings.yml's); empty for this job's own run
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -25,6 +29,7 @@ runs:
             GH_TOKEN: ${{ github.token }}
             GRAFANA_URL: ${{ inputs.grafana-url }}
             GRAFANA_ANNOTATION_TOKEN: ${{ inputs.grafana-annotation-token }}
+            RUN_ID: ${{ inputs.run-id }}
         run: |
             python3 "$GITHUB_WORKSPACE/scripts/ci/ci_timings.py" --repo "$GITHUB_REPOSITORY" \
-                --run-id "$GITHUB_RUN_ID" --push || true
+                --run-id "${RUN_ID:-$GITHUB_RUN_ID}" --push || true

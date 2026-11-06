@@ -111,6 +111,5 @@ job	identity-model-convergence.yml	takes-drift-aa-pass1 (united-states)	unproven
 job	identity-model-convergence.yml	takes-aa (united-states)	unproven	the takes check's A/A self-test, the head against itself, only on a push changing a harness (scripts/ci/harness_aa.py takes); owner: convergence
 job	identity-model-convergence.yml	verdict complete	aggregate
 job	identity-model-convergence.yml	timings	aggregate
-job	identity-model-convergence.yml	report (timings)	aggregate
 job	main.yml	commit rules	2855
 job	identity-model-convergence.yml	request-bisect	unproven	runs only after a red leg; owner: convergence; proven by its first green run

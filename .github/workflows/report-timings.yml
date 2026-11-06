@@ -5,8 +5,18 @@ name: Report run timings
 # the `needs`, the `if: ${{ !cancelled() }}` and the permissions; this holds the rest once, where 27 workflows each held
 # a copy. The report itself is .github/actions/report-timings (scripts/ci/ci_timings.py). Never fails the run.
 # NO `secrets:` DECLARATION: callers pass `secrets: inherit`.
+#
+# DISPATCHED, for THE GATE's convergence workflow (2026-11-06): that run's END is the gate's verdict, and the report, run
+# as its last job, held the verdict back 40-70 s. Its `timings` job dispatches this workflow with the run's id instead (a
+# few seconds); the run this starts waits for that one to end and reports it (RunTimingsWiringSpec).
 on:
     workflow_call:
+    workflow_dispatch:
+        inputs:
+            run-id:
+                description: The run to report, once it has ended (empty when called -- the caller's own run).
+                required: true
+                type: string
 
 permissions:
     actions: read
@@ -37,7 +47,24 @@ jobs:
                       scripts/ci
                       .github/actions/report-timings
                       .github/workflows
+            # A dispatched report's run ends seconds after the dispatch: wait for it, so its last job is in the report.
+            - name: Wait for the run it reports to end
+              if: inputs.run-id != ''
+              # never fails the report: past the bound it reports the run as it stands
+              continue-on-error: true
+              timeout-minutes: 4
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  RUN_ID: ${{ inputs.run-id }}
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  until [ "$(gh run view "$RUN_ID" --json status --jq .status)" = completed ]; do sleep 10; done
+            - name: End what a timed-out step left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
             - uses: ./.github/actions/report-timings
               with:
+                  run-id: ${{ inputs.run-id }}
                   grafana-url: ${{ secrets.GRAFANA_URL }}
                   grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}

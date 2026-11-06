@@ -531,13 +531,22 @@ jobs:
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
 
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml), after every other job -- DISPATCHED as a run of
+    # its own, which waits for this one to end and reports it: this run's end is THE GATE's verdict, and the report run
+    # here held it back 40-70 s (2026-11-06, RunTimingsWiringSpec).
     timings:
         needs: [ preflight, leg, request-bisect, verdict-complete ]
         if: ${{ !cancelled() }}
+        runs-on: ${{ needs.preflight.outputs.light-runner }}
+        timeout-minutes: 5
         permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit
+            actions: write
+        steps:
+            - name: Report this run's timings once it has ended
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              # never fails the run: a chart is not a gate
+              run: |
+                  gh workflow run report-timings.yml --ref "$GITHUB_REF_NAME" -f run-id="$GITHUB_RUN_ID" \
+                      || echo "::warning::the timings report was not dispatched: this run is charted nowhere"
