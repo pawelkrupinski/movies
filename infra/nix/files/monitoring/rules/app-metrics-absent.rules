@@ -332,6 +332,40 @@ groups:
     expr: |-
       max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
       unless on (country)
+      count by (country) (last_over_time(kinowo_worker_identity_model_held_listings[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_identity_model_held_listings
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_model_held_listings'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_model_held_listings series
+        for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the family
+        was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read nothing and
+        cannot fire: identity-agreement.rules IdentityInputGateStuck.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
+      count by (country) (last_over_time(kinowo_worker_identity_model_held_oldest_seconds[10m]))
+    for: 15m
+    keep_firing_for: 10m
+    labels:
+      severity: warning
+      domain: monitoring
+      metric: kinowo_worker_identity_model_held_oldest_seconds
+    annotations:
+      summary: '{{ $labels.country }}''s worker is up but publishes no kinowo_worker_identity_model_held_oldest_seconds'
+      description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_model_held_oldest_seconds
+        series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+        the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+        nothing and cannot fire: identity-agreement.rules IdentityInputGateStuck.'
+  - alert: AppMetricAbsent
+    expr: |-
+      max by (country) (max_over_time(up{job="kinowo-worker"}[10m]) == 1)
+      unless on (country)
       count by (country) (last_over_time(kinowo_worker_identity_staging_dropped_total[10m]))
     for: 15m
     keep_firing_for: 10m

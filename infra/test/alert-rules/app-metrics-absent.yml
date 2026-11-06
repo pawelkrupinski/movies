@@ -53,6 +53,10 @@ tests:
     values: '0x30'
   - series: kinowo_worker_identity_cutover_listings{job="kinowo-worker",country="pl"}
     values: '0x30'
+  - series: kinowo_worker_identity_model_held_listings{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_model_held_oldest_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
   - series: kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_identity_suspect_takes{job="kinowo-worker",country="pl"}
@@ -357,6 +361,28 @@ tests:
           for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day: the
           family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
           nothing and cannot fire: identity-matching.rules IdentityTakeChangesBurst, identity-matching.rules IdentityTakesLost.'
+    - exp_labels:
+        country: de
+        domain: monitoring
+        metric: kinowo_worker_identity_model_held_listings
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_identity_model_held_listings
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_model_held_listings
+          series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+          the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: identity-agreement.rules IdentityInputGateStuck.'
+    - exp_labels:
+        country: de
+        domain: monitoring
+        metric: kinowo_worker_identity_model_held_oldest_seconds
+        severity: warning
+      exp_annotations:
+        summary: de's worker is up but publishes no kinowo_worker_identity_model_held_oldest_seconds
+        description: 'The worker answers its scrape (`up`) but has published no kinowo_worker_identity_model_held_oldest_seconds
+          series for this country for 15m. Every worker metric family exists from boot, so this is a fault, not a quiet day:
+          the family was unwired, renamed, or the class that writes it is no longer built. Until it is back these alerts read
+          nothing and cannot fire: identity-agreement.rules IdentityInputGateStuck.'
     - exp_labels:
         country: de
         domain: monitoring
@@ -864,6 +890,10 @@ tests:
     values: '0x30'
   - series: kinowo_worker_identity_cutover_listings{job="kinowo-worker",country="pl"}
     values: '0x30'
+  - series: kinowo_worker_identity_model_held_listings{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_model_held_oldest_seconds{job="kinowo-worker",country="pl"}
+    values: '0x30'
   - series: kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_identity_suspect_takes{job="kinowo-worker",country="pl"}
@@ -999,6 +1029,10 @@ tests:
   - series: kinowo_worker_http_total{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_identity_cutover_listings{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_model_held_listings{job="kinowo-worker",country="pl"}
+    values: '0x30'
+  - series: kinowo_worker_identity_model_held_oldest_seconds{job="kinowo-worker",country="pl"}
     values: '0x30'
   - series: kinowo_worker_identity_staging_dropped_total{job="kinowo-worker",country="pl"}
     values: '0x30'

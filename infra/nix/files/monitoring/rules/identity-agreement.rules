@@ -42,12 +42,13 @@ groups:
       # THE MODEL'S INPUT GATE IS STUCK. A held listing waits on its own family questions and venue page, asked ahead of
       # the agreement's queue: seconds to minutes. One held over an hour, or more than 1,000 held at once (a day's
       # arrivals in DE), is an ask that never concludes or a queue not served -- listings shown on their old version,
-      # or on their own card Pending, for as long as it lasts. `last_over_time(...[10m])` bridges a restart's gap.
+      # or on their own card Pending, for as long as it lasts. `max_over_time(...[10m])` bridges a restart's gap and skips
+      # the NaN a restart seeds these gauges with until the gate first measures them.
       - alert: IdentityInputGateStuck
         expr: |
-          max by (country) (last_over_time(kinowo_worker_identity_model_held_oldest_seconds[10m])) > 3600
+          max by (country) (max_over_time(kinowo_worker_identity_model_held_oldest_seconds[10m])) > 3600
           or
-          max by (country) (last_over_time(kinowo_worker_identity_model_held_listings[10m])) > 1000
+          max by (country) (max_over_time(kinowo_worker_identity_model_held_listings[10m])) > 1000
         for: 15m
         labels:
           severity: warning
