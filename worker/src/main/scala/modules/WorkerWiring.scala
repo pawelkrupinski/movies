@@ -114,6 +114,10 @@ class WorkerWiring(
           new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
           workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
+  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once its
+   *  never-attempted venue page (`pages`) and the questions its own facts put to the families are answered or concluded. */
+  def identityModelReadiness(pages: services.identity.PageWait): services.identity.ListingReadiness =
+    services.identity.ListingReadiness.all(services.identity.ListingReadiness.ofPage(pages), identityListingReadiness)
   /** The listings the model's input gate holds, persisted (`identity_pending`): what a take-up resumes. */
   lazy val identityPendingStore: services.identity.adapters.PendingListingStore =
     mongoConnection.database.fold[services.identity.adapters.PendingListingStore](new services.identity.adapters.PendingListingStore.InMemory())(
@@ -208,7 +212,7 @@ class WorkerWiring(
       build      = configuration.commit.value,
       retainedStore = identityRetainedStore,
       heldBefore = () => identityHeldBefore(),
-      readiness  = services.identity.ListingReadiness.all(services.identity.ListingReadiness.ofPage(pageWait), identityListingReadiness),
+      readiness  = identityModelReadiness(pageWait),
       pendingStore = identityPendingStore)
     identityTmdbStore.onChanged(model.filed)
     model

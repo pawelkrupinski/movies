@@ -252,6 +252,11 @@ trait TestWiring extends WorkerWiring {
   // order-independence rows projected 0 films, `Vector() was empty`). It waits the take-up out; the suite's own step
   // timeout bounds it.
   override def identityModelTimeout: scala.concurrent.duration.FiniteDuration = TestWiring.ModelTimeout
+  /** Every listing's version taken in as ready, as every replay takes it: a recording's answers are there already, and a
+   *  question it holds none of is never answered in it (docs/design/identity-structural-fixes.md, fix 1). The gate's own
+   *  specs drive it directly (IdentityModelServiceSpec). */
+  override def identityModelReadiness(pages: services.identity.PageWait): services.identity.ListingReadiness =
+    services.identity.ListingReadiness.Always
 
   // The harness projects by hand (`projectIdentity`): the trigger production runs on a timer never runs here.
   override protected lazy val identityProjectionTriggerScheduler: java.util.concurrent.ScheduledExecutorService =
