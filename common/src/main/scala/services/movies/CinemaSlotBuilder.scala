@@ -85,7 +85,7 @@ final class CinemaSlotBuilder(enrichmentLanguage: java.util.Locale, stringPool: 
       releaseYear    = StringPool.small(cm.movie.releaseYear.orElse(if (carryKeyed) carriedOpt(_.releaseYear) else None)),
       countries      = { val cs = stringPool.canonicalAll(SlotFields.countries(cm.movie.countries, enrichmentLanguage))
                          if (cs.nonEmpty) cs else carriedSeq(_.countries) },
-      genres         = { val gs = stringPool.canonicalAll(SlotFields.genres(cm.movie.genres))
+      genres         = { val gs = stringPool.canonicalAll(SlotFields.genres(cm.movie.genres, enrichmentLanguage))
                          if (gs.nonEmpty) gs else carriedSeq(_.genres) },
       // Interned like the fields above, and for the same reason: a film's poster,
       // film page and trailer are ONE url repeated across every cinema showing it.

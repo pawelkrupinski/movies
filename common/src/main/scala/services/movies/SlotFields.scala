@@ -1,7 +1,7 @@
 package services.movies
 
 import models.Showtime
-import services.cinemas.CountryNames
+import services.cinemas.{CountryNames, GenreNames}
 
 import java.net.URI
 import java.util.Locale
@@ -33,10 +33,11 @@ object SlotFields {
   private val GenreSeparator = """\s*[/,|;]\s*""".r
 
   /** Genre labels one each: a source printing "Biograficzny/Muzyczny" or "Dramat, Komedia" as one
-   *  label is two genres. Kept in order, each once (case-insensitively). */
-  def genres(raw: Seq[String]): Seq[String] = {
+   *  label is two genres. Each is spelled as the deployment language's vocabulary does
+   *  ([[GenreNames]]: "przygoda" -> "Przygodowy"), kept in order, each once. */
+  def genres(raw: Seq[String], language: Locale): Seq[String] = {
     val seen = scala.collection.mutable.HashSet.empty[String]
-    raw.flatMap(GenreSeparator.split).map(_.trim).filter(g => g.nonEmpty && seen.add(g.toLowerCase(Locale.ROOT)))
+    raw.flatMap(GenreSeparator.split).map(_.trim).filter(_.nonEmpty).map(GenreNames.canonical(_, language)).filter(seen.add)
   }
 
   /** Characters RFC 3986 allows nowhere in a URL, which a browser escapes and `java.net.URI`,

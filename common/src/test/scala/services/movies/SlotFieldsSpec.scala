@@ -16,10 +16,16 @@ class SlotFieldsSpec extends AnyFlatSpec with Matchers {
   }
 
   "SlotFields.genres" should "read a list printed as one label as its genres" in {
-    SlotFields.genres(Seq("Biograficzny/Muzyczny")) shouldBe Seq("Biograficzny", "Muzyczny")
-    SlotFields.genres(Seq("Animowany/Musical", "musical")) shouldBe Seq("Animowany", "Musical")
-    SlotFields.genres(Seq("Dramat, Komedia | Sci-Fi; ")) shouldBe Seq("Dramat", "Komedia", "Sci-Fi")
-    SlotFields.genres(Seq("Sci-Fi", "Science Fiction")) shouldBe Seq("Sci-Fi", "Science Fiction")
+    val pl = Country.Poland.language
+    SlotFields.genres(Seq("Biograficzny/Muzyczny"), pl) shouldBe Seq("Biograficzny", "Muzyczny")
+    SlotFields.genres(Seq("Animowany/Musical", "musical"), pl) shouldBe Seq("Animacja", "Musical")
+    SlotFields.genres(Seq("Dramat, Komedia | Sci-Fi; "), pl) shouldBe Seq("Dramat", "Komedia", "Sci-Fi")
+  }
+
+  it should "spell each genre as the vocabulary does, one pill for Przygoda and Przygodowy" in {
+    val pl = Country.Poland.language
+    SlotFields.genres(Seq("przygoda", "akcja", "animacja", "dla dzieci"), pl) shouldBe Seq("Przygodowy", "Akcja", "Animacja", "Familijny")
+    SlotFields.genres(Seq("Przygodowy", "przygoda", "Sci-Fi", "Science Fiction"), pl) shouldBe Seq("Przygodowy", "Sci-Fi")
   }
 
   "SlotFields.url" should "make a link a venue printed followable, or drop it" in {

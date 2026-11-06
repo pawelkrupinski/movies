@@ -269,7 +269,26 @@ class MovieController( cc: ControllerComponents,
     )
   }
 
-  def index(city: String): Action[AnyContent] = Action { request => withCity(city, request)(renderIndex(_, request)) }
+  def index(city: String): Action[AnyContent] = Action { request =>
+    withCity(city, request)(c => canonicalGenreLink(c, "", request).getOrElse(renderIndex(c, request)))
+  }
+
+  /** A link minted when venues printed their own spelling of a genre ("?genre=przygoda") 301s onto the
+   *  vocabulary's ("?genre=Przygodowy", [[services.cinemas.GenreNames]]), query otherwise intact: the
+   *  genre filter and the browse page match the stored names exactly, so the old spelling would
+   *  narrow the listing to nothing. `None` when every genre in the query is already canonical. */
+  private def canonicalGenreLink(c: City, tail: String, request: RequestHeader): Option[Result] = {
+    val genreKeys = Set("genre", "gatunek")
+    def canonical(value: String) = services.cinemas.GenreNames.canonical(value, c.country.language)
+    val changed = request.queryString.exists { case (key, values) => genreKeys(key) && values.exists(v => canonical(v) != v) }
+    Option.when(changed) {
+      def enc(s: String) = java.net.URLEncoder.encode(s, java.nio.charset.StandardCharsets.UTF_8)
+      val query = request.queryString.toSeq.sortBy(_._1).flatMap { case (key, values) =>
+        values.map(v => s"${enc(key)}=${enc(if (genreKeys(key)) canonical(v) else v)}")
+      }.mkString("&")
+      MovedPermanently(s"${c.country.pathPrefix}/${c.slug}/$tail?$query")
+    }
+  }
 
   private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     implicit val c: City = city
@@ -305,7 +324,7 @@ class MovieController( cc: ControllerComponents,
   def browse(city: String, country: Option[String], director: Option[String], cast: Option[String], genre: Option[String],
              kraj: Option[String] = None, rezyser: Option[String] = None,
              aktor: Option[String] = None, gatunek: Option[String] = None): Action[AnyContent] = Action { request =>
-    withCity(city, request) { c =>
+    withCity(city, request) { c => canonicalGenreLink(c, "movies", request).getOrElse {
       val all = movieControllerService.toSchedules(c)
       (country.orElse(kraj), director.orElse(rezyser), cast.orElse(aktor), genre.orElse(gatunek)) match {
         case (Some(name), _, _, _) => renderBrowse(c, name, all.filter(_.movie.countries.contains(name)), request)
@@ -317,7 +336,7 @@ class MovieController( cc: ControllerComponents,
         // pages reached from the meta-link rows on /movie.
         case _                     => renderIndex(c, request)
       }
-    }
+    } }
   }
 
   // robots.txt — see `CrawlerFiles.robots` for which shape a request wants. The share-card

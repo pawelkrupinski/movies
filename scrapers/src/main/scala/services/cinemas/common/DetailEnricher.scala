@@ -40,7 +40,7 @@ case class FilmDetail(
   def landed(enrichmentLanguage: java.util.Locale): FilmDetail =
     copy(
       countries  = services.movies.SlotFields.countries(countries, enrichmentLanguage),
-      genres     = services.movies.SlotFields.genres(genres),
+      genres     = services.movies.SlotFields.genres(genres, enrichmentLanguage),
       posterUrl  = services.movies.SlotFields.url(posterUrl, None),
       trailerUrl = services.movies.SlotFields.url(trailerUrl, None))
 
