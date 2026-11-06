@@ -1884,7 +1884,7 @@
 {"text":"Bin da, wer noch? - Yared Dibaba live"}
 {"text":"Bin ich das Arschloch?"}
 {"text":"Bing i opowieści o zwierzątkach"}
-{"text":"Bing i opowieści o zwierzątkach – seanse z konkursami HDD"}
+{"text":"Bing i opowieści o zwierzątkach – seanse z konkursami HDD","pl":{"key":"Bing i opowieści o zwierzątkach"}}
 {"text":"Bingham Bryant Shorts Programme"}
 {"text":"Bingo"}
 {"text":"Binti Edukacja Młode Horyzonty","pl,uk,de,us,es":{"query":"Binti"}}
@@ -4546,6 +4546,7 @@
 {"text":"Dziadek do orzechów"}
 {"text":"Dzieci niebios"}
 {"text":"Dzieci z Bullerbyn"}
+{"text":"Dzieci z Bullerbyn - Festiwal TAURON Młode Horyzonty. Seanse HDD","pl":{"query":"Dzieci z Bullerbyn","key":"Dzieci z Bullerbyn"},"uk,de,us,es":{"query":"Dzieci z Bullerbyn"}}
 {"text":"Dzieci z Bullerbyn - KNTJ","pl,uk,de,us,es":{"query":"Dzieci z Bullerbyn","venue":{"helios":"Dzieci z Bullerbyn"}}}
 {"text":"Dziecięcy świat"}
 {"text":"Dziecko z pyłu"}
@@ -5431,6 +5432,7 @@
 {"text":"Festiwal Korelacje: „Nie lubię poniedziałku” z autorską narracją Darii ze  Śląska + spotkanie z autorką","pl,uk,de,us,es":{"query":"Nie lubię poniedziałku","programme":"Festiwal Korelacje: ","bannerEnd":103,"venue":{"bok":"Festiwal Korelacje: „Nie lubię poniedziałku” z autorską narracją Darii ze Śląska + spotkanie z autorką","kino-alternatywy":"Festiwal Korelacje: Nie lubię poniedziałku z autorską narracją Darii ze Śląska + spotkanie z autorką"}}}
 {"text":"Festiwal Korelacje: „Tylko tylko Rock” z autorską narracją Doroty Masłowskiej","pl,uk,de,us,es":{"query":"Tylko tylko Rock","programme":"Festiwal Korelacje: ","bannerEnd":77,"venue":{"kino-alternatywy":"Festiwal Korelacje: Tylko tylko Rock z autorską narracją Doroty Masłowskiej"}}}
 {"text":"Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa","pl,uk,de,us,es":{"query":"Zemsta","programme":"Festiwal Korelacje: ","bannerEnd":63,"venue":{"kino-alternatywy":"Festiwal Korelacje: Zemsta z autorską narracją Artura Andrusa"}}}
+{"text":"Festiwal Młode Horyzonty"}
 {"text":"Festiwal Pięć Smaków: A Annie dalej swoje","pl,uk,de,us,es":{"query":"A Annie dalej swoje","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
 {"text":"Festiwal Pięć Smaków: Dom na krańcu księżyca","pl,uk,de,us,es":{"query":"Dom na krańcu księżyca","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
 {"text":"Festiwal Pięć Smaków: Funky Freaky Freaks","pl,uk,de,us,es":{"query":"Funky Freaky Freaks","programme":"Festiwal Pięć Smaków: ","bannerEnd":22}}
@@ -10287,6 +10289,7 @@
 {"text":"Młode Horyzonty Edukacja: Cały świat Romy"}
 {"text":"Młode Horyzonty Edukacja: Fleak. Futrzak i ja"}
 {"text":"Młode Horyzonty Edukacja: Johnny"}
+{"text":"Młode Horyzonty. Seanse HDD"}
 {"text":"Młode matki"}
 {"text":"Młode matki *AD","pl,uk,de,us,es":{"query":"Młode matki"}}
 {"text":"Młodsza siostra"}
@@ -10658,8 +10661,9 @@
 {"text":"Niesamowite przygody skarpetek 3. Ale kosmos! 2D DUBBING","pl":{"key":"Niesamowite przygody skarpetek 3. Ale kosmos!","display":"Niesamowite przygody skarpetek 3. Ale kosmos!"}}
 {"text":"Niesamowite przygody skarpetek 3. Ale kosmos! Edukacja Młode Horyzonty","pl":{"query":"Niesamowite przygody skarpetek 3. Ale kosmos!","key":"Niesamowite przygody skarpetek 3. Ale kosmos!","display":"Niesamowite przygody skarpetek 3. Ale kosmos!"},"uk,de,us,es":{"query":"Niesamowite przygody skarpetek 3. Ale kosmos!"}}
 {"text":"Niesamowite przygody skarpetek 3. ale kosmos!","pl":{"key":"Niesamowite przygody skarpetek 3. Ale kosmos!","display":"Niesamowite przygody skarpetek 3. Ale kosmos!"}}
-{"text":"Niesamowite przygody skarpetek 4. Do roboty - premierowe seanse z konkursami HDD"}
+{"text":"Niesamowite przygody skarpetek 4. Do roboty - premierowe seanse z konkursami HDD","pl":{"key":"Niesamowite przygody skarpetek 4. Do roboty"}}
 {"text":"Niesamowite przygody skarpetek 4. Do roboty!"}
+{"text":"Niesamowite przygody skarpetek 4. Do roboty! - Festiwal TAURON Młode Horyzonty. Seanse HDD","pl":{"query":"Niesamowite przygody skarpetek 4. Do roboty!","key":"Niesamowite przygody skarpetek 4. Do roboty!"},"uk,de,us,es":{"query":"Niesamowite przygody skarpetek 4. Do roboty!"}}
 {"text":"Niesamowite przygody skarpetek 4. Do roboty! - Nasze Kino"}
 {"text":"Niesamowite przygody skarpetek 4. Do roboty! - PREMIERA","pl,uk,de,us,es":{"query":"Niesamowite przygody skarpetek 4. Do roboty!","venue":{"kino-mok-miedzyrzecz":"Niesamowite przygody skarpetek 4. Do roboty! -"}}}
 {"text":"Niesamowite przygody skarpetek 4. Do roboty! - premiera filmowa","pl,uk,de,us,es":{"query":"Niesamowite przygody skarpetek 4. Do roboty!","venue":{"kino-mok-miedzyrzecz":"Niesamowite przygody skarpetek 4. Do roboty! - filmowa"}}}
@@ -13583,6 +13587,7 @@
 {"text":"Seans przyjazny sensorycznie: Niesamowite przygody skarpetek 4: Do roboty!","pl,uk,de,us,es":{"query":"Niesamowite przygody skarpetek 4: Do roboty!","programme":"Seans przyjazny sensorycznie: ","bannerEnd":30}}
 {"text":"Seans przyjazny sensorycznie: Pikkuli i Świąteczny Renifer","pl,uk,de,us,es":{"query":"Pikkuli i Świąteczny Renifer","programme":"Seans przyjazny sensorycznie: ","bannerEnd":30}}
 {"text":"Seans śpiewany. K-popowe łowczynie demonów (NAPISY+KARAOKE)"}
+{"text":"Seanse z konkursami HDD"}
 {"text":"Sebastiane"}
 {"text":"Sechswochenamt"}
 {"text":"Second Nature: Gender and Sexuality in the Animal World"}
@@ -17758,7 +17763,7 @@
 {"text":"Świst wiatru pomiędzy żurawiami"}
 {"text":"Świst wiatru pomiędzy żurawiami | Festiwal Kina Krajów Portugalskojęzycznych Maré","pl,uk,de,us,es":{"query":"Świst wiatru pomiędzy żurawiami","venue":{"bok":"Świst wiatru pomiędzy żurawiami: Festiwal Kina Krajów Portugalskojęzycznych Maré"}}}
 {"text":"Świąteczna zabawa z Peppą - Kinowe przeżycie"}
-{"text":"Świąteczna zabawa z Peppą – seanse z konkursami HDD"}
+{"text":"Świąteczna zabawa z Peppą – seanse z konkursami HDD","pl":{"key":"Świąteczna zabawa z Peppą"}}
 {"text":"Święty piotr i inne papieskie bazyliki rzymu"}
 {"text":"ŻYWIA..."}
 {"text":"ŻYWOT BRIANA"}
