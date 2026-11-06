@@ -32,7 +32,12 @@ echo "sbt-warm \$*" >> "$log"
 [ -z "\${SBT_OUT:-}" ] || echo "\$SBT_OUT"
 [ -z "\${SBT_FAIL:-}" ]
 STUB
-chmod +x "$repo/scripts/hooks/pre-push" "$repo/scripts/sbt-warm" "$repo/scripts/land-precheck"
+cat > "$repo/scripts/run-script-tests" <<STUB
+#!/usr/bin/env bash
+echo "run-script-tests \$*" >> "$log"
+[ -z "\${SCRIPTTESTS_FAIL:-}" ] || { echo "FAIL 3s scripts/x-test.sh"; exit 1; }
+STUB
+chmod +x "$repo/scripts/hooks/pre-push" "$repo/scripts/sbt-warm" "$repo/scripts/land-precheck" "$repo/scripts/run-script-tests"
 printf 'one\n' > "$repo/notes.md"
 scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
 scratch_git "$repo" remote add origin "$origin"; scratch_git "$repo" push -q origin HEAD:main
@@ -46,7 +51,8 @@ precheck() { (cd "$repo" && scripts/land-precheck > "$testroot/out" 2>&1); echo 
 printf '\033[36m▸\033[0m a clean change passes, every step named and timed\n'
 : > "$log"
 check "exit 0" "0" "$(precheck)"
-check "each step reports PASS" "3" "$(grep -cE '^precheck (rebase|rules|lints) PASS \([0-9]+ s\)' "$testroot/out")"
+check "each step reports PASS, the script self-tests skipped: no script changed" "3 1 0" \
+  "$(grep -cE '^precheck (rebase|rules|lints) PASS \([0-9]+ s\)' "$testroot/out") $(grep -c '^precheck scripttests SKIP' "$testroot/out") $(grep -c '^run-script-tests' "$log")"
 check "the hook runs once, alone on the commit-rule and linter checks, over origin/main..HEAD, never reusing a pass" \
   "1 yes yes" "$(grep -c '^hook' "$log") $(grep -q -- '--checks-only [0-9a-f]*\.\.[0-9a-f]* only=allowlists driftguards newchecks judgements shellcheck actionlint oldrefs reuse=1' "$log" && echo yes || echo no) $(grep -q 'trailers\|redgate' "$log" && echo no || echo yes)"
 check "the selected lints run in one sbt-warm call, a testOnly per module" "sbt-warm common/Test/testOnly tools.BLintSpec; worker/Test/testOnly tools.ALintSpec" \
@@ -59,6 +65,15 @@ check "...with the hook's own line" "1" "$(grep -c 'Drift-Slice missing' "$testr
 check "a failing lint: exit 1" "1 1" "$(SBT_FAIL=1 SBT_OUT='[info] *** FAILED *** x' precheck) $(grep -c 'precheck lints FAIL' "$testroot/out")"
 check "sbt that could not run (no test failed): exit 2, could not check" "2 1" \
   "$(SBT_FAIL=1 SBT_OUT='sbt server did not start within 90 seconds' precheck) $(grep -c 'precheck lints UNCHECKED' "$testroot/out")"
+
+printf '\033[36m▸\033[0m the script self-tests of a changed script\n'
+mkdir -p "$repo/scripts/ci"; printf 'echo x\n' > "$repo/scripts/ci/x.sh"
+scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "a script change"
+: > "$log"
+check "a changed script runs the self-tests run-script-tests --changed selects against the base" "0 1 yes" \
+  "$(precheck) $(grep -c '^precheck scripttests PASS' "$testroot/out") $(grep -qE '^run-script-tests --changed [0-9a-f]{40}$' "$log" && echo yes || echo no)"
+check "a failing self-test: exit 1, named" "1 1 1" \
+  "$(SCRIPTTESTS_FAIL=1 precheck) $(grep -c 'precheck scripttests FAIL' "$testroot/out") $(grep -c 'scripts/x-test.sh' "$testroot/out")"
 
 printf '\033[36m▸\033[0m the rebase dry run\n'
 scratch_git "$repo" checkout -q -b other origin/main

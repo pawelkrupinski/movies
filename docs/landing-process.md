@@ -114,6 +114,8 @@ visible now?" in ~20-60 s on a warm checkout:
   (`PREPUSH_ONLY`, `--checks-only`, so not the red gate), the stranded-trailer rule with them;
 - **lints**: the specs the LINT REGISTRY (`scripts/hooks/lint-registry.tsv`) selects for the pushed paths, in one
   `scripts/sbt-warm` call.
+- **scripttests**: the script self-tests `scripts/run-script-tests --changed <base>` selects, when a pushed path is under
+  a script-test root (seconds to minutes; beside the queue, so no landing time).
 
 A refusal cancels the queued change and puts `NOT LANDED: the fast precheck refused <id> (<sha>): PRECHECK FAIL:
 <steps>` in the inbox, its lines in the tail: fix, commit, land again. A precheck that could not run (exit 2: sbt never
@@ -297,7 +299,7 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
 | `NOT LANDED: still racing after 3 retries` | main is busy | land again in a minute |
 | `waiting for the landing lock (…), held by: …` | another agent is landing | nothing: land continues once it is free |
 | `NOT LANDED: timed out waiting for the landing lock` | a lander held it 4 h | `agentctl land` again; if it repeats, report the holder |
-| `NOT LANDED: the fast precheck refused <id> …: PRECHECK FAIL: <steps>` | `scripts/land-precheck` beside the queue found a conflict, a commit-rule or linter finding, or a failing registry lint; the queued change is cancelled | read the tail (`scripts/land-precheck` reproduces it), fix, commit, land again |
+| `NOT LANDED: the fast precheck refused <id> …: PRECHECK FAIL: <steps>` | `scripts/land-precheck` beside the queue found a conflict, a commit-rule or linter finding, a failing registry lint or script self-test; the queued change is cancelled | read the tail (`scripts/land-precheck` reproduces it), fix, commit, land again |
 | `NOT LANDED: the pre-push checks failed` | the dry run (basic or area tests, a path check) failed | read the tail and the land log, fix forward, commit, land again |
 | `blocked by: identity` / `blocked by: page` | the area's local tests failed | as above; the area log's path is in the tail |
 | `blocked by: identity` with `SLICE ANSWERS MISSING` | the change asks requests pinned slices do not hold (named) | `scripts/identity-slice-coverage --repin`, check the takes still hold (`IdentitySliceCasesSpec`), commit the slices' `http.jsonl.gz` with the change |

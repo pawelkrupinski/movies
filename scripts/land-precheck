@@ -5,7 +5,7 @@
 #
 #   scripts/land-precheck [--base <ref>] [--head <ref>]
 #
-# Three steps, each printed `precheck <step> PASS|FAIL|UNCHECKED|SKIP (<n> s)`, a FAIL with the lines that say why:
+# Four steps, each printed `precheck <step> PASS|FAIL|UNCHECKED|SKIP (<n> s)`, a FAIL with the lines that say why:
 #   rebase  the change replayed onto <base> (default origin/main) with `git replay`, touching no ref and no file; a
 #           conflict names its files (docs and CLAUDE.md collide most)
 #   rules   the pre-push hook's own commit-rule and linter checks over <base>..<head>, alone (PREPUSH_ONLY): allowlists,
@@ -14,11 +14,13 @@
 #           the stranded-trailer rule runs too. Not the red gate: a red main makes a change WAIT, not fail.
 #   lints   the lint specs the hook's registry (scripts/hooks/lint-registry.tsv) selects for the pushed paths, in one
 #           scripts/sbt-warm call (seconds on a warm checkout; a cold one compiles first)
+#   scripttests  the script self-tests `scripts/run-script-tests --changed <base>` selects, when a pushed path is under
+#           a script-test root (the hook's `scripttests` paths); seconds to minutes, beside the queue like the rest
 # Last line: `PRECHECK PASS (<n> s)`, `PRECHECK FAIL: <steps> (<n> s)` or `PRECHECK UNCHECKED: <steps> (<n> s)`.
 # Exit 0 pass, 1 a step refused the change, 2 a step could not run (sbt never came up, a bound ran out): agentctl land
 # queues the change anyway then, and the landing check judges it.
 #
-# Bounds: PRECHECK_RULES_SECONDS (300), PRECHECK_LINT_SECONDS (300).
+# Bounds: PRECHECK_RULES_SECONDS (300), PRECHECK_LINT_SECONDS (300), PRECHECK_SCRIPTTESTS_SECONDS (600).
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$here/tool-conventions.sh"
@@ -96,6 +98,21 @@ else
         grep -E '\*\*\* FAILED|Failed tests:|\[error\]|should' "$tmp/lints" > "$tmp/lints-why" || cp "$tmp/lints" "$tmp/lints-why"
         report lints FAIL $t "$tmp/lints-why"
     fi
+fi
+
+# ── scripttests: the self-tests run-script-tests --changed selects, when a pushed path is under a script-test root ──
+t=$SECONDS
+if ! git diff --name-only --no-renames "$base_sha...$head_sha" \
+        | grep -qE '^(scripts/|\.github/scripts/|\.github/actions/|android/scripts/|ios/scripts/|infra/bin/|data/)'; then
+    report scripttests SKIP $t
+else
+    bounded "${PRECHECK_SCRIPTTESTS_SECONDS:-600}" scripts/run-script-tests --changed "$base_sha" > "$tmp/scripttests" 2>&1
+    case $? in
+        0) report scripttests PASS $t ;;
+        124|137) report scripttests UNCHECKED $t "$tmp/scripttests" ;;
+        *) grep -E '^(FAIL|TIMEOUT)|✗' "$tmp/scripttests" > "$tmp/scripttests-why" || cp "$tmp/scripttests" "$tmp/scripttests-why"
+           report scripttests FAIL $t "$tmp/scripttests-why" ;;
+    esac
 fi
 
 took=$((SECONDS - started))
