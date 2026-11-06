@@ -30,10 +30,13 @@ dashboard is a reading aid, not a gate.
     # TYPE kinowo_ci_job_seconds gauge
     # TYPE kinowo_ci_step_seconds gauge
     # TYPE kinowo_ci_phase_seconds gauge
+    # TYPE kinowo_ci_job_queue_seconds gauge
     # TYPE kinowo_ci_job_timeout_seconds gauge
     # TYPE kinowo_ci_run_number gauge
 
-A job's name is the `ci_job` label: Prometheus's own `job` is OTLP's `service.name`, kinowo-ci.
+The job, step, phase, queue and timeout series carry a `runner` label (`ci-runner` self-hosted, `hosted` GitHub's, else
+`unknown`), read off the jobs API's `labels` / `runner_name`; `kinowo_ci_job_queue_seconds` is the job's `created_at` to
+`started_at`, so the two kinds compare. A job's name is the `ci_job` label: Prometheus's own `job` is OTLP's `service.name`, kinowo-ci.
 (The `# TYPE` lines are what GrafanaMetricCoverageSpec reads to know these families exist.)
 
 For the build-time alerts (infra/nix/files/monitoring/rules/ci-build-times.rules):
@@ -184,9 +187,23 @@ def ceiling_of(name, ceilings):
     return max(matching, key=lambda match: match[0])[1] if matching else None
 
 
+def runner_kind(job):
+    """Where a job ran, from the jobs API's `labels` and `runner_name`: `ci-runner` (self-hosted: label `self-hosted`
+    or a runner named `ci-runner-*`), `hosted` (a runner named `GitHub Actions N`, or an `ubuntu-*` label), else `unknown`
+    (a job that never got a runner has neither)."""
+    labels, name = job.get("labels") or [], job.get("runner_name") or ""
+    if "self-hosted" in labels or name.startswith("ci-runner"):
+        return "ci-runner"
+    if name.startswith("GitHub Actions") or any(label.startswith("ubuntu-") for label in labels):
+        return "hosted"
+    return "unknown"
+
+
 class Job:
     def __init__(self, job, log_for, ceilings=()):
         self.name = job["name"]
+        self.runner = runner_kind(job)
+        self.queued = seconds_between(job.get("created_at"), job.get("started_at"))
         self.conclusion = job.get("conclusion") or "unknown"
         self.started = job["started_at"]
         self.completed = job["completed_at"]
@@ -318,13 +335,16 @@ def otlp_payload(run, jobs, ready=None):
               [point(value, measure=measure, conclusion=conclusion_of(run, jobs))
                for measure, value in sorted(run_measures(run, jobs, ready).items())]),
         gauge("kinowo_ci_job_seconds",
-              [point(job.seconds, ci_job=job.name, conclusion=job.conclusion) for job in jobs]),
+              [point(job.seconds, ci_job=job.name, conclusion=job.conclusion, runner=job.runner) for job in jobs]),
+        gauge("kinowo_ci_job_queue_seconds",
+              [point(max(0.0, job.queued), ci_job=job.name, conclusion=job.conclusion, runner=job.runner)
+               for job in jobs if job.queued is not None]),
         gauge("kinowo_ci_step_seconds",
-              [point(took, ci_job=job.name, step=label) for job in jobs for label, took in merged(job.steps)]),
+              [point(took, ci_job=job.name, step=label, runner=job.runner) for job in jobs for label, took in merged(job.steps)]),
         gauge("kinowo_ci_phase_seconds",
-              [point(took, ci_job=job.name, phase=label) for job in jobs for label, took in sorted(job.phases.items())]),
+              [point(took, ci_job=job.name, phase=label, runner=job.runner) for job in jobs for label, took in sorted(job.phases.items())]),
         gauge("kinowo_ci_job_timeout_seconds",
-              [point(job.ceiling, ci_job=job.name) for job in jobs if job.ceiling]),
+              [point(job.ceiling, ci_job=job.name, runner=job.runner) for job in jobs if job.ceiling]),
         gauge("kinowo_ci_run_number", [point(run["run_number"])] if run.get("run_number") else []),
     ]
     return {"resourceMetrics": [{

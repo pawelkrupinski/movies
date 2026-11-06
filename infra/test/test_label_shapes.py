@@ -89,6 +89,10 @@ EVENT_ONLY_VALUES = {
                                            "kinowo_ci_run_number")
       for value in ("main", "branch")},
     ("kinowo_ci_run_seconds", "measure", "runner_wait"),
+    # NOT PUBLISHED YET (2026-11-06): kinowo_ci_job_queue_seconds and the `runner` label are new with the self-hosted
+    # ci-runner comparison (scripts/ci/ci_timings.py). Re-snapshot once monitoring-1 holds them, then drop these.
+    ("kinowo_ci_job_queue_seconds", "conclusion", "success"),
+    ("kinowo_ci_job_queue_seconds", "workflow", "Identity model convergence"),
     # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
     # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).

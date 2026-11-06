@@ -11,11 +11,16 @@
 # ends -- hours later for a convergence leg. So nothing here reads a raw selector (its 5-minute lookback would never see
 # a sample): every read is a range function over a window wider than the longest run.
 #
-#   kinowo_ci_job_seconds{workflow,ref,ci_job,conclusion}     a job's wall clock
-#   kinowo_ci_step_seconds{workflow,ref,ci_job,step}          a step's
+#   kinowo_ci_job_seconds{workflow,ref,ci_job,conclusion,runner}  a job's wall clock
+#   kinowo_ci_job_queue_seconds{...as job_seconds}            created -> started (dashboard only, no rule reads it)
+#   kinowo_ci_step_seconds{workflow,ref,ci_job,step,runner}   a step's
 #   kinowo_ci_run_seconds{workflow,ref,measure,conclusion}    `wall` (first job start to last job end), `runner_wait`
-#   kinowo_ci_job_timeout_seconds{workflow,ref,ci_job}        the job's own `timeout-minutes`
+#   kinowo_ci_job_timeout_seconds{workflow,ref,ci_job,runner} the job's own `timeout-minutes`
 #   kinowo_ci_run_number{workflow,ref}                        the run's index, the number in its URL
+#
+# `runner` is `ci-runner` (self-hosted), `hosted` or `unknown`. A job that moves runner starts a new series, with its
+# own baseline (a self-hosted runner is not judged against GitHub's); every pairing below (`> baseline`, `/ timeout`)
+# matches on all labels, so it pairs a job with its own runner kind. Samples before 2026-11-06 have no `runner`.
 #
 # `ref` is "main" or "branch". No commit SHA is a label (one series per run); the run number is a sample VALUE, and the
 # regression alerts read it to name the runs a regression started between: the last run at baseline and the first slow

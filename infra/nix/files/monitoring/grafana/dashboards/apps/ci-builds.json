@@ -642,7 +642,151 @@
     {
      "refId": "A",
      "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[$__interval])",
-     "legendFormat": "{{ci_job}}",
+     "legendFormat": "{{ci_job}} {{runner}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "title": "Leg duration by runner (median across legs)",
+   "description": "Median of the selected countries' legs per runner: ci-runner (self-hosted) vs hosted (GitHub). Jobs before 2026-11-06 carry no runner label and are not drawn.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 33
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true,
+      "thresholdsStyle": {
+       "mode": "line+area"
+      }
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "quantile by (runner) (0.5, max_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",conclusion=\"success\"}[$__interval]))",
+     "legendFormat": "{{runner}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "title": "Leg queue time by runner (median across legs)",
+   "description": "Job created to job started: how long a leg waited for a runner of that kind.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 33
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true,
+      "thresholdsStyle": {
+       "mode": "line+area"
+      }
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "quantile by (runner) (0.5, max_over_time(kinowo_ci_job_queue_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",conclusion=\"success\"}[$__interval]))",
+     "legendFormat": "{{runner}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -663,7 +807,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 33
+    "y": 42
    },
    "interval": "1m",
    "fieldConfig": {
@@ -718,7 +862,7 @@
     {
      "refId": "A",
      "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",step=~\"Run the (.* )?(suite|sample.*)\"}[$__interval])",
-     "legendFormat": "{{ci_job}}",
+     "legendFormat": "{{ci_job}} {{runner}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -739,66 +883,6 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 33
-   },
-   "interval": "1m",
-   "fieldConfig": {
-    "defaults": {
-     "unit": "s",
-     "min": 0,
-     "custom": {
-      "drawStyle": "line",
-      "showPoints": "always",
-      "pointSize": 5,
-      "lineWidth": 1,
-      "fillOpacity": 0,
-      "spanNulls": true
-     }
-    },
-    "overrides": []
-   },
-   "options": {
-    "legend": {
-     "displayMode": "table",
-     "placement": "right",
-     "calcs": [
-      "lastNotNull",
-      "min",
-      "max"
-     ],
-     "sortBy": "Last *",
-     "sortDesc": true
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "desc"
-    }
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",step!~\"Run the (.* )?(suite|sample.*)\"}[$__interval]) > 5",
-     "legendFormat": "{{ci_job}} · {{step}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 6,
-   "title": "Suite phases per country (> 5 s)",
-   "description": "Top-level PhaseTimer phases inside the suite step. The boot (`bootCutover`) and the order replays (`replayCutover`) run side by side on the same 4 cores, so they overlap rather than add up.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 12,
-    "w": 24,
-    "x": 0,
     "y": 42
    },
    "interval": "1m",
@@ -837,8 +921,68 @@
    "targets": [
     {
      "refId": "A",
+     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",step!~\"Run the (.* )?(suite|sample.*)\"}[$__interval]) > 5",
+     "legendFormat": "{{ci_job}} · {{step}} {{runner}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "title": "Suite phases per country (> 5 s)",
+   "description": "Top-level PhaseTimer phases inside the suite step. The boot (`bootCutover`) and the order replays (`replayCutover`) run side by side on the same 4 cores, so they overlap rather than add up.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 12,
+    "w": 24,
+    "x": 0,
+    "y": 51
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
      "expr": "max_over_time(kinowo_ci_phase_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[$__interval]) > 5",
-     "legendFormat": "{{ci_job}} · {{phase}}",
+     "legendFormat": "{{ci_job}} · {{phase}} {{runner}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -859,7 +1003,7 @@
     "h": 8,
     "w": 24,
     "x": 0,
-    "y": 54
+    "y": 63
    },
    "fieldConfig": {
     "defaults": {
@@ -900,7 +1044,7 @@
     {
      "refId": "A",
      "expr": "last_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[7d])",
-     "legendFormat": "{{ci_job}}",
+     "legendFormat": "{{ci_job}} {{runner}}",
      "instant": true,
      "datasource": {
       "type": "prometheus",
@@ -919,7 +1063,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 62
+    "y": 71
    },
    "panels": []
   },
@@ -936,7 +1080,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 63
+    "y": 72
    },
    "interval": "1m",
    "fieldConfig": {
@@ -1005,7 +1149,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 63
+    "y": 72
    },
    "interval": "1m",
    "fieldConfig": {
@@ -1044,7 +1188,7 @@
     {
      "refId": "A",
      "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"$workflow\",ref=~\"$ref\"}[$__interval])",
-     "legendFormat": "{{ci_job}}",
+     "legendFormat": "{{ci_job}} {{runner}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"

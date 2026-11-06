@@ -88,6 +88,41 @@ def jobs():
     return timings.collect(JOBS, lambda job_id: LOGS.get(job_id, ""))
 
 
+HOSTED = {"runner_name": "GitHub Actions 1000012345", "runner_group_name": "GitHub Actions",
+          "labels": ["ubuntu-24.04"], "created_at": "2026-10-14T08:01:50Z"}
+SELF_HOSTED = {"runner_name": "ci-runner-movies-3", "runner_group_name": "Default",
+               "labels": ["self-hosted", "Linux", "X64", "movies-measure"], "created_at": "2026-10-14T08:01:20Z"}
+
+
+class RunnerKindTest(unittest.TestCase):
+    def test_runner_kind_from_the_jobs_api_fields(self):
+        self.assertEqual(timings.runner_kind(HOSTED), "hosted")
+        self.assertEqual(timings.runner_kind(SELF_HOSTED), "ci-runner")
+        self.assertEqual(timings.runner_kind({"runner_name": "ci-runner-movies-1", "labels": []}), "ci-runner")
+        self.assertEqual(timings.runner_kind({"runner_name": None, "labels": ["ubuntu-latest"]}), "hosted")
+        self.assertEqual(timings.runner_kind({"runner_name": None, "labels": []}), "unknown")
+        self.assertEqual(timings.runner_kind({}), "unknown")
+
+    def test_job_and_queue_series_carry_the_runner_label(self):
+        def payload_of(*jobs_):
+            return timings.otlp_payload(RUN, timings.collect(list(jobs_), lambda _: "", ()))
+        hosted = dict(job(11, "poland / takes", "2026-10-14T08:02:00Z", "2026-10-14T08:12:00Z",
+                          [("Run the suite", "2026-10-14T08:02:10Z", "2026-10-14T08:11:00Z")]), **HOSTED)
+        own = dict(job(12, "spain / takes", "2026-10-14T08:02:00Z", "2026-10-14T08:07:00Z",
+                       [("Run the suite", "2026-10-14T08:02:10Z", "2026-10-14T08:06:00Z")]), **SELF_HOSTED)
+        by_name = {}
+        for metric in payload_of(hosted, own)["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]:
+            by_name[metric["name"]] = {(a["value"]["stringValue"], p["asDouble"]) for p in metric["gauge"]["dataPoints"]
+                                       for a in p["attributes"] if a["key"] == "runner"}
+        self.assertEqual(by_name["kinowo_ci_job_seconds"], {("hosted", 600.0), ("ci-runner", 300.0)})
+        self.assertEqual(by_name["kinowo_ci_job_queue_seconds"], {("hosted", 10.0), ("ci-runner", 40.0)})
+        self.assertEqual({runner for runner, _ in by_name["kinowo_ci_step_seconds"]}, {"hosted", "ci-runner"})
+
+    def test_a_job_without_created_at_has_no_queue_sample_and_unknown_runner(self):
+        [bare] = timings.collect([job(13, "bare", "2026-10-14T08:02:00Z", "2026-10-14T08:03:00Z", [])], lambda _: "")
+        self.assertEqual((bare.runner, bare.queued), ("unknown", None))
+
+
 class CollectTest(unittest.TestCase):
     def test_only_finished_jobs_longest_first(self):
         self.assertEqual([j.name for j in jobs()], ["united-kingdom / convergence", "spain / convergence", "preflight"])
@@ -139,7 +174,7 @@ class PayloadTest(unittest.TestCase):
                       self.series("kinowo_ci_run_seconds"))
 
     def test_jobs_carry_workflow_name_and_conclusion(self):
-        self.assertIn(({"workflow": "Identity model convergence", "ref": "main", "ci_job": "spain / convergence", "conclusion": "failure"}, 210.0, STAMP),
+        self.assertIn(({"workflow": "Identity model convergence", "ref": "main", "ci_job": "spain / convergence", "conclusion": "failure", "runner": "unknown"}, 210.0, STAMP),
                       self.series("kinowo_ci_job_seconds"))
 
     def test_a_branch_run_is_charted_as_branch(self):
@@ -152,7 +187,7 @@ class PayloadTest(unittest.TestCase):
         self.assertEqual(uploads, [5.0])
 
     def test_phases_per_job(self):
-        self.assertIn(({"workflow": "Identity model convergence", "ref": "main", "ci_job": "united-kingdom / convergence", "phase": "replayCutover"}, 604.7, STAMP),
+        self.assertIn(({"workflow": "Identity model convergence", "ref": "main", "ci_job": "united-kingdom / convergence", "phase": "replayCutover", "runner": "unknown"}, 604.7, STAMP),
                       self.series("kinowo_ci_phase_seconds"))
 
     def test_no_jobs_no_payload(self):
