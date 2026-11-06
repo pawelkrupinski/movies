@@ -1,0 +1,159 @@
+name: Identity family explorer
+
+# THE PER-FAMILY CONVERGENCE CHECK, NIGHTLY AND OUTSIDE THE GATE (the owner, 2026-11-06, option A). services.identity.
+# FamilyConvergence walks every family's population lattice -- every subset of a family of 7 or fewer, the levels 0..1 and
+# n-1..n of one of 8..63, seeded arrival orders of a larger one -- through the model AND the final take, and names every
+# listing some arrival or add/remove sequence takes A -> B -> A: complete and deterministic where a random drift seed
+# needs luck. As a per-commit gate it cost +36% runner-minutes (37 of the last 40 identity commits re-walk every family),
+# and production rarely reaches these states, so it explores: this workflow is NOT one of THE GATE's
+# (.github/gating-checks.tsv lists the gate's workflows; this is none), never fails a commit, and the seed drift rows
+# (takes-drift-1|2 of identity-model-convergence.yml) keep gating unchanged.
+#
+# ONE ROW PER COUNTRY SHARD (scripts/ci/family_shards.py: DE 4, UK 4, PL 2, US 14, ES 3), each about 8 minutes on a hosted
+# runner when cold, over the pinned recording the row lays (convergence-setup, as a hermetic leg does). A row keeps its
+# verdict cache on the release `identity-family-explorer-store` (scripts/ci/identity-family-nightly.sh), so a night re-walks
+# only the families the code changed since the last night can move (scripts/ci/family_reach.py) and unchanged families
+# stay warm.
+#
+# OUTPUT. The publish job joins the shards (scripts/ci/family_flips_report.py) into the release `identity-family-explorer`:
+# `family-flips-<cc>.tsv` (listing, flip chain, rules fired), `family-flips-ranked.tsv` (every flip by deciding rule, the
+# list structural fix 2 -- the rule burn-down -- reads) and `family-flips-new.tsv` (new since last night, also on the run's
+# summary). It files NO backlog row: Actions cannot push main, and these flips are explored, not owed.
+on:
+    schedule:
+        - cron: '7 2 * * *'
+    workflow_dispatch:
+        inputs:
+            countries:
+                description: The country codes to walk (de uk pl us es); empty walks all five.
+                required: false
+                type: string
+                default: ''
+
+concurrency:
+    group: identity-family-explorer
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    # THE PLAN: the one place the run's inputs are read (WorkflowPlanSpec).
+    plan:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        outputs:
+            matrix: ${{ steps.plan.outputs.matrix }}
+            expect: ${{ steps.plan.outputs.expect }}
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+            - name: Which country shards does this run walk?
+              id: plan
+              env:
+                  COUNTRIES: ${{ inputs.countries }}
+              run: python3 scripts/ci/family_shards.py plan --countries "$COUNTRIES" >> "$GITHUB_OUTPUT"
+
+    walk:
+        name: family walk (${{ matrix.name }})
+        needs: [plan]
+        # ubuntu-22.04: the row starts mongod (convergence-setup), whose 8.3 does not start on 26.04's kernel (MongoServerVersionParitySpec)
+        runs-on: ubuntu-22.04
+        # the walk step's 40 minutes plus the setup; a row is meant to take about 8 (the first night's timings correct the shard counts)
+        timeout-minutes: 60
+        permissions:
+            actions: read
+            contents: write
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  # the cache's commit is compared with this one (scripts/ci/family_reach.py)
+                  fetch-depth: 1
+            - uses: ./.github/actions/convergence-setup
+              id: setup
+              with:
+                  code: ${{ matrix.code }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+                  mode: hermetic
+                  # compiles worker/Test, as a takes row does, and restores main's takes build cache
+                  takes: 'true'
+            - name: Walk the ${{ matrix.name }} families
+              shell: bash
+              timeout-minutes: 40
+              env:
+                  FAMILY_SHARD: ${{ format('{0}/{1}', matrix.index, matrix.shards) }}
+                  FAMILY_STORE: identity-family-explorer-store
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  HEAP: 6g
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  scripts/ci/identity-family-nightly.sh "${{ matrix.code }}" "$RUNNER_TEMP/identity-family"
+            # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
+            - name: End what a timed-out walk left running
+              if: always()
+              run: scripts/ci/bounded-step.sh --reap
+            - uses: actions/upload-artifact@v6
+              if: ${{ !cancelled() }}
+              with:
+                  overwrite: true
+                  name: identity-family-${{ matrix.code }}-${{ matrix.index }}of${{ matrix.shards }}
+                  path: ${{ runner.temp }}/identity-family/
+                  if-no-files-found: ignore
+                  retention-days: 7
+
+    publish:
+        needs: [plan, walk]
+        if: ${{ !cancelled() }}
+        runs-on: ubuntu-26.04
+        timeout-minutes: 15
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts
+            - uses: actions/download-artifact@v6
+              with:
+                  pattern: identity-family-*
+                  path: ${{ runner.temp }}/family-shards
+            - name: Join the shards and publish the flips
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_REPO: ${{ github.repository }}
+                  EXPECT: ${{ needs.plan.outputs.expect }}
+              run: |
+                  scripts/ci/family-explorer-publish.sh "$RUNNER_TEMP/family-shards" "$EXPECT"
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
+    timings:
+        needs: [plan, walk, publish]
+        if: ${{ !cancelled() }}
+        permissions:
+            actions: read
+            contents: read
+        uses: ./.github/workflows/report-timings.yml
+        # `inherit`: report-timings.yml declares no secrets.
+        secrets: inherit
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        name: report (scheduled run)
+        needs: [plan, walk, publish, timings]
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

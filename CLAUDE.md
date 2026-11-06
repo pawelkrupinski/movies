@@ -336,6 +336,13 @@ reds were changes `identity-measure` alone had called LANDABLE. Nothing requires
   `test/resources/fixtures/identity-flip-backlog.tsv` (the work list, with owners); the nightly explorer
   (`identity-drift-explorer.yml`) finds old flips on other seeds and agentctl files each as a backlog row plus a gate
   seed. Divergences always fail. Details: `docs/design/identity-no-drift.md`, "The differential gate".
+- **The per-family convergence check is a nightly explorer, not a gate** (the owner, 2026-11-06, option A):
+  `identity-family-explorer.yml` walks every family's population lattice over the pinned recording (`FamilyConvergence`, one
+  row a country shard), outside THE GATE, never red for a commit. As a per-commit gate it cost +36% runner minutes (37 of
+  40 identity commits re-walk every family) and prod rarely shows these flips. Its output is release assets, not backlog
+  rows: `family-flips-<cc>.tsv`, `family-flips-ranked.tsv` (by deciding rule: structural fix 2's list) and
+  `family-flips-new.tsv` (new since last night); the seed drift rows above keep gating. Design: `docs/design/identity-no-drift.md`,
+  "The family explorer".
 - **A drift or flip red** (the convergence `takes-drift-1|2` rows, `scripts/ci/identity-drift-check.sh`; each row
   replays its fixed seeds, `scripts/ci/drift_seeds.py`, and a red names them with its reproducer
   `IdentityDrift <cc> --seed N`; a red seed is cut into a drift slice: `docs/design/identity-slice.md`) is fixed in

@@ -529,6 +529,27 @@ lattice's answers (Hasetor "Scott & Lila" 5, Halstead's three 2-3, Torrington 2)
 walks every slice and holds that it lacks nothing. A CORPUS run (`--corpus <cc> --recording DIR --families CAPTURE
 [--shard i/n]`) walks a recording's whole country, the families split into shards by their first member's key.
 
+**The family explorer: a nightly, NOT a gate** (the owner, 2026-11-06, option A). The corpus walk was costed as the drift
+gate's replacement and refused: per commit it adds +36% runner minutes (37 of the last 40 identity commits reach every
+family -- code outside the identity model, the check's own tools, shared resolver code, the agreement stage -- so they
+re-walk everything: a cold DE walk is 822 s, UK 898 s, PL 370 s, US over 48 min on the laptop, about twice that on a hosted
+runner), and production rarely shows the flips it finds (reachable states only: prod's arrivals are not every subset of a
+family). So `.github/workflows/identity-family-explorer.yml` walks it every night, outside THE GATE (no row in
+`.github/gating-checks.tsv`, no call from the convergence workflows); the seed drift rows `takes-drift-1|2` keep gating
+unchanged.
+
+- **Rows.** One a country shard (`scripts/ci/family_shards.py`: DE 4, UK 4, PL 2, US 14, ES 3), each about 8 minutes cold on a
+  hosted runner. ES was not measured: the first night's runtimes correct its count and the others'.
+- **Warm.** `scripts/ci/identity-family-nightly.sh` keeps the verdict cache (and the commit it was made at) on the release
+  `identity-family-explorer-store`, under a rules key that names no code. A night walks again only the families the code
+  changed since then can move (`scripts/ci/family_reach.py`); an unattributable change walks every family.
+- **Output.** `scripts/ci/family-explorer-publish.sh` joins the shards into the release `identity-family-explorer`:
+  `family-flips-<cc>.tsv` (listing, flip chain, the rules the walk fired), `family-flips-ranked.tsv` (every flip by deciding
+  rule, most listings first: structural fix 2's list, the rule burn-down), `family-flips-new.tsv` (new since last night, also
+  on the run's summary) and a dated copy of the ranking (30 kept). A country with a shard missing keeps last night's file.
+- **No backlog rows.** The explorer does not file its flips (Actions cannot push main, and these are explored, not owed): a
+  flip enters `identity-flip-backlog.tsv` (kind `family`) only through a named decision, as any other row.
+
 ## Held takes (proposal, 2026-11-05; not implemented -- the owner decides)
 
 The approach change of 2026-11-05, item 1: a take a population-dependent rule decides is HELD, Pending, until the
