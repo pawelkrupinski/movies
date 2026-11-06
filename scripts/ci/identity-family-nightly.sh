@@ -54,7 +54,7 @@ keep() { # <file> <asset>: store it, never failing the walk
 }
 
 # ---- what to walk again: the families the code changed since the cache's commit can move ----
-reach_args=()
+reach_arg=""   # a string, not an array: an empty array under set -u is unbound in bash 3.2
 cache="$out/cache.json"
 if fetch "$stem.json.gz" "$cache" && fetch "$stem.sha.gz" "$out/cache.sha"; then
   cached_sha=$(tr -d '[:space:]' < "$out/cache.sha")
@@ -62,7 +62,7 @@ if fetch "$stem.json.gz" "$cache" && fetch "$stem.sha.gz" "$out/cache.sha"; then
   git -C "$here" cat-file -e "$cached_sha^{commit}" 2> /dev/null \
     || timeout 300 git -C "$here" fetch -q --no-tags --depth=1 origin "$cached_sha" 2> /dev/null || true
   if python3 "$here/scripts/ci/family_reach.py" reach --repo "$here" --base "$cached_sha" --head "$head_sha" --out "$out/reach.txt" > "$out/reach-why.txt" 2>&1; then
-    reach_args=(--reach "$out/reach.txt")
+    reach_arg=" --reach $out/reach.txt"
   else
     echo "family explorer ($cc): the reach of ${cached_sha:0:12}..${head_sha:0:12} could not be read -- every family walks again"
     rm -f "$cache"
@@ -76,7 +76,7 @@ fi
 # ---- the walk ----
 walk_code=0
 ( cd "$here" && sbt -J-Xmx"$heap" 'set worker / Test / run / fork := false' \
-    "worker/Test/runMain services.identity.FamilyConvergence --corpus $cc --recording $fixtures --families $fixtures/identity-unmatched/$cc.json.gz --shard $shard --levels $levels --orders $orders --order-salt $salt --costs $fixtures/family-costs-$cc.tsv --rules family-explorer-L$levels --cache $cache ${reach_args[*]} --out $out" ) \
+    "worker/Test/runMain services.identity.FamilyConvergence --corpus $cc --recording $fixtures --families $fixtures/identity-unmatched/$cc.json.gz --shard $shard --levels $levels --orders $orders --order-salt $salt --costs $fixtures/family-costs-$cc.tsv --rules family-explorer-L$levels --cache $cache$reach_arg --out $out" ) \
   > "$out/sbt.log" 2>&1 || walk_code=$?
 grep -E '^## |^  [a-z]+	' "$out/sbt.log" > "$out/report.txt"
 if [ ! -f "$out/family-flips-$cc.tsv" ] || ! grep -qE "^## $cc family check: " "$out/report.txt"; then
