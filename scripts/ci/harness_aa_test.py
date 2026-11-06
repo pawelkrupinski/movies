@@ -6,6 +6,7 @@ differing is the harness's fault), and the wiring that runs it in main's converg
     python3 scripts/ci/harness_aa_test.py
 """
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -145,7 +146,8 @@ class HarnessAaTest(unittest.TestCase):
         rows = open(os.path.join(ROOT, ".github/gating-checks.tsv")).read()
         for country in ("poland", "germany", "united-kingdom", "spain", "united-states"):
             for row in ("takes-drift-aa", "takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"):
-                self.assertIn(f"job\tidentity-model-convergence.yml\t{row} ({country})\tunproven", rows)
+                # registered: `unproven` until its first green run on main, that run's number after
+                self.assertRegex(rows, rf"(?m)^job\tidentity-model-convergence\.yml\t{re.escape(row)} \({country}\)\t(unproven|[0-9]+)")
         paths = open(os.path.join(ROOT, ".github/harness-aa-paths.txt")).read()
         self.assertIn("scripts/ci/identity-takes-check.sh", paths, "the takes harness is a harness path too")
 
