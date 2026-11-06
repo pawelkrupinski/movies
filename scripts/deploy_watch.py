@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import operator
 import os
 import re
@@ -111,19 +112,26 @@ def rollout(result: list[dict], tag: str, countries: list[str]) -> dict[str, tup
     return state
 
 
-def judge(check: Check, result: list[dict], countries: list[str]) -> tuple[bool, str]:
+def judge(check: Check, result: list[dict], countries: list[str]) -> tuple[bool, str, set[str]]:
+    """This reading's verdict, its readings, and the countries whose series is NaN: a gauge NOT REPORTED YET (the worker
+    seeds its gauges NaN at boot until their first report -- the held gauges at the model's first batch, ~2 min after a pod
+    starts), which judges nothing in this reading; main() fails a country that never reports over the whole window."""
     values = {s["metric"].get("country"): float(s["value"][1]) for s in result}
-    ok, parts = True, []
+    ok, parts, unreported = True, [], set()
     for cc in countries:
         if cc not in values and check.missing == "fail":
             ok = False
             parts.append(f"{cc}=no series")
             continue
         value = values.get(cc, 0.0)
+        if math.isnan(value):
+            unreported.add(cc)
+            parts.append(f"{cc}=not reported yet")
+            continue
         good = check.ok(value)
         ok &= good
         parts.append(f"{cc}={value:g}" + ("" if good else f" (want {check.op} {check.threshold:g})"))
-    return ok, " ".join(parts)
+    return ok, " ".join(parts), unreported
 
 
 def stamp(clock: Callable[[], float]) -> str:
@@ -176,14 +184,18 @@ def main(argv: list[str], query=prometheus_query, clock=time.time, sleep=time.sl
             sleep(args.poll)
 
     failed: dict[str, list[str]] = {c.name: [] for c in checks}
+    reported: dict[str, set[str]] = {c.name: set() for c in checks}  # the countries each check read a value of
     end, reading = clock() + args.window, 0
     while True:
         reading += 1
         for c in checks:
             try:
-                ok, detail = judge(c, query(c.promql), countries)
+                ok, detail, unreported = judge(c, query(c.promql), countries)
+                reported[c.name] |= set(countries) - unreported
             except Exception as e:  # noqa: BLE001 -- an unreadable check fails this reading, named
-                ok, detail = False, f"unreadable: {e}"
+                ok, detail, unreported = False, f"unreadable: {e}", set()
+            if ok and unreported:
+                print(f"{stamp(clock)} {c.name}: {detail} (no verdict for those this reading)", file=err)
             if not ok:
                 failed[c.name].append(f"reading {reading} {stamp(clock)}: {detail}")
                 print(f"{stamp(clock)} RED {c.name}: {detail}", file=err)
@@ -194,6 +206,9 @@ def main(argv: list[str], query=prometheus_query, clock=time.time, sleep=time.sl
         sleep(args.every)
 
     for c in checks:
+        never = [cc for cc in countries if cc not in reported[c.name]]
+        if never and not failed[c.name]:
+            failed[c.name].append(f"{' '.join(never)} never reported a value (NaN in all {reading} readings)")
         if failed[c.name]:
             print(f"FAIL\t{c.name}\t{c.op} {c.threshold:g}\t{len(failed[c.name])} of {reading} readings; first {failed[c.name][0]}")
         else:

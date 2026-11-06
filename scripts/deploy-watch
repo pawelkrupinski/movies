@@ -17,7 +17,9 @@
 #
 # Checks: a TSV (scripts/deploy-watch-checks/<name>.tsv, or a path), one per line: name, op (<= < >= > == !=),
 # threshold, missing (`fail`: a country without the series fails -- the image does not export the gauge; `zero`: a
-# counter not yet incremented reads 0), and PromQL returning one series per `country`. `identity-gate` (the default)
+# counter not yet incremented reads 0), and PromQL returning one series per `country`. A series reading NaN is a gauge
+# not reported yet (the worker seeds its gauges NaN at boot until their first report): no verdict that reading, and a FAIL
+# only for a country that never reports a value over the whole window. `identity-gate` (the default)
 # reads the model's held listings, held oldest (<= 15 min), held-and-not-draining (oldest over 10 min with
 # nothing promoted in 30 min), and take flips / reversals per hour against 2x the same hour yesterday.
 #

@@ -114,6 +114,27 @@ class DeployWatchTest(unittest.TestCase):
         self.assertIn("es=no series", out)
         self.assertIn("PASS\tflips", out, "a counter not yet incremented reads 0")
 
+    def test_a_gauge_not_yet_reported_after_boot_waits_for_its_first_value(self):
+        # The worker's gauges read NaN from boot until their first report (the held gauges: the model's first batch,
+        # ~1.5-2 min after a pod starts; Germany 2026-11-06): no verdict for that country in that reading, never a FAIL.
+        nan = float("nan")
+        fake = Fake([pods({cc: NEW for cc in ALL})],
+                    {"held_listings": [series({**{cc: 0 for cc in ALL}, "de": nan}), series({cc: 0 for cc in ALL})],
+                     "take_flips": [series({})]})
+        code, out, err = watch(fake, "--every", "5m", "--window", "5m")
+        self.assertEqual(0, code, out + err)
+        self.assertIn("PASS\theld listings", out)
+        self.assertIn("de=not reported yet", err)
+        self.assertNotIn("RED", err)
+
+    def test_a_gauge_never_reported_over_the_window_fails(self):
+        fake = Fake([pods({cc: NEW for cc in ALL})],
+                    {"held_listings": [series({**{cc: 0 for cc in ALL}, "de": float("nan")})], "take_flips": [series({})]})
+        code, out, _ = watch(fake, "--every", "5m", "--window", "10m")
+        self.assertEqual(1, code)
+        self.assertIn("FAIL\theld listings", out)
+        self.assertIn("de never reported a value", out)
+
     def test_one_country_canary_waits_and_judges_that_country_alone(self):
         fake = Fake([pods({**{cc: OLD for cc in ALL}, "es": NEW})],
                     {"held_listings": [series({"es": 3, "de": 5000})], "take_flips": [series({})]})
