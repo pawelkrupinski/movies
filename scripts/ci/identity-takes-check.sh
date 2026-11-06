@@ -29,7 +29,15 @@
 #        the pinned pair's KINOWO_CONVERGENCE_PIN_CORPUS_RUN / _TREE_ASSET / _FILL_ASSETS, RUNNER_TEMP/laid-fill,
 #        SHAPE_COMMAND (the country's `corpusShape*` sbt alias; empty checks no corpus shape),
 #        TAKES_SIDE (both, head or base: THE BASE ROW below), TAKES_BASE_JOB (the base row's job name), GITHUB_RUN_ID,
-#        TAKES_BASE_WAIT / TAKES_BASE_POLL (seconds: how long, and how often, the head waits for the base row)
+#        TAKES_BASE_WAIT / TAKES_BASE_POLL (seconds: how long, and how often, the head waits for the base row),
+#        TAKES_AA (true: THE A/A SELF-TEST below)
+#
+# THE A/A SELF-TEST (TAKES_AA=true; the `takes-aa` row main's convergence adds on a push changing a path of
+# .github/harness-aa-paths.txt, scripts/ci/harness_aa.py): this check's own harness against ITSELF. The base is the head,
+# nothing is reused from or stored on the store, no skip gate is asked, and both sides are resolved and their final takes
+# replayed, each in a checkout of its own -- exactly as a base and a head are. A resolve is a pure function of its commit
+# and its inputs (what the store and the base-equals-head skip rest on), so any take differing between the two is the
+# HARNESS's fault (`harness_aa.py takes`: exit 1), never a move to judge or accept. No commit status is posted.
 #
 # THE BASE IS USUALLY ALREADY RESOLVED. It is the newest commit whose check passed -- most often the previous run's
 # head, which that run resolved over the same pinned recording minutes before. A resolve is a pure function of its
@@ -60,6 +68,7 @@ heap=${HEAP:-6g}
 side=${TAKES_SIDE:-both}
 case $side in both|head|base) ;; *) echo "::error::identity takes ($cc): TAKES_SIDE is both, head or base, not $side"; exit 2 ;; esac
 [ "$side" = head ] && [ -z "${TAKES_BASE_JOB:-}" ] && side=both # no base row to wait for
+aa=""; case ${TAKES_AA:-} in true|1) aa=1 side=both ;; esac # THE A/A SELF-TEST: both sides in this row
 here=$(pwd)
 mkdir -p "$out"
 out=$(cd "$out" && pwd) # absolute: every sbt run below runs in a checkout of its own
@@ -169,7 +178,9 @@ dump() { # <checkout> <out dir> [trace file]
 
 # TAKES_BASE (a hand dispatch's `takes-base`) names the base outright: how to re-judge a range a check once passed
 # without judging it, e.g. one the old 40-commit window absorbed.
-base=${TAKES_BASE:-$(pick_base)} || { echo "::error::identity takes ($cc): could not name a base commit" | tee "$out/verdict.txt"; exit 2; }
+if [ -n "$aa" ]; then base=$head
+else base=${TAKES_BASE:-$(pick_base)} || { echo "::error::identity takes ($cc): could not name a base commit" | tee "$out/verdict.txt"; exit 2; }
+fi
 [ -n "$base" ] || { echo "::error::identity takes ($cc): could not name a base commit" | tee "$out/verdict.txt"; exit 2; }
 # A base named by hand may be abbreviated ("c2974e3aa"), and a fetch asks the server for a FULL object name: run
 # 38533191835's every leg failed to fetch its short takes-base and passed unjudged. Expanded through the API first.
@@ -195,17 +206,18 @@ shape_paths=("${identity_paths[@]}" e2e/src/test/scala/services/movies worker/sr
 shape_command=${SHAPE_COMMAND:-}
 if [ -n "$shape_command" ] && ! unchanged "${shape_paths[@]}"; then shape_moves=1; else shape_moves=""; fi
 
-if unchanged "${identity_paths[@]}" && [ -z "$shape_moves" ]; then
+if [ -z "$aa" ] && unchanged "${identity_paths[@]}" && [ -z "$shape_moves" ]; then
   echo "identity takes ($cc): no identity code changed since $base, nor a corpus-shape check or allowlist -- nothing can have moved" | tee "$out/verdict.txt"
   exit 0
 fi
-if unchanged "${identity_paths[@]}"; then takes_moves=""; else takes_moves=1; fi
+if [ -z "$aa" ] && unchanged "${identity_paths[@]}"; then takes_moves=""; else takes_moves=1; fi
 
 # THE STORE (see the header). A fill laid over the tree but never published names nothing a later run could match:
 # such a row neither reuses nor stores.
 store=${TAKES_STORE:-}
 laid=$(cat "$RUNNER_TEMP/laid-fill" 2>/dev/null || true)
 [ "$laid" = unpublished ] && store=""
+[ -z "$aa" ] || store="" # THE A/A SELF-TEST: both sides made here, neither fetched nor kept
 # A key names the commit by its identity code, not its sha: a commit touching none of it (whose own check stored nothing,
 # above) is then the base of the next run under the key its last identity change stored -- run 38599662543's base had.
 code_of() { git ls-tree -r "$1" -- "${identity_paths[@]}" | sha256sum | cut -c1-24; } # <sha>
@@ -525,7 +537,8 @@ refresh_full_marker() {
 # as ever, and the gate's answer is held against them after (THE SHADOW, below). ENFORCE: a SKIP leaves out the takes
 # diff -- the corpus shape and the drift check still run -- except on every TAKES_SKIP_SAMPLE_EVERY-th such commit (by its
 # name, default 10), which runs in full and is held against the gate as in shadow. Never on the base row.
-skip_mode=${TAKES_SKIP_MODE:-off} gate=RUN gate_line="" takes_skipped=""
+skip_mode=${TAKES_SKIP_MODE:-off}; [ -z "$aa" ] || skip_mode=off
+gate=RUN gate_line="" takes_skipped=""
 case $skip_mode in shadow|enforce) [ -n "$takes_moves" ] && gate_asked=1 || gate_asked="" ;; *) gate_asked="" ;; esac
 if [ -n "$gate_asked" ]; then
   mkdir -p "$out/gate"
@@ -729,6 +742,17 @@ diff_takes() { # <base> <head> [--final]
 # Beside the out dir, never in TMPDIR: nothing outside it to leak on an early exit, and no TMPDIR to fail on.
 verdict="$out/verdict.txt.part"
 : > "$verdict"
+if [ -n "$aa" ]; then
+  if [ "$final" != 0 ]; then
+    echo "::error title=harness A/A ($cc)::a side's final takes could not be replayed ($out/*/ratchet-takes.tsv.log): nothing was judged" \
+      | tee -a "$verdict"; aa_code=2
+  else
+    aa_code=0; python3 "$here/scripts/ci/harness_aa.py" takes --cc "$cc" --a "$out/base" --b "$out/head" | tee -a "$verdict"
+    aa_code=${PIPESTATUS[0]}
+  fi
+  cat "$out/verdict.txt" >> "$verdict" 2> /dev/null; mv "$verdict" "$out/verdict.txt"
+  exit "$aa_code"
+fi
 if [ -n "$takes_moves" ]; then
   diff_takes "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" | tee -a "$verdict"
   model=${PIPESTATUS[0]}
@@ -758,18 +782,7 @@ cat "$out/verdict.txt" >> "$verdict" && mv "$verdict" "$out/verdict.txt"
 # Every answer is posted as the commit status `takes skip gate (<cc>)` and logged as one `takes-skip-shadow` line, which
 # scripts/ci/takes-skip-shadow-report.sh counts before skipping is enabled (and while it is, on the sampled commits).
 if [ -n "$gate_asked" ] && [ -z "$takes_skipped" ]; then
-  actual=$(python3 - "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" "$out/base/ratchet-takes.tsv" "$out/head/ratchet-takes.tsv" <<'PY' 2> /dev/null || echo unknown
-import csv, json, sys
-def model(path):
-    with open(path) as f:
-        return {d["key"]: d.get("film") for d in map(json.loads, filter(str.strip, f))}
-def final(path):
-    with open(path) as f:
-        return {(r["country"], r["venue"], r["rawTitle"]): (r.get("status"), r.get("film")) for r in csv.DictReader(f, delimiter="\t")}
-b, h, bf, hf = sys.argv[1:]
-print("moved" if model(b) != model(h) or final(bf) != final(hf) else "unmoved")
-PY
-)
+  actual=$(python3 "$here/scripts/ci/harness_aa.py" moved --cc "$cc" --a "$out/base" --b "$out/head" 2> /dev/null || echo unknown)
   if [ "$model" = 2 ] || [ "$final" = 2 ]; then actual=unknown; fi
   agree=yes; [ "$gate" = SKIP ] && [ "$actual" != unmoved ] && agree=no
   line="takes-skip-shadow ($cc): mode=$skip_mode gate=$gate actual=$actual agree=$agree base=${base:0:9} head=${head:0:9}"

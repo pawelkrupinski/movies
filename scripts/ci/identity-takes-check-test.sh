@@ -126,7 +126,8 @@ c4=$(scratch_git "$work/src" rev-parse HEAD~1) c5=$(scratch_git "$work/src" rev-
 rm -rf "$work/job" && mkdir -p "$work/job" && scratch_git "$work/job" clone -q --depth=1 --branch main "file://$work/origin.git" .
 mkdir -p "$work/job/test/resources/fixtures" "$work/job/scripts/ci"
 printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n' > "$work/job/test/resources/fixtures/identity-judgements.tsv"
-cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/report_fields.py" "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
+cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/report_fields.py" "$(dirname "$script")/harness_aa.py" \
+   "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
 # Every argument not a flag is an sbt command, run in order as sbt runs them: "[success]" after each, and the first that
@@ -263,6 +264,25 @@ rm -rf "$work/release"
 UPLOAD_RACES=1 REF=refs/heads/measure/c5-3 TAKES_BASE=$c4 store_run "$c5" || true
 check "an upload refused because another run stored the asset meanwhile is no warning" \
   "0 1" "$(grep -c 'could not store' "$work/log") $(grep -c 'takes-decisions-pl-.* was stored by another run meanwhile' "$work/log")"
+
+# THE A/A SELF-TEST (TAKES_AA=true, the takes-aa row; scripts/ci/harness_aa.py): the head against ITSELF over one
+# recording -- no base picked, nothing reused or stored, both sides resolved and replayed -- and any difference between
+# the two is the harness's fault, never a move to accept. A base equal to the head ends any other check unresolved.
+rm -rf "$work/release"
+TAKES_BASE=$c4 store_run "$c5" || true # c5's own results stored: the A/A must make its own
+stored=$(ls "$work/release" | sort | tr '\n' ' ')
+code=0; TAKES_AA=true store_run "$c5" || code=$?
+check "an A/A run passes when two resolves of the head agree" 0 "$code"
+check "...its base the head itself" "$c5" "$(cat "$work/out/base.txt")"
+check "...resolved twice, once in a checkout of its own, nothing stored reused" "1 1" \
+  "$(grep -c 'identity-takes-base dump-tool' "$work/sbt-calls") $(grep -v identity-takes-base "$work/sbt-calls" | grep -c dump-tool)"
+check "...its final takes replayed twice" 2 "$(grep -c ratchet-tool "$work/sbt-calls")"
+check "...storing nothing" "$stored" "$(ls "$work/release" | sort | tr '\n' ' ')"
+check "...saying so" 1 "$(grep -c 'harness A/A (pl): PASS' "$work/out/verdict.txt")"
+code=0; STUB_HEAD_FILM=2 TAKES_AA=true store_run "$c5" || code=$?
+check "two resolves of one head that differ fail the A/A" 1 "$code"
+check "...as the harness's fault, naming the listing" 1 "$(grep -c 'HARNESS FAULT.*1 model take' "$work/log")"
+check "...never as a move to accept" 0 "$(grep -c 'to another film' "$work/out/verdict.txt")"
 
 # THE BASE ROW. A measurement's `takes-base` row (TAKES_SIDE=base) stores the base's side on a runner of its own; its
 # `takes` row (TAKES_SIDE=head) runs the head's and waits for them while that row runs (the stub jobs API answers its

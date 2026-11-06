@@ -112,8 +112,14 @@ hours. The capture-replay case above proves one case; the A/A run proves the who
   this one included.
 - **Gating:** the rows are `unproven` in `.github/gating-checks.tsv`; after the first green run on main,
   `scripts/ci/gating_checks.py prove --workflow-file identity-model-convergence.yml --run <id> --number <#n>`.
-- **Not yet covered:** the takes rows and identity-measure. `identity-takes-check.sh` ends at once on base == head
-  ("nothing can have moved"), so their A/A needs a switch inside that harness; left for a later change.
+- **The takes harness too** (2026-11-06): the same push adds a `takes-aa (<country>)` row per leg -- the takes check
+  (the harness of the takes rows and of `scripts/identity-measure`, which dispatches them) with `TAKES_AA=true`: the
+  base is the head, no skip gate, nothing fetched from or kept on the store, and both sides resolved and their final
+  takes replayed, each in a checkout of its own, as a base and a head are. `harness_aa.py takes` fails ANY take that
+  differs between the two (model or final; lost, changed or gained) as `HARNESS FAULT`, never a move to judge; it posts
+  no `identity takes (<cc>)` status (that one names the next run's base). Its paths (identity-takes-check.sh,
+  identity_takes_diff.py, IdentityResolveDump, UnmatchedClustersRatchet) are in the same paths file, so a push touching
+  either harness runs both rows. Rows `unproven` until their first green, as above; cost ~2x a takes row per leg.
 
 ## The harness
 

@@ -461,7 +461,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
         """(inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || """ +
         """',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', """ +
         """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', """ +
-        """inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa"' || '')) }}""")
+        """inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa","takes-aa"' || '')) }}""")
     // IN 20 RUNNERS (scripts/ci/convergence_slots.py): main's caller hands the rows longest first and the leg's share
     RepoFile.block(leg, "convergence") should include("max-parallel: ${{ inputs.max-parallel }}")
     RepoFile.block(leg, "order-compare") should include("max-parallel: ${{ inputs.max-parallel }}")

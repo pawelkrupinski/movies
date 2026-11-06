@@ -104,17 +104,49 @@ class HarnessAaTest(unittest.TestCase):
     def test_a_check_that_could_not_run_is_no_verdict(self):
         self.assertEqual(2, self.judge(2, "")[0])
 
+    def sides(self, head_film=1, head_status="RIGHT"):
+        for side, film, status in (("a", 1, "RIGHT"), ("b", head_film, head_status)):
+            self.write(f"{side}/decisions-de.jsonl", '{"key":"k","film":1}\n{"key":"j","film":%d}\n' % film)
+            self.write(f"{side}/ratchet-takes.tsv", f"country\tvenue\trawTitle\tstatus\tfilm\nde\tv\tt\t{status}\ttmdb:1\n")
+        return os.path.join(self.repo, "a"), os.path.join(self.repo, "b")
+
+    def test_the_takes_harness_a_a_passes_when_both_runs_take_alike(self):
+        a, b = self.sides()
+        code, out, _ = self.run_tool("takes", "--cc", "de", "--a", a, "--b", b)
+        self.assertEqual(0, code)
+        self.assertIn("PASS", out)
+        self.assertEqual("unmoved", self.run_tool("moved", "--cc", "de", "--a", a, "--b", b)[1].strip())
+
+    def test_any_take_differing_between_two_runs_of_one_head_is_the_harness_fault(self):
+        for kind, over in (("model", {"head_film": 2}), ("final", {"head_status": "WRONG"})):
+            sides = self.sides(**over)
+            code, out, _ = self.run_tool("takes", "--cc", "de", "--a", sides[0], "--b", sides[1])
+            self.assertEqual(1, code, kind)
+            self.assertIn("HARNESS FAULT", out)
+            self.assertIn("1 model take(s)" if kind == "model" else "1 final take(s)", out)
+            self.assertEqual("moved", self.run_tool("moved", "--cc", "de", "--a", sides[0], "--b", sides[1])[1].strip())
+
+    def test_a_takes_side_that_cannot_be_read_is_no_verdict(self):
+        a, _ = self.sides()
+        missing = os.path.join(self.repo, "nowhere")
+        self.assertEqual(2, self.run_tool("takes", "--cc", "de", "--a", a, "--b", missing)[0])
+        self.assertEqual("unknown", self.run_tool("moved", "--cc", "de", "--a", a, "--b", missing)[1].strip())
+
     def test_the_wiring_runs_the_a_a_row_on_a_harness_push_to_main(self):
         conv = open(os.path.join(ROOT, ".github/workflows/identity-model-convergence.yml")).read()
         leg = open(os.path.join(ROOT, ".github/workflows/country-convergence-leg.yml")).read()
         self.assertIn("scripts/ci/harness_aa.py decide", conv)
         self.assertIn("harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}", conv)
         self.assertIn("harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}", conv)
-        self.assertIn("inputs.harness-aa && ',\"takes-drift-aa\"'", leg)
         self.assertIn("scripts/ci/harness_aa.py judge", leg)
+        self.assertIn("inputs.harness-aa && ',\"takes-drift-aa\",\"takes-aa\"'", leg)
+        self.assertIn("TAKES_AA: ${{ matrix.phase == 'takes-aa' }}", leg)
         rows = open(os.path.join(ROOT, ".github/gating-checks.tsv")).read()
         for country in ("poland", "germany", "united-kingdom", "spain", "united-states"):
-            self.assertIn(f"job\tidentity-model-convergence.yml\ttakes-drift-aa ({country})\tunproven", rows)
+            for row in ("takes-drift-aa", "takes-aa"):
+                self.assertIn(f"job\tidentity-model-convergence.yml\t{row} ({country})\tunproven", rows)
+        paths = open(os.path.join(ROOT, ".github/harness-aa-paths.txt")).read()
+        self.assertIn("scripts/ci/identity-takes-check.sh", paths, "the takes harness is a harness path too")
 
 
 if __name__ == "__main__":

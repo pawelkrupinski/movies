@@ -44,9 +44,10 @@ UNMEASURED_MINUTES = 8.0
 COMPARE_PHASES = ("order-independence-p01", "order-independence-p12")
 
 
-# an unmeasured row that costs a multiple of a measured one: the A/A row replays the head's drift seed twice
-# (harness_aa.py), and runs only on a push that changed the harness, too rarely to be measured
-LIKE = {"takes-drift-aa": ("takes-drift-1", 2.0)}
+# an unmeasured row that costs a multiple of a measured one: the A/A rows (harness_aa.py) run only on a push that
+# changed a harness, too rarely to be measured -- the drift one replays the head's drift seed twice, the takes one makes
+# both of the takes check's sides in one row (the takes row's head and its takes-base row's base)
+LIKE = {"takes-drift-aa": ("takes-drift-1", 2.0), "takes-aa": ("takes", 2.0)}
 
 
 def cost(code, phase, costs, drift_twice=False):

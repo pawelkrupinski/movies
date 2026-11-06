@@ -357,9 +357,10 @@ on:
                 type: string
                 default: ''
             # THE DRIFT HARNESS'S A/A SELF-TEST (scripts/ci/harness_aa.py; the preflight's `harness-aa`): one more row,
-            # `takes-drift-aa`, replaying the head twice against itself on the row-1 seeds; red only when the two differ.
+            # `takes-drift-aa`, replaying the head twice against itself on the row-1 seeds; red only when the two differ. And
+            # `takes-aa`: the takes check against itself (identity-takes-check.sh TAKES_AA), red on any take the two differ in.
             harness-aa:
-                description: Add the takes-drift-aa row (the drift harness against itself, twice) -- a push that changed the harness.
+                description: Add the takes-drift-aa and takes-aa rows (the drift and takes harnesses against themselves) -- a push that changed a harness.
                 required: false
                 type: boolean
                 default: false
@@ -459,7 +460,7 @@ jobs:
             # GitHub starts a capped matrix's rows in their listed order, the next when one ends.
             max-parallel: ${{ inputs.max-parallel }}
             matrix:
-                phase: ${{ fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa"' || '')) }}
+                phase: ${{ fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa","takes-aa"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -1088,7 +1089,10 @@ jobs:
             # not fetch).
             - name: Check which listings the code moved to another film
               id: takes
-              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}
+              # THE A/A ROW (`takes-aa`, TAKES_AA; scripts/ci/harness_aa.py): the same check, the head against itself, both
+              # sides in this row, nothing stored; red only on a take the two runs differ in (HARNESS FAULT), and it posts no
+              # status (`identity takes (<cc>)` names the next run's base).
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && (matrix.phase == 'takes' || matrix.phase == 'takes-aa') }}
               shell: bash
               # 25 for the two resolves, 20 for the two unmatched-cluster ratchet replays (the final takes), 10 for the
               # two corpus-shape runs (only when the checks, their allowlists or the identity code changed)
@@ -1109,12 +1113,15 @@ jobs:
                   TAKES_SIDE: head
                   TAKES_BASE_JOB: takes-base (${{ inputs.country }})
                   TAKES_SKIP_MODE: ${{ inputs.takes-skip }}
+                  TAKES_AA: ${{ matrix.phase == 'takes-aa' }}
               run: |
                   . scripts/ci/bounded-step.sh
                   # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
                   # A profiled dispatch: a JFR profile of every JVM the check starts (scripts/ci/jfr-every-jvm.sh).
                   [ "${{ inputs.profile }}" = true ] && . scripts/ci/jfr-every-jvm.sh
                   code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?
+                  # the A/A row's verdict is harness_aa.py's ::error / PASS line in its log: no status, no move to accept
+                  [ "$TAKES_AA" = true ] && exit "$code"
                   case $code in 0) state=success ;; 1) state=failure ;; *) state=error ;; esac
                   # allow-silenced: the status only names the next run's base; failing to post it must not turn the verdict
                   gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$state" \

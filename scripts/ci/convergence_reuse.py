@@ -95,7 +95,7 @@ PHASES_EXPRESSION = (
     "',\"order-independence\"') || '', "
     "inputs.next-day-command != '' && ',\"next-day\"' || '', inputs.mode == 'hermetic' && inputs.takes-row && "
     "',\"takes\",\"takes-base\",\"takes-drift-1\",\"takes-drift-2\"' || '', inputs.mode == 'hermetic' && "
-    "inputs.takes-row && inputs.harness-aa && ',\"takes-drift-aa\"' || '')) }}"
+    "inputs.takes-row && inputs.harness-aa && ',\"takes-drift-aa\",\"takes-aa\"' || '')) }}"
 )
 # A split country's order rows on main: each pass in a row of its own, then the two comparisons (`order-compare`).
 ORDER_SPLIT_ROWS = ["order-independence-p01-pass0", "order-independence-p01-pass1", "order-independence-p12-pass1",
@@ -174,7 +174,7 @@ def matrix_rows(workflow_text):
 def expected_rows(workflow_text):
     """`<phase> (<country>)` of every row main's run expands to: PHASES_EXPRESSION with takes-only false, hermetic, the
     takes rows on (the check's and a drift seed's each) and both order phases (main's order-phases.sh answer). Not the
-    harness's A/A row (`takes-drift-aa`, harness_aa.py): only a push that changed the harness runs it, and no verdict
+    harnesses' A/A rows (`takes-drift-aa`, `takes-aa`, harness_aa.py): only a push that changed the harness runs it, and no verdict
     reused from a landing check is one -- a reused run skips it with every other row."""
     out = []
     for row in matrix_rows(workflow_text):
@@ -284,7 +284,7 @@ def matrix_phases(row, order_phases="both", harness_aa=False):
             phases.append("order-independence")
     if row.get("next-day", ""):
         phases.append("next-day")
-    return phases + ["takes", "takes-base", "takes-drift-1", "takes-drift-2"] + (["takes-drift-aa"] if harness_aa else [])
+    return phases + ["takes", "takes-base", "takes-drift-1", "takes-drift-2"] + (["takes-drift-aa", "takes-aa"] if harness_aa else [])
 
 
 def leg_plan(rows, inputs, order_phases="both", harness_aa=False):

@@ -159,7 +159,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     decide should include("inputs.drift-only != true")
     decide should include("python3 scripts/ci/harness_aa.py decide --head \"$GITHUB_SHA\" --since \"$since\"")
     RepoFile.jobs(workflow)("leg") should include("harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}")
-    leg should include("inputs.harness-aa && ',\"takes-drift-aa\"'")
+    leg should include("inputs.harness-aa && ',\"takes-drift-aa\",\"takes-aa\"'")
   }
 
   // scripts/identity-drift-ci's pre-land check (convergence-failures-2026-10-29 §7.2): the takes-drift rows alone. The

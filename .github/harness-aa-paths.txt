@@ -1,7 +1,9 @@
 # THE DRIFT HARNESS, for its A/A self-test (scripts/ci/harness_aa.py; review 2026-11-06 P5): a push to main changing one
 # of these runs a `takes-drift-aa (<country>)` row in main's convergence -- the harness at the head replayed twice
-# against ITSELF (base = head), its drift and flips TSVs diffed. Nothing a resolver change can move differs between two
-# replays of one commit, so a red there is the harness's own fault. Prefixes, one a line; `#` comments.
+# against ITSELF (base = head), its drift and flips TSVs diffed -- and a `takes-aa (<country>)` row, the takes check
+# (identity-takes-check.sh TAKES_AA) resolving and replaying the head twice, every take compared. Nothing a resolver change
+# can move differs between two runs of one commit, so a red there is the harness's own fault. Prefixes, one a line; `#`
+# comments.
 worker/src/test/scala/scripts/IdentityDrift.scala
 worker/src/test/scala/scripts/IdentityLiveDrift.scala
 worker/src/fixtures/scala/tools/ReplayOrder.scala
@@ -11,3 +13,8 @@ scripts/ci/drift_diff.py
 scripts/ci/drift_seeds.py
 scripts/ci/harness_aa.py
 .github/harness-aa-paths.txt
+# the takes check's harness: the check, its resolve dump, the final takes' ratchet replay and the diff
+scripts/ci/identity-takes-check.sh
+scripts/ci/identity_takes_diff.py
+worker/src/it/scala/IdentityResolveDump.scala
+worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala
