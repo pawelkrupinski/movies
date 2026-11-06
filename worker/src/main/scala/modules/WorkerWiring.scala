@@ -115,11 +115,9 @@ class WorkerWiring(
           new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
           workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
-  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once its
-   *  never-attempted venue page (`pages`) and the questions its own facts put to the families were each attempted, asked
-   *  ahead of the agreement's queue (a question queued behind moved up), and at most `IdentityModelService.MaxHold`. */
-  def identityModelReadiness(pages: services.identity.PageWait): services.identity.ListingReadiness =
-    services.identity.ListingReadiness.all(services.identity.ListingReadiness.ofPage(pages), identityListingReadiness)
+  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): OFF ([[WorkerWiring.ModelReadiness]]). */
+  def identityModelReadiness(@scala.annotation.unused pages: services.identity.PageWait): services.identity.ListingReadiness =
+    WorkerWiring.ModelReadiness
   /** The listings the model's input gate holds, persisted (`identity_pending`): what a take-up resumes. */
   lazy val identityPendingStore: services.identity.adapters.PendingListingStore =
     mongoConnection.database.fold[services.identity.adapters.PendingListingStore](new services.identity.adapters.PendingListingStore.InMemory())(
@@ -631,6 +629,14 @@ class WorkerWiring(
 }
 
 object WorkerWiring {
+  /** The model's input gate, from a listing's page wait and its families' questions: OFF again since 2026-11-06 ~13:35Z --
+   *  every version taken in at once, as before fix 1. With asks moved up and one attempt sufficing (5ec9cf7fc1a9), DE's
+   *  and US's held listings were still taken in only by the 10-minute bound (DE Babylon (Mitte) x4, Murnau-Filmtheater,
+   *  US Lindsay Theater: 5 bound releases, 0 promoted on their answers in the first 13 min): their asks are not answered
+   *  in minutes. Back on, `ListingReadiness.all(ListingReadiness.ofPage(pages), identityListingReadiness)`, once the
+   *  held listings' asks are answered ahead of the bound. The held rows are released by the next take-up. */
+  val ModelReadiness: services.identity.ListingReadiness = services.identity.ListingReadiness.Always
+
   /** `KINOWO_BG_CONCURRENCY`'s compiled-in default (see `backgroundBudget`). */
   val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)
 
