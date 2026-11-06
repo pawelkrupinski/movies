@@ -882,3 +882,9 @@ after they start (de's drift-1 plus its compare). The wall is about 24 min with 
 ~37. Runner-minutes are unchanged (~300-330), since every row is still its own job. Merging the 1-3 min `takes-base`
 rows into others would save ~1 min of setup each but would rename gated jobs. Not done. The remaining floor is the
 German drift row itself (p90 36 min). Splitting its seeds is the drift harness's business.
+
+**Measured** (first main run with it, 42239410325, 200f38091b): green. Each leg started its rows in the listed order
+(Germany's drift-1 1.9 min in, Spain's five one after another), peak 19 jobs at once, 286 runner-min. Every country
+except Germany ended by 21.3 min, as predicted. The wall was 41.1 min because `takes-drift-1 (germany)` itself ran 35.9
+min (its p90). Before, runs whose German drift row ran that long took 44-50 min (42116325192, 42225884509). The German
+drift row is now the whole remaining gap. A median run should land near the predicted ~24 min.
