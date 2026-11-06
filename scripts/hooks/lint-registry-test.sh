@@ -48,4 +48,11 @@ check "...the manifests in place (PREPUSH_GITOPS=1), the @gitops specs too" "yes
   "$(has "$(printf 'scripts/x.sh\n' | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | tr '\n' ' ')" worker:deploy.NodeCpuBudgetSpec)"
 check "every selected spec is a registry row" "" \
   "$(comm -23 <(printf '%s\n' scripts/x.sh worker/src/main/scala/A.scala | PREPUSH_GITOPS=1 scripts/hooks/pre-push --lint-plan | LC_ALL=C sort -u) <(rows | LC_ALL=C sort -u) | tr '\n' ' ' | sed 's/ $//')"
+printf '\033[36m▸\033[0m a row selects its spec for every path the spec reads\n'
+# scripts/hooks/lint-registry-reads.py: the repo paths named by string literals in each registered spec, each put to the
+# hook as a push (a spec reading tools/devpanel/scripts/devpanel.py with an @repo-only row turned Main #2236 red).
+check "no spec reads a path its row would not select (add the path's glob to the row)" "" \
+  "$(python3 scripts/hooks/lint-registry-reads.py | tr '\t\n' ': ' | sed 's/ $//')"
+check "a push of tools/devpanel/scripts/devpanel.py selects DevServerHeapCanarySpec" "yes" \
+  "$(has "$(lints tools/devpanel/scripts/devpanel.py)" worker:deploy.DevServerHeapCanarySpec)"
 spec_summary

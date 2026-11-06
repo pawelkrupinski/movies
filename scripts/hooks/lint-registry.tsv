@@ -11,9 +11,10 @@
 # InMemoryStoresRoundTripSpec matched no name pattern and turned Main red 7 times). scripts/hooks/lint-registry-test.sh
 # fails when a repo-reading spec -- a tools/ No*/*Lint* spec, any deploy/ spec, or one using a source-scan helper
 # (ScalaSourceScan, ModuleSources, RepoRoot, WorkflowText) -- has no row here, or a row names no spec. A new lint spec:
-# add its row. scripts/land-precheck runs the same selection before a change is queued.
-common:models.OgCardAssetsSpec	@repo *.scala
-common:models.UkPagesSpec	@repo
+# add its row, and a glob for every path outside @repo that it reads (scripts/hooks/lint-registry-reads.py finds them
+# from its string literals; the test fails on a miss). scripts/land-precheck runs the same selection before a change is queued.
+common:models.OgCardAssetsSpec	@repo *.scala web/src/main/assets/img/*
+common:models.UkPagesSpec	@repo data/uk/*
 common:services.PersistedCodecsLintSpec	@repo *.scala
 common:services.movies.ListingKeyWritePathLintSpec	@repo *.scala
 common:services.movies.SideCollectionDeleteOwnershipSpec	@repo *.scala
@@ -28,92 +29,92 @@ scrapers:services.cinemas.NoWallClockInClientsSpec	*
 web:deploy.GrafanaWebMetricCoverageSpec	*
 web:deploy.LogbackVersionParitySpec	@repo
 web:deploy.PlayVersionParitySpec	@repo
-web:deploy.WebMetricsAtBootSpec	@repo *.scala
+web:deploy.WebMetricsAtBootSpec	@repo *.scala infra/test/app-metrics-catalogue/* web/src/main/resources/routes
 web:tools.NoEnvCountryOutsideWiringSpec	@repo *.scala
 worker:deploy.ActionPinningSpec	@repo
 worker:deploy.ActionsCachePruneWiringSpec	@repo
 worker:deploy.AlertIsNotRedSpec	@repo
-worker:deploy.AllowListRatchetSpec	@repo
-worker:deploy.AndroidBuildCacheVersionCodeSpec	@repo
+worker:deploy.AllowListRatchetSpec	@repo test/resources/fixtures/*
+worker:deploy.AndroidBuildCacheVersionCodeSpec	@repo android/app/build.gradle.kts infra/version-dashboard/src/mobile-release/release.ts
 worker:deploy.AotCacheOptionsSpec	@gitops
 worker:deploy.BotPullRequestBranchSpec	@repo
 worker:deploy.CacheSavePolicySpec	@repo
-worker:deploy.ChangeStreamSilenceAlertSpec	@gitops
+worker:deploy.ChangeStreamSilenceAlertSpec	@gitops infra/nix/files/monitoring/rules/*
 worker:deploy.CiDispatchOrderSpec	@repo
 worker:deploy.CiImageMirrorSpec	@repo
 worker:deploy.CiRowScopeSpec	@repo
 worker:deploy.CiRowTimeoutSpec	@repo
 worker:deploy.CiRunnerBudgetSpec	@repo
-worker:deploy.CinemaScrapeStalenessAlertSpec	@gitops
+worker:deploy.CinemaScrapeStalenessAlertSpec	@gitops infra/nix/files/monitoring/* infra/nix/modules/roles/prometheus.nix
 worker:deploy.CompositeActionStepKeysSpec	@repo
 worker:deploy.ConvergenceBisectEmptyPlanSpec	@repo
 worker:deploy.ConvergenceBisectPermissionsSpec	@repo
 worker:deploy.ConvergenceBisectTriggerSpec	@repo
 worker:deploy.ConvergenceConcurrencyConfigSpec	@repo
 worker:deploy.ConvergenceFillWiringSpec	@repo
-worker:deploy.ConvergenceLegWiringSpec	@repo *.scala
+worker:deploy.ConvergenceLegWiringSpec	@repo *.scala infra/nix/modules/roles/mongo-ci-read.nix
 worker:deploy.ConvergencePublishMainOnlySpec	@repo
 worker:deploy.ConvergenceReuseSpec	@repo
 worker:deploy.ConvergenceRunnerMemorySpec	@repo
 worker:deploy.DebugMirrorListSpec	@repo
 worker:deploy.DeployImageReuseSpec	@repo
-worker:deploy.DevServerHeapCanarySpec	@repo
-worker:deploy.DiscoveryPullRequestArtefactsSpec	@repo *.scala
+worker:deploy.DevServerHeapCanarySpec	@repo tools/devpanel/*
+worker:deploy.DiscoveryPullRequestArtefactsSpec	@repo *.scala android/app/src/main/* data/uk/* ios/Kinowo/*
 worker:deploy.E2eShardCoverageSpec	@repo *.scala
 worker:deploy.FixtureServerBootOverlapSpec	-	boots a fixture server: not a file lint
 worker:deploy.FleetDatabaseConfigSpec	@gitops
 worker:deploy.FluxImageAutomationSpec	@gitops
 worker:deploy.GitHubRunnerLabelSpec	@repo
-worker:deploy.GrafanaAnnotationSsoBypassSpec	@repo
+worker:deploy.GrafanaAnnotationSsoBypassSpec	@repo infra/nix/hosts/monitoring-1/default.nix infra/nix/modules/roles/public-proxy.nix
 worker:deploy.GrafanaCityEmptyQualifierSpec	@repo
-worker:deploy.GrafanaCorpusIntegritySpec	@repo
+worker:deploy.GrafanaCorpusIntegritySpec	@repo infra/nix/files/monitoring/grafana/dashboards/*
 worker:deploy.GrafanaEnrichmentSourceAlertSpec	@repo
 worker:deploy.GrafanaFieldMatcherIdSpec	@repo
-worker:deploy.GrafanaGcChartsSpec	@repo
+worker:deploy.GrafanaGcChartsSpec	@repo infra/nix/files/monitoring/grafana/dashboards/*
 worker:deploy.GrafanaIdleRatioSpec	@repo
 worker:deploy.GrafanaMetricCoverageSpec	*
-worker:deploy.GrafanaQueryBurstSpec	@repo
+worker:deploy.GrafanaQueryBurstSpec	@repo infra/nix/files/monitoring/grafana/dashboards/*
 worker:deploy.GrafanaRetiredRuleSpec	@repo
 worker:deploy.GrafanaServedSwingCorpusDiscriminantSpec	@repo
 worker:deploy.GrafanaServedSwingScopeSpec	@repo
 worker:deploy.GrafanaShowtimeVolumeAlertSpec	@repo
-worker:deploy.GrafanaStackOrderSpec	@repo
+worker:deploy.GrafanaStackOrderSpec	@repo infra/nix/files/monitoring/grafana/dashboards/*
 worker:deploy.HermeticConvergenceWiringSpec	@repo
-worker:deploy.IdentityCaptureWorkflowSpec	@repo
+worker:deploy.IdentityCaptureWorkflowSpec	@repo test/resources/fixtures/identity-unmatched/*
 worker:deploy.IdentityCiStalenessWorkflowSpec	@repo
-worker:deploy.IdentityDecorationsWorkflowSpec	@repo *.scala
+worker:deploy.IdentityDecorationsWorkflowSpec	@repo *.scala identity/src/main/resources/identity-decorations.json
 worker:deploy.IdentityFamilyExplorerWorkflowSpec	@repo
-worker:deploy.IdentityFindingsReportWorkflowSpec	@repo
+worker:deploy.IdentityFindingsReportWorkflowSpec	@repo test/resources/fixtures/identity-judgements.tsv
 worker:deploy.IdentityModelConvergenceWiringSpec	@repo
 worker:deploy.IdentityRefitWorkflowSpec	@repo
 worker:deploy.IdentitySliceOldRefGateSpec	@repo
 worker:deploy.JdkVersionParitySpec	@repo
 worker:deploy.JunitReportNoCheckRunSpec	@repo
-worker:deploy.K8sDeployKubeconfigAccessSpec	@repo
+worker:deploy.K8sDeployKubeconfigAccessSpec	@repo infra/nix/modules/roles/k3s-server.nix infra/nix/modules/roles/k8s-deploy.nix
 worker:deploy.K8sTierPathGatingSpec	@gitops
 worker:deploy.KickConvergenceWiringSpec	@repo
 worker:deploy.LandingCheckSplitSpec	@repo
 worker:deploy.LegVerdictWiringSpec	@repo
 worker:deploy.MainAfterRedCiSpec	@repo
 worker:deploy.MongoGrantsListSpec	@repo
-worker:deploy.MongoServerVersionParitySpec	@repo
+worker:deploy.MongoServerVersionParitySpec	@repo infra/nix/modules/roles/mongodb.nix
 worker:deploy.NoExitStatusReadUnderErrexitSpec	@repo
-worker:deploy.NoSettingFallbackSpec	@repo
+worker:deploy.NoSettingFallbackSpec	@repo infra/bin/*
 worker:deploy.NoSilencedGhCurlSpec	*
-worker:deploy.NoTestRerunSpec	@repo
+worker:deploy.NoTestRerunSpec	@repo android/*.gradle.kts android/app/build.gradle.kts ios/Kinowo.xcodeproj/* page-tests-playwright/*
 worker:deploy.NodeCpuBudgetSpec	@gitops
-worker:deploy.NodeMemoryBudgetSpec	@gitops
+worker:deploy.NodeMemoryBudgetSpec	@gitops infra/nix/files/host-memory.json
 worker:deploy.OneSbtPathSpec	@repo
 worker:deploy.OrderIndependenceSeedSpec	@repo
 worker:deploy.OverdueIsNotRedSpec	@repo
-worker:deploy.PaceReportVisibilityConfigSpec	@repo *.scala
+worker:deploy.PaceReportVisibilityConfigSpec	@repo *.scala worker/src/main/resources/logback-base.xml
 worker:deploy.PageTestShardCoverageSpec	@repo
 worker:deploy.PaidEgressWorkflowSpec	@repo
 worker:deploy.PerformanceBudgetArtifactsSpec	@repo *.scala
-worker:deploy.PlaywrightRunCostSpec	@repo
+worker:deploy.PlaywrightRunCostSpec	@repo page-tests-playwright/playwright.config.ts
 worker:deploy.PlaywrightWorkerBudgetSpec	@repo
 worker:deploy.PreflightWiringSpec	@repo
-worker:deploy.PrometheusNodePortAgreementSpec	@gitops
+worker:deploy.PrometheusNodePortAgreementSpec	@gitops infra/nix/modules/roles/prometheus.nix
 worker:deploy.RecordCorpusInLegWiringSpec	@repo *.scala
 worker:deploy.RecordingPreflightWiringSpec	@repo
 worker:deploy.RegistryNameSpec	@repo
@@ -126,9 +127,9 @@ worker:deploy.SbtTargetCacheJarsSpec	@repo
 worker:deploy.ScheduledRunReportSpec	@repo
 worker:deploy.SelfHostedRunnersSpec	@repo
 worker:deploy.SetupSbtRunnerPinSpec	@repo
-worker:deploy.SharedFileLayoutSpec	@repo
+worker:deploy.SharedFileLayoutSpec	@repo docs/* test/resources/fixtures/*
 worker:deploy.SharedJdkSetupSpec	@repo
-worker:deploy.SharedMachineStateLintSpec	@repo *.scala
+worker:deploy.SharedMachineStateLintSpec	@repo *.scala infra/version-dashboard/test/* ios/Tests/*
 worker:deploy.SharedSbtBuildSetupSpec	@repo *.scala
 worker:deploy.SharedUsersDatabaseConfigSpec	@gitops
 worker:deploy.StressAndEmulatorScheduleSpec	@repo *.scala
@@ -138,13 +139,13 @@ worker:deploy.UnitTestSplitSpec	@repo *.scala
 worker:deploy.UpstreamRunSpec	@repo
 worker:deploy.WebRolloutAvailabilitySpec	@gitops
 worker:deploy.WorkerDurableDiagnosticsConfigSpec	@repo
-worker:deploy.WorkerMetricsAtBootSpec	@repo
+worker:deploy.WorkerMetricsAtBootSpec	@repo infra/test/app-metrics-catalogue/*
 worker:deploy.WorkerRolloutStaggerSpec	@gitops
-worker:deploy.WorkerScrapeCadenceConfigSpec	@gitops
+worker:deploy.WorkerScrapeCadenceConfigSpec	@gitops infra/nix/files/monitoring/grafana/dashboards/*
 worker:deploy.WorkflowConcurrencyConventionSpec	@repo
 worker:deploy.WorkflowPlanSpec	@repo
-worker:deploy.WorkflowScriptsRunnableSpec	@repo
-worker:scripts.ToolCommandLinesSpec	@repo *.scala
+worker:deploy.WorkflowScriptsRunnableSpec	@repo android/gradlew
+worker:scripts.ToolCommandLinesSpec	@repo *.scala test/resources/fixtures/*
 worker:tools.ClientReadsThroughHttpReadSpec	@repo *.scala
 worker:tools.CollectionRetentionSpec	@repo *.scala
 worker:tools.DetailPageReadLintSpec	@repo *.scala
@@ -180,7 +181,7 @@ worker:tools.NoUnguardedReadModifyWriteSpec	@repo *.scala
 worker:tools.NoUnmanagedWiringExecutorSpec	@repo *.scala
 worker:tools.NoWallClockInTestsSpec	*
 worker:tools.PerformanceBudgetsSpec	@repo *.scala
-worker:tools.RegisteredCollectionListsSpec	@repo *.scala
-worker:tools.RenderSafetyLintSpec	@repo *.scala
+worker:tools.RegisteredCollectionListsSpec	@repo *.scala docs/fleet-database-migration.md
+worker:tools.RenderSafetyLintSpec	@repo *.scala web/src/main/twirl/*
 worker:tools.ScalaSourceScanSpec	@repo *.scala
 worker:tools.SourceTokenTablesSpec	@repo *.scala
