@@ -94,6 +94,19 @@ jobs 900 "takes-drift-2 (germany):completed:success"
 drift green --for-red 3726
 check "--for-red <id>: the same rows; every one green is DRIFT CLEAN, exit 0" "0 DRIFT CLEAN" "$(cat "$work/green.rc") $(tail -1 "$work/green.out")"
 
+# AN EXTRA ROW (drift_seeds.py rows_of: Germany's seed 581 on a takes-drift-3 of its own): no pin reaches it, so its red
+# is replayed on the fixed seeds, every German row with it
+rm -f "$work/state/dispatches"
+jobs 3726 "takes-drift-3 (germany):completed:failure"
+artifact 3726 de 3 0 1 581
+jobs 900 "takes-drift-1 (germany):completed:success" "takes-drift-2 (germany):completed:success" "takes-drift-3 (germany):completed:failure"
+artifact 900 de 3 0 1 581
+drift extra --for-red 3726
+check "--for-red on an extra row: dispatched unpinned, every row on its fixed seeds" "true" \
+  "$(grep -q -- '-f drift-only=true -f takes-countries=de$' "$work/state/dispatches" && echo true || echo false)"
+check "...and the extra row judged with the others: still red, DRIFT RED" "1 true" \
+  "$(cat "$work/extra.rc") $(tail -1 "$work/extra.out" | grep -q 'takes-drift-3 (germany)' && echo true || echo false)"
+
 # A PARTIAL FIX (5df3295bd: PL's flips cleared, DE seed 2's stayed): fewer in one row, more in none, is progress
 jobs 3726 "takes-drift-2 (germany):completed:failure" "takes-drift-1 (united-kingdom):completed:failure"
 artifact 3726 de 2 0 2; artifact 3726 uk 1 1 3

@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 # FIXED DRIFT SEEDS (the owner, 2026-11-04: "a gate that only fails on what the change adds"; supersedes the rotating seeds
-# of 2026-10-31). Each convergence leg keeps its two incremental = whole rows, `takes-drift-1 (<country>)` and
+# of 2026-10-31). Each convergence leg keeps its incremental = whole rows, `takes-drift-1 (<country>)` and
 # `takes-drift-2 (<country>)` -- the job NAMES stay, the gate, agentctl and the ruleset match them -- and each row replays
 # the COMMITTED seeds test/resources/fixtures/drift-gate-seeds.tsv assigns it for its country, the same on every run.
+# A country whose seeds take longer than a row may (a German seed is a 10-20 minute row) spreads them over further rows,
+# `takes-drift-3 (<country>)` and on, by naming the row in the file (rows_of): the preflight plans every row a country
+# has (convergence_reuse.py drift_phases, convergence_slots.py packs them into 20 runners); a pin reaches rows 1 and 2
+# alone. A new row is a new job name: it lands `unproven` in .github/gating-checks.tsv.
 # Rotating seeds made the gate a random sampler of old defects: a flip that had always been there failed whichever
 # unrelated commit drew its seed (3 of 7 red streaks to 2026-11-04 ended with no identity change). Fixed seeds make
 # a row's verdict a property of the change (scripts/ci/identity-drift-check.sh judges it against its BASE on the same
@@ -26,10 +30,13 @@
 #                                       row's fixed set)
 #   drift_seeds.py seeds --cc CC --row 1|2 [--pins P] [--file TSV]
 #                                       the seeds that row replays, space-separated: its pin, else its fixed set
+#   drift_seeds.py rows --cc CC [--pins P] [--file TSV]
+#                                       CC's takes-drift rows a run replays, space-separated (rows_of): 1 2 and any further
+#                                       row the file names; a pinned dispatch's pinned rows alone
 #   drift_seeds.py gate --cc CC [--file TSV]
 #                                       every fixed seed of CC, space-separated
 #   drift_seeds.py add --cc CC --seed S --why TEXT [--date YYYY-MM-DD] [--file TSV]
-#                                       append S to CC's fixed set, on the row holding fewer (no-op when already there)
+#                                       append S to CC's fixed set, on the row of CC's holding fewest (no-op when there)
 #   drift_seeds.py pins P               P normalised to `S1,S2` (either side may be empty); exit 2 when malformed
 #   drift_seeds.py slices <cc> <fixtures dir> <tsv>...
 #                                       the committed drift slices (test/resources/fixtures/drift-slices/<cc>/<name>/)
@@ -88,8 +95,8 @@ def read_set(path: str | None = None) -> list[dict]:
     with open(path or SEEDS_FILE, newline="") as f:
         lines = [line for line in f if line.strip() and not line.startswith("#")]
     for row in csv.DictReader(lines, delimiter="\t"):
-        if not row.get("seed", "").strip().isdigit() or row.get("row", "").strip() not in ("1", "2"):
-            raise ValueError(f"drift-gate-seeds: every row names a country, a positive seed and row 1 or 2: {row}")
+        if not row.get("seed", "").strip().isdigit() or not row.get("row", "").strip().isdigit() or int(row["row"]) < 1:
+            raise ValueError(f"drift-gate-seeds: every row names a country, a positive seed and a row 1, 2, ...: {row}")
         rows.append({k: (row.get(k) or "").strip() for k in COLUMNS})
     return rows
 
@@ -103,10 +110,21 @@ def fixed(cc: str, row: int | None = None, path: str | None = None) -> list[int]
     return out
 
 
+def rows_of(cc: str, path: str | None = None, pins: str | None = "") -> list[int]:
+    """CC's takes-drift rows: 1 and 2 always, and every further row the file assigns a seed (a country whose seeds take
+    longer than a row should, Germany's, spreads them over more rows: convergence_slots.py packs them). A pinned dispatch
+    runs the rows its pins name alone -- a pin reaches rows 1 and 2, never an extra row."""
+    if parse_pins(pins) != (None, None):
+        return [r for r, pin in zip(ROWS, resolve(1, pins)) if pin is not None]
+    return sorted(set(ROWS) | {int(r["row"]) for r in read_set(path) if r["country"] == cc})
+
+
 def seeds_of_row(cc: str, row: int, pins: str | None = "", path: str | None = None) -> list[int]:
     """What row `row` replays: its pin, else its fixed set."""
+    if row not in rows_of(cc, path):
+        raise ValueError(f"row {row}: {cc}'s takes-drift rows are {', '.join(map(str, rows_of(cc, path)))}")
     if row not in ROWS:
-        raise ValueError(f"row {row}: takes-drift-1 or takes-drift-2")
+        return [] if parse_pins(pins) != (None, None) else fixed(cc, row, path)
     pinned = resolve(1, pins)[row - 1]
     if pinned is not None:
         return [pinned]
@@ -116,12 +134,14 @@ def seeds_of_row(cc: str, row: int, pins: str | None = "", path: str | None = No
 
 
 def add(cc: str, seed: int, why: str, date: str, path: str | None = None) -> bool:
-    """Append `seed` to CC's fixed set, on the row holding fewer of CC's seeds (row 1 on a tie); False when there."""
+    """Append `seed` to CC's fixed set, on the row of CC's (rows_of) holding fewest of its seeds (the lowest on a tie);
+    False when there."""
     path = path or SEEDS_FILE
     if seed in fixed(cc, None, path):
         return False
-    counts = {r: len(fixed(cc, r, path)) for r in ROWS}
-    row = min(ROWS, key=lambda r: (counts[r], r))
+    rows = rows_of(cc, path)
+    counts = {r: len(fixed(cc, r, path)) for r in rows}
+    row = min(rows, key=lambda r: (counts[r], r))
     with open(path) as f:
         text = f.read()
     with open(path, "a") as f:
@@ -177,7 +197,7 @@ def options(argv):
 
 def main(argv):
     if not argv:
-        print("usage: drift_seeds.py outputs|seeds|gate|add|pins|slices ... (see the header)", file=sys.stderr)
+        print("usage: drift_seeds.py outputs|seeds|rows|gate|add|pins|slices ... (see the header)", file=sys.stderr)
         return 2
     command, (opts, rest) = argv[0], options(argv[1:])
     try:
@@ -188,6 +208,9 @@ def main(argv):
             return 0
         if command == "seeds":
             print(" ".join(map(str, seeds_of_row(opts["cc"], int(opts["row"]), opts.get("pins", ""), opts.get("file")))))
+            return 0
+        if command == "rows":
+            print(" ".join(map(str, rows_of(opts["cc"], opts.get("file"), opts.get("pins", "")))))
             return 0
         if command == "gate":
             print(" ".join(map(str, fixed(opts["cc"], None, opts.get("file")))))

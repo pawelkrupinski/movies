@@ -100,10 +100,26 @@ class MainsRunTest(unittest.TestCase):
         self.assertLessEqual(sum(r["max-parallel"] for r in matrix["include"]), slots.RUNNERS)
         self.assertEqual(slots.cost("xx", "takes-drift-aa", {("xx", "takes-drift-1"): 10.0}), 20.0)
 
-    def test_a_takes_or_drift_only_run_keeps_the_legs_own_expression_and_no_cap(self):
-        for over in ({"INPUT_TAKES_ONLY": "true"}, {"INPUT_DRIFT_ONLY": "true"}):
-            matrix = self.matrix(reuse.leg_inputs(over))
-            self.assertEqual({(r["phases"], r["max-parallel"]) for r in matrix["include"]}, {("", slots.UNCAPPED)})
+    def test_a_takes_only_run_keeps_the_legs_own_expression_and_no_cap(self):
+        matrix = self.matrix(reuse.leg_inputs({"INPUT_TAKES_ONLY": "true"}))
+        self.assertEqual({(r["phases"], r["max-parallel"]) for r in matrix["include"]}, {("", slots.UNCAPPED)})
+
+    def test_a_drift_only_run_plans_every_drift_row_a_country_has_and_a_pinned_one_its_pinned_rows(self):
+        matrix = self.matrix(reuse.leg_inputs({"INPUT_DRIFT_ONLY": "true"}))
+        for r in matrix["include"]:
+            self.assertEqual(sorted(json.loads(r["phases"])),
+                             sorted(f"takes-drift-{n}" for n in reuse.drift_seeds.rows_of(r["code"])))
+        pinned = dict(reuse.leg_inputs({"INPUT_DRIFT_ONLY": "true"}), **{"drift-seed-1": "", "drift-seed-2": "40"})
+        self.assertEqual({r["phases"] for r in self.matrix(pinned)["include"]}, {'["takes-drift-2"]'})
+
+    def test_no_drift_row_of_main_is_slower_than_the_other_countries_end(self):
+        """Germany's seeds are spread over rows so its slowest drift row ends no later than the rest of the run."""
+        costs = slots.read_costs()
+        plan = reuse.leg_plan(reuse.matrix_rows(WORKFLOW), reuse.leg_inputs({}))
+        drift = max(slots.cost(c, p, costs) for c, s in plan.items() for p in s["phases"] if p.startswith("takes-drift-"))
+        others = max(slots.cost(c, p, costs) for c, s in plan.items() for p in s["phases"]
+                     if not p.startswith("takes-drift-"))
+        self.assertLessEqual(drift, max(others, 20.0))
 
     def test_every_row_main_runs_has_a_measured_cost(self):
         costs = slots.read_costs()

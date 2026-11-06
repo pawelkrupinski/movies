@@ -45,6 +45,7 @@ job	identity-model-convergence.yml	takes (germany)	2691
 job	identity-model-convergence.yml	takes-base (germany)	unproven	the takes check's base side on main (2026-11-02, rows under 8 min); owner: convergence
 job	identity-model-convergence.yml	takes-drift-1 (germany)	2691
 job	identity-model-convergence.yml	takes-drift-2 (germany)	2691
+job	identity-model-convergence.yml	takes-drift-3 (germany)	unproven	Germany's seed 581 in a drift row of its own, so no drift row is the run's critical path (2026-11-06, convergence_slots.py); owner: convergence
 job	identity-model-convergence.yml	takes-drift-aa (germany)	unproven	the drift harness's A/A self-test, only on a push changing the harness (review 2026-11-06 P5, scripts/ci/harness_aa.py); owner: convergence
 job	identity-model-convergence.yml	takes-aa (germany)	unproven	the takes check's A/A self-test, the head against itself, only on a push changing a harness (scripts/ci/harness_aa.py takes); owner: convergence
 job	identity-model-convergence.yml	leg (poland)	aggregate

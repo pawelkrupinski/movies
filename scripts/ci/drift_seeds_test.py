@@ -65,6 +65,25 @@ class FixedSetTest(unittest.TestCase):
         self.assertEqual(ds.fixed("pl", None, self.path), [3])
         self.assertEqual(ds.fixed("pl", 1, self.path), [3])
 
+    def test_a_country_may_hold_more_rows_than_two_each_replaying_its_own_seeds(self):
+        with open(self.path, "a") as f:
+            f.write("de\t581\t3\t2026-11-06\tEs\n")
+        self.assertEqual(ds.rows_of("de", self.path), [1, 2, 3])
+        self.assertEqual(ds.rows_of("es", self.path), [1, 2])  # rows 1 and 2 always, an empty one replaying nothing
+        self.assertEqual(ds.seeds_of_row("de", 3, "", self.path), [581])
+        self.assertEqual(ds.fixed("de", None, self.path), [8, 64, 581])
+        # a pin reaches rows 1 and 2 alone: a pinned dispatch replays its pins, never an extra row's set
+        self.assertEqual(ds.seeds_of_row("de", 3, "37,38", self.path), [])
+        self.assertEqual(ds.rows_of("de", self.path, pins="37,38"), [1, 2])
+        self.assertEqual(ds.rows_of("de", self.path, pins=",38"), [2])
+        with self.assertRaises(ValueError):
+            ds.seeds_of_row("de", 4, "", self.path)
+        # `add` spreads over every row the country has
+        self.assertTrue(ds.add("de", 9, "Kino | X", "2026-11-07", self.path))
+        self.assertTrue(ds.add("de", 10, "Kino | Y", "2026-11-07", self.path))
+        self.assertTrue(ds.add("de", 11, "Kino | Z", "2026-11-07", self.path))
+        self.assertEqual([len(ds.fixed("de", r, self.path)) for r in (1, 2, 3)], [2, 2, 2])
+
     def test_malformed_row(self):
         with open(self.path, "a") as f:
             f.write("de\tx\t1\t\t\n")
@@ -91,8 +110,13 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(self.run_script("seeds", "--cc", "de", "--row", "1", "--pins", "37,38").stdout.strip(), "37")
         self.assertTrue(self.run_script("seeds", "--cc", "de", "--row", "1").stdout.strip())
 
+    def test_rows_of_a_country(self):
+        self.assertEqual(self.run_script("rows", "--cc", "de").stdout.split()[:2], ["1", "2"])
+        self.assertEqual(self.run_script("rows", "--cc", "de", "--pins", "5,").stdout.split(), ["1"])
+
     def test_malformed_exits_2(self):
-        self.assertEqual(self.run_script("seeds", "--cc", "de", "--row", "3").returncode, 2)
+        self.assertEqual(self.run_script("seeds", "--cc", "de", "--row", "9").returncode, 2)
+        self.assertEqual(self.run_script("seeds", "--cc", "de", "--row", "0").returncode, 2)
         self.assertEqual(self.run_script("pins", "x").returncode, 2)
         self.assertEqual(self.run_script("pins", "5").stdout.strip(), "5,")
 

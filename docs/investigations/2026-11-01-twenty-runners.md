@@ -888,3 +888,12 @@ German drift row itself (p90 36 min). Splitting its seeds is the drift harness's
 except Germany ended by 21.3 min, as predicted. The wall was 41.1 min because `takes-drift-1 (germany)` itself ran 35.9
 min (its p90). Before, runs whose German drift row ran that long took 44-50 min (42116325192, 42225884509). The German
 drift row is now the whole remaining gap. A median run should land near the predicted ~24 min.
+
+### No drift row on the critical path (2026-11-06, later)
+
+`takes-drift-1 (germany)` had held two seeds since the explorer added 581 to it that morning. Seed 8 alone is a 15-21 min
+row, and 8 plus 581 took 19-36 min. Seed 581 now has a row of its own, `takes-drift-3 (germany)`. A country may name
+further rows in `drift-gate-seeds.tsv` (`drift_seeds.py rows_of`), and the preflight plans every row a country has, for
+main's suite and for drift-only dispatches alike. The seed set and the per-seed verdicts are unchanged. A pin reaches rows
+1 and 2 only. `identity-drift-ci --for-red` on an extra row's red replays every row of that country on its fixed seeds.
+The plan: de 5 slots, and the rows end ~20.4 min after they start (seed 8's row 19.0 is the longest), within 20 runners.

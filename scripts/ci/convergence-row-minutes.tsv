@@ -1,5 +1,7 @@
 # Each convergence row's median job minutes (setup and post-steps included) over main's runs 42225884509, 42220461627, 42214455368, 42211387332, 42207815403, 42202625450, 42192307612, 42189653175, 42181527784, 42123755281, 42116325192, 42112839746;
-# scripts/ci/convergence_slots.py `costs` writes it, `plan` reads it.
+# scripts/ci/convergence_slots.py `costs` writes it, `plan` reads it. By hand until `costs` runs again (2026-11-06): de
+# takes-drift-1 is seed 8 alone (its runs before seed 581 joined it: 42123755281, 42181527784, 42189653175), de takes-drift-3
+# (seed 581, a row of its own) an estimate, a single German seed's row (takes-drift-2's ~10).
 code	phase	minutes	runs
 de	convergence	10.8	12
 de	order-independence-p01	1.4	12
@@ -10,7 +12,8 @@ de	order-independence-p12-pass1	7.6	12
 de	order-independence-p12-pass2	7.6	12
 de	takes	8.0	12
 de	takes-base	1.6	12
-de	takes-drift-1	20.4	12
+de	takes-drift-1	19.0	3
+de	takes-drift-3	10.0	0
 de	takes-drift-2	9.8	12
 es	convergence	3.7	12
 es	takes	4.5	12

@@ -168,8 +168,10 @@ class JudgeTest(unittest.TestCase):
 class RowsTest(unittest.TestCase):
     def test_main_runs_every_country_with_both_order_phases_next_day_and_takes(self):
         # 34 until 2026-11-02, when each of the four split countries' order passes took a row of its own (+4 each), the
-        # two comparisons keeping the two-pass rows' names
-        self.assertEqual(len(ROWS), 50)
+        # two comparisons keeping the two-pass rows' names; 51 since 2026-11-06, Germany's third drift row (seed 581 a row
+        # of its own: drift_seeds.rows_of)
+        self.assertEqual(len(ROWS), 51)
+        self.assertIn("takes-drift-3 (germany)", ROWS)
         for p in ("p01-pass0", "p01-pass1", "p12-pass1", "p12-pass2"):
             for country in ("poland", "germany", "united-kingdom", "united-states"):
                 self.assertIn(f"order-independence-{p} ({country})", ROWS)
@@ -404,6 +406,11 @@ class NoFalseGreen(unittest.TestCase):
     def test_a_skipped_takes_row_is_no_verdict(self):
         jobs = [dict(j, conclusion="skipped") if j["name"] == "takes (united-kingdom)" else j for j in green_jobs()]
         self.assertEqual(len(reuse.incomplete(jobs, ROWS)), 1)
+
+    def test_an_extra_drift_row_is_judged_like_the_first_two(self):
+        jobs = [j for j in green_jobs() if j["name"] != "takes-drift-3 (germany)"]
+        self.assertEqual(reuse.incomplete(jobs, ROWS), ["`takes-drift-3 (germany)` did not run"])
+        self.assertIn("takes-drift-3 (germany)\tcompleted\tsuccess", reuse.drift_rows(green_jobs()))
 
     def test_a_missing_or_cancelled_drift_row_is_no_verdict(self):
         jobs = [j for j in green_jobs() if j["name"] != "takes-drift-1 (poland)"]

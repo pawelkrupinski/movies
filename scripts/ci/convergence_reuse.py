@@ -284,15 +284,26 @@ def matrix_phases(row, order_phases="both", harness_aa=False):
             phases.append("order-independence")
     if row.get("next-day", ""):
         phases.append("next-day")
-    return phases + ["takes", "takes-base", "takes-drift-1", "takes-drift-2"] + (["takes-drift-aa", "takes-aa"] if harness_aa else [])
+    return phases + ["takes", "takes-base"] + drift_phases(row["code"]) + (["takes-drift-aa", "takes-aa"] if harness_aa else [])
+
+
+def drift_phases(code, pins=""):
+    """The country's takes-drift rows (drift_seeds.rows_of): 1 and 2, and any further row its fixed seeds are spread
+    over; a pinned dispatch's pinned rows alone."""
+    return [f"takes-drift-{r}" for r in drift_seeds.rows_of(code, pins=pins)]
 
 
 def leg_plan(rows, inputs, order_phases="both", harness_aa=False):
     """Main's suite in 20 runners (convergence_slots.plan): each country's rows longest first and its share of the
-    runners; {} for a takes-only or drift-only run (at most two rows a country: the leg's own expression, no cap)."""
-    if inputs.get("takes-only") == "true" or inputs.get("drift-only") == "true":
+    runners. A drift-only run plans its takes-drift rows alike (every row a country has, or the pinned ones); a
+    takes-only run gets {} (two rows a country: the leg's own expression, no cap)."""
+    if inputs.get("takes-only") == "true":
         return {}
     costs = convergence_slots.read_costs()
+    if inputs.get("drift-only") == "true":
+        pins = ",".join(inputs.get(k, "") for k in SEED_KEYS)
+        return convergence_slots.plan({r["code"]: drift_phases(r["code"], pins) for r in rows}, costs,
+                                      drift_twice=inputs.get("drift-twice") == "true")
     twice = inputs.get("drift-twice") == "true"
     split = {r["code"] for r in rows if r.get("order", "") and _true(r.get("order-split", "false"))}
     compares = convergence_slots.COMPARE_PHASES[:1] if order_phases == "one" else convergence_slots.COMPARE_PHASES
@@ -375,7 +386,7 @@ def jobs_by_name(jobs):
     return out
 
 
-DRIFT_ROW = re.compile(r"^takes-drift-[12] \(")
+DRIFT_ROW = re.compile(r"^takes-drift-[0-9]+ \(")
 
 
 def drift_rows(jobs):
@@ -433,7 +444,8 @@ def judge(source_run, jobs, facts, mine):
 
 # ── no false green ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-VERDICT_PHASES = ("takes", "takes-drift-1", "takes-drift-2")
+# the takes check and every fixed-seed drift row (takes-drift-1, -2, and any further row drift_seeds.rows_of names)
+VERDICT_ROW = re.compile(r"^(takes|takes-drift-[0-9]+) \(")
 DECIDED = ("success", "failure")
 
 
@@ -449,7 +461,7 @@ def incomplete(jobs, rows, reused_from="", inputs=None, order_phases="both"):
            if reason.startswith(("takes-only", "drift-only", "takes-countries", "recording"))] if inputs is not None else []
     result = jobs_by_name(jobs)
     for name in rows:
-        if not name.startswith(tuple(f"{p} (" for p in VERDICT_PHASES)):
+        if not VERDICT_ROW.match(name):
             continue
         job = result.get(name)
         if job is None:

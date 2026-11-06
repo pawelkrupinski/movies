@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-1|2 (<country>)` rows -- "Check that the incremental state ends
+# THE PRE-LAND DRIFT CHECK: a commit's `takes-drift-1|2|... (<country>)` rows -- "Check that the incremental state ends
 # where a whole resolve does" (scripts/ci/identity-drift-check.sh), the step behind 28 of 36 red convergence runs in the
 # week to 2026-10-29 -- run on CI BEFORE the commit lands, and nothing else of the convergence suite.
 #
@@ -158,7 +158,14 @@ if [ -n "$for_red" ]; then
   done <<< "$red_rows"
   # the red's OWN seeds, pinned: a row is held against the seed it failed on, never another (rotating seeds)
   first_red=${red_ids# }; first_red=${first_red%% *}
-  pins=$(pins_of "$first_red" "${seen_rows//,/ }") || die "could not tell which seeds run $for_red's drift rows replayed"
+  if [[ ",$seen_rows," =~ ,([3-9]|[1-9][0-9]+), ]]; then
+    # a pin reaches rows 1 and 2 alone (drift_seeds.py rows_of): a red extra row replays its FIXED seeds, every row of
+    # its country with it -- the seeds the red replayed, since the set is fixed
+    pins=""
+    say "run $for_red's red rows include takes-drift-${BASH_REMATCH[1]}, which no pin reaches: every row replays its fixed seeds"
+  else
+    pins=$(pins_of "$first_red" "${seen_rows//,/ }") || die "could not tell which seeds run $for_red's drift rows replayed"
+  fi
   seeds=$pins
   say "run $for_red's red drift rows: $(tr '\n' ',' <<< "$red_rows" | sed 's/,$//') -> countries $countries, seeds $pins (the red's own)"
 fi
@@ -187,13 +194,13 @@ if [ -n "$against" ]; then
   say "every row held against $base_label${against:+ ($against)}, on its seeds $pins"
 fi
 
-# the rows this run must judge, `takes-drift-<row> (<country>)` a line: both, or the rows the pins name
+# the rows this run must judge, `takes-drift-<row> (<country>)` a line: every row the country has (1, 2 and any further
+# row its fixed seeds are spread over), or the rows the pins name (drift_seeds.py rows)
 expected_rows() {
   local cc r
   for cc in ${countries:-pl de uk es us}; do
-    for r in 1 2; do
-      { [ -z "$pins" ] || { [ "$r" = 1 ] && [ -n "${pins%%,*}" ]; } || { [ "$r" = 2 ] && [ -n "${pins#*,}" ]; }; } \
-        && echo "takes-drift-$r ($(identity_country_name "$cc"))"
+    for r in $(python3 "$here/ci/drift_seeds.py" rows --cc "$cc" --pins "${pins:-}"); do
+      echo "takes-drift-$r ($(identity_country_name "$cc"))"
     done
   done
 }

@@ -77,8 +77,9 @@ class ConvergenceReuseIntegrationSpec extends AnyFlatSpec with Matchers with Scr
   "the rows main expects" should "be the leg's own expansion of main's matrix" in {
     // The judgement models the leg's `phase:` expression; a change to it must change the model with it.
     RepoFile.block(leg, "matrix") should include("phase: " + Seq("python3", Script, "phases-expression").!!.trim)
-    rows should have size 50
-    rows should contain allOf ("order-independence-p01 (germany)", "order-independence-p12 (germany)",
+    // 51 since 2026-11-06: Germany's seed 581 on a third drift row (drift_seeds.py rows_of)
+    rows should have size 51
+    rows should contain allOf ("takes-drift-3 (germany)", "order-independence-p01 (germany)", "order-independence-p12 (germany)",
       "order-independence-p01-pass0 (germany)", "order-independence-p12-pass2 (united-states)",
       "order-independence-p01 (poland)", "next-day (united-states)", "takes (poland)", "takes-base (poland)",
       "takes-drift-2 (poland)", "convergence (spain)")
