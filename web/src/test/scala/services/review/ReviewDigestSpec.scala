@@ -103,6 +103,8 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
     ReviewDigest.judgeCard(cards, item) shouldBe "Rose x tmdb:846864\nright"
     ReviewDigest.judgeCard("", item) shouldBe ""
     ReviewDigest.judgeCardsPath(Paths.get("/w/test/resources/fixtures/identity-judgements.tsv")) shouldBe Paths.get("/w/target/identity-judge/cards.md")
+    // a labels file near the filesystem root has no checkout above it: no failure, only no cards there
+    ReviewDigest.judgeCardsPath(Paths.get("/tmp/identity-judgements.tsv")) shouldBe Paths.get("/target/identity-judge/cards.md")
   }
 
   it should "reopen a known-wrong row the user overrules to right, so the judgements lint still holds" in {

@@ -101,7 +101,8 @@ object ReviewDigest {
 
   /** Where `scripts/identity-judge-cards` writes its cards, in the checkout the labels file belongs to. */
   def judgeCardsPath(labels: Path): Path = {
-    val checkout = Iterator.iterate(labels.toAbsolutePath)(_.getParent).drop(4).next()
+    // the checkout is four levels up (test/resources/fixtures/<file>); a file nearer the root stands in the root's own
+    val checkout = (1 to 4).foldLeft(labels.toAbsolutePath)((path, _) => Option(path.getParent).getOrElse(path))
     checkout.resolve("target/identity-judge/cards.md")
   }
 
