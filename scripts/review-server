@@ -8,17 +8,15 @@
 # origin/main, where scripts/review-commit commits them and `~/bin/agentctl land` lands them.
 #
 #   scripts/review-server [sbt flags...]       # creates/refreshes the worktree, then runs scripts/dev-server.sh in it
-#   scripts/review-server --judgements [--port N]   # ONE page for every take awaiting the owner (AGENT-JUDGED rows and
-#                                                   # review candidates): evidence card, confirm / reject / another film,
-#                                                   # "land my verdicts"; http://127.0.0.1:9100/ (scripts/judgement_review.py)
+# The takes awaiting the owner (AGENT-JUDGED rows and review candidates) are the "Agent-judged" tab of those pages:
+# http://localhost:9000/debug/review/agent-judged -- confirm / reject / another film; land them with scripts/review-commit
+# and ~/bin/agentctl land.
 #
 # REVIEW_WORKTREE overrides the worktree (default: movies-review-labels beside the root checkout, ~/projects/movies-review-labels),
 # REVIEW_BRANCH its branch (default review/labels), REVIEW_BASE what it starts from and is fast-forwarded to while it
 # holds no unlanded commit (default origin/main). Run it from any checkout or worktree of the repository.
 set -euo pipefail
 
-judgements=false
-if [ "${1:-}" = --judgements ]; then judgements=true; shift; fi
 here=$(cd "$(dirname "$0")/.." && pwd)
 root=$(git -C "$here" worktree list --porcelain | sed -n '1s/^worktree //p')
 worktree="${REVIEW_WORKTREE:-$(dirname "$root")/movies-review-labels}"
@@ -42,5 +40,4 @@ fi
 export REVIEW_LABELS_FILE="$worktree/test/resources/fixtures/identity-judgements.tsv"
 echo "[review-server] answers are written to $REVIEW_LABELS_FILE" >&2
 cd "$worktree"
-if $judgements; then exec python3 scripts/judgement_review.py --file "$REVIEW_LABELS_FILE" "$@"; fi
 exec scripts/dev-server.sh "$@"

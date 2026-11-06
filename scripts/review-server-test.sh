@@ -39,7 +39,4 @@ run >/dev/null
 check "a worktree holding answers is not touched" "v2
 answer" "$(cat "$wt/test/resources/fixtures/identity-judgements.tsv")"
 check "...and says what to do" 1 "$(grep -c 'review-commit' "$SCRATCH/err")"
-printf '#!/usr/bin/env python3\nimport sys; print("JUDGEMENTS", *sys.argv[1:])\n' > "$wt/scripts/judgement_review.py"
-check "--judgements runs the judgement page on the worktree's file, not the dev server" \
-  "JUDGEMENTS --file $wt/test/resources/fixtures/identity-judgements.tsv --port 9101" "$(run --judgements --port 9101)"
 spec_summary

@@ -7,7 +7,7 @@ import play.api.mvc._
 import services.identity.ResolverDecision
 import services.review._
 
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 import java.time.{Clock, Instant}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future, blocking}
@@ -129,7 +129,7 @@ class ReviewController(cc: ControllerComponents,
    *  the candidates they flagged — by country, each with its film named (TMDB's title, asked live, when the row files
    *  none) and the answers the other pages post. Reads no mirror: the judgements file, the candidates beside it and
    *  the answers. */
-  def digest(country: Option[String]): Action[AnyContent] = Action {
+  def agentJudged(country: Option[String], kind: Option[String]): Action[AnyContent] = Action {
     devOnly {
       val (labels, labelsError) = readLabels()
       val candidatesPath        = ReviewDigest.candidatesPath(labelsPath)
@@ -138,8 +138,9 @@ class ReviewController(cc: ControllerComponents,
         case Failure(e)    => (Nil, Some(s"could not read $candidatesPath: ${e.getMessage}"))
       }
       val wanted  = country.filterNot(_ == "all").flatMap(Country.byCode).map(_.code)
-      val pending = ReviewDigest.pending(labels, candidates, ReviewDigest.answered(answers.current()))
+      val awaiting = ReviewDigest.pending(labels, candidates, ReviewDigest.answered(answers.current()))
         .filter(i => wanted.forall(_ == i.country))
+      val pending  = ReviewDigest.ofKind(awaiting, kind)
       // a film the row files no title for, named as TMDB names it in the country's language, the films asked side by side
       val unnamed = pending.filter(_.filmTitle.isEmpty).flatMap(i => i.film.tmdb.map(_ -> i.country)).distinct
       val looked  = tmdbPosters.fold(Map.empty[(Int, String), String]) { lookup =>
@@ -148,8 +149,12 @@ class ReviewController(cc: ControllerComponents,
         }.flatMap { case (key, film) => Await.result(film, Duration.Inf).flatMap(_.describe).map(key -> _) }.toMap
       }
       val items   = pending.map(i => if (i.filmTitle.isDefined) i else i.copy(filmTitle = i.film.tmdb.flatMap(id => looked.get(id -> i.country))))
-      Ok(views.html.reviewDigest(ReviewDigestView(country.getOrElse("all"), items, labelsPath,
-        labelsError.toSeq ++ candidatesError ++ notices)))
+      // the evidence `scripts/identity-judge-cards` wrote, when it has
+      val cards   = Try(Files.readString(ReviewDigest.judgeCardsPath(labelsPath))).getOrElse("")
+      Ok(views.html.reviewDigest(ReviewDigestView(country.getOrElse("all"), kind.filter(Set(ReviewDigest.Kinds.Agent, ReviewDigest.Kinds.Candidate)), items,
+        awaiting.count(_.agentVerdict.isDefined), awaiting.count(_.agentVerdict.isEmpty), labelsPath, labelsError.toSeq ++ candidatesError ++ notices,
+        items.map(i => i.id -> ReviewDigest.otherJudgements(labels, i)).toMap,
+        items.flatMap(i => Option(ReviewDigest.judgeCard(cards, i)).filter(_.nonEmpty).map(i.id -> _)).toMap)))
         .withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
     }
   }
@@ -279,7 +284,14 @@ final case class ReviewView(page: ReviewPage, country: String, cards: Seq[Review
 }
 
 /** Everything `reviewDigest.scala.html` renders: the takes awaiting the user, and where their answers are written. */
-final case class ReviewDigestView(country: String, items: Seq[DigestItem], labelsPath: Path, notices: Seq[String]) {
+final case class ReviewDigestView(country: String, kind: Option[String], items: Seq[DigestItem], agentCount: Int, candidateCount: Int,
+                                  labelsPath: Path, notices: Seq[String],
+                                  // per item id: the other judgements of its billing, and the identity-judge-cards evidence
+                                  others: Map[String, Seq[LabelRow]], judgeCards: Map[String, String]) {
+  /** This page's URL with the country and kind filters. */
+  def link(country: String = country, kind: Option[String] = kind): String =
+    routes.ReviewController.agentJudged(Some(country), kind).url
+
   /** The items by country, in `Country.all`'s order. */
   def byCountry: Seq[(String, Seq[DigestItem])] = {
     val order = Country.all.map(_.code).zipWithIndex.toMap
@@ -305,6 +317,6 @@ object ReviewView {
     case ReviewPage.Queue     => "/debug/review"
     case ReviewPage.Matchable => "/debug/review/matchable"
     case ReviewPage.Recent    => "/debug/review/recent"
-    case ReviewPage.Digest    => "/debug/review/digest"
+    case ReviewPage.Digest    => "/debug/review/agent-judged"
   }
 }

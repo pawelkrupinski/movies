@@ -161,7 +161,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/cast/review"             => contentAsString(cast.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/listed/review"           => contentAsString(listed.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
-        case "/digest/review"           => contentAsString(digest.digest(None)(FakeRequest()))
+        case "/digest/review"           => contentAsString(digest.agentJudged(None, None)(FakeRequest()))
         case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case why if why.startsWith("/debug/review/why?") =>
           val query = java.net.URI.create(why).getRawQuery.split("&").map(_.split("=", 2)).collect { case Array(k, v) =>
@@ -581,6 +581,15 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString(s"$hanami.querySelector('.cand .s a').getAttribute('href')") shouldBe "https://www.themoviedb.org/movie/6461"
       page.evalString(s"${item("Latcho Drom")}.querySelector('.said').textContent") shouldBe "flagged · 2026-10-23"
       page.evalInt(s"$hanami.querySelectorAll('button[data-verdict=right], button[data-verdict=wrong], button[data-verdict=event], button[data-skip]').length") shouldBe 4
+      page.evalString(s"$hanami.querySelector('button[data-verdict=right]').textContent") shouldBe "Confirm right"
+      page.evalString(s"$hanami.querySelector('button[data-verdict=wrong]').textContent") shouldBe "Reject"
+      page.evalString("Array.from(document.querySelectorAll('.filters a')).map(a => a.textContent.trim()).join('|')") shouldBe "All 4|Agent-judged 2|Candidates 2"
+      page.evalString("document.querySelector('.review-nav a.is-active').textContent") shouldBe "Agent-judged"
+      // another film needs one named: nothing is recorded without
+      val peppa = item("Świąteczna zabawa z Peppą")
+      page.eval(s"$peppa.querySelector('button[data-verdict=film]').click()")
+      page.waitFor(s"$peppa.querySelector('.status').classList.contains('is-error')")
+      page.evalString(s"$peppa.getAttribute('data-answered') || ''") shouldBe ""
       page.eval("document.querySelector('.country-group').scrollIntoView()")
       ReviewPageSpec.save(page, "review-digest-desktop.png")
 

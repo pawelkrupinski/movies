@@ -5,7 +5,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Review digest · Review</title>
+  <title>Agent-judged · Review</title>
   @_reviewHead()
   <style>
     .country-group { margin-top: 24px; }
@@ -17,6 +17,14 @@
     .evidence { font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; border-left: 3px solid var(--line); padding-left: 10px; }
     .digest .cand { grid-template-columns: 56px 1fr; }
     .digest .other { justify-content: flex-start; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; font-size: .85rem; }
+    .filters a { padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; color: inherit; text-decoration: none; }
+    .filters a.is-active { background: var(--line); }
+    .others { font-size: .85rem; color: var(--muted); margin: 8px 0 0; padding-left: 18px; }
+    .others .right { color: var(--ok); } .others .wrong { color: var(--bad); }
+    details.judge-card pre { font: .75rem var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; }
+    .other-film { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+    .other-film input { font: .85rem var(--mono); padding: 4px 8px; width: 12em; }
     .notice code { overflow-wrap: anywhere; }
     pre.commit:empty { display: none; }
     pre.commit { font: .8rem var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
@@ -32,15 +40,20 @@
     <span class="spacer"></span>
     <select aria-label="Country" onchange="location.href=this.value">
       @for(c <- "all" +: models.Country.all.map(_.code)) {
-        <option value="@{controllers.ReviewView.pathOf(ReviewPage.Digest)}?country=@c"@if(c == view.country){ selected}>@c</option>
+        <option value="@view.link(c)"@if(c == view.country){ selected}>@c</option>
       }
     </select>
   </nav>
-  <h1>Review digest</h1>
+  <h1>Agent-judged</h1>
   <p class="lede">The takes agents judged without you (their evidence marked AGENT-JUDGED in identity-judgements.tsv) and
     those they flagged as looking wrong without judging (identity-review-candidates.tsv). Say whether the film shown is
-    the listing's: each answer is written to identity-judgements.tsv as yours as it is given, and the take leaves this
+    the listing's, or name another film: each answer is written to identity-judgements.tsv as yours as it is given, and the take leaves this
     page. Skip leaves it for later.</p>
+  <div class="filters">
+    <a href="@view.link(kind = None)" class="@if(view.kind.isEmpty){is-active}">All @(view.agentCount + view.candidateCount)</a>
+    <a href="@view.link(kind = Some(ReviewDigest.Kinds.Agent))" class="@if(view.kind.contains(ReviewDigest.Kinds.Agent)){is-active}">Agent-judged @view.agentCount</a>
+    <a href="@view.link(kind = Some(ReviewDigest.Kinds.Candidate))" class="@if(view.kind.contains(ReviewDigest.Kinds.Candidate)){is-active}">Candidates @view.candidateCount</a>
+  </div>
   @for(n <- view.notices){<div class="notice warn">@n</div>}
   <div class="notice">Answers go to <code>@view.labelsPath</code>. Commit them as your judgements with <code>scripts/review-commit</code>.</div>
   <pre id="export-summary" class="commit"></pre>
@@ -79,15 +92,33 @@
               </div>
             </div>
             <div class="rb other">
-              <button type="button" class="btn yes right" data-verdict="right">Right film</button>
-              <button type="button" class="btn none wrong" data-verdict="wrong">Wrong film</button>
+              @item.agentVerdict match {
+                case Some(v) => {
+                  <button type="button" class="btn yes @v" data-verdict="@v">Confirm @v</button>
+                  <button type="button" class="btn none" data-verdict="@{if (v == "right") "wrong" else "right"}">Reject</button>
+                }
+                case None => {
+                  <button type="button" class="btn yes right" data-verdict="right">Right film</button>
+                  <button type="button" class="btn none wrong" data-verdict="wrong">Wrong film</button>
+                }
+              }
               <button type="button" class="btn event" data-verdict="event">Not a film</button>
               <button type="button" class="btn skip" data-skip="1">Skip</button>
               <button type="button" class="btn" data-verdict="undo" hidden>Undo</button>
               <span class="status"></span>
             </div>
           </div>
+          <div class="other-film">
+            <input class="other-ref" placeholder="another film: tmdb:123 or a link" aria-label="Another film">
+            <button type="button" class="btn" data-verdict="film">Other film</button>
+          </div>
           <div class="evidence">@item.evidence</div>
+          @for(others <- view.others.get(item.id).filter(_.nonEmpty)) {
+            <ul class="others" aria-label="Other judgements of this billing">
+              @for(r <- others) {<li>@r.venue: <span class="@r.verdict">@r.verdict</span> @r.film @r.filmTitle <small>@r.note.take(160)</small></li>}
+            </ul>
+          }
+          @for(card <- view.judgeCards.get(item.id)) {<details class="judge-card"><summary>identity-judge-cards</summary><pre>@card</pre></details>}
         </article>
       }
       </div>
@@ -111,7 +142,10 @@
       var card = button.closest('.card');
       var status = card.querySelector('.status');
       status.classList.remove('is-error');
-      post({ card: JSON.parse(card.getAttribute('data-card')), verdict: button.getAttribute('data-verdict') }).then(function (j) {
+      var verdict = button.getAttribute('data-verdict');
+      var request = { card: JSON.parse(card.getAttribute('data-card')), verdict: verdict };
+      if (verdict === 'film') request.ref = card.querySelector('.other-ref').value;
+      post(request).then(function (j) {
         var undone = j.verdict === 'undo';
         card.setAttribute('data-answered', undone ? '' : j.verdict);
         card.classList.toggle('done', !undone);
