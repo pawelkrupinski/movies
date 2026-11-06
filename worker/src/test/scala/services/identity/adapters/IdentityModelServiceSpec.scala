@@ -781,7 +781,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
       world.families.unanswered = Set("Lalka")                                      // and never answered
       world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))
       first.drain()
-      clock.advance(IdentityModelService.MaxHold.plusSeconds(1))
+      clock.advance(ModelInputGate.MaxHold.plusSeconds(1))
       if (atBoot) world.service().takeUp() else first.drain()
       withClue(s"at boot $atBoot") {
         world.gate.bounds.lastOption.map(_.size) shouldBe Some(1)

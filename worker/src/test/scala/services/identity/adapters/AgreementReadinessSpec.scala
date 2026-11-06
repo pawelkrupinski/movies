@@ -18,7 +18,7 @@ class AgreementReadinessSpec extends AnyFlatSpec with Matchers {
     val clock   = new MutableClock(Instant.parse("2026-11-06T10:00:00Z"))
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "de-DE", clock)
     val asked   = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
-    val ready   = new AgreementReadiness(_ => Set(title, record), memory, asked += _)
+    val ready   = new AgreementReadiness(_ => Set(title, record), memory.attempted, asked += _)
     val geister = ModelRead.corpus(Seq(models.KinoMuza -> Seq(models.CinemaMovie(models.Movie("Geister"), models.KinoMuza, None, None, None,
       Nil, Nil, Seq(models.Showtime(java.time.LocalDateTime.of(2026, 11, 6, 18, 0), None))))), services.movies.SingleCountryNormalizer.titleNormalizer).head
     ready.awaiting(geister) shouldBe Set(title, record)                    // never asked

@@ -190,7 +190,7 @@ backtest's definition): DE 134 reversals, 67 LATE-ANSWER (Geister's 56 among the
 086e33d) and made ten visible losses in DE (a listing re-keyed by its venue taken for new, shown with no film): off at
 d5320aa67d71. Back on with: a held listing's ask MOVES UP the same question already queued 7 days behind
 (`TaskQueue.raise`; the queue kept the first task's place); a question waits only for ONE attempt (`QuestionMemory.attempted`,
-the stage's settle rule), never for its give-up; a hard bound, `IdentityModelService.MaxHold` (10 min, injected clock),
+the stage's settle rule), never for its give-up; a hard bound, `ModelInputGate.MaxHold` (10 min, injected clock),
 past which a held listing is taken in and counted (`promoted_total{at="bound"}`); a listing re-keyed at its venue keeps
 its old version as its stand-in; and a new listing hidden while held (`NewWhilePending.Default = Hidden`).
 

@@ -138,9 +138,9 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): services.tasks.Enqueued =
     services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock, agreementQuestionMetrics)
   /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once the
-   *  questions its own facts put to the families are answered or given up on, asked ahead of the agreement's own. */
+   *  questions its own facts put to the families were each attempted once, asked ahead of the agreement's own. */
   lazy val identityListingReadiness: services.identity.ListingReadiness =
-    new services.identity.adapters.AgreementReadiness(listing => agreementStage.questionsOf(listing), identityQuestionMemory,
+    new services.identity.adapters.AgreementReadiness(listing => agreementStage.questionsOf(listing), identityQuestionMemory.attempted,
       questions => { services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock,
         agreementQuestionMetrics, claimAhead = scala.concurrent.duration.Duration.Zero); () })
   /** The questions the live stage waits on that a lost task left unattempted, or that failed and are due again, queued
