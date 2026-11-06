@@ -7,7 +7,7 @@ import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters._
 
 /**
- * One take awaiting the user's word on the review digest (`/debug/review/digest`): an agent's judgement in
+ * One take awaiting the user's word on the Agent-judged tab (`/debug/review/agent-judged`): an agent's judgement in
  * `identity-judgements.tsv` (its evidence marked [[ReviewDigest.agentJudged]]), or a take an agent flagged without
  * judging it (`identity-review-candidates.tsv`). The answer is a review answer like any other ([[payload]]): its export
  * writes the `review page:` row that takes the item off the digest.
@@ -79,6 +79,39 @@ object ReviewDigest {
       DigestItem(r.country, r.venue, r.rawTitle, f, Option(r.filmTitle).filter(_.nonEmpty), Some(r.verdict), r.judged, r.note)))
     val open   = candidates.filterNot(c => labels.exists(_.sameJudgement(c.asLabel)))
     (agents ++ open).filterNot(i => answered(i.id)).sortBy(i => (i.country, i.rawTitle.toLowerCase(java.util.Locale.ROOT), i.venue, i.film.render))
+  }
+
+  /** The items of one kind: `agent` (an agent's judgement) or `candidate` (flagged, not judged); any other value (or none) is all. */
+  def ofKind(items: Seq[DigestItem], kind: Option[String]): Seq[DigestItem] = kind match {
+    case Some(Kinds.Agent)     => items.filter(_.agentVerdict.isDefined)
+    case Some(Kinds.Candidate) => items.filter(_.agentVerdict.isEmpty)
+    case _                     => items
+  }
+
+  object Kinds {
+    val Agent = "agent"
+    val Candidate = "candidate"
+  }
+
+  /** The other judgements of the item's billing: other venues' and other films' rows, for its card. */
+  def otherJudgements(labels: Seq[LabelRow], item: DigestItem): Seq[LabelRow] = {
+    val title = LabelsTsv.normalise(item.rawTitle)
+    labels.filter(r => r.country == item.country && LabelsTsv.normalise(r.rawTitle) == title && !r.sameJudgement(item.asLabel))
+  }
+
+  /** Where `scripts/identity-judge-cards` writes its cards, in the checkout the labels file belongs to. */
+  def judgeCardsPath(labels: Path): Path = {
+    val checkout = Iterator.iterate(labels.toAbsolutePath)(_.getParent).drop(4).next()
+    checkout.resolve("target/identity-judge/cards.md")
+  }
+
+  private val CardLimit = 3000
+
+  /** The cards (`## ` blocks) of `cards` that name the item's billing and film, joined, as far as a page should show. */
+  def judgeCard(cards: String, item: DigestItem): String = {
+    val title = LabelsTsv.normalise(item.rawTitle)
+    val filmId = item.film.render.split(':').last
+    cards.split("\n## ").map(_.trim).filter(b => b.contains(title) && b.contains(filmId)).mkString("\n\n").take(CardLimit)
   }
 
   /** The digest's answers standing: their items' ids. */

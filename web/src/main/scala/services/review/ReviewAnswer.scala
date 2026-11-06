@@ -34,8 +34,9 @@ enum ReviewPage(val code: String, val title: String) {
   case Queue     extends ReviewPage("queue", "Queue (unmatched)")
   case Matchable extends ReviewPage("matchable", "Matchable but unmatched")
   case Recent    extends ReviewPage("recent", "Recently matched")
-  /** The takes agents judged or flagged for the user ([[ReviewDigest]]): one listing and film each. */
-  case Digest    extends ReviewPage("digest", "Review digest")
+  /** The takes agents judged or flagged for the user ([[ReviewDigest]]): one listing and film each. Its code stays `digest`:
+   *  the stored answers carry it. */
+  case Digest    extends ReviewPage("digest", "Agent-judged")
 }
 
 object ReviewPage {

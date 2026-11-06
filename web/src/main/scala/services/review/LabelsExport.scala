@@ -125,7 +125,9 @@ object LabelsExport {
         case i if rows(i).verdict == row.verdict => unchanged += 1
         case i =>
           val was = rows(i)
-          rows(i) = was.copy(verdict = row.verdict, note = s"${row.note} (was: ${was.verdict}: ${was.note})")
+          // a state or scope belongs to the verdict it was given for (known-wrong is a WRONG take's state)
+          val reopened = if (was.state == "open") was else was.copy(state = "open", scope = "", reason = "")
+          rows(i) = reopened.copy(verdict = row.verdict, note = s"${row.note} (was: ${was.verdict}: ${was.note})")
           flipped += 1
       }
     }

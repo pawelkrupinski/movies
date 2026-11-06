@@ -89,6 +89,31 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
     }
   }
 
+  it should "tell agent judgements from candidates, and name the other judgements of a billing" in {
+    val items = ReviewDigest.pending(Seq(agentRose, agentRoseNo, blade), Seq(latcho), Set.empty)
+    ReviewDigest.ofKind(items, Some("agent")).map(_.rawTitle) shouldBe Seq("Blade", "Rose", "Rose")
+    ReviewDigest.ofKind(items, Some("candidate")).map(_.rawTitle) shouldBe Seq("Latcho Drom")
+    ReviewDigest.ofKind(items, None) shouldBe items
+    ReviewDigest.otherJudgements(Seq(agentRose, agentRoseNo, blade), items.find(_.film == FilmRef.tmdb(846864)).get) shouldBe Seq(agentRoseNo)
+  }
+
+  it should "take from the judge cards the blocks naming its billing and film" in {
+    val cards = "# cards\n\n## Rose x tmdb:846864\nright\n\n## Rose x tmdb:1176962\nwrong\n\n## Blade x tmdb:846864\nother billing"
+    val item  = ReviewDigest.pending(Seq(agentRose), Nil, Set.empty).head
+    ReviewDigest.judgeCard(cards, item) shouldBe "Rose x tmdb:846864\nright"
+    ReviewDigest.judgeCard("", item) shouldBe ""
+    ReviewDigest.judgeCardsPath(Paths.get("/w/test/resources/fixtures/identity-judgements.tsv")) shouldBe Paths.get("/w/target/identity-judge/cards.md")
+  }
+
+  it should "reopen a known-wrong row the user overrules to right, so the judgements lint still holds" in {
+    val known = agentRoseNo.copy(state = "known-wrong", scope = "rows", reason = "kept")
+    withLabels(Seq(known)) { path =>
+      val item = ReviewDigest.pending(LabelsTsv.read(path), Nil, Set.empty).head
+      LabelsExport.exportTo(path, Seq(answerTo(item, ReviewVerdict.Right, at)))
+      LabelsTsv.read(path).map(r => (r.verdict, r.state, r.scope, r.reason)) shouldBe Seq(("right", "open", "", ""))
+    }
+  }
+
   "the checked-in digest" should "read every candidate, and list the agent judgements and candidates awaiting the user" in {
     val labels = Paths.get("test/resources/fixtures/identity-judgements.tsv")
     val root   = Iterator.iterate(Paths.get("").toAbsolutePath)(_.getParent).takeWhile(_ != null)

@@ -298,8 +298,8 @@ scope filmTitle reason judged evidence` (documented in `scripts/ci/identity_judg
   right, or the old one wrong.
 - `undecided` rows are the suspects standing since the suspect gate was armed (2026-10-13): never add one.
 - **a judgement the user has not seen** (an agent's, not the user's own): put `AGENT-JUDGED` in its evidence, e.g.
-  `AGENT-JUDGED 2026-10-23 (<task>): <the evidence>` — the gates read it like any row, and the **review digest**
-  (`/debug/review/digest`, dev server) lists it for the user until they answer. Older spellings ("agent judged …",
+  `AGENT-JUDGED 2026-10-23 (<task>): <the evidence>` — the gates read it like any row, and the **Agent-judged tab**
+  (`/debug/review/agent-judged`, dev server) lists it for the user until they answer. Older spellings ("agent judged …",
   "judged 10-22 (agent, …)") are read too (`ReviewDigest.agentJudged`). Don't also list it in your report as "for the user".
 - **a take that looks wrong (or right) that you did not judge**: a row in `test/resources/fixtures/identity-review-candidates.tsv`
   (`country venue rawTitle film filmTitle flagged evidence`; no gate reads it) — never an `undecided` row, never a
@@ -310,9 +310,10 @@ scope filmTitle reason judged evidence` (documented in `scripts/ci/identity_judg
   worktree of its own (`~/projects/movies-review-labels`, branch `review/labels`) and tells the app its file through
   `REVIEW_LABELS_FILE`; never `sbt web/run` in the root checkout (the root-checkout guard refuses it). Land with
   `~/bin/agentctl land` from that worktree.
-  `scripts/review-server --judgements` serves ONE page (http://127.0.0.1:9100/, `scripts/judgement_review.py`) over the same
-  file: every AGENT-JUDGED take and unanswered candidate with its evidence, confirm / reject / another film (edited in
-  place, lint-checked), and a "land my verdicts" button (`review-commit` then `agentctl land`).
+  The tab (`/debug/review/agent-judged?country=…&kind=agent|candidate`) shows each AGENT-JUDGED take and unanswered
+  candidate as a review card: the agent's reason, the other judgements of the same billing, the `scripts/identity-judge-cards`
+  evidence when `target/identity-judge/cards.md` exists, and Confirm / Reject / another film (the row is edited in place).
+  "Land my verdicts" stays `scripts/review-commit`, then `~/bin/agentctl land`.
 
 The lint (`python3 scripts/ci/identity_judgements_lint.py`, a second) fails a second row for one key — a listing judged
 both ways, or a `merge=union` merge (`.gitattributes`) that kept both sides of one edited row — keys not normalised, a

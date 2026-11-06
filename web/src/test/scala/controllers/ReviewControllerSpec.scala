@@ -50,15 +50,15 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   // TMDB's recorded answer for "Howl's Moving Castle" (4935): the poster a card shows when no stored read gives one
   private def howlsLookup = TmdbPosterLookupSpec.lookup
 
-  "the review digest" should "404 in production, and list the takes awaiting the user by country, each film named and its listing explained" in {
+  "the Agent-judged tab" should "404 in production, and list the takes awaiting the user by country, each film named and its listing explained" in {
     val labels = tempDirectory("digest").resolve("identity-judgements.tsv")
     LabelsTsv.write(labels, Seq(LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right",
       "agent judged 2026-10-22 (test): Miyazaki's, the venue's year 2004", judged = "2026-10-22")))
     Files.writeString(ReviewDigest.candidatesPath(labels), ReviewDigest.CandidatesHeader +
       "\nde\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short\n")
-    status(controller(Mode.Prod, labels = labels).digest(None)(FakeRequest())) shouldBe NOT_FOUND
+    status(controller(Mode.Prod, labels = labels).agentJudged(None, None)(FakeRequest())) shouldBe NOT_FOUND
     val dev  = controller(Mode.Dev, labels = labels, tmdbPosters = Some(howlsLookup))
-    val html = contentAsString(dev.digest(None)(FakeRequest()))
+    val html = contentAsString(dev.agentJudged(None, None)(FakeRequest()))
     html.indexOf("Polska") should (be > 0 and be < html.indexOf("Deutschland"))
     html should include("<b class=\"film-title\">Howl&#x27;s Moving Castle (2004)</b>")   // the row files no title: TMDB's
     html should include("<b class=\"film-title\">Latcho Drom - Good Road (2024)</b>")
@@ -67,12 +67,36 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     html should include("looks wrong: a 19′ short")
     html should include("/debug/review/listing?country=de&amp;venue=Rastst%C3%A4tte&amp;title=Latcho")
     html should include("/debug/review/tmdb-poster/1247239?country=de")
-    contentAsString(dev.digest(Some("de"))(FakeRequest())) should not include "Ruchomy zamek Hauru"
+    contentAsString(dev.agentJudged(Some("de"), None)(FakeRequest())) should not include "Ruchomy zamek Hauru"
     // answered: the agent's row becomes the user's, and leaves the digest
     val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
     status(dev.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "right")))) shouldBe OK
     LabelsTsv.read(labels).head.note should startWith("review page: right: tmdb:4935 (was: right: agent judged")
-    contentAsString(dev.digest(None)(FakeRequest())) should (not include "Ruchomy zamek Hauru" and include("Latcho Drom"))
+    contentAsString(dev.agentJudged(None, None)(FakeRequest())) should (not include "Ruchomy zamek Hauru" and include("Latcho Drom"))
+  }
+
+  it should "filter by kind, and show the other judgements of a billing, the judge-cards evidence and an answer naming another film" in {
+    val labels = Files.createDirectories(tempDirectory("agent-judged").resolve("test/resources/fixtures")).resolve("identity-judgements.tsv")
+    LabelsTsv.write(labels, Seq(
+      LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right", "AGENT-JUDGED 2026-10-22 (test): Miyazaki's", filmTitle = "Howl's Moving Castle (2004)", judged = "2026-10-22"),
+      LabelRow("pl", "Kino Inne", "Ruchomy zamek Hauru", "tmdb:77", "wrong", "hand label: another film", state = "known-wrong", scope = "rows", reason = "kept")))
+    Files.writeString(ReviewDigest.candidatesPath(labels), ReviewDigest.CandidatesHeader +
+      "\nde\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short\n")
+    val cards = ReviewDigest.judgeCardsPath(labels)
+    Files.createDirectories(cards.getParent)
+    Files.writeString(cards, "# cards\n\n## Ruchomy zamek Hauru x tmdb:4935\nsuggested: right, decisive\n\n## Other x tmdb:1\nnot this\n")
+    val dev = controller(Mode.Dev, labels = labels)
+    val agent = contentAsString(dev.agentJudged(None, Some("agent"))(FakeRequest()))
+    agent should (include("Ruchomy zamek Hauru") and not include "Latcho Drom")
+    agent should (include("Confirm right") and include("data-verdict=\"wrong\"") and include("Other film"))
+    agent should (include("Kino Inne") and include("tmdb:77") and include("suggested: right, decisive") and not include "not this")
+    contentAsString(dev.agentJudged(None, Some("candidate"))(FakeRequest())) should (include("Latcho Drom") and not include "Ruchomy zamek Hauru")
+    // another film: the chosen one right, the agent's row in place its own, the file lint-clean in its keys (one row per key)
+    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
+    val reply = dev.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "film", "ref" -> "tmdb:999")))
+    status(reply) shouldBe OK
+    LabelsTsv.read(labels).map(r => (r.venue, r.film, r.verdict)) should contain (("Kino Opalenica", "tmdb:999", "right"))
+    LabelsTsv.read(labels).map(r => (r.venue, r.rawTitle, r.film)).distinct should have size LabelsTsv.read(labels).size
   }
 
   "a candidate's TMDB poster" should "redirect to the poster TMDB names for it, and be not found when TMDB names none or no key is set" in {
