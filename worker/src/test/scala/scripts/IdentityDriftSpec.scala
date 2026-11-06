@@ -104,35 +104,29 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   // THE SCENARIO GUARD (scripts/ci/drift_scenario.py, identity-drift-check.sh): head and base of the differential gate
   // must meet the same scenario on a seed. The harness before 3e97bde52 drew every fill from one stream, so a head asking
   // one question more re-dealt every later draw (DE seed 8's Geister, drift 42003442640) -- unseen for two weeks.
-  "the scenario guard" should "pass a head asking one question more under keyed fills, and trip on a harness that couples the draws again" in {
-    /** One fill over `asked` (each a held record), the scenario's rows written as a replay writes them. */
-    def scenarioFile(name: String, asked: Seq[Int], draw: IdentityDrift.Share => IdentityDrift.FillDraw): Path = {
+  "the scenario guard" should "see the same draws for the questions both sides ask under keyed fills, and other ones under a harness that couples them again" in {
+    /** One fill over `asked` (each a held record): the draws the scenario kept, as `scenario-<cc>.tsv` holds them. */
+    def drawsOf(asked: Seq[Int], draw: IdentityDrift.Share => IdentityDrift.FillDraw): Map[String, Boolean] = {
       val gate = gateOf(draw)
       asked.foreach(gate.film)
       gate.release(0.5)
-      val file = tempDirectory("scenario").resolve(s"$name.tsv")
-      java.nio.file.Files.writeString(file, (IdentityDrift.Scenario.Header +: gate.scenario.rows(8)).mkString("", "\n", "\n"))
-      file
+      gate.scenario.rows(8).map(_.split('\t')).filter(_(1) == "fill").map(r => r(2) -> (r(3) == "1")).toMap
     }
     /** The old harness: one `Random` every question's draw comes from, in the questions' order. */
     val sharedStream: IdentityDrift.Share => IdentityDrift.FillDraw = _ => {
       val rng = new scala.util.Random(8)
       (_: String, _: Int, fraction: Double) => rng.nextDouble() < fraction
     }
-    def guard(head: Path, base: Path): (Int, String) = {
-      val out  = new StringBuilder
-      val code = scala.sys.process.Process(Seq("python3", "scripts/ci/drift_scenario.py", "compare", "--seed", "8", "--head", head.toString,
-        "--base", base.toString)).!(scala.sys.process.ProcessLogger(line => out.append(line).append('\n'), line => out.append(line).append('\n')))
-      (code, out.toString)
-    }
+    /** What scripts/ci/drift_scenario.py compares: the draws both sides made, that differ (drift_scenario_test.py holds
+     *  the comparison itself to a coupled harness's rows). */
+    def differing(head: Map[String, Boolean], base: Map[String, Boolean]) = head.keySet.intersect(base.keySet).filter(k => head(k) != base(k))
     val asked = (1 to 200).toSeq
     // the head asks film 0 first: one question more than its base
-    val (keyed, keyedSaid) = guard(scenarioFile("keyed-head", 0 +: asked, identity), scenarioFile("keyed-base", asked, identity))
-    withClue(keyedSaid)(keyed shouldBe 0)
-    keyedSaid should include("200 common fill draw(s), 1 head-only")
-    val (coupled, coupledSaid) = guard(scenarioFile("coupled-head", 0 +: asked, sharedStream), scenarioFile("coupled-base", asked, sharedStream))
-    withClue(coupledSaid)(coupled shouldBe 1)
-    coupledSaid should include("scenario: HARNESS ERROR on seed 8")
+    val (keyedHead, keyedBase) = (drawsOf(0 +: asked, identity), drawsOf(asked, identity))
+    keyedHead.keySet -- keyedBase.keySet shouldBe Set("1:f:0")
+    differing(keyedHead, keyedBase) shouldBe empty
+    differing(drawsOf(0 +: asked, sharedStream), drawsOf(asked, sharedStream)) should not be empty
+    gateOf().scenario.digest should startWith("arrangement ")
   }
 
   "asks" should "release a held answer rather than ask for it" in {

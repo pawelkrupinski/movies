@@ -39,7 +39,7 @@ class IdentitySliceCoverageSpec extends AnyFlatSpec with Matchers with tools.Scr
     IdentitySliceCoverage.coverageOf(dir).covered shouldBe true
     val asked    = askedBy(pinned)
     // the head asks searches the case was never pinned with: here, its fixture without two of the searches it asks
-    val searches = asked.keys.filter(r => r.method == "GET" && r.url.toLowerCase.contains("search")).toSeq.sortBy(_.render).take(2)
+    val searches = asked.keys.filter(r => r.method == "GET" && r.url.toLowerCase(java.util.Locale.ROOT).contains("search")).toSeq.sortBy(_.render).take(2)
     searches should not be empty
     SliceHttp.write(dir.resolve("http.jsonl.gz"), pinned.http -- searches)
 
