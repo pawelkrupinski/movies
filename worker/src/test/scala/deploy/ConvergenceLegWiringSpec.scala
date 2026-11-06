@@ -236,9 +236,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  order rows' 55 minutes the step's 75 never fired, and a daily row replaying each seed twice was cancelled with no
    *  verdict. */
   it should "give a takes-drift row a job ceiling above its drift step's, replayed once or twice" in {
-    val job  = """startsWith\(matrix\.phase, 'takes-drift-'\) && \(inputs\.drift-twice && (\d+) \|\| (\d+)\)""".r
+    // the A/A row (`takes-drift-aa`, scripts/ci/harness_aa.py) replays twice too: it takes the twice ceiling
+    val job  = """startsWith\(matrix\.phase, 'takes-drift-'\) && \(\(inputs\.drift-twice \|\| matrix\.phase == 'takes-drift-aa'\) && (\d+) \|\| (\d+)\)""".r
       .findFirstMatchIn(RepoFile.block(leg, "convergence")).getOrElse(fail("no takes-drift job ceiling"))
-    val step = """timeout-minutes: \$\{\{ inputs\.drift-twice && (\d+) \|\| (\d+) \}\}""".r
+    val step = """timeout-minutes: \$\{\{ \(inputs\.drift-twice \|\| matrix\.phase == 'takes-drift-aa'\) && (\d+) \|\| (\d+) \}\}""".r
       .findFirstMatchIn(leg).getOrElse(fail("no drift step ceiling"))
     Seq(1, 2).foreach(i => job.group(i).toInt should be >= step.group(i).toInt + 10)
   }
@@ -456,10 +457,11 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(leg, "convergence") should include(
       """phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || """ +
         """inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || """ +
-        """'["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
+        """'["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && """ +
         """(inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || """ +
         """',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', """ +
-        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '')) }}""")
+        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', """ +
+        """inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa"' || '')) }}""")
   }
 
   /** THE INCREMENTAL = WHOLE GATE, ONE SEED A ROW (2026-10-26): the takes row ran the takes check and then both drift seeds,
@@ -470,7 +472,13 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val drift = RepoFile.step(leg, "Check that the incremental state ends where a whole resolve does")
     drift should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}")
     drift should include("DRIFT_PINS: ${{ format('{0},{1}', inputs.drift-seed-1, inputs.drift-seed-2) }}")
-    drift should include("""DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS")""")
+    drift should include("""row=${DRIFT_ROW#takes-drift-}; [ "$row" = aa ] && row=1""")
+    drift should include("""DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "$row" --pins "$DRIFT_PINS")""")
+    withClue("the harness's A/A row (review 2026-11-06 P5): the head twice against itself, judged as the harness's fault: ") {
+      drift should include("DRIFT_TWICE: ${{ inputs.drift-twice || matrix.phase == 'takes-drift-aa' }}")
+      drift should include("""if [ "$DRIFT_ROW" = takes-drift-aa ]; then export DRIFT_BASE=$GITHUB_SHA DRIFT_STORE=""; fi""")
+      drift should include("python3 scripts/ci/harness_aa.py judge")
+    }
     withClue("the explorer's rows replay random seeds off the gate, never the gate's: ")(
       drift should include("""DRIFT_SEED_LIST=$(python3 scripts/ci/drift_explorer.py pick --cc "${{ inputs.code }}" --count "$DRIFT_EXPLORE" """))
     withClue("a red names its seed, in the ::error ci-why reads and the leg's commit status: ") {

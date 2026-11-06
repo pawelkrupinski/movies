@@ -344,6 +344,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # THE DRIFT HARNESS'S A/A SELF-TEST (scripts/ci/harness_aa.py; the preflight's `harness-aa`): one more row,
+            # `takes-drift-aa`, replaying the head twice against itself on the row-1 seeds; red only when the two differ.
+            harness-aa:
+                description: Add the takes-drift-aa row (the drift harness against itself, twice) -- a push that changed the harness.
+                required: false
+                type: boolean
+                default: false
             # A complete RECORDING becomes the hermetic pair only when this is true; false still publishes its tree
             # under its run and marks it prod-latest (`convergence-publish`'s `pin`). Record scrape fixtures passes
             # false unless a dispatch asks, while prod-latest proves itself as a landing bar.
@@ -437,7 +444,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '')) }}
+                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -449,7 +456,7 @@ jobs:
         # not to raise the number again. A drift row's is its step's own ceiling plus setup (the step: 75 minutes, 140 when
         # `drift-twice` replays each seed twice): under the order rows' 55 the step's bound never fired and a slow daily
         # row was cancelled, no verdict.
-        timeout-minutes: ${{ startsWith(matrix.phase, 'takes-drift-') && (inputs.drift-twice && 150 || 85) || (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}
+        timeout-minutes: ${{ startsWith(matrix.phase, 'takes-drift-') && ((inputs.drift-twice || matrix.phase == 'takes-drift-aa') && 150 || 85) || (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}
         permissions:
             # `contents: write` for the rolling release the fixture trees live in —
             # see "Publish" below for why that, rather than an artifact. The replay row never
@@ -518,7 +525,7 @@ jobs:
             # `CEILING_LINE`, ci-build-times.rules). The same expression as the job's, which ci_timings_test.py holds it to.
             - name: Report the row's ceiling
               shell: bash
-              run: echo "ci-job-ceiling ${{ startsWith(matrix.phase, 'takes-drift-') && (inputs.drift-twice && 150 || 85) || (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }} minutes"
+              run: echo "ci-job-ceiling ${{ startsWith(matrix.phase, 'takes-drift-') && ((inputs.drift-twice || matrix.phase == 'takes-drift-aa') && 150 || 85) || (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }} minutes"
             # Each row resolves the pinned pair here, once, and its suite and
             # any bisect it requests all replay that one (`steps.setup.outputs.hermetic-pair`)
             # even if the recorder pins a new pair while this row is running.
@@ -1125,12 +1132,12 @@ jobs:
             - name: Check that the incremental state ends where a whole resolve does
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}
               shell: bash
-              timeout-minutes: ${{ inputs.drift-twice && 140 || 75 }}
+              timeout-minutes: ${{ (inputs.drift-twice || matrix.phase == 'takes-drift-aa') && 140 || 75 }}
               env:
                   HEAP: ${{ inputs.heap }}
                   DRIFT_ROW: ${{ matrix.phase }}
                   DRIFT_PINS: ${{ format('{0},{1}', inputs.drift-seed-1, inputs.drift-seed-2) }}
-                  DRIFT_TWICE: ${{ inputs.drift-twice }}
+                  DRIFT_TWICE: ${{ inputs.drift-twice || matrix.phase == 'takes-drift-aa' }}
                   DRIFT_EXPLORE: ${{ inputs.drift-explore }}
                   DRIFT_EXPLORE_REF: ${{ format('run:{0}/identity-drift-{1}-{2}', github.run_id, inputs.code, matrix.phase) }}
                   # THE DIFFERENTIAL'S STORE (identity-drift-check.sh): each green head's flips on main, a base's anywhere
@@ -1140,8 +1147,13 @@ jobs:
                   . scripts/ci/bounded-step.sh
                   if [ -n "$DRIFT_EXPLORE" ]; then
                       DRIFT_SEED_LIST=$(python3 scripts/ci/drift_explorer.py pick --cc "${{ inputs.code }}" --count "$DRIFT_EXPLORE" --salt "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT-$DRIFT_ROW")
-                  else DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "${DRIFT_ROW#takes-drift-}" --pins "$DRIFT_PINS")
+                  else row=${DRIFT_ROW#takes-drift-}; [ "$row" = aa ] && row=1
+                      DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "$row" --pins "$DRIFT_PINS")
                   fi
+                  # THE A/A ROW (scripts/ci/harness_aa.py, review 2026-11-06 P5): the head against ITSELF -- base = head, so
+                  # nothing is replayed at a base, and DRIFT_TWICE replays the head's seeds twice -- storing nothing (the
+                  # takes-drift-1 row stores the head's flips). Only two replays differing fails it: the harness's own fault.
+                  if [ "$DRIFT_ROW" = takes-drift-aa ]; then export DRIFT_BASE=$GITHUB_SHA DRIFT_STORE=""; fi
                   [ -n "$DRIFT_SEED_LIST" ] \
                       || { echo "::error title=identity drift (${{ inputs.code }})::no seed for $DRIFT_ROW from pins '$DRIFT_PINS' or drift-gate-seeds.tsv -- nothing was judged"; exit 2; }
                   export DRIFT_SEED_LIST DRIFT_SEED="${DRIFT_SEED_LIST// /,}"
@@ -1149,6 +1161,11 @@ jobs:
                   [ "${{ inputs.profile }}" = true ] && . scripts/ci/jfr-every-jvm.sh
                   echo "$DRIFT_ROW (${{ inputs.code }}) replays its fixed seed(s) $DRIFT_SEED_LIST (pins '$DRIFT_PINS'; drift-gate-seeds.tsv), judged against its base"
                   code=0; scripts/ci/identity-drift-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-drift" || code=$?
+                  if [ "$DRIFT_ROW" = takes-drift-aa ]; then
+                      aa=0; python3 scripts/ci/harness_aa.py judge --cc "${{ inputs.code }}" --code "$code" --verdict "$RUNNER_TEMP/identity-drift/verdict.txt" || aa=$?
+                      [ "$aa" = 0 ] || echo "harness A/A, seed $DRIFT_SEED: $(cat "$RUNNER_TEMP/identity-drift/verdict.txt" 2>/dev/null || echo 'could not run')" > "$RUNNER_TEMP/leg-verdict-why"
+                      exit "$aa"
+                  fi
                   repro=$(cat "$RUNNER_TEMP/identity-drift/reproduce.txt" 2>/dev/null || echo "IdentityDrift ${{ inputs.code }} --seed $DRIFT_SEED")
                   case $code in
                       0) ;;

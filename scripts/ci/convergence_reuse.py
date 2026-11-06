@@ -87,13 +87,14 @@ FACTS_NAME = "facts.json"
 PHASES_EXPRESSION = (
     "${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '[\"takes-drift-2\"]' || "
     "inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '[\"takes-drift-1\"]' || '[\"takes-drift-1\",\"takes-drift-2\"]') || "
-    "inputs.takes-only && '[\"takes\",\"takes-base\"]' || format('[\"convergence\"{0}{1}{2}]', "
+    "inputs.takes-only && '[\"takes\",\"takes-base\"]' || format('[\"convergence\"{0}{1}{2}{3}]', "
     "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && "
     "',\"order-independence-p01-pass0\",\"order-independence-p01-pass1\"' || ',\"order-independence-p01-pass0\","
     "\"order-independence-p01-pass1\",\"order-independence-p12-pass1\",\"order-independence-p12-pass2\"') || "
     "',\"order-independence\"') || '', "
     "inputs.next-day-command != '' && ',\"next-day\"' || '', inputs.mode == 'hermetic' && inputs.takes-row && "
-    "',\"takes\",\"takes-base\",\"takes-drift-1\",\"takes-drift-2\"' || '')) }}"
+    "',\"takes\",\"takes-base\",\"takes-drift-1\",\"takes-drift-2\"' || '', inputs.mode == 'hermetic' && "
+    "inputs.takes-row && inputs.harness-aa && ',\"takes-drift-aa\"' || '')) }}"
 )
 # A split country's order rows on main: each pass in a row of its own, then the two comparisons (`order-compare`).
 ORDER_SPLIT_ROWS = ["order-independence-p01-pass0", "order-independence-p01-pass1", "order-independence-p12-pass1",
@@ -171,7 +172,9 @@ def matrix_rows(workflow_text):
 
 def expected_rows(workflow_text):
     """`<phase> (<country>)` of every row main's run expands to: PHASES_EXPRESSION with takes-only false, hermetic, the
-    takes rows on (the check's and a drift seed's each) and both order phases (main's order-phases.sh answer)."""
+    takes rows on (the check's and a drift seed's each) and both order phases (main's order-phases.sh answer). Not the
+    harness's A/A row (`takes-drift-aa`, harness_aa.py): only a push that changed the harness runs it, and no verdict
+    reused from a landing check is one -- a reused run skips it with every other row."""
     out = []
     for row in matrix_rows(workflow_text):
         phases = ["convergence"]

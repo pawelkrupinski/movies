@@ -177,6 +177,9 @@ jobs:
             takes-skip: ${{ steps.legs.outputs.takes-skip }}
             drift-twice: ${{ steps.legs.outputs.drift-twice }}
             drift-explore: ${{ steps.legs.outputs.drift-explore }}
+            # THE DRIFT HARNESS'S A/A SELF-TEST (scripts/ci/harness_aa.py, review 2026-11-06 P5): `true` on a full run on
+            # main whose push changed a path of .github/harness-aa-paths.txt -- each leg then adds a `takes-drift-aa` row.
+            harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}
             # The legs' runner: ubuntu-22.04 unless a dispatch names one -- or, off main with the repository variable
             # MOVIES_CI_RUNNERS=self-hosted, ci-runner's `movies-measure` slots (infra nix/hosts/ci-runner/movies-runners.nix):
             # every run off main is a measurement (measure/*: identity-measure, identity-drift-ci, a landing check's full
@@ -240,6 +243,25 @@ jobs:
                               - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
                               - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 55, suite: 30, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 55, order-suite: 30, order-split: true, mongo-tmpfs: 3g, mongo-cache-gb: 0.5, mongo-tmpfs-order: 'false' }
               run: python3 scripts/ci/convergence_reuse.py legs >> "$GITHUB_OUTPUT"
+            # THE A/A ROW (scripts/ci/harness_aa.py): only main's full suite, never a takes-only or drift-only dispatch, and
+            # only when the range since the previous convergence run's head on main (else the parent) changed a harness
+            # path. An unreadable run list judges the parent alone; this step failing runs no A/A row (the output's fallback).
+            - name: Did this push change the drift harness (its A/A row)?
+              id: aa
+              if: ${{ github.ref == 'refs/heads/main' && inputs.takes-only != true && inputs.takes-only != 'true' && inputs.drift-only != true && inputs.drift-only != 'true' && inputs.drift-explore == '' }}
+              continue-on-error: true
+              timeout-minutes: 2
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  # allow-silenced: an unreadable run list judges the parent alone (harness_aa.py), never skips the decision
+                  since=$(timeout 60 gh run list --workflow identity-model-convergence.yml --branch main --limit 5 \
+                      --json databaseId,headSha --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)][0].headSha // \"\"" 2> /dev/null || true)
+                  python3 scripts/ci/harness_aa.py decide --head "$GITHUB_SHA" --since "$since" >> "$GITHUB_OUTPUT"
+            - if: ${{ always() }}
+              run: scripts/ci/bounded-step.sh --reap
             - name: Secrets present
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
@@ -415,6 +437,8 @@ jobs:
             drift-twice:                   ${{ needs.preflight.outputs.drift-twice == 'true' }}
             # The nightly explorer's (identity-drift-explorer.yml): random seeds off the gate, head alone, never red.
             drift-explore:                 ${{ needs.preflight.outputs.drift-explore }}
+            # The drift harness's A/A row, `takes-drift-aa` (scripts/ci/harness_aa.py): a push that changed the harness.
+            harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}
             # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
             corpus-run:                    ${{ needs.preflight.outputs.recording }}
             # A proven reuse (the preflight's `reused-from`): every row of the leg skips.

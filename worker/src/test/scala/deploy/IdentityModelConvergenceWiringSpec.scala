@@ -145,8 +145,21 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs") should include("drift-twice: ${{ steps.legs.outputs.drift-twice }}")
     RepoFile.jobs(workflow)("preflight") should include("INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}")
     RepoFile.jobs(workflow)("leg") should include("drift-twice:                   ${{ needs.preflight.outputs.drift-twice == 'true' }}")
-    leg should include("DRIFT_TWICE: ${{ inputs.drift-twice }}")
+    leg should include("DRIFT_TWICE: ${{ inputs.drift-twice || matrix.phase == 'takes-drift-aa' }}")
     RepoFile.read(".github/workflows/convergence-daily.yml") should include("-f drift-twice=true")
+  }
+
+  // THE DRIFT HARNESS'S A/A ROW (review 2026-11-06 P5, scripts/ci/harness_aa.py): decided once, in the preflight, for
+  // main's full suite alone, and handed on as drift-twice is -- a preflight output compared with 'true' in the call.
+  it should "add the harness's A/A row only on a push to main that changed the harness, decided in the preflight" in {
+    val preflight = RepoFile.jobs(workflow)("preflight")
+    RepoFile.block(preflight, "outputs") should include("harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}")
+    val decide = RepoFile.step(preflight, "Did this push change the drift harness (its A/A row)?")
+    decide should include("github.ref == 'refs/heads/main'")
+    decide should include("inputs.drift-only != true")
+    decide should include("python3 scripts/ci/harness_aa.py decide --head \"$GITHUB_SHA\" --since \"$since\"")
+    RepoFile.jobs(workflow)("leg") should include("harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}")
+    leg should include("inputs.harness-aa && ',\"takes-drift-aa\"'")
   }
 
   // scripts/identity-drift-ci's pre-land check (convergence-failures-2026-10-29 §7.2): the takes-drift rows alone. The

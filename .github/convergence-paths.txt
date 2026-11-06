@@ -101,6 +101,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/actions/setup-sbt-build/action.yml
 .github/convergence-paths.txt
 .github/gating-checks.tsv
+.github/harness-aa-paths.txt
 .github/scripts/convergence-fill.sh
 .github/scripts/convergence-findings-summary.sh
 .github/scripts/convergence-publish.sh
@@ -128,6 +129,7 @@ scripts/ci/drift_explorer.py
 scripts/ci/drift_scenario.py
 scripts/ci/drift_seeds.py
 scripts/ci/generated-artefacts-drift.sh
+scripts/ci/harness_aa.py
 scripts/ci/identity-drift-check.sh
 scripts/ci/identity-takes-check.sh
 scripts/ci/identity_judgements_lint.py
