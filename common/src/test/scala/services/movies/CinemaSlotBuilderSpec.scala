@@ -94,4 +94,11 @@ class CinemaSlotBuilderFieldsSpec extends AnyFlatSpec with Matchers {
     slot.countries shouldBe Seq("Holandia")
     slot.filmUrl shouldBe Some("https://www.kinoroma.zabrze.pl/film/moxy")
   }
+
+  // Multikino Stary Browar's Bing (2026-11-06): the venue prints lowercase genres, the pills must read like TMDB's.
+  it should "spell a venue's lowercase genres in the vocabulary, as the pills and the genre filter show them" in {
+    val slot = slots.build(CinemaMovie(Movie("Bing", genres = Seq("akcja", "animacja", "dla dzieci", "przygoda")), KinoApollo,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil, showtimes = Nil), "Bing", None)
+    slot.genres shouldBe Seq("Akcja", "Animacja", "Familijny", "Przygodowy")
+  }
 }
