@@ -8,7 +8,6 @@ import services.movies.TitleNormalizer
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * The local prod mirror's world at a moment (docs/design/identity-structural-fixes.md, fix 3: one replay world): the
@@ -33,7 +32,7 @@ object MirrorWorld {
   def at(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer): Moment = {
     val rows  = tools.ProdListings.read(db, tools.CountryScrapeCorpus.cinemasOf(country).toSet)
     val pages = Await.result(db.getCollection[BsonDocument](services.venuepages.MongoVenuePageStore.Collection).find()
-      .batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes)
+      .batchSize(tools.MongoReplies.Default).toFuture(), tools.SpecTimeouts.Run)
     of(new MongoIdentityHistory(db, new services.TtlIndexMismatches), ModelRead.corpus(rows.map(r => r.cinema -> r.films), normalizer),
       pages, new MongoTmdbDocuments(db), at)
   }
