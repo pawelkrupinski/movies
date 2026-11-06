@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# THE FAST PRECHECK: before `agentctl land` queues a change, the cheap reasons the landing check would reject it, here,
+# in seconds instead of after the queue (review 2026-11-06, P1: 68 of 160 rejections in two weeks were lint, commit-rule,
+# conflict or old-ref ones, and a rejected change waited a median 233 min instead of 25).
+#
+#   scripts/land-precheck [--base <ref>] [--head <ref>]
+#
+# Three steps, each printed `precheck <step> PASS|FAIL|UNCHECKED|SKIP (<n> s)`, a FAIL with the lines that say why:
+#   rebase  the change replayed onto <base> (default origin/main) with `git replay`, touching no ref and no file; a
+#           conflict names its files (docs and CLAUDE.md collide most)
+#   rules   the pre-push hook's own commit-rule and linter checks over <base>..<head>, alone (PREPUSH_ONLY): allowlists,
+#           driftguards (Fixes-Red / Drift-Slice / Drift-Harness-Refactor / Identity-Design), newchecks, judgements,
+#           the shellcheck and actionlint checks, and oldrefs (the tool files compiled into the older refs, only when they changed);
+#           the stranded-trailer rule runs too. Not the red gate: a red main makes a change WAIT, not fail.
+#   lints   the lint specs the hook's registry (scripts/hooks/lint-registry.tsv) selects for the pushed paths, in one
+#           scripts/sbt-warm call (seconds on a warm checkout; a cold one compiles first)
+# Last line: `PRECHECK PASS (<n> s)`, `PRECHECK FAIL: <steps> (<n> s)` or `PRECHECK UNCHECKED: <steps> (<n> s)`.
+# Exit 0 pass, 1 a step refused the change, 2 a step could not run (sbt never came up, a bound ran out): agentctl land
+# queues the change anyway then, and the landing check judges it.
+#
+# Bounds: PRECHECK_RULES_SECONDS (300), PRECHECK_LINT_SECONDS (300).
+set -uo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$here/tool-conventions.sh"
+export TOOL_NAME=land-precheck
+
+base=origin/main head=HEAD
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --base) flag_value "$@"; base="$2"; shift 2 ;;
+        --head) flag_value "$@"; head="$2"; shift 2 ;;
+        -h|--help) usage_from_header; exit 0 ;;
+        *) usage_error "unknown argument $1" ;;
+    esac
+done
+cd "$(git rev-parse --show-toplevel)" || exit 2
+base_sha="$(git rev-parse --verify -q "$base^{commit}")" || die "no commit $base"
+head_sha="$(git rev-parse --verify -q "$head^{commit}")" || die "no commit $head"
+merge_base="$(git merge-base "$base_sha" "$head_sha")" || die "no merge base of $base and $head"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+started=$SECONDS failed="" unchecked=""
+report() { # <step> <PASS|FAIL|UNCHECKED|SKIP> <started> [detail file]
+    echo "precheck $1 $2 ($((SECONDS - $3)) s)"
+    [ -n "${4:-}" ] && [ -s "$4" ] && tail -40 "$4" | sed 's/^/    /'
+    case "$2" in FAIL) failed+=" $1" ;; UNCHECKED) unchecked+=" $1" ;; esac
+    return 0
+}
+
+# ── rebase: replayed in memory, never in the worktree ──
+t=$SECONDS
+if [ "$merge_base" = "$base_sha" ]; then
+    report rebase PASS $t
+elif git replay --ref-action=print --onto "$base_sha" "$merge_base..$head_sha" > /dev/null 2> "$tmp/replay"; then
+    report rebase PASS $t
+else
+    conflicts="$(git merge-tree --write-tree --name-only --no-messages "$base_sha" "$head_sha" 2>/dev/null | tail -n +2 | sort -u | tr '\n' ' ')"
+    if [ -n "$conflicts" ]; then
+        echo "conflicts with $base in: $conflicts-- rebase onto $base and resolve them before landing" > "$tmp/rebase"
+    else
+        cp "$tmp/replay" "$tmp/rebase"
+    fi
+    report rebase FAIL $t "$tmp/rebase"
+fi
+
+# ── rules: the hook's own checks, alone ──
+t=$SECONDS
+PREPUSH_NO_REUSE=1 PREPUSH_ONLY="allowlists driftguards newchecks judgements shellcheck actionlint oldrefs" \
+    bounded "${PRECHECK_RULES_SECONDS:-300}" scripts/hooks/pre-push --checks-only "$base_sha..$head_sha" > "$tmp/rules" 2>&1
+case $? in
+    0) report rules PASS $t ;;
+    124|137) report rules UNCHECKED $t "$tmp/rules" ;;
+    *) report rules FAIL $t "$tmp/rules" ;;
+esac
+
+# ── lints: the registry's selection for the pushed paths, in the checkout's kept sbt server ──
+t=$SECONDS
+lints="$(git diff --name-only --no-renames "$base_sha...$head_sha" | scripts/hooks/pre-push --lint-plan)"
+if [ -z "$lints" ]; then
+    report lints SKIP $t
+else
+    line=""
+    for module in common scrapers worker web; do
+        specs="$(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')"
+        [ -n "$specs" ] && line+="$module/Test/testOnly $specs; "
+    done
+    bounded "${PRECHECK_LINT_SECONDS:-300}" scripts/sbt-warm "${line%; }" > "$tmp/lints" 2>&1
+    rc=$?
+    if [ $rc = 0 ]; then
+        report lints PASS $t
+    elif [ $rc = 124 ] || [ $rc = 137 ] || { ! grep -qE '\*\*\* FAILED|Failed tests:|\[error\].*\.scala:[0-9]+' "$tmp/lints" \
+            && grep -qE 'failed to connect to server|sbt server did not start|server disconnected|JVM slot' "$tmp/lints"; }; then
+        report lints UNCHECKED $t "$tmp/lints"
+    else
+        grep -E '\*\*\* FAILED|Failed tests:|\[error\]|should' "$tmp/lints" > "$tmp/lints-why" || cp "$tmp/lints" "$tmp/lints-why"
+        report lints FAIL $t "$tmp/lints-why"
+    fi
+fi
+
+took=$((SECONDS - started))
+if [ -n "$failed" ]; then echo "PRECHECK FAIL:$failed ($took s)"; exit 1; fi
+if [ -n "$unchecked" ]; then echo "PRECHECK UNCHECKED:$unchecked ($took s)"; exit 2; fi
+echo "PRECHECK PASS ($took s)"

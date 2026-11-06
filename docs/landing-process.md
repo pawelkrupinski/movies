@@ -103,6 +103,29 @@ are green locally (CLAUDE.md, "Run the relevant test layers").
 The hook's full output is in the scratchpad's `agentctl-land-<worktree>-<pid>.log`. Exit: 0 landed and watched
 green, 1 not landed, 2 landed but the watch could not tell, 3 landed and main's CI red.
 
+## Stage 2a: the fast precheck, beside the queue
+
+`agentctl land` starts `scripts/land-precheck` DETACHED right after `QUEUED` (review 2026-11-06, P1; the owner: landing
+must not take longer, so it never runs before the queue). It answers "will the landing check reject this for a reason
+visible now?" in ~20-60 s on a warm checkout:
+
+- **rebase**: the change replayed onto origin/main by `git replay`, touching no ref or file; a conflict names its files;
+- **rules**: the hook's own `allowlists driftguards newchecks judgements shellcheck actionlint oldrefs` checks
+  (`PREPUSH_ONLY`, `--checks-only`, so not the red gate), the stranded-trailer rule with them;
+- **lints**: the specs the LINT REGISTRY (`scripts/hooks/lint-registry.tsv`) selects for the pushed paths, in one
+  `scripts/sbt-warm` call.
+
+A refusal cancels the queued change and puts `NOT LANDED: the fast precheck refused <id> (<sha>): PRECHECK FAIL:
+<steps>` in the inbox, its lines in the tail: fix, commit, land again. A precheck that could not run (exit 2: sbt never
+came up, a bound ran out) leaves the change to the landing check. Run it yourself before landing with
+`scripts/land-precheck`; `agentctl land --no-fast-precheck` starts none (name it in your report).
+
+**The lint registry.** The hook's `sbt` check selects its lint specs from that table, each row naming what the spec
+reads (`*` always, `@repo` the repo-reading paths, `@gitops` with the manifests fetched, a pattern such as `*.scala`
+for a source scan, `-` never), not from a spec's name: LoadIndependentTestsSpec and InMemoryStoresRoundTripSpec
+matched no name pattern and turned Main red 7 times. A new repo-reading spec needs its row:
+`scripts/hooks/lint-registry-test.sh` fails without it.
+
 ## Stage 2b: the `waiting` branch, while main is red
 
 `agentctl waiting status|cancel <id>|run` (`~/bin/AGENTCTL.md`, "waiting"):
@@ -274,6 +297,7 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
 | `NOT LANDED: still racing after 3 retries` | main is busy | land again in a minute |
 | `waiting for the landing lock (…), held by: …` | another agent is landing | nothing: land continues once it is free |
 | `NOT LANDED: timed out waiting for the landing lock` | a lander held it 4 h | `agentctl land` again; if it repeats, report the holder |
+| `NOT LANDED: the fast precheck refused <id> …: PRECHECK FAIL: <steps>` | `scripts/land-precheck` beside the queue found a conflict, a commit-rule or linter finding, or a failing registry lint; the queued change is cancelled | read the tail (`scripts/land-precheck` reproduces it), fix, commit, land again |
 | `NOT LANDED: the pre-push checks failed` | the dry run (basic or area tests, a path check) failed | read the tail and the land log, fix forward, commit, land again |
 | `blocked by: identity` / `blocked by: page` | the area's local tests failed | as above; the area log's path is in the tail |
 | `blocked by: identity` with `SLICE ANSWERS MISSING` | the change asks requests pinned slices do not hold (named) | `scripts/identity-slice-coverage --repin`, check the takes still hold (`IdentitySliceCasesSpec`), commit the slices' `http.jsonl.gz` with the change |

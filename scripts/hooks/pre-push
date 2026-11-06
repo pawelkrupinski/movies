@@ -484,24 +484,18 @@ compile_plan() {
 }
 
 # ── Which lint specs the sbt check runs ─────────────────────────────────────────────────────────
-# One line per path on stdin; prints `<module>:<spec>`, one per line. The standing lints always. Every other spec that
-# only READS THE REPO'S FILES (never boots the app, never needs the network) runs when the push touches what such a spec
-# reads: scripts/, .github/, .claude/, CLAUDE.md, build.sbt, project/, */src/test|it|page/, worker/src/fixtures, testkit/
-# (~30 s warm in all). The set is read off the directories, so a new lint spec joins it by existing:
-#   <module>/src/test/scala/deploy/*Spec.scala     every workflow / wiring / budget / gate spec
-#   <module>/src/test/scala/tools/{No*,*Lint*}Spec the source lints (common, scrapers, worker, web)
-# except what stays out, and why:
-#   needs the GitOps manifests, which live in another repository (CI checks them out; the sbt check runs
-#   infra/bin/fetch-gitops first, and with PREPUSH_GITOPS=1 -- the manifests in place -- these run too):
-#       NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec
-#       WorkerRolloutStaggerSpec FluxImageAutomationSpec LauncherJvmFlagsSpec AotCacheOptionsSpec K8sTierPathGatingSpec
-#       PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec
-#   boots a fixture server (not a file lint): FixtureServerBootSpec FixtureServerBootOverlapSpec
-# Skip just these with PREPUSH_SKIP=lintspecs (the standing five still run under `sbt`).
-LintSpecsNeedingGitOps="NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec WorkerRolloutStaggerSpec FluxImageAutomationSpec LauncherJvmFlagsSpec AotCacheOptionsSpec K8sTierPathGatingSpec PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec"
-LintSpecsBootingServers="FixtureServerBootSpec FixtureServerBootOverlapSpec"
-# The lints every sbt check runs, whatever the push touches.
-StandingLintSpecs="worker:tools.NoWallClockInTestsSpec scrapers:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
+# One line per path on stdin; prints `<module>:<spec>`, one per line, read off THE LINT REGISTRY
+# (scripts/hooks/lint-registry.tsv; its header has the format), never off a spec's name: a spec runs when a pushed path
+# matches what its row says it reads. `*` rows (the standing lints) run whatever the push touches; `@repo` rows when the
+# push touches what the repo-reading specs read (read_by_lint_specs: scripts/, .github/, .claude/, CLAUDE.md, build.sbt,
+# project/, */src/test|it|page/, worker/src/fixtures, testkit/; ~30 s warm in all); `@gitops` rows the same, only with
+# the GitOps manifests in place (PREPUSH_GITOPS=1: CI checks them out; the sbt check runs infra/bin/fetch-gitops first);
+# a pattern row (`*.scala`: a source scan) when a pushed path matches it; `-` rows never (a spec booting a server).
+# scripts/hooks/lint-registry-test.sh fails when a repo-reading spec has no row: a new lint spec adds its row.
+# Skip all but the `*` rows with PREPUSH_SKIP=lintspecs.
+LintRegistry="$(dirname "${BASH_SOURCE[0]}")/lint-registry.tsv"
+# The lints every sbt check runs, whatever the push touches: the registry's `*` rows.
+standing_lints() { [ -f "$LintRegistry" ] && awk -F'\t' '!/^#/ && $2 == "*" { print $1 }' "$LintRegistry"; return 0; }
 # Whether one of the paths on stdin is one the repo-reading lint specs read.
 reads_repo() {
     local path found=1
@@ -511,24 +505,31 @@ reads_repo() {
     return $found
 }
 lint_plan() {
-    local repo_read=0 module dir file spec excluded="$LintSpecsBootingServers"
-    reads_repo && repo_read=1
-    [ "${PREPUSH_GITOPS:-}" = 1 ] || excluded="$excluded $LintSpecsNeedingGitOps"
-    printf '%s\n' $StandingLintSpecs
-    if [ $repo_read = 1 ] && ! skipped lintspecs; then
-        for module in common scrapers worker web; do
-            for dir in deploy tools; do
-                for file in "$module"/src/test/scala/$dir/*Spec.scala; do
-                    [ -f "$file" ] || continue
-                    spec="$(basename "$file" .scala)"
-                    case "$dir:$spec" in tools:No*|tools:*Lint*|deploy:*) ;; *) continue ;; esac
-                    case " $excluded " in *" $spec "*) continue ;; esac
-                    case " $StandingLintSpecs " in *" $module:$dir.$spec "*) continue ;; esac
-                    echo "$module:$dir.$spec"
-                done
-            done
+    local paths repo_read=0 spec reads word path selected
+    paths="$(cat)"
+    printf '%s\n' "$paths" | reads_repo && repo_read=1
+    [ -f "$LintRegistry" ] || return 0
+    while IFS=$'\t' read -r spec reads _; do
+        case "$spec" in ''|'#'*) continue ;; esac
+        selected=0
+        # shellcheck disable=SC2086 # the reads are words, a pattern among them is matched below, never expanded
+        set -f; set -- $reads; set +f
+        for word in "$@"; do
+            case "$word" in
+                '*') selected=1 ;;
+                -) selected=0; break ;;
+                @repo) [ $repo_read = 1 ] && selected=1 ;;
+                @gitops) [ $repo_read = 1 ] && [ "${PREPUSH_GITOPS:-}" = 1 ] && selected=1 ;;
+                *) while IFS= read -r path; do
+                       # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
+                       case "$path" in $word) selected=1; break ;; esac
+                   done <<< "$paths" ;;
+            esac
         done
-    fi
+        [ $selected = 1 ] || continue
+        [ "$reads" != '*' ] && skipped lintspecs && continue
+        echo "$spec"
+    done < "$LintRegistry"
     return 0
 }
 
@@ -1096,7 +1097,7 @@ check_shellcheck() {
     local f before after rc=0
     for f in $(changed_matching '(\.sh$|^scripts/hooks/)'); do
         [ -f "$f" ] || continue
-        case "$f" in *.txt) continue ;; esac # scripts/hooks/local-tests.txt: the hook's test list, no shell
+        case "$f" in *.txt|*.tsv) continue ;; esac # local-tests.txt, lint-registry.tsv: the hook's tables, no shell
         after="$(shellcheck -S warning -f gcc "$f" 2>/dev/null | wc -l | tr -d ' ')"
         if git cat-file -e "$base_sha:$f" 2>/dev/null; then
             git show "$base_sha:$f" > "$tmp/base.sh"

@@ -110,13 +110,15 @@ check "an identity source compiles identity and every module built on it" \
 check "a dashboard alone compiles nothing extra" "" \
   "$(compiles infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 
-# The repo-reading lint specs ride the same sbt run, for the paths they read (every deploy/ spec and the No*/*Lint* source
-# lints, minus the ones that need the GitOps manifests or boot a server).
+# The repo-reading lint specs ride the same sbt run, for the paths their row in scripts/hooks/lint-registry.tsv says they
+# read (lint-registry-test.sh holds the registry complete).
 printf '\033[36m▸\033[0m pre-push --lint-plan\n'
 lints() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --lint-plan | tr '\n' ' ' | sed 's/ $//'; }
-Always="worker:tools.NoWallClockInTestsSpec scrapers:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
+Always="scrapers:services.cinemas.NoWallClockInClientsSpec web:deploy.GrafanaWebMetricCoverageSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec worker:tools.NoWallClockInTestsSpec"
 has() { case " $1 " in *" $2 "*) echo yes ;; *) echo no ;; esac; }
-check "a production Scala source runs the standing lints only" "$Always" "$(lints worker/src/main/scala/A.scala)"
+out="$(lints worker/src/main/scala/A.scala)"
+check "a production Scala source runs the standing lints and the source scans (the registry's *.scala rows), not the workflow specs" \
+  "yes yes yes no" "$(has "$out" worker:tools.NoWallClockInTestsSpec) $(has "$out" worker:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.LoadIndependentTestsSpec) $(has "$out" worker:deploy.WorkflowPlanSpec)"
 for changed in scripts/x.sh .github/workflows/x.yml .claude/skills/x/SKILL.md CLAUDE.md build.sbt web/src/test/scala/ASpec.scala \
   worker/src/fixtures/scala/tools/X.scala worker/src/it/scala/XSpec.scala; do
   out="$(lints "$changed")"
@@ -161,7 +163,7 @@ if command -v shellcheck >/dev/null; then
   repo="$scratch/repo"
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
-  cp "$REPO_ROOT/scripts/hooks/pre-push" "$repo/scripts/hooks/pre-push"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
+  cp "$REPO_ROOT/scripts/hooks/pre-push" "$REPO_ROOT/scripts/hooks/lint-registry.tsv" "$repo/scripts/hooks/"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
   for f in sbt-warm jvm-gate.sh zinc_orphans.py; do cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"; done
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
   scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
@@ -188,6 +190,11 @@ if command -v shellcheck >/dev/null; then
   scratch_git "$repo" add scripts/hooks/local-tests.txt; scratch_git "$repo" commit -qm "a test list"
   (cd "$repo" && PREPUSH_SKIP="scripttests sbt" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1); code=$?
   check "shellcheck skips scripts/hooks/local-tests.txt" "0" "$code"
+  scratch_git "$repo" reset -q --hard HEAD~1
+  printf '# prose, no shebang\nworker:tools.XSpec\t*\n' > "$repo/scripts/hooks/a-table.tsv"
+  scratch_git "$repo" add scripts/hooks/a-table.tsv; scratch_git "$repo" commit -qm "a table beside the hook"
+  (cd "$repo" && PREPUSH_SKIP="scripttests sbt" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1); code=$?
+  check "...and a .tsv table beside the hook (lint-registry.tsv)" "0" "$code"
   scratch_git "$repo" reset -q --hard HEAD~1
   check "...and removes its temporary worktree on success too" "1" "$(scratch_git "$repo" worktree list | wc -l | tr -d ' ')"
   scratch_git "$repo" checkout -q -- a.sh
