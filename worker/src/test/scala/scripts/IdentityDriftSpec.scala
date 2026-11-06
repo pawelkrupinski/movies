@@ -486,12 +486,13 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     gated.inputGate.heldNew shouldBe empty
   }
 
-  it should "take every version in at once while the worker's gate is off (WorkerWiring.modelReadiness)" in {
+  it should "take every version in at once with the gate off (WorkerWiring.modelReadiness returning Always)" in {
     val run   = new IdentityDrift.SliceRun(Path.of("test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa"))
     val clock = new MutableClock(run.slice.recordedAt)
     val core  = run.slice.core.map(_.key).toSet
     val (arriving, booted) = run.listings.partition(l => core(l.key))
-    val worker = new IdentityDrift.Worker(run.readsAt(clock), seed = 8, gatePercent = 100, clock)
+    val worker = new IdentityDrift.Worker(run.readsAt(clock), seed = 8, gatePercent = 100, clock,
+      gating = _ => services.identity.ListingReadiness.Always)
     worker.boot(booted); worker.project()
     worker.scraped(arriving)
     arriving.foreach(l => withClue(l.key)(worker.model.held(l.key) shouldBe Some(l)))

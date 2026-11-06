@@ -632,14 +632,11 @@ class WorkerWiring(
 
 object WorkerWiring {
   /** The model's input gate from a listing's venue-page wait and its families' questions: the ONE composition the worker
-   *  and the drift replay (`IdentityDrift.Worker`) both read, so the replay holds what the worker holds. OFF again since
-   *  2026-11-06 ~13:35Z -- every version taken in at once, as before fix 1: on image 5ec9cf7 DE's and US's held listings
-   *  were taken in only by the 10-minute bound (5 bound releases, 1 promoted on its answers in the first 13 min), the
-   *  questions their first answers led to never asked ahead (fixed by the gate's `askLedTo`). Back on,
-   *  `ListingReadiness.all(pages, families)`; the held rows are released by the next take-up meanwhile. */
-  def modelReadiness(@scala.annotation.unused pages: services.identity.ListingReadiness,
-                     @scala.annotation.unused families: services.identity.ListingReadiness): services.identity.ListingReadiness =
-    services.identity.ListingReadiness.Always
+   *  and the drift replay (`IdentityDrift.Worker`) both read, so the replay holds what the worker holds. Back ON with the
+   *  gate's `askLedTo` (2026-11-06): off from ~13:35Z, image 5ec9cf7's DE and US holds having ended at the 10-minute bound,
+   *  the questions their first answers led to never asked ahead. Off again, this returns `ListingReadiness.Always`. */
+  def modelReadiness(pages: services.identity.ListingReadiness, families: services.identity.ListingReadiness): services.identity.ListingReadiness =
+    services.identity.ListingReadiness.all(pages, families)
 
   /** `KINOWO_BG_CONCURRENCY`'s compiled-in default (see `backgroundBudget`). */
   val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)
