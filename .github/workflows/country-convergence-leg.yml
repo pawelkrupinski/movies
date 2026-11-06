@@ -325,7 +325,7 @@ on:
             # take on top of GitHub's 20 (convergence_slots.py `self_hosted_rows`), as JSON {phase: label}; a row it does
             # not name runs on `runner`. `{}`: every row on `runner` (never empty: `runs-on` parses it).
             row-runners:
-                description: JSON {phase: runner label} of the rows that run elsewhere than `runner` (main's suite on ci-runner).
+                description: "JSON object, phase to runner label, of the rows that run elsewhere than `runner` (main's suite on ci-runner)."
                 required: false
                 type: string
                 default: '{}'
