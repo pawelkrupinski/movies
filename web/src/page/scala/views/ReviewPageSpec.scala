@@ -161,7 +161,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         case "/cast/review"             => contentAsString(cast.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/listed/review"           => contentAsString(listed.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case "/crowded/review"          => contentAsString(crowded.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
-        case "/digest/review"           => contentAsString(digest.agentJudged(None, None)(FakeRequest()))
+        case "/digest/review"           => contentAsString(digest.agentJudged(None, None, 20, false)(FakeRequest()))
         case "/odblask/review"          => contentAsString(odblask.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))
         case why if why.startsWith("/debug/review/why?") =>
           val query = java.net.URI.create(why).getRawQuery.split("&").map(_.split("=", 2)).collect { case Array(k, v) =>
@@ -567,33 +567,33 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     }
   }
 
-  "the review digest" should "list the takes awaiting the user by country, and record right, not a film and skip as the user's word" in {
+  "the Agent-judged tab" should "show each take awaiting the user on a review card, and record confirm, not a film, another film and the filter" in {
     def item(raw: String) = s"document.querySelector('.card[data-cluster=\"${digestItems.find(_.rawTitle == raw).get.id}\"]')"
     onPage("/digest/review") { page =>
-      page.evalString("Array.from(document.querySelectorAll('.country-group')).map(g => g.getAttribute('data-country') + ':' + g.querySelectorAll('.card').length).join(' ')") shouldBe
-        "pl:1 de:3"
+      page.evalString("Array.from(document.querySelectorAll('.card .raw-title')).map(t => t.textContent).join('|')") shouldBe
+        "Świąteczna zabawa z Peppą|KIRSCHBLÜTEN - HANAMI|Latcho Drom|Snake Eyes"
       page.evalString("document.getElementById('count').textContent") shouldBe "0 / 4 answered"
+      page.evalString("document.querySelector('.review-nav a.is-active').textContent") shouldBe "Agent-judged"
+      page.evalString("Array.from(document.querySelectorAll('.kinds a')).map(a => a.textContent.trim()).join('|')") shouldBe "All 4|Agent-judged 2|Candidates 2"
       val hanami = item("KIRSCHBLÜTEN - HANAMI")
-      page.evalString(s"$hanami.querySelector('.said').textContent") shouldBe "agent judged right · 2026-10-22"
-      page.evalString(s"$hanami.querySelector('.film-title').textContent") shouldBe "Kirschblüten – Hanami (2008)"
-      page.evalString(s"$hanami.querySelector('.evidence').textContent") should include("Doris Dörrie's 2008 film")
+      // the listing: its country, billing and venue; the film judged with its year and TMDB link; the agent's reason
+      page.evalString(s"$hanami.querySelector('.head .tag').textContent") shouldBe "DE"
+      page.evalString(s"$hanami.querySelector('.listing .meta').textContent") should include("Metropolis Kino")
+      page.evalString(s"$hanami.querySelector('.agent-note .said').textContent") shouldBe "agent judged right · 2026-10-22"
+      page.evalString(s"$hanami.querySelector('.agent-note .evidence').textContent") should include("Doris Dörrie's 2008 film")
+      page.evalString(s"$hanami.querySelector('.lead .cand .t b').textContent") shouldBe "Kirschblüten – Hanami"
+      page.evalString(s"$hanami.querySelector('.lead .cand .s').textContent") should include("2008")
+      page.evalString(s"$hanami.querySelector('.lead .cand .s a').getAttribute('href')") shouldBe "https://www.themoviedb.org/movie/6461"
       page.evalString(s"$hanami.querySelector('a.explain').getAttribute('href')") should startWith("/debug/review/listing?country=de&venue=Metropolis+Kino")
-      page.evalString(s"$hanami.querySelector('.cand .s a').getAttribute('href')") shouldBe "https://www.themoviedb.org/movie/6461"
-      page.evalString(s"${item("Latcho Drom")}.querySelector('.said').textContent") shouldBe "flagged · 2026-10-23"
-      page.evalInt(s"$hanami.querySelectorAll('button[data-verdict=right], button[data-verdict=wrong], button[data-verdict=event], button[data-skip]').length") shouldBe 4
+      page.evalInt(s"$hanami.querySelectorAll('.listing .poster').length") shouldBe 1
+      page.evalString(s"${item("Latcho Drom")}.querySelector('.agent-note .said').textContent") shouldBe "flagged · 2026-10-23"
       page.evalString(s"$hanami.querySelector('button[data-verdict=right]').textContent") shouldBe "Confirm right"
       page.evalString(s"$hanami.querySelector('button[data-verdict=wrong]').textContent") shouldBe "Reject"
-      page.evalString("Array.from(document.querySelectorAll('.filters a')).map(a => a.textContent.trim()).join('|')") shouldBe "All 4|Agent-judged 2|Candidates 2"
-      page.evalString("document.querySelector('.review-nav a.is-active').textContent") shouldBe "Agent-judged"
-      // another film needs one named: nothing is recorded without
-      val peppa = item("Świąteczna zabawa z Peppą")
-      page.eval(s"$peppa.querySelector('button[data-verdict=film]').click()")
-      page.waitFor(s"$peppa.querySelector('.status').classList.contains('is-error')")
-      page.evalString(s"$peppa.getAttribute('data-answered') || ''") shouldBe ""
-      page.eval("document.querySelector('.country-group').scrollIntoView()")
-      ReviewPageSpec.save(page, "review-digest-desktop.png")
+      page.evalInt(s"$hanami.querySelectorAll('button[data-verdict=event], form.own').length") shouldBe 2
+      page.eval(s"$hanami.scrollIntoView()")
+      ReviewPageSpec.save(page, "review-agent-judged-desktop.png")
 
-      // right: the agent's judgement becomes the user's
+      // confirm: the agent's judgement becomes the user's
       page.eval(s"$hanami.querySelector('button[data-verdict=right]').click()")
       page.waitFor(s"$hanami.getAttribute('data-answered') === 'right'")
       LabelsTsv.read(digestLabels).find(_.film == "tmdb:6461").get.note should startWith("review page: right: Kirschblüten – Hanami (2008) (was: right: agent judged")
@@ -605,21 +605,20 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         Some(("wrong", "review page: not a film: Latcho Drom - Good Road (2024)"))
       page.evalString("document.getElementById('count').textContent") shouldBe "2 / 4 answered"
       page.evalString("document.getElementById('export-summary').textContent") should include("1 added")
-      // skip: to the end of its country's list, nothing recorded
-      val before = digestAnswers.history().size
-      val snake  = item("Snake Eyes")
-      page.eval(s"$snake.querySelector('button[data-skip]').click()")
-      page.evalBool(s"$snake.classList.contains('skipped') && $snake.parentNode.lastElementChild === $snake") shouldBe true
-      digestAnswers.history().size shouldBe before
+      // another film needs one named: nothing is recorded without
+      val peppa = item("Świąteczna zabawa z Peppą")
+      page.eval(s"$peppa.querySelector('button[data-other]').click()")
+      page.waitFor(s"$peppa.querySelector('.status').classList.contains('is-error')")
+      page.evalString(s"$peppa.getAttribute('data-answered') || ''") shouldBe ""
 
       page.setViewport(400, 900)
       page.evalBool("document.documentElement.scrollWidth <= window.innerWidth") shouldBe true
-      page.eval(s"$hanami.scrollIntoView()")
-      ReviewPageSpec.save(page, "review-digest-mobile.png")
+      page.eval(s"$peppa.scrollIntoView()")
+      ReviewPageSpec.save(page, "review-agent-judged-mobile.png")
     }
-    // answered takes leave the digest; the skipped one stays
+    // answered takes leave the tab
     onPage("/digest/review") { page =>
-      page.evalString("Array.from(document.querySelectorAll('.card .raw-title')).map(t => t.textContent).join('|')") shouldBe
+      page.evalString("Array.from(document.querySelectorAll('.card:not([hidden]) .raw-title')).map(t => t.textContent).join('|')") shouldBe
         "Świąteczna zabawa z Peppą|Snake Eyes"
     }
   }

@@ -75,8 +75,15 @@
     case ReviewPage.Queue => {Listing clusters the resolver left unmatched or is unsure of — a pooled take, or one prod serves otherwise than the model decided — those an answer settles the most listings of first: the listings no label covers yet, weighted by how likely the resolver is wrong on them. Each card shows what the venue says, the film put forward, and why it is unsure. Mark that film right or wrong, pick another candidate, or give the right film; each answer is written to identity-judgements.tsv as it is given.}
     case ReviewPage.Matchable => {Unmatched clusters whose best candidate the resolver itself rated at the threshold or above — held below the line, or vetoed by a guard. Each card shows what the venue says, the film the model leaned to, and why it held back. Confirm or reject it, or give the right film; answers become labels, never hand matches.}
     case ReviewPage.Recent => {Clusters matched to a film lately, least confident first. Each card shows what the venue says, the film it was matched to, the rule that took it and why. Mark each match right or wrong, or give the right film; answers become labels the rules are graded against.}
-    case ReviewPage.Digest => {}
+    case ReviewPage.Digest => {The takes agents judged without you (their evidence marked AGENT-JUDGED in identity-judgements.tsv) and those they flagged as looking wrong without judging (identity-review-candidates.tsv), each on the card of its listing: what the venue says, the film judged, the films the model weighed, and the agent's reason. Confirm or reject the agent's verdict, pick another candidate, or give the right film; each answer is written to identity-judgements.tsv as yours as it is given. Commit them with scripts/review-commit.}
   }</p>
+  @for((agent, candidate) <- view.controls.kindCounts) {
+    <div class="kinds">
+      <a href="@view.link("kind" -> None)" class="@if(view.controls.kind.isEmpty){is-active}">All @(agent + candidate)</a>
+      <a href="@view.link("kind" -> Some(ReviewDigest.Kinds.Agent))" class="@if(view.controls.kind.contains(ReviewDigest.Kinds.Agent)){is-active}">Agent-judged @agent</a>
+      <a href="@view.link("kind" -> Some(ReviewDigest.Kinds.Candidate))" class="@if(view.controls.kind.contains(ReviewDigest.Kinds.Candidate)){is-active}">Candidates @candidate</a>
+    </div>
+  }
   @for(n <- view.notices){<div class="notice warn">@n</div>}
   <div class="controls">
     @for(min <- view.controls.min) {
@@ -129,12 +136,31 @@
           @for(p <- c.lead.flatMap(_.probability)){<span class="conf" title="best candidate">@pct(p)</span>}
         }
       </div>
+      @for(item <- card.item) {
+        <div class="agent-note">
+          @item.agentVerdict match {
+            case Some(v) => {<span class="said @v">agent judged @v · @item.flagged</span>}
+            case None    => {<span class="said flag">flagged · @item.flagged</span>}
+          }
+          · <a class="explain" href="@routes.ReviewController.listing(item.country, Option.when(item.venue != "*")(item.venue), item.rawTitle).url">explain this listing</a>
+          @if(item.venue == "*"){· every venue billing it}
+          @if(item.film.tmdb.isEmpty){· the film: @item.film.render}
+          <div class="evidence">@item.evidence</div>
+          @if(card.others.nonEmpty) {
+            <ul class="others" aria-label="Other judgements of this billing">
+              @for(r <- card.others) {<li>@r.venue: <span class="@r.verdict">@r.verdict</span> @r.film @r.filmTitle <small>@r.note.take(160)</small></li>}
+            </ul>
+          }
+          @for(evidence <- card.judgeCard) {<details class="judge-card"><summary>identity-judge-cards</summary><pre>@evidence</pre></details>}
+        </div>
+      }
       @for(p <- card.priority) {
         <div class="priority" title="listings an answer labels × the probability the resolver is wrong on them">
           <span class="settles">settles @p.listings listing@if(p.listings != 1){s}</span> · <span class="unsure">@pct(p.uncertainty) unsure</span>@for(r <- p.reasons){ · <span class="reason">@r</span>}
         </div>
       }
-      @for(l <- card.labels) {
+      @* the Agent-judged tab shows the judgements in its own note *@
+      @for(l <- card.labels if card.item.isEmpty) {
         <div class="label-row @l.verdict">labelled @l.verdict: @l.film @if(l.venue != "*"){(@l.venue)} — @l.note</div>
       }
       <div class="listing">
@@ -159,11 +185,19 @@
 
       @for(tmdb <- card.shown) {
         <div class="lead">
-          <div class="kind">@if(c.film.isDefined){Matched by @c.basis} else {The model leaned to · @c.basis}@for(at <- card.updatedAt){ · <span title="the latest movie_slots.updatedAt of a member: a proxy for the decision time">@at.toString.take(16).replace("T", " ") UTC</span>}</div>
+          <div class="kind">@if(card.item.isDefined){The film @card.item.flatMap(_.agentVerdict).fold("flagged")("the agent judged " + _) · the model: @c.basis} else {@if(c.film.isDefined){Matched by @c.basis} else {The model leaned to · @c.basis}@for(at <- card.updatedAt){ · <span title="the latest movie_slots.updatedAt of a member: a proxy for the decision time">@at.toString.take(16).replace("T", " ") UTC</span>}}</div>
           <div class="cand">@filmBody(card, tmdb, if (c.film.isDefined) None else c.lead)</div>
           <div class="rb">
-            <button type="button" class="btn yes right@if(isOn(card, "right")){ on}" data-verdict="right">Right film</button>
-            <button type="button" class="btn none wrong@if(isOn(card, "wrong")){ on}" data-verdict="wrong">Wrong film</button>
+            @card.item.flatMap(_.agentVerdict) match {
+              case Some(v) => {
+                <button type="button" class="btn yes @v@if(isOn(card, v)){ on}" data-verdict="@v">Confirm @v</button>
+                <button type="button" class="btn none@if(isOn(card, if (v == "right") "wrong" else "right")){ on}" data-verdict="@{if (v == "right") "wrong" else "right"}">Reject</button>
+              }
+              case None => {
+                <button type="button" class="btn yes right@if(isOn(card, "right")){ on}" data-verdict="right">Right film</button>
+                <button type="button" class="btn none wrong@if(isOn(card, "wrong")){ on}" data-verdict="wrong">Wrong film</button>
+              }
+            }
           </div>
         </div>
       }
@@ -180,7 +214,7 @@
         @for(f <- c.reasons.fallback){<li>fallback: @f.source:@f.id at @pct(f.probability)@for(t <- f.title){ · @t}@for(y <- f.year){ (@y)}</li>}
         @for((family, id) <- c.reasons.agreed.toSeq.sorted){<li>agreement: @family named @id</li>}
         @if(c.reasons.unanswered > 0){<li>@c.reasons.unanswered question(s) unanswered</li>}
-      </ul><div class="traces" data-src="/debug/review/why?country=@c.country.code&amp;cluster=@java.net.URLEncoder.encode(c.id, "UTF-8")"></div></details>
+      </ul>@if(card.item.isEmpty){<div class="traces" data-src="/debug/review/why?country=@c.country.code&amp;cluster=@java.net.URLEncoder.encode(c.id, "UTF-8")"></div>}</details>
       @if(card.otherCandidates.nonEmpty) {
         @if(card.shown.isDefined){<div class="s">Other candidates</div>}
         <div class="cands">

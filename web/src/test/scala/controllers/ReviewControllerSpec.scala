@@ -56,23 +56,24 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
       "agent judged 2026-10-22 (test): Miyazaki's, the venue's year 2004", judged = "2026-10-22")))
     Files.writeString(ReviewDigest.candidatesPath(labels), ReviewDigest.CandidatesHeader +
       "\nde\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short\n")
-    status(controller(Mode.Prod, labels = labels).agentJudged(None, None)(FakeRequest())) shouldBe NOT_FOUND
+    status(controller(Mode.Prod, labels = labels).agentJudged(None, None, 20, false)(FakeRequest())) shouldBe NOT_FOUND
     val dev  = controller(Mode.Dev, labels = labels, tmdbPosters = Some(howlsLookup))
-    val html = contentAsString(dev.agentJudged(None, None)(FakeRequest()))
-    html.indexOf("Polska") should (be > 0 and be < html.indexOf("Deutschland"))
-    html should include("<b class=\"film-title\">Howl&#x27;s Moving Castle (2004)</b>")   // the row files no title: TMDB's
-    html should include("<b class=\"film-title\">Latcho Drom - Good Road (2024)</b>")
+    val html = contentAsString(dev.agentJudged(None, None, 20, false)(FakeRequest()))
+    html.indexOf("Ruchomy zamek Hauru") should (be > 0 and be < html.indexOf("Latcho Drom"))   // Poland's before Germany's
+    html should include("<b>Howl&#x27;s Moving Castle</b>")   // the row files no title: TMDB's
+    html should include("<b>Latcho Drom - Good Road</b>")
+    html should (include("class=\"card") and include("TMDB</a>") and include("Confirm right"))   // the review cards' own markup
     html should include("agent judged right · 2026-10-22")
     html should include("flagged · 2026-10-23")
     html should include("looks wrong: a 19′ short")
     html should include("/debug/review/listing?country=de&amp;venue=Rastst%C3%A4tte&amp;title=Latcho")
     html should include("/debug/review/tmdb-poster/1247239?country=de")
-    contentAsString(dev.agentJudged(Some("de"), None)(FakeRequest())) should not include "Ruchomy zamek Hauru"
+    contentAsString(dev.agentJudged(Some("de"), None, 20, false)(FakeRequest())) should not include "Ruchomy zamek Hauru"
     // answered: the agent's row becomes the user's, and leaves the digest
     val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
     status(dev.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "right")))) shouldBe OK
     LabelsTsv.read(labels).head.note should startWith("review page: right: tmdb:4935 (was: right: agent judged")
-    contentAsString(dev.agentJudged(None, None)(FakeRequest())) should (not include "Ruchomy zamek Hauru" and include("Latcho Drom"))
+    contentAsString(dev.agentJudged(None, None, 20, false)(FakeRequest())) should (not include "Ruchomy zamek Hauru" and include("Latcho Drom"))
   }
 
   it should "filter by kind, and show the other judgements of a billing, the judge-cards evidence and an answer naming another film" in {
@@ -86,11 +87,11 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     Files.createDirectories(cards.getParent)
     Files.writeString(cards, "# cards\n\n## Ruchomy zamek Hauru x tmdb:4935\nsuggested: right, decisive\n\n## Other x tmdb:1\nnot this\n")
     val dev = controller(Mode.Dev, labels = labels)
-    val agent = contentAsString(dev.agentJudged(None, Some("agent"))(FakeRequest()))
+    val agent = contentAsString(dev.agentJudged(None, Some("agent"), 20, false)(FakeRequest()))
     agent should (include("Ruchomy zamek Hauru") and not include "Latcho Drom")
     agent should (include("Confirm right") and include("data-verdict=\"wrong\"") and include("Other film"))
     agent should (include("Kino Inne") and include("tmdb:77") and include("suggested: right, decisive") and not include "not this")
-    contentAsString(dev.agentJudged(None, Some("candidate"))(FakeRequest())) should (include("Latcho Drom") and not include "Ruchomy zamek Hauru")
+    contentAsString(dev.agentJudged(None, Some("candidate"), 20, false)(FakeRequest())) should (include("Latcho Drom") and not include "Ruchomy zamek Hauru")
     // another film: the chosen one right, the agent's row in place its own, the file lint-clean in its keys (one row per key)
     val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
     val reply = dev.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "film", "ref" -> "tmdb:999")))
@@ -332,7 +333,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
   "every review page" should "show 20 cards unless asked for more, the routes' default the one its links leave out" in {
     val routes = scala.io.Source.fromResource("routes").getLines().filter(_.contains("controllers.ReviewController.")).toSeq
     val limits = routes.flatMap(line => """limit: Int \?= (\w+)""".r.findFirstMatchIn(line).map(_.group(1)))
-    limits should have size 3                                                   // the queue, the matchable page, the recent page
+    limits should have size 4                                       // the queue, the matchable, recent and Agent-judged pages
     limits.distinct shouldBe Seq(ReviewController.DefaultLimit.toString)
     ReviewController.DefaultLimit shouldBe 20
   }

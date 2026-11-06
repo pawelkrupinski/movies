@@ -62,6 +62,16 @@
     details.checks summary { cursor: pointer; }
     details.checks li { font-family: var(--mono); overflow-wrap: anywhere; }
     details.checks details.venues summary { font-size: .8rem; }
+    .kinds { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; font-size: .85rem; }
+    .kinds a { padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; color: inherit; text-decoration: none; }
+    .kinds a.is-active { background: var(--line); }
+    .agent-note { font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+    .agent-note .said { text-transform: uppercase; letter-spacing: .04em; font-size: .75rem; }
+    .agent-note .said.right { color: var(--ok); } .agent-note .said.wrong { color: var(--bad); } .agent-note .said.flag { color: var(--warn); }
+    .agent-note .evidence { border-left: 3px solid var(--line); padding-left: 10px; margin-top: 6px; }
+    .agent-note .others { margin: 8px 0 0; padding-left: 18px; }
+    .agent-note .others .right { color: var(--ok); } .agent-note .others .wrong { color: var(--bad); }
+    .agent-note details.judge-card pre { font: .75rem var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0 0; }
     .label-row { font-size: .85rem; color: var(--ok); overflow-wrap: anywhere; }
     .label-row.wrong { color: var(--bad); }
     .cands { display: grid; gap: 8px; }

@@ -124,17 +124,6 @@ object RenderSafetyLintSpec {
     ("_filmDetailContent.scala.html", "url")         -> "a WebHref (FilmSchedule.linkableCinemaFilmUrls)",
     ("_moviePoster.scala.html", "proxied")           -> "a WebHref (PosterProxy.proxyPoster of the template's `poster: Option[WebHref]`)",
     ("_filmDetailContent.scala.html", "href")        -> "an app route: FilmHref of a sibling city (MovieController.otherCityLinks)",
-    ("reviewDigest.scala.html", "href")              -> "a WebHref (FilmRef.url through WebHref.of)",
-    ("reviewDigest.scala.html", "view.explainUrl(item)") ->
-      "an app route: ReviewController.listing (ReviewView.explainUrl)",
-    ("reviewDigest.scala.html", "view.link(kind = None)") ->
-      "an app route: ReviewController.agentJudged (ReviewDigestView.link)",
-    ("reviewDigest.scala.html", "view.link(kind = Some(ReviewDigest.Kinds.Agent))") ->
-      "an app route: ReviewController.agentJudged (ReviewDigestView.link)",
-    ("reviewDigest.scala.html", "view.link(kind = Some(ReviewDigest.Kinds.Candidate))") ->
-      "an app route: ReviewController.agentJudged (ReviewDigestView.link)",
-    ("reviewDigest.scala.html", "{controllers.ReviewView.pathOf(p)}") ->
-      "an app path: one of ReviewView.pathOf's literal /debug/review routes",
     ("film.scala.html", "canonicalUrl")              -> "an app URL: this page's own address (MovieController.film)",
     ("_ogTagsApp.scala.html", "{if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}") ->
       "an app URL: the page's own address, passed by the controller that renders it",

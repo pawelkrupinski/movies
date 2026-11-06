@@ -39,7 +39,10 @@ final case class MemberView(key: ListingKey, slot: Option[SlotFacts], page: Opti
 final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], films: Map[Int, FilmCard],
                             labels: Seq[LabelRow], answer: Option[ReviewAnswer], updatedAt: Option[Instant],
                             // the queue's: what an answer on the card settles, and why the resolver is unsure of it
-                            priority: Option[ReviewPriority] = None) {
+                            priority: Option[ReviewPriority] = None,
+                            // the Agent-judged tab's: the take awaiting the user this card is of, the other judgements of its
+                            // billing, and the identity-judge-cards evidence for it
+                            item: Option[DigestItem] = None, others: Seq[LabelRow] = Nil, judgeCard: Option[String] = None) {
   def shown: Option[Int] = cluster.shown
   def filmFacts(tmdb: Int): FilmFacts = films.get(tmdb).fold(FilmFacts(FilmRef.tmdb(tmdb)))(_.facts)
   lazy val reviewMembers: Seq[ReviewMember] = members.map(_.member)
@@ -104,7 +107,9 @@ final case class ReviewCard(cluster: ReviewCluster, members: Seq[MemberView], fi
     stated.collect { case (name, Some(value)) if value.nonEmpty => name -> value }
 
   /** What the page's answer buttons post back: the cluster as the card showed it. */
-  def payload(page: ReviewPage): JsObject = Json.obj(
+  def payload(page: ReviewPage): JsObject = item.fold(clusterPayload(page))(_.payload)
+
+  private def clusterPayload(page: ReviewPage): JsObject = Json.obj(
     "clusterId" -> cluster.id, "country" -> cluster.country.code, "page" -> page.code, "title" -> cluster.title,
     // a listing the venues share is named once with its venues: a film at hundreds of venues of one aggregator page
     // otherwise repeated its every fact hundreds of times, most of a recently-matched page's weight

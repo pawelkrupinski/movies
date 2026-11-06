@@ -116,6 +116,26 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
     }
   }
 
+  it should "put each item on a card of its own listing, the film judged put forward and the film the model took among its candidates" in {
+    import services.identity.ResolverDecision
+    import services.movies.ListingKey
+    val hall    = ListingKey.Published("KiKuBi", "Rose", None, Nil)
+    val sibling = ListingKey.Published("Other Kino", "Rose", None, Nil)
+    val decision = ResolverDecision(Seq(hall, sibling), Some(1176962), 0.9, ResolverDecision.Basis.OwnMatch, Seq("own match 1176962 at 90.0%"))()
+    val item = ReviewDigest.pending(Seq(agentRose), Nil, Set.empty).head   // judged right: tmdb:846864
+    val card = ReviewDigest.clusterOf(models.Country.Germany, item, Seq(decision))
+    card.members shouldBe Seq(hall)                       // that listing alone: an answer labels no sibling
+    card.id shouldBe item.id
+    card.shown shouldBe Some(846864)
+    card.candidates.map(_.film) shouldBe Seq(846864, 1176962)  // the film judged, then the one the model took
+    card.explanation shouldBe decision.explanation
+    // the model's own take is the film judged: it stays the match
+    ReviewDigest.clusterOf(models.Country.Germany, item.copy(film = FilmRef.tmdb(1176962)), Seq(decision)).film shouldBe Some(1176962)
+    // a listing the model holds no decision for still gets a card
+    val bare = ReviewDigest.clusterOf(models.Country.Germany, item, Nil)
+    (bare.members.map(_.venue), bare.shown) shouldBe ((Seq("KiKuBi"), Some(846864)))
+  }
+
   "the checked-in digest" should "read every candidate, and list the agent judgements and candidates awaiting the user" in {
     val labels = Paths.get("test/resources/fixtures/identity-judgements.tsv")
     val root   = Iterator.iterate(Paths.get("").toAbsolutePath)(_.getParent).takeWhile(_ != null)

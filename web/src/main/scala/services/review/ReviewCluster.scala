@@ -19,9 +19,11 @@ final case class ReviewCandidate(film: Int, probability: Option[Double], vetoed:
  */
 final case class ReviewCluster(country: Country, members: Seq[ListingKey], film: Option[Int], confidence: Double,
                                basis: ResolverDecision.Basis, explanation: Seq[String], fallback: Boolean,
-                               candidates: Seq[ReviewCandidate], reasons: ReviewReasons = ReviewReasons()) {
+                               candidates: Seq[ReviewCandidate], reasons: ReviewReasons = ReviewReasons(),
+                               // an answer's key when it is not the members' own: the Agent-judged tab answers one listing AND film
+                               answerKey: Option[String] = None) {
   lazy val reviewMembers: Seq[ReviewMember] = members.map(ReviewMember.of)
-  lazy val id: String = ReviewClusterId.of(reviewMembers)
+  lazy val id: String = answerKey.getOrElse(ReviewClusterId.of(reviewMembers))
   /** The members as `movie_slots.listingKey` writes them ([[ListingKey.serialised]]). */
   lazy val memberKeys: Seq[String] = members.map(ListingKey.serialised)
   def title: String = members.headOption.fold("")(_.rawTitle)

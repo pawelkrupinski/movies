@@ -115,6 +115,25 @@ object ReviewDigest {
     cards.split("\n## ").map(_.trim).filter(b => b.contains(title) && b.contains(filmId)).mkString("\n\n").take(CardLimit)
   }
 
+  /** The cluster the item's card shows: the item's listing (its venue and billing alone, so an answer labels that listing and
+   *  no other), with the film judged put forward and the film the model took, if another, among the candidates it lost to.
+   *  The model's decision of the listing gives the explanation and the other candidates; a listing the model holds no
+   *  decision for gets an empty one. Answered under the item's own id: one listing and film each. */
+  def clusterOf(country: models.Country, item: DigestItem, decisions: Seq[services.identity.ResolverDecision]): ReviewCluster = {
+    val key      = decisions.iterator.flatMap(_.members).find(k => k.rawTitle == item.rawTitle && (item.venue == "*" || k.venue == item.venue))
+    val member   = key.getOrElse(services.movies.ListingKey.Published(if (item.venue == "*") "" else item.venue, item.rawTitle, None, Nil))
+    val seed     = key.flatMap(k => decisions.find(_.members.contains(k))).map(ReviewCluster.of(country, _))
+      .getOrElse(ReviewCluster(country, Seq(member), None, 0.0, services.identity.ResolverDecision.Basis.NoCandidate, Nil, false, Nil))
+    val judged   = item.film.tmdb
+    val agrees   = judged.isDefined && seed.film == judged
+    val tookOther = seed.film.filterNot(judged.contains).map(ReviewCandidate(_, Some(seed.confidence)))
+    val candidates =
+      if (agrees) seed.candidates
+      else judged.fold(Seq.empty[ReviewCandidate])(film => ReviewCandidate(film, seed.candidates.find(_.film == film).flatMap(_.probability)) +:
+        (tookOther.toSeq ++ seed.candidates.filterNot(_.film == film)).distinctBy(_.film))
+    seed.copy(members = Seq(member), film = if (agrees) seed.film else None, candidates = candidates, answerKey = Some(item.id))
+  }
+
   /** The digest's answers standing: their items' ids. */
   def answered(current: Seq[ReviewAnswer]): Set[String] = current.filter(_.page == ReviewPage.Digest).map(_.clusterId).toSet
 }
