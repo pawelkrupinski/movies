@@ -142,7 +142,6 @@ scripts/ci/jfr-every-jvm.sh
 scripts/ci/job_metrics.py
 scripts/ci/job_metrics_test.py
 scripts/ci/recording_health.py
-scripts/ci/runner_scheduler.py
 scripts/ci/shellcheck-action-runs.sh
 scripts/ci/tree-unchanged.sh
 scripts/identity-judge-cards

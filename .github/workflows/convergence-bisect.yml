@@ -148,7 +148,7 @@ jobs:
             matrix:
                 country: ${{ fromJson(needs.plan.outputs.countries != '[]' && needs.plan.outputs.countries || '["none"]') }}
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && vars.MOVIES_MEASURE_RUNNERS != 'hosted' && 'movies-measure' || 'ubuntu-22.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
         # Above everything the script may spend, so its own cap is what stops it and the
         # verdict it has so far still reaches the summary: up to two replays before bisecting
         # (the red commit when only the full leg failed, and the last green one under this

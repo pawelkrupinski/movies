@@ -623,6 +623,7 @@ Setup and compile are not the lever (about a minute a row, sbt-deps hit 98-100%)
 
 `MOVIES_MEASURE_RUNNERS=hosted` (repository variable, default unset = no change): a measurement's legs and bisects go to
 hosted runners while landing checks stay on ci-runner. SelfHostedRunnersSpec holds both sides.
+**Retired 2026-11-06** (section 10, "Reversed"): measurements always run on ci-runner, with no way back to hosted.
 
 Measured with the same 12-row measurements before and after the move to ci-runner (`ci-timings compare`, 6 runs each:
 hosted 41355106349 .. 41360768671, ci-runner 41374801177 .. 41411465401):
@@ -900,6 +901,9 @@ The plan: de 5 slots, and the rows end ~20.4 min after they start (seed 8's row 
 
 ## 10. Main's rows on ci-runner's free slots (2026-11-06)
 
+**Reversed the same evening (see "Reversed" at the end of this section).** Main is back on GitHub's hosted runners
+only, and measurements are on ci-runner only.
+
 The owner: "make movies runs take all the ci-runner runners when bitcashier is not using them", and then approved
 three things. Main and convergence on main may use movies' self-hosted slots, which **reverses 2026-11-01's "Main's own
 runs never leave GitHub's hosted runners"**. Movies gets extra slots when bitcashier is idle, up to the host's memory, and
@@ -941,3 +945,27 @@ Once the owner applies it, compare 10 main convergence runs on each side with `c
 identity-model-convergence.yml`: the convergence rows' queue, the run's wall time, and the rows' durations on
 ci-runner against hosted. Ten movies jobs on 32 threads oversubscribe the host, and section 8 measured rows up to 2.5x
 slower under contention.
+
+### Reversed (2026-11-06, evening)
+
+The owner: **"run main branch convergence and Main workflow always on gh, measurements always on ci"**. This replaces
+the design above before any run used it. The `movies-main` label was never proven in `gating-checks.tsv`, and
+ci-runner's scheduler had not been re-pinned onto it. What changed:
+
+- **Main and main's convergence are on GitHub's hosted runners only.** The preflight's `capacity` step is gone, and
+  so are the legs' `row-runners` input, `convergence_slots.plan(self_hosted=)`, `convergence_reuse` `self_hosted`
+  plumbing and the `movies-main` label row. With it went `gating_checks.py`'s `label` kind, which only that row used,
+  and RunnerLabel's `matrix.`/`fromJson` support, which only `row-runners` used. Every row of a leg runs on the leg's
+  one `runner`.
+- **Measurements are on ci-runner only.** This covers every convergence run off main (measure/*: identity-measure,
+  identity-drift-ci, convergence-bisect and the landing check's suites). The `MOVIES_MEASURE_RUNNERS=hosted` escape
+  from section 8 is gone (the variable was unset). `MOVIES_CI_RUNNERS=self-hosted` stays the one switch: unset, while
+  ci-runner is down, everything is hosted. SelfHostedRunnersSpec holds both sides.
+- **The scheduler** (`runner_scheduler.py`) keeps bitcashier-first and the memory ceiling, with classes check, then
+  measure, then light. It has no `main` class and no longer publishes `capacity.json`, so its `check_headroom` and
+  `publisher_*` config keys are refused as out of date. ci-runner runs the pinned code (bitcashier infra
+  `movies-runner-scheduler-pin.nix`, 171528495f) until the owner re-pins it. Until then, the old code does no harm. No
+  job asks for `movies-main`, so its `main` class never starts a runner, and nothing reads the `capacity.json` it
+  still publishes every minute on the release `ci-runner-capacity`. The file just goes stale. The re-pin also drops
+  the publisher keys, the lander-key credential and the `ci-movies-main` slice. After the re-pin, the
+  `ci-runner-capacity` release can be deleted.

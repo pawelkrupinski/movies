@@ -36,8 +36,6 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 COSTS_FILE = os.path.join(HERE, "convergence-row-minutes.tsv")
 # GitHub Free's concurrent jobs for the whole account
 RUNNERS = 20
-# the label of ci-runner's movies slots that take main's rows (runner_scheduler.py LABELS["main"])
-SELF_HOSTED_LABEL = "movies-main"
 # a leg's matrix with no cap of ours (GitHub's own ceiling on a matrix)
 UNCAPPED = 256
 # a row the costs file does not name: about a mid-sized row
@@ -84,48 +82,25 @@ def makespan(minutes, slots):
     return max(free)
 
 
-def self_hosted_rows(order, costs, n, drift_twice=False):
-    """{code: [phase, ...]}: the `n` longest rows of the whole run, which ci-runner's free movies slots take. The takes
-    pair stays hosted: its row waits on its base row only while that one RUNS (STARTS_BEFORE), a wait a queue on another
-    machine would turn into a resolve of its own."""
-    pair = set(STARTS_BEFORE) | set(STARTS_BEFORE.values())
-    ranked = sorted(((cost(c, p, costs, drift_twice), c, p) for c, ps in order.items() for p in ps if p not in pair),
-                    key=lambda t: -t[0])
-    out = {c: [] for c in order}
-    for _, c, p in ranked[:max(0, n)]:
-        out[c].append(p)
-    return out
-
-
-def plan(phases_by_code, costs, total=RUNNERS, tails=None, drift_twice=False, self_hosted=0):
-    """{code: {"phases": [...], "max-parallel": n, "self-hosted": [...], "minutes": predicted end}} -- the shares of the
-    hosted rows summing to at most `total` (one each at least), each next slot to the country that ends last.
-
-    SELF-HOSTED ROWS (`self_hosted`, what ci-runner can take now: runner_scheduler.py): the run's longest rows run on
-    ci-runner's `movies-main` slots ON TOP of the 20. They lead their country's list so they start at once, and its
-    max-parallel is its hosted share plus their count. The price: when one of them ends while the hosted share is busy,
-    the next hosted row starts too -- GitHub then queues it for a hosted runner a little early. They are the longest, so
-    that happens near the end, if at all."""
+def plan(phases_by_code, costs, total=RUNNERS, tails=None, drift_twice=False):
+    """{code: {"phases": [...longest first], "max-parallel": n, "minutes": predicted end}} -- the shares summing to at most
+    `total` (one each at least), each next slot to the country that ends last."""
     tails = tails or {}
     order = {c: longest_first(c, ps, costs, drift_twice) for c, ps in phases_by_code.items()}
-    off = self_hosted_rows(order, costs, self_hosted, drift_twice)
-    hosted = {c: [p for p in ps if p not in off[c]] for c, ps in order.items()}
-    minutes = {c: [cost(c, p, costs, drift_twice) for p in ps] for c, ps in hosted.items()}
+    minutes = {c: [cost(c, p, costs, drift_twice) for p in ps] for c, ps in order.items()}
 
     def ends(code, n):
-        theirs = max((cost(code, p, costs, drift_twice) for p in off[code]), default=0.0)
-        return round(max(makespan(minutes[code], n) if minutes[code] else 0.0, theirs) + tails.get(code, 0.0), 1)
+        return round(makespan(minutes[code], n) + tails.get(code, 0.0), 1)
 
-    share = {c: 1 if hosted[c] else 0 for c in order}
+    share = {c: 1 for c in order}
     while sum(share.values()) < total:
         # a country can still end sooner with more slots (perhaps only with more than one: 4 rows of 10 end at 20 on 2 or 3)
-        growable = [c for c in order if share[c] < len(hosted[c]) and ends(c, len(hosted[c])) < ends(c, share[c])]
+        growable = [c for c in order if share[c] < len(order[c]) and ends(c, len(order[c])) < ends(c, share[c])]
         if not growable:
             break
         # a slot that cannot shorten the run still gives a country room for a row slower than its median
         share[max(growable, key=lambda c: (ends(c, share[c]), -list(order).index(c)))] += 1
-    return {c: {"phases": off[c] + hosted[c], "max-parallel": share[c] + len(off[c]), "self-hosted": off[c],
-                "minutes": ends(c, share[c])} for c in order}
+    return {c: {"phases": order[c], "max-parallel": share[c], "minutes": ends(c, share[c])} for c in order}
 
 
 # ── the measured costs ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -202,12 +177,9 @@ def describe(shares):
     if not shares:
         return ["no cap: not main's suite (a takes-only or drift-only run), every row at once"]
     lines = [f"{c}: max-parallel {s['max-parallel']}, ends ~{s['minutes']} min: {', '.join(s['phases'])}"
-             + (f" ({', '.join(s['self-hosted'])} on ci-runner)" if s.get("self-hosted") else "")
              for c, s in shares.items()]
-    off = sum(len(s.get("self-hosted", [])) for s in shares.values())
-    return lines + [f"{sum(s['max-parallel'] for s in shares.values()) - off} of {RUNNERS} hosted runners"
-                    + (f" and {off} rows on ci-runner" if off else "")
-                    + f"; the rows end ~{max(s['minutes'] for s in shares.values())} min after they start"]
+    return lines + [f"{sum(s['max-parallel'] for s in shares.values())} of {RUNNERS} runners; the rows end "
+                    f"~{max(s['minutes'] for s in shares.values())} min after they start"]
 
 
 def main(argv):
