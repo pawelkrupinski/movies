@@ -332,6 +332,32 @@ code_changed() {
   [ -n "$was" ] && [ -n "$now" ] && [ "$was" != "$now" ]
 }
 
+# Seconds a staleness check may run. It is a couple of dozen queries; one that is
+# still going after this is stuck on a half-dead tunnel connection (2026-11-05
+# 22:59: the forward was replaced under it and the mongosh sat there 12 h, so
+# Poland stopped syncing without a log line while the other countries resumed).
+STALENESS_TIMEOUT="${KINOWO_MIRROR_STALENESS_TIMEOUT:-120}"
+
+# bounded SECONDS CMD… — run CMD, return its exit code, or 124 after killing it (and
+# the mongosh it forked, when CMD is a function) if it outlives SECONDS. Polled, not a
+# background watchdog: the shell would announce the watchdog's kill over the log.
+bounded() {
+  local limit="$1" pid deadline code=0; shift
+  "$@" &
+  pid=$!
+  deadline=$((SECONDS + limit))
+  while kill -0 "$pid" 2>/dev/null; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      pkill -P "$pid" 2>/dev/null; kill "$pid" 2>/dev/null
+      wait "$pid" 2>/dev/null
+      return 124
+    fi
+    command sleep 0.2
+  done
+  wait "$pid" || code=$?
+  return "$code"
+}
+
 # Does this database's mirror need a full re-seed before it is worth tailing?
 # staleness.js exits 3 when the mirror has drifted beyond what resuming a change
 # stream can close (see staleness-rule.js for the thresholds and why). Any other
@@ -346,7 +372,7 @@ code_changed() {
 # ten minutes while `kinowo_fleet` read as stale).
 needs_reseed() {
   local code=0
-  mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" \
+  bounded "$STALENESS_TIMEOUT" mongosh_at "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$1'" \
     --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/staleness.js" || code=$?
   case "$code" in
     0) return 1 ;;

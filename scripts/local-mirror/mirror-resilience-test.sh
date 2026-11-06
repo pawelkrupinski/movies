@@ -177,6 +177,32 @@ reseeds_when_it_drifts_while_tailing() {
 check "a mirror that drifts while tailing is re-seeded without waiting for the stream to end" \
   reseeds_when_it_drifts_while_tailing
 
+# ── A staleness check that hangs must not wedge the supervisor ───────────────
+# 2026-11-05 22:59 the prod tunnel was restarted under a streaming tailer; the
+# supervisor's next `needs_reseed` mongosh connected to the half-dead forward and
+# never returned, so PL logged nothing and stayed unsynced for 12h while the
+# other countries resumed. The check is documented as "a broken check must never
+# block the sync": a hung one is a broken one.
+a_hung_staleness_check_is_cut_off() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    SRCZ=stub-source-uri; DST=stub-mirror-uri
+    STALENESS_TIMEOUT=1
+    mongosh_at() { command sleep 86400; }
+    needs_reseed kinowo 2>/dev/null && echo "reseed" > "$work/verdict" || echo "tail" > "$work/verdict"
+  ) >/dev/null 2>&1 &
+  local child=$!
+  await_child "$child" 15
+  local verdict; verdict="$(cat "$work/verdict" 2>/dev/null)"
+  rm -rf "$work"
+  [ "$verdict" = "tail" ]
+}
+
+check "a staleness check that never returns is cut off and reads as 'tail anyway'" \
+  a_hung_staleness_check_is_cut_off
+
 # ── The supervisor must notice its OWN code changing ─────────────────────────
 # Tailers re-read the .js files whenever one starts, but the supervisor holds
 # the command lines it was written with for the life of the process. A commit
