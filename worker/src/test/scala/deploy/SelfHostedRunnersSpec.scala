@@ -4,17 +4,19 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * LANDING CHECKS AND MEASUREMENTS RUN ON CI-RUNNER, MAIN STAYS ON GITHUB'S HOSTED RUNNERS (the owner, 2026-11-01).
+ * LANDING CHECKS AND MEASUREMENTS RUN ON CI-RUNNER, MAIN ON GITHUB'S HOSTED RUNNERS PLUS WHAT CI-RUNNER HAS FREE (the
+ * owner, 2026-11-01; the second half 2026-11-06, which reversed "Main's own runs never leave GitHub's hosted runners").
  * With the repository variable MOVIES_CI_RUNNERS=self-hosted, a landing check's jobs (precommit-check.yml, on a check/ branch)
  * ask for ci-runner's `movies-check` slots, a measurement's convergence legs (any ref off main: a measure/ branch) and every
  * convergence bisect for `movies-measure`, and the light jobs around them for `movies` (either kind of slot) -- the
- * slots are infra's nix/hosts/ci-runner/movies-runners.nix. Main's own runs never leave GitHub's hosted runners, so
- * they stop queueing behind the others for GitHub Free's 20. Unset, every job is hosted again: the fallback while
- * ci-runner is down (GitHubRunnerLabelSpec judges that side).
+ * slots are infra's nix/hosts/ci-runner/movies-runners.nix, started per queued job by scripts/ci/runner_scheduler.py, which
+ * gives bitcashier priority. Main's jobs run hosted, except the convergence rows the preflight hands `movies-main` --
+ * as many as the scheduler last published free, 0 when it is stale -- on top of GitHub Free's 20. Unset, every job is
+ * hosted again: the fallback while ci-runner is down (GitHubRunnerLabelSpec judges that side).
  */
 class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   private val SelfHosted = Map("MOVIES_CI_RUNNERS" -> "self-hosted")
-  private val Ours       = Set("movies-check", "movies-measure", "movies")
+  private val Ours       = Set("movies-check", "movies-measure", "movies-main", "movies")
   private val Hosted     = Set("ubuntu-22.04", "ubuntu-24.04", "ubuntu-26.04", "ubuntu-latest", "macos-latest")
   private val RunsOn     = """(?m)^\s+runs-on:\s*(\$\{\{.*}}|\S+)""".r
 
@@ -69,7 +71,31 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     legRunner(ctx("refs/heads/measure/y", both).copy(inputs = Map("runner" -> "ubuntu-24.04-arm"))) shouldBe "ubuntu-24.04-arm"
   }
 
-  "Main and convergence on main" should "stay on GitHub's hosted runners even when ci-runner is switched on" in {
+  private def rowRunner(phase: String, rowRunners: String): String = {
+    val line = """(?m)^\s+runs-on:\s*(\$\{\{.*matrix\.phase.*}})\s*$""".r
+    val at = ctx(RunnerLabel.Main).copy(inputs = Map("runner" -> "ubuntu-22.04", "row-runners" -> rowRunners),
+      matrix = Map("phase" -> phase))
+    RunnerLabel(line.findFirstMatchIn(yml("country-convergence-leg.yml")).get.group(1), at)
+  }
+
+  "main's convergence rows" should "run on ci-runner's movies-main slots where the plan names them, the rest hosted" in {
+    val plan = """{"takes-drift-1":"movies-main","convergence":"movies-main"}"""
+    rowRunner("takes-drift-1", plan) shouldBe "movies-main"
+    rowRunner("convergence", plan) shouldBe "movies-main"
+    rowRunner("takes", plan) shouldBe "ubuntu-22.04"
+    rowRunner("takes", "{}") shouldBe "ubuntu-22.04"
+  }
+
+  "the convergence preflight" should "ask ci-runner's scheduler for free rows only on main with ci-runner on, and pass them on" in {
+    val code = yml("identity-model-convergence.yml")
+    val step = """(?s)- name: How many rows can ci-runner take\?\n(.*?)\n\s+- name:""".r.findFirstMatchIn(code).get.group(1)
+    step should include ("github.ref == 'refs/heads/main' && vars.MOVIES_CI_RUNNERS == 'self-hosted' && inputs.runner == ''")
+    step should include ("runner_scheduler.py rows-for-main")
+    code should include ("SELF_HOSTED_ROWS: ${{ steps.capacity.outputs.self-hosted-rows || '0' }}")
+    code should include ("row-runners:                   ${{ matrix.row-runners || '{}' }}")
+  }
+
+  "Main and convergence on main" should "otherwise stay on GitHub's hosted runners when ci-runner is switched on" in {
     val onMain = ctx(RunnerLabel.Main)
     legRunner(onMain) shouldBe "ubuntu-22.04"
     val main = Seq("main.yml", "ci.yml", "identity-model-convergence.yml", "report-timings.yml")

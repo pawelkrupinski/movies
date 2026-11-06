@@ -321,6 +321,14 @@ on:
                 required: false
                 type: number
                 default: 256
+            # MAIN'S ROWS ON CI-RUNNER (the owner, 2026-11-06): the rows of main's suite that ci-runner's free movies slots
+            # take on top of GitHub's 20 (convergence_slots.py `self_hosted_rows`), as JSON {phase: label}; a row it does
+            # not name runs on `runner`. `{}`: every row on `runner` (never empty: `runs-on` parses it).
+            row-runners:
+                description: JSON {phase: runner label} of the rows that run elsewhere than `runner` (main's suite on ci-runner).
+                required: false
+                type: string
+                default: '{}'
             takes-row:
                 description: A hermetic leg also runs its identity takes row.
                 required: false
@@ -461,7 +469,7 @@ jobs:
             max-parallel: ${{ inputs.max-parallel }}
             matrix:
                 phase: ${{ fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa","takes-aa"' || '')) }}
-        runs-on: ${{ inputs.runner }}
+        runs-on: ${{ fromJson(inputs.row-runners)[matrix.phase] || inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
         # because the corpus was mis-sized (Poland's films-per-venue ratio applied

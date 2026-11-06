@@ -183,7 +183,10 @@ jobs:
             # The legs' runner: ubuntu-22.04 unless a dispatch names one -- or, off main with the repository variable
             # MOVIES_CI_RUNNERS=self-hosted, ci-runner's `movies-measure` slots (infra nix/hosts/ci-runner/movies-runners.nix):
             # every run off main is a measurement (measure/*: identity-measure, identity-drift-ci, a landing check's full
-            # suite) or an agent's own branch, and none of them may queue Main's hosted runners. Main's suite stays hosted.
+            # suite) or an agent's own branch, and none of them may queue Main's hosted runners. Main's suite runs hosted,
+            # EXCEPT the rows ci-runner can take now (the owner, 2026-11-06, reversing 2026-11-01's "Main stays hosted"):
+            # the `capacity` step below reads how many, and the plan hands that many of the longest rows `movies-main`
+            # (each leg's `row-runners`) on top of the hosted 20; ci-runner busy or down reads as none.
             # MOVIES_MEASURE_RUNNERS=hosted sends the legs back to hosted runners while the landing checks stay on ci-runner:
             # its 4 measurement slots run ~240 runner-min an hour against a run's ~240, so runs queued 5-6 hours on
             # 2026-11-02 while the hosted 20 averaged 5 busy (docs/investigations/2026-11-01-twenty-runners.md section 8).
@@ -266,9 +269,20 @@ jobs:
             # leg its rows longest first (`phases`) and its share of GitHub Free's 20 concurrent jobs (`max-parallel`), from
             # each row's measured minutes (scripts/ci/convergence_slots.py, convergence-row-minutes.tsv); it needs the order
             # phases and the A/A decision above. A takes-only or drift-only run keeps the leg's own rows, uncapped.
+            # HOW MANY OF MAIN'S ROWS CI-RUNNER TAKES NOW: what its runner scheduler (scripts/ci/runner_scheduler.py, on
+            # ci-runner) last published as free for main, after bitcashier's work and the queued landing checks. A file
+            # older than 3 minutes, an unreadable one or none at all is 0: every row hosted, nothing waits on ci-runner.
+            - name: How many rows can ci-runner take?
+              id: capacity
+              if: github.ref == 'refs/heads/main' && vars.MOVIES_CI_RUNNERS == 'self-hosted' && inputs.runner == ''
+              # no step timeout: the tool bounds its one `gh release download` at 30 s itself
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: python3 scripts/ci/runner_scheduler.py rows-for-main | tee -a "$GITHUB_OUTPUT"
             - name: Which legs does this run start?
               id: plan
               env:
+                  SELF_HOSTED_ROWS: ${{ steps.capacity.outputs.self-hosted-rows || '0' }}
                   LEG_INPUTS_FILE: ${{ runner.temp }}/leg-inputs.json
                   ORDER_PHASES: ${{ steps.order.outputs.phases || 'both' }}
                   HARNESS_AA: ${{ steps.aa.outputs.harness-aa || 'false' }}
@@ -404,6 +418,7 @@ jobs:
             sample-suite-timeout-minutes:  ${{ matrix.sample-suite }}
             phases:                        ${{ matrix.phases || '' }}
             max-parallel:                  ${{ matrix.max-parallel || 256 }}
+            row-runners:                   ${{ matrix.row-runners || '{}' }}
             order-command:                 ${{ matrix.order }}
             order-job-timeout-minutes:     ${{ matrix.order-job || 55 }}
             order-suite-timeout-minutes:   ${{ matrix.order-suite || 30 }}

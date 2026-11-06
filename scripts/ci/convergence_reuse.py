@@ -293,7 +293,7 @@ def drift_phases(code, pins=""):
     return [f"takes-drift-{r}" for r in drift_seeds.rows_of(code, pins=pins)]
 
 
-def leg_plan(rows, inputs, order_phases="both", harness_aa=False):
+def leg_plan(rows, inputs, order_phases="both", harness_aa=False, self_hosted=0):
     """Main's suite in 20 runners (convergence_slots.plan): each country's rows longest first and its share of the
     runners. A drift-only run plans its takes-drift rows alike (every row a country has, or the pinned ones); a
     takes-only run gets {} (two rows a country: the leg's own expression, no cap)."""
@@ -309,16 +309,23 @@ def leg_plan(rows, inputs, order_phases="both", harness_aa=False):
     compares = convergence_slots.COMPARE_PHASES[:1] if order_phases == "one" else convergence_slots.COMPARE_PHASES
     tails = {c: max(convergence_slots.cost(c, p, costs) for p in compares) for c in split}
     return convergence_slots.plan({r["code"]: matrix_phases(r, order_phases, harness_aa) for r in rows}, costs, tails=tails,
-                                  drift_twice=twice)
+                                  drift_twice=twice, self_hosted=self_hosted)
 
 
-def planned_matrix(rows, inputs, order_phases="both", harness_aa=False):
-    """leg_matrix with each row's `phases` (JSON, longest first; empty: the leg's own expression) and `max-parallel`."""
+def planned_matrix(rows, inputs, order_phases="both", harness_aa=False, self_hosted=0):
+    """leg_matrix with each row's `phases` (JSON, longest first; empty: the leg's own expression), `max-parallel` and
+    `row-runners` (JSON {phase: label} of the rows ci-runner takes, `self_hosted` of main's suite at most; empty: none)."""
     matrix = leg_matrix(rows, inputs)
-    shares = leg_plan(matrix["include"], inputs, order_phases, harness_aa)
+    shares = leg_plan(matrix["include"], inputs, order_phases, harness_aa, self_hosted)
+
+    def runners(code):
+        off = shares[code].get("self-hosted", [])
+        return json.dumps({p: convergence_slots.SELF_HOSTED_LABEL for p in off}, separators=(",", ":")) if off else ""
+
     matrix["include"] = [dict(r, **({"phases": json.dumps(shares[r["code"]]["phases"], separators=(",", ":")),
-                                     "max-parallel": shares[r["code"]]["max-parallel"]} if shares else
-                                    {"phases": "", "max-parallel": convergence_slots.UNCAPPED}))
+                                     "max-parallel": shares[r["code"]]["max-parallel"], "row-runners": runners(r["code"])}
+                                    if shares else
+                                    {"phases": "", "max-parallel": convergence_slots.UNCAPPED, "row-runners": ""}))
                          for r in matrix["include"]]
     return matrix
 
@@ -655,11 +662,14 @@ def cmd_legs(_):
         inputs = read_json(os.environ["LEG_INPUTS_FILE"])  # the file `inputs` wrote
     order_phases = os.environ.get("ORDER_PHASES") or "both"
     harness_aa = os.environ.get("HARNESS_AA") == "true"
-    matrix = planned_matrix(rows, inputs, order_phases, harness_aa)
+    # what ci-runner's movies slots take of main's suite now (the preflight's capacity step, runner_scheduler.py)
+    self_hosted = int(os.environ.get("SELF_HOSTED_ROWS") or 0) if codes is None else 0
+    matrix = planned_matrix(rows, inputs, order_phases, harness_aa, self_hosted)
     if codes is None:
         summary(["Rows longest first, each country's share of the runners (scripts/ci/convergence_slots.py):", ""]
                 + [f"- {line}" for line in
-                   convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa))])
+                   convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa,
+                                                       self_hosted))])
     print(f"leg-matrix={json.dumps(matrix, separators=(',', ':'))}")
     print(f"any-leg={'true' if matrix['country'] else 'false'}")
     return 0

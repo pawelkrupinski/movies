@@ -897,3 +897,47 @@ further rows in `drift-gate-seeds.tsv` (`drift_seeds.py rows_of`), and the prefl
 main's suite and for drift-only dispatches alike. The seed set and the per-seed verdicts are unchanged. A pin reaches rows
 1 and 2 only. `identity-drift-ci --for-red` on an extra row's red replays every row of that country on its fixed seeds.
 The plan: de 5 slots, and the rows end ~20.4 min after they start (seed 8's row 19.0 is the longest), within 20 runners.
+
+## 10. Main's rows on ci-runner's free slots (2026-11-06)
+
+The owner: "make movies runs take all the ci-runner runners when bitcashier is not using them", and then approved
+three things. Main and convergence on main may use movies' self-hosted slots, which **reverses 2026-11-01's "Main's own
+runs never leave GitHub's hosted runners"**. Movies gets extra slots when bitcashier is idle, up to the host's memory, and
+bitcashier always wins. Among movies' own jobs, landing checks go first, then main's rows, then measurements.
+
+### Before (measured 2026-11-06, jobs API)
+
+- **bitcashier** (org runners, 12 builders and 6 deployers, persistent): 2026-11-01..06, no builder was busy for 71% of
+  the minutes, the mean was 1.1 busy, and 6 or more were busy 7% of the time. That is ~1,700 job-min a day.
+- **movies' 10 slots** (6 `movies-check`, 4 `movies-measure`, last 48 h): 5.0 busy on average, all 10 busy 15% of the
+  time, none busy 21%.
+- **hosted**: all 20 busy 29% of the time. Convergence rows queued p50 3.7 min, p75 9.4, p90 13.0, 14,086 job-min in
+  48 h. While hosted jobs queued, ~4,100 slot-min stood idle on ci-runner.
+- **memory**, not runner count, is the host's limit: a movies job holds 7-13 GiB (cgroup peaks), so the 125 GiB host (ci.slice
+  115 GiB) fits ~10 jobs. bitcashier's builders have peaked at 93 GiB together.
+
+### The design
+
+- **The scheduler** (`scripts/ci/runner_scheduler.py`, pinned onto ci-runner by bitcashier's infra) runs every 30 s. It
+  reads bitcashier's runners from their cgroups. While every builder or every deployer is busy, it starts no movies
+  runner and stops idle ones. Its ceiling is (115 GiB − 8 − 8 per busy bitcashier job) / 10 GiB, at most 10. It reads
+  movies' queued jobs from the API and starts one ephemeral runner (`movies-runner@<slot>`) per queued job, using the
+  label of that job's class only: check, then main, then measure, then light (`movies`). A runner that is running a job
+  is never stopped.
+- **Main's share**: the scheduler publishes `free_for_main` to `capacity.json` on the release `ci-runner-capacity`. That
+  number is the ceiling, less what is running or about to be started, less one slot kept for the next landing check. On
+  main, the convergence preflight's `capacity` step reads it, and a file older than 3 minutes reads as 0.
+  `convergence_slots.plan(self_hosted=N)` then hands the N longest rows (never the takes pair) `movies-main` through
+  each leg's `row-runners`. Those rows lead their leg's list, on top of the leg's hosted share. Nothing waits on
+  ci-runner: with ci-runner busy or down, every row is hosted, as before.
+- **Gating**: `movies-main` is a `label` row in `.github/gating-checks.tsv`, `unproven`. A row that fails on it reports
+  and holds no push until a green run proves it (`gating_checks.py prove`).
+- **CPU**: checks keep CCD0 to themselves (2026-11-03). Main's rows share CCD1 with measurements, at weight 200 against
+  their 100.
+
+### Measure after
+
+Once the owner applies it, compare 10 main convergence runs on each side with `ci-timings compare --workflow
+identity-model-convergence.yml`: the convergence rows' queue, the run's wall time, and the rows' durations on
+ci-runner against hosted. Ten movies jobs on 32 threads oversubscribe the host, and section 8 measured rows up to 2.5x
+slower under contention.

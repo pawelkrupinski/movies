@@ -69,6 +69,49 @@ class ShareTest(unittest.TestCase):
         self.assertEqual([plan[c]["max-parallel"] for c in ("aa", "bb", "cc")], [1, 1, 1])
 
 
+class SelfHostedRowsTest(unittest.TestCase):
+    """ci-runner's free movies slots (runner_scheduler.py) take main's longest rows ON TOP of the hosted 20."""
+    COSTS = {("aa", "p"): 20.0, ("aa", "q"): 10.0, ("aa", "r"): 4.0, ("bb", "p"): 15.0, ("bb", "q"): 2.0,
+             ("bb", "takes"): 30.0, ("bb", "takes-base"): 1.0}
+
+    def test_the_longest_rows_of_the_run_go_to_ci_runner_and_start_first(self):
+        plan = slots.plan({"aa": ["p", "q", "r"], "bb": ["p", "q"]}, self.COSTS, total=2, self_hosted=2)
+        self.assertEqual(plan["aa"]["self-hosted"], ["p"])
+        self.assertEqual(plan["bb"]["self-hosted"], ["p"])
+        self.assertEqual(plan["aa"]["phases"][0], "p")
+        # each country's hosted share, plus its ci-runner rows, which do not hold one of the 20
+        self.assertEqual(sum(s["max-parallel"] - len(s["self-hosted"]) for s in plan.values()), 2)
+        self.assertEqual(plan["aa"]["max-parallel"], 2)
+
+    def test_none_free_plans_as_before(self):
+        before = slots.plan({"aa": ["p", "q", "r"], "bb": ["p", "q"]}, self.COSTS, total=3)
+        after = slots.plan({"aa": ["p", "q", "r"], "bb": ["p", "q"]}, self.COSTS, total=3, self_hosted=0)
+        self.assertEqual(before, after)
+        self.assertEqual(after["aa"]["self-hosted"], [])
+
+    def test_more_free_than_rows_takes_every_row_and_holds_no_hosted_slot(self):
+        plan = slots.plan({"aa": ["p", "q"]}, self.COSTS, total=20, self_hosted=9)
+        self.assertEqual(sorted(plan["aa"]["self-hosted"]), ["p", "q"])
+        self.assertEqual(plan["aa"]["max-parallel"], 2)
+        self.assertEqual(plan["aa"]["minutes"], 20.0)
+
+    def test_the_takes_pair_stays_hosted_together(self):
+        # the takes row waits on its base row only while that row runs: never split across a queue it cannot see
+        plan = slots.plan({"bb": ["p", "takes", "takes-base"]}, self.COSTS, total=2, self_hosted=1)
+        self.assertEqual(plan["bb"]["self-hosted"], ["p"])
+
+    def test_the_legs_runner_map_names_each_ci_runner_row(self):
+        rows = reuse.matrix_rows(WORKFLOW)
+        matrix = reuse.planned_matrix(rows, reuse.leg_inputs({}), self_hosted=3)
+        named = {p: label for r in matrix["include"] for p, label in json.loads(r["row-runners"] or "{}").items()}
+        self.assertEqual(len([r for r in matrix["include"] for _ in json.loads(r["row-runners"] or "{}")]), 3)
+        self.assertEqual(set(named.values()), {slots.SELF_HOSTED_LABEL})
+        hosted = sum(r["max-parallel"] - len(json.loads(r["row-runners"] or "{}")) for r in matrix["include"])
+        self.assertLessEqual(hosted, slots.RUNNERS)
+        # nothing free: no map, every row hosted
+        self.assertEqual({r["row-runners"] for r in reuse.planned_matrix(rows, reuse.leg_inputs({}))["include"]}, {""})
+
+
 class MainsRunTest(unittest.TestCase):
     """The plan main's run hands the legs (convergence_reuse.py legs): the same rows the leg's expression expands to, in
     20 runners."""
