@@ -7,6 +7,9 @@
 #     agreement phase, by projection mode (periodic, whole, changed): the "agreement 69.1s/9579MB" of its
 #     `identity projection:` log line, as histograms.
 #   - `kinowo_worker_identity_staging_dropped_total` -- staging events the publisher let go unwritten.
+#   - `kinowo_worker_identity_model_held_listings` / `..._held_oldest_seconds` -- the identity model's input gate
+#     (docs/design/identity-structural-fixes.md, fix 1): listings whose newest version waits on its own questions,
+#     and how long the oldest has waited. No replay runs the gate, so only these see it stuck.
 groups:
   - name: identity-agreement-recorded
     rules:
@@ -35,6 +38,27 @@ groups:
             The agreement stage has had clusters with unread verdicts for six hours without draining them. Its
             per-projection progress is in VictoriaLogs `country:<cc> "agreement"`; the worker diagnostics
             dashboard draws the clusters by state.
+
+      # THE MODEL'S INPUT GATE IS STUCK. A held listing waits on its own family questions and venue page, asked ahead of
+      # the agreement's queue: seconds to minutes. One held over an hour, or more than 1,000 held at once (a day's
+      # arrivals in DE), is an ask that never concludes or a queue not served -- listings shown on their old version,
+      # or on their own card Pending, for as long as it lasts. `last_over_time(...[10m])` bridges a restart's gap.
+      - alert: IdentityInputGateStuck
+        expr: |
+          max by (country) (last_over_time(kinowo_worker_identity_model_held_oldest_seconds[10m])) > 3600
+          or
+          max by (country) (last_over_time(kinowo_worker_identity_model_held_listings[10m])) > 1000
+        for: 15m
+        labels:
+          severity: warning
+          domain: identity
+        annotations:
+          summary: "{{ $labels.country }}: the identity model's input gate holds listings too long or too many ({{ $value }})"
+          description: >-
+            Listings whose newest version waits on its own questions are held over an hour, or over a thousand are
+            held. Their questions are AskQuestion tasks claimed at 0 and venue-page reads; the worker diagnostics
+            dashboard's "Identity input gate" panel draws the held count, the oldest wait and the promotions. The
+            one switch: IdentityModelService.NewWhilePending.
 
       # THE AGREEMENT PHASE COSTS TWICE ITS WEEK. The hour's median wall clock above twice the week's median of that
       # hourly median, and above 20 s (a scoped projection's phase is about a second: doubling it is noise). Not in

@@ -28,6 +28,10 @@ trait IdentityModelMetrics {
   def rebuilt(): Unit
   /** A take-up (at boot, a retry, or a rebuild) failed: the model is down until one succeeds. */
   def takeUpFailed(): Unit
+  /** The input gate holds `count` listings, the oldest waiting `oldestSeconds` (0 with none): after every drain and take-up. */
+  def held(count: Int, oldestSeconds: Double): Unit = ()
+  /** Held listings taken in, each after waiting so many seconds; `atBoot`: by a take-up, its answers filed while down. */
+  def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = ()
 }
 object IdentityModelMetrics {
   val Silent: IdentityModelMetrics = new IdentityModelMetrics {
@@ -245,6 +249,7 @@ final class IdentityModelService(
     val changes = observations.keySet.asScala.toSeq.flatMap(key => Option(observations.remove(key)).map(key -> _)).toMap
     admit(engine, scraped)
     val (gated, promoted) = gate(engine, scraped)
+    reportHeld()
     Option.when(scraped.nonEmpty || changes.nonEmpty || promoted.nonEmpty) {
       val started = tools.Stopwatch.start()
       val before  = engine.familiesResolved
@@ -350,11 +355,12 @@ final class IdentityModelService(
       val byKey    = rows.iterator.map(r => r.key -> r).toMap
       val billed   = present.iterator.map(_.key).toSet
       val released = mutable.ArrayBuffer.empty[services.movies.ListingKey] ++= rows.iterator.map(_.key).filterNot(billed)
+      val bootPromoted = mutable.ArrayBuffer.empty[Double]
       val taken = present.flatMap { listing => byKey.get(listing.key) match {
         case None => Some(listing)
         case Some(row) =>
           val waits = readiness.awaiting(listing)
-          if (waits.isEmpty) { released += listing.key; Some(listing) }
+          if (waits.isEmpty) { released += listing.key; bootPromoted += (clock.millis() - row.since).max(0L) / 1000.0; Some(listing) }
           else {
             pending.put(listing.key, IdentityModelService.Held(listing.venue, listing, row.ready, waits, row.since))
             readiness.ask(listing, waits)
@@ -362,6 +368,7 @@ final class IdentityModelService(
           }
       } }
       if (released.nonEmpty) persistPending(Nil, released.toSeq)
+      if (bootPromoted.nonEmpty) metrics.promoted(bootPromoted.toSeq, atBoot = true)
       logger.info(s"identity model: ${pending.size} listing(s) held on their questions resumed, ${released.size} released")
       taken
     }
@@ -423,14 +430,27 @@ final class IdentityModelService(
     (taken, promoted)
   }
 
-  /** The held listings, but those `skip` names, whose questions were all answered or given up on: taken in now. */
-  private def promote(skip: services.movies.ListingKey => Boolean): Seq[Listing] =
-    pending.values.asScala.toSeq.filterNot(h => skip(h.newest.key)).sortBy(h => services.movies.ListingKey.serialised(h.newest.key))
+  /** The held listings, but those `skip` names, whose questions were all answered or given up on: taken in now -- how long
+   *  each waited told to the metrics. */
+  private def promote(skip: services.movies.ListingKey => Boolean): Seq[Listing] = {
+    promotedAfter.clear()
+    val taken = pending.values.asScala.toSeq.filterNot(h => skip(h.newest.key)).sortBy(h => services.movies.ListingKey.serialised(h.newest.key))
       .flatMap { h =>
         val waits = readiness.awaiting(h.newest)
-        if (waits.isEmpty) { pending.remove(h.newest.key); Some(h.newest) }
+        if (waits.isEmpty) { pending.remove(h.newest.key); promotedAfter += (clock.millis() - h.since) / 1000.0; Some(h.newest) }
         else { if (waits != h.waits) pending.put(h.newest.key, h.copy(waits = waits)); None }
       }
+    if (promotedAfter.nonEmpty) metrics.promoted(promotedAfter.toSeq, atBoot = false)
+    taken
+  }
+  private val promotedAfter = mutable.ArrayBuffer.empty[Double]
+
+  /** How many listings the gate holds and how long the oldest has waited, by the injected clock. */
+  private def reportHeld(): Unit = {
+    val now    = clock.millis()
+    val oldest = pending.values.asScala.iterator.map(_.since).minOption
+    metrics.held(pending.size, oldest.fold(0.0)(since => (now - since).max(0L) / 1000.0))
+  }
 
   /** A write of the held listings: one that fails is logged, never the drain's failure -- the next move writes again, and a
    *  take-up reads readiness afresh. */
@@ -459,6 +479,7 @@ final class IdentityModelService(
     // (Verify scrape recording #10, US kept Alamo Drafthouse listings). The queue keeps one task per page.
     held.filter(pageWait.awaiting).foreach(pageWait.request)
     model = Some(engine)
+    reportHeld()
     retryAt = scala.None; retryDelay = IdentityModelService.FirstRetry
     // The gauges from the moment the model is up, not from its first event.
     val sizes   = engine.sizes

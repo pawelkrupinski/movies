@@ -1,6 +1,6 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.{Counter, Gauge}
+import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.identity.adapters.{IdentityModelMetrics, ModelBatch}
 
@@ -21,7 +21,13 @@ import services.identity.adapters.{IdentityModelMetrics, ModelBatch}
  *  - `kinowo_worker_identity_model_large_families` — families larger than one region: each
  *    resolves slowly whenever anything in it moves (0 is healthy);
  *  - `kinowo_worker_identity_history_dropped_total` — identity history entries dropped because its
- *    writer's queue was full (0 is healthy).
+ *    writer's queue was full (0 is healthy);
+ *  - the model's input gate (docs/design/identity-structural-fixes.md, fix 1), which no replay runs:
+ *    `kinowo_worker_identity_model_held_listings` — listings whose newest version it holds on their own questions;
+ *    `kinowo_worker_identity_model_held_oldest_seconds` — how long the oldest of them has waited (0 with none: something
+ *    stuck shows here and pages, `IdentityGateStuck`); `kinowo_worker_identity_model_promoted_total{at}` — held listings
+ *    taken in, at a drain or by a take-up (`at="boot"`: answered while the worker was down);
+ *    `kinowo_worker_identity_model_hold_seconds` — how long each waited.
  *
  * Every country's series exist from boot: the counters at 0, the gauges at NaN until the first drain measures
  * them (a 0 would claim an empty model). A country whose model is off keeps them so.
@@ -91,10 +97,37 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     .labelNames("country")
     .register(registry)
 
+  private val held: Gauge = Gauge.builder()
+    .name("kinowo_worker_identity_model_held_listings")
+    .help("Listings whose newest version the identity model's input gate holds until their own questions are answered.")
+    .labelNames("country")
+    .register(registry)
+
+  private val heldOldest: Gauge = Gauge.builder()
+    .name("kinowo_worker_identity_model_held_oldest_seconds")
+    .help("Seconds the oldest listing the identity model's input gate holds has waited (0 with none held).")
+    .labelNames("country")
+    .register(registry)
+
+  private val promoted: Counter = Counter.builder()
+    .name("kinowo_worker_identity_model_promoted_total")
+    .help("Listings the identity model's input gate held and took in once answered: at a drain, or by a take-up (at=boot).")
+    .labelNames("country", "at")
+    .register(registry)
+
+  private val holdSeconds: Histogram = Histogram.builder()
+    .name("kinowo_worker_identity_model_hold_seconds")
+    .help("Seconds each listing the identity model's input gate took in had waited on its own questions.")
+    .labelNames("country")
+    .classicUpperBounds(1, 5, 15, 30, 60, 120, 300, 900, 1800, 3600, 7200, 21600, 86400)
+    .register(registry)
+
   countryCodes.foreach { c =>
-    Seq(families, seconds, largestListings, largestNodes, large).foreach(_.labelValues(c).set(Double.NaN))
+    Seq(families, seconds, largestListings, largestNodes, large, held, heldOldest).foreach(_.labelValues(c).set(Double.NaN))
     Seq(resolved, rebuilds, takeUpFailures, historyDropped).foreach(_.labelValues(c))
     Seq("venue", "observation").foreach(events.labelValues(c, _))
+    Seq("drain", "boot").foreach(promoted.labelValues(c, _))
+    holdSeconds.labelValues(c)
   }
 
   def forCountry(country: String): IdentityModelMetrics = new IdentityModelMetrics {
@@ -110,5 +143,13 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     }
     def rebuilt(): Unit = rebuilds.labelValues(country).inc()
     def takeUpFailed(): Unit = takeUpFailures.labelValues(country).inc()
+    override def held(count: Int, oldestSeconds: Double): Unit = {
+      IdentityModelGauges.this.held.labelValues(country).set(count.toDouble)
+      heldOldest.labelValues(country).set(oldestSeconds)
+    }
+    override def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = {
+      IdentityModelGauges.this.promoted.labelValues(country, if (atBoot) "boot" else "drain").inc(heldSeconds.size.toDouble)
+      heldSeconds.foreach(holdSeconds.labelValues(country).observe)
+    }
   }
 }

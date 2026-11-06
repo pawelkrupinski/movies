@@ -60,6 +60,14 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     def ask(listing: Listing, questions: Set[Question]): Unit = asked ++= questions
   }
 
+  private final class GateReports extends IdentityModelMetrics {
+    var heldReports = Seq.empty[(Int, Double)]
+    var promotions  = Seq.empty[(Seq[Double], Boolean)]
+    def batch(batch: ModelBatch): Unit = (); def rebuilt(): Unit = (); def takeUpFailed(): Unit = ()
+    override def held(count: Int, oldestSeconds: Double): Unit = heldReports :+= (count -> oldestSeconds)
+    override def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = promotions :+= (heldSeconds -> atBoot)
+  }
+
   private final class World {
     val reads   = new ObservationReads
     val lookups = new Keyed(reads)
@@ -74,10 +82,13 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     /** The held listings' store, which outlives a service as `identity_pending` outlives a worker. */
     val pendingStore = new PendingListingStore.InMemory
     var newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Shown
+    /** What the gate tells its metrics: the held count and oldest wait after each drain, and each promotion. */
+    val gate = new GateReports
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
       reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), pageWait = pageWait,
-      clock = clock, retainedStore = retained, readiness = families, pendingStore = pendingStore, newWhilePending = newWhilePending)
+      clock = clock, retainedStore = retained, readiness = families, pendingStore = pendingStore, newWhilePending = newWhilePending,
+      metrics = gate)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
       scrapes += cinema -> films; service.venueScraped(cinema, films)
     }
@@ -673,5 +684,37 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     again.takeUp()
     again.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.year shouldBe Some(1968)
     world.pendingStore.read() shouldBe empty
+  }
+
+  it should "tell its metrics how many it holds, how long the oldest waited, and how long each promoted one waited, at boot too" in {
+    // nothing replays the gate, so these are all that see it stuck (IdentityInputGateStuck)
+    val clock = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-06T10:00:00Z"))
+    val world = new World
+    world.clock = clock
+    val first = world.service()
+    first.takeUp()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    first.drain()
+    world.families.unanswered = Set("Lalka")
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))
+    first.drain()
+    world.gate.heldReports.last shouldBe (1 -> 0.0)
+    clock.advance(java.time.Duration.ofSeconds(90))
+    first.wake(); first.drain()
+    world.gate.heldReports.last shouldBe (1 -> 90.0)
+    clock.advance(java.time.Duration.ofSeconds(30))
+    world.families.unanswered = Set.empty
+    first.wake(); first.drain()
+    world.gate.promotions.last shouldBe (Seq(120.0) -> false)
+    world.gate.heldReports.last shouldBe (0 -> 0.0)
+    // held again, then answered while the worker is down: promoted at boot
+    world.families.unanswered = Set("Lalka")
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2026))))
+    first.drain()
+    clock.advance(java.time.Duration.ofSeconds(600))
+    world.families.unanswered = Set.empty
+    world.service().takeUp()
+    world.gate.promotions.last shouldBe (Seq(600.0) -> true)
+    world.gate.heldReports.last shouldBe (0 -> 0.0)
   }
 }
