@@ -1,0 +1,689 @@
+family	tier	subsets	seconds
+Native(1932 Criterion Theatre,https://www.flicks.us/movie/beetlejuice/,Beetlejuice)	8 orders x 8 steps	57	1.48
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/back-to-the-future/,Back to the Future)	8 orders x 8 steps	57	57.68
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/bts-world-tour-arirang-in-buenos-aires/,BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES)	8 orders x 8 steps	57	713.92
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/christmas-in-connecticut/,Christmas in Connecticut)	8 orders x 8 steps	57	1.09
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/clue/,Clue)	8 orders x 8 steps	57	2.63
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/george-michael-the-faith-tour/,George Michael: The Faith Tour)	8 orders x 8 steps	57	15.99
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/godzilla-minus-zero/,Godzilla Minus Zero)	8 orders x 8 steps	57	1046.33
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/klara-and-the-sun/,Klara and the Sun)	8 orders x 8 steps	57	139.84
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/other-mommy/,Other Mommy)	8 orders x 8 steps	57	2040.83
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/primetime/,Primetime)	8 orders x 8 steps	57	254.88
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/scream-1996/,Scream (1996))	8 orders x 8 steps	57	46.99
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/stray-kids-world-tour-run-it-live-viewing/,Stray Kids World Tour <RUN IT> LIVE VIEWING)	8 orders x 8 steps	57	62.50
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/the-polar-express/,The Polar Express)	8 orders x 8 steps	57	4.94
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/the-social-reckoning/,The Social Reckoning)	8 orders x 8 steps	57	1080.43
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/whalefall/,Whalefall)	8 orders x 8 steps	57	1764.45
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/wild-horse-nine/,Wild Horse Nine)	8 orders x 8 steps	57	124.98
+Native(2nd Street Cinema Beaumont,https://www.flicks.us/movie/your-mother-your-mother-your-mother/,Your Mother Your Mother Your Mother)	8 orders x 8 steps	57	46.35
+Native(34 Drive-In Earlville,https://www.flicks.us/movie/top-gun/,Top Gun)	lattice 2^2	4	0.98
+Native(4 Star Theatre San Francisco,https://www.flicks.us/movie/dazed-and-confused/,Dazed and Confused)	lattice 2^2	4	0.99
+Native(4 Star Theatre San Francisco,https://www.flicks.us/movie/evil-dead-ii/,Evil Dead II)	levels 0-1	28	0.23
+Native(4 Star Theatre San Francisco,https://www.flicks.us/movie/house/,House)	levels 0-1	22	0.29
+Native(4 Star Theatre San Francisco,https://www.flicks.us/movie/it-1990/,It (1990))	levels 0-1	62	0.91
+Native(400 Theater,https://www.flicks.us/movie/creature-from-the-black-lagoon/,Creature from the Black Lagoon)	levels 0-1	26	1.86
+Native(400 Theater,https://www.flicks.us/movie/the-devils-1971/,Ken Russell's The Devils)	8 orders x 8 steps	57	9.35
+Native(400 Theater,https://www.flicks.us/movie/the-return-of-the-living-dead/,The Return of the Living Dead)	lattice 2^7	128	6.62
+Native(400 Theater,https://www.flicks.us/movie/you-can-see-everything/,You Can See Everything)	8 orders x 8 steps	57	494.90
+Native(61 Drive In Theatre,https://www.flicks.us/movie/elf/,Elf)	8 orders x 8 steps	57	2.42
+Native(61 Drive In Theatre,https://www.flicks.us/movie/mamma-mia/,Mamma Mia!)	levels 0-1	18	0.57
+Native(61 Drive In Theatre,https://www.flicks.us/movie/national-lampoons-christmas-vacation/,National Lampoon's Christmas Vacation)	8 orders x 8 steps	57	4.70
+Native(61 Drive In Theatre,https://www.flicks.us/movie/the-grinch/,The Grinch)	8 orders x 8 steps	57	1.17
+Native(61 Drive In Theatre,https://www.flicks.us/movie/the-nightmare-before-christmas/,The Nightmare Before Christmas)	8 orders x 8 steps	57	42.79
+Native(7th St Theatre Hoquiam,https://www.flicks.us/movie/frankenstein-1931/,Frankenstein (1931))	levels 0-1	30	0.83
+Native(88 Drive-In Theatre Commerce City,https://www.flicks.us/movie/american-psycho/,American Psycho)	8 orders x 8 steps	57	10.49
+Native(88 Drive-In Theatre Commerce City,https://www.flicks.us/movie/the-twilight-saga-eclipse/,The Twilight Saga: Eclipse)	levels 0-1	22	0.50
+Native(89er Kingfisher,https://www.flicks.us/movie/angel-and-the-badman/,Angel and the Badman)	8 orders x 8 steps	57	152.92
+Native(99 West Drive-In Newberg,https://www.flicks.us/movie/corpse-bride/,Corpse Bride)	levels 0-1	42	0.63
+Native(ACX Aksarben Cinema,https://www.flicks.us/movie/drummer-boy/,Drummer Boy)	8 orders x 8 steps	57	164.50
+Native(ACX Aksarben Cinema,https://www.flicks.us/movie/practical-magic-2/,Practical Magic 2)	8 orders x 8 steps	57	15.80
+Native(ACX Harper Theater Hyde Park,https://www.flicks.us/movie/candyman-2021/,Candyman (2021))	lattice 2^5	32	2.31
+Native(AFI Silver Theatre,https://www.flicks.us/movie/a-streetcar-named-desire/,A Streetcar Named Desire)	lattice 2^2	4	0.99
+Native(AFI Silver Theatre,https://www.flicks.us/movie/alice-in-wonderland-1951/,Alice in Wonderland (1951))	8 orders x 8 steps	57	2.97
+Native(AFI Silver Theatre,https://www.flicks.us/movie/anatomy-of-a-murder/,Anatomy of a Murder)	lattice 2^3	8	1.06
+Native(AFI Silver Theatre,https://www.flicks.us/movie/carrie-1976/,Carrie (1976))	levels 0-1	42	0.72
+Native(AFI Silver Theatre,https://www.flicks.us/movie/chicken-run/,Chicken Run)	lattice 2^2	4	0.89
+Native(AFI Silver Theatre,https://www.flicks.us/movie/coco/,Coco)	levels 0-1	38	0.58
+Native(AFI Silver Theatre,https://www.flicks.us/movie/dracula/,Dracula (1931))	lattice 2^3	8	1.27
+Native(AFI Silver Theatre,https://www.flicks.us/movie/event-horizon/,Event Horizon)	levels 0-1	28	1.02
+Native(AFI Silver Theatre,https://www.flicks.us/movie/fallen-angels-by-noel-coward/,Fallen Angels by Noël Coward)	8 orders x 8 steps	57	11.09
+Native(AFI Silver Theatre,https://www.flicks.us/movie/fatherland-2026/,Fatherland)	levels 0-1	42	0.31
+Native(AFI Silver Theatre,https://www.flicks.us/movie/fjord/,Fjord)	8 orders x 8 steps	57	3.32
+Native(AFI Silver Theatre,https://www.flicks.us/movie/hunt-for-the-wilderpeople/,Hunt For the Wilderpeople)	lattice 2^3	8	1.15
+Native(AFI Silver Theatre,https://www.flicks.us/movie/in-the-mouth-of-madness/,In the Mouth of Madness)	levels 0-1	30	0.30
+Native(AFI Silver Theatre,https://www.flicks.us/movie/jurassic-park/,Jurassic Park)	lattice 2^6	64	5.72
+Native(AFI Silver Theatre,https://www.flicks.us/movie/la-bola-negra/,La Bola Negra)	8 orders x 8 steps	57	1.42
+Native(AFI Silver Theatre,https://www.flicks.us/movie/muppet-treasure-island/,Muppet Treasure Island)	lattice 2^3	8	0.72
+Native(AFI Silver Theatre,https://www.flicks.us/movie/network/,Network)	levels 0-1	18	0.17
+Native(AFI Silver Theatre,https://www.flicks.us/movie/nine-to-five/,9 to 5)	lattice 2^7	128	7.24
+Native(AFI Silver Theatre,https://www.flicks.us/movie/pans-labyrinth/,Pan's Labyrinth)	8 orders x 8 steps	57	0.84
+Native(AFI Silver Theatre,https://www.flicks.us/movie/possession-1981/,Possession (1981))	levels 0-1	36	0.70
+Native(AFI Silver Theatre,https://www.flicks.us/movie/raise-the-red-lantern/,Raise the Red Lantern)	lattice 2^7	128	6.96
+Native(AFI Silver Theatre,https://www.flicks.us/movie/shaun-the-sheep-the-beast-of-mossy-bottom/,Shaun the Sheep: The Beast of Mossy Bottom)	levels 0-1	104	0.69
+Native(AFI Silver Theatre,https://www.flicks.us/movie/spirited-away/,Spirited Away)	8 orders x 8 steps	57	147.36
+Native(AFI Silver Theatre,https://www.flicks.us/movie/strangers-on-a-train/,Strangers on a Train)	lattice 2^4	16	1.38
+Native(AFI Silver Theatre,https://www.flicks.us/movie/sweet-smell-of-success/,Sweet Smell of Success)	lattice 2^2	4	0.10
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-evil-dead-1981/,The Evil Dead (1981))	8 orders x 8 steps	57	1.68
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-fall-2006/,The Fall (2006))	lattice 2^5	32	1.26
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-general/,The General)	levels 0-1	118	2.31
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-lord-of-the-rings-the-fellowship-of-the-ring/,The Lord of the Rings: The Fellowship of the Ring)	lattice 2^7	128	7.70
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-lord-of-the-rings-the-return-of-the-king/,The Lord of the Rings: The Return of the King)	levels 0-1	18	0.32
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-lord-of-the-rings-the-two-towers/,The Lord of the Rings: The Two Towers)	lattice 2^6	64	4.25
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-man-with-the-golden-arm/,The Man with the Golden Arm)	lattice 2^2	4	0.99
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-omen-1976/,The Omen (1976))	lattice 2^6	64	4.44
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-piano/,The Piano)	lattice 2^4	16	1.92
+Native(AFI Silver Theatre,https://www.flicks.us/movie/the-wizard-of-oz/,The Wizard of Oz)	lattice 2^5	32	3.28
+Native(AFI Silver Theatre,https://www.flicks.us/movie/train-to-busan/,Train to Busan)	lattice 2^4	16	2.38
+Native(AFI Silver Theatre,https://www.flicks.us/movie/wallace-gromit-the-curse-of-the-were-rabbit/,Wallace & Gromit: The Curse of the Were-Rabbit)	levels 0-1	34	0.43
+Native(AMC 19th St. East 6,https://www.flicks.us/movie/met-opera-2026-27-la-fanciulla-del-west/,Met Opera 2026-27: La Fanciulla del West)	8 orders x 8 steps	57	27.60
+Native(AMC 19th St. East 6,https://www.flicks.us/movie/met-opera-2026-27-macbeth/,Met Opera 2026-27: Macbeth)	8 orders x 8 steps	57	4.14
+Native(AMC 19th St. East 6,https://www.flicks.us/movie/met-opera-2026-27-otello/,Met Opera 2026-27: Otello)	8 orders x 8 steps	57	22.01
+Native(AMC 19th St. East 6,https://www.flicks.us/movie/met-opera-2026-27-parsifal/,Met Opera 2026-27: Parsifal)	8 orders x 8 steps	57	16.88
+Native(AMC 19th St. East 6,https://www.flicks.us/movie/met-opera-2026-27-samson-et-dalila/,Met Opera 2026-27: Samson et Dalila)	8 orders x 8 steps	57	29.37
+Native(AMC 19th St. East 6,https://www.flicks.us/movie/met-opera-2026-27-silent-night/,Met Opera 2026-27: Silent Night)	8 orders x 8 steps	57	28.13
+Native(AMC 19th St. East 6,https://www.flicks.us/movie/met-opera-carmen-2009/,MetOpera: Carmen (2009))	8 orders x 8 steps	57	15.36
+Native(AMC 34th Street 14,https://www.flicks.us/movie/ebenezer/,Ebenezer)	8 orders x 8 steps	57	1.38
+Native(AMC 34th Street 14,https://www.flicks.us/movie/pet-sematary-1989/,Pet Sematary (1989))	8 orders x 8 steps	57	4.38
+Native(AMC 34th Street 14,https://www.flicks.us/movie/ramayana/,Ramayana: Rise of a Legend)	8 orders x 8 steps	57	30.51
+Native(AMC 34th Street 14,https://www.flicks.us/movie/the-crow-1994/,The Crow (1994))	8 orders x 8 steps	57	5.03
+Native(AMC 34th Street 14,https://www.flicks.us/movie/the-irregular-at-magic-high-school-yotsuba-succession-arc/,The Irregular at Magic High School : Yotsuba Succession Arc)	8 orders x 8 steps	57	22.85
+Native(AMC 34th Street 14,https://www.flicks.us/movie/the-mosquito-bowl/,The Mosquito Bowl)	8 orders x 8 steps	57	3.29
+Native(AMC 34th Street 14,https://www.flicks.us/movie/the-odyssey-2026/,The Odyssey)	8 orders x 8 steps	57	3.01
+Native(AMC 34th Street 14,https://www.flicks.us/movie/v-for-vendetta/,V For Vendetta)	8 orders x 8 steps	57	52.09
+Native(AMC 9+CO 10 Denver,https://www.flicks.us/movie/ghostbusters-1984/,Ghostbusters (1984))	levels 0-1	84	1.30
+Native(AMC 9+CO 10 Denver,https://www.flicks.us/movie/the-goonies/,The Goonies)	lattice 2^6	64	4.19
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/a-beautiful-mind/,A Beautiful Mind)	8 orders x 8 steps	57	76.24
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/drishyam-the-conclusion/,Drishyam: The Conclusion)	8 orders x 8 steps	57	0.66
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/enhypen-world-tour-blood-saga/,Enhypen World Tour: Blood Saga)	8 orders x 8 steps	57	4.32
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/hell-house-llc/,Hell House LLC)	8 orders x 8 steps	57	4.48
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/hybe-cheering-party/,Hybe Cheering Party)	8 orders x 8 steps	57	8.49
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/jailer-2/,Jailer 2)	8 orders x 8 steps	57	9.74
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/league-of-legends-worlds-26-finals-in-cinema/,League of Legends Worlds 26 - Finals in Cinema)	8 orders x 8 steps	57	0.99
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/ozzy-black-sabbath-back-to-the-beginning/,Ozzy & Black Sabbath: Back to the Beginning)	8 orders x 8 steps	57	29.96
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/seventeen-world-tour-new/,SEVENTEEN World Tour 'NEW_')	8 orders x 8 steps	57	7.49
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/the-maltese-falcon/,The Maltese Falcon)	8 orders x 8 steps	57	68.66
+Native(AMC Ahwatukee 24,https://www.flicks.us/movie/the-north/,The North)	levels 0-1	46	0.52
+Native(AMC Alderwood Mall 16 Lynnwood,https://www.flicks.us/movie/ali-g-who-iz-i/,Ali G: Who Iz I?)	8 orders x 8 steps	57	1.01
+Native(AMC Alderwood Mall 16 Lynnwood,https://www.flicks.us/movie/everest-the-other-side/,Everest: The Other Side)	8 orders x 8 steps	57	6.94
+Native(AMC Alderwood Mall 16 Lynnwood,https://www.flicks.us/movie/prime/,Prime)	8 orders x 8 steps	57	0.98
+Native(AMC Alderwood Mall 16 Lynnwood,https://www.flicks.us/movie/spider-man-brand-new-day/,Spider-Man: Brand New Day)	8 orders x 8 steps	57	13.31
+Native(AMC Americana at Brand 18,https://www.flicks.us/movie/giant-the-play/,Giant: The Play)	8 orders x 8 steps	57	2.77
+Native(AMC Atlantic Times Square 14,https://www.flicks.us/movie/mr-mrs-pardon/,Mr. & Mrs. Pardon)	levels 0-1	66	0.93
+Native(AMC Atlantic Times Square 14,https://www.flicks.us/movie/once-upon-a-time-in-the-middle-east/,Once Upon a Time in the Middle East)	levels 0-1	28	0.29
+Native(AMC Atlantic Times Square 14,https://www.flicks.us/movie/v-2026/,V (2026))	lattice 2^4	16	1.89
+Native(AMC Barrett Commons 24,https://www.flicks.us/movie/never-after-dark/,Never After Dark)	levels 0-1	24	0.24
+Native(AMC Barrywoods 24,https://www.flicks.us/movie/418/,418)	levels 0-1	92	2.47
+Native(AMC Burbank 16,https://www.flicks.us/movie/club-kid/,Club Kid)	levels 0-1	18	0.27
+Native(AMC Burbank 16,https://www.flicks.us/movie/i-play-rocky/,I Play Rocky)	levels 0-1	30	0.28
+Native(AMC Camp Creek 14,https://www.flicks.us/movie/if-i-go-will-they-miss-me/,If I Go Will They Miss Me)	levels 0-1	20	0.32
+Native(AMC Century City 15,https://www.flicks.us/movie/once-upon-a-time-in-harlem/,Once Upon a Time in Harlem)	levels 0-1	42	0.67
+Native(AMC DINE-IN Stonebriar 24,https://www.flicks.us/movie/baththa/,Baththa)	levels 0-1	20	0.21
+Native(AMC Forum 30 Sterling Heights,https://www.flicks.us/movie/hanuman-ansh/,Hanuman Ansh)	lattice 2^4	16	0.77
+Native(AMC Fountains 18 Stafford,https://www.flicks.us/movie/kung-fu-soccer/,Kung Fu Soccer)	levels 0-1	20	0.15
+Native(AMC Livonia 19,https://www.flicks.us/movie/go-for-broke-2/,Go For Broke 2)	lattice 2^3	8	1.46
+Native(AMC North Dekalb 16,https://www.flicks.us/movie/donnie-darko/,Donnie Darko)	lattice 2^3	8	0.97
+Native(AMC Ontario Mills 30,https://www.flicks.us/movie/buddy-2026/,Buddy (2026))	levels 0-1	30	0.47
+Native(AMC Rolling Hills 20 Torrance,https://www.flicks.us/movie/winter-of-the-crow/,Winter of the Crow)	lattice 2^7	128	6.77
+Native(AMC South Barrington 24,https://www.flicks.us/movie/thaapi/,Thaapi)	levels 0-1	32	0.43
+Native(AMC South Bend 16,https://www.flicks.us/movie/beware-boiuna/,Beware Boiúna)	lattice 2^3	8	1.11
+Native(AMC Town Center 20,https://www.flicks.us/movie/monty-python-and-the-holy-grail/,Monty Python and the Holy Grail)	lattice 2^6	64	2.71
+Native(Abingdon Cinemall,https://www.flicks.us/movie/the-addams-family-1991/,The Addams Family (1991))	8 orders x 8 steps	57	3.24
+Native(Academy Cinemas Pasadena,https://www.flicks.us/movie/a-christmas-story/,A Christmas Story)	levels 0-1	84	0.88
+Native(Academy Cinemas Pasadena,https://www.flicks.us/movie/how-the-grinch-stole-christmas-2000/,How the Grinch Stole Christmas (2000))	8 orders x 8 steps	57	3.70
+Native(Academy Cinemas Pasadena,https://www.flicks.us/movie/planes-trains-and-automobiles/,Planes, Trains and Automobiles)	8 orders x 8 steps	57	0.85
+Native(Academy Cinemas Pasadena,https://www.flicks.us/movie/the-exorcist/,The Exorcist)	8 orders x 8 steps	57	0.92
+Native(Academy Cinemas Pasadena,https://www.flicks.us/movie/the-searchers/,The Searchers)	lattice 2^5	32	3.19
+Native(Academy Theater Portland,https://www.flicks.us/movie/hellraiser/,Hellraiser (1987))	lattice 2^5	32	2.39
+Native(Academy Theater Portland,https://www.flicks.us/movie/hxan/,Häxan)	lattice 2^4	16	1.95
+Native(Adams Theatre,https://www.flicks.us/movie/young-frankenstein/,Young Frankenstein)	levels 0-1	22	0.17
+Native(Aero Theatre Santa Monica,https://www.flicks.us/movie/a-night-at-the-opera/,A Night at the Opera)	lattice 2^2	4	0.18
+Native(Airbus IMAX Theater,https://www.flicks.us/movie/apollo-11/,Apollo 11)	lattice 2^2	4	0.87
+Native(Airbus IMAX Theater,https://www.flicks.us/movie/space-the-new-frontier/,Space: The New Frontier)	lattice 2^3	8	0.88
+Native(Airbus IMAX Theater,https://www.flicks.us/movie/top-gun-maverick/,Top Gun: Maverick)	lattice 2^3	8	1.28
+Native(Alamance Crossing Staduim 16 Burlington,https://www.flicks.us/movie/halloween-1978/,Halloween (1978))	8 orders x 8 steps	57	39.98
+Native(Alamance Crossing Staduim 16 Burlington,https://www.flicks.us/movie/paranormal-activity/,Paranormal Activity)	lattice 2^3	8	0.27
+Native(Alamance Crossing Staduim 16 Burlington,https://www.flicks.us/movie/saw/,Saw)	lattice 2^5	32	1.35
+Native(Alamance Crossing Staduim 16 Burlington,https://www.flicks.us/movie/se7en/,Se7en)	levels 0-1	22	0.28
+Native(Alamance Crossing Staduim 16 Burlington,https://www.flicks.us/movie/trick-r-treat/,Trick 'r Treat)	8 orders x 8 steps	57	3.61
+Native(Alameda Theatre & Cineplex,https://www.flicks.us/movie/psycho/,Psycho)	levels 0-1	68	1.03
+Native(Alameda Theatre & Cineplex,https://www.flicks.us/movie/the-godfather/,The Godfather)	lattice 2^6	64	2.81
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/capturing-bigfoot,Capturing Bigfoot)	lattice 2^7	128	4.70
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/daughters-of-darkness,Daughters of Darkness)	levels 0-1	62	0.35
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/godzilla-vs-mechagodzilla,Godzilla vs. Mechagodzilla)	levels 0-1	66	0.91
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/godzilla-vs-megalon,Godzilla vs. Megalon)	levels 0-1	80	0.64
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/house-of-1000-corpses,House of 1000 Corpses)	lattice 2^2	4	0.13
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/making-marie-antoinette,Making Marie Antoinette)	levels 0-1	54	0.67
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/manos-the-hands-of-fate,Manos: The Hands of Fate)	levels 0-1	58	0.65
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/mystery-transmission,Mystery Transmission)	lattice 2^2	4	0.67
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/pearl,Pearl)	levels 0-1	78	0.96
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/peeping-tom,Peeping Tom (1960))	lattice 2^2	4	0.18
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/tales-from-the-crypt-marathon,Tales From the Crypt Marathon)	lattice 2^4	16	1.30
+Native(Alamo Drafthouse Brooklyn,https://drafthouse.com/show/the-only-living-pickpocket-in-new-york,The Only Living Pickpocket in New York)	levels 0-1	18	0.41
+Native(Alamo Drafthouse Cedars Dallas,https://drafthouse.com/show/cemetery-man,Cemetery Man)	lattice 2^3	8	1.34
+Native(Alamo Drafthouse Cedars Dallas,https://drafthouse.com/show/nofx-40-years-of-fuckin-up,NOFX: 40 Years of Fuckin' Up)	levels 0-1	48	0.52
+Native(Alamo Drafthouse Cedars Dallas,https://drafthouse.com/show/spookies,Spookies)	lattice 2^3	8	0.75
+Native(Alamo Drafthouse Charlottesville,https://drafthouse.com/show/django-unchained,Django Unchained)	lattice 2^6	64	3.15
+Native(Alamo Drafthouse Charlottesville,https://drafthouse.com/show/ghost-in-the-cell,Ghost in the Cell)	levels 0-1	18	0.13
+Native(Alamo Drafthouse Charlottesville,https://drafthouse.com/show/kill-bill-the-whole-bloody-affair,Kill Bill: The Whole Bloody Affair)	lattice 2^5	32	2.28
+Native(Alamo Drafthouse Charlottesville,https://drafthouse.com/show/scooby-doo-on-zombie-island,Scooby-Doo on Zombie Island)	lattice 2^5	32	1.32
+Native(Alamo Drafthouse City Foundry,https://drafthouse.com/show/the-changeling-1980,The Changeling (1980))	lattice 2^5	32	1.26
+Native(Alamo Drafthouse City Foundry,https://drafthouse.com/show/the-departed,THE DEPARTED)	lattice 2^2	4	1.37
+Native(Alamo Drafthouse Crystal City,https://drafthouse.com/show/dismember-the-alamo-2026-dc-area,Dismember the Alamo 2026 - DC Area)	lattice 2^2	4	0.15
+Native(Alamo Drafthouse Crystal City,https://drafthouse.com/show/on-a-string,On a String)	lattice 2^2	4	0.18
+Native(Alamo Drafthouse Denton,https://drafthouse.com/show/jeopardy-interactive,Jeopardy! Interactive)	levels 0-1	26	0.43
+Native(Alamo Drafthouse Denton,https://drafthouse.com/show/the-craft,The Craft)	levels 0-1	82	0.72
+Native(Alamo Drafthouse Downtown LA,https://drafthouse.com/show/being-heumann,Being Heumann)	8 orders x 8 steps	57	1.36
+Native(Alamo Drafthouse Downtown LA,https://drafthouse.com/show/chunks,Chunks)	lattice 2^5	32	1.39
+Native(Alamo Drafthouse Downtown LA,https://drafthouse.com/show/naza,Naza)	levels 0-1	28	0.36
+Native(Alamo Drafthouse Downtown LA,https://drafthouse.com/show/the-cycle,The Cycle)	levels 0-1	24	0.34
+Native(Alamo Drafthouse Downtown LA,https://drafthouse.com/show/thir13en-ghosts,Thir13en Ghosts)	lattice 2^2	4	0.22
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/2001-a-space-odyssey,2001: A SPACE ODYSSEY)	lattice 2^6	64	2.76
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/a-clockwork-orange,A CLOCKWORK ORANGE)	lattice 2^4	16	0.90
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/an-american-tail,AN AMERICAN TAIL)	lattice 2^3	8	0.45
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/audition,AUDITION)	lattice 2^4	16	1.29
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/bubba-hotep,BUBBA HO-TEP)	lattice 2^3	8	0.67
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/dr-strangelove-or-how-i-learned-to-stop-worrying-and-love-the-bomb,DR. STRANGELOVE OR: HOW I LEARNED TO STOP WORRYING AND LOVE THE BOMB)	levels 0-1	32	0.78
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/little-shop-of-horrors,Little Shop of Horrors (1986))	levels 0-1	30	0.53
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/midsommar,MIDSOMMAR)	8 orders x 8 steps	57	4.12
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/rear-window,REAR WINDOW)	lattice 2^4	16	1.02
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/the-holdovers,THE HOLDOVERS)	lattice 2^7	128	7.90
+Native(Alamo Drafthouse Indianapolis,https://drafthouse.com/show/the-mist,The Mist)	lattice 2^2	4	0.29
+Native(Alamo Drafthouse Mountain View,https://drafthouse.com/show/fade-to-black-1980,Fade to Black (1980))	lattice 2^2	4	0.20
+Native(Alamo Drafthouse Mueller,https://drafthouse.com/show/faust-1926,Faust (1926))	lattice 2^2	4	0.17
+Native(Alamo Drafthouse One Loudoun,https://drafthouse.com/show/dismember-the-alamo-2026-northern-virginia,Dismember the Alamo 2026 - Northern Virginia)	lattice 2^2	4	0.39
+Native(Alamo Drafthouse Slaughter Lane,https://drafthouse.com/show/scream-7,SCREAM 7)	levels 0-1	36	0.65
+Native(Alamo Drafthouse South Lamar,https://drafthouse.com/show/halloween-iii-season-of-the-witch,Halloween III: Season of the Witch)	lattice 2^6	64	2.42
+Native(Alamo Drafthouse Village Austin,https://drafthouse.com/show/scary-movie-1991,Scary Movie (1991))	lattice 2^2	4	0.33
+Native(Alamo Drafthouse Winchester,https://drafthouse.com/show/friday-the-13th-2009,Friday the 13th (2009))	levels 0-1	22	0.62
+Native(Alamo Drafthouse Winchester,https://drafthouse.com/show/ginger-snaps,Ginger Snaps)	lattice 2^7	128	6.15
+Native(Alamo Drafthouse Winchester,https://drafthouse.com/show/terminator-2-judgment-day,Terminator 2: Judgment Day)	lattice 2^3	8	0.42
+Native(Alamo Drafthouse Winchester,https://drafthouse.com/show/the-witch,The Witch)	levels 0-1	44	0.93
+Native(Alamo Drafthouse Woodbury,https://drafthouse.com/show/terror-tuesday-childs-play,TERROR TUESDAY: CHILD'S PLAY (1988))	lattice 2^4	16	1.22
+Native(All South County Cinemas,https://www.flicks.us/movie/dial-m-for-murder/,Dial M for Murder)	lattice 2^7	128	5.42
+Native(All South County Cinemas,https://www.flicks.us/movie/doctor-zhivago/,Doctor Zhivago)	lattice 2^2	4	0.13
+Native(All South County Cinemas,https://www.flicks.us/movie/gladiator-2000/,Gladiator (2000))	lattice 2^3	8	0.44
+Native(All South County Cinemas,https://www.flicks.us/movie/good-will-hunting/,Good Will Hunting)	levels 0-1	80	0.80
+Native(All South County Cinemas,https://www.flicks.us/movie/interstellar/,Interstellar)	levels 0-1	40	0.67
+Native(All South County Cinemas,https://www.flicks.us/movie/little-women-2019/,Little Women (2019))	lattice 2^5	32	2.01
+Native(All South County Cinemas,https://www.flicks.us/movie/singin-in-the-rain/,Singin' in the Rain)	levels 0-1	20	0.23
+Native(All South County Cinemas,https://www.flicks.us/movie/sinners/,Sinners)	levels 0-1	68	0.71
+Native(All South County Cinemas,https://www.flicks.us/movie/the-breakfast-club/,The Breakfast Club)	lattice 2^6	64	2.87
+Native(All South County Cinemas,https://www.flicks.us/movie/the-great-gatsby/,The Great Gatsby)	lattice 2^5	32	1.95
+Native(All South County Cinemas,https://www.flicks.us/movie/the-phantom-of-the-opera/,The Phantom of the Opera (2004))	lattice 2^2	4	0.16
+Native(All South County Cinemas,https://www.flicks.us/movie/the-talented-mr-ripley/,The Talented Mr. Ripley)	lattice 2^4	16	0.67
+Native(Ambler Theater,https://www.flicks.us/movie/28-days-later/,28 Days Later)	lattice 2^2	4	0.21
+Native(Ambler Theater,https://www.flicks.us/movie/die-hard/,Die Hard)	levels 0-1	26	0.42
+Native(Ambler Theater,https://www.flicks.us/movie/home-alone/,Home Alone)	levels 0-1	34	0.51
+Native(Ambler Theater,https://www.flicks.us/movie/key-largo/,Key Largo)	lattice 2^4	16	0.53
+Native(Ambler Theater,https://www.flicks.us/movie/mortal-kombat-1995/,Mortal Kombat (1995))	lattice 2^2	4	0.54
+Native(Ambler Theater,https://www.flicks.us/movie/the-invisible-man/,The Invisible Man)	levels 0-1	18	0.23
+Native(Ambler Theater,https://www.flicks.us/movie/the-lion-in-winter-1968/,The Lion in Winter (1968))	lattice 2^4	16	1.32
+Native(Ambler Theater,https://www.flicks.us/movie/the-trouble-with-harry-1955/,The Trouble with Harry (1955))	lattice 2^3	8	0.24
+Native(Ambler Theater,https://www.flicks.us/movie/the-wicker-man-2006/,The Wicker Man (2006))	lattice 2^2	4	0.27
+Native(Amherst Cinema (Amherst) (Massachusetts),https://www.flicks.us/movie/barbara-forever/,Barbara Forever)	lattice 2^6	64	1.77
+Native(Amherst Cinema (Amherst) (Massachusetts),https://www.flicks.us/movie/carol/,Carol)	lattice 2^2	4	0.13
+Native(Amherst Cinema (Amherst) (Massachusetts),https://www.flicks.us/movie/josie-and-the-pussycats/,Josie and the Pussycats)	lattice 2^2	4	0.13
+Native(Amherst Cinema (Amherst) (Massachusetts),https://www.flicks.us/movie/nt-live-golden-boy/,NT Live: Golden Boy)	levels 0-1	66	1.20
+Native(Amherst Cinema (Amherst) (Massachusetts),https://www.flicks.us/movie/teenage-sex-and-death-at-camp-miasma/,Teenage Sex and Death at Camp Miasma)	levels 0-1	26	0.50
+Native(Amherst Cinema (Amherst) (Massachusetts),https://www.flicks.us/movie/the-apartment/,The Apartment)	lattice 2^6	64	3.69
+Native(Amherst Cinema (Amherst) (Massachusetts),https://www.flicks.us/movie/the-wailing/,The Wailing)	lattice 2^3	8	0.25
+Native(Amherst Cinema (Amherst) (Massachusetts),https://www.flicks.us/movie/tokyo-godfathers/,Tokyo Godfathers)	lattice 2^5	32	0.94
+Native(Amherst Cinema Buffalo,https://www.flicks.us/movie/gremlins-2-the-new-batch/,Gremlins 2: The New Batch)	levels 0-1	114	1.86
+Native(Amherst Cinema Buffalo,https://www.flicks.us/movie/the-terminator/,The Terminator)	lattice 2^2	4	0.23
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/a-quiet-place/,A Quiet Place)	levels 0-1	24	0.21
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/et-the-extra-terrestrial/,E.T. The Extra-Terrestrial)	levels 0-1	50	1.09
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/megalopolis/,Megalopolis)	levels 0-1	20	0.26
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/monty-pythons-life-of-brian/,Monty Python's Life of Brian)	levels 0-1	20	0.19
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/possible-love/,Possible Love)	levels 0-1	96	0.71
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/some-like-it-hot-1959/,Some Like It Hot (1959))	levels 0-1	22	0.38
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/suspicion/,Suspicion)	levels 0-1	28	0.49
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/the-lighthouse-2019/,The Lighthouse (2019))	levels 0-1	18	0.17
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/the-misfits-1961/,The Misfits (1961))	levels 0-1	20	0.20
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/the-room-2003/,The Room (2003))	levels 0-1	36	0.85
+Native(Angelika Film Center Carmel Mountain,https://www.flicks.us/movie/vertigo/,Vertigo)	levels 0-1	28	0.57
+Native(Angelika Film Center New York,https://www.flicks.us/movie/bitter-christmas/,Bitter Christmas)	levels 0-1	18	0.19
+Native(Apollo Theatre Oberlin,https://www.flicks.us/movie/akira-1988/,Akira (1988))	lattice 2^2	4	0.13
+Native(Apollo Theatre Oberlin,https://www.flicks.us/movie/nt-live-the-playboy-of-the-western-world/,NT Live: The Playboy of the Western World)	lattice 2^7	128	5.42
+Native(Apollo Theatre Oberlin,https://www.flicks.us/movie/seven-samurai/,Seven Samurai)	lattice 2^2	4	0.36
+Native(Apollo Theatre Oberlin,https://www.flicks.us/movie/the-silence-of-the-lambs/,The Silence of the Lambs)	levels 0-1	22	0.38
+Native(Apollo Theatre Saint Marys,https://www.flicks.us/movie/focker-in-law/,Focker-in-Law)	levels 0-1	40	0.26
+Native(Arcadia Theatre Wellsboro,https://www.flicks.us/movie/the-man-who-invented-christmas/,The Man Who Invented Christmas)	lattice 2^2	4	0.10
+Native(Arena Theater,https://www.flicks.us/movie/the-great-dictator/,The Great Dictator)	lattice 2^2	4	0.16
+Native(Arlington Cinema & Drafthouse,https://www.flicks.us/movie/hook/,Hook)	lattice 2^2	4	0.16
+Native(Art Theatre of Long Beach,https://www.flicks.us/movie/blade-1998/,Blade (1998))	lattice 2^5	32	0.88
+Native(Art Theatre of Long Beach,https://www.flicks.us/movie/deep-red/,Deep Red)	lattice 2^2	4	0.27
+Native(Art Theatre of Long Beach,https://www.flicks.us/movie/do-the-right-thing/,Do the Right Thing)	lattice 2^3	8	0.43
+Native(Art Theatre of Long Beach,https://www.flicks.us/movie/henry-portrait-of-a-serial-killer/,Henry: Portrait of a Serial Killer)	lattice 2^5	32	1.67
+Native(Art Theatre of Long Beach,https://www.flicks.us/movie/howard-the-duck/,Howard the Duck)	levels 0-1	116	2.11
+Native(Art Theatre of Long Beach,https://www.flicks.us/movie/the-burbs/,The 'Burbs)	lattice 2^5	32	1.51
+Native(Art Theatre of Long Beach,https://www.flicks.us/movie/twin-peaks-fire-walk-with-me/,Twin Peaks: Fire Walk With Me)	levels 0-1	22	0.25
+Native(Asheville Pizza & Brewing,https://www.flicks.us/movie/my-neighbour-totoro/,My Neighbour Totoro)	lattice 2^2	4	0.28
+Native(Ashland Theatre,https://www.flicks.us/movie/hocus-pocus/,Hocus Pocus)	levels 0-1	74	0.62
+Native(Ashland Theatre,https://www.flicks.us/movie/rope/,Rope)	lattice 2^3	8	0.35
+Native(Ashland Theatre,https://www.flicks.us/movie/the-man-who-knew-too-much-1956/,The Man Who Knew Too Much (1956))	lattice 2^3	8	0.36
+Native(Ashland Theatre,https://www.flicks.us/movie/the-wrong-man/,The Wrong Man)	lattice 2^2	4	0.12
+Native(Athena Cinema,https://www.flicks.us/movie/ghost-elephants/,Ghost Elephants)	lattice 2^2	4	0.12
+Native(Athena Cinema,https://www.flicks.us/movie/twenty-years-of-the-met-in-cinemas-an-anniversary-celebration/,Twenty Years of the Met in Cinemas: An Anniversary Celebration)	lattice 2^2	4	0.20
+Native(Athol Cinemas 8,https://www.flicks.us/movie/soul/,Soul)	lattice 2^2	4	0.21
+Native(Atlas Cinemas Shaker Square 6,https://www.flicks.us/movie/the-beast-2024/,The Beast (2024))	lattice 2^2	4	0.09
+Native(Atlas Great Lakes Stadium 16,https://www.flicks.us/movie/andre-rieus-2026-christmas-concert-let-it-snow/,André Rieu's 2026 Christmas Concert: Let It Snow)	8 orders x 8 steps	57	1.15
+Native(Auburn Garrett Drive In,https://www.flicks.us/movie/evil-dead-burn/,Evil Dead Burn)	lattice 2^2	4	0.11
+Native(Auburn State Theatre,https://www.flicks.us/movie/womens-adventure-film-tour/,Women's Adventure Film Tour)	lattice 2^2	4	0.16
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/brazil/,Brazil)	lattice 2^3	8	0.22
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/cinema-paradiso/,Cinema Paradiso)	lattice 2^2	4	0.24
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/fantastic-mr-fox/,Fantastic Mr. Fox)	lattice 2^7	128	5.90
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/mary-oliver-saved-by-the-beauty-of-the-world/,Mary Oliver: Saved by the Beauty of the World)	lattice 2^3	8	0.29
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/office-killer/,Office Killer)	lattice 2^4	16	0.78
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/paper-tiger/,Paper Tiger)	lattice 2^5	32	1.18
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/the-colour-of-money/,The Colour of Money)	lattice 2^2	4	0.10
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/the-good-the-bad-and-the-ugly/,The Good, the Bad and the Ugly)	lattice 2^4	16	1.06
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/the-last-waltz/,The Last Waltz)	levels 0-1	20	0.31
+Native(Austin Film Society Cinema,https://www.flicks.us/movie/to-live-and-die-in-la/,To Live and Die in L.A.)	lattice 2^2	4	0.32
+Native(Aut-O-Rama Drive-In,https://www.flicks.us/movie/an-american-werewolf-in-london/,An American Werewolf in London)	levels 0-1	98	1.15
+Native(Aut-O-Rama Drive-In,https://www.flicks.us/movie/the-lost-boys/,The Lost Boys)	8 orders x 8 steps	57	1.12
+Native(Auto Drive-in Greenwood,https://www.flicks.us/movie/runner/,Runner (2026))	8 orders x 8 steps	57	1.18
+Native(Avalon Theatre (Catalina Casino),https://www.flicks.us/movie/guillermo-del-toros-frankenstein/,Guillermo del Toro's Frankenstein)	lattice 2^5	32	1.84
+Native(Avon Theatre Stamford,https://www.flicks.us/movie/the-christophers/,The Christophers)	lattice 2^3	8	0.26
+Native(Badin Road Drive-In Albemarle,https://www.flicks.us/movie/cars/,Cars)	levels 0-1	20	0.29
+Native(Balboa Theatre San Francisco,https://www.flicks.us/movie/frankenhooker/,Frankenhooker)	lattice 2^4	16	0.33
+Native(Balboa Theatre San Francisco,https://www.flicks.us/movie/night-of-the-creeps/,Night of the Creeps)	lattice 2^2	4	0.17
+Native(Balboa Theatre San Francisco,https://www.flicks.us/movie/night-of-the-living-dead-1968/,Night of the Living Dead (1968))	levels 0-1	36	0.39
+Native(Balboa Theatre San Francisco,https://www.flicks.us/movie/nirvanna-the-band-the-show-the-movie/,Nirvanna: the Band, the Show, the Movie)	lattice 2^2	4	0.16
+Native(Balboa Theatre San Francisco,https://www.flicks.us/movie/they-live/,They Live)	lattice 2^5	32	1.96
+Native(Barnyard Cinema Winthrop,https://www.flicks.us/movie/lady/,Lady)	lattice 2^6	64	3.12
+Native(Barron Theatre Pratt,https://www.flicks.us/movie/toy-story-5/,Toy Story 5)	levels 0-1	28	0.33
+Native(Barrymore Film Center,https://www.flicks.us/movie/casino-royale-2006/,Casino Royale (2006))	lattice 2^5	32	2.08
+Native(Bay Theater Seal Beach,https://www.flicks.us/movie/bram-stokers-dracula/,Bram Stoker's Dracula)	levels 0-1	28	0.43
+Native(Bay Theater Seal Beach,https://www.flicks.us/movie/hereditary/,Hereditary)	lattice 2^7	128	5.45
+Native(Bear Tooth Theatrepub,https://www.flicks.us/movie/practical-magic/,Practical Magic)	levels 0-1	40	0.27
+Native(Bear Tooth Theatrepub,https://www.flicks.us/movie/the-incomer/,The Incomer)	levels 0-1	30	0.29
+Native(Bedford Playhouse,https://www.flicks.us/movie/the-last-picture-shows/,The Last Picture Shows)	levels 0-1	22	0.29
+Native(Bedford Playhouse,https://www.flicks.us/movie/time-bandits/,Time Bandits)	lattice 2^2	4	0.14
+Native(Bel Air Cinema Detroit,https://www.flicks.us/movie/clean-hands/,Clean Hands)	lattice 2^6	64	2.75
+Native(Bel Air Cinema Detroit,https://www.flicks.us/movie/love-language/,Love Language)	lattice 2^2	4	0.32
+Native(Belcourt Theatre Nashville,https://www.flicks.us/movie/altered-states/,Altered States)	lattice 2^2	4	0.30
+Native(Belcourt Theatre Nashville,https://www.flicks.us/movie/existen-z/,eXistenZ)	lattice 2^3	8	0.19
+Native(Belcourt Theatre Nashville,https://www.flicks.us/movie/hedwig-and-the-angry-inch/,Hedwig and the Angry Inch)	lattice 2^3	8	0.24
+Native(Belcourt Theatre Nashville,https://www.flicks.us/movie/the-babadook/,The Babadook)	lattice 2^4	16	0.72
+Native(Belcourt Theatre Nashville,https://www.flicks.us/movie/under-the-silver-lake/,Under the Silver Lake)	lattice 2^2	4	0.22
+Native(Bellevue Theatre Montclair,https://www.flicks.us/movie/auntie-mame/,Auntie Mame)	lattice 2^2	4	0.15
+Native(Bellevue Theatre Montclair,https://www.flicks.us/movie/gentle-monster/,Gentle Monster)	lattice 2^4	16	0.85
+Native(Bellows Falls Opera House,https://www.flicks.us/movie/grumpy-old-men/,Grumpy Old Men)	lattice 2^2	4	0.34
+Native(Bellows Falls Opera House,https://www.flicks.us/movie/the-holiday/,The Holiday (2006))	levels 0-1	18	0.17
+Native(Berwick Theater and Center for Community Arts,https://www.flicks.us/movie/goosebumps/,Goosebumps)	levels 0-1	22	0.21
+Native(Beverly Theater Las Vegas,https://www.flicks.us/movie/heathers/,Heathers)	lattice 2^2	4	0.17
+Native(Beverly Theater Las Vegas,https://www.flicks.us/movie/it-came-from-outer-space/,It Came from Outer Space)	lattice 2^3	8	0.34
+Native(Beverly Theater Las Vegas,https://www.flicks.us/movie/it-follows/,It Follows)	8 orders x 8 steps	57	2.76
+Native(Beverly Theater Las Vegas,https://www.flicks.us/movie/scream-vi/,Scream VI)	levels 0-1	20	0.24
+Native(Bicknell Theater,https://www.flicks.us/movie/the-uprising/,The Uprising)	lattice 2^6	64	2.41
+Native(Big Sky Cinema Dillon,https://www.flicks.us/movie/the-brink-of-war/,The Brink of War)	lattice 2^2	4	0.11
+Native(Big Sky Cinema Dillon,https://www.flicks.us/movie/the-end-of-oak-street/,The End of Oak Street)	levels 0-1	42	0.27
+Native(Birdsong Drive In Camden,https://www.flicks.us/movie/serendipity/,Serendipity)	lattice 2^6	64	2.74
+Native(Black Bear Cinemas,https://www.flicks.us/movie/catvideofest/,CatVideoFest 2026)	lattice 2^4	16	0.93
+Native(Blackstone Valley 14 Millbury,https://www.showcasecinemas.com/movies/327214-trust-me-im-a-doctor,Trust Me, I’m a Doctor)	levels 0-1	20	0.13
+Native(Blue Moon Drive-In,https://www.flicks.us/movie/a-nightmare-on-elm-street-3-dream-warriors/,A Nightmare on Elm Street 3: Dream Warriors)	levels 0-1	22	0.23
+Native(Boeing and PACCAR IMAX Theaters,https://www.flicks.us/movie/wild-asia-life-at-extremes/,Wild Asia: Life at Extremes)	lattice 2^2	4	0.20
+Native(Brain Dead Studios Fairfax,https://www.flicks.us/movie/death-becomes-her/,Death Becomes Her)	levels 0-1	22	0.20
+Native(Brain Dead Studios Fairfax,https://www.flicks.us/movie/freaked/,Freaked)	lattice 2^2	4	0.15
+Native(Brain Dead Studios Fairfax,https://www.flicks.us/movie/juon-the-grudge/,Ju-on: The Grudge)	lattice 2^2	4	0.17
+Native(Brain Dead Studios Fairfax,https://www.flicks.us/movie/lemonade-blessing/,Lemonade Blessing)	lattice 2^2	4	0.14
+Native(Brain Dead Studios Fairfax,https://www.flicks.us/movie/obsession/,Obsession)	levels 0-1	36	0.48
+Native(Brain Dead Studios Fairfax,https://www.flicks.us/movie/rosemarys-baby/,Rosemary's Baby)	levels 0-1	40	0.64
+Native(Brain Dead Studios Fairfax,https://www.flicks.us/movie/the-cabinet-of-dr-caligari/,The Cabinet of Dr. Caligari)	lattice 2^5	32	2.11
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/a-place-in-the-sun/,A Place in the Sun)	lattice 2^3	8	0.51
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/behemoth/,Behemoth!)	lattice 2^2	4	0.11
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/coward/,Coward)	lattice 2^3	8	0.22
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/elsinore/,Elsinore)	lattice 2^4	16	1.13
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/everytime/,Everytime)	lattice 2^4	16	0.76
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/north-by-northwest/,North By Northwest)	levels 0-1	18	0.14
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/persepolis/,Persepolis)	lattice 2^2	4	0.23
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/rehearsals-for-a-revolution/,Rehearsals for a Revolution)	lattice 2^4	16	0.34
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/tangles/,Tangles)	lattice 2^3	8	0.33
+Native(Brattle Theatre Cambridge,https://www.flicks.us/movie/the-debut/,The Debut)	lattice 2^3	8	0.32
+Native(Brenden Concord 14,https://www.flicks.us/movie/aliens/,Aliens)	lattice 2^5	32	2.89
+Native(Bridgton Drive-in,https://www.flicks.us/movie/my-bloody-valentine-1981/,My Bloody Valentine (1981))	lattice 2^2	4	0.15
+Native(Broad Theater New Orleans,https://www.flicks.us/movie/dog-day-afternoon/,Dog Day Afternoon)	lattice 2^6	64	3.69
+Native(Broad Theater New Orleans,https://www.flicks.us/movie/seconds/,Seconds)	levels 0-1	120	1.86
+Native(Broad Theater New Orleans,https://www.flicks.us/movie/the-cook-the-thief-his-wife-and-her-lover/,The Cook, the Thief, His Wife & Her Lover)	lattice 2^2	4	0.27
+Native(Broadway Salt Lake City 6,https://www.flicks.us/movie/dracula-a-love-tale/,Dracula: A Love Tale)	lattice 2^5	32	1.53
+Native(Brownsville Drive-In Grindstone,https://www.flicks.us/movie/christine-1983/,Christine (1983))	8 orders x 8 steps	57	2.84
+Native(Bryan Cinema 3,https://www.flicks.us/movie/twilight/,Twilight)	levels 0-1	28	0.34
+Native(Bryn Mawr Film Institute,https://www.flicks.us/movie/body-heat/,Body Heat)	lattice 2^2	4	0.22
+Native(Bryn Mawr Film Institute,https://www.flicks.us/movie/exhibition-on-screen-james-mcneill-whistler/,Exhibition on Screen: James McNeill Whistler)	levels 0-1	22	0.18
+Native(Bryn Mawr Film Institute,https://www.flicks.us/movie/la-confidential/,L.A. Confidential)	lattice 2^2	4	0.16
+Native(Bryn Mawr Film Institute,https://www.flicks.us/movie/the-incredibles/,The Incredibles)	lattice 2^2	4	0.23
+Native(Bryn Mawr Film Institute,https://www.flicks.us/movie/the-sound-of-music/,The Sound of Music)	lattice 2^2	4	0.18
+Native(Buffalo Theatre (Buffalo) (Oklahoma),https://www.flicks.us/movie/the-fast-and-the-furious/,The Fast and the Furious)	lattice 2^2	4	0.22
+Native(Burns Court Cinemas Sarasota,https://www.flicks.us/movie/8/,8½)	lattice 2^3	8	0.45
+Native(Burns Court Cinemas Sarasota,https://www.flicks.us/movie/nt-live-hamlet/,NT Live: Hamlet)	lattice 2^2	4	0.08
+Native(Burns Court Cinemas Sarasota,https://www.flicks.us/movie/nt-live-the-audience/,NT Live: The Audience)	lattice 2^3	8	0.31
+Native(Burns Court Cinemas Sarasota,https://www.flicks.us/movie/what-ever-happened-to-baby-jane/,What Ever Happened To Baby Jane?)	lattice 2^5	32	1.53
+Native(Byrd Theatre Richmond,https://www.flicks.us/movie/the-blair-witch-project/,The Blair Witch Project)	8 orders x 8 steps	57	3.48
+Native(CMX Brickell City Centre,https://www.flicks.us/movie/purple-rain/,Purple Rain)	levels 0-1	40	0.62
+Native(Camelot Theatres Palm Springs,https://www.flicks.us/movie/mars-attacks/,Mars Attacks!)	lattice 2^3	8	0.78
+Native(Camelot Theatres Palm Springs,https://www.flicks.us/movie/mermaids-1990/,Mermaids (1990))	lattice 2^4	16	0.60
+Native(Camelot Theatres Palm Springs,https://www.flicks.us/movie/moonstruck/,Moonstruck)	lattice 2^4	16	0.49
+Native(Camelot Theatres Palm Springs,https://www.flicks.us/movie/mr-burton/,Mr. Burton)	lattice 2^2	4	0.22
+Native(Camelot Theatres Palm Springs,https://www.flicks.us/movie/to-catch-a-thief/,To Catch a Thief)	lattice 2^3	8	0.34
+Native(Cape Cinema Dennis,https://www.flicks.us/movie/royal-ballet-and-opera-2024-25-the-nutcracker/,Royal Ballet & Opera 2024-25: The Nutcracker)	8 orders x 8 steps	57	0.71
+Native(Capitol II Theatre Newton,https://www.flicks.us/movie/the-best-christmas-pageant-ever/,The Best Christmas Pageant Ever)	lattice 2^3	8	0.23
+Native(Capitol Theatre Cleveland,https://www.flicks.us/movie/tenzing/,Tenzing)	levels 0-1	56	0.42
+Native(Capitol Theatre Olympia,https://www.flicks.us/movie/american-doctor/,American Doctor)	levels 0-1	32	0.16
+Native(Capitol Theatre Olympia,https://www.flicks.us/movie/gandahar/,Gandahar)	lattice 2^2	4	0.18
+Native(Capitol Theatre Olympia,https://www.flicks.us/movie/laputa-castle-in-the-sky/,Laputa: Castle in the Sky)	lattice 2^3	8	0.38
+Native(Capitol Theatre Olympia,https://www.flicks.us/movie/moonlight/,Moonlight)	lattice 2^3	8	0.28
+Native(Capitol Theatre Olympia,https://www.flicks.us/movie/the-innocents-1961/,The Innocents (1961))	lattice 2^3	8	0.26
+Native(Capri Theatre Montgomery,https://www.flicks.us/movie/all-the-presidents-men/,All the President's Men)	lattice 2^5	32	2.20
+Native(Capri Theatre Montgomery,https://www.flicks.us/movie/the-great-escape/,The Great Escape)	lattice 2^3	8	0.19
+Native(Capri Theatre Montgomery,https://www.flicks.us/movie/the-night-of-the-hunter/,The Night of the Hunter)	lattice 2^3	8	0.59
+Native(Carolina Theatre Durham,https://www.flicks.us/movie/battleship-potemkin/,Battleship Potemkin)	lattice 2^2	4	0.17
+Native(Carolina Theatre Durham,https://www.flicks.us/movie/double-indemnity/,Double Indemnity)	levels 0-1	24	0.23
+Native(Carolina Theatre Durham,https://www.flicks.us/movie/fiddler-on-the-roof/,Fiddler on the Roof)	lattice 2^3	8	0.34
+Native(Carolina Theatre Durham,https://www.flicks.us/movie/the-big-lebowski/,The Big Lebowski)	levels 0-1	18	0.24
+Native(Carolina Theatre Durham,https://www.flicks.us/movie/thief/,Thief)	levels 0-1	128	1.60
+Native(Carolina Theatre Durham,https://www.flicks.us/movie/trading-places/,Trading Places)	lattice 2^3	8	0.21
+Native(Carsey-Wolf Theatre,https://www.flicks.us/movie/mulholland-dr/,Mulholland Dr.)	lattice 2^6	64	2.66
+Native(Cary Theater,https://www.flicks.us/movie/shaun-of-the-dead/,Shaun of the Dead)	levels 0-1	18	0.16
+Native(Catamount Cinemas,https://www.flicks.us/movie/late-fame/,Late Fame)	lattice 2^4	16	0.36
+Native(Cedar Lee Cleveland 6,https://www.flicks.us/movie/pulp-fiction/,Pulp Fiction)	lattice 2^7	128	7.28
+Native(Celebration! Carousel,https://www.flicks.us/movie/migration/,Migration)	levels 0-1	24	0.12
+Native(Center Theatre Dover-Foxcroft,https://www.flicks.us/movie/thelma-louise/,Thelma & Louise)	lattice 2^2	4	0.14
+Native(Central Cinema Knoxville,https://www.flicks.us/movie/boorman-and-the-devil/,Boorman and the Devil)	lattice 2^2	4	0.16
+Native(Century El Con 20,https://www.flicks.us/movie/aa-bata-aama-2/,Aa Bata Aama 2)	levels 0-1	32	0.39
+Native(Cincinnati World Cinema – The Garfield Theatre,https://www.flicks.us/movie/colours-of-time/,Colours of Time)	lattice 2^3	8	0.33
+Native(Cine Athens,https://www.flicks.us/movie/the-texas-chain-saw-massacre-1974/,The Texas Chain Saw Massacre (1974))	levels 0-1	68	1.36
+Native(Cine Lounge at Niles,https://www.flicks.us/movie/premada-oorali/,Premada Oorali)	lattice 2^2	4	0.08
+Native(Cinema 21 Portland,https://www.flicks.us/movie/a-matter-of-life-and-death/,A Matter of Life and Death)	lattice 2^2	4	0.19
+Native(Cinema 21 Portland,https://www.flicks.us/movie/adams-apple/,Adam's Apple)	lattice 2^2	4	0.23
+Native(Cinema 21 Portland,https://www.flicks.us/movie/beauty-and-the-beast-1946/,Beauty and the Beast (1946))	lattice 2^2	4	0.22
+Native(Cinema 21 Portland,https://www.flicks.us/movie/invasion-of-the-body-snatchers-1956/,Invasion of the Body Snatchers (1956))	levels 0-1	20	0.25
+Native(Cinema 21 Portland,https://www.flicks.us/movie/notorious/,Notorious (1946))	lattice 2^3	8	0.40
+Native(Cinema Art Theater,https://www.flicks.us/movie/national-theatre-live-the-motive-and-the-cue/,NT Live: The Motive and the Cue)	lattice 2^4	16	1.24
+Native(Cinema Arts Centre Huntington 3,https://www.flicks.us/movie/addams-family-values-1993/,Addams Family Values (1993))	levels 0-1	124	2.28
+Native(Cinema Arts Centre Huntington 3,https://www.flicks.us/movie/girl-interrupted/,Girl, Interrupted)	lattice 2^2	4	0.11
+Native(Cinema Arts Centre Huntington 3,https://www.flicks.us/movie/steel-magnolias/,Steel Magnolias)	levels 0-1	32	0.47
+Native(Cinema Arts Centre Huntington 3,https://www.flicks.us/movie/the-frighteners/,The Frighteners)	lattice 2^3	8	0.17
+Native(Cinema Arts Fairfax 6,https://www.flicks.us/movie/field-of-dreams/,Field of Dreams)	lattice 2^2	4	0.36
+Native(Cinema Arts Fairfax 6,https://www.flicks.us/movie/true-grit-1969/,True Grit (1969))	lattice 2^2	4	0.15
+Native(Cinema Grill New Hope,https://www.flicks.us/movie/minions-3/,Minions & Monsters)	levels 0-1	26	0.30
+Native(Cinema Under the Stars San Diego,https://www.flicks.us/movie/midnight-in-paris/,Midnight in Paris)	lattice 2^2	4	0.12
+Native(Cinema Underground Williams Center,https://www.flicks.us/movie/clueless/,Clueless)	lattice 2^4	16	0.69
+Native(Cinema Underground Williams Center,https://www.flicks.us/movie/howls-moving-castle/,Howl's Moving Castle)	lattice 2^2	4	0.26
+Native(Cinemagic Theater Portland,https://www.flicks.us/movie/army-of-darkness/,Army Of Darkness)	lattice 2^7	128	2.83
+Native(Cinemagic Theater Portland,https://www.flicks.us/movie/bullet-in-the-head-1990/,Bullet in the Head (1990))	lattice 2^2	4	0.12
+Native(Cinemagic Theater Portland,https://www.flicks.us/movie/re-animator/,Re-Animator)	lattice 2^3	8	0.28
+Native(Cinemark Allen 16,https://www.flicks.us/movie/the-angry-birds-movie/,The Angry Birds Movie)	8 orders x 8 steps	57	2.46
+Native(Cinemark Ann Arbor 20,https://www.flicks.us/movie/rbo-cinema-season-2026-27-alices-adventures-in-wonderland/,RBO Cinema Season 2026-27: Alice's Adventures in Wonderland)	8 orders x 8 steps	57	0.80
+Native(Cinemark Ann Arbor 20,https://www.flicks.us/movie/rbo-cinema-season-2026-27-swan-lake/,RBO Cinema Season 2026-27: Swan Lake)	levels 0-1	126	1.16
+Native(Cinemark Baldwin Hills,https://www.flicks.us/movie/the-eyes-of-ghana/,The Eyes of Ghana)	levels 0-1	112	1.57
+Native(Cinemark Century Orange,https://www.flicks.us/movie/titans/,Titans)	lattice 2^3	8	0.37
+Native(Cinemark Fayette Mall,https://www.flicks.us/movie/kabaddi-5/,Kabaddi 5)	lattice 2^5	32	3.30
+Native(Cinemark Milford 16,https://www.flicks.us/movie/chha-maya-chhapakkai-2/,Chha Maya Chhapakkai 2)	lattice 2^3	8	0.27
+Native(Cinematique Of Daytona,https://www.flicks.us/movie/bad-apples/,Bad Apples)	lattice 2^2	4	0.09
+Native(Cinepolis Coconut Grove,https://www.flicks.us/movie/friday-the-13th-part-vi-jason-lives/,Friday the 13th Part VI: Jason Lives)	8 orders x 8 steps	57	1.15
+Native(Cinepolis Coconut Grove,https://www.flicks.us/movie/the-godfather-part-ii/,The Godfather: Part II)	levels 0-1	60	3.03
+Native(Cinepolis Del Mar,https://www.flicks.us/movie/the-hunger-games-catching-fire/,The Hunger Games: Catching Fire)	levels 0-1	28	0.44
+Native(Cinepolis Del Mar,https://www.flicks.us/movie/the-hunger-games-the-ballad-of-songbirds-and-snakes/,The Hunger Games: The Ballad of Songbirds & Snakes)	levels 0-1	28	0.18
+Native(Cinergy Cinemas Amarillo 10,https://www.flicks.us/movie/escape-room-2019/,Escape Room (2019))	lattice 2^3	8	0.35
+Native(Cinergy Cinemas Amarillo 10,https://www.flicks.us/movie/the-twilight-saga-breaking-dawn-part-1/,The Twilight Saga: Breaking Dawn Part 1)	levels 0-1	20	0.15
+Native(Cinestudio Hartford,https://www.flicks.us/movie/backrooms/,Backrooms)	lattice 2^4	16	0.52
+Native(Circle Cinema Tulsa,https://www.flicks.us/movie/the-fly/,The Fly (1986))	lattice 2^5	32	1.69
+Native(City Base Cinema San Antonio,https://www.flicks.us/movie/on-the-road-2025/,On the Road (2025))	lattice 2^4	16	0.76
+Native(City Lights Cinemas Florence,https://www.flicks.us/movie/georgia-okeeffe-the-brightness-of-light/,Georgia O'Keeffe: The Brightness of Light)	lattice 2^2	4	0.18
+Native(City Lights Palestine 6,https://www.flicks.us/movie/step-brothers/,Step Brothers)	levels 0-1	20	0.24
+Native(City Lights Palestine 6,https://www.flicks.us/movie/wedding-crashers/,Wedding Crashers)	levels 0-1	18	0.17
+Native(Classic Cinemas Elk Grove,https://www.flicks.us/movie/forrest-gump/,Forrest Gump)	lattice 2^2	4	0.12
+Native(Classic Cinemas Elk Grove,https://www.flicks.us/movie/scrooged/,Scrooged)	lattice 2^6	64	2.92
+Native(Classic Cinemas Lake Oak Park,https://www.flicks.us/movie/steal-this-story-please/,Steal This Story, Please!)	lattice 2^2	4	0.27
+Native(Classic Cinemas Lake Oak Park,https://www.flicks.us/movie/the-dark-knight/,The Dark Knight)	lattice 2^6	64	2.74
+Native(Classic Cinemas Lake Oak Park,https://www.flicks.us/movie/union-county/,Union County)	lattice 2^7	128	3.41
+Native(Classic Cinemas Tivoli Downers Grove,https://www.flicks.us/movie/goldfinger/,Goldfinger)	8 orders x 8 steps	57	5.80
+Native(Classic Cinemas Tivoli Downers Grove,https://www.flicks.us/movie/the-spy-who-loved-me/,The Spy Who Loved Me)	8 orders x 8 steps	57	5.60
+Native(Cleveland Institute Of Art Cinematheque,https://www.flicks.us/movie/a-life-illuminated/,A Life Illuminated)	lattice 2^5	32	0.71
+Native(Cleveland Institute Of Art Cinematheque,https://www.flicks.us/movie/atonement/,Atonement)	lattice 2^3	8	0.76
+Native(Cleveland Institute Of Art Cinematheque,https://www.flicks.us/movie/taxi-driver/,Taxi Driver)	lattice 2^5	32	2.11
+Native(Cleveland Institute Of Art Cinematheque,https://www.flicks.us/movie/the-postman-always-rings-twice/,The Postman Always Rings Twice (1946))	lattice 2^2	4	0.19
+Native(Cobble Hill Cinema Brooklyn,https://www.flicks.us/movie/boogie-nights/,Boogie Nights)	lattice 2^3	8	0.30
+Native(Colonial Bethlehem,https://www.flicks.us/movie/the-weight/,The Weight)	levels 0-1	22	0.25
+Native(Colonial Theatre Phoenixville,https://www.flicks.us/movie/babettes-feast/,Babette's Feast)	lattice 2^2	4	0.25
+Native(Colonial Theatre Phoenixville,https://www.flicks.us/movie/black-christmas-1974/,Black Christmas (1974))	lattice 2^4	16	1.08
+Native(Colonial Theatre Phoenixville,https://www.flicks.us/movie/blast-of-silence/,Blast of Silence)	lattice 2^2	4	0.16
+Native(Colonial Theatre Phoenixville,https://www.flicks.us/movie/bringing-up-baby/,Bringing Up Baby)	lattice 2^2	4	0.29
+Native(Colonial Theatre Phoenixville,https://www.flicks.us/movie/pride-prejudice/,Pride & Prejudice)	lattice 2^7	128	5.08
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/clifford/,Clifford)	lattice 2^2	4	0.14
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/constantine/,Constantine)	8 orders x 8 steps	57	2.60
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/eraserhead/,Eraserhead)	lattice 2^3	8	0.36
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/frankenweenie/,Frankenweenie)	lattice 2^3	8	0.25
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/fright-night-1985/,Fright Night (1985))	lattice 2^3	8	0.28
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/in-bruges/,In Bruges)	lattice 2^3	8	0.45
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/kiss-kiss-bang-bang/,Kiss Kiss Bang Bang)	lattice 2^2	4	0.09
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/mc-cabe-mrs-miller/,McCabe & Mrs Miller)	lattice 2^2	4	0.32
+Native(Coolidge Corner Theatre,https://www.flicks.us/movie/prince-of-darkness/,Prince of Darkness)	levels 0-1	32	0.44
+Native(Coral Gables Art Cinema,https://www.flicks.us/movie/wicked/,Wicked)	lattice 2^2	4	0.23
+Native(Cornell Cinema,https://www.flicks.us/movie/the-vanishing-1993/,The Vanishing (1993))	lattice 2^3	8	0.36
+Native(County Theater 3,https://www.flicks.us/movie/the-bishops-wife/,The Bishop's Wife)	lattice 2^3	8	0.22
+Native(Culver Theater,https://www.flicks.us/movie/batman-returns/,Batman Returns)	lattice 2^2	4	0.17
+Native(Culver Theater,https://www.flicks.us/movie/dark-city/,Dark City)	lattice 2^2	4	0.12
+Native(Culver Theater,https://www.flicks.us/movie/eyes-wide-shut/,Eyes Wide Shut)	lattice 2^6	64	3.26
+Native(Culver Theater,https://www.flicks.us/movie/jason-x/,Jason X)	lattice 2^2	4	0.25
+Native(Dakota Cinema,https://www.flicks.us/movie/jeepers-creepers-2001/,Jeepers Creepers (2001))	lattice 2^5	32	1.33
+Native(Davis Theater Chicago,https://www.flicks.us/movie/the-life-we-leave/,The Life We Leave)	lattice 2^3	8	0.27
+Native(Denizen Theatre,https://www.flicks.us/movie/the-last-dive/,The Last Dive)	lattice 2^3	8	0.23
+Native(Dietrich Theater Tunkhannock,https://www.flicks.us/movie/scooby-doo/,Scooby-Doo)	levels 0-1	20	0.21
+Native(Dietrich Theater Tunkhannock,https://www.flicks.us/movie/the-birds/,The Birds)	lattice 2^6	64	3.49
+Native(Doc Films – University of Chicago,https://www.flicks.us/movie/tommy/,Tommy)	lattice 2^2	4	0.24
+Native(Doric Theatre Elkhart,https://www.flicks.us/movie/fall-2/,Fall 2)	lattice 2^5	32	1.90
+Native(Dreamland Nantucket,https://www.flicks.us/movie/case-137/,Case 137)	lattice 2^4	16	0.99
+Native(Dreamland Nantucket,https://www.flicks.us/movie/judgement-at-nuremberg/,Judgement at Nuremberg)	lattice 2^2	4	0.16
+Native(Drexel Theatre Columbus,https://www.flicks.us/movie/indiana-jones-and-the-last-crusade/,Indiana Jones and the Last Crusade)	lattice 2^3	8	0.45
+Native(Drexel Theatre Columbus,https://www.flicks.us/movie/superman/,Superman)	lattice 2^2	4	0.35
+Native(Edmond Town Hall Newtown,https://www.flicks.us/movie/the-anaconda/,Anaconda)	lattice 2^2	4	0.13
+Native(Egyptian Theatre Los Angeles,https://www.flicks.us/movie/burning-2018/,Burning (2018))	lattice 2^2	4	0.13
+Native(Egyptian Theatre Los Angeles,https://www.flicks.us/movie/klute/,Klute)	lattice 2^3	8	0.21
+Native(Egyptian Theatre Los Angeles,https://www.flicks.us/movie/orlando/,Orlando)	lattice 2^2	4	0.11
+Native(Egyptian Theatre Los Angeles,https://www.flicks.us/movie/portrait-of-a-lady-on-fire/,Portrait of a Lady on Fire)	8 orders x 8 steps	57	0.55
+Native(Emagine Willow Creek,https://www.flicks.us/movie/tucker-and-dale-vs-evil/,Tucker and Dale vs Evil)	lattice 2^2	4	0.19
+Native(Embassy Cinema Waltham,https://www.flicks.us/movie/dr-jekyll-and-mr-hyde/,Dr. Jekyll and Mr. Hyde)	lattice 2^2	4	0.15
+Native(Enzian Theater,https://www.flicks.us/movie/persona/,Persona)	lattice 2^2	4	0.18
+Native(Enzian Theater,https://www.flicks.us/movie/the-killing-1956/,The Killing (1956))	lattice 2^2	4	0.10
+Native(Esquire IMAX Theatre Sacramento,https://www.flicks.us/movie/stormbound/,Stormbound)	lattice 2^2	4	0.11
+Native(Esquire Theatre Cincinnati,https://www.flicks.us/movie/from-beyond/,From Beyond)	lattice 2^3	8	0.73
+Native(Eugene Art House,https://www.flicks.us/movie/pierrot-le-fou/,Pierrot le fou)	lattice 2^2	4	0.20
+Native(Film Forum New York,https://www.flicks.us/movie/citizen-ruth/,Citizen Ruth)	lattice 2^2	4	0.13
+Native(Film Forum New York,https://www.flicks.us/movie/man-of-iron/,Man of Iron)	lattice 2^2	4	0.10
+Native(Film Forum New York,https://www.flicks.us/movie/man-of-marble/,Man of Marble)	lattice 2^3	8	0.66
+Native(Film Streams' Dundee Theater,https://www.flicks.us/movie/everything-everywhere-all-at-once/,Everything Everywhere All at Once)	lattice 2^2	4	0.42
+Native(Film Streams' Dundee Theater,https://www.flicks.us/movie/home-alone-2-lost-in-new-york/,Home Alone 2: Lost in New York)	lattice 2^7	128	2.68
+Native(Film Streams' Dundee Theater,https://www.flicks.us/movie/scooby-doo-2-monsters-unleashed/,Scooby-Doo 2: Monsters Unleashed)	lattice 2^5	32	1.05
+Native(Film Streams' Dundee Theater,https://www.flicks.us/movie/the-last-unicorn/,The Last Unicorn)	lattice 2^3	8	0.21
+Native(Film Streams' Dundee Theater,https://www.flicks.us/movie/the-lion-king-1994/,The Lion King (1994))	lattice 2^2	4	0.11
+Native(Film Streams' Ruth Sokolof Theater,https://www.flicks.us/movie/blade-runner-the-final-cut/,Blade Runner: The Final Cut)	lattice 2^5	32	1.70
+Native(Film Streams' Ruth Sokolof Theater,https://www.flicks.us/movie/the-birdcage/,The Birdcage)	lattice 2^2	4	0.24
+Native(Fine Arts Theatre Beverly Hills,https://www.flicks.us/movie/arrietty/,Arrietty)	lattice 2^2	4	0.10
+Native(Fine Arts Theatre Beverly Hills,https://www.flicks.us/movie/batman-1989/,Batman (1989))	lattice 2^3	8	0.33
+Native(Fine Arts Theatre Beverly Hills,https://www.flicks.us/movie/ponyo/,Ponyo)	lattice 2^2	4	0.24
+Native(Flint Institute of Art,https://www.flicks.us/movie/the-marching-band/,My Brother's Band (The Marching Band))	lattice 2^4	16	0.46
+Native(Flix Brewhouse Albuquerque Coors,https://www.flicks.us/movie/fantastic-beasts-and-where-to-find-them/,Fantastic Beasts and Where to Find Them)	levels 0-1	32	0.23
+Native(Fountain Theatre Mesilla,https://www.flicks.us/movie/godzilla-1954/,Godzilla (1954))	lattice 2^5	32	2.97
+Native(Fountain Theatre Mesilla,https://www.flicks.us/movie/the-fix-2026/,The Fix (2026))	lattice 2^3	8	0.29
+Native(Fox Theatre Hutchinson,https://www.flicks.us/movie/1917/,1917)	lattice 2^2	4	0.12
+Native(Fox Theatre Hutchinson,https://www.flicks.us/movie/saving-private-ryan/,Saving Private Ryan)	lattice 2^2	4	0.24
+Native(Franklin Theatre,https://www.flicks.us/movie/nope/,Nope)	lattice 2^3	8	0.23
+Native(Franklin Theatre,https://www.flicks.us/movie/the-santa-clause/,The Santa Clause)	levels 0-1	18	0.10
+Native(Frida Cinema Santa Ana,https://www.flicks.us/movie/filipinana/,Filipiñana)	lattice 2^7	128	6.20
+Native(Frida Cinema Santa Ana,https://www.flicks.us/movie/goodbye-dragon-inn/,Goodbye, Dragon Inn)	lattice 2^2	4	0.11
+Native(Frida Cinema Santa Ana,https://www.flicks.us/movie/minority-report/,Minority Report)	lattice 2^2	4	0.33
+Native(Galaxy Theatres Carson City,https://www.flicks.us/movie/metopera-die-zauberflte-202223/,MetOpera: Die Zauberflöte (2022–23))	lattice 2^4	16	0.69
+Native(Galaxy Theatres Carson City,https://www.flicks.us/movie/the-picture-of-dorian-gray/,The Picture of Dorian Gray)	lattice 2^3	8	0.24
+Native(Galaxy Theatres Gig Harbour,https://www.flicks.us/movie/chariots-of-fire/,Chariots of Fire)	lattice 2^5	32	1.82
+Native(Galaxy Theatres Gig Harbour,https://www.flicks.us/movie/krampus/,Krampus)	lattice 2^5	32	2.09
+Native(Galaxy Theatres Gig Harbour,https://www.flicks.us/movie/sinister/,Sinister)	lattice 2^2	4	0.11
+Native(Galaxy Theatres Gig Harbour,https://www.flicks.us/movie/thanksgiving/,Thanksgiving)	lattice 2^2	4	0.11
+Native(Galaxy Theatres Gig Harbour,https://www.flicks.us/movie/the-descent/,The Descent)	lattice 2^2	4	0.12
+Native(Galleria 6 Cinemas,https://www.flicks.us/movie/freddy-vs-jason/,Freddy vs. Jason)	lattice 2^2	4	0.10
+Native(Galleria 6 Cinemas,https://www.flicks.us/movie/repo-man/,Repo Man)	levels 0-1	118	1.10
+Native(Gene Siskel Film Center Chicago,https://www.flicks.us/movie/the-conversation/,The Conversation)	lattice 2^2	4	0.14
+Native(Gene Siskel Film Center Chicago,https://www.flicks.us/movie/wild-river/,Wild River)	lattice 2^2	4	0.11
+Native(Gene Siskel Film Center Chicago,https://www.flicks.us/movie/wings-of-desire/,Wings of Desire)	lattice 2^2	4	0.12
+Native(Grand Theatre & Videos,https://www.flicks.us/movie/joyful-noise/,Joyful Noise)	lattice 2^3	8	0.49
+Native(Grandin Theatre Foundation,https://www.flicks.us/movie/silent-night-deadly-night-1984/,Silent Night, Deadly Night (1984))	lattice 2^2	4	0.18
+Native(Grandin Theatre Foundation,https://www.flicks.us/movie/the-devils-backbone/,The Devil's Backbone)	lattice 2^3	8	0.20
+Native(Greenfield Garden Cinema 7,https://www.flicks.us/movie/high-society/,High Society)	lattice 2^2	4	0.32
+Native(Greenfield Garden Cinema 7,https://www.flicks.us/movie/moulin-rouge/,Moulin Rouge!)	lattice 2^2	4	0.18
+Native(Greenfield Garden Cinema 7,https://www.flicks.us/movie/the-bridge-on-the-river-kwai/,The Bridge on the River Kwai)	lattice 2^2	4	0.12
+Native(Harkins Arizona Mills 18,https://www.flicks.us/movie/princess-mononoke/,Princess Mononoke)	levels 0-1	36	0.41
+Native(Harkins Arizona Mills 18,https://www.flicks.us/movie/the-fifth-element/,The Fifth Element)	levels 0-1	64	0.85
+Native(Harkins Camelview at Fashion Sq.,https://www.flicks.us/movie/how-to-lose-a-guy-in-10-days/,How to Lose a Guy in 10 Days)	lattice 2^7	128	5.46
+Native(Hi-Pointe Theatre,https://www.flicks.us/movie/on-the-waterfront/,On the Waterfront)	lattice 2^5	32	1.48
+Native(Hi-Pointe Theatre,https://www.flicks.us/movie/the-others/,The Others)	lattice 2^2	4	0.14
+Native(Highlands Performing Arts Center,https://www.flicks.us/movie/the-war-of-the-worlds-1953/,The War of the Worlds (1953))	lattice 2^2	4	0.13
+Native(Hippodrome Theatre Gainesville,https://www.flicks.us/movie/it-ends/,It Ends)	lattice 2^3	8	0.27
+Native(Hiway Theater Jenkintown,https://www.flicks.us/movie/jack-frost-1997/,Jack Frost (1997))	lattice 2^2	4	0.28
+Native(Holiday Drive-in Rockport,https://www.flicks.us/movie/spa-weekend/,Spa Weekend)	lattice 2^4	16	0.77
+Native(Hollywood Blvd Cinema Woodridge,https://www.flicks.us/movie/serial-mom/,Serial Mom)	lattice 2^2	4	0.12
+Native(Hollywood Palms Cinema Naperville,https://www.flicks.us/movie/lawrence-of-arabia/,Lawrence of Arabia)	lattice 2^7	128	5.68
+Native(Hollywood Palms Cinema Naperville,https://www.flicks.us/movie/roman-holiday/,Roman Holiday)	lattice 2^6	64	3.64
+Native(Images Cinema Williamstown,https://www.flicks.us/movie/daisies-sedmikrsky/,Daisies (Sedmikrásky))	lattice 2^2	4	0.26
+Native(Independent Picture House Charlotte,https://www.flicks.us/movie/critters/,Critters)	lattice 2^2	4	0.14
+Native(Independent Picture House Charlotte,https://www.flicks.us/movie/raising-arizona/,Raising Arizona)	lattice 2^2	4	0.17
+Native(Indian Lake Theater,https://www.flicks.us/movie/by-any-means/,By Any Means)	lattice 2^5	32	1.67
+Native(Indiana University Cinema,https://www.flicks.us/movie/hoosiers/,Hoosiers)	levels 0-1	112	1.30
+Native(Indiana University Cinema,https://www.flicks.us/movie/misery/,Misery)	lattice 2^7	128	3.13
+Native(Indiana University Cinema,https://www.flicks.us/movie/prime-minister/,Prime Minister)	lattice 2^2	4	0.13
+Native(Indiana University Cinema,https://www.flicks.us/movie/the-stranger/,The Stranger)	lattice 2^2	4	0.39
+Native(Iowa Theater Winterset,https://www.flicks.us/movie/easy-rider/,Easy Rider)	lattice 2^2	4	0.36
+Native(Iowa Theater Winterset,https://www.flicks.us/movie/tuner/,Tuner)	lattice 2^2	4	0.28
+Native(Island 16 Holtsville,https://www.showcasecinemas.com/movies/1000048093-the-metropolitan-opera-the-magic-flute-holiday-encore-2026,The Metropolitan Opera: The Magic Flute Holiday Encore (2026))	levels 0-1	36	0.44
+Native(Jacob Burns Film Center Pleasantville,https://www.flicks.us/movie/frozen-sing-along/,Frozen: Sing-Along)	lattice 2^3	8	0.39
+Native(Jacob Burns Film Center Pleasantville,https://www.flicks.us/movie/my-night-at-mauds/,My Night at Maud's)	lattice 2^4	16	0.92
+Native(Jacob Burns Film Center Pleasantville,https://www.flicks.us/movie/the-joy-luck-club/,The Joy Luck Club)	lattice 2^2	4	0.13
+Native(Jacob Burns Film Center Pleasantville,https://www.flicks.us/movie/the-witches-1990/,The Witches (1990))	lattice 2^3	8	0.31
+Native(Kan-Kan Cinema Indianapolis,https://www.flicks.us/movie/autumn-sonata/,Autumn Sonata)	lattice 2^2	4	0.28
+Native(Kan-Kan Cinema Indianapolis,https://www.flicks.us/movie/sweeney-todd-the-demon-barber-of-fleet-street/,Sweeney Todd: The Demon Barber of Fleet Street)	lattice 2^2	4	0.24
+Native(Kentucky Lexington,https://www.flicks.us/movie/cannibal-holocaust/,Cannibal Holocaust)	lattice 2^3	8	0.34
+Native(Kentucky Science Center Louisville,https://www.flicks.us/movie/superpower-dogs/,Superpower Dogs)	lattice 2^4	16	0.67
+Native(Kew Gardens Cinemas,https://www.flicks.us/movie/rbo-cinema-season-2025-26-the-magic-flute/,Royal Ballet & Opera 2025-26: The Magic Flute)	lattice 2^2	4	0.26
+Native(Kiggins Theatre,https://www.flicks.us/movie/hen-2026/,Hen (2026))	lattice 2^2	4	0.14
+Native(Laemmle NoHo 7,https://www.flicks.us/movie/manhood/,Manhood)	lattice 2^3	8	0.49
+Native(Laemmle Town Center 5,https://www.flicks.us/movie/the-dads/,The Dads)	lattice 2^3	8	0.52
+Native(Lakewood Ranch Cinemas 6,https://www.flicks.us/movie/the-lady-eve/,The Lady Eve)	lattice 2^2	4	0.14
+Native(Landmark Bethesda Row Cinema,https://www.landmarktheatres.com/movies/138365-let-the-right-one-in-lat-den-ratte-komma-in,Let the Right One In (Lat den ratte komma in))	levels 0-1	34	0.45
+Native(Landmark Century Centre Chicago,https://www.landmarktheatres.com/movies/1466-criss-cross-1949,Criss Cross (1949))	lattice 2^5	32	1.27
+Native(Landmark Century Centre Chicago,https://www.landmarktheatres.com/movies/236-mean-streets,Mean Streets)	levels 0-1	22	0.32
+Native(Landmark Lagoon Cinema,https://www.landmarktheatres.com/movies/1000053688-dollar5-secret-movie-101926,$5 Secret Movie 10/19/26)	lattice 2^3	8	0.42
+Native(Lark Theater,https://www.flicks.us/movie/harold-and-maude/,Harold and Maude)	lattice 2^3	8	0.22
+Native(Lark Theater,https://www.flicks.us/movie/sleepless-in-seattle/,Sleepless in Seattle)	lattice 2^3	8	0.29
+Native(Liberty Cinema Wenatchee,https://www.flicks.us/movie/king-kong/,King Kong (1976))	lattice 2^3	8	0.91
+Native(Lido Theatre Newport Beach,https://www.flicks.us/movie/ink/,Ink)	lattice 2^2	4	0.40
+Native(Living Room Theatres Portland,https://www.flicks.us/movie/knife-the-attempted-murder-of-salman-rushdie/,Knife: The Attempted Murder of Salman Rushdie)	lattice 2^5	32	1.38
+Native(Logan Theatre Chicago,https://www.flicks.us/movie/chopping-mall/,Chopping Mall)	lattice 2^3	8	0.37
+Native(Logan Theatre Chicago,https://www.flicks.us/movie/crouching-tiger-hidden-dragon/,Crouching Tiger, Hidden Dragon)	lattice 2^2	4	0.15
+Native(Lyric Theater Wooster,https://www.flicks.us/movie/bad-santa/,Bad Santa)	lattice 2^4	16	0.62
+Native(Lyric Theatre Blacksburg,https://www.flicks.us/movie/weapons/,Weapons)	lattice 2^4	16	0.39
+Native(Main Cinema Minneapolis,https://www.flicks.us/movie/metropolis/,Metropolis)	lattice 2^2	4	0.22
+Native(Maine Film Center Waterville,https://www.flicks.us/movie/les-misrables-2012/,Les Misérables (2012))	lattice 2^2	4	0.19
+Native(Majestic Bay Theatres,https://www.flicks.us/movie/star-trek-ii-the-wrath-of-khan/,Star Trek II: The Wrath of Khan)	lattice 2^2	4	0.23
+Native(Malco Fort Smith 16,https://www.flicks.us/movie/american-graffiti/,American Graffiti)	levels 0-1	70	0.66
+Native(Marcus Hollywood Appleton,https://www.flicks.us/movie/aa-bata-aama/,Aa Bata Aama)	lattice 2^3	8	0.36
+Native(Mariemont Theatre,https://www.flicks.us/movie/grease-1978/,Grease (1978))	lattice 2^4	16	0.59
+Native(Marquee Highland Glasgow 8,https://www.flicks.us/movie/mutiny/,Mutiny)	lattice 2^3	8	0.37
+Native(Marquee Highland Glasgow 8,https://www.flicks.us/movie/the-dog-stars/,The Dog Stars)	lattice 2^5	32	0.93
+Native(Marquee Orchard New Hartford 14,https://www.flicks.us/movie/dune-part-two/,Dune: Part Two)	lattice 2^3	8	0.25
+Native(Marquee Pullman Square 16,https://www.flicks.us/movie/onslaught/,Onslaught)	lattice 2^2	4	0.27
+Native(Mary Riepma Ross Media Arts Center,https://www.flicks.us/movie/a-girl-walks-home-alone-at-night/,A Girl Walks Home Alone at Night)	lattice 2^2	4	0.22
+Native(Mary Riepma Ross Media Arts Center,https://www.flicks.us/movie/blow-out/,Blow Out)	levels 0-1	122	1.60
+Native(Mary Riepma Ross Media Arts Center,https://www.flicks.us/movie/scanners/,Scanners)	lattice 2^2	4	0.22
+Native(Mary Riepma Ross Media Arts Center,https://www.flicks.us/movie/the-skin-i-live-in/,The Skin I Live In)	lattice 2^2	4	0.13
+Native(Mary Riepma Ross Media Arts Center,https://www.flicks.us/movie/volver/,Volver)	lattice 2^2	4	0.48
+Native(Mayfield Road Drive-In,https://www.flicks.us/movie/the-monster-squad/,The Monster Squad)	lattice 2^5	32	0.81
+Native(Metro Prive Cinema Chelsea,https://www.flicks.us/movie/ghost-in-the-shell-1995/,Ghost in the Shell (1995))	lattice 2^3	8	0.72
+Native(Metrograph Cinemas New York,https://www.flicks.us/movie/detour-1945/,Detour (1945))	lattice 2^2	4	0.17
+Native(Metrograph Cinemas New York,https://www.flicks.us/movie/lost-highway/,Lost Highway)	lattice 2^3	8	0.48
+Native(Metrograph Cinemas New York,https://www.flicks.us/movie/oldboy-2003/,Oldboy (2003))	8 orders x 8 steps	57	0.90
+Native(Metrograph Cinemas New York,https://www.flicks.us/movie/tenebrae/,Tenebrae)	lattice 2^6	64	2.79
+Native(Michigan Theater Ann Arbor,https://www.flicks.us/movie/michael-2025/,Michael)	levels 0-1	18	0.20
+Native(Michigan Theater Ann Arbor,https://www.flicks.us/movie/paris-texas/,Paris, Texas)	lattice 2^3	8	0.41
+Native(Michigan Theater Ann Arbor,https://www.flicks.us/movie/wheel-of-fortune-and-fantasy/,Wheel of Fortune and Fantasy)	lattice 2^2	4	0.24
+Native(Milford Independent Cinema,https://www.flicks.us/movie/big-trouble-in-little-china/,Big Trouble In Little China)	lattice 2^2	4	0.15
+Native(Mill Theatres Milbank,https://www.flicks.us/movie/gabbys-dollhouse-the-movie/,Gabby's Dollhouse: The Movie)	lattice 2^2	4	0.29
+Native(Montalbán Theatre,https://www.flicks.us/movie/project-hail-mary/,Project Hail Mary)	lattice 2^5	32	1.07
+Native(Moxie Cinema Springfield 2,https://www.flicks.us/movie/being-there/,Being There)	lattice 2^2	4	0.29
+Native(Mugar Omni Theater Boston,https://www.flicks.us/movie/animal-kingdom-a-tale-of-six-families/,Animal Kingdom: A Tale of Six Families)	lattice 2^2	4	0.13
+Native(Museum of the Moving Image Astoria,https://www.flicks.us/movie/desperately-seeking-susan/,Desperately Seeking Susan)	lattice 2^2	4	0.11
+Native(Museum of the Moving Image Astoria,https://www.flicks.us/movie/vampires-kiss/,Vampire's Kiss)	lattice 2^2	4	0.17
+Native(Music Box Theatre Chicago,https://www.flicks.us/movie/the-howling/,The Howling)	lattice 2^3	8	0.26
+Native(NCG Grand Blanc,https://www.flicks.us/movie/bad-moms-2/,Bad Moms 2)	lattice 2^2	4	0.31
+Native(NCG Grand Blanc,https://www.flicks.us/movie/daddys-home-2/,Daddy's Home 2)	lattice 2^2	4	0.29
+Native(NCG Grand Blanc,https://www.flicks.us/movie/violent-night/,Violent Night)	lattice 2^2	4	0.13
+Native(New Parkway Theater Oakland,https://www.flicks.us/movie/gun-crazy/,Gun Crazy)	lattice 2^2	4	0.13
+Native(Nitehawk Cinema Williamsburg,https://www.flicks.us/movie/cat-people-1942/,Cat People (1942))	lattice 2^2	4	0.26
+Native(Nitehawk Cinema Williamsburg,https://www.flicks.us/movie/the-funhouse/,The Funhouse)	lattice 2^2	4	0.20
+Native(Normal Theater,https://www.flicks.us/movie/us-2019/,Us (2019))	8 orders x 8 steps	57	2.89
+Native(North Park Cinema Buffalo,https://www.flicks.us/movie/big-shark/,Big Shark)	lattice 2^2	4	0.07
+Native(Oaks Center Cinema,https://www.flicks.us/movie/the-dead-zone/,The Dead Zone)	lattice 2^2	4	0.20
+Native(Odyssey Cinemas Fond Du Lac,https://www.flicks.us/movie/the-spongebob-movie-search-for-squarepants/,The SpongeBob Movie: Search for Squarepants)	lattice 2^4	16	0.50
+Native(Onyx Theatre Theatre,https://www.flicks.us/movie/jennifers-body/,Jennifer's Body)	lattice 2^5	32	0.72
+Native(Oriental Theatre Milwaukee,https://www.flicks.us/movie/best-in-show/,Best in Show)	lattice 2^2	4	0.15
+Native(Oriental Theatre Milwaukee,https://www.flicks.us/movie/caligula-the-ultimate-cut/,Caligula: The Ultimate Cut)	lattice 2^2	4	0.25
+Native(Oriental Theatre Milwaukee,https://www.flicks.us/movie/dirty-dancing/,Dirty Dancing)	lattice 2^2	4	0.09
+Native(Oriental Theatre Milwaukee,https://www.flicks.us/movie/tr/,TÁR)	lattice 2^2	4	0.22
+Native(Orion Cinema Yakima,https://www.flicks.us/movie/red-dawn-1984/,Red Dawn (1984))	lattice 2^2	4	0.18
+Native(PAMCut Tomorrow Theater Portland,https://www.flicks.us/movie/mystic-pizza/,Mystic Pizza)	lattice 2^2	4	0.11
+Native(PAMCut Tomorrow Theater Portland,https://www.flicks.us/movie/tampopo/,Tampopo)	lattice 2^2	4	0.13
+Native(Pageant Theatre Chico,https://www.flicks.us/movie/days-of-heaven/,Days of Heaven)	lattice 2^2	4	0.17
+Native(Parkland Theatre Cincinnati,https://www.flicks.us/movie/the-angry-birds-movie-3/,The Angry Birds Movie 3)	levels 0-1	42	0.38
+Native(Penn Cinema Huntingdon Valley,https://www.flicks.us/movie/seabiscuit/,Seabiscuit)	lattice 2^3	8	0.29
+Native(Penn Cinema Huntingdon Valley,https://www.flicks.us/movie/space-jam/,Space Jam)	lattice 2^3	8	0.30
+Native(Penn Cinema Lititz,https://www.flicks.us/movie/it-chapter-two/,It: Chapter Two)	lattice 2^2	4	0.12
+Native(Penn Theatre Plymouth,https://www.flicks.us/movie/house-of-wax-1953/,House of Wax (1953))	lattice 2^3	8	0.27
+Native(Philadelphia Film Center / Prince Theatre,https://www.flicks.us/movie/ratatouille/,Ratatouille)	lattice 2^4	16	0.61
+Native(Porcupine Theater,https://www.flicks.us/movie/the-muppet-movie-1979/,The Muppet Movie (1979))	lattice 2^3	8	0.29
+Native(Prytania Uptown New Orleans,https://www.flicks.us/movie/interview-with-the-vampire/,Interview with the Vampire)	lattice 2^3	8	0.50
+Native(Putnam Museum & Science Center,https://www.flicks.us/movie/arctic-our-frozen-planet/,Arctic: Our Frozen Planet)	lattice 2^2	4	0.09
+Native(Regal Alamo Quarry San Antonio,https://www.flicks.us/movie/dawn-of-the-dead-2004/,Dawn of the Dead (2004))	8 orders x 8 steps	57	3.16
+Native(Regal Alamo Quarry San Antonio,https://www.flicks.us/movie/licence-to-kill/,Licence to Kill)	8 orders x 8 steps	57	1.01
+Native(Regal Alamo Quarry San Antonio,https://www.flicks.us/movie/terrifier/,Terrifier)	8 orders x 8 steps	57	3.58
+Native(Regal Alamo Quarry San Antonio,https://www.flicks.us/movie/the-blob-1988/,The Blob (1988))	8 orders x 8 steps	57	1.20
+Native(Regal Alamo Quarry San Antonio,https://www.flicks.us/movie/the-house-with-a-clock-in-its-walls/,The House with a Clock in Its Walls)	8 orders x 8 steps	57	3.20
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/bait-2019/,Bait (2019))	levels 0-1	126	3.29
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/blade-ii/,Blade II)	levels 0-1	114	2.96
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/cowboys-aliens/,Cowboys & Aliens)	levels 0-1	114	2.06
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/incendies/,Incendies)	levels 0-1	128	3.63
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/smokin-aces/,Smokin' Aces)	levels 0-1	122	2.70
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/the-fast-and-the-furious-tokyo-drift/,The Fast and the Furious: Tokyo Drift)	levels 0-1	114	1.94
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/the-worlds-end/,The World's End)	levels 0-1	114	2.49
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/waterworld/,Waterworld)	levels 0-1	110	1.83
+Native(Regal Augusta Exchange,https://www.flicks.us/movie/zathura/,Zathura)	levels 0-1	124	2.31
+Native(Regal Avenues Jacksonville,https://www.flicks.us/movie/monster-mia/,Monster Mia)	lattice 2^5	32	0.86
+Native(Regal Bellingham,https://www.flicks.us/movie/american-movie/,American Movie)	levels 0-1	112	1.33
+Native(Regal Bellingham,https://www.flicks.us/movie/rise-of-the-guardians/,Rise of the Guardians)	levels 0-1	112	3.15
+Native(Regal Bellingham,https://www.flicks.us/movie/the-house-of-the-devil/,The House of the Devil)	levels 0-1	108	0.75
+Native(River Oaks Theatre Houston,https://www.flicks.us/movie/phantom-of-the-paradise/,Phantom of the Paradise)	lattice 2^3	8	0.31
+Native(Robinson Film Center,https://www.flicks.us/movie/enter-the-dragon/,Enter the Dragon)	lattice 2^3	8	0.20
+Native(Rodeo Drive-In Theatre,https://www.flicks.us/movie/insidious/,Insidious)	lattice 2^2	4	0.09
+Native(Rooftop Cinema Crossroads Kansas City,https://www.flicks.us/movie/scream-2/,Scream 2)	lattice 2^2	4	0.15
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/50-first-dates/,50 First Dates)	lattice 2^5	32	1.20
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/500-days-of-summer/,(500) Days of Summer)	lattice 2^3	8	0.23
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/crazy-stupid-love/,Crazy, Stupid, Love)	lattice 2^3	8	0.33
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/eternal-sunshine-of-the-spotless-mind/,Eternal Sunshine of the Spotless Mind)	lattice 2^5	32	1.05
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/friday-after-next/,Friday After Next)	lattice 2^4	16	0.43
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/frozen-2010/,Frozen (2010))	lattice 2^4	16	0.41
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/shrek/,Shrek)	lattice 2^2	4	0.15
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/the-night-before/,The Night Before)	lattice 2^5	32	1.15
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/the-sandlot/,The Sandlot)	lattice 2^2	4	0.12
+Native(Rooftop Cinema Ft Worth,https://www.flicks.us/movie/white-chicks/,White Chicks)	lattice 2^6	64	2.30
+Native(Rooftop Cinema Houston,https://www.flicks.us/movie/the-greatest-showman/,The Greatest Showman)	lattice 2^2	4	0.25
+Native(Rooftop Cinema Miami,https://www.flicks.us/movie/the-drama/,The Drama)	lattice 2^3	8	0.47
+Native(Row House Cinemas Hollywood,https://www.flicks.us/movie/freaks-1932/,Freaks (1932))	lattice 2^2	4	0.09
+Native(SBIFF Riviera Theatre,https://www.flicks.us/movie/bunker/,Bunker)	lattice 2^2	4	0.09
+Native(SIFF Cinema at The Film Center,https://www.flicks.us/movie/ringu/,Ringu)	lattice 2^2	4	0.16
+Native(Screenland Armour Kansas City,https://www.flicks.us/movie/amadeus/,Amadeus)	lattice 2^2	4	0.15
+Native(Sedalia Galaxy 10,https://www.flicks.us/movie/smokey-and-the-bandit/,Smokey and the Bandit)	lattice 2^2	4	0.13
+Native(Senate Theater Detroit,https://www.flicks.us/movie/drag-me-to-hell/,Drag Me to Hell)	lattice 2^2	4	0.11
+Native(Sie FilmCenter Denver,https://www.flicks.us/movie/nuisance-bear/,Nuisance Bear)	lattice 2^2	4	0.14
+Native(Sie FilmCenter Denver,https://www.flicks.us/movie/rose-2023/,Rose (2023))	lattice 2^3	8	0.41
+Native(Sie FilmCenter Denver,https://www.flicks.us/movie/the-last-critic/,The Last Critic)	lattice 2^2	4	0.09
+Native(Sky Cinemas Santa Fe,https://www.flicks.us/movie/exhibition-on-screen-van-gogh-japan/,Exhibition on Screen: Van Gogh & Japan)	lattice 2^2	4	0.08
+Native(Studio Movie Grill Arlington Lincoln Square,https://www.flicks.us/movie/thunderbolts/,Thunderbolts*)	levels 0-1	38	0.34
+Native(The Delta Brentwood,https://www.flicks.us/movie/caddyshack/,Caddyshack)	lattice 2^2	4	0.13
+Native(Violet Crown Austin,https://www.flicks.us/movie/rec/,[REC])	lattice 2^3	8	0.31

@@ -9,19 +9,22 @@ name: Identity family explorer
 # (.github/gating-checks.tsv lists the gate's workflows; this is none), never fails a commit, and the seed drift rows
 # (takes-drift-1|2 of identity-model-convergence.yml) keep gating unchanged.
 #
-# ONE ROW PER COUNTRY SHARD (scripts/ci/family_shards.py: DE 4, UK 4, PL 2, US 14, ES 3), each about 8 minutes on a hosted
-# runner when cold, over the pinned recording the row lays (convergence-setup, as a hermetic leg does). A row keeps its
-# verdict cache on the release `identity-family-explorer-store` (scripts/ci/identity-family-nightly.sh), so a night re-walks
-# only the families the code changed since the last night can move (scripts/ci/family_reach.py) and unchanged families
-# stay warm.
-#
+# ONE ROW PER COUNTRY SHARD (scripts/ci/family_shards.py: DE 11, UK 5, PL 2, US 10, ES 1), under about 10 minutes each on a
+# hosted runner, over the pinned recording the row lays (convergence-setup, as a hermetic leg does). The families are split by
+# MEASURED COST (test/resources/fixtures/family-costs-<cc>.tsv, FamilyConvergence.balance), not by count, and a family of 64
+# or more listings -- a handful of them cost most of a country's walk -- samples 2 seeded arrival orders instead of 8, other
+# orders each ISO week. A row keeps its verdict cache on the release `identity-family-explorer-store`
+# (scripts/ci/identity-family-nightly.sh), so a walk re-walks only the families the code changed since the last one can move
+# (scripts/ci/family_reach.py) -- 37 of the last 40 identity commits move them all, so this saves little: the schedule is
+# WEEKLY (every family is walked once a week, the cheapest schedule that does), about 260 runner-minutes cold against the
+# first run's 500 with four rows timed out.
 # OUTPUT. The publish job joins the shards (scripts/ci/family_flips_report.py) into the release `identity-family-explorer`:
 # `family-flips-<cc>.tsv` (listing, flip chain, rules fired), `family-flips-ranked.tsv` (every flip by deciding rule, the
-# list structural fix 2 -- the rule burn-down -- reads) and `family-flips-new.tsv` (new since last night, also on the run's
+# list structural fix 2 -- the rule burn-down -- reads) and `family-flips-new.tsv` (new since last walk, also on the run's
 # summary). It files NO backlog row: Actions cannot push main, and these flips are explored, not owed.
 on:
     schedule:
-        - cron: '7 2 * * *'
+        - cron: '7 2 * * 0'
     workflow_dispatch:
         inputs:
             countries:
@@ -51,6 +54,7 @@ jobs:
         outputs:
             matrix: ${{ steps.plan.outputs.matrix }}
             expect: ${{ steps.plan.outputs.expect }}
+            week: ${{ steps.plan.outputs.week }}
         steps:
             - uses: actions/checkout@v5
               with:
@@ -66,7 +70,7 @@ jobs:
         needs: [plan]
         # ubuntu-22.04: the row starts mongod (convergence-setup), whose 8.3 does not start on 26.04's kernel (MongoServerVersionParitySpec)
         runs-on: ubuntu-22.04
-        # the walk step's 40 minutes plus the setup; a row is meant to take about 8 (the first night's timings correct the shard counts)
+        # the walk step's 40 minutes plus the setup; a row is meant to take under 10 (the cost files and shard counts are refreshed from a run: family_shards.py costs)
         timeout-minutes: 60
         permissions:
             actions: read
@@ -95,6 +99,8 @@ jobs:
               env:
                   FAMILY_SHARD: ${{ format('{0}/{1}', matrix.index, matrix.shards) }}
                   FAMILY_STORE: identity-family-explorer-store
+                  FAMILY_ORDERS: '2'
+                  FAMILY_ORDER_SALT: ${{ needs.plan.outputs.week }}
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   HEAP: 6g
               run: |

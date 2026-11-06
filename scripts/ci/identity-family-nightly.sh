@@ -4,6 +4,7 @@
 # walks every family's POPULATION LATTICE -- every subset of a family of 7 or fewer, the levels 0..L and n-L..n of one of
 # 8..63, seeded arrival orders of a larger one -- through the model AND the final take, and names every listing some
 # arrival or add/remove sequence takes A -> B -> A (docs/design/identity-no-drift.md, "The family explorer").
+# The shard is a share of the families BALANCED BY RECORDED COST (family-costs-<cc>.tsv), not by count.
 # NOT A GATE: it reports flips and fails only when it could not run; no commit is judged by it.
 #
 # THE CACHE (FAMILY_STORE, a release; empty: nothing stored or read) is one rolling asset a country and shard, under a
@@ -13,7 +14,8 @@
 # The cache and its commit are stored only after a walk that finished, so a failed night leaves the last good pair.
 #
 # usage: identity-family-nightly.sh <cc> <out dir>
-#   env: FAMILY_SHARD (`i/N`, default 1/1), FAMILY_LEVELS (default 1), FAMILY_STORE, HEAP (sbt -Xmx, default 6g),
+#   env: FAMILY_SHARD (`i/N`, default 1/1), FAMILY_LEVELS (default 1), FAMILY_ORDERS (the sampled tier's arrival orders, default 8)
+#        and FAMILY_ORDER_SALT (default 0: the week's number), FAMILY_STORE, HEAP (sbt -Xmx, default 6g),
 #        GITHUB_SHA (the commit walked, default HEAD), GH_TOKEN.
 # Writes <out>/family-flips-<cc>.tsv and family-walks-<cc>.tsv (the walks' seconds a family), sbt.log, report.txt, reach.txt.
 # Exit: 0 walked, 2 it could not run. Tested by identity-family-nightly-test.sh.
@@ -25,6 +27,8 @@ out=${2:?out dir}
 heap=${HEAP:-6g}
 shard=${FAMILY_SHARD:-1/1}
 levels=${FAMILY_LEVELS:-1}
+orders=${FAMILY_ORDERS:-8}
+salt=${FAMILY_ORDER_SALT:-0}
 store=${FAMILY_STORE:-}
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 fixtures="$here/test/resources/fixtures"
@@ -72,7 +76,7 @@ fi
 # ---- the walk ----
 walk_code=0
 ( cd "$here" && sbt -J-Xmx"$heap" 'set worker / Test / run / fork := false' \
-    "worker/Test/runMain services.identity.FamilyConvergence --corpus $cc --recording $fixtures --families $fixtures/identity-unmatched/$cc.json.gz --shard $shard --levels $levels --rules family-explorer-L$levels --cache $cache ${reach_args[*]} --out $out" ) \
+    "worker/Test/runMain services.identity.FamilyConvergence --corpus $cc --recording $fixtures --families $fixtures/identity-unmatched/$cc.json.gz --shard $shard --levels $levels --orders $orders --order-salt $salt --costs $fixtures/family-costs-$cc.tsv --rules family-explorer-L$levels --cache $cache ${reach_args[*]} --out $out" ) \
   > "$out/sbt.log" 2>&1 || walk_code=$?
 grep -E '^## |^  [a-z]+	' "$out/sbt.log" > "$out/report.txt"
 if [ ! -f "$out/family-flips-$cc.tsv" ] || ! grep -qE "^## $cc family check: " "$out/report.txt"; then

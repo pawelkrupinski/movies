@@ -529,23 +529,33 @@ lattice's answers (Hasetor "Scott & Lila" 5, Halstead's three 2-3, Torrington 2)
 walks every slice and holds that it lacks nothing. A CORPUS run (`--corpus <cc> --recording DIR --families CAPTURE
 [--shard i/n]`) walks a recording's whole country, the families split into shards by their first member's key.
 
-**The family explorer: a nightly, NOT a gate** (the owner, 2026-11-06, option A). The corpus walk was costed as the drift
+**The family explorer: a weekly, NOT a gate** (the owner, 2026-11-06, option A). The corpus walk was costed as the drift
 gate's replacement and refused: per commit it adds +36% runner minutes (37 of the last 40 identity commits reach every
 family -- code outside the identity model, the check's own tools, shared resolver code, the agreement stage -- so they
 re-walk everything: a cold DE walk is 822 s, UK 898 s, PL 370 s, US over 48 min on the laptop, about twice that on a hosted
 runner), and production rarely shows the flips it finds (reachable states only: prod's arrivals are not every subset of a
-family). So `.github/workflows/identity-family-explorer.yml` walks it every night, outside THE GATE (no row in
+family). So `.github/workflows/identity-family-explorer.yml` walks it every week (Sunday; first as a nightly), outside THE GATE (no row in
 `.github/gating-checks.tsv`, no call from the convergence workflows); the seed drift rows `takes-drift-1|2` keep gating
 unchanged.
 
-- **Rows.** One a country shard (`scripts/ci/family_shards.py`: DE 4, UK 4, PL 2, US 14, ES 3), each about 8 minutes cold on a
-  hosted runner. ES was not measured: the first night's runtimes correct its count and the others'.
+- **Rows.** One a country shard (`scripts/ci/family_shards.py`: DE 11, UK 5, PL 2, US 10, ES 1), each under about 10 minutes
+  on a hosted runner. The first night's cold run (500 runner-minutes; DE 14-18 min a row, UK 11-14, US 4-41 with four of
+  fourteen timed out at 40) split the families by COUNT, so a few huge ones dominated. They are now split by MEASURED
+  COST (`test/resources/fixtures/family-costs-<cc>.tsv`, `FamilyConvergence.balance`: longest first into the lightest row;
+  refresh with `family_shards.py costs --from <downloaded artifacts> --out test/resources/fixtures`), and a family of 64
+  or more listings (the sampled tier: 93 US families cost 9,081 of the 20,255 recorded seconds) samples 2 arrival orders
+  instead of 8, other orders each ISO week. Coverage traded away: a giant family sees 2 random orders a week (16 subsets)
+  instead of 8, though every order any week draws is as good as any other and a week's orders differ; the lattice and
+  level tiers (every family of 63 or fewer) are walked in full.
+- **Weekly.** 37 of 40 identity commits reach every family, so a nightly walk's cache saves little, and each night pays every
+  row's setup again: seven nights cost about 7 x 260 runner-minutes, one weekly full walk about 260 (against the first
+  run's 500). Every family is walked at least once a week; a flip a commit introduces shows up within seven days.
 - **Warm.** `scripts/ci/identity-family-nightly.sh` keeps the verdict cache (and the commit it was made at) on the release
-  `identity-family-explorer-store`, under a rules key that names no code. A night walks again only the families the code
+  `identity-family-explorer-store`, under a rules key that names no code. A walk re-walks only the families the code
   changed since then can move (`scripts/ci/family_reach.py`); an unattributable change walks every family.
 - **Output.** `scripts/ci/family-explorer-publish.sh` joins the shards into the release `identity-family-explorer`:
   `family-flips-<cc>.tsv` (listing, flip chain, the rules the walk fired), `family-flips-ranked.tsv` (every flip by deciding
-  rule, most listings first: structural fix 2's list, the rule burn-down), `family-flips-new.tsv` (new since last night, also
+  rule, most listings first: structural fix 2's list, the rule burn-down), `family-flips-new.tsv` (new since the last walk, also
   on the run's summary) and a dated copy of the ranking (30 kept). A country with a shard missing keeps last night's file.
 - **No backlog rows.** The explorer does not file its flips (Actions cannot push main, and these are explored, not owed): a
   flip enters `identity-flip-backlog.tsv` (kind `family`) only through a named decision, as any other row.

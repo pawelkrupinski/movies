@@ -1,0 +1,755 @@
+family	tier	subsets	seconds
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/andre-rieus-2026-christmas-concert-let-it-snow/,André Rieu's 2026 Christmas Concert: Let It Snow)	8 orders x 8 steps	57	25.65
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/andrew-lloyd-webbers-starlight-express/,Andrew Lloyd Webber’s Starlight Express)	8 orders x 8 steps	57	20.18
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/avengers-doomsday/,Avengers: Doomsday)	8 orders x 8 steps	57	20.59
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/bat-out-of-hell-the-musical/,Bat Out of Hell: The Musical)	8 orders x 8 steps	57	6.09
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/berliner-philharmoniker-live-new-years-eve-concert-2025/,Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025)	levels 0-1	34	1.36
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/comdie-franaise/,Comédie-Française)	levels 0-1	52	3.11
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/de-gaulle-liberte/,De Gaulle Part Two: Liberté)	8 orders x 8 steps	57	13.67
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/de-gaulle-resistance/,De Gaulle Part One: Résistance (Tilting Iron))	levels 0-1	72	9.30
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/doctor-who-the-satan-pit/,Doctor Who: The Satan Pit)	8 orders x 8 steps	57	15.26
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/dune-part-three/,Dune: Part Three)	8 orders x 8 steps	57	25.66
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/exhibition-on-screen-monet/,Exhibition on Screen: Monet)	8 orders x 8 steps	57	4.88
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/exhibition-on-screen-renoir-love/,Exhibition on Screen: Renoir & Love)	8 orders x 8 steps	57	5.34
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/fallen-angels-by-noel-coward/,Fallen Angels by Noël Coward)	8 orders x 8 steps	57	23.95
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/festive-fun-with-peppa-cinema-experience/,Festive Fun with Peppa Cinema Experience)	8 orders x 8 steps	57	11.37
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/george-michael-the-faith-tour/,George Michael: The Faith Tour)	8 orders x 8 steps	57	12.52
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/ghosts-the-possession-of-button-house/,Ghosts: The Possession of Button House)	8 orders x 8 steps	57	48.77
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/heart-of-the-beast/,Heart of the Beast)	8 orders x 8 steps	57	13.85
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/hocus-pocus/,Hocus Pocus)	8 orders x 8 steps	57	6.73
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/in-bruges/,In Bruges)	lattice 2^4	16	6.61
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/met-opera-2026-27-la-fanciulla-del-west/,Met Opera 2026-27: La Fanciulla del West)	8 orders x 8 steps	57	15.12
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/met-opera-2026-27-manon/,Met Opera 2026-27: Manon)	8 orders x 8 steps	57	29.21
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/met-opera-2026-27-otello/,Met Opera 2026-27: Otello)	8 orders x 8 steps	57	74.67
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/moana-live-action/,Moana (2026))	levels 0-1	18	1.26
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/naza/,NAZA)	levels 0-1	88	9.88
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/nt-live-golden-boy/,NT Live: Golden Boy)	8 orders x 8 steps	57	31.20
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/onwards-and-sideways/,Onwards and Sideways)	levels 0-1	40	1.89
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/paw-patrol-3/,PAW Patrol: The Dino Movie)	8 orders x 8 steps	57	7.27
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/pressure/,Pressure)	8 orders x 8 steps	57	6.58
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-alices-adventures-in-wonderland/,RBO Cinema Season 2026-27: Alice's Adventures in Wonderland)	8 orders x 8 steps	57	17.53
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-carmen/,RBO Cinema Season 2026-27: Carmen)	8 orders x 8 steps	57	29.48
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-cosi-fan-tutte/,RBO Cinema Season 2026-27: Così Fan Tutte)	8 orders x 8 steps	57	19.71
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-gotterdammerung/,RBO Cinema Season 2026-27: Götterdämmerung)	8 orders x 8 steps	57	18.22
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-romeo-and-juliet/,RBO Cinema Season 2026-27: Romeo and Juliet)	8 orders x 8 steps	57	14.27
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-swan-lake/,RBO Cinema Season 2026-27: Swan Lake)	8 orders x 8 steps	57	13.63
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-the-nutcracker/,RBO Cinema Season 2026-27: The Nutcracker)	8 orders x 8 steps	57	30.38
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-tosca/,RBO Cinema Season 2026-27: Tosca)	8 orders x 8 steps	57	12.15
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/sense-and-sensibility-2026/,Sense and Sensibility (2026))	8 orders x 8 steps	57	15.93
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/shaun-the-sheep-the-beast-of-mossy-bottom/,Shaun the Sheep: The Beast of Mossy Bottom)	8 orders x 8 steps	57	62.94
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/tadeo-jones-4/,Tad and the Magic Lamp)	8 orders x 8 steps	57	18.85
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/the-banshees-of-inisherin/,The Banshees of Inisherin)	lattice 2^2	4	2.51
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/the-cycle-of-love/,The Cycle of Love)	levels 0-1	40	3.58
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/the-portuguese-house/,The Portuguese House)	lattice 2^7	128	23.30
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/the-shining/,The Shining)	levels 0-1	44	2.37
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/the-social-reckoning/,The Social Reckoning)	8 orders x 8 steps	57	13.85
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/the-uprising/,The Uprising)	8 orders x 8 steps	57	11.49
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/verity/,Verity)	8 orders x 8 steps	57	28.60
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/wicker/,Wicker)	8 orders x 8 steps	57	11.48
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/wildwood/,Wildwood)	8 orders x 8 steps	57	29.79
+Native(Abbeygate Bury St Edmunds,https://www.flicks.co.uk/movie/winter-of-the-crow/,Winter of the Crow)	8 orders x 8 steps	57	4.64
+Native(Aberystwyth Arts Centre,https://www.flicks.co.uk/movie/arrietty/,Arrietty)	levels 0-1	48	2.34
+Native(Aberystwyth Arts Centre,https://www.flicks.co.uk/movie/bram-stokers-dracula/,Bram Stoker's Dracula)	lattice 2^4	16	7.63
+Native(Aberystwyth Arts Centre,https://www.flicks.co.uk/movie/tenzing/,Tenzing)	8 orders x 8 steps	57	3.82
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=27985,BAD APPLES)	levels 0-1	128	9.12
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=28043,GIANT: The Play)	8 orders x 8 steps	57	33.70
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=492376,Fatherland)	8 orders x 8 steps	57	5.68
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=654227,Don't Look Now)	lattice 2^2	4	1.49
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=654318,Ken Russell's The Devils)	8 orders x 8 steps	57	18.31
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=667538,The Weight)	levels 0-1	40	2.65
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=719731,NT LIVE: HAY FEVER)	8 orders x 8 steps	57	22.38
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=720136,Extra Geography)	levels 0-1	86	5.78
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=720145,The Lost Children of Tuam)	levels 0-1	122	12.63
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=720164,By Design)	lattice 2^6	64	17.99
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=720171,I Love Boosters)	8 orders x 8 steps	57	3.99
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=814338,How Deep Is Your Love)	levels 0-1	38	1.55
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=830704,THE MAN WHO FELL TO EARTH (50th Anniversary 4K Restoration))	lattice 2^6	64	21.12
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=872505,Derek vs Derek)	8 orders x 8 steps	57	6.10
+Native(Act One Cinema Acton,https://actonecinema.co.uk/ActOneCinema.dll/WhatsOn?f=872780,Making Marie Antoinette)	lattice 2^7	128	36.45
+Native(Adam Smith Theatre Kirkcaldy,https://www.flicks.co.uk/movie/north-sea-nature-untamed/,North Sea, Nature Untamed)	levels 0-1	18	0.64
+Native(Adam Smith Theatre Kirkcaldy,https://www.flicks.co.uk/movie/practical-magic-2/,Practical Magic 2)	8 orders x 8 steps	57	4.48
+Native(Aldeburgh Cinema,https://aldeburghcinema.co.uk/AldeburghCinema.dll/WhatsOn?f=1797931,People's Emergency Briefing)	levels 0-1	26	1.70
+Native(Aldeburgh Cinema,https://aldeburghcinema.co.uk/AldeburghCinema.dll/WhatsOn?f=1865091,Digger)	8 orders x 8 steps	57	11.57
+Native(Aldeburgh Cinema,https://aldeburghcinema.co.uk/AldeburghCinema.dll/WhatsOn?f=1877101,Once Upon A Time in Suffolk)	lattice 2^4	16	6.36
+Native(Aldeburgh Cinema,https://aldeburghcinema.co.uk/AldeburghCinema.dll/WhatsOn?f=1877147,Think of England)	lattice 2^6	64	13.93
+Native(Aldeburgh Cinema,https://aldeburghcinema.co.uk/AldeburghCinema.dll/WhatsOn?f=1893554,Wild Horse Nine)	8 orders x 8 steps	57	8.36
+Native(Aldeburgh Cinema,https://aldeburghcinema.co.uk/AldeburghCinema.dll/WhatsOn?f=1900333,Everest: The Other Side)	levels 0-1	30	3.46
+Native(Aldeburgh Cinema,https://aldeburghcinema.co.uk/AldeburghCinema.dll/WhatsOn?f=1903187,The Battle of Algiers)	lattice 2^3	8	3.33
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/clayface/,Clayface)	8 orders x 8 steps	57	15.77
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/forgotten-island/,Forgotten Island)	8 orders x 8 steps	57	27.37
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/hexed/,Hexed)	8 orders x 8 steps	57	2.46
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/holy-days/,Holy Days)	levels 0-1	22	0.82
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/national-theatre-live-the-motive-and-the-cue/,NT Live: The Motive and the Cue)	8 orders x 8 steps	57	22.18
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/street-fighter-2026/,Street Fighter (2026))	8 orders x 8 steps	57	17.13
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/the-greatest-showman/,The Greatest Showman)	lattice 2^2	4	1.16
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/the-magic-faraway-tree/,The Magic Faraway Tree)	levels 0-1	24	1.22
+Native(Alexandra Newton Abbot,https://www.flicks.co.uk/movie/the-odyssey-2026/,The Odyssey)	8 orders x 8 steps	57	7.22
+Native(An Lanntair Arts Centre Stornoway, Isle of Lewis,https://www.flicks.co.uk/movie/nt-live-the-misanthrope/,NT Live: The Misanthrope)	levels 0-1	100	5.13
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/ali-g-who-iz-i/,Ali G: Who Iz I?)	8 orders x 8 steps	57	11.20
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/bts-world-tour-arirang-in-buenos-aires/,BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES)	8 orders x 8 steps	57	14.05
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/coyote-vs-acme/,Coyote vs. Acme)	levels 0-1	76	3.82
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/godzilla-minus-zero/,Godzilla Minus Zero)	8 orders x 8 steps	57	6.99
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/jailer-2/,Jailer 2)	8 orders x 8 steps	57	4.89
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/klara-and-the-sun/,Klara and the Sun)	8 orders x 8 steps	57	10.09
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/monster-house/,Monster House)	levels 0-1	86	4.70
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/monster-mia/,Monster Mia)	8 orders x 8 steps	57	7.01
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/other-mommy/,Other Mommy)	8 orders x 8 steps	57	13.11
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/resident-evil-2026/,Resident Evil (2026))	8 orders x 8 steps	57	8.19
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/scream-1996/,Scream (1996))	8 orders x 8 steps	57	8.85
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/spider-man-brand-new-day/,Spider-Man: Brand New Day)	8 orders x 8 steps	57	4.52
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/stray-kids-world-tour-run-it-live-viewing/,Stray Kids World Tour <RUN IT> LIVE VIEWING)	8 orders x 8 steps	57	4.69
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/the-addams-family-2019/,The Addams Family (2019))	levels 0-1	84	4.22
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/the-influencer-project/,The Influencer Project)	8 orders x 8 steps	57	1.99
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/toy-story-5/,Toy Story 5)	levels 0-1	36	2.41
+Native(Arc Cinema Beeston,https://www.flicks.co.uk/movie/whalefall/,Whalefall)	8 orders x 8 steps	57	11.67
+Native(Arc Cinema Blackpool,https://www.flicks.co.uk/movie/minions-3/,Minions & Monsters)	8 orders x 8 steps	57	2.92
+Native(Arc Cinema Blackpool,https://www.flicks.co.uk/movie/ozzy-black-sabbath-back-to-the-beginning/,Ozzy & Black Sabbath: Back to the Beginning)	8 orders x 8 steps	57	6.28
+Native(Arc Cinema Blackpool,https://www.flicks.co.uk/movie/queen-at-sea/,Queen at Sea)	levels 0-1	36	1.50
+Native(Arc Cinema Blackpool,https://www.flicks.co.uk/movie/the-unfaithful-wife-la-femme-infidele/,The Unfaithful Wife (La Femme Infidele))	lattice 2^2	4	1.49
+Native(ArtHouse Crouch End,https://arthousecrouchend.savoysystems.co.uk/ArtHouseCrouchEnd.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_12458.TcsWebTab_12459.TcsProgramme_10446261,La Bola Negra)	8 orders x 8 steps	57	3.70
+Native(ArtHouse Crouch End,https://arthousecrouchend.savoysystems.co.uk/ArtHouseCrouchEnd.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_12458.TcsWebTab_12459.TcsProgramme_10464886,1 IN 2)	lattice 2^2	4	2.79
+Native(ArtHouse Crouch End,https://arthousecrouchend.savoysystems.co.uk/ArtHouseCrouchEnd.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_12458.TcsWebTab_12459.TcsProgramme_10475900,Possible Love)	levels 0-1	114	9.71
+Native(ArtHouse Crouch End,https://arthousecrouchend.savoysystems.co.uk/ArtHouseCrouchEnd.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_12458.TcsWebTab_12459.TcsProgramme_10479331,Case 137)	levels 0-1	70	3.68
+Native(ArtHouse Crouch End,https://arthousecrouchend.savoysystems.co.uk/ArtHouseCrouchEnd.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_12458.TcsWebTab_12459.TcsProgramme_10487971,Primetime)	8 orders x 8 steps	57	10.30
+Native(ArtHouse Crouch End,https://arthousecrouchend.savoysystems.co.uk/ArtHouseCrouchEnd.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_12458.TcsWebTab_12459.TcsProgramme_10497110,American Doctor)	lattice 2^7	128	23.94
+Native(ArtHouse Crouch End,https://arthousecrouchend.savoysystems.co.uk/ArtHouseCrouchEnd.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_12458.TcsWebTab_12459.TcsProgramme_3109570,PRIVATE HIRE - 1 HOUR)	lattice 2^2	4	0.62
+Native(ArtHouse Crouch End,https://arthousecrouchend.savoysystems.co.uk/ArtHouseCrouchEnd.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_12458.TcsWebTab_12459.TcsProgramme_8922034,Nosferatu)	lattice 2^5	32	11.46
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/24-hour-party-people/,24 Hour Party People)	levels 0-1	46	3.06
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/28-days-later/,28 Days Later)	levels 0-1	42	1.82
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/28-years-later-the-bone-temple/,28 Years Later: The Bone Temple)	levels 0-1	38	2.08
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/a-long-winter/,A Long Winter)	lattice 2^3	8	2.28
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/a-talent-for-murder/,A Talent for Murder)	levels 0-1	56	3.18
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/addams-family-values-1993/,Addams Family Values (1993))	lattice 2^5	32	8.45
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/ali-ava/,Ali & Ava)	lattice 2^2	4	2.78
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/all-of-a-sudden/,All of a Sudden)	lattice 2^5	32	8.21
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/beauty-and-the-beast-1991/,Beauty and the Beast (1991))	lattice 2^2	4	1.39
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/bend-it-like-beckham/,Bend It Like Beckham)	lattice 2^2	4	1.04
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/coward/,Coward)	lattice 2^6	64	15.80
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/filipinana/,Filipiñana)	lattice 2^3	8	1.67
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/fjord/,Fjord)	levels 0-1	108	6.36
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/little-women-1994/,Little Women (1994))	lattice 2^5	32	5.39
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/minotaur/,Minotaur)	levels 0-1	22	1.25
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/mouse-2026/,Mouse (2026))	lattice 2^4	16	4.67
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/nightborn/,Nightborn)	levels 0-1	48	2.64
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/nuisance-bear/,Nuisance Bear)	lattice 2^3	8	2.23
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/portrait-of-a-lady-on-fire/,Portrait of a Lady on Fire)	lattice 2^3	8	1.78
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/rocks/,Rocks)	lattice 2^2	4	0.58
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/shutter-island/,Shutter Island)	lattice 2^6	64	16.70
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/taxi-driver/,Taxi Driver)	levels 0-1	50	3.50
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/the-apartment/,The Apartment)	levels 0-1	40	2.61
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/the-colour-of-money/,The Colour of Money)	levels 0-1	48	1.63
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/the-debut/,The Debut)	lattice 2^3	8	1.70
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/the-secret-garden-2020/,The Secret Garden (2020))	lattice 2^2	4	0.82
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/triple-feature-lord-of-the-rings/,Triple Feature: Lord of the Rings)	levels 0-1	32	3.50
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/witness-for-the-prosecution/,Witness for the Prosecution)	levels 0-1	28	1.53
+Native(Arts Picturehouse Cambridge,https://www.flicks.co.uk/movie/you-can-see-everything/,You Can See Everything)	8 orders x 8 steps	57	4.20
+Native(Atrium East Grinstead,https://www.flicks.co.uk/movie/terminator-2-judgment-day/,Terminator 2: Judgment Day)	lattice 2^2	4	0.84
+Native(BFI London IMAX,https://www.flicks.co.uk/movie/avengers-endgame/,Avengers: Endgame)	levels 0-1	128	6.44
+Native(BFI London IMAX,https://www.flicks.co.uk/movie/donnie-darko/,Donnie Darko)	8 orders x 8 steps	57	4.06
+Native(BFI London IMAX,https://www.flicks.co.uk/movie/guillermo-del-toros-frankenstein/,Guillermo del Toro's Frankenstein)	lattice 2^2	4	0.55
+Native(BFI London IMAX,https://www.flicks.co.uk/movie/hope-2026/,Hope (2026))	levels 0-1	114	8.24
+Native(BFI London IMAX,https://www.flicks.co.uk/movie/pans-labyrinth/,Pan's Labyrinth)	8 orders x 8 steps	57	10.77
+Native(BFI London IMAX,https://www.flicks.co.uk/movie/sinners/,Sinners)	lattice 2^5	32	8.75
+Native(BFI London IMAX,https://www.flicks.co.uk/movie/the-rocky-horror-picture-show/,The Rocky Horror Picture Show)	8 orders x 8 steps	57	3.32
+Native(BFI London IMAX,https://www.flicks.co.uk/movie/whispers-in-the-woods/,Whispers in the Woods)	levels 0-1	52	3.11
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/a-bucket-of-blood,A Bucket of Blood)	lattice 2^5	32	8.06
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/animal-farm,Animal Farm)	lattice 2^4	16	4.13
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/belle,Belle)	lattice 2^2	4	0.98
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/benimana,Ben’Imana - Opening night)	lattice 2^2	4	1.17
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/cotton-queen,Cotton Queen)	lattice 2^7	128	35.29
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/creepshow,Creepshow - Reece Shearsmith presents)	lattice 2^2	4	1.45
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/daughters-of-the-dust,Daughters of the Dust)	lattice 2^6	64	16.76
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/double-indemnity,Double Indemnity)	lattice 2^3	8	1.52
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/dracula-restored-and-uncut,Dracula: Restored and Uncut - Restored and Uncut)	levels 0-1	48	2.83
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/frankenweenie,Frankenweenie)	lattice 2^2	4	0.77
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/house-of-usher-aka-the-fall-of-the-house-of-usher,House of Usher (aka The Fall of the House of Usher))	lattice 2^2	4	0.78
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/lady-nwosu,Lady - Closing night)	lattice 2^2	4	0.92
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/manhunter,Manhunter - The Final Cut)	levels 0-1	18	1.44
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/marie-antoinette,Marie Antoinette)	8 orders x 8 steps	57	3.72
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/some-like-it-hot,Some Like It Hot)	lattice 2^4	16	4.33
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/sunset-boulevard,Sunset Boulevard)	levels 0-1	38	1.76
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/teenage-sex-and-death-at-camp-miasma,Teenage Sex and Death at Camp Miasma)	levels 0-1	34	2.40
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/the-masque-of-the-red-death,The Masque of the Red Death)	lattice 2^4	16	3.48
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/the-watermelon-woman,The Watermelon Woman)	lattice 2^2	4	0.78
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/tim-burtons-corpse-bride,Tim Burton’s Corpse Bride)	lattice 2^6	64	14.03
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/tongues-untied,Tongues Untied)	lattice 2^2	4	1.68
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/valerie-and-her-week-of-wonders,Valerie and Her Week of Wonders - UK Premiere of Restoration)	lattice 2^2	4	1.16
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/yeelen,Yeelen)	lattice 2^2	4	0.73
+Native(BFI London Southbank,https://cinemas.bfi.org.uk/whats-on/young-soul-rebels,Young Soul Rebels)	lattice 2^2	4	0.89
+Native(Barbican London,https://www.flicks.co.uk/movie/arco/,Arco)	lattice 2^2	4	0.68
+Native(Barbican London,https://www.flicks.co.uk/movie/backrooms/,Backrooms)	lattice 2^5	32	5.32
+Native(Barbican London,https://www.flicks.co.uk/movie/coco/,Coco)	levels 0-1	108	6.27
+Native(Barbican London,https://www.flicks.co.uk/movie/effi-o-blaenau/,Effi o Blaenau)	lattice 2^6	64	12.64
+Native(Barbican London,https://www.flicks.co.uk/movie/matilda-1996/,Matilda (1996))	lattice 2^4	16	4.38
+Native(Barbican London,https://www.flicks.co.uk/movie/maya-give-me-a-title/,Maya, Give Me a Title)	lattice 2^3	8	1.96
+Native(Barbican London,https://www.flicks.co.uk/movie/persepolis/,Persepolis)	lattice 2^2	4	0.65
+Native(Barbican London,https://www.flicks.co.uk/movie/singin-in-the-rain/,Singin' in the Rain)	lattice 2^2	4	0.92
+Native(Barbican London,https://www.flicks.co.uk/movie/the-summer-book/,The Summer Book)	lattice 2^6	64	17.11
+Native(Barbican London,https://www.flicks.co.uk/movie/zog/,Zog)	levels 0-1	20	1.15
+Native(Beau Séjour Leisure Centre, ​Guernsey,https://www.flicks.co.uk/movie/a-nightmare-on-elm-street-1984/,A Nightmare on Elm Street (1984))	levels 0-1	40	1.95
+Native(Beau Séjour Leisure Centre, ​Guernsey,https://www.flicks.co.uk/movie/beetlejuice/,Beetlejuice)	lattice 2^6	64	12.04
+Native(Beau Séjour Leisure Centre, ​Guernsey,https://www.flicks.co.uk/movie/poltergeist-1982/,Poltergeist (1982))	lattice 2^2	4	0.88
+Native(Beau Séjour Leisure Centre, ​Guernsey,https://www.flicks.co.uk/movie/the-wizard-of-oz/,The Wizard of Oz)	lattice 2^6	64	23.55
+Native(Beau Séjour Leisure Centre, ​Guernsey,https://www.flicks.co.uk/movie/willy-wonka-the-chocolate-factory/,Willy Wonka & the Chocolate Factory)	lattice 2^3	8	1.35
+Native(Birks Aberfeldy,https://www.flicks.co.uk/movie/it-was-just-an-accident/,It Was Just an Accident)	lattice 2^4	16	3.63
+Native(Birks Aberfeldy,https://www.flicks.co.uk/movie/lost-illusions/,Lost Illusions)	lattice 2^4	16	4.86
+Native(Birks Aberfeldy,https://www.flicks.co.uk/movie/sirt/,Sirāt)	lattice 2^2	4	0.81
+Native(Birks Aberfeldy,https://www.flicks.co.uk/movie/the-blue-trail/,The Blue Trail)	lattice 2^2	4	0.95
+Native(Birks Aberfeldy,https://www.flicks.co.uk/movie/the-muppet-christmas-carol/,The Muppet Christmas Carol)	levels 0-1	84	5.75
+Native(Birks Aberfeldy,https://www.flicks.co.uk/movie/the-phantom-of-the-opera-1925/,The Phantom of the Opera (1925))	lattice 2^2	4	1.02
+Native(Birks Aberfeldy,https://www.flicks.co.uk/movie/wallace-gromit-the-curse-of-the-were-rabbit/,Wallace & Gromit: The Curse of the Were-Rabbit)	lattice 2^7	128	29.78
+Native(Broadway Cinema Villa Marina,https://www.flicks.co.uk/movie/these-violent-delights/,These Violent Delights)	levels 0-1	58	3.78
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/an-american-werewolf-in-london/,An American Werewolf in London)	levels 0-1	20	1.27
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/edward-scissorhands/,Edward Scissorhands)	lattice 2^3	8	1.33
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/home-alone/,Home Alone)	levels 0-1	110	9.76
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/inception/,Inception)	lattice 2^3	8	1.96
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/interstellar/,Interstellar)	lattice 2^3	8	1.43
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/paddington/,Paddington)	lattice 2^3	8	1.56
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/sorry-baby/,Sorry, Baby)	lattice 2^2	4	0.67
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/the-dark-knight/,The Dark Knight)	lattice 2^2	4	1.19
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/the-exorcist/,The Exorcist)	levels 0-1	104	5.36
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/the-polar-express/,The Polar Express)	8 orders x 8 steps	57	9.52
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/the-presidents-cake/,The President's Cake)	lattice 2^5	32	9.43
+Native(Broadway Letchworth,https://www.flicks.co.uk/movie/the-sheep-detectives/,The Sheep Detectives)	lattice 2^7	128	27.46
+Native(Brunswick Moviebowl Londonderry,https://www.flicks.co.uk/movie/chasing-millions/,Chasing Millions)	levels 0-1	28	1.15
+Native(Brunswick Moviebowl Londonderry,https://www.flicks.co.uk/movie/halloween-1978/,Halloween (1978))	levels 0-1	38	1.63
+Native(Brunswick Moviebowl Londonderry,https://www.flicks.co.uk/movie/jennifers-body/,Jennifer's Body)	lattice 2^6	64	14.27
+Native(Brunswick Moviebowl Londonderry,https://www.flicks.co.uk/movie/the-nightmare-before-christmas/,The Nightmare Before Christmas)	levels 0-1	34	1.55
+Native(Campbeltown Picture House,https://www.flicks.co.uk/movie/obsession/,Obsession)	levels 0-1	62	4.59
+Native(Carlton Cinema Westgate-on-Sea,https://www.flicks.co.uk/movie/royal-ballet-la-bayadre/,Royal Ballet: La Bayadère)	levels 0-1	46	6.99
+Native(Carlton Cinema Westgate-on-Sea,https://www.flicks.co.uk/movie/sister-act/,Sister Act)	lattice 2^6	64	14.80
+Native(Carlton Cinema Westgate-on-Sea,https://www.flicks.co.uk/movie/spa-weekend/,Spa Weekend)	lattice 2^5	32	5.37
+Native(Carlton Cinema Westgate-on-Sea,https://www.flicks.co.uk/movie/the-dog-stars/,The Dog Stars)	lattice 2^7	128	34.01
+Native(Carlton Cinema Westgate-on-Sea,https://www.flicks.co.uk/movie/the-lost-boys/,The Lost Boys)	levels 0-1	36	1.93
+Native(Castle Cinema Hackney,https://www.flicks.co.uk/movie/back-to-black/,Back to Black)	lattice 2^2	4	0.89
+Native(Castle Cinema Hackney,https://www.flicks.co.uk/movie/dead-of-night-1945/,Dead of Night (1945))	lattice 2^2	4	0.74
+Native(Castle Cinema Hackney,https://www.flicks.co.uk/movie/deadline/,Deadline)	levels 0-1	86	3.44
+Native(Castle Cinema Hackney,https://www.flicks.co.uk/movie/glastonbury-the-movie/,Glastonbury The Movie)	lattice 2^2	4	0.53
+Native(Castle Cinema Hackney,https://www.flicks.co.uk/movie/the-evil-dead-1981/,The Evil Dead (1981))	levels 0-1	22	1.49
+Native(Castle Cinema Hackney,https://www.flicks.co.uk/movie/wolfwalkers/,Wolfwalkers)	lattice 2^2	4	0.57
+Native(Castle Sidcup,https://www.flicks.co.uk/movie/coraline/,Coraline)	lattice 2^2	4	0.64
+Native(Castle Sidcup,https://www.flicks.co.uk/movie/the-craft-1996/,The Craft (1996))	levels 0-1	86	4.87
+Native(Castle Sidcup,https://www.flicks.co.uk/movie/the-others/,The Others)	8 orders x 8 steps	57	4.11
+Native(Castle Sidcup,https://www.flicks.co.uk/movie/the-witches-1990/,The Witches (1990))	lattice 2^4	16	2.92
+Native(Castle Sidcup,https://www.flicks.co.uk/movie/white-christmas/,White Christmas)	levels 0-1	50	2.99
+Native(Central Cinema Barnstaple,https://www.flicks.co.uk/movie/cbeebies-panto-2026-treasure-island/,CBeebies Panto 2026: Treasure Island)	8 orders x 8 steps	57	7.39
+Native(Century Cinema Clacton,https://www.flicks.co.uk/movie/its-a-wonderful-life/,It's a Wonderful Life)	levels 0-1	88	16.87
+Native(Chalmers Filmhouse Arbroath,https://www.flicks.co.uk/movie/mulholland-dr/,Mulholland Dr.)	lattice 2^3	8	1.83
+Native(Chapter Cardiff,https://chapter.ticketsolve.com/shows/1173671147/events,Deaf Gathering Cymru 2026 – Deaf MovieMaker)	lattice 2^2	4	1.15
+Native(Chapter Cardiff,https://chapter.ticketsolve.com/shows/1173692557/events,Wuthering Heights + Oberon)	lattice 2^2	4	1.27
+Native(Chapter Cardiff,https://chapter.ticketsolve.com/shows/1173694187/events,All Rivers Spill Their Stories to the Sea)	levels 0-1	20	1.47
+Native(Chapter Cardiff,https://chapter.ticketsolve.com/shows/1173694481/events,Doctor Who Day: The Impossible Planet & The Satan Pit – The Cinematic Event)	lattice 2^2	4	1.01
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_13769032,The Invite)	levels 0-1	24	0.97
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_13986659,The Sacrifice)	lattice 2^3	8	1.62
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_13986673,Kiki's Delivery Service)	lattice 2^3	8	2.96
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_13986778,Santiago: The Camino Therapy)	lattice 2^6	64	16.48
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_13999539,Macbeth (Met Opera))	lattice 2^3	8	2.17
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14020248,Billy Liar)	lattice 2^2	4	0.78
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14214169,The Rays and Shadows)	lattice 2^2	4	0.61
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14214184,A Man of His Time)	lattice 2^3	8	1.68
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14229210,La Troisième Nuit)	lattice 2^2	4	0.60
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14229217,The Money Maker)	lattice 2^2	4	0.87
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14230527,Women on Trial)	lattice 2^2	4	0.64
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14230602,The Yellow Tie)	levels 0-1	44	1.77
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14244645,A Judgement in Stone)	lattice 2^3	8	2.09
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14245110,La Haine)	lattice 2^3	8	2.18
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14245115,Ebenezer)	levels 0-1	18	0.68
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14245202,Les Misérables)	lattice 2^2	4	1.03
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14245277,Merry Christmas Aubrey Flint)	levels 0-1	18	0.71
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14245296,Being Heumann)	lattice 2^3	8	1.24
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14247044,Prima Facie)	lattice 2^4	16	3.72
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14247064,Behemoth!)	lattice 2^2	4	0.59
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14247081,Focker-In-Law)	lattice 2^2	4	0.92
+Native(Chichester Cinema at New Park,https://bookings.chichestercinema.org/ChichesterCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_979.TcsWebTab_980.TcsProgramme_14247086,A New Dawn)	lattice 2^4	16	2.97
+Native(Chiddingfold Village Hall Cinema,https://www.flicks.co.uk/movie/tuner/,Tuner)	lattice 2^3	8	2.90
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/arthur-christmas/,Arthur Christmas)	levels 0-1	30	1.90
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/back-to-the-future/,Back to the Future)	lattice 2^3	8	1.23
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/die-hard/,Die Hard)	levels 0-1	48	3.20
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/elf/,Elf)	levels 0-1	98	6.41
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/funny-face/,Funny Face)	lattice 2^2	4	0.97
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/gremlins/,Gremlins)	levels 0-1	34	2.93
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/how-the-grinch-stole-christmas-2000/,How the Grinch Stole Christmas (2000))	levels 0-1	50	2.23
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/just-an-illusion/,Just An Illusion)	levels 0-1	26	0.93
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/love-actually/,Love Actually)	levels 0-1	40	2.58
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/phantom-thread/,Phantom Thread)	lattice 2^6	64	13.66
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/the-birds/,The Birds)	lattice 2^4	16	3.77
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/the-holdovers/,The Holdovers)	levels 0-1	28	1.65
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/the-killers-1946/,The Killers (1946))	lattice 2^2	4	1.42
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/the-omen-2006/,The Omen (2006))	lattice 2^7	128	22.83
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/west-side-story-1961/,West Side Story (1961))	lattice 2^2	4	0.97
+Native(Chiswick Cinema,https://www.flicks.co.uk/movie/when-harry-met-sally/,When Harry Met Sally)	lattice 2^6	64	11.63
+Native(Cinema Saltcoats (Premier Leisure),https://cinema-saltcoats.co.uk/SaltcoatsCinema.dll/WhatsOn?f=2013773,Disney Junior Club 2026)	8 orders x 8 steps	57	12.02
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000014083-the-pout-pout-fish,The Pout-Pout Fish)	levels 0-1	66	3.17
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000026918-ramayana-rise-of-a-legend,Ramayana: Rise of A Legend)	8 orders x 8 steps	57	6.86
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000039265-ranabaali,Ranabaali)	levels 0-1	80	2.81
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000043991-v-for-vendetta-20th-anniversary,V for Vendetta (20th Anniversary))	8 orders x 8 steps	57	2.82
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000044360-udta-teer,Udta Teer)	8 orders x 8 steps	57	2.22
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000049995-rocky-50th-anniversary-4k-restoration,Rocky (50th Anniversary 4K Restoration))	8 orders x 8 steps	57	9.39
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000052295-2026-classic-secret-screaming,2026 Classic Secret Screaming)	8 orders x 8 steps	57	1.97
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000053008-secret-screening,Secret Screening)	8 orders x 8 steps	57	4.13
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/1000053336-titans,Titans)	levels 0-1	126	6.66
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/145646-skyfall,Skyfall)	8 orders x 8 steps	57	3.24
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/15002-horror-season-2026-from-dusk-till-dawn,Horror Season 2026 From Dusk Till Dawn)	8 orders x 8 steps	57	3.99
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/8257-the-fugitive,The Fugitive)	8 orders x 8 steps	57	3.36
+Native(Cineworld (Queens Link) Aberdeen,https://www.cineworld.co.uk/films/8385-cliffhanger,Cliffhanger)	8 orders x 8 steps	57	3.49
+Native(Cineworld (Silverburn) Glasgow,https://www.cineworld.co.uk/films/1000002678-i-play-rocky,I Play Rocky)	8 orders x 8 steps	57	4.22
+Native(Cineworld (Silverburn) Glasgow,https://www.cineworld.co.uk/films/1000051686-instruktorius,Instruktorius)	levels 0-1	82	4.52
+Native(Cineworld (Silverburn) Glasgow,https://www.cineworld.co.uk/films/1000051780-the-sixty-year-mission-how-star-trek-changed-television-and-the-world,The Sixty-Year Mission: How Star Trek Changed Television and the World)	levels 0-1	56	2.95
+Native(Cineworld (Silverburn) Glasgow,https://www.cineworld.co.uk/films/1000051942-rammstein-live-in-mexico-city,Rammstein - Live in Mexico City)	levels 0-1	108	3.99
+Native(Cineworld (Union Square) Aberdeen,https://www.cineworld.co.uk/films/1000040114-lalka,Lalka)	levels 0-1	90	5.05
+Native(Cineworld Basildon,https://www.cineworld.co.uk/films/1000002942-mutiny,Mutiny)	lattice 2^2	4	0.87
+Native(Cineworld Basildon,https://www.cineworld.co.uk/films/1000037197-the-incomer,The Incomer)	8 orders x 8 steps	57	2.06
+Native(Cineworld Basildon,https://www.cineworld.co.uk/films/1000051403-netobuli-melagiai,(ne)tobuli melagiai)	lattice 2^6	64	12.87
+Native(Cineworld Bexleyheath,https://www.cineworld.co.uk/films/1000016836-the-christophers,The Christophers)	lattice 2^2	4	0.63
+Native(Cineworld Bexleyheath,https://www.cineworld.co.uk/films/1000019899-one-night-only,One Night Only)	lattice 2^3	8	2.07
+Native(Cineworld Bolton,https://www.cineworld.co.uk/films/1000037732-drishyam-the-conclusion,Drishyam: The Conclusion)	levels 0-1	102	3.64
+Native(Cineworld Bolton,https://www.cineworld.co.uk/films/1000048427-prahaar,Prahaar)	levels 0-1	76	4.52
+Native(Cineworld Bolton,https://www.cineworld.co.uk/films/1000050849-nayyi-navelli,Nayyi Navelli)	levels 0-1	68	3.68
+Native(Cineworld Bolton,https://www.cineworld.co.uk/films/62782-kung-fu-soccer,Kung Fu Soccer)	8 orders x 8 steps	57	3.73
+Native(Cineworld Bradford,https://www.cineworld.co.uk/films/1000032637-gondhal,Gondhal)	lattice 2^5	32	8.43
+Native(Cineworld Bradford,https://www.cineworld.co.uk/films/1000052301-thappi,Thappi)	levels 0-1	32	1.39
+Native(Cineworld Bradford,https://www.cineworld.co.uk/films/1000052468-pehla-pyaar-doosri-baar,Pehla Pyaar Doosri Baar)	levels 0-1	22	0.77
+Native(Cineworld Bradford,https://www.cineworld.co.uk/films/1000053759-zindagi-na-milegi-dobara-re-release,Zindagi Na Milegi Dobara (Re-Release))	levels 0-1	28	1.49
+Native(Cineworld Broad Street, Birmingham,https://www.cineworld.co.uk/films/1000014096-chatrapathi,Chatrapathi)	levels 0-1	22	1.22
+Native(Cineworld Broad Street, Birmingham,https://www.cineworld.co.uk/films/1000049352-418,418)	levels 0-1	86	5.74
+Native(Cineworld Broad Street, Birmingham,https://www.cineworld.co.uk/films/1000051066-itllu-arjuna,Itllu Arjuna)	levels 0-1	46	2.03
+Native(Cineworld Cardiff,https://www.cineworld.co.uk/films/1000047527-its-my-time,It’s My Time)	levels 0-1	54	2.27
+Native(Cineworld Cardiff,https://www.cineworld.co.uk/films/1000052885-go-for-broke-2,Go for Broke 2)	levels 0-1	30	1.60
+Native(Cineworld Crawley,https://www.cineworld.co.uk/films/298055-paw-patrol-the-mighty-movie,Paw Patrol: The Mighty Movie)	lattice 2^2	4	0.59
+Native(Cineworld Ely,https://www.cineworld.co.uk/films/1000037443-leviticus,Leviticus)	lattice 2^6	64	15.74
+Native(Cineworld Enfield,https://www.cineworld.co.uk/films/1000044736-soy,Soy)	lattice 2^3	8	1.75
+Native(Cineworld Enfield,https://www.cineworld.co.uk/films/1000044839-gupi-ve-gulmeyen-kral,Gupi ve Gülmeyen Kral)	lattice 2^3	8	1.29
+Native(Cineworld Feltham,https://www.cineworld.co.uk/films/1000051083-eh-din-roz-ni-aune,Eh Din Roz Ni Aune)	levels 0-1	18	0.81
+Native(Cineworld Feltham,https://www.cineworld.co.uk/films/1000052157-premada-oorali,Premada Oorali)	lattice 2^5	32	7.84
+Native(Cineworld Feltham,https://www.cineworld.co.uk/films/1000052492-haiku,Haiku)	lattice 2^6	64	13.57
+Native(Cineworld Ilford,https://www.cineworld.co.uk/films/1000050690-baththa,Baththa)	lattice 2^2	4	0.83
+Native(Cineworld Ilford,https://www.cineworld.co.uk/films/1000051923-meesaya-murukku-2,Meesaya Murukku 2)	lattice 2^3	8	1.61
+Native(Cineworld at The O2 Greenwich,https://www.cineworld.co.uk/films/1000050340-league-of-legends-worlds-26-finals-in-cinema,League Of Legends Worlds 26 - Finals In Cinema)	levels 0-1	20	1.03
+Native(Cineworld at The O2 Greenwich,https://www.cineworld.co.uk/films/326307-bad-day-at-the-office,Bad Day at the Office)	levels 0-1	36	2.13
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_5603,Cafe Philo (in English))	lattice 2^2	4	1.07
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_5817637,The Flower of Evil)	lattice 2^2	4	0.94
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_6965653,Jim Queen FFFL)	lattice 2^2	4	1.19
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_6965665,Congo Boy FFFL)	lattice 2^3	8	1.47
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_6981235,A Place for Her FFFL)	lattice 2^2	4	0.88
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_7012009,Cliente)	lattice 2^2	4	0.78
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_7064469,Collapse FFFL)	lattice 2^2	4	1.07
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_7064580,The Birthday Party + Q&A FFFL)	lattice 2^2	4	0.92
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_7064669,Orange-Flavoured Wedding + Q&A FFFL)	lattice 2^2	4	0.54
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_7064822,All About Corinne FFFL)	lattice 2^2	4	0.83
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_7065287,Ulysse FFFL)	lattice 2^2	4	0.75
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_7092903,Edward Said: Between Worlds (LPFF))	lattice 2^4	16	4.94
+Native(Ciné Lumière London,https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_600.TcsWebTab_601.TcsProgramme_7118763,Who are you, Polly Maggoo ? + panel)	lattice 2^2	4	0.95
+Native(City Screen Picturehouse York,https://www.flicks.co.uk/movie/28-years-later/,28 Years Later)	levels 0-1	36	1.96
+Native(City Screen Picturehouse York,https://www.flicks.co.uk/movie/boorman-and-the-devil/,Boorman and the Devil)	levels 0-1	24	1.27
+Native(City Screen Picturehouse York,https://www.flicks.co.uk/movie/room-on-the-broom/,Room on the Broom)	levels 0-1	68	3.01
+Native(City Screen Picturehouse York,https://www.flicks.co.uk/movie/silents-synced-nosferaturadiohead/,Radiohead X Nosferatu: A Symphony of Horror)	levels 0-1	36	2.04
+Native(City Screen Picturehouse York,https://www.flicks.co.uk/movie/the-super-mario-galaxy-movie/,The Super Mario Galaxy Movie)	levels 0-1	40	1.71
+Native(Close-Up Film Centre Shoreditch,https://www.flicks.co.uk/movie/nadja/,Nadja)	lattice 2^7	128	26.46
+Native(Connaught Theatre & Studio Worthing,https://www.flicks.co.uk/movie/dracula-a-love-tale/,Dracula: A Love Tale)	lattice 2^4	16	3.14
+Native(Connaught Theatre & Studio Worthing,https://www.flicks.co.uk/movie/halloween-iii-season-of-the-witch/,Halloween III: Season of the Witch)	lattice 2^2	4	0.59
+Native(Connaught Theatre & Studio Worthing,https://www.flicks.co.uk/movie/horrible-histories-the-movie-rotten-romans/,Horrible Histories: The Movie - Rotten Romans)	lattice 2^2	4	1.14
+Native(Connaught Theatre & Studio Worthing,https://www.flicks.co.uk/movie/in-the-mouth-of-madness/,In the Mouth of Madness)	lattice 2^6	64	11.65
+Native(Connaught Theatre & Studio Worthing,https://www.flicks.co.uk/movie/the-silence-of-the-lambs/,The Silence of the Lambs)	levels 0-1	18	1.16
+Native(Connaught Theatre & Studio Worthing,https://www.flicks.co.uk/movie/vertigo/,Vertigo)	lattice 2^3	8	1.79
+Native(Connaught Theatre & Studio Worthing,https://www.flicks.co.uk/movie/whats-love-got-to-do-with-it-1993/,What's Love Got to Do with It (1993))	lattice 2^3	8	1.91
+Native(Corn Exchange Cinema Wallingford,https://www.flicks.co.uk/movie/take-it-or-leave-it/,Take It or Leave It)	lattice 2^6	64	13.67
+Native(Corn Exchange Newbury (Screen One),https://www.flicks.co.uk/movie/exhibition-on-screen-james-mcneill-whistler/,Exhibition on Screen: James McNeill Whistler)	lattice 2^6	64	15.96
+Native(Corn Exchange Newbury (Screen One),https://www.flicks.co.uk/movie/hotel-transylvania/,Hotel Transylvania)	levels 0-1	76	3.43
+Native(Corn Exchange Newbury (Screen One),https://www.flicks.co.uk/movie/women-in-rock/,Women in Rock)	lattice 2^2	4	0.84
+Native(Cottage Road Cinema Leeds,https://www.flicks.co.uk/movie/planes-trains-and-automobiles/,Planes, Trains and Automobiles)	lattice 2^7	128	25.62
+Native(Cottage Road Cinema Leeds,https://www.flicks.co.uk/movie/scrooged/,Scrooged)	lattice 2^5	32	5.24
+Native(Cottage Road Cinema Leeds,https://www.flicks.co.uk/movie/the-third-man/,The Third Man)	lattice 2^5	32	8.00
+Native(Cottage Road Cinema Leeds,https://www.flicks.co.uk/movie/to-catch-a-thief/,To Catch a Thief)	lattice 2^2	4	0.89
+Native(Crouch End Picturehouse,https://www.flicks.co.uk/movie/scooby-doo/,Scooby-Doo)	levels 0-1	42	2.57
+Native(Crouch End Picturehouse,https://www.flicks.co.uk/movie/the-scarecrows-wedding/,The Scarecrows' Wedding)	lattice 2^7	128	22.71
+Native(Crouch End Picturehouse,https://www.flicks.co.uk/movie/were-going-on-a-bear-hunt-the-tiger-who-came-to-tea/,We're Going on a Bear Hunt + The Tiger Who Came to Tea)	8 orders x 8 steps	57	7.50
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1298818,STAB: Bottomless Scooby-Doo 2: Monsters Unleashed)	lattice 2^4	16	4.37
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1298846,STAB: Carrie (50th Anniversary))	levels 0-1	30	1.08
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1358147,STAB Satanic Sunday: Peeping Tom)	lattice 2^2	4	0.92
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1376929,STAB: CEMETERY SCREENING PRESENTS: LAIR OF THE WHITE WORM)	lattice 2^2	4	0.82
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1403329,SNUFF BOX: 20TH ANNIVERSARY SCREENING + Q&A)	lattice 2^2	4	1.10
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1403669,WE, THE HATED + Q&A)	levels 0-1	22	0.89
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1433030,Movie Church: Wings of Desire)	lattice 2^3	8	1.31
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1454408,Friday the 13th)	lattice 2^5	32	8.54
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1486958,GASP! Anna and the Apocalypse)	lattice 2^2	4	0.91
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1495540,SLUMP CINEMA: IKIRU)	lattice 2^2	4	0.84
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1495794,Sorry to Bother You)	levels 0-1	22	1.15
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1495801,Cinema Paradiso)	lattice 2^3	8	1.68
+Native(Cultplex Manchester,https://cultplex.co.uk/Cultplex.dll/WhatsOn?f=1496740,Fantastic Mr. Fox)	lattice 2^2	4	0.68
+Native(Curzon Canterbury Riverside,https://www.flicks.co.uk/movie/blade-1998/,Blade (1998))	levels 0-1	18	0.86
+Native(Curzon Canterbury Riverside,https://www.flicks.co.uk/movie/candyman-1992/,Candyman (1992))	levels 0-1	20	1.43
+Native(Curzon Canterbury Riverside,https://www.flicks.co.uk/movie/neptune-frost/,Neptune Frost)	lattice 2^4	16	4.46
+Native(Curzon Canterbury Riverside,https://www.flicks.co.uk/movie/the-worst-person-in-the-world/,The Worst Person in the World)	lattice 2^2	4	0.93
+Native(Curzon Canterbury Riverside,https://www.flicks.co.uk/movie/us-2019/,Us (2019))	levels 0-1	20	1.04
+Native(Curzon Canterbury Riverside,https://www.flicks.co.uk/movie/whos-afraid-of-virginia-woolf/,Who's Afraid Of Virginia Woolf?)	levels 0-1	24	1.18
+Native(Curzon Canterbury Riverside,https://www.flicks.co.uk/movie/wonka/,Wonka)	lattice 2^4	16	3.84
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/a-fox-under-a-pink-moon/,A Fox Under a Pink Moon)	lattice 2^2	4	0.65
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/bitter-christmas/,Bitter Christmas)	lattice 2^5	32	6.44
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/everybody-digs-bill-evans/,Everybody Digs Bill Evans)	levels 0-1	42	2.48
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/in-fabric/,In Fabric)	lattice 2^7	128	25.41
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/josephine/,Josephine)	levels 0-1	18	0.97
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/kikuyu-land/,Kikuyu Land)	lattice 2^3	8	1.19
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/raise-the-red-lantern/,Raise the Red Lantern)	levels 0-1	40	1.77
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/the-eyes-of-ghana/,The Eyes of Ghana)	lattice 2^2	4	0.66
+Native(Curzon Cinema Bloomsbury,https://www.flicks.co.uk/movie/welcome-ii-the-terrordome/,Welcome II the Terrordome)	lattice 2^2	4	0.74
+Native(Curzon Cinema Camden,https://www.flicks.co.uk/movie/life-support/,Life Support)	levels 0-1	20	1.16
+Native(Curzon Cinema Clevedon,https://www.flicks.co.uk/movie/frozen-sing-along/,Frozen: Sing-Along)	lattice 2^5	32	7.77
+Native(Curzon Cinema Clevedon,https://www.flicks.co.uk/movie/the-adventures-of-prince-achmed/,The Adventures of Prince Achmed)	lattice 2^3	8	1.47
+Native(Curzon Soho,https://www.flicks.co.uk/movie/chronicles-from-the-siege/,Chronicles from the Siege)	lattice 2^2	4	0.79
+Native(Curzon Soho,https://www.flicks.co.uk/movie/palestine-comedy-club/,Palestine Comedy Club)	lattice 2^2	4	0.78
+Native(David Lean Cinema Croydon,https://www.flicks.co.uk/movie/school-of-rock/,School of Rock)	lattice 2^2	4	0.82
+Native(Depot Lewes,https://www.flicks.co.uk/movie/east-of-eden/,East of Eden)	lattice 2^2	4	0.81
+Native(Depot Lewes,https://www.flicks.co.uk/movie/the-blair-witch-project/,The Blair Witch Project)	lattice 2^3	8	2.30
+Native(Depot Lewes,https://www.flicks.co.uk/movie/the-education-of-jane-cumming/,The Education of Jane Cumming)	lattice 2^2	4	0.83
+Native(Dome Worthing,https://www.flicks.co.uk/movie/pretty-woman/,Pretty Woman)	lattice 2^4	16	2.71
+Native(Duke of York's Picturehouse Brighton,https://www.flicks.co.uk/movie/paper-tiger/,Paper Tiger)	lattice 2^2	4	0.88
+Native(Duke of York's Picturehouse Brighton,https://www.flicks.co.uk/movie/pip-and-posys-cinema-show/,Pip and Posy's Cinema Show)	lattice 2^4	16	2.85
+Native(Duke of York's Picturehouse Brighton,https://www.flicks.co.uk/movie/rose-2023/,Rose (2023))	lattice 2^4	16	3.48
+Native(Duke of York's Picturehouse Brighton,https://www.flicks.co.uk/movie/superworm/,Superworm)	lattice 2^7	128	23.65
+Native(Duke's at Komedia Picturehouse,https://www.flicks.co.uk/movie/girls-like-girls/,Girls Like Girls)	levels 0-1	28	1.92
+Native(Duke's at Komedia Picturehouse,https://www.flicks.co.uk/movie/hellraiser/,Hellraiser (1987))	lattice 2^2	4	1.35
+Native(Duke's at Komedia Picturehouse,https://www.flicks.co.uk/movie/stick-man/,Stick Man)	lattice 2^5	32	6.32
+Native(Duke's at Komedia Picturehouse,https://www.flicks.co.uk/movie/the-gruffalo/,The Gruffalo)	levels 0-1	26	2.33
+Native(Eden Court Theatre Inverness,https://www.flicks.co.uk/movie/her-private-hell/,Her Private Hell)	levels 0-1	90	3.13
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=178382,Northern Soul: Still Burning)	lattice 2^2	4	0.85
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=210174,Angus, Thongs and Perfect Snogging)	lattice 2^2	4	0.73
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=210230,Charlie Shaw's Revenge + Director's Q&A)	lattice 2^5	32	4.82
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=213327,Ish)	lattice 2^4	16	3.32
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=236182,Where is Heaven?)	lattice 2^2	4	0.55
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=239845,Super Nature (Relaxed Screening))	lattice 2^4	16	2.65
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=241815,Labyrinth 40th Anniversary)	levels 0-1	18	1.13
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=245206,Withnail & I (Interactive))	lattice 2^2	4	0.66
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=245236,Linda Linda Linda 4K Restoration + Intro by Japanese Film Club)	lattice 2^2	4	0.87
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=245244,Nova '78)	lattice 2^3	8	1.36
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=245664,The Ugly Stepsister + Intro)	lattice 2^2	4	1.73
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=247687,Theatre of Blood with Silver Screen Sippers)	lattice 2^2	4	0.70
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=247775,Father Mother Sister Brother)	lattice 2^2	4	0.97
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=248378,Slade in Flame + Intro)	lattice 2^2	4	0.93
+Native(Electric Palace Hastings,https://electricpalacecinema.com/ElectricPalaceHastings.dll/WhatsOn?f=248415,The Bishop's Wife)	lattice 2^3	8	1.73
+Native(Empire Theatre Halstead,https://empire-theatre.co.uk/EmpireTheatre.dll/WhatsOn?f=489176,Miracle on 34th Street 1947 (CLassic Cinema))	levels 0-1	22	1.60
+Native(Empire Theatre Halstead,https://empire-theatre.co.uk/EmpireTheatre.dll/WhatsOn?f=559294,Tony Stockwell - Psychic Medium)	lattice 2^2	4	1.47
+Native(Empire Theatre Halstead,https://empire-theatre.co.uk/EmpireTheatre.dll/WhatsOn?f=628332,& Sons)	lattice 2^6	64	18.56
+Native(Empire Theatre Halstead,https://empire-theatre.co.uk/EmpireTheatre.dll/WhatsOn?f=642063,David)	lattice 2^3	8	1.61
+Native(Everyman Bath,https://www.everymancinema.com/film-listing/1000031413-toddler-club-tabby-mctat-room-on-the-broom,Toddler Club: Tabby McTat + Room on the Broom)	levels 0-1	98	6.28
+Native(Everyman Cinema Altrincham,https://www.everymancinema.com/film-listing/1000052184-throwback-almost-famous-25th-anniversary,Throwback: Almost Famous (25th Anniversary))	lattice 2^5	32	6.30
+Native(Everyman Screen on the Green Islington,https://www.everymancinema.com/film-listing/1000009107-tony,Tony)	8 orders x 8 steps	57	3.29
+Native(Everyman Screen on the Green Islington,https://www.everymancinema.com/film-listing/1000051814-heat-35mm,Heat (35mm))	lattice 2^5	32	5.77
+Native(Everyman Screen on the Green Islington,https://www.everymancinema.com/film-listing/1000052003-the-last-of-the-mohicans-35mm,The Last of the Mohicans (35mm))	lattice 2^3	8	1.78
+Native(Film Theatre Leiston,https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_900.TcsWebTab_901.TcsProgramme_2574049,The Music of Neil Diamond)	lattice 2^2	4	0.72
+Native(Film Theatre Leiston,https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_900.TcsWebTab_901.TcsProgramme_2901918,Sleeping Beauty)	lattice 2^2	4	0.77
+Native(Film Theatre Leiston,https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_900.TcsWebTab_901.TcsProgramme_3114467,Disney Jr Cinema Club 2026)	lattice 2^5	32	8.59
+Native(Film Theatre Leiston,https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_900.TcsWebTab_901.TcsProgramme_3127976,Ballet - The Sleeping Beauty)	lattice 2^4	16	4.67
+Native(Film Theatre Leiston,https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_900.TcsWebTab_901.TcsProgramme_3136227,Ballet - Notre-Dame de Paris)	levels 0-1	36	5.93
+Native(Film Theatre Leiston,https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_900.TcsWebTab_901.TcsProgramme_343473,Festival of Remembrance)	lattice 2^2	4	0.95
+Native(Film Theatre Leiston,https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_900.TcsWebTab_901.TcsProgramme_618799,The ELO Encounter)	lattice 2^2	4	1.03
+Native(Filmhouse Edinburgh,https://www.flicks.co.uk/movie/alien-1979/,Alien (1979))	lattice 2^3	8	1.27
+Native(Filmhouse Edinburgh,https://www.flicks.co.uk/movie/children-of-the-wicker-man/,Children of the Wicker Man)	lattice 2^2	4	0.66
+Native(Filmhouse Edinburgh,https://www.flicks.co.uk/movie/dogtooth/,Dogtooth)	lattice 2^2	4	1.21
+Native(Filmhouse Edinburgh,https://www.flicks.co.uk/movie/frankenstein-1931/,Frankenstein (1931))	lattice 2^2	4	0.63
+Native(Filmhouse Edinburgh,https://www.flicks.co.uk/movie/phantom-of-the-paradise/,Phantom of the Paradise)	lattice 2^5	32	5.60
+Native(Filmhouse Edinburgh,https://www.flicks.co.uk/movie/quadrophenia/,Quadrophenia)	lattice 2^2	4	0.71
+Native(Filmhouse Edinburgh,https://www.flicks.co.uk/movie/the-fall-2006/,The Fall (2006))	lattice 2^2	4	0.83
+Native(Filmhouse Edinburgh,https://www.flicks.co.uk/movie/the-wicker-man/,The Wicker Man (1973))	lattice 2^7	128	33.58
+Native(Filmhouse Newlyn,https://newlynfilmhouse.com/NewlynFilmhouse.dll/WhatsOn?f=1826227,MET: Macbeth)	lattice 2^2	4	1.09
+Native(Finsbury Park Picturehouse,https://www.flicks.co.uk/movie/blade-ii/,Blade II)	lattice 2^3	8	1.90
+Native(Finsbury Park Picturehouse,https://www.flicks.co.uk/movie/bride-of-frankenstein/,Bride of Frankenstein)	lattice 2^5	32	8.33
+Native(Finsbury Park Picturehouse,https://www.flicks.co.uk/movie/hereditary/,Hereditary)	lattice 2^3	8	2.00
+Native(Finsbury Park Picturehouse,https://www.flicks.co.uk/movie/in-the-cut/,In the Cut)	lattice 2^3	8	1.80
+Native(Finsbury Park Picturehouse,https://www.flicks.co.uk/movie/possession-1981/,Possession (1981))	levels 0-1	18	0.90
+Native(Finsbury Park Picturehouse,https://www.flicks.co.uk/movie/the-wolf-man-1941/,The Wolf Man (1941))	lattice 2^3	8	1.71
+Native(Flix Treehouse Manchester,https://www.flicks.co.uk/movie/the-holiday/,The Holiday (2006))	levels 0-1	48	2.28
+Native(Forum Cinema Hexham,https://forumhexham.com/ForumHexham.dll/WhatsOn?f=25789871,Kendal Mountain Festival Cinematic Tour 2027)	levels 0-1	18	0.98
+Native(Forum Cinema Hexham,https://forumhexham.com/ForumHexham.dll/WhatsOn?f=26064228,It's Nice Up North + Q&A)	lattice 2^4	16	3.04
+Native(Futurist Cinema,https://futuristcinema.uk/FuturistCinema.dll/WhatsOn?f=508166,Live Event: Halloween Party)	lattice 2^2	4	1.22
+Native(Futurist Cinema,https://futuristcinema.uk/FuturistCinema.dll/WhatsOn?f=508688,How to Rob a Bank)	lattice 2^2	4	0.65
+Native(Genesis Cinema Whitechapel,https://www.flicks.co.uk/movie/an-unfinished-film/,An Unfinished Film)	lattice 2^2	4	0.95
+Native(Genesis Cinema Whitechapel,https://www.flicks.co.uk/movie/catvideofest/,CatVideoFest 2026)	levels 0-1	20	0.68
+Native(Genesis Cinema Whitechapel,https://www.flicks.co.uk/movie/mistura/,Mistura)	lattice 2^2	4	1.36
+Native(Genesis Cinema Whitechapel,https://www.flicks.co.uk/movie/replica/,Replica)	lattice 2^2	4	1.02
+Native(Genesis Cinema Whitechapel,https://www.flicks.co.uk/movie/rosemarys-baby/,Rosemary's Baby)	lattice 2^4	16	3.28
+Native(Genesis Cinema Whitechapel,https://www.flicks.co.uk/movie/the-crow-1994/,The Crow (1994))	lattice 2^3	8	1.26
+Native(Glasgow Film Theatre,https://www.flicks.co.uk/movie/a-silent-voice/,A Silent Voice)	lattice 2^3	8	1.76
+Native(Glasgow Film Theatre,https://www.flicks.co.uk/movie/girlfriends-2026/,Girlfriends (2026))	lattice 2^3	8	1.24
+Native(Glasgow Film Theatre,https://www.flicks.co.uk/movie/ninja-scroll/,Ninja Scroll)	lattice 2^3	8	1.36
+Native(Glasgow Film Theatre,https://www.flicks.co.uk/movie/steal-this-story-please/,Steal This Story, Please!)	lattice 2^2	4	0.64
+Native(Glasgow Film Theatre,https://www.flicks.co.uk/movie/the-grand-budapest-hotel/,The Grand Budapest Hotel)	lattice 2^3	8	1.68
+Native(Glasgow Film Theatre,https://www.flicks.co.uk/movie/the-shop-around-the-corner/,The Shop Around the Corner)	lattice 2^4	16	3.89
+Native(Glasgow Film Theatre,https://www.flicks.co.uk/movie/tokyo-godfathers/,Tokyo Godfathers)	levels 0-1	20	0.68
+Native(Grosvenor Cinema Glasgow,https://www.flicks.co.uk/movie/godzilla-1954/,Godzilla (1954))	lattice 2^2	4	0.55
+Native(Grosvenor Cinema Glasgow,https://www.flicks.co.uk/movie/meet-me-in-st-louis/,Meet Me in St. Louis)	lattice 2^4	16	4.64
+Native(Grosvenor Cinema Glasgow,https://www.flicks.co.uk/movie/pet-sematary-1989/,Pet Sematary (1989))	lattice 2^2	4	0.52
+Native(Guildhall Cinema Gloucester,https://www.flicks.co.uk/movie/knife-the-attempted-murder-of-salman-rushdie/,Knife: The Attempted Murder of Salman Rushdie)	lattice 2^2	4	1.65
+Native(Gulbenkian Theatre,https://www.flicks.co.uk/movie/practical-magic/,Practical Magic)	levels 0-1	40	1.99
+Native(Gwyn Hall Neath,https://www.flicks.co.uk/movie/guys-and-dolls/,Guys and Dolls)	lattice 2^2	4	1.24
+Native(HOME Manchester,https://www.flicks.co.uk/movie/a-useful-ghost/,A Useful Ghost)	lattice 2^2	4	0.72
+Native(HOME Manchester,https://www.flicks.co.uk/movie/beautiful-thing-1996/,Beautiful Thing (1996))	lattice 2^4	16	3.27
+Native(HOME Manchester,https://www.flicks.co.uk/movie/better-go-mad-in-the-wild/,Better Go Mad in the Wild)	lattice 2^4	16	3.45
+Native(HOME Manchester,https://www.flicks.co.uk/movie/carol/,Carol)	lattice 2^3	8	1.36
+Native(HOME Manchester,https://www.flicks.co.uk/movie/dead-souls/,Dead Souls)	lattice 2^4	16	3.73
+Native(HOME Manchester,https://www.flicks.co.uk/movie/polite-society/,Polite Society)	lattice 2^2	4	0.64
+Native(HOME Manchester,https://www.flicks.co.uk/movie/robot-dreams/,Robot Dreams)	lattice 2^2	4	0.83
+Native(HOME Manchester,https://www.flicks.co.uk/movie/the-big-sleep/,The Big Sleep)	lattice 2^2	4	0.87
+Native(HOME Manchester,https://www.flicks.co.uk/movie/whisper-of-the-heart/,Whisper of the Heart (1995))	lattice 2^6	64	16.80
+Native(Harbour Lights Picturehouse,https://www.flicks.co.uk/movie/arrival/,Arrival)	lattice 2^5	32	8.06
+Native(Highland Cinema Fort William,https://www.flicks.co.uk/movie/a-few-good-men/,A Few Good Men)	lattice 2^2	4	0.55
+Native(Highland Cinema Fort William,https://www.flicks.co.uk/movie/eternal-sunshine-of-the-spotless-mind/,Eternal Sunshine of the Spotless Mind)	lattice 2^2	4	0.80
+Native(Highland Cinema Fort William,https://www.flicks.co.uk/movie/pirates-of-the-caribbean-the-curse-of-the-black-pearl/,Pirates of the Caribbean: The Curse of the Black Pearl)	lattice 2^2	4	0.57
+Native(Highland Cinema Fort William,https://www.flicks.co.uk/movie/pulp-fiction/,Pulp Fiction)	lattice 2^2	4	0.57
+Native(Highland Cinema Fort William,https://www.flicks.co.uk/movie/the-good-the-bad-and-the-ugly/,The Good, the Bad and the Ugly)	lattice 2^3	8	1.92
+Native(Highland Cinema Fort William,https://www.flicks.co.uk/movie/the-searchers/,The Searchers)	lattice 2^2	4	0.54
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1376781,An Evening With Jack the Ripper)	lattice 2^3	8	1.52
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1377438,The Unravelling Wilburys)	lattice 2^2	4	0.88
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1377441,Of Mice and Men)	lattice 2^2	4	0.67
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1392217,Film Society:Everybody to Kenmure Street)	lattice 2^3	8	1.62
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1392220,Film Society: The Secret Agent)	lattice 2^2	4	0.90
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1392221,Film Society: Tokyo Story)	lattice 2^2	4	0.54
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1401183,Tomatoes Tried To Kill Me But Banjos Saved My Life)	lattice 2^2	4	0.73
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1401198,The Santa Show 2026: Santa’s Best Ever Christmas)	lattice 2^3	8	2.53
+Native(Hilltop Cinema, Shaftesbury Arts Centre,https://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_916.TcsWebTab_917.TcsProgramme_1409284,Rebuilding)	lattice 2^2	4	0.99
+Native(Hythe Moviola Cinema,https://www.flicks.co.uk/movie/the-devil-wears-prada-2/,The Devil Wears Prada 2)	lattice 2^3	8	1.84
+Native(IMC Cinema Ballymena,https://www.flicks.co.uk/movie/home-alone-2-lost-in-new-york/,Home Alone 2: Lost in New York)	levels 0-1	22	0.77
+Native(Ilkley Cinema,https://book.ilkleycinema.co.uk/IlkleyCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1030.TcsWebTab_1031.TcsProgramme_12411932,Kendal Mountain Festival: The Film Edit)	lattice 2^2	4	1.14
+Native(Ilkley Cinema,https://book.ilkleycinema.co.uk/IlkleyCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1030.TcsWebTab_1031.TcsProgramme_12435598,Women's Adventure Film Tour 2026)	lattice 2^3	8	1.60
+Native(Ilkley Cinema,https://book.ilkleycinema.co.uk/IlkleyCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1030.TcsWebTab_1031.TcsProgramme_12475437,Queen Budapest)	lattice 2^6	64	13.19
+Native(Ilkley Cinema,https://book.ilkleycinema.co.uk/IlkleyCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1030.TcsWebTab_1031.TcsProgramme_12491597,The Royal Ballet Romeo and Juliet (Filmed live 2025))	lattice 2^2	4	1.02
+Native(Ilkley Cinema,https://book.ilkleycinema.co.uk/IlkleyCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1030.TcsWebTab_1031.TcsProgramme_12626131,Reel Rock 20)	lattice 2^3	8	1.54
+Native(Kavanagh Cinema Herne Bay,https://kavanaghcinema.com/KavanaghCinema.dll/WhatsOn?f=16181292,I See Buildings Fall Like Lightning)	lattice 2^5	32	9.15
+Native(Keswick Alhambra,https://keswickalhambra.co.uk/KeswickAlhambra.dll/WhatsOn?f=1902743,KFC Presents: La Grazia)	lattice 2^2	4	0.64
+Native(Keswick Alhambra,https://keswickalhambra.co.uk/KeswickAlhambra.dll/WhatsOn?f=1902760,KFC Presents: Hen)	lattice 2^4	16	4.45
+Native(Keswick Alhambra,https://keswickalhambra.co.uk/KeswickAlhambra.dll/WhatsOn?f=1902777,KFC Presents: Kokuho)	lattice 2^3	8	1.31
+Native(Keswick Alhambra,https://keswickalhambra.co.uk/KeswickAlhambra.dll/WhatsOn?f=1902780,KFC Presents: My Father's Shadow)	lattice 2^4	16	2.95
+Native(Kinema in the Woods,https://www.flicks.co.uk/movie/national-lampoons-christmas-vacation/,National Lampoon's Christmas Vacation)	lattice 2^7	128	28.09
+Native(King Street Cinema,https://www.flicks.co.uk/movie/2001-a-space-odyssey/,2001: A Space Odyssey)	lattice 2^2	4	0.64
+Native(King Street Cinema,https://www.flicks.co.uk/movie/danger-diabolik/,Danger: Diabolik)	lattice 2^2	4	0.82
+Native(King Street Cinema,https://www.flicks.co.uk/movie/inglourious-basterds/,Inglourious Basterds)	lattice 2^2	4	0.87
+Native(King Street Cinema,https://www.flicks.co.uk/movie/modesty-blaise/,Modesty Blaise)	lattice 2^3	8	1.98
+Native(King Street Cinema,https://www.flicks.co.uk/movie/the-breakfast-club/,The Breakfast Club)	lattice 2^2	4	1.24
+Native(Kings Cinema Newmarket,https://kingscinema.co.uk/KingsCinema.dll/WhatsOn?f=231055,New Year’s Eve Concert with the Berliner Philharmoniker)	lattice 2^2	4	0.66
+Native(Lexi Cinema Kensal Rise,https://thelexicinema.co.uk/TheLexiCinema.dll/WhatsOn?f=10190257,Film Africa: Crocodile)	lattice 2^3	8	2.17
+Native(Lexi Cinema Kensal Rise,https://thelexicinema.co.uk/TheLexiCinema.dll/WhatsOn?f=10270585,Lexi Seniors' Film Club: Educating Rita (1983))	lattice 2^2	4	1.56
+Native(Little Theatre Picturehouse,https://www.flicks.co.uk/movie/brief-encounter/,Brief Encounter)	lattice 2^2	4	1.15
+Native(Lockworks Cinema Wolverhampton,https://www.flicks.co.uk/movie/the-end-of-oak-street/,The End of Oak Street)	8 orders x 8 steps	57	3.34
+Native(Lockworks Cinema Wolverhampton,https://www.flicks.co.uk/movie/the-thing-1982/,The Thing (1982))	levels 0-1	44	2.48
+Native(Loewen Cinema,https://loewencinema.com/LoewenCinema.dll/WhatsOn?f=3424044,Zombie Flesh Eaters)	lattice 2^2	4	0.70
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/a-matter-of-life-and-death/,A Matter of Life and Death)	lattice 2^3	8	2.13
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/carnival-of-souls/,Carnival of Souls)	lattice 2^2	4	1.02
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/hope-and-glory/,Hope and Glory)	lattice 2^2	4	0.82
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/inferno/,Inferno (2016))	lattice 2^2	4	1.18
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/muppet-treasure-island/,Muppet Treasure Island)	lattice 2^2	4	0.70
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/scott-pilgrim-vs-the-world/,Scott Pilgrim vs. the World)	lattice 2^2	4	0.64
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/shaun-the-sheep-movie-farmageddon/,Shaun the Sheep Movie: Farmageddon)	lattice 2^2	4	1.32
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/three-days-of-the-condor/,Three Days of the Condor)	lattice 2^3	8	1.97
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/two-lane-blacktop/,Two-Lane Blacktop)	lattice 2^2	4	0.60
+Native(Lumiere Romford,https://www.flicks.co.uk/movie/who-can-kill-a-child/,Who Can Kill a Child?)	lattice 2^2	4	0.92
+Native(Luxe Wisbech,https://www.flicks.co.uk/movie/late-fame/,Late Fame)	lattice 2^3	8	1.55
+Native(Magic Lantern Tywyn,https://tywyncinema.co.uk/MagicLantern.dll/WhatsOn?f=1227948,125 Finale - Ali Plumb's Untitled Film Quiz Project)	lattice 2^2	4	0.65
+Native(Magic Lantern Tywyn,https://tywyncinema.co.uk/MagicLantern.dll/WhatsOn?f=1473869,Friday Night Is Music Night - Steam Roller)	lattice 2^6	64	21.38
+Native(Magic Lantern Tywyn,https://tywyncinema.co.uk/MagicLantern.dll/WhatsOn?f=1494362,125 Finale - The Finale!)	lattice 2^3	8	2.37
+Native(Majestic King's Lynn,https://www.flicks.co.uk/movie/casper/,Casper)	levels 0-1	18	0.62
+Native(Maona Cinema Oswestry,https://maonacinema.savoysystems.co.uk/MaonaCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_645.TcsWebTab_646.TcsProgramme_75402,Santosh)	lattice 2^2	4	1.33
+Native(Maona Cinema Oswestry,https://maonacinema.savoysystems.co.uk/MaonaCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_645.TcsWebTab_646.TcsProgramme_81293,The Fall of Sir Douglas)	lattice 2^2	4	0.73
+Native(Marina Theatre Lowestoft,https://www.flicks.co.uk/movie/snow-white/,Disney's Snow White)	lattice 2^2	4	1.08
+Native(Merlin Cinema Thurso,https://www.flicks.co.uk/movie/psycho/,Psycho)	lattice 2^5	32	6.53
+Native(Mockingbird Cinema & Kitchen Birmingham,https://mockingbirdcinema.com/MockingbirdCinema.dll/WhatsOn?f=1217862,The Princess Bride with Wine)	lattice 2^4	16	2.57
+Native(Mockingbird Cinema & Kitchen Birmingham,https://mockingbirdcinema.com/MockingbirdCinema.dll/WhatsOn?f=1235054,They Live)	lattice 2^4	16	3.51
+Native(Mockingbird Cinema & Kitchen Birmingham,https://mockingbirdcinema.com/MockingbirdCinema.dll/WhatsOn?f=1235057,Big Trouble in Little China)	lattice 2^3	8	1.81
+Native(Mockingbird Cinema & Kitchen Birmingham,https://mockingbirdcinema.com/MockingbirdCinema.dll/WhatsOn?f=1273137,Sweeney Todd: The Demon Barber of Fleet Street)	lattice 2^2	4	0.71
+Native(Mockingbird Cinema & Kitchen Birmingham,https://mockingbirdcinema.com/MockingbirdCinema.dll/WhatsOn?f=1997870,Ruff Cut Cinema: The Warriors)	lattice 2^2	4	0.65
+Native(Mockingbird Cinema & Kitchen Birmingham,https://mockingbirdcinema.com/MockingbirdCinema.dll/WhatsOn?f=317216,Paprika)	lattice 2^2	4	0.87
+Native(Nerve Centre Londonderry,https://nervecentre.ticketsolve.com/shows/873667490/events,The Goonies)	lattice 2^3	8	1.58
+Native(Nerve Centre Londonderry,https://nervecentre.ticketsolve.com/shows/873668223/events,Notorious | Cinematic Breakfast)	lattice 2^2	4	0.69
+Native(Nerve Centre Londonderry,https://nervecentre.ticketsolve.com/shows/873668231/events,The Ladykillers | Cinematic Breakfast)	lattice 2^2	4	0.90
+Native(Neuadd Dwyfor Pwllheli,https://neuadddwyfor.ticketsolve.com/shows/873689466/events,Twin Town + Q&A Kevin Allen (18))	lattice 2^2	4	1.04
+Native(Neuadd Dwyfor Pwllheli,https://neuadddwyfor.ticketsolve.com/shows/873691112/events,CAF: Welsh Work)	lattice 2^2	4	0.67
+Native(Northampton Filmhouse,https://www.flicks.co.uk/movie/the-witch-2015/,The Witch (2015))	lattice 2^5	32	9.31
+Native(Nova Cinema Woking,https://www.novacinema.com/shows/last-christmas.html,Last Christmas)	lattice 2^2	4	0.62
+Native(Number 8 Pershore,https://number8.ticketsolve.com/shows/1173668453/events,The Witches of Eastwick (18))	lattice 2^2	4	0.61
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/enhypen-world-tour-blood-saga/HO00009580/?siteId=017,ENHYPEN WORLD TOUR 'BLOOD SAGA')	levels 0-1	82	3.98
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/hybe-cheering-party/HO00009582/?siteId=017,HYBE CHEERING PARTY)	levels 0-1	84	4.33
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/kiri-and-lou-go-raaa/HO00009504/?siteId=017,Kiri and Lou Go Raaa!)	8 orders x 8 steps	57	3.66
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/odeon-pride-nights-a-wolf-among-the-swans/HO00009396/?siteId=017,ODEON Pride Nights - A Wolf Among the Swans)	levels 0-1	54	2.91
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/scream-unseen-20-october/HO00005888/?siteId=017,Scream Unseen (20 October))	8 orders x 8 steps	57	2.96
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/screen-unseen-21-october/HO00000157/?siteId=017,Screen Unseen (21 October))	8 orders x 8 steps	57	2.11
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/seventeen-world-tour-new/HO00009576/?siteId=017,SEVENTEEN WORLD TOUR 'NEW_')	levels 0-1	84	3.08
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/tomorrow-x-together-world-tour-act-tomorrow/HO00009578/?siteId=017,TOMORROW X TOGETHER WORLD TOUR 'ACT : TOMORROW')	levels 0-1	82	4.63
+Native(Odeon Birmingham New Street,https://www.odeon.co.uk/films/we-re-going-on-a-bear-hunt-tiger-who-came-to/HO00009500/?siteId=017,We're Going on a Bear Hunt+Tiger Who Came to...)	levels 0-1	106	7.17
+Native(Odeon Cabot Circus,https://www.odeon.co.uk/films/agbara-nla-the-return/HO00009592/?siteId=315,Agbara Nla: The Return)	levels 0-1	44	2.03
+Native(Odeon Cabot Circus,https://www.odeon.co.uk/films/peter-asher-everywhere-man/HO00009731/?siteId=315,Peter Asher: Everywhere Man)	levels 0-1	64	3.60
+Native(Odeon Cinema Acton,https://www.odeon.co.uk/films/matloob-aelian/HO00009640/?siteId=995,Matloob Aelian)	lattice 2^2	4	0.86
+Native(Odeon Cinema Aylesbury,https://www.odeon.co.uk/films/momo-and-the-time-thieves/HO00009163/?siteId=845,Momo and the Time Thieves)	levels 0-1	42	1.40
+Native(Odeon Cinema Beckenham,https://www.odeon.co.uk/films/tom-and-jerry-forbidden-compass/HO00008828/?siteId=695,Tom and Jerry: Forbidden Compass)	levels 0-1	36	1.85
+Native(Odeon Cinema Braehead,https://www.odeon.co.uk/films/arnie-and-barney/HO00009721/?siteId=615,Arnie & Barney)	levels 0-1	58	3.12
+Native(Odeon Cinema Braehead,https://www.odeon.co.uk/films/michael/HO00008527/?siteId=615,Michael)	levels 0-1	30	1.67
+Native(Odeon Cinema Epsom,https://www.odeon.co.uk/films/bebefinn-sing-along-movie/HO00007379/?siteId=570,Bebefinn Sing-Along Movie)	lattice 2^5	32	6.43
+Native(Odeon Cinema Greenwich,https://www.odeon.co.uk/films/ikenga-the-last-festival/HO00009729/?siteId=963,Ikenga: The Last Festival)	lattice 2^2	4	0.70
+Native(Odeon Cinema Greenwich,https://www.odeon.co.uk/films/insidious-out-of-the-further/HO00008899/?siteId=963,Insidious: Out of the Further)	levels 0-1	84	2.83
+Native(Odeon Cinema Greenwich,https://www.odeon.co.uk/films/the-secret-lives-of-baba-segi-s-wives/HO00009740/?siteId=963,The Secret Lives of Baba Segi's Wives)	lattice 2^5	32	6.85
+Native(Odeon Cinema Wimbledon,https://www.odeon.co.uk/films/fall-2/HO00009083/?siteId=555,Fall 2)	lattice 2^4	16	5.11
+Native(Odeon Luxe Islington,https://www.odeon.co.uk/films/ghost/HO00001011/?siteId=858,Ghost)	lattice 2^3	8	1.78
+Native(Olympic Cinema Barnes,https://www.flicks.co.uk/movie/casino-royale-2006/,Casino Royale (2006))	lattice 2^3	8	1.75
+Native(Palace Cinema Felixstowe,https://www.flicks.co.uk/movie/andr-rieus-2024-christmas-concert-gold-and-silver/,André Rieu's 2024 Christmas Concert: Gold & Silver)	lattice 2^2	4	1.07
+Native(Palace Cinema Kent,https://www.flicks.co.uk/movie/the-cabinet-of-dr-caligari/,The Cabinet of Dr. Caligari)	lattice 2^3	8	1.44
+Native(Pavilions Teignmouth,https://pavilionsteignmouth.savoysystems.co.uk/PavilionsTeignmouth.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1361.TcsWebTab_1362.TcsProgramme_6539921,Cally Beaton: Namaste Motherf*ckers)	lattice 2^2	4	0.65
+Native(Pavilions Teignmouth,https://pavilionsteignmouth.savoysystems.co.uk/PavilionsTeignmouth.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1361.TcsWebTab_1362.TcsProgramme_6722908,Neil Sands Christmas Memories 2026)	lattice 2^2	4	1.02
+Native(Pavilions Teignmouth,https://pavilionsteignmouth.savoysystems.co.uk/PavilionsTeignmouth.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1361.TcsWebTab_1362.TcsProgramme_7071776,Author Panel - Local Heroes)	lattice 2^3	8	2.45
+Native(Pavilions Teignmouth,https://pavilionsteignmouth.savoysystems.co.uk/PavilionsTeignmouth.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1361.TcsWebTab_1362.TcsProgramme_7118563,VOODOO ROOM A Night of Hendrix, Clapton & Cream)	lattice 2^2	4	0.70
+Native(Pavilions Teignmouth,https://pavilionsteignmouth.savoysystems.co.uk/PavilionsTeignmouth.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1361.TcsWebTab_1362.TcsProgramme_7118627,SERIOUSLY COLLINS 2027)	lattice 2^2	4	0.68
+Native(Phoenix Cinema East Finchley,https://www.phoenixcinema.co.uk/PhoenixCinemaLondon.dll/WhatsOn?f=706211,Ghost Town + director Q&A)	lattice 2^2	4	1.06
+Native(Phoenix Cinema East Finchley,https://www.phoenixcinema.co.uk/PhoenixCinemaLondon.dll/WhatsOn?f=740065,Japanese Film Club: Ringu)	lattice 2^2	4	0.66
+Native(Phoenix Cinema and Art Centre Leicester,https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_437.TcsWebTab_438.TcsProgramme_14123087,The Snowman + Enderby Band Live accompaniment)	lattice 2^4	16	4.75
+Native(Phoenix Cinema and Art Centre Leicester,https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_437.TcsWebTab_438.TcsProgramme_14142293,Thunderbirds Double Bill: Atlantic Inferno & Attack of the Alligators! - 4K Restoration)	lattice 2^2	4	0.71
+Native(Phoenix Cinema and Art Centre Leicester,https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_437.TcsWebTab_438.TcsProgramme_6078,Mystery Film)	lattice 2^2	4	1.55
+Native(Phoenix Cinema and Art Centre Leicester,https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_437.TcsWebTab_438.TcsProgramme_8588115,The Wild Robot)	lattice 2^3	8	2.14
+Native(Piccadilly Cinema Leicester,WhatsOn?f=1491420,Hanuman Ansh (Hindi))	lattice 2^2	4	1.60
+Native(Picture House Keighley,https://www.flicks.co.uk/movie/eyes-wide-shut/,Eyes Wide Shut)	lattice 2^4	16	3.58
+Native(Picture House Keighley,https://www.flicks.co.uk/movie/predator-1987/,Predator (1987))	lattice 2^2	4	1.31
+Native(Picture House Keighley,https://www.flicks.co.uk/movie/the-frighteners/,The Frighteners)	lattice 2^3	8	1.75
+Native(Picture House Keighley,https://www.flicks.co.uk/movie/the-man-who-knew-too-much-1956/,The Man Who Knew Too Much (1956))	lattice 2^2	4	0.66
+Native(Picturehouse Central London,https://www.flicks.co.uk/movie/rose-of-nevada/,Rose of Nevada)	levels 0-1	20	1.22
+Native(Picturehouse Chester,https://www.flicks.co.uk/movie/kontinental-25/,Kontinental '25)	lattice 2^2	4	0.62
+Native(Picturehouse Chester,https://www.flicks.co.uk/movie/resurrection-kuang-ye-shi-dai/,Resurrection (Kuang ye shi dai))	lattice 2^2	4	0.92
+Native(Picturehouse Cinema City Norwich,https://www.flicks.co.uk/movie/solaris-1972/,Solaris (1972))	lattice 2^2	4	1.38
+Native(Picturehouse Greenwich,https://www.flicks.co.uk/movie/mrs-harris-goes-to-paris/,Mrs. Harris Goes to Paris)	lattice 2^2	4	0.69
+Native(Picturehouse Hackney,https://www.flicks.co.uk/movie/40-years-of-fin-up/,40 Years of F***in' Up)	lattice 2^2	4	1.00
+Native(Picturehouse at FACT Liverpool,https://www.flicks.co.uk/movie/after-hours/,After Hours)	lattice 2^3	8	2.40
+Native(Picturehouse at FACT Liverpool,https://www.flicks.co.uk/movie/burning-2018/,Burning (2018))	lattice 2^3	8	1.31
+Native(Picturehouse at FACT Liverpool,https://www.flicks.co.uk/movie/collateral/,Collateral)	lattice 2^2	4	0.69
+Native(Picturehouse at FACT Liverpool,https://www.flicks.co.uk/movie/enemy-2013/,Enemy (2013))	lattice 2^2	4	1.18
+Native(Picturehouse at FACT Liverpool,https://www.flicks.co.uk/movie/ginger-snaps/,Ginger Snaps)	lattice 2^3	8	1.95
+Native(Picturehouse at FACT Liverpool,https://www.flicks.co.uk/movie/incendies/,Incendies)	lattice 2^2	4	0.80
+Native(Picturehouse at FACT Liverpool,https://www.flicks.co.uk/movie/prisoners/,Prisoners)	lattice 2^2	4	0.72
+Native(Picturehouse at FACT Liverpool,https://www.flicks.co.uk/movie/the-mummy-returns/,The Mummy Returns)	lattice 2^2	4	0.90
+Native(Pictureville (Science and Media Museum Bradford),https://www.flicks.co.uk/movie/bad-lieutenant-1992/,Bad Lieutenant (1992))	lattice 2^2	4	0.78
+Native(Pictureville (Science and Media Museum Bradford),https://www.flicks.co.uk/movie/coup-53/,Coup 53)	lattice 2^2	4	0.62
+Native(Pictureville (Science and Media Museum Bradford),https://www.flicks.co.uk/movie/the-choral/,The Choral)	lattice 2^2	4	0.79
+Native(Pictureville (Science and Media Museum Bradford),https://www.flicks.co.uk/movie/the-santa-clause/,The Santa Clause)	lattice 2^3	8	1.74
+Native(Pictureville (Science and Media Museum Bradford),https://www.flicks.co.uk/movie/the-seventh-victim/,The Seventh Victim)	lattice 2^2	4	0.78
+Native(Playhouse Cinema Perth,https://www.flicks.co.uk/movie/10-things-i-hate-about-you/,10 Things I Hate About You)	lattice 2^3	8	1.72
+Native(Playhouse Cinema Perth,https://www.flicks.co.uk/movie/ghostbusters-1984/,Ghostbusters (1984))	levels 0-1	22	1.57
+Native(Plaza Cinema Weston-super-Mare,https://www.flicks.co.uk/movie/the-stranger/,The Stranger)	lattice 2^4	16	4.32
+Native(Plaza Community Cinema Liverpool,https://plazacinema.org.uk/PlazaCinemaLiverpool.dll/WhatsOn?f=24616499,Anime Klash - ALL DAY PASS)	lattice 2^4	16	3.41
+Native(Plaza Community Cinema Liverpool,https://plazacinema.org.uk/PlazaCinemaLiverpool.dll/WhatsOn?f=24711892,Ocean Film Festival World Tour 2026)	lattice 2^3	8	1.65
+Native(Plaza Community Cinema Liverpool,https://plazacinema.org.uk/PlazaCinemaLiverpool.dll/WhatsOn?f=24833666,Anime Klash - Your Name)	lattice 2^4	16	3.64
+Native(Plaza Community Cinema Liverpool,https://plazacinema.org.uk/PlazaCinemaLiverpool.dll/WhatsOn?f=24880412,Festive Fun With Peppa Pig)	lattice 2^4	16	3.60
+Native(Plaza Community Cinema Liverpool,https://plazacinema.org.uk/PlazaCinemaLiverpool.dll/WhatsOn?f=24883230,Krampus)	lattice 2^3	8	1.51
+Native(Plaza Skipton,https://www.flicks.co.uk/movie/perfect-days/,Perfect Days)	lattice 2^2	4	1.23
+Native(Plaza Skipton,https://www.flicks.co.uk/movie/the-big-lebowski/,The Big Lebowski)	lattice 2^2	4	0.87
+Native(Plaza Stockport,https://www.flicks.co.uk/movie/metropolis/,Metropolis)	lattice 2^3	8	1.74
+Native(Pontardawe Arts Centre,https://pontardaweartscentre.ticketsolve.com/shows/1173676388/events,Two Prosecutors - Film Club)	lattice 2^2	4	0.89
+Native(Pontardawe Arts Centre,https://pontardaweartscentre.ticketsolve.com/shows/1173676392/events,The Last Viking - Film Club)	lattice 2^5	32	8.48
+Native(Prince Charles London,https://www.flicks.co.uk/movie/akira-1988/,Akira (1988))	lattice 2^3	8	1.56
+Native(Prince Charles London,https://www.flicks.co.uk/movie/angels-egg/,Angel's Egg)	lattice 2^2	4	0.91
+Native(Prince Charles London,https://www.flicks.co.uk/movie/apocalypse-now-final-cut/,Apocalypse Now: Final Cut)	lattice 2^3	8	1.78
+Native(Prince Charles London,https://www.flicks.co.uk/movie/barry-lyndon/,Barry Lyndon)	lattice 2^2	4	0.83
+Native(Prince Charles London,https://www.flicks.co.uk/movie/black-christmas-1974/,Black Christmas (1974))	lattice 2^3	8	2.05
+Native(Prince Charles London,https://www.flicks.co.uk/movie/blue-heron/,Blue Heron)	lattice 2^2	4	0.82
+Native(Prince Charles London,https://www.flicks.co.uk/movie/blue-velvet/,Blue Velvet)	lattice 2^2	4	0.84
+Native(Prince Charles London,https://www.flicks.co.uk/movie/chungking-express/,Chungking Express)	lattice 2^2	4	1.11
+Native(Prince Charles London,https://www.flicks.co.uk/movie/crash-1996/,Crash (1996))	lattice 2^3	8	1.39
+Native(Prince Charles London,https://www.flicks.co.uk/movie/daisies-sedmikrsky/,Daisies (Sedmikrásky))	lattice 2^3	8	1.20
+Native(Prince Charles London,https://www.flicks.co.uk/movie/fargo/,Fargo)	lattice 2^2	4	1.35
+Native(Prince Charles London,https://www.flicks.co.uk/movie/halloween-ii-1981/,Halloween II (1981))	lattice 2^2	4	0.86
+Native(Prince Charles London,https://www.flicks.co.uk/movie/highlander/,Highlander)	lattice 2^2	4	0.98
+Native(Prince Charles London,https://www.flicks.co.uk/movie/interview-with-the-vampire/,Interview with the Vampire)	lattice 2^2	4	0.84
+Native(Prince Charles London,https://www.flicks.co.uk/movie/jason-and-the-argonauts/,Jason and the Argonauts)	lattice 2^2	4	0.93
+Native(Prince Charles London,https://www.flicks.co.uk/movie/jingle-all-the-way/,Jingle All the Way)	lattice 2^3	8	3.15
+Native(Prince Charles London,https://www.flicks.co.uk/movie/merry-christmas-mr-lawrence/,Merry Christmas, Mr. Lawrence)	lattice 2^2	4	0.60
+Native(Prince Charles London,https://www.flicks.co.uk/movie/mildred-pierce/,Mildred Pierce)	lattice 2^2	4	0.61
+Native(Prince Charles London,https://www.flicks.co.uk/movie/ms-45/,Ms .45)	lattice 2^2	4	0.96
+Native(Prince Charles London,https://www.flicks.co.uk/movie/oldboy-2003/,Oldboy (2003))	lattice 2^2	4	0.91
+Native(Prince Charles London,https://www.flicks.co.uk/movie/paris-texas/,Paris, Texas)	lattice 2^2	4	0.89
+Native(Prince Charles London,https://www.flicks.co.uk/movie/project-hail-mary/,Project Hail Mary)	lattice 2^2	4	1.58
+Native(Prince Charles London,https://www.flicks.co.uk/movie/se7en/,Se7en)	lattice 2^2	4	1.56
+Native(Prince Charles London,https://www.flicks.co.uk/movie/stop-making-sense/,Stop Making Sense)	lattice 2^2	4	1.14
+Native(Prince Charles London,https://www.flicks.co.uk/movie/the-colour-of-pomegranates/,The Colour of Pomegranates)	lattice 2^2	4	0.88
+Native(Prince Charles London,https://www.flicks.co.uk/movie/the-fifth-element/,The Fifth Element)	lattice 2^2	4	0.92
+Native(Prince Charles London,https://www.flicks.co.uk/movie/the-fly/,The Fly (1986))	lattice 2^4	16	2.38
+Native(Prince Charles London,https://www.flicks.co.uk/movie/the-french-connection/,The French Connection)	lattice 2^2	4	0.57
+Native(Prince Charles London,https://www.flicks.co.uk/movie/the-godfather/,The Godfather)	lattice 2^2	4	0.64
+Native(Prince Charles London,https://www.flicks.co.uk/movie/the-history-of-concrete/,The History of Concrete)	lattice 2^3	8	2.90
+Native(Prince Charles London,https://www.flicks.co.uk/movie/the-royal-tenenbaums/,The Royal Tenenbaums)	lattice 2^2	4	0.62
+Native(Prince Charles London,https://www.flicks.co.uk/movie/the-umbrellas-of-cherbourg/,The Umbrellas of Cherbourg)	lattice 2^3	8	1.22
+Native(Prince Charles London,https://www.flicks.co.uk/movie/trading-places/,Trading Places)	lattice 2^2	4	1.10
+Native(Prince Charles London,https://www.flicks.co.uk/movie/trainspotting/,Trainspotting)	lattice 2^2	4	1.00
+Native(Prince Charles London,https://www.flicks.co.uk/movie/under-the-skin/,Under the Skin)	lattice 2^2	4	0.82
+Native(Prince Charles London,https://www.flicks.co.uk/movie/wake-in-fright/,Wake in Fright)	lattice 2^2	4	0.64
+Native(Prince Charles London,https://www.flicks.co.uk/movie/whiplash/,Whiplash)	levels 0-1	28	1.15
+Native(Prince Charles London,https://www.flicks.co.uk/movie/youve-got-mail/,You've Got Mail)	lattice 2^2	4	0.97
+Native(Quad Derby,https://www.derbyquad.co.uk/whats-on/darkness-in-the-fields-2027-day-pass,Darkness In The Fields 2027 - Day Pass)	lattice 2^2	4	0.81
+Native(Queen's Film Theatre Belfast,https://www.flicks.co.uk/movie/looking-for-mr-goodbar/,Looking for Mr. Goodbar)	lattice 2^2	4	0.73
+Native(Queen's Film Theatre Belfast,https://www.flicks.co.uk/movie/petite-maman/,Petite Maman)	lattice 2^2	4	0.59
+Native(Queen's Film Theatre Belfast,https://www.flicks.co.uk/movie/the-librarians/,The Librarians)	lattice 2^2	4	0.58
+Native(Reel Cinema Borehamwood,https://www.flicks.co.uk/movie/royal-shakespeare-company-macbeth/,Royal Shakespeare Company: Macbeth)	lattice 2^6	64	8.42
+Native(Regal Cinema Fordingbridge,https://theregalcinema.org/RegalFordingbridge.dll/WhatsOn?f=27382,The North (2026))	lattice 2^2	4	1.12
+Native(Regent Street Cinema London,https://www.flicks.co.uk/movie/ulya/,Ulya)	lattice 2^2	4	1.43
+Native(Rio Cinema Dalston,https://riocinema.org.uk/Rio.dll/WhatsOn?f=2886623,YOU F*RS FIGURE IT OUT: A JASON MOLINA STORY + Q&A)	lattice 2^2	4	0.86
+Native(Rio Cinema Dalston,https://riocinema.org.uk/Rio.dll/WhatsOn?f=2886687,Doc'n Roll: THE BEST SUMMER + Q&A)	lattice 2^2	4	0.85
+Native(Riverside Theatre Woodbridge,https://riversidewoodbridge.savoysystems.co.uk/RiversideWoodbridge.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_444.TcsWebTab_445.TcsProgramme_3210145,Ballad of Wallis Island)	lattice 2^2	4	0.70
+Native(Rooftop Film Club Stratford (Roof East),https://www.flicks.co.uk/movie/walle/,WALL·E)	lattice 2^2	4	1.37
+Native(Roxy Ulverston,https://www.flicks.co.uk/movie/dj-ahmet/,DJ Ahmet)	lattice 2^2	4	0.67
+Native(Roxy Ulverston,https://www.flicks.co.uk/movie/on-the-sea/,On the Sea)	lattice 2^2	4	1.06
+Native(Savoy Boston,https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=37439926,The Hunger Games: Catching Fire)	lattice 2^6	64	9.91
+Native(Savoy Boston,https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=51574654,Bad Moms Christmas (Mums Night Off))	lattice 2^4	16	3.82
+Native(Savoy Boston,https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=81924187,The Hunger Games Marathon)	lattice 2^6	64	12.48
+Native(Savoy Boston,https://savoyboston.co.uk/SavoyBoston.dll/WhatsOn?f=82210231,Jak Zyc Zeby Nie Zwarjowac)	lattice 2^4	16	3.08
+Native(Savoy Cinema Catterick Garrison,https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=1920618,Bad Moms X-mas (Mums Night Off))	lattice 2^2	4	0.73
+Native(Savoy Cinema Catterick Garrison,https://savoycatterick.co.uk/SavoyCatterick.dll/WhatsOn?f=3696927,The Hunger Games: Mockingjay Part 1)	lattice 2^5	32	6.24
+Native(Savoy Doncaster,https://savoydoncaster.uk/SavoyDoncaster.dll/WhatsOn?f=19680846,The Grinchmas Party!)	lattice 2^2	4	0.94
+Native(Sherborne Cinema Gloucester,https://www.flicks.co.uk/movie/fright-night-1985/,Fright Night (1985))	lattice 2^2	4	0.76
+Native(Showcase Bristol Avonmeads,https://www.showcasecinemas.co.uk/movies/1000034083-paddington-bear-winter-warmers,Paddington Bear: Winter Warmers)	levels 0-1	26	1.46
+Native(Showcase Bristol Avonmeads,https://www.showcasecinemas.co.uk/movies/1000053055-scream-and-scream-2-double-bill,Scream and Scream 2 Double Bill)	levels 0-1	34	1.71
+Native(Showcase de Lux Nottingham,https://www.showcasecinemas.co.uk/movies/1000009065-hoppers,Hoppers)	lattice 2^2	4	1.35
+Native(Showroom Sheffield,https://www.flicks.co.uk/movie/flow/,Flow)	lattice 2^2	4	0.94
+Native(Showroom Sheffield,https://www.flicks.co.uk/movie/grease-1978/,Grease (1978))	lattice 2^2	4	0.89
+Native(Showroom Sheffield,https://www.flicks.co.uk/movie/it-1990/,It (1990))	lattice 2^3	8	2.07
+Native(Showroom Sheffield,https://www.flicks.co.uk/movie/the-fox/,The Fox)	lattice 2^2	4	0.83
+Native(South Hill Park Arts Centre Bracknell,https://www.flicks.co.uk/movie/the-hunger-games-sunrise-on-the-reaping/,The Hunger Games: Sunrise on the Reaping)	lattice 2^2	4	0.80
+Native(South Hill Park Arts Centre Bracknell,https://www.flicks.co.uk/movie/the-last-one-for-the-road/,The Last One for the Road)	lattice 2^2	4	0.96
+Native(Southport Bijou Cinema,https://www.flicks.co.uk/movie/videodrome/,Videodrome)	lattice 2^3	8	1.81
+Native(Stag Sevenoaks,https://www.flicks.co.uk/movie/pride-prejudice/,Pride & Prejudice)	lattice 2^2	4	1.21
+Native(Star and Shadow Cinema Newcastle,https://www.flicks.co.uk/movie/audition/,Audition)	lattice 2^2	4	0.90
+Native(The Arzner,https://thearzner.com/TheArzner.dll/WhatsOn?f=234898,Blue Film)	lattice 2^2	4	0.68
+Native(The Arzner,https://thearzner.com/TheArzner.dll/WhatsOn?f=369410,9 to 5)	lattice 2^3	8	2.15
+Native(The Ashford Cinema (formerly Picturehouse),https://www.flicks.co.uk/movie/the-smeds-and-the-smoos/,The Smeds and the Smoos)	lattice 2^2	4	0.85
+Native(The Beehive Honiton,https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_1530.TcsProgramme_1454241,Generation Rock)	lattice 2^2	4	0.73
+Native(The Beehive Honiton,https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_1530.TcsProgramme_1463308,Peter Knight's Gigspanner Trio)	lattice 2^2	4	0.95
+Native(The Beehive Honiton,https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_1530.TcsProgramme_1478799,HCTC Presents: "The Little Mermaid")	lattice 2^2	4	0.75
+Native(The Beehive Honiton,https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_1530.TcsProgramme_1500714,Nostalgic Cinema: Send Me No Flowers)	lattice 2^2	4	0.94
+Native(The Flavel,https://theflavel.org.uk/TheFlavel.dll/WhatsOn?f=10758712,Arts Society - 2B or not 2B - Art of Drawing)	lattice 2^3	8	1.81
+Native(The Flavel,https://theflavel.org.uk/TheFlavel.dll/WhatsOn?f=10904542,Brothers)	lattice 2^2	4	0.97
+Native(The Forum Northallerton,https://forumnorthallerton.org.uk/ForumNorthallerton.dll/WhatsOn?f=2415559,THE COUNTERFEIT 70s SHOW)	lattice 2^2	4	1.04
+Native(The Garden Cinema,https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_26960.TcsWebTab_26961.TcsProgramme_278676,Stalker)	lattice 2^2	4	0.67
+Native(The Garden Cinema,https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_26960.TcsWebTab_26961.TcsProgramme_5980603,The Pirates! In an Adventure with Scientists!)	lattice 2^2	4	0.77
+Native(The Garden Cinema,https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_26960.TcsWebTab_26961.TcsProgramme_6265940,Faust - 100th anniversary with live score)	lattice 2^3	8	2.78
+Native(The Light Addlestone,https://www.flicks.co.uk/movie/calamity-jane-1953/,Calamity Jane (1953))	levels 0-1	28	1.53
+Native(The Light Addlestone,https://www.flicks.co.uk/movie/easter-parade/,Easter Parade)	levels 0-1	28	1.23
+Native(The Light Addlestone,https://www.flicks.co.uk/movie/gentlemen-prefer-blondes/,Gentlemen Prefer Blondes)	levels 0-1	26	0.95
+Native(The Light Addlestone,https://www.flicks.co.uk/movie/seven-brides-for-seven-brothers/,Seven Brides for Seven Brothers)	levels 0-1	28	0.91
+Native(The Light Addlestone,https://www.flicks.co.uk/movie/the-fastest-bicycle/,The Fastest Bicycle)	levels 0-1	28	1.22
+Native(The Light Cambridge,https://www.flicks.co.uk/movie/traces-of-justice/,Traces of Justice)	lattice 2^2	4	0.80
+Native(The Living Room Cinema Chipping Norton,https://www.flicks.co.uk/movie/exhibition-on-screen-david-hockney-at-the-royal-academy-of-arts/,Exhibition on Screen: David Hockney at the Royal Academy of Arts)	lattice 2^2	4	0.81
+Native(The Nickel London,https://www.flicks.co.uk/movie/eraserhead/,Eraserhead)	lattice 2^2	4	0.68
+Native(The Parade Cinema Marlborough,https://www.flicks.co.uk/movie/the-english-patient/,The English Patient)	lattice 2^2	4	1.12
+Native(The Poly Falmouth,https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_918.TcsWebTab_919.TcsProgramme_3376032,Sword Fighting Workshop Ages 8-12)	lattice 2^2	4	0.78
+Native(The Poly Falmouth,https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_918.TcsWebTab_919.TcsProgramme_3662711,Kendal Mountain Festival Live Tour 2027)	lattice 2^3	8	1.24
+Native(The Rex Cinema Wareham,https://www.flicks.co.uk/movie/calle-malaga/,Calle Málaga)	lattice 2^2	4	0.89
+Native(Tyneside Newcastle,https://www.flicks.co.uk/movie/the-gruffalos-child/,The Gruffalo's Child)	lattice 2^2	4	0.62
+Native(Tyneside Newcastle,https://www.flicks.co.uk/movie/trick-r-treat/,Trick 'r Treat)	lattice 2^2	4	0.87
+Native(Ultimate Picture Palace Oxford,https://www.flicks.co.uk/movie/snoopy-and-charlie-brown-the-peanuts-movie/,Snoopy and Charlie Brown: The Peanuts Movie)	lattice 2^2	4	0.85
+Native(Vue Cinemas Altrincham,https://www.myvue.com/film/mystery-screening-nov-2nd-2026,Mystery Screening (2 November 2026))	8 orders x 8 steps	57	2.57
+Native(Watershed Bristol,https://watershed.ticketsolve.com/shows/1173694845/events,Clarissa (18 CTBA))	lattice 2^2	4	0.69
+Native(Windmill Littlehampton,https://windmillcinema.co.uk/WindmillCinema.dll/WhatsOn?f=8094994,My Mother's Wedding)	lattice 2^2	4	0.85
+Published(BEAM (Hertford Theatre),Flashback: Cronos,Some(1992),List(Guillermo del Toro))	lattice 2^2	4	0.70
+Published(Brewery Arts Centre Kendal,Pulse,None,List())	lattice 2^2	4	0.69
+Published(Broadway Cinema Nottingham,Good Time - Presented by Jackie Treehorn,Some(2017),List(Benny Safdie, Josh Safdie))	lattice 2^2	4	0.73
+Published(Broadway Cinema Nottingham,UK Jewish Film Festival: The Soundman,Some(2025),List(Frank van Passel))	lattice 2^2	4	0.70
+Published(Dundee Contemporary Arts (DCA),Early Man,None,List())	lattice 2^2	4	1.01
+Published(Gala Cinema Durham,The Royal Ballet: Alice’s Adventure In Wonderland,None,List())	lattice 2^2	4	0.93
+Published(Hyde Park Picture House,British-Jewish Life on Film,Some(2026),List(Various))	lattice 2^2	4	1.33
+Published(Hyde Park Picture House,Hunt for the Wilderpeople,Some(2016),List(Taika Waititi))	lattice 2^2	4	0.65
+Published(Institute of Contemporary Arts,The Edges of Cinema: Book Launch + Little Boy,None,List())	lattice 2^2	4	1.05
+Published(Lighthouse Poole,Banff Mountain Film Festival World Tour 2027 (BLUE PROGRAMME),None,List())	lattice 2^4	16	4.83
+Published(Midlands Arts Centre Birmingham,Oxide Ghosts: The Brass Eye Tapes + Q&A,None,List(MIchael Cumming))	lattice 2^2	4	0.72
+Published(Old Market Hall Shrewsbury,The Man with the Plan (15) + Q&A,None,List())	lattice 2^2	4	0.74
+Published(Picture House Uckfield,Renoir and Love,None,List())	lattice 2^2	4	1.31
+Published(Riverside Studios Hammersmith,LS/FF Friday Night Pass,None,List())	lattice 2^3	8	1.66

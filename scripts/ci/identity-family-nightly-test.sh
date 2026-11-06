@@ -60,6 +60,8 @@ check "a stored cache with its commit walks with the reach file" "0 1" \
   "$(night FAMILY_STORE=s FAMILY_SHARD=1/2 RELEASE_EXISTS=1 CACHED_SHA="$sha" ASSETS="family-cache-de-1of2-L1.json.gz family-cache-de-1of2-L1.sha.gz") $(grep -c -- '--reach ' "$work/sbt-calls")"
 check "a walk that wrote no verdict fails, said, and stores nothing" "2 0 1" \
   "$(night FAMILY_STORE=s FAMILY_SHARD=1/2 NO_VERDICT=1) $(grep -c '^release upload' "$work/calls") $(grep -c '^family explorer (de, shard 1/2): no verdict' "$work/log")"
+check "the sampled tier's orders, their weekly salt and the recorded costs reach the walk" "1 1" \
+  "$(night FAMILY_SHARD=1/2 FAMILY_ORDERS=2 FAMILY_ORDER_SALT=45 > /dev/null; grep -c -- '--orders 2 --order-salt 45 --costs .*/family-costs-de.tsv ' "$work/sbt-calls") $(night FAMILY_SHARD=1/2 > /dev/null; grep -c -- '--orders 8 --order-salt 0 ' "$work/sbt-calls")"
 check "a shard that is not i/N fails before the walk" "2 0" "$(night FAMILY_SHARD=3) $(wc -l < "$work/sbt-calls" | tr -d ' ')"
 
 spec_summary

@@ -81,6 +81,29 @@ class FamilyConvergenceSpec extends AnyFlatSpec with Matchers with tools.Scratch
     ladykillers.map(r => (r(0), r(1), r(4))) shouldBe Some(("family", "uk", "Nerve Centre Londonderry"))
   }
 
+  "Balanced shards" should "put the costliest family alone and fill the lightest row first, the same every time" in {
+    val costed = Seq("a" -> 100.0, "b" -> 30.0, "c" -> 30.0, "d" -> 30.0, "e" -> 10.0)
+    FamilyConvergence.balance(costed, 2) shouldBe Vector(1, 2, 2, 2, 2)
+    FamilyConvergence.balance(costed.reverse, 2).reverse shouldBe FamilyConvergence.balance(costed, 2)
+    FamilyConvergence.balance(Seq("x" -> 1.0), 3) shouldBe Vector(1)
+  }
+
+  it should "cost an unrecorded family by what a member costs in the recorded ones, and a sampled one by the orders asked" in {
+    val file = tempFile("family-walks", ".tsv")
+    java.nio.file.Files.writeString(file,
+      "family\ttier\tsubsets\tseconds\tflips\trules\nbig\t8 orders x 8 steps\t57\t80.0\t0\t\nsmall\tlattice 2^3\t8\t2.5\t0\t\n")
+    FamilyConvergence.loadCosts(file, orders = 2) shouldBe Map("big" -> 20.0, "small" -> 2.5)
+    FamilyConvergence.loadCosts(file, orders = 8) shouldBe Map("big" -> 80.0, "small" -> 2.5)
+  }
+
+  it should "still walk every family once, whatever the costs" in {
+    val corpus = FamilyConvergence.sliceCorpus(slices.resolve("uk/nerve-centre-londonderry-the-ladykillers-039701b7"), "rules-1")
+    val whole  = FamilyConvergence.check(corpus, Map.empty, options)
+    val costs  = whole.verdicts.zipWithIndex.map { case (v, i) => v.family -> (i + 1.0) * 10 }.toMap
+    val parts  = (1 to 2).map(i => FamilyConvergence.check(corpus, Map.empty, options.copy(shard = Some(i -> 2), costs = costs)))
+    parts.flatMap(_.verdicts.map(_.family)).sorted shouldBe whole.verdicts.map(_.family).sorted
+  }
+
   "A cache" should "read back what it wrote" in {
     val file = tempFile("family-convergence", ".json")
     FamilyConvergence.save(file, first.verdicts)

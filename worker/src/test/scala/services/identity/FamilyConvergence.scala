@@ -34,12 +34,45 @@ object FamilyConvergence {
                            /** THE CHANGE'S REACH (scripts/identity_what_if.py `select`'s rule patterns): a cached verdict
                             *  stands unless a rule it or its family fired matches one -- the rest of the families are served
                             *  from the cache under rules that name no code. `None`: the cache stands by its key alone. */
-                           reach: Option[Seq[String]] = None)
+                           reach: Option[Seq[String]] = None,
+                           /** What a family cost to walk, in seconds, by its name ([[loadCosts]]): the shards are balanced by it. A
+                            *  family it does not name costs what its members do on average (1 a member when it names none). */
+                           costs: Map[String, Double] = Map.empty,
+                           /** Added to a sampled family's seed: a week's number gives each week other arrival orders. */
+                           orderSalt: Int = 0)
 
-  /** Which of `n` shards (1-based) a family falls in: by its first member's key, which no code change of a family's
-   *  take moves -- a head and its base walk the same families in a row. */
-  def shardOf(entry: FamilyIndex.Entry, n: Int): Int =
-    math.floorMod(scala.util.hashing.MurmurHash3.stringHash(entry.members.keys.map(ListingKey.serialised).min), n) + 1
+  /** The bin (1-based) each cost falls in, longest first into the lightest bin: the largest family alone in its row rather
+   *  than beside a dozen more, the rest filling up around it. Deterministic (ties by name, then position), so every row of
+   *  a country computes the same split and a family is walked by exactly one. */
+  def balance(costed: Seq[(String, Double)], bins: Int): Vector[Int] = {
+    val load  = Array.fill(bins)(0.0)
+    val where = Array.fill(costed.size)(0)
+    costed.indices.sortBy(i => (-costed(i)._2, costed(i)._1, i)).foreach { i =>
+      val bin = load.indices.minBy(load(_))
+      load(bin) += costed(i)._2
+      where(i) = bin + 1
+    }
+    where.toVector
+  }
+
+  /** The cost of each of `entries`: its recorded walk seconds, else the average a member costs in the recorded ones. */
+  def costOf(entries: Seq[FamilyIndex.Entry], recorded: Map[String, Double]): Seq[Double] = {
+    val known = entries.filter(e => recorded.contains(e.name))
+    val rate  = if (known.isEmpty) 1.0 else known.map(e => recorded(e.name)).sum / known.map(_.members.size).sum
+    entries.map(e => recorded.getOrElse(e.name, rate * e.members.size))
+  }
+
+  /** The costs of a `family-walks-<cc>.tsv` (family, tier, subsets, seconds, ...), a sampled family's seconds scaled to
+   *  `orders` arrival orders of the N it was walked with. */
+  def loadCosts(path: Path, orders: Int): Map[String, Double] = {
+    val sampled = """(\d+) orders x .*""".r
+    Files.readAllLines(path).asScala.drop(1).filter(_.nonEmpty).map(_.split("\t", -1)).map { cols =>
+      cols(0) -> (cols(1) match {
+        case sampled(walked) => cols(3).toDouble / walked.toInt * orders
+        case _               => cols(3).toDouble
+      })
+    }.toMap
+  }
 
   /** One flip: the stage (`model` or `final`), the listing, its kind (`arrival`, `add/remove`) and the takes it went through. */
   final case class Flip(stage: String, listing: String, kind: String, witness: String,
@@ -155,7 +188,7 @@ object FamilyConvergence {
           def choose(k: Int) = members.indices.combinations(k).map(Subset(_*)).toSeq
           (s"levels 0-${options.levels}", (0 to options.levels).flatMap(k => choose(k) ++ choose(k).map(everyone -- _)).distinct)
         } else {
-          val rng = new Random(MurmurHashOf(members.head.sortKey))
+          val rng = new Random(MurmurHashOf(members.head.sortKey) + options.orderSalt)
           (s"${options.orders} orders x ${options.steps} steps", (0 until options.orders).flatMap { _ =>
             val order = rng.shuffle(members.indices.toVector)
             val size  = math.max(1, math.ceil(n.toDouble / options.steps).toInt)
@@ -179,8 +212,11 @@ object FamilyConvergence {
         fired.values.flatten.toSeq.distinct.sorted, started.seconds)
     }
 
-    val entries  = built.index.entries.filter(_.members.sizeIs >= 2)
-      .filter(e => options.shard.forall { case (i, n) => shardOf(e, n) == i })
+    val multi    = built.index.entries.filter(_.members.sizeIs >= 2)
+    val entries  = options.shard.fold(multi) { case (i, n) =>
+      val bins = balance(multi.map(_.name).zip(costOf(multi, options.costs)), n)
+      multi.indices.filter(bins(_) == i).map(multi)
+    }
     // at most `threads` resolves at once: the small families side by side, each walked on one thread; a large one (a
     // whole corpus's 375-listing family holds GBs per resolve) alone, its subsets side by side
     val (small, large) = entries.indices.partition(entries(_).members.sizeIs <= options.exhaustive)
@@ -220,11 +256,12 @@ object FamilyConvergence {
   private def MurmurHashOf(s: String): Long = scala.util.hashing.MurmurHash3.stringHash(s).toLong
 
   /**
-   *   worker/Test/runMain services.identity.FamilyConvergence [--cache FILE] [--rules VERSION] [--exhaustive 7] [--levels 1] [--threads 4] SLICE_DIR...
+   *   worker/Test/runMain services.identity.FamilyConvergence [--cache FILE] [--rules VERSION] [--exhaustive 7] [--levels 1] [--orders 8] [--order-salt 0] [--costs WALKS_TSV] [--threads 4] SLICE_DIR...
    * Each slice's families checked against the cache, the cache written back.
    */
   /** What a corpus run is pointed at: `--corpus CC --recording DIR [--families CAPTURE|none]`, its TSV written to `--out`. */
-  final case class CorpusArgs(country: String = "", recording: Option[Path] = None, families: Option[Path] = None, out: Path = Path.of("target/family-check"))
+  final case class CorpusArgs(country: String = "", recording: Option[Path] = None, families: Option[Path] = None, out: Path = Path.of("target/family-check"),
+                              costs: Option[Path] = None)
 
   def main(args: Array[String]): Unit = {
     def parse(rest: List[String], o: Options, cache: Option[Path], rules: String, dirs: Seq[Path], c: CorpusArgs): (Options, Option[Path], String, Seq[Path], CorpusArgs) =
@@ -234,6 +271,9 @@ object FamilyConvergence {
         case "--rules" :: v :: more       => parse(more, o, cache, v, dirs, c)
         case "--exhaustive" :: v :: more  => parse(more, o.copy(exhaustive = v.toInt), cache, rules, dirs, c)
         case "--levels" :: v :: more      => parse(more, o.copy(levels = v.toInt), cache, rules, dirs, c)
+        case "--orders" :: v :: more      => parse(more, o.copy(orders = v.toInt), cache, rules, dirs, c)
+        case "--order-salt" :: v :: more  => parse(more, o.copy(orderSalt = v.toInt), cache, rules, dirs, c)
+        case "--costs" :: v :: more       => parse(more, o, cache, rules, dirs, c.copy(costs = Some(Path.of(v))))
         case "--threads" :: v :: more     => parse(more, o.copy(threads = v.toInt), cache, rules, dirs, c)
         case "--shard" :: v :: more       =>
           val (i, n) = v.split('/') match { case Array(i, n) => (i.toInt, n.toInt); case _ => sys.error(s"--shard $v: i/n") }
@@ -250,7 +290,8 @@ object FamilyConvergence {
         case dir :: more                  => parse(more, o, cache, rules, dirs :+ Path.of(dir), c)
       }
     // the rules version a cached verdict stands under: the caller's (a code digest), `head` when it names none
-    val (options, cachePath, rules, dirs, corpusArgs) = parse(args.toList, Options(), None, "head", Nil, CorpusArgs())
+    val (parsed, cachePath, rules, dirs, corpusArgs) = parse(args.toList, Options(), None, "head", Nil, CorpusArgs())
+    val options = corpusArgs.costs.fold(parsed)(file => parsed.copy(costs = loadCosts(file, parsed.orders)))
     var cache = cachePath.fold(Map.empty[Long, Verdict])(load)
     if (corpusArgs.country.nonEmpty) {
       val country = models.Country.all.find(_.code == corpusArgs.country).getOrElse(sys.error(s"no country '${corpusArgs.country}'"))

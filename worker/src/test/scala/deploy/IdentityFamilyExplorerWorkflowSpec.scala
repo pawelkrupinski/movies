@@ -20,9 +20,10 @@ class IdentityFamilyExplorerWorkflowSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "run nightly and on dispatch, never on a push" in {
+  it should "run weekly and on dispatch, never on a push" in {
     val on = RepoFile.block(workflow, "on")
     on should include("schedule:")
+    on should include("* * 0'")
     on should include("workflow_dispatch:")
     on should not include "push:"
     on should not include "pull_request"
