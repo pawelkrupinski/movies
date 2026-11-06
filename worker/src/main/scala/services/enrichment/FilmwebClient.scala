@@ -473,6 +473,9 @@ object FilmwebClient {
 
   private def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 
+  /** A sequel number after a title word and its period ("skarpetek 4. Do roboty"), not an edition ordinal ("| 26. Festiwal"). */
+  private val NumberedSubtitle = """(?<=\p{L}\s)(\d{1,2})\.\s+(?=\p{Lu})""".r
+
   /** Extra search queries to try when the raw title carries a screening-cycle or
    *  festival banner the bare film title doesn't. Splits on `|` (each segment is
    *  a candidate title) and strips trailing parentheticals. Returns ONLY the
@@ -482,7 +485,11 @@ object FilmwebClient {
     val trimmed = title.trim
     val noParen = trimmed.replaceAll("\\s*\\([^)]*\\)", "").trim
     val pipeSegments = trimmed.split("\\|").iterator.map(_.trim).filter(_.nonEmpty).toSeq
-    (pipeSegments :+ noParen).map(_.trim).filter(_.nonEmpty).distinct.filterNot(_.equalsIgnoreCase(trimmed))
+    // Filmweb's search tokenises "4." and "4:" apart: "…skarpetek 4. Do roboty!" finds only users, while
+    // the film is filed as "…skarpetek 4: Do roboty!". A variant only adds a query: the pick still needs the
+    // title, year and director checks.
+    val colonSubtitle = NumberedSubtitle.replaceAllIn(trimmed, "$1: ")
+    (pipeSegments :+ noParen :+ colonSubtitle).map(_.trim).filter(_.nonEmpty).distinct.filterNot(_.equalsIgnoreCase(trimmed))
   }
 
   /** Lower-case + strip diacritics for fuzzy director comparison. Cinemas

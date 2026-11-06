@@ -670,6 +670,25 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     FilmwebClient.searchQueryVariants("Mama Mu wraca do domu (2021)") should contain ("Mama Mu wraca do domu")
   }
 
+  it should "offer the colon spelling of a numbered 'N. Subtitle' title, which Filmweb's search only finds spelled that way" in {
+    FilmwebClient.searchQueryVariants("Niesamowite przygody skarpetek 4. Do roboty!") shouldBe
+      Seq("Niesamowite przygody skarpetek 4: Do roboty!")
+    FilmwebClient.searchQueryVariants("Room 237") shouldBe empty
+  }
+
+  it should "link Skarpetki 4 (Filmweb: 'skarpetek 4: Do roboty!', searched with a period it returns only users) from the period spelling" in {
+    // Recorded 2026-11-06: live/search for "…4. do roboty!" holds no film, for "…4: do roboty!" the serial 10118632.
+    def fixture(name: String) = clients.tools.FixtureFile.read(s"test/resources/fixtures/filmweb/$name.json")
+    val site = filmwebSite(Map(
+      "query=niesamowite+przygody+skarpetek+4.+do+roboty%21"  -> fixture("search_skarpetki_4_period_users_only"),
+      "query=niesamowite+przygody+skarpetek+4%3A+do+roboty%21" -> fixture("search_skarpetki_4_colon"),
+      "/film/10118632/info"    -> fixture("info_skarpetki_4"),
+      "/film/10118632/preview" -> fixture("preview_skarpetki_4"),
+      "/film/10118632/rating"  -> fixture("rating_skarpetki_4")))
+    new FilmwebClient(site).lookup("Niesamowite przygody skarpetek 4. Do roboty!", Some(2026)).map(_.url) shouldBe
+      Some("https://www.filmweb.pl/serial/Niesamowite+przygody+skarpetek+4%3A+Do+roboty%21-2026-10118632")
+  }
+
   it should "yield no variants for an undecorated title (no extra requests on the common path)" in {
     FilmwebClient.searchQueryVariants("Pulp Fiction") shouldBe empty
   }
