@@ -1,6 +1,6 @@
 # The inline asks' cancel at the deadline (step 2b): superseded by the model's input gate
 
-**Tried:** nothing was built. Step 2b of the await-answers work (2026-11-05, `AWAIT-ANSWERS-STATE.md`, "Part 2") proposed
+**Tried:** built, never landed (branch `identity/inline-ask-cancel`, `18d6c1857392`, kept as tag `experiment/inline-ask-cancel`: `InlineFamilyAsks` cancels every inline ask still unstarted when the 5 s wait ends, failing-first test in `InlineFamilyAsksSpec`). Step 2b of the await-answers work (2026-11-05, `AWAIT-ANSWERS-STATE.md`, "Part 2") proposed
 that a projection's inline asks (`AgreementStage.askedInline`, at most `AskNowWithin` = 5 s, the 16-thread
 `InlineFamilyAsks` pool) cancel a cluster's unstarted asks at the deadline, so the next cluster's asks would not queue
 behind them. It was parked behind its instrumentation (the `kinowo_worker_identity_agreement_inline_ask_seconds`
