@@ -9,6 +9,7 @@ worker/src/test/scala/scripts/IdentityLiveDrift.scala
 worker/src/fixtures/scala/tools/ReplayOrder.scala
 identity/src/main/scala/services/identity/TakeFlips.scala
 scripts/ci/identity-drift-check.sh
+scripts/ci/drift-replays-compare.sh
 scripts/ci/drift_diff.py
 scripts/ci/drift_seeds.py
 scripts/ci/harness_aa.py
