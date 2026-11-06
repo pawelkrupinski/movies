@@ -792,7 +792,9 @@ to_main=0
 # when it is pushed there. Any other ref in the same push is checked as ever. A CHECK BRANCH (agentctl's remote checks,
 # `check/<entry>`) is the same: pushed only for .github/workflows/precommit-check.yml to run these checks on CI,
 # deleted after its run, never landed.
-measure_only="" other=""
+# A TAG (refs/tags/*, e.g. experiment/<name> keeping a dropped experiment's code) is the same: it moves nothing main
+# builds, so a tag-only push runs no code check (it once ran 3759 s of scripttests, page and sbt and blocked on them).
+measure_only="" other="" tag_only=""
 checks_only="" fast_only=""
 if [ "${1:-}" = "--range" ] || [ "${1:-}" = "--checks-only" ] || [ "${1:-}" = "--fast-only" ]; then
     [ "$1" = "--checks-only" ] && checks_only=1
@@ -804,6 +806,7 @@ else
     while read -r _local_ref local_sha remote_ref remote_sha; do
         pushed+="$_local_ref $local_sha $remote_ref $remote_sha"$'\n'
         [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
+        case "$remote_ref" in refs/tags/*) tag_only=1; continue ;; esac
         case "$remote_ref" in refs/heads/measure/*|refs/heads/check/*|refs/heads/land/*) measure_only=1; continue ;; *) other=1 ;; esac
         base="$(base_for "$local_sha" "$remote_sha")"
         [ -n "$base" ] && ranges+=("$base..$local_sha")
@@ -819,6 +822,7 @@ else
 fi
 if [ "${#ranges[@]}" -eq 0 ]; then
     [ -n "$measure_only" ] && [ -z "$other" ] && log "measure/ or check/ branch: a CI run's ref, never landed -- nothing to check"
+    [ -n "$tag_only" ] && [ -z "$other" ] && log "tag push: a tag changes nothing main builds -- nothing to check"
     exit 0
 fi
 

@@ -337,6 +337,16 @@ STUB
            | bash scripts/hooks/pre-push origin url 2>&1)"
   check "warns when origin/main is missing, instead of checking nothing in silence" "1" \
     "$(printf '%s\n' "$out" | grep -c 'origin/main')"
+  # A TAG changes nothing main builds (the experiment/<name> tags keep dropped experiments' code): a push of refs/tags/*
+  # alone runs no code check -- it once ran 3759 s of scripttests, page and sbt, and blocked on them.
+  out="$(cd "$repo" && printf 'refs/tags/experiment/x %s refs/tags/experiment/x %s\n' "$head" 0000000000000000000000000000000000000000 \
+           | bash scripts/hooks/pre-push origin url 2>&1)"; code=$?
+  check "a push of tags alone checks nothing, and says so" "0 1 0" \
+    "$code $(printf '%s\n' "$out" | grep -c 'tag push') $(printf '%s\n' "$out" | grep -c 'origin/main')"
+  out="$(cd "$repo" && printf 'refs/tags/experiment/x %s refs/tags/experiment/x %s\nrefs/heads/x %s refs/heads/x %s\n' \
+           "$head" 0000000000000000000000000000000000000000 "$head" 0000000000000000000000000000000000000000 \
+           | bash scripts/hooks/pre-push origin url 2>&1)"
+  check "...but a branch pushed beside the tag is checked as ever" "1" "$(printf '%s\n' "$out" | grep -c 'origin/main')"
 else
   printf '  (shellcheck not installed — scratch-repository cases skipped)\n'
 fi
