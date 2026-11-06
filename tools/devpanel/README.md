@@ -10,7 +10,7 @@ from a terminal: `python3 tools/devpanel/scripts/devpanel.py deploy-ios`.
 |----------------|-------------------------------|---------|
 | Android → device | wait-for-unlock → `cd android && ../scripts/android-signed ./gradlew runOnDevice` | Device |
 | iOS → device     | wait-for-unlock → `xcodebuild build` → `devicectl install` → `devicectl launch` | Device |
-| Web server       | frees :9000 → `scripts/dev-server.sh` (`sbt web/run` on a narrowed heap) | Web |
+| Web server       | frees :9000 → `scripts/review-server` (`scripts/dev-server.sh`, `sbt web/run` on a narrowed heap, in the review worktree so /debug review answers are written) | Web |
 | Kill web         | stops the running web action (SIGTERMs its process group) then frees :9000 | Web |
 
 ## Consoles

@@ -384,12 +384,13 @@ def deploy_ios(ctx: Context) -> int:
 
 
 def run_web(ctx: Context) -> int:
-    """The Play app on :9000 via scripts/dev-server.sh, not a bare `sbt
-    web/run`: the wrapper narrows the heap so an OOM trips early and leaves
-    target/oom-<pid>.hprof behind (the 2026-09-04 dev server died with nothing
-    but one OutOfMemoryError line)."""
+    """The Play app on :9000 via scripts/review-server: it runs
+    scripts/dev-server.sh (the narrowed heap that trips an OOM early and leaves
+    target/oom-<pid>.hprof) in the review worktree with REVIEW_LABELS_FILE set,
+    so the /debug review pages write their answers. Run from the root checkout
+    they had no labels file and wrote nothing."""
     free_port(ctx, WEB_PORT)
-    dispatch(ctx, ctx.repo_root, "Local web server (:9000)", ["./scripts/dev-server.sh"])
+    dispatch(ctx, ctx.repo_root, "Local web server (:9000)", ["./scripts/review-server"])
     return 0
 
 
