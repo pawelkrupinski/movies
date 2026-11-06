@@ -518,7 +518,7 @@ xtra-fks-suffix	query				banner		(?iu)\s*[|_]\s*FKS\s*$		'<film>_FKS' / '<film> 
 # A version billed after the title as a screen and its audio language (UK Savoy Grantham's "Ramayana: Rise of a
 # Legend 2D - Hindi"), or Spain's original-version mark ("… 18-19 VOSE", Cine Imf Ondara): query-only, so the
 # language version keeps its own card.
-xtra-screen-language-suffix	query				format		(?iu)\s+[23]D\s*[-–—]\s*\p{L}+\s*$		'<film> 2D - Hindi' screen-and-language version suffix	[["Ramayana: Rise of a Legend 2D - Hindi","Ramayana: Rise of a Legend"]]
+xtra-screen-language-suffix	query				format		(?iu)\s+[23]D\s*(?:[-–—]\s*\p{L}+|\(\s*\p{L}+\s*\))\s*$		'<film> 2D - Hindi' / '<film> 2D (Malayalam)' screen-and-language version suffix	[["Ramayana: Rise of a Legend 2D - Hindi","Ramayana: Rise of a Legend"],["Ramayana: Rise of a Legend 2D (Malayalam)","Ramayana: Rise of a Legend"]]
 xtra-version-original-suffix	query				format		(?iu)\s+(?:V\.?O\.?S\.?E\.?|VOSI|VOS|VO)\s*$		'<film> VOSE' / 'VOS' / 'VO' Spanish original-version suffix	[["El Elixir De Amor - ÓPERA PREG. MET CAN 18-19 VOSE","El Elixir De Amor - ÓPERA PREG. MET CAN 18-19"]]
 xtra-ukrainski-lang-suffix	query				format		(?iu)\s*[.(\s]\s*(?:ukrai[ńn]ski|ukrainian)\s+(?:dubbing|napisy|lektor)\s*\)?\s*$		'<film> [.( ]ukraiński/ukrainian dubbing/napisy/lektor' UA-version marker — query-only strip so the row stays its own (matching the canonical UA exclusion) but resolves the base film	[["Digger ukraiński dubbing","Digger"],["Clayface ukraiński dubbing","Clayface"]]
 # Bare 'DKF - ' / 'DKF: ' film-club prefix (no club name) — the existing
