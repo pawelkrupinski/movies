@@ -175,6 +175,12 @@ def lint(root: str) -> list[str]:
     return problems
 
 
+def registry_name(name: str) -> str:
+    """The registry's name of a run's job: github.com names a called workflow's job `<caller job> / <job>` (`leg
+    (germany) / takes (germany)`, `timings / report (timings)`), and the registry names the job, as its workflow writes it."""
+    return name.split(" / ")[-1]
+
+
 # ── a red run: does it gate? ────────────────────────────────────────────────────────────────────────────────────────
 def report_only(rows: list[dict], file: str, jobs: list[dict]) -> tuple[bool, str]:
     """(True, why) when every failed job of a red run is unproven -- or an aggregate following one -- and one is."""
@@ -182,8 +188,9 @@ def report_only(rows: list[dict], file: str, jobs: list[dict]) -> tuple[bool, st
     failed = [j["name"] for j in jobs if j.get("conclusion") in ("failure", "timed_out")]
     if not failed:
         return False, "no failed job"
-    unproven = [n for n in failed if state.get(n, "unproven") == "unproven"]
-    gating = [n for n in failed if state.get(n, "unproven") not in ("unproven", "aggregate")]
+    proven = {n: state.get(n, state.get(registry_name(n), "unproven")) for n in failed}
+    unproven = [n for n in failed if proven[n] == "unproven"]
+    gating = [n for n in failed if proven[n] not in ("unproven", "aggregate")]
     if gating:
         return False, "gates: " + ", ".join(gating)
     if not unproven:
@@ -203,13 +210,15 @@ def prove(rows: list[dict], file: str, jobs: list[dict], number: str) -> list[st
     for j in jobs:
         if j.get("conclusion") != "success":
             continue
-        row = next((r for r in rows if r["kind"] == "job" and r["workflow"] == file and r["name"] == j["name"]), None)
+        mine = [r for r in rows if r["kind"] == "job" and r["workflow"] == file]
+        row = next((r for r in mine if r["name"] == j["name"]), None) \
+            or next((r for r in mine if r["name"] == registry_name(j["name"])), None)
         if row is None:
-            rows.append({"kind": "job", "workflow": file, "name": j["name"], "proven": number, "note": ""})
-            changed.append(j["name"])
+            rows.append({"kind": "job", "workflow": file, "name": registry_name(j["name"]), "proven": number, "note": ""})
+            changed.append(registry_name(j["name"]))
         elif row["proven"] == "unproven":
             row["proven"], row["note"] = number, ""
-            changed.append(j["name"])
+            changed.append(row["name"])
     return changed
 
 

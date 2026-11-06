@@ -51,6 +51,17 @@ job\tmain.yml\ttest (heavy1)\t2722
 job\tmain.yml\tcommit rules\tunproven\tborn today; owner: ci
 job\tidentity-model-convergence.yml\tpreflight\t2691
 """
+# a called workflow's jobs, named as the registry names them (github.com shows them under the caller's job)
+CALLED = ('job\tidentity-model-convergence.yml\ttakes (germany)\t2691\n'
+          'job\tidentity-model-convergence.yml\ttakes-drift-aa (germany)\tunproven\tborn today; owner: convergence\n')
+
+
+def load_rows(text):
+    with tempfile.NamedTemporaryFile("w", suffix=".tsv", delete=False) as f:
+        f.write(text)
+    rows = g.load(f.name)
+    os.unlink(f.name)
+    return rows
 
 
 class Lint(unittest.TestCase):
@@ -134,6 +145,16 @@ class ReportOnly(unittest.TestCase):
         self.assertFalse(only)
         self.assertIn("test (heavy1)", why)
 
+    def test_a_reusable_calls_job_is_read_by_its_own_name_under_githubs_caller_prefix(self):
+        # github.com names a called workflow's job `<caller job> / <job>`; the registry names the job
+        rows = load_rows(REGISTRY + CALLED)
+        jobs = [{"name": "leg (germany) / takes (germany)", "conclusion": "failure"}]
+        only, why = g.report_only(rows, "identity-model-convergence.yml", jobs)
+        self.assertFalse(only, why)
+        self.assertIn("leg (germany) / takes (germany)", why)
+        jobs = [{"name": "leg (germany) / takes-drift-aa (germany)", "conclusion": "failure"}]
+        self.assertTrue(g.report_only(rows, "identity-model-convergence.yml", jobs)[0])
+
     def test_aggregates_alone_gate(self):
         self.assertFalse(self.verdict("ci")[0])
 
@@ -206,6 +227,15 @@ class Prove(unittest.TestCase):
         g.save(f.name, rows)
         self.assertEqual(g.load(f.name)[-1]["name"], "e2e (rest)")
         os.unlink(f.name)
+
+    def test_a_green_run_proves_a_called_jobs_row_by_its_own_name(self):
+        # github.com's `leg (germany) / takes-drift-aa (germany)` proves the registry's `takes-drift-aa (germany)` row
+        rows = load_rows(REGISTRY + CALLED)
+        jobs = [{"name": "leg (germany) / takes-drift-aa (germany)", "conclusion": "success"}]
+        self.assertEqual(g.prove(rows, "identity-model-convergence.yml", jobs, "1010"), ["takes-drift-aa (germany)"])
+        names = [r["name"] for r in rows if r["workflow"] == "identity-model-convergence.yml"]
+        self.assertNotIn("leg (germany) / takes-drift-aa (germany)", names)
+        self.assertEqual(next(r for r in rows if r["name"] == "takes-drift-aa (germany)")["proven"], "1010")
 
 
 if __name__ == "__main__":
