@@ -55,14 +55,14 @@ class CdpWaitForSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
     page.eval("__freezeWatch.settleAfterFreeze()")
     val renderers = rendererPids(chrome)
     renderers should not be empty
-    val freezer = new Thread(() => {
-      Thread.sleep(100)
-      signal("STOP", renderers)
-      try Thread.sleep(2500) finally signal("CONT", renderers)
-    })
-    freezer.start()
+    // Frozen BEFORE the wait starts, so the whole freeze falls inside it. A freezer stopping them 100 ms into the
+    // wait raced the budget: on a loaded runner its `kill` landed after the 2000 ms were spent on a page that was
+    // never frozen, and the wait timed out on a freeze that had not happened yet (Main #2249).
+    signal("STOP", renderers)
+    val thaw = new Thread(() => { try Thread.sleep(2500) finally signal("CONT", renderers) })
+    thaw.start()
     try page.waitFor("window.settled === true", timeoutMs = 2000)
-    finally freezer.join()
+    finally thaw.join()
   }
 
   it should "still time out on a state the running page never reaches" in withPage { (_, page) =>
