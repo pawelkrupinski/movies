@@ -524,6 +524,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     // on this origin, can never be. The two state reads then confirm the answer
     // landed.
     page.waitFor("__userState.requested('/api/me/pl/hidden-films') && __userState.synced('Film A')")
+    // ...and its language reconcile: a read still out when the test picks pushes that pick once more (Main #2201).
+    page.waitFor("__userState.stateReadsSettled()")
   }
 
   "server-state reconcile" should
@@ -981,8 +983,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // once; they can land in either order, leaving the account on the OLDER pick
   // while this page shows the newer one — which the next load then undid. One
   // push at a time, the latest pick last, as on both apps.
+  //
+  // The boot's own language reconcile answering late (a slow runner, Main #2201) found the first pick pending and
+  // pushed it once more, so the count overshot 2: the test waits for that reconcile before it picks.
   it should "send language pushes one at a time, the latest pick last" in {
     onLoggedInIndex { page =>
+      answerStateReadsLate(page, 1500)
       awaitOwnReconcile(page)
       try {
         page.eval("__userState.holdFirstLanguagePush()")
@@ -5492,6 +5498,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  PUT for X") read after this is final, not a guess at how long a request takes. */
   private def awaitHiddenFilmsWrites(page: CdpPage, country: String = "pl"): Unit =
     page.eval(s"(_hiddenFilmsWrites[${jsString(country)}] || Promise.resolve()).then(() => true)")
+
+  /** Hold each `GET /api/me/state` this tab makes -- the boot's language reconcile -- for `delayMs` in the browser
+   *  before it goes out, as a slow runner answers it (Main #2201), without holding the one-at-a-time fixture server
+   *  every other request waits on. Every other request is left alone. */
+  private def answerStateReadsLate(page: CdpPage, delayMs: Long): Unit = {
+    val later = java.util.concurrent.Executors.newSingleThreadScheduledExecutor()
+    page.onEvent("Fetch.requestPaused") { params =>
+      val go: Runnable = () => page.send("Fetch.continueRequest", Json.obj("requestId" -> (params \ "requestId").as[String]))
+      val read = (params \ "request" \ "method").asOpt[String].contains("GET")
+      later.schedule(go, if (read) delayMs else 0L, java.util.concurrent.TimeUnit.MILLISECONDS)
+    }
+    page.send("Fetch.enable", Json.obj("patterns" -> Json.arr(Json.obj("urlPattern" -> "*/api/me/state"))))
+  }
 
   private def clearLocalStorage(page: CdpPage): Unit =
     page.eval("localStorage.clear(); applyFilters()")

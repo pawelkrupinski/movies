@@ -169,4 +169,27 @@
     },
   };
   window.__userState = userState;
+
+  // The state reads THIS document has made and the page has finished acting on: the boot's language reconcile reads
+  // `/api/me/state`, then pushes a pick it finds pending. A test picking while that read is still out met that push
+  // as one more than it made (Main #2201). A read counts as settled one macrotask after its answer and body are in,
+  // so the reconcile's own continuation, a microtask, has run by then. Installed ahead of the page's scripts, so the
+  // boot's read passes through it; it answers exactly as the real `fetch` does.
+  var stateReads = { made: 0, settled: 0 };
+  var pageFetch = window.fetch;
+  window.fetch = function (url, opts) {
+    var sent = pageFetch.apply(this, arguments);
+    if (!/\/api\/me\/state$/.test(String(url)) || (opts && opts.method && opts.method !== 'GET')) return sent;
+    stateReads.made++;
+    var settle = function () { pageSetTimeout(function () { stateReads.settled++; }, 0); };
+    sent.then(function (resp) {
+      var json = resp.json.bind(resp);
+      resp.json = function () { var body = json(); body.then(settle, settle); return body; };
+      if (!resp.ok) settle();
+    }, settle);
+    return sent;
+  };
+  var pageSetTimeout = window.setTimeout;
+  // Every state read this document made has been acted on, and there was at least one.
+  userState.stateReadsSettled = function () { return stateReads.made > 0 && stateReads.settled === stateReads.made; };
 })();
