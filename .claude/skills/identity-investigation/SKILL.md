@@ -78,6 +78,7 @@ Design and limits: docs/design/identity-slice.md.
 | What did prod's model take at a past moment, over exactly the answers and listings it had then? | `scripts/identity-replay uk --at 2026-10-26T22:10:30Z --listing "Riverside\|Stranger"` — every answer, venue page and listing rebuilt as it stood then from `identity_history` (`IdentityHistoryReplay`), resolved under this checkout's code; the model's take (the agreement stage is not replayed) |
 | When and why did prod's take of a listing change, per deploy? Would CI have reproduced it? | `scripts/listing-history uk --title "ties that bind" [--venue X] [--since 7d] [--replay]` (below) |
 | Why did a listing flip (X → Y → X): a late answer, a sibling's arrival, a rule, a deploy? | `scripts/flip-timeline de --venue Abaton --title Geister [--since 7d]` — one timeline of its projections, take changes, asks and late answers, each reversal classified (below) |
+| Which reversals did a whole country have this week, and of what class? | `scripts/flip-timeline de --all [--since 7d] [--summary] [--tsv [FILE]]` — every X → Y → X within 24 h, classified LATE-ANSWER / SIBLING/POPULATION / RULE / DEPLOY/RESTART / UNCLASSIFIED with the reason; a per-class count table (below) |
 
 ## Fast batches, fast iteration
 
@@ -394,6 +395,19 @@ otherwise). Validated 2026-11-05 on the hand-reconstructed cases: DE Abaton «Ge
 title answer +8.8 s into the agreement phase), UK ARC Stockton «Hay Fever» 10-30 ×2 LATE-ANSWER (inferred, poster),
 DE Abaton «Eternity» 10-31 DEPLOY/RESTART, Lichtblick «Buddies» (the drift lattice) SIBLING/POPULATION.
 `--dump` keeps what was read; `--from` prints from it (the self-test's fixtures, `scripts/testdata/flip-timeline/`).
+
+`--venue` and `--title` match case and punctuation aside («(IMAX) Sinners» finds «IMAX Sinners»), either may be left out:
+the take changes are paged in whole (400 a call), a family's siblings are read at any size (200 ids a call).
+
+**`--all`** (no `--venue`/`--title`) reads every take change of the country, finds every reversal by the flip-prediction
+backtest's definition (a listing's change that goes back to the film its previous change left, restored within 24 h),
+then reads projections, asks and member publications around those only (~1–2 min). It prints the per-class count table
+and a line per reversal (`--summary`: the table only; `--tsv [FILE]`: a row per reversal). Asks are matched by the
+listing's clean title (brackets dropped) and the record asks its family filed after the first of those; a class beyond
+the four above is **UNCLASSIFIED**, always with its reason: no projection line found, or an answer-triggered restore
+with no ask naming the title (asks are keyed by the resolver's search title, which the listing's text may not spell).
+Validated 2026-11-06: DE 132 reversals (70 LATE-ANSWER, 50 DEPLOY/RESTART, 9 SIBLING/POPULATION), Geister's 56 all
+LATE-ANSWER; UK 105 (49 LATE-ANSWER), «(IMAX) Sinners» 22 LATE-ANSWER and 2 DEPLOY/RESTART (a boot restored them).
 
 ## identity-slice --explain
 

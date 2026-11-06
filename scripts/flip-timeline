@@ -7,8 +7,15 @@
 # DEPLOY/RESTART, with why.
 #
 #   scripts/flip-timeline <cc> --venue S --title S [--since 7d] [--dump FILE | --from FILE]
+#   scripts/flip-timeline <cc> --all [--since 7d] [--summary] [--tsv [FILE]] [--dump FILE | --from FILE]
 #
-#   --venue, --title  substrings of the venue and the billed title (case aside); every matching listing
+#   --venue, --title  substrings of the venue and the billed title (case and punctuation aside: «(IMAX) Sinners» finds
+#                     «IMAX Sinners»); every matching listing; either may be left out (all changes are paged in)
+#   --all             the whole country: every reversal (a take that went back to the film it left within 24 h, the
+#                     flip-prediction backtest's definition), each classified LATE-ANSWER / SIBLING/POPULATION / RULE /
+#                     DEPLOY/RESTART / UNCLASSIFIED with the reason; prints a per-class count table and a line each
+#   --summary         with --all: the table only
+#   --tsv [FILE]      with --all: a row per reversal, to FILE (after the table on stdout when bare)
 #   --since           how far back: Nd, Nh or Nm (default 7d; identity_history keeps about a week)
 #   --dump FILE       keep everything read (mirror rows, log lines) as JSON; --from FILE prints from such a file
 #

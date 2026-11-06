@@ -9,6 +9,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -160,30 +161,189 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(len(verdicts(out)), 2)
 
 
-class GatherTest(unittest.TestCase):
-    def test_it_reads_the_mirror_after_its_freshness_then_the_logs_and_dumps_what_it_read(self):
+class FakeMirror:
+    """The local mirror and the logs as a runner: mongosh scripts answered by the marker comment each starts with, from
+    the takes, siblings, asks and listings it is given — paging as the server does (PAGE rows after the cursor)."""
+
+    def __init__(self, takes, siblings=(), asks=(), listings=(), projections=()):
+        self.takes = sorted(takes, key=lambda t: (t["at"], t["oid"]))
+        self.siblings, self.asks, self.listings, self.projections = list(siblings), list(asks), list(listings), list(projections)
+        self.calls = []
+
+    def scripts(self, marker):
+        return [c[-1] for c in self.calls if c[0] == "mongosh" and f"// {marker}\n" in c[-1]]
+
+    def __call__(self, argv, **_):
+        self.calls.append(argv)
+        text = " ".join(argv)
+        if argv[0].endswith("freshness"):
+            return 0, "de  kinowo_de_prod_mirror: synced (fixture)\n"
+        if argv[0] == "mongosh":
+            return 0, json.dumps(self.answer(argv[-1])) + "\n"
+        if "logsql" in text and "identity projection" in text:
+            return 0, "\n".join(json.dumps(p) for p in self.projections) + "\n"
+        if "logsql" in text or "/api/v1/query" in text:
+            return 0, ""
+        raise AssertionError(f"unexpected call {argv}")
+
+    def answer(self, script):
+        const = lambda name, default=None: (re.search(rf"\b{name} = (\[.*?\]|\"[^\"]*\"|\d+)[,;]", script) or [None, default])[1]
+        if "// takes\n" in script:
+            page, at, oid = int(const("PAGE", 400)), int(const("AFTER_AT", 0)), json.loads(const("AFTER_ID", '""'))
+            rows = [t for t in self.takes if (t["at"], t["oid"]) > (at, oid)] if oid else self.takes
+            return [dict(t, readIds=[]) for t in rows[:page]]
+        if "// siblings\n" in script:
+            ids = set(json.loads(const("IDS")))
+            return [s for s in self.siblings if s["id"] in ids]
+        if "// asks\n" in script:
+            return {"asks": self.asks, "answers": []}
+        if "// listings\n" in script:
+            ids = set(json.loads(const("IDS")))
+            return [l for l in self.listings if l["id"] in ids]
+        return []
+
+
+def mirror_take(index, at, before=None, after=1, members=None, key=None):
+    key = key or f"N\x00Cinema {index}\x00https://x/{index}\x00Film {index}"
+    return {"at": at, "id": key, "oid": f"{index:024x}", "build": "2405daba00f", "after": {
+        "kind": "gained", "venue": f"Cinema {index}", "listing": f"Film {index}", "tmdb_before": before, "tmdb_after": after,
+        "stage": "fill", "basis": "Filled", "decided_by": "fill:venues.current", "trigger": "scrape", "cause": "evidence",
+        "members": members if members is not None else [key]}}
+
+
+class TitleSearchTest(unittest.TestCase):
+    """«(IMAX) Sinners» (24 UK listings, a known late answer) was missed by a search that took the brackets literally
+    on one side and the resolver's clean title on the other."""
+
+    def test_a_parenthesised_title_finds_its_listing_with_or_without_the_brackets(self):
+        pattern = re.compile(timeline.title_pattern("(IMAX) Sinners"), re.I)
+        self.assertTrue(pattern.search("(IMAX) Sinners"))
+        self.assertTrue(pattern.search("IMAX Sinners"))
+        self.assertTrue(pattern.search("imax - sinners"))
+        self.assertFalse(pattern.search("Sinners"))
+        self.assertEqual(timeline.title_pattern("Geister"), "Geister")
+
+    def test_the_search_the_mirror_and_the_logs_get_is_that_pattern(self):
         calls = []
-        history = buddies_lattice()["history"]
 
         def run(argv, **_):
-            calls.append(argv)
-            text = " ".join(argv)
-            if argv[0].endswith("freshness"):
-                return 0, "de  kinowo_de_prod_mirror: synced — fresh\n"
-            if argv[0] == "mongosh":
-                return 0, json.dumps(history) + "\n"
-            if "query_range" not in text and "/api/v1/query" in text:
-                return 0, json.dumps({"data": {"result": []}})
-            if "logsql" in text and "identity projection" in text:
-                return 0, "\n".join(json.dumps(p) for p in buddies_lattice()["projections"]) + "\n"
-            if "logsql" in text:
-                return 0, ""
-            raise AssertionError(f"unexpected call {argv}")
+            calls.append(" ".join(argv))
+            return (0, "") if not argv[0].endswith("freshness") else (0, "uk fresh")
+        with contextlib.redirect_stdout(io.StringIO()):
+            timeline.main(["uk", "--title", "(IMAX) Sinners", "--dump", os.devnull], run=run, now=DAY / 1000)
+        self.assertTrue(any('TITLE = "IMAX[^0-9A-Za-z]+Sinners"' in c for c in calls))
+        self.assertTrue(any("IMAX[^0-9A-Za-z]+Sinners" in c and "logsql" in c for c in calls))
 
+    def test_a_take_change_only_the_log_holds_is_found_by_the_unbracketed_title(self):
+        raw = buddies_lattice()
+        raw["title"], raw["history"]["takes"] = "IMAX Buddies", []
+        change = {"_time": timeline._iso(DAY / 1000 + 10_800), "kind": "gained", "venue": "Programmkino Lichtblick e.V.",
+                  "listing": "(IMAX) Buddies", "tmdb_after": "1629957", "stage": "fill", "decided_by": "fill:venues.current",
+                  "projection_trigger": "scrape", "build": "2405daba00f", "members": "3"}
+        self.assertEqual(len(timeline.merge_logged([], [change], raw)), 1)
+
+    def test_family_asks_name_the_clean_title(self):
+        needle = re.compile(timeline.ask_needle("(IMAX) Sinners"), re.I)
+        self.assertTrue(needle.search("unanswered|metacritic|record|sinners"))
+        self.assertTrue(needle.search("unanswered|rt|title|Sinners"))
+        self.assertTrue(needle.search("unanswered|rt|record|sinners-2025"))
+        self.assertFalse(needle.search("unanswered|metacritic|record|two-sinners-and-a-mule"))
+
+
+class EveryReversalTest(unittest.TestCase):
+    """`flip-timeline <cc> --all`: every reversal of a country, classified; the fixtures are prod's take changes (and the
+    asks and projections around them) of DE «Geister» and UK «(IMAX) Sinners», read 2026-11-06."""
+
+    def table(self, raw):
+        rows = timeline.analyse_all(raw)
+        return {c: sum(1 for r in rows if r["class"] == c) for c in timeline.CLASSES}
+
+    def test_every_geister_reversal_is_a_late_answer(self):
+        counts = self.table(fixture("all-de-geister"))
+        self.assertEqual(counts["LATE-ANSWER"], 56)
+        self.assertEqual(sum(counts.values()), 56)
+
+    def test_sinners_at_24_uk_cinemas_is_a_late_answer_but_for_the_two_a_boot_restored(self):
+        counts = self.table(fixture("all-uk-sinners"))
+        self.assertEqual((counts["LATE-ANSWER"], counts["DEPLOY/RESTART"], sum(counts.values())), (22, 2, 24))
+
+    def test_the_count_table_and_a_tsv_row_per_reversal(self):
+        tsv = io.StringIO()
+        out = timeline.render_all(fixture("all-de-geister"), summary=True, tsv=tsv)
+        self.assertIn("LATE-ANSWER             56    100%", out)
+        self.assertIn("total                   56", out)
+        self.assertNotIn("Geister", out)    # --summary: the table only
+        lines = tsv.getvalue().splitlines()
+        self.assertEqual(lines[0].split("\t"), list(timeline.TSV_COLUMNS))
+        self.assertEqual(len(lines), 57)
+        self.assertTrue(all(l.startswith("LATE-ANSWER\tde\t") for l in lines[1:]))
+        full = timeline.render_all(fixture("all-de-geister"))
+        self.assertIn("| Geister", full)
+        self.assertIn("filed late", full)
+
+    def test_a_take_that_went_back_after_a_day_is_a_new_decision_not_a_reversal(self):
+        raw = buddies_lattice()
+        raw["history"]["takes"][2]["at"] += 90_000_000
+        rows = timeline.analyse_all(raw)
+        self.assertEqual([r["restored_after_s"] for r in rows], [3600.0])
+
+    def test_a_restore_with_no_projection_line_is_unclassified_and_says_why(self):
+        raw = buddies_lattice()
+        raw["projections"] = []
+        for take in raw["history"]["takes"]:
+            take["after"]["members"] = [L]
+        raw["history"]["siblings"] = raw["history"]["listings"] = []
+        rows = timeline.analyse_all(raw)
+        self.assertEqual({r["class"] for r in rows}, {"UNCLASSIFIED"})
+        self.assertIn("no projection line found", rows[0]["why"])
+
+    def test_an_answer_triggered_restore_with_no_ask_named_by_its_title_is_unclassified(self):
+        raw = buddies_lattice()
+        for take in raw["history"]["takes"]:
+            take["after"]["members"] = [L]
+        raw["history"]["siblings"] = raw["history"]["listings"] = []
+        raw["projections"][1]["projection_trigger"] = raw["projections"][2]["projection_trigger"] = "answer"
+        rows = timeline.analyse_all(raw)
+        self.assertEqual([r["class"] for r in rows], ["UNCLASSIFIED", "UNCLASSIFIED"])
+        self.assertIn("answer-triggered projection, but no ask naming the listing's title", rows[0]["why"])
+
+    def test_it_pages_all_changes_then_reads_asks_projections_and_listings_around_the_reversals_only(self):
+        history = buddies_lattice()["history"]
+        takes = [dict(t, oid=f"{i:024x}") for i, t in enumerate(history["takes"])]
+        takes += [mirror_take(100 + i, DAY + 20_000_000 + i * 1000) for i in range(450)]    # one-way changes: no reversal
+        for take in takes[3:]:
+            take["after"]["members"] = [take["id"]]
+        for take in takes[:3]:
+            take["after"]["members"] = [L]
+        mirror = FakeMirror(takes, projections=buddies_lattice()["projections"])
         with tempfile.TemporaryDirectory() as tmp:
             dump = os.path.join(tmp, "dump.json")
             with contextlib.redirect_stdout(io.StringIO()) as printed:
-                timeline.main(["de", "--venue", "Lichtblick", "--title", "Buddies", "--dump", dump], run=run, now=DAY / 1000 + 86400)
+                timeline.main(["de", "--all", "--summary", "--dump", dump], run=mirror, now=DAY / 1000 + 86400)
+            self.assertIn("2 reversal(s) among 453 take change(s)", printed.getvalue())
+            with contextlib.redirect_stdout(io.StringIO()) as again:
+                timeline.main(["de", "--all", "--summary", "--from", dump], run=None)
+            self.assertEqual(again.getvalue(), printed.getvalue())
+        self.assertEqual(len(mirror.scripts("takes")), 2)
+        self.assertEqual(len(mirror.scripts("all-asks")), 1)
+        self.assertEqual(mirror.scripts("siblings"), [])
+        self.assertIn("RULE", printed.getvalue())
+
+    def test_all_takes_no_venue_or_title(self):
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            timeline.parse_args(["de", "--all", "--title", "x"])
+
+
+class GatherTest(unittest.TestCase):
+    def test_it_reads_the_mirror_after_its_freshness_then_the_logs_and_dumps_what_it_read(self):
+        history = buddies_lattice()["history"]
+        mirror = FakeMirror([dict(t, oid=f"{i:024x}") for i, t in enumerate(history["takes"])], history["siblings"],
+                            projections=buddies_lattice()["projections"])
+        calls = mirror.calls
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = os.path.join(tmp, "dump.json")
+            with contextlib.redirect_stdout(io.StringIO()) as printed:
+                timeline.main(["de", "--venue", "Lichtblick", "--title", "Buddies", "--dump", dump], run=mirror, now=DAY / 1000 + 86400)
             self.assertEqual(verdicts(printed.getvalue()), ["SIBLING/POPULATION", "SIBLING/POPULATION"])
             with contextlib.redirect_stdout(io.StringIO()) as again:
                 timeline.main(["de", "--title", "x", "--from", dump], run=None)
@@ -192,6 +352,53 @@ class GatherTest(unittest.TestCase):
         self.assertIn("kinowo_de_prod_mirror", calls[1][2])
         self.assertIn('TITLE = "Buddies"', calls[1][-1])
         self.assertTrue(any('"identity projection:"' in " ".join(c) for c in calls))
+
+    def test_a_countrys_week_of_take_changes_is_read_in_full_not_the_first_400(self):
+        # DE keeps 918 take changes a week: an empty-title run read the first 400 and undercounted every class
+        mirror = FakeMirror([mirror_take(i, DAY + i * 1000) for i in range(950)])
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = os.path.join(tmp, "dump.json")
+            with contextlib.redirect_stdout(io.StringIO()):
+                timeline.main(["de", "--venue", "Cinema", "--title", "", "--dump", dump], run=mirror, now=DAY / 1000 + 86400)
+            with open(dump, encoding="utf-8") as f:
+                kept = json.load(f)["history"]["takes"]
+        self.assertEqual(len(kept), 950)
+        self.assertEqual(len({t["id"] for t in kept}), 950)
+        self.assertEqual(len(mirror.scripts("takes")), 3)
+
+    def test_takes_changed_in_one_millisecond_are_paged_by_their_id_not_skipped(self):
+        mirror = FakeMirror([mirror_take(i, DAY) for i in range(1000)])
+        with contextlib.redirect_stdout(io.StringIO()):
+            timeline.main(["de", "--title", "Film", "--dump", os.devnull], run=mirror, now=DAY / 1000 + 86400)
+        self.assertEqual(len({c for s in mirror.scripts("takes") for c in re.findall(r'AFTER_ID = "(\w*)"', s)}), 3)
+
+    def test_a_family_of_300_members_still_reads_its_siblings(self):
+        # families over 120 members skipped their siblings' takes and listings, so most reversals never paired up
+        members = [f"P\x00Cinema {i}\x00Film\x00" for i in range(300)]
+        siblings = [{"at": DAY + 5000, "id": m, "members": members[:299]} for m in members[::40]]
+        listings = [{"at": DAY + 6000, "id": members[7]}]
+        mirror = FakeMirror([mirror_take(1, DAY + 9000, members=members)], siblings, listings=listings)
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = os.path.join(tmp, "dump.json")
+            with contextlib.redirect_stdout(io.StringIO()) as printed:
+                timeline.main(["de", "--title", "Film 1", "--dump", dump], run=mirror, now=DAY / 1000 + 86400)
+            with open(dump, encoding="utf-8") as f:
+                history = json.load(f)["history"]
+        self.assertNotIn("over 120", printed.getvalue())
+        self.assertEqual({s["id"] for s in history["siblings"]}, set(members[::40]))
+        self.assertEqual(history["listings"], listings)
+        self.assertEqual(len(mirror.scripts("siblings")), 2)    # 300 member ids, 200 to a call
+
+    def test_a_siblings_unchanged_decisions_are_kept_once(self):
+        members = [f"P\x00Cinema {i}\x00Film\x00" for i in range(3)]
+        siblings = [{"at": DAY + at, "id": members[1], "members": members[:2 + (at > 3000)]} for at in (1000, 2000, 3000, 4000)]
+        mirror = FakeMirror([mirror_take(1, DAY + 9000, members=members)], siblings)
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = os.path.join(tmp, "dump.json")
+            with contextlib.redirect_stdout(io.StringIO()):
+                timeline.main(["de", "--title", "Film 1", "--dump", dump], run=mirror, now=DAY / 1000 + 86400)
+            with open(dump, encoding="utf-8") as f:
+                self.assertEqual([s["at"] - DAY for s in json.load(f)["history"]["siblings"]], [1000, 3000 + 1000])
 
     def test_an_unreadable_mirror_is_said_not_guessed(self):
         def run(argv, **_):
