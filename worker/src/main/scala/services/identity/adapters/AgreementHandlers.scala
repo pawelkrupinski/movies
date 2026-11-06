@@ -152,8 +152,9 @@ object AgreementQuestions {
  * doubling to 6 h, its kind's policy) and the task is
  * done: the stage hands the question over again once the families' answers move, and it is queued and asked once its
  * wait has ended — the queue's own backoff no longer asks it a second time. A host whose breaker is open was never asked:
- * it is a failure against that host as any other (counted [[AgreementQuestionMetrics.Deferred]]), released early when the
- * host is back ([[HostRecovery]]). A poster whose fetch has
+ * the ask waits on that host (counted [[AgreementQuestionMetrics.Deferred]]), held back as a failure is and released early
+ * when the host is back ([[HostRecovery]]), but counted as no failure until it has been turned away for
+ * [[QuestionPolicies.TurnAwayGiveUp]] ([[QuestionMemory.turnedAway]]). A poster whose fetch has
  * failed [[QuestionPolicies.PosterGiveUpAttempts]] times in a row is given up on: filed as unread, as the stage reads it,
  * and remembered for [[QuestionPolicies.PosterUnreadAge]].
  *
@@ -236,11 +237,12 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
   private def answered(question: Question, label: String, what: String, filed: () => Unit)(ask: => Unit): HandlerOutcome =
     asking(Seq(question), label, what, filed) { ask; Answered }
 
-  /** `questions` asked as one: `ask` run — it says how it came out — then a projection asked for (`filed`). Any failure —
-   *  a host whose breaker is open or whose fleet pace turned the ask away among them — is remembered against the host it went to
-   *  ([[AgreementQuestions.hostOf]]: the hosts `ask` requests are noted as it runs), a poster failing for the last time
-   *  given up on, and a projection asked for too: the questions were attempted. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or
-   *  [[AgreementQuestionMetrics.Failed]]. */
+  /** `questions` asked as one: `ask` run — it says how it came out — then a projection asked for (`filed`). A failure is
+   *  remembered against the host it went to ([[AgreementQuestions.hostOf]]: the hosts `ask` requests are noted as it
+   *  runs); an ask a host's open breaker or its fleet pace turned away is remembered as a WAIT, no failure counted
+   *  ([[QuestionMemory.turnedAway]]) until it has been turned away for [[QuestionPolicies.TurnAwayGiveUp]]. A poster
+   *  reaching its give-up count is given up on, and a projection asked for too: the questions were attempted. Counted
+   *  under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]] or [[AgreementQuestionMetrics.Failed]]. */
   private def asking(questions: Seq[Question], label: String, what: String, filed: () => Unit)(ask: => String): HandlerOutcome = {
     val requested = new RequestedHost.Recording
     try {
@@ -251,11 +253,13 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
     }
     catch {
       case scala.util.control.NonFatal(e) =>
-        // a host's open breaker or the fleet pacer turning the ask away (CircuitOpenException) is a failed attempt against
-        // that host like any other: remembered, so a cluster waiting on it settles and it reaches give-up, rather than
-        // deferred unattempted for as long as the host stays blocked
-        metrics.asked(label, if (e.isInstanceOf[CircuitOpenException]) AgreementQuestionMetrics.Deferred else AgreementQuestionMetrics.Failed)
-        val failures = memory.failed(questions, AgreementQuestions.hostOf(e, requested.last))
+        // a host's open breaker or the fleet pacer turning the ask away (CircuitOpenException) is a WAIT against that host:
+        // remembered and held back as a failure is (and released when the host is back), but counted as no failure, so a
+        // flapping host spends no poster's attempts; one blocked for TurnAwayGiveUp still ends, as a failure given up on
+        val turnedAway = e.isInstanceOf[CircuitOpenException]
+        metrics.asked(label, if (turnedAway) AgreementQuestionMetrics.Deferred else AgreementQuestionMetrics.Failed)
+        val host     = AgreementQuestions.hostOf(e, requested.last)
+        val failures = if (turnedAway) memory.turnedAway(questions, host) else memory.failed(questions, host)
         logger.debug(s"agreement: $what failed (${e.getMessage}), asked again once its wait ends")
         val givenUp = failures.collect {
           case (Question.Poster(poster), times) if times >= QuestionPolicies.PosterGiveUpAttempts => poster

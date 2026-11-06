@@ -96,8 +96,9 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
   // An ask a host's open breaker or the fleet pacer turned away (both CircuitOpenException) was Deferred with nothing
   // remembered: never attempted, so a cluster waiting on it waited as long as the host stayed blocked, re-run every
   // <= 30 min (prod, 14 days to 11-05: 366 Wikidata asks). It is a failed attempt against that host now: the settle rule
-  // decides without it, it is asked again once its wait ends (or the host is back, HostRecovery), and it reaches give-up.
-  it should "count an ask a host's open breaker turned away as a failed attempt against that host, filing nothing" in {
+  // decides without it, it is asked again once its wait ends (or the host is back, HostRecovery). Since 2026-11-06 it is
+  // a WAIT, not a failure: attempted, but no failure counted (a flapping host spent every attempt), until a day of them.
+  it should "remember an ask a host's open breaker turned away as a wait on that host, no failure counted, filing nothing" in {
     val store = world(); val remembered = newMemory(); val projections = new AtomicInteger
     val dune    = Question.Family(VoterFamily.RottenTomatoes, "title|Dune")
     val blocked = new Answering(VoterFamily.RottenTomatoes, Some(new CircuitOpenException("www.rottentomatoes.com", 60000L)))
@@ -109,7 +110,8 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     store.answers(VoterFamily.RottenTomatoes).titled("Dune") shouldBe Answer.Unknown
     store.answers(VoterFamily.Metacritic).titled("Dune") shouldBe Answer.Unknown
     remembered.attempted(dune) shouldBe true
-    remembered.outcome(dune).collect { case QuestionMemory.Outcome.Failed(1, _, host) => host } shouldBe Some(Some("www.rottentomatoes.com"))
+    remembered.outcome(dune).collect { case QuestionMemory.Outcome.Failed(0, _, host) => host } shouldBe Some(Some("www.rottentomatoes.com"))
+    remembered.concluded(dune) shouldBe false                                       // a wait: a take waiting on it waits
     projections.get shouldBe 2                                                       // attempted: a waiting cluster may settle
     handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Skipped     // inside its wait: not asked again
     blocked.asked.get shouldBe 1

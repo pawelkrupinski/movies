@@ -8,7 +8,8 @@ package adapters
  * known -- or GIVEN UP on: the question memory holds a durable non-answer, or failures its kind gives up on
  * ([[QuestionMemory.concluded]]). An ask still inside its retries holds
  * the listing; no clock of ours ends the wait, the answers' own timeouts and retries do (each ask terminates: a turned-away
- * ask is a failed one, a family with no source is filed as no film).
+ * ask is a wait that ends as a failure given up on after [[QuestionPolicies.TurnAwayGiveUp]], a family with no source is
+ * filed as no film).
  *
  * Asked through the question queue, claimed ahead of the agreement's own questions (`enqueue`): a new film's questions are
  * asked straight away (the owner, 2026-10-23), and the listing is taken in once their answers' filings wake the model.

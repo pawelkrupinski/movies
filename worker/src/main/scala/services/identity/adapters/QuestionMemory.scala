@@ -151,7 +151,30 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
   /** The questions whose ask failed just now — asked again on their kind's failure backoff — and how many times in a
    *  row each has failed now (counted since the last answer or durable non-answer). `host`: where the failing request
    *  went, when the asker knows it. */
-  def failed(questions: Iterable[Question], host: Option[String] = None): Map[Question, Int] = {
+  def failed(questions: Iterable[Question], host: Option[String] = None): Map[Question, Int] =
+    failing(questions, host)((_, previous, _) => (previous.fold(1)(failuresOf(_) + 1), None))
+
+  /** The questions whose ask was TURNED AWAY just now -- the host's breaker open, or the fleet's pace refusing it
+   *  (`CircuitOpenException`): a WAIT, not a failure. Held back on the failure backoff (and released at once when the
+   *  host is back, [[recovered]]), but no failure counted: a flapping host turning a poster away eight times gave it up
+   *  for good, and with it the poster's evidence. Yet every ask still terminates (fix 1's input gate waits on it): one
+   *  turned away for [[QuestionPolicies.TurnAwayGiveUp]] with no real attempt between -- an answer, a non-answer or a
+   *  failure ends the run -- counts its kind's give-up failures ([[QuestionPolicies.giveUpFailures]]), a terminal
+   *  failure as [[concluded]] reads it. The run's start is kept on the marker, so a restart ends no run early or late.
+   *  Returns how many failures each counts now. */
+  def turnedAway(questions: Iterable[Question], host: Option[String] = None): Map[Question, Int] =
+    failing(questions, host) { (question, previous, now) =>
+      val since   = previous.flatMap(doc => BsonFields.int64(doc.get(TurnedAwaySince))).getOrElse(now)
+      val counted = previous.fold(0)(failuresOf)
+      val times   = if (now - since >= QuestionPolicies.TurnAwayGiveUp.toMillis) counted.max(QuestionPolicies.giveUpFailures(question.kind)) else counted
+      (times, Some(since))
+    }
+
+  /** Marks `questions` failing on their kind's backoff (doubled from the last failure's wait), each counting the failures
+   *  `count` says of it -- given its last failure's marker, if any, and now -- and, for a turn-away, when its run of
+   *  turn-aways began. */
+  private def failing(questions: Iterable[Question], host: Option[String])
+                     (count: (Question, Option[BsonDocument], Long) => (Int, Option[Long])): Map[Question, Int] = {
     val asked = questions.toSeq.distinct.flatMap(question =>
       for { waits <- policyOf(question).failureWaits; marker <- markerOf(question) } yield (question, marker, waits))
     if (asked.isEmpty) Map.empty
@@ -160,10 +183,11 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
       val now  = clock.millis()
       val marked = asked.map { case (question, marker, (first, max)) =>
         // A marker without a failure wait is a durable one (or none): the backoff starts over.
-        val previous = held.get(marker).filter(failureWaitOf(_).isDefined)
-        val wait     = previous.flatMap(failureWaitOf).fold(first.toMillis)(p => (p * 2).min(max.toMillis))
-        val times    = previous.fold(1)(failuresOf(_) + 1)
+        val previous         = held.get(marker).filter(failureWaitOf(_).isDefined)
+        val wait             = previous.flatMap(failureWaitOf).fold(first.toMillis)(p => (p * 2).min(max.toMillis))
+        val (times, turned)  = count(question, previous, now)
         val doc = new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(FailureWait, BsonInt64(wait)).append(Failures, BsonInt64(times.toLong))
+        turned.foreach(since => doc.append(TurnedAwaySince, BsonInt64(since)))
         host.foreach(h => doc.append(HostField, BsonString(h)))
         (question, marker -> doc, times)
       }
@@ -249,6 +273,8 @@ object QuestionMemory {
   /** The fewest reads a round must have wanted, all unanswered, to call TMDB down rather than blame the questions it
    *  asked. */
   val MinOutageReads: Int = 3
+  /** The marker field holding when a turned-away question's run of turn-aways began ([[QuestionMemory.turnedAway]]). */
+  private val TurnedAwaySince = "turnedAwaySinceMs"
   /** The marker field holding the host a failed question's request went to. */
   private val HostField = "host"
   /** The marker field naming an answered question's outcome; a marker with neither it nor a failure wait is a durable

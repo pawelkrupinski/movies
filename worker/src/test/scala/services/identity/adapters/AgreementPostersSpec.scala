@@ -206,4 +206,30 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     store.wanted(PosterQuestion.Venue(patria)) shouldBe true
     memory.due(Set[Question](Question.Poster(PosterQuestion.Venue(patria)))) should not be empty
   }
+  // A turned-away ask (its host's breaker open, or the fleet's pace refusing it) counted as a failed attempt: a flapping
+  // poster host, HostRecovery releasing the wait each time its breaker closed, spent the poster's eight attempts in
+  // minutes and it was given up on for a week, its evidence lost. A turn-away is a wait now; but a host blocked for a day
+  // still ends the ask (the model's input gate waits on every ask terminating), and the run's start is kept with the
+  // question, so a worker killed in between neither restarts the day nor ends it early.
+  it should "wait out a host that turns its asks away, however often, yet give up once it has been blocked a day, across a restart" in {
+    val docs     = new InMemoryTmdbDocuments   // what Mongo keeps: the answers and the question memory's markers
+    val store    = new PosterAnswerStore(new FamilyAnswerStore(docs, clock), clock)
+    val question = Question.Poster(PosterQuestion.Venue(patria))
+    val blocked  = new PosterDownload { def fetch(url: String) = throw new tools.CircuitOpenException("kinopatria.com", 60000L) }
+    val memory   = new QuestionMemory(docs, "pl-PL", clock)
+    val flapping = asker(store, hashing(blocked), memory = memory)
+    (1 to 3 * QuestionPolicies.PosterGiveUpAttempts).foreach { _ =>
+      flapping.handle(venueTask()) shouldBe HandlerOutcome.Done
+      memory.recovered("kinopatria.com")   // its breaker closes: HostRecovery releases the wait at once
+      clock.advanceSeconds(60)
+    }
+    store.venue(patria) shouldBe Answer.Unknown
+    memory.concluded(question) shouldBe false
+    // killed (no shutdown hook); a new worker over the same stores, the host still blocked a day after the first turn-away
+    clock.advanceSeconds(QuestionPolicies.TurnAwayGiveUp.toSeconds - 24 * 60)
+    val restarted = new QuestionMemory(docs, "pl-PL", clock)
+    asker(store, hashing(blocked), memory = restarted).handle(venueTask()) shouldBe HandlerOutcome.Done
+    (store.venue(patria), store.unread(PosterQuestion.Venue(patria))) shouldBe ((Answer.Known(None), true))
+    restarted.concluded(question) shouldBe true
+  }
 }

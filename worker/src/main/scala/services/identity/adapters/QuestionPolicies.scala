@@ -68,6 +68,13 @@ object QuestionPolicies {
    *  filed unread or absent); every other kind keeps being asked on its backoff past this, but no take waits on it any
    *  more: ~16 hours of failing at 5 min doubling to 6 h. */
   val SettleGiveUpFailures: Int = 8
+  /** How long a question's asks may be TURNED AWAY in a row -- the host's breaker open, the fleet's pace refusing them,
+   *  never a real attempt between -- before it counts its kind's give-up failures ([[QuestionMemory.turnedAway]]): a
+   *  turn-away is a wait, not a failure, but a host blocked this long ends every ask on it, so each still terminates
+   *  (fix 1's input gate waits on that). A wall-clock bound on the injected clock, not a count: a flapping host turns an
+   *  ask away again on each HostRecovery release, so a count is spent in minutes. Longer than the ~16 h a real failure
+   *  takes to reach [[SettleGiveUpFailures]]. */
+  val TurnAwayGiveUp: FiniteDuration = 24.hours
 
   /** The failures in a row on which a question of `kind` is given up on for settling ([[SettleGiveUpFailures]]). */
   def giveUpFailures(kind: QuestionKind): Int = of(kind).nonAnswer match {
