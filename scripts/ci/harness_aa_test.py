@@ -139,11 +139,12 @@ class HarnessAaTest(unittest.TestCase):
         self.assertIn("harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}", conv)
         self.assertIn("harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}", conv)
         self.assertIn("scripts/ci/harness_aa.py judge", leg)
-        self.assertIn("inputs.harness-aa && ',\"takes-drift-aa\",\"takes-aa\"'", leg)
+        self.assertIn("inputs.harness-aa && ',\"takes-drift-aa-pass0\",\"takes-drift-aa-pass1\",\"takes-aa\"'", leg)
+        self.assertIn("inputs.harness-aa && ',\"takes-drift-aa\"'", leg)
         self.assertIn("TAKES_AA: ${{ matrix.phase == 'takes-aa' }}", leg)
         rows = open(os.path.join(ROOT, ".github/gating-checks.tsv")).read()
         for country in ("poland", "germany", "united-kingdom", "spain", "united-states"):
-            for row in ("takes-drift-aa", "takes-aa"):
+            for row in ("takes-drift-aa", "takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"):
                 self.assertIn(f"job\tidentity-model-convergence.yml\t{row} ({country})\tunproven", rows)
         paths = open(os.path.join(ROOT, ".github/harness-aa-paths.txt")).read()
         self.assertIn("scripts/ci/identity-takes-check.sh", paths, "the takes harness is a harness path too")

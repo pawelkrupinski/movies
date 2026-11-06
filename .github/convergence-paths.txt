@@ -126,6 +126,7 @@ scripts/ci/convergence-row-minutes.tsv
 scripts/ci/convergence_slots.py
 scripts/ci/corpus_shape_diff.py
 scripts/ci/dispatch.sh
+scripts/ci/drift-replays-compare.sh
 scripts/ci/drift_diff.py
 scripts/ci/drift_explorer.py
 scripts/ci/drift_scenario.py

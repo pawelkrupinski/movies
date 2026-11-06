@@ -95,7 +95,7 @@ PHASES_EXPRESSION = (
     "',\"order-independence\"') || '', "
     "inputs.next-day-command != '' && ',\"next-day\"' || '', inputs.mode == 'hermetic' && inputs.takes-row && "
     "',\"takes\",\"takes-base\",\"takes-drift-1\",\"takes-drift-2\"' || '', inputs.mode == 'hermetic' && "
-    "inputs.takes-row && inputs.harness-aa && ',\"takes-drift-aa\",\"takes-aa\"' || '')) }}"
+    "inputs.takes-row && inputs.harness-aa && ',\"takes-drift-aa-pass0\",\"takes-drift-aa-pass1\",\"takes-aa\"' || '')) }}"
 )
 # A split country's order rows on main: each pass in a row of its own, then the two comparisons (`order-compare`).
 ORDER_SPLIT_ROWS = ["order-independence-p01-pass0", "order-independence-p01-pass1", "order-independence-p12-pass1",
@@ -174,7 +174,7 @@ def matrix_rows(workflow_text):
 def expected_rows(workflow_text):
     """`<phase> (<country>)` of every row main's run expands to: PHASES_EXPRESSION with takes-only false, hermetic, the
     takes rows on (the check's and a drift seed's each) and both order phases (main's order-phases.sh answer). Not the
-    harnesses' A/A rows (`takes-drift-aa`, `takes-aa`, harness_aa.py): only a push that changed the harness runs it, and no verdict
+    harnesses' A/A rows (`takes-drift-aa` and its two passes, `takes-aa`, harness_aa.py): only a push that changed the harness runs it, and no verdict
     reused from a landing check is one -- a reused run skips it with every other row."""
     out = []
     for row in matrix_rows(workflow_text):
@@ -274,8 +274,8 @@ def _true(value):
 
 def matrix_phases(row, order_phases="both", harness_aa=False):
     """The `convergence` matrix rows main's leg for `row` expands to (PHASES_EXPRESSION, hermetic, takes rows on, neither
-    takes-only nor drift-only; the A/A row when the preflight decided it), in the workflow's order; the `order-compare`
-    rows after them are not among them."""
+    takes-only nor drift-only; the A/A rows when the preflight decided them), in the workflow's order; the `order-compare`
+    rows after them (the order comparisons and the A/A passes' `takes-drift-aa`) are not among them."""
     phases = ["convergence"]
     if row.get("order", ""):
         if _true(row.get("order-split", "false")):
@@ -284,7 +284,8 @@ def matrix_phases(row, order_phases="both", harness_aa=False):
             phases.append("order-independence")
     if row.get("next-day", ""):
         phases.append("next-day")
-    return phases + ["takes", "takes-base"] + drift_phases(row["code"]) + (["takes-drift-aa", "takes-aa"] if harness_aa else [])
+    return (phases + ["takes", "takes-base"] + drift_phases(row["code"])
+            + (["takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"] if harness_aa else []))
 
 
 def drift_phases(code, pins=""):
@@ -308,6 +309,8 @@ def leg_plan(rows, inputs, order_phases="both", harness_aa=False):
     split = {r["code"] for r in rows if r.get("order", "") and _true(r.get("order-split", "false"))}
     compares = convergence_slots.COMPARE_PHASES[:1] if order_phases == "one" else convergence_slots.COMPARE_PHASES
     tails = {c: max(convergence_slots.cost(c, p, costs) for p in compares) for c in split}
+    if harness_aa:  # the A/A passes' comparison, in the same job after the rows (order-compare)
+        tails = {r["code"]: max(tails.get(r["code"], 0.0), convergence_slots.AA_COMPARE_MINUTES) for r in rows}
     return convergence_slots.plan({r["code"]: matrix_phases(r, order_phases, harness_aa) for r in rows}, costs, tails=tails,
                                   drift_twice=twice)
 

@@ -102,13 +102,15 @@ hours. The capture-replay case above proves one case; the A/A run proves the who
   path of `.github/harness-aa-paths.txt` -- IdentityDrift, IdentityLiveDrift, ReplayOrder, TakeFlips,
   identity-drift-check.sh, drift_diff.py, drift_seeds.py. Main's convergence preflight decides it
   (`scripts/ci/harness_aa.py decide`). Never in pre-push or `agentctl land`: it runs after landing, in CI only.
-- **What:** each leg adds one row, `takes-drift-aa (<country>)`: identity-drift-check.sh on the row-1 seeds with
-  `DRIFT_BASE=<head>` (no base replay: base and head are one commit) and `DRIFT_TWICE=true` (the head replayed twice,
-  the drift and flips TSVs diffed), storing nothing.
+- **What:** each leg adds two rows, `takes-drift-aa-pass0|1 (<country>)`, side by side: identity-drift-check.sh on the
+  row-1 seeds with `DRIFT_BASE=<head>` (no base replay: base and head are one commit), storing nothing, each one replay
+  of the head. Its `order-compare` job then diffs the two passes' drift and flips TSVs
+  (`scripts/ci/drift-replays-compare.sh`) as `takes-drift-aa (<country>)`. Until 2026-11-06 one row replayed twice in
+  turn (`DRIFT_TWICE=true`, the daily run's mode, which keeps it): 35-69 minutes for Germany, the run's critical path.
 - **Verdict** (`harness_aa.py judge`): two replays that differ fail as `HARNESS FAULT, not the resolver's`; a
   divergence both replays agree on is the head's own, a notice here and takes-drift-1/2's verdict.
-- **Cost:** nothing on a push that touches no harness path (no row is created); on a harness push, five rows, each one
-  replay pair of the row-1 seeds (the step's twice ceiling, 140 min). A preflight that proves a reuse skips every row,
+- **Cost:** nothing on a push that touches no harness path (no row is created); on a harness push, ten pass rows, each
+  one replay of the row-1 seeds (the step's once ceiling, 75 min), and five comparisons of two TSVs. A preflight that proves a reuse skips every row,
   this one included.
 - **Gating:** the rows are `unproven` in `.github/gating-checks.tsv`; after the first green run on main,
   `scripts/ci/gating_checks.py prove --workflow-file identity-model-convergence.yml --run <id> --number <#n>`.

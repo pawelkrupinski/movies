@@ -94,11 +94,23 @@ class MainsRunTest(unittest.TestCase):
         self.assertNotIn("order-independence-p12-pass1", json.loads(de["phases"]))
         self.assertIn("order-independence-p01-pass1", json.loads(de["phases"]))
 
-    def test_the_harness_a_a_row_is_planned_when_the_preflight_decided_it_weighing_two_drift_replays(self):
+    def test_the_harness_a_a_rows_are_planned_when_the_preflight_decided_them_each_drift_pass_one_replay(self):
         matrix = reuse.planned_matrix(reuse.matrix_rows(WORKFLOW), reuse.leg_inputs({}), "both", harness_aa=True)
-        self.assertTrue(all("takes-drift-aa" in json.loads(r["phases"]) for r in matrix["include"]))
+        for r in matrix["include"]:
+            self.assertLessEqual({"takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"}, set(json.loads(r["phases"])))
+            self.assertNotIn("takes-drift-aa", json.loads(r["phases"]), "the comparison is order-compare's, after the rows")
         self.assertLessEqual(sum(r["max-parallel"] for r in matrix["include"]), slots.RUNNERS)
-        self.assertEqual(slots.cost("xx", "takes-drift-aa", {("xx", "takes-drift-1"): 10.0}), 20.0)
+        self.assertEqual(slots.cost("xx", "takes-drift-aa-pass1", {("xx", "takes-drift-1"): 10.0}), 10.0)
+
+    def test_the_a_a_comparison_after_the_rows_is_every_a_a_countrys_tail(self):
+        # Spain splits no order row: the A/A comparison is its only tail
+        plan = reuse.leg_plan(reuse.matrix_rows(WORKFLOW), reuse.leg_inputs({}), harness_aa=True)
+        bare = reuse.leg_plan(reuse.matrix_rows(WORKFLOW), reuse.leg_inputs({}))
+        costs = slots.read_costs()
+        es = [slots.cost("es", p, costs) for p in plan["es"]["phases"]]
+        self.assertEqual(plan["es"]["minutes"],
+                         round(slots.makespan(es, plan["es"]["max-parallel"]) + slots.AA_COMPARE_MINUTES, 1))
+        self.assertIn("es", bare)
 
     def test_a_takes_only_run_keeps_the_legs_own_expression_and_no_cap(self):
         matrix = self.matrix(reuse.leg_inputs({"INPUT_TAKES_ONLY": "true"}))

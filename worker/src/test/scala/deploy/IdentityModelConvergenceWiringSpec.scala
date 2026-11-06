@@ -145,7 +145,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs") should include("drift-twice: ${{ steps.legs.outputs.drift-twice }}")
     RepoFile.jobs(workflow)("preflight") should include("INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}")
     RepoFile.jobs(workflow)("leg") should include("drift-twice:                   ${{ needs.preflight.outputs.drift-twice == 'true' }}")
-    leg should include("DRIFT_TWICE: ${{ inputs.drift-twice || matrix.phase == 'takes-drift-aa' }}")
+    leg should include("DRIFT_TWICE: ${{ inputs.drift-twice }}")
     RepoFile.read(".github/workflows/convergence-daily.yml") should include("-f drift-twice=true")
   }
 
@@ -159,7 +159,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     decide should include("inputs.drift-only != true")
     decide should include("python3 scripts/ci/harness_aa.py decide --head \"$GITHUB_SHA\" --since \"$since\"")
     RepoFile.jobs(workflow)("leg") should include("harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}")
-    leg should include("inputs.harness-aa && ',\"takes-drift-aa\",\"takes-aa\"'")
+    leg should include("inputs.harness-aa && ',\"takes-drift-aa-pass0\",\"takes-drift-aa-pass1\",\"takes-aa\"'")
   }
 
   // scripts/identity-drift-ci's pre-land check (convergence-failures-2026-10-29 §7.2): the takes-drift rows alone. The

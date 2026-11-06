@@ -309,19 +309,7 @@ if [ "${DRIFT_TWICE:-false}" = true ]; then
   replay "$here" "$out/again" "$seed_list" "${head_options[@]}"
   [ -f "$out/again/drift-$cc.tsv" ] && [ -f "$out/again/flips-$cc.tsv" ] ||
     { tail -40 "$out/again/sbt.log" >&2; echo "identity drift ($cc): the second replay wrote nothing" >&2; exit 2; }
-  differ=0
-  for f in "drift-$cc.tsv" "flips-$cc.tsv"; do
-    if ! cmp -s <(sort "$out/$f") <(sort "$out/again/$f"); then
-      differ=$((differ + $(diff <(sort "$out/$f") <(sort "$out/again/$f") | grep -c '^[<>]')))
-      echo "identity drift ($cc): NOT DETERMINISTIC -- $f differs between two replays of the same seed(s):"
-      diff <(sort "$out/$f") <(sort "$out/again/$f") | grep '^[<>]' | head -20
-    fi
-  done
-  if [ "$differ" -gt 0 ]; then
-    echo "not deterministic: two replays of the same seed(s) differ in $differ TSV line(s) -- the harness or the code reads something besides its inputs" > "$out/verdict.txt"
-    exit 1
-  fi
-  echo "identity drift ($cc): deterministic -- a second replay of the same seed(s) wrote the same TSVs"
+  "$here/scripts/ci/drift-replays-compare.sh" "$cc" "$out" "$out/again" "$out/verdict.txt" || exit $?
 fi
 
 # A green head on main is the base of what follows: its flips are stored per seed for the walk above.

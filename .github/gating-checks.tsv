@@ -47,6 +47,8 @@ job	identity-model-convergence.yml	takes-drift-1 (germany)	2691
 job	identity-model-convergence.yml	takes-drift-2 (germany)	2691
 job	identity-model-convergence.yml	takes-drift-3 (germany)	unproven	Germany's seed 581 in a drift row of its own, so no drift row is the run's critical path (2026-11-06, convergence_slots.py); owner: convergence
 job	identity-model-convergence.yml	takes-drift-aa (germany)	unproven	the drift harness's A/A self-test, only on a push changing the harness (review 2026-11-06 P5, scripts/ci/harness_aa.py); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass0 (germany)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass1 (germany)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
 job	identity-model-convergence.yml	takes-aa (germany)	unproven	the takes check's A/A self-test, the head against itself, only on a push changing a harness (scripts/ci/harness_aa.py takes); owner: convergence
 job	identity-model-convergence.yml	leg (poland)	aggregate
 job	identity-model-convergence.yml	convergence (poland)	aggregate
@@ -61,6 +63,8 @@ job	identity-model-convergence.yml	takes-base (poland)	unproven	the takes check'
 job	identity-model-convergence.yml	takes-drift-1 (poland)	2691
 job	identity-model-convergence.yml	takes-drift-2 (poland)	2691
 job	identity-model-convergence.yml	takes-drift-aa (poland)	unproven	the drift harness's A/A self-test, only on a push changing the harness (review 2026-11-06 P5, scripts/ci/harness_aa.py); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass0 (poland)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass1 (poland)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
 job	identity-model-convergence.yml	takes-aa (poland)	unproven	the takes check's A/A self-test, the head against itself, only on a push changing a harness (scripts/ci/harness_aa.py takes); owner: convergence
 job	identity-model-convergence.yml	leg (spain)	aggregate
 job	identity-model-convergence.yml	convergence (spain)	aggregate
@@ -69,6 +73,8 @@ job	identity-model-convergence.yml	takes-base (spain)	unproven	the takes check's
 job	identity-model-convergence.yml	takes-drift-1 (spain)	2691
 job	identity-model-convergence.yml	takes-drift-2 (spain)	2691
 job	identity-model-convergence.yml	takes-drift-aa (spain)	unproven	the drift harness's A/A self-test, only on a push changing the harness (review 2026-11-06 P5, scripts/ci/harness_aa.py); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass0 (spain)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass1 (spain)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
 job	identity-model-convergence.yml	takes-aa (spain)	unproven	the takes check's A/A self-test, the head against itself, only on a push changing a harness (scripts/ci/harness_aa.py takes); owner: convergence
 job	identity-model-convergence.yml	leg (united-kingdom)	aggregate
 job	identity-model-convergence.yml	convergence (united-kingdom)	aggregate
@@ -83,6 +89,8 @@ job	identity-model-convergence.yml	takes-base (united-kingdom)	unproven	the take
 job	identity-model-convergence.yml	takes-drift-1 (united-kingdom)	2691
 job	identity-model-convergence.yml	takes-drift-2 (united-kingdom)	2691
 job	identity-model-convergence.yml	takes-drift-aa (united-kingdom)	unproven	the drift harness's A/A self-test, only on a push changing the harness (review 2026-11-06 P5, scripts/ci/harness_aa.py); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass0 (united-kingdom)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass1 (united-kingdom)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
 job	identity-model-convergence.yml	takes-aa (united-kingdom)	unproven	the takes check's A/A self-test, the head against itself, only on a push changing a harness (scripts/ci/harness_aa.py takes); owner: convergence
 job	identity-model-convergence.yml	leg (united-states)	aggregate
 job	identity-model-convergence.yml	convergence (united-states)	aggregate
@@ -98,6 +106,8 @@ job	identity-model-convergence.yml	takes-base (united-states)	unproven	the takes
 job	identity-model-convergence.yml	takes-drift-1 (united-states)	2691
 job	identity-model-convergence.yml	takes-drift-2 (united-states)	2691
 job	identity-model-convergence.yml	takes-drift-aa (united-states)	unproven	the drift harness's A/A self-test, only on a push changing the harness (review 2026-11-06 P5, scripts/ci/harness_aa.py); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass0 (united-states)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
+job	identity-model-convergence.yml	takes-drift-aa-pass1 (united-states)	unproven	one of the drift harness's two A/A replays, a row each, compared after them by takes-drift-aa (2026-11-06: the twice-in-turn row ran 35-69 min); owner: convergence
 job	identity-model-convergence.yml	takes-aa (united-states)	unproven	the takes check's A/A self-test, the head against itself, only on a push changing a harness (scripts/ci/harness_aa.py takes); owner: convergence
 job	identity-model-convergence.yml	verdict complete	aggregate
 job	identity-model-convergence.yml	timings	aggregate

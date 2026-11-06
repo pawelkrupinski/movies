@@ -236,10 +236,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  order rows' 55 minutes the step's 75 never fired, and a daily row replaying each seed twice was cancelled with no
    *  verdict. */
   it should "give a takes-drift row a job ceiling above its drift step's, replayed once or twice" in {
-    // the A/A row (`takes-drift-aa`, scripts/ci/harness_aa.py) replays twice too: it takes the twice ceiling
-    val job  = """startsWith\(matrix\.phase, 'takes-drift-'\) && \(\(inputs\.drift-twice \|\| matrix\.phase == 'takes-drift-aa'\) && (\d+) \|\| (\d+)\)""".r
+    // the A/A passes (`takes-drift-aa-pass0|1`, scripts/ci/harness_aa.py) replay once each, side by side: the once ceiling
+    val job  = """startsWith\(matrix\.phase, 'takes-drift-'\) && \(inputs\.drift-twice && (\d+) \|\| (\d+)\)""".r
       .findFirstMatchIn(RepoFile.block(leg, "convergence")).getOrElse(fail("no takes-drift job ceiling"))
-    val step = """timeout-minutes: \$\{\{ \(inputs\.drift-twice \|\| matrix\.phase == 'takes-drift-aa'\) && (\d+) \|\| (\d+) \}\}""".r
+    val step = """timeout-minutes: \$\{\{ inputs\.drift-twice && (\d+) \|\| (\d+) \}\}""".r
       .findFirstMatchIn(leg).getOrElse(fail("no drift step ceiling"))
     Seq(1, 2).foreach(i => job.group(i).toInt should be >= step.group(i).toInt + 10)
   }
@@ -461,7 +461,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
         """(inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || """ +
         """',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', """ +
         """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', """ +
-        """inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa","takes-aa"' || '')) }}""")
+        """inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa-pass0","takes-drift-aa-pass1","takes-aa"' || '')) }}""")
     // IN 20 RUNNERS (scripts/ci/convergence_slots.py): main's caller hands the rows longest first and the leg's share
     RepoFile.block(leg, "convergence") should include("max-parallel: ${{ inputs.max-parallel }}")
     RepoFile.block(leg, "order-compare") should include("max-parallel: ${{ inputs.max-parallel }}")
@@ -475,11 +475,11 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val drift = RepoFile.step(leg, "Check that the incremental state ends where a whole resolve does")
     drift should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && startsWith(matrix.phase, 'takes-drift-') }}")
     drift should include("DRIFT_PINS: ${{ format('{0},{1}', inputs.drift-seed-1, inputs.drift-seed-2) }}")
-    drift should include("""row=${DRIFT_ROW#takes-drift-}; [ "$row" = aa ] && row=1""")
+    drift should include("""row=${DRIFT_ROW#takes-drift-}; case $row in aa-pass*) row=1 ;; esac""")
     drift should include("""DRIFT_SEED_LIST=$(python3 scripts/ci/drift_seeds.py seeds --cc "${{ inputs.code }}" --row "$row" --pins "$DRIFT_PINS")""")
     withClue("the harness's A/A row (review 2026-11-06 P5): the head twice against itself, judged as the harness's fault: ") {
-      drift should include("DRIFT_TWICE: ${{ inputs.drift-twice || matrix.phase == 'takes-drift-aa' }}")
-      drift should include("""if [ "$DRIFT_ROW" = takes-drift-aa ]; then export DRIFT_BASE=$GITHUB_SHA DRIFT_STORE=""; fi""")
+      drift should include("DRIFT_TWICE: ${{ inputs.drift-twice }}")
+      drift should include("""case $DRIFT_ROW in takes-drift-aa-pass*) export DRIFT_BASE=$GITHUB_SHA DRIFT_STORE="" ;; esac""")
       drift should include("python3 scripts/ci/harness_aa.py judge")
     }
     withClue("the explorer's rows replay random seeds off the gate, never the gate's: ")(
@@ -562,13 +562,34 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       "name: order-pass-${{ inputs.code }}-${{ matrix.phase }}")
     val compare = RepoFile.block(leg, "order-compare")
     compare should include("name: ${{ matrix.phase }} (${{ inputs.country }})")
-    compare should include("""phase: ${{ fromJson(inputs.order-one-phase && '["order-independence-p01"]' || '["order-independence-p01","order-independence-p12"]') }}""")
+    compare should include("""phase: ${{ fromJson(inputs.order-command != '' && inputs.order-split && format('[{0}{1}]', inputs.order-one-phase && '"order-independence-p01"' || """ +
+      """'"order-independence-p01","order-independence-p12"', inputs.harness-aa && ',"takes-drift-aa"' || '') || '["takes-drift-aa"]') }}""")
     compare should include("pattern: order-pass-${{ inputs.code }}-${{ matrix.phase }}-pass*")
     compare should include("""KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || '1,2' }}""")
     compare should include("KINOWO_CONVERGENCE_ORDER_PASS_IN: ${{ runner.temp }}/order-pass")
     compare should include("check_name: ${{ matrix.phase }} (${{ inputs.country }})")
     compare should include(FindingsAction)
     RepoFile.block(leg, "order-split") should include("default: false")
+  }
+
+  /** THE DRIFT HARNESS'S A/A, ONE REPLAY A ROW (2026-11-06): the `takes-drift-aa` row replayed the head's row-1 seeds twice
+   *  in turn, 35-69 minutes for Germany -- the run's critical path whenever a push changed the harness. Each replay is a
+   *  row of its own now (`takes-drift-aa-pass0`, `-pass1`, side by side, the head against itself, storing nothing), and
+   *  `order-compare` compares their TSVs under the row's old name (`takes-drift-aa (<country>)`), red only when the two
+   *  differ: the harness's own fault (harness_aa.py judge). Spain, with no order split, runs that job for it alone. */
+  it should "replay the drift harness's A/A passes in rows of their own and compare them after them" in {
+    val compare = RepoFile.block(leg, "order-compare")
+    compare should include("(inputs.order-command != '' && inputs.order-split || inputs.harness-aa && inputs.mode == 'hermetic' && inputs.takes-row)")
+    compare should include("pattern: identity-drift-${{ inputs.code }}-takes-drift-aa-pass*")
+    val step = RepoFile.step(compare, "Compare the drift harness's two A/A passes")
+    step should include("if: ${{ !cancelled() && matrix.phase == 'takes-drift-aa' }}")
+    step should include("scripts/ci/drift-replays-compare.sh")
+    step should include("python3 scripts/ci/harness_aa.py judge")
+    step should include("""> "$RUNNER_TEMP/leg-verdict-why"""")
+    // the order comparison's own steps skip the A/A row: no sbt, no test report it would require
+    Seq("Download the row's two passes", "Compare the ${{ inputs.country }} ${{ matrix.phase }} passes", "Publish convergence test report")
+      .foreach(name => RepoFile.step(compare, name) should include("matrix.phase != 'takes-drift-aa'"))
+    RepoFile.read("scripts/ci/identity-drift-check.sh") should include("scripts/ci/drift-replays-compare.sh")
   }
 
   /** The United States' convergence row ran 11.4 minutes with no replays in it; its next-day test, which reads only

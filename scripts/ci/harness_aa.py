@@ -7,9 +7,11 @@ of its inputs (the shared rng that changed what a change asked) reads as the res
 resolver change could move, so any difference is the harness's own fault, and fails as such.
 
 WHERE. In main's convergence (identity-model-convergence.yml), AFTER landing, never in pre-push or `agentctl land`: the
-preflight runs `decide`, and when the push changed a path of .github/harness-aa-paths.txt each leg adds one row,
-`takes-drift-aa (<country>)`, which runs scripts/ci/identity-drift-check.sh on the row-1 seeds with DRIFT_TWICE=true and
-DRIFT_BASE=<head> (no base replay: base and head are one commit), then `judge`; and one row `takes-aa (<country>)`, the
+preflight runs `decide`, and when the push changed a path of .github/harness-aa-paths.txt each leg adds two rows,
+`takes-drift-aa-pass0|1 (<country>)`, side by side, each running scripts/ci/identity-drift-check.sh once on the row-1
+seeds with DRIFT_BASE=<head> (no base replay: base and head are one commit), then `judge`; its `order-compare` job then
+compares the two passes' TSVs (scripts/ci/drift-replays-compare.sh) as `takes-drift-aa (<country>)` and `judge`s that;
+and one row `takes-aa (<country>)`, the
 takes check's own harness (scripts/ci/identity-takes-check.sh with TAKES_AA=true: the head resolved and its final takes
 replayed twice, in two checkouts, nothing reused from the store), then `takes`. A push touching no harness path runs no
 such row: it costs nothing elsewhere. The rows are registered `unproven` in .github/gating-checks.tsv until their first
