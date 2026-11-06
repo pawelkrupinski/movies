@@ -728,4 +728,8 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.gate.promotions.last shouldBe (Seq(600.0) -> true)
     world.gate.heldReports.last shouldBe (0 -> 0.0)
   }
+
+  it should "hide a listing new to the model until it is taken in, by default: shown, it took a film the site showed off it" in {
+    IdentityModelService.NewWhilePending.Default shouldBe IdentityModelService.NewWhilePending.Hidden
+  }
 }

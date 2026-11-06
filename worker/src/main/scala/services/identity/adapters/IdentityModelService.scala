@@ -96,7 +96,7 @@ final class IdentityModelService(
   /** The listings the gate holds, persisted: what a take-up resumes ([[PendingListingStore]]). */
   pendingStore: PendingListingStore = new PendingListingStore.InMemory(),
   /** Whether a listing new to the model, its version held, is shown meanwhile on its own, Pending -- or not at all. */
-  newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Shown
+  newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Default
 ) extends Logging {
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
@@ -507,10 +507,16 @@ object IdentityModelService {
   final case class Held(venue: String, newest: Listing, ready: Option[Listing], waits: Set[Question], since: Long)
 
   /** What is shown of a listing new to the model while its version is held: on its own, Pending on its questions (the
-   *  main session's choice (a), 2026-11-06), or nothing until it is taken in (b). The one place to switch. */
+   *  main session's first choice (a), 2026-11-06), or nothing until it is taken in (b). The one place to switch. */
   enum NewWhilePending {
     case Shown, Hidden
     def shown(held: Seq[Held]): Seq[Held] = if (this == Shown) held else Nil
+  }
+  object NewWhilePending {
+    /** (b), the main session's switch of 2026-11-06: shown on its own, a listing the site already showed on a film but the
+     *  model did not hold was written with no film, and its film came back once it was taken in -- a reversal the gate
+     *  made (DE "IF PIGEONS TURNED TO GOLD", 44 min). Hidden, nothing is written for it until it is taken in. */
+    val Default: NewWhilePending = Hidden
   }
 
   /** A held new listing as the projection reads it: its own decision, no film, Pending on its questions -- `unanswered`
