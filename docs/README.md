@@ -39,8 +39,10 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   agreement stage's verdicts, waits and staging rows: design and the owner's decisions (implemented 2026-10-25; keys name only since identity-no-drift.md).
 - [design/identity-no-drift.md](design/identity-no-drift.md) — no drift by construction: the owner's principle (every
   change re-evaluates everything as if all data had been there from the start), the audit of every carried state (one
-  file per item in `design/identity-no-drift/state/`), the equivalence harness, and what still blocks retiring the drift
-  checks.
+  file per item in `design/identity-no-drift/state/`), the equivalence harness, the harness's A/A self-test, and what
+  still blocks retiring the drift checks.
+- [design/identity-rollout.md](design/identity-rollout.md) — observability-first rollout of prod-behaviour identity
+  changes: gauges before behaviour (pre-push `driftguards`), `scripts/deploy-watch`, and the one-country canary.
 - [design/identity-structural-fixes.md](design/identity-structural-fixes.md) — the owner's four structural fixes of
   2026-11-05 (typed unknown, asking apart from deciding, one replay world, rule burn-down): plan, owner rules served,
   measurements, order; the `Identity-Design:` reference of the rule burn-down commits.

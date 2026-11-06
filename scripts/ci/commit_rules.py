@@ -95,7 +95,7 @@ SELF_TEST_FILES = re.compile(
 
 # What the worker serves over time -- the model's input gate, holds, settle, asks -- and what sees it
 SERVING_FILES = re.compile(
-    r"^(worker/src/main/scala/services/identity/adapters/(IdentityModelService|AgreementReadiness|PendingListings"
+    r"^(worker/src/main/scala/services/identity/adapters/(IdentityModelService|ModelInputGate|AgreementReadiness|PendingListings"
     r"|AgreementHandlers|QuestionMemory|QuestionPolicies|QuestionRenewals|OutstandingQuestions|VenuePageWait"
     r"|RetainedListings|ProjectionTriggers)\.scala|identity/src/main/scala/services/identity/(ListingReadiness|PageWait)\.scala"
     r"|worker/src/main/scala/services/tasks/SettleReaper\.scala)$")
