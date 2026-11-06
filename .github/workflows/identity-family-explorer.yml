@@ -9,14 +9,14 @@ name: Identity family explorer
 # (.github/gating-checks.tsv lists the gate's workflows; this is none), never fails a commit, and the seed drift rows
 # (takes-drift-1|2 of identity-model-convergence.yml) keep gating unchanged.
 #
-# ONE ROW PER COUNTRY SHARD (scripts/ci/family_shards.py: DE 11, UK 5, PL 2, US 10, ES 1), under about 10 minutes each on a
+# ONE ROW PER COUNTRY SHARD (scripts/ci/family_shards.py: DE 11, UK 5, PL 2, US 11, ES 1), under about 10 minutes each on a
 # hosted runner, over the pinned recording the row lays (convergence-setup, as a hermetic leg does). The families are split by
 # MEASURED COST (test/resources/fixtures/family-costs-<cc>.tsv, FamilyConvergence.balance), not by count, and a family of 64
-# or more listings -- a handful of them cost most of a country's walk -- samples 2 seeded arrival orders instead of 8, other
+# or more listings -- a handful of them cost most of a country's walk -- samples 1 seeded arrival order instead of 8, other
 # orders each ISO week. A row keeps its verdict cache on the release `identity-family-explorer-store`
 # (scripts/ci/identity-family-nightly.sh), so a walk re-walks only the families the code changed since the last one can move
 # (scripts/ci/family_reach.py) -- 37 of the last 40 identity commits move them all, so this saves little: the schedule is
-# WEEKLY (every family is walked once a week, the cheapest schedule that does), about 260 runner-minutes cold against the
+# WEEKLY (every family is walked once a week, the cheapest schedule that does), about 290 runner-minutes cold against the
 # first run's 500 with four rows timed out.
 # OUTPUT. The publish job joins the shards (scripts/ci/family_flips_report.py) into the release `identity-family-explorer`:
 # `family-flips-<cc>.tsv` (listing, flip chain, rules fired), `family-flips-ranked.tsv` (every flip by deciding rule, the
@@ -99,7 +99,7 @@ jobs:
               env:
                   FAMILY_SHARD: ${{ format('{0}/{1}', matrix.index, matrix.shards) }}
                   FAMILY_STORE: identity-family-explorer-store
-                  FAMILY_ORDERS: '2'
+                  FAMILY_ORDERS: '1'
                   FAMILY_ORDER_SALT: ${{ needs.plan.outputs.week }}
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   HEAP: 6g

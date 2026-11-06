@@ -1,120 +1,120 @@
 family	tier	subsets	seconds
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/15900/VENGADORES%3A%20DOOMSDAY,VENGADORES: DOOMSDAY)	8 orders x 8 steps	57	0.80
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/15901/STREET%20FIGHTER,STREET FIGHTER)	8 orders x 8 steps	57	2.48
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/16040/DUNE%20-%20PARTE%20TRES,DUNE - PARTE TRES)	8 orders x 8 steps	57	0.69
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18187/TADEO%20JONES%20Y%20LA%20LAMPARA%20MARAVILLOSA,TADEO JONES Y LA LAMPARA MARAVILLOSA)	8 orders x 8 steps	57	0.81
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18191/COYOTE%20VS%20ACME,COYOTE VS ACME)	8 orders x 8 steps	57	0.61
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18193/RESIDENT%20EVIL,RESIDENT EVIL)	8 orders x 8 steps	57	1.95
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18280/LA%20BOLA%20NEGRA,LA BOLA NEGRA)	8 orders x 8 steps	57	4.29
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18282/LA%20OTRA%20MADRE,LA OTRA MADRE)	8 orders x 8 steps	57	3.01
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18283/CLAYFACE,CLAYFACE)	8 orders x 8 steps	57	2.69
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18287/LA%20ISLA%20OLVIDADA,LA ISLA OLVIDADA)	8 orders x 8 steps	57	0.82
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19308/EN%20EL%20CORAZON%20DE%20LA%20BESTIA,EN EL CORAZON DE LA BESTIA)	8 orders x 8 steps	57	3.15
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19320/BTS%20WORLD%20TOUR%20ARIRANG%20IN%20BUENOS%20AIRES%20%20LIVE%20VIEWING%20DELAYED,BTS WORLD TOUR ARIRANG IN BUENOS AIRES  LIVE VIEWING DELAYED)	8 orders x 8 steps	57	7.21
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19324/CARS%2020%20ANIVERSARIO,CARS 20 ANIVERSARIO)	8 orders x 8 steps	57	3.47
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19325/VERITY%20LA%20SOMBRA%20DE%20UN%20ENGA%C3%91O,VERITY LA SOMBRA DE UN ENGAÑO)	8 orders x 8 steps	57	1.68
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19342/MASCOTAS%20AL%20RESCATE,MASCOTAS AL RESCATE)	8 orders x 8 steps	57	0.58
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19343/ARRIBA%20TUTTO,ARRIBA TUTTO)	8 orders x 8 steps	57	1.86
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19347/EL%20PRECIO%20DE%20LA%20RED,EL PRECIO DE LA RED)	8 orders x 8 steps	57	1.43
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19350/EL%20ARBOL%20MUY%20MUY%20LEJANO,EL ARBOL MUY MUY LEJANO)	levels 0-1	86	0.66
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19384/LA%20MALETA,LA MALETA)	8 orders x 8 steps	57	2.36
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19385/LA%20INVITACION,LA INVITACION)	8 orders x 8 steps	57	3.22
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19386/WHALEFALL,WHALEFALL)	8 orders x 8 steps	57	2.12
-Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19397/LEONES%20EN%20INVIERNO,LEONES EN INVIERNO)	8 orders x 8 steps	57	1.94
-Native(Artesiete Los Alfares,https://alfares.artesiete.es/FilmPage/19396/KARATEKA,KARATEKA)	levels 0-1	54	0.33
-Native(Kinépolis Alicante,https://www.taquilla.com/entradas/godzilla-minus-zero,Godzilla Minus Zero)	8 orders x 8 steps	57	0.36
-Native(Kinépolis Alicante,https://www.taquilla.com/entradas/la-odisea,La Odisea)	8 orders x 8 steps	57	0.68
-Native(Kinépolis Alicante,https://www.taquilla.com/entradas/spider-man-brand-new-day,Spider-Man: Brand New Day)	levels 0-1	110	0.57
-Native(Kinépolis Almería Mediterráneo,https://www.taquilla.com/entradas/digger,Digger)	8 orders x 8 steps	57	0.37
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/cat-escape-room-2,CAT Escape Room 2)	levels 0-1	82	0.70
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/cronos,Cronos)	levels 0-1	42	0.17
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/insidious-fuera-del-mas-alla,Insidious: Fuera del más allá)	levels 0-1	32	0.18
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/la-constelacion-del-perro,La Constelación del Perro)	lattice 2^4	16	0.81
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/la-patrulla-canina-la-dino-pelicula,La Patrulla Canina: La dino película)	lattice 2^5	32	0.87
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/lucky-strike,Lucky Strike)	lattice 2^2	4	0.06
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/practicamente-magia-2,Prácticamente Magia 2)	lattice 2^3	8	0.18
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/toy-story-5,Toy Story 5)	lattice 2^7	128	5.92
-Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/vengadores-endgame-encore,Vengadores: Endgame Encore)	levels 0-1	54	0.68
-Native(Kinépolis Mataró Parc,https://www.taquilla.com/entradas/minions---monsters,Minions & Monsters)	levels 0-1	98	0.42
-Native(Multicines Bahia Mar,https://bahia.artesiete.es/FilmPage/19290/EVENTOS%2026-27%20MANON,EVENTOS 26-27 MANON)	levels 0-1	18	0.33
-Native(Multicines Bahia Mar,https://bahia.artesiete.es/FilmPage/19390/BOIUNA.%20LA%20LEYENDA%20DEL%20AMAZONAS,BOIUNA. LA LEYENDA DEL AMAZONAS)	levels 0-1	74	1.14
-Native(Neocine Centrofama,https://www.taquilla.com/entradas/el-mal-hijo,El mal hijo)	levels 0-1	106	1.24
-Native(Neocine Centrofama,https://www.taquilla.com/entradas/tiempos-de-ilusion,Tiempos de Ilusión)	levels 0-1	26	0.23
-Native(Neocine Mandarache,https://www.taquilla.com/entradas/ballet-el-cascanueces-cine,Ballet El Cascanueces (Cine))	levels 0-1	42	0.20
-Native(Neocine Mandarache,https://www.taquilla.com/entradas/christmas-in-versailles-sonya-yoncheva,Christmas in Versailles, Sonya Yoncheva)	lattice 2^6	64	4.60
-Native(Neocine Mandarache,https://www.taquilla.com/entradas/opera-cosi-fan-tutte-cine,Ópera Cosi fan tutte (Cine))	lattice 2^5	32	0.81
-Native(Ocine Arenys,https://tickets.ocinearenys.es/#/DetallPelicula/10891,Doraemon: aventuras en el mundo del arte)	levels 0-1	90	0.43
-Native(Ocine Blanes,https://tickets.ocineblanes.es/#/DetallPelicula/10678,Carmen (OPERA LIVE))	lattice 2^7	128	1.91
-Native(Ocine Gavarres,https://tickets.ocinegavarres.es/#/DetallPelicula/10929,NAZA)	8 orders x 8 steps	57	0.54
-Native(Ocine Gavarres,https://tickets.ocinegavarres.es/#/DetallPelicula/10953,Diversión Navideña con Peppa: La Experiencia en Cines)	levels 0-1	18	0.16
-Native(Ocine Premium Gran Vía de Vigo,https://tickets.ocinepremiumgranvia.es/#/DetallPelicula/10996,Sentido y sensibilidad)	levels 0-1	100	1.35
-Native(Ocine Premium Gran Vía de Vigo,https://tickets.ocinepremiumgranvia.es/#/DetallPelicula/11000,Superthings: La película)	levels 0-1	86	1.59
-Native(Ocine Premium Gran Vía de Vigo,https://tickets.ocinepremiumgranvia.es/#/DetallPelicula/11003,Wildwood)	levels 0-1	70	0.88
-Native(Yelmo Cines Abrera,https://www.taquilla.com/entradas/el-resplandor,El resplandor)	8 orders x 8 steps	57	0.48
-Native(Yelmo Cines Abrera,https://www.taquilla.com/entradas/los-cazafantasmas,Los Cazafantasmas)	levels 0-1	84	0.46
-Native(Yelmo Cines Abrera,https://www.taquilla.com/entradas/pesadilla-antes-de-navidad,Pesadilla antes de Navidad)	levels 0-1	96	0.63
-Native(Yelmo Cines Abrera,https://www.taquilla.com/entradas/pesadilla-en-elm-street,Pesadilla en Elm Street)	8 orders x 8 steps	57	0.49
-Native(Yelmo Cines Boulevard,https://www.taquilla.com/entradas/hamlet-opera-cine,Hamlet - Ópera (Cine))	levels 0-1	20	0.57
-Native(Yelmo Cines Boulevard,https://www.taquilla.com/entradas/las-ciegas-hormigas,Las ciegas hormigas)	levels 0-1	66	0.19
-Native(Yelmo Cines Boulevard,https://www.taquilla.com/entradas/manon-de-jules-massenet-opera-cine,Manon de Jules Massenet - Ópera (Cine))	levels 0-1	32	0.68
-Native(Yelmo Cines Ideal,https://www.taquilla.com/entradas/ceniza-en-la-boca,Ceniza en la boca)	levels 0-1	48	0.13
-Native(Yelmo Cines Ideal,https://www.taquilla.com/entradas/el-ser-querido,El Ser Querido)	levels 0-1	62	0.35
-Native(Yelmo Cines Ideal,https://www.taquilla.com/entradas/kakeru,Kakeru)	levels 0-1	94	1.22
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/15900/VENGADORES%3A%20DOOMSDAY,VENGADORES: DOOMSDAY)	2 orders x 8 steps	15	0.32
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/15901/STREET%20FIGHTER,STREET FIGHTER)	2 orders x 8 steps	15	1.05
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/16040/DUNE%20-%20PARTE%20TRES,DUNE - PARTE TRES)	2 orders x 8 steps	15	0.28
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18187/TADEO%20JONES%20Y%20LA%20LAMPARA%20MARAVILLOSA,TADEO JONES Y LA LAMPARA MARAVILLOSA)	2 orders x 8 steps	15	0.18
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18191/COYOTE%20VS%20ACME,COYOTE VS ACME)	2 orders x 8 steps	15	0.20
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18193/RESIDENT%20EVIL,RESIDENT EVIL)	2 orders x 8 steps	15	0.57
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18280/LA%20BOLA%20NEGRA,LA BOLA NEGRA)	2 orders x 8 steps	15	1.74
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18282/LA%20OTRA%20MADRE,LA OTRA MADRE)	2 orders x 8 steps	15	0.98
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18283/CLAYFACE,CLAYFACE)	2 orders x 8 steps	15	0.91
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/18287/LA%20ISLA%20OLVIDADA,LA ISLA OLVIDADA)	2 orders x 8 steps	15	0.37
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19308/EN%20EL%20CORAZON%20DE%20LA%20BESTIA,EN EL CORAZON DE LA BESTIA)	2 orders x 8 steps	15	1.31
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19320/BTS%20WORLD%20TOUR%20ARIRANG%20IN%20BUENOS%20AIRES%20%20LIVE%20VIEWING%20DELAYED,BTS WORLD TOUR ARIRANG IN BUENOS AIRES  LIVE VIEWING DELAYED)	2 orders x 8 steps	15	2.66
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19324/CARS%2020%20ANIVERSARIO,CARS 20 ANIVERSARIO)	2 orders x 8 steps	15	1.09
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19325/VERITY%20LA%20SOMBRA%20DE%20UN%20ENGA%C3%91O,VERITY LA SOMBRA DE UN ENGAÑO)	2 orders x 8 steps	15	0.70
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19342/MASCOTAS%20AL%20RESCATE,MASCOTAS AL RESCATE)	2 orders x 8 steps	15	0.18
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19343/ARRIBA%20TUTTO,ARRIBA TUTTO)	2 orders x 8 steps	15	0.65
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19347/EL%20PRECIO%20DE%20LA%20RED,EL PRECIO DE LA RED)	2 orders x 8 steps	15	0.57
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19350/EL%20ARBOL%20MUY%20MUY%20LEJANO,EL ARBOL MUY MUY LEJANO)	levels 0-1	86	0.57
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19384/LA%20MALETA,LA MALETA)	2 orders x 8 steps	15	0.94
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19385/LA%20INVITACION,LA INVITACION)	2 orders x 8 steps	15	1.28
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19386/WHALEFALL,WHALEFALL)	2 orders x 8 steps	15	0.84
+Native(Artesiete Fan,https://fan.artesiete.es/FilmPage/19397/LEONES%20EN%20INVIERNO,LEONES EN INVIERNO)	2 orders x 8 steps	15	0.68
+Native(Artesiete Los Alfares,https://alfares.artesiete.es/FilmPage/19396/KARATEKA,KARATEKA)	levels 0-1	54	0.52
+Native(Kinépolis Alicante,https://www.taquilla.com/entradas/godzilla-minus-zero,Godzilla Minus Zero)	2 orders x 8 steps	15	0.17
+Native(Kinépolis Alicante,https://www.taquilla.com/entradas/la-odisea,La Odisea)	2 orders x 8 steps	15	0.22
+Native(Kinépolis Alicante,https://www.taquilla.com/entradas/spider-man-brand-new-day,Spider-Man: Brand New Day)	levels 0-1	110	0.76
+Native(Kinépolis Almería Mediterráneo,https://www.taquilla.com/entradas/digger,Digger)	2 orders x 8 steps	15	0.13
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/cat-escape-room-2,CAT Escape Room 2)	levels 0-1	82	0.93
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/cronos,Cronos)	levels 0-1	42	0.22
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/insidious-fuera-del-mas-alla,Insidious: Fuera del más allá)	levels 0-1	32	0.21
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/la-constelacion-del-perro,La Constelación del Perro)	lattice 2^4	16	0.62
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/la-patrulla-canina-la-dino-pelicula,La Patrulla Canina: La dino película)	lattice 2^5	32	0.83
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/lucky-strike,Lucky Strike)	lattice 2^2	4	0.10
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/practicamente-magia-2,Prácticamente Magia 2)	lattice 2^3	8	0.14
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/toy-story-5,Toy Story 5)	lattice 2^7	128	7.46
+Native(Kinépolis Barcelona Full Splau,https://www.taquilla.com/entradas/vengadores-endgame-encore,Vengadores: Endgame Encore)	levels 0-1	54	0.74
+Native(Kinépolis Mataró Parc,https://www.taquilla.com/entradas/minions---monsters,Minions & Monsters)	levels 0-1	98	0.54
+Native(Multicines Bahia Mar,https://bahia.artesiete.es/FilmPage/19290/EVENTOS%2026-27%20MANON,EVENTOS 26-27 MANON)	levels 0-1	18	0.21
+Native(Multicines Bahia Mar,https://bahia.artesiete.es/FilmPage/19390/BOIUNA.%20LA%20LEYENDA%20DEL%20AMAZONAS,BOIUNA. LA LEYENDA DEL AMAZONAS)	levels 0-1	74	1.50
+Native(Neocine Centrofama,https://www.taquilla.com/entradas/el-mal-hijo,El mal hijo)	levels 0-1	106	1.61
+Native(Neocine Centrofama,https://www.taquilla.com/entradas/tiempos-de-ilusion,Tiempos de Ilusión)	levels 0-1	26	0.30
+Native(Neocine Mandarache,https://www.taquilla.com/entradas/ballet-el-cascanueces-cine,Ballet El Cascanueces (Cine))	levels 0-1	42	0.32
+Native(Neocine Mandarache,https://www.taquilla.com/entradas/christmas-in-versailles-sonya-yoncheva,Christmas in Versailles, Sonya Yoncheva)	lattice 2^6	64	5.27
+Native(Neocine Mandarache,https://www.taquilla.com/entradas/opera-cosi-fan-tutte-cine,Ópera Cosi fan tutte (Cine))	lattice 2^5	32	0.89
+Native(Ocine Arenys,https://tickets.ocinearenys.es/#/DetallPelicula/10891,Doraemon: aventuras en el mundo del arte)	levels 0-1	90	0.66
+Native(Ocine Blanes,https://tickets.ocineblanes.es/#/DetallPelicula/10678,Carmen (OPERA LIVE))	lattice 2^7	128	3.37
+Native(Ocine Gavarres,https://tickets.ocinegavarres.es/#/DetallPelicula/10929,NAZA)	2 orders x 8 steps	15	0.12
+Native(Ocine Gavarres,https://tickets.ocinegavarres.es/#/DetallPelicula/10953,Diversión Navideña con Peppa: La Experiencia en Cines)	levels 0-1	18	0.21
+Native(Ocine Premium Gran Vía de Vigo,https://tickets.ocinepremiumgranvia.es/#/DetallPelicula/10996,Sentido y sensibilidad)	levels 0-1	100	1.75
+Native(Ocine Premium Gran Vía de Vigo,https://tickets.ocinepremiumgranvia.es/#/DetallPelicula/11000,Superthings: La película)	levels 0-1	86	1.77
+Native(Ocine Premium Gran Vía de Vigo,https://tickets.ocinepremiumgranvia.es/#/DetallPelicula/11003,Wildwood)	levels 0-1	70	0.58
+Native(Yelmo Cines Abrera,https://www.taquilla.com/entradas/el-resplandor,El resplandor)	2 orders x 8 steps	15	0.16
+Native(Yelmo Cines Abrera,https://www.taquilla.com/entradas/los-cazafantasmas,Los Cazafantasmas)	levels 0-1	84	0.65
+Native(Yelmo Cines Abrera,https://www.taquilla.com/entradas/pesadilla-antes-de-navidad,Pesadilla antes de Navidad)	levels 0-1	96	0.57
+Native(Yelmo Cines Abrera,https://www.taquilla.com/entradas/pesadilla-en-elm-street,Pesadilla en Elm Street)	2 orders x 8 steps	15	0.18
+Native(Yelmo Cines Boulevard,https://www.taquilla.com/entradas/hamlet-opera-cine,Hamlet - Ópera (Cine))	levels 0-1	20	0.43
+Native(Yelmo Cines Boulevard,https://www.taquilla.com/entradas/las-ciegas-hormigas,Las ciegas hormigas)	levels 0-1	66	0.25
+Native(Yelmo Cines Boulevard,https://www.taquilla.com/entradas/manon-de-jules-massenet-opera-cine,Manon de Jules Massenet - Ópera (Cine))	levels 0-1	32	0.70
+Native(Yelmo Cines Ideal,https://www.taquilla.com/entradas/ceniza-en-la-boca,Ceniza en la boca)	levels 0-1	48	0.18
+Native(Yelmo Cines Ideal,https://www.taquilla.com/entradas/el-ser-querido,El Ser Querido)	levels 0-1	62	0.30
+Native(Yelmo Cines Ideal,https://www.taquilla.com/entradas/kakeru,Kakeru)	levels 0-1	94	1.46
 Native(Yelmo Cines Las Arenas,https://www.taquilla.com/entradas/vivir-la-tierra,Vivir la tierra)	lattice 2^2	4	0.10
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/blade-runner,Blade Runner)	lattice 2^4	16	0.44
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/centauros-del-desierto,Centauros del desierto)	lattice 2^6	64	4.45
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/cuentos-de-tokio,Cuentos de Tokio)	lattice 2^7	128	4.65
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/blade-runner,Blade Runner)	lattice 2^4	16	0.39
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/centauros-del-desierto,Centauros del desierto)	lattice 2^6	64	3.29
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/cuentos-de-tokio,Cuentos de Tokio)	lattice 2^7	128	5.58
 Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/domingo-de-clasicos-el-apartamento,El Apartamento)	lattice 2^4	16	0.56
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/don-quijote-ballet-de-lopera-national-de-bordeaux,Don Quijote - Ballet de l'Opéra National de Bordeaux)	lattice 2^4	16	1.19
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/el-chico-y-la-garza,El chico y la garza)	lattice 2^7	128	4.24
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/gremlins,Gremlins)	lattice 2^4	16	0.29
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/la-bayadere-cine,La Bayadère (Cine))	lattice 2^4	16	1.08
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/la-verbena-de-la-paloma-26-27,La Verbena de la Paloma 26-27)	lattice 2^4	16	0.99
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/lady-bird,Lady Bird)	lattice 2^7	128	2.28
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/le-corsaire-cine,Le Corsaire (Cine))	lattice 2^4	16	2.26
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/origen-cine,Origen (Cine))	lattice 2^4	16	0.66
-Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/pavarotti-90th--the-grand-tribute-26-27,Pavarotti 90th – the Grand Tribute 26-27)	lattice 2^5	32	0.69
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/don-quijote-ballet-de-lopera-national-de-bordeaux,Don Quijote - Ballet de l'Opéra National de Bordeaux)	lattice 2^4	16	1.50
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/el-chico-y-la-garza,El chico y la garza)	lattice 2^7	128	4.80
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/gremlins,Gremlins)	lattice 2^4	16	0.34
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/la-bayadere-cine,La Bayadère (Cine))	lattice 2^4	16	1.22
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/la-verbena-de-la-paloma-26-27,La Verbena de la Paloma 26-27)	lattice 2^4	16	0.97
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/lady-bird,Lady Bird)	lattice 2^7	128	2.59
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/le-corsaire-cine,Le Corsaire (Cine))	lattice 2^4	16	1.67
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/origen-cine,Origen (Cine))	lattice 2^4	16	0.69
+Native(mk2 Bahía de Cádiz,https://www.taquilla.com/entradas/pavarotti-90th--the-grand-tribute-26-27,Pavarotti 90th – the Grand Tribute 26-27)	lattice 2^5	32	0.49
 Native(mk2 El Ingenio,https://www.taquilla.com/entradas/concierto-de-fin-de-ano-berliner-philharmoniker-cine,Concierto de fin de año - Berliner Philharmoniker (Cine))	lattice 2^2	4	0.34
-Native(mk2 Nervión Plaza,https://www.taquilla.com/entradas/la-vida-de-una-mujer,La vida de una mujer)	levels 0-1	58	0.23
-Published(Abc El Saler,Chopin,Some(2025),List(Michal Kwiecinski))	levels 0-1	88	0.42
-Published(Abc Elx,Drácula de Bram Stoker,Some(1992),List(Francis Ford Coppola))	levels 0-1	32	0.52
-Published(Abc Elx,Hope,Some(2026),List(Na Hong-jin))	lattice 2^5	32	0.98
+Native(mk2 Nervión Plaza,https://www.taquilla.com/entradas/la-vida-de-una-mujer,La vida de una mujer)	levels 0-1	58	0.26
+Published(Abc El Saler,Chopin,Some(2025),List(Michal Kwiecinski))	levels 0-1	88	0.48
+Published(Abc Elx,Drácula de Bram Stoker,Some(1992),List(Francis Ford Coppola))	levels 0-1	32	0.38
+Published(Abc Elx,Hope,Some(2026),List(Na Hong-jin))	lattice 2^5	32	1.34
 Published(Abc Gandia,La voz quebrada,Some(2026),List(Manuel Menchón))	levels 0-1	36	0.09
-Published(Abc Park,La ciudad de las estrellas. La La Land,Some(2016),List(Damien Chazelle))	lattice 2^2	4	0.22
-Published(Abc Park,Los niños están bien,Some(2025),List(Nathan Ambrosioni))	lattice 2^3	8	0.32
-Published(Abc Park,Los paraguas de Cherburgo,Some(1963),List(Jacques Demy))	lattice 2^6	64	2.14
-Published(Aita Mari Zinema,La isla de Amrum,Some(2025),List(Fatih Akın))	lattice 2^2	4	0.42
-Published(Arenas Multicines 3D,Ozzy & Black Sabbath: Back To The Beginning,Some(2026),List(Benjamin Wainwright-Pearce))	levels 0-1	58	0.20
-Published(Avenida 5 Cines,Todo sobre mi madre,Some(1999),List(Pedro Almodóvar))	lattice 2^2	4	0.40
-Published(Casa de Cultura Doctor Velasco ,La Buena Suerte,Some(2025),List(Gracia Querejeta))	lattice 2^3	8	0.45
-Published(Cat Cinemes,Omaha,Some(2025),List(Cole Webley))	lattice 2^2	4	0.34
-Published(Cine Casablanca,Nuda propiedad,Some(2026),List(Alberto Utrera))	lattice 2^2	4	0.09
-Published(Cine Duplex,Sombra nómada,Some(2025),List(Eimi Imanishi))	lattice 2^2	4	0.21
-Published(Cine Madrigal,Su propio infierno,Some(2026),List(Nicolas Winding Refn))	lattice 2^5	32	0.70
-Published(Cine Modelo,La leyenda de la ballena cantora,Some(2025),List(Reza Memari))	lattice 2^4	16	0.33
-Published(Cine Palafox Zaragoza,Tiempo de victoria,Some(2026),List(Anthony Maras))	lattice 2^5	32	0.70
+Published(Abc Park,La ciudad de las estrellas. La La Land,Some(2016),List(Damien Chazelle))	lattice 2^2	4	0.48
+Published(Abc Park,Los niños están bien,Some(2025),List(Nathan Ambrosioni))	lattice 2^3	8	0.60
+Published(Abc Park,Los paraguas de Cherburgo,Some(1963),List(Jacques Demy))	lattice 2^6	64	1.91
+Published(Aita Mari Zinema,La isla de Amrum,Some(2025),List(Fatih Akın))	lattice 2^2	4	0.10
+Published(Arenas Multicines 3D,Ozzy & Black Sabbath: Back To The Beginning,Some(2026),List(Benjamin Wainwright-Pearce))	levels 0-1	58	0.19
+Published(Avenida 5 Cines,Todo sobre mi madre,Some(1999),List(Pedro Almodóvar))	lattice 2^2	4	0.13
+Published(Casa de Cultura Doctor Velasco ,La Buena Suerte,Some(2025),List(Gracia Querejeta))	lattice 2^3	8	0.24
+Published(Cat Cinemes,Omaha,Some(2025),List(Cole Webley))	lattice 2^2	4	0.10
+Published(Cine Casablanca,Nuda propiedad,Some(2026),List(Alberto Utrera))	lattice 2^2	4	0.05
+Published(Cine Duplex,Sombra nómada,Some(2025),List(Eimi Imanishi))	lattice 2^2	4	0.06
+Published(Cine Madrigal,Su propio infierno,Some(2026),List(Nicolas Winding Refn))	lattice 2^5	32	0.82
+Published(Cine Modelo,La leyenda de la ballena cantora,Some(2025),List(Reza Memari))	lattice 2^4	16	0.27
+Published(Cine Palafox Zaragoza,Tiempo de victoria,Some(2026),List(Anthony Maras))	lattice 2^5	32	1.07
 Published(Cine Torrezabal,Ruega por nosotras,Some(2026),List(Daniel Monzón))	lattice 2^2	4	0.05
-Published(Cine de Verano Serra,Un plan perfecto,Some(2026),List(María Pulido))	lattice 2^3	8	0.40
-Published(CineCiutat,Adolescencia, sexo y muerte en Campamento Miasma,Some(2026),List(Jane Schoenbrun))	lattice 2^2	4	0.10
-Published(CineCiutat,El samurái y el prisionero,Some(2026),List(Kiyoshi Kurosawa))	lattice 2^3	8	0.34
-Published(CineCiutat,El tesoro de Barracuda,Some(2025),List(Adriàn Garcia, Victor Maldonado))	lattice 2^2	4	0.07
-Published(Cinema Catalunya,La Familia Addams,Some(1992),List(Barry Sonnenfeld))	lattice 2^2	4	0.15
-Published(Cinema Catalunya,Re-Animator,Some(1985),List(Stuart Gordon))	lattice 2^2	4	0.11
-Published(Cinema Esbarjo,Bad Apples,Some(2025),List(Jonatan Etzler))	lattice 2^2	4	0.06
-Published(Cinema Paris Lérida,Narciso,Some(2026),List(Marcelo Martinessi))	lattice 2^2	4	0.09
-Published(Cinemes Can Castellet,L'elisir d'amore,Some(1941),List())	lattice 2^2	4	0.08
-Published(Cines Aragonia,Un amor posible,Some(2026),List(Lee Chang-dong))	lattice 2^2	4	0.27
-Published(Cines Babel,La Reina de África,Some(1951),List(John Huston))	lattice 2^2	4	0.07
-Published(Cines Babel,La oveja Shaun: Misión calabaza,Some(2026),List(Matthew Walker, Steve Cox))	lattice 2^3	8	0.21
-Published(Cines MN4,Mi vecino Totoro,Some(1988),List(Hayao Miyazaki))	lattice 2^2	4	0.13
+Published(Cine de Verano Serra,Un plan perfecto,Some(2026),List(María Pulido))	lattice 2^3	8	0.24
+Published(CineCiutat,Adolescencia, sexo y muerte en Campamento Miasma,Some(2026),List(Jane Schoenbrun))	lattice 2^2	4	0.06
+Published(CineCiutat,El samurái y el prisionero,Some(2026),List(Kiyoshi Kurosawa))	lattice 2^3	8	0.23
+Published(CineCiutat,El tesoro de Barracuda,Some(2025),List(Adriàn Garcia, Victor Maldonado))	lattice 2^2	4	0.13
+Published(Cinema Catalunya,La Familia Addams,Some(1992),List(Barry Sonnenfeld))	lattice 2^2	4	0.13
+Published(Cinema Catalunya,Re-Animator,Some(1985),List(Stuart Gordon))	lattice 2^2	4	0.13
+Published(Cinema Esbarjo,Bad Apples,Some(2025),List(Jonatan Etzler))	lattice 2^2	4	0.05
+Published(Cinema Paris Lérida,Narciso,Some(2026),List(Marcelo Martinessi))	lattice 2^2	4	0.13
+Published(Cinemes Can Castellet,L'elisir d'amore,Some(1941),List())	lattice 2^2	4	0.10
+Published(Cines Aragonia,Un amor posible,Some(2026),List(Lee Chang-dong))	lattice 2^2	4	0.23
+Published(Cines Babel,La Reina de África,Some(1951),List(John Huston))	lattice 2^2	4	0.11
+Published(Cines Babel,La oveja Shaun: Misión calabaza,Some(2026),List(Matthew Walker, Steve Cox))	lattice 2^3	8	0.23
+Published(Cines MN4,Mi vecino Totoro,Some(1988),List(Hayao Miyazaki))	lattice 2^2	4	0.07
 Published(Cines Ortega,Coco,Some(2017),List(Lee Unkrich))	lattice 2^3	8	0.11
-Published(Cines Princesa,Los demonios,Some(1971),List(Ken Russell))	lattice 2^2	4	0.19
-Published(Cinesa As Cancelas,Carrie,Some(1976),List(Brian De Palma))	levels 0-1	64	0.46
-Published(Cinesa As Cancelas,Dolly: Juega conmigo,Some(2025),List(Rod Blackhurst))	levels 0-1	64	0.33
-Published(Daimiel Cinema,Sacamantecas,Some(2026),List(David Pérez Sañudo))	lattice 2^2	4	0.07
+Published(Cines Princesa,Los demonios,Some(1971),List(Ken Russell))	lattice 2^2	4	0.12
+Published(Cinesa As Cancelas,Carrie,Some(1976),List(Brian De Palma))	levels 0-1	64	0.43
+Published(Cinesa As Cancelas,Dolly: Juega conmigo,Some(2025),List(Rod Blackhurst))	levels 0-1	64	0.26
+Published(Daimiel Cinema,Sacamantecas,Some(2026),List(David Pérez Sañudo))	lattice 2^2	4	0.08
 Published(Kinépolis Madrid,Rammstein - Live in Mexico City,Some(2026),List(Paul Dugdale))	lattice 2^3	8	0.34
-Published(Multicines Compostela,Parkour en Gaza,Some(2025),List(Abbas Zuaiter))	lattice 2^2	4	0.04
-Published(Teatro Casino Liceo de Santoña,Bodegón con fantasmas,Some(2024),List(Enrique Buleo))	lattice 2^2	4	0.04
-Published(Teatro Casino Liceo de Santoña,La buena letra,Some(2025),List(Celia Rico Clavellino))	lattice 2^2	4	0.05
-Published(mk2 El Tablero,Akira,Some(1988),List(Katsuhiro Ôtomo))	lattice 2^3	8	0.11
-Published(mk2 El Tablero,Con la muerte en los talones,Some(1959),List(Alfred Hitchcock))	lattice 2^3	8	0.38
+Published(Multicines Compostela,Parkour en Gaza,Some(2025),List(Abbas Zuaiter))	lattice 2^2	4	0.07
+Published(Teatro Casino Liceo de Santoña,Bodegón con fantasmas,Some(2024),List(Enrique Buleo))	lattice 2^2	4	0.08
+Published(Teatro Casino Liceo de Santoña,La buena letra,Some(2025),List(Celia Rico Clavellino))	lattice 2^2	4	0.06
+Published(mk2 El Tablero,Akira,Some(1988),List(Katsuhiro Ôtomo))	lattice 2^3	8	0.15
+Published(mk2 El Tablero,Con la muerte en los talones,Some(1959),List(Alfred Hitchcock))	lattice 2^3	8	0.23

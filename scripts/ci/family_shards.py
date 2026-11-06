@@ -6,7 +6,7 @@ The families are split by MEASURED COST, not by count (services.identity.FamilyC
 lightest row, from test/resources/fixtures/family-costs-<cc>.tsv, the walk seconds the first cold run recorded); a family
 of 64 or more listings -- the sampled tier, a handful of which cost most of a country's walk -- is walked with ORDERS
 seeded arrival orders instead of 8, the orders changing every ISO week. The shard counts are the recorded costs at about
-500 recorded seconds a row (about 6 minutes of a hosted runner's walk). A family the costs do not name costs the average
+the recorded seconds that make about 6.5 minutes of a hosted runner's walk (the second cold run's ratios: DE 0.70, UK 0.77, PL 0.84, US 1.15). A family the costs do not name costs the average
 of its members'.
 
   family_shards.py plan [--countries "de uk"] [--date YYYY-MM-DD]
@@ -25,9 +25,9 @@ import os
 import sys
 
 # country code -> shards; the order is the order the rows start in (the slowest first)
-SHARDS = {"us": 10, "de": 11, "uk": 5, "pl": 2, "es": 1}
-# the sampled tier's arrival orders a walk (8 is FamilyConvergence's default, the cold run of 2026-11-06 that timed out)
-ORDERS = 2
+SHARDS = {"us": 11, "de": 11, "uk": 5, "pl": 2, "es": 1}
+# the sampled tier's arrival orders a walk (FamilyConvergence's default is 8; at 8, then 2, four US rows took 20+ minutes)
+ORDERS = 1
 
 
 def plan(requested):

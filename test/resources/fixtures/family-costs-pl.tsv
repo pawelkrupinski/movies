@@ -1,401 +1,401 @@
 family	tier	subsets	seconds
-Native(ADA Kino Studyjne,https://biletyna.pl/film/Lalka-2026?eid=703689#opis,Lalka (2026))	8 orders x 8 steps	57	83.07
-Native(ADA Kino Studyjne,https://biletyna.pl/film/Mistyczka?eid=703695#opis,Mistyczka)	8 orders x 8 steps	57	8.03
-Native(ADA Kino Studyjne,https://biletyna.pl/film/Powiedz-mi-co-czujesz?eid=703688#opis,Powiedz mi, co czujesz)	levels 0-1	28	1.30
-Native(Baszta,https://www.filmweb.pl/film/10079933,Tony)	levels 0-1	40	1.35
-Native(Baszta,https://www.filmweb.pl/film/10088447,Marsupilami)	levels 0-1	104	6.49
-Native(Bałtyk,https://www.bilety24.pl/kino/1499-100-dni-misja-zeus-167077?id=1003701,100 dni: Misja Zeus)	8 orders x 8 steps	57	3.44
-Native(Bałtyk,https://www.bilety24.pl/kino/1499-baranek-shaun-i-kudlata-bestia-166285?id=1000152,Baranek Shaun i kudłata bestia)	8 orders x 8 steps	57	40.31
-Native(Bałtyk,https://www.bilety24.pl/kino/1499-kicia-kocia-ma-braciszka-139744?id=1000157,Kicia Kocia ma braciszka)	lattice 2^2	4	0.82
-Native(Bałtyk,https://www.bilety24.pl/kino/1499-klasyka-na-fali-przeklenstwa-niewinnosci-167111?id=1003841,Klasyka na fali: Przekleństwa niewinności)	lattice 2^2	4	0.82
-Native(Bałtyk,https://www.bilety24.pl/kino/1499-klasyka-na-fali-zawiescie-czerwone-latarnie-prelekcja-ewy-klonowskiej-166396?id=1000168,Klasyka na fali: Zawieście czerwone latarnie + prelekcja Ewy Klonowskiej)	lattice 2^3	8	1.83
-Native(Bałtyk,https://www.bilety24.pl/kino/1499-klub-konesera-o-czym-wie-marielle-164533?id=987966,Klub Konesera: O czym wie Marielle)	lattice 2^3	8	2.71
-Native(Bałtyk,https://www.bilety24.pl/kino/1499-klub-konesera-obcy-164534?id=987968,Klub Konesera: Obcy)	levels 0-1	70	6.73
-Native(Bałtyk,https://www.bilety24.pl/kino/1499-primetime-165138?id=1000156,Primetime)	8 orders x 8 steps	57	6.26
-Native(Bielański Ośrodek Kultury,https://biletyna.pl/film/BOKino-Baltyk?eid=701875#opis,BOKino | „Bałtyk”)	lattice 2^4	16	2.63
-Native(CKF Stylowy,https://www.stylowy.net/film/4122-camino-dla-opornych.html,CAMINO DLA OPORNYCH)	levels 0-1	84	10.98
-Native(CKF Stylowy,https://www.stylowy.net/film/4167-folwark-zwierzecy.html,FOLWARK ZWIERZĘCY)	levels 0-1	48	2.27
-Native(CKF Stylowy,https://www.stylowy.net/film/4169-zapomniana-wyspa.html,ZAPOMNIANA WYSPA)	8 orders x 8 steps	57	7.21
-Native(CKF Stylowy,https://www.stylowy.net/film/4171-vincent-legenda-oceanu.html,VINCENT. LEGENDA OCEANU)	8 orders x 8 steps	57	18.43
-Native(CKF Stylowy,https://www.stylowy.net/film/4176-digger.html,DIGGER)	8 orders x 8 steps	57	13.29
-Native(CKF Stylowy,https://www.stylowy.net/film/4181-supermocni.html,SUPERMOCNI)	8 orders x 8 steps	57	17.63
-Native(CKF Stylowy,https://www.stylowy.net/film/4184-renoir.html,RENOIR)	levels 0-1	50	1.62
-Native(CKF Stylowy,https://www.stylowy.net/film/4185-w-tym-kraju-nie-ma-dobrych-mezczyzn.html,W TYM KRAJU NIE MA DOBRYCH MĘŻCZYZN)	levels 0-1	84	15.13
-Native(CKF Stylowy,https://www.stylowy.net/film/4186-rozwazna-i-romantyczna.html,ROZWAŻNA I ROMANTYCZNA)	8 orders x 8 steps	57	18.11
-Native(CKF Stylowy,https://www.stylowy.net/film/4187-czas-ktory-nie-nadszedl.html,CZAS, KTÓRY NIE NADSZEDŁ)	8 orders x 8 steps	57	8.49
-Native(CKF Stylowy,https://www.stylowy.net/film/4188-inna-mamusia.html,INNA MAMUSIA)	8 orders x 8 steps	57	3.66
-Native(CKF Stylowy,https://www.stylowy.net/film/4190-jak-zyc-zeby-nie-zwariowac.html,JAK ŻYĆ, ŻEBY NIE ZWARIOWAĆ)	8 orders x 8 steps	57	15.53
-Native(CKF Stylowy,https://www.stylowy.net/film/4191-clayface.html,CLAYFACE)	8 orders x 8 steps	57	5.23
-Native(CKF Stylowy,https://www.stylowy.net/film/4201-klara-i-slonce.html,KLARA I SŁOŃCE)	8 orders x 8 steps	57	2.70
-Native(CKF Stylowy,https://www.stylowy.net/film/4206-piesni-lasu.html,PIEŚNI LASU)	levels 0-1	122	7.75
-Native(CKiS Sępólno Krajeńskie,https://biletyna.pl/film/Odyseja?eid=698537#opis,Odyseja)	levels 0-1	90	2.10
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1092-luna-i-rozgadana-swinka/2026-10-20-17-30,LUNA I ROZGADANA ŚWINKA)	8 orders x 8 steps	57	2.99
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1093-niebo-nad-normandia/2026-10-20-15-15,NIEBO NAD NORMANDIĄ)	levels 0-1	52	1.15
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1111-roza/2026-11-03-15-45,RÓŻA)	8 orders x 8 steps	57	12.48
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1113-kumotry/2026-11-07-10-02,KUMOTRY)	lattice 2^7	128	14.67
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1114-kura/2026-11-07-13-45,KURA)	levels 0-1	116	8.44
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1117-wajda-re-wizje-ziemia-obiecana/2026-11-15-18-00,WAJDA: Re-wizje: ZIEMIA OBIECANA)	levels 0-1	52	7.10
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1118-dkf-kandydaci-smierci/2026-11-19-19-00,DKF - KANDYDACI ŚMIERCI)	levels 0-1	26	0.89
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1119-odzyskany/2026-11-22-14-00,ODZYSKANY)	levels 0-1	24	0.53
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1121-dkf-znikniecie/2026-11-05-19-00,DKF - ZNIKNIĘCIE)	lattice 2^4	16	3.30
-Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1122-retransmisje-met-na-zywo-w-hd-carmen/2026-11-22-18-00,ReTransmisje Met: Na żywo w HD - Carmen)	levels 0-1	40	1.86
-Native(Centrum Kultury Gniewino,https://biletyna.pl/film/Kupilem-motocykl-ktory-jest-wampirem-1990?eid=708985#opis,Kupiłem motocykl, który jest wampirem (1990))	levels 0-1	28	1.80
-Native(Centrum Kultury Gniewino,https://biletyna.pl/film/Resident-Evil?eid=708977#opis,Resident Evil)	8 orders x 8 steps	57	2.12
-Native(Centrum Kultury Gniewino,https://biletyna.pl/film/Runner?eid=708966#opis,Runner)	levels 0-1	128	5.03
-Native(Centrum Kultury Nowy Pafawag,https://biletyna.pl/film/Klub-Filmowy-Perspektywy-film-Oczy-szeroko-zamkniete?eid=711732#opis,Klub Filmowy Perspektywy film „Oczy szeroko zamknięte”)	lattice 2^2	4	0.55
-Native(Centrum Kultury Przeźmierowo,https://biletyna.pl/dla-dzieci/NutkoSfera-Cezik-dzieciom?eid=700903#opis,NutkoSfera - CeZik dzieciom)	lattice 2^2	4	0.55
-Native(Centrum Kultury Przeźmierowo,https://biletyna.pl/film/DZIEN-DZIECKA-KSIEDZA-JANA-KACZKOWSKIEGO?eid=704012#opis,Dzień dziecka księdza Jana Kaczkowskiego)	levels 0-1	128	10.42
-Native(Centrum Kultury Przeźmierowo,https://biletyna.pl/film/Everytime?eid=712439#opis,Everytime)	8 orders x 8 steps	57	4.18
-Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/Avengers-Koniec-gry-wersja-rozszerzona?eid=712168#opis,Avengers: Koniec gry - wersja rozszerzona)	levels 0-1	32	0.85
-Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/Maraton-Halloween-2026?eid=711422#opis,Maraton Halloween 2026)	levels 0-1	34	0.95
-Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/Spa-Weekend?eid=712022#opis,Spa Weekend)	levels 0-1	18	0.54
-Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/VerityCoraz-wiekszy-mrok?eid=711291#opis,Verity. Coraz większy mrok)	8 orders x 8 steps	57	4.07
-Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/Witajcie-w-Hope?eid=712166#opis,Witajcie w Hope)	8 orders x 8 steps	57	6.89
-Native(Centrum,https://ekobilet.pl/kino-centrum-jastrzebiezdrj/ma-to-sens-64300,Ma to sens)	lattice 2^5	32	3.88
-Native(Centrum,https://ekobilet.pl/kino-centrum-jastrzebiezdrj/osobliwy-swiat-hieronymusa-boscha-64322,OSOBLIWY ŚWIAT HIERONYMUSA BOSCHA)	lattice 2^2	4	0.53
-Native(Centrum,https://ekobilet.pl/kino-centrum-jastrzebiezdrj/rolling-loud-film-64299,Rolling Loud. Film)	lattice 2^6	64	10.62
-Native(Centrum,https://ekobilet.pl/kino-centrum-jastrzebiezdrj/syrenka-picassa-64397,Syrenka Picassa)	8 orders x 8 steps	57	3.20
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/ali-g-kto-ja-jezdem/8467s2r,Ali G: Kto ja jezdem?)	levels 0-1	78	3.28
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/andre-rieu-pada-snieg/8658o2r,André Rieu. Pada śnieg!)	levels 0-1	94	12.31
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/auta-re-release/8377d2r,Auta (re-release))	lattice 2^6	64	6.38
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/avengers-doomsday-ukrainski-dubbing/7879s2r1,Avengers: Doomsday ukraiński dubbing)	8 orders x 8 steps	57	3.26
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-buenos-aires-live-viewing/8443s2r,BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING)	8 orders x 8 steps	57	3.80
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/crash-30-rocznica/8610s2r,Crash. 30. rocznica)	levels 0-1	100	8.14
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/diably/8614s2r,Diabły)	8 orders x 8 steps	57	8.95
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/diuna-czesc-trzecia/8105s2r,Diuna: Część trzecia)	8 orders x 8 steps	57	5.41
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/egon-schiele-poza-tabu/8612s2r,Egon Schiele. Poza tabu)	8 orders x 8 steps	57	7.29
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/enhypen-world-tour-blood-saga/8574o2r,ENHYPEN WORLD TOUR 'BLOOD SAGA')	levels 0-1	34	0.94
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/everest-druga-strona/8617s2r,Everest: Druga strona)	levels 0-1	108	3.68
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/festive-fun-with-peppa-cinema-experience/8605d2r,Festive Fun with Peppa Cinema Experience)	levels 0-1	74	3.62
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/godzilla-minimaraton/8608s2r,Godzilla minimaraton)	levels 0-1	58	1.17
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/godzilla-minus-zero/8389s2r,Godzilla Minus Zero)	8 orders x 8 steps	57	6.26
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/hauser-symfonicznie-z-londynskiej-royal/8633s2r,Hauser symfonicznie z londyńskiej Royal)	levels 0-1	40	1.14
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/hybe-cheering-party/8576o3r,HYBE CHEERING PARTY)	levels 0-1	34	0.92
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/krzyk-30-rocznica/8656s2r,Krzyk. 30-rocznica)	levels 0-1	74	1.97
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/la-la-land/1951s2r,La La Land)	levels 0-1	66	1.88
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/ladies-night-przepis-na-swieta/8595o2r1,Ladies Night - Przepis na święta)	8 orders x 8 steps	57	4.46
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/league-of-legends-worlds-26-finals-in-cinema/8564o2r,League of Legends Worlds 26 | Finals in Cinema)	levels 0-1	52	1.01
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/legendarni/8615d2r,Legendarni)	levels 0-1	82	3.74
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/maraton-horrorow-1/8642s2r,Maraton horrorów #1)	levels 0-1	68	1.82
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/maraton-horrorow-2/8643s2r,Maraton horrorów #2)	levels 0-1	64	1.22
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/maraton-horrorow-3/8644s2r,Maraton horrorów #3)	levels 0-1	64	1.64
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/maraton-horrorow-4/8645s2r,Maraton horrorów #4)	levels 0-1	68	1.31
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/martwe-zlo-2/8660s2r,Martwe zło 2)	levels 0-1	100	4.94
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r,Nasza rewolucja)	8 orders x 8 steps	57	8.79
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/ozzy-black-sabbath-back-to-the-beginning/8560s2r,Ozzy & Black Sabbath: Back To The Beginning)	levels 0-1	90	1.82
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/pasazer-andrzej-munk/8611o2r,Pasażer Andrzej Munk)	levels 0-1	48	2.28
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/psi-patrol-i-dinozaury/8093d2r,Psi patrol i dinozaury)	levels 0-1	38	1.04
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/pucio-kocha-zwierzaki/8381d2r,Pucio kocha zwierzaki)	8 orders x 8 steps	57	3.94
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/rammstein-live-in-mexico-city/8559o2r,RAMMSTEIN - LIVE IN MEXICO CITY)	8 orders x 8 steps	57	1.54
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/seventeen-world-tour-new_/8572o2r,SEVENTEEN WORLD TOUR 'NEW_')	levels 0-1	34	0.81
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/skrzypek-na-dachu/8659s2r,Skrzypek na dachu)	levels 0-1	104	2.91
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/spider-man-calkiem-nowy-dzien/8085s2r,Spider-Man: Całkiem nowy dzień)	levels 0-1	88	2.87
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/stray-kids-world-tour-run-it-live-view/8568o2r,Stray Kids World Tour <RUN IT> LIVE VIEW)	levels 0-1	32	0.63
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/street-fighter-uliczny-wojownik-ukrains/8182s2r1,Street Fighter. Uliczny wojownik ukraińs)	8 orders x 8 steps	57	4.06
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/tede-forever-rap/8669o2r,TEDE. Forever Rap)	8 orders x 8 steps	57	2.52
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/tedi-i-magiczna-lampa/8312d2r,Tedi i magiczna lampa)	levels 0-1	82	5.67
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/the-social-reckoning-w-sieci-konsekwencji/8330s2r,The Social Reckoning. W sieci konsekwencji)	8 orders x 8 steps	57	5.90
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/tomorrow-x-together-world-tour-act-tomorrow/8573o2r,TOMORROW X TOGETHER WORLD TOUR 'ACT : TOMORROW)	levels 0-1	34	0.72
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/upadek-wieloryba/8333s2r,Upadek wieloryba)	8 orders x 8 steps	57	3.99
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/w-sercu-dziczy/8314s2r,W sercu dziczy)	8 orders x 8 steps	57	2.14
-Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/zobaczysz-wszystko/8661s2r,Zobaczysz wszystko)	8 orders x 8 steps	57	5.32
-Native(Cinema City Biała Podlaska,https://www.cinema-city.pl/filmy/el-clasico-fc-barcelona-real-madryt/8657o2r,El Clásico: FC Barcelona - Real Madryt)	levels 0-1	92	6.18
-Native(Cinema City Bonarka,https://www.cinema-city.pl/filmy/naznaczony-wyjscie-z-mrocznego-wymiaru/8183s2r,Naznaczony: Wyjście z mrocznego wymiaru)	lattice 2^3	8	0.75
-Native(Cinema City Bydgoszcz,https://www.cinema-city.pl/filmy/toy-story-5/7784d2r,Toy Story 5)	lattice 2^4	16	3.37
-Native(Cinema City Czerwona Droga,https://www.cinema-city.pl/filmy/moj-pies-barry/8562d2r,Mój pies Barry)	lattice 2^3	8	1.56
-Native(Cinema City Felicity,https://www.cinema-city.pl/filmy/minionki-i-straszydla/8023d2r,Minionki i straszydła)	lattice 2^4	16	2.11
-Native(Cinema City Gliwice,https://www.cinema-city.pl/filmy/ksiega-pustyni/8051d2r,Księga pustyni)	levels 0-1	46	1.97
-Native(Cinema City Kazimierz,https://www.cinema-city.pl/filmy/maraton-halloweenowy-waksy/8662o2r,Maraton Halloweenowy Waksy)	lattice 2^3	8	0.93
-Native(Cinema City Kinepolis,https://www.cinema-city.pl/filmy/piesek/8582d2r,Piesek)	lattice 2^3	8	0.83
-Native(Cinema City Manufaktura,https://www.cinema-city.pl/filmy/500-mil-lektor/8190s3r1,500 mil (lektor))	levels 0-1	50	4.62
-Native(Cinema City Manufaktura,https://www.cinema-city.pl/filmy/interstellar/0659s2r,Interstellar)	lattice 2^6	64	10.55
-Native(Cinema City Manufaktura,https://www.cinema-city.pl/filmy/michael/7785s2r,Michael)	lattice 2^6	64	9.90
-Native(Cinema City Punkt 44,https://www.cinema-city.pl/filmy/gwiazdozbior-psa/7944s2r,Gwiazdozbiór psa)	lattice 2^2	4	0.45
-Native(Cinema City Punkt 44,https://www.cinema-city.pl/filmy/nie-patrz-w-dol-2/8423s2r,Nie patrz w dół 2)	lattice 2^7	128	16.68
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=148582,Uwierz w ducha)	lattice 2^4	16	1.43
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=148583,Fargo)	lattice 2^4	16	1.75
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=159212,Seksmisja po ślōnsku)	lattice 2^2	4	0.47
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=163876,Nagi Lunch)	lattice 2^4	16	2.65
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=164994,Lament)	lattice 2^3	8	1.18
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=165066,Splat!FilmFest ON TOUR: Rola życia i śmierci)	levels 0-1	84	18.61
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=165487,Moje ulubione ciasto)	lattice 2^2	4	0.47
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167011,Energia Dźwięku: Berlin: symfonia wielkiego miasta)	lattice 2^2	4	0.48
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167039,The Room Returns)	lattice 2^6	64	8.22
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167188,Czytając Lolitę w Teheranie)	lattice 2^2	4	0.59
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167588,Lachtara. Tęsknota)	levels 0-1	84	2.78
-Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167813,Najlepsza owsianka na świecie)	levels 0-1	22	0.77
-Native(Dom Kultury w Górze,https://ekobilet.pl/dom-kultury-w-gorze-7114/strus-pedziwiatr-i-zemsta-kojota-64373,Struś Pędziwiatr i zemsta Kojota)	levels 0-1	26	0.74
-Native(Forum,https://www.bilety24.pl/kino/1586-andr-e-rieu-niech-zyje-maastricht--159201?id=949639,André Rieu. Niech żyje Maastricht!)	levels 0-1	114	2.55
-Native(Forum,https://www.bilety24.pl/kino/1586-orzelek-iggy-50na51-167222?id=1004586,ORZEŁEK IGGY _50na51)	lattice 2^2	4	0.46
-Native(Forum,https://www.bilety24.pl/kino/1586-violetta-villasfks-166707?id=1001969,Violetta Villas)	levels 0-1	26	1.47
-Native(Fregata,https://www.bilety24.pl/kino/1683-fregata-dla-seniorow-vivaldi-i-ja-166991?id=1003201,Fregata dla seniorów: Vivaldi i ja)	levels 0-1	122	9.78
-Native(GOK Promyk,https://biletyna.pl/film/Brzydka-siostra?eid=704727#opis,Brzydka siostra)	lattice 2^2	4	0.35
-Native(GOK Promyk,https://biletyna.pl/film/Norymberga?eid=704733#opis,Norymberga)	lattice 2^5	32	3.06
-Native(Helios Aleja Bielany,https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/niesamowite-przygody-skarpetek-4-do-roboty-premierowe-seanse-z-konkursami-hdd-2868,Niesamowite przygody skarpetek 4. Do roboty - premierowe seanse z konkursami HDD)	8 orders x 8 steps	57	8.36
-Native(Helios Aleja Bielany,https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/swiateczna-zabawa-z-peppa-seanse-z-konkursami-hdd-2857,Świąteczna zabawa z Peppą – seanse z konkursami HDD)	8 orders x 8 steps	57	2.47
-Native(Helios Aleja Bielany,https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/szybcy-i-wsciekli-w-helios-replay-2869,Szybcy i wściekli w Helios RePlay)	8 orders x 8 steps	57	2.92
-Native(Helios Alfa,https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/best-of-ladek-pokaz-1-w-helios-sport-2842,Best of Lądek - Pokaz 1 w Helios Sport)	levels 0-1	30	1.23
-Native(Helios Alfa,https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/league-of-legends-worlds-26-finals-in-cinema-w-helios-sport-2840,League of Legends Worlds 26 | Finals in Cinema w Helios Sport)	lattice 2^6	64	5.38
-Native(Helios Alfa,https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/manon-premiera-na-zywo-616,MANON – SEZON ROYAL BALLET & ROYAL OPERA HOUSE)	levels 0-1	58	2.71
-Native(Helios Alfa,https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/stray-kids-world-tour-run-it-live-viewing-w-helios-na-scenie-2854,Stray Kids World Tour <Run It> Live Viewing w Helios na Scenie)	levels 0-1	106	3.69
-Native(Helios Bełchatów,https://helios.pl/belchatow/kino-helios/wydarzenie/chlopiec-na-krancach-swiata-kntj-2586,Chłopiec na krańcach świata - KNTJ)	lattice 2^4	16	1.74
-Native(Helios Bełchatów,https://helios.pl/belchatow/kino-helios/wydarzenie/hauser-symfonicznie-z-londynskiej-royal-albert-hall-w-helios-na-scenie-2844,„Hauser symfonicznie” z londyńskiej Royal Albert Hall w Helios na Scenie)	levels 0-1	96	4.07
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/filmy/flavia-de-luce-4539,Flavia de Luce - KNT)	lattice 2^3	8	0.67
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/chlopiec-w-rozowych-spodniach-knt-2177,Chłopiec w różowych spodniach - KNT)	lattice 2^3	8	0.92
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/godzilla-minus-one-event-projekt-2845,Godzilla Minus One - Event Projekt)	levels 0-1	38	0.84
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/hobby-horse-odnalezc-siebie-knt-2813,Hobby Horse. Odnaleźć siebie - KNT)	lattice 2^2	4	0.32
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/labirynt-fauna-w-helios-replay-2800,Labirynt Fauna w Helios RePlay)	8 orders x 8 steps	57	3.83
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/lego-friends-heartlake-the-musical-2870,LEGO® Friends: Heartlake the Musical)	levels 0-1	32	1.15
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/od-zmierzchu-do-switu-w-helios-replay-2833,Od zmierzchu do świtu w Helios RePlay)	levels 0-1	28	0.54
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/przytul-mnie-poszukiwacze-miodu-kntj-109,Przytul mnie. Poszukiwacze miodu - KnTJ)	lattice 2^2	4	0.31
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/sekretne-pietro-knt-2761,Sekretne Piętro - KNT)	levels 0-1	44	1.21
-Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/wiedzmin-25-rocznica-w-helios-replay-2829,Wiedźmin 25. rocznica w Helios RePlay)	levels 0-1	118	9.43
-Native(Helios Bielsko-Biała,https://helios.pl/bielsko-biala/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158,Niesamowite przygody skarpetek 3. Ale kosmos!)	lattice 2^5	32	3.53
-Native(Helios Bielsko-Biała,https://helios.pl/bielsko-biala/kino-helios/wydarzenie/rocky-50-rocznica-w-helios-replay-2811,Rocky 50. rocznica w Helios RePlay)	levels 0-1	120	5.07
-Native(Helios Bielsko-Biała,https://helios.pl/bielsko-biala/kino-helios/wydarzenie/skrzat-nowy-poczatek-knt-2152,Skrzat. Nowy początek - KNT)	lattice 2^4	16	1.82
-Native(Helios Blue City,https://helios.pl/warszawa/kino-helios-blue-city/filmy/ojczyzna-4541,Ojczyzna)	levels 0-1	20	1.00
-Native(Helios Forum,https://helios.pl/gdansk/kino-helios-forum/filmy/dzieci-z-bullerbyn-3386,Dzieci z Bullerbyn)	levels 0-1	26	0.67
-Native(Helios Grudziądz,https://helios.pl/grudziadz/kino-helios/wydarzenie/spotkac-budde-kino-konesera-2852,Spotkać Buddę - Kino Konesera)	lattice 2^6	64	5.28
-Native(Helios Jurowiecka,https://helios.pl/bialystok/kino-helios-jurowiecka/filmy/pojedynek-4220,Pojedynek)	lattice 2^3	8	1.04
-Native(Helios Jurowiecka,https://helios.pl/bialystok/kino-helios-jurowiecka/wydarzenie/nie-martw-sie-nic-mi-nie-jest-lek-knt-1908,Nie martw się, nic mi nie jest - lektor - KNT)	lattice 2^2	4	0.56
-Native(Helios Kalisz,https://helios.pl/kalisz/kino-helios/filmy/jak-bert-to-wszystko-ogarnie-4537,Jak Bert to wszystko ogarnie?)	lattice 2^4	16	1.97
-Native(Helios Krosno,https://helios.pl/krosno/kino-helios/filmy/basia-mam-swoj-swiat-4003,Basia. Mam swój świat)	lattice 2^2	4	0.74
-Native(Helios Magnolia Park,https://helios.pl/wroclaw/kino-helios-magnolia/filmy/backrooms-bez-wyjscia-4460,Backrooms. Bez wyjścia)	lattice 2^5	32	6.89
+Native(ADA Kino Studyjne,https://biletyna.pl/film/Lalka-2026?eid=703689#opis,Lalka (2026))	2 orders x 8 steps	15	13.15
+Native(ADA Kino Studyjne,https://biletyna.pl/film/Mistyczka?eid=703695#opis,Mistyczka)	2 orders x 8 steps	15	1.47
+Native(ADA Kino Studyjne,https://biletyna.pl/film/Powiedz-mi-co-czujesz?eid=703688#opis,Powiedz mi, co czujesz)	levels 0-1	28	0.84
+Native(Baszta,https://www.filmweb.pl/film/10079933,Tony)	levels 0-1	40	0.92
+Native(Baszta,https://www.filmweb.pl/film/10088447,Marsupilami)	levels 0-1	104	3.61
+Native(Bałtyk,https://www.bilety24.pl/kino/1499-100-dni-misja-zeus-167077?id=1003701,100 dni: Misja Zeus)	2 orders x 8 steps	15	1.85
+Native(Bałtyk,https://www.bilety24.pl/kino/1499-baranek-shaun-i-kudlata-bestia-166285?id=1000152,Baranek Shaun i kudłata bestia)	2 orders x 8 steps	15	11.57
+Native(Bałtyk,https://www.bilety24.pl/kino/1499-kicia-kocia-ma-braciszka-139744?id=1000157,Kicia Kocia ma braciszka)	lattice 2^2	4	0.71
+Native(Bałtyk,https://www.bilety24.pl/kino/1499-klasyka-na-fali-przeklenstwa-niewinnosci-167111?id=1003841,Klasyka na fali: Przekleństwa niewinności)	lattice 2^2	4	1.19
+Native(Bałtyk,https://www.bilety24.pl/kino/1499-klasyka-na-fali-zawiescie-czerwone-latarnie-prelekcja-ewy-klonowskiej-166396?id=1000168,Klasyka na fali: Zawieście czerwone latarnie + prelekcja Ewy Klonowskiej)	lattice 2^3	8	1.35
+Native(Bałtyk,https://www.bilety24.pl/kino/1499-klub-konesera-o-czym-wie-marielle-164533?id=987966,Klub Konesera: O czym wie Marielle)	lattice 2^3	8	2.28
+Native(Bałtyk,https://www.bilety24.pl/kino/1499-klub-konesera-obcy-164534?id=987968,Klub Konesera: Obcy)	levels 0-1	70	6.74
+Native(Bałtyk,https://www.bilety24.pl/kino/1499-primetime-165138?id=1000156,Primetime)	2 orders x 8 steps	15	3.60
+Native(Bielański Ośrodek Kultury,https://biletyna.pl/film/BOKino-Baltyk?eid=701875#opis,BOKino | „Bałtyk”)	lattice 2^4	16	3.50
+Native(CKF Stylowy,https://www.stylowy.net/film/4122-camino-dla-opornych.html,CAMINO DLA OPORNYCH)	levels 0-1	84	6.09
+Native(CKF Stylowy,https://www.stylowy.net/film/4167-folwark-zwierzecy.html,FOLWARK ZWIERZĘCY)	levels 0-1	48	3.99
+Native(CKF Stylowy,https://www.stylowy.net/film/4169-zapomniana-wyspa.html,ZAPOMNIANA WYSPA)	2 orders x 8 steps	15	3.49
+Native(CKF Stylowy,https://www.stylowy.net/film/4171-vincent-legenda-oceanu.html,VINCENT. LEGENDA OCEANU)	2 orders x 8 steps	15	2.84
+Native(CKF Stylowy,https://www.stylowy.net/film/4176-digger.html,DIGGER)	2 orders x 8 steps	15	3.35
+Native(CKF Stylowy,https://www.stylowy.net/film/4181-supermocni.html,SUPERMOCNI)	2 orders x 8 steps	15	5.03
+Native(CKF Stylowy,https://www.stylowy.net/film/4184-renoir.html,RENOIR)	levels 0-1	50	1.68
+Native(CKF Stylowy,https://www.stylowy.net/film/4185-w-tym-kraju-nie-ma-dobrych-mezczyzn.html,W TYM KRAJU NIE MA DOBRYCH MĘŻCZYZN)	levels 0-1	84	7.96
+Native(CKF Stylowy,https://www.stylowy.net/film/4186-rozwazna-i-romantyczna.html,ROZWAŻNA I ROMANTYCZNA)	2 orders x 8 steps	15	2.43
+Native(CKF Stylowy,https://www.stylowy.net/film/4187-czas-ktory-nie-nadszedl.html,CZAS, KTÓRY NIE NADSZEDŁ)	2 orders x 8 steps	15	4.86
+Native(CKF Stylowy,https://www.stylowy.net/film/4188-inna-mamusia.html,INNA MAMUSIA)	2 orders x 8 steps	15	1.17
+Native(CKF Stylowy,https://www.stylowy.net/film/4190-jak-zyc-zeby-nie-zwariowac.html,JAK ŻYĆ, ŻEBY NIE ZWARIOWAĆ)	2 orders x 8 steps	15	4.86
+Native(CKF Stylowy,https://www.stylowy.net/film/4191-clayface.html,CLAYFACE)	2 orders x 8 steps	15	2.90
+Native(CKF Stylowy,https://www.stylowy.net/film/4201-klara-i-slonce.html,KLARA I SŁOŃCE)	2 orders x 8 steps	15	1.38
+Native(CKF Stylowy,https://www.stylowy.net/film/4206-piesni-lasu.html,PIEŚNI LASU)	levels 0-1	122	7.76
+Native(CKiS Sępólno Krajeńskie,https://biletyna.pl/film/Odyseja?eid=698537#opis,Odyseja)	levels 0-1	90	3.43
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1092-luna-i-rozgadana-swinka/2026-10-20-17-30,LUNA I ROZGADANA ŚWINKA)	2 orders x 8 steps	15	0.89
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1093-niebo-nad-normandia/2026-10-20-15-15,NIEBO NAD NORMANDIĄ)	levels 0-1	52	1.22
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1111-roza/2026-11-03-15-45,RÓŻA)	2 orders x 8 steps	15	3.44
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1113-kumotry/2026-11-07-10-02,KUMOTRY)	lattice 2^7	128	14.26
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1114-kura/2026-11-07-13-45,KURA)	levels 0-1	116	8.39
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1117-wajda-re-wizje-ziemia-obiecana/2026-11-15-18-00,WAJDA: Re-wizje: ZIEMIA OBIECANA)	levels 0-1	52	3.60
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1118-dkf-kandydaci-smierci/2026-11-19-19-00,DKF - KANDYDACI ŚMIERCI)	levels 0-1	26	1.79
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1119-odzyskany/2026-11-22-14-00,ODZYSKANY)	levels 0-1	24	0.58
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1121-dkf-znikniecie/2026-11-05-19-00,DKF - ZNIKNIĘCIE)	lattice 2^4	16	2.94
+Native(Centrum 3D Przemyśl,https://ck.przemysl.pl/component/icagenda/1122-retransmisje-met-na-zywo-w-hd-carmen/2026-11-22-18-00,ReTransmisje Met: Na żywo w HD - Carmen)	levels 0-1	40	2.78
+Native(Centrum Kultury Gniewino,https://biletyna.pl/film/Kupilem-motocykl-ktory-jest-wampirem-1990?eid=708985#opis,Kupiłem motocykl, który jest wampirem (1990))	levels 0-1	28	1.11
+Native(Centrum Kultury Gniewino,https://biletyna.pl/film/Resident-Evil?eid=708977#opis,Resident Evil)	2 orders x 8 steps	15	1.09
+Native(Centrum Kultury Gniewino,https://biletyna.pl/film/Runner?eid=708966#opis,Runner)	levels 0-1	128	5.11
+Native(Centrum Kultury Nowy Pafawag,https://biletyna.pl/film/Klub-Filmowy-Perspektywy-film-Oczy-szeroko-zamkniete?eid=711732#opis,Klub Filmowy Perspektywy film „Oczy szeroko zamknięte”)	lattice 2^2	4	0.41
+Native(Centrum Kultury Przeźmierowo,https://biletyna.pl/dla-dzieci/NutkoSfera-Cezik-dzieciom?eid=700903#opis,NutkoSfera - CeZik dzieciom)	lattice 2^2	4	0.75
+Native(Centrum Kultury Przeźmierowo,https://biletyna.pl/film/DZIEN-DZIECKA-KSIEDZA-JANA-KACZKOWSKIEGO?eid=704012#opis,Dzień dziecka księdza Jana Kaczkowskiego)	levels 0-1	128	19.52
+Native(Centrum Kultury Przeźmierowo,https://biletyna.pl/film/Everytime?eid=712439#opis,Everytime)	2 orders x 8 steps	15	0.71
+Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/Avengers-Koniec-gry-wersja-rozszerzona?eid=712168#opis,Avengers: Koniec gry - wersja rozszerzona)	levels 0-1	32	1.32
+Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/Maraton-Halloween-2026?eid=711422#opis,Maraton Halloween 2026)	levels 0-1	34	0.99
+Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/Spa-Weekend?eid=712022#opis,Spa Weekend)	levels 0-1	18	0.51
+Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/VerityCoraz-wiekszy-mrok?eid=711291#opis,Verity. Coraz większy mrok)	2 orders x 8 steps	15	1.27
+Native(Centrum Kultury w Świeciu,https://biletyna.pl/film/Witajcie-w-Hope?eid=712166#opis,Witajcie w Hope)	2 orders x 8 steps	15	1.96
+Native(Centrum,https://ekobilet.pl/kino-centrum-jastrzebiezdrj/ma-to-sens-64300,Ma to sens)	lattice 2^5	32	3.53
+Native(Centrum,https://ekobilet.pl/kino-centrum-jastrzebiezdrj/osobliwy-swiat-hieronymusa-boscha-64322,OSOBLIWY ŚWIAT HIERONYMUSA BOSCHA)	lattice 2^2	4	0.42
+Native(Centrum,https://ekobilet.pl/kino-centrum-jastrzebiezdrj/rolling-loud-film-64299,Rolling Loud. Film)	lattice 2^6	64	6.57
+Native(Centrum,https://ekobilet.pl/kino-centrum-jastrzebiezdrj/syrenka-picassa-64397,Syrenka Picassa)	2 orders x 8 steps	15	0.90
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/ali-g-kto-ja-jezdem/8467s2r,Ali G: Kto ja jezdem?)	levels 0-1	78	2.04
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/andre-rieu-pada-snieg/8658o2r,André Rieu. Pada śnieg!)	levels 0-1	94	6.60
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/auta-re-release/8377d2r,Auta (re-release))	lattice 2^6	64	9.76
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/avengers-doomsday-ukrainski-dubbing/7879s2r1,Avengers: Doomsday ukraiński dubbing)	2 orders x 8 steps	15	1.65
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/bts-world-tour-arirang-in-buenos-aires-live-viewing/8443s2r,BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING)	2 orders x 8 steps	15	0.73
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/crash-30-rocznica/8610s2r,Crash. 30. rocznica)	levels 0-1	100	13.50
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/diably/8614s2r,Diabły)	2 orders x 8 steps	15	1.35
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/diuna-czesc-trzecia/8105s2r,Diuna: Część trzecia)	2 orders x 8 steps	15	2.83
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/egon-schiele-poza-tabu/8612s2r,Egon Schiele. Poza tabu)	2 orders x 8 steps	15	2.30
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/enhypen-world-tour-blood-saga/8574o2r,ENHYPEN WORLD TOUR 'BLOOD SAGA')	levels 0-1	34	1.01
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/everest-druga-strona/8617s2r,Everest: Druga strona)	levels 0-1	108	3.98
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/festive-fun-with-peppa-cinema-experience/8605d2r,Festive Fun with Peppa Cinema Experience)	levels 0-1	74	3.70
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/godzilla-minimaraton/8608s2r,Godzilla minimaraton)	levels 0-1	58	1.26
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/godzilla-minus-zero/8389s2r,Godzilla Minus Zero)	2 orders x 8 steps	15	0.73
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/hauser-symfonicznie-z-londynskiej-royal/8633s2r,Hauser symfonicznie z londyńskiej Royal)	levels 0-1	40	1.13
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/hybe-cheering-party/8576o3r,HYBE CHEERING PARTY)	levels 0-1	34	0.99
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/krzyk-30-rocznica/8656s2r,Krzyk. 30-rocznica)	levels 0-1	74	2.18
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/la-la-land/1951s2r,La La Land)	levels 0-1	66	1.87
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/ladies-night-przepis-na-swieta/8595o2r1,Ladies Night - Przepis na święta)	2 orders x 8 steps	15	2.54
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/league-of-legends-worlds-26-finals-in-cinema/8564o2r,League of Legends Worlds 26 | Finals in Cinema)	levels 0-1	52	0.99
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/legendarni/8615d2r,Legendarni)	levels 0-1	82	2.38
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/maraton-horrorow-1/8642s2r,Maraton horrorów #1)	levels 0-1	68	1.25
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/maraton-horrorow-2/8643s2r,Maraton horrorów #2)	levels 0-1	64	1.16
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/maraton-horrorow-3/8644s2r,Maraton horrorów #3)	levels 0-1	64	1.80
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/maraton-horrorow-4/8645s2r,Maraton horrorów #4)	levels 0-1	68	1.34
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/martwe-zlo-2/8660s2r,Martwe zło 2)	levels 0-1	100	8.42
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r,Nasza rewolucja)	2 orders x 8 steps	15	2.44
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/ozzy-black-sabbath-back-to-the-beginning/8560s2r,Ozzy & Black Sabbath: Back To The Beginning)	levels 0-1	90	3.71
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/pasazer-andrzej-munk/8611o2r,Pasażer Andrzej Munk)	levels 0-1	48	1.44
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/psi-patrol-i-dinozaury/8093d2r,Psi patrol i dinozaury)	levels 0-1	38	1.25
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/pucio-kocha-zwierzaki/8381d2r,Pucio kocha zwierzaki)	2 orders x 8 steps	15	1.29
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/rammstein-live-in-mexico-city/8559o2r,RAMMSTEIN - LIVE IN MEXICO CITY)	2 orders x 8 steps	15	0.42
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/seventeen-world-tour-new_/8572o2r,SEVENTEEN WORLD TOUR 'NEW_')	levels 0-1	34	0.79
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/skrzypek-na-dachu/8659s2r,Skrzypek na dachu)	levels 0-1	104	3.60
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/spider-man-calkiem-nowy-dzien/8085s2r,Spider-Man: Całkiem nowy dzień)	levels 0-1	88	3.04
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/stray-kids-world-tour-run-it-live-view/8568o2r,Stray Kids World Tour <RUN IT> LIVE VIEW)	levels 0-1	32	1.08
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/street-fighter-uliczny-wojownik-ukrains/8182s2r1,Street Fighter. Uliczny wojownik ukraińs)	2 orders x 8 steps	15	2.28
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/tede-forever-rap/8669o2r,TEDE. Forever Rap)	2 orders x 8 steps	15	1.14
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/tedi-i-magiczna-lampa/8312d2r,Tedi i magiczna lampa)	levels 0-1	82	5.65
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/the-social-reckoning-w-sieci-konsekwencji/8330s2r,The Social Reckoning. W sieci konsekwencji)	2 orders x 8 steps	15	3.19
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/tomorrow-x-together-world-tour-act-tomorrow/8573o2r,TOMORROW X TOGETHER WORLD TOUR 'ACT : TOMORROW)	levels 0-1	34	0.74
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/upadek-wieloryba/8333s2r,Upadek wieloryba)	2 orders x 8 steps	15	0.69
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/w-sercu-dziczy/8314s2r,W sercu dziczy)	2 orders x 8 steps	15	1.20
+Native(Cinema City Arkadia,https://www.cinema-city.pl/filmy/zobaczysz-wszystko/8661s2r,Zobaczysz wszystko)	2 orders x 8 steps	15	0.83
+Native(Cinema City Biała Podlaska,https://www.cinema-city.pl/filmy/el-clasico-fc-barcelona-real-madryt/8657o2r,El Clásico: FC Barcelona - Real Madryt)	levels 0-1	92	6.36
+Native(Cinema City Bonarka,https://www.cinema-city.pl/filmy/naznaczony-wyjscie-z-mrocznego-wymiaru/8183s2r,Naznaczony: Wyjście z mrocznego wymiaru)	lattice 2^3	8	0.73
+Native(Cinema City Bydgoszcz,https://www.cinema-city.pl/filmy/toy-story-5/7784d2r,Toy Story 5)	lattice 2^4	16	1.56
+Native(Cinema City Czerwona Droga,https://www.cinema-city.pl/filmy/moj-pies-barry/8562d2r,Mój pies Barry)	lattice 2^3	8	0.96
+Native(Cinema City Felicity,https://www.cinema-city.pl/filmy/minionki-i-straszydla/8023d2r,Minionki i straszydła)	lattice 2^4	16	2.03
+Native(Cinema City Gliwice,https://www.cinema-city.pl/filmy/ksiega-pustyni/8051d2r,Księga pustyni)	levels 0-1	46	1.04
+Native(Cinema City Kazimierz,https://www.cinema-city.pl/filmy/maraton-halloweenowy-waksy/8662o2r,Maraton Halloweenowy Waksy)	lattice 2^3	8	0.94
+Native(Cinema City Kinepolis,https://www.cinema-city.pl/filmy/piesek/8582d2r,Piesek)	lattice 2^3	8	0.76
+Native(Cinema City Manufaktura,https://www.cinema-city.pl/filmy/500-mil-lektor/8190s3r1,500 mil (lektor))	levels 0-1	50	2.57
+Native(Cinema City Manufaktura,https://www.cinema-city.pl/filmy/interstellar/0659s2r,Interstellar)	lattice 2^6	64	11.32
+Native(Cinema City Manufaktura,https://www.cinema-city.pl/filmy/michael/7785s2r,Michael)	lattice 2^6	64	10.97
+Native(Cinema City Punkt 44,https://www.cinema-city.pl/filmy/gwiazdozbior-psa/7944s2r,Gwiazdozbiór psa)	lattice 2^2	4	0.49
+Native(Cinema City Punkt 44,https://www.cinema-city.pl/filmy/nie-patrz-w-dol-2/8423s2r,Nie patrz w dół 2)	lattice 2^7	128	25.36
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=148582,Uwierz w ducha)	lattice 2^4	16	1.44
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=148583,Fargo)	lattice 2^4	16	2.42
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=159212,Seksmisja po ślōnsku)	lattice 2^2	4	0.53
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=163876,Nagi Lunch)	lattice 2^4	16	2.72
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=164994,Lament)	lattice 2^3	8	1.38
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=165066,Splat!FilmFest ON TOUR: Rola życia i śmierci)	levels 0-1	84	9.59
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=165487,Moje ulubione ciasto)	lattice 2^2	4	0.39
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167011,Energia Dźwięku: Berlin: symfonia wielkiego miasta)	lattice 2^2	4	0.67
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167039,The Room Returns)	lattice 2^6	64	6.51
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167188,Czytając Lolitę w Teheranie)	lattice 2^2	4	0.68
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167588,Lachtara. Tęsknota)	levels 0-1	84	2.80
+Native(Dolnośląskie Centrum Filmowe,https://dcf.bilety24.pl/wydarzenie/?id=167813,Najlepsza owsianka na świecie)	levels 0-1	22	1.18
+Native(Dom Kultury w Górze,https://ekobilet.pl/dom-kultury-w-gorze-7114/strus-pedziwiatr-i-zemsta-kojota-64373,Struś Pędziwiatr i zemsta Kojota)	levels 0-1	26	0.99
+Native(Forum,https://www.bilety24.pl/kino/1586-andr-e-rieu-niech-zyje-maastricht--159201?id=949639,André Rieu. Niech żyje Maastricht!)	levels 0-1	114	4.12
+Native(Forum,https://www.bilety24.pl/kino/1586-orzelek-iggy-50na51-167222?id=1004586,ORZEŁEK IGGY _50na51)	lattice 2^2	4	0.34
+Native(Forum,https://www.bilety24.pl/kino/1586-violetta-villasfks-166707?id=1001969,Violetta Villas)	levels 0-1	26	0.95
+Native(Fregata,https://www.bilety24.pl/kino/1683-fregata-dla-seniorow-vivaldi-i-ja-166991?id=1003201,Fregata dla seniorów: Vivaldi i ja)	levels 0-1	122	9.57
+Native(GOK Promyk,https://biletyna.pl/film/Brzydka-siostra?eid=704727#opis,Brzydka siostra)	lattice 2^2	4	0.32
+Native(GOK Promyk,https://biletyna.pl/film/Norymberga?eid=704733#opis,Norymberga)	lattice 2^5	32	4.25
+Native(Helios Aleja Bielany,https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/niesamowite-przygody-skarpetek-4-do-roboty-premierowe-seanse-z-konkursami-hdd-2868,Niesamowite przygody skarpetek 4. Do roboty - premierowe seanse z konkursami HDD)	2 orders x 8 steps	15	1.27
+Native(Helios Aleja Bielany,https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/swiateczna-zabawa-z-peppa-seanse-z-konkursami-hdd-2857,Świąteczna zabawa z Peppą – seanse z konkursami HDD)	2 orders x 8 steps	15	0.42
+Native(Helios Aleja Bielany,https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/szybcy-i-wsciekli-w-helios-replay-2869,Szybcy i wściekli w Helios RePlay)	2 orders x 8 steps	15	1.35
+Native(Helios Alfa,https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/best-of-ladek-pokaz-1-w-helios-sport-2842,Best of Lądek - Pokaz 1 w Helios Sport)	levels 0-1	30	0.81
+Native(Helios Alfa,https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/league-of-legends-worlds-26-finals-in-cinema-w-helios-sport-2840,League of Legends Worlds 26 | Finals in Cinema w Helios Sport)	lattice 2^6	64	7.42
+Native(Helios Alfa,https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/manon-premiera-na-zywo-616,MANON – SEZON ROYAL BALLET & ROYAL OPERA HOUSE)	levels 0-1	58	1.68
+Native(Helios Alfa,https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/stray-kids-world-tour-run-it-live-viewing-w-helios-na-scenie-2854,Stray Kids World Tour <Run It> Live Viewing w Helios na Scenie)	levels 0-1	106	3.20
+Native(Helios Bełchatów,https://helios.pl/belchatow/kino-helios/wydarzenie/chlopiec-na-krancach-swiata-kntj-2586,Chłopiec na krańcach świata - KNTJ)	lattice 2^4	16	1.63
+Native(Helios Bełchatów,https://helios.pl/belchatow/kino-helios/wydarzenie/hauser-symfonicznie-z-londynskiej-royal-albert-hall-w-helios-na-scenie-2844,„Hauser symfonicznie” z londyńskiej Royal Albert Hall w Helios na Scenie)	levels 0-1	96	4.24
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/filmy/flavia-de-luce-4539,Flavia de Luce - KNT)	lattice 2^3	8	0.94
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/chlopiec-w-rozowych-spodniach-knt-2177,Chłopiec w różowych spodniach - KNT)	lattice 2^3	8	0.65
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/godzilla-minus-one-event-projekt-2845,Godzilla Minus One - Event Projekt)	levels 0-1	38	1.16
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/hobby-horse-odnalezc-siebie-knt-2813,Hobby Horse. Odnaleźć siebie - KNT)	lattice 2^2	4	0.34
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/labirynt-fauna-w-helios-replay-2800,Labirynt Fauna w Helios RePlay)	2 orders x 8 steps	15	0.97
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/lego-friends-heartlake-the-musical-2870,LEGO® Friends: Heartlake the Musical)	levels 0-1	32	1.17
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/od-zmierzchu-do-switu-w-helios-replay-2833,Od zmierzchu do świtu w Helios RePlay)	levels 0-1	28	0.85
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/przytul-mnie-poszukiwacze-miodu-kntj-109,Przytul mnie. Poszukiwacze miodu - KnTJ)	lattice 2^2	4	0.46
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/sekretne-pietro-knt-2761,Sekretne Piętro - KNT)	levels 0-1	44	1.28
+Native(Helios Biała,https://helios.pl/bialystok/kino-helios-biala/wydarzenie/wiedzmin-25-rocznica-w-helios-replay-2829,Wiedźmin 25. rocznica w Helios RePlay)	levels 0-1	118	5.17
+Native(Helios Bielsko-Biała,https://helios.pl/bielsko-biala/kino-helios/filmy/niesamowite-przygody-skarpetek-3-ale-kosmos-4158,Niesamowite przygody skarpetek 3. Ale kosmos!)	lattice 2^5	32	5.31
+Native(Helios Bielsko-Biała,https://helios.pl/bielsko-biala/kino-helios/wydarzenie/rocky-50-rocznica-w-helios-replay-2811,Rocky 50. rocznica w Helios RePlay)	levels 0-1	120	5.27
+Native(Helios Bielsko-Biała,https://helios.pl/bielsko-biala/kino-helios/wydarzenie/skrzat-nowy-poczatek-knt-2152,Skrzat. Nowy początek - KNT)	lattice 2^4	16	1.40
+Native(Helios Blue City,https://helios.pl/warszawa/kino-helios-blue-city/filmy/ojczyzna-4541,Ojczyzna)	levels 0-1	20	1.10
+Native(Helios Forum,https://helios.pl/gdansk/kino-helios-forum/filmy/dzieci-z-bullerbyn-3386,Dzieci z Bullerbyn)	levels 0-1	26	0.64
+Native(Helios Grudziądz,https://helios.pl/grudziadz/kino-helios/wydarzenie/spotkac-budde-kino-konesera-2852,Spotkać Buddę - Kino Konesera)	lattice 2^6	64	5.69
+Native(Helios Jurowiecka,https://helios.pl/bialystok/kino-helios-jurowiecka/filmy/pojedynek-4220,Pojedynek)	lattice 2^3	8	0.86
+Native(Helios Jurowiecka,https://helios.pl/bialystok/kino-helios-jurowiecka/wydarzenie/nie-martw-sie-nic-mi-nie-jest-lek-knt-1908,Nie martw się, nic mi nie jest - lektor - KNT)	lattice 2^2	4	0.30
+Native(Helios Kalisz,https://helios.pl/kalisz/kino-helios/filmy/jak-bert-to-wszystko-ogarnie-4537,Jak Bert to wszystko ogarnie?)	lattice 2^4	16	1.85
+Native(Helios Krosno,https://helios.pl/krosno/kino-helios/filmy/basia-mam-swoj-swiat-4003,Basia. Mam swój świat)	lattice 2^2	4	0.37
+Native(Helios Magnolia Park,https://helios.pl/wroclaw/kino-helios-magnolia/filmy/backrooms-bez-wyjscia-4460,Backrooms. Bez wyjścia)	lattice 2^5	32	4.88
 Native(Helios Ostrów Wlkp.,https://helios.pl/ostrow-wielkopolski/kino-helios/filmy/pucio-2026-4292,Pucio)	lattice 2^6	64	8.42
-Native(Helios Ostrów Wlkp.,https://helios.pl/ostrow-wielkopolski/kino-helios/filmy/sunny-dancer-4655,Sunny Dancer)	lattice 2^7	128	15.11
-Native(Helios Radom,https://helios.pl/radom/kino-helios/wydarzenie/kreciolek-af-2853,Kręciołek - AF)	lattice 2^2	4	0.31
-Native(Helios Tczew,https://helios.pl/tczew/kino-helios/filmy/asterix-i-obelix-misja-kleopatra-4653,Asterix i Obelix: Misja Kleopatra)	levels 0-1	20	0.47
-Native(Janosik,https://www.bilety24.pl/kino/1500-19-fga-2-hard-road-2-walk-alone-film-konkursowy-164690?id=991067,19. FGA: 2 Hard Road 2 Walk Alone - film konkursowy)	lattice 2^3	8	0.95
-Native(Janosik,https://www.bilety24.pl/kino/1500-hot-spot-167093?id=1006647,Hot Spot)	lattice 2^7	128	10.74
-Native(Janosik,https://www.bilety24.pl/kino/1500-maraton-strachu-dzwiek-smierci-167633?id=1006053,Maraton Strachu: Dźwięk śmierci)	lattice 2^2	4	0.44
-Native(Janosik,https://www.bilety24.pl/kino/1500-niedziela-z-dokumentem-bez-konca-spotkanie-z-bohaterami-filmu-167209?id=1004656,Niedziela z Dokumentem: Bez końca + spotkanie z bohaterami filmu)	levels 0-1	24	0.67
-Native(Janosik,https://www.bilety24.pl/kino/1500-smok-spotkania-mlodych-odkrywcow-kina-kanal-166656?id=1001755,SMOK (Spotkania Młodych Odkrywców Kina): Kanał)	lattice 2^2	4	0.31
-Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/dmuchawce-1,Dmuchawce)	lattice 2^3	8	0.62
-Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/foragers-kobiety-z-gazy,„Foragers” + „Kobiety z Gazy”)	lattice 2^2	4	0.82
-Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/freak-show-5,Freak Show)	lattice 2^4	16	1.62
-Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/milosc-smierc-i-dojrzewanie-w-camp-miasma-2,Miłość, śmierć i dojrzewanie w Camp Miasma)	lattice 2^6	64	5.49
-Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/naza,NAZA)	levels 0-1	122	10.00
-Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/opowiesc-o-dwoch-siostrach,Opowieść o dwóch siostrach)	levels 0-1	22	1.36
-Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/powrot-do-hajfy,Powrót do Hajfy)	lattice 2^3	8	0.68
-Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/__trashed/,Cinematographers. Spotkanie ze scenograf Magdaleną Dipont oraz Trzy kolory: Biały)	lattice 2^3	8	0.66
-Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/kaszpirowski/,Kaszpirowski)	lattice 2^5	32	2.72
-Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/o-czym-sobie-nie-mowimy/,O czym sobie nie mówimy)	lattice 2^3	8	0.97
-Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/plac-zabaw-putina/,Plac zabaw Putina)	lattice 2^5	32	3.68
-Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/podrecznik-dla-superbohaterow/,Podręcznik dla Superbohaterów)	lattice 2^4	16	1.99
-Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/sciezki-zycia-lektor/,Ścieżki życia)	lattice 2^2	4	0.53
-Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/vinski-i-skarb-wikingow/,Vinski i skarb Wikingów)	lattice 2^7	128	24.97
-Native(Kino 60 Krzeseł,https://www.bilety24.pl/kino/776-igrajac-z-diablem-166218?id=999338,Igrając z diabłem)	levels 0-1	24	0.51
-Native(Kino 60 Krzeseł,https://www.bilety24.pl/kino/776-kuzma-166129?id=998358,Kuźma)	lattice 2^2	4	0.41
-Native(Kino 60 Krzeseł,https://www.bilety24.pl/kino/776-orlando-pokaz-w-dkf-megaron--165055?id=991020,Orlando (pokaz w DKF Megaron))	levels 0-1	100	2.76
-Native(Kino 60 Krzeseł,https://www.bilety24.pl/kino/776-sluzacy-pokaz-w-dkf-megaron--165057?id=991026,Służący (pokaz w DKF Megaron))	levels 0-1	18	1.01
-Native(Kino Alternatywy,https://alternatywy.art/199-malych-bohaterow-edukacja-mlode-horyzonty-rezyseria-sigrid-klausmann-jacob-dammas-polska-niemcy-2015-klasy-iv-vi/,Okładka „199 małych bohaterów”)	lattice 2^2	4	0.46
-Native(Kino Alternatywy,https://alternatywy.art/danton-rez-andrzej-wajda-polska-1983/,Okładka „Danton”)	lattice 2^3	8	1.05
-Native(Kino Amondo,https://kinoamondo.pl/movies/bojkot-palestine-cinema-days-poland-2026/,Bojkot | Palestine Cinema Days Poland 2026)	lattice 2^3	8	1.00
-Native(Kino Amondo,https://kinoamondo.pl/movies/donnie-darko/,Donnie Darko)	levels 0-1	84	4.17
-Native(Kino Amondo,https://kinoamondo.pl/movies/following/,Following)	lattice 2^2	4	0.34
-Native(Kino Amondo,https://kinoamondo.pl/movies/nagi-instynkt/,Nagi instynkt)	lattice 2^2	4	0.47
-Native(Kino Amondo,https://kinoamondo.pl/movies/nienawisc/,Nienawiść)	lattice 2^2	4	0.48
-Native(Kino Apollo Działdowo,https://biletyna.pl/film/Beware-Boina?eid=712451#opis,Beware Boiúna)	levels 0-1	20	0.44
-Native(Kino Apollo Działdowo,https://biletyna.pl/film/Eliminacja?eid=712454#opis,Eliminacja)	levels 0-1	18	0.39
-Native(Kino Apollo,https://kinoapollo.pl/kino/cykl-wajda-re-wizje-wszystko-na-sprzedaz-everything-for-sale-1974/,Cykl „Wajda: re-wizje" - Wszystko na sprzedaż / Everything for Sale (1974))	levels 0-1	22	1.00
-Native(Kino Apollo,https://kinoapollo.pl/kino/winda-na-szafot/,Cykl "Kultowe Klasyki" - Windą na szafot (1958))	lattice 2^5	32	4.07
-Native(Kino Astra,https://kulturalne-oborniki.bilety24.pl/kup-bilety/?id=1000276,Koszmarek)	lattice 2^4	16	1.76
-Native(Kino Astra,https://kulturalne-oborniki.bilety24.pl/kup-bilety/?id=1007039,Przez ścianę)	levels 0-1	28	1.65
-Native(Kino Astra,https://kulturalne-oborniki.bilety24.pl/kup-bilety/?id=993828,GENERAŁ - pokaz z muzyką na żywo)	lattice 2^4	16	1.35
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20358,11. UFF - Gala otwarcia + Demony)	lattice 2^4	16	1.50
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20359,11. UFF - Zmęczeni)	lattice 2^3	8	0.70
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20363,11. UFF - Killhouse)	lattice 2^2	4	0.43
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20364,11. UFF - Dowżenko. Pierwsze spojrzenie)	lattice 2^2	4	0.29
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20365,11. UFF - Nasz dom płonie)	lattice 2^3	8	0.73
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20366,11. UFF - Za zwycięstwo)	lattice 2^5	32	4.94
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20369,11. UFF - Ślady)	lattice 2^2	4	0.45
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20370,11. UFF - Nice Ladies)	lattice 2^3	8	1.11
+Native(Helios Ostrów Wlkp.,https://helios.pl/ostrow-wielkopolski/kino-helios/filmy/sunny-dancer-4655,Sunny Dancer)	lattice 2^7	128	15.83
+Native(Helios Radom,https://helios.pl/radom/kino-helios/wydarzenie/kreciolek-af-2853,Kręciołek - AF)	lattice 2^2	4	0.44
+Native(Helios Tczew,https://helios.pl/tczew/kino-helios/filmy/asterix-i-obelix-misja-kleopatra-4653,Asterix i Obelix: Misja Kleopatra)	levels 0-1	20	0.68
+Native(Janosik,https://www.bilety24.pl/kino/1500-19-fga-2-hard-road-2-walk-alone-film-konkursowy-164690?id=991067,19. FGA: 2 Hard Road 2 Walk Alone - film konkursowy)	lattice 2^3	8	1.35
+Native(Janosik,https://www.bilety24.pl/kino/1500-hot-spot-167093?id=1006647,Hot Spot)	lattice 2^7	128	16.78
+Native(Janosik,https://www.bilety24.pl/kino/1500-maraton-strachu-dzwiek-smierci-167633?id=1006053,Maraton Strachu: Dźwięk śmierci)	lattice 2^2	4	0.40
+Native(Janosik,https://www.bilety24.pl/kino/1500-niedziela-z-dokumentem-bez-konca-spotkanie-z-bohaterami-filmu-167209?id=1004656,Niedziela z Dokumentem: Bez końca + spotkanie z bohaterami filmu)	levels 0-1	24	1.06
+Native(Janosik,https://www.bilety24.pl/kino/1500-smok-spotkania-mlodych-odkrywcow-kina-kanal-166656?id=1001755,SMOK (Spotkania Młodych Odkrywców Kina): Kanał)	lattice 2^2	4	0.40
+Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/dmuchawce-1,Dmuchawce)	lattice 2^3	8	0.81
+Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/foragers-kobiety-z-gazy,„Foragers” + „Kobiety z Gazy”)	lattice 2^2	4	0.95
+Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/freak-show-5,Freak Show)	lattice 2^4	16	1.82
+Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/milosc-smierc-i-dojrzewanie-w-camp-miasma-2,Miłość, śmierć i dojrzewanie w Camp Miasma)	lattice 2^6	64	5.59
+Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/naza,NAZA)	levels 0-1	122	5.47
+Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/opowiesc-o-dwoch-siostrach,Opowieść o dwóch siostrach)	levels 0-1	22	1.50
+Native(KINOMUZEUM,https://artmuseum.pl/wydarzenia/powrot-do-hajfy,Powrót do Hajfy)	lattice 2^3	8	0.70
+Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/__trashed/,Cinematographers. Spotkanie ze scenograf Magdaleną Dipont oraz Trzy kolory: Biały)	lattice 2^3	8	1.07
+Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/kaszpirowski/,Kaszpirowski)	lattice 2^5	32	3.09
+Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/o-czym-sobie-nie-mowimy/,O czym sobie nie mówimy)	lattice 2^3	8	0.71
+Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/plac-zabaw-putina/,Plac zabaw Putina)	lattice 2^5	32	2.73
+Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/podrecznik-dla-superbohaterow/,Podręcznik dla Superbohaterów)	lattice 2^4	16	2.18
+Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/sciezki-zycia-lektor/,Ścieżki życia)	lattice 2^2	4	0.56
+Native(KINOkawiarnia Stacja Falenica,https://stacjafalenica.pl/filmy/vinski-i-skarb-wikingow/,Vinski i skarb Wikingów)	lattice 2^7	128	25.04
+Native(Kino 60 Krzeseł,https://www.bilety24.pl/kino/776-igrajac-z-diablem-166218?id=999338,Igrając z diabłem)	levels 0-1	24	0.49
+Native(Kino 60 Krzeseł,https://www.bilety24.pl/kino/776-kuzma-166129?id=998358,Kuźma)	lattice 2^2	4	0.55
+Native(Kino 60 Krzeseł,https://www.bilety24.pl/kino/776-orlando-pokaz-w-dkf-megaron--165055?id=991020,Orlando (pokaz w DKF Megaron))	levels 0-1	100	2.64
+Native(Kino 60 Krzeseł,https://www.bilety24.pl/kino/776-sluzacy-pokaz-w-dkf-megaron--165057?id=991026,Służący (pokaz w DKF Megaron))	levels 0-1	18	0.62
+Native(Kino Alternatywy,https://alternatywy.art/199-malych-bohaterow-edukacja-mlode-horyzonty-rezyseria-sigrid-klausmann-jacob-dammas-polska-niemcy-2015-klasy-iv-vi/,Okładka „199 małych bohaterów”)	lattice 2^2	4	0.43
+Native(Kino Alternatywy,https://alternatywy.art/danton-rez-andrzej-wajda-polska-1983/,Okładka „Danton”)	lattice 2^3	8	0.84
+Native(Kino Amondo,https://kinoamondo.pl/movies/bojkot-palestine-cinema-days-poland-2026/,Bojkot | Palestine Cinema Days Poland 2026)	lattice 2^3	8	1.16
+Native(Kino Amondo,https://kinoamondo.pl/movies/donnie-darko/,Donnie Darko)	levels 0-1	84	4.26
+Native(Kino Amondo,https://kinoamondo.pl/movies/following/,Following)	lattice 2^2	4	0.44
+Native(Kino Amondo,https://kinoamondo.pl/movies/nagi-instynkt/,Nagi instynkt)	lattice 2^2	4	0.39
+Native(Kino Amondo,https://kinoamondo.pl/movies/nienawisc/,Nienawiść)	lattice 2^2	4	0.32
+Native(Kino Apollo Działdowo,https://biletyna.pl/film/Beware-Boina?eid=712451#opis,Beware Boiúna)	levels 0-1	20	0.41
+Native(Kino Apollo Działdowo,https://biletyna.pl/film/Eliminacja?eid=712454#opis,Eliminacja)	levels 0-1	18	0.57
+Native(Kino Apollo,https://kinoapollo.pl/kino/cykl-wajda-re-wizje-wszystko-na-sprzedaz-everything-for-sale-1974/,Cykl „Wajda: re-wizje" - Wszystko na sprzedaż / Everything for Sale (1974))	levels 0-1	22	0.93
+Native(Kino Apollo,https://kinoapollo.pl/kino/winda-na-szafot/,Cykl "Kultowe Klasyki" - Windą na szafot (1958))	lattice 2^5	32	2.72
+Native(Kino Astra,https://kulturalne-oborniki.bilety24.pl/kup-bilety/?id=1000276,Koszmarek)	lattice 2^4	16	1.83
+Native(Kino Astra,https://kulturalne-oborniki.bilety24.pl/kup-bilety/?id=1007039,Przez ścianę)	levels 0-1	28	0.97
+Native(Kino Astra,https://kulturalne-oborniki.bilety24.pl/kup-bilety/?id=993828,GENERAŁ - pokaz z muzyką na żywo)	lattice 2^4	16	2.08
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20358,11. UFF - Gala otwarcia + Demony)	lattice 2^4	16	1.68
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20359,11. UFF - Zmęczeni)	lattice 2^3	8	1.12
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20363,11. UFF - Killhouse)	lattice 2^2	4	0.46
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20364,11. UFF - Dowżenko. Pierwsze spojrzenie)	lattice 2^2	4	0.31
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20365,11. UFF - Nasz dom płonie)	lattice 2^3	8	0.81
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20366,11. UFF - Za zwycięstwo)	lattice 2^5	32	5.03
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20369,11. UFF - Ślady)	lattice 2^2	4	0.49
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20370,11. UFF - Nice Ladies)	lattice 2^3	8	0.89
 Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20372,11. UFF - MARIINKA)	lattice 2^3	8	0.63
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20375,11. UFF - DIVIA)	lattice 2^2	4	0.40
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20376,11. UFF - Cicha powódź)	lattice 2^2	4	0.41
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20459,Ajtmatov (kirghiz version) - english)	lattice 2^2	4	0.69
-Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20479,CINEMAFORUM - POKAZ SPECJALNY)	lattice 2^4	16	3.22
-Native(Kino Bajka Kluczbork,https://www.bilety24.pl/kino/1467-ebenezer-scrooge-opowiesc-wigilijna-dubbing--166767?id=1002408,Ebenezer Scrooge. Opowieść wigilijna)	lattice 2^7	128	13.22
-Native(Kino Bajka,https://kinobajka.pl/wydarzenie/reel-rock-20/,Reel Rock 20)	lattice 2^2	4	0.47
-Native(Kino Baśń,https://biletyna.pl/film/Za-duzy-na-bajki-3?eid=707737#opis,Za duży na bajki 3)	lattice 2^2	4	0.43
-Native(Kino CK Lublin,https://ck-lublin.bilety24.pl/wydarzenie/?id=164948,Pejzaż w kolorze sepii)	lattice 2^5	32	5.75
-Native(Kino CK Lublin,https://ck-lublin.bilety24.pl/wydarzenie/?id=167734,Dyrygent)	lattice 2^2	4	0.56
-Native(Kino CKiS Skierniewice,https://biletyna.pl/film/ArekMamaPanorama?eid=712162#opis,Arek.Mama.Panorama)	lattice 2^5	32	3.20
-Native(Kino CKiS Skierniewice,https://biletyna.pl/film/Bez-znieczulenia-1978?eid=704685#opis,Bez znieczulenia)	levels 0-1	58	4.86
-Native(Kino Centrum CSW Toruń,https://csw.torun.pl/kino/la-perra/,La perra)	levels 0-1	30	2.26
-Native(Kino Centrum,https://www.bilety24.pl/kino/1685-historie-rownolegle-167074?id=1003688,Historie równoległe)	lattice 2^4	16	1.83
-Native(Kino Charlie,https://www.charlie.pl/index.php?i=film&id=1018995002,Requiem dla snu)	lattice 2^7	128	12.05
-Native(Kino Charlie,https://www.charlie.pl/index.php?i=film&id=1772623136,Drugie życie)	lattice 2^6	64	9.53
-Native(Kino Cytadela,https://muzhp.pl/kino-film/baczne-oczka,Baczne oczka)	lattice 2^3	8	0.97
-Native(Kino Fenomen (WDK),https://iframe639.biletyna.pl/artist/view/id/11246,Dolina Issy)	lattice 2^4	16	1.32
-Native(Kino Grajfka,https://kino.chck.pl/repertuar/piknik-pod-wiszaca-skala/,Piknik pod Wiszącą Skałą)	lattice 2^2	4	0.42
-Native(Kino Grajfka,https://kino.chck.pl/repertuar/suspiria/,Suspiria)	lattice 2^2	4	0.53
-Native(Kino Głębocka 66,https://bok.waw.pl/kino-glebocka-66/kinowy-poranek-noc-w-zoo,Kinowy Poranek | Noc w zoo)	lattice 2^2	4	0.56
-Native(Kino IKM,https://ikm.gda.pl/filmy/bojkot-palestine-cinema-days-poland-2026-2/,Milczące Kwiaty, Świadkowie + Ci, którzy nie istnieją + Sen | Palestine Cinema Days Poland 2026)	lattice 2^3	8	1.28
-Native(Kino IKM,https://ikm.gda.pl/filmy/bojkot-palestine-cinema-days-poland-2026/,GAZA. LIST Z PRZESZŁOŚCI | Palestine Cinema Days Poland 2026)	lattice 2^4	16	1.87
-Native(Kino IKM,https://ikm.gda.pl/filmy/do-nieznanej-ziemi/,DO NIEZNANEJ ZIEMI | PALESTINE CINEMA DAYS POLAND 2026)	lattice 2^2	4	0.56
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20375,11. UFF - DIVIA)	lattice 2^2	4	0.33
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20376,11. UFF - Cicha powódź)	lattice 2^2	4	0.58
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20459,Ajtmatov (kirghiz version) - english)	lattice 2^2	4	0.44
+Native(Kino Atlantic,https://www.novekino.pl/kina/atlantic/film.php?id=20479,CINEMAFORUM - POKAZ SPECJALNY)	lattice 2^4	16	3.18
+Native(Kino Bajka Kluczbork,https://www.bilety24.pl/kino/1467-ebenezer-scrooge-opowiesc-wigilijna-dubbing--166767?id=1002408,Ebenezer Scrooge. Opowieść wigilijna)	lattice 2^7	128	20.72
+Native(Kino Bajka,https://kinobajka.pl/wydarzenie/reel-rock-20/,Reel Rock 20)	lattice 2^2	4	0.46
+Native(Kino Baśń,https://biletyna.pl/film/Za-duzy-na-bajki-3?eid=707737#opis,Za duży na bajki 3)	lattice 2^2	4	0.54
+Native(Kino CK Lublin,https://ck-lublin.bilety24.pl/wydarzenie/?id=164948,Pejzaż w kolorze sepii)	lattice 2^5	32	4.08
+Native(Kino CK Lublin,https://ck-lublin.bilety24.pl/wydarzenie/?id=167734,Dyrygent)	lattice 2^2	4	0.49
+Native(Kino CKiS Skierniewice,https://biletyna.pl/film/ArekMamaPanorama?eid=712162#opis,Arek.Mama.Panorama)	lattice 2^5	32	2.90
+Native(Kino CKiS Skierniewice,https://biletyna.pl/film/Bez-znieczulenia-1978?eid=704685#opis,Bez znieczulenia)	levels 0-1	58	8.75
+Native(Kino Centrum CSW Toruń,https://csw.torun.pl/kino/la-perra/,La perra)	levels 0-1	30	2.21
+Native(Kino Centrum,https://www.bilety24.pl/kino/1685-historie-rownolegle-167074?id=1003688,Historie równoległe)	lattice 2^4	16	1.28
+Native(Kino Charlie,https://www.charlie.pl/index.php?i=film&id=1018995002,Requiem dla snu)	lattice 2^7	128	16.45
+Native(Kino Charlie,https://www.charlie.pl/index.php?i=film&id=1772623136,Drugie życie)	lattice 2^6	64	8.83
+Native(Kino Cytadela,https://muzhp.pl/kino-film/baczne-oczka,Baczne oczka)	lattice 2^3	8	0.65
+Native(Kino Fenomen (WDK),https://iframe639.biletyna.pl/artist/view/id/11246,Dolina Issy)	lattice 2^4	16	1.42
+Native(Kino Grajfka,https://kino.chck.pl/repertuar/piknik-pod-wiszaca-skala/,Piknik pod Wiszącą Skałą)	lattice 2^2	4	0.31
+Native(Kino Grajfka,https://kino.chck.pl/repertuar/suspiria/,Suspiria)	lattice 2^2	4	0.31
+Native(Kino Głębocka 66,https://bok.waw.pl/kino-glebocka-66/kinowy-poranek-noc-w-zoo,Kinowy Poranek | Noc w zoo)	lattice 2^2	4	0.31
+Native(Kino IKM,https://ikm.gda.pl/filmy/bojkot-palestine-cinema-days-poland-2026-2/,Milczące Kwiaty, Świadkowie + Ci, którzy nie istnieją + Sen | Palestine Cinema Days Poland 2026)	lattice 2^3	8	2.01
+Native(Kino IKM,https://ikm.gda.pl/filmy/bojkot-palestine-cinema-days-poland-2026/,GAZA. LIST Z PRZESZŁOŚCI | Palestine Cinema Days Poland 2026)	lattice 2^4	16	1.92
+Native(Kino IKM,https://ikm.gda.pl/filmy/do-nieznanej-ziemi/,DO NIEZNANEJ ZIEMI | PALESTINE CINEMA DAYS POLAND 2026)	lattice 2^2	4	0.45
 Native(Kino IKM,https://ikm.gda.pl/filmy/gorzkie-swieta/,Gorzkie Święta)	levels 0-1	20	0.72
-Native(Kino IKM,https://ikm.gda.pl/filmy/opetanie/,Opętanie)	lattice 2^6	64	5.69
-Native(Kino Iluzjon,https://www.iluzjon.fn.org.pl/filmy/info/2549/proces.html,Proces)	lattice 2^3	8	1.05
-Native(Kino Iluzjon,https://www.iluzjon.fn.org.pl/filmy/info/4791/frances-ha.html,Frances Ha)	lattice 2^6	64	5.30
-Native(Kino Iluzjon,https://www.iluzjon.fn.org.pl/filmy/info/7941/tajemnica-spiewajacych-ptakow.html,Tajemnica śpiewających ptaków)	lattice 2^5	32	4.26
-Native(Kino Iluzjon,https://www.iluzjon.fn.org.pl/filmy/info/7947/nikt-nie-wie.html,Nikt nie wie)	levels 0-1	22	0.93
-Native(Kino Iskra,https://kino-iskra.pl/zapowiedzi/#2299,Recepta na szczęście 2)	lattice 2^2	4	0.32
-Native(Kino Iskra,https://kino-iskra.pl/zapowiedzi/#2361,Mini-maraton horrorów - Inna mamusia i Obsesja)	lattice 2^2	4	0.43
-Native(Kino Kadr Bogatynia,https://www.bilety24.pl/kino/1659-totalna-magia-2-napisy-2d--165805?id=995739,Totalna magia 2)	levels 0-1	18	0.43
-Native(Kino Kameralne Cafe,https://biletyna.pl/film/Dziki-Kon-Dziewiec?eid=712460#opis,Dziki Koń Dziewięć)	lattice 2^4	16	1.74
-Native(Kino Kameralne Cafe,https://biletyna.pl/film/Zludzenia-z-Yakushimy?eid=713119#opis,Złudzenia z Yakushimy)	lattice 2^2	4	0.36
-Native(Kino Kinematograf,https://muzeumkinematografii.pl/repertuar/akademia-polskiego-filmu-wyklad-prof-mariusza-guzka-pietro-wyzej-rez-leon-trystan-1937/,Akademia Polskiego Filmu. Wykład prof. Mariusza Guzka • Piętro wyżej reż. Leon Trystan (1937),)	lattice 2^2	4	0.30
-Native(Kino Kinematograf,https://muzeumkinematografii.pl/repertuar/wideoteka-poptok-przewin-tasme-inni-rez-alejandro-amenabar-2001-104/,Wideoteka „POPtok”: Przewiń taśmę: „Inni”, reż. Alejandro Amenábar (2001), 104’)	levels 0-1	30	3.62
-Native(Kino Kosmos Mława,https://biletyna.pl/musical/GDZIE-JEST-ROZA-MUSICAL-LEGEND-MAZOWSZA?eid=712489#opis,GDZIE JEST RÓŻA? MUSICAL LEGEND MAZOWSZA)	lattice 2^2	4	0.54
-Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-konwicki-jak-daleko-stad-jak-blisko-158607?id=944672,Konwicki. Jak daleko stąd, jak blisko)	lattice 2^4	16	2.98
-Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-konwicki-lawa-158638?id=944722,Konwicki. Lawa)	lattice 2^3	8	0.62
-Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-nakarmic-kruki-zlote-gody-165730?id=994579,Nakarmić kruki | Złote gody)	lattice 2^4	16	2.33
-Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-palestyna-36-dyskusja-166486?id=1000706,Palestyna 36 + dyskusja)	lattice 2^4	16	1.86
-Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-przedpremiera-gradiva-teleskop-167378?id=1004994,Przedpremiera: Gradiva | Teleskop)	lattice 2^5	32	3.32
-Native(Kino Kultura Gołdap,https://www.bilety24.pl/kino/1089-kot-prot-2d-dubbing-167586?id=1005747,KOT PROT)	levels 0-1	50	3.35
-Native(Kino Lot,https://kino-lot.bilety24.pl/wydarzenie/?id=164977,Takie jest życie | FKS)	lattice 2^2	4	0.61
-Native(Kino Luna,https://kinoluna.bilety24.pl/wydarzenie/?id=166873,PO SEANSIE | Milczenie owiec | rozmawiają Adam Woronowicz i Kaja Klimek | podcast)	lattice 2^4	16	1.97
-Native(Kino MOK Centrum,https://www.bilety24.pl/kino/1305-mira-165564?id=993903,MIRA)	lattice 2^2	4	0.30
-Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/birthday-party,Birthday Party)	lattice 2^2	4	0.48
-Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/father-mother-sister-brother,Father Mother Sister Brother)	lattice 2^5	32	4.93
-Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/glowa-do-wycierania,Głowa do wycierania)	lattice 2^2	4	0.44
-Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/julia-pirotte-piekno-i-sila,Julia Pirotte. Piękno i siła)	lattice 2^2	4	0.46
-Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/orkiestra,Orkiestra)	lattice 2^5	32	2.75
-Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/ostatni-konsjerz,Ostatni konsjerż)	lattice 2^2	4	0.45
-Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/zaproszenie,Zaproszenie)	lattice 2^5	32	2.83
-Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/znaki-pana-sliwki,Znaki Pana Śliwki)	lattice 2^2	4	0.32
-Native(Kino Mieścisko,https://www.bilety24.pl/kino/1294--wujowy-dwor--166848?id=1005446,"WUJOWY DWÓR")	lattice 2^3	8	0.65
-Native(Kino Muranów,https://kinomuranow.pl/film/angels-egg,Angel’s Egg)	lattice 2^2	4	0.52
-Native(Kino Muranów,https://kinomuranow.pl/film/corka-kondora,Córka kondora)	lattice 2^2	4	0.36
-Native(Kino Muranów,https://kinomuranow.pl/film/do-utraty-tchu,Do utraty tchu)	lattice 2^4	16	1.41
-Native(Kino Muranów,https://kinomuranow.pl/film/gabinet-doktora-caligari-z-muzyka-jozefa-van-wissema-na-zywo,Gabinet doktora Caligari z muzyką Jozefa van Wissema na żywo)	lattice 2^2	4	0.34
-Native(Kino Muranów,https://kinomuranow.pl/film/isabel,Isabel)	lattice 2^3	8	0.57
-Native(Kino Muranów,https://kinomuranow.pl/film/kino-muranow,Kino Muranów)	lattice 2^3	8	0.57
-Native(Kino Muranów,https://kinomuranow.pl/film/komendant-fritz,Komendant Fritz)	lattice 2^4	16	1.44
-Native(Kino Muranów,https://kinomuranow.pl/film/noc-zywych-trupow-wstep-jacka-rokosza,"Noc żywych trupów" + wstęp Jacka Rokosza)	lattice 2^3	8	0.92
-Native(Kino Muranów,https://kinomuranow.pl/film/nosferatu-symfonia-grozy-z-muzyka-jozefa-van-wissema-na-zywo,Nosferatu - symfonia grozy z muzyką Jozefa van Wissema na żywo)	lattice 2^3	8	1.00
-Native(Kino Muranów,https://kinomuranow.pl/film/poeta,Poeta)	lattice 2^2	4	0.46
-Native(Kino Muranów,https://kinomuranow.pl/film/risa-i-budka-telefoniczna,Risa i budka telefoniczna)	lattice 2^3	8	0.62
-Native(Kino Muranów,https://kinomuranow.pl/film/sirat,Sirât)	lattice 2^2	4	0.32
-Native(Kino Muranów,https://kinomuranow.pl/film/spragnieni-milosci,Spragnieni miłości)	lattice 2^2	4	0.34
-Native(Kino Muranów,https://kinomuranow.pl/film/swietlana-przyszlosc,Świetlana przyszłość)	lattice 2^2	4	0.32
-Native(Kino Muranów,https://kinomuranow.pl/film/upadle-anioly-0,Upadłe anioły)	levels 0-1	38	1.15
-Native(Kino Muranów,https://kinomuranow.pl/film/wersal,Wersal)	lattice 2^3	8	0.89
-Native(Kino Muranów,https://kinomuranow.pl/film/zagubiona-autostrada,Zagubiona autostrada)	lattice 2^2	4	0.34
-Native(Kino Muza,https://www.kinomuza.pl/movie/miedzynarodowy-dzien-animacji-2/,Międzynarodowy Dzień Animacji)	lattice 2^3	8	1.96
-Native(Kino Muzeum,https://www.muzeum1939.pl/kino-muzeum/filmy/absolwent,ABSOLWENT)	lattice 2^6	64	7.55
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-alcarras,Akademia Kina Światowego: Alcarràs)	lattice 2^2	4	0.34
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-bratan,Akademia Kina Światowego: Bratan)	lattice 2^2	4	0.28
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-ciche-swiatlo,Akademia Kina Światowego: Ciche światło)	lattice 2^2	4	0.42
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-ema,Akademia Kina Światowego: Ema)	lattice 2^3	8	0.85
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-festen,Akademia Kina Światowego: Festen)	lattice 2^2	4	0.29
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-godziny,Akademia Kina Światowego: Godziny)	lattice 2^2	4	0.34
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-koszmarne-podszepty,Akademia Kina Światowego: Koszmarne podszepty)	lattice 2^2	4	0.42
+Native(Kino IKM,https://ikm.gda.pl/filmy/opetanie/,Opętanie)	lattice 2^6	64	5.66
+Native(Kino Iluzjon,https://www.iluzjon.fn.org.pl/filmy/info/2549/proces.html,Proces)	lattice 2^3	8	1.07
+Native(Kino Iluzjon,https://www.iluzjon.fn.org.pl/filmy/info/4791/frances-ha.html,Frances Ha)	lattice 2^6	64	5.66
+Native(Kino Iluzjon,https://www.iluzjon.fn.org.pl/filmy/info/7941/tajemnica-spiewajacych-ptakow.html,Tajemnica śpiewających ptaków)	lattice 2^5	32	2.75
+Native(Kino Iluzjon,https://www.iluzjon.fn.org.pl/filmy/info/7947/nikt-nie-wie.html,Nikt nie wie)	levels 0-1	22	0.89
+Native(Kino Iskra,https://kino-iskra.pl/zapowiedzi/#2299,Recepta na szczęście 2)	lattice 2^2	4	0.37
+Native(Kino Iskra,https://kino-iskra.pl/zapowiedzi/#2361,Mini-maraton horrorów - Inna mamusia i Obsesja)	lattice 2^2	4	0.30
+Native(Kino Kadr Bogatynia,https://www.bilety24.pl/kino/1659-totalna-magia-2-napisy-2d--165805?id=995739,Totalna magia 2)	levels 0-1	18	0.61
+Native(Kino Kameralne Cafe,https://biletyna.pl/film/Dziki-Kon-Dziewiec?eid=712460#opis,Dziki Koń Dziewięć)	lattice 2^4	16	2.50
+Native(Kino Kameralne Cafe,https://biletyna.pl/film/Zludzenia-z-Yakushimy?eid=713119#opis,Złudzenia z Yakushimy)	lattice 2^2	4	0.54
+Native(Kino Kinematograf,https://muzeumkinematografii.pl/repertuar/akademia-polskiego-filmu-wyklad-prof-mariusza-guzka-pietro-wyzej-rez-leon-trystan-1937/,Akademia Polskiego Filmu. Wykład prof. Mariusza Guzka • Piętro wyżej reż. Leon Trystan (1937),)	lattice 2^2	4	0.32
+Native(Kino Kinematograf,https://muzeumkinematografii.pl/repertuar/wideoteka-poptok-przewin-tasme-inni-rez-alejandro-amenabar-2001-104/,Wideoteka „POPtok”: Przewiń taśmę: „Inni”, reż. Alejandro Amenábar (2001), 104’)	levels 0-1	30	2.06
+Native(Kino Kosmos Mława,https://biletyna.pl/musical/GDZIE-JEST-ROZA-MUSICAL-LEGEND-MAZOWSZA?eid=712489#opis,GDZIE JEST RÓŻA? MUSICAL LEGEND MAZOWSZA)	lattice 2^2	4	0.50
+Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-konwicki-jak-daleko-stad-jak-blisko-158607?id=944672,Konwicki. Jak daleko stąd, jak blisko)	lattice 2^4	16	1.24
+Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-konwicki-lawa-158638?id=944722,Konwicki. Lawa)	lattice 2^3	8	1.34
+Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-nakarmic-kruki-zlote-gody-165730?id=994579,Nakarmić kruki | Złote gody)	lattice 2^4	16	1.77
+Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-palestyna-36-dyskusja-166486?id=1000706,Palestyna 36 + dyskusja)	lattice 2^4	16	1.46
+Native(Kino Kosmos,https://www.bilety24.pl/kino/1501-przedpremiera-gradiva-teleskop-167378?id=1004994,Przedpremiera: Gradiva | Teleskop)	lattice 2^5	32	4.07
+Native(Kino Kultura Gołdap,https://www.bilety24.pl/kino/1089-kot-prot-2d-dubbing-167586?id=1005747,KOT PROT)	levels 0-1	50	1.86
+Native(Kino Lot,https://kino-lot.bilety24.pl/wydarzenie/?id=164977,Takie jest życie | FKS)	lattice 2^2	4	0.37
+Native(Kino Luna,https://kinoluna.bilety24.pl/wydarzenie/?id=166873,PO SEANSIE | Milczenie owiec | rozmawiają Adam Woronowicz i Kaja Klimek | podcast)	lattice 2^4	16	1.83
+Native(Kino MOK Centrum,https://www.bilety24.pl/kino/1305-mira-165564?id=993903,MIRA)	lattice 2^2	4	0.45
+Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/birthday-party,Birthday Party)	lattice 2^2	4	0.54
+Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/father-mother-sister-brother,Father Mother Sister Brother)	lattice 2^5	32	3.91
+Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/glowa-do-wycierania,Głowa do wycierania)	lattice 2^2	4	0.46
+Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/julia-pirotte-piekno-i-sila,Julia Pirotte. Piękno i siła)	lattice 2^2	4	0.43
+Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/orkiestra,Orkiestra)	lattice 2^5	32	3.88
+Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/ostatni-konsjerz,Ostatni konsjerż)	lattice 2^2	4	0.33
+Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/zaproszenie,Zaproszenie)	lattice 2^5	32	4.81
+Native(Kino Malta Charlie Monroe,https://kinomalta.pl/movies/znaki-pana-sliwki,Znaki Pana Śliwki)	lattice 2^2	4	0.54
+Native(Kino Mieścisko,https://www.bilety24.pl/kino/1294--wujowy-dwor--166848?id=1005446,"WUJOWY DWÓR")	lattice 2^3	8	0.78
+Native(Kino Muranów,https://kinomuranow.pl/film/angels-egg,Angel’s Egg)	lattice 2^2	4	0.38
+Native(Kino Muranów,https://kinomuranow.pl/film/corka-kondora,Córka kondora)	lattice 2^2	4	0.60
+Native(Kino Muranów,https://kinomuranow.pl/film/do-utraty-tchu,Do utraty tchu)	lattice 2^4	16	1.45
+Native(Kino Muranów,https://kinomuranow.pl/film/gabinet-doktora-caligari-z-muzyka-jozefa-van-wissema-na-zywo,Gabinet doktora Caligari z muzyką Jozefa van Wissema na żywo)	lattice 2^2	4	0.48
+Native(Kino Muranów,https://kinomuranow.pl/film/isabel,Isabel)	lattice 2^3	8	0.69
+Native(Kino Muranów,https://kinomuranow.pl/film/kino-muranow,Kino Muranów)	lattice 2^3	8	0.77
+Native(Kino Muranów,https://kinomuranow.pl/film/komendant-fritz,Komendant Fritz)	lattice 2^4	16	2.33
+Native(Kino Muranów,https://kinomuranow.pl/film/noc-zywych-trupow-wstep-jacka-rokosza,"Noc żywych trupów" + wstęp Jacka Rokosza)	lattice 2^3	8	0.97
+Native(Kino Muranów,https://kinomuranow.pl/film/nosferatu-symfonia-grozy-z-muzyka-jozefa-van-wissema-na-zywo,Nosferatu - symfonia grozy z muzyką Jozefa van Wissema na żywo)	lattice 2^3	8	1.07
+Native(Kino Muranów,https://kinomuranow.pl/film/poeta,Poeta)	lattice 2^2	4	0.37
+Native(Kino Muranów,https://kinomuranow.pl/film/risa-i-budka-telefoniczna,Risa i budka telefoniczna)	lattice 2^3	8	0.70
+Native(Kino Muranów,https://kinomuranow.pl/film/sirat,Sirât)	lattice 2^2	4	0.31
+Native(Kino Muranów,https://kinomuranow.pl/film/spragnieni-milosci,Spragnieni miłości)	lattice 2^2	4	0.29
+Native(Kino Muranów,https://kinomuranow.pl/film/swietlana-przyszlosc,Świetlana przyszłość)	lattice 2^2	4	0.56
+Native(Kino Muranów,https://kinomuranow.pl/film/upadle-anioly-0,Upadłe anioły)	levels 0-1	38	1.09
+Native(Kino Muranów,https://kinomuranow.pl/film/wersal,Wersal)	lattice 2^3	8	0.96
+Native(Kino Muranów,https://kinomuranow.pl/film/zagubiona-autostrada,Zagubiona autostrada)	lattice 2^2	4	0.46
+Native(Kino Muza,https://www.kinomuza.pl/movie/miedzynarodowy-dzien-animacji-2/,Międzynarodowy Dzień Animacji)	lattice 2^3	8	1.11
+Native(Kino Muzeum,https://www.muzeum1939.pl/kino-muzeum/filmy/absolwent,ABSOLWENT)	lattice 2^6	64	8.78
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-alcarras,Akademia Kina Światowego: Alcarràs)	lattice 2^2	4	0.32
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-bratan,Akademia Kina Światowego: Bratan)	lattice 2^2	4	0.46
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-ciche-swiatlo,Akademia Kina Światowego: Ciche światło)	lattice 2^2	4	0.30
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-ema,Akademia Kina Światowego: Ema)	lattice 2^3	8	0.67
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-festen,Akademia Kina Światowego: Festen)	lattice 2^2	4	0.45
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-godziny,Akademia Kina Światowego: Godziny)	lattice 2^2	4	0.51
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-koszmarne-podszepty,Akademia Kina Światowego: Koszmarne podszepty)	lattice 2^2	4	0.45
 Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-nowy-poczatek,Akademia Kina Światowego: Nowy początek)	lattice 2^2	4	0.30
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-przed-wschodem-slonca,Akademia Kina Światowego: Przed wschodem słońca)	lattice 2^2	4	0.33
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-purpurowe-morze,Akademia Kina Światowego: Purpurowe morze)	lattice 2^2	4	0.33
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-siostrzenstwo-swietej-sauny,Akademia Kina Światowego: Siostrzeństwo świętej sauny)	lattice 2^2	4	0.34
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-substancja-2024,Akademia Kina Światowego: Substancja)	lattice 2^2	4	0.31
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/bajeczne-soboty-ciekawe-stworki-i-zjawiska,Bajeczne soboty - Ciekawe stworki i zjawiska)	lattice 2^7	128	10.20
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/festiwal-piec-smakow-kaczka-po-pekinsku-1986,Festiwal Pięć Smaków: Kaczka po pekińsku (1986))	lattice 2^3	8	1.79
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/festiwal-piec-smakow-ostrze-1995-otwarcie-festiwalu,Festiwal Pięć Smaków: Ostrze (1995) (otwarcie Festiwalu))	lattice 2^2	4	0.95
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/festiwal-piec-smakow-wielki-budda-spotkanie-z-rezyserem,Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem))	lattice 2^3	8	0.88
-Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/festiwal-piec-smakow-zmierzch-w-luomu-panel-dyskusyjny-skn-azji-i-pacyfiku,Festiwal Pięć Smaków: Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku))	lattice 2^2	4	0.61
-Native(Kino Nowa Fala,https://kino.gizycko.pl/production/terminator-2-dzien-sadu/,TERMINATOR 2 DZIEŃ SĄDU)	lattice 2^2	4	0.45
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=20685,Fleabag)	levels 0-1	38	0.71
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=20935,Michał Anioł. Miłość i śmierć)	lattice 2^2	4	0.55
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=21669,Velázquez i jego tajemnica)	lattice 2^2	4	0.45
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=21945,Vermeer. Blisko mistrza)	lattice 2^2	4	0.33
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=22477,Andy Warhol. Amerykański sen)	lattice 2^2	4	0.30
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23010,Dziewczyna z Dzikiego Zachodu)	lattice 2^3	8	0.83
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23011,Zaczarowany flet)	lattice 2^2	4	0.38
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23012,Samson i Dalila)	lattice 2^4	16	3.85
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23063,Mizantrop)	levels 0-1	38	1.66
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23146,Płomienie)	lattice 2^2	4	0.39
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23162,Lśnienie)	lattice 2^2	4	0.30
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23210,Pikkuli i Świąteczny renifer)	lattice 2^3	8	0.87
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23231,Funky Freaky Freaks)	lattice 2^2	4	0.60
-Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23234,Po życiu)	lattice 2^2	4	0.62
-Native(Kino OK Drawsko Pomorskie,https://www.bilety24.pl/kino/1680-george-michael-the-faith-tour-167527?id=1005710,George Michael: The Faith Tour)	lattice 2^4	16	1.33
-Native(Kino Oaza,https://biletyna.pl/film/Ktos-calkiem-obcy?eid=710043#opis,Ktoś całkiem obcy)	lattice 2^2	4	0.31
-Native(Kino Odra Brzeg Dolny,https://www.bilety24.pl/kino/1601-igrzyska-smierci-wschod-slonca-w-dniu-dozynek-167622?id=1006019,Igrzyska śmierci: Wschód słońca w dniu dożynek)	lattice 2^2	4	0.82
-Native(Kino Odra Oława,https://www.bilety24.pl/kino/1498-jestem-rocky-2d-napisy-167352?id=1005900,JESTEM ROCKY)	lattice 2^6	64	10.50
-Native(Kino Odra Oława,https://www.bilety24.pl/kino/1498-na-wage-zlota-2d-napisy-167576?id=1005918,NA WAGĘ ZŁOTA)	lattice 2^2	4	0.33
-Native(Kino Odra Oława,https://www.bilety24.pl/kino/1498-wielki-blekit-2d-napisy-165205?id=992395,WIELKI BŁĘKIT)	lattice 2^3	8	0.87
-Native(Kino Opalenica,https://www.bilety24.pl/kino/967-lilly-i-kangurek-165573?id=993874,Lilly i kangurek)	lattice 2^2	4	0.44
-Native(Kino PCA,https://www.bilety24.pl/kino/1689-poswieceni-167775?id=1006926,Poświęceni)	lattice 2^2	4	0.32
-Native(Kino PCA,https://www.bilety24.pl/kino/1689-the-mortuary-assistant-166554?id=1006933,THE MORTUARY ASSISTANT)	lattice 2^2	4	0.51
-Native(Kino Paradox,https://kinoparadox.pl/naekranie/bez-wyjscia/,Bez wyjścia)	lattice 2^2	4	0.70
-Native(Kino Paradox,https://kinoparadox.pl/naekranie/cukierek-albo-psikus-ii-strzez-sie-tego-co-za-toba-i-przed-toba-wybor-animacji-grozy-w-wyborze-daniela-suljica-trick-or-treat-cz-2/,Cukierek albo psikus II - Strzeż się tego, co za tobą i przed tobą – wybór animacji grozy w wyborze Daniela Šuljića | Trick or Treat cz. 2)	lattice 2^2	4	1.39
-Native(Kino Pałacowe,http://kinopalacowe.pl/filmy/15044-dkf-zamek-amelia/,DKF Zamek: Amelia | SEANS WYPRZEDANY)	lattice 2^2	4	0.33
-Native(Kino Pałacowe,http://kinopalacowe.pl/filmy/15292-festiwal-piec-smakow-pod-dachem-ky-nam/,Festiwal Pięć Smaków: Pod dachem Ky Nam)	lattice 2^2	4	0.39
-Native(Kino Pałacowe,http://kinopalacowe.pl/filmy/15303-festiwal-piec-smakow-w-sumie-spoko/,Festiwal Pięć Smaków: W sumie spoko)	lattice 2^2	4	0.35
-Native(Kino Pionier 1907,https://pionier1907.pl/event/jezioro-labedzie,JEZIORO ŁABĘDZIE)	levels 0-1	38	1.70
-Native(Kino Pionier 1907,https://pionier1907.pl/event/romeo-i-julia,ROMEO I JULIA)	levels 0-1	42	3.96
-Native(Kino Pionier 1907,https://pionier1907.pl/event/trzy-pozegnania,Trzy pożegnania)	lattice 2^4	16	1.45
-Native(Kino Pod Baranami,https://kinopodbaranami.pl/film.php?film_id=13073,Świst wiatru pomiędzy żurawiami)	lattice 2^2	4	0.54
-Native(Kino Pod Baranami,https://kinopodbaranami.pl/film.php?film_id=13074,Nocni pasażerowie)	lattice 2^2	4	0.37
-Native(Kino Remus,https://kdkkoscierzyna.pl/bing-i-opowiesci-o-zwierzatkach/,Bing i opowieści o zwierzątkach)	levels 0-1	84	2.60
-Native(Kino Roma Rawa Mazowiecka,https://mdkrawa.pl/wpisy/automatycznie-zapisany-szkic-68/,Hokus: Królestwo magii)	lattice 2^3	8	0.63
-Native(Kino Roma Rawa Mazowiecka,https://mdkrawa.pl/wpisy/noc-horrorow-2026/,Rawska "Noc horrorów"-edycja 2026)	lattice 2^2	4	0.46
-Native(Kino Sokół Strzyżów,https://dksokol.eu/seans/superfutrzak-i-zlosliwa-wiewiorka/,Superfutrzak i złośliwa wiewiórka)	lattice 2^2	4	0.30
-Native(Kino Studyjne Centrum,https://www.bilety24.pl/kino/1626-debiut-czarna-godzina-167279?id=1005024,Debiut Czarna godzina)	lattice 2^2	4	0.28
-Native(Kino Ton,https://ekobilet.pl/kinoton/ice-cream-man-63797,Ice Cream Man)	lattice 2^3	8	1.02
-Native(Kino Wars,https://kino.wysokiemazowieckie.pl/repertuar/hot-boys-spektakl,HOT BOYS - SPEKTAKL)	lattice 2^2	4	0.46
-Native(Kino Wars,https://kino.wysokiemazowieckie.pl/repertuar/wyspapajakow,Wyspa pająków / napisy)	lattice 2^4	16	1.40
-Native(Kino Wawrzyn,https://www.bilety24.pl/kino/1644-noc-horrorow-166471?id=1000629,Noc Horrorów)	lattice 2^2	4	0.30
-Native(Kino Wałeckie Centrum Kultury,https://www.bilety24.pl/kino/1598-maraton-horrorow--166386?id=999918,Maraton Horrorów)	lattice 2^5	32	4.58
-Native(Kino Wisła,https://www.novekino.pl/kina/wisla/film.php?id=20332,24. Festiwal TERRA - NOWA ZELANDIA - W POSZUKIWANIU KIWI)	lattice 2^3	8	2.00
-Native(Kino Zamek,https://zamek.szczecin.pl/wydarzenie/kino/najwiekszy-lek-hitlera-proces-przeciwko-sztuce-zdegenerowanej/,Największy lęk hitlera: proces przeciwko sztuce zdegenerowanej)	lattice 2^2	4	0.42
-Native(Kino Zbyszek,https://dok.pl/kino/repertuar/halloweenowy-mini-maraton-malpa,Halloweenowy mini-maraton (małpa))	lattice 2^2	4	0.36
-Native(Kino za Rogiem Brusy,https://www.bilety24.pl/kino/1410-drama-165810?id=995990,DRAMA)	lattice 2^2	4	0.30
-Native(Kino za Rogiem Cafe,https://kzrcafe.pl/film/brzezina-2/,Brzezina)	lattice 2^2	4	1.46
-Native(Kino za Rogiem Cafe,https://kzrcafe.pl/film/wscieklosc-gwiazd-rage-of-stars-3/,Wściekłość gwiazd/ Rage of Stars)	lattice 2^3	8	1.08
-Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/baw-sie-dobrze-i-przezyj-20-pazdziernika-wtorek-godz-1800-2/,Baw się dobrze i przeżyj)	lattice 2^2	4	0.34
-Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/dumna-krolewna-19-pazdziernika-poniedzialek-godz-1500/,Dumna królewna)	lattice 2^2	4	0.28
-Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/miedzy-nami-wampirami-31-pazdziernika-sobota-godz-1100/,Między nami wampirami)	lattice 2^2	4	0.33
-Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/potworna-rodzinka-2-29-pazdziernika-czwartek-godz-1500/,Potworna rodzinka 2)	lattice 2^2	4	0.27
-Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/sposob-na-ducha-26-pazdziernika-poniedzialek-godz-1500/,Sposób na ducha)	lattice 2^2	4	0.50
-Native(Kino Żak,https://klubzak.com.pl/pl/kalendarz/DKF-AK-Warto-sentymentalna-~z3930,DKF ŻAK: Wartość sentymentalna)	lattice 2^2	4	0.33
-Native(KinoPort,https://gcsw.pl/2026/10/08/repertuar-kinoport-gdansk/,Bardzo Ważne Filmy Na Ten Czas)	lattice 2^2	4	0.62
-Native(KinoPort,https://gcsw.pl/2026/10/08/repertuar-kinoport-gdansk/,Teksańska masakra piłą mechaniczną)	lattice 2^3	8	1.09
-Native(KinoPort,https://gcsw.pl/2026/10/08/repertuar-kinoport-gdansk/,X)	lattice 2^2	4	0.32
-Native(Kinoteka,https://kinoteka.pl/film/bca-flash-improwizuje-w-kinotece-grudzien/,BCA Flash improwizuje w Kinotece | Grudzień)	lattice 2^3	8	0.73
-Native(Kinoteka,https://kinoteka.pl/film/la-gomera-na-kanary/,La Gomera | Na Kanary!)	lattice 2^2	4	0.39
-Native(Kinoteka,https://kinoteka.pl/film/ostatnie-kuszenie-becky-splatfilmfest/,Ostatnie kuszenie Becky | Splat!FilmFest)	lattice 2^2	4	0.58
-Native(Kinoteka,https://kinoteka.pl/film/victorian-psycho-splatfilmfest/,Victorian Psycho | Splat!FilmFest)	lattice 2^4	16	1.86
-Native(MCK Tkacz,https://biletyna.pl/film/Cykl-Ale-Kino/Wedrowka-na-polnoc?eid=701134#opis,Cykl Ale Kino - Wędrówka na północ)	lattice 2^2	4	0.45
-Native(Miejskie Centrum Kultury,https://biletyna.pl/inne/Halloweenowy-Maraton-Horrorow?eid=709404#opis,Halloweenowy Maraton Horrorów)	lattice 2^3	8	0.62
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/amy,Amy)	levels 0-1	76	2.18
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/balet-z-opery-paryskiej-2026-2027-bajadera,Balet z Opery Paryskiej 2026-2027: Bajadera)	levels 0-1	34	0.82
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/balet-z-opery-paryskiej-2026-2027-notre-dame-de-paris,Balet z Opery Paryskiej 2026-2027: Notre-Dame de Paris)	levels 0-1	32	0.83
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/coco,COCO)	levels 0-1	76	1.43
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/ennio,Ennio)	levels 0-1	78	1.55
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/giant---the-play,GIANT - The Play)	levels 0-1	34	0.70
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/gnijaca-panna-moda,Gnijąca Panna Młoda)	levels 0-1	78	1.56
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/kraina-miodu,Kraina miodu)	levels 0-1	78	1.48
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/mcqueen,MCQUEEN)	levels 0-1	76	2.04
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/minimaraton-godzilla-minus-one-i-minus-zero,Minimaraton Godzilla Minus One i Minus Zero)	levels 0-1	74	1.60
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/nmf-halloween-2026---zestaw-nr-1,NMF HALLOWEEN 2026 - ZESTAW nr 1)	levels 0-1	126	5.29
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/one-to-one-john-i-yoko,One to One: John i Yoko)	levels 0-1	76	2.12
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/piraci-z-karaibow-na-krancu-swiata,Piraci z Karaibów: Na krańcu świata)	levels 0-1	78	2.27
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/rbo-sezon-kinowy-2026-27-alicja-w-krainie-czarow,Royal Ballet and Opera Sezon Kinowy 2026-27: Alicja w Krainie Czarów)	levels 0-1	34	0.97
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/rbo-sezon-kinowy-2026-27-cosi-fan-tutte,Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie)	levels 0-1	34	0.63
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-przed-wschodem-slonca,Akademia Kina Światowego: Przed wschodem słońca)	lattice 2^2	4	0.45
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-purpurowe-morze,Akademia Kina Światowego: Purpurowe morze)	lattice 2^2	4	0.36
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-siostrzenstwo-swietej-sauny,Akademia Kina Światowego: Siostrzeństwo świętej sauny)	lattice 2^2	4	0.33
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/akademia-kina-swiatowego-substancja-2024,Akademia Kina Światowego: Substancja)	lattice 2^2	4	0.44
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/bajeczne-soboty-ciekawe-stworki-i-zjawiska,Bajeczne soboty - Ciekawe stworki i zjawiska)	lattice 2^7	128	10.55
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/festiwal-piec-smakow-kaczka-po-pekinsku-1986,Festiwal Pięć Smaków: Kaczka po pekińsku (1986))	lattice 2^3	8	1.96
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/festiwal-piec-smakow-ostrze-1995-otwarcie-festiwalu,Festiwal Pięć Smaków: Ostrze (1995) (otwarcie Festiwalu))	lattice 2^2	4	0.69
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/festiwal-piec-smakow-wielki-budda-spotkanie-z-rezyserem,Festiwal Pięć Smaków: Wielki Budda+ (spotkanie z reżyserem))	lattice 2^3	8	1.62
+Native(Kino NCKF EC1,https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/festiwal-piec-smakow-zmierzch-w-luomu-panel-dyskusyjny-skn-azji-i-pacyfiku,Festiwal Pięć Smaków: Zmierzch w Luomu (panel dyskusyjny SKN Azji i Pacyfiku))	lattice 2^2	4	0.62
+Native(Kino Nowa Fala,https://kino.gizycko.pl/production/terminator-2-dzien-sadu/,TERMINATOR 2 DZIEŃ SĄDU)	lattice 2^2	4	0.46
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=20685,Fleabag)	levels 0-1	38	1.09
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=20935,Michał Anioł. Miłość i śmierć)	lattice 2^2	4	0.41
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=21669,Velázquez i jego tajemnica)	lattice 2^2	4	0.33
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=21945,Vermeer. Blisko mistrza)	lattice 2^2	4	0.44
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=22477,Andy Warhol. Amerykański sen)	lattice 2^2	4	0.45
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23010,Dziewczyna z Dzikiego Zachodu)	lattice 2^3	8	0.82
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23011,Zaczarowany flet)	lattice 2^2	4	0.57
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23012,Samson i Dalila)	lattice 2^4	16	4.22
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23063,Mizantrop)	levels 0-1	38	1.43
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23146,Płomienie)	lattice 2^2	4	0.59
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23162,Lśnienie)	lattice 2^2	4	0.41
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23210,Pikkuli i Świąteczny renifer)	lattice 2^3	8	0.95
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23231,Funky Freaky Freaks)	lattice 2^2	4	0.42
+Native(Kino Nowe Horyzonty,https://www.kinonh.pl/op.s?id=23234,Po życiu)	lattice 2^2	4	0.73
+Native(Kino OK Drawsko Pomorskie,https://www.bilety24.pl/kino/1680-george-michael-the-faith-tour-167527?id=1005710,George Michael: The Faith Tour)	lattice 2^4	16	2.27
+Native(Kino Oaza,https://biletyna.pl/film/Ktos-calkiem-obcy?eid=710043#opis,Ktoś całkiem obcy)	lattice 2^2	4	0.37
+Native(Kino Odra Brzeg Dolny,https://www.bilety24.pl/kino/1601-igrzyska-smierci-wschod-slonca-w-dniu-dozynek-167622?id=1006019,Igrzyska śmierci: Wschód słońca w dniu dożynek)	lattice 2^2	4	0.84
+Native(Kino Odra Oława,https://www.bilety24.pl/kino/1498-jestem-rocky-2d-napisy-167352?id=1005900,JESTEM ROCKY)	lattice 2^6	64	7.00
+Native(Kino Odra Oława,https://www.bilety24.pl/kino/1498-na-wage-zlota-2d-napisy-167576?id=1005918,NA WAGĘ ZŁOTA)	lattice 2^2	4	0.38
+Native(Kino Odra Oława,https://www.bilety24.pl/kino/1498-wielki-blekit-2d-napisy-165205?id=992395,WIELKI BŁĘKIT)	lattice 2^3	8	0.70
+Native(Kino Opalenica,https://www.bilety24.pl/kino/967-lilly-i-kangurek-165573?id=993874,Lilly i kangurek)	lattice 2^2	4	0.36
+Native(Kino PCA,https://www.bilety24.pl/kino/1689-poswieceni-167775?id=1006926,Poświęceni)	lattice 2^2	4	0.38
+Native(Kino PCA,https://www.bilety24.pl/kino/1689-the-mortuary-assistant-166554?id=1006933,THE MORTUARY ASSISTANT)	lattice 2^2	4	0.48
+Native(Kino Paradox,https://kinoparadox.pl/naekranie/bez-wyjscia/,Bez wyjścia)	lattice 2^2	4	0.34
+Native(Kino Paradox,https://kinoparadox.pl/naekranie/cukierek-albo-psikus-ii-strzez-sie-tego-co-za-toba-i-przed-toba-wybor-animacji-grozy-w-wyborze-daniela-suljica-trick-or-treat-cz-2/,Cukierek albo psikus II - Strzeż się tego, co za tobą i przed tobą – wybór animacji grozy w wyborze Daniela Šuljića | Trick or Treat cz. 2)	lattice 2^2	4	0.89
+Native(Kino Pałacowe,http://kinopalacowe.pl/filmy/15044-dkf-zamek-amelia/,DKF Zamek: Amelia | SEANS WYPRZEDANY)	lattice 2^2	4	0.46
+Native(Kino Pałacowe,http://kinopalacowe.pl/filmy/15292-festiwal-piec-smakow-pod-dachem-ky-nam/,Festiwal Pięć Smaków: Pod dachem Ky Nam)	lattice 2^2	4	0.40
+Native(Kino Pałacowe,http://kinopalacowe.pl/filmy/15303-festiwal-piec-smakow-w-sumie-spoko/,Festiwal Pięć Smaków: W sumie spoko)	lattice 2^2	4	0.39
+Native(Kino Pionier 1907,https://pionier1907.pl/event/jezioro-labedzie,JEZIORO ŁABĘDZIE)	levels 0-1	38	2.80
+Native(Kino Pionier 1907,https://pionier1907.pl/event/romeo-i-julia,ROMEO I JULIA)	levels 0-1	42	3.97
+Native(Kino Pionier 1907,https://pionier1907.pl/event/trzy-pozegnania,Trzy pożegnania)	lattice 2^4	16	1.61
+Native(Kino Pod Baranami,https://kinopodbaranami.pl/film.php?film_id=13073,Świst wiatru pomiędzy żurawiami)	lattice 2^2	4	0.63
+Native(Kino Pod Baranami,https://kinopodbaranami.pl/film.php?film_id=13074,Nocni pasażerowie)	lattice 2^2	4	0.52
+Native(Kino Remus,https://kdkkoscierzyna.pl/bing-i-opowiesci-o-zwierzatkach/,Bing i opowieści o zwierzątkach)	levels 0-1	84	2.40
+Native(Kino Roma Rawa Mazowiecka,https://mdkrawa.pl/wpisy/automatycznie-zapisany-szkic-68/,Hokus: Królestwo magii)	lattice 2^3	8	0.92
+Native(Kino Roma Rawa Mazowiecka,https://mdkrawa.pl/wpisy/noc-horrorow-2026/,Rawska "Noc horrorów"-edycja 2026)	lattice 2^2	4	0.44
+Native(Kino Sokół Strzyżów,https://dksokol.eu/seans/superfutrzak-i-zlosliwa-wiewiorka/,Superfutrzak i złośliwa wiewiórka)	lattice 2^2	4	0.44
+Native(Kino Studyjne Centrum,https://www.bilety24.pl/kino/1626-debiut-czarna-godzina-167279?id=1005024,Debiut Czarna godzina)	lattice 2^2	4	0.43
+Native(Kino Ton,https://ekobilet.pl/kinoton/ice-cream-man-63797,Ice Cream Man)	lattice 2^3	8	1.01
+Native(Kino Wars,https://kino.wysokiemazowieckie.pl/repertuar/hot-boys-spektakl,HOT BOYS - SPEKTAKL)	lattice 2^2	4	0.37
+Native(Kino Wars,https://kino.wysokiemazowieckie.pl/repertuar/wyspapajakow,Wyspa pająków / napisy)	lattice 2^4	16	2.18
+Native(Kino Wawrzyn,https://www.bilety24.pl/kino/1644-noc-horrorow-166471?id=1000629,Noc Horrorów)	lattice 2^2	4	0.31
+Native(Kino Wałeckie Centrum Kultury,https://www.bilety24.pl/kino/1598-maraton-horrorow--166386?id=999918,Maraton Horrorów)	lattice 2^5	32	5.17
+Native(Kino Wisła,https://www.novekino.pl/kina/wisla/film.php?id=20332,24. Festiwal TERRA - NOWA ZELANDIA - W POSZUKIWANIU KIWI)	lattice 2^3	8	1.81
+Native(Kino Zamek,https://zamek.szczecin.pl/wydarzenie/kino/najwiekszy-lek-hitlera-proces-przeciwko-sztuce-zdegenerowanej/,Największy lęk hitlera: proces przeciwko sztuce zdegenerowanej)	lattice 2^2	4	0.38
+Native(Kino Zbyszek,https://dok.pl/kino/repertuar/halloweenowy-mini-maraton-malpa,Halloweenowy mini-maraton (małpa))	lattice 2^2	4	0.47
+Native(Kino za Rogiem Brusy,https://www.bilety24.pl/kino/1410-drama-165810?id=995990,DRAMA)	lattice 2^2	4	0.44
+Native(Kino za Rogiem Cafe,https://kzrcafe.pl/film/brzezina-2/,Brzezina)	lattice 2^2	4	1.45
+Native(Kino za Rogiem Cafe,https://kzrcafe.pl/film/wscieklosc-gwiazd-rage-of-stars-3/,Wściekłość gwiazd/ Rage of Stars)	lattice 2^3	8	0.65
+Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/baw-sie-dobrze-i-przezyj-20-pazdziernika-wtorek-godz-1800-2/,Baw się dobrze i przeżyj)	lattice 2^2	4	0.46
+Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/dumna-krolewna-19-pazdziernika-poniedzialek-godz-1500/,Dumna królewna)	lattice 2^2	4	0.33
+Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/miedzy-nami-wampirami-31-pazdziernika-sobota-godz-1100/,Między nami wampirami)	lattice 2^2	4	0.31
+Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/potworna-rodzinka-2-29-pazdziernika-czwartek-godz-1500/,Potworna rodzinka 2)	lattice 2^2	4	0.32
+Native(Kino za Rogiem w Siedlcu,https://goksiedlec.pl/bilet/sposob-na-ducha-26-pazdziernika-poniedzialek-godz-1500/,Sposób na ducha)	lattice 2^2	4	0.43
+Native(Kino Żak,https://klubzak.com.pl/pl/kalendarz/DKF-AK-Warto-sentymentalna-~z3930,DKF ŻAK: Wartość sentymentalna)	lattice 2^2	4	0.58
+Native(KinoPort,https://gcsw.pl/2026/10/08/repertuar-kinoport-gdansk/,Bardzo Ważne Filmy Na Ten Czas)	lattice 2^2	4	0.32
+Native(KinoPort,https://gcsw.pl/2026/10/08/repertuar-kinoport-gdansk/,Teksańska masakra piłą mechaniczną)	lattice 2^3	8	1.12
+Native(KinoPort,https://gcsw.pl/2026/10/08/repertuar-kinoport-gdansk/,X)	lattice 2^2	4	0.54
+Native(Kinoteka,https://kinoteka.pl/film/bca-flash-improwizuje-w-kinotece-grudzien/,BCA Flash improwizuje w Kinotece | Grudzień)	lattice 2^3	8	1.17
+Native(Kinoteka,https://kinoteka.pl/film/la-gomera-na-kanary/,La Gomera | Na Kanary!)	lattice 2^2	4	0.46
+Native(Kinoteka,https://kinoteka.pl/film/ostatnie-kuszenie-becky-splatfilmfest/,Ostatnie kuszenie Becky | Splat!FilmFest)	lattice 2^2	4	0.61
+Native(Kinoteka,https://kinoteka.pl/film/victorian-psycho-splatfilmfest/,Victorian Psycho | Splat!FilmFest)	lattice 2^4	16	2.27
+Native(MCK Tkacz,https://biletyna.pl/film/Cykl-Ale-Kino/Wedrowka-na-polnoc?eid=701134#opis,Cykl Ale Kino - Wędrówka na północ)	lattice 2^2	4	0.47
+Native(Miejskie Centrum Kultury,https://biletyna.pl/inne/Halloweenowy-Maraton-Horrorow?eid=709404#opis,Halloweenowy Maraton Horrorów)	lattice 2^3	8	0.65
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/amy,Amy)	levels 0-1	76	1.60
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/balet-z-opery-paryskiej-2026-2027-bajadera,Balet z Opery Paryskiej 2026-2027: Bajadera)	levels 0-1	34	0.86
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/balet-z-opery-paryskiej-2026-2027-notre-dame-de-paris,Balet z Opery Paryskiej 2026-2027: Notre-Dame de Paris)	levels 0-1	32	1.38
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/coco,COCO)	levels 0-1	76	2.35
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/ennio,Ennio)	levels 0-1	78	2.34
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/giant---the-play,GIANT - The Play)	levels 0-1	34	1.26
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/gnijaca-panna-moda,Gnijąca Panna Młoda)	levels 0-1	78	1.64
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/kraina-miodu,Kraina miodu)	levels 0-1	78	1.52
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/mcqueen,MCQUEEN)	levels 0-1	76	2.24
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/minimaraton-godzilla-minus-one-i-minus-zero,Minimaraton Godzilla Minus One i Minus Zero)	levels 0-1	74	2.41
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/nmf-halloween-2026---zestaw-nr-1,NMF HALLOWEEN 2026 - ZESTAW nr 1)	levels 0-1	126	5.49
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/one-to-one-john-i-yoko,One to One: John i Yoko)	levels 0-1	76	1.47
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/piraci-z-karaibow-na-krancu-swiata,Piraci z Karaibów: Na krańcu świata)	levels 0-1	78	1.57
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/rbo-sezon-kinowy-2026-27-alicja-w-krainie-czarow,Royal Ballet and Opera Sezon Kinowy 2026-27: Alicja w Krainie Czarów)	levels 0-1	34	1.12
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/rbo-sezon-kinowy-2026-27-cosi-fan-tutte,Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie)	levels 0-1	34	0.67
 Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/rbo-sezon-kinowy-2026-27-dziadek-do-orzechow,Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów)	levels 0-1	38	1.25
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/rbo-sezon-kinowy-2026-27-zmierzch-bogow,Royal Ballet and Opera Sezon Kinowy 2026-27: Zmierzch bogów)	levels 0-1	32	0.63
-Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/simona,Simona)	levels 0-1	78	2.11
-Native(Multikino Kraków,https://www.multikino.pl/filmy/pan-tadeusz,Pan Tadeusz)	lattice 2^2	4	0.28
-Native(Terminal Kultury Gocław,https://biletyna.pl/festiwal/MOZLIW-Festiwal-Joanny-Kolaczkowskiej/Asior?eid=713034#opis,MOŻLIW 2026 - Asior)	lattice 2^3	8	0.51
-Native(Terminal Kultury Gocław,https://biletyna.pl/film/Caly-swiat-Romy-4?eid=699913#opis,Cały świat Romy Edukacja Młode Horyzonty)	lattice 2^2	4	0.31
-Published(Helios Gniezno,Johnny,Some(2022),List(Daniel Jaroszek))	lattice 2^2	4	0.40
-Published(Kino Amok,Dwadzieścia lat MET w kinach – uroczysty jubileusz,None,List())	lattice 2^3	8	0.77
-Published(Kino Amok,Otello,None,List())	lattice 2^2	4	0.34
-Published(Kino Amok,Parsifal,None,List())	lattice 2^3	8	0.75
-Published(Kino Amok,Silent Night,None,List())	lattice 2^3	8	0.81
-Published(Kino Fenix,Konwicki Salto,None,List())	lattice 2^2	4	0.57
-Published(Kino Forum,Młode Horyzonty Edukacja: Fleak. Futrzak i ja,None,List())	lattice 2^2	4	0.54
-Published(Kino Frajda,Harry Angel,None,List())	lattice 2^3	8	1.03
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/rbo-sezon-kinowy-2026-27-zmierzch-bogow,Royal Ballet and Opera Sezon Kinowy 2026-27: Zmierzch bogów)	levels 0-1	32	1.19
+Native(Multikino Bydgoszcz,https://www.multikino.pl/filmy/simona,Simona)	levels 0-1	78	1.54
+Native(Multikino Kraków,https://www.multikino.pl/filmy/pan-tadeusz,Pan Tadeusz)	lattice 2^2	4	0.31
+Native(Terminal Kultury Gocław,https://biletyna.pl/festiwal/MOZLIW-Festiwal-Joanny-Kolaczkowskiej/Asior?eid=713034#opis,MOŻLIW 2026 - Asior)	lattice 2^3	8	0.64
+Native(Terminal Kultury Gocław,https://biletyna.pl/film/Caly-swiat-Romy-4?eid=699913#opis,Cały świat Romy Edukacja Młode Horyzonty)	lattice 2^2	4	0.44
+Published(Helios Gniezno,Johnny,Some(2022),List(Daniel Jaroszek))	lattice 2^2	4	0.45
+Published(Kino Amok,Dwadzieścia lat MET w kinach – uroczysty jubileusz,None,List())	lattice 2^3	8	1.94
+Published(Kino Amok,Otello,None,List())	lattice 2^2	4	0.36
+Published(Kino Amok,Parsifal,None,List())	lattice 2^3	8	1.01
+Published(Kino Amok,Silent Night,None,List())	lattice 2^3	8	1.38
+Published(Kino Fenix,Konwicki Salto,None,List())	lattice 2^2	4	0.52
+Published(Kino Forum,Młode Horyzonty Edukacja: Fleak. Futrzak i ja,None,List())	lattice 2^2	4	0.39
+Published(Kino Frajda,Harry Angel,None,List())	lattice 2^3	8	0.91
 Published(Kino Kijów,OPERA 2026/2027 - TOSCA - RETRANSMISJA,None,List())	lattice 2^2	4	0.53
-Published(Kinoteatr Pasja,HALLOWEEN - MARATON GROZY,None,List())	lattice 2^2	4	0.48
-Published(Regis,Bochnia rocks - carl sentance,None,List())	lattice 2^2	4	0.29
+Published(Kinoteatr Pasja,HALLOWEEN - MARATON GROZY,None,List())	lattice 2^2	4	0.35
+Published(Regis,Bochnia rocks - carl sentance,None,List())	lattice 2^2	4	0.35
