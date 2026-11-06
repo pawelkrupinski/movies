@@ -75,7 +75,9 @@ class DevServerHeapCanarySpec extends AnyFlatSpec with Matchers {
     // number rather than a second -J flag here that could drift from the wrapper.
     val devpanel = RepoFile.read("tools/devpanel/scripts/devpanel.py")
     val runWeb = devpanel.substring(devpanel.indexOf("def run_web("), devpanel.indexOf("def kill_web("))
-    runWeb should include("\"./scripts/dev-server.sh\"")
+    // since 29f6524a38 through scripts/review-server, which ends by exec-ing the canary in its worktree
+    runWeb should include("\"./scripts/review-server\"")
+    RepoFile.read("scripts/review-server") should include("exec scripts/dev-server.sh \"$@\"")
     withClue("run_web must not dispatch a bare `sbt web/run`, which runs at the shared 4g: ")(
       runWeb should not include "\"web/run\"")
   }
