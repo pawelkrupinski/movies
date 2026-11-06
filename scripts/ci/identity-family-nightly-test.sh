@@ -21,12 +21,14 @@ out=$(sed -E 's/.* --out ([^ ]+).*/\1/' <<< "${@: -1}")
 printf 'kind\tcountry\n' > "$out/family-flips-de.tsv"; printf 'family\tseconds\n' > "$out/family-walks-de.tsv"; echo '[]' > "$(sed -E 's/.* --cache ([^ ]+).*/\1/' <<< "${@: -1}")"
 echo "## de family check: 3 families, shard 1/2, 3 walked, 0 reused, 0 flip(s)"
 STUB
-# gh: logs every call; `release view --json` answers $ASSETS; `release download` writes a gzip of one line.
+# gh: logs every call; `release view --json` answers $ASSETS, then more of the store's assets than a pipe holds (a
+# reader that stops at its first match kills it of SIGPIPE, as it does the real gh); `release download` writes a gzip
+# of one line.
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "$WORK/calls"
 case "$1 $2" in
-  "release view") if [[ "$*" == *--json* ]]; then printf '%s\n' $ASSETS; else [ -n "${RELEASE_EXISTS:-}" ] || [ -f "$WORK/exists" ]; fi ;;
+  "release view") if [[ "$*" == *--json* ]]; then printf '%s\n' $ASSETS; yes family-cache-xx-1of1-L1.json.gz | head -n 20000; else [ -n "${RELEASE_EXISTS:-}" ] || [ -f "$WORK/exists" ]; fi ;;
   "release create") touch "$WORK/exists" ;;
   "release download")
     for ((i = 1; i <= $#; i++)); do [ "${!i}" = -O ] && { j=$((i + 1)); dest="${!j}"; }; done

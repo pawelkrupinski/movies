@@ -40,8 +40,12 @@ head_sha=${GITHUB_SHA:-$(git -C "$here" rev-parse HEAD)}
 
 fetch() { # <asset> <file>: the asset gunzipped to the file; false when there is none
   [ -n "$store" ] || return 1
+  # A here-string, not `gh | grep -q`: grep -q exits at its first match and gh dies of SIGPIPE writing the rest, which
+  # pipefail reads as no such asset (Tool self-tests #92).
+  local assets
   # allow-silenced: no store, an unreadable one or a missing asset are one answer -- nothing cached, every family walks
-  timeout 120 gh release view "$store" --json assets --jq '.assets[].name' 2> /dev/null | grep -qxF "$1" || return 1
+  assets=$(timeout 120 gh release view "$store" --json assets --jq '.assets[].name' 2> /dev/null) || return 1
+  grep -qxF "$1" <<< "$assets" || return 1
   timeout 300 gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ]
 }
 keep() { # <file> <asset>: store it, never failing the walk
