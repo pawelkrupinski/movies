@@ -1048,3 +1048,34 @@ Totals: **8,017 hosted min in 14 days move to ci-runner, ~570 a day**, of which 
 - **Egress.** The recording, the discovery bots, decodo-probe, filmweb-diff and security-headers now reach cinema
   sites, Filmweb and the proxy from ci-runner's address, bitcashier's host, instead of GitHub's pool. Watch for blocks
   that point at that address.
+
+## 14. Faster without a fast/slow split (2026-11-06, owner's option C)
+
+The owner asked to "speed up or split up convergence test workflow into slow and fast". Over 18 main runs
+(42134462077 .. 42290433380) and the 44 red runs since 10-23, the commonest red row kind is also the slowest: the drift
+rows (red in 15 runs, alone in 13; `takes-drift-1 (germany)`, seed 8, a 17-18 min replay). Takes rows were red in 14
+runs, order-independence in 4 (one Polish episode), convergence in 3, next-day in none. A fast tier gating without drift
+would have let the 13 drift-only reds through, and one with drift is no faster. So no split. The two runs after seed 581
+got its own row took 21.9 and 23.8 min wall and 269-296 runner-min.
+
+**Done:**
+- **The drift harness's A/A in two rows.** `takes-drift-aa` replayed the row-1 seeds twice in turn: 35-69 min for
+  Germany, the critical path of every harness push (3 of the 18 runs, walls of 40-72 min, 420-441 runner-min). Each
+  replay is now a row (`takes-drift-aa-pass0|1`), and `order-compare` diffs their TSVs as `takes-drift-aa (<country>)`
+  (scripts/ci/drift-replays-compare.sh). Predicted: a harness push ends with the ordinary run plus the ~1.5 min
+  comparison.
+- **Timings off the verdict.** The run's end is THE GATE's verdict, and its last job, the report, took 40-70 s. The
+  `timings` job now dispatches report-timings.yml with the run's id (seconds), and that run waits for this one to end.
+
+**Measured and not done:**
+- **The drift rows in a matrix job of their own, so `order-compare` does not wait for them.** That saves the compare's
+  ~1.5 min only with spare runners. Under the 20-runner cap two matrices fragment each country's share: the best split
+  of 20 runners ends the rows at 23.1 min (us 26.8 on 4, 22.6 on 5), against 20.6 for today's single matrix. Revisit if
+  the cap goes.
+- **Compile once in the preflight.** The rows already restore the run's exact sbt-target key once the first row has
+  saved it. In run 42290433380, 22 of 51 rows (the first ~20 to start, before any had saved) restored a partial key,
+  then compiled one or two sources (about 10-30 s). A build ahead of the rows would save ~10 runner-min a run and add
+  its own 2-3 min (sbt boot, compile, save) to the critical path.
+
+**What is left:** the critical path is the Germany seed-8 drift replay itself, ~18 min of one JVM. Making it cheaper is
+the drift harness's work, measured separately.
