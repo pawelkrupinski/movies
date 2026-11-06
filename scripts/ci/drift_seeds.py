@@ -50,6 +50,7 @@ import csv
 import gzip
 import json
 import os
+import subprocess
 import sys
 
 ROWS = (1, 2)
@@ -89,11 +90,24 @@ def resolve(run_number: int = 1, pins: str | None = "", drift_only: bool = False
     return one, two
 
 
+SEEDS_PATH = "test/resources/fixtures/drift-gate-seeds.tsv"
+
+
+def seeds_text(path: str | None = None) -> str:
+    """The seed file's text: `path`, else the checkout's -- or, where a sparse checkout left test/resources out (the
+    convergence preflight checks out scripts/ci and .github alone: #987 died planning its drift rows), the committed
+    file as HEAD holds it."""
+    if path or os.path.exists(SEEDS_FILE):
+        with open(path or SEEDS_FILE, newline="") as f:
+            return f.read()
+    return subprocess.run(["git", "-C", os.path.join(HERE, "..", ".."), "show", f"HEAD:{SEEDS_PATH}"],
+                          check=True, capture_output=True, text=True).stdout
+
+
 def read_set(path: str | None = None) -> list[dict]:
     """The committed fixed seeds: one dict a row of drift-gate-seeds.tsv (`#` lines and the header aside)."""
     rows = []
-    with open(path or SEEDS_FILE, newline="") as f:
-        lines = [line for line in f if line.strip() and not line.startswith("#")]
+    lines = [line for line in seeds_text(path).splitlines(keepends=True) if line.strip() and not line.startswith("#")]
     for row in csv.DictReader(lines, delimiter="\t"):
         if not row.get("seed", "").strip().isdigit() or not row.get("row", "").strip().isdigit() or int(row["row"]) < 1:
             raise ValueError(f"drift-gate-seeds: every row names a country, a positive seed and a row 1, 2, ...: {row}")

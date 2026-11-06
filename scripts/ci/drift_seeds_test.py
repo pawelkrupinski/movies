@@ -150,5 +150,35 @@ class SlicesTest(unittest.TestCase):
             self.assertTrue(any("metropol-madoka" in p for p in ds.slices("de", root, [tsv])))
 
 
+class SparseCheckoutTest(unittest.TestCase):
+    """The convergence preflight checks out scripts/ci and .github alone (#987): the seed file is read from HEAD."""
+
+    def test_rows_are_read_from_head_when_the_checkout_leaves_the_seed_file_out(self):
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = os.path.join(tmp, "repo")
+            env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+            env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1")
+
+            def scratch(helper, *args):
+                return subprocess.run(["bash", "-c", '. "$1"; "$2" "$3" "${@:4}"', "_",
+                                       os.path.join(root, "scripts/scratch-git.sh"), helper, repo, *args],
+                                      env=env, check=True, capture_output=True, text=True).stdout
+            scratch("scratch_repo", "-q")
+            os.makedirs(os.path.join(repo, "scripts/ci"))
+            os.makedirs(os.path.join(repo, "test/resources/fixtures"))
+            with open(SCRIPT) as f, open(os.path.join(repo, "scripts/ci/drift_seeds.py"), "w") as out:
+                out.write(f.read())
+            seeds = os.path.join(repo, "test/resources/fixtures/drift-gate-seeds.tsv")
+            with open(seeds, "w") as f:
+                f.write("country\tseed\trow\tadded\twhy\nde\t8\t1\t2026-11-01\tx\nde\t581\t3\t2026-11-06\ty\n")
+            scratch("scratch_git", "add", "-A")
+            scratch("scratch_git", "commit", "-qm", "seeds")
+            os.remove(seeds)
+            rows = subprocess.run([sys.executable, os.path.join(repo, "scripts/ci/drift_seeds.py"), "rows", "--cc", "de"],
+                                  env=env, check=True, capture_output=True, text=True).stdout.split()
+            self.assertEqual(["1", "2", "3"], rows)
+
+
 if __name__ == "__main__":
     unittest.main()
