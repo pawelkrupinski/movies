@@ -226,23 +226,6 @@ jobs:
                   INPUT_DRIFT_EXPLORE: ${{ inputs.drift-explore }}
               # (GITHUB_RUN_NUMBER: kept for the facts; seeds no longer rotate, drift-gate-seeds.tsv)
               run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
-            # THE LEG ROWS, as the `leg` job's matrix (convergence_reuse.py legs): a `country` vector the rows extend -- so a row is
-            # named `leg (<country>)` by default -- narrowed to the countries a takes-only or drift-only run asks for
-            # (`takes-countries`). EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
-            # value. Written as flow maps, one per country (the specs read them here).
-            - name: Which legs does this run start?
-              id: plan
-              env:
-                  LEG_INPUTS_FILE: ${{ runner.temp }}/leg-inputs.json
-                  LEG_ROWS: |
-                      matrix:
-                          include:
-                              - { country: poland,         code: pl, cmd: convergencePolandWithoutOrder, sample: convergencePolandSample,  shape: corpusShapePoland,  job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergencePolandOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
-                              - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 55, suite: 30, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
-                              - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceUkOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
-                              - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
-                              - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 55, suite: 30, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 55, order-suite: 30, order-split: true, mongo-tmpfs: 3g, mongo-cache-gb: 0.5, mongo-tmpfs-order: 'false' }
-              run: python3 scripts/ci/convergence_reuse.py legs >> "$GITHUB_OUTPUT"
             # THE A/A ROW (scripts/ci/harness_aa.py): only main's full suite, never a takes-only or drift-only dispatch, and
             # only when the range since the previous convergence run's head on main (else the parent) changed a harness
             # path. An unreadable run list judges the parent alone; this step failing runs no A/A row (the output's fallback).
@@ -276,6 +259,28 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
               run: echo "phases=$(scripts/ci/order-phases.sh "$GITHUB_REF" "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
+            # THE LEG ROWS, as the `leg` job's matrix (convergence_reuse.py legs): a `country` vector the rows extend -- so a row is
+            # named `leg (<country>)` by default -- narrowed to the countries a takes-only or drift-only run asks for
+            # (`takes-countries`). EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
+            # value. Written as flow maps, one per country (the specs read them here). IN 20 RUNNERS: main's suite hands each
+            # leg its rows longest first (`phases`) and its share of GitHub Free's 20 concurrent jobs (`max-parallel`), from
+            # each row's measured minutes (scripts/ci/convergence_slots.py, convergence-row-minutes.tsv); it needs the order
+            # phases and the A/A decision above. A takes-only or drift-only run keeps the leg's own rows, uncapped.
+            - name: Which legs does this run start?
+              id: plan
+              env:
+                  LEG_INPUTS_FILE: ${{ runner.temp }}/leg-inputs.json
+                  ORDER_PHASES: ${{ steps.order.outputs.phases || 'both' }}
+                  HARNESS_AA: ${{ steps.aa.outputs.harness-aa || 'false' }}
+                  LEG_ROWS: |
+                      matrix:
+                          include:
+                              - { country: poland,         code: pl, cmd: convergencePolandWithoutOrder, sample: convergencePolandSample,  shape: corpusShapePoland,  job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergencePolandOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
+                              - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 55, suite: 30, sample-suite: 20, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
+                              - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceUkOrder, order-job: 55, order-suite: 30, order-split: true, next-day: '' }
+                              - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 55, suite: 30, sample-suite: 20, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-job: 55, order-suite: 30, order-split: false, next-day: '' }
+                              - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, next-day: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 55, suite: 30, sample-suite: 20, heap: 10g, order: convergenceUsOrder, order-job: 55, order-suite: 30, order-split: true, mongo-tmpfs: 3g, mongo-cache-gb: 0.5, mongo-tmpfs-order: 'false' }
+              run: python3 scripts/ci/convergence_reuse.py legs >> "$GITHUB_OUTPUT"
             - name: Every leg's recorded pair is there
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -397,6 +402,8 @@ jobs:
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-suite-timeout-minutes:  ${{ matrix.sample-suite }}
+            phases:                        ${{ matrix.phases || '' }}
+            max-parallel:                  ${{ matrix.max-parallel || 256 }}
             order-command:                 ${{ matrix.order }}
             order-job-timeout-minutes:     ${{ matrix.order-job || 55 }}
             order-suite-timeout-minutes:   ${{ matrix.order-suite || 30 }}

@@ -180,7 +180,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     call should include("drift-seed-1:                  ${{ needs.preflight.outputs.drift-seed-1 }}")
     call should include("drift-seed-2:                  ${{ needs.preflight.outputs.drift-seed-2 }}")
     val rows = RepoFile.block(leg, "convergence")
-    rows should include("""fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]'""")
+    rows should include("""fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]'""")
     rows should include("(!(inputs.takes-only || inputs.drift-only) || inputs.takes-countries == ''")
   }
 

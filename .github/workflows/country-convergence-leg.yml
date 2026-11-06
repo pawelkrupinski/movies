@@ -309,6 +309,18 @@ on:
                 default: ''
             # The `takes` row (base against head) is the push verdict's (identity-model-convergence.yml); a verify run
             # judges one commit against one recording and has no base to diff, so it passes false.
+            phases:
+                description: >-
+                    The convergence rows as JSON, in the order they start (main's suite, longest first:
+                    scripts/ci/convergence_slots.py); empty for the rows the inputs below expand to, in the workflow's order.
+                required: false
+                type: string
+                default: ''
+            max-parallel:
+                description: How many of this leg's rows run at once (main's suite, the leg's share of the 20 runners).
+                required: false
+                type: number
+                default: 256
             takes-row:
                 description: A hermetic leg also runs its identity takes row.
                 required: false
@@ -443,8 +455,11 @@ jobs:
         if: ${{ inputs.reused-from == '' && (inputs.countries == '' || contains(format(',{0},', inputs.countries), format(',{0},', inputs.code))) && (!(inputs.takes-only || inputs.drift-only) || inputs.takes-countries == '' || contains(format(',{0},', inputs.takes-countries), format(',{0},', inputs.code))) }}
         strategy:
             fail-fast: false
+            # IN 20 RUNNERS (convergence_slots.py): main's caller lists the rows longest first and caps them at the leg's share;
+            # GitHub starts a capped matrix's rows in their listed order, the next when one ends.
+            max-parallel: ${{ inputs.max-parallel }}
             matrix:
-                phase: ${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa"' || '')) }}
+                phase: ${{ fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]' || inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '["takes-drift-1"]' || '["takes-drift-1","takes-drift-2"]') || inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && ',"order-independence-p01-pass0","order-independence-p01-pass1"' || ',"order-independence-p01-pass0","order-independence-p01-pass1","order-independence-p12-pass1","order-independence-p12-pass2"') || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && inputs.takes-row && ',"takes","takes-base","takes-drift-1","takes-drift-2"' || '', inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -1412,6 +1427,7 @@ jobs:
         if: ${{ !cancelled() && inputs.reused-from == '' && inputs.order-command != '' && inputs.order-split && !inputs.takes-only && !inputs.drift-only && (inputs.countries == '' || contains(format(',{0},', inputs.countries), format(',{0},', inputs.code))) }}
         strategy:
             fail-fast: false
+            max-parallel: ${{ inputs.max-parallel }}
             matrix:
                 phase: ${{ fromJson(inputs.order-one-phase && '["order-independence-p01"]' || '["order-independence-p01","order-independence-p12"]') }}
         runs-on: ${{ inputs.runner }}

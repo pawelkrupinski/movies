@@ -858,3 +858,27 @@ once. Whole-corpus measure (identity-measure, all countries, run 41674758328, 18
 before vs 11:52 / 13:43 / 5:47 after (sum 33:56 vs 31:22, -8%); exec critical path 12:36 vs 8:08. The after run's jobs
 queued 26 min to the before's 15, on a busier host, so the pair is noisy. Local ReadSetClosurePart1Spec user-s (188/188
 before, 172/194 after) was taken at load average 58 on 14 cores: no signal.
+
+## 13. Convergence in 20 runners, longest first under per-leg caps (2026-11-06)
+
+The owner: "reduce convergence run to 20 runners at most and balance the times (minimize)".
+
+**Before** (12 complete main runs, 42112839746 .. 42225884509; 53 jobs each): wall median ~37 min (27.8-50.5), peak
+16-20 jobs at once, 285-369 runner-min. Rows were queued all at once and GitHub picked which started (section 2): the
+longest row, `takes-drift-1 (germany)` (median 20.4 min, p90 36), started up to 10 min late, and each split country's
+`order-compare` waits for every row of its country, so that drift row's start decided the run.
+
+**Change** (`scripts/ci/convergence_slots.py`): section 2 measured that list order does not order GitHub's queue when
+every row is queued at once. A `max-parallel` cap changes what is queued: only the first `max-parallel` rows of a matrix
+are, the next when one ends. So the preflight now hands each leg its rows longest first (`phases`, from each row's
+median job minutes in `scripts/ci/convergence-row-minutes.tsv`) and a cap, its share of the 20. Every country starts
+with one slot, and each next slot goes to the country that ends last (its `order-compare` included) until the 20 are
+given out. `takes-base` starts just before `takes`, because the takes row waits for the base row only while that row
+runs. A takes-only or drift-only dispatch keeps the leg's own rows, uncapped. The rows, their checks and their names are
+unchanged, so the gating registry is unchanged.
+
+**Predicted** (`convergence_slots.py plan`): de 5 slots, us 6, uk 4, pl 4, es 1 (20 in all). The rows end ~21.8 min
+after they start (de's drift-1 plus its compare). The wall is about 24 min with preflight, verdict and timings, against
+~37. Runner-minutes are unchanged (~300-330), since every row is still its own job. Merging the 1-3 min `takes-base`
+rows into others would save ~1 min of setup each but would rename gated jobs. Not done. The remaining floor is the
+German drift row itself (p90 36 min). Splitting its seeds is the drift harness's business.

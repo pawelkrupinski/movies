@@ -73,6 +73,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import convergence_slots  # noqa: E402
 import drift_seeds  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -82,10 +83,10 @@ WORKFLOW = ".github/workflows/identity-model-convergence.yml"
 WORKFLOW_FILE = "identity-model-convergence.yml"
 FACTS_ARTIFACT = "convergence-reuse-facts"
 FACTS_NAME = "facts.json"
-# The leg's own expansion of a country into rows (country-convergence-leg.yml's `phase:` matrix). expected_rows() models
-# exactly this; ConvergenceReuseSpec fails the moment the leg's expression is anything else.
+# The leg's own expansion of a country into rows (country-convergence-leg.yml's `phase:` matrix), unless main's plan hands
+# the rows in their start order (`phases`, matrix_phases() longest first). expected_rows() models exactly this; ConvergenceReuseSpec fails the moment the leg's expression is anything else.
 PHASES_EXPRESSION = (
-    "${{ fromJson(inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '[\"takes-drift-2\"]' || "
+    "${{ fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '[\"takes-drift-2\"]' || "
     "inputs.drift-seed-2 == '' && inputs.drift-seed-1 != '' && '[\"takes-drift-1\"]' || '[\"takes-drift-1\",\"takes-drift-2\"]') || "
     "inputs.takes-only && '[\"takes\",\"takes-base\"]' || format('[\"convergence\"{0}{1}{2}{3}]', "
     "inputs.order-command != '' && (inputs.order-split && (inputs.order-one-phase && "
@@ -177,15 +178,11 @@ def expected_rows(workflow_text):
     reused from a landing check is one -- a reused run skips it with every other row."""
     out = []
     for row in matrix_rows(workflow_text):
-        phases = ["convergence"]
-        if row.get("order", ""):
-            split = row.get("order-split", "false") == "true"
-            # a split country's passes each in a row of their own, and the leg's `order-compare` job per pair (named
-            # as the two-pass row was)
-            phases += ORDER_SPLIT_ROWS if split else ["order-independence"]
-        if row.get("next-day", ""):
-            phases.append("next-day")
-        phases += ["takes", "takes-base", "takes-drift-1", "takes-drift-2"]
+        phases = matrix_phases(row)
+        if row.get("order", "") and _true(row.get("order-split", "false")):
+            # a split country's passes are compared by the leg's `order-compare` job, a row per pair named as the
+            # two-pass row was
+            phases += [p for p in ORDER_SPLIT_ROWS if "-pass" not in p]
         out += [f"{p} ({row['country']})" for p in phases]
     if not out:
         raise Unproven("no `leg` matrix rows in the workflow")
@@ -269,6 +266,50 @@ def leg_matrix(rows, inputs):
     narrowed = (inputs.get("takes-only") == "true" or inputs.get("drift-only") == "true") and wanted
     kept = [r for r in rows if not narrowed or r["code"] in wanted]
     return {"country": [r["country"] for r in kept], "include": kept}
+
+
+def _true(value):
+    return str(value).lower() == "true"
+
+
+def matrix_phases(row, order_phases="both", harness_aa=False):
+    """The `convergence` matrix rows main's leg for `row` expands to (PHASES_EXPRESSION, hermetic, takes rows on, neither
+    takes-only nor drift-only; the A/A row when the preflight decided it), in the workflow's order; the `order-compare`
+    rows after them are not among them."""
+    phases = ["convergence"]
+    if row.get("order", ""):
+        if _true(row.get("order-split", "false")):
+            phases += [p for p in ORDER_SPLIT_ROWS if "-pass" in p and (order_phases != "one" or "-p01-" in p)]
+        else:
+            phases.append("order-independence")
+    if row.get("next-day", ""):
+        phases.append("next-day")
+    return phases + ["takes", "takes-base", "takes-drift-1", "takes-drift-2"] + (["takes-drift-aa"] if harness_aa else [])
+
+
+def leg_plan(rows, inputs, order_phases="both", harness_aa=False):
+    """Main's suite in 20 runners (convergence_slots.plan): each country's rows longest first and its share of the
+    runners; {} for a takes-only or drift-only run (at most two rows a country: the leg's own expression, no cap)."""
+    if inputs.get("takes-only") == "true" or inputs.get("drift-only") == "true":
+        return {}
+    costs = convergence_slots.read_costs()
+    twice = inputs.get("drift-twice") == "true"
+    split = {r["code"] for r in rows if r.get("order", "") and _true(r.get("order-split", "false"))}
+    compares = convergence_slots.COMPARE_PHASES[:1] if order_phases == "one" else convergence_slots.COMPARE_PHASES
+    tails = {c: max(convergence_slots.cost(c, p, costs) for p in compares) for c in split}
+    return convergence_slots.plan({r["code"]: matrix_phases(r, order_phases, harness_aa) for r in rows}, costs, tails=tails,
+                                  drift_twice=twice)
+
+
+def planned_matrix(rows, inputs, order_phases="both", harness_aa=False):
+    """leg_matrix with each row's `phases` (JSON, longest first; empty: the leg's own expression) and `max-parallel`."""
+    matrix = leg_matrix(rows, inputs)
+    shares = leg_plan(matrix["include"], inputs, order_phases, harness_aa)
+    matrix["include"] = [dict(r, **({"phases": json.dumps(shares[r["code"]]["phases"], separators=(",", ":")),
+                                     "max-parallel": shares[r["code"]]["max-parallel"]} if shares else
+                                    {"phases": "", "max-parallel": convergence_slots.UNCAPPED}))
+                         for r in matrix["include"]]
+    return matrix
 
 
 def run_seeds(env, inputs):
@@ -600,7 +641,13 @@ def cmd_legs(_):
         inputs = {"takes-only": "true", "takes-countries": codes}
     else:
         inputs = read_json(os.environ["LEG_INPUTS_FILE"])  # the file `inputs` wrote
-    matrix = leg_matrix(rows, inputs)
+    order_phases = os.environ.get("ORDER_PHASES") or "both"
+    harness_aa = os.environ.get("HARNESS_AA") == "true"
+    matrix = planned_matrix(rows, inputs, order_phases, harness_aa)
+    if codes is None:
+        summary(["Rows longest first, each country's share of the runners (scripts/ci/convergence_slots.py):", ""]
+                + [f"- {line}" for line in
+                   convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa))])
     print(f"leg-matrix={json.dumps(matrix, separators=(',', ':'))}")
     print(f"any-leg={'true' if matrix['country'] else 'false'}")
     return 0

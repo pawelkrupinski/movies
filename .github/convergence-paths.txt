@@ -122,6 +122,8 @@ scripts/ci/ci-timings
 scripts/ci/ci_trends.py
 scripts/ci/ci_trends_test.py
 scripts/ci/commit-rules-ci.sh
+scripts/ci/convergence-row-minutes.tsv
+scripts/ci/convergence_slots.py
 scripts/ci/corpus_shape_diff.py
 scripts/ci/dispatch.sh
 scripts/ci/drift_diff.py
