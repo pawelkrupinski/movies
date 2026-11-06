@@ -1,13 +1,13 @@
 # White-cinema investigations
 
-> **Summary.** An append-only log, newest run first (31 runs, 2026-06-25 → 2026-11-03). Before
+> **Summary.** An append-only log, newest run first (32 runs, 2026-06-25 → 2026-11-06). Before
 > investigating a white (parsed-but-empty) or red venue, search this file for the venue's name: its last verdict
 > (`fixed` / `unfixable` / `intentionally-dormant` / `needs-human` / `recovered` / `transient`) is in the newest run
 > that names it. The [methodology](#how-to-find-the-white-list-methodology) section is current; run entries are
 > dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists, and those
 > before 2026-10-23 read prod Mongo directly, which is user-only now (runs read the local prod mirror).
 >
-> **Runs:** [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
+> **Runs:** [2026-11-06](#2026-11-06) · [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
 
 Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
@@ -333,6 +333,169 @@ print(JSON.stringify(out));
 A venue with a `filmwebFallback` doc reading `UNCOVERED` and `fallbackRef: null`
 has NO Filmweb cover. Before 2026-09-29 that was every venue outside the five
 big cities (see that entry). It is now only venues Filmweb itself doesn't list.
+
+---
+
+## 2026-11-06
+
+**Sixteenth all-five-country sweep**, read from the local prod mirror at 10:30 UTC on a **Friday morning**, the same
+point in the week as 10-30. The sweep is the checked-in script, unchanged.
+
+**The PL mirror was 12 h stale when the run started.** Its `kinowo` tail logged `stream failed (will retry/resume)` at
+11-05 22:59 and then went silent; the other four DBs resumed fine.
+
+The cause: the prod tunnel was replaced mid-stream. The PL supervisor's next `needs_reseed` staleness check, a mongosh
+with no timeout, connected to the half-dead forward and never returned. Killing that one mongosh unwedged it, and it
+re-seeded. The fix, `0d3e470`, bounds the check at 120 s (`KINOWO_MIRROR_STALENESS_TIMEOUT`), with a
+mirror-resilience-test case. PL was fresh again from about 10:35, and the PL numbers below come from the re-run on
+the fresh mirror.
+
+**No code fixes this run.** One cause dominates: a DNS outage on prod (below). Its fix is already on `main` as
+`eef9233`, but it is **not deployed**.
+
+| DB | services | white | white % | red | green→white | seasonal | `thin` | fallback venues | probed |
+|---|---|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 543 | **13** | 2.4% | **8** | 1 | 0 | 33 | 18 (Filmweb), 17 active | all 13 + 8 red + 17 active on the fallback + 5 UNCOVERED |
+| `kinowo_uk` | 854 | **43** | 5.0% | 0 | 0 | 2 | 23 | 1 | 14 |
+| `kinowo_de` | 1,542 | **289** | 18.7% | 0 | 0 | 115 | 24 | 25 (kinoprogramm.com) | 27 |
+| `kinowo_us` | 5,009 | **877** | 17.5% | 0 | 1 | 242 | 0 | 0 | 4 |
+| `kinowo_es` | 604 | **177** | 29.3% | 0 | 0 | 25 | 9 | 0 | 28 |
+
+Against Friday 10-30: UK 34 → 43, DE 278 → 289, US 872 → 877, ES 173 → 177. Every aggregator country is within a few
+percent, and no client clusters. On the stale mirror at the start of the run, PL showed 14 red. By 10:30 it showed 8,
+as some breakers half-opened onto the fallback or the other way round. The count still moves bucket by bucket.
+
+### The one real cause this run: Hetzner's resolvers stopped answering cyberfolks / hekko / linuxpl zones (DNS)
+
+**40 PL venues** have a `ConnectException` bucket since 11-05 (plus the TMDB enrichment service and kinoteka's
+medstore). Before the outage, the retained window has none. Their errors read `CircuitOpenException: circuit open for
+<host> …; last failure: ConnectException`. The 14 reds on the stale mirror were on 14 different hosts, and 6 of those
+were `*.systembiletowy.pl`.
+
+The commit `eef9233` (08:59 today) had already found the cause. Since 11-05 ~06:00 UTC Hetzner's DHCP-provided
+resolvers, 185.12.64.1 and .2, time out on every zone that **cyberfolks.pl** (ns1–3.cyberfolks.pl) or
+**hekko.net.pl** serves. This run adds **linuxpl.com** (dns2.linuxpl.com: bilety.ckchojnice.pl, kinoikar.mok-jar.pl).
+`dig @185.12.64.1` from mongo-1 gives "no servers could be reached", or an empty answer, for each of those zones.
+`dig @1.1.1.1` answers at once, and every host answers HTTP 200 from the laptop in under 60 ms. The zones that awsdns,
+nazwa.pl and iq.pl serve resolve fine through Hetzner. CoreDNS forwards to the host's `/etc/resolv.conf`, so every
+pod inherits this. **This is a deploy gap, not a parser bug.**
+
+**Why it is not fixed live yet:** `nixos-auto-apply` has refused the staged closure on **both** k3s nodes since 09:51:
+`blocked (units_would_change): systemd-networkd.service.d/overrides.conf, systemd-resolved.service.d/overrides.conf.
+Deploy it by hand.`
+- monitoring-1 is the control plane, and **CoreDNS runs there**.
+- k3s-worker-1 runs `worker-pl` and the rest of the workload.
+
+Both still resolve through 185.12.64.1/.2, and mongo-1 does too. `infra/bin/deploy <host>` refuses the preview,
+because "Stage NixOS closures" failed for the current main (086e33dc). The failure was in
+`Alerting rules behave as their names claim`: `IdentityInputGateStuck` has "no case fires across a `stale` gap". That
+is unrelated, but it means no closure is staged for this tree. So the hand-off needs `--build`:
+
+```
+infra/bin/deploy monitoring-1 --build --apply
+infra/bin/deploy k3s-worker-1 --build --apply
+ssh monitoring-1 k3s kubectl -n kube-system rollout restart deployment/coredns   # the kubelet copies resolv.conf into a pod once, at start
+```
+
+**`needs-human: deploy eef9233`** (the agents' rule is preview only). Once it is deployed, the 40 venues recover on
+their own; the next run should see them green. Kino Apollo (kinoapollo.pl, cyberfolks NS) connects in 6.8 s even
+from k3s-worker-1, so it may stay slow after the deploy. Re-check it next run.
+
+**The dark ones** (red, and nothing covers them):
+
+| Venue | Host | Error class | Red since | Covered? | Verdict |
+|---|---|---|---|---|---|
+| Stopiak Cinema | bilety.stopiakcinema.pl (cyberfolks) | ConnectException → circuit open | 11-05 ~06:00 | **UNCOVERED** (11-05 16:34) | needs-human: deploy eef9233 |
+| Kino 1410 | kht.systembiletowy.pl | same | 11-05 | **UNCOVERED** (17:19) | same |
+| Bieszczadzki Dom Kultury | bdk.systembiletowy.pl | same | 11-05 | **UNCOVERED** (19:58) | same |
+| Kino Frajda | bilety.chck.pl (systembiletowy) | same | 11-05 | **UNCOVERED** (19:58) | same |
+| Kino Kadr Staszów | sta.systembiletowy.pl | same | 11-05 | **UNCOVERED** (22:23) | same |
+| Kino Kultura (Warszawa) | www.kinokultura.pl (cyberfolks) | same; yellow (failures + zeroes) | 11-05 14:50 | fallback "active", but `fallbackRef: null` | same. **Filmweb does not list Kino Kultura at all:** none of the 36 cinemas in `/api/v1/city/28/cinemas` is Kultura. It has no Filmweb cover by design, so this is not a resolver bug. |
+
+The other 8 reds on the fresh mirror: Kalejdoskop (ckp), BCKino Bytom (bck), CKiB Nowa Sarzyna (oks), Farys (kfb),
+Regis (krb NS), plus Frajda, Bieszczadzki DK and Stopiak from the table. All are systembiletowy or cyberfolks, and
+every one is the same `needs-human: deploy eef9233`. The yellow ones in the same set, such as Kino Kultura, PCKul
+and Mikro, are the same outage.
+
+### Filmweb-fallback sweep (PL only): 17 active, 14 of them the DNS outage
+
+| Venue | Since | Last reason | Verdict |
+|---|---|---|---|
+| Wybrzeże (Kołobrzeg) | 10-23 14:57 | primary returned no screenings | **intentionally-dormant (closed; Filmweb covers DKF)**, the standing decision |
+| Kino Warszawa (Przeworsk) | 11-01 01:18 | primary returned no screenings | **intentionally-dormant** (as 11-03). `fallbackRef: null`. |
+| Kino Tatry (Łódź) | 11-01 05:01 | now `ConnectException` (hekko DNS); was "no screenings" | **intentionally-dormant: closed for the winter.** The site answered the laptop again this run: "KINO "TATRY" OD 1.11.2026. DO DN 1.04.2027. JEST NIECZYNNE", "Obecnie nie mamy zaplanowanych żadnych seansów". Re-check it after 2027-04-01, not before. |
+| Kino Muza Myślenice, Kino Kika, Kino CKiF, Kino Spektrum, Centrum 3D, Kino Gryf, Kino Kuźnica, Kino JDK, Kino Awangarda 2, Kino Słońce, Cinema N 3D, Cinema Lumiere, Kino Wilga | 11-05 15:32 → 11-06 08:19 | `CircuitOpenException … ConnectException` on their systembiletowy / cyberfolks / linuxpl hosts | **needs-human: deploy eef9233.** Filmweb covers each of them (`fallbackRef` 1491/1535/2412/3051/1513/1906/1713/2314/1527/2334/1657/2357/1677). |
+| Kino Kultura (Warszawa) | 11-05 20:50 | same | same; **no Filmweb cover exists** (above) |
+
+Cinema Lumiere (bilety.kinoszczytno.pl, iq.pl NS) resolves through Hetzner; from k3s-worker-1 it connected in 59 ms and then failed
+(curl `000`, no HTTP answer), so it may be a separate host issue. Re-check it after the deploy.
+
+ENTER→RECOVERED since 11-03:
+- **Kozienicki DK** flaps **nightly**: ENTER at ~03:04 UTC and RECOVERED at ~09:04 on 11-04 and on 11-05, with Filmweb
+  1913 covering each window (`fGfGfG…` bars). This looks like a nightly upstream maintenance window on
+  bilety.dkkozienice.pl (nazwa.pl NS, so not the DNS outage). Verdict: **transient (recurring, covered)**. If it
+  keeps up, consider making the fallback quieter for it.
+- **Kino MCSW Elektrownia:** 11-03 03:08→09:07 and 11-04 06:09→09:07, the same nightly shape. Green for the whole
+  window since. **transient (recurring, covered).**
+- **Kino Powiśle:** UNCOVERED 11-04 20:46, then ENTER 11-05 00:46 → RECOVERED 14:45 (kinosztumbilety.pl). Green.
+  **transient.**
+- **Kino MDK Myszków** (RECOVERED 11-03 09:38) and **Kino Ton** (RECOVERED 11-04 14:08): both dormant venues that
+  read a screening again. Neither is white now.
+
+### Poland: 13 white
+
+| Venue | Source | Verdict |
+|---|---|---|
+| Kino Mieścisko | bilety24 organizer 1294 | **intentionally-dormant** (new, green→white). Its one screening was 11-05 18:00, and the organizer page now says "Brak wydarzeń". |
+| Wybrzeże, Kino Warszawa | see the fallback table | **intentionally-dormant** |
+| Teatr im. Andreasa Gryphiusa, OK Jastrowie, Nowotomyski OK, GOK Lipka, MGOK Recz, Drawieński OK, Choszczeński DK, CKiS Sępólno, Kino na Szekspirowskim | biletyna | **intentionally-dormant** (as 11-03; Szekspirowskim is the seasonal rooftop). Archives are 4–55 days old with 1 film each. Not re-probed: biletyna's Cloudflare blocks plain curl (`reference_biletyna_cloudflare_blocks_all_ips`), and nothing in them moved. |
+| Kino Wisła Brzeszcze | bilety24 1539 | **intentionally-dormant** (as before; never an archive). |
+
+**`thin`:** 33 PL. Not probed this run, because the outage took the run's time. 11-03's finding (Kino Charlie) is
+done: Charlie is now **green across the whole window**, and its latest scrape carries **46 films over 24 days**
+(11-06 → 2027-02-04), against today only before 11-03. **Verified fixed.**
+
+### UK / DE / ES / US: 73 candidates, 0 bugs
+
+Cut: non-seasonal whites with an archive of 10 days or less, plus every green→white (UK 14, DE 27, ES 28). US used an
+archive of 3 days or less **and at least 3 films**, plus green→white (4).
+
+Then, per the 11-03 finding, read each candidate's `cinema_scrapes.lastBarren`. **66 of the 73 have
+`noScheduleListed: true`**: all 14 UK, 20 of 27 DE, all 28 ES and all 4 US. The aggregator's own venue page listed
+no day at our last scrape, so these are empty or lag, never a parser bug. They were not hand-probed.
+
+The 7 without the flag are all DE venues on the Cineamo and kinoheld second feeds, which don't set it. Each was probed
+at its source:
+- **Cineamo** `/showings?cinemaId=` 1428 (Z-inema), 1386 (Rerik), 785 (Atelier Tübingen) and 909 (Werkstattkino):
+  `_page_count` 0 and 0 showings. The controls, 1232/1235/1239/1240, return 10 showings each.
+- **kinoheld** graphql `programShows` for 772 (Kinocafe), 1928 (Schloss Dankern) and 3609 (Stattkino): 0 shows. The
+  controls, 807 and 3843, return 100 and 34.
+- **Verdict: all 7 empty at source.**
+
+The DE kinoprogramm.com fallback count is **25, flat** for the fourth run running.
+
+**UK Hyde Park Picture House** (11-03's "last bucket red"): bars `fGGY`. It had one `TimeoutException … 45000ms for
+system.spektrix.com`, the only Spektrix error in UK/US in the window. **transient.**
+
+**No reds in UK, DE, US or ES.** Artesiete Alhsur is gone from ES, retired on 11-03.
+
+### Methodology note: a red set across many hosts at once is a resolver check first
+
+Fourteen reds on fourteen hosts with the same `ConnectException` is one cause upstream of every venue. Before probing
+any venue, run `dig @185.12.64.1 <host>` against `dig @1.1.1.1 <host>` from a fleet host, and read each host's NS.
+Then check that the hosts' `resolvectl dns` and `journalctl -u nixos-auto-apply` show the fleet DNS config live.
+CoreDNS runs on **monitoring-1** (`k3s kubectl get pods -A -o wide` there).
+
+### Left for next run
+- **Did `eef9233` get deployed?** If so, are the 40 DNS-outage venues green again, and are the 5 UNCOVERED ones out
+  of the dark? If it is still undeployed, raise it again, first thing.
+- **Kino Apollo** (slow connect) and **Cinema Lumiere** (connects, then no HTTP answer from k3s-worker-1): re-check them after the
+  deploy.
+- **Kozienice / Elektrownia nightly 03:00–09:00 flaps:** watch for a third night.
+- **Own-site re-check owed:** Krobia, Harmonia, Książka (carried over).
+- **Kino Sokół Strzyżów:** carried over from 11-03.
+- **Kino Tatry:** dormant until 2027-04-01.
+- **PL `thin` (33):** probe it next run.
 
 ---
 
