@@ -48,9 +48,13 @@ permissions:
 # `mobile-local-server` job in ci.yml against a FixtureServerMain boot, not
 # against production.
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     unit-integration:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         container: mirror.gcr.io/library/swift:6.2
         steps:
 

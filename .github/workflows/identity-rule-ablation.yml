@@ -42,6 +42,8 @@ concurrency:
     cancel-in-progress: false
 
 env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
     FIXTURE_RELEASE_TAG: convergence-fixtures
     # ONE row, a round or so at a time: six bisecting rows held every ubuntu slot for hours (run 805). A sweep is a chain of
     # short dispatches instead, each resuming the last one's state (`resume-run`, `rounds`).
@@ -54,7 +56,7 @@ jobs:
     ablate:
         name: ablate
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
-        runs-on: ubuntu-22.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
         # SHORT ROWS: a runner drain waits for its longest job (runs 850, 1050 held the ubuntu runner for hours). One
         # recording and one round fit in ~25 minutes; the default two do not (#2400: ~60). The ablation stops itself at
         # its --deadline-minutes, keeping its state and every configuration it resolved for the next dispatch's
@@ -202,7 +204,7 @@ jobs:
         name: collect
         needs: [ ablate ]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-22.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-22.04' }}
         timeout-minutes: 20
         permissions:
             contents: read

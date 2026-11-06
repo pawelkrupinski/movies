@@ -39,9 +39,13 @@ permissions:
     issues: write
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     discover:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 120
         steps:
             # main's tip, not the triggering commit: a long run can see main gain a
@@ -202,7 +206,7 @@ jobs:
         name: report (scheduled run)
         needs: [ discover, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

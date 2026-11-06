@@ -45,9 +45,13 @@ permissions:
     issues: write
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     discover-cinemas:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 30
         steps:
             # Short-lived installation token for the "Kinowo Sync Bot" GitHub App,
@@ -192,7 +196,7 @@ jobs:
         name: report (scheduled run)
         needs: [discover-cinemas, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

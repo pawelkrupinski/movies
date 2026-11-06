@@ -90,6 +90,10 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     # Seconds, first: the signing secrets are set and the SDK licence Gradle needs is accepted.
     # Without it a missing secret surfaced minutes in, as an UNSIGNED release APK that the
@@ -97,7 +101,7 @@ jobs:
     # a platform. PRs build unsigned by design (see the header), so only other events require
     # the secrets. scripts/ci/preflight.sh never prints a value. (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -167,7 +171,7 @@ jobs:
 
     build:
         needs: preflight
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         # `checks: write` so action-junit-report can post the failure check-run + summary from the Gradle
         # JUnit XML. `contents: write`
         # so the rolling-release step can create/update the public

@@ -29,9 +29,13 @@ concurrency:
   group: nix-update-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+  LANG: C.UTF-8
+
 jobs:
   update:
-    runs-on: ubuntu-26.04
+    runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
     # Two builds of every host from an empty store; most of it comes from cache.nixos.org.
     timeout-minutes: 180
     steps:
@@ -134,7 +138,7 @@ jobs:
     name: report (scheduled run)
     needs: [update, timings]
     if: always() && !cancelled() && github.event_name == 'schedule'
-    runs-on: ubuntu-26.04
+    runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
     timeout-minutes: 5
     permissions:
       contents: read

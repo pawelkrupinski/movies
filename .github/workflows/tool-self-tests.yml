@@ -45,13 +45,17 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts, ios/scripts and
     # infra/bin), found by name and run in parallel by scripts/run-script-tests. A new test runs here the moment it
     # exists; one tagged `# script-test: <tag>` runs where its toolchain is. It needs no JDK, sbt or build cache.
     script-tests:
         name: script self-tests
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 40
         steps:
             - uses: actions/checkout@v5
@@ -63,7 +67,7 @@ jobs:
     # names, of the tree kept across runs.
     old-ref-compile:
         name: identity-slice old-ref compile
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 40
         permissions:
             contents: read

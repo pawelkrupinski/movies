@@ -51,12 +51,16 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     # THE PLAN: which recording to report (.github/actions/upstream-run, UpstreamRunSpec). One that failed or ran off main
     # -- a branch recording pins nothing anyone replays -- or none named (the backstop): the newest successful one on
     # main, whatever its age, since its findings are still the newest there are to triage. Red only when there is none.
     plan:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -82,7 +86,7 @@ jobs:
             overdue: ${{ steps.report.outputs.overdue }}
             alert: ${{ steps.report.outputs.alert }}
             found: ${{ steps.report.outputs.found }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 10
         permissions:
             contents: read
@@ -125,7 +129,7 @@ jobs:
         name: report (scheduled run)
         needs: [ plan, findings, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

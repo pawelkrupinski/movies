@@ -5,7 +5,7 @@ package deploy
  * `lane:` / `runner:` that the called workflow's `runs-on:` reads back as `inputs.<name>`.
  *
  * Only the subset of GitHub's expression language those lines use: string literals, `github.server_url`,
- * `github.ref`, `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
+ * `github.ref`, `github.workflow` (the caller's name, in a reusable workflow), `inputs.<name>`, `vars.<name>` (a repository variable: MOVIES_CI_RUNNERS), `needs.<job>.outputs.<name>`, `==`, `!=`, `!`, `&&`, `||` and parentheses. Anything else fails, naming the
  * expression, rather than being read as some label -- a spec that guessed would pass on a line it never understood.
  */
 object RunnerLabel {
@@ -14,13 +14,14 @@ object RunnerLabel {
   val Main    = "refs/heads/main"
 
   /** Where a workflow runs: the forge (`github.server_url`), the ref, the inputs a caller passed, the outputs of
-   *  the jobs it needs, keyed `<job>.<name>`, and the repository's variables (unset: none). */
+   *  the jobs it needs, keyed `<job>.<name>`, the repository's variables (unset: none) and the running workflow's name. */
   final case class Context(
       server: String,
       ref: String,
       inputs: Map[String, String] = Map.empty,
       outputs: Map[String, String] = Map.empty,
-      vars: Map[String, String] = Map.empty
+      vars: Map[String, String] = Map.empty,
+      workflow: String = ""
   )
 
   private enum Value {
@@ -105,6 +106,7 @@ object RunnerLabel {
       case lit if lit.startsWith("'")         => Str(lit.drop(1).dropRight(1).replace("''", "'"))
       case "github.server_url"                => Str(ctx.server)
       case "github.ref"                       => Str(ctx.ref)
+      case "github.workflow"                  => Str(ctx.workflow)
       case s"inputs.$name"                    => ctx.inputs.get(name).fold(Null)(Str(_))
       case s"vars.$name"                      => Str(ctx.vars.getOrElse(name, ""))
       case s"needs.$job.outputs.$name"        => ctx.outputs.get(s"$job.$name").fold(Null)(Str(_))

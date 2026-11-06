@@ -25,6 +25,8 @@ concurrency:
     cancel-in-progress: false
 
 env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
     FIXTURE_RELEASE_TAG: convergence-fixtures
 
 permissions:
@@ -33,7 +35,7 @@ permissions:
 jobs:
     learn:
         name: learn
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 90
         permissions:
             contents: read

@@ -969,3 +969,82 @@ ci-runner's scheduler had not been re-pinned onto it. What changed:
   still publishes every minute on the release `ci-runner-capacity`. The file just goes stale. The re-pin also drops
   the publisher keys, the lander-key credential and the `ci-movies-main` slice. After the re-pin, the
   `ci-runner-capacity` release can be deleted.
+
+## 14. Every other workflow on ci-runner (2026-11-06, night)
+
+The owner extended the decision above: "distribute other workflows as well". There are three classes:
+
+- **(a) hosted.** THE GATE's workflows on main and anything a push to main waits on.
+- **(b) ci-runner.** Measurements and every other Linux workflow off main's critical path. They use the scheduler's
+  labels, `movies` for light jobs and `movies-measure` for heavy ones (sbt, mongod, nix builds, browsers), with
+  bitcashier first.
+- **(c) hosted.** What the movies-runner container cannot give.
+
+A (b) job's `runs-on` is `vars.MOVIES_CI_RUNNERS == 'self-hosted' && '<label>' || '<its old hosted label>'`. So the one
+repository switch still sends everything hosted while ci-runner is down (`ubuntu-22.04` stays the fallback of a mongod
+job, MongoServerVersionParitySpec). No (b) workflow is time-critical enough to earn a hosted fallback of its own: none
+gates a push, and the Stage NixOS closures deploy waits at most one queue. No new label or job reaches THE GATE, so
+`gating-checks.tsv` gains no row. SelfHostedRunnersSpec holds it: every job of every workflow outside the gate side
+must ask for a ci-runner label unless it is listed as needing a hosted machine. Each of those workflows also sets
+`LANG`. `report-timings.yml` now runs where its caller runs: hosted only for Main and Identity model convergence on
+main (`github.workflow`, the caller's name).
+
+### The classification
+
+The minutes are hosted runner-minutes over the 14 days to 2026-11-06, from the jobs API (job start to end).
+
+| workflow | trigger | class | ci-runner label | 14-day hosted min | why |
+|---|---|---|---|---|---|
+| main.yml, ci.yml | push main | a | -- | (gate) | THE GATE |
+| identity-model-convergence.yml, country-convergence-leg.yml on main | Main's kick, convergence-daily | a | -- | (gate) | THE GATE (off main it is a measurement: `movies-measure`, section 10) |
+| report-timings.yml | called | a for the gate's callers, b otherwise | movies | -- | runs beside its caller |
+| branch-ci.yml | bot PRs | a | -- | 260 | it is ci.yml, Main's own suite and runner rules |
+| precommit-check.yml | check/** | b (already) | movies-check | 0 | landing check |
+| convergence-bisect.yml | dispatch | b (already) | movies-measure, movies | 16 | measurement |
+| record-scrape-fixtures.yml | nightly | b | movies-measure (legs), movies | 1,235 | non-gating capture |
+| verify-scrape-recording.yml | after the recording | b | movies-measure (legs), movies | 1,381 | non-gating replay |
+| identity-family-explorer.yml | weekly | b | movies-measure, movies | 1,038 | nightly explorer |
+| order-independence.yml: seed, scala, android, report | nightly | b | movies-measure, movies | 1,283 | nightly |
+| order-independence.yml: swift, ios (macOS), android-instrumented (emulator) | nightly | c | -- | 1,167 | macOS; KVM not proven in the container |
+| nightly-stress.yml | nightly | b | movies-measure, movies | 805 | nightly |
+| precheck-build-cache.yml | after Main | b | movies-measure | 647 | warms the landing checks' cache, gates nothing |
+| tool-self-tests.yml | push main | b | movies, movies-measure | 580 | not read by THE GATE |
+| nix-stage-closures.yml | push main | b | movies-measure | 174 | stages closures, activates nothing; hosts' port 22 is public |
+| identity-lean-whole.yml, identity-live-drift.yml | after runs | b | movies-measure, movies | 172, 113 | report-only identity checks |
+| identity-drift-explorer.yml | nightly | b | movies-measure, movies | 90 | nightly explorer |
+| identity-run.yml, identity-refit.yml, identity-capture.yml, identity-decorations.yml, identity-rule-ablation.yml | dispatch, weekly | b | movies-measure, movies | 79, 37, 26, 0, 0 | identity bots and tools |
+| prune-actions-caches.yml, identity-ci-staleness.yml, decodo-probe.yml, identity-findings-report.yml, security-headers.yml | cron | b | movies | 94, 39, 23, 13, 13 | light scripts |
+| android.yml: preflight, build | push main | b | movies, movies-measure | 48 | Gradle on the hosted toolset copy |
+| android.yml: instrumented | push main | c | -- | 33 | emulator: KVM not proven in the container |
+| ios.yml: unit-integration | push main | b | movies | 21 | Linux checks |
+| ios.yml: ui-tests | push main | c | -- | 418 | macOS |
+| decoration-discovery, discover-cinemas, retire-venues, filmweb-diff, roster-audit, country-fixture-artifact | weekly bots | b | movies-measure, movies | 36, 1, 0, 22, 4, 10 | bots |
+| nix-update, renovate, scala-steward, convergence-daily, convergence-fill, archive-recording, page-test-repeat | cron, dispatch | b | movies-measure or movies | 9, 2, 18, 4, 0, 0, 0 | bots and tools (convergence-daily's dispatched run is the gate's: a) |
+
+Totals: **8,017 hosted min in 14 days move to ci-runner, ~570 a day**, of which ~515 a day are heavy
+(`movies-measure`). Hosted keeps THE GATE plus (c): macOS (~106 min a day) and the two emulator jobs (~10 a day).
+
+### Load on ci-runner
+
+- **Free capacity.** Section 10 measured movies' 10 slots at 5.0 busy on average, or ~7,200 free slot-min a day, so
+  570 more fits on count. Memory, not count, is the real limit. The heavy part goes to `movies-measure`, whose slice
+  (`ci-movies-measure`, MemoryMax 48G) fits ~4 jobs of ~10 GiB. On 2026-11-02 measurements alone kept it at 3.7-3.8
+  of 4 every hour.
+- **When it lands.** Most of it is the nightly window, 23:30-03:00 UTC: the recording and its verify (~190 min a
+  night), nightly-stress (~58), order-independence (~92), the drift explorer, and the family explorer's ~260 min every
+  Sunday. Measurements are fewest then, but not absent.
+- **Priority.** The scheduler serves checks, then measurements, then light. The nightly heavy jobs share the
+  measurement class: they queue with the measurements, first come first served, still behind every landing check and
+  every bitcashier job.
+- **If it saturates** (watch `ci-timings compare` on measurements, queue p50 before and after), move these back to
+  hosted, in this order. Each is one `runs-on` back to its literal label, plus its row in SelfHostedRunnersSpec's
+  `NeedsHosted`:
+  1. identity-family-explorer `walk` (~74 min a day as an average, all on Sunday).
+  2. verify-scrape-recording's legs (~99 a day).
+  3. record-scrape-fixtures' legs (~88 a day).
+
+  Together they are 3,654 of the 8,017. The alternative is a scheduler class of their own below measurements, which
+  would put them on the light label.
+- **Egress.** The recording, the discovery bots, decodo-probe, filmweb-diff and security-headers now reach cinema
+  sites, Filmweb and the proxy from ci-runner's address, bitcashier's host, instead of GitHub's pool. Watch for blocks
+  that point at that address.

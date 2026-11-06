@@ -35,10 +35,14 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     repeat:
         name: page tests x${{ inputs.repeat-each }} (${{ inputs.projects }})
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 90
         permissions:
             contents: read

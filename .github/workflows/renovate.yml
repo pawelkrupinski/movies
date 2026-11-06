@@ -27,9 +27,13 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     renovate:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         name: Renovate
         steps:
             - uses: actions/create-github-app-token@v3
@@ -74,7 +78,7 @@ jobs:
         name: report (scheduled run)
         needs: [renovate, timings]
         if: always() && !cancelled() && github.event_name == 'schedule' && needs.renovate.result != 'skipped'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

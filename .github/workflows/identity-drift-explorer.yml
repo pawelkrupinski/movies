@@ -27,9 +27,13 @@ concurrency:
 permissions:
     contents: read
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     explore:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         # the drift rows' 85-minute ceiling, behind main's queued convergence runs in the lane
         timeout-minutes: 300
         permissions:
@@ -61,7 +65,7 @@ jobs:
         name: report (scheduled run)
         needs: [explore, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

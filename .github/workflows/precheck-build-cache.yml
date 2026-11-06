@@ -29,9 +29,13 @@ concurrency:
 permissions:
     contents: read
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     build:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 45
         steps:
             - uses: actions/checkout@v5
@@ -65,7 +69,7 @@ jobs:
     # entry: a main commit that leaves the walk's code and data as they were walks only the slices whose files moved. Rows
     # are kept whether or not the spec passes (main's own flips are the identity tests' to judge, not this cache's).
     population-walk:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 45
         steps:
             - uses: actions/checkout@v5

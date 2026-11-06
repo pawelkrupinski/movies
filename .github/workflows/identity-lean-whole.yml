@@ -34,6 +34,8 @@ concurrency:
     cancel-in-progress: false
 
 env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
     FIXTURE_RELEASE_TAG: convergence-fixtures
 
 permissions:
@@ -43,7 +45,7 @@ jobs:
     # THE PLAN: which recording to measure (.github/actions/upstream-run, UpstreamRunSpec). A recording off main, or one that failed, records nothing the
     # measurements replay, and an older one would only repeat its own measurement: `skip`, an empty run and no compare.
     plan:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -76,7 +78,7 @@ jobs:
         needs: [plan]
         if: needs.plan.outputs.run != ''
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
-        runs-on: ubuntu-22.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
         # github.com caps a job at 6 h: one country's shard.
         timeout-minutes: 350
         strategy:

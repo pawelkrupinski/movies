@@ -56,11 +56,15 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     # Seconds, before any leg takes a runner: which countries the recording holds complete, and that each one's
     # corpus and tree are there (convergence-preflight.sh, the identity lane's check for a named recording).
     preflight:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -72,7 +76,8 @@ jobs:
             # created to be skipped (a skipped matrix job renders its `name:` template raw in the run graph).
             leg-matrix: ${{ steps.plan.outputs.leg-matrix || '{"country":[],"include":[]}' }}
             recording: ${{ inputs.recording }}
-            runner: ubuntu-22.04
+            # ci-runner's measurement slots, as the recorder's legs (the owner, 2026-11-06); ubuntu-22.04 while it is off.
+            runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
         steps:
             - uses: actions/checkout@v5
               with:

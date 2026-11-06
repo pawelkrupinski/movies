@@ -42,6 +42,8 @@ concurrency:
     group: identity-run${{ github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '' }}
     cancel-in-progress: false
 env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
     FIXTURE_RELEASE_TAG: convergence-fixtures
 permissions:
     contents: read
@@ -49,7 +51,7 @@ jobs:
     run:
         name: run
         # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
-        runs-on: ubuntu-22.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
         # The longest green run took 162 min (run 965, five countries); the mean is 10. CiRowTimeoutSpec.
         timeout-minutes: 200
         # THE PLAN (WorkflowPlanSpec): this run's root, so the one job that reads `inputs` and `github` whole; the jobs

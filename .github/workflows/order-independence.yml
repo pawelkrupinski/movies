@@ -41,13 +41,17 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     # The one seed every shuffled leg uses: the dispatch input, checked to be digits
     # (scripts/ci/order-seed.sh) before any leg puts it in a shell or an emulator
     # `script:`, or this run's id. The legs read it through `env:`, never `${{ }}` in a
     # script body -- see OrderIndependenceSeedSpec.
     seed:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         outputs:
             seed: ${{ steps.pick.outputs.seed }}
@@ -64,7 +68,7 @@ jobs:
     scala:
         # No `name:`: the default `scala (<order>)` is the same, and a job cancelled before it starts shows no raw template.
         needs: seed
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 105
         strategy:
             fail-fast: false
@@ -112,7 +116,7 @@ jobs:
 
     android:
         needs: seed
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 45
         defaults:
             run:
@@ -376,7 +380,7 @@ jobs:
         name: report (scheduled run)
         needs: [seed, scala, android, android-instrumented, swift, ios, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

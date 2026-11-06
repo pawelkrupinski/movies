@@ -72,7 +72,7 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   }
 
   "Main and convergence on main" should "stay on GitHub's hosted runners even when ci-runner is switched on" in {
-    val onMain = ctx(RunnerLabel.Main)
+    val onMain = ctx(RunnerLabel.Main).copy(workflow = "Main")
     legRunner(onMain) shouldBe "ubuntu-22.04"
     // every row of a leg on the leg's one runner: no per-row label (2026-11-06's `row-runners`, retired the same day)
     val leg = yml("country-convergence-leg.yml")
@@ -85,12 +85,48 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     withClue("a job of Main's on a self-hosted label: ")(main.filterNot((_, l) => Hosted(l)) shouldBe empty)
   }
 
+  /** THE GATE's workflows and what they call, the landing check, and Branch CI (it is ci.yml, Main's own suite): they
+   *  keep their own rules above. */
+  private val GateSide = Set("main.yml", "ci.yml", "identity-model-convergence.yml", "country-convergence-leg.yml",
+    "report-timings.yml", "precommit-check.yml", "branch-ci.yml")
+  /** What ci-runner's job container cannot give: macOS, and an Android emulator (no /dev/kvm proven in it). */
+  private val NeedsHosted = Set("ios.yml: ui-tests", "android.yml: instrumented", "order-independence.yml: swift",
+    "order-independence.yml: ios", "order-independence.yml: android-instrumented")
+
+  "every other workflow" should "run on ci-runner, bitcashier first, whatever its ref (the owner, 2026-11-06)" in {
+    // "distribute other workflows as well": the nightly explorers, the recording, the bots, Stage NixOS closures ...
+    // nothing a push to main waits on takes one of GitHub's 20 that THE GATE runs on
+    val onMain = ctx(RunnerLabel.Main)
+    val jobs = RepoFile.workflows().map(_.getName).filterNot(GateSide).sorted
+      .flatMap(f => labels(f, onMain).map((job, label) => s"$f: $job" -> label))
+    jobs.size should be > 60
+    withClue("off ci-runner: ")(jobs.filterNot((j, l) => NeedsHosted(j) || l == "movies" || l == "movies-measure") shouldBe empty)
+    withClue("needs a hosted machine: ")(jobs.filter((j, _) => NeedsHosted(j)).filterNot((_, l) => Hosted(l)) shouldBe empty)
+    // the recording's and the verify's convergence legs: measurement slots
+    for (f <- Seq("record-scrape-fixtures.yml", "verify-scrape-recording.yml")) {
+      val runner = RepoFile.block(RepoFile.jobs(yml(f))("preflight"), "outputs").linesIterator.map(_.trim)
+        .collectFirst { case l if l.startsWith("runner:") => l.drop("runner:".length).trim }.get
+      withClue(s"$f: ")(RunnerLabel(runner, onMain) shouldBe "movies-measure")
+    }
+  }
+
+  "the timings report" should "run where its caller does: hosted for THE GATE's workflows on main, ci-runner otherwise" in {
+    def report(workflow: String, ref: String = RunnerLabel.Main) =
+      labels("report-timings.yml", ctx(ref).copy(workflow = workflow)).values.toSet
+    report("Main") shouldBe Set("ubuntu-26.04")
+    report("Identity model convergence") shouldBe Set("ubuntu-26.04")
+    report("Identity model convergence", "refs/heads/measure/x") shouldBe Set("movies")
+    report("Identity drift explorer") shouldBe Set("movies")
+  }
+
   "every workflow that can run on ci-runner" should "set the UTF-8 locale a hosted VM sets and ci-runner's image does not" in {
     // unset, the JVM encodes file names as ASCII: a fixture path with a Polish letter throws InvalidPathException
     // (precommit-check run 41356052566). Workflow-level env does not cross into a called workflow, so each declares it.
     val TopLevelLang = """(?m)^env:\n(?:[ \t]+.*\n|\s*\n)*?[ \t]+LANG: C\.UTF-8\s*$""".r
-    val missing = Seq("precommit-check.yml", "identity-model-convergence.yml", "country-convergence-leg.yml",
-      "convergence-bisect.yml", "report-timings.yml").filterNot(f => TopLevelLang.findFirstIn(yml(f)).isDefined)
+    val onCiRunner = RepoFile.workflows().map(_.getName).sorted
+      .filter(f => labels(f, ctx("refs/heads/measure/x")).values.exists(Ours) || f == "country-convergence-leg.yml")
+    onCiRunner.size should be > 30
+    val missing = onCiRunner.filterNot(f => TopLevelLang.findFirstIn(yml(f)).isDefined)
     missing shouldBe empty
   }
 

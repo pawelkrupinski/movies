@@ -49,7 +49,7 @@ env:
 jobs:
     # THE PLAN: the one place the run's inputs are read (WorkflowPlanSpec).
     plan:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         outputs:
             matrix: ${{ steps.plan.outputs.matrix }}
@@ -69,7 +69,7 @@ jobs:
         name: family walk (${{ matrix.name }})
         needs: [plan]
         # ubuntu-22.04: the row starts mongod (convergence-setup), whose 8.3 does not start on 26.04's kernel (MongoServerVersionParitySpec)
-        runs-on: ubuntu-22.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
         # the walk step's 40 minutes plus the setup; a row is meant to take under 10 (the cost files and shard counts are refreshed from a run: family_shards.py costs)
         timeout-minutes: 60
         permissions:
@@ -122,7 +122,7 @@ jobs:
     publish:
         needs: [plan, walk]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 15
         permissions:
             contents: write
@@ -159,7 +159,7 @@ jobs:
         name: report (scheduled run)
         needs: [plan, walk, publish, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

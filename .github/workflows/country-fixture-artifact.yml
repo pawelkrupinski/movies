@@ -63,9 +63,13 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     record-country-fixture:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         # A full live re-record of every cinema + the whole enrichment cascade is
         # heavy and a cold cache compiles every module first; give it plenty of
         # headroom over the default.
@@ -163,7 +167,7 @@ jobs:
         name: report (scheduled run)
         needs: [record-country-fixture, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

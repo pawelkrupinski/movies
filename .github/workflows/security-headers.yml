@@ -49,9 +49,13 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     check:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         # A dead Decodo port is tried once and retired (check-security-headers.py, ProxyPool): the
         # whole pool timing out is 7 x 30 s, and the job must outlive it to name the proxy. The
         # pool is only reached when a direct request is refused.
@@ -99,7 +103,7 @@ jobs:
         name: report (scheduled run)
         needs: [check, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

@@ -67,6 +67,10 @@ permissions:
     issues: write
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     # ROUND 1 ON FOUR RUNNERS. It is the refit's measure: ~58 proposals, each the five captures re-resolved, CPU-bound
     # (JFR: 97.5% of the runner in the resolver), 17-21 of the measure step's 20-24 minutes on one 4-vCPU runner, where
@@ -78,7 +82,7 @@ jobs:
     # job merges them only if main has not moved what they measured (below).
     measure:
         if: (github.event_name == 'schedule' || inputs.sharded)
-        runs-on: ubuntu-26.04 # no Mongo here: the kernel is no matter
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }} # no Mongo here: the kernel is no matter
         timeout-minutes: 60
         strategy:
             fail-fast: true
@@ -114,7 +118,7 @@ jobs:
     refit:
         needs: [ measure ]
         if: ${{ !cancelled() && (needs.measure.result == 'success' || needs.measure.result == 'skipped') }}
-        runs-on: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         timeout-minutes: 150
         steps:
             # main's tip, not the triggering commit: a long run can see main gain a
@@ -259,7 +263,7 @@ jobs:
         name: report (scheduled run)
         needs: [ measure, refit, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read

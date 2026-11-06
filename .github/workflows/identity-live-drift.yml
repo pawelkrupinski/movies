@@ -41,6 +41,8 @@ concurrency:
     cancel-in-progress: false
 
 env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
     FIXTURE_RELEASE_TAG: convergence-fixtures
 
 permissions:
@@ -50,7 +52,7 @@ jobs:
     # THE PLAN: which recording to compare (.github/actions/upstream-run, UpstreamRunSpec). A recording off main, or one that failed, is not prod's
     # moment: the newest successful one on main stands in for it, and none newer than 48 h is red.
     plan:
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read
@@ -71,7 +73,7 @@ jobs:
 
     compare:
         needs: [plan]
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 300
         permissions:
             contents: read

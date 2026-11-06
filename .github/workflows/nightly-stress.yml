@@ -37,6 +37,10 @@ permissions:
     contents: read
 
 
+env:
+    # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
+    LANG: C.UTF-8
+
 jobs:
     races:
         # TWO HALVES ON GITHUB.COM: the 50 iterations ran into this job's 180-minute cap already, and a hosted
@@ -46,7 +50,7 @@ jobs:
             fail-fast: false
             matrix:
                 half: [1, 2]
-        runs-on: ubuntu-22.04 # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }} # mongod 8.3 refuses kernels 6.19-7.0.13: github.com's 24.04 and 26.04 images boot them, 22.04 boots 6.8 (MongoServerVersionParitySpec)
         # ~25s an iteration for the in-JVM set measured locally, the Mongo set more; 50 of both
         # fit well inside this, and a hung harness still stops.
         timeout-minutes: 180
@@ -98,7 +102,7 @@ jobs:
                     - { shard: 2/4, label: webkit-stress-2-4 }
                     - { shard: 3/4, label: webkit-stress-3-4 }
                     - { shard: 4/4, label: webkit-stress-4-4 }
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
         timeout-minutes: 90
         permissions:
             contents: read
@@ -130,7 +134,7 @@ jobs:
         name: report (scheduled run)
         needs: [ races, webkit-phones, timings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
             contents: read
