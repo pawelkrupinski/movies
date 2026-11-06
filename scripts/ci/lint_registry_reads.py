@@ -7,7 +7,7 @@ push carrying that path is put to the hook itself (`pre-push --lint-plan`, the G
 `@repo`, `@gitops` and globs are judged by the one implementation. A directory is probed by one file of each extension
 under it (a spec scanning it reads the kinds it scans): one selecting probe is enough.
 Prints `<spec>TAB<literal path>` for each miss; nothing when every row covers what its spec reads. Run from the root.
-Usage: lint-registry-reads.py [registry]
+Usage: lint_registry_reads.py [registry]
 """
 import os
 import re

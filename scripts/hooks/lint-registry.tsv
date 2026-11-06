@@ -11,7 +11,7 @@
 # InMemoryStoresRoundTripSpec matched no name pattern and turned Main red 7 times). scripts/hooks/lint-registry-test.sh
 # fails when a repo-reading spec -- a tools/ No*/*Lint* spec, any deploy/ spec, or one using a source-scan helper
 # (ScalaSourceScan, ModuleSources, RepoRoot, WorkflowText) -- has no row here, or a row names no spec. A new lint spec:
-# add its row, and a glob for every path outside @repo that it reads (scripts/hooks/lint-registry-reads.py finds them
+# add its row, and a glob for every path outside @repo that it reads (scripts/ci/lint_registry_reads.py finds them
 # from its string literals; the test fails on a miss). scripts/land-precheck runs the same selection before a change is queued.
 common:models.OgCardAssetsSpec	@repo *.scala web/src/main/assets/img/*
 common:models.UkPagesSpec	@repo data/uk/*
