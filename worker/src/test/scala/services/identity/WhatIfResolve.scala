@@ -3,7 +3,6 @@ package services.identity
 import models.Country
 import org.bson.BsonDocument
 import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture}
-import services.identity.adapters.{IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import java.nio.charset.StandardCharsets
@@ -91,7 +90,7 @@ object WhatIfResolve {
     Region(groups, groups.map(results), rounds)
   }
 
-  final case class Corpus(listings: Seq[Listing], lookups: IdentityLookups, answers: WhatIfAnswers.Source)
+  final case class Corpus(listings: Seq[Listing], lookups: IdentityLookups, answers: WhatIfAnswers.Source, clock: Clock)
 
   /** Between two tries of a mirror read that timed out ([[WhatIfAnswers.patient]]). */
   val Pause: () => Unit = () => Thread.sleep(2000)
@@ -99,28 +98,26 @@ object WhatIfResolve {
   /** The country's corpus as the mirror's history held it at `at`: listings, venue pages and TMDB documents; a question
    *  the mirror's store lacks answered by `answering` (the composition root's pick: [[WhatIfAnswers.offline]] refuses,
    *  [[WhatIfAnswers.live]] asks the real services and files into the local what-if store). */
-  def corpusAt(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer, clock: Clock,
+  def corpusAt(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer,
                answering: adapters.TmdbDocuments => WhatIfAnswers.Source): Corpus = {
-    val replay   = IdentityHistoryReplay.from(new MongoIdentityHistory(db, new services.TtlIndexMismatches), at.toEpochMilli)
-    val rows     = tools.ProdListings.read(db, tools.CountryScrapeCorpus.cinemasOf(country).toSet)
-    val listings = replay.listings(ModelRead.corpus(rows.map(r => r.cinema -> r.films), normalizer))
-    val pages    = replay.pages(Await.result(db.getCollection[BsonDocument](services.venuepages.MongoVenuePageStore.Collection).find()
-      .batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
+    val world    = MirrorWorld.at(db, country, at, normalizer)
     // the mirror's store as it stood at `at`, each document read once: its family answers all read up front, in batches
-    val mirror   = new WhatIfAnswers.Memoised(replay.documents(new MongoTmdbDocuments(db)), Pause)
+    val mirror   = new WhatIfAnswers.Memoised(world.documents, Pause)
     mirror.warm(adapters.TmdbKind.Family, WhatIfAnswers.patient(Pause)(Await.result(db.getCollection[BsonDocument](adapters.TmdbKind.Family.collection).find()
       .projection(new BsonDocument("_id", new org.bson.BsonInt32(1))).batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
       .map(_.getString("_id").getValue))
     val answers  = answering(mirror)
-    val lookups  = tools.ProdLookupInputs.lookups(answers.docs, pages, tools.ProdLookupInputs.enrichersOf(country, clock), answers.live, country, clock)
-    Corpus(listings.sorted.distinctBy(_.key), new tools.MemoLookups(lookups), answers)
+    // the world's clock: the moment replayed, never the wall's (MirrorWorld)
+    val lookups  = tools.ProdLookupInputs.lookups(answers.docs, world.pages, tools.ProdLookupInputs.enrichersOf(country, world.clock), answers.live,
+      country, world.clock)
+    Corpus(world.listings, new tools.MemoLookups(lookups), answers, world.clock)
   }
 
   /** The FINAL take of `decisions` (the model's, over `listings`): a fresh, unbudgeted agreement stage applied and asked
    *  to its fixpoint ([[scripts.StageAnswers.settle]]) -- what a worker with nothing kept serves, as the CI gate's whole
    *  resolve settles it (`scripts.IdentityDrift.whole`) -- its answers the corpus's ([[Corpus.answers]]). */
-  def settled(decisions: Seq[ResolverDecision], listings: Seq[Listing], corpus: Corpus, clock: Clock): Resolution = {
-    val moment  = new tools.MutableClock(clock.instant())
+  def settled(decisions: Seq[ResolverDecision], listings: Seq[Listing], corpus: Corpus): Resolution = {
+    val moment  = new tools.MutableClock(corpus.clock.instant())
     val answers = new scripts.StageAnswers(corpus.answers.stage, corpus.answers.docs, moment, _ => None)
     val stage   = answers.stage(corpus.lookups, new services.identity.agreement.InMemoryAgreementVerdicts, budgets = false)
     val byKey   = listings.map(l => l.key -> l).toMap
@@ -251,7 +248,7 @@ object WhatIfResolve {
       val loadKey    = Seq(cc, at.toString, opt("--answers").getOrElse("offline"), opt("--answers-dir").getOrElse("")).mkString("|")
       val (loaded, warm) = kept.loaded(loadKey) { WhatIfAnswers.patient(Pause) {
         val inputs  = ResolveInputs.of(new MongoPinStore(Some(db)).all())
-        val corpus  = timed("corpus")(corpusAt(db, country, at, normalizer, clock, answering(args.toSeq, country, clock)))
+        val corpus  = timed("corpus")(corpusAt(db, country, at, normalizer, answering(args.toSeq, country, clock)))
         val context = timed("context")(new CandidateGeneration(corpus.listings, corpus.lookups, normalizer, inputs.pins, inputs.decorations,
           lazyLookups = false).context)
         Loaded(corpus, context, inputs)
@@ -266,7 +263,7 @@ object WhatIfResolve {
       def finalOf(families: Seq[IdentityResolver.RegionFamily], file: String, phase: String): Unit = if (withFinal) {
         val members = families.flatMap(_.listings).toSet
         val listed  = corpus.listings.filter(l => members(l.key))
-        val agreed  = timed(phase)(settled(families.flatMap(_.decisions), listed, corpus, clock))
+        val agreed  = timed(phase)(settled(families.flatMap(_.decisions), listed, corpus))
         tsv(out.resolve(file), "key\tfinal\tbasis", finalRows(agreed, listed.map(_.key)))
       }
       select match {

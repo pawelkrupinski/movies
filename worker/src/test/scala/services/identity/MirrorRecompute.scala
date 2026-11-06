@@ -1,14 +1,10 @@
 package services.identity
 
 import models.Country
-import org.bson.BsonDocument
-import org.mongodb.scala.{MongoClient, MongoDatabase, ObservableFuture}
-import services.identity.adapters.{IdentityHistoryReplay, MongoIdentityHistory, MongoTmdbDocuments}
+import org.mongodb.scala.{MongoClient, MongoDatabase}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import java.time.{Clock, Duration, Instant}
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * AFFECTED-ONLY RECOMPUTE on the LOCAL prod mirror (`mongodb://127.0.0.1:28017`, read-only; run
@@ -29,15 +25,12 @@ object MirrorRecompute {
 
   final case class Corpus(listings: Seq[Listing], lookups: IdentityLookups)
 
-  def corpusAt(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer, clock: Clock): Corpus = {
-    val replay   = IdentityHistoryReplay.from(new MongoIdentityHistory(db, new services.TtlIndexMismatches), at.toEpochMilli)
-    val rows     = tools.ProdListings.read(db, tools.CountryScrapeCorpus.cinemasOf(country).toSet)
-    val listings = replay.listings(ModelRead.corpus(rows.map(r => r.cinema -> r.films), normalizer))
-    val pages    = replay.pages(Await.result(db.getCollection[BsonDocument](services.venuepages.MongoVenuePageStore.Collection).find()
-      .batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
-    val lookups  = tools.ProdLookupInputs.lookups(replay.documents(new MongoTmdbDocuments(db)), pages,
-      tools.ProdLookupInputs.enrichersOf(country, clock), scripts.IdentityHistoryTools.Refused, country, clock)
-    Corpus(listings.sorted.distinctBy(_.key), new tools.MemoLookups(lookups))
+  /** The mirror's corpus at `at` ([[MirrorWorld]]), its lookups dated by that moment. */
+  def corpusAt(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer): Corpus = {
+    val world   = MirrorWorld.at(db, country, at, normalizer)
+    val lookups = tools.ProdLookupInputs.lookups(world.documents, world.pages, tools.ProdLookupInputs.enrichersOf(country, world.clock),
+      scripts.IdentityHistoryTools.Refused, country, world.clock)
+    Corpus(world.listings, new tools.MemoLookups(lookups))
   }
 
   /** The recompute: each listing's take at `to`, which families were re-resolved, and why each was. */
@@ -89,10 +82,10 @@ object MirrorRecompute {
       val inputs     = ResolveInputs.of(new MongoPinStore(Some(db)).all())
       val started    = tools.Stopwatch.start()
       def seconds    = f"${started.seconds}%.0fs"
-      val before     = corpusAt(db, country, from, normalizer, clock)
+      val before     = corpusAt(db, country, from, normalizer)
       val index      = FamilyIndex.build(before.listings, before.lookups, normalizer, inputs, threads)
       System.err.println(s"[mirror-recompute] $cc at $from: ${before.listings.size} listings, ${index.index.entries.size} families indexed ($seconds)")
-      val after      = corpusAt(db, country, to, normalizer, clock)
+      val after      = corpusAt(db, country, to, normalizer)
       val recomputing = tools.Stopwatch.start()
       val result     = recompute(index.index, after, normalizer, inputs)
       val recomputeSeconds = recomputing.seconds

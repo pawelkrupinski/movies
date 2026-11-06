@@ -4,7 +4,7 @@ import models.Country
 import org.mongodb.scala.MongoClient
 import services.movies.{ListingKey, TitleNormalizer}
 
-import java.time.{Clock, Instant}
+import java.time.Instant
 
 /**
  * THE OFFLINE COUNTERFACTUAL FLIP PREDICTOR, on the LOCAL prod mirror (`mongodb://127.0.0.1:28017`, read-only): the
@@ -72,7 +72,6 @@ object FamilyCounterfactual {
   }
 
   def main(args: Array[String]): Unit = {
-    val clock   = Clock.systemUTC()
     val cc      = args.headOption.getOrElse(sys.error("a country code"))
     val country = Country.all.find(_.code == cc).getOrElse(sys.error(s"no country $cc"))
     def opt(name: String) = args.toList.sliding(2).collectFirst { case List(`name`, value) => value }
@@ -86,7 +85,7 @@ object FamilyCounterfactual {
       val normalizer = TitleNormalizer.forCountry(country)
       val inputs     = ResolveInputs.of(new MongoPinStore(Some(db)).all())
       val started    = tools.Stopwatch.start()
-      val corpus     = MirrorRecompute.corpusAt(db, country, at, normalizer, clock)
+      val corpus     = MirrorRecompute.corpusAt(db, country, at, normalizer)
       System.err.println(f"[family-counterfactual] $cc at $at: ${corpus.listings.size} listings (${started.seconds}%.0fs)")
       val result     = rows(corpus.listings, corpus.lookups, normalizer, inputs, threads, maxAdds)
       java.nio.file.Files.createDirectories(out.toAbsolutePath.getParent)

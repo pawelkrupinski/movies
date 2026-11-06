@@ -136,7 +136,7 @@ fi
 
 TOOL_FILES=(worker/src/test/scala/services/identity/WhatIfResolve.scala worker/src/test/scala/services/identity/WhatIfAnswers.scala
   worker/src/test/scala/scripts/StageAnswers.scala worker/src/fixtures/scala/tools/MemoLookups.scala
-  worker/src/fixtures/scala/tools/KeptJvm.scala)
+  worker/src/fixtures/scala/tools/KeptJvm.scala worker/src/test/scala/services/identity/MirrorWorld.scala)
 answers_dir=${answers_dir:-$IDENTITY_CACHE/what-if-answers}
 if [ "$answers" = live ] && [ -z "${TMDB_API_KEY:-}" ] && [ -z "${KINOWO_WHAT_IF_NO_VAULT:-}" ]; then
   # TMDB's key from the vault, for the live asks only: the whole run under it, never written anywhere. A vault that will

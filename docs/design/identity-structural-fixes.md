@@ -232,6 +232,12 @@ Pieces landing elsewhere are adopted, not duplicated: the what-if extension (liv
 gate switch (`GATE-SWITCH-STATE`). Each harness migrated is one milestone with its existing specs green and a
 capture-replay case in the same commit (the `driftguards` rule).
 
+**Milestone 3.1 (2026-11-06): the mirror's world** (`services.identity.MirrorWorld`, worker tests). The listings, venue
+pages and documents of the local prod mirror at a moment, replayed through the identity history, and the clock AT that
+moment. `MirrorRecompute`, `FamilyCounterfactual` and `identity-what-if` (`WhatIfResolve.corpusAt`, its settled final
+take too) read the mirror through it; each built its own copy before, every one dated by the wall clock it ran at (the
+verify-dating bug class of a57790c723f2). A what-if `--at` the default (now) reads alike; a past `--at` is now dated by it.
+
 **Measured by:** each migrated harness gives the same verdicts as before on its own specs and on main's last gate run
 (drift: the same flips per seed; slices: the same takes; what-if: `--verify` equal).
 
