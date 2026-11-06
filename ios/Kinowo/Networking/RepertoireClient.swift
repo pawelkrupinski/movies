@@ -276,7 +276,7 @@ extension RepertoireStore {
                 // grid (CardsVisibleUITests). Absence is covered by the
                 // AgeRatingDecodeTests unit path.
                 ageRating: "15",
-                ratings: .empty,
+                ratings: uiTestRatings,
                 countries: ["Polska"],
                 // Non-empty so the detail screen's director / cast meta blocks
                 // actually render — `metaBlock` omits a block whose value is
@@ -294,6 +294,20 @@ extension RepertoireStore {
                 ]
             )
         }
+    }
+
+    /// No ratings, so every card is the same height for the layout suites.
+    /// `KINOWO_UITEST_PENDING_RATINGS=1` gives each card the links of a new release
+    /// whose scores are not in yet: an IMDb page and a Filmweb page, no scores
+    /// (RatingLessPillsUITests).
+    private static var uiTestRatings: Film.Ratings {
+        guard ProcessInfo.processInfo.environment["KINOWO_UITEST_PENDING_RATINGS"] == "1" else { return .empty }
+        return Film.Ratings(
+            imdb: nil, imdbURL: URL(string: "https://www.imdb.com/title/tt7654321/"),
+            metascore: nil, metacriticURL: nil,
+            rottenTomatoes: nil, rottenTomatoesURL: nil,
+            filmweb: nil, filmwebURL: URL(string: "https://www.filmweb.pl/film/Fixture-2026-1"),
+            filmwebRatingPending: true)
     }
 
     /// The `KINOWO_UITEST_ROOM_SHOWTIMES` slots as (time, room): late enough to

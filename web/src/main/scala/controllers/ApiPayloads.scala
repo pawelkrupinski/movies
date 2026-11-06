@@ -11,7 +11,12 @@ case class ApiRatings(
   imdb: Option[Double], imdbURL: Option[WebHref],
   metascore: Option[Int], metacriticURL: Option[WebHref],
   rottenTomatoes: Option[Int], rottenTomatoesURL: Option[WebHref],
-  filmweb: Option[Double], filmwebURL: Option[WebHref]
+  filmweb: Option[Double], filmwebURL: Option[WebHref],
+  // Some(true) when `filmwebURL` is the film's own Filmweb page but Filmweb has no rating yet (a new release): the apps show
+  // a rating-less pill. Without it `filmwebURL` is a search page whenever the film has no stored link, so the apps could not
+  // tell. Omitted otherwise, so builds that predate the field decode as before. (IMDb needs none: `imdbURL` is present only
+  // for a known IMDb id, rated or not.)
+  filmwebRatingPending: Option[Boolean] = None
 )
 case class ApiFilm(
   title: String, slug: String,
@@ -140,7 +145,8 @@ object ApiFilm {
     rottenTomatoes    = ratings.rottenTomatoes,
     rottenTomatoesURL = WebHref.of(ratings.rottenTomatoesUrl).map(_.asciiEncoded),
     filmweb           = ratings.filmweb,
-    filmwebURL        = WebHref.of(ratings.filmwebUrl).map(_.asciiEncoded)
+    filmwebURL        = WebHref.of(ratings.filmwebUrl).map(_.asciiEncoded),
+    filmwebRatingPending = Option.when(ratings.filmweb.isEmpty && ratings.filmwebLinked)(true)
   )
 
   private def cinemaShowingsOf(cs: CinemaShowtimes, cinemaUrlMap: Map[String, WebHref]): ApiCinemaShowings =

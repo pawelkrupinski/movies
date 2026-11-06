@@ -159,3 +159,7 @@ appBanner.close=Close
 
 # ── Errors ──────────────────────────────────────────────────────────────────
 error.unknownCity=Unknown city: {0}
+
+# A rating-less rating pill (a link, no score yet): its title and aria-label.
+rating.imdb.pending=IMDb, no rating yet
+rating.filmweb.pending=Filmweb, no rating yet

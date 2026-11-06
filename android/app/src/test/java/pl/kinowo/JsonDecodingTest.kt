@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.model.Ratings
 import pl.kinowo.net.LenientJson
 
 /**
@@ -40,6 +41,32 @@ class JsonDecodingTest {
         assertNotNull("expected at least one cinema group", cg)
         assertTrue("expected at least one showtime", cg!!.showtimes.isNotEmpty())
         assertTrue("showtime time should look like HH:MM", cg.showtimes.first().time.contains(":"))
+    }
+
+    @Test
+    fun `a film with links but no scores decodes and draws rating-less pills`() {
+        // repertoire_pending.json is what /api/repertoire writes for a new release (ApiRatingPendingSpec): an IMDb
+        // page and a stored Filmweb page, no scores, plus the one additive key `filmwebRatingPending`.
+        val ratings = LenientJson.decodeFromString<List<Film>>(recordedFixture("repertoire_pending.json")).single().ratings
+        assertNull(ratings.imdb)
+        assertNull(ratings.filmweb)
+        assertEquals("https://www.imdb.com/title/tt7654321/", ratings.imdbURL)
+        assertEquals("https://www.filmweb.pl/film/Przepis+na+swieta-2026-1", ratings.filmwebURL)
+        assertEquals(true, ratings.filmwebRatingPending)
+        assertTrue(ratings.imdbPending)
+        assertTrue(ratings.filmwebPending)
+        assertFalse("the ratings row must render for rating-less pills", ratings.isEmpty)
+    }
+
+    @Test
+    fun `a Filmweb search link or a rated source is not pending`() {
+        val search = Ratings(filmwebURL = "https://www.filmweb.pl/search?query=X")
+        assertFalse(search.filmwebPending)
+        assertTrue(search.isEmpty)
+        val rated = Ratings(imdb = 7.0, imdbURL = "https://www.imdb.com/title/tt1/", filmweb = 6.5,
+            filmwebURL = "https://www.filmweb.pl/film/X-1", filmwebRatingPending = true)
+        assertFalse(rated.imdbPending)
+        assertFalse(rated.filmwebPending)
     }
 
     @Test

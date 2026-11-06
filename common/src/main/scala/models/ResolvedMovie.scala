@@ -113,6 +113,13 @@ case class ResolvedRatings(
   filmweb:           Option[Double],
   filmwebUrl:        String
 ) {
+  /** Whether the IMDb link is to the film's own page (an IMDb id is known), rating or not. */
+  def imdbLinked: Boolean = imdbUrl.exists(_.nonEmpty)
+
+  /** Whether the Filmweb link is to the film's own page, not the derived search-page fallback
+   *  (or empty, where Filmweb is not served): a pill can link there before Filmweb has a rating. */
+  def filmwebLinked: Boolean = filmwebUrl.nonEmpty && !RatingSearchUrls.isFilmwebSearch(filmwebUrl)
+
   /** These ratings as `country` serves them. Filmweb is a Polish site, so where the
    *  country does not wire it there is no Filmweb score and no link — whatever the
    *  stored row says: the projection derives a Filmweb search URL for every film, and

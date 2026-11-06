@@ -127,4 +127,8 @@
     <string name="update_required_title">Actualiza la app</string>
     <string name="update_required_body">Esta versión de la app ya no es compatible.</string>
     <string name="update_required_button">Actualizar en Google Play</string>
+
+    <!-- Rating-less rating pill (a link, no score yet): what assistive tech says -->
+    <string name="rating_imdb_pending">IMDb – sin valoración todavía</string>
+    <string name="rating_filmweb_pending">Filmweb – sin valoración todavía</string>
 </resources>

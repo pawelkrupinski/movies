@@ -94,6 +94,11 @@ struct Film: Identifiable, Hashable, Codable {
         let rottenTomatoesURL: URL?
         let filmweb: Double?
         let filmwebURL: URL?
+        /// `true` when `filmwebURL` is the film's own Filmweb page but Filmweb has no
+        /// rating yet (a new release). Optional and defaulted: the server omits the key
+        /// otherwise, and builds that predate it simply never read it. Without it
+        /// `filmwebURL` can be a search page, which is not worth a pill.
+        var filmwebRatingPending: Bool? = nil
 
         static let empty = Ratings(
             imdb: nil, imdbURL: nil,
@@ -102,8 +107,16 @@ struct Film: Identifiable, Hashable, Codable {
             filmweb: nil, filmwebURL: nil
         )
 
+        /// An IMDb id is known (`imdbURL` exists only for one) but there is no score yet.
+        var imdbPending: Bool { imdb == nil && imdbURL != nil }
+
+        /// A Filmweb page is known but Filmweb has no score yet.
+        var filmwebPending: Bool { filmweb == nil && filmwebRatingPending == true && filmwebURL != nil }
+
+        /// No pill to draw: no score and no rating-less IMDb / Filmweb link.
         var isEmpty: Bool {
             imdb == nil && metascore == nil && rottenTomatoes == nil && filmweb == nil
+                && !imdbPending && !filmwebPending
         }
 
         /// Equal-weight average of every rating we hold, each normalised to

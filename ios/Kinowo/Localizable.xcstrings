@@ -34,6 +34,62 @@
     },
     "(%lld)": {},
     "Kopiuj": {},
+    "rating.filmweb.pending": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filmweb – noch keine Bewertung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filmweb, no rating yet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filmweb – sin valoración todavía"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filmweb – brak oceny"
+          }
+        }
+      }
+    },
+    "rating.imdb.pending": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IMDb – noch keine Bewertung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IMDb, no rating yet"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IMDb – sin valoración todavía"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IMDb – brak oceny"
+          }
+        }
+      }
+    },
     "Reset": {},
     "Skopiowano": {},
     "areapicker.all": {

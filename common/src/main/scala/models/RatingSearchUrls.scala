@@ -7,7 +7,10 @@ object RatingSearchUrls {
   private def q(title: String) = java.net.URLEncoder.encode(title, "UTF-8")
   def metacritic(title: String): String     = s"https://www.metacritic.com/search/${q(title)}/?category=2"
   def rottenTomatoes(title: String): String = s"https://www.rottentomatoes.com/search?search=${q(title)}"
-  def filmweb(title: String): String        = s"https://www.filmweb.pl/search?query=${q(title)}"
+  private val FilmwebSearchPrefix           = "https://www.filmweb.pl/search?"
+  def filmweb(title: String): String        = s"${FilmwebSearchPrefix}query=${q(title)}"
+  /** Whether `url` is [[filmweb]]'s search page rather than a film's own page. */
+  def isFilmwebSearch(url: String): Boolean = url.startsWith(FilmwebSearchPrefix)
 
   /** Whether every letter of `title` is Latin script (digits, punctuation and spaces don't count;
    *  a title with no letters, "1917", passes). */

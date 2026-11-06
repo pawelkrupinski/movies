@@ -97,9 +97,23 @@ data class Ratings(
     val rottenTomatoesURL: String? = null,
     val filmweb: Double? = null,
     val filmwebURL: String? = null,
+    /** `true` when [filmwebURL] is the film's own Filmweb page but Filmweb has no rating yet
+     *  (a new release). Absent otherwise (and from builds of the server that predate it);
+     *  without it [filmwebURL] can be a search page, which is not worth a pill. */
+    val filmwebRatingPending: Boolean? = null,
 ) {
+    /** An IMDb id is known (`imdbURL` exists only for one) but there is no score yet. */
+    val imdbPending: Boolean
+        get() = imdb == null && !imdbURL.isNullOrEmpty()
+
+    /** A Filmweb page is known but Filmweb has no score yet. */
+    val filmwebPending: Boolean
+        get() = filmweb == null && filmwebRatingPending == true && !filmwebURL.isNullOrEmpty()
+
+    /** No pill to draw: no score and no rating-less IMDb / Filmweb link. */
     val isEmpty: Boolean
-        get() = imdb == null && metascore == null && rottenTomatoes == null && filmweb == null
+        get() = imdb == null && metascore == null && rottenTomatoes == null && filmweb == null &&
+            !imdbPending && !filmwebPending
 
     /** Weighted average used by the "Ocena" sort, mirroring the server's
      *  `MovieRecord.weightedRating`: each present score normalised to a 0–10

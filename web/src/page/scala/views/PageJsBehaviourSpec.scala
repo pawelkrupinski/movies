@@ -1679,6 +1679,40 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // A source we hold a link for but no rating yet (a new release) renders a rating-less pill: the same
+  // anchor and classes as a rated one, the source's short name for the score, the source page as its link and an
+  // accessible "no rating yet" label. The fixture corpus carries both kinds.
+  "A rating-less rating pill" should "link the source page, carry the label and its short name, beside unchanged rated pills" in {
+    onPath("/") { page =>
+      def count(selector: String) = page.evalInt(s"document.querySelectorAll('$selector').length")
+      count("""a.rating-fw[aria-label="Filmweb – brak oceny"][title="Filmweb – brak oceny"]""") should be > 0
+      count("""a.rating-imdb[aria-label="IMDb – brak oceny"][title="IMDb – brak oceny"]""") should be > 0
+      // every rating-less pill links its own page (never Filmweb's search page), shows its short name as the score and is a tap target
+      page.evalBool(
+        """[...document.querySelectorAll('a.rating-fw[aria-label], a.rating-imdb[aria-label]')].every(a =>
+          |  /^https:\/\/www\.(filmweb\.pl\/film\/|imdb\.com\/title\/tt)/.test(a.getAttribute('href')) &&
+          |  a.target === '_blank' && a.getAttribute('rel') === 'nofollow noopener' &&
+          |  a.querySelector('[class$="-value"]').textContent === (a.classList.contains('rating-fw') ? 'FW' : 'IMDb'))""".stripMargin
+      ) shouldBe true
+      // the label follows the page language, with the visible text unchanged
+      for ((lang, imdb, filmweb) <- Seq(
+             ("de", "IMDb – noch keine Bewertung", "Filmweb – noch keine Bewertung"),
+             ("en", "IMDb, no rating yet", "Filmweb, no rating yet"),
+             ("es", "IMDb – sin valoración todavía", "Filmweb – sin valoración todavía"))) {
+        page.eval(s"applyLanguage('$lang')")
+        count(s"""a.rating-imdb[aria-label="$imdb"][title="$imdb"]""") should be > 0
+        count(s"""a.rating-fw[aria-label="$filmweb"][title="$filmweb"]""") should be > 0
+        page.evalBool("""[...document.querySelectorAll('a.rating-fw[aria-label]')].every(a => a.querySelector('.rating-fw-value').textContent === 'FW')""") shouldBe true
+      }
+      // rated pills are unchanged: a score, no label
+      count("a.rating-imdb:not([aria-label])") should be > 0
+      page.evalBool(
+        """[...document.querySelectorAll('a.rating-imdb:not([aria-label]), a.rating-fw:not([aria-label])')].every(a =>
+          |  /\d\.\d/.test(a.textContent))""".stripMargin
+      ) shouldBe true
+    }
+  }
+
   "isAndroidChrome" should "match Android Chrome but not iOS, desktop, or Firefox Android" in {
     onPath("/") { page =>
       val androidChrome = "Mozilla/5.0 (Linux; Android 14; Pixel 9a) AppleWebKit/537.36 " +

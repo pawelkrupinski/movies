@@ -127,4 +127,8 @@
     <string name="update_required_title">Update the app</string>
     <string name="update_required_body">This version of the app is no longer supported.</string>
     <string name="update_required_button">Update on Google Play</string>
+
+    <!-- Rating-less rating pill (a link, no score yet): what assistive tech says -->
+    <string name="rating_imdb_pending">IMDb, no rating yet</string>
+    <string name="rating_filmweb_pending">Filmweb, no rating yet</string>
 </resources>

@@ -25,10 +25,11 @@ struct RatingBadgesView: View {
 
     var body: some View {
         FlowLayout(spacing: style.interPillGap, lineSpacing: 4) {
-            if let imdb = ratings.imdb {
+            if ratings.imdb != nil || ratings.imdbPending {
                 Badge.twoTone(
                     label:    "IMDb",
-                    value:    Film.Ratings.scoreText(imdb),
+                    value:    ratings.imdb.map(Film.Ratings.scoreText) ?? "IMDb",
+                    accessibilityLabel: ratings.imdb == nil ? "rating.imdb.pending" : nil,
                     url:      ratings.imdbURL,
                     appURL:   ratings.imdbAppURL,
                     open:     openURL,
@@ -61,10 +62,11 @@ struct RatingBadgesView: View {
                     style:    style
                 )
             }
-            if let filmweb = ratings.filmweb {
+            if ratings.filmweb != nil || ratings.filmwebPending {
                 Badge.twoTone(
                     label:    "FW",
-                    value:    Film.Ratings.scoreText(filmweb),
+                    value:    ratings.filmweb.map(Film.Ratings.scoreText) ?? "FW",
+                    accessibilityLabel: ratings.filmweb == nil ? "rating.filmweb.pending" : nil,
                     url:      ratings.filmwebURL,
                     labelBg:  Color(red: 1.0,   green: 0.424, blue: 0.0),    // #ff6c00
                     labelFg:  .white,
@@ -97,6 +99,7 @@ private enum Badge {
     static func twoTone(
         label:   String,
         value:   String,
+        accessibilityLabel: LocalizedStringKey? = nil,
         url:     URL?,
         appURL:  URL? = nil,
         open:    OpenURLAction? = nil,
@@ -127,6 +130,7 @@ private enum Badge {
         // "7…" tails on narrow grid cells. FlowLayout wraps overlong
         // pills to a new line instead.
         .fixedSize(horizontal: true, vertical: false)
+        .modifier(OptionalAccessibilityLabel(label: accessibilityLabel))
 
         if let appURL, let open {
             // Try the app scheme first; `accepted == false` means no installed
@@ -164,6 +168,21 @@ private enum Badge {
             Link(destination: url) { body }.buttonStyle(.plain)
         } else {
             body
+        }
+    }
+}
+
+/// Replaces a rating-less pill's spoken text ("IMDb —") with "IMDb, no rating yet";
+/// a rated pill (`label == nil`) keeps SwiftUI's own combined text.
+private struct OptionalAccessibilityLabel: ViewModifier {
+    let label: LocalizedStringKey?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let label {
+            content.accessibilityElement(children: .ignore).accessibilityLabel(label)
+        } else {
+            content
         }
     }
 }

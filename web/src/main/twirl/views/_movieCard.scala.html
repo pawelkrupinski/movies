@@ -14,7 +14,7 @@
     <div class="card-title">
       @_cardTitle(movie, slug, linkGenres = true, ageRating = resolved.ageRating)
     </div>
-    @_ratingBadges(Some(resolved.ratings))
+    @_ratingBadges(Some(resolved.ratings), messages(_))
     @showingsContent
   </div>
 </div>

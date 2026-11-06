@@ -45,7 +45,7 @@
         <div class="film-original-title">@ot</div>
       }
 
-      @_ratingBadges(Some(film.resolved.ratings))
+      @_ratingBadges(Some(film.resolved.ratings), messages(_))
 
       @* One pill per cinema showing the film, linking to that cinema's own page
          for it. A London film plays 60+ venues, and 60 pills between the title

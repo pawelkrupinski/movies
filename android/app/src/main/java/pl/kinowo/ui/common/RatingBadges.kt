@@ -14,7 +14,10 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -24,6 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
+import pl.kinowo.R
 import pl.kinowo.model.Ratings
 import pl.kinowo.ui.theme.CardElevated
 import pl.kinowo.ui.theme.FwOrange
@@ -100,10 +104,11 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(gap),
         verticalArrangement = Arrangement.spacedBy(gap),
     ) {
-        ratings.imdb?.let { v ->
+        if (ratings.imdb != null || ratings.imdbPending) {
             LabelValuePill(
                 label = "IMDb", labelBg = ImdbYellow, labelFg = Color.Black,
-                value = oneDecimal(v), valueFg = ImdbYellow,
+                value = ratings.imdb?.let(::oneDecimal) ?: "IMDb", valueFg = ImdbYellow,
+                spokenLabel = if (ratings.imdb == null) stringResource(R.string.rating_imdb_pending) else null,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 labelWeight = style.labelWeight, valueWeight = style.valueWeight,
                 onClick = { openImdb(context, ratings.imdbURL) },
@@ -128,10 +133,11 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
                 onClick = { openUrl(context, ratings.rottenTomatoesURL) },
             )
         }
-        ratings.filmweb?.let { v ->
+        if (ratings.filmweb != null || ratings.filmwebPending) {
             LabelValuePill(
                 label = "FW", labelBg = FwOrange, labelFg = Color.White,
-                value = oneDecimal(v), valueFg = FwOrangeLight,
+                value = ratings.filmweb?.let(::oneDecimal) ?: "FW", valueFg = FwOrangeLight,
+                spokenLabel = if (ratings.filmweb == null) stringResource(R.string.rating_filmweb_pending) else null,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 labelWeight = style.labelWeight, valueWeight = style.valueWeight,
                 onClick = { openUrl(context, ratings.filmwebURL) },
@@ -172,8 +178,11 @@ private fun LabelValuePill(
     fontSize: TextUnit, hPad: Dp, vPad: Dp, corner: Dp,
     labelWeight: FontWeight, valueWeight: FontWeight,
     onClick: () -> Unit,
+    /** What assistive tech says instead of the pill's text; set for a rating-less pill. */
+    spokenLabel: String? = null,
 ) {
-    Row(modifier = Modifier.clip(RoundedCornerShape(corner)).clickable(onClick = onClick)) {
+    val spoken = if (spokenLabel == null) Modifier else Modifier.semantics(mergeDescendants = true) { contentDescription = spokenLabel }
+    Row(modifier = Modifier.clip(RoundedCornerShape(corner)).clickable(onClick = onClick).then(spoken)) {
         Text(
             label, color = labelFg, style = pillTextStyle(fontSize, labelWeight),
             modifier = Modifier.background(labelBg).padding(horizontal = hPad, vertical = vPad),

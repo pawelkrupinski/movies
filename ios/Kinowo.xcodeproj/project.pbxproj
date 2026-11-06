@@ -98,6 +98,7 @@
 		DD00000000000000000308 /* CityChoiceLocateUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000308 /* CityChoiceLocateUITests.swift */; };
 		DD000000000000000004A1 /* DetailShowsAllDaysUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000000000000000004A1 /* DetailShowsAllDaysUITests.swift */; };
 		DD000000000000000004B1 /* CinemaLinkRowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000000000000000004B1 /* CinemaLinkRowUITests.swift */; };
+		DD0000000000000000FF01 /* RatingLessPillsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000FF01 /* RatingLessPillsUITests.swift */; };
 		DD0000000000000000001F /* AccessibilityIdentifiers.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000001B /* AccessibilityIdentifiers.swift */; };
 
 		DD00000000000000000022 /* RetryBackoff.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000022 /* RetryBackoff.swift */; };
@@ -221,6 +222,7 @@
 		CC00000000000000000308 /* CityChoiceLocateUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityChoiceLocateUITests.swift; sourceTree = "<group>"; };
 		CC000000000000000004A1 /* DetailShowsAllDaysUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailShowsAllDaysUITests.swift; sourceTree = "<group>"; };
 		CC000000000000000004B1 /* CinemaLinkRowUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaLinkRowUITests.swift; sourceTree = "<group>"; };
+		CC0000000000000000FF01 /* RatingLessPillsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingLessPillsUITests.swift; sourceTree = "<group>"; };
 
 		CC00000000000000000022 /* RetryBackoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RetryBackoff.swift; sourceTree = "<group>"; };
 		CC00000000000000000044 /* SwipeHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeHint.swift; sourceTree = "<group>"; };
@@ -438,6 +440,7 @@
 				CC00000000000000000308 /* CityChoiceLocateUITests.swift */,
 				CC000000000000000004A1 /* DetailShowsAllDaysUITests.swift */,
 				CC000000000000000004B1 /* CinemaLinkRowUITests.swift */,
+				CC0000000000000000FF01 /* RatingLessPillsUITests.swift */,
 				CC000000000000000004C1 /* DetailPosterCacheUITests.swift */,
 			);
 			path = KinowoUITests;
@@ -649,6 +652,7 @@
 				DD00000000000000000308 /* CityChoiceLocateUITests.swift in Sources */,
 				DD000000000000000004A1 /* DetailShowsAllDaysUITests.swift in Sources */,
 				DD000000000000000004B1 /* CinemaLinkRowUITests.swift in Sources */,
+				DD0000000000000000FF01 /* RatingLessPillsUITests.swift in Sources */,
 				DD000000000000000004C1 /* DetailPosterCacheUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
