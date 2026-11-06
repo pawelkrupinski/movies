@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#
+# Watch a worker image roll out, then read PromQL checks over a window: PASS/FAIL per check. Started by the agent
+# that landed a change to what the worker serves over time (a gate, hold, settle or ask; pre-push's `driftguards`
+# makes it ship its gauges first), in the background, acting on the verdict (review 2026-11-06 P4).
+#
+#   scripts/deploy-watch --image <tag|registry/movies-worker:tag> [--checks identity-gate|FILE] [--countries pl,de,...]
+#                        [--every 5m] [--window 2h] [--poll 1m] [--rollout-timeout 90m] [--no-rollout]
+#
+# 1. ROLLOUT: polls kube-state-metrics' kube_pod_container_info (every --poll) until every worker pod of each country
+#    runs the tag (a country with an old pod beside a new one is still rolling). --no-rollout skips it. Not rolled by
+#    --rollout-timeout: exit 1.
+# 2. WINDOW: reads each check now and every --every until --window is up; a failing reading prints `RED <check>: ...`
+#    on stderr as it is read, so a background watcher can act at once.
+# 3. VERDICT on stdout: `PASS|FAIL<TAB><check><TAB><op threshold><TAB><readings; the first failing one>` per check, then
+#    `DEPLOY-WATCH: PASS|FAIL (...)`. Exit 0 all passed, 1 any failed or not rolled, 2 usage.
+#
+# Checks: a TSV (scripts/deploy-watch-checks/<name>.tsv, or a path), one per line: name, op (<= < >= > == !=),
+# threshold, missing (`fail`: a country without the series fails -- the image does not export the gauge; `zero`: a
+# counter not yet incremented reads 0), and PromQL returning one series per `country`. `identity-gate` (the default)
+# reads the model's held listings, held oldest (<= 15 min), held-and-not-draining (oldest over 10 min with
+# nothing promoted in 30 min), and take flips / reversals per hour against 2x the same hour yesterday.
+#
+# A canary: --countries es watches the one country rolled first (docs/design/identity-rollout.md).
+# Prometheus: `ssh monitoring-1 curl` to http://10.20.0.11:9090 (DEPLOY_WATCH_PROMETHEUS); DEPLOY_WATCH_QUERY=<cmd>
+# answers each query instead (given the PromQL as its argument, printing Prometheus' JSON; the tests use it).
+# The logic and its tests: scripts/deploy_watch.py, scripts/deploy_watch_test.py.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >&2; exit 2 ;; esac
+exec python3 -I "$(dirname "$0")/deploy_watch.py" "$@"
