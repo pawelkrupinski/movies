@@ -254,7 +254,8 @@ object IdentitySlice {
   def incrementally(core: Seq[Listing], context: Seq[Listing], reads: Reads, seed: Long): Seq[ResolverDecision] = {
     val (calibration, pins, decorations) = OlderRefs.resolveInputs(reads.prod.pins)
     val model = new IncrementalResolver(reads.lookups, reads.normalizer, calibration, pins, decorations)
-    val all   = new scala.util.Random(seed).shuffle(core ++ context)
+    // the one replay world's order: each listing placed by the seed and its own key, so one more or fewer moves none other
+    val all   = tools.ReplayOrder.of(core ++ context, seed)(l => services.movies.ListingKey.serialised(l.key))
     all.grouped(math.max(1, all.size / 3 + 1)).foreach(model.batch(_, Nil, services.identity.AnswersChanged.Empty))
     val coreKeys = core.map(_.key).toSet
     model.decisions.filter(_.members.exists(coreKeys))
@@ -748,7 +749,7 @@ object IdentitySlice {
       val periodic = takes.map(t => t.key -> t.film).toMap
       val venues   = slice.core.map(_.venue).distinct.sorted
       val moved = (1 to modes).flatMap { seed =>
-        val subset  = new scala.util.Random(seed).shuffle(venues).take(math.max(1, venues.size / 2)).toSet
+        val subset  = tools.ReplayOrder.of(venues, seed)(identity).take(math.max(1, venues.size / 2)).toSet
         val changed = decided.changed(subset)
         wanted.flatMap(k => changed.decisionOf.get(k).map(filmOf).filter(f => !periodic.get(k).contains(f)).map(f => (seed, k, f, subset(k.venue))))
       }
