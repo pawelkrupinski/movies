@@ -108,4 +108,16 @@ class TakeReversalsSpec extends AnyFlatSpec with Matchers {
     reversals.note(Seq(change("A", Some(1), Some(2)), change("B", Some(1), Some(2))), model)
     reversals.note(Seq(change("A", Some(2), Some(1))), model) shouldBe empty // A forgotten when B was noted
   }
+  it should "start from a seed of the latest changes within the horizon, at most its capacity, none an oscillation's" in {
+    val clock = new MutableClock(Instant.parse("2026-11-05T10:00:00Z"))
+    val at    = clock.millis()
+    def held(seconds: Long) = TakeReversals.Held(Some(1), Some(2), Some("model"), deploy = false, Set.empty[ListingKey].hashCode, at - seconds * 1000, 0L)
+    val reversals = new TakeReversals(clock, maxHeld = 2,
+      seed = Seq(key("Old") -> held(25 * 3600), key("A") -> held(300), key("B") -> held(200), key("C") -> held(100)))
+    // the next projection, the boot's first: neither an oscillation (projections apart unknown), both flips
+    reversals.note(Seq("B", "C").map(change(_, Some(2), Some(1))), _ => None)
+      .map(r => (r.change.listing.rawTitle, r.oscillation, r.flip)) shouldBe Seq(("B", false, true), ("C", false, true))
+    // Old past the horizon, A the least recent past the capacity of two: neither seeded
+    reversals.note(Seq("Old", "A").map(change(_, Some(2), Some(1))), _ => None) shouldBe empty
+  }
 }

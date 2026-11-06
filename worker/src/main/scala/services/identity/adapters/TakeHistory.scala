@@ -31,6 +31,32 @@ final class TakeHistory(history: IdentityHistory, reads: Listing => Seq[String],
 object TakeHistory {
   val Discard: TakeHistory = new TakeHistory(IdentityHistory.Discard, _ => Nil, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC), "")
 
+  /** What [[TakeReversals]] held at `now` (epoch millis) of each listing's last film change, read back off the take
+   *  history (`history`, at boot) over [[TakeReversals.Horizon]]: the latest entry of each listing whose TMDB film moved,
+   *  its films, stage, members and when, and whether a deploy set it off (its line's `trigger`, `review` for a pin's) --
+   *  exactly what [[TakeReversals.note]] held of it, so a reversal straddling a restart is counted as one within a
+   *  process is. A few hundred entries a day a country (DE 609 in the 3 days to 2026-11-06), read once. */
+  def reversalsHeld(history: IdentityHistoryReader, now: Long): Seq[(ListingKey, TakeReversals.Held)] =
+    reversalsHeld(history.since(Seq(HistoryEntry.Take), now - TakeReversals.Horizon.toMillis))
+
+  private def reversalsHeld(entries: Seq[HistoryEntry]): Seq[(ListingKey, TakeReversals.Held)] = {
+    def tmdb(d: BsonDocument, field: String): Option[Int] = Option(d.get(field)).filter(_.isNumber).map(_.asNumber.intValue)
+    def text(d: BsonDocument, field: String): Option[String] = Option(d.get(field)).filter(_.isString).map(_.asString.getValue)
+    val moved = entries.iterator.filter(_.kind == HistoryEntry.Take).flatMap(e => e.after.map(e -> _))
+      .filter { case (_, d) => tmdb(d, "tmdb_before") != tmdb(d, "tmdb_after") }
+    moved.toSeq.groupBy(_._1.id).toSeq.flatMap { case (id, changes) =>
+      val (entry, d) = changes.sortBy(_._1.at).last   // stable: of two at one millisecond, the one written last
+      ListingKey.parse(id).map { listing =>
+        val stage   = text(d, "stage")
+        // the decision's listings as TakeReversals hashes them: none when no decision held the listing (no stage)
+        val members = if (stage.isEmpty) Set.empty[ListingKey] else Option(d.get("members")).filter(_.isArray).toSeq
+          .flatMap(_.asArray.getValues.asScala).filter(_.isString).flatMap(v => ListingKey.parse(v.asString.getValue)).toSet
+        listing -> TakeReversals.Held(tmdb(d, "tmdb_before"), tmdb(d, "tmdb_after"), stage, text(d, "trigger").contains("deploy"),
+          members.hashCode, entry.at, 0L)
+      }
+    }
+  }
+
   /** A line's fields as BSON: each a string, a number or a flag; a `None` field left out, as the log line leaves it. */
   def fieldsDoc(fields: Seq[(String, Any)]): BsonDocument = {
     val d = new BsonDocument()

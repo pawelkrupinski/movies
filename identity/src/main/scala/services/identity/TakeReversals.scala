@@ -27,15 +27,25 @@ import scala.concurrent.duration.*
  *
  * Memory: the LAST film change of each listing changed within the horizon, at most `maxHeld` of them (a projection logs
  * at most 2,000 changes; the backtest's week moved a few thousand listings a country), the least recently changed
- * forgotten first: a few MB at most per country, the listing keys the model's own. A worker restart forgets it, so a
- * reversal whose two changes straddle a restart is not counted — but for one undone by the boot's own projection, which
- * is a deploy's and no flip either way.
+ * forgotten first: a few MB at most per country, the listing keys the model's own. A worker restart (an OOM, a SIGKILL,
+ * a deploy) starts from `seed`: the last film changes the take history kept within the horizon (`TakeHistory.reversalsHeld`,
+ * read at boot), the latest `maxHeld`, so a reversal whose two changes straddle a restart is counted. A seeded change is
+ * never an oscillation's (its projections apart are unknown, and taken as more than [[TakeReversals.OscillationWindow]]),
+ * and one a deploy set off keeps its mark: a reversal of it, or one the boot's own projection makes, is no flip.
  */
-final class TakeReversals(clock: Clock, horizon: FiniteDuration = TakeReversals.Horizon, maxHeld: Int = 20000) {
+final class TakeReversals(clock: Clock, horizon: FiniteDuration = TakeReversals.Horizon, maxHeld: Int = 20000,
+                          seed: Seq[(ListingKey, TakeReversals.Held)] = Nil) {
   import TakeReversals.*
   private var projection = 0L
   // insertion-ordered, a listing re-inserted at each change: the eldest entry is the least recently changed listing
   private val held = new java.util.LinkedHashMap[ListingKey, Held](16, 0.75f, false)
+  locally {
+    val now = clock.millis()
+    seed.filter { case (_, h) => now - h.at <= horizon.toMillis }.sortBy(_._2.at).takeRight(maxHeld).foreach { case (listing, h) =>
+      held.remove(listing)
+      held.put(listing, h.copy(projection = Seeded))
+    }
+  }
 
   /** Notes one written projection's changes (none when it moved no take) and returns those that reverse the listing's last
    *  film change. Only a match change ([[TakeChange.moved]]) that moves the TMDB film is one. `decision`: the decision now
@@ -73,6 +83,8 @@ object TakeReversals {
   val Horizon: FiniteDuration = 24.hours
   /** The most written projections apart an oscillation's two changes are. */
   val OscillationWindow = 3
+  /** The projection a seeded change is held at: before the boot's first, by more than [[OscillationWindow]]. */
+  private val Seeded: Long = -OscillationWindow.toLong
   /** The stage of a change no decision names (a listing no cluster holds). */
   val NoStage = "none"
   /** Every [[Reversal.cause]]: `scripts/flip-timeline`'s classes. */

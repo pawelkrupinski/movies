@@ -613,6 +613,52 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       Seq(Helios, KinoApollo, Multikino).map(_.displayName).sorted.map((_, "film-none-film", "model", "model", true))
   }
 
+  /** The flip monitor across a restart ([[TakeReversals]] seeded from the take history at construction): an OOM or a
+   *  SIGKILL between a take's loss and its return used to forget the loss, so the reversal was never counted. A loss a
+   *  deploy's (or a restart's) boot projection made keeps that mark: its reversal is no flip, as within a process. */
+  "A take lost before a worker restart and regained after it" should "count as a reversal, and as no flip when a boot projection lost it" in {
+    var takes = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
+    val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
+        val film = takes(d.members.head.rawTitle)
+        ResolverDecision(d.members, film, if (film.isDefined) 0.9 else 0.4,
+          if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.BelowThreshold, Seq("because"))()
+      }))
+    }
+    val time = new tools.MutableClock(Instant.parse("2026-09-26T10:00:00Z"))
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, time, matched)
+    w.scrape(programme)
+    w.projection.tick()   // the boot's: decides every listing
+    time.advanceSeconds(600)
+    takes = takes + ("Lalka" -> None)
+    w.projection.tick()   // a periodic one loses Lalka's take at its three venues
+    w.takes.filter(_.moved).map(_.listing.rawTitle).distinct shouldBe Seq("Lalka")
+
+    // killed (no shutdown hook): a new worker over the same stores; its boot projection moves nothing
+    val after = w.restarted
+    after.projection.tick()
+    after.takes.filter(_.moved) shouldBe empty
+    time.advanceSeconds(2 * 3600)
+    takes = takes + ("Lalka" -> Some(501))
+    after.projection.tick()
+    after.reversed.map(r => (r.change.listing.venue, r.pattern, r.flip, r.oscillation, r.cause)).sortBy(_._1) shouldBe
+      Seq(Helios, KinoApollo, Multikino).map(_.displayName).sorted.map((_, "film-none-film", true, false, "RULE"))
+
+    // lost by a boot projection (a deploy's, or a restart's), regained after the next restart: a reversal, and no flip
+    time.advanceSeconds(600)
+    val booted = after.restarted
+    takes = takes + ("Lalka" -> None)
+    booted.projection.tick()
+    booted.takes.filter(_.moved).map(_.trigger).distinct shouldBe Seq(Some("deploy"))
+    val again = booted.restarted
+    time.advanceSeconds(600)
+    again.projection.tick()
+    time.advanceSeconds(600)
+    takes = takes + ("Lalka" -> Some(501))
+    again.projection.tick()
+    again.reversed.map(r => (r.flip, r.cause)).distinct shouldBe Seq((false, "DEPLOY/RESTART"))
+  }
+
   /** Why a take moved, for the build alert to page only on the code's: PL "Kupiłem motocykl, który jest wampirem"
    *  (2026-10-24 18:51Z) — eleven listings rested on Kino Pionier 1907's year and director, its one screening passed, the
    *  scrape dropped it and the take went with it: the evidence's, and right. The same inputs decided otherwise by a new

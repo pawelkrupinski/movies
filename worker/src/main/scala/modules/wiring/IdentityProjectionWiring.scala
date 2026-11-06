@@ -62,6 +62,7 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       takeLines   = new services.identity.TakeChangeLines(country, configuration.commit,
         listing => titleNormalizer.firedRules(listing.cinema, listing.rawTitle), takeReads),
       takeHistory = new services.identity.adapters.TakeHistory(identityHistory, takeReads, clock, configuration.commit.value),
+      reversalsHeld = () => identityReversalsHeld(),
       adopt       = identityListingIntake.adopt,
       // the agreement's takes, each a hand judgement calls wrong withdrawn from its own listing (TakeJudgements.withdraw)
       agreement   = (resolution, listingOf, republished) =>

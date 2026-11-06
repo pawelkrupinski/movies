@@ -160,14 +160,17 @@ final class IdentityProjection(
   /** The venue slot memo, made under its environment (`VenueSlotMemo.environment`). */
   slotMemoOf:  Long => VenueSlotMemo = new VenueSlotMemo(_),
   /** Where each take a written projection moves is kept with what decided it ([[TakeHistory]]). */
-  takeHistory: TakeHistory = TakeHistory.Discard
+  takeHistory: TakeHistory = TakeHistory.Discard,
+  /** The last film changes the take history kept within [[TakeReversals.Horizon]], read once at construction: what the
+   *  reversal count starts from, so a restart forgets none ([[TakeHistory.reversalsHeld]]). */
+  reversalsHeld: () => Seq[(ListingKey, TakeReversals.Held)] = () => Nil
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
 
   private val mapping = new FilmIdMapping(filmIds)
   private val writes  = new ProjectedFilmWrites(cache, logger)
-  private val takeReports = new ProjectionTakeReports(metrics, changeFeed, takeLines, takeHistory, new TakeReversals(clock), logger)
+  private val takeReports = new ProjectionTakeReports(metrics, changeFeed, takeLines, takeHistory, new TakeReversals(clock, seed = reversalsHeld()), logger)
   private var consecutiveShrinks = 0
   /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
   private val slotMemo = slotMemoOf(VenueSlotMemo.environment(normalizer))
