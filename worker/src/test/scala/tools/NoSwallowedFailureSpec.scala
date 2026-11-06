@@ -142,6 +142,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "amendWaiting",
       "case exception: Throwable =>") ->
       "false files the re-try as not upgraded — which a failed amend is (the mode never reached the task); logged at WARN",
+    ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "raise",
+      "case exception: Throwable =>") ->
+      "false leaves the queued task where it was -- the ask is still queued, only not moved up; logged at WARN, and the input gate's own bound takes the listing in",
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "claim",
       "case Failure(exception) =>") ->
       "None is an idle poll: the worker claims again on its next poll, and nothing is decided from it",

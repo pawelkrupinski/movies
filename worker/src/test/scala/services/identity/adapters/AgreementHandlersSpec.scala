@@ -42,6 +42,17 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     queue.monitor().counts.values.sum shouldBe 3
   }
 
+  it should "move a question queued behind the others forward when it is asked again ahead of them" in {
+    // the identity model's input gate asks at claimAhead 0; the same question already queued 7 days behind kept its place
+    // and held the listing for hours (prod, 2026-11-06)
+    val queue    = new InMemoryTaskQueue
+    val klondike = Set[Question](Question.Family(VoterFamily.Imdb, "title|Klondike"))
+    AgreementQuestions.enqueue(queue, klondike, newMemory(), clock)
+    queue.enqueue(TaskType.ScrapeCinema, "scrape|Kino Muza", submittedAt = clock.instant())
+    AgreementQuestions.enqueue(queue, klondike, newMemory(), clock, claimAhead = scala.concurrent.duration.Duration.Zero)
+    queue.claim("w1", scala.concurrent.duration.Duration(1, "minute"), clock.instant().plusSeconds(1)).map(_.taskType) shouldBe Some(TaskType.AskQuestion)
+  }
+
   it should "be claimed after every other task, one enqueued after them included" in {
     val queue = new InMemoryTaskQueue
     AgreementQuestions.enqueue(queue, Set(Question.Family(VoterFamily.Imdb, "title|Klondike")), newMemory(), clock)

@@ -186,6 +186,14 @@ backtest's definition): DE 134 reversals, 67 LATE-ANSWER (Geister's 56 among the
 5. **Incremental equals whole:** a whole resolve reads the same versions the gate let in; every replay (drift check,
    slices, measure) takes each version as ready (`ListingReadiness.Always`), its recorded answers being there already.
 
+**Turned off and made safe (2026-11-06).** Live from ~07:50Z, the gate held ~49 listings 1.6-2.8 h (its gauges, image
+086e33d) and made ten visible losses in DE (a listing re-keyed by its venue taken for new, shown with no film): off at
+d5320aa67d71. Back on with: a held listing's ask MOVES UP the same question already queued 7 days behind
+(`TaskQueue.raise`; the queue kept the first task's place); a question waits only for ONE attempt (`QuestionMemory.attempted`,
+the stage's settle rule), never for its give-up; a hard bound, `IdentityModelService.MaxHold` (10 min, injected clock),
+past which a held listing is taken in and counted (`promoted_total{at="bound"}`); a listing re-keyed at its venue keeps
+its old version as its stand-in; and a new listing hidden while held (`NewWhilePending.Default = Hidden`).
+
 **Not in the gate** (cluster-level, the stage's waits as before): the posters of a cluster's candidates, the find of an
 agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) stay until
 1c measures what is left of them.

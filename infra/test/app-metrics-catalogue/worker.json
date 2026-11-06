@@ -55,7 +55,7 @@
     {"name": "kinowo_worker_identity_model_large_families", "tier": "worker", "type": "gauge", "sample": "kinowo_worker_identity_model_large_families", "boot": "NaN", "labels": {}},
     {"name": "kinowo_worker_identity_model_largest_family_listings", "tier": "worker", "type": "gauge", "sample": "kinowo_worker_identity_model_largest_family_listings", "boot": "NaN", "labels": {}},
     {"name": "kinowo_worker_identity_model_largest_family_nodes", "tier": "worker", "type": "gauge", "sample": "kinowo_worker_identity_model_largest_family_nodes", "boot": "NaN", "labels": {}},
-    {"name": "kinowo_worker_identity_model_promoted", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_promoted_total", "boot": "0", "labels": {"at": ["boot", "drain"]}},
+    {"name": "kinowo_worker_identity_model_promoted", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_promoted_total", "boot": "0", "labels": {"at": ["boot", "bound", "drain"]}},
     {"name": "kinowo_worker_identity_model_rebuilds", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_rebuilds_total", "boot": "0", "labels": {}},
     {"name": "kinowo_worker_identity_model_resolved", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_resolved_total", "boot": "0", "labels": {}},
     {"name": "kinowo_worker_identity_model_takeup_failures", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_takeup_failures_total", "boot": "0", "labels": {}},

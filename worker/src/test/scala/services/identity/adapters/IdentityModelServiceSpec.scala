@@ -66,6 +66,8 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     def batch(batch: ModelBatch): Unit = (); def rebuilt(): Unit = (); def takeUpFailed(): Unit = ()
     override def held(count: Int, oldestSeconds: Double): Unit = heldReports :+= (count -> oldestSeconds)
     override def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = promotions :+= (heldSeconds -> atBoot)
+    var bounds = Seq.empty[Seq[Double]]
+    override def bounded(heldSeconds: Seq[Double]): Unit = bounds :+= heldSeconds
   }
 
   /** `world`, its services' woken drains run nowhere: the spec drains by hand alone, so no drain on a thread of its own races
@@ -722,10 +724,10 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.families.unanswered = Set("Lalka")
     world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2026))))
     first.drain()
-    clock.advance(java.time.Duration.ofSeconds(600))
+    clock.advance(java.time.Duration.ofSeconds(300))
     world.families.unanswered = Set.empty
     world.service().takeUp()
-    world.gate.promotions.last shouldBe (Seq(600.0) -> true)
+    world.gate.promotions.last shouldBe (Seq(300.0) -> true)
     world.gate.heldReports.last shouldBe (0 -> 0.0)
   }
 
@@ -762,6 +764,28 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
         val now = service.peek(10.seconds).get.listings.filter(l => l.venue == Multikino.displayName && !l.kept).loneElement.key
         now should not be paged
         film(service) shouldBe took
+        world.pendingStore.read() shouldBe empty
+      }
+    }
+  }
+
+  it should "take a listing held past its bound in at once, whatever it still waits on, and count it -- at boot too" in {
+    // the backstop: a question the queue does not reach never holds a listing longer than MaxHold
+    for (atBoot <- Seq(false, true)) {
+      val world = handDrained(new World)
+      val clock = world.clock.asInstanceOf[_root_.tools.MutableClock]
+      val first = world.service()
+      first.takeUp()
+      world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+      first.drain()
+      world.families.unanswered = Set("Lalka")                                      // and never answered
+      world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))
+      first.drain()
+      clock.advance(IdentityModelService.MaxHold.plusSeconds(1))
+      if (atBoot) world.service().takeUp() else first.drain()
+      withClue(s"at boot $atBoot") {
+        world.gate.bounds.lastOption.map(_.size) shouldBe Some(1)
+        world.gate.heldReports.last shouldBe (0 -> 0.0)
         world.pendingStore.read() shouldBe empty
       }
     }

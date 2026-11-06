@@ -105,6 +105,24 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
       }.get
   }
 
+  override def raise(dedupKey: String, claimFrom: Instant): Boolean = coll match {
+    case None => false
+    case Some(c) =>
+      val filter = Filters.and(Filters.eq("dedupKey", dedupKey), Filters.eq("active", true), Filters.eq("state", TaskState.Waiting))
+      val at     = org.mongodb.scala.bson.BsonDateTime(claimFrom.toEpochMilli)
+      // $min: forward only -- a task already ahead of `claimFrom` keeps its place; an eligibility set later is brought
+      // to `claimFrom`, none set (eligible already) stays none ($min would set a missing field)
+      Try {
+        val matched = Await.result(c.updateOne(filter, Updates.min("submittedAt", at)).toFuture(), 10.seconds).getMatchedCount > 0
+        if (matched) Await.result(c.updateOne(Filters.and(filter, Filters.gt("nextEligibleAt", at)), Updates.set("nextEligibleAt", at)).toFuture(), 10.seconds)
+        matched
+      }.recover {
+        case exception: Throwable =>
+          logger.warn(s"TaskQueue.raise($dedupKey) failed: ${exception.getMessage}")
+          false
+      }.get
+  }
+
   override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = coll match {
     case None => false
     case Some(_) if fields.isEmpty => false

@@ -32,6 +32,8 @@ trait IdentityModelMetrics {
   def held(count: Int, oldestSeconds: Double): Unit = ()
   /** Held listings taken in, each after waiting so many seconds; `atBoot`: by a take-up, its answers filed while down. */
   def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = ()
+  /** Held listings taken in past the hold's bound, its questions still open: the backstop, never the rule. */
+  def bounded(heldSeconds: Seq[Double]): Unit = ()
 }
 object IdentityModelMetrics {
   val Silent: IdentityModelMetrics = new IdentityModelMetrics {
@@ -96,7 +98,9 @@ final class IdentityModelService(
   /** The listings the gate holds, persisted: what a take-up resumes ([[PendingListingStore]]). */
   pendingStore: PendingListingStore = new PendingListingStore.InMemory(),
   /** Whether a listing new to the model, its version held, is shown meanwhile on its own, Pending -- or not at all. */
-  newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Default
+  newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Default,
+  /** The backstop: a listing held this long is taken in regardless, and counted (`promoted{at="bound"}`). */
+  maxHold: java.time.Duration = IdentityModelService.MaxHold
 ) extends Logging {
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
@@ -363,8 +367,11 @@ final class IdentityModelService(
       val taken = present.flatMap { listing => byKey.get(listing.key) match {
         case None => Some(listing)
         case Some(row) =>
-          val waits = readiness.awaiting(listing)
-          if (waits.isEmpty) { released += listing.key; bootPromoted += (clock.millis() - row.since).max(0L) / 1000.0; Some(listing) }
+          val overdue = clock.millis() - row.since >= maxHold.toMillis
+          val waits   = if (overdue) Set.empty[Question] else readiness.awaiting(listing)
+          val held    = (clock.millis() - row.since).max(0L) / 1000.0
+          if (overdue) metrics.bounded(Seq(held))
+          if (waits.isEmpty) { released += listing.key; if (!overdue) bootPromoted += held; Some(listing) }
           else {
             pending.put(listing.key, IdentityModelService.Held(listing.venue, listing, row.ready, waits, row.since))
             readiness.ask(listing, waits)
@@ -458,16 +465,23 @@ final class IdentityModelService(
     promotedAfter.clear()
     val taken = pending.values.asScala.toSeq.filterNot(h => skip(h.newest.key)).sortBy(h => services.movies.ListingKey.serialised(h.newest.key))
       .flatMap { h =>
-        val waits = readiness.awaiting(h.newest)
+        val late  = overdue(h)
+        val waits = if (late) Set.empty[Question] else readiness.awaiting(h.newest)
+        val held  = (clock.millis() - h.since) / 1000.0
         if (waits.isEmpty) {
-          pending.remove(h.newest.key); promotedAfter += (clock.millis() - h.since) / 1000.0; releasedStandIns ++= h.standIn; Some(h.newest)
+          pending.remove(h.newest.key); (if (late) bounded else promotedAfter) += held; releasedStandIns ++= h.standIn; Some(h.newest)
         }
         else { if (waits != h.waits) pending.put(h.newest.key, h.copy(waits = waits)); None }
       }
     if (promotedAfter.nonEmpty) metrics.promoted(promotedAfter.toSeq, atBoot = false)
+    if (bounded.nonEmpty) { metrics.bounded(bounded.toSeq); logger.warn(s"identity model: ${bounded.size} held listing(s) taken in past the ${maxHold.toMinutes} min bound") }
+    bounded.clear()
     taken
   }
   private val promotedAfter = mutable.ArrayBuffer.empty[Double]
+  private val bounded       = mutable.ArrayBuffer.empty[Double]
+  /** Held past [[maxHold]], by the injected clock: taken in whatever it still waits on. */
+  private def overdue(held: IdentityModelService.Held): Boolean = clock.millis() - held.since >= maxHold.toMillis
 
   /** How many listings the gate holds and how long the oldest has waited, by the injected clock. */
   private def reportHeld(): Unit = {
@@ -526,6 +540,10 @@ final class IdentityModelService(
 }
 
 object IdentityModelService {
+  /** How long the input gate holds a listing at most: its questions are asked ahead of the queue and wait one attempt each,
+   *  so a hold past this is a question the queue does not reach -- taken in, counted, and paged on by the alert's count. */
+  val MaxHold: java.time.Duration = java.time.Duration.ofMinutes(10)
+
   /** A listing whose newest version (`newest`, billed at `venue`) the gate holds on `waits` since `since`; the model reads
    *  `ready` meanwhile -- none for a listing new to it. */
   final case class Held(venue: String, newest: Listing, ready: Option[Listing], waits: Set[Question], since: Long) {

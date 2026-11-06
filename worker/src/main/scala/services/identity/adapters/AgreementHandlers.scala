@@ -45,8 +45,14 @@ object AgreementQuestions {
               claimAhead: scala.concurrent.duration.FiniteDuration = -Behind): Enqueued =
     tasks(memory.due(questions.filter(_.kind.system == QuestionSystem.Agreement))).foldLeft(Enqueued.Zero) { (sum, asked) =>
       val payload = payloadOf(asked)
-      val result  = Enqueued.of(queue.enqueue(TaskType.AskQuestion, s"agreement|${payload(QuestionsKey)}", payload,
-        submittedAt = clock.instant(), claimAhead = claimAhead))
+      val key     = s"agreement|${payload(QuestionsKey)}"
+      val queued  = queue.enqueue(TaskType.AskQuestion, key, payload, submittedAt = clock.instant(), claimAhead = claimAhead)
+      // an ask ahead of the agreement's own, its question already queued behind them: the queued task moved up to this
+      // ask's place -- else it kept its place 7 days behind, and a listing the model's input gate held on it waited for an
+      // idle queue (prod, 2026-11-06: held 1.6-2.8 h)
+      if (queued == services.tasks.EnqueueResult.Duplicate && claimAhead > -Behind)
+        queue.raise(key, clock.instant().minusMillis(claimAhead.toMillis))
+      val result  = Enqueued.of(queued)
       metrics.enqueued(labelOf(asked.head), result.added > 0)
       sum + result
     }

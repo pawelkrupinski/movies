@@ -214,6 +214,12 @@ trait TaskQueue {
    *  request still runs; `false` when no task waits under the key, or `fields` is empty. */
   def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean
 
+  /** Move the WAITING task under `dedupKey` forward: claimed no later than a task submitted at `claimFrom` would be, and
+   *  claimable now -- for a caller whose [[enqueue]] came back Duplicate but whose request is more urgent than the queued
+   *  task's place (the identity model's input gate asking a question the agreement queued 7 days behind). Never moves a
+   *  task back, nor one being worked on. Returns whether a waiting task is now at least that far forward. */
+  def raise(dedupKey: String, claimFrom: Instant): Boolean = false
+
   /** Atomically lease the oldest *eligible* waiting task to `workerId` for
    *  `lease`, or None when nothing is waiting. A task released with a future
    *  `notBefore` (transient-failure backoff) is skipped until `now` reaches it,

@@ -17,7 +17,7 @@ package adapters
 final class AgreementReadiness(questions: Listing => Set[Question], memory: QuestionMemory, enqueue: Set[Question] => Unit)
     extends ListingReadiness {
 
-  def awaiting(listing: Listing): Set[Question] = questions(listing).filterNot(memory.concluded)
+  def awaiting(listing: Listing): Set[Question] = questions(listing).filterNot(memory.attempted)
 
   def ask(listing: Listing, waiting: Set[Question]): Unit = if (waiting.nonEmpty) enqueue(waiting)
 }

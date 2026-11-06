@@ -18,6 +18,20 @@ class InMemoryTaskQueueSpec extends AnyFlatSpec with Matchers {
     q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
+  "raise" should "move a waiting task forward in the claim order, never back, and leave a claimed one alone" in {
+    // the identity model's input gate (2026-11-06): its ask of a question queued 7 days behind waited for an idle queue
+    val q = new InMemoryTaskQueue
+    q.enqueue(ScrapeCinema, "first", submittedAt = t0)
+    q.enqueue(ScrapeCinema, "behind", submittedAt = t0, claimAhead = -(7.days))
+    q.raise("behind", t0.minusSeconds(60)) shouldBe true
+    q.claim("w1", 1.minute, t0).get.dedupKey shouldBe "behind"
+    q.raise("first", t0.plusSeconds(3600)) shouldBe true                  // already ahead of it: keeps its place
+    q.enqueue(ScrapeCinema, "later", submittedAt = t0.plusSeconds(10))
+    q.claim("w1", 1.minute, t0.plusSeconds(20)).get.dedupKey shouldBe "first"
+    q.raise("first", t0) shouldBe false                                     // claimed: left alone
+    q.raise("nothing", t0) shouldBe false
+  }
+
   it should "allow re-enqueue once the prior task is completed (removed)" in {
     val q = new InMemoryTaskQueue
     q.enqueue(ScrapeCinema, "scrape|kino-x", submittedAt = t0)

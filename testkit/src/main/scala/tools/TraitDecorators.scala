@@ -78,6 +78,7 @@ object TraitDecorators {
     case c if c == java.lang.Boolean.TYPE                  => true
     case c if c == classOf[Function0[?]]                   => () => ()
     case c if c == classOf[Function1[?, ?]]                => (_: Any) => ()
+    case c if c == classOf[java.time.Instant]              => java.time.Instant.parse("2026-01-01T00:00:00Z")
     case other =>
       throw new AssertionError(s"TraitDecorators.sampleArgument: no sample for a ${other.getName} parameter — add one")
   }

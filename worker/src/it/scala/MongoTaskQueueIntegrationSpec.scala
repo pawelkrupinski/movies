@@ -43,6 +43,24 @@ class MongoTaskQueueIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     queue.enqueue(TaskType.ScrapeCinema, key, submittedAt = t0) shouldBe EnqueueResult.Duplicate
   }
 
+  it should "raise a waiting task forward in the claim order and make it claimable, never back" in {
+    // the identity model's input gate (2026-11-06): its ask deduplicated against the same question queued 7 days behind
+    val key = s"agreement|it-raise-${System.nanoTime()}"
+    queue.enqueue(TaskType.AskQuestion, key, submittedAt = t0, notBefore = Some(t0.plusSeconds(3600)), claimAhead = -(7.days))
+    val eligible = s"agreement|it-raise-eligible-${System.nanoTime()}"
+    queue.enqueue(TaskType.AskQuestion, eligible, submittedAt = t0)
+    queue.raise(eligible, t0.minusSeconds(60)) shouldBe true
+    Await.result(db.getCollection(collName).find(org.mongodb.scala.model.Filters.eq("dedupKey", eligible)).head(), SpecTimeouts.Io)
+      .get("nextEligibleAt") shouldBe None                                     // eligible already: no eligibility set
+    queue.raise(key, t0.minusSeconds(30 * 86400L)) shouldBe true
+    val raised = Await.result(db.getCollection(collName).find(org.mongodb.scala.model.Filters.eq("dedupKey", key)).head(), SpecTimeouts.Io)
+    raised.get("submittedAt").map(_.asDateTime.getValue) shouldBe Some(t0.minusSeconds(30 * 86400L).toEpochMilli)
+    raised.get("nextEligibleAt").map(_.asDateTime.getValue) shouldBe Some(t0.minusSeconds(30 * 86400L).toEpochMilli)
+    queue.raise(key, t0) shouldBe true                                       // already further forward: kept
+    Await.result(db.getCollection(collName).find(org.mongodb.scala.model.Filters.eq("dedupKey", key)).head(), SpecTimeouts.Io)
+      .get("submittedAt").map(_.asDateTime.getValue) shouldBe Some(t0.minusSeconds(30 * 86400L).toEpochMilli)
+  }
+
   // `countByState` is a single `$group` rather than a `countDocuments` per state,
   // because it runs on the 60s heartbeat AND every /debug request and metrics
   // scrape. Only real Mongo can prove the pipeline shape — the in-memory queue

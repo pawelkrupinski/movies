@@ -26,7 +26,8 @@ import services.identity.adapters.{IdentityModelMetrics, ModelBatch}
  *    `kinowo_worker_identity_model_held_listings` — listings whose newest version it holds on their own questions;
  *    `kinowo_worker_identity_model_held_oldest_seconds` — how long the oldest of them has waited (0 with none: something
  *    stuck shows here and pages, `IdentityGateStuck`); `kinowo_worker_identity_model_promoted_total{at}` — held listings
- *    taken in, at a drain or by a take-up (`at="boot"`: answered while the worker was down);
+ *    taken in, at a drain or by a take-up (`at="boot"`: answered while the worker was down), or past the hold's bound
+ *    (`at="bound"`: the backstop -- something the queue does not reach);
  *    `kinowo_worker_identity_model_hold_seconds` — how long each waited.
  *
  * Every country's series exist from boot: the counters at 0, the gauges at NaN until the first drain measures
@@ -126,7 +127,7 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     Seq(families, seconds, largestListings, largestNodes, large, held, heldOldest).foreach(_.labelValues(c).set(Double.NaN))
     Seq(resolved, rebuilds, takeUpFailures, historyDropped).foreach(_.labelValues(c))
     Seq("venue", "observation").foreach(events.labelValues(c, _))
-    Seq("drain", "boot").foreach(promoted.labelValues(c, _))
+    Seq("drain", "boot", "bound").foreach(promoted.labelValues(c, _))
     holdSeconds.labelValues(c)
   }
 
@@ -146,6 +147,10 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     override def held(count: Int, oldestSeconds: Double): Unit = {
       IdentityModelGauges.this.held.labelValues(country).set(count.toDouble)
       heldOldest.labelValues(country).set(oldestSeconds)
+    }
+    override def bounded(heldSeconds: Seq[Double]): Unit = {
+      IdentityModelGauges.this.promoted.labelValues(country, "bound").inc(heldSeconds.size.toDouble)
+      heldSeconds.foreach(holdSeconds.labelValues(country).observe)
     }
     override def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = {
       IdentityModelGauges.this.promoted.labelValues(country, if (atBoot) "boot" else "drain").inc(heldSeconds.size.toDouble)

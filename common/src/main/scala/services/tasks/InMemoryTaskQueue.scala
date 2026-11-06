@@ -60,6 +60,14 @@ class InMemoryTaskQueue extends TaskQueue {
     result
   }
 
+  override def raise(dedupKey: String, claimFrom: Instant): Boolean = lock.synchronized {
+    rows.values.find(r => r.dedupKey == dedupKey && r.state == TaskState.Waiting).exists { r =>
+      def earlier(at: Instant) = if (at.isAfter(claimFrom)) claimFrom else at
+      // an eligibility already set later moves to `claimFrom`; none set is eligible already
+      rows.put(r.id, r.copy(submittedAt = earlier(r.submittedAt), nextEligibleAt = r.nextEligibleAt.map(earlier))); true
+    }
+  }
+
   override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = lock.synchronized {
     // "Amended" means MATCHED, as Mongo's matched count reports it: a waiting task that
     // already carries `fields` still runs the caller's request.
