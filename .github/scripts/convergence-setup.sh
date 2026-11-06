@@ -41,8 +41,18 @@ repo="$(cd "$here/../.." && pwd)"
 gh_optional="$repo/scripts/ci/gh-optional.sh"
 KINOWO_GH=${KINOWO_GH:-gh}
 
+# The release the pin and its fills live on comes from the calling workflow's `env`. Unset, every read would
+# fail on it, and `pair` would call that "no recorded pair pinned" (Identity family explorer #1, run 42182907464):
+# say what is missing, and end the step, in the shell that asked.
+require_release_tag() {
+  [ -n "${FIXTURE_RELEASE_TAG:-}" ] && return 0
+  echo "::error::FIXTURE_RELEASE_TAG is not set -- the calling workflow's env must name the fixtures release (FIXTURE_RELEASE_TAG: convergence-fixtures)" >&2
+  exit 1
+}
+
 pinned() {
   local code="$1" dir marker present line corpus recorded tree
+  require_release_tag
   dir="$(mktemp -d)"
   marker="hermetic-$code.txt"
   present=$("$gh_optional" release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir "$dir" --clobber) ||
@@ -74,7 +84,8 @@ pair() {
     recorded=$("$KINOWO_GH" run view "$corpus_run" --json createdAt --jq .createdAt 2>/dev/null) || recorded=""
     pair="$corpus_run ${recorded:-unknown} enrichment-$code-$corpus_run.tar.*" named=1
   fi
-  # A failed read or a malformed pin is no pair, and fails just below.
+  # A failed read or a malformed pin is no pair, and fails just below; a missing release tag ends the step here.
+  [ -n "$pair" ] || require_release_tag
   [ -n "$pair" ] || pair=$(pinned "$code") || pair=""
   read -r corpus recorded tree fills <<< "$pair"
   if [ -z "${tree:-}" ]; then
@@ -102,6 +113,7 @@ pair() {
 
 pins() {
   local codes="$1" code json="" out env pair
+  require_release_tag
   out=$(mktemp) env=$(mktemp)
   for code in ${codes//,/ }; do
     : > "$out"

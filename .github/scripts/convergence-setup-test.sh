@@ -104,6 +104,16 @@ step pair uk hermetic
 check "no pinned pair fails the hermetic leg" "1|yes" "$status|$(logged '::error::No recorded pair pinned for uk')"
 step pair es hermetic
 check "a malformed pin fails the hermetic leg" "1|yes" "$status|$(logged '::error::No recorded pair pinned for es')"
+# Identity family explorer #1 (run 42182907464): its workflow set no FIXTURE_RELEASE_TAG, and every row said "No
+# recorded pair pinned" while the pins were on the release.
+rm -rf "$work/ws"; mkdir -p "$work/ws"
+(cd "$work/ws" && PATH="$stub:$PATH" STUB_RELEASE="$release" GITHUB_ENV="$work/env" GITHUB_OUTPUT="$work/output" \
+   env -u FIXTURE_RELEASE_TAG bash "$setup" pair de hermetic) > "$work/log" 2>&1
+status=$?
+check "an unset FIXTURE_RELEASE_TAG fails the hermetic leg by name, never as an absent pin" "1|yes|no" \
+  "$status|$(logged '::error::FIXTURE_RELEASE_TAG is not set')|$(logged 'No recorded pair pinned')"
+check "…and so does pinned, directly" "1|yes" \
+  "$(out=$(PATH="$stub:$PATH" STUB_RELEASE="$release" env -u FIXTURE_RELEASE_TAG bash "$setup" pinned de 2>&1); echo "$?|$(grep -q 'FIXTURE_RELEASE_TAG is not set' <<< "$out" && echo yes || echo no)")"
 
 # ---- pins: the run's pairs, once
 step pins de,uk,es
