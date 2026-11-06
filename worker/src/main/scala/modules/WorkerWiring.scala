@@ -115,10 +115,9 @@ class WorkerWiring(
           new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
           workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
-  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once its
-   *  never-attempted venue page (`pages`) and the questions its own facts put to the families are answered or concluded. */
-  def identityModelReadiness(pages: services.identity.PageWait): services.identity.ListingReadiness =
-    services.identity.ListingReadiness.all(services.identity.ListingReadiness.ofPage(pages), identityListingReadiness)
+  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): OFF ([[WorkerWiring.ModelReadiness]]). */
+  def identityModelReadiness(@scala.annotation.unused pages: services.identity.PageWait): services.identity.ListingReadiness =
+    WorkerWiring.ModelReadiness
   /** The listings the model's input gate holds, persisted (`identity_pending`): what a take-up resumes. */
   lazy val identityPendingStore: services.identity.adapters.PendingListingStore =
     mongoConnection.database.fold[services.identity.adapters.PendingListingStore](new services.identity.adapters.PendingListingStore.InMemory())(
@@ -630,6 +629,14 @@ class WorkerWiring(
 }
 
 object WorkerWiring {
+  /** The model's input gate, from a listing's page wait and its families' questions: OFF since 2026-11-06 ~12:30Z --
+   *  every version taken in at once, as before fix 1. Prod held ~49 listings 1.6-2.8 h (gauges, image 086e33d), shown as
+   *  Pending cards with no film: a held listing's asks deduplicate against the same question already queued 7 days
+   *  behind (`AgreementQuestions.Behind`; the queue keeps the first task's place), so its answer waits for an idle queue.
+   *  Back on, `ListingReadiness.all(ListingReadiness.ofPage(pages), identityListingReadiness)`, once the asks cannot wait
+   *  behind. The held rows are released by the next take-up, each version taken in. */
+  val ModelReadiness: services.identity.ListingReadiness = services.identity.ListingReadiness.Always
+
 
   /** `KINOWO_BG_CONCURRENCY`'s compiled-in default (see `backgroundBudget`). */
   val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)
