@@ -134,6 +134,7 @@ object TmdbResponses {
     // no separate id→name lookup needed.
     val genres = arrayAt(js \ "genres")
       .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
+      .map(services.cinemas.GenreNames.canonical(_, language)).distinct
     // Per-country age rating (BBFC "12A", FSK "16", …) out of the APPENDED
     // `release_dates` block, selecting the DEPLOYMENT country's certification. A
     // cinema-scraped rating still wins (`MovieRecord.ageRating` is cinema-first);

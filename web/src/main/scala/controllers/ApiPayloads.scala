@@ -26,7 +26,10 @@ case class ApiFilm(
   showings: Seq[ApiDayShowings],
   // Some(true) while the film's identity is provisional (`ResolvedMovie.provisional`: the take decided on the inputs as
   // they stand, an answer it reads not filed yet); omitted otherwise.
-  provisional: Option[Boolean] = None
+  provisional: Option[Boolean] = None,
+  // The master-set id ([[services.cinemas.GenreNames]]) of each of `genres` that has one, in order — a stable,
+  // language-independent key beside the display names. Additive: clients that ignore it are unaffected.
+  genreIds: Seq[String] = Seq.empty
 )
 
 /** Detail-only payload for `GET /api/details`: the heavy text (synopsis) and
@@ -124,7 +127,8 @@ object ApiFilm {
           cinemas = cinemas.map(cinemaShowingsOf(_, cinemaUrlMap))
         )
       },
-      provisional      = Option.when(resolved.provisional)(true)
+      provisional      = Option.when(resolved.provisional)(true),
+      genreIds         = fs.movie.genres.flatMap(services.cinemas.GenreNames.idOf).distinct
     )
   }
 

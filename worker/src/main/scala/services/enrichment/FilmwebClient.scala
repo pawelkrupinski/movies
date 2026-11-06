@@ -234,7 +234,8 @@ class FilmwebClient(http: HttpFetch) {
     // is the Polish display label ("Dramat", "Sci-Fi", "Biograficzny").
     val genres = (json \ "genres").asOpt[JsArray].map(_.value).getOrElse(Nil)
       .flatMap(j => (j \ "name" \ "text").asOpt[String].filter(_.nonEmpty))
-      .toSeq
+      .map(services.cinemas.GenreNames.canonical(_, Locale.forLanguageTag("pl")))
+      .toSeq.distinct
     // Filmweb nests the Polish plot under `plot.synopsis` (alongside sourceType
     // + author). Feeds the synopsis tie-break in `pickBest` AND is stored on the
     // Filmweb slot as a Polish synopsis fallback for films TMDB/IMDb didn't cover.

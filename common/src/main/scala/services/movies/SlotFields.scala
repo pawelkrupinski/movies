@@ -37,7 +37,7 @@ object SlotFields {
    *  ([[GenreNames]]: "przygoda" -> "Przygodowy"), kept in order, each once. */
   def genres(raw: Seq[String], language: Locale): Seq[String] = {
     val seen = scala.collection.mutable.HashSet.empty[String]
-    raw.flatMap(GenreSeparator.split).map(_.trim).filter(_.nonEmpty).map(GenreNames.canonical(_, language)).filter(seen.add)
+    raw.flatMap(GenreSeparator.split).map(_.trim).filter(g => g.nonEmpty && !GenreNames.isPlaceholder(g)).map(GenreNames.canonical(_, language)).filter(seen.add)
   }
 
   /** Characters RFC 3986 allows nowhere in a URL, which a browser escapes and `java.net.URI`,

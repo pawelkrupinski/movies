@@ -25,6 +25,7 @@ class SlotFieldsSpec extends AnyFlatSpec with Matchers {
   it should "spell each genre as the vocabulary does, one pill for Przygoda and Przygodowy" in {
     val pl = Country.Poland.language
     SlotFields.genres(Seq("przygoda", "akcja", "animacja", "dla dzieci"), pl) shouldBe Seq("Przygodowy", "Akcja", "Animacja", "Familijny")
+    SlotFields.genres(Seq("Unknown", "Drama"), Country.UnitedKingdom.language) shouldBe Seq("Drama")
     SlotFields.genres(Seq("Przygodowy", "przygoda", "Sci-Fi", "Science Fiction"), pl) shouldBe Seq("Przygodowy", "Sci-Fi")
   }
 
