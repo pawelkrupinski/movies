@@ -150,9 +150,13 @@ class ReviewController(cc: ControllerComponents,
       }
       val items   = pending.map(i => if (i.filmTitle.isDefined) i else i.copy(filmTitle = i.film.tmdb.flatMap(id => looked.get(id -> i.country))))
       // the evidence `scripts/identity-judge-cards` wrote, when it has
-      val cards   = Try(Files.readString(ReviewDigest.judgeCardsPath(labelsPath))).getOrElse("")
+      val cardsPath = ReviewDigest.judgeCardsPath(labelsPath)
+      val (cards, cardsError) = if (!Files.exists(cardsPath)) ("", None) else Try(Files.readString(cardsPath)) match {
+        case Success(text) => (text, None)
+        case Failure(e)    => ("", Some(s"could not read $cardsPath: ${e.getMessage}"))
+      }
       Ok(views.html.reviewDigest(ReviewDigestView(country.getOrElse("all"), kind.filter(Set(ReviewDigest.Kinds.Agent, ReviewDigest.Kinds.Candidate)), items,
-        awaiting.count(_.agentVerdict.isDefined), awaiting.count(_.agentVerdict.isEmpty), labelsPath, labelsError.toSeq ++ candidatesError ++ notices,
+        awaiting.count(_.agentVerdict.isDefined), awaiting.count(_.agentVerdict.isEmpty), labelsPath, labelsError.toSeq ++ candidatesError ++ cardsError ++ notices,
         items.map(i => i.id -> ReviewDigest.otherJudgements(labels, i)).toMap,
         items.flatMap(i => Option(ReviewDigest.judgeCard(cards, i)).filter(_.nonEmpty).map(i.id -> _)).toMap)))
         .withHeaders("Content-Security-Policy" -> modules.CspFilter.WithGoogleFonts)
