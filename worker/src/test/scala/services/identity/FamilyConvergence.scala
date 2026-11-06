@@ -7,6 +7,7 @@ import tools.UnmatchedClusters
 
 import java.nio.file.{Files, Path}
 import scala.collection.concurrent.TrieMap
+import scala.jdk.CollectionConverters._
 import scala.util.Random
 
 /**
@@ -29,7 +30,11 @@ object FamilyConvergence {
 
   /** `shard`: (i, n), the families whose [[shardOf]] is i of n alone -- a CI row's share of a country. */
   final case class Options(exhaustive: Int = 7, levels: Int = 1, orders: Int = 8, steps: Int = 8, threads: Int = 4,
-                           shard: Option[(Int, Int)] = None)
+                           shard: Option[(Int, Int)] = None,
+                           /** THE CHANGE'S REACH (scripts/identity_what_if.py `select`'s rule patterns): a cached verdict
+                            *  stands unless a rule it or its family fired matches one -- the rest of the families are served
+                            *  from the cache under rules that name no code. `None`: the cache stands by its key alone. */
+                           reach: Option[Seq[String]] = None)
 
   /** Which of `n` shards (1-based) a family falls in: by its first member's key, which no code change of a family's
    *  take moves -- a head and its base walk the same families in a row. */
@@ -37,14 +42,25 @@ object FamilyConvergence {
     math.floorMod(scala.util.hashing.MurmurHash3.stringHash(entry.members.keys.map(ListingKey.serialised).min), n) + 1
 
   /** One flip: the stage (`model` or `final`), the listing, its kind (`arrival`, `add/remove`) and the takes it went through. */
-  final case class Flip(stage: String, listing: String, kind: String, witness: String)
+  final case class Flip(stage: String, listing: String, kind: String, witness: String,
+                        /** The rule ids that decided the listing in any subset walked ([[DecisionTrace.rulesOf]], the stage's). */
+                        rules: Seq[String] = Nil)
   /** A read of the closure: its kind (`context`, `lookup`, `receipt`), its id and digest. */
   final case class Read(kind: String, id: String, digest: Long)
-  /** A family's verdict, as cached: its name, key, tier, flips and the closure it was walked over. */
-  final case class Verdict(family: String, key: Long, tier: String, subsets: Int, flips: Seq[Flip], closure: Seq[Read])
-  implicit val flipFormat: OFormat[Flip]       = Json.format[Flip]
+  /** A family's verdict, as cached: its name, key, tier, flips and the closure it was walked over; the rule ids any
+   *  subset's decisions fired (what a change must reach to move it, [[Options.reach]]) and the walk's seconds. */
+  final case class Verdict(family: String, key: Long, tier: String, subsets: Int, flips: Seq[Flip], closure: Seq[Read],
+                           rules: Seq[String] = Nil, seconds: Double = 0)
+  implicit val flipFormat: OFormat[Flip]       = Json.using[Json.WithDefaultValues].format[Flip]
   implicit val readFormat: OFormat[Read]       = Json.format[Read]
-  implicit val verdictFormat: OFormat[Verdict] = Json.format[Verdict]
+  implicit val verdictFormat: OFormat[Verdict] = Json.using[Json.WithDefaultValues].format[Verdict]
+
+  /** Whether any of `rules` matches any of `patterns` (`*` any run): scripts/identity_what_if.py's `matches`, the
+   *  what-if's rule roots read the same way. */
+  def reaches(rules: Iterable[String], patterns: Seq[String]): Boolean = {
+    val regexes = patterns.map(p => ("\\Q" + p.replace("*", "\\E.*\\Q") + "\\E").r)
+    rules.exists(rule => regexes.exists(_.matches(rule)))
+  }
 
   def load(path: Path): Map[Long, Verdict] =
     if (!Files.exists(path)) Map.empty
@@ -91,7 +107,8 @@ object FamilyConvergence {
       val members = all.filter(l => entry.members.contains(l.key))
       val family  = FamilyFinalReads.settle(reads, members, built.whole, lookups, corpus.at, corpus.docs)
       val key     = keyOf(entry, family)
-      cache.get(key).filter(_.closure.forall(read => now(read).contains(read.digest))).getOrElse {
+      def reached(v: Verdict) = options.reach.exists(p => reaches(v.rules ++ entry.rules.values.flatten, p))
+      cache.get(key).filter(_.closure.forall(read => now(read).contains(read.digest))).filterNot(reached).getOrElse {
         walked.incrementAndGet()
         walk(entry, members, family, key, inner)
       }
@@ -100,7 +117,9 @@ object FamilyConvergence {
     def walk(entry: FamilyIndex.Entry, members: Seq[Listing], family: FamilyFinalReads.Settled, key: Long, inner: Int): Verdict = {
       val n       = members.size
       val keys    = members.map(_.key).toSet
+      val started = tools.Stopwatch.start()
       val closure = TrieMap.empty[Read, Unit]
+      val fired   = TrieMap.empty[ListingKey, Set[String]]
       def note(kind: String, id: String, digest: Long): Unit = closure.update(Read(kind, id, digest), ())
       type Takes = Map[ListingKey, Option[String]]
       val memo = TrieMap.empty[Subset, (Takes, Takes)]
@@ -110,6 +129,7 @@ object FamilyConvergence {
         val recorded = new FamilyIndex.RecordingLookups(lookups)
         val regions  = IdentityResolver.resolveRegion(present, recorded, reads.normalizer, inputs.calibration, inputs.pins, inputs.decorations, context)
         val decided  = regions.flatMap(_.decisions)
+        decided.foreach(d => d.members.foreach(k => fired.updateWith(k)(was => Some(was.getOrElse(Set.empty) ++ d.trace.rulesOf(k) ++ d.trace.stage))))
         val settled  = FamilyFinalReads.settle(reads, present, UnmatchedClusters.resolutionOf(decided), lookups, corpus.at, corpus.docs)
         // a context read by the WHOLE corpus's value: the subset's view of it (its absent listings taken out) is a function
         // of that value and the family's members, which the key holds
@@ -151,11 +171,12 @@ object FamilyConvergence {
         (stage, pick) <- Seq[(String, ((Takes, Takes)) => Takes)]("model" -> (_._1), "final" -> (_._2))
         own           <- members.indices
         flip          <- flipOf(own, everyone, subsets, subset => pick(takes(subset)).get(members(own).key).flatten, label)
-      } yield Flip(stage, s"${members(own).venue} | ${members(own).rawTitle}", flip._1, flip._2)
+      } yield Flip(stage, s"${members(own).venue} | ${members(own).rawTitle}", flip._1, flip._2, fired.getOrElse(members(own).key, Set.empty).toSeq.sorted)
       // the closure: what the walk read beyond the family's own entry and settle, which the key already holds
       val own = entry.context.keySet.map(_.id) ++ entry.answers.keySet.map(Dependency.encode) ++
         family.receipts.keySet.map(Dependency.encode) ++ family.lookups.keySet.map(Dependency.encode)
-      Verdict(entry.name, key, tier, memo.size, flips, closure.keys.filterNot(read => own(read.id)).toSeq.sortBy(r => (r.kind, r.id)))
+      Verdict(entry.name, key, tier, memo.size, flips, closure.keys.filterNot(read => own(read.id)).toSeq.sortBy(r => (r.kind, r.id)),
+        fired.values.flatten.toSeq.distinct.sorted, started.seconds)
     }
 
     val entries  = built.index.entries.filter(_.members.sizeIs >= 2)
@@ -218,6 +239,10 @@ object FamilyConvergence {
           val (i, n) = v.split('/') match { case Array(i, n) => (i.toInt, n.toInt); case _ => sys.error(s"--shard $v: i/n") }
           require(i >= 1 && i <= n, s"--shard $v: i in 1..n")
           parse(more, o.copy(shard = Some(i -> n)), cache, rules, dirs, c)
+        // a file of the change's rule patterns (scripts/identity_what_if.py select's), one a line; `*` every rule: walk ALL
+        case "--reach" :: v :: more       =>
+          val patterns = Files.readAllLines(Path.of(v)).asScala.map(_.trim).filter(_.nonEmpty).toSeq
+          parse(more, o.copy(reach = Some(patterns)), cache, rules, dirs, c)
         case "--corpus" :: v :: more      => parse(more, o, cache, rules, dirs, c.copy(country = v))
         case "--recording" :: v :: more   => parse(more, o, cache, rules, dirs, c.copy(recording = Some(Path.of(v))))
         case "--families" :: v :: more    => parse(more, o, cache, rules, dirs, c.copy(families = Option.when(v != "none")(Path.of(v))))
@@ -236,8 +261,13 @@ object FamilyConvergence {
       cachePath.foreach(save(_, cache.values.toSeq))
       java.nio.file.Files.createDirectories(corpusArgs.out)
       java.nio.file.Files.writeString(corpusArgs.out.resolve(s"family-flips-${country.code}.tsv"), flipsTsv(country.code, run))
+      // each family's walk: what a change reaching its rules costs (scripts/ci/family_reach.py prices a commit by it)
+      java.nio.file.Files.writeString(corpusArgs.out.resolve(s"family-walks-${country.code}.tsv"),
+        ("family\ttier\tsubsets\tseconds\tflips\trules" +: run.verdicts.map(v => Seq(v.family, v.tier, v.subsets, "%.2f".formatLocal(java.util.Locale.ROOT, v.seconds), v.flips.size,
+          v.rules.mkString(" ")).map(_.toString.replace('\t', ' ').replace('\n', ' ')).mkString("\t"))).mkString("", "\n", "\n"))
       val shard = options.shard.fold("")({ case (i, n) => s", shard $i/$n" })
-      println(f"## ${country.code} family check: ${run.verdicts.size} families$shard, ${run.walked} walked, ${run.reused} reused, " +
+      val reach = options.reach.fold("")(p => s", reach ${if (p.contains("*")) "ALL" else p.size.toString + " rule pattern(s)"}")
+      println(f"## ${country.code} family check: ${run.verdicts.size} families$shard$reach, ${run.walked} walked, ${run.reused} reused, " +
         f"${run.flips.size} flip(s) over ${run.flips.map(_._2.listing).distinct.size} listing(s), levels ${options.levels}, ${started.seconds}%.0fs")
       run.verdicts.groupBy(_.tier.takeWhile(_ != ' ')).toSeq.sortBy(_._1).foreach { case (tier, vs) =>
         println(s"## ${country.code} tier $tier: ${vs.size} families, ${vs.map(_.subsets).sum} subsets") }
@@ -270,7 +300,9 @@ object FamilyConvergence {
   def flipsTsv(country: String, run: Run, slice: String = "", header: Boolean = true): String = {
     val rows = run.flips.groupBy(_._2.listing).toSeq.sortBy(_._1).map { case (listing, fs) =>
       val (venue, raw) = listing.indexOf(" | ") match { case -1 => (listing, ""); case i => (listing.take(i), listing.drop(i + 3)) }
-      val note = fs.map { case (_, f) => s"${f.stage} ${f.kind}" }.distinct.sorted.mkString(", ") + s" [${fs.head._1.tier}] ${fs.head._1.family}"
+      val rules = fs.flatMap(_._2.rules).distinct.sorted
+      val note = fs.map { case (_, f) => s"${f.stage} ${f.kind}" }.distinct.sorted.mkString(", ") + s" [${fs.head._1.tier}] ${fs.head._1.family}" +
+        (if (rules.isEmpty) "" else s" rules: ${rules.mkString(" ")}")
       Seq("family", country, "", slice, venue, raw, fs.head._2.witness, "", "", note).map(_.replace('\t', ' ').replace('\n', ' ')).mkString("\t")
     }
     ((if (header) Seq(this.header) else Nil) ++ rows).map(_ + "\n").mkString

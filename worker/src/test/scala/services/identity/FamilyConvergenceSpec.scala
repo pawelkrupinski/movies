@@ -54,6 +54,19 @@ class FamilyConvergenceSpec extends AnyFlatSpec with Matchers with tools.Scratch
       run.verdicts.map(v => v.key -> v).toMap.updated(one.key, moved), options).walked shouldBe 1
   }
 
+  it should "with a change's reach, walk again exactly the families a reached rule decided, the rest from the cache" in {
+    // option 1 (the owner, 2026-11-06): the cache kept under rules naming no code, a commit's reach
+    // (scripts/ci/family_reach.py) re-walking only the families whose recorded rules it matches
+    val cache   = first.verdicts.map(v => v.key -> v).toMap
+    def run(reach: Seq[String]) = FamilyConvergence.check(FamilyConvergence.sliceCorpus(buddies, "rules-1"), cache, options.copy(reach = Some(reach)))
+    first.verdicts.foreach(_.rules should not be empty)
+    run(Nil).walked shouldBe 0
+    run(Seq("*")).walked shouldBe first.verdicts.size
+    val rule = first.verdicts.head.rules.head
+    run(Seq(rule)).walked shouldBe first.verdicts.count(v => FamilyConvergence.reaches(v.rules, Seq(rule)))
+    run(Seq("accept:no-such-rule")).walked shouldBe 0
+  }
+
   "A corpus run's shards" should "split its families, each walked by exactly one, and its flips be the backlog's rows" in {
     // a CI row walks one shard of a country (scripts/ci/identity-family-check.sh): together they walk every family once
     val corpus = FamilyConvergence.sliceCorpus(slices.resolve("uk/nerve-centre-londonderry-the-ladykillers-039701b7"), "rules-1")
