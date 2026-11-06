@@ -30,11 +30,18 @@ import scala.util.{Failure, Success, Try}
  * `/film/` pages are a feed's, trusted to support a take and never to decide one alone), exactly as they are on a venue
  * kinoheld serves as primary. Synopsis, cast and poster are not lent: they describe the entry, not the screening.
  *
- * The second feed is read only when the primary lists a bare row. It failing, or listing nothing matching, leaves the
- * primary's listing as it came — never failed, never incomplete: a page the second feed lost is not a page of the listing.
- * The facts are rebuilt from each scrape's own read; nothing is carried from an earlier one.
+ * The second feed is read only when the primary lists a bare row. Listing nothing matching leaves the primary's listing
+ * as it came. A read of it that FAILS lends instead the facts it lent last time (`lastListing`: the venue's listing as
+ * the scrape archive last stored it, durable, so a restart's boot burst keeps them too): the rows of it carrying the
+ * second feed's page, each lent to the bare row of the very same screening by the same rule ([[lend]]). A failed read
+ * used to drop them, and a bare row's take could flip from its film to none and back with kinoheld's 429s. The facts are
+ * the source's input kept, not a take kept: lent with the listing, the whole resolve reads exactly what the incremental
+ * one did. They expire with the showing (a start time in common with the row as listed now, never another date's), and
+ * a read that succeeds replaces them all. Either way the listing is never failed, never incomplete: a page the second
+ * feed lost is not a page of the listing.
  */
-class SecondFeedFacts(primary: CinemaScraper, second: CinemaScraper) extends DelegatingCinemaScraper(primary) with Logging {
+class SecondFeedFacts(primary: CinemaScraper, second: CinemaScraper, lastListing: models.Cinema => Try[Seq[CinemaMovie]])
+    extends DelegatingCinemaScraper(primary) with Logging {
   import SecondFeedFacts._
 
   override def scrapeHosts: Set[String] = primary.scrapeHosts ++ second.scrapeHosts
@@ -49,13 +56,25 @@ class SecondFeedFacts(primary: CinemaScraper, second: CinemaScraper) extends Del
         if (filled > 0) logger.info(s"${cinema.displayName}: ${second.getClass.getSimpleName} lent its facts to $filled bare row(s)")
         lent
       case Failure(t) =>
-        logger.info(s"${cinema.displayName}: the second feed ${second.getClass.getSimpleName} failed, its facts left out: ${t.getClass.getSimpleName}: ${t.getMessage}")
-        listing
+        val kept   = lastListing(cinema) match {
+          case Success(stored) => stored.filter(lentBy(second))
+          // the archive unread: no facts known to keep, the listing as it came -- what a failed read left before
+          case Failure(e) => logger.warn(s"${cinema.displayName}: its last stored listing not read, no second-feed facts kept: $e"); Nil
+        }
+        val lent   = listing.map(lend(_, kept))
+        val filled = lent.zip(listing).count((after, before) => after ne before)
+        logger.info(s"${cinema.displayName}: the second feed ${second.getClass.getSimpleName} failed, the facts it lent last time kept on " +
+          s"$filled bare row(s): ${t.getClass.getSimpleName}: ${t.getMessage}")
+        lent
     }
   }
 }
 
 object SecondFeedFacts {
+
+  /** Does `row` carry `second`'s page: facts that feed lent it ([[lend]] lends its page with them)? */
+  def lentBy(second: CinemaScraper)(row: CinemaMovie): Boolean =
+    row.filmUrl.flatMap(tools.UrlHost.of).exists(second.scrapeHosts)
 
   /** Does the row state no fact and link nothing — the bare billing a second feed may speak for? An original title
    *  that only restates the title in other letters (Cineamo's record name "In the Mood for Love" beside Neues Arena's

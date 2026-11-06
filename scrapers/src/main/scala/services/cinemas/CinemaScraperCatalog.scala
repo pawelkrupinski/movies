@@ -43,7 +43,10 @@ class CinemaScraperCatalog(
   // the " & " → " i " unification is Poland-only, and applying it to a German venue
   // re-keys "Minions & Monster" as `minionsimonster`. `WorkerWiring` passes the rule
   // set for the country it was booted for; the diagnostic ctor defaults to Poland's.
-  titles: TitleNormalizer
+  titles: TitleNormalizer,
+  // Each venue's listing as the scrape archive last stored it: what a venue whose second feed failed lends its bare rows
+  // from ([[SecondFeedFacts]]). The worker reads its scrape archive; the diagnostic ctor keeps none.
+  lastListing: Cinema => scala.util.Try[Seq[CinemaMovie]]
 ) {
 
   private val http        = egress.direct
@@ -55,7 +58,7 @@ class CinemaScraperCatalog(
   def this(http: HttpFetch, venueClock: VenueClock, clock: Clock,
            titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default),
            proxyShards: Option[IndexedSeq[HttpFetch]] = None) =
-    this(CinemaEgress.diagnostic(http, clock, proxyShards), venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl), titles)
+    this(CinemaEgress.diagnostic(http, clock, proxyShards), venueClock, (_, h, ttl) => new CachingDetailFetch(h, ttl), titles, _ => scala.util.Success(Nil))
 
   /** Poland's hand-wired venues. */
   val poland: PolishScraperCatalog = new PolishScraperCatalog(egress, venueClock, chainDetailCache, titles)
@@ -118,7 +121,7 @@ class CinemaScraperCatalog(
     feeds.head match {
       case _: GermanFeed.Cineamo =>
         feeds.collectFirst { case kinoheld: GermanFeed.Kinoheld => kinoheld }
-          .fold(primary)(kinoheld => new SecondFeedFacts(primary, germanFeedScraper(kinoheld, cinema)))
+          .fold(primary)(kinoheld => new SecondFeedFacts(primary, germanFeedScraper(kinoheld, cinema), lastListing))
       case _ => primary
     }
   }

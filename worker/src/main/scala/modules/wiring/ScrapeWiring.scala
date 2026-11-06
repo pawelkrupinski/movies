@@ -45,7 +45,9 @@ trait ScrapeWiring { self: WorkerWiring =>
     // every chain, each document expiring on its own chain's TTL (see the class doc).
     (chain, h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl, services.DetailCacheChain(chain),
       workerMetrics.ttlIndexMismatches, clock),
-    titles = titleNormalizer)
+    titles = titleNormalizer,
+    // a venue's last stored listing: the facts a failed second-feed read keeps lending (SecondFeedFacts), read only then
+    lastListing = cinema => scrapeArchive.read(cinema).map(_.fold(Seq.empty[models.CinemaMovie])(_.films)))
 
   /** THIS country's slice of the global catalog, every city included — what every
    *  consumer below walks. `cinemaScraperCatalog.all` spans every country; a wiring

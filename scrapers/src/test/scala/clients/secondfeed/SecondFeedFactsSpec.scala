@@ -24,7 +24,7 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
      new KinoheldClient(http, kinoheld, cinema, today = Today))
   }
 
-  private def scrape(name: String): Seq[CinemaMovie] = { val (primary, second) = feeds(name); new SecondFeedFacts(primary, second).fetch() }
+  private def scrape(name: String): Seq[CinemaMovie] = { val (primary, second) = feeds(name); new SecondFeedFacts(primary, second, _ => scala.util.Success(Nil)).fetch() }
 
   private def row(rows: Seq[CinemaMovie], title: String): CinemaMovie =
     rows.filter(_.movie.title == title).loneElement
@@ -81,7 +81,7 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
   it should "leave a showing that states facts of its own, or links a film, as Cineamo listed it" in {
     val (primary, second) = feeds("Babylon (Mitte)")
     val listed = primary.fetch()
-    val lent   = new SecondFeedFacts(primary, second).fetch()
+    val lent   = new SecondFeedFacts(primary, second, _ => scala.util.Success(Nil)).fetch()
     listed.filterNot(SecondFeedFacts.bare) should not be empty
     lent.zip(listed).foreach { (after, before) => if (!SecondFeedFacts.bare(before)) after shouldBe before }
   }
@@ -124,9 +124,36 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
       override def post(url: String, body: String, contentType: String): String = throw new IOException("kinoheld refused")
     }
     val (primary, second) = feeds("Cinema Borken", failing)
-    val (rows, reads) = ListingReads.during(new SecondFeedFacts(primary, second).fetch())
+    val (rows, reads) = ListingReads.during(new SecondFeedFacts(primary, second, _ => scala.util.Success(Nil)).fetch())
     rows shouldBe primary.fetch()
     reads.complete shouldBe true
+  }
+
+  // A failed kinoheld read dropped the lent facts: a bare row's take could flip from its film to none and back with each
+  // 429, worst in a restart's boot burst. Now the venue's last stored listing lends them again: the same rows the scrape
+  // archive (Mongo) kept, so a worker killed after a good read, booting into a failed one, lists what it listed before.
+  it should "keep lending the facts it lent last time when kinoheld then fails, across a restart" in {
+    val failing = new HttpFetch {
+      def get(url: String): String = throw new IOException("kinoheld 429")
+      override def post(url: String, body: String, contentType: String): String = throw new IOException("kinoheld 429")
+    }
+    val archive = new services.scrapes.InMemoryScrapeArchiveRepository   // durable: what Mongo keeps across the restart
+    def lastListing(cinema: Cinema) = archive.read(cinema).map(_.fold(Seq.empty[CinemaMovie])(_.films))
+    val (primary, second) = feeds("Cinema Borken")
+    val read = new SecondFeedFacts(primary, second, lastListing).fetch()
+    // stored as the scrape runner stores every listing it read (CinemaScrapeRunner's archive)
+    archive.record(services.scrapes.ScrapeAttempt(primary.cinema, None, java.time.Instant.parse("2026-11-05T08:00:00Z"), listingComplete = true, read))
+    row(read, "Bad Apples FK").movie.releaseYear shouldBe Some(2026)
+
+    // killed; a new worker's first scrape of the venue, its kinoheld read failing
+    val (bootPrimary, bootSecond) = feeds("Cinema Borken", failing)
+    val (rows, reads) = ListingReads.during(new SecondFeedFacts(bootPrimary, bootSecond, lastListing).fetch())
+    rows.map(_.copy(cinema = primary.cinema)) shouldBe read   // the new worker's venue: the same, built afresh
+    reads.complete shouldBe true
+    // a showing the venue no longer lists at that time keeps nothing: the facts expire with the showing
+    val moved = bootPrimary.fetch().map(r => r.copy(showtimes = r.showtimes.map(s => s.copy(dateTime = s.dateTime.plusDays(1)))))
+    SecondFeedFacts.lend(row(moved, "Bad Apples FK"), lastListing(primary.cinema).get.filter(SecondFeedFacts.lentBy(bootSecond))) shouldBe
+      theSameInstanceAs(row(moved, "Bad Apples FK"))
   }
 
   it should "not read the second feed when Cineamo bills nothing bare" in {
@@ -141,6 +168,6 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
       def scrapeHosts: Set[String] = Set.empty
       def fetch(): Seq[CinemaMovie] = fail("the second feed was read")
     }
-    new SecondFeedFacts(linkedOnly, unread).fetch() shouldBe linkedOnly.fetch()
+    new SecondFeedFacts(linkedOnly, unread, _ => scala.util.Success(Nil)).fetch() shouldBe linkedOnly.fetch()
   }
 }

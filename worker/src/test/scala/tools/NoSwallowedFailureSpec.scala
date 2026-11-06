@@ -97,6 +97,9 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("scrapers/src/main/scala/services/cinemas/common/GatsbyBoxOfficeClient.scala", "ask",
       "case NonFatal(e) =>") ->
       "the film details are optional credits beside the schedule, which is the scrape: after a second attempt (a response naming none of the batch counts as a failure), an empty map lists those films without a credit or runtime, exactly as every scrape before the details request did, and the failure is logged",
+    ("scrapers/src/main/scala/services/cinemas/common/SecondFeedFacts.scala", "fetch",
+      "case Failure(e) => logger.warn(s\"${cinema.displayName}: its last stored listing not read, no second-feed facts kept: $e\"); Nil") ->
+      "Nil is 'no facts known to keep', not 'the venue lists nothing': the second feed already failed, and with its last stored listing unread too the bare rows list as they came, exactly what every failed second-feed read did before the kept facts; the failure is logged",
     ("worker/src/main/scala/services/identity/adapters/TmdbNormalizer.scala", "normalize",
       "case Failure(_)                                          => None") ->
       "None is 'write nothing': a transient failure is not an answer, so the store keeps what it held and the model's question stays a gap — the opposite of turning it into data",
