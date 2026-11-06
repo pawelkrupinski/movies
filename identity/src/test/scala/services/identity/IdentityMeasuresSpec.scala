@@ -1136,6 +1136,30 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("The Final Cut", runtime = Some(150)), Film("The Final Cut", runtime = Some(95)))("runtime.delta") shouldBe Number(55)
   }
 
+  "a runtime billed beside a joined event" should "be neutral when longer than the film's, and still count when shorter" in {
+    // UK Forum Hexham's "It's Nice Up North + Q&A" runs 120 minutes: the 80-minute film and its Q&A. The slot's length
+    // is no fact against the film (its learned runtime denial withdrew three siblings' credited match as they arrived).
+    val film = Film("John Shuttleworth: It's Nice Up North", year = Some(2006), runtime = Some(80))
+    val withQa = measures(Listing("It's Nice Up North + Q&A", runtime = Some(120)), film)
+    withQa("runtime.delta") shouldBe Missing("listing")
+    IdentityMeasures.runtimeContradicts(withQa) shouldBe false
+    // An event never makes a film shorter; and a slot within the band of the film still agrees with it (ICA's 92-minute
+    // "Doc'n'Roll FF: You Fuckers Figure It Out: A Jason Molina Story + Q&A" is the 91-minute film).
+    measures(Listing("It's Nice Up North + Q&A", runtime = Some(40)), film)("runtime.delta") shouldBe Number(-40)
+    measures(Listing("It's Nice Up North + Q&A", runtime = Some(81)), film)("runtime.delta") shouldBe Number(1)
+    // No event joined: 40 minutes longer is another film's runtime; nor is a second feature ("1+2") an event.
+    measures(Listing("It's Nice Up North", runtime = Some(120)), film)("runtime.delta") shouldBe Number(40)
+    measures(Listing("Panem-Mockingjay 1+2", runtime = Some(260)), Film("Die Tribute von Panem - Mockingjay Teil 1", runtime = Some(123)))("runtime.delta") shouldBe Number(137)
+    // Between two listings, the one billing the event running longer says nothing either (DCA's "These Violent
+    // Delights + Recorded Q&A", 20 minutes past Kendal's ballet), and the shorter one still does.
+    IdentityMeasures.listingListing(Listing("These Violent Delights + Recorded Q&A", runtime = Some(110)), Listing("These Violent Delights", runtime = Some(90)),
+      sameVenue = false, None)("runtime.delta") shouldBe Missing("listing")
+    IdentityMeasures.listingListing(Listing("These Violent Delights", runtime = Some(90)), Listing("These Violent Delights + Recorded Q&A", runtime = Some(110)),
+      sameVenue = false, None)("runtime.delta") shouldBe Missing("listing")
+    IdentityMeasures.listingListing(Listing("These Violent Delights + Recorded Q&A", runtime = Some(60)), Listing("These Violent Delights", runtime = Some(90)),
+      sameVenue = false, None)("runtime.delta") shouldBe Number(30)
+  }
+
   "the listing-film runtime.delta" should "be signed: the venue's minutes less the closest of the film's" in {
     val film = Film("Anora", year = Some(2024), runtime = Some(139), alternativeRuntimes = Seq(132))
     // a venue billing fewer minutes than every runtime TMDB states reads below 0, one billing more above it

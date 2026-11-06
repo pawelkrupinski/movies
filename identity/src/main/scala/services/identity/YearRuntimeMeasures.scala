@@ -57,7 +57,11 @@ private[identity] object YearRuntimeMeasures {
    *  ([[EvidenceDirection.Peaked]]); the hand-written rules read its size ([[runtimeGap]]). A listing billing an EDITION ([[DecorationWords.billsAnEdition]]: "… (Extended Edition)",
    *  "Director's Cut", "Redux") that runs LONGER than every one of them states nothing for or against it: TMDB keeps no
    *  record of an extended cut apart from its film's ("The Return of the King" is 201 minutes in every language, its
-   *  extended edition 263), so the longer cut is neutral. A shorter one still counts: an edition never makes a film shorter. */
+   *  extended edition 263), so the longer cut is neutral. A shorter one still counts: an edition never makes a film shorter.
+   *  So is a slot LONGER than the film by more than [[Corroboration.RuntimeBand]] beside an event its billing joins
+   *  ([[runsAnEvent]]: "It's Nice Up North + Q&A" at 120 minutes is the 80-minute film and its Q&A): the event's minutes
+   *  are no fact about the film. Within the band it still agrees: ICA's 92-minute "… A Jason Molina Story + Q&A" is the
+   *  91-minute film. */
   private[identity] def runtimeDelta(l: Listing, f: Film, country: Option[String]): Measure = l.statedRuntime match {
     case None => MissingListing
     case Some(stated) =>
@@ -73,9 +77,13 @@ private[identity] object YearRuntimeMeasures {
       if (f.alternativeRuntimes.nonEmpty) f.alternativeRuntimes.foreach(against)
       FilmCuts.of(f.imdbNumber).foreach(cut => against(cut.runtime))  // a billed cut runs as the film ([[FilmCuts]])
       if (longest == 0) MissingFilm
-      else if (stated > longest && billsAnEdition(l, f, country)) MissingListing
+      else if (stated > longest && (billsAnEdition(l, f, country) || (off > Corroboration.RuntimeBand && runsAnEvent(l)))) MissingListing
       else Number(off.toDouble)
   }
+
+  /** Does the listing's billing join an event to its film ([[joinedEvents]]: "+ Q&A", "+ Recorded Q&A", "+ Interval"),
+   *  whose minutes its running time may hold beside the film's? A second feature ("Panem-Mockingjay 1+2") is no event. */
+  private[identity] def runsAnEvent(l: Listing): Boolean = joinedEvents(l).nonEmpty
 
   /** Does the listing bill an edition of the film: by its title ([[DecorationWords.billsAnEdition]]), or by its year, one
    *  TMDB dates a release of the film's edition in ([[Film.editionYear]]: Prince Charles's "Apocalypse Now", 2019, is

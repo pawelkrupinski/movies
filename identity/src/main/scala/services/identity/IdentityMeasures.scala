@@ -703,7 +703,13 @@ object IdentityMeasures {
       "titleYear.delta" -> absDelta(a.titleYear, b.titleYear),
       "season.delta"  -> absDelta(a.seasonYear, b.seasonYear),
       "director"      -> directorRelation(a.directors, b.directors),
-      "runtime.delta" -> absDelta(a.statedRuntime, b.statedRuntime),
+      // the one billing an event beside the film running longer, past the band: the event's minutes, no fact about the
+      // film ([[runtimeDelta]])
+      "runtime.delta" -> ((a.statedRuntime, b.statedRuntime) match {
+                           case (Some(x), Some(y)) if (x - y > Corroboration.RuntimeBand && runsAnEvent(a)) ||
+                                                      (y - x > Corroboration.RuntimeBand && runsAnEvent(b)) => MissingListing
+                           case (x, y)                                                                       => absDelta(x, y)
+                         }),
       "venue"         -> Category(if (sameVenue) "same" else "different"),
       "chainId"       -> sharedChainId.fold[Measure](Missing("no-shared-namespace"))(s => Category(if (s) "same" else "different"))
     )
