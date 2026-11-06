@@ -732,4 +732,38 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
   it should "hide a listing new to the model until it is taken in, by default: shown, it took a film the site showed off it" in {
     IdentityModelService.NewWhilePending.Default shouldBe IdentityModelService.NewWhilePending.Hidden
   }
+
+  it should "hold a listing its venue re-keyed as a changed one, its old version served meanwhile, across a restart too" in {
+    // DE Mal seh'n Kino, 2026-11-06: a scrape that dropped the film's page turned its Native key Published; the gate took
+    // it for new, and its film went off the site until it was taken in. Its old version is its stand-in now.
+    def unpaged(cinema: Cinema, title: String, year: Int) = CinemaMovie(Movie(title, releaseYear = Some(year)), cinema, None, None, None, Nil, Nil,
+      Seq(Showtime(LocalDateTime.of(2026, 10, 1, 18, 0), None)))
+    for (restart <- Seq(false, true)) {
+      val world   = new World
+      val first   = world.service()
+      first.takeUp()
+      world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+      first.drain()
+      val paged = first.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.key
+      def film(service: IdentityModelService) = service.peek(10.seconds).get.resolution.decisions
+        .filter(_.members.exists(_.venue == Multikino.displayName)).flatMap(_.film).distinct.loneElement
+      val took = film(first)
+      world.families.unanswered = Set("Lalka")
+      world.scrape(first, Multikino, Seq(unpaged(Multikino, "Lalka", 2025)))        // re-keyed: no page now
+      first.drain()
+      val service = if (restart) { val again = world.service(); again.takeUp(); again } else first
+      withClue(s"restart $restart") {
+        service.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).map(_.key) shouldBe Seq(paged)
+        film(service) shouldBe took
+        world.families.unanswered = Set.empty
+        service.drain()
+        // the old key is let go -- kept for its facts alone, as every listing that left while its title is billed is
+        // (ListingRetention), never billed
+        val now = service.peek(10.seconds).get.listings.filter(l => l.venue == Multikino.displayName && !l.kept).loneElement.key
+        now should not be paged
+        film(service) shouldBe took
+        world.pendingStore.read() shouldBe empty
+      }
+    }
+  }
 }

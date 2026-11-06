@@ -254,7 +254,11 @@ final class IdentityModelService(
       val started = tools.Stopwatch.start()
       val before  = engine.familiesResolved
       val scrapedSeen = gated ++ promoted
-      val leaving     = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
+      // a held listing's stand-in (its version under the key its venue billed it by before) stays until it is taken in
+      val standing    = pending.values.asScala.iterator.flatMap(_.standIn).toSet
+      val leaving     = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) -- standing } ++
+        releasedStandIns.filterNot(standing)
+      releasedStandIns.clear()
       // a listing leaving loses its showings, its facts kept while a present listing of the country bills its title -- read
       // afresh from every listing that left on each drain; one back replaces what was kept of it (ListingRetention)
       val (seen, gone) = retaining(engine, scrapedSeen, leaving)
@@ -412,7 +416,7 @@ final class IdentityModelService(
     val released = mutable.ArrayBuffer.empty[services.movies.ListingKey] ++= gone
     gone.foreach(pending.remove)
     val taken = scraped.flatMap { case (venue, listings) => listings.filter { listing =>
-      val prior = engine.held(listing.key)
+      val prior = engine.held(listing.key).orElse(standInFor(engine, venue, listing, billed))
       if (prior.contains(listing)) { if (pending.remove(listing.key) != null) released += listing.key; true }
       else {
         val waits = readiness.awaiting(listing)
@@ -437,6 +441,17 @@ final class IdentityModelService(
     (taken, promoted)
   }
 
+  /** The version the model holds of `listing` under ANOTHER key at its venue -- the same clean title, a key the scrape no
+   *  longer bills: the venue re-keyed it (a page the scrape dropped turned its Native key Published, DE Mal seh'n Kino's "IF
+   *  PIGEONS TURNED TO GOLD", 2026-11-06). Read as the version the model holds, so the gate holds the re-keyed listing as a
+   *  changed one -- its old version served meanwhile -- never as one new to the model, whose film the site lost. */
+  private def standInFor(engine: IncrementalResolver, venue: String, listing: Listing,
+                         billed: services.movies.ListingKey => Boolean): Option[Listing] =
+    engine.heldAt(venue).iterator.filterNot(billed).flatMap(engine.held).filter(_.cleanTitle.equalsIgnoreCase(listing.cleanTitle))
+      .toSeq.sortBy(l => services.movies.ListingKey.serialised(l.key)).headOption
+  /** The stand-ins of listings promoted since the last drain: let go by the next. */
+  private val releasedStandIns = mutable.ArrayBuffer.empty[services.movies.ListingKey]
+
   /** The held listings, but those `skip` names, whose questions were all answered or given up on: taken in now -- how long
    *  each waited told to the metrics. */
   private def promote(skip: services.movies.ListingKey => Boolean): Seq[Listing] = {
@@ -444,7 +459,9 @@ final class IdentityModelService(
     val taken = pending.values.asScala.toSeq.filterNot(h => skip(h.newest.key)).sortBy(h => services.movies.ListingKey.serialised(h.newest.key))
       .flatMap { h =>
         val waits = readiness.awaiting(h.newest)
-        if (waits.isEmpty) { pending.remove(h.newest.key); promotedAfter += (clock.millis() - h.since) / 1000.0; Some(h.newest) }
+        if (waits.isEmpty) {
+          pending.remove(h.newest.key); promotedAfter += (clock.millis() - h.since) / 1000.0; releasedStandIns ++= h.standIn; Some(h.newest)
+        }
         else { if (waits != h.waits) pending.put(h.newest.key, h.copy(waits = waits)); None }
       }
     if (promotedAfter.nonEmpty) metrics.promoted(promotedAfter.toSeq, atBoot = false)
@@ -511,7 +528,11 @@ final class IdentityModelService(
 object IdentityModelService {
   /** A listing whose newest version (`newest`, billed at `venue`) the gate holds on `waits` since `since`; the model reads
    *  `ready` meanwhile -- none for a listing new to it. */
-  final case class Held(venue: String, newest: Listing, ready: Option[Listing], waits: Set[Question], since: Long)
+  final case class Held(venue: String, newest: Listing, ready: Option[Listing], waits: Set[Question], since: Long) {
+    /** The key the model reads meanwhile when it is another listing's: the one this listing was billed under before its
+     *  venue re-keyed it (a page dropped, a title re-cased) -- kept in the model until this one is taken in. */
+    def standIn: Option[services.movies.ListingKey] = ready.map(_.key).filterNot(_ == newest.key)
+  }
 
   /** What is shown of a listing new to the model while its version is held: on its own, Pending on its questions (the
    *  main session's first choice (a), 2026-11-06), or nothing until it is taken in (b). The one place to switch. */
