@@ -369,7 +369,10 @@ final class IdentityModelService(
       } }
       if (released.nonEmpty) persistPending(Nil, released.toSeq)
       if (bootPromoted.nonEmpty) metrics.promoted(bootPromoted.toSeq, atBoot = true)
-      logger.info(s"identity model: ${pending.size} listing(s) held on their questions resumed, ${released.size} released")
+      logger.info(s"identity model: ${pending.size} listing(s) held on their questions resumed, ${released.size} released" +
+        pending.values.asScala.toSeq.sortBy(_.since).take(20).map(h => s"; ${services.movies.ListingKey.serialised(h.newest.key)} " +
+          s"held ${(clock.millis() - h.since) / 60000} min on ${h.waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}" +
+          (if (h.ready.isEmpty) " (no version taken in)" else "")).mkString)
       taken
     }
   }
@@ -418,7 +421,11 @@ final class IdentityModelService(
           val was  = Option(pending.get(listing.key))
           val held = IdentityModelService.Held(venue, listing, was.flatMap(_.ready).orElse(prior), waits, was.fold(now)(_.since))
           pending.put(listing.key, held)
-          if (!was.exists(_.newest == listing)) readiness.ask(listing, waits)
+          if (!was.exists(_.newest == listing)) {
+            readiness.ask(listing, waits)
+            logger.info(s"identity model: held ${services.movies.ListingKey.serialised(listing.key)} on ${waits.size} question(s) of its own " +
+              s"(${waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}); the model ${if (prior.isDefined) "keeps the version it holds" else "holds no version of it"}")
+          }
           if (!was.exists(w => w.ready == held.ready)) written += PendingListingStore.Pending(listing.key, held.ready, held.since)
           false
         }
