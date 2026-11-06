@@ -102,10 +102,7 @@ object LiveAsks {
     def due(question: Question): Boolean = memory.due(Set(question)).nonEmpty
     def unanswered(question: Question, failed: Boolean, host: Option[String]): Unit =
       if (failed) { memory.failed(Seq(question), host); () } else memory.unanswered(Seq(question))
-    def givenUp(question: Question): Boolean = memory.outcome(question) match {
-      case Some(QuestionMemory.Outcome.Failed(times, _, _)) => times >= QuestionPolicies.giveUpFailures(question.kind)
-      case _                                               => false
-    }
+    def givenUp(question: Question): Boolean = memory.failedPastGiveUp(question)
   }
 
   private val failed      = ThreadLocal.withInitial[java.lang.Long](() => 0L)

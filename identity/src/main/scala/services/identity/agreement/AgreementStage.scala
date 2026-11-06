@@ -842,6 +842,19 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] def verdictsOf(listings: Seq[Listing], gaps: mutable.Set[Question], reads: mutable.Map[Dependency, Long]): Seq[Answer[FamilyVerdict]] =
     familiesInOrder.map { case (_, answers) => familyVerdicts.verdict(listings, answers, gaps, reads) }
 
+  /** The questions `listing`'s OWN facts lead the families to ask -- its titles' and directors' searches and the records
+   *  their hits name -- as the stage asks them of any cluster holding it: the family verdicts over the listing alone,
+   *  every gap they meet. None for an event no film database holds ([[NonFilmEvents]]), whose families are never asked.
+   *  What the model's input gate waits on before a listing's version is taken in (docs/design/identity-structural-fixes.md,
+   *  fix 1: asking apart from deciding): a population-independent set, a function of the listing and the answers filed. */
+  def questionsOf(listing: Listing): Set[Question] =
+    if (NonFilmEvents.of(Seq(listing)).isDefined) Set.empty
+    else {
+      val gaps = mutable.Set.empty[Question]
+      verdictsOf(Seq(listing), gaps, mutable.Map.empty)
+      gaps.toSet
+    }
+
   /** The families' verdicts the last applies resolved, each handed back while all it read reads alike ([[FamilyVerdicts]]). */
   private[agreement] val familyVerdicts = new FamilyVerdicts(venues, normalizer, calibrations)
 

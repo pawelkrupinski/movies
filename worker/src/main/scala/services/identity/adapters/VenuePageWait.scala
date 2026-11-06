@@ -21,5 +21,9 @@ final class VenuePageWait(enrichers: Seq[DetailEnricher], index: VenuePageIndex,
     index.answer(enricher, page).isEmpty &&
       (enricher.defersTmdbResolution || freshness.lastFetchedAt(services.tasks.EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page)).isEmpty)
   }
+  override def unattempted(listing: Listing): Boolean = pageOf(listing).exists { case (enricher, page) =>
+    index.answer(enricher, page).isEmpty &&
+      freshness.lastFetchedAt(services.tasks.EnrichDetailsTasks.pageAttempted(enricher.detailGroup, page)).isEmpty
+  }
   def request(listing: Listing): Unit = pageOf(listing).foreach { case (enricher, page) => ReadVenuePageTasks.enqueue(queue, enricher, page, clock.instant()) }
 }

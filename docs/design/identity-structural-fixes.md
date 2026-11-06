@@ -151,33 +151,44 @@ every reader, 58 in main sources (15 files). By what makes the collapse sound, o
 
 ## Fix 1: asking apart from deciding (second)
 
-**Serves** R1, R2, R3 (the two-step write is 70 % of the flips), R7.
+**Serves** R1, R2, R3 (the two-step write: 70 % of the backtest's flips, half of DE's on the reconciliation), R4, R7.
+
+**The owner's choice (2026-11-06): the listing readiness gate at the model's input** (option B), over a cluster's write
+deferred inside the projection (option A, the first wording above: its question set grows with the population, and the
+deferral would live in the projection's closure scope). The 7-day reconciliation (flip-timeline per reversed title, the
+backtest's definition): DE 134 reversals, 67 LATE-ANSWER (Geister's 56 among them), UK 110, 18 LATE-ANSWER plus 24
+"(IMAX) Sinners" the tool's search misses; so fix 1 stays before fix 2.
 
 **The change.**
 
-1. **Ask on arrival.** An enrichment step on a scrape's arrival (`onModelBatch`, `WorkerWiring.scala:218-222`, after
-   the model's take-up) asks, through the existing question queue (`AgreementQuestions.enqueue`), every question the
-   listing's cluster will need: `AgreementStage.questionsOf(cluster)`, extracted from `verdictsOf`'s gap collection
-   (a pure function of the cluster's listings and the answers held). Follow-up questions (a search hit's record, a
-   find for an agreed IMDb id) are asked when the answer that names them is filed: the filing's handler computes the
-   cluster's questions again. New-arrival asks are claimed ahead of the agreement queue's `Behind` (7 days), as the
-   model's live asks are today: the owner's "a new film's questions are asked straight away" (2026-10-23) stands.
-2. **Project only what is complete.** A cluster is projected only when every question it needs is `Known` or
-   `Failed` (fix 4's type). Every ask terminates (2a, landed d71cc09331ad / 30bf85002bb2: a turned-away ask fails, a
-   family with no source is filed), so this is bounded by the answers' own timeouts and retries, not by a clock of
-   ours. If a hard cap proves needed, it reads the injected clock and is a named, counted outcome.
-3. **The projection is a pure function of stored inputs.** `askedInline`, `askNow`, `askedNow`, `AskNowWithin`,
-   `InlineRounds`, `InlineFamilyAsks` and the inline pool go. A cluster with an `Unknown` question is not written:
-   its listings keep the take written before, ONLY because nothing new was written yet; there is no `Held` basis and
-   nothing is substituted (the parked `experiment/pending-losses-held` stays parked). A newer trigger for the same
-   cluster supersedes a waiting one (`EventTrigger` already coalesces).
-4. **Incremental equals whole by construction:** the whole resolve and the scoped projection both skip exactly the
-   clusters with an `Unknown` read, and decide the rest from the same stored inputs.
+1. **A listing's own questions** (`AgreementStage.questionsOf(listing)`): every gap the families' verdicts meet over the
+   listing alone -- its titles' and directors' searches, the records their hits name -- none for an event no film
+   database holds; plus its venue page while its read was never attempted (`ListingReadiness.ofPage`,
+   `PageWait.unattempted`). A function of the listing and the answers filed: the same whatever else is billed (R4).
+2. **The gate** (`IdentityModelService.gate`, `ListingReadiness`, `AgreementReadiness`): a listing billed otherwise than
+   the model holds it (new, or its facts moved) is taken in only once each of its questions is answered or concluded by
+   the question memory (`QuestionMemory.concluded`: a durable non-answer, or failures its kind gives up on; never one
+   still inside its retries, nor one never asked). Until then the model keeps the version it holds; the questions are
+   asked through the queue claimed ahead of the agreement's own (`AgreementQuestions.enqueue(claimAhead = 0)`), and
+   every filing wakes the model, whose next drain promotes each held listing whose questions closed -- no new scrape.
+   No clock of ours ends the wait: each ask terminates (2a: a turned-away ask fails, a family with no source is filed).
+3. **A listing new to the model** is shown at once on its own decision, no film, Pending on its questions (the main
+   session's choice (a); a later match is a gain, never a reversal), never joining another's decision. The one place to
+   switch to (b), shown only once taken in: `IdentityModelService.NewWhilePending`.
+4. **Restart** (the owner's condition): the held listings are persisted (`identity_pending`, `PendingListingStore`: each
+   key, its last ready version, since when), the newest version is the archive's, and whether it is ready is never
+   stored but read afresh. A take-up re-reads every row: ready now (answered while the worker was down) -- its newest
+   version taken in and the row released; else held again, its questions asked again; a row whose listing is billed no
+   more released. Idempotent: a take-up after one that stopped mid-promotion reads the same, neither taking a version
+   twice nor losing one (`IdentityModelServiceSpec`, "survive a restart"). Residue: a scrape archived but not yet drained
+   when the worker stops is taken up ungated (the model's venue buffer is in memory) -- a window of the drain's settle,
+   seconds; its listings are decided Pending on their open questions as before.
+5. **Incremental equals whole:** a whole resolve reads the same versions the gate let in; every replay (drift check,
+   slices, measure) takes each version as ready (`ListingReadiness.Always`), its recorded answers being there already.
 
-**Open, for the owner, before 1 lands (STOP point):** a listing new to the site has no take written yet. Either it
-appears at once on its own card as unmatched-pending (a gain, never a reversal, when its film comes), or it is held
-off the site until its cluster is complete (p50 ~5 s, p90 ~20-30 s, p99 ~150-240 s from the 2026-11-05 latency
-measurements). The default this plan builds: unmatched-pending at once, flagged `provisional`.
+**Not in the gate** (cluster-level, the stage's waits as before): the posters of a cluster's candidates, the find of an
+agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) stay until
+1c measures what is left of them.
 
 **Measured by:**
 - newly appearing listings' latency to their first decided take, before and after (prod logs, the take-change log's
@@ -194,9 +205,9 @@ measurements). The default this plan builds: unmatched-pending at once, flagged 
 nothing to cancel, and step 2b ("cancel a cluster's unstarted inline futures at the deadline") is superseded. An
 experiment entry records it.
 
-**Milestones.** 1a `questionsOf` extracted, equal to the gaps `verdictsOf` collects (property spec, 0 moved); 1b
-asked on arrival and on filing (behaviour: asks earlier, decides the same); 1c projection skips incomplete clusters,
-inline asks deleted (behaviour change: what-if, CI measure, drift; prod numbers after deploy). STOP after 1 lands.
+**Milestones.** 1a+1b the gate, restart-safe (behaviour change: what-if, CI measure, drift; prod numbers after the
+deploy); 1c the inline asks deleted once the gate's prod numbers show what is left of them, with the parked cancel's
+experiment entry. STOP after 1 lands.
 
 ## Fix 3: one shared replay core (alongside or third)
 

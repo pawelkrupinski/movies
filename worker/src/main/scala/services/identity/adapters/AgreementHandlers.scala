@@ -38,14 +38,15 @@ object AgreementQuestions {
   /** Every agreement question among `questions` still due (`memory`: not inside the wait a failed ask left it) as an
    *  [[TaskType.AskQuestion]] task — one question each, catalogue ids a batch each ([[tasks]]) — its ids its payload and,
    *  after `agreement|`, its dedup key: one already queued is not queued again. Claimed after every other task
-   *  ([[Behind]]) and counted under the question's label ([[labelOf]]). What the enqueues came to: how many tasks
+   *  ([[Behind]]; a listing the model's input gate holds asks its own at `claimAhead` 0, [[AgreementReadiness]]) and counted under the question's label ([[labelOf]]). What the enqueues came to: how many tasks
    *  were added, and how many the queue could not answer. */
   def enqueue(queue: TaskQueue, questions: Set[Question], memory: QuestionMemory, clock: Clock,
-              metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent): Enqueued =
+              metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent,
+              claimAhead: scala.concurrent.duration.FiniteDuration = -Behind): Enqueued =
     tasks(memory.due(questions.filter(_.kind.system == QuestionSystem.Agreement))).foldLeft(Enqueued.Zero) { (sum, asked) =>
       val payload = payloadOf(asked)
       val result  = Enqueued.of(queue.enqueue(TaskType.AskQuestion, s"agreement|${payload(QuestionsKey)}", payload,
-        submittedAt = clock.instant(), claimAhead = -Behind))
+        submittedAt = clock.instant(), claimAhead = claimAhead))
       metrics.enqueued(labelOf(asked.head), result.added > 0)
       sum + result
     }

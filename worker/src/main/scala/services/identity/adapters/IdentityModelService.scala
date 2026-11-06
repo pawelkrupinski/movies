@@ -6,6 +6,7 @@ import play.api.Logging
 import services.movies.TitleNormalizer
 
 import java.util.concurrent.{ConcurrentHashMap, ScheduledExecutorService, TimeUnit}
+import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
@@ -84,12 +85,22 @@ final class IdentityModelService(
   retainedStore: RetainedListingStore = new RetainedListingStore.InMemory(),
   /** The listings the history last saw the model hold ([[RetainedListingStore.fromHistory]]): what a take-up reads
    *  the departed listings from when the store was never written. */
-  heldBefore: () => Seq[Listing] = () => Nil
+  heldBefore: () => Seq[Listing] = () => Nil,
+  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in only once
+   *  every question its own facts put to the film databases' families is answered or given up on. */
+  readiness:  ListingReadiness = ListingReadiness.Always,
+  /** The listings the gate holds, persisted: what a take-up resumes ([[PendingListingStore]]). */
+  pendingStore: PendingListingStore = new PendingListingStore.InMemory(),
+  /** Whether a listing new to the model, its version held, is shown meanwhile on its own, Pending -- or not at all. */
+  newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Shown
 ) extends Logging {
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
   private val observations = new ConcurrentHashMap[String, ObservationReads.Change]()
   private var model: Option[IncrementalResolver] = scala.None
+  /** The listings whose newest version the gate holds, read and moved on the model's thread: an INPUT's cache -- the newest
+   *  version is the venues', whether it is ready the answers', and what the model reads meanwhile `pendingStore`'s. */
+  private val pending = new ConcurrentHashMap[services.movies.ListingKey, IdentityModelService.Held]()
 
   /** A venue's scrape was archived with `films`: its listings now, read as the take-up reads the archive's
    *  ([[ModelRead]]). Read whole, a venue scraped since boot fired rules a venue taken up lean never did — and the
@@ -159,8 +170,13 @@ final class IdentityModelService(
 
   // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
   // one is ~100k listings' worth of maps, and a drain runs every few seconds.
-  private def snapshotOf(engine: IncrementalResolver) =
-    ModelSnapshot(engine.resolution, engine.gaps, engine.listings, QuestionRenewals.of(engine.familyQuestions))
+  private def snapshotOf(engine: IncrementalResolver) = {
+    val resolution = engine.resolution
+    val shown      = newWhilePending.shown(pending.values.asScala.filter(_.ready.isEmpty).toSeq.sortBy(h => services.movies.ListingKey.serialised(h.newest.key)))
+    if (shown.isEmpty) ModelSnapshot(resolution, engine.gaps, engine.listings, QuestionRenewals.of(engine.familyQuestions))
+    else ModelSnapshot(resolution.copy(decisions = resolution.decisions ++ shown.map(IdentityModelService.waiting)), engine.gaps,
+      engine.listings ++ shown.map(_.newest), QuestionRenewals.of(engine.familyQuestions))
+  }
 
   // A request its reader gave up on is cancelled: one the model's thread has not reached yet never runs
   // (a take-up and a snapshot for nobody, delaying the next reader), one it is running finishes.
@@ -228,10 +244,11 @@ final class IdentityModelService(
     val scraped = venues.keySet.asScala.toSeq.flatMap(venue => Option(venues.remove(venue)).map(venue -> _))
     val changes = observations.keySet.asScala.toSeq.flatMap(key => Option(observations.remove(key)).map(key -> _)).toMap
     admit(engine, scraped)
-    Option.when(scraped.nonEmpty || changes.nonEmpty) {
+    val (gated, promoted) = gate(engine, scraped)
+    Option.when(scraped.nonEmpty || changes.nonEmpty || promoted.nonEmpty) {
       val started = tools.Stopwatch.start()
       val before  = engine.familiesResolved
-      val scrapedSeen = scraped.flatMap(_._2)
+      val scrapedSeen = gated ++ promoted
       val leaving     = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
       // a listing leaving loses its showings, its facts kept while a present listing of the country bills its title -- read
       // afresh from every listing that left on each drain; one back replaces what was kept of it (ListingRetention)
@@ -319,6 +336,37 @@ final class IdentityModelService(
       })
   }
 
+  /** The billed listings `present` as the gate lets the model take them up: each the store holds pending is read afresh --
+   *  ready now (its answers filed while the worker was down), its newest version taken in and its row released; else held
+   *  again, its questions asked again, the model reading its last ready version (none, for a new one) -- and a row whose
+   *  listing is billed no more released. Idempotent: whether a version is ready is never stored, so a take-up after one
+   *  that stopped mid-way reads the same. An unread store holds nothing back: no read is a reason to keep a version out. */
+  private def resumedPending(present: Seq[Listing]): Seq[Listing] = {
+    pending.clear()
+    val rows = scala.util.Try(pendingStore.read()).fold(
+      failed => { logger.warn(s"identity model: the held listings could not be read -- none held: $failed"); Nil }, identity)
+    if (rows.isEmpty) present
+    else {
+      val byKey    = rows.iterator.map(r => r.key -> r).toMap
+      val billed   = present.iterator.map(_.key).toSet
+      val released = mutable.ArrayBuffer.empty[services.movies.ListingKey] ++= rows.iterator.map(_.key).filterNot(billed)
+      val taken = present.flatMap { listing => byKey.get(listing.key) match {
+        case None => Some(listing)
+        case Some(row) =>
+          val waits = readiness.awaiting(listing)
+          if (waits.isEmpty) { released += listing.key; Some(listing) }
+          else {
+            pending.put(listing.key, IdentityModelService.Held(listing.venue, listing, row.ready, waits, row.since))
+            readiness.ask(listing, waits)
+            row.ready
+          }
+      } }
+      if (released.nonEmpty) persistPending(Nil, released.toSeq)
+      logger.info(s"identity model: ${pending.size} listing(s) held on their questions resumed, ${released.size} released")
+      taken
+    }
+  }
+
   /** A write of the departed listings: one that fails is logged, never the drain's failure -- the next move writes again. */
   private def persist(write: => Unit): Unit =
     try write catch { case NonFatal(e) => logger.warn(s"identity model: the departed listings could not be written: $e") }
@@ -339,10 +387,60 @@ final class IdentityModelService(
       history.append(moved ++ left)
     }
 
-  /** A NEW listing whose venue page is unread (`pageWait`) has its page asked for, once, and is taken in at once like any
-   *  other: decided on its inputs as they stand -- the page read meanwhile as no detail at all -- and Pending on the page
-   *  ([[ResolverDecision.awaits]]) until it is read, which re-resolves its family (step 6, the owner 2026-10-31: no take
-   *  held back while a question is open; it waited out of the model up to an hour before, shown with no film). */
+  /** The model's input gate over a drain's scrapes (fix 1): each listing billed otherwise than the model holds it -- new,
+   *  or its facts moved -- is taken in only once its own questions are answered or given up on ([[ListingReadiness]]);
+   *  until then the model keeps the version it holds (none, for a new one: shown on its own, Pending) and the questions
+   *  are asked. A listing billed as the model holds it, or no longer billed, is held no more. Then every held listing
+   *  whose answers came is promoted. Returns the scraped listings the model takes in, and the promoted ones. */
+  private def gate(engine: IncrementalResolver, scraped: Seq[(String, Seq[Listing])]): (Seq[Listing], Seq[Listing]) = {
+    val now      = clock.millis()
+    val billed   = scraped.iterator.flatMap(_._2.iterator.map(_.key)).toSet
+    val gone     = scraped.flatMap { case (venue, listings) =>
+      val keys = listings.iterator.map(_.key).toSet
+      pending.values.asScala.collect { case h if h.venue == venue && !keys(h.newest.key) => h.newest.key } }
+    val written  = mutable.ArrayBuffer.empty[PendingListingStore.Pending]
+    val released = mutable.ArrayBuffer.empty[services.movies.ListingKey] ++= gone
+    gone.foreach(pending.remove)
+    val taken = scraped.flatMap { case (venue, listings) => listings.filter { listing =>
+      val prior = engine.held(listing.key)
+      if (prior.contains(listing)) { if (pending.remove(listing.key) != null) released += listing.key; true }
+      else {
+        val waits = readiness.awaiting(listing)
+        if (waits.isEmpty) { if (pending.remove(listing.key) != null) released += listing.key; true }
+        else {
+          val was  = Option(pending.get(listing.key))
+          val held = IdentityModelService.Held(venue, listing, was.flatMap(_.ready).orElse(prior), waits, was.fold(now)(_.since))
+          pending.put(listing.key, held)
+          if (!was.exists(_.newest == listing)) readiness.ask(listing, waits)
+          if (!was.exists(w => w.ready == held.ready)) written += PendingListingStore.Pending(listing.key, held.ready, held.since)
+          false
+        }
+      }
+    } }
+    val promoted = promote(billed)
+    released ++= promoted.map(_.key)
+    if (written.nonEmpty || released.nonEmpty) persistPending(written.toSeq, released.toSeq)
+    (taken, promoted)
+  }
+
+  /** The held listings, but those `skip` names, whose questions were all answered or given up on: taken in now. */
+  private def promote(skip: services.movies.ListingKey => Boolean): Seq[Listing] =
+    pending.values.asScala.toSeq.filterNot(h => skip(h.newest.key)).sortBy(h => services.movies.ListingKey.serialised(h.newest.key))
+      .flatMap { h =>
+        val waits = readiness.awaiting(h.newest)
+        if (waits.isEmpty) { pending.remove(h.newest.key); Some(h.newest) }
+        else { if (waits != h.waits) pending.put(h.newest.key, h.copy(waits = waits)); None }
+      }
+
+  /** A write of the held listings: one that fails is logged, never the drain's failure -- the next move writes again, and a
+   *  take-up reads readiness afresh. */
+  private def persistPending(written: Seq[PendingListingStore.Pending], released: Seq[services.movies.ListingKey]): Unit =
+    try pendingStore.update(written, released)
+    catch { case NonFatal(e) => logger.warn(s"identity model: the held listings could not be written: $e") }
+
+  /** A NEW listing whose venue page is unread (`pageWait`) has its page asked for, once. Whether it is taken in meanwhile
+   *  is the input gate's ([[gate]]): held while the read was never attempted, then taken in -- decided Pending on the
+   *  page while it stays unread (step 6, the owner 2026-10-31). */
   private def admit(engine: IncrementalResolver, scraped: Seq[(String, Seq[Listing])]): Unit =
     scraped.foreach { case (venue, listings) =>
       listings.filter(l => !engine.heldAt(venue).contains(l.key) && pageWait.awaiting(l)).foreach(pageWait.request)
@@ -353,7 +451,7 @@ final class IdentityModelService(
     val started = tools.Stopwatch.start()
     val engine  = newModel()
     val present = archive()
-    val held    = present ++ resumed(present)
+    val held    = resumedPending(present) ++ resumed(present)
     engine.restore(held)
     // Each listing taken up whose venue page is unread has it asked, as `admit` asks a new one's: it is decided Pending on
     // the page, and nothing else asks for it -- a kept listing no film row names, or one billed before the take-up whose
@@ -383,6 +481,23 @@ final class IdentityModelService(
 }
 
 object IdentityModelService {
+  /** A listing whose newest version (`newest`, billed at `venue`) the gate holds on `waits` since `since`; the model reads
+   *  `ready` meanwhile -- none for a listing new to it. */
+  final case class Held(venue: String, newest: Listing, ready: Option[Listing], waits: Set[Question], since: Long)
+
+  /** What is shown of a listing new to the model while its version is held: on its own, Pending on its questions (the
+   *  main session's choice (a), 2026-11-06), or nothing until it is taken in (b). The one place to switch. */
+  enum NewWhilePending {
+    case Shown, Hidden
+    def shown(held: Seq[Held]): Seq[Held] = if (this == Shown) held else Nil
+  }
+
+  /** A held new listing as the projection reads it: its own decision, no film, Pending on its questions -- `unanswered`
+   *  set so the agreement stage leaves it as it is, as it leaves any decision the model's questions still hold. */
+  private[adapters] def waiting(held: Held): ResolverDecision =
+    ResolverDecision(Seq(held.newest.key), scala.None, 0.0, ResolverDecision.Basis.NoEvidence,
+      Seq(s"held: ${held.waits.size} question(s) of its own not answered yet"), unanswered = held.waits.size, awaits = held.waits)(DecisionTrace.Empty)
+
   /** The wait before a failed take-up is first retried; it doubles with each failure after, up to [[MaxRetry]]. */
   val FirstRetry: FiniteDuration = FiniteDuration(1, TimeUnit.MINUTES)
   val MaxRetry: FiniteDuration   = FiniteDuration(30, TimeUnit.MINUTES)

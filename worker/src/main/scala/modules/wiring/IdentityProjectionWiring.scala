@@ -136,6 +136,12 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   /** The agreement's questions queued as tasks, those inside the wait a failed ask left them held back. */
   private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): services.tasks.Enqueued =
     services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock, agreementQuestionMetrics)
+  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once the
+   *  questions its own facts put to the families are answered or given up on, asked ahead of the agreement's own. */
+  lazy val identityListingReadiness: services.identity.ListingReadiness =
+    new services.identity.adapters.AgreementReadiness(listing => agreementStage.questionsOf(listing), identityQuestionMemory,
+      questions => { services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock,
+        agreementQuestionMetrics, claimAhead = scala.concurrent.duration.Duration.Zero); () })
   /** The questions the live stage waits on that a lost task left unattempted, or that failed and are due again, queued
    *  again: under the settle rule an unattempted question holds its cluster. */
   lazy val outstandingQuestions: services.identity.adapters.OutstandingQuestions =
@@ -242,6 +248,8 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
       filed = () => {
         identityProjection.asked(IdentityProjection.Trigger.Answer)
         identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
+        // a listing the model's input gate holds on this question is taken in at the model's next drain (fix 1)
+        identityModel.wake()
       }, identityQuestionMemory, agreementQuestionMetrics)
   /** Asks again at once the questions that failed against an enrichment host that is back: the open agreement questions
    *  queued, and a fill round for the model's gaps ([[services.identity.adapters.HostRecovery]]). */

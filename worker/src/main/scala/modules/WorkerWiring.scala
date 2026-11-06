@@ -114,6 +114,10 @@ class WorkerWiring(
           new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
           workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
+  /** The listings the model's input gate holds, persisted (`identity_pending`): what a take-up resumes. */
+  lazy val identityPendingStore: services.identity.adapters.PendingListingStore =
+    mongoConnection.database.fold[services.identity.adapters.PendingListingStore](new services.identity.adapters.PendingListingStore.InMemory())(
+      new services.identity.adapters.MongoPendingListingStore(_))
   /** Every listing that left, with its facts and departure, persisted (`identity_retained`): the input ListingRetention keeps from. */
   lazy val identityRetainedStore: services.identity.adapters.RetainedListingStore =
     mongoConnection.database.fold[services.identity.adapters.RetainedListingStore](new services.identity.adapters.RetainedListingStore.InMemory())(
@@ -175,6 +179,9 @@ class WorkerWiring(
     import services.identity.adapters.IdentityModelService
     val pinStore = new MongoPinStore(mongoConnection.database)
     var tracked  = Option.empty[TrackedLookups]
+    // A new listing's unread venue page is asked for, read into venue_pages by a ReadVenuePage task; the model's input
+    // gate takes the listing in once it is read or its read was attempted.
+    val pageWait = new services.identity.adapters.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore, clock)
     val model = new IdentityModelService(
       newModel   = () => {
         // the one builder of a resolve's inputs, the drift checks' and the identity slice's too
@@ -194,15 +201,15 @@ class WorkerWiring(
       batched    = onModelBatch,
       reading    = () => tracked.fold("")(_.render),
       beforeDrain = () => venuePageIndex.settle(),
-      // A new listing's unread venue page is asked for, read into venue_pages by a ReadVenuePage task; the listing is
-      // decided meanwhile, Pending on the page, and decided again once it is read.
-      pageWait   = new services.identity.adapters.VenuePageWait(detailEnrichers, venuePageIndex, taskQueue, freshnessStore, clock),
+      pageWait   = pageWait,
       takenUp    = () => identityModelTakenUp(),
       clock      = clock,
       history    = identityHistory,
       build      = configuration.commit.value,
       retainedStore = identityRetainedStore,
-      heldBefore = () => identityHeldBefore())
+      heldBefore = () => identityHeldBefore(),
+      readiness  = services.identity.ListingReadiness.all(services.identity.ListingReadiness.ofPage(pageWait), identityListingReadiness),
+      pendingStore = identityPendingStore)
     identityTmdbStore.onChanged(model.filed)
     model
   }

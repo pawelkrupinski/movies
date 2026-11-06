@@ -9,6 +9,9 @@ package services.identity
 trait PageWait {
   /** Is `listing`'s venue page still unread? */
   def awaiting(listing: Listing): Boolean
+  /** Is `listing`'s venue page unread and never attempted? What the model's input gate waits on ([[ListingReadiness.ofPage]]):
+   *  a read that failed is attempted, and the listing is taken in on what it has, Pending on the page as before. */
+  def unattempted(listing: Listing): Boolean = awaiting(listing)
   /** Ask for `listing`'s venue page to be read. */
   def request(listing: Listing): Unit
 }

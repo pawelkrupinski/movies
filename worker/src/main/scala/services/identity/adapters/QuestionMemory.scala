@@ -132,6 +132,22 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
     case _                                 => true
   }
 
+  /** Asked and done with: an attempt the memory holds came to an answer, a durable non-answer, or failures its kind gives up
+   *  on ([[givenUp]]) -- never a question it holds no attempt of, which [[givenUp]] counts as given up. What a reader
+   *  decides on as settled (fix 1's input gate, the model's live asks). */
+  def concluded(question: Question): Boolean = outcome(question) match {
+    case Some(Outcome.Failed(times, _, _)) => times >= QuestionPolicies.giveUpFailures(question.kind)
+    case Some(_)                           => true
+    case None                              => false
+  }
+
+  /** Failed its kind's give-up count in a row ([[QuestionPolicies.giveUpFailures]]): what the model's stored-first lookups
+   *  read as [[Answer.Failed]] (fix 4b) -- a durable non-answer is the store's to file, never read so. */
+  def failedPastGiveUp(question: Question): Boolean = outcome(question) match {
+    case Some(Outcome.Failed(times, _, _)) => times >= QuestionPolicies.giveUpFailures(question.kind)
+    case _                                 => false
+  }
+
   /** The questions whose ask failed just now — asked again on their kind's failure backoff — and how many times in a
    *  row each has failed now (counted since the last answer or durable non-answer). `host`: where the failing request
    *  went, when the asker knows it. */

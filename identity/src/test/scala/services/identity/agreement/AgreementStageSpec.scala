@@ -247,6 +247,19 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     byCast(decided(stated.copy(directors = Seq("Maciej Kawalski")), known)) shouldBe false
   }
 
+  "a listing's own questions" should "be every gap the families meet over it alone, none once answered, and none for an event" in {
+    // docs/design/identity-structural-fixes.md fix 1: what the model's input gate waits on before taking a version in
+    def stageOver(unanswered: Boolean) = new AgreementStage(
+      Map(VoterFamily.Imdb -> new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = unanswered)), NoVenueDetails, normalizer,
+      IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
+    val waiting = stageOver(unanswered = true).questionsOf(bare)
+    waiting should not be empty
+    all(waiting.toSeq) should matchPattern { case Question.Family(VoterFamily.Imdb, _) => }
+    waiting.collect { case Question.Family(_, q) => q } should contain(s"title|${bare.title}")
+    stageOver(unanswered = false).questionsOf(bare) shouldBe empty
+    stageOver(unanswered = true).questionsOf(listing(KinoMuza, "Karnet na festiwal")) shouldBe empty
+  }
+
   "the settle rule" should "type a question attempted and not answered as Failed, decided on as no evidence, never Known" in {
     // docs/design/identity-structural-fixes.md fix 4c: the one collapse of a not-yet-answered question is typed, so a
     // reader decides on it only through Answer.failedAs

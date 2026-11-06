@@ -51,6 +51,15 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
 
   private def decided(decisions: Seq[ResolverDecision]) = decisions.map(d => (d.listings, d.film)).toSet
 
+  /** The families' store at the input gate's boundary: which titles' questions are answered, and what was asked. */
+  private final class Families extends ListingReadiness {
+    var unanswered = Set.empty[String]
+    val asked      = scala.collection.mutable.ArrayBuffer.empty[Question]
+    private def question(listing: Listing) = Question.Family(agreement.VoterFamily.Imdb, s"title|${listing.title}")
+    def awaiting(listing: Listing): Set[Question] = if (unanswered(listing.title)) Set(question(listing)) else Set.empty
+    def ask(listing: Listing, questions: Set[Question]): Unit = asked ++= questions
+  }
+
   private final class World {
     val reads   = new ObservationReads
     val lookups = new Keyed(reads)
@@ -60,10 +69,15 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     var scrapes = Map.empty[Cinema, Seq[CinemaMovie]]
     var pageWait: PageWait = PageWait.Never
     var clock: java.time.Clock = _root_.tools.SpecClock.Pinned
+    /** The families' answers as the input gate reads them: a listing waits on one question per title not answered yet. */
+    val families = new Families
+    /** The held listings' store, which outlives a service as `identity_pending` outlives a worker. */
+    val pendingStore = new PendingListingStore.InMemory
+    var newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Shown
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
       reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), pageWait = pageWait,
-      clock = clock, retainedStore = retained)
+      clock = clock, retainedStore = retained, readiness = families, pendingStore = pendingStore, newWhilePending = newWhilePending)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
       scrapes += cinema -> films; service.venueScraped(cinema, films)
     }
@@ -574,5 +588,90 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     batches.size shouldBe 1                                         // the 10 s cap, then the rest after the burst
     manual.advance(java.time.Duration.ofSeconds(2))
     batches.size shouldBe 2
+  }
+
+  "the model's input gate" should "keep a re-scraped listing's last ready version until its own questions are answered, then take its new one in with no new scrape" in {
+    // docs/design/identity-structural-fixes.md fix 1: a version is taken in once its questions are answered, never decided
+    // on an answer still coming (the two-step write: a model "no film" written, the late answer restoring it)
+    val world   = new World
+    val service = world.service()
+    service.takeUp()
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    service.drain()
+    def multikino = service.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName)
+    multikino.loneElement.year shouldBe Some(2025)
+    world.families.unanswered = Set("Lalka")
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))    // its facts moved, its questions open
+    service.drain()
+    multikino.loneElement.year shouldBe Some(2025)                                    // the ready version stands
+    world.families.asked.toSet shouldBe Set(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"))
+    world.families.unanswered = Set.empty                                             // the answer filed
+    service.wake(); service.drain()
+    multikino.loneElement.year shouldBe Some(1968)
+    world.pendingStore.read() shouldBe empty
+  }
+
+  it should "show a listing new to the model on its own, Pending on its questions, never joining another's decision -- or not at all" in {
+    for (choice <- IdentityModelService.NewWhilePending.values) {
+      val world   = new World
+      world.newWhilePending = choice
+      val service = world.service()
+      service.takeUp()
+      world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+      service.drain()
+      world.families.unanswered = Set("Lalka")
+      world.scrape(service, Helios, Seq(movie(Helios, "Lalka")))
+      service.drain()
+      val snapshot = service.peek(10.seconds).get
+      val helios   = snapshot.resolution.decisions.filter(_.members.exists(_.venue == Helios.displayName))
+      if (choice == IdentityModelService.NewWhilePending.Shown) {
+        helios.loneElement.members.loneElement.venue shouldBe Helios.displayName
+        helios.loneElement.outcome shouldBe a[TakeOutcome.Pending]
+      } else helios shouldBe empty
+      snapshot.resolution.decisions.filter(_.members.exists(_.venue == Multikino.displayName)).loneElement.members should have size 1
+    }
+  }
+
+  it should "survive a restart: a version held when the worker stops is held again at boot, its questions asked again, and taken in once answered, with no new scrape" in {
+    val world = new World
+    val first = world.service()
+    first.takeUp()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    first.drain()
+    world.families.unanswered = Set("Lalka")
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))
+    first.drain()
+    world.pendingStore.read().loneElement.ready.flatMap(_.year) shouldBe Some(2025)
+    // the worker stops mid-wait: a new service over the same archive and stores
+    world.families.asked.clear()
+    val again = world.service()
+    again.takeUp()
+    def multikino = again.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName)
+    multikino.loneElement.year shouldBe Some(2025)
+    world.families.asked.toSet shouldBe Set(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"))   // asked again
+    world.families.unanswered = Set.empty
+    again.wake(); again.drain()
+    multikino.loneElement.year shouldBe Some(1968)
+    world.pendingStore.read() shouldBe empty
+    // a take-up after the promotion reads the same: nothing held, nothing taken twice
+    val third = world.service()
+    third.takeUp()
+    third.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.year shouldBe Some(1968)
+  }
+
+  it should "promote at boot a version whose answers were filed while the worker was down" in {
+    val world = new World
+    val first = world.service()
+    first.takeUp()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    first.drain()
+    world.families.unanswered = Set("Lalka")
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))
+    first.drain()
+    world.families.unanswered = Set.empty                                             // answered while down
+    val again = world.service()
+    again.takeUp()
+    again.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.year shouldBe Some(1968)
+    world.pendingStore.read() shouldBe empty
   }
 }

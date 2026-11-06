@@ -124,6 +124,10 @@ object MongoCollections {
         "bills them, a present listing bills their title -- which its take-up resumes and every convergence row reads.")
       .record
       .resolveInput(ListingsKey),
+    RegisteredCollection("identity_pending", Corpus, Sweep("IdentityModelService"), Set(Worker))
+      .resolveInputUncaptured(ListingsKey, "the drift check and every replay take each listing's version in as ready " +
+        "(ListingReadiness.Always): production holds one back only until its own questions are answered, which a replay's " +
+        "recorded answers already are (docs/design/identity-structural-fixes.md, fix 1)"),
     RegisteredCollection("venue_pages", Corpus, Unswept("one per venue detail page ever read; a gone page is flagged, never deleted. The rule would be 'no " +
       "current listing names (its group, page)', but listings name pages through each cinema's enricher group and no " +
       "complete read of them exists yet to sweep against"), Set(Worker))
