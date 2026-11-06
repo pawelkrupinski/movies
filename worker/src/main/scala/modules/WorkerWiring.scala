@@ -115,9 +115,11 @@ class WorkerWiring(
           new services.identity.adapters.MongoIdentityHistory(db, workerMetrics.ttlIndexMismatches),
           workerMetrics.identityModel.historyDropped(country.code)))),
       identityHistoryOverrides)
-  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): OFF ([[WorkerWiring.ModelReadiness]]). */
-  def identityModelReadiness(@scala.annotation.unused pages: services.identity.PageWait): services.identity.ListingReadiness =
-    WorkerWiring.ModelReadiness
+  /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once its
+   *  never-attempted venue page (`pages`) and the questions its own facts put to the families were each attempted, asked
+   *  ahead of the agreement's queue, and at most `ModelInputGate.MaxHold` -- while [[WorkerWiring.modelReadiness]] gates. */
+  def identityModelReadiness(pages: services.identity.PageWait): services.identity.ListingReadiness =
+    WorkerWiring.modelReadiness(services.identity.ListingReadiness.ofPage(pages), identityListingReadiness)
   /** The listings the model's input gate holds, persisted (`identity_pending`): what a take-up resumes. */
   lazy val identityPendingStore: services.identity.adapters.PendingListingStore =
     mongoConnection.database.fold[services.identity.adapters.PendingListingStore](new services.identity.adapters.PendingListingStore.InMemory())(
@@ -629,13 +631,15 @@ class WorkerWiring(
 }
 
 object WorkerWiring {
-  /** The model's input gate, from a listing's page wait and its families' questions: OFF again since 2026-11-06 ~13:35Z --
-   *  every version taken in at once, as before fix 1. With asks moved up and one attempt sufficing (5ec9cf7fc1a9), DE's
-   *  and US's held listings were still taken in only by the 10-minute bound (DE Babylon (Mitte) x4, Murnau-Filmtheater,
-   *  US Lindsay Theater: 5 bound releases, 0 promoted on their answers in the first 13 min): their asks are not answered
-   *  in minutes. Back on, `ListingReadiness.all(ListingReadiness.ofPage(pages), identityListingReadiness)`, once the
-   *  held listings' asks are answered ahead of the bound. The held rows are released by the next take-up. */
-  val ModelReadiness: services.identity.ListingReadiness = services.identity.ListingReadiness.Always
+  /** The model's input gate from a listing's venue-page wait and its families' questions: the ONE composition the worker
+   *  and the drift replay (`IdentityDrift.Worker`) both read, so the replay holds what the worker holds. OFF again since
+   *  2026-11-06 ~13:35Z -- every version taken in at once, as before fix 1: on image 5ec9cf7 DE's and US's held listings
+   *  were taken in only by the 10-minute bound (5 bound releases, 1 promoted on its answers in the first 13 min), the
+   *  questions their first answers led to never asked ahead (fixed by the gate's `askLedTo`). Back on,
+   *  `ListingReadiness.all(pages, families)`; the held rows are released by the next take-up meanwhile. */
+  def modelReadiness(@scala.annotation.unused pages: services.identity.ListingReadiness,
+                     @scala.annotation.unused families: services.identity.ListingReadiness): services.identity.ListingReadiness =
+    services.identity.ListingReadiness.Always
 
   /** `KINOWO_BG_CONCURRENCY`'s compiled-in default (see `backgroundBudget`). */
   val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)

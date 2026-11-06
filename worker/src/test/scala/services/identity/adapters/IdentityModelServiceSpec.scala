@@ -639,6 +639,12 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.pendingStore.read() shouldBe empty
   }
 
+  it should "name a held listing in its log lines by venue and title, with no NUL a log reader takes for binary" in {
+    val key = listingsOf(Map(Multikino -> Seq(movie(Multikino, "Lalka", Some(2025))))).head.key
+    ModelInputGate.described(key) shouldBe s"${Multikino.displayName} | Lalka"
+    ModelInputGate.described(key) should not include "\u0000"
+  }
+
   it should "ask, ahead, the questions a held listing's answers led to, never leaving them to the agreement's queue" in {
     // Prod, image 5ec9cf7 (2026-11-06 13:16-13:30Z): DE and US held listings were taken in only by the 10-minute bound
     // while their first questions were answered -- a title's search answered names films whose records the listing then

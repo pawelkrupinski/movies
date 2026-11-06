@@ -38,6 +38,13 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
     case Question.Family(family, asked) => failures.containsKey((family, asked))
     case _                              => false
   }
+  /** Asked and come to an outcome -- answered (filed, or a durable non-answer) or failed: production's memory's
+   *  `attempted`, what the model's input gate waits on (`IdentityDrift.Worker`). */
+  def tried(question: Question): Boolean = question match {
+    case Question.Family(family, asked) =>
+      answered.contains((family, asked)) || failures.containsKey((family, asked)) || released.contains((family, asked))
+    case _                              => false
+  }
   /** Answered or given up on, as production's memory reads it (`QuestionMemory.givenUp`): a family question that
    *  failed fewer than [[tools.AgreementQuestionRounds.Attempts]] times in a row is in its backoff, and a take settled
    *  past it is Pending until it is filed or unreachable (the owner, 2026-10-31). */
@@ -77,8 +84,16 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
   /** The family questions a stage asks INLINE ([[AgreementStage.AskNow]]): answered before its apply reads them again,
    *  as the worker's inline asks answer them ([[services.identity.adapters.InlineFamilyAsks]]) — else a take the worker
    *  reads its answers for at its first apply waited here for the queue's next round, served the model's film meanwhile. */
-  def inline(release: String => Boolean): AgreementStage.AskNow = (questions, _) =>
-    file(StageAnswers.asks(store, (Question.families(questions) -- unreachable).toSeq.sortBy { case (f, q) => (f.ordinal, q) }, release))
+  def inline(release: String => Boolean): AgreementStage.AskNow = (questions, _) => fileNow(questions, release)
+  /** `questions`' family questions answered now -- a held filed answer released, the rest asked of the sources: an
+   *  inline ask's, and the input gate's asks ahead of the queue (`IdentityDrift.Worker`). */
+  def fileNow(questions: Set[Question], release: String => Boolean): Unit = {
+    val open = (Question.families(questions) -- unreachable).toSeq.sortBy { case (f, q) => (f.ordinal, q) }
+    // a question whose held filed answer `release` files is answered by that answer: attempted, as the worker's memory has it
+    file(StageAnswers.asks(store, open, release, onReleased = question => { released.add(question); () }))
+  }
+  /** The family questions a [[fileNow]] answered by releasing their held filed answer. */
+  private val released = ConcurrentHashMap.newKeySet[(VoterFamily, String)]()
   /** One family question filed as a round files it, unless the store holds it already: what a sub-population's
    *  settle asked, read again alone ([[services.identity.agreement.FamilyFinalReads.AnswerOracle]]). */
   def fileOne(family: VoterFamily, asked: String): Unit =
@@ -116,10 +131,12 @@ object StageAnswers {
    *  ([[services.identity.adapters.AgreementAsker]], `Fresh`). A wait lists the gaps it met while their answers were
    *  held, and keeps listing them once filed; asked again, the recording's answer replaced the filed one, which no whole
    *  resolve ever reads (PL "LALKA / DOLLY", seed 2, run 3154: RT's filed "Lalka Dolly" search read again as no hits). */
-  def asks(store: FamilyAnswerStore, open: Seq[(VoterFamily, String)], release: String => Boolean): Seq[(VoterFamily, String)] =
-    open.filter { case (family, question) =>
+  def asks(store: FamilyAnswerStore, open: Seq[(VoterFamily, String)], release: String => Boolean,
+           /** Told each question `release` answered. */
+           onReleased: ((VoterFamily, String)) => Unit = _ => ()): Seq[(VoterFamily, String)] =
+    open.filter { case asked @ (family, question) =>
       val id = FamilyAnswerStore.questionId(family, question)
-      !release(id) && store.wanted(id)
+      if (release(id)) { onReleased(asked); false } else store.wanted(id)
     }
 
   /** Applies until the stage asks nothing and holds no backlog — answering between applies: what a round could not

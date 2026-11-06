@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import org.bson.BsonDocument
 import services.identity._
-import services.identity.adapters.{TmdbDocuments, TmdbKind, TmdbStore}
+import services.identity.adapters.{AgreementReadiness, FamilyAnswerStore, ModelInputGate, PendingListingStore, TmdbDocuments, TmdbKind, TmdbStore}
 import services.identity.agreement.{AgreementStage, VoterFamily}
 import services.movies.ListingKey
 import tools.{IdentityJudgements, MutableClock, UnmatchedClusters}
@@ -450,11 +450,18 @@ object IdentityDrift {
 
   // ── the incremental sequence ─────────────────────────────────────────────────────────────
 
+  /** How many rounds of the input gate's asks a step answers at most: each answer may lead to further questions (a title's
+   *  search names films whose records the listing then waits on), each answered as the last was. */
+  val GateAskRounds: Int = 8
+
   /** How many of an update's regions the replay's model resolves side by side: every core the JVM is given. */
   val RegionThreads: Int = math.max(1, Runtime.getRuntime.availableProcessors)
 
   /** A worker's identity state over one sequence of events: the model, the stage, their stores and the answers filed. */
-  final class Worker(reads: Reads, seed: Long, gatePercent: Int, val clock: MutableClock, filedDocs: FiledDocs = Noted) {
+  final class Worker(reads: Reads, seed: Long, gatePercent: Int, val clock: MutableClock, filedDocs: FiledDocs = Noted,
+                     /** The model's input gate from the families' readiness, as the worker composes it
+                      *  ([[modules.WorkerWiring.modelReadiness]]; the replay has every venue page it reads). */
+                     gating: ListingReadiness => ListingReadiness = modules.WorkerWiring.modelReadiness(ListingReadiness.Always, _)) {
     private val share    = new Share(seed, gatePercent)
     val gate             = new Gate(memo(reads), share)
     val docs             = new GatedDocuments(filedDocs(reads.filed), share)
@@ -479,6 +486,40 @@ object IdentityDrift {
       made
     }
     var stage: AgreementStage = newStage()
+    /** The questions the input gate asked for its held listings, answered before the next step: the worker asks them
+     *  ahead of the queue, answered within seconds, and the drain their filings wake takes the listing in. */
+    private val gateAsked = scala.collection.mutable.LinkedHashSet.empty[Question]
+    /** A family question the gate waits on, attempted: filed (the store wants it no more), or asked and come to an outcome,
+     *  as the worker's question memory reads it ([[AgreementReadiness]]); a question of another kind is no family the
+     *  replay holds back. */
+    private def attempted(question: Question): Boolean = question match {
+      case Question.Family(family, asked) => !answers.store.wanted(FamilyAnswerStore.questionId(family, asked)) || answers.tried(question)
+      case _                              => true
+    }
+    /** The worker's input gate ([[ModelInputGate]], fix 1), its readiness the live stage's questions of a listing against
+     *  the replay's answers, its held listings persisted as the worker's `identity_pending` is -- resumed at a deploy. */
+    val inputGate = new ModelInputGate(gating(new AgreementReadiness(listing => stage.questionsOf(listing), attempted, gateAsked ++= _)),
+      new PendingListingStore.InMemory(), clock)
+    /** The gate's asks answered, then every held listing they made ready promoted -- again while the answers led to more
+     *  asks, as each filing wakes the worker's drain within seconds: what the next step's batch takes in. */
+    private def promoted(): Seq[Listing] = {
+      val taken = Seq.newBuilder[Listing]
+      var rounds = 0
+      while ({
+        if (gateAsked.nonEmpty) { val asked = gateAsked.toSet; gateAsked.clear(); answers.fileNow(asked, releaseFamily) }
+        taken ++= inputGate.admit(model, Nil)._2
+        rounds += 1
+        gateAsked.nonEmpty && rounds < GateAskRounds
+      }) ()
+      taken.result()
+    }
+    /** The venues of `listings` as the worker's drain hands the gate a scrape: each venue's listings billed now. */
+    private def gated(venues: Iterable[String]): Seq[Listing] = {
+      val billed = held.values.iterator.filterNot(l => retained(l.key)).toSeq.groupBy(_.venue)
+      inputGate.admit(model, venues.toSeq.distinct.sorted.map(v => v -> billed.getOrElse(v, Nil).sorted)) match {
+        case (taken, promoted) => taken ++ promoted
+      }
+    }
     /** The intake's listings by key: what a projection hands the stage. */
     var held: Map[ListingKey, Listing] = Map.empty
     /** Nothing built on yet: the next projection reads every cluster again (its `republished` is `None`). */
@@ -513,7 +554,7 @@ object IdentityDrift {
       clock.advance(Duration.ofMinutes(5))
       val started = tools.Stopwatch.start()
       val decided = model.decisions
-      val r = stage.apply(UnmatchedClusters.resolutionOf(decided), held.get, answers.store.version, if (fresh) None else Some(republished))
+      val r = stage.apply(UnmatchedClusters.resolutionOf(decided), model.held, answers.store.version, if (fresh) None else Some(republished))
       fresh = false
       projections += 1
       val applied  = started.seconds
@@ -549,7 +590,7 @@ object IdentityDrift {
         // the model took what the inputs decide (then the step's events say which inputs), or lagged
         val changed = probed.filter(key => served.get(key).exists(t => lastServed.get(key).exists(_ != (t.film, pending(key)))))
         if (changed.nonEmpty) {
-          val whole = IdentityResolver.resolve(held.values.toSeq, gate, reads.normalizer, inputs)
+          val whole = IdentityResolver.resolve(model.listings, gate, reads.normalizer, inputs)
           changed.foreach { key =>
             val faithful = whole.decisionOf.get(key).map(filmOf).getOrElse(TakeFlips.NoFilm) == now.get(key).fold(TakeFlips.NoFilm)(_.film)
             causes((key, step)) = Cause.of(faithful, answered, scraped)
@@ -579,8 +620,10 @@ object IdentityDrift {
     private def moved(listings: Iterable[Listing]): Unit = movedTitles ++= listings.map(titleOf(_, reads.normalizer))
     /** `seen` and `gone` handed the model with the kept listings recomputed from the inputs: one a related arrival bills
      *  again kept again, one no present listing relates to any more let go -- whatever order they came in. */
-    private def retaining(seen: Seq[Listing], gone: Seq[ListingKey]): Unit = {
-      val present = held.values.iterator.filterNot(l => retained(l.key)).toSeq
+    private def retaining(seen: Seq[Listing], gone: Seq[ListingKey], answered: AnswersChanged = AnswersChanged.Empty): Unit = {
+      // the listings present as the model holds them (a held one's ready version, none for one new to it), and `seen`
+      val seenNow = seen.iterator.map(l => l.key -> l).toMap
+      val present = held.values.iterator.filterNot(l => retained(l.key)).flatMap(l => seenNow.get(l.key).orElse(model.held(l.key))).toSeq
       val kept    = ListingRetention.retained(departed.values.toSeq.sortBy(l => ListingKey.serialised(l.key)), present, reads.normalizer)
       val keys    = kept.iterator.map(_.key).toSet
       val newly   = kept.filterNot(l => retained(l.key))
@@ -588,25 +631,32 @@ object IdentityDrift {
       moved(newly ++ dropped.flatMap(held.get))
       held --= dropped; held ++= newly.map(l => l.key -> l)
       retained.clear(); retained ++= keys
-      model.batch(seen = seen ++ newly, gone = dropped)
+      model.batch(seen = seen ++ newly, gone = dropped, answered = answered)
     }
     // a listing back replaces what was kept of it: its current data wins
     def scraped(listings: Seq[Listing]): Unit = {
       event("scrape"); moved(listings)
+      val ready = promoted()
       departed --= listings.map(_.key); retained --= listings.map(_.key); held ++= listings.map(l => l.key -> l)
-      retaining(listings, Nil)
+      val keys  = listings.iterator.map(_.key).toSet
+      // the gate takes in the scraped listings ready, or billed as the model holds them, and promotes the held ones answered
+      val taken = gated(listings.map(_.venue)).filter(l => keys(l.key) || !model.held(l.key).contains(l))
+      retaining((ready ++ taken).distinctBy(_.key), Nil)
     }
     // a listing leaving loses its showings; its facts stay while a present listing bills its title (ListingRetention), as
     // the worker's drain keeps them
     def gone(keys: Seq[ListingKey]): Unit = {
       event("gone")
+      val ready   = promoted()
       val leaving = keys.flatMap(held.get)
       moved(leaving)
-      departed ++= leaving.filterNot(l => retained(l.key)).map(l => l.key -> l)
+      // what departs is the version the model holds: a listing the gate held new to it never was in it
+      departed ++= leaving.filterNot(l => retained(l.key)).flatMap(l => model.held(l.key)).map(l => l.key -> l)
       held --= keys; retained --= keys
-      retaining(Nil, keys)
+      val taken = gated(leaving.map(_.venue)).filterNot(l => model.held(l.key).contains(l))
+      retaining((ready ++ taken).distinctBy(_.key), keys)
     }
-    def filled(fraction: Double): Unit = { event("fill"); model.batch(answered = filed(gate.release(fraction))) }
+    def filled(fraction: Double): Unit = { event("fill"); retaining(promoted(), Nil, filed(gate.release(fraction))) }
     /** `changed` filed as production's fill files it: each answer announced on the feed the TMDB store publishes to --
      *  the stage's version moving for a search or record it read or waits on, as the live stage's wiring has it -- before
      *  the model is told. Unannounced, a search the stage read blind stayed blind while the version stood: UK Swan Lake,
@@ -615,20 +665,21 @@ object IdentityDrift {
       filingKeys(changed, reads.country.language.getLanguage).foreach(answers.store.noteFiled)
       changed
     }
-    def answered(): Unit = { event("answer"); answers.answer(stage, releaseFamily) }
+    def answered(): Unit = { event("answer"); answers.answer(stage, releaseFamily); val ready = promoted(); if (ready.nonEmpty) retaining(ready, Nil) }
     /** A deploy: the model and the stage made anew from their stores; `outrule` — a deploy changing the rules. */
     def deploy(outrule: Boolean): Unit = {
       event(if (outrule) "deploy-rules" else "deploy")
       if (outrule) { rules = s"$rules+"; verdicts.outrule() }
       model = newModel()
-      model.restore(held.values.toSeq.sorted)
       stage = newStage()
+      // the take-up resumes the gate's held listings from its store: the model reads their last ready versions
+      model.restore(inputGate.resume(held.values.toSeq.sorted).sorted)
       fresh = true
     }
     /** Every answer filed, and the stage asked until it settles. */
     def settled(): Resolution = {
       gate.open = true; docs.openAll(answers.store.noteFiled)
-      model.batch(answered = filed(gate.release(1.0)))
+      retaining(promoted(), Nil, filed(gate.release(1.0)))
       StageAnswers.settle(stage, () => { event("settle"); project(checkpoint = "settled") }, answers, clock, releaseFamily)
     }
   }

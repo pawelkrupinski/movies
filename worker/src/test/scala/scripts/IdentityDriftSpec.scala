@@ -465,6 +465,38 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     reads.findsRead.get("tt0048561") shouldBe Some(18148)
   }
 
+  // Fix 1's input gate, as the drift replay models it (docs/design/identity-structural-fixes.md, fix 3): the replay's worker
+  // holds a listing through the worker's own gate (ModelInputGate), its readiness the live stage's questions of the listing
+  // against the replay's answers -- the late-answer class of DE "Geister" (Bali-Kino, drift seed 8), whose own family title
+  // asks the model took the listing in before.
+  "the drift replay's worker" should "hold a new listing out of its model until the gate's asks are answered, then take it in" in {
+    val run   = new IdentityDrift.SliceRun(Path.of("test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa"))
+    val clock = new MutableClock(run.slice.recordedAt)
+    val core  = run.slice.core.map(_.key).toSet
+    val (arriving, booted) = run.listings.partition(l => core(l.key))
+    val gated = new IdentityDrift.Worker(run.readsAt(clock), seed = 8, gatePercent = 100, clock,
+      gating = families => services.identity.ListingReadiness.all(families))
+    gated.boot(booted); gated.project()
+    gated.scraped(arriving)
+    arriving.foreach(l => withClue(l.key)(gated.model.held(l.key) shouldBe None))
+    gated.inputGate.heldNew.map(_.newest.key).toSet shouldBe core
+    gated.project()
+    gated.answered()
+    arriving.foreach(l => withClue(l.key)(gated.model.held(l.key) shouldBe Some(l)))
+    gated.inputGate.heldNew shouldBe empty
+  }
+
+  it should "take every version in at once while the worker's gate is off (WorkerWiring.modelReadiness)" in {
+    val run   = new IdentityDrift.SliceRun(Path.of("test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa"))
+    val clock = new MutableClock(run.slice.recordedAt)
+    val core  = run.slice.core.map(_.key).toSet
+    val (arriving, booted) = run.listings.partition(l => core(l.key))
+    val worker = new IdentityDrift.Worker(run.readsAt(clock), seed = 8, gatePercent = 100, clock)
+    worker.boot(booted); worker.project()
+    worker.scraped(arriving)
+    arriving.foreach(l => withClue(l.key)(worker.model.held(l.key) shouldBe Some(l)))
+  }
+
   // A crashed replay (an OOM, a kill) prints no verdict line; scripts/identity-slice reports that as NO VERDICT, not RED.
   "the replay's verdict line" should "name RED and CLEAN apart, in the form scripts/identity-slice reads" in {
     IdentityDrift.verdictLine(red = true) shouldBe "## DRIFT VERDICT: RED"

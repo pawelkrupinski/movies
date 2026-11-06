@@ -67,7 +67,7 @@ final class ModelInputGate(
           if (was.exists(_.newest == listing)) askLedTo(was.get, waits)
           else {
             readiness.ask(listing, waits)
-            logger.info(s"identity model: held ${ListingKey.serialised(listing.key)} on ${waits.size} question(s) of its own " +
+            logger.info(s"identity model: held ${ModelInputGate.described(listing.key)} on ${waits.size} question(s) of its own " +
               s"(${waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}); the model ${if (prior.isDefined) "keeps the version it holds" else "holds no version of it"}")
           }
           if (!was.exists(w => w.ready == held.ready)) written += PendingListingStore.Pending(listing.key, held.ready, held.since)
@@ -115,7 +115,7 @@ final class ModelInputGate(
         if (released.nonEmpty) persist(Nil, released.toSeq)
         if (bootPromoted.nonEmpty) metrics.promoted(bootPromoted.toSeq, atBoot = true)
         logger.info(s"identity model: ${pending.size} listing(s) held on their questions resumed, ${released.size} released" +
-          pending.values.asScala.toSeq.sortBy(_.since).take(20).map(h => s"; ${ListingKey.serialised(h.newest.key)} " +
+          pending.values.asScala.toSeq.sortBy(_.since).take(20).map(h => s"; ${ModelInputGate.described(h.newest.key)} " +
             s"held ${(clock.millis() - h.since) / 60000} min on ${h.waits.toSeq.flatMap(_.id).sorted.take(3).mkString(", ")}" +
             (if (h.ready.isEmpty) " (no version taken in)" else "")).mkString)
         resumed
@@ -176,6 +176,10 @@ final class ModelInputGate(
 }
 
 object ModelInputGate {
+  /** A listing's key as a log line names it: its venue and raw title, never the serialised key, whose NUL separators
+   *  turned the drift replay's log binary to grep (the drift check read no verdict, run 42230476293). */
+  def described(key: ListingKey): String = s"${key.venue} | ${key.rawTitle}"
+
   /** How long the input gate holds a listing at most: its questions are asked ahead of the queue and wait one attempt each,
    *  so a hold past this is a question the queue does not reach -- taken in, counted, and paged on by the alert's count. */
   val MaxHold: java.time.Duration = java.time.Duration.ofMinutes(10)
