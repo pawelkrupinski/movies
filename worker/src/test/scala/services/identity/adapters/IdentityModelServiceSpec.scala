@@ -68,6 +68,16 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     override def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = promotions :+= (heldSeconds -> atBoot)
   }
 
+  /** `world`, its services' woken drains run nowhere: the spec drains by hand alone, so no drain on a thread of its own races
+   *  the spec's (a raced drain promoted at a drain what a take-up was to promote at boot). No `peek`: it asks the model's
+   *  thread, which runs nothing here. */
+  private def handDrained(world: World): World = {
+    val clock = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-06T10:00:00Z"))
+    world.clock = clock
+    world.scheduler = () => new _root_.tools.ManualScheduler(clock)
+    world
+  }
+
   private final class World {
     val reads   = new ObservationReads
     val lookups = new Keyed(reads)
@@ -84,9 +94,11 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     var newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Shown
     /** What the gate tells its metrics: the held count and oldest wait after each drain, and each promotion. */
     val gate = new GateReports
+    /** Where a service's woken drains run: a thread of its own, or -- for a spec that drains by hand alone -- nowhere. */
+    var scheduler: () => java.util.concurrent.ScheduledExecutorService = () => Executors.newSingleThreadScheduledExecutor()
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
-      reads, () => listingsOf(scrapes), normalizer, 1.second, Executors.newSingleThreadScheduledExecutor(), pageWait = pageWait,
+      reads, () => listingsOf(scrapes), normalizer, 1.second, scheduler(), pageWait = pageWait,
       clock = clock, retainedStore = retained, readiness = families, pendingStore = pendingStore, newWhilePending = newWhilePending,
       metrics = gate)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
@@ -617,7 +629,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     multikino.loneElement.year shouldBe Some(2025)                                    // the ready version stands
     world.families.asked.toSet shouldBe Set(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"))
     world.families.unanswered = Set.empty                                             // the answer filed
-    service.wake(); service.drain()
+    service.drain()
     multikino.loneElement.year shouldBe Some(1968)
     world.pendingStore.read() shouldBe empty
   }
@@ -661,7 +673,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     multikino.loneElement.year shouldBe Some(2025)
     world.families.asked.toSet shouldBe Set(Question.Family(agreement.VoterFamily.Imdb, "title|Lalka"))   // asked again
     world.families.unanswered = Set.empty
-    again.wake(); again.drain()
+    again.drain()
     multikino.loneElement.year shouldBe Some(1968)
     world.pendingStore.read() shouldBe empty
     // a take-up after the promotion reads the same: nothing held, nothing taken twice
@@ -688,9 +700,8 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
 
   it should "tell its metrics how many it holds, how long the oldest waited, and how long each promoted one waited, at boot too" in {
     // nothing replays the gate, so these are all that see it stuck (IdentityInputGateStuck)
-    val clock = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-06T10:00:00Z"))
-    val world = new World
-    world.clock = clock
+    val world = handDrained(new World)
+    val clock = world.clock.asInstanceOf[_root_.tools.MutableClock]
     val first = world.service()
     first.takeUp()
     world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
@@ -700,11 +711,11 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     first.drain()
     world.gate.heldReports.last shouldBe (1 -> 0.0)
     clock.advance(java.time.Duration.ofSeconds(90))
-    first.wake(); first.drain()
+    first.drain()
     world.gate.heldReports.last shouldBe (1 -> 90.0)
     clock.advance(java.time.Duration.ofSeconds(30))
     world.families.unanswered = Set.empty
-    first.wake(); first.drain()
+    first.drain()
     world.gate.promotions.last shouldBe (Seq(120.0) -> false)
     world.gate.heldReports.last shouldBe (0 -> 0.0)
     // held again, then answered while the worker is down: promoted at boot
