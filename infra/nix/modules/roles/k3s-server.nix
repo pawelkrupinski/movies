@@ -11,8 +11,8 @@
 #   * NO CONSUL, so no service registration and no `--resolv-conf` pointing at a fleet resolver.
 #     bitcashier's version points CoreDNS at each node's own unbound because `.service.consul` has
 #     to resolve from inside a pod. This fleet has no such namespace. SEE THE HAZARD NOTE BELOW
-#     ANYWAY -- the absence of that flag is safe here only for as long as this host's
-#     /etc/resolv.conf is a real resolver rather than a systemd-resolved stub.
+#     ANYWAY -- the absence of that flag is safe here only because k3s swaps systemd-resolved's
+#     stub for /run/systemd/resolve/resolv.conf by itself.
 #   * NO host-gw FLANNEL BACKEND, and this is the one worth reading twice. bitcashier switches to
 #     host-gw because it declares pod-network routes in the Hetzner network, which makes a pod
 #     address reachable from its HAProxy edges. THIS FLEET DECLARES NO SUCH ROUTES. host-gw without
@@ -203,9 +203,11 @@ in
         # AGAINST STILL EXISTS: if this host ever resolves through systemd-resolved's stub at
         # 127.0.0.53, CoreDNS inherits that address from /etc/resolv.conf and forwards to it -- and
         # 127.0.0.53 inside a pod's network namespace names the POD, not the host. Every external
-        # lookup from every pod then returns NXDOMAIN. It is left unset because this fleet has no
-        # resolver of its own to point at; if systemd-resolved is enabled on this host, this flag
-        # has to come back with a real nameserver behind it.
+        # lookup from every pod then returns NXDOMAIN. It is left unset because k3s, finding the stub
+        # in /etc/resolv.conf, hands the kubelet /run/systemd/resolve/resolv.conf instead: the real
+        # upstreams, which are the fleet's own `networking.nameservers` (modules/fleet/default.nix),
+        # not Hetzner's DHCP-provided resolvers. A change there reaches CoreDNS only when its pod
+        # restarts: the kubelet copies the file into a pod once, when it starts.
         # NO `--kube-apiserver-arg=oidc-*` HERE ANY MORE. An `oidc` option stood on this role until
         # 2026-09-07, trusting Google as an issuer so Headlamp could present a person's token and
         # have them be a Kubernetes subject in their own right. Sign-in for the fleet moved to

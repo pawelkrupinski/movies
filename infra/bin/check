@@ -235,6 +235,16 @@ else
   failed=1
 fi
 
+step "host dns resolvers"
+# Which recursive resolvers each host asks, read back out of its evaluated config: the fleet's own,
+# never the ones Hetzner's DHCP hands out (2026-11-05 outage). See test_host_dns.sh.
+if out="$(bash test/test_host_dns.sh 2>&1)"; then
+  echo "$out" | tail -1 | sed 's/^/  /'
+else
+  echo "$out" | sed 's/^/  /'
+  failed=1
+fi
+
 step "host memory safety"
 # zram, vm.swappiness and the k3s kubelet's reserves, read back out of each host's evaluated config.
 # The toplevel eval below proves nix/modules/fleet/host-memory.nix evaluates; it cannot notice a host

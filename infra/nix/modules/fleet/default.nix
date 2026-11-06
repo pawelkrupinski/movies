@@ -205,6 +205,22 @@
     networking.useDHCP = lib.mkDefault true;
     services.resolved.enable = true;
 
+    # OUR OWN RECURSIVE RESOLVERS, NOT THE ONES DHCP HANDS OUT. Hetzner's DHCP names its own,
+    # 185.12.64.1 and .2, and on 2026-11-05 both timed out on every zone cyberfolks.pl /
+    # hekko.net.pl serve (systembiletowy.pl, the ticketing platform behind dozens of Polish
+    # cinemas, among them) while those zones' own nameservers and the three below answered the same
+    # host at once: ~30 PL venues went red on /uptime. k3s hands CoreDNS
+    # /run/systemd/resolve/resolv.conf, so whatever this host resolves through, every pod does too.
+    # Three operators, so one having a bad day is not ours. Nothing on this fleet resolves a name
+    # only Hetzner's resolvers know (the private network has no DNS of its own).
+    # test/test_host_dns.sh reads these back.
+    networking.nameservers = [ "1.1.1.1" "9.9.9.9" "8.8.8.8" ];
+    systemd.network.networks."99-ethernet-default-dhcp" = {
+      dhcpV4Config.UseDNS = false;
+      dhcpV6Config.UseDNS = false;
+      ipv6AcceptRAConfig.UseDNS = false;
+    };
+
     time.timeZone = "UTC";
 
     # UTC AND en_US.UTF-8 ARE BOTH STATED RATHER THAN INHERITED, and neither line changes anything
