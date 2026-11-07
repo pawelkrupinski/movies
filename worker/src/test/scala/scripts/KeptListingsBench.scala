@@ -43,7 +43,9 @@ object KeptListingsBench {
     val opened    = IdentitySlice.openRecording(recording, filed)
     val now       = recording.recordedAt
     val reads     = IdentitySlice.readsOf(opened, opened.fetch, opened.gaps, now, None, tools.ProdState.none)
-    val lookups   = new tools.MemoLookups(reads.lookups)
+    // a kept listing's own question the newest recording does not hold (an older billing's) is answered "nothing": as
+    // a live source would answer it, so its family decides instead of waiting (the Pending harness gap)
+    val lookups   = new GapsAnswered(new tools.MemoLookups(reads.lookups))
     val present   = IdentitySlice.listingsOf(recording, opened.rows)
     val billed    = present.map(_.key).toSet
     val venues    = present.map(_.cinema).distinct.sortBy(_.displayName)
@@ -82,7 +84,7 @@ object KeptListingsBench {
     resolve(Nil)
 
     val baseline = takes(resolve(Nil))
-    val summary  = new StringBuilder("window\treplicas\trepeat\tkept\tnodes\tlargestFamily\twallSeconds\tcpuSeconds\tallocatedGb\tliveHeapMb\tpresentTakesMoved\tretainSeconds\n")
+    val summary  = new StringBuilder("window\treplicas\trepeat\tkept\tnodes\tlargestFamily\twallSeconds\tcpuSeconds\tallocatedGb\tliveHeapMb\tpresentTakesMoved\tretainSeconds\tpending\tdigest\n")
     for (days <- windows; r <- replicas if days > 0 || r == 1) {
       val r0 = System.nanoTime(); val keptReal = keptAt(days); val retainSeconds = (System.nanoTime() - r0) / 1e9
       val kept = replicated(keptReal, r)
@@ -102,8 +104,12 @@ object KeptListingsBench {
           hottest(file)
         }
         val families = resolution.familyOf.values.groupBy(identity).values.map(_.size)
-        summary.append(f"$days\t$r\t$n\t${kept.size}\t${resolution.nodes}\t${families.max}\t$wall%.1f\t$cpu%.1f\t$gb%.2f\t$live%.0f\t$moved\t$retainSeconds%.2f\n")
-        println(f"[KeptListingsBench] ${country.code} ${days}d x$r #$n: kept ${kept.size}, nodes ${resolution.nodes}, largest family ${families.max}, wall $wall%.1fs, cpu $cpu%.1fs, alloc $gb%.2fGB, live +$live%.0fMB, present takes moved vs 0-kept $moved, retained() $retainSeconds%.2fs")
+        val all      = resolution.decisions.flatMap(d => d.members.map(k => s"${services.movies.ListingKey.serialised(k)}\t${PopulationMonotonicity.takeOf(d).getOrElse("pending")}")).sorted
+        val pending  = resolution.decisions.count(d => PopulationMonotonicity.takeOf(d).isEmpty)
+        val digest   = java.security.MessageDigest.getInstance("SHA-256").digest(all.mkString("\n").getBytes(StandardCharsets.UTF_8)).take(6).map("%02x".format(_)).mkString
+        if (n == 1) Files.write(out.resolve(s"takes-${country.code}-${days}d-x$r.tsv"), all.mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
+        summary.append(f"$days\t$r\t$n\t${kept.size}\t${resolution.nodes}\t${families.max}\t$wall%.1f\t$cpu%.1f\t$gb%.2f\t$live%.0f\t$moved\t$retainSeconds%.2f\t$pending\t$digest\n")
+        println(f"[KeptListingsBench] ${country.code} ${days}d x$r #$n: kept ${kept.size}, nodes ${resolution.nodes}, largest family ${families.max}, wall $wall%.1fs, cpu $cpu%.1fs, alloc $gb%.2fGB, live +$live%.0fMB, present takes moved vs 0-kept $moved, pending decisions $pending, takes digest $digest, retained() $retainSeconds%.2fs")
       }
     }
     Files.write(out.resolve(s"bench-${country.code}.tsv"), summary.toString.getBytes(StandardCharsets.UTF_8))
@@ -132,5 +138,22 @@ object KeptListingsBench {
     }
     show("self", self, 40, _ => true)
     show("inclusive services.identity", inclusive, 80, m => m.startsWith("services.") || m.startsWith("scripts."))
+  }
+
+  /** `inner` with every unknown answer read as known-empty. */
+  final class GapsAnswered(inner: services.identity.IdentityLookups) extends services.identity.IdentityLookups {
+    import services.identity.{Answer, CandidateQuery, DetailFacts, Hit, IdentityMeasures}
+    private def known[A](answer: Answer[A], empty: A): Answer[A] = if (answer.isAwaited) Answer.Known(empty) else answer
+    def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
+    def detail(l: Listing): Answer[Option[DetailFacts]] = known(inner.detail(l), None)
+    def candidates(q: CandidateQuery): Answer[Seq[Hit]] = known(inner.candidates(q), Nil)
+    def film(id: Int): Answer[Option[IdentityMeasures.Film]] = known(inner.film(id), None)
+    override def cast(id: Int) = known(inner.cast(id), None)
+    override def releaseDay(id: Int) = known(inner.releaseDay(id), None)
+    override def overview(id: Int) = known(inner.overview(id), None)
+    override def numbersFilmsByTmdbId: Boolean = inner.numbersFilmsByTmdbId
+    override def prefetchAnswered(): Unit = inner.prefetchAnswered()
+    override def released(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit = inner.released(qs, ids, pages)
+    override def prefetch(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[Listing]): Unit = inner.prefetch(qs, ids, pages)
   }
 }
