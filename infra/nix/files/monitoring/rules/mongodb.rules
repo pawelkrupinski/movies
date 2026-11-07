@@ -558,6 +558,45 @@ groups:
             runs a flat ~1.7/s all day against the task queues, it is the loudest thing in the log,
             and it does not move this counter.
 
+      # -------------------------------------------------------------------------------------------
+      # THE IDENTITY ARCHIVE. identity_retained keeps every departed listing's row, expired rather
+      # than deleted (docs/design/identity-listing-retention.md): ~2.9k new rows a day across the
+      # countries, about 0.5-1 GB a year. Its data and indexes past 2 GB is two years of growth in
+      # one, or a writer inserting where it should update -- look before the volume fills. The
+      # series exist only because of the exporter's collstats allow-list
+      # (roles/mongodb-exporter.nix); the companion below says so when they go.
+      # -------------------------------------------------------------------------------------------
+      - alert: IdentityRetainedArchiveLarge
+        expr: |
+          sum(mongodb_collstats_storageStats_storageSize{collection="identity_retained"})
+            + sum(mongodb_collstats_storageStats_totalIndexSize{collection="identity_retained"}) > 2e9
+        for: 1h
+        labels:
+          severity: warning
+          domain: platform
+        annotations:
+          summary: "The identity archive (identity_retained) holds {{ $value | humanize1024 }}B on mongo-1"
+          description: >-
+            identity_retained keeps every departed listing's row, expired, never deleted. Expected growth
+            is about 0.5-1 GB a year. Check which country grew
+            (`mongodb_collstats_storageStats_count{collection="identity_retained"}` by database) and whether
+            a listing that departs again replaced its row (one row per `_id`, the listing key). Then
+            wipe by age: `deleteMany` over MongoRetainedListingStore.expiredBefore(T), an indexed range.
+
+      - alert: IdentityRetainedSizeAbsent
+        expr: absent(mongodb_collstats_storageStats_storageSize{collection="identity_retained"})
+        for: 30m
+        labels:
+          severity: warning
+          domain: platform
+        annotations:
+          summary: "Nothing is reporting the identity archive's size on mongo-1"
+          description: >-
+            `IdentityRetainedArchiveLarge` cannot fire without this series. Suspect the exporter's
+            ExecStart first: `--collector.collstats` and the `--mongodb.collstats-colls` list of the
+            identity_retained collections (roles/mongodb-exporter.nix). Then the metric name, which is
+            the exporter's `$collStats` flattened (`storageStats.storageSize`).
+
       - alert: MongodServerStatusSeriesAbsent
         expr: absent(mongodb_ss_connections)
         for: 30m
