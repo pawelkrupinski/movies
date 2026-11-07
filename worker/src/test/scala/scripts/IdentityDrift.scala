@@ -633,6 +633,12 @@ object IdentityDrift {
       retained.clear(); retained ++= keys
       model.batch(seen = seen ++ newly, gone = dropped, answered = answered)
     }
+    /** The versions promoted ahead of a step (`ready`) and those its gate pass took in (`taken`), one per key: the step's own
+     *  where both hold one -- the worker's drain took the promoted one a drain earlier, and the newer over it. */
+    private def newestOf(ready: Seq[Listing], taken: Seq[Listing]): Seq[Listing] = {
+      val takenKeys = taken.iterator.map(_.key).toSet
+      ready.filterNot(l => takenKeys(l.key)) ++ taken.distinctBy(_.key)
+    }
     // a listing back replaces what was kept of it: its current data wins
     def scraped(listings: Seq[Listing]): Unit = {
       event("scrape"); moved(listings)
@@ -641,7 +647,7 @@ object IdentityDrift {
       val keys  = listings.iterator.map(_.key).toSet
       // the gate takes in the scraped listings ready, or billed as the model holds them, and promotes the held ones answered
       val taken = gated(listings.map(_.venue)).filter(l => keys(l.key) || !model.held(l.key).contains(l))
-      retaining((ready ++ taken).distinctBy(_.key), Nil)
+      retaining(newestOf(ready, taken), Nil)
     }
     // a listing leaving loses its showings; its facts stay while a present listing bills its title (ListingRetention), as
     // the worker's drain keeps them
@@ -654,7 +660,7 @@ object IdentityDrift {
       departed ++= leaving.filterNot(l => retained(l.key)).flatMap(l => model.held(l.key)).map(l => l.key -> l)
       held --= keys; retained --= keys
       val taken = gated(leaving.map(_.venue)).filterNot(l => model.held(l.key).contains(l))
-      retaining((ready ++ taken).distinctBy(_.key), keys)
+      retaining(newestOf(ready, taken), keys)
     }
     def filled(fraction: Double): Unit = { event("fill"); retaining(promoted(), Nil, filed(gate.release(fraction))) }
     /** `changed` filed as production's fill files it: each answer announced on the feed the TMDB store publishes to --

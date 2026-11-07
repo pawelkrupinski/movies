@@ -486,6 +486,30 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     gated.inputGate.heldNew shouldBe empty
   }
 
+  it should "take in a scrape's newer version over the held one its answers made ready in the same step" in {
+    // the held version promoted ahead of the scrape and the scrape's own newer version of that key, both handed the model:
+    // the first kept, the model took the stale one -- the worker's drain promotes it a drain earlier, then takes the newer
+    val run   = new IdentityDrift.SliceRun(Path.of("test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa"))
+    val clock = new MutableClock(run.slice.recordedAt)
+    val core  = run.slice.core.map(_.key).toSet
+    val (arriving, booted) = run.listings.partition(l => core(l.key))
+    var answered = false
+    val readiness = new services.identity.ListingReadiness {
+      def awaiting(listing: services.identity.Listing): Set[services.identity.Question] =
+        if (answered) Set.empty else Set(services.identity.Question.VenuePage(listing.key))
+      def ask(listing: services.identity.Listing, questions: Set[services.identity.Question]): Unit = ()
+    }
+    val worker = new IdentityDrift.Worker(run.readsAt(clock), seed = 8, gatePercent = 100, clock, gating = _ => readiness)
+    worker.boot(booted); worker.project()
+    val first = arriving.head
+    worker.scraped(Seq(first))
+    worker.model.held(first.key) shouldBe None
+    val newer = first.copy(year = Some(first.year.fold(1999)(_ + 1)))
+    answered = true
+    worker.scraped(Seq(newer))
+    worker.model.held(first.key) shouldBe Some(newer)
+  }
+
   it should "take every version in at once with the gate off (WorkerWiring.modelReadiness returning Always)" in {
     val run   = new IdentityDrift.SliceRun(Path.of("test/resources/fixtures/drift-slices/de/bali-kino-geister-2e6e9eaa"))
     val clock = new MutableClock(run.slice.recordedAt)
