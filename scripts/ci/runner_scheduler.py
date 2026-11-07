@@ -32,13 +32,19 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
         scrape recording #14 ran nine measurements in a 48 GiB slice, and on 2026-11-07 07:40-08:22Z six-then-nine did:
         its OOM killer took 18 processes (exit 137).
       - CPU: the host's busy cores over `cpu_window_seconds` (/proc/stat), up to `cpu_start_below` of the cores
-        (`light_cpu_start_below` for a light job), must hold the class's `job_cpus` (the JVM's ActiveProcessorCount
-        for a check or measurement; 1 for a light job). On a saturated host another job only slows every job,
-        bitcashier's included, for no throughput.
-    A runner of ours that has not shown its memory and CPU yet -- one waiting for its job, or started within
-    `settle_seconds` -- counts at its class's expected size on every one of them, so a queue never starts a burst into
-    memory that only looked free. A job starts only when all three hold it, never past its slots; when memory runs
-    short of what our waiting runners would take (bitcashier started work), the idle ones go, lowest class first.
+        (`light_cpu_start_below` for a light job), must hold a job of the class at the cores its jobs USE: the median,
+        over the window, of its settled busy runners' own containers (cpu.stat), within [`job_cpus_floor`,
+        `job_cpus`]; none settled, `job_cpus` (the JVM's ActiveProcessorCount for a check or measurement; 1 for a
+        light job). At 15:46Z five measurements used 13 cores, ~2.6 each, and every new one was charged 4. On a
+        saturated host another job only slows every job, bitcashier's included, for no throughput.
+    A runner of ours that has not fully shown its memory and CPU yet -- one waiting for its job, or started within
+    `settle_seconds` -- is charged what it has NOT shown yet: its class's expected size less its container's working
+    set, and a job's cores less its share of the CPU window's average. So a queue never starts a burst into memory
+    that only looked free, and what a young runner already holds is not counted twice (15:46Z: three runners 3-4 min
+    old were charged 11 GiB and 4 cores each beside what the readings already had of them: room 0 on 13 of 32
+    cores). The memory margin is each reading's once, never per job. The log line names each term (`held by`).
+    A job starts only when all three hold it, never past its slots; when memory runs short of what our waiting runners
+    would take (bitcashier started work), the idle ones go, lowest class first.
   * PRIORITY between movies' own jobs: landing checks (`movies-check`), then measurements (`movies-measure`), in the
     `max_slots` slots. A runner is started for a QUEUED job of a class only (ephemeral, one job, the label of that
     class alone), the highest class first, so a free slot goes to a waiting landing check before a measurement.
@@ -89,6 +95,7 @@ class Config:
     # peaks 13) on the JVM's 4 cores; a light job (a timings report, a prune, a dispatch) runs seconds in under 1 GiB.
     job_expected_gib: dict = dataclasses.field(default_factory=lambda: {"check": 11, "measure": 11, "light": 1})
     job_cpus: dict = dataclasses.field(default_factory=lambda: {"check": 4, "measure": 4, "light": 1})
+    job_cpus_floor: float = 1  # a class's measured cores per job never read below this (job_cpus is its ceiling)
     light_slots: int = 3  # the light lane: slots past max_slots, for light jobs only
     light_cpu_start_below: float = 0.95  # the light lane's CPU ceiling: a light job starts on a busy host, not a full one
     memory_margin_gib: float = 6  # left free beyond every reserve, for the running jobs' growth
@@ -147,6 +154,10 @@ class Instance:
     busy: bool
     idle_since: float  # when it was last seen not busy (its start, at first)
     started: float = 0.0  # when the scheduler started it
+    # its container's own cgroup, as last read (None: not read, or no container yet)
+    mem_gib: float | None = None  # working set now
+    cpu_cores: float | None = None  # cores it used over the CPU window (or its life, if shorter)
+    cpu_seconds: float | None = None  # CPU time it has used in all
 
 
 @dataclasses.dataclass(frozen=True)
@@ -159,6 +170,7 @@ class Readings:
     cpu_busy_cores: float | None
     cpu_cores: int
     busy_builder_gib: tuple = ()  # the working set of each builder unit running a job
+    cpu_span_seconds: float | None = None  # the span cpu_busy_cores averages over
 
 
 @dataclasses.dataclass(frozen=True)
@@ -167,6 +179,9 @@ class Decision:
     saturated: bool
     starts: tuple  # ((slot, cls), ...)
     stops: tuple  # (slot, ...)
+    # what held a measurement this tick, before the starts: memory, slice, cpu and slots in whole jobs, plus the
+    # charge of our settling runners and a measurement's measured cores (the log line names the binding term)
+    limits: dict = dataclasses.field(default_factory=dict)
 
 
 # ── the decision, pure ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -216,88 +231,98 @@ def cpu_spare(cfg: Config, r: Readings, pending_cpus: float, start_below: float)
     return start_below * r.cpu_cores - r.cpu_busy_cores - pending_cpus
 
 
-def memory_room(cfg: Config, bc: Bitcashier, r: Readings, pending_gib: float, cls: str = "measure") -> int:
-    """More `cls` jobs the host's free memory holds now (negative: short of our waiting runners)."""
-    return _whole_jobs(memory_free_gib(cfg, bc, r, pending_gib), cfg.job_expected_gib[cls])
+def settling(cfg: Config, inst: Instance, now: float) -> bool:
+    """Not fully in the readings yet: waiting for its job, or started within settle_seconds."""
+    return not inst.busy or now - inst.started < cfg.settle_seconds
 
 
-def cpu_room(cfg: Config, r: Readings, pending_cpus: float, cls: str = "measure") -> int:
-    """More `cls` jobs the CPU has room for, up to cpu_start_below of the cores."""
-    return _whole_jobs(cpu_spare(cfg, r, pending_cpus, cfg.cpu_start_below), cfg.job_cpus[cls])
+def measured_cpus(cfg: Config, instances: list, cls: str, now: float) -> float:
+    """The cores a `cls` job takes: the median of what its settled busy runners used over the CPU window, within
+    [job_cpus_floor, job_cpus] (2026-11-07 15:46Z: five measurements on 13 cores, ~2.6 each, were charged 4); none
+    measured: job_cpus, the JVM's ActiveProcessorCount."""
+    used = [i.cpu_cores for i in instances
+            if i.cls == cls and i.cpu_cores is not None and not settling(cfg, i, now)]
+    ceiling = cfg.job_cpus[cls]
+    return ceiling if not used else min(ceiling, max(min(cfg.job_cpus_floor, ceiling), statistics.median(used)))
+
+
+def memory_charge(cfg: Config, inst: Instance) -> float:
+    """What a settling runner still owes the memory readings: its class's expected size less what its container
+    already holds (and so is already out of MemAvailable and the slices' headroom)."""
+    return max(0.0, cfg.job_expected_gib[inst.cls] - (inst.mem_gib or 0.0))
+
+
+def cpu_charge(r: Readings, inst: Instance, per_job: float) -> float:
+    """What a settling runner still owes the CPU reading: a job's cores less its share of the window's average (its
+    CPU time over the span the host's busy cores average: all of it fell inside, it started within settle_seconds)."""
+    shown = inst.cpu_seconds / r.cpu_span_seconds if inst.cpu_seconds is not None and r.cpu_span_seconds else 0.0
+    return max(0.0, per_job - shown)
+
+
+def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings) -> list:
+    """Bitcashier saturated: the idle heavy runners (a light lane runner is too small to hold bitcashier back). Past
+    max_slots, or memory short of what our settling runners still owe: idle ones, lowest class first. And an idle
+    runner whose class has nothing queued for longer than idle_stop_seconds."""
+    rank = {c: i for i, c in enumerate(CLASSES)}
+    idle = [i for i in instances if not i.busy]
+    stops = [i.slot for i in idle if i.cls != "light"] if saturated(cfg, bc) else []
+    excess = max(0, sum(1 for i in instances if i.slot <= cfg.max_slots) - cfg.max_slots)
+    short = -memory_free_gib(cfg, bc, r, sum(memory_charge(cfg, i) for i in instances if settling(cfg, i, now)))
+    for inst in sorted(idle, key=lambda i: (-rank[i.cls], i.slot)):
+        if excess <= 0 and short <= 0:
+            break
+        if inst.slot not in stops:
+            stops.append(inst.slot)
+            excess -= 1
+            short -= memory_charge(cfg, inst)
+    return stops + [i.slot for i in idle if i.slot not in stops and demand.get(i.cls, 0) == 0
+                    and now - i.idle_since >= cfg.idle_stop_seconds]
 
 
 def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings) -> Decision:
     """The runners to start ((slot, class), highest class first, then the light lane) and the idle ones to stop, for
     `demand` (queued jobs per class), the `instances` that exist and the host's live readings `r`."""
     full = saturated(cfg, bc)
-    rank = {c: i for i, c in enumerate(CLASSES)}
-    idle = [i for i in instances if not i.busy]
-
-    def unsettled(insts):
-        # not yet in the readings: waiting for its job, or started too recently for its memory to show
-        return [i for i in insts if not i.busy or now - i.started < cfg.settle_seconds]
-
-    def gib(insts):
-        return sum(cfg.job_expected_gib[i.cls] for i in insts)
-
-    def cpus(insts):
-        return sum(cfg.job_cpus[i.cls] for i in insts)
-
-    def heavy(insts):  # the runners in the max_slots slots (the light lane's are past them)
-        return [i for i in insts if i.slot <= cfg.max_slots]
-
-    stops = []
-    # Bitcashier saturated: idle heavy runners go (a light lane runner is too small to hold bitcashier back).
-    if full:
-        stops += [i.slot for i in idle if i.cls != "light"]
-    # Past max_slots, or memory short of what our waiting runners would take: idle runners go, lowest class first.
-    excess = max(0, len(heavy(instances)) - cfg.max_slots)
-    short = -memory_free_gib(cfg, bc, r, gib(unsettled(instances)))
-    for inst in sorted(idle, key=lambda i: (-rank[i.cls], i.slot)):
-        if inst.slot in stops:
-            continue
-        if excess <= 0 and short <= 0:
-            break
-        stops.append(inst.slot)
-        excess -= 1
-        short -= cfg.job_expected_gib[inst.cls]
-    # An idle runner whose class has nothing queued for longer than idle_stop_seconds gives its slot back.
-    for inst in idle:
-        if inst.slot not in stops and demand.get(inst.cls, 0) == 0 and now - inst.idle_since >= cfg.idle_stop_seconds:
-            stops.append(inst.slot)
-
+    stops = _idle_to_stop(cfg, bc, demand, instances, now, r)
     alive = [i for i in instances if i.slot not in stops]
     used = {i.slot for i in instances}  # a stopping slot is not reused in the same tick
-    pending = unsettled(alive)
-    memory = memory_free_gib(cfg, bc, r, gib(pending))
-    cpu = {"heavy": cpu_spare(cfg, r, cpus(pending), cfg.cpu_start_below),
-           "light": cpu_spare(cfg, r, cpus(pending), cfg.light_cpu_start_below)}
+    per_job = {cls: measured_cpus(cfg, alive, cls, now) for cls in CLASSES}
+    pending = [i for i in alive if settling(cfg, i, now)]
+    pending_cpus = sum(cpu_charge(r, i, per_job[i.cls]) for i in pending)
+    memory = memory_free_gib(cfg, bc, r, sum(memory_charge(cfg, i) for i in pending))
+    cpu = {"heavy": cpu_spare(cfg, r, pending_cpus, cfg.cpu_start_below),
+           "light": cpu_spare(cfg, r, pending_cpus, cfg.light_cpu_start_below)}
+    held = {cls: class_free_gib(cfg, r, cls, sum(memory_charge(cfg, i) for i in pending if i.cls == cls))
+            for cls in CLASSES}
+    heavy_slots = [s for s in range(1, cfg.max_slots + 1) if s not in used]
+    size = cfg.job_expected_gib["measure"]
+    limits = {"memory": _whole_jobs(memory, size),
+              "slice": None if held["measure"] is None else _whole_jobs(held["measure"], size),
+              "cpu": _whole_jobs(cpu["heavy"], per_job["measure"]), "slots": len(heavy_slots),
+              "settling": f"{len(pending)} owe {sum(memory_charge(cfg, i) for i in pending):.0f} GiB "
+                          f"{pending_cpus:.1f} cores", "measure_cores": round(per_job["measure"], 1)}
     starts = []
 
     def admit(cls: str, slots: list, gate: str) -> None:
         nonlocal memory
-        mine = [i for i in alive if i.cls == cls]
-        need = max(0, demand.get(cls, 0) - sum(1 for i in mine if not i.busy))
-        held = class_free_gib(cfg, r, cls, gib(unsettled(mine)))
-        size, cores = cfg.job_expected_gib[cls], cfg.job_cpus[cls]
-        while need and slots and memory >= size and cpu[gate] >= cores and (held is None or held >= size):
+        need = max(0, demand.get(cls, 0) - sum(1 for i in alive if i.cls == cls and not i.busy))
+        size, cores = cfg.job_expected_gib[cls], per_job[cls]
+        while need and slots and memory >= size and cpu[gate] >= cores and (held[cls] is None or held[cls] >= size):
             starts.append((slots.pop(0), cls))
             need -= 1
             memory -= size
-            held = None if held is None else held - size
+            held[cls] = None if held[cls] is None else held[cls] - size
             for g in cpu:
                 cpu[g] -= cores
 
-    heavy_slots = [s for s in range(1, cfg.max_slots + 1) if s not in used]
     if not full:
         for cls in CLASSES[:-1]:
             admit(cls, heavy_slots, "heavy")
-    # room: the heavy jobs memory, CPU and slots held this tick (those just started included)
-    room = 0 if full else len(starts) + min(_whole_jobs(memory, cfg.job_expected_gib["measure"]),
-                                            _whole_jobs(cpu["heavy"], cfg.job_cpus["measure"]), len(heavy_slots))
     # THE LIGHT LANE: its own slots, admitted at a light job's size whatever the heavy queue or bitcashier's runners.
     admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used], "light")
-    return Decision(room, full, tuple(starts), tuple(sorted(stops)))
+    room = 0 if full else min(v for k, v in limits.items()
+                              if k in ("memory", "slice", "cpu", "slots") and v is not None)
+    return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits)
 
 
 def demand_of(jobs: list) -> dict:
@@ -372,6 +397,9 @@ class CpuMeter:
     def add(self, now: float, busy: int, total: int) -> None:
         self.samples = [x for x in self.samples if x[0] >= now - self.window] + [(now, busy, total)]
 
+    def span_seconds(self) -> float | None:
+        return self.samples[-1][0] - self.samples[0][0] if len(self.samples) >= 2 else None
+
     def busy_cores(self, cores: int) -> float | None:
         if len(self.samples) < 2 or self.samples[-1][2] == self.samples[0][2]:
             return None
@@ -390,7 +418,38 @@ def read_readings(cfg: Config, cpu: CpuMeter, now: float) -> Readings:
     busy = [working_set_bytes(d) for d in busy_units(cfg.builder_cgroups, cfg.proc)]
     return Readings(available_kb / 2**20, headroom_gib(cfg.ci_cgroup),
                     {c: v for c, v in classes.items() if v is not None}, cpu.busy_cores(cores), cores,
-                    tuple(b / 2**30 for b in busy if b is not None))
+                    tuple(b / 2**30 for b in busy if b is not None), cpu.span_seconds())
+
+
+def cpu_usage_seconds(cgroup_dir: str) -> float | None:
+    """A cgroup's CPU time in all (cpu.stat usage_usec), in seconds; None when unreadable."""
+    stat = _read(os.path.join(cgroup_dir, "cpu.stat")) or ""
+    usec = next((int(l.split()[1]) for l in stat.splitlines() if l.startswith("usage_usec ")), None)
+    return None if usec is None else usec / 1e6
+
+
+class RunnerUsage:
+    """Each runner's container, read off its own cgroup every tick: its working set now, its CPU time in all, and the
+    cores it used over the last `window_seconds` (from the samples a tick apart; None from one sample)."""
+
+    def __init__(self, window_seconds: int):
+        self.window = window_seconds
+        self.samples: dict = {}  # cgroup directory -> [(time, cpu seconds)]
+
+    def read(self, cgroup_dir: str, now: float) -> tuple:
+        """(mem_gib, cpu_cores, cpu_seconds) of the cgroup, each None when unreadable."""
+        used = working_set_bytes(cgroup_dir)
+        seconds = cpu_usage_seconds(cgroup_dir)
+        mem = None if used is None else used / 2**30
+        if seconds is None:
+            return mem, None, None
+        kept = [x for x in self.samples.get(cgroup_dir, []) if x[0] >= now - self.window] + [(now, seconds)]
+        self.samples[cgroup_dir] = kept
+        (t0, s0), (t1, s1) = kept[0], kept[-1]
+        return mem, ((s1 - s0) / (t1 - t0) if t1 > t0 else None), seconds
+
+    def keep_only(self, cgroup_dirs: set) -> None:
+        self.samples = {d: v for d, v in self.samples.items() if d in cgroup_dirs}
 
 
 def _run(cmd: list, timeout: int = 30) -> subprocess.CompletedProcess:
@@ -403,12 +462,13 @@ class Host:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self.idle_since: dict = {}
+        self.usage = RunnerUsage(cfg.cpu_window_seconds)
 
     def unit(self, slot: int) -> str:
         return f"{self.cfg.unit}@{slot}.service"
 
     def instances(self, now: float) -> list:
-        out = []
+        out, seen = [], set()
         for env in sorted(glob.glob(os.path.join(self.cfg.state_dir, "*.env"))):
             slot = int(os.path.basename(env)[:-4])
             state = _run(["systemctl", "is-active", self.unit(slot)]).stdout.strip()
@@ -424,8 +484,21 @@ class Host:
                 self.idle_since.pop(slot, None)
             started = os.path.getmtime(env)
             since = self.idle_since.setdefault(slot, started) if not busy else now
-            out.append(Instance(slot, cls, busy, since, started))
+            cgroup = self.container_cgroup(slot, cls) if state != "activating" else None
+            usage = self.usage.read(cgroup, now) if cgroup else (None, None, None)
+            seen.add(cgroup)
+            out.append(Instance(slot, cls, busy, since, started, *usage))
+        self.usage.keep_only(seen)
         return out
+
+    def container_cgroup(self, slot: int, cls: str) -> str | None:
+        """The slot's container's own cgroup (docker's systemd driver: <class slice>/docker-<id>.scope); None while it
+        has no container."""
+        out = _run(["docker", "inspect", "-f", "{{.Id}}", f"{self.cfg.unit}-{slot}"])
+        cid = out.stdout.strip()
+        if out.returncode != 0 or not cid:
+            return None
+        return os.path.join(self.cfg.class_cgroup.format(cls=cls), f"docker-{cid}.scope")
 
     def start(self, slot: int, cls: str) -> None:
         os.makedirs(self.cfg.state_dir, mode=0o700, exist_ok=True)
@@ -513,17 +586,19 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeter, dry_run: bool =
     now = time.time()
     bc = Bitcashier(busy_runners(cfg.builder_cgroups), busy_runners(cfg.deployer_cgroups))
     demand = demand_of(reader.queued_jobs())
-    instances = host.instances(now)
     r = read_readings(cfg, cpu, now)
+    instances = host.instances(now)
     d = decide(cfg, bc, demand, instances, now, r)
     gib = lambda v: "-" if v is None else f"{v:.0f}"  # noqa: E731
+    cores = lambda v: "-" if v is None else f"{v:.1f}"  # noqa: E731
     print(f"bitcashier busy {bc.busy_builders}/{cfg.builders} builders {bc.busy_deployers}/{cfg.deployers} deployers"
           f"{' SATURATED' if d.saturated else ''}; room {d.room}; reserve {reserved_builders(cfg, bc)} builders "
-          f"x {builder_reserve_gib(cfg, r):.1f} GiB; "
+          f"x {builder_reserve_gib(cfg, r):.1f} GiB; held by {d.limits}; "
           f"free GiB host {gib(r.mem_available_gib)} "
           f"ci {gib(r.ci_free_gib)} {({c: round(v) for c, v in r.class_free_gib.items()})}; cpu busy "
           f"{gib(r.cpu_busy_cores)}/{r.cpu_cores}; queued {demand}; "
-          f"ours {[(i.slot, i.cls, 'busy' if i.busy else 'idle') for i in instances]}; "
+          f"ours {[(i.slot, i.cls, 'busy' if i.busy else 'idle', gib(i.mem_gib), cores(i.cpu_cores))
+                   for i in instances]}; "
           f"start {list(d.starts)} stop {list(d.stops)}", flush=True)
     if dry_run:
         return d

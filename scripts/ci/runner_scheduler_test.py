@@ -36,6 +36,16 @@ def readings(available=500, ci_free=500, class_free=None, cpu_busy=0.0, cores=10
     return rs.Readings(available, ci_free, dict(class_free or {}), cpu_busy, cores, tuple(busy_builders))
 
 
+def memory_room(cfg, bc, r, pending_gib):
+    """Whole measurements the host's free memory holds."""
+    return rs._whole_jobs(rs.memory_free_gib(cfg, bc, r, pending_gib), cfg.job_expected_gib["measure"])
+
+
+def cpu_room(cfg, r, pending_cpus):
+    """Whole 4-core measurements the CPU holds."""
+    return rs._whole_jobs(rs.cpu_spare(cfg, r, pending_cpus, cfg.cpu_start_below), cfg.job_cpus["measure"])
+
+
 # Plenty of everything: only the queue, the slots and bitcashier's runners decide. The recorded tests pass ci-runner's 32.
 ROOMY = readings()
 CORES = 32
@@ -50,15 +60,15 @@ class MemoryRoomTest(unittest.TestCase):
     def test_whole_expected_jobs_in_the_live_headroom(self):
         # 72 GiB free, no bitcashier runner idle to reserve for: (72 - 6) // 11 = 6
         r = readings(available=72, ci_free=90)
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), r, pending_gib=0), 6)
+        self.assertEqual(memory_room(CFG, rs.Bitcashier(12, 6), r, pending_gib=0), 6)
 
     def test_the_tighter_of_the_host_and_ci_slice(self):
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), readings(available=90, ci_free=39), 0), 3)
+        self.assertEqual(memory_room(CFG, rs.Bitcashier(12, 6), readings(available=90, ci_free=39), 0), 3)
 
     def test_a_burst_of_idle_builders_keeps_its_reserve(self):
         # 6 idle builders, of which builder_burst (4) reserve the 4 GiB floor; 6 idle deployers 1 GiB:
         # 72 - 16 - 6 - 6 = 44 -> 4
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(6, 0), readings(available=72, ci_free=90), 0), 4)
+        self.assertEqual(memory_room(CFG, rs.Bitcashier(6, 0), readings(available=72, ci_free=90), 0), 4)
         # fewer idle than the burst: only those
         self.assertEqual(rs.reserved_builders(CFG, rs.Bitcashier(10, 0)), 2)
         self.assertEqual(rs.reserved_builders(CFG, rs.Bitcashier(12, 0)), 0)
@@ -67,7 +77,7 @@ class MemoryRoomTest(unittest.TestCase):
         # 6 busy builders at 3..9 GiB: the median 5.5, for each of the 4 reserved; the deployers 6
         r = readings(available=72, ci_free=90, busy_builders=(3, 4, 5, 6, 7, 9))
         self.assertEqual(rs.builder_reserve_gib(CFG, r), 5.5)
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(6, 0), r, 0), 3)  # 72 - 22 - 6 - 6 = 38
+        self.assertEqual(memory_room(CFG, rs.Bitcashier(6, 0), r, 0), 3)  # 72 - 22 - 6 - 6 = 38
 
     def test_a_builders_reserve_stays_within_its_floor_and_cap(self):
         self.assertEqual(rs.builder_reserve_gib(CFG, readings()), CFG.per_idle_builder_gib)  # none busy
@@ -76,10 +86,10 @@ class MemoryRoomTest(unittest.TestCase):
 
     def test_a_runner_that_has_not_allocated_yet_counts_at_its_expected_size(self):
         r = readings(available=72, ci_free=90)
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), r, pending_gib=2 * 11), 4)
+        self.assertEqual(memory_room(CFG, rs.Bitcashier(12, 6), r, pending_gib=2 * 11), 4)
 
     def test_overcommitted_is_negative(self):
-        self.assertLess(rs.memory_room(CFG, rs.Bitcashier(12, 6), readings(available=3, ci_free=10), 0), 0)
+        self.assertLess(memory_room(CFG, rs.Bitcashier(12, 6), readings(available=3, ci_free=10), 0), 0)
 
 
 class CpuRoomTest(unittest.TestCase):
@@ -88,16 +98,16 @@ class CpuRoomTest(unittest.TestCase):
 
     def test_room_up_to_the_target_in_whole_jobs(self):
         # 85 % of 32 = 27.2 cores; 16 busy: (27.2 - 16) // 4 = 2
-        self.assertEqual(rs.cpu_room(CFG, readings(cpu_busy=16, cores=CORES), pending_cpus=0), 2)
+        self.assertEqual(cpu_room(CFG, readings(cpu_busy=16, cores=CORES), pending_cpus=0), 2)
 
     def test_a_just_started_job_counts_at_its_cores(self):
-        self.assertEqual(rs.cpu_room(CFG, readings(cpu_busy=16, cores=CORES), pending_cpus=4), 1)
+        self.assertEqual(cpu_room(CFG, readings(cpu_busy=16, cores=CORES), pending_cpus=4), 1)
 
     def test_a_saturated_host_has_none(self):
-        self.assertLessEqual(rs.cpu_room(CFG, readings(cpu_busy=31.4, cores=CORES), 0), 0)
+        self.assertLessEqual(cpu_room(CFG, readings(cpu_busy=31.4, cores=CORES), 0), 0)
 
     def test_no_reading_yet_starts_nothing(self):
-        self.assertEqual(rs.cpu_room(CFG, readings(cpu_busy=None, cores=CORES), 0), 0)
+        self.assertEqual(cpu_room(CFG, readings(cpu_busy=None, cores=CORES), 0), 0)
 
 
 class RecordedReadingsTest(unittest.TestCase):
@@ -148,6 +158,40 @@ class RecordedReadingsTest(unittest.TestCase):
     def test_1330_one_huge_busy_builder_reserves_no_more_than_the_cap(self):
         # even a busy builder at 55 GiB reserves the 8 GiB cap: 87 - (4 x 8 + 6) - 6 = 43 -> 3
         self.assertGreaterEqual(self.at_1330(busy_builder_gib=55).room, 2)
+
+    # 15:46:51Z, the owner's "half CPU again": bitcashier idle (0/12, 0/6), host 95 GiB free, ci.slice 88, the measure
+    # slice 56 of its 80; CPU 13 of 32 busy; five measurements running -- slots 5 and 7 since 15:37, slots 1-3 started
+    # 15:43-15:44Z (settling) -- 15 measurements queued. The old rule charged each settling one a full 11 GiB and 4
+    # cores ON TOP of what it already showed, and every new one 4 cores against ~2.6 used:
+    # CPU room (27.2 - 13 - 12) // 4 = 0, room 0. The margin is the slice's once, not per job.
+    def at_1546(self, measure_slice_gib):
+        settled = [rs.Instance(s, "measure", True, NOW, NOW - 590, mem_gib=7, cpu_cores=2.6, cpu_seconds=1500)
+                   for s in (5, 7)]
+        settling = [rs.Instance(s, "measure", True, NOW, NOW - 200, mem_gib=3.3, cpu_cores=2.6, cpu_seconds=520)
+                    for s in (1, 2, 3)]
+        r = rs.Readings(95, 88, {"measure": measure_slice_gib - 24}, 13, CORES, (), 300)
+        return rs.decide(CFG, rs.Bitcashier(0, 0), queued(measure=15), settled + settling, NOW, r)
+
+    def test_1546_a_job_is_charged_the_cores_jobs_use_and_a_settling_one_only_what_it_has_not_shown(self):
+        d = self.at_1546(measure_slice_gib=80)
+        self.assertEqual(d.limits["measure_cores"], 2.6)  # the settled ones' median, not 4
+        # settling: 3 x (11 - 3.3) GiB and 3 x (2.6 - 520 / 300) cores still owed
+        # host: 88 - 22 reserved - 6 - 23.1 = 36.9 -> 3; CPU: (27.2 - 13 - 2.6) // 2.6 = 4
+        self.assertEqual((d.limits["memory"], d.limits["cpu"]), (3, 4))
+        # and the 80 GiB slice: 56 - 6 - 23.1 = 26.9 -> 2 -- five measurements peak at 12-16 GiB each (measured
+        # 16:50Z), so it holds the eighth back: the slice, not CPU, binds now
+        self.assertEqual((d.limits["slice"], d.room), (2, 2))
+
+    def test_1546_with_a_96_gib_measure_slice_takes_three_more(self):
+        d = self.at_1546(measure_slice_gib=96)  # 72 - 6 - 23.1 = 42.9 -> 3
+        self.assertEqual(d.room, 3)
+        self.assertEqual(d.starts, ((4, "measure"), (6, "measure"), (8, "measure")))
+
+    def test_a_class_with_no_settled_runner_is_charged_its_ceiling(self):
+        fresh = [rs.Instance(1, "measure", True, NOW, NOW - 10, cpu_cores=1.0)]
+        self.assertEqual(rs.measured_cpus(CFG, fresh, "measure", NOW), 4)
+        idle_ones = [rs.Instance(1, "measure", True, NOW, NOW - 900, cpu_cores=0.2)]
+        self.assertEqual(rs.measured_cpus(CFG, idle_ones, "measure", NOW), CFG.job_cpus_floor)
 
     # 12:32-12:58Z: identity run 42370669779's timings job (label `movies`, 10 s, well under 1 GiB) queued 26 min behind
     # 20 measurements, every job charged a measurement's 11 GiB and 4 cores and light ranked last. Light jobs now
@@ -333,6 +377,10 @@ class FakeDocker:
         self.calls.append(cmd)
         if cmd[0] == "systemctl":
             return rs.subprocess.CompletedProcess(cmd, 0, f"{self.state}\n" if cmd[1] == "is-active" else "", "")
+        if cmd[1] == "inspect":  # the container's id, which names its cgroup scope
+            if self.top_fails:
+                return rs.subprocess.CompletedProcess(cmd, 1, "", "Error: No such object\n")
+            return rs.subprocess.CompletedProcess(cmd, 0, "c0ffee\n", "")
         fields = cmd[cmd.index("-eo") + 1].split(",")
         if self.top_fails or "pid" not in fields:
             return rs.subprocess.CompletedProcess(cmd, 1, "", "Error response from daemon: Couldn't find PID field in ps output\n")
@@ -353,7 +401,32 @@ class HostTest(unittest.TestCase):
         patcher = unittest.mock.patch.object(rs, "_run", docker)
         patcher.start()
         self.addCleanup(patcher.stop)
-        return rs.Host(rs.Config(state_dir=state))
+        return rs.Host(rs.Config(state_dir=state, class_cgroup=os.path.join(state, "cg", "ci-movies-{cls}.slice")))
+
+    def container(self, host, current_gib, inactive_gib, cpu_seconds):
+        d = os.path.join(host.cfg.class_cgroup.format(cls="check"), "docker-c0ffee.scope")
+        os.makedirs(d, exist_ok=True)
+        for name, text in (("memory.current", str(current_gib * GIB)),
+                           ("memory.stat", f"anon 1\ninactive_file {inactive_gib * GIB}\n"),
+                           ("cpu.stat", f"usage_usec {int(cpu_seconds * 1e6)}\nuser_usec 1\n")):
+            with open(os.path.join(d, name), "w") as f:
+                f.write(text)
+
+    def test_a_runner_shows_its_containers_own_memory_and_cpu(self):
+        # 15:46Z: each measurement was charged 4 cores and 11 GiB while it already showed in the readings
+        host = self.host(FakeDocker(["Runner.Worker"]))
+        self.container(host, current_gib=7, inactive_gib=2, cpu_seconds=100)
+        [first] = host.instances(NOW)
+        self.assertEqual((first.mem_gib, first.cpu_cores, first.cpu_seconds), (5, None, 100))  # one sample: no rate
+        self.container(host, current_gib=8, inactive_gib=2, cpu_seconds=178)
+        [i] = host.instances(NOW + 30)
+        self.assertEqual((i.mem_gib, i.cpu_seconds), (6, 178))
+        self.assertAlmostEqual(i.cpu_cores, 2.6)  # 78 s of CPU in 30 s
+
+    def test_a_runner_with_no_container_shows_nothing(self):
+        with unittest.mock.patch("sys.stderr", new_callable=io.StringIO):
+            [i] = self.host(FakeDocker([], top_fails=True)).instances(NOW)
+        self.assertEqual((i.mem_gib, i.cpu_cores, i.cpu_seconds), (None, None, None))
 
     def test_a_runner_running_a_job_reads_busy(self):
         [i] = self.host(FakeDocker(["tini", "Runner.Listener", "Runner.Worker"])).instances(NOW)
