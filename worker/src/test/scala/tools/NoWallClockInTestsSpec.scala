@@ -260,7 +260,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "web/src/main/scala/modules/Wiring.scala"            -> CompositionRoot,
     "worker/src/main/scala/modules/WorkerWiring.scala"   -> CompositionRoot,
     "worker/src/main/scala/modules/WorkerMain.scala"     -> CompositionRoot,
-    "common/src/main/scala/tools/Stopwatch.scala"        -> "defines Stopwatch.System, the process's monotonic source",
+    "base/src/main/scala/tools/Stopwatch.scala"          -> "defines Stopwatch.System, the process's monotonic source",
     "common/src/main/scala/models/VenueClock.scala"      -> "defines VenueClock.system, a launcher's venue clock over Clock.systemUTC()",
     "worker/src/main/scala/tools/ThreadCpuClock.scala"   -> "a time source itself: thread CPU time, the monotonic clock where that is unsupported",
     "scrapers/src/main/scala/services/cinemas/CinemaEgress.scala" ->
@@ -286,7 +286,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
    *  ObservationReads) change the resolver closure, which re-resolves every worker on deploy (batch them); the scrape
    *  decorators sit behind the catalog's diagnostic door. */
   private val SystemStopwatchBacklog: Set[String] = Set(
-    "common/src/main/scala/tools/RetryWithBackoff.scala",
+    "http/src/main/scala/tools/RetryWithBackoff.scala",
     "common/src/main/scala/tools/MonitoringHttpFetch.scala",
     "identity/src/main/scala/services/identity/ObservationReads.scala",
     "identity/src/main/scala/services/identity/IncrementalResolver.scala",

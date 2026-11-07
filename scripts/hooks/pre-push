@@ -435,7 +435,7 @@ heavy_rows() { # <paths, one per line>
             */src/main/*|*/src/it/*|*/src/test/*|*/src/fixtures/*|build.sbt|project/*|conf/*|test/resources/*) itrest=1 ;;
         esac
         is_identity_path "$path" && itidentity=1
-        case "$path" in build.sbt|project/*|test/resources/fixtures/*|common/src/main/*) itidentity=1 ;; esac
+        case "$path" in build.sbt|project/*|test/resources/fixtures/*|common/src/main/*|base/src/main/*) itidentity=1 ;; esac
     done <<< "$1"
     [ $itrest = 1 ] && echo itrest
     [ $itidentity = 1 ] && echo itidentity
@@ -450,14 +450,14 @@ heavy_rows() { # <paths, one per line>
 # ── Which test configs a set of changed paths has to compile ────────────────────────────────────
 # One line per path on stdin; prints the sbt compile tasks, one per line, in dependency order. A
 # module's own test configs plus those of every module that depends on it (build.sbt's dependsOn):
-# geodata, http → common → identity → testkit → scrapers → worker (test->fixtures on scrapers) → web (page->fixtures) → e2e. The build
+# geodata, base → http → common → identity → testkit → scrapers → worker (test->fixtures on scrapers) → web (page->fixtures) → e2e. The build
 # itself touches them all.
 compile_plan() {
     local common=0 identity=0 testkit=0 scrapers=0 worker=0 web=0 e2e=0 path
     while IFS= read -r path; do
         case "$path" in
             build.sbt|project/*)  common=1 ;;
-            common/*.scala|common/*.java|geodata/*.scala|http/*.scala)   common=1 ;;
+            common/*.scala|common/*.java|geodata/*.scala|base/*.scala|http/*.scala)   common=1 ;;
             identity/*.scala|identity/*.java) identity=1 ;;
             testkit/*.scala|testkit/*.java) testkit=1 ;;
             scrapers/*.scala|scrapers/*.java) scrapers=1 ;;

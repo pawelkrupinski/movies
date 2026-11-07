@@ -51,7 +51,7 @@ ROOTS = os.path.join(HERE, "identity-what-if-roots.tsv")
 IDENTITY_SOURCES = "identity/src/main/scala/"
 WORKER_SOURCES = "worker/src/main/scala/"
 AGREEMENT = "identity/src/main/scala/services/identity/agreement/"
-CODE_PREFIXES = ("geodata/src/main/", "common/src/main/", "identity/src/main/", "scrapers/src/main/", "worker/src/main/",
+CODE_PREFIXES = ("geodata/src/main/", "base/src/main/", "http/src/main/", "common/src/main/", "identity/src/main/", "scrapers/src/main/", "worker/src/main/",
                  "testkit/src/main/", "project/", "conf/")
 CODE_FILES = ("build.sbt",)
 MAX_CLOSURE = 400

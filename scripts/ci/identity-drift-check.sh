@@ -118,7 +118,7 @@ if [ -n "${DRIFT_EXPLORE:-}" ]; then
 fi
 
 # ---- THE BASE (see the header) ----
-code_paths=(geodata/src/main common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/it/scala
+code_paths=(geodata/src/main base/src/main http/src/main common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/it/scala
             testkit/src/main build.sbt project worker/src/test/scala/scripts)
 code_of() { git -C "$here" ls-tree -r "$1" -- "${code_paths[@]}" | sha256sum | cut -c1-24; } # <sha>
 recording_key=$( { printf '%s\n' "$cc" "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" "${KINOWO_CONVERGENCE_TREE_ASSET:-}" "${KINOWO_CONVERGENCE_FILL_ASSETS:-}"

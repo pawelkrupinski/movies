@@ -38,6 +38,7 @@ check "...an integration spec runs the integration rows" "itrest" "$(heavy worke
 check "...the build runs every row but e2e corpus (basic runs its spec)" "itrest itidentity e2e" "$(heavy build.sbt)"
 check "...an http-module change the rest rows, never the identity row (no identity digest lists an http/ source)" "itrest e2e" "$(heavy http/src/main/scala/tools/RealHttpFetch.scala)"
 check "...an HTTP fetcher left in common the identity row too, as any common source" "itrest itidentity e2e" "$(heavy common/src/main/scala/tools/PacedHttpFetch.scala)"
+check "...a base helper the identity row too: the resolver reads base's text folds" "itrest itidentity e2e" "$(heavy base/src/main/scala/tools/TextNormalization.scala)"
 check "...a docs change none" "" "$(heavy docs/landing-process.md)"
 check "...a script no row runs none" "" "$(heavy scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and the self-tests, its own among them" "newchecks scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"

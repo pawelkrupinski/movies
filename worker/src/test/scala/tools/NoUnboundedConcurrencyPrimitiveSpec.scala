@@ -27,7 +27,7 @@ import java.nio.file.{Files, Paths}
 class NoUnboundedConcurrencyPrimitiveSpec extends AnyFlatSpec with Matchers {
 
   private val Factories = Set(
-    "common/src/main/scala/tools/BoundedCache.scala",
+    "base/src/main/scala/tools/BoundedCache.scala",
     "common/src/main/scala/tools/DaemonExecutors.scala")
 
   private val Shapes = Seq(

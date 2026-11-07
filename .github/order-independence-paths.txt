@@ -3,6 +3,8 @@
 # one a line. Every module's main code (the resolver, the pipeline, the stores), the convergence specs that replay the
 # orders, the build, and the wiring that runs them -- this file and its script included.
 identity/src/main/
+base/src/main/
+http/src/main/
 common/src/main/
 worker/src/main/
 scrapers/src/main/

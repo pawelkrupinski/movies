@@ -144,6 +144,7 @@ jobs:
                   patterns: |
                       web/**
                       geodata/**
+                      base/**
                       http/**
                       common/**
                       identity/**
@@ -179,6 +180,8 @@ jobs:
                       !worker/src/it/**
                       !worker/src/fixtures/**
                       geodata/**
+                      base/**
+                      !base/src/test/**
                       http/**
                       !http/src/test/**
                       common/**
