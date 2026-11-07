@@ -10,6 +10,8 @@
 # `dir/**` is everything under `dir/`; anything else is an exact file path — the
 # `.github/actions/changed-paths/matches.sh` dialect.
 geodata/src/main/**
+base/src/main/**
+http/src/main/**
 common/src/main/**
 identity/src/main/**
 scrapers/src/main/**

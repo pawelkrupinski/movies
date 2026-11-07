@@ -85,6 +85,31 @@ class SourceDigestSpec extends AnyFlatSpec with Matchers {
     digest(before + ("common/src/main/resources/a.json" -> "{\"a\": 1} ")) should not be digest(before)
   }
 
+  it should "not move when a source or resource moves to another module, its package kept, and move on a code edit there" in {
+    val before = Map("common/src/main/scala/tools/Stopwatch.scala" -> "package tools\nobject Stopwatch { val x = 1 }\n",
+      "identity/src/main/scala/services/identity/R.scala" -> "package services.identity\nobject R\n",
+      "common/src/main/resources/title-words.tsv" -> "a\tb\n")
+    val moved = Map("base/src/main/scala/tools/Stopwatch.scala" -> before("common/src/main/scala/tools/Stopwatch.scala"),
+      "identity/src/main/scala/services/identity/R.scala" -> before("identity/src/main/scala/services/identity/R.scala"),
+      "base/src/main/resources/title-words.tsv" -> before("common/src/main/resources/title-words.tsv"))
+    digest(moved) shouldBe digest(before)
+    digest(moved + ("base/src/main/scala/tools/Stopwatch.scala" -> "package tools\nobject Stopwatch { val x = 2 }\n")) should not be digest(before)
+    // a package change is a change to what the class path holds
+    digest(moved - "base/src/main/scala/tools/Stopwatch.scala" + ("base/src/main/scala/other/Stopwatch.scala" ->
+      before("common/src/main/scala/tools/Stopwatch.scala"))) should not be digest(before)
+  }
+
+  it should "refuse two paths the class path would hold at one place" in {
+    an[IllegalArgumentException] should be thrownBy digest(Map("common/src/main/scala/tools/A.scala" -> "object A\n", "http/src/main/scala/tools/A.scala" -> "object A\n"))
+  }
+
+  it should "key a module's main tree by its class-path place and any other path as it is" in {
+    SourceDigest.key("common/src/main/scala/tools/Stopwatch.scala") shouldBe "scala/tools/Stopwatch.scala"
+    SourceDigest.key("identity/src/main/resources/identity-weights.json") shouldBe "resources/identity-weights.json"
+    SourceDigest.key("worker/src/test/scala/X.scala") shouldBe "worker/src/test/scala/X.scala"
+    SourceDigest.key("test/resources/fixtures/identity-judgements.tsv") shouldBe "test/resources/fixtures/identity-judgements.tsv"
+  }
+
   private def digest(files: Map[String, String]): String =
     SourceDigest.of(files.keys.toSeq.sorted, path => files(path).getBytes("UTF-8"))
 }

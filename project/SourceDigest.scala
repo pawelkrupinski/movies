@@ -10,15 +10,27 @@ package kinowo.build
  */
 object SourceDigest {
 
-  /** SHA-256 over each path and its digested content (`code` for a `.scala` source), in the order given. */
+  /** SHA-256 over each path's `key` and its digested content (`code` for a `.scala` source), in key order. */
   def of(paths: Seq[String], read: String => Array[Byte]): String = {
+    val keyed  = paths.map(path => key(path) -> path).sortBy(_._1)
+    val clash  = keyed.groupBy(_._1).collect { case (k, both) if both.size > 1 => s"$k: ${both.map(_._2).mkString(", ")}" }
+    require(clash.isEmpty, s"two digested paths share a key, so a move between them would go unseen: ${clash.mkString("; ")}")
     val digest = java.security.MessageDigest.getInstance("SHA-256")
-    paths.foreach { path =>
-      digest.update(path.getBytes("UTF-8"))
+    keyed.foreach { case (k, path) =>
+      digest.update(k.getBytes("UTF-8"))
       val bytes = read(path)
       digest.update(if (path.endsWith(".scala")) code(new String(bytes, "UTF-8")).getBytes("UTF-8") else bytes)
     }
     digest.digest.map("%02x".format(_)).mkString
+  }
+
+  /** What a path is digested as: a module's main source or resource by where it sits on the class path
+   *  (`common/src/main/scala/tools/Stopwatch.scala` is `scala/tools/Stopwatch.scala`), so moving a file to another
+   *  module, its package kept, moves no version: what the resolver is built from is the same. Any other path as is. */
+  def key(path: String): String = {
+    val marker = "/src/main/"
+    val i      = path.indexOf(marker)
+    if (i > 0 && !path.substring(0, i).contains("/")) path.substring(i + marker.length) else path
   }
 
   private final class Unlexable extends RuntimeException(null, null, false, false)
