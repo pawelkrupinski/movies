@@ -232,6 +232,8 @@ final class ProcessConfiguration(val env: Env) {
   // country), the Grafana panel and docs/design/identity-resolver.md §19 all name them so.
   // Renaming one means renaming it there in the same rollout, or the worker silently falls
   // back to the compiled-in default.
+  def identityRetentionWindow(default: IdentityRetentionWindow): IdentityRetentionWindow =
+    IdentityRetentionWindow(env.positiveLong("KINOWO_IDENTITY_RETENTION_DAYS", default.value.toDays).days)
   def identityLookupFillInterval(default: IdentityLookupFillInterval): IdentityLookupFillInterval =
     IdentityLookupFillInterval(seconds("KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS", default.value))
   def identityLookupFillInitialDelay(default: IdentityLookupFillInitialDelay): IdentityLookupFillInitialDelay =

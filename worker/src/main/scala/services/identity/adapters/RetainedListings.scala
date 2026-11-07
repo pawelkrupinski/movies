@@ -16,7 +16,7 @@ import scala.util.Try
  * Every listing that left the country's billing, with its last-seen facts and when it left ([[ListingRetention.Departed]]),
  * persisted: the INPUT the identity model reads its kept listings from on every resolve ([[ListingRetention.retainedAt]]:
  * those a present listing of the country relates to by title). Never a kept/dropped decision made at a leave: a listing
- * goes only when it is billed again or past [[ListingRetention.MaxAge]]. The worker's take-up reads it instead of losing it
+ * goes only when it is billed again or past the retention window ([[ListingRetention.live]]). The worker's take-up reads it instead of losing it
  * at every restart, and the nightly recording captures it beside the corpus (`tools.ProdRetained`), so a replay's model
  * input is the listings billed AND those kept of these, as production's is.
  */

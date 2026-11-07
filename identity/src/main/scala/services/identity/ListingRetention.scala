@@ -18,7 +18,9 @@ import services.movies.TitleNormalizer
  * 2026-11-03 the first dropped A for good: G1 of the flip audit). The departed listings are persisted
  * (`identity_retained`): the worker's take-up reads them, and the nightly recording captures them, so every replay of a
  * recording reads the model's input as production holds it. What bounds them is a pure rule too: a listing departed
- * more than [[MaxAge]] ago is no input ([[live]]), whatever came before or after. It is why DE Metropol's bare
+ * more than the retention window ago is no input ([[live]]), whatever came before or after -- the window is the worker's
+ * typed config (`settings.IdentityRetentionWindow`, `KINOWO_IDENTITY_RETENTION_DAYS`), [[DefaultMaxAge]] unless set,
+ * counted from the departure against the model's clock (docs/design/identity-listing-retention.md). It is why DE Metropol's bare
  * "Madoka Magica - Der Film: Rebellion" keeps Filmhaus (Langerringen)'s dated facts while Filmhaus is away, and stays on
  * the 2013 film (drift slices: Madoka, CinemaxX "Titans", Hasetor "Scott & Lila").
  *
@@ -36,13 +38,14 @@ object ListingRetention {
   /** The departure time of a listing persisted before departures were dated (`identity_retained` before 2026-11-03). */
   val Unknown: Long = 0L
 
-  /** How long a departed listing stays an input: past it, its facts go whatever is billed. A pure bound on the store, by
-   *  the departure's age alone -- never by the order of leaves and arrivals. Two months covers a film's run and a venue's
-   *  later repeat of it. */
-  val MaxAge: java.time.Duration = java.time.Duration.ofDays(60)
+  /** How long a departed listing stays an input unless the worker's config sets another window: past it, its facts go
+   *  whatever is billed. A pure bound on the store, by the departure's age alone -- never by the order of leaves and
+   *  arrivals. Two months covers a film's run and a venue's later repeat of it; a longer window was measured to cure no
+   *  flip (docs/design/identity-listing-retention.md). */
+  val DefaultMaxAge: java.time.Duration = java.time.Duration.ofDays(60)
 
-  /** Is `departed` an input at `now`: it left no more than [[MaxAge]] before. */
-  def live(departed: Departed, now: Long): Boolean = now - departed.at <= MaxAge.toMillis
+  /** Is `departed` an input at `now`: it left no more than `window` before. */
+  def live(departed: Departed, now: Long, window: java.time.Duration = DefaultMaxAge): Boolean = now - departed.at <= window.toMillis
 
   /** A listing as kept: whole. The model's input holds no showing (time, screen, booking), only the DAYS a listing
    *  screens on, and those are facts of it: they date the broadcast a relay screens (UK "Royal Ballet and Opera: Alice's
@@ -72,8 +75,8 @@ object ListingRetention {
     }
   }
 
-  /** [[retained]] of the departed listings that are inputs at `now` ([[live]]). */
+  /** [[retained]] of the departed listings that are inputs at `now` within `window` ([[live]]). */
   def retainedAt(departed: Iterable[Departed], present: Seq[Listing], now: Long, normalizer: TitleNormalizer,
-                 forms: Listing => TitleRelation.Forms): Seq[Listing] =
-    retained(departed.iterator.filter(live(_, now)).map(_.listing).toSeq, present, normalizer, forms)
+                 forms: Listing => TitleRelation.Forms, window: java.time.Duration = DefaultMaxAge): Seq[Listing] =
+    retained(departed.iterator.filter(live(_, now, window)).map(_.listing).toSeq, present, normalizer, forms)
 }

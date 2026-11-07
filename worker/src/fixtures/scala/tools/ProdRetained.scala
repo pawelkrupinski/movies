@@ -48,7 +48,7 @@ object ProdRetained {
   /** The recorded listings as a replay's store holds them: each departed when the recording was made (`recordedAt`, the
    *  newest scrape it holds) at the latest -- the capture carries no departure time. Left undated, a take-up dated them to
    *  its own clock, the harness's fixed day (2026-06-08), and the next-day row's move to the corpus's next day (months
-   *  later) aged every one past [[services.identity.ListingRetention.MaxAge]] at once: their families re-resolved without
+   *  later) aged every one past [[services.identity.ListingRetention.DefaultMaxAge]] at once: their families re-resolved without
    *  them, and takes Pending on a kept listing's unread page settled on films whose listings did not change (Verify
    *  scrape recording #11, run 42034527957: US "Reservoir Dogs", "Cape Fear", "Play Misty for Me"). A day after the
    *  recording, as in production, ages them by a day. */

@@ -99,7 +99,10 @@ final class IdentityModelService(
   /** Whether a listing new to the model, its version held, is shown meanwhile on its own, Pending -- or not at all. */
   newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Default,
   /** The backstop: a listing held this long is taken in regardless, and counted (`promoted{at="bound"}`). */
-  maxHold: java.time.Duration = ModelInputGate.MaxHold
+  maxHold: java.time.Duration = ModelInputGate.MaxHold,
+  /** How long a departed listing stays an input ([[ListingRetention.live]]): the worker's typed config
+   *  (`settings.IdentityRetentionWindow`), [[ListingRetention.DefaultMaxAge]] unless set. */
+  retentionWindow: java.time.Duration = ListingRetention.DefaultMaxAge
 ) extends Logging {
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
@@ -288,7 +291,7 @@ final class IdentityModelService(
 
   /** `seen` and the keys `leaving` as the model is handed them under [[ListingRetention]], a pure function of the inputs
    *  (R1, no stickiness): a listing back is billed again and is no departed one; a billed listing leaving is departed,
-   *  with its facts as last held and the drain's time; a departed one past [[ListingRetention.MaxAge]] is no input. Then
+   *  with its facts as last held and the drain's time; a departed one past the retention window is no input. Then
    *  the listings kept are recomputed WHOLE from the departed and the billed ones, whatever order they came in -- one a
    *  related arrival bills again is kept again -- and the model moves by the difference from what it held as kept. */
   private def retaining(engine: IncrementalResolver, seen: Seq[Listing],
@@ -301,7 +304,7 @@ final class IdentityModelService(
     val left     = leaving.iterator.filterNot(k => retained.contains(k) || seenKeys(k)).flatMap(k => engine.held(k).map(k -> _))
       .map { case (k, listing) => k -> ListingRetention.Departed(listing, now) }.toMap
     left.foreach { case (k, d) => departed.put(k, d) }
-    val aged     = departed.asScala.collect { case (k, d) if !ListingRetention.live(d, now) => k }.toSeq
+    val aged     = departed.asScala.collect { case (k, d) if !ListingRetention.live(d, now, retentionWindow) => k }.toSeq
     aged.foreach(departed.remove)
     val going    = leaving.toSet
     if (departed.isEmpty && retained.isEmpty) {
@@ -310,7 +313,7 @@ final class IdentityModelService(
     } else {
       val present  = engine.listings.iterator.filterNot(l => going(l.key) || retained.contains(l.key) || seenKeys(l.key)).toSeq ++ seen
       val kept     = ListingRetention.retainedAt(departed.values.asScala.toSeq.sortBy(d => services.movies.ListingKey.serialised(d.listing.key)),
-        present, now, normalizer, formsOf)
+        present, now, normalizer, formsOf, retentionWindow)
       val keptKeys = kept.iterator.map(_.key).toSet
       val newly    = kept.filterNot(l => retained.contains(l.key))
       val dropped  = (going ++ retained.asScala).filterNot(k => keptKeys(k) || seenKeys(k)).toSeq
@@ -335,13 +338,13 @@ final class IdentityModelService(
         val stored  = read.getOrElse(heldBefore().map(ListingRetention.Departed(_, ListingRetention.Unknown)))
         val dated   = stored.map(d => if (d.at == ListingRetention.Unknown) d.copy(at = now) else d)
         val billed  = present.iterator.map(_.key).toSet
-        val (live, aged) = dated.filterNot(d => billed(d.listing.key)).partition(ListingRetention.live(_, now))
+        val (live, aged) = dated.filterNot(d => billed(d.listing.key)).partition(ListingRetention.live(_, now, retentionWindow))
         live.foreach(d => departed.put(d.listing.key, d))
         if (read.isEmpty || stored.exists(_.at == ListingRetention.Unknown) || aged.nonEmpty || live.size != stored.size)
           persist(retainedStore.replace(live))
-        val kept = ListingRetention.retainedAt(live, present, now, normalizer, formsOf)
+        val kept = ListingRetention.retainedAt(live, present, now, normalizer, formsOf, retentionWindow)
         kept.foreach(l => retained.add(l.key))
-        if (stored.nonEmpty) logger.info(s"identity model: ${kept.size} kept listing(s) resumed of ${live.size} departed, ${aged.size} past ${ListingRetention.MaxAge.toDays} days")
+        if (stored.nonEmpty) logger.info(s"identity model: ${kept.size} kept listing(s) resumed of ${live.size} departed, ${aged.size} past ${retentionWindow.toDays} days")
         kept
       })
   }
