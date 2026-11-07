@@ -3,7 +3,7 @@ package services.enrichment
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
 import services.resolution.TitleMatch
-import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead, MemoizedHttpFetch}
+import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -73,24 +73,12 @@ class RottenTomatoesClient(http: HttpFetch) {
     fallback:  Option[String] = None,
     year:      Option[Int]    = None,
     directors: Set[String]    = Set.empty
-  ): Option[String] = {
-    val attempt = new RottenTomatoesClient(new MemoizedHttpFetch(http))
-    titles.iterator.zipWithIndex
-      .flatMap { case (title, index) => attempt.probeLadder(title, if (index == 0) fallback else None, year, directors) }
-      .nextOption()
-  }
-
-  /** One title's ladder: its slug probes, the fallback's slug probes, then the
-   *  search-page scrape for each. Private because the memo that makes the
-   *  ladder cheap lives in [[urlForAny]] — calling this directly would bypass
-   *  it. */
-  private def probeLadder(title: String, fallback: Option[String], year: Option[Int], directors: Set[String]): Option[String] = {
-    val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    canonicalUrl(title, year, directors)
-      .orElse(effectiveFallback.flatMap(canonicalUrl(_, year, directors)))
-      .orElse(searchAndPickBest(title, year).filter(creditsAllow(_, directors)))
-      .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)).filter(creditsAllow(_, directors)))
-  }
+  ): Option[String] =
+    RatingSiteLadder.across(http, new RottenTomatoesClient(_))(titles, fallback) { (attempt, title, titleFallback) =>
+      RatingSiteLadder.probe(title, titleFallback)(
+        attempt.canonicalUrl(_, year, directors),
+        attempt.searchAndPickBest(_, year).filter(attempt.creditsAllow(_, directors)))
+    }
 
   /** Does the page at `url` credit a director compatible with `directors`? The search
    *  hit was matched on title and year alone, which cannot tell same-named films of
@@ -176,79 +164,9 @@ class RottenTomatoesClient(http: HttpFetch) {
     }
   }
 
-  /** Pick the best search hit conservatively. Same two acceptance bars as MC:
-   *
-   *   1. **Exact title match** (case-insensitive, whitespace-trimmed).
-   *   2. **Modifier-suffix match** — title starts with the query and the next
-   *      non-space char is a separator (`-`, `:`, `(`, `[`, …), catching
-   *      re-release / restored / anniversary variants while rejecting
-   *      different films that merely share a leading word.
-   *
-   *  We deliberately do NOT fall back to year-distance over arbitrary partial
-   *  matches: RT search returns many unrelated films sharing a word — picking
-   *  the year-closest among them produces confident-looking but wrong URLs.
-   *  Better to store None and let the view layer synthesise a search link.
-   *
-   *  Among accepted candidates, year-distance to the requested year breaks
-   *  ties.
-   */
-  def pickBestSearchHit(
-    hits:  Seq[SearchHit],
-    query: String,
-    year:  Option[Int]
-  ): Option[SearchHit] = {
-    val normalizedQuery = TitleMatch.fold(query)
-    if (hits.isEmpty || normalizedQuery.isEmpty) None
-    else {
-      // Year-guard the EXACT matches, and require the hit to POSITIVELY agree —
-      // see `MetacriticClient.yearConfirms`. This picker had no year guard at
-      // all, so an exact same-title hit won on its title alone: that is how the
-      // 2026 "Lalka" ended up on /m/lalka_1969, Has's 1968 film. A MODIFIER-suffix
-      // hit ("<title> - Re-Release") is guarded only against a year that positively
-      // names the ORIGINAL film — a re-issue's own gap from its film is expected and
-      // correct, and an undated one says nothing. See the fallback below for the case
-      // that leaves open and why no year test here can close it.
-      val exactTitle = hits.filter(h => TitleMatch.exact(h.title, normalizedQuery))
-      // Strict, INCLUDING the undated: "a hit that declines to say WHEN is not evidence
-      // that it is the right film" — /m/lalka_1969 publishes no year on the page either,
-      // which is exactly how the leak below reached prod. That rejection is deliberate
-      // and its own test; do not relax it to rescue a modifier fallback.
-      val exact      = exactTitle.filter(h => MetacriticClient.yearConfirms(year, h.year))
-      val modifier   = hits.filter(h => TitleMatch.isModifierSuffix(h.title, normalizedQuery))
-      // The modifier branch is a fallback for "no exact title here at all" — NOT for
-      // "the exact titles were rejected". Falling through on a year rejection hands an
-      // unguarded candidate the win the guard just denied a guarded one: a 2026 "Lalka"
-      // whose exact hit carries no year would land on the 1968 ":  Restored" re-issue,
-      // which is the very page the year guard was added to stop. An exact title that
-      // fails the year means this film is not here.
-      // The modifier fallback is for "RT has no exact title at all", never for "the
-      // exact titles were rejected": a "- Restored" hit can carry the RE-RELEASE year and
-      // so confirm against a query whose film it is not, which is why it must not be able
-      // to rescue an exact title the year already rejected. An exact title that positively
-      // disagreed means this film is not here.
-      // A modifier hit dated at the ORIGINAL film's year is that film: RT lists
-      // "Lalka - Restored" (1968) and nothing else, and handing it back for a 2026 query
-      // is the /m/lalka_1969 leak by another door. Undated still passes — a re-issue that
-      // declines to say when is what this arm is for.
-      //
-      // WHAT THIS CANNOT CLOSE, and no year test at this layer can: a modifier dated at
-      // the RE-RELEASE year. "Top Gun" 2024 against "Top Gun - Re-Release" (2024) must be
-      // ACCEPTED — it is the same film re-issued — and "Lalka" 2026 against
-      // "Lalka - Restored" (2026) must be REJECTED, because that page is the 1968 film.
-      // The two search results are identical in shape; only the PAGE could tell them
-      // apart, and /m/lalka_1969 publishes no year either, which is how the leak reached
-      // prod in the first place. Both cases are pinned by tests, so anyone tightening
-      // this will see immediately which one they broke.
-      val datedPlausibly = modifier.filter(h => h.year.isEmpty || MetacriticClient.yearConfirms(year, h.year))
-      val candidates =
-        if (exact.nonEmpty)          exact
-        else if (exactTitle.isEmpty) datedPlausibly
-        else                         Seq.empty
-      candidates
-        .sortBy(h => year.flatMap(y => h.year.map(hy => math.abs(hy - y))).getOrElse(Int.MaxValue))
-        .headOption
-    }
-  }
+  /** Pick the best search hit conservatively ([[RatingSiteTitles.pickBestSearchHit]]) under [[SearchBar]]. */
+  def pickBestSearchHit(hits: Seq[SearchHit], query: String, year: Option[Int]): Option[SearchHit] =
+    RatingSiteTitles.pickBestSearchHit(hits, query, year, SearchBar)
 
   /** Tomatometer percentage for a canonical /m/ page, or None when the page is
    *  gone (404), carries no score, or the URL is not canonical; a failed read throws. Refuses search URLs explicitly —
@@ -304,6 +222,34 @@ object RottenTomatoesClient {
   private val ReleaseYear = "\"releaseYear\":\"((?:19|20)\\d{2})\"".r
 
   case class SearchHit(slug: String, title: String, year: Option[Int], tomatometerScore: Option[Int])
+    extends RatingSiteTitles.SearchHit
+
+  /** Rotten Tomatoes' search-hit bar, stricter than Metacritic's.
+   *
+   *  An EXACT-title hit must POSITIVELY agree on the year ([[MetacriticClient.yearConfirms]]), INCLUDING the
+   *  undated: "a hit that declines to say WHEN is not evidence that it is the right film". This picker once had no
+   *  year guard at all, so an exact same-title hit won on its title alone: that is how the 2026 "Lalka" ended up on
+   *  /m/lalka_1969, Has's 1968 film, which publishes no year on the page either. That rejection is deliberate and
+   *  its own test; do not relax it to rescue a modifier fallback.
+   *
+   *  A MODIFIER-suffix hit ("<title> - Re-Release") is guarded only against a year that positively names the
+   *  ORIGINAL film — a re-issue's own gap from its film is expected and correct, and an undated one says nothing.
+   *  A modifier hit dated at the ORIGINAL film's year is that film: RT lists "Lalka - Restored" (1968) and nothing
+   *  else, and handing it back for a 2026 query is the /m/lalka_1969 leak by another door.
+   *
+   *  The modifier arm is a fallback for "RT has no exact title at all", never for "the exact titles were
+   *  rejected": a "- Restored" hit can carry the RE-RELEASE year and so confirm against a query whose film it is
+   *  not, so it must not rescue an exact title the year already rejected.
+   *
+   *  WHAT THIS CANNOT CLOSE, and no year test at this layer can: a modifier dated at the RE-RELEASE year. "Top Gun"
+   *  2024 against "Top Gun - Re-Release" (2024) must be ACCEPTED — it is the same film re-issued — and "Lalka" 2026
+   *  against "Lalka - Restored" (2026) must be REJECTED, because that page is the 1968 film. The two search results
+   *  are identical in shape; only the PAGE could tell them apart. Both cases are pinned by tests, so anyone
+   *  tightening this will see immediately which one they broke. */
+  private val SearchBar = RatingSiteTitles.SearchHitBar(
+    exactYear                     = MetacriticClient.yearConfirms,
+    modifierYear                  = (film, hit) => hit.isEmpty || MetacriticClient.yearConfirms(film, hit),
+    modifierOnlyWithoutExactTitle = true)
 
   /** A fetched movie page: its Tomatometer, the year and directors it names, and the rest of the film's record — its
    *  name, running time (minutes) and cast. */

@@ -4,7 +4,7 @@ import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead, MemoizedHttpFetch}
+import tools.{ConcurrentCandidateProbe, HttpFetch, HttpRead}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -88,24 +88,12 @@ class MetacriticClient(http: HttpFetch) {
     fallback:  Option[String] = None,
     year:      Option[Int]    = None,
     directors: Set[String]    = Set.empty
-  ): Option[Resolved] = {
-    val attempt = new MetacriticClient(new MemoizedHttpFetch(http))
-    titles.iterator.zipWithIndex
-      .flatMap { case (title, index) => attempt.probeLadder(title, if (index == 0) fallback else None, year, directors) }
-      .nextOption()
-  }
-
-  /** One title's ladder: its slug probes, the fallback's slug probes, then the
-   *  search-page scrape for each. Private because the memo that makes the
-   *  ladder cheap lives in [[resolveAcross]] — calling this directly would
-   *  bypass it. */
-  private def probeLadder(title: String, fallback: Option[String], year: Option[Int], directors: Set[String]): Option[Resolved] = {
-    val effectiveFallback = fallback.filterNot(_.equalsIgnoreCase(title))
-    canonicalResolve(title, year, directors)
-      .orElse(effectiveFallback.flatMap(t => canonicalResolve(t, year, directors)))
-      .orElse(searchAndPickBest(title, year).flatMap(url => verified(url, directors)))
-      .orElse(effectiveFallback.flatMap(t => searchAndPickBest(t, year)).flatMap(url => verified(url, directors)))
-  }
+  ): Option[Resolved] =
+    RatingSiteLadder.across(http, new MetacriticClient(_))(titles, fallback) { (attempt, title, titleFallback) =>
+      RatingSiteLadder.probe(title, titleFallback)(
+        attempt.canonicalResolve(_, year, directors),
+        attempt.searchAndPickBest(_, year).flatMap(attempt.verified(_, directors)))
+    }
 
   /** Read a search-derived page and keep it only if it is the right film.
    *
@@ -213,58 +201,9 @@ class MetacriticClient(http: HttpFetch) {
     }
   }
 
-  /** Pick the best search hit conservatively. Two acceptance bars:
-   *
-   *   1. **Exact title match** (case-insensitive, whitespace-trimmed) — the
-   *      query equals the candidate's title.
-   *   2. **Modifier-suffix match** — the candidate's title starts with the
-   *      query AND the very next non-space character is a separator
-   *      (`-`, `:`, `(`, `[`, …), not another word. This catches re-release /
-   *      restoration / anniversary variants ("I Vitelloni - Re-Release",
-   *      "La Dolce Vita - Re-Release") while rejecting different films that
-   *      merely begin with the same word ("Deaf President Now!" for query
-   *      "Deaf", "La Grande Strada Azzurra" for "La Grande Arche").
-   *
-   *  We deliberately do NOT fall back to year-distance over arbitrary
-   *  partial matches: MC search returns many unrelated films sharing a word
-   *  or two, and picking the year-closest among them produces confident-
-   *  looking but wrong URLs. Better to store None.
-   *
-   *  Among the accepted candidates, year-distance to the requested year
-   *  breaks ties.
-   */
-  def pickBestSearchHit(
-    hits:  Seq[SearchHit],
-    query: String,
-    year:  Option[Int]
-  ): Option[SearchHit] = {
-    val normalizedQuery = TitleMatch.fold(query)
-    if (hits.isEmpty || normalizedQuery.isEmpty) None
-    else {
-      // Year-guard the EXACT matches only. Same title + distant year means a
-      // different film (a namesake or remake) — that is how Welles' "The Trial"
-      // (1962) ended up on a 2023 page and Zulawski's "Possession" (1981) on a
-      // 2008 one. This search path is where a slug REJECTED by the year guard
-      // lands, so leaving it unguarded let the rejected film back in sideways.
-      //
-      // A MODIFIER-suffix hit ("I Vitelloni - Re-Release", "<title>: Restored")
-      // is the opposite case: it is explicitly the SAME film re-issued, so a
-      // large gap is EXPECTED — I Vitelloni is 1953 and its re-release entry
-      // 2024, 71 years apart and correct. Guarding those would reject every
-      // anniversary screening, so it deliberately stays unguarded.
-      val exact = hits
-        .filter(h => TitleMatch.exact(h.title, normalizedQuery))
-        .filter(h => MetacriticClient.yearsCompatible(year, h.year))
-      val modifier = hits.filter(h => TitleMatch.isModifierSuffix(h.title, normalizedQuery))
-      val candidates =
-        if (exact.nonEmpty) exact
-        else if (modifier.nonEmpty) modifier
-        else Seq.empty
-      candidates
-        .sortBy(h => year.flatMap(y => h.year.map(hy => math.abs(hy - y))).getOrElse(Int.MaxValue))
-        .headOption
-    }
-  }
+  /** Pick the best search hit conservatively ([[RatingSiteTitles.pickBestSearchHit]]) under [[SearchBar]]. */
+  def pickBestSearchHit(hits: Seq[SearchHit], query: String, year: Option[Int]): Option[SearchHit] =
+    RatingSiteTitles.pickBestSearchHit(hits, query, year, SearchBar)
 
   // ── Metascore (critic aggregate score) ────────────────────────────────────
 
@@ -332,7 +271,21 @@ object MetacriticClient {
     if (movieUrl.endsWith("/")) movieUrl else s"$movieUrl/"
   private val YearRegex = "\\b(19\\d{2}|20\\d{2})\\b".r
 
-  case class SearchHit(slug: String, title: String, year: Option[Int])
+  case class SearchHit(slug: String, title: String, year: Option[Int]) extends RatingSiteTitles.SearchHit
+
+  /** Metacritic's search-hit bar. The EXACT matches are year-guarded: same title and a distant year is a different
+   *  film (a namesake or remake) — that is how Welles' "The Trial" (1962) ended up on a 2023 page and Zulawski's
+   *  "Possession" (1981) on a 2008 one, and this search path is where a slug REJECTED by the year guard lands. The
+   *  guard is the LENIENT [[yearsCompatible]]: MC's search dates essentially every hit, so an undated one is an
+   *  oddity, not a reason to lose a real match ("keep an undated hit" in `MetacriticClientSpec`).
+   *
+   *  A MODIFIER-suffix hit is explicitly the SAME film re-issued, so a large gap is EXPECTED — I Vitelloni is 1953
+   *  and its re-release entry 2024, 71 years apart and correct — and it stays unguarded, standing in for exact
+   *  titles the year rejected too. */
+  private val SearchBar = RatingSiteTitles.SearchHitBar(
+    exactYear                     = yearsCompatible,
+    modifierYear                  = (_, _) => true,
+    modifierOnlyWithoutExactTitle = false)
 
   /** A resolved Metacritic movie page, plus its Metascore when the resolving
    *  fetch already downloaded the movie page (the slug probe validates the page

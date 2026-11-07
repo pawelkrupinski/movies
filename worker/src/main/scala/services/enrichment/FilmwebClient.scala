@@ -5,7 +5,7 @@ import java.util.Locale
 import play.api.libs.json._
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{HttpFetch, HttpRead, MemoizedHttpFetch, ReadOutcome, SynopsisSimilarity, TextNormalization}
+import tools.{HttpFetch, HttpRead, ReadOutcome, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -65,18 +65,21 @@ class FilmwebClient(http: HttpFetch) {
     val variants = searchQueryVariants(title)
     val effectiveFallback = fallback.filter(f => !f.equalsIgnoreCase(title) && !variants.exists(_.equalsIgnoreCase(f)))
     val queries = (title +: (variants ++ effectiveFallback.toSeq)).distinct
-    // One attempt, one fetch memo. The query variants are distinct but their
-    // SEARCH RESULTS routinely aren't — "Film | Cykl: X" and the bare "Film"
-    // return the same top candidates — and every candidate costs an `/info`
-    // plus, when directors are being verified, a `/preview`. Without the memo
-    // each shared candidate is fetched once per variant.
-    val attempt = new FilmwebClient(new MemoizedHttpFetch(http))
+    // One attempt, one fetch memo (RatingSiteLadder). The query variants are
+    // distinct but their SEARCH RESULTS routinely aren't — "Film | Cykl: X" and
+    // the bare "Film" return the same top candidates — and every candidate costs
+    // an `/info` plus, when directors are being verified, a `/preview`. Without
+    // the memo each shared candidate is fetched once per variant. The fallback is
+    // already one of the queries, so the ladder is given none of its own.
+    //
     // Every query is also an ALIAS the row is known by, and the director+year
     // override corroborates against all of them, not just the one being searched.
     // "Cinema Italia Oggi: Miasta na równinie" is filed on Filmweb under the Italian
     // "Le città di pianura" — nothing in the Polish query shares a word with that, but
     // the row's own originalTitle (already in `queries` as the fallback) does.
-    queries.view.flatMap(q => attempt.lookupWithQuery(q, year, directors, referenceSynopsis, queries)).headOption
+    RatingSiteLadder.across(http, new FilmwebClient(_))(queries) { (attempt, query, _) =>
+      attempt.lookupWithQuery(query, year, directors, referenceSynopsis, queries)
+    }
   }
 
   // No blanket `Try` around this body: a failed read is not an answer of "Filmweb
