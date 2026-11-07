@@ -23,8 +23,17 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave out code and data the resolver never reaches" in {
-    digested should contain noneOf ("common/src/main/scala/services/readmodel/ReadModelProjection.scala", "common/src/main/scala/tools/HttpFetch.scala",
+    digested should contain noneOf ("common/src/main/scala/services/readmodel/ReadModelProjection.scala", "common/src/main/scala/tools/PacedHttpFetch.scala",
       "common/src/main/scala/services/movies/MovieCache.scala", "identity/src/main/scala/services/identity/IdentityProjectionPlan.scala", "common/src/main/resources/certs/certum-trusted-root-ca.pem")
+  }
+
+  // The HTTP leaf module is outside the identity area: the pre-push hook runs no identity test for an http/ edit and
+  // identity_impact.py gives it no country. Both hold only while no digest lists an http/ source.
+  it should "list no source of the http module, which the hook and the impact plan read as outside the identity area" in {
+    val lists = Seq("identity-rules", "venue-slot", "agreement-rules")
+      .map(name => name -> resource(s"/services/identity/$name-sources.txt").linesIterator.toSeq)
+    lists.flatMap { case (name, paths) => paths.filter(_.startsWith("http/")).map(path => s"$name: $path") } shouldBe empty
+    lists.map(_._2.size).min should be > 0
   }
 
   // Each of these changes, often, for reasons no decision reads: every setting's value type (a new setting

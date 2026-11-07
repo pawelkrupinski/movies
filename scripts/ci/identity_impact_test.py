@@ -141,6 +141,11 @@ class CountriesTest(unittest.TestCase):
         self.assertEqual(Repo({}, {"identity/src/main/scala/A.scala": "x"}).countries(), ii.COUNTRIES)
         self.assertEqual(Repo({}, {"docs/a.md": "x", ".claude/x": "y"}).countries(), [])
 
+    def test_the_http_module_reaches_no_country_and_the_fetchers_left_in_common_every_one(self):
+        self.assertEqual(Repo({}, {"http/src/main/scala/tools/RealHttpFetch.scala": "x"}).countries(), [])
+        self.assertEqual(Repo({}, {"http/src/main/scala/tools/RealHttpFetch.scala": "x",
+                                   "common/src/main/scala/tools/PacedHttpFetch.scala": "y"}).countries(), ii.COUNTRIES)
+
 
 SET = ["identity/test", "testOnly services.identity.* scripts.*"]
 

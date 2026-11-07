@@ -22,7 +22,10 @@ Two halves, each sound on its own:
     - a row file keyed by country (identity-judgements.tsv, expected-matches.tsv, model-take-audit.tsv,
       review-candidates.tsv, hard-clusters-seeds.tsv): the countries of the rows added or removed; its header: all;
     - */services/cinemas/<cc>/ and data/<country>/: that country;
-    - Markdown, docs/, .claude/: none; any other path: every country.
+    - Markdown, docs/, .claude/: none;
+    - http/ (the HTTP leaf module): none -- no identity digest lists an http/ source (IdentityRulesVersionSpec holds
+      that), so no take can move by one; the HTTP fetchers left in common reach every country as any other path;
+    - any other path: every country.
   The countries scope only the specs that mix in tools.CountryScope (each check of which decomposes by country); every
   other selected spec runs whole. `scripts/identity-measure`'s footprint reads the same answer.
 
@@ -220,7 +223,7 @@ def row_file_reach(base_text, head_text):
 def path_reach(path, base, head, tree):
     """The countries a change to `path` can reach (the module docstring)."""
     every = set(COUNTRIES)
-    if path.endswith(".md") or path.startswith(("docs/", ".claude/")):
+    if path.endswith(".md") or path.startswith(("docs/", ".claude/", "http/")):
         return set()
     if path == TITLE_RULES:
         return title_rules_reach(show(base, path), show(head, path), tree)
