@@ -155,10 +155,9 @@ object FamilyConvergence {
       val fired   = TrieMap.empty[ListingKey, Set[String]]
       def note(kind: String, id: String, digest: Long): Unit = closure.update(Read(kind, id, digest), ())
       type Takes = Map[ListingKey, Option[String]]
-      val memo = TrieMap.empty[Subset, (Takes, Takes)]
-      def takes(subset: Subset): (Takes, Takes) = takesKept(subset, Subset())
       val memoK = TrieMap.empty[(Subset, Subset), (Takes, Takes)]
-      def takesKept(subset: Subset, keptSet: Subset): (Takes, Takes) = (if (keptSet.isEmpty) memo else memoK.asInstanceOf[TrieMap[Any, (Takes, Takes)]]).asInstanceOf[TrieMap[Any, (Takes, Takes)]].getOrElseUpdate(if (keptSet.isEmpty) subset else (subset, keptSet), {
+      def takes(subset: Subset): (Takes, Takes) = takesKept(subset, Subset())
+      def takesKept(subset: Subset, keptSet: Subset): (Takes, Takes) = memoK.getOrElseUpdate((subset, keptSet), {
         val present0 = subset.toSeq.map(members)
         val present  = present0 ++ ListingRetention.retained(keptSet.toSeq.map(members), present0, reads.normalizer)
         val context  = new FamilyIndex.RecordingContext(without(generation.context, keys -- present.map(_.key)))
@@ -217,7 +216,7 @@ object FamilyConvergence {
       // the closure: what the walk read beyond the family's own entry and settle, which the key already holds
       val own = entry.context.keySet.map(_.id) ++ entry.answers.keySet.map(Dependency.encode) ++
         family.receipts.keySet.map(Dependency.encode) ++ family.lookups.keySet.map(Dependency.encode)
-      Verdict(entry.name, key, tier, memo.size, flips, closure.keys.filterNot(read => own(read.id)).toSeq.sortBy(r => (r.kind, r.id)),
+      Verdict(entry.name, key, tier, memoK.size, flips, closure.keys.filterNot(read => own(read.id)).toSeq.sortBy(r => (r.kind, r.id)),
         fired.values.flatten.toSeq.distinct.sorted, started.seconds)
     }
 
