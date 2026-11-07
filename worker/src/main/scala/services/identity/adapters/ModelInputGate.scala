@@ -11,7 +11,8 @@ import scala.util.control.NonFatal
 
 /**
  * The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing VERSION is taken into the model only
- * once each question its own facts lead to ([[ListingReadiness]]) was attempted; until then the model keeps the version it
+ * once each question its own facts lead to ([[ListingReadiness]]) was attempted -- one a broken host turned away
+ * included, by design ([[AgreementReadiness]]); until then the model keeps the version it
  * holds (none, for a new one) and the questions are asked. The held listings are persisted in `store`, so a take-up resumes
  * them ([[resume]]); a listing held [[ModelInputGate.MaxHold]] is taken in regardless, and counted.
  *

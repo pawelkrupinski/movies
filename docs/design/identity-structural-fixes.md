@@ -168,6 +168,8 @@ backtest's definition): DE 134 reversals, 67 LATE-ANSWER (Geister's 56 among the
 2. **The gate** (`ModelInputGate`, `ListingReadiness`, `AgreementReadiness`): a listing billed otherwise than the model
    holds it (new, or its facts moved) is taken in only once each of its questions was ATTEMPTED once by the question
    memory's record (`QuestionMemory.attempted`: answered, durably unanswered or failed alike; never one merely queued).
+   A question a host's open breaker or the fleet's pace turned away is attempted too, by design (the owner, 2026-11-07):
+   held while a source is broken, every new version of its listings would stall until it came back.
    Until then the model keeps the version it holds; the questions are
    asked through the queue claimed ahead of the agreement's own (`AgreementQuestions.enqueue(claimAhead = 0)`), and
    every filing wakes the model, whose next drain promotes each held listing whose questions closed -- no new scrape.
