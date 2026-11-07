@@ -18,6 +18,8 @@ import services.freshness.{Freshness, FreshnessKind}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.duration._
+import scala.io.Codec
+import scala.util.Using
 
 /**
  * Guards the per-cinema fetch seams the catalog wires for venues whose origin
@@ -815,6 +817,26 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
 
   it should "keep Filmstarts, then kinoprogramm.com, for a venue the measurement has no row for" in {
     GermanSources.of("A9999", Some("/kino/x/y-1")) shouldBe Seq(GermanFeed.Filmstarts("A9999"), GermanFeed.Kinoprogramm("/kino/x/y-1"))
+  }
+
+  // kinoheld's "Filmwelt Grünstadt" (695) served Luxor Heidelberg's programme under Grünstadt's name, every show
+  // booking ticket-cloud.de/Luxor-Heidelberg (data/germany/scripts/feed_mirrors.py): a feed that is another venue's
+  // programme is no source of the venue, which its next feed, its own, serves.
+  it should "serve no venue from a feed data/germany/feed-mirrors.json records as another venue's programme" in {
+    def json(path: String) = Using.resource(scala.io.Source.fromFile(path)(using Codec.UTF8))(s => play.api.libs.json.Json.parse(s.mkString))
+    val copies  = (json("data/germany/feed-mirrors.json") \ "copies").as[Seq[play.api.libs.json.JsObject]]
+    val retired = json("data/germany/retired.json").as[play.api.libs.json.JsObject].keys
+    copies.map(c => (c \ "venue").as[String]) should contain ("A2700")
+    copies.foreach { copy =>
+      val (venue, source, handle) = ((copy \ "venue").as[String], (copy \ "source").as[String], (copy \ "handle").as[String])
+      if (!retired(venue)) withClue(s"$venue ${(copy \ "name").as[String]} still served by $source $handle: ") {
+        GermanSources.of(venue, None).collect {
+          case GermanFeed.Kinoheld(v) if source == "kinoheld" && v.cinemaId == handle => v.cinemaId
+          case GermanFeed.Cineamo(id) if source == "cineamo" && id.value == handle   => id.value
+        } shouldBe empty
+      }
+    }
+    GermanSources.of("A2700", None).headOption shouldBe Some(GermanFeed.Cineamo(services.cinemas.common.CineamoClient.CinemaId("448")))
   }
 
   it should "pace every Ocine ticketing host" in {

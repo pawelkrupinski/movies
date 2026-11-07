@@ -4,7 +4,10 @@
 Each ROSTERED venue whose sources differ from the default arrangement
 (Filmstarts, then its kinoprogramm.com page) becomes one entry: its venue key --
 its Filmstarts theaterId, or its `feed` ("cineamo:997") when Filmstarts does not
-list it -- -> its feeds, primary first, as harvest_sources.py chose them.
+list it -- -> its feeds, primary first, as harvest_sources.py chose them, less every
+feed feed-mirrors.json records as another venue's programme (feed_mirrors.py): the
+venue is served by the next. A venue that leaves feedless is a duplicate, and must
+be retired.
 
 Run: python3 data/germany/scripts/generate_sources.py
 """
@@ -16,6 +19,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.dirname(HERE)
 ROOT = os.path.dirname(os.path.dirname(DATA))
 SRC = os.path.join(DATA, "venue-sources.json")
+MIRRORS = os.path.join(DATA, "feed-mirrors.json")
+RETIRED = os.path.join(DATA, "retired.json")
 OUT = os.path.join(ROOT, "scrapers/src/main/scala/services/cinemas/de/GermanSourcesData.scala")
 CHUNK = 250   # entries per method: one literal of them all would outgrow a JVM method
 
@@ -45,20 +50,32 @@ def feed(source, venue):
     raise ValueError(source)
 
 
-def entries(doc):
+def handle(source, venue):
+    """The venue's handle in `source`, as feed-mirrors.json records it."""
+    h = venue.get(source)
+    return h.get("id") if isinstance(h, dict) else h
+
+
+def entries(doc, copies=(), retired=()):
+    """(venue key, its feeds) for each venue served other than by default. `copies` are
+    feed-mirrors.json's rows: a feed serving another venue's programme is left out."""
+    copied = {(c["venue"], c["source"], c["handle"]) for c in copies}
     out = []
     for v in doc["venues"]:
-        if not v.get("rostered") or not v.get("primary"):
+        if not v.get("rostered") or not v.get("primary") or v["key"] in retired:
             continue
-        order = [v["primary"]] + v["fallbacks"]
+        order = [s for s in [v["primary"]] + v["fallbacks"] if (v["key"], s, handle(s, v)) not in copied]
+        if not order:
+            raise ValueError(f"{v['key']} {v['name']}: its every feed is another venue's programme "
+                             "(feed-mirrors.json) -- retire it as a duplicate (retired.json)")
         default = ["filmstarts"] + (["kinoprogramm"] if v.get("kinoprogramm") else [])
         if order != default:
             out.append((v["key"], [feed(s, v) for s in order]))
     return sorted(out)
 
 
-def render(doc):
-    rows = entries(doc)
+def render(doc, copies=(), retired=()):
+    rows = entries(doc, copies, retired)
     chunks = [rows[i:i + CHUNK] for i in range(0, len(rows), CHUNK)]
     lines = [
         "// GENERATED from data/germany/venue-sources.json by data/germany/scripts/generate_sources.py",
@@ -89,9 +106,11 @@ def render(doc):
 
 def main():
     doc = json.load(open(SRC))
+    copies = json.load(open(MIRRORS))["copies"] if os.path.exists(MIRRORS) else []
+    retired = set(json.load(open(RETIRED))) if os.path.exists(RETIRED) else set()
     with open(OUT, "w") as f:
-        f.write(render(doc))
-    print(f"wrote {OUT}: {len(entries(doc))} venues")
+        f.write(render(doc, copies, retired))
+    print(f"wrote {OUT}: {len(entries(doc, copies, retired))} venues")
 
 
 if __name__ == "__main__":
