@@ -59,6 +59,8 @@ check "the resolver runs the identity area's tests" "driftguards sbt identity" "
 check "a worker identity adapter runs them" "driftguards sbt identity" "$(plan worker/src/main/scala/services/identity/Adapter.scala)"
 check "a title rule runs them" "driftguards sbt identity|driftguards sbt identity" \
   "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titlerules/Rule.scala)"
+check "the title normalizer runs them (it applies the title rules: Main #2266, a dropped venue row a scraper spec caught)" \
+  "driftguards sbt identity" "$(plan common/src/main/scala/services/movies/TitleNormalizer.scala)"
 check "an identity spec runs them" "driftguards sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
 check "a template runs the page area's tests" "sbt page" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
 check "a stylesheet runs them" "sbt page" "$(plan web/src/main/assets/css/main.css)"

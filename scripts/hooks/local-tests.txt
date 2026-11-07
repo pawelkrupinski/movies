@@ -38,6 +38,12 @@ fast sbt worker/testOnly tools.DocCommentPlacementSpec tools.RegisteredCollectio
 identity first scripts/identity-slice-coverage
 identity sbt identity/test
 identity sbt testOnly services.identity.* services.titlerules.* scripts.* tools.HardClusterRatchetSpec
+# the scraper specs the change reaches: a scraper cleans its titles with its venue's title rules and the country's
+# TitleNormalizer, so a title-rule row or normalizer change is a scraper change (Main #2266: helios-suffix-9 dropped,
+# caught only by HeliosClientFullRepertoireSpec; what-if and the takes measure replay stored titles, never a scraper).
+# Narrowed by the test-impact selection to the specs that read the rules (~110 of 258 for a title-rules.tsv change):
+# ~12 s warm, so no narrower venue cut (a spec of a venue keyed under another name would slip it).
+identity sbt scrapers/test
 # page: the Scala page specs over real Chrome (405 tests, ~2.7 min), then CI's Playwright rows -- Chromium phones,
 # the @agnostic set, chrome-desktop (~1.5 min), WebKit's phones (~7 min, one worker) -- against a fixture server
 # (scripts/page-tests-local). ~11 min warm, measured 2026-10-26 under a load of 17-130: inside the 15-min bound.

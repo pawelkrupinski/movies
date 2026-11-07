@@ -296,12 +296,14 @@ LocalTests="$(dirname "${BASH_SOURCE[0]}")/local-tests.txt"
 has_local_tests() { # <set>
     [ -f "$LocalTests" ] && grep -qE "^$1[[:space:]]+(sbt|sh|first)[[:space:]]" "$LocalTests"
 }
-# The identity paths: the resolver, its worker adapters and tests, title rules, the identity fixtures.
+# The identity paths: the resolver, its worker adapters and tests, title rules and the normalizer applying them, the
+# identity fixtures.
 is_identity_path() { # <path>
     case "$1" in
         identity/*|worker/src/main/scala/services/identity/*|worker/src/test/scala/services/identity/*|\
         common/src/main/resources/title-rules.tsv|common/src/main/resources/title-words.tsv|\
-        common/src/main/scala/services/titlerules/*|test/resources/fixtures/identity-*) return 0 ;;
+        common/src/main/scala/services/titlerules/*|common/src/main/scala/services/movies/TitleNormalizer.scala|\
+        test/resources/fixtures/identity-*) return 0 ;;
     esac
     return 1
 }

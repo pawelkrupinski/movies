@@ -3,6 +3,7 @@
 fixture, a country-keyed row, title words everywhere) and the identity set's lines narrowed to the selected classes."""
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -175,6 +176,23 @@ class PlanTest(unittest.TestCase):
 
     def test_a_line_that_runs_no_classes_is_kept(self):
         self.assertEqual(ii.plan(["Test/compile"] + SET, [], {}, None), ["Test/compile"])
+
+
+def local_identity_lines():
+    """The identity set's sbt lines of the checked-in scripts/hooks/local-tests.txt."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "hooks", "local-tests.txt")
+    with open(path, encoding="utf-8") as fh:
+        return [l.split(None, 2)[2].strip() for l in fh if re.match(r"identity\s+sbt\s", l)]
+
+
+class LocalTestsTest(unittest.TestCase):
+
+    def test_a_title_rule_change_runs_the_scraper_specs_it_reaches(self):
+        # Main #2266: helios-suffix-9 dropped, and only HeliosClientFullRepertoireSpec (Helios's scraper cleans its
+        # titles with its venue rows) saw "... - seanse z konkursami HDD" stop folding; the identity set ran no scraper spec
+        tests = {"scrapers": {"clients.helios.HeliosClientFullRepertoireSpec"}, "worker": {"services.titlerules.X"}}
+        plan = ii.plan(local_identity_lines(), [], tests, ["pl"])
+        self.assertIn("scrapers/testOnly clients.helios.HeliosClientFullRepertoireSpec -- -Didentity.countries=pl", plan)
 
 
 if __name__ == "__main__":
