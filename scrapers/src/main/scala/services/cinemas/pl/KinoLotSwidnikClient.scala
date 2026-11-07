@@ -1,9 +1,9 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
 import services.movies.FormatTags
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -31,13 +31,10 @@ import scala.jdk.CollectionConverters._
  *   - `a.B-btn.B-btn--accent[href^=/event/view/id/]` → booking link.
  */
 class KinoLotSwidnikClient(http: HttpFetch, override val cinema: Cinema = KinoLotSwidnik)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, KinoLotSwidnikClient.WidgetUrl, KinoLotSwidnikClient.WidgetUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoLotSwidnikClient.WidgetUrl)
-  override def sourceUrl: Option[String] = Some(KinoLotSwidnikClient.WidgetUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    KinoLotSwidnikClient.parse(HttpRead.page(http, KinoLotSwidnikClient.WidgetUrl), cinema)
+    KinoLotSwidnikClient.parse(html, cinema)
 }
 
 object KinoLotSwidnikClient {

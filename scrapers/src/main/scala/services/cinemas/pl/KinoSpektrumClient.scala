@@ -1,10 +1,10 @@
 package services.cinemas.pl
 
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -33,14 +33,12 @@ import scala.util.Try
  * fetch (TMDB enriches the rest downstream). One `CinemaMovie` per title, with
  * the screenings merged and sorted.
  */
-class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends ListingPageScraper(http, KinoSpektrumClient.PageUrl, KinoSpektrumClient.PageUrl) {
 
   import KinoSpektrumClient._
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(PageUrl)
-
-  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, PageUrl))
+    parseHtml(html)
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
     val slots = Jsoup.parse(html).select("div.event-item").asScala.toSeq.flatMap(parseEvent)

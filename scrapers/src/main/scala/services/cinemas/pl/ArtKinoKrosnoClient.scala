@@ -6,9 +6,9 @@ import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.nodes.{Element, Node, TextNode}
 import org.jsoup.select.NodeVisitor
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
@@ -33,13 +33,10 @@ import scala.util.Try
  */
 class ArtKinoKrosnoClient(http: HttpFetch, override val cinema: Cinema = KinoArtKino,
                           today: => LocalDate)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, ArtKinoKrosnoClient.RepertoireUrl, ArtKinoKrosnoClient.RepertoireUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ArtKinoKrosnoClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(ArtKinoKrosnoClient.RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    ArtKinoKrosnoClient.parse(HttpRead.page(http, ArtKinoKrosnoClient.RepertoireUrl), cinema, today)
+    ArtKinoKrosnoClient.parse(html, cinema, today)
 }
 
 object ArtKinoKrosnoClient {

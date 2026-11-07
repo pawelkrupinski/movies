@@ -1,8 +1,8 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, ListingPageScraper, ScraperParse, SlotsToMovies}
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
@@ -30,12 +30,10 @@ import scala.jdk.CollectionConverters._
  * validation for `kino-eva.com.pl`), while plain HTTP serves the page without a
  * redirect — so the client reads it over `http://`.
  */
-class KinoEvaClient(http: HttpFetch, override val cinema: Cinema = KinoEva) extends CinemaScraper {
+class KinoEvaClient(http: HttpFetch, override val cinema: Cinema = KinoEva) extends ListingPageScraper(http, KinoEvaClient.RepertoireUrl, KinoEvaClient.RepertoireUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoEvaClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(KinoEvaClient.RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] = KinoEvaClient.parse(HttpRead.page(http, KinoEvaClient.RepertoireUrl), cinema)
+    KinoEvaClient.parse(html, cinema)
 }
 
 object KinoEvaClient {

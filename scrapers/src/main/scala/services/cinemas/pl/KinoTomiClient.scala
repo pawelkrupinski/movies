@@ -6,8 +6,8 @@ import services.movies.FormatTags
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, ScraperParse, SlotsToMovies}
-import tools.{HttpFetch, HttpRead}
+import services.cinemas.common.{AgeRating, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -39,14 +39,12 @@ import scala.util.Try
  * Obelix: Mission Cleopatra, 2002, both read "Rok: 2026") — so it is never
  * emitted as a year hint.
  */
-class KinoTomiClient(http: HttpFetch, override val cinema: Cinema = KinoTomi) extends CinemaScraper with DetailEnricher {
+class KinoTomiClient(http: HttpFetch, override val cinema: Cinema = KinoTomi) extends ListingPageScraper(http, KinoTomiClient.RepertoireUrl, KinoTomiClient.RepertoireUrl) with DetailEnricher {
 
   import KinoTomiClient._
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] = parse(HttpRead.page(http, RepertoireUrl), cinema)
+    parse(html, cinema)
 
   override val detailGroup: String = "kino-tomi"
 

@@ -6,8 +6,8 @@ import services.movies.FormatTags
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, CinemaScraper, SlotsToMovies}
-import tools.{HttpFetch, HttpRead}
+import services.cinemas.common.{AgeRating, ListingPageScraper, SlotsToMovies}
+import tools.HttpFetch
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -39,14 +39,11 @@ import scala.util.Try
  * The film pages add only the uncut synopsis and a trailer — no year, director,
  * country or original title — so they are not fetched.
  */
-class KinoLukowClient(http: HttpFetch, override val cinema: Cinema = KinoLukow) extends CinemaScraper {
-
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoLukowClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(KinoLukowClient.RepertoireUrl)
-
+class KinoLukowClient(http: HttpFetch, override val cinema: Cinema = KinoLukow) extends ListingPageScraper(http, KinoLukowClient.RepertoireUrl, KinoLukowClient.RepertoireUrl) {
   // A failed fetch propagates: swallowed, it would read as a venue with no
   // screenings — a white scrape instead of a red one.
-  def fetch(): Seq[CinemaMovie] = KinoLukowClient.parse(HttpRead.page(http, KinoLukowClient.RepertoireUrl), cinema)
+  protected def parsePage(html: String): Seq[CinemaMovie] =
+    KinoLukowClient.parse(html, cinema)
 }
 
 object KinoLukowClient {

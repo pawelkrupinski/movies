@@ -1,12 +1,11 @@
 package services.cinemas.pl
 
-
 import models._
 import services.movies.FormatTags
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScraperParse}
+import services.cinemas.common.{ListingPageScraper, ScraperParse}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -30,13 +29,10 @@ import scala.util.Try
  * (every poll returned `[]`) though the cinema is open and screening.
  */
 class KinoSlezaClient(http: HttpFetch, override val cinema: Cinema = KinoSleza)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, KinoSlezaClient.RepertoireUrl, KinoSlezaClient.BaseUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoSlezaClient.BaseUrl)
-  override def sourceUrl: Option[String] = Some(KinoSlezaClient.BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    KinoSlezaClient.parse(HttpRead.page(http, KinoSlezaClient.RepertoireUrl), cinema)
+    KinoSlezaClient.parse(html, cinema)
 }
 
 object KinoSlezaClient {

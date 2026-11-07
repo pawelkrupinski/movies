@@ -5,10 +5,10 @@ import java.util.Locale
 import services.cinemas.common.ScraperParse
 import services.movies.FormatTags
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 
 import scala.jdk.CollectionConverters._
 
@@ -40,20 +40,16 @@ import scala.jdk.CollectionConverters._
  * [[OnlyMovieEventsFilter]] is not mixed in.
  */
 class SckStargardClient(http: HttpFetch, override val cinema: Cinema = KinoSCK)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, SckStargardClient.RepertoireUrl, SckStargardClient.RepertoireUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(SckStargardClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(SckStargardClient.RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    SckStargardClient.parse(HttpRead.page(http, SckStargardClient.RepertoireUrl), cinema)
+    SckStargardClient.parse(html, cinema)
 }
 
 object SckStargardClient {
 
   val BaseUrl       = "https://sck.stargard.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar-kina/"
-
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)

@@ -8749,6 +8749,7 @@ services.cinemas.common.ListingCompleteness$$anon$2
 services.cinemas.common.ListingCompleteness$$anon$3
 services.cinemas.common.ListingCompletenessRecorder
 services.cinemas.common.ListingCompletenessRecorder$
+services.cinemas.common.ListingPageScraper
 services.cinemas.common.ListingPages
 services.cinemas.common.ListingPages$
 services.cinemas.common.ListingReads

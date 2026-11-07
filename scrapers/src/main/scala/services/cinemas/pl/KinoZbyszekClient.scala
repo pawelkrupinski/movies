@@ -5,10 +5,10 @@ import java.util.Locale
 import services.cinemas.common.ScraperParse
 import services.movies.FormatTags
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.LocalDate
 import scala.jdk.CollectionConverters._
@@ -39,13 +39,10 @@ import scala.jdk.CollectionConverters._
  * `data-genre`s are film genres), so `OnlyMovieEventsFilter` isn't needed.
  */
 class KinoZbyszekClient(http: HttpFetch, override val cinema: Cinema = KinoZbyszek)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, KinoZbyszekClient.RepertoireUrl, KinoZbyszekClient.RepertoireUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoZbyszekClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(KinoZbyszekClient.RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    KinoZbyszekClient.parse(HttpRead.page(http, KinoZbyszekClient.RepertoireUrl), cinema)
+    KinoZbyszekClient.parse(html, cinema)
 }
 
 object KinoZbyszekClient {

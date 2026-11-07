@@ -2,10 +2,10 @@ package services.cinemas.pl
 
 import models._
 import services.movies.FormatTags
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
 
 import scala.jdk.CollectionConverters._
 
@@ -25,13 +25,10 @@ import scala.jdk.CollectionConverters._
  * scraped from Filmweb, which had silently gone empty for the venue.
  */
 class KinoSokolBrzozowClient(http: HttpFetch, override val cinema: Cinema = KinoSokolBrzozow)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, KinoSokolBrzozowClient.RepertoireUrl, KinoSokolBrzozowClient.BaseUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoSokolBrzozowClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(KinoSokolBrzozowClient.BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    KinoSokolBrzozowClient.parse(HttpRead.page(http, KinoSokolBrzozowClient.RepertoireUrl), cinema)
+    KinoSokolBrzozowClient.parse(html, cinema)
 }
 
 object KinoSokolBrzozowClient {

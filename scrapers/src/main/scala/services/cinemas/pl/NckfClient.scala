@@ -2,12 +2,12 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import scala.math.Ordering.Implicits.infixOrderingOps
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Element, TextNode}
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -49,14 +49,12 @@ class NckfClient(
   http:             HttpFetch,
   override val cinema: Cinema,
   today:            => LocalDate
-) extends CinemaScraper {
+) extends ListingPageScraper(http, NckfClient.RepertoireUrl, NckfClient.BaseUrl) {
 
   import NckfClient._
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, RepertoireUrl), today, cinema)
+    parseHtml(html, today, cinema)
 }
 
 object NckfClient {

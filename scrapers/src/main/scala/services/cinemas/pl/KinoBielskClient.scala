@@ -4,10 +4,10 @@ import java.util.Locale
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneOffset}
@@ -39,13 +39,10 @@ import scala.util.Try
  * dropped: it is not a screening the public can actually attend.
  */
 class KinoBielskClient(http: HttpFetch, override val cinema: Cinema = KinoBielsk)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, KinoBielskClient.RepertoireUrl, KinoBielskClient.RepertoireUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoBielskClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(KinoBielskClient.RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    KinoBielskClient.parse(HttpRead.page(http, KinoBielskClient.RepertoireUrl), cinema)
+    KinoBielskClient.parse(html, cinema)
 }
 
 object KinoBielskClient {

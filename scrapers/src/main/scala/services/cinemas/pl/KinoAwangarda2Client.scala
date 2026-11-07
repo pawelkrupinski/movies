@@ -3,10 +3,10 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import services.movies.FormatTags
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, Period}
 import scala.jdk.CollectionConverters._
@@ -41,17 +41,13 @@ class KinoAwangarda2Client(
   http:  HttpFetch,
   today: => LocalDate,
   override val cinema: Cinema = KinoAwangarda2
-) extends CinemaScraper {
-
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoAwangarda2Client.BaseUrl)
-  override def sourceUrl: Option[String] = Some(KinoAwangarda2Client.RepertoireUrl)
-
+) extends ListingPageScraper(http, KinoAwangarda2Client.RepertoireUrl, KinoAwangarda2Client.RepertoireUrl) {
   // A 5xx/timeout from the venue's (flaky, shared-hosting) server, or a parse failure,
   // propagates and surfaces as a red uptime error — not a silently swallowed empty, which
   // `RetryingCinemaScraper` records as a successful "0 showtimes" scrape (white on the
   // uptime bar, indistinguishable from a genuinely film-dormant venue).
-  def fetch(): Seq[CinemaMovie] =
-    KinoAwangarda2Client.parse(HttpRead.page(http, KinoAwangarda2Client.RepertoireUrl), today, cinema)
+  protected def parsePage(html: String): Seq[CinemaMovie] =
+    KinoAwangarda2Client.parse(html, today, cinema)
 }
 
 object KinoAwangarda2Client {

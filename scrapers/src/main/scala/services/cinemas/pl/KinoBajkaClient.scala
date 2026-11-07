@@ -3,10 +3,10 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import services.movies.TitleNormalizer
 import play.api.libs.json.{JsObject, Json}
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
@@ -37,14 +37,12 @@ import scala.util.Try
  * fetch (TMDB enriches the rest downstream). One `CinemaMovie` per title, with
  * the screenings merged and sorted.
  */
-class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema, titles: TitleNormalizer) extends CinemaScraper {
+class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema, titles: TitleNormalizer) extends ListingPageScraper(http, KinoBajkaClient.PageUrl, KinoBajkaClient.PageUrl) {
 
   import KinoBajkaClient._
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(PageUrl)
-
-  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, PageUrl))
+    parseHtml(html)
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
     // jsoup decodes the `data-dane` HTML entities, handing back the raw JSON.

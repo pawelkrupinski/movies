@@ -5,10 +5,10 @@ import java.util.Locale
 import services.cinemas.common.ScraperParse
 import services.movies.FormatTags
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 
 import java.time.LocalDate
 import scala.jdk.CollectionConverters._
@@ -37,13 +37,10 @@ import scala.util.Try
  * range.
  */
 class KinoNarewClient(http: HttpFetch, override val cinema: Cinema = KinoNarew)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, KinoNarewClient.RepertoireUrl, KinoNarewClient.RepertoireUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoNarewClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(KinoNarewClient.RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    KinoNarewClient.parse(HttpRead.page(http, KinoNarewClient.RepertoireUrl), cinema)
+    KinoNarewClient.parse(html, cinema)
 }
 
 object KinoNarewClient {

@@ -2,9 +2,9 @@ package services.cinemas.pl
 
 import java.util.Locale
 
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScraperParse, SlotsToMovies}
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 
@@ -44,13 +44,10 @@ class KinoMetalowiecNowaDebaClient(
   http:  HttpFetch,
   override val cinema: Cinema = KinoMetalowiecNowaDeba,
   today: => LocalDate
-) extends CinemaScraper {
+) extends ListingPageScraper(http, KinoMetalowiecNowaDebaClient.RepertoireUrl, KinoMetalowiecNowaDebaClient.RepertoireUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoMetalowiecNowaDebaClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(KinoMetalowiecNowaDebaClient.RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    KinoMetalowiecNowaDebaClient.parse(HttpRead.page(http, KinoMetalowiecNowaDebaClient.RepertoireUrl), today, cinema)
+    KinoMetalowiecNowaDebaClient.parse(html, today, cinema)
 }
 
 object KinoMetalowiecNowaDebaClient {

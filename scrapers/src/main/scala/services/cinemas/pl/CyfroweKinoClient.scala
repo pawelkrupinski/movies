@@ -4,9 +4,9 @@ import models._
 import services.movies.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import services.movies.TitleNormalizer
-import services.cinemas.common.{CinemaScraper, ScraperParse}
+import services.cinemas.common.{ListingPageScraper, ScraperParse}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -31,13 +31,10 @@ import scala.jdk.CollectionConverters._
  */
 class CyfroweKinoClient(http: HttpFetch, override val cinema: Cinema = KinoCyfroweKino,
                         titles: TitleNormalizer)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, CyfroweKinoClient.RepertoireUrl, CyfroweKinoClient.BaseUrl) {
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(CyfroweKinoClient.BaseUrl)
-  override def sourceUrl: Option[String] = Some(CyfroweKinoClient.BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    CyfroweKinoClient.parse(HttpRead.page(http, CyfroweKinoClient.RepertoireUrl), cinema, titles)
+    CyfroweKinoClient.parse(html, cinema, titles)
 }
 
 object CyfroweKinoClient {

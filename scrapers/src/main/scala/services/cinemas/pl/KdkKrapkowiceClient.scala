@@ -3,9 +3,9 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import services.movies.FormatTags
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -35,14 +35,12 @@ import scala.util.Try
  * between us and the cinema. The Filmweb id (1681) stays as the fallback.
  */
 class KdkKrapkowiceClient(http: HttpFetch, override val cinema: Cinema = KinoKrapkowice)
-    extends CinemaScraper {
+    extends ListingPageScraper(http, KdkKrapkowiceClient.KinoUrl, KdkKrapkowiceClient.KinoUrl) {
 
   import KdkKrapkowiceClient._
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoUrl)
-  override def sourceUrl: Option[String] = Some(KinoUrl)
-
-  def fetch(): Seq[CinemaMovie] = parse(HttpRead.page(http, KinoUrl), cinema)
+    parse(html, cinema)
 }
 
 object KdkKrapkowiceClient {

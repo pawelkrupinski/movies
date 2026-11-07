@@ -2,9 +2,9 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{ListingPageScraper, SlotsToMovies}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -29,15 +29,12 @@ import scala.jdk.CollectionConverters._
  * Everything we need is on the listing, so there's no per-film detail fetch;
  * runtime/genres/synopsis are filled downstream by TMDB enrichment.
  */
-class KinoOrzelClient(http: HttpFetch, override val cinema: Cinema) extends CinemaScraper {
+class KinoOrzelClient(http: HttpFetch, override val cinema: Cinema) extends ListingPageScraper(http, KinoOrzelClient.ListingUrl, KinoOrzelClient.BaseUrl) {
 
   import KinoOrzelClient._
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
-  override def sourceUrl: Option[String] = Some(BaseUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    parse(HttpRead.page(http, ListingUrl), cinema)
+    parse(html, cinema)
 }
 
 object KinoOrzelClient {

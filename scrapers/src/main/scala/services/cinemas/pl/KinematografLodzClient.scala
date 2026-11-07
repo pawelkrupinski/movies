@@ -2,12 +2,12 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import scala.math.Ordering.Implicits.infixOrderingOps
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.ListingPageScraper
 
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import tools.{HttpFetch, HttpRead}
+import tools.HttpFetch
 
 import java.time.LocalDate
 import scala.jdk.CollectionConverters._
@@ -54,15 +54,13 @@ class KinematografLodzClient(
   override val cinema: Cinema,
   today:            => LocalDate,
   titles:           TitleNormalizer
-) extends CinemaScraper {
+) extends ListingPageScraper(http, KinematografLodzClient.RepertoireUrl, KinematografLodzClient.RepertoireUrl) {
 
   import KinematografLodzClient._
-
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   // The scraped page itself, so /uptime's link opens what the parser read.
-  override def sourceUrl: Option[String] = Some(RepertoireUrl)
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def fetch(): Seq[CinemaMovie] = parseHtml(HttpRead.page(http, RepertoireUrl), today, cinema, titles)
+    parseHtml(html, today, cinema, titles)
 }
 
 object KinematografLodzClient {

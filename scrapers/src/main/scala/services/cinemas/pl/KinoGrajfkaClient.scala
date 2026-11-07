@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, ScraperParse, SlotsToMovies}
-import tools.{HttpFetch, HttpRead}
+import services.cinemas.common.{DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPageScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
+import tools.HttpFetch
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -48,19 +48,16 @@ import scala.util.Try
 class KinoGrajfkaClient(
   http:                HttpFetch,
   override val cinema: Cinema
-) extends CinemaScraper with DetailEnricher {
+) extends ListingPageScraper(http, KinoGrajfkaClient.RepertoireUrl, KinoGrajfkaClient.RepertoireUrl) with DetailEnricher {
 
   override val detailGroup: String = "kino-grajfka"
 
   /** The detail page's credits line; None on a transient failure, a durable 404/410 escaping. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     DetailFetchOutcome.page(http, ref).map(KinoGrajfkaClient.parseDetail)
+  protected def parsePage(html: String): Seq[CinemaMovie] =
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(KinoGrajfkaClient.RepertoireUrl)
-  override def sourceUrl: Option[String] = Some(KinoGrajfkaClient.RepertoireUrl)
-
-  def fetch(): Seq[CinemaMovie] =
-    KinoGrajfkaClient.parse(HttpRead.page(http, KinoGrajfkaClient.RepertoireUrl), cinema)
+    KinoGrajfkaClient.parse(html, cinema)
 }
 
 object KinoGrajfkaClient {
