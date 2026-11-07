@@ -156,8 +156,11 @@ object FamilyConvergence {
       def note(kind: String, id: String, digest: Long): Unit = closure.update(Read(kind, id, digest), ())
       type Takes = Map[ListingKey, Option[String]]
       val memo = TrieMap.empty[Subset, (Takes, Takes)]
-      def takes(subset: Subset): (Takes, Takes) = memo.getOrElseUpdate(subset, {
-        val present  = subset.toSeq.map(members)
+      def takes(subset: Subset): (Takes, Takes) = takesKept(subset, Subset())
+      val memoK = TrieMap.empty[(Subset, Subset), (Takes, Takes)]
+      def takesKept(subset: Subset, keptSet: Subset): (Takes, Takes) = (if (keptSet.isEmpty) memo else memoK.asInstanceOf[TrieMap[Any, (Takes, Takes)]]).asInstanceOf[TrieMap[Any, (Takes, Takes)]].getOrElseUpdate(if (keptSet.isEmpty) subset else (subset, keptSet), {
+        val present0 = subset.toSeq.map(members)
+        val present  = present0 ++ ListingRetention.retained(keptSet.toSeq.map(members), present0, reads.normalizer)
         val context  = new FamilyIndex.RecordingContext(without(generation.context, keys -- present.map(_.key)))
         val recorded = new FamilyIndex.RecordingLookups(lookups)
         val regions  = IdentityResolver.resolveRegion(present, recorded, reads.normalizer, inputs.calibration, inputs.pins, inputs.decorations, context)
@@ -204,6 +207,12 @@ object FamilyConvergence {
         (stage, pick) <- Seq[(String, ((Takes, Takes)) => Takes)]("model" -> (_._1), "final" -> (_._2))
         own           <- members.indices
         flip          <- flipOf(own, everyone, subsets, subset => pick(takes(subset)).get(members(own).key).flatten, label)
+        if !(sys.props.contains("retain.probe") && flip._1 == "add/remove") || {
+          // RETAIN_PROBE (scratch): the add/remove flip as prod reaches it -- x departs KEPT, not absent
+          val vals = subsets.filter(_(own)).flatMap(m => pick(takes(m)).get(members(own).key).flatten.map(m -> _)).toMap
+          vals.exists { case (m, a) => (everyone -- m).exists(x => vals.get(m + x).exists(_ != a) &&
+            pick(takesKept(m, Subset(x))).get(members(own).key).flatten.contains(a)) }
+        }
       } yield Flip(stage, s"${members(own).venue} | ${members(own).rawTitle}", flip._1, flip._2, fired.getOrElse(members(own).key, Set.empty).toSeq.sorted)
       // the closure: what the walk read beyond the family's own entry and settle, which the key already holds
       val own = entry.context.keySet.map(_.id) ++ entry.answers.keySet.map(Dependency.encode) ++
@@ -267,6 +276,7 @@ object FamilyConvergence {
     def parse(rest: List[String], o: Options, cache: Option[Path], rules: String, dirs: Seq[Path], c: CorpusArgs): (Options, Option[Path], String, Seq[Path], CorpusArgs) =
       rest match {
         case Nil                          => (o, cache, rules, dirs, c)
+        case "--retain-probe" :: more     => System.setProperty("retain.probe", "1"); parse(more, o, cache, rules, dirs, c)
         case "--cache" :: v :: more       => parse(more, o, Some(Path.of(v)), rules, dirs, c)
         case "--rules" :: v :: more       => parse(more, o, cache, v, dirs, c)
         case "--exhaustive" :: v :: more  => parse(more, o.copy(exhaustive = v.toInt), cache, rules, dirs, c)
