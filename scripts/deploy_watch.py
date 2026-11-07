@@ -112,14 +112,21 @@ def rollout(result: list[dict], tag: str, countries: list[str]) -> dict[str, tup
     return state
 
 
-def judge(check: Check, result: list[dict], countries: list[str]) -> tuple[bool, str, set[str]]:
-    """This reading's verdict, its readings, and the countries whose series is NaN: a gauge NOT REPORTED YET (the worker
-    seeds its gauges NaN at boot until their first report -- the held gauges at the model's first batch, ~2 min after a pod
-    starts), which judges nothing in this reading; main() fails a country that never reports over the whole window."""
+def judge(check: Check, result: list[dict], countries: list[str],
+          reported: frozenset = frozenset()) -> tuple[bool, str, set[str]]:
+    """This reading's verdict, its readings, and the countries NOT REPORTED YET, which judges nothing in this reading: a
+    series reading NaN (the worker seeds its gauges NaN at boot until their first report -- the held gauges at the model's
+    first batch, ~2 min after a pod starts), or, for a country with no value yet (not in `reported`), no series at all
+    (a pod just started is not scraped yet: uk, 2026-11-07, the minute the roll ended). A series gone after its country
+    reported fails; main() fails a country that never reports over the whole window."""
     values = {s["metric"].get("country"): float(s["value"][1]) for s in result}
     ok, parts, unreported = True, [], set()
     for cc in countries:
         if cc not in values and check.missing == "fail":
+            if cc not in reported:
+                unreported.add(cc)
+                parts.append(f"{cc}=not reported yet")
+                continue
             ok = False
             parts.append(f"{cc}=no series")
             continue
@@ -190,7 +197,7 @@ def main(argv: list[str], query=prometheus_query, clock=time.time, sleep=time.sl
         reading += 1
         for c in checks:
             try:
-                ok, detail, unreported = judge(c, query(c.promql), countries)
+                ok, detail, unreported = judge(c, query(c.promql), countries, frozenset(reported[c.name]))
                 reported[c.name] |= set(countries) - unreported
             except Exception as e:  # noqa: BLE001 -- an unreadable check fails this reading, named
                 ok, detail, unreported = False, f"unreadable: {e}", set()
@@ -208,7 +215,7 @@ def main(argv: list[str], query=prometheus_query, clock=time.time, sleep=time.sl
     for c in checks:
         never = [cc for cc in countries if cc not in reported[c.name]]
         if never and not failed[c.name]:
-            failed[c.name].append(f"{' '.join(never)} never reported a value (NaN in all {reading} readings)")
+            failed[c.name].append(f"{' '.join(never)} never reported a value (NaN or no series in all {reading} readings)")
         if failed[c.name]:
             print(f"FAIL\t{c.name}\t{c.op} {c.threshold:g}\t{len(failed[c.name])} of {reading} readings; first {failed[c.name][0]}")
         else:

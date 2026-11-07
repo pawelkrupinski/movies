@@ -111,8 +111,30 @@ class DeployWatchTest(unittest.TestCase):
                     {"held_listings": [series({cc: 0 for cc in ALL if cc != "es"})], "take_flips": [series({})]})
         code, out, _ = watch(fake, "--window", "0m")
         self.assertEqual(1, code)
-        self.assertIn("es=no series", out)
+        self.assertIn("es never reported a value", out)
         self.assertIn("PASS\tflips", out, "a counter not yet incremented reads 0")
+
+    def test_the_first_readings_after_the_roll_wait_for_every_country_to_report(self):
+        # 2026-11-07, main-20261107033439-6f679f9 --window 1h: reading 1 (03:43:21Z, the minute the roll ended) had de
+        # NaN and uk no series yet; readings 2-13 all passed -- and the watch said FAIL. Not reported yet is pending.
+        nan = float("nan")
+        first = series({**{cc: 0 for cc in ALL if cc != "uk"}, "de": nan})
+        fake = Fake([pods({cc: NEW for cc in ALL})],
+                    {"held_listings": [first, series({cc: 0 for cc in ALL})], "take_flips": [series({}), series({"pl": 1})]})
+        code, out, err = watch(fake, "--every", "5m", "--window", "1h")
+        self.assertEqual(0, code, out + err)
+        self.assertIn("PASS\theld listings\t<= 1000\t13 readings", out)
+        self.assertIn("uk=not reported yet", err)
+        self.assertNotIn("RED", err)
+
+    def test_a_series_gone_after_its_country_reported_fails_and_one_missing_at_the_end_too(self):
+        reported = series({cc: 0 for cc in ALL})
+        gone = series({cc: 0 for cc in ALL if cc != "uk"})
+        fake = Fake([pods({cc: NEW for cc in ALL})], {"held_listings": [reported, gone], "take_flips": [series({})]})
+        code, out, err = watch(fake, "--every", "5m", "--window", "10m")
+        self.assertEqual(1, code, out + err)
+        self.assertIn("FAIL\theld listings\t<= 1000\t2 of 3 readings", out)
+        self.assertIn("uk=no series", out)
 
     def test_a_gauge_not_yet_reported_after_boot_waits_for_its_first_value(self):
         # The worker's gauges read NaN from boot until their first report (the held gauges: the model's first batch,
