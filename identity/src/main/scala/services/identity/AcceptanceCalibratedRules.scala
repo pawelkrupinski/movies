@@ -30,7 +30,8 @@ private[identity] trait AcceptanceCalibratedRules { this: Acceptance =>
       // forth as the family's venues arrived, structural fix 2)
       _     <- noneOf(eligible.filterNot(r => (r eq taken._1) || !r.ownReach || IdentityMeasures.eventNamed(r.listing, r.candidate.film)).headOption
                  .filterNot(favours(taken._1, _)), "its own facts do not favour it over the runner-up", taken._1)
-      _     <- noneOf(closerThan(taken._1, eligible), "its title sits inside a closer record", taken._1)
+      // the closer record, likewise, one the listing's own evidence reached: a sibling's search alone brings it and takes it away
+      _     <- noneOf(closerThan(taken._1, eligible.filter(r => (r eq taken._1) || r.ownReach)), "its title sits inside a closer record", taken._1)
     } yield taken
   }
 

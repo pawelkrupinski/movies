@@ -36,6 +36,19 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     (700002, Film("The Misanthrope", year = Some(2011), runtime = Some(125)), Some(4)))
   private val national = (1693710, Film("National Theatre Live: The Misanthrope", year = Some(2026), runtime = Some(181)), Some(3))
 
+  "favoured-calibrated" should "refuse no own match for a closer record only a sibling's search reached" in {
+    // structural fix 2, as for its runner-up (Scored.ownReach, DE "Es"): the record a title sits inside refuses the take
+    // only when the listing's own evidence reached it -- one a sibling's search brought into the pool comes and goes with
+    // the sibling, and the take with it
+    val listing = Listing("Wild Patagonia Express", year = Some(2023), runtime = Some(120), directors = Seq("Ana Ruiz"))
+    val scored  = ranked(listing,
+      (1, Film("Patagonia", year = Some(2023), runtime = Some(120), directors = Some(Seq("Ana Ruiz"))), Some(1)),
+      (2, Film("Wild Patagonia Express", year = Some(2023)), None))
+    acceptance.favouredCalibratedWhy(scored).left.map(_.why) shouldBe Left("its title sits inside a closer record")
+    val siblingOnly = scored.map(s => if (s.candidate.tmdbId == 2) s.copy(ownReach = false) else s)
+    acceptance.favouredCalibratedWhy(siblingOnly).map(_._1.candidate.tmdbId) shouldBe Right(1)
+  }
+
   "directors-title" should "not count TMDB's hollow duplicate of a film as its director's second film" in {
     // DE Anker-Filmtheater's "Solo" [2024] {Sophie Dupuis}: her 2023 "Solo" (102′), and 1450958, an empty "Solo" record
     // of hers with no date or running time
