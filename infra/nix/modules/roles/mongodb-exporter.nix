@@ -288,7 +288,16 @@ in
           "--collector.diagnosticdata"
           "--collector.replicasetstatus"
 
-          # NOT `--collect-all`, AND NOT collstats / indexstats / topmetrics. Those emit a series
+          # collstats FOR identity_retained ONLY: the identity model's departed-listing archive, which
+          # keeps every row it once deleted (docs/design/identity-listing-retention.md, 2026-11-07) and
+          # so grows ~0.5-1 GB a year across countries. Five collections, a handful of series each:
+          # `mongodb_collstats_storageStats_{storageSize,totalIndexSize,count}{database,collection}`,
+          # which IdentityRetainedArchiveLarge reads. `clusterMonitor` grants `collStats` on every
+          # database, so the exporter's user needs nothing more.
+          "--collector.collstats"
+          "--mongodb.collstats-colls=${lib.concatMapStringsSep "," (db: "${db}.identity_retained") [ "kinowo" "kinowo_uk" "kinowo_de" "kinowo_us" "kinowo_es" ]}"
+
+          # NOT `--collect-all`, AND NOT collstats beyond the list above / indexstats / topmetrics. Those emit a series
           # per collection (and per index) per metric, across every database on the server. This
           # host holds one database per country plus the read-model collections; the resulting
           # cardinality is a standing cost paid against a Prometheus with a hard 20GB retention
