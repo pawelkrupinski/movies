@@ -1463,6 +1463,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       withClue(s"searchQuery of '$t': ")(listingQuery(titles, models.KinoCentrum3D, t) shouldBe t)
     }
     listingQuery(titles, models.KinoCentrum3D, "Arrietty - 4k Restoration - subtitled") shouldBe "Arrietty"
+    val bill = "CICADA MUSIC VIDEO WITH LIVE Q&A + WICKER MAN (1973) DOUBLE FEATURE"
+    withClue("the Q&A tail stops at the next film billed: ")(listingQuery(titles, models.KinoCentrum3D, bill) .toLowerCase should include("wicker man"))
   }
 
   it should "leave a film whose title merely holds the words, and a format tag after a pipe, alone" in {

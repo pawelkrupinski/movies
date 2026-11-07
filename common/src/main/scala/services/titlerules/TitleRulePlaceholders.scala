@@ -48,6 +48,13 @@ object TitleRulePlaceholders {
   /** A run of nothing but note words that names at least one note. */
   private val NoteSegment = s"""(?=(?:$NoteWord[\\s,/]*)*?$NoteMarker)$NoteWord(?:[\\s,/]+$NoteWord)*(?![\\p{L}\\p{N}])"""
 
+  /** A Q&A as a venue bills it after the film, who gives it named or not: "Q&A", "a Live Q&A", "Director Q&A",
+   *  "Writer/Director Q&A", "Cast & Crew Q&A". */
+  private val GiverRole = """(?:writer|director|filmmaker|producer|actor|actress|cast|crew|guest)s?"""
+  private val QaNight =
+    s"""(?:an?\\s+)?(?:(?:live|in[-\\s]person|recorded|special|$GiverRole(?:['’]s)?(?:\\s*(?:/|&|and)\\s*$GiverRole)?)\\s+)*""" +
+      """Q\s*&\s*A(?![\p{L}\p{N}])"""
+
   /** The touring "Federico Fellini: ciao a tutti!" retrospective (~12 cinemas) brands its films in many shapes — a
    *  "Federico Fellini:" or bare "Fellini." prefix, an optional "ciao a tutti!" / "Ciao a tutti:" subtitle, and a
    *  "| / – przegląd Federico Fellini …" suffix. The bare colon form ("Fellini: …") is deliberately NOT matched (only
@@ -124,6 +131,9 @@ object TitleRulePlaceholders {
       "A special-audience strand billed beside the film: '<who> Friendly', 'Parent & Baby', 'Silver Screen', 'SEND:'."),
     Placeholder("NOTE_SEGMENT", NoteSegment,
       "A run of nothing but screening-note words (audiences, Q&A, intro, subtitled, 4K, 35mm…) naming at least one note."),
+    Placeholder("QA_NIGHT", QaNight,
+      "A Q&A as a venue bills it after the film, who gives it named or not — 'Q&A', 'a Live Q&A', 'Director Q&A', " +
+      "'Writer/Director Q&A', 'Cast & Crew Q&A'. No connector: each rule writes the '+', 'plus' or 'with' before it."),
     Placeholder("FELLINI_PREFIX", FelliniPrefix,
       "The touring 'Federico Fellini: ciao a tutti!' retrospective's prefix ('Federico Fellini:', 'Fellini.', a bare " +
       "'Federico Fellini <FILM>'), whole: a rule pattern of its own, in the lookup and merge-key tiers alike."),
