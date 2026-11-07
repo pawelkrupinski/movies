@@ -101,9 +101,10 @@ else
 fi
 
 # ── scripttests: the self-tests run-script-tests --changed selects, when a pushed path is under a script-test root ──
+# grep reads the whole list, never -q: quitting at the first match SIGPIPEs a long `git diff`, failing the pipeline
 t=$SECONDS
 if ! git diff --name-only --no-renames "$base_sha...$head_sha" \
-        | grep -qE '^(scripts/|\.github/scripts/|\.github/actions/|android/scripts/|ios/scripts/|infra/bin/|data/)'; then
+        | grep -E '^(scripts/|\.github/scripts/|\.github/actions/|android/scripts/|ios/scripts/|infra/bin/|data/)' > /dev/null; then
     report scripttests SKIP $t
 else
     bounded "${PRECHECK_SCRIPTTESTS_SECONDS:-600}" scripts/run-script-tests --changed "$base_sha" > "$tmp/scripttests" 2>&1

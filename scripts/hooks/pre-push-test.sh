@@ -332,6 +332,19 @@ STUB
   check "a served-takes download racing another hook's for the same run hands the lint one copy of each leg" "1 0" \
     "$(tr ' ' '\n' < "$scratch/lint-args" | grep -c 'de.json.gz$') $(find "$repo/.git/kinowo-cache/served-takes" -name '*.part*' | wc -l | tr -d ' ')"
 
+  # A judgements change in a mass push: grep -q quit at the judgements path, the printf of the rest died of SIGPIPE, and
+  # under pipefail the push read as touching no judgements -- the lint ran without the served takes.
+  mkdir -p "$repo/zz-mass"
+  for i in $(seq 1 3000); do : > "$repo/zz-mass/a-path-with-a-name-long-enough-to-fill-the-pipe-$i.txt"; done
+  printf 'de\tUnion\tDer Spion\ttmdb:2\twrong\topen\t\t\t\t2026-10-14\t\n' >> "$repo/test/resources/fixtures/identity-judgements.tsv"
+  scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "judges a take wrong beside thousands of paths"
+  rm -f "$scratch/lint-args"
+  (cd "$repo" && GH_IMC="[$(printf '{"databaseId":7,"status":"completed","conclusion":"success","url":"u"}')]" \
+     PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
+  check "a judgements push of thousands of paths still hands the lint the served takes" "1 1" \
+    "$(grep -c -- '--served .*de.json.gz' "$scratch/lint-args") $(grep -c -- '--before' "$scratch/lint-args")"
+  scratch_git "$repo" reset -q --hard HEAD~1
+
   # git's own stdin, with no origin/main to find a new branch's base from: said, not silently passed.
   out="$(cd "$repo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$head" 0000000000000000000000000000000000000000 \
            | bash scripts/hooks/pre-push origin url 2>&1)"

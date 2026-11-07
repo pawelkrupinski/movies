@@ -1400,7 +1400,8 @@ served_takes() {
 check_judgements() {
     local served=() before=""
     need judgements python3 "install Python 3 (brew install python)" || return 1
-    if printf '%s\n' "$changed" | grep -qx 'test/resources/fixtures/identity-judgements.tsv'; then
+    # grep reads the whole list, never -q: quitting at the match SIGPIPEs printf over a long one, failing the pipeline
+    if printf '%s\n' "$changed" | grep -x 'test/resources/fixtures/identity-judgements.tsv' > /dev/null; then
         need judgements gh "brew install gh" || return 1
         while IFS= read -r f; do [ -n "$f" ] && served+=("$f"); done < <(served_takes)
         before="$tmp/judgements-before.tsv"

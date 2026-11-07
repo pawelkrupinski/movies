@@ -75,6 +75,16 @@ check "a changed script runs the self-tests run-script-tests --changed selects a
 check "a failing self-test: exit 1, named" "1 1 1" \
   "$(SCRIPTTESTS_FAIL=1 precheck) $(grep -c 'precheck scripttests FAIL' "$testroot/out") $(grep -c 'scripts/x-test.sh' "$testroot/out")"
 
+printf '\033[36m▸\033[0m a push of thousands of paths still runs them\n'
+# grep -q quit at the first script path and git diff, writing the rest, died of SIGPIPE: under pipefail the pipeline
+# failed, and a mass change's self-tests were skipped as "no script changed"
+mkdir -p "$repo/scripts/many"
+for i in $(seq 1 3000); do : > "$repo/scripts/many/a-script-with-a-name-long-enough-to-fill-the-pipe-$i.sh"; done
+scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "a mass change"
+: > "$log"
+check "a 3000-path change runs the self-tests" "0 1" "$(precheck) $(grep -c '^precheck scripttests PASS' "$testroot/out")"
+scratch_git "$repo" reset -q --hard HEAD~1
+
 printf '\033[36m▸\033[0m the rebase dry run\n'
 scratch_git "$repo" checkout -q -b other origin/main
 printf 'two\n' > "$repo/notes.md"; scratch_git "$repo" commit -qam "main's notes"; scratch_git "$repo" push -q origin HEAD:main
