@@ -70,13 +70,31 @@ object ListingRetention {
   /** [[retained]], each listing's title read by `forms` (the worker's cache of them). */
   def retained(departed: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer, forms: Listing => TitleRelation.Forms): Seq[Listing] = {
     val billed = present.iterator.map(_.key).toSet
-    val gone   = departed.filterNot(listing => billed(listing.key))
+    val back   = present.groupMap(Billing.of)(_.year)
+    val gone   = departed.filterNot(listing => billed(listing.key) || returned(listing, back))
     if (gone.isEmpty || present.isEmpty) Nil
     else {
       val showing = new TitleRelation.Showing(present.map(forms), gone.map(forms), normalizer)
       gone.filter(listing => showing.relates(forms(listing))).map(kept)
     }
   }
+
+  /** One venue's billing of one title, its case aside: what a listing that comes back under another KEY still is. A key
+   *  carries facts that can arrive later or go again -- a second feed's lent page and year (SecondFeedFacts lends a bare
+   *  Cineamo billing kinoheld's: Published becomes Native, no year becomes 2026), or the case a feed re-bills a title in
+   *  ("2M²" then "2m²") -- and kept by its key alone the old one stayed an input beside its own live twin: 947 of DE's
+   *  4710 kept page-less listings on 2026-11-06, splitting families (BTS Jakarta at Olympia Schwarzenberg, Verify scrape
+   *  recording #14). */
+  private final case class Billing(venue: String, title: String)
+  private object Billing {
+    def of(listing: Listing): Billing = Billing(listing.key.venue, listing.key.rawTitle.toLowerCase(java.util.Locale.ROOT))
+  }
+
+  /** Is `listing` billed again by its own venue ([[Billing]]) with no other year: the same listing come back, so what came
+   *  back replaces it. A year on both sides that differs is another film under that title (Cinema-Arthouse's "Sinn und
+   *  Sinnlichkeit", Ang Lee 1995 and Georgia Oakley 2026), still kept. */
+  private def returned(listing: Listing, back: Map[Billing, Seq[Option[Int]]]): Boolean =
+    back.get(Billing.of(listing)).exists(_.exists(year => year.isEmpty || listing.year.isEmpty || year == listing.year))
 
   /** [[retained]] of the departed listings that are inputs at `now` within `window` ([[live]]). */
   def retainedAt(departed: Iterable[Departed], present: Seq[Listing], now: Long, normalizer: TitleNormalizer,

@@ -51,6 +51,40 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
       Seq(listing(1, "The Ladykillers | Cinematic Breakfast", uk)), uk).map(_.key) shouldBe Seq(base(0).key)
   }
 
+  // Prod DE, 2026-11-06: 947 kept listings beside their own live twin. SecondFeedFacts lends a bare Cineamo billing
+  // kinoheld's page and year, so the same billing comes back under another key (Published -> Native, no year -> 2026), and
+  // a venue's feed re-cases a title ("2M²" -> "2m²"). Kept by key alone, the old key stayed an input beside the new one
+  // and split its family (BTS Jakarta at Olympia Schwarzenberg, Verify scrape recording #14).
+  private def at(n: Int, raw: String, year: Option[Int], page: Option[String], venue: models.Cinema = base(0).cinema): Listing = {
+    val l = listing(n, raw).copy(cinema = venue, year = year, page = page)
+    l.copy(key = page.fold[services.movies.ListingKey](services.movies.ListingKey.Published(venue.displayName, raw, year, Nil))(
+      url => services.movies.ListingKey.Native(venue.displayName, url, raw)))
+  }
+
+  "a listing that left" should "go when its own venue bills it again under another key: a lent page and year, or another case" in {
+    val bare  = at(0, "BTS WORLD TOUR 'ARIRANG' IN JAKARTA: LIVE VIEWING", None, None)
+    val lent  = at(1, "BTS WORLD TOUR 'ARIRANG' IN JAKARTA: LIVE VIEWING", Some(2026), Some("https://www.kinoheld.de/film/x"))
+    val upper = at(0, "2M² - Wo ist dein Platz für die Ewigkeit?", None, None)
+    val lower = at(1, "2m² - Wo ist dein Platz für die Ewigkeit?", Some(2026), None)
+    ListingRetention.retained(Seq(bare), Seq(lent), normalizer) shouldBe empty
+    ListingRetention.retained(Seq(lent), Seq(bare), normalizer) shouldBe empty
+    ListingRetention.retained(Seq(upper), Seq(lower), normalizer) shouldBe empty
+  }
+
+  it should "still be kept beside another film its venue bills under the same title and another year " +
+    "(Cinema-Arthouse's \"Sinn und Sinnlichkeit\": Ang Lee 1995 and Georgia Oakley 2026)" in {
+    val lee    = at(0, "Sinn und Sinnlichkeit", Some(1995), None)
+    val oakley = at(1, "Sinn und Sinnlichkeit", Some(2026), None)
+    ListingRetention.retained(Seq(lee), Seq(oakley), normalizer).map(_.key) shouldBe Seq(lee.key)
+  }
+
+  it should "still be kept beside another venue billing it under the same title" in {
+    val gone  = at(0, "Black Water", None, None)
+    val other = at(1, "Black Water", Some(2026), None, venue = base(1).cinema)
+    assume(base(0).cinema != base(1).cinema)
+    ListingRetention.retained(Seq(gone), Seq(other), normalizer).map(_.key) shouldBe Seq(gone.key)
+  }
+
   it should "go when no present listing bills its title" in {
     kept("BLACK WATER (2025)", "White Water (GLOBALE)") shouldBe false
   }
