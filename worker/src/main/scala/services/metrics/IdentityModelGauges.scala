@@ -110,6 +110,24 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     .labelNames("country")
     .register(registry)
 
+  private val present: Gauge = Gauge.builder()
+    .name("kinowo_worker_identity_model_present_listings")
+    .help("Listings the identity model holds that are billed now (with showtimes), after its last drain or take-up.")
+    .labelNames("country")
+    .register(registry)
+
+  private val kept: Gauge = Gauge.builder()
+    .name("kinowo_worker_identity_model_kept_listings")
+    .help("Departed listings the identity model holds as kept inputs (ListingRetention: a billed listing relates to them by title).")
+    .labelNames("country")
+    .register(registry)
+
+  private val departed: Gauge = Gauge.builder()
+    .name("kinowo_worker_identity_model_departed_listings")
+    .help("Departed listings the identity model's store holds as inputs, within the retention window (identity_retained).")
+    .labelNames("country")
+    .register(registry)
+
   private val promoted: Counter = Counter.builder()
     .name("kinowo_worker_identity_model_promoted_total")
     .help("Listings the identity model's input gate held and took in once answered: at a drain, or by a take-up (at=boot).")
@@ -124,7 +142,7 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     .register(registry)
 
   countryCodes.foreach { c =>
-    Seq(families, seconds, largestListings, largestNodes, large, held, heldOldest).foreach(_.labelValues(c).set(Double.NaN))
+    Seq(families, seconds, largestListings, largestNodes, large, held, heldOldest, present, kept, departed).foreach(_.labelValues(c).set(Double.NaN))
     Seq(resolved, rebuilds, takeUpFailures, historyDropped).foreach(_.labelValues(c))
     Seq("venue", "observation").foreach(events.labelValues(c, _))
     Seq("drain", "boot", "bound").foreach(promoted.labelValues(c, _))
@@ -147,6 +165,11 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     override def held(count: Int, oldestSeconds: Double): Unit = {
       IdentityModelGauges.this.held.labelValues(country).set(count.toDouble)
       heldOldest.labelValues(country).set(oldestSeconds)
+    }
+    override def retention(present: Int, kept: Int, departed: Int): Unit = {
+      IdentityModelGauges.this.present.labelValues(country).set(present.toDouble)
+      IdentityModelGauges.this.kept.labelValues(country).set(kept.toDouble)
+      IdentityModelGauges.this.departed.labelValues(country).set(departed.toDouble)
     }
     override def bounded(heldSeconds: Seq[Double]): Unit = {
       IdentityModelGauges.this.promoted.labelValues(country, "bound").inc(heldSeconds.size.toDouble)

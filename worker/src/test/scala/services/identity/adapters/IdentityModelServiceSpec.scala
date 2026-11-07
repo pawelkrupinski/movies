@@ -71,6 +71,8 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     override def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = promotions :+= (heldSeconds -> atBoot)
     var bounds = Seq.empty[Seq[Double]]
     override def bounded(heldSeconds: Seq[Double]): Unit = bounds :+= heldSeconds
+    var retention = Seq.empty[(Int, Int, Int)]
+    override def retention(present: Int, kept: Int, departed: Int): Unit = retention :+= ((present, kept, departed))
   }
 
   /** `world`, its services' woken drains run nowhere: the spec drains by hand alone, so no drain on a thread of its own races
@@ -236,6 +238,23 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val kept = ListingKey.of(Multikino, movie(Multikino, "Lalka", Some(2025)))
     all(outcomes.map(_._2._1)) should contain(kept)                   // Kinoteka bills "Lalka": Multikino's facts stay
     outcomes.map(_._2).distinct.size shouldBe 1
+  }
+
+  // The kept set's size beside the billed one, after every drain and take-up: what Grafana watches before a longer
+  // retention bites (docs/design/identity-listing-retention.md, "Metrics"; DE kept 830 more listings a day of history).
+  it should "report the listings billed, kept and departed after each drain and take-up" in {
+    val world = new World
+    val first = world.service()
+    first.takeUp()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")))
+    world.scrape(first, Helios, Seq(movie(Helios, "Lalka")))
+    first.drain()
+    world.gate.retention.last shouldBe ((3, 0, 0))
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Matilda")))                 // Lalka's showtimes at Multikino end
+    first.drain()
+    world.gate.retention.last shouldBe ((2, 1, 1))                                   // Helios bills "Lalka": Multikino's kept
+    world.service().takeUp()                                                         // a take-up resumes the same
+    world.gate.retention.last shouldBe ((2, 1, 1))
   }
 
   // A take-up asks every unread page of what it takes up, as `admit` asks a new listing's: a listing taken up -- billed

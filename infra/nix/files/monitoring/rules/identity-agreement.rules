@@ -10,6 +10,9 @@
 #   - `kinowo_worker_identity_model_held_listings` / `..._held_oldest_seconds` -- the identity model's input gate
 #     (docs/design/identity-structural-fixes.md, fix 1): listings whose newest version waits on its own questions,
 #     and how long the oldest has waited. No replay runs the gate, so only these see it stuck.
+#   - `kinowo_worker_identity_model_kept_listings` / `..._present_listings` -- the departed listings the model keeps as
+#     inputs beside the billed ones (docs/design/identity-listing-retention.md): the retention window's cost.
+#   - `kinowo_worker_identity_projection_seconds` -- the last identity projection's wall clock.
 groups:
   - name: identity-agreement-recorded
     rules:
@@ -60,6 +63,51 @@ groups:
             held. Their questions are AskQuestion tasks claimed at 0 and venue-page reads; the worker diagnostics
             dashboard's "Identity input gate" panel draws the held count, the oldest wait and the promotions. The
             one switch: IdentityModelService.NewWhilePending.
+
+      # THE KEPT LISTINGS OUTNUMBER THE BILLED ONES. A departed listing stays an input while a billed one relates to it by
+      # title (ListingRetention), up to the retention window: measured 2026-11-07, DE kept 830 more listings per day of
+      # departures (+23% of the 32.5k billed after 9 days), so the window's cost grows with the store's history. Past 1x
+      # the billed set the resolve reads twice its population: look at the window before raising it, or lower it. Read
+      # through max/min_over_time, which skip a restart's NaN seed, so the hour's hold bridges a restart.
+      - alert: IdentityKeptListingsHigh
+        expr: |
+          max by (country) (max_over_time(kinowo_worker_identity_model_kept_listings[15m]))
+            > max by (country) (min_over_time(kinowo_worker_identity_model_present_listings[15m]))
+        for: 1h
+        labels:
+          severity: warning
+          domain: identity
+        annotations:
+          summary: "{{ $labels.country }}: the identity model keeps {{ $value }} departed listings, more than it bills"
+          description: >-
+            The departed listings kept as identity inputs (ListingRetention, identity_retained) outnumber the billed
+            ones, so every family's resolve reads at least twice its population. The window is ListingRetention's
+            grace (docs/design/identity-listing-retention.md); the worker diagnostics dashboard draws kept, departed and
+            billed listings beside the projection's seconds.
+
+      # THE PROJECTION TAKES A QUARTER LONGER THAN A WEEK AGO. The last six hours' mean wall clock against the same six
+      # hours a week before, above 30 s (a scoped projection takes seconds: a quarter of that is noise). What a growing
+      # kept set costs shows here first; a deploy that slows the resolver too. Not in the hour after a worker start.
+      - alert: IdentityProjectionSlower
+        expr: |
+          (
+            avg by (country) (avg_over_time(kinowo_worker_identity_projection_seconds[6h]))
+              > 1.25 * avg by (country) (avg_over_time(kinowo_worker_identity_projection_seconds[6h] offset 7d))
+            and
+            avg by (country) (avg_over_time(kinowo_worker_identity_projection_seconds[6h])) > 30
+          )
+          unless on (country)
+          (time() - max by (country) (last_over_time(process_start_time_seconds{job="kinowo-worker"}[10m]))) < 3600
+        for: 1h
+        labels:
+          severity: warning
+          domain: identity
+        annotations:
+          summary: "{{ $labels.country }}: identity projections average {{ $value | humanizeDuration }} over 6h, a quarter slower than a week ago"
+          description: >-
+            The identity projection's mean wall clock over the last six hours is over 1.25x the same window a week ago.
+            Compare kinowo_worker_identity_model_kept_listings with the billed listings (a longer retention window
+            costs resolve time), then the builds deployed between: VictoriaLogs `country:<cc> "identity projection:"`.
 
       # THE AGREEMENT PHASE COSTS TWICE ITS WEEK. The hour's median wall clock above twice the week's median of that
       # hourly median, and above 20 s (a scoped projection's phase is about a second: doubling it is noise). Not in

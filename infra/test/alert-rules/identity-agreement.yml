@@ -169,3 +169,57 @@ tests:
             exp_annotations:
               summary: "pl: the identity staging publisher dropped events"
               description: "Identity staging events (take changes, waits) were let go before a publish wrote them -- the feed let them go, or publishes kept failing -- so the staging screen misses them. VictoriaLogs `country:<cc> \"identity staging\"` has the WARN line per drop and the failed publishes before it."
+
+  # DE keeps 40,000 departed listings against 32,500 billed for over an hour, its worker restarting once (the `stale`
+  # gap, then the NaN seed): fires, the hold bridging the restart. UK keeps 7,000 of 33,000: quiet. PL only ever NaN:
+  # quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_model_kept_listings{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '40000x30 stale _x2 NaN 40000x46'
+      - series: 'kinowo_worker_identity_model_present_listings{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '32500x30 stale _x2 NaN 32500x46'
+      - series: 'kinowo_worker_identity_model_kept_listings{job="kinowo-worker",instance="kinowo-worker-uk",country="uk"}'
+        values: '7000x80'
+      - series: 'kinowo_worker_identity_model_present_listings{job="kinowo-worker",instance="kinowo-worker-uk",country="uk"}'
+        values: '33000x80'
+      - series: 'kinowo_worker_identity_model_kept_listings{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
+        values: 'NaN _x79'
+      - series: 'kinowo_worker_identity_model_present_listings{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
+        values: 'NaN _x79'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: IdentityKeptListingsHigh
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: IdentityKeptListingsHigh
+        exp_alerts:
+          - exp_labels: { domain: identity, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: the identity model keeps 40000 departed listings, more than it bills"
+              description: "The departed listings kept as identity inputs (ListingRetention, identity_retained) outnumber the billed ones, so every family's resolve reads at least twice its population. The window is ListingRetention's grace (docs/design/identity-listing-retention.md); the worker diagnostics dashboard draws kept, departed and billed listings beside the projection's seconds."
+
+  # DE's projections took 40 s for a week, then 60 s (1.5x) for ten hours: fires once the 6h mean is over 1.25x and held
+  # an hour, across one missed scrape (the `stale` hour, no restart: the start time is unchanged). PL's 40 -> 45 s
+  # (1.125x): quiet. Each worker has run for weeks.
+  - interval: 1h
+    input_series:
+      - series: 'kinowo_worker_identity_projection_seconds{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '40x168 60x4 stale 60x6'
+      - series: 'kinowo_worker_identity_projection_seconds{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
+        values: '40x168 45x12'
+      - series: 'process_start_time_seconds{job="kinowo-worker",instance="kinowo-worker-de",country="de"}'
+        values: '0x172 stale 0x6'
+      - series: 'process_start_time_seconds{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
+        values: '0x180'
+    alert_rule_test:
+      - eval_time: 168h
+        alertname: IdentityProjectionSlower
+        exp_alerts: []
+      - eval_time: 176h
+        alertname: IdentityProjectionSlower
+        exp_alerts:
+          - exp_labels: { domain: identity, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: identity projections average 1m 0s over 6h, a quarter slower than a week ago"
+              description: "The identity projection's mean wall clock over the last six hours is over 1.25x the same window a week ago. Compare kinowo_worker_identity_model_kept_listings with the billed listings (a longer retention window costs resolve time), then the builds deployed between: VictoriaLogs `country:<cc> \"identity projection:\"`."
