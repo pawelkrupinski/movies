@@ -116,12 +116,3 @@ jobs:
                   phase: finish
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
-
-    timings:
-        needs: [build, population-walk]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        secrets: inherit

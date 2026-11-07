@@ -155,14 +155,3 @@ jobs:
               with:
                   path: ${{ runner.temp }}/kinowo-identity/refs
                   key: ${{ steps.old-ref-cache.outputs.cache-primary-key }}-${{ github.run_id }}
-
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
-    timings:
-        needs: [script-tests, old-ref-compile]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit

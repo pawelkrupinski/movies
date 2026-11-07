@@ -245,24 +245,13 @@ jobs:
                   gh workflow run verify-scrape-recording.yml --ref main -f recording="$GITHUB_RUN_ID" -f countries="$countries"
                   echo "dispatched Verify scrape recording on recording $GITHUB_RUN_ID for: $countries" | tee -a "$GITHUB_STEP_SUMMARY"
 
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [ preflight, enrichment, verify ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit
-
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec). This is the AGGREGATE,
     # and it waits for the slowest leg; each leg has already posted its own verdict as a
     # commit status the moment it ended (.github/actions/leg-verdict, LegVerdictWiringSpec).
     report:
         name: report (scheduled run)
-        needs: [ preflight, enrichment, verify, timings ]
+        needs: [ preflight, enrichment, verify ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5

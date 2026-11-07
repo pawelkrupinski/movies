@@ -117,22 +117,11 @@ jobs:
                   runs:       'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max* ; ; axe-core|@agnostic ; ${{ matrix.shard }}'
                   extra-args: --repeat-each 5
 
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [ races, webkit-phones ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit
-
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
         name: report (scheduled run)
-        needs: [ races, webkit-phones, timings ]
+        needs: [ races, webkit-phones ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5

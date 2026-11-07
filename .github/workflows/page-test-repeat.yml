@@ -56,14 +56,3 @@ jobs:
                   label:      page-test-repeat
                   runs:       '${{ inputs.projects }} ; ; ;'
                   extra-args: --repeat-each ${{ inputs.repeat-each }} ${{ inputs.specs }}
-
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
-    timings:
-        needs: [ repeat ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit

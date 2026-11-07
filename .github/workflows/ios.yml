@@ -220,14 +220,3 @@ jobs:
                   name: Kinowo.xcresult
                   path: build/Kinowo.xcresult
                   if-no-files-found: ignore
-
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [ unit-integration, ui-tests ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit

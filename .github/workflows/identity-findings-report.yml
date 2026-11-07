@@ -111,23 +111,12 @@ jobs:
                   # (scripts/ci/alert-step.sh): the recording's failure or the forge's, never a red run of this report
                   scripts/ci/alert-step.sh 2 -- python3 scripts/ci/identity_findings_report.py --run "$RECORDING" --assignee "$OWNER" --judgements "$RUNNER_TEMP/identity-judgements.tsv" --work "$RUNNER_TEMP/identity-findings"
 
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [ plan, findings ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit
-
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec). Beside the per-country issues, which
     # carry the findings themselves: this one says findings are overdue, or the report itself could not run.
     report:
         name: report (scheduled run)
-        needs: [ plan, findings, timings ]
+        needs: [ plan, findings ]
         if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5

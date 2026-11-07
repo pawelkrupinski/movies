@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
  * (2026-10-22). Both images are built inside ci, in its `e2e (corpus)` row, under their SHA tags only (2026-11-01: the
  * worker's was a job of its own, `image-worker`); nothing ships either until ci and gates are green.
  *
- * Every job but `gates` (t=0), `timings` (`!cancelled()`: it reports red runs too) and `kick-convergence` needs `ci`
+ * Every job but `gates` (t=0) and `kick-convergence` needs `ci`
  * and `gates`, directly or through a job that does, and carries no status function in its `if:`, so the implicit
  * `success()` skips it. `kick-convergence` is the deliberate exception: it hangs off nothing so convergence
  * starts at the push, red ci or not (KickConvergenceWiringSpec); behind `ci` it started ~50 min later.
@@ -16,7 +16,7 @@ import org.scalatest.matchers.should.Matchers
 class MainAfterRedCiSpec extends AnyFlatSpec with Matchers {
   private lazy val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/main.yml"))
 
-  private val Unconditional = Set("ci", "gates", "timings", "kick-convergence")
+  private val Unconditional = Set("ci", "gates", "kick-convergence")
 
   private def needs(block: String): Set[String] =
     block.linesIterator.map(_.trim).collectFirst {

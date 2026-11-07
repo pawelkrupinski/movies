@@ -86,22 +86,11 @@ jobs:
                   REQUIRE_SECURE_SESSION_COOKIE: ${{ vars.REQUIRE_SECURE_SESSION_COOKIE }}
               run: scripts/ci/alert-step.sh 3 -- python3 scripts/ci/check-security-headers.py
 
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [check]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit
-
     # A failed scheduled check becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run.
     report:
         name: report (scheduled run)
-        needs: [check, timings]
+        needs: [check]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5

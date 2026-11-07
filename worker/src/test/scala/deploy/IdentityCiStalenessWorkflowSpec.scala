@@ -39,7 +39,7 @@ class IdentityCiStalenessWorkflowSpec extends AnyFlatSpec with Matchers {
 
   it should "turn a red scheduled check into the owner's issue" in {
     val report = RepoFile.jobs(workflow)("report")
-    report should include("needs: [check, timings]")
+    report should include("needs: [check]")
     report should include("github.event_name == 'schedule'")
     report should include("uses: ./.github/actions/report-scheduled-run")
     report should include("failed: ${{ contains(needs.*.result, 'failure') }}")

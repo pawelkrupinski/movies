@@ -10,7 +10,6 @@ workflow	identity-model-convergence.yml	-	2691	THE GATE (the owner, 2026-10-27)
 job	main.yml	ci	aggregate
 job	main.yml	gates	aggregate
 job	main.yml	kick-convergence	2722
-job	main.yml	timings	aggregate
 job	main.yml	scope	2722
 job	main.yml	test (rest)	2722
 job	main.yml	test (heavy1)	2722
@@ -29,7 +28,6 @@ job	main.yml	page-tests-chrome (pw phones)	2722
 job	main.yml	mobile-local-server	2722
 job	main.yml	e2e (corpus)	2722
 job	main.yml	e2e (rest)	2722
-job	main.yml	report (timings)	aggregate
 job	main.yml	publish-web	2718
 job	main.yml	publish-worker	2718
 job	identity-model-convergence.yml	preflight	2691

@@ -50,13 +50,3 @@ jobs:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RUNS: ${{ inputs.runs }}
               run: scripts/ci/archive-recording.sh $RUNS
-
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml).
-    timings:
-        needs: [ archive ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        secrets: inherit

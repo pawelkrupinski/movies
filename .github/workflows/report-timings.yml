@@ -1,15 +1,67 @@
 name: Report run timings
 
-# EVERY JOB'S AND STEP'S TIME, as each workflow's last job: every workflow that runs on its own calls this as its
-# `timings` job, after every other job but the scheduled-failure report (RunTimingsWiringSpec). The caller's job gives
-# the `needs`, the `if: ${{ !cancelled() }}` and the permissions; this holds the rest once, where 27 workflows each held
-# a copy. The report itself is .github/actions/report-timings (scripts/ci/ci_timings.py). Never fails the run.
-# NO `secrets:` DECLARATION: callers pass `secrets: inherit`.
+# EVERY JOB'S AND STEP'S TIME, reported AFTER a run, never inside it (the owner, 2026-11-07): a `timings` job inside a run
+# made the run's completion wait for a free runner to report it, and every waiter on that completion waited too -- landing
+# batch #20 (13 changes, Pre-commit check run 42383678813) sat 27+ min past its last check job behind a `timings / report`
+# QUEUED for a light `movies` slot of a ci-runner saturated by bitcashier; Identity run 42370669779 ended its one real job
+# 26 min before its report could start (26 of its 57 min). So this workflow starts on `workflow_run: completed` of every
+# workflow that runs on its own and reports THAT run; none of them carries a `timings` job (RunTimingsWiringSpec). The
+# report itself is .github/actions/report-timings (scripts/ci/ci_timings.py). Never fails anything: a chart is not a gate.
+# A cancelled run is not reported (the in-run job's `!cancelled()`, kept).
 #
-# DISPATCHED, for THE GATE's convergence workflow (2026-11-06): that run's END is the gate's verdict, and the report, run
-# as its last job, held the verdict back 40-70 s. Its `timings` job dispatches this workflow with the run's id instead (a
-# few seconds); the run this starts waits for that one to end and reports it (RunTimingsWiringSpec).
+# THE EXCEPTIONS: a run another workflow DISPATCHES with its GITHUB_TOKEN completes with no `workflow_run` event
+# (GitHub's rule against token-triggered chains), so the three workflows only ever started that way report from inside:
+#   * Identity model convergence (Main's kick, the daily run, the drift explorer) -- its `timings` job DISPATCHES this
+#     workflow with the run's id (a dispatch is the one token event GitHub lets through) and the run this starts waits
+#     for that one to end and reports it; THE GATE's verdict is that run's end (2026-11-06).
+#   * Verify scrape recording (Record scrape fixtures' dispatch) and Convergence bisect (the convergence's) -- a call
+#     of this workflow as their last `timings` job. Nothing waits on either run's end.
+# CHAINS: GitHub starts no `workflow_run` more than three levels deep. Landing check build cache, Identity lean vs whole,
+# Identity live drift and Identity findings report are themselves `workflow_run`s (level 2): their reports are level 3.
+# NO `secrets:` DECLARATION: callers pass `secrets: inherit`.
 on:
+    workflow_run:
+        # every workflow that runs on its own but the three above -- the `name:` of each (RunTimingsWiringSpec)
+        workflows:
+            - Android
+            - Archive recording
+            - Branch CI
+            - Convergence daily full run
+            - Convergence fill
+            - Daily country fixture artifact
+            - Decodo probe
+            - Decoration discovery
+            - Discover UK cinemas
+            - Filmweb diff
+            - Identity capture
+            - Identity CI staleness
+            - Identity decorations
+            - Identity drift explorer
+            - Identity family explorer
+            - Identity findings report
+            - Identity lean vs whole
+            - Identity live drift
+            - Identity rule refit
+            - Identity rule ablation
+            - Identity run
+            - iOS
+            - Main
+            - Nightly stress
+            - Stage NixOS closures
+            - Nix update
+            - Order independence
+            - Page test repeat
+            - Landing check build cache
+            - Pre-commit check
+            - Prune Actions caches
+            - Record scrape fixtures
+            - Renovate
+            - Retire closed venues
+            - Cinema roster audit
+            - Scala Steward
+            - Security headers (live)
+            - Tool self-tests
+        types: [completed]
     workflow_call:
     workflow_dispatch:
         inputs:
@@ -33,11 +85,14 @@ jobs:
     # Named, not the bare `report`: beside a workflow's own scheduled-run `report` this row would read `report-1`.
     report:
         name: report (timings)
-        # Where its caller runs (`github.workflow` is the CALLER's name here). THE GATE's workflows on main -- Main and
-        # Identity model convergence -- stay on GitHub's hosted runners (the owner, 2026-11-06); with
-        # MOVIES_CI_RUNNERS=self-hosted every other run -- a landing check, a measurement, a nightly explorer, a bot --
-        # reports from any free slot of ci-runner's (`movies`), beside the jobs it reports on.
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && (github.ref != 'refs/heads/main' || github.workflow != 'Main' && github.workflow != 'Identity model convergence') && 'movies' || 'ubuntu-26.04' }}
+        # a cancelled run is charted nowhere, as when this was its `!cancelled()` last job
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled'
+        # Where the run it reports ran (a `workflow_run`'s run, else the caller's: `github.workflow` is the CALLER's name in a
+        # call). THE GATE's workflows on main -- Main and Identity model convergence -- stay on GitHub's hosted runners
+        # (the owner, 2026-11-06); with MOVIES_CI_RUNNERS=self-hosted every other run -- a landing check, a measurement, a
+        # nightly explorer, a bot -- is reported from any free slot of ci-runner's (`movies`): after the run, holding up
+        # nothing while it queues.
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && !(github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.name == 'Main' || github.ref == 'refs/heads/main' && (github.workflow == 'Main' || github.workflow == 'Identity model convergence')) && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         steps:
             # The workflows too: each job's `timeout-minutes` goes out beside its time (ci_timings.py `workflow_ceilings`).
@@ -65,6 +120,6 @@ jobs:
               run: scripts/ci/bounded-step.sh --reap
             - uses: ./.github/actions/report-timings
               with:
-                  run-id: ${{ inputs.run-id }}
+                  run-id: ${{ inputs.run-id || github.event.workflow_run.id }}
                   grafana-url: ${{ secrets.GRAFANA_URL }}
                   grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}

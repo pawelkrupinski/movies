@@ -668,14 +668,3 @@ jobs:
                   phase: finish
                   token: ${{ github.token }}
                   job-status: ${{ job.status }}
-
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
-    timings:
-        needs: [ plan, check, check-identity, check-oldrefs, check-page, heavy ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit

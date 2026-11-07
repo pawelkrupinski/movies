@@ -42,14 +42,3 @@ jobs:
             packages: write
             # ci.yml's `scope` job reads the newest green Main run (gh run list) to know which rows a push can move.
             actions: read
-
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [ci]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit

@@ -151,8 +151,8 @@ jobs:
   evaluate:
     name: nix-evaluate
     runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
-    # THE PLAN (WorkflowPlanSpec): the run's root, so the one job that reads the ref and the event whole; `stage` and
-    # `timings` read these. `stage` is the staging guard below, evaluated here.
+    # THE PLAN (WorkflowPlanSpec): the run's root, so the one job that reads the ref and the event whole; `stage`
+    # reads these. `stage` is the staging guard below, evaluated here.
     outputs:
       stage: ${{ (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' }}
     steps:
@@ -426,14 +426,3 @@ jobs:
       - name: Remove the deploy key
         if: always()
         run: rm -f ~/.ssh/id_ed25519
-
-  # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-  timings:
-    needs: [ evaluate, stage ]
-    if: ${{ !cancelled() }}
-    permissions:
-      actions: read
-      contents: read
-    uses: ./.github/workflows/report-timings.yml
-    # `inherit`: report-timings.yml declares no secrets.
-    secrets: inherit

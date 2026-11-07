@@ -48,19 +48,9 @@ jobs:
                   DECODO_PROXY_PASS: ${{ secrets.DECODO_PROXY_PASS }}
               run: scripts/ci/alert-step.sh 1,2 -- python3 scripts/ci/decodo-probe.py
 
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [probe]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        secrets: inherit
-
     report:
         name: report (scheduled run)
-        needs: [probe, timings]
+        needs: [probe]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5

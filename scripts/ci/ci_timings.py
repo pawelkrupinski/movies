@@ -3,9 +3,11 @@
 convergence suite prints -- printed to the run's log and summary, and pushed to Prometheus for the
 "CI — build timings" Grafana dashboard (convergence per country first, then every build).
 
-Every workflow runs it as its last job, `timings` (.github/actions/report-timings,
-RunTimingsWiringSpec), so it reports the run's OTHER jobs: the run is still in progress, and its
-conclusion is read off those jobs rather than the run.
+Report run timings (.github/workflows/report-timings.yml, .github/actions/report-timings,
+RunTimingsWiringSpec) runs it once a run has ended -- on `workflow_run: completed`, or dispatched with
+the run's id -- and, for the three workflows a GITHUB_TOKEN dispatch starts, as the run's own last job,
+`timings`, which reports the run's OTHER jobs while it is still in progress: so the conclusion is read
+off the jobs rather than the run.
 
 Sources:
 

@@ -211,8 +211,9 @@ class CeilingTest(unittest.TestCase):
 
     def test_a_literal_ceiling_is_read_off_the_workflow_and_the_ones_it_calls(self):
         self.assertEqual(timings.ceiling_of("preflight", self.CEILINGS), 5)
-        # a called workflow's job (main.yml calls report-timings.yml; convergence dispatches it as a run of its own)
-        self.assertEqual(timings.ceiling_of("report (timings)", timings.workflow_ceilings(".github/workflows/main.yml")), 5)
+        # a called workflow's job (verify-scrape-recording.yml calls report-timings.yml; convergence dispatches it)
+        self.assertEqual(timings.ceiling_of("report (timings)",
+                                            timings.workflow_ceilings(".github/workflows/verify-scrape-recording.yml")), 5)
 
     def test_a_caller_row_is_not_its_callee(self):
         self.assertIsNone(timings.ceiling_of("leg (poland)", self.CEILINGS))

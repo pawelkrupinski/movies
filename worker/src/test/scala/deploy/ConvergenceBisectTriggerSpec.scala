@@ -70,18 +70,26 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
   }
 
   // Main dispatches with the GITHUB_TOKEN; so does every convergence run. A `workflow_run` on
-  // anything started that way waits for an event that never comes.
+  // anything started that way waits for an event that never comes. A dispatch is code (a comment's
+  // "by hand: gh workflow run ..." is a person's token); a wait is a name in `on.workflow_run.workflows`.
   "no workflow" should "wait for the completion of a workflow another workflow dispatches" in {
-    val byFile = RepoFile.workflows().map(f => f.getName -> RepoFile.read(f.getPath)).toMap
+    val byFile = RepoFile.workflows().map(f => f.getName -> RepoFile.withoutComments(RepoFile.read(f.getPath))).toMap
     val all    = byFile.values.mkString("\n")
     val dispatched =
       ("""gh workflow run ([\w.-]+\.ya?ml)""".r.findAllMatchIn(all).map(m => nameOf(byFile(m.group(1)))) ++
         """kick-convergence\.sh "\$GITHUB_SHA" "\$GITHUB_REF_NAME" (.*)""".r.findAllMatchIn(all)
           .flatMap(m => "\"([^\"]+)\"".r.findAllMatchIn(m.group(1)).map(_.group(1)))).toSet
     dispatched should contain ("Identity model convergence")
-    byFile.foreach { case (file, yml) =>
-      if (yml.contains("workflow_run:"))
-        withClue(s"$file: ")(dispatched.filter(yml.contains) shouldBe empty)
+    def awaited(yml: String): Set[String] = {
+      val on = RepoFile.block(RepoFile.block(yml, "on"), "workflow_run")
+      """workflows:\s*\[([^\]]*)]""".r.findFirstMatchIn(on).map(_.group(1).split(",").map(_.trim).toSet)
+        .getOrElse(on.linesIterator.dropWhile(!_.trim.startsWith("workflows:")).drop(1).map(_.trim)
+          .takeWhile(_.startsWith("- ")).map(_.stripPrefix("- ").trim).toSet)
+    }
+    val waiting = byFile.filter { case (_, yml) => RepoFile.block(yml, "on").linesIterator.exists(_.trim == "workflow_run:") }
+    waiting.keySet should contain ("report-timings.yml")
+    waiting.foreach { case (file, yml) =>
+      withClue(s"$file: ")(awaited(yml).intersect(dispatched) shouldBe empty)
     }
   }
 }

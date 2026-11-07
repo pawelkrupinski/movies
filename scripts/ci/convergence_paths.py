@@ -24,7 +24,7 @@ AFTER_THE_VERDICT = {
     ".github/actions/convergence-bisect-request/action.yml",  # asks for a bisect of a red run
     ".github/actions/hard-clusters-ratchet/action.yml",      # turns a red leg's findings into seeds
     ".github/actions/report-timings/action.yml",             # reports the run's step timings
-    ".github/workflows/report-timings.yml",                  # ...as the run's last job, `timings`
+    ".github/workflows/report-timings.yml",                  # ...dispatched by its last job, `timings`
     "scripts/ci/ci_http_calls.py",                           # reports the external services a job called
 }
 # Read as data, not run: what it names is this generator's business, not the workflows'.

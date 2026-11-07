@@ -119,6 +119,16 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     report("Identity drift explorer") shouldBe Set("movies")
   }
 
+  it should "run where the run it reports did, when a workflow_run starts it (always on main, as Report run timings)" in {
+    def reported(name: String, branch: String) =
+      labels("report-timings.yml", ctx(RunnerLabel.Main).copy(workflow = "Report run timings",
+        workflowRun = Map("name" -> name, "head_branch" -> branch))).values.toSet
+    reported("Main", "main") shouldBe Set("ubuntu-26.04")
+    reported("Main", "feature") shouldBe Set("movies")
+    reported("Pre-commit check", "check/abc") shouldBe Set("movies")
+    reported("Identity run", "main") shouldBe Set("movies")
+  }
+
   "every workflow that can run on ci-runner" should "set the UTF-8 locale a hosted VM sets and ci-runner's image does not" in {
     // unset, the JVM encodes file names as ASCII: a fixture path with a Polish letter throws InvalidPathException
     // (precommit-check run 41356052566). Workflow-level env does not cross into a called workflow, so each declares it.

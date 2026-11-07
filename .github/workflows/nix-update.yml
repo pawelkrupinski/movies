@@ -121,22 +121,11 @@ jobs:
           echo "::error title=Part of the update failed::infra/bin/nix-update or infra/bin/image_pins.py --gitops-out exited 1: see the summary above (an upstream that could not be read, or bytes that did not match upstream's checksum). What did work was proposed."
           exit 1
 
-  # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-  timings:
-    needs: [update]
-    if: ${{ !cancelled() }}
-    permissions:
-      actions: read
-      contents: read
-    uses: ./.github/workflows/report-timings.yml
-    # `inherit`: report-timings.yml declares no secrets.
-    secrets: inherit
-
   # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
   # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
   report:
     name: report (scheduled run)
-    needs: [update, timings]
+    needs: [update]
     if: always() && !cancelled() && github.event_name == 'schedule'
     runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
     timeout-minutes: 5

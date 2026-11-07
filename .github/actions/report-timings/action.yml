@@ -2,10 +2,10 @@ name: Report run timings
 description: >-
   Prints every job's and step's duration (and a convergence suite's PhaseTimer phases) to the log
   and the run summary, and pushes them to Prometheus for the "CI — build timings" Grafana
-  dashboard (scripts/ci/ci_timings.py). Runs as
-  each workflow's `timings` job, a call of .github/workflows/report-timings.yml, after every
-  other job but the scheduled-failure report (RunTimingsWiringSpec). Never fails the run: a
-  chart is not a gate.
+  dashboard (scripts/ci/ci_timings.py). Runs in .github/workflows/report-timings.yml, after the
+  run it reports has ended (a `workflow_run`, or a dispatch with the run's id), or as the last
+  job of the three workflows a GITHUB_TOKEN dispatch starts (RunTimingsWiringSpec). Never fails
+  anything: a chart is not a gate.
 
 inputs:
   grafana-url:
@@ -17,7 +17,7 @@ inputs:
     required: false
     default: ''
   run-id:
-    description: The run to report (a dispatched report-timings.yml's); empty for this job's own run
+    description: The run to report (a dispatched or workflow_run report-timings.yml's); empty for this job's own run
     required: false
     default: ''
 

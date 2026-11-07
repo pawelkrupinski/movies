@@ -127,13 +127,3 @@ jobs:
                   name: identity-live-drift
                   path: ${{ runner.temp }}/identity-live-drift/
                   retention-days: 30
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [plan, compare]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit

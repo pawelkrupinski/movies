@@ -100,14 +100,3 @@ jobs:
                   tmdb-api-key: ${{ secrets.TMDB_API_KEY }}
                   proxy-user: ${{ secrets.DECODO_PROXY_USER }}
                   proxy-pass: ${{ secrets.DECODO_PROXY_PASS }}
-
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [ countries, fill ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit

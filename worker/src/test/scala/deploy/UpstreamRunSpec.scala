@@ -24,6 +24,12 @@ class UpstreamRunSpec extends AnyFlatSpec with Matchers {
     "precheck-build-cache.yml" -> "compiles main's newest tree after each Main run; it reads nothing Main produced"
   )
 
+  /** Triggered by another workflow's run, and reporting THAT run whatever its end or branch -- its jobs' times, never an
+   *  output to consume -- so the resolver's "the newest successful run on main" would chart the wrong run. */
+  private val ReportsTheRun = Map(
+    "report-timings.yml" -> "charts every completed run of its workflows, reading the triggering run's id itself"
+  )
+
   private def code(file: String) = RepoFile.withoutComments(RepoFile.read(s".github/workflows/$file"))
   private lazy val triggered = RepoFile.workflows().map(_.getName).sorted.filter { file =>
     RepoFile.block(code(file), "on").linesIterator.exists(_.trim == "workflow_run:")
@@ -40,7 +46,7 @@ class UpstreamRunSpec extends AnyFlatSpec with Matchers {
   } yield (name, job, step)
 
   "a workflow triggered by another's run" should "read it through the one resolver, in a root plan job" in {
-    val problems = triggered.filterNot(ReadNoRun.contains).flatMap { file =>
+    val problems = triggered.filterNot(f => ReadNoRun.contains(f) || ReportsTheRun.contains(f)).flatMap { file =>
       resolverSteps(file) match {
         case Seq((plan, job, step)) =>
           val id     = step.getOrElse("id", "").trim
@@ -65,12 +71,14 @@ class UpstreamRunSpec extends AnyFlatSpec with Matchers {
   it should "take the triggering run's fields from nowhere but the resolver" in {
     val readers = (RepoFile.workflows().map(_.getPath) ++ RepoFile.compositeActions())
       .filterNot(_ == ".github/actions/upstream-run/action.yml")
+      .filterNot(path => ReportsTheRun.keys.exists(f => path == s".github/workflows/$f"))
       .filter(path => RepoFile.withoutComments(RepoFile.read(path)).contains("github.event.workflow_run"))
     withClue("a workflow_run's id, conclusion or branch read elsewhere is a second rule: ")(readers shouldBe empty)
   }
 
   it should "list a workflow as reading no run only while it is still triggered by one" in {
     ReadNoRun.keys.filterNot(triggered.contains) shouldBe empty
+    ReportsTheRun.keys.filterNot(triggered.contains) shouldBe empty
     ReadNoRun.keys.filter(f => resolverSteps(f).nonEmpty) shouldBe empty
   }
 

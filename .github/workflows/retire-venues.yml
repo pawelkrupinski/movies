@@ -114,14 +114,3 @@ jobs:
               run: |
                   gh pr create --base main --head "$BRANCH" \
                       --title "Retire ${RETIRED} closed ${ROSTER} venue(s)" --body-file "$RUNNER_TEMP/pr-body.md"
-
-    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
-    timings:
-        needs: [ retire ]
-        if: ${{ !cancelled() }}
-        permissions:
-            actions: read
-            contents: read
-        uses: ./.github/workflows/report-timings.yml
-        # `inherit`: report-timings.yml declares no secrets.
-        secrets: inherit
