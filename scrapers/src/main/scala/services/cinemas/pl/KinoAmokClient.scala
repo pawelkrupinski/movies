@@ -5,7 +5,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -50,23 +50,7 @@ class KinoAmokClient(
     val document  = Jsoup.parse(html)
     val slots = parseDocument(document, today)
 
-    SlotsToMovies.fold(
-      slots,
-      keyOf      = _.title,
-      showtimeOf = s => Showtime(s.dateTime, s.booking, s.room),
-      distinctBy = s => (s.dateTime, s.room)
-    ) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema, distinctBy = SlotsToMovies.byTimeAndRoom)
   }
 }
 
@@ -75,21 +59,14 @@ object KinoAmokClient {
   val BaseUrl        = "https://amok.gliwice.pl"
   val RepertoireUrl  = s"$BaseUrl/repertuar/"
 
-  private[cinemas] case class RawSlot(
-    title:    String,
-    dateTime: LocalDateTime,
-    room:     Option[String],
-    booking:  Option[String]
-  )
-
-  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[ScrapedSlot] = {
     // Split the page by ribbon divs (each day section).  We use Jsoup's
     // own select rather than splitting raw HTML.
     val container = document.selectFirst("div.repertoire_list_f")
     if (container == null) return Seq.empty
 
     var currentDate: Option[LocalDate] = None
-    val slots = scala.collection.mutable.Buffer.empty[RawSlot]
+    val slots = scala.collection.mutable.Buffer.empty[ScrapedSlot]
 
     container.children.asScala.foreach { child =>
       if (child.hasClass("ribbon") && child.hasClass("rep-ribbon")) {
@@ -108,8 +85,8 @@ object KinoAmokClient {
     slots.toSeq
   }
 
-  /** Parse a single screening `div.post` into a `RawSlot`. */
-  private def parsePost(post: org.jsoup.nodes.Element, date: LocalDate, baseUrl: String): Option[RawSlot] = {
+  /** Parse a single screening `div.post` into a `ScrapedSlot`. */
+  private def parsePost(post: org.jsoup.nodes.Element, date: LocalDate, baseUrl: String): Option[ScrapedSlot] = {
     val timeText = Option(post.selectFirst("div.margin-b")).map(_.text.trim).getOrElse("")
     val time     = ScraperParse.parseHHmm(timeText)
 
@@ -128,7 +105,7 @@ object KinoAmokClient {
     for {
       t    <- title
       lt   <- time
-    } yield RawSlot(t, LocalDateTime.of(date, lt), room, booking)
+    } yield ScrapedSlot(t, LocalDateTime.of(date, lt), booking, room = room)
   }
 
   /** "7 czerwca" / "13 stycznia" → LocalDate.

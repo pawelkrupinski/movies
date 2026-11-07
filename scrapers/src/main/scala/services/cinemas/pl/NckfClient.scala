@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import services.cinemas.common.ScraperParse
 import scala.math.Ordering.Implicits.infixOrderingOps
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 import models._
 import org.jsoup.Jsoup
@@ -68,40 +68,15 @@ object NckfClient {
     * (a placeholder meaning "coming soon" — that slot has no real room yet). */
   private val WkrotceSentinel = "Wkrótce"
 
-  private[cinemas] case class RawSlot(
-    title:      String,
-    dateTime:   LocalDateTime,
-    bookingUrl: Option[String],
-    room:       Option[String],
-    posterUrl:  Option[String],
-    filmUrl:    Option[String]
-  )
-
   private[cinemas] def parseHtml(html: String, today: LocalDate, cinema: Cinema): Seq[CinemaMovie] = {
     val document   = Jsoup.parse(html)
     val items = document.select("div.events-archive__item.cinema.active").asScala.toSeq
     val slots = items.flatMap(parseItem(_, today))
 
-    SlotsToMovies.fold(
-      slots,
-      keyOf      = _.title,
-      showtimeOf = s => Showtime(s.dateTime, s.bookingUrl, s.room),
-      distinctBy = s => (s.dateTime, s.room)
-    ) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = group.flatMap(_.posterUrl).headOption,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema, distinctBy = SlotsToMovies.byTimeAndRoom)
   }
 
-  private def parseItem(item: Element, today: LocalDate): Seq[RawSlot] = {
+  private def parseItem(item: Element, today: LocalDate): Seq[ScrapedSlot] = {
     val title  = Option(item.selectFirst("h3")).map(_.text.trim).filter(_.nonEmpty)
     val poster = Option(item.selectFirst("div.events-archive__item-image img[src]"))
                    .map(_.attr("src")).filter(_.nonEmpty)
@@ -119,7 +94,7 @@ object NckfClient {
     }
   }
 
-  /** Parse one `div.daty-godz-seansow` into a `RawSlot`, returning `None` for
+  /** Parse one `div.daty-godz-seansow` into a `ScrapedSlot`, returning `None` for
     * past dates or unparseable data. */
   private def parseSlot(
     slot:    Element,
@@ -127,7 +102,7 @@ object NckfClient {
     poster:  Option[String],
     filmUrl: Option[String],
     today:   LocalDate
-  ): Option[RawSlot] = {
+  ): Option[ScrapedSlot] = {
     val dateStr = Option(slot.selectFirst("span.daty-godz-seansow__date-full"))
                     .map(_.text.trim).filter(_.nonEmpty)
     val hourStr = Option(slot.selectFirst("div.daty-godz-seansow__hour"))
@@ -154,6 +129,6 @@ object NckfClient {
       d  <- Try(LocalDate.parse(ds)).toOption
       if d >= today
       lt <- ScraperParse.parseHHmm(hs)
-    } yield RawSlot(title, LocalDateTime.of(d, lt), booking, room, poster, filmUrl)
+    } yield ScrapedSlot(title, LocalDateTime.of(d, lt), booking, filmUrl, poster, room)
   }
 }

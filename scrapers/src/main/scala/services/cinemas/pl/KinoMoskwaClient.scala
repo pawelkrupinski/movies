@@ -5,7 +5,7 @@ import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -64,24 +64,8 @@ class KinoMoskwaClient(
     moviesFrom(parseDayDocument(Jsoup.parse(HttpRead.page(http, dayUrl(d))), d))
   }
 
-  private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
-    SlotsToMovies.fold(
-      slots,
-      keyOf      = _.title,
-      showtimeOf = s => Showtime(s.dateTime, None, room = Some(s.room)),
-      distinctBy = s => (s.dateTime, s.room)
-    ) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+  private def moviesFrom(slots: Seq[ScrapedSlot]): Seq[CinemaMovie] =
+    SlotsToMovies.basic(slots, cinema, distinctBy = SlotsToMovies.byTimeAndRoom)
 }
 
 object KinoMoskwaClient {
@@ -98,8 +82,6 @@ object KinoMoskwaClient {
   // Strip leading ordinal "N. " added by My Calendar.
   private val OrdinalPat  = """^\d+\.\s+""".r
 
-  private[cinemas] case class RawSlot(title: String, dateTime: LocalDateTime, room: String)
-
   /** Dates that carry events in the mini-calendar, on or after `today`. */
   private[cinemas] def miniCalendarEventDays(document: Document, today: LocalDate): Seq[LocalDate] = {
     document.select("td[id^='mini-'][class*='has-events']").asScala.toSeq.flatMap { td =>
@@ -109,12 +91,12 @@ object KinoMoskwaClient {
   }
 
   /** Parse all public film screenings from a single day-view page. */
-  private[cinemas] def parseDayDocument(document: Document, date: LocalDate): Seq[RawSlot] =
+  private[cinemas] def parseDayDocument(document: Document, date: LocalDate): Seq[ScrapedSlot] =
     document.select("div#mc-day div.list-event.mc_repertuar").asScala.toSeq.flatMap { eventDiv =>
       parseEvent(eventDiv, date)
     }
 
-  private def parseEvent(eventDiv: Element, date: LocalDate): Seq[RawSlot] = {
+  private def parseEvent(eventDiv: Element, date: LocalDate): Seq[ScrapedSlot] = {
     val parsed = for {
       rawTitle  <- Option(eventDiv.selectFirst("h3.event-title")).map(_.text.trim).filter(_.nonEmpty)
       shortdesc <- Option(eventDiv.selectFirst("div.shortdesc.description"))
@@ -123,7 +105,7 @@ object KinoMoskwaClient {
       TimeRoomPat.findAllMatchIn(shortdesc.text).flatMap { m =>
         ScraperParse.parseHHmm(m.group(1)).map { time =>
           val room = if (m.group(2) == "S") "Sala Studyjna" else "Sala Moskwa"
-          RawSlot(title, LocalDateTime.of(date, time), room)
+          ScrapedSlot(title, LocalDateTime.of(date, time), room = Some(room))
         }
       }.toSeq
     }

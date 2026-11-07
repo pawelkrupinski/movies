@@ -44,6 +44,9 @@ private[cinemas] object SlotsToMovies {
     * (an OmU and a dubbed print at the same time): time, booking link AND format. */
   def byTimeBookingAndFormat(showtime: Showtime): Any = (showtime.dateTime, showtime.bookingUrl, showtime.format)
 
+  /** The dedup key of a venue that lists one slot per hall: time and hall. */
+  def byTimeAndRoom(showtime: Showtime): Any = (showtime.dateTime, showtime.room)
+
   /** Dedup on the whole showtime: two are one only when every field agrees. */
   def byWholeShowtime(showtime: Showtime): Any = showtime
 

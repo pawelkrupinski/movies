@@ -4,7 +4,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, MonthDay}
 import scala.jdk.CollectionConverters._
@@ -63,12 +63,6 @@ object PrahaClient {
   // from `today` via `ScraperParse.upcomingDate` when absent).
   private val StampPat = raw"""(\d{1,2})\s+(\p{L}+)(?:\s+(\d{4}))?(?:\s*\([^)]*\))?\s*/\s*${ScraperParse.ClockParts}""".r
 
-  private case class RawSlot(
-    title:    String,
-    dateTime: LocalDateTime,
-    filmUrl:  Option[String]
-  )
-
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
@@ -78,7 +72,7 @@ object PrahaClient {
         title    = titleElement.text.trim if title.nonEmpty
         stamp   <- Option(post.selectFirst("div.label:not(.special-1)")).map(_.text.trim)
         dateTime <- parseStamp(stamp, today)
-      } yield RawSlot(
+      } yield ScrapedSlot(
         title    = title,
         dateTime = dateTime,
         filmUrl  = Option(post.selectFirst("a[href]"))
@@ -86,23 +80,7 @@ object PrahaClient {
       )
     }
 
-    SlotsToMovies.fold(
-      slots,
-      keyOf      = _.title,
-      showtimeOf = s => Showtime(s.dateTime, bookingUrl = None),
-      distinctBy = _.dateTime
-    ) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema, distinctBy = _.dateTime)
   }
 
   /** "10 Cze 2026 / 15:30" or the yearless "12 Wrz / 16:10" → `LocalDateTime`;

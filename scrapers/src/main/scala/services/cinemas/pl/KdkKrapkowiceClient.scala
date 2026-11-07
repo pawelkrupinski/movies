@@ -5,7 +5,7 @@ import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -50,8 +50,6 @@ object KdkKrapkowiceClient {
   val BaseUrl = "https://kdk.krapkowice.pl"
   val KinoUrl = s"$BaseUrl/kino"
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, format: List[String])
-
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
@@ -63,25 +61,9 @@ object KdkKrapkowiceClient {
                   .map(_.attr("datetime").take(10))
                   .flatMap(d => Try(LocalDate.parse(d)).toOption)
         time <- Option(item.selectFirst("div.kino-godziny")).flatMap(g => ScraperParse.parseHHmm(g.text))
-      } yield RawSlot(title, LocalDateTime.of(date, time), tokens)
+      } yield ScrapedSlot(title, LocalDateTime.of(date, time), format = tokens)
     }
 
-    SlotsToMovies.fold(
-      slots,
-      keyOf      = _.title,
-      showtimeOf = s => Showtime(s.dateTime, None, format = s.format),
-      distinctBy = s => (s.dateTime, s.format)
-    ) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema, distinctBy = s => (s.dateTime, s.format))
   }
 }

@@ -9035,8 +9035,6 @@ services.cinemas.pl.FilmwebShowtimesClient$RawSeance
 services.cinemas.pl.FilmwebShowtimesClient$RawSeance$
 services.cinemas.pl.GdynskieCentrumFilmoweClient
 services.cinemas.pl.GdynskieCentrumFilmoweClient$
-services.cinemas.pl.GdynskieCentrumFilmoweClient$RawSlot
-services.cinemas.pl.GdynskieCentrumFilmoweClient$RawSlot$
 services.cinemas.pl.HallId
 services.cinemas.pl.HallId$
 services.cinemas.pl.HeliosCinema
@@ -9085,8 +9083,6 @@ services.cinemas.pl.Institution
 services.cinemas.pl.Institution$
 services.cinemas.pl.KdkKrapkowiceClient
 services.cinemas.pl.KdkKrapkowiceClient$
-services.cinemas.pl.KdkKrapkowiceClient$RawSlot
-services.cinemas.pl.KdkKrapkowiceClient$RawSlot$
 services.cinemas.pl.KinematografLodzClient
 services.cinemas.pl.KinematografLodzClient$
 services.cinemas.pl.KinoAgrafkaClient
@@ -9097,8 +9093,6 @@ services.cinemas.pl.KinoAgrafkaClient$RawSlot
 services.cinemas.pl.KinoAgrafkaClient$RawSlot$
 services.cinemas.pl.KinoAmokClient
 services.cinemas.pl.KinoAmokClient$
-services.cinemas.pl.KinoAmokClient$RawSlot
-services.cinemas.pl.KinoAmokClient$RawSlot$
 services.cinemas.pl.KinoApolloClient
 services.cinemas.pl.KinoApolloClient$DetailMeta
 services.cinemas.pl.KinoApolloClient$DetailMeta$
@@ -9227,8 +9221,6 @@ services.cinemas.pl.KinoMetalowiecNowaDebaClient$RawSlot
 services.cinemas.pl.KinoMetalowiecNowaDebaClient$RawSlot$
 services.cinemas.pl.KinoMoskwaClient
 services.cinemas.pl.KinoMoskwaClient$
-services.cinemas.pl.KinoMoskwaClient$RawSlot
-services.cinemas.pl.KinoMoskwaClient$RawSlot$
 services.cinemas.pl.KinoMuzaClient
 services.cinemas.pl.KinoMuzaClient$
 services.cinemas.pl.KinoMuzeumGdanskClient
@@ -9443,8 +9435,6 @@ services.cinemas.pl.MuranowClient$RawSlot$
 services.cinemas.pl.NckfClient
 services.cinemas.pl.NckfClient$
 services.cinemas.pl.NckfClient$$anon$1
-services.cinemas.pl.NckfClient$RawSlot
-services.cinemas.pl.NckfClient$RawSlot$
 services.cinemas.pl.NonMovieEventClassifier
 services.cinemas.pl.NonMovieEventClassifier$
 services.cinemas.pl.NoveKinoClient
@@ -9467,8 +9457,6 @@ services.cinemas.pl.PionierClient
 services.cinemas.pl.PionierClient$
 services.cinemas.pl.PrahaClient
 services.cinemas.pl.PrahaClient$
-services.cinemas.pl.PrahaClient$RawSlot
-services.cinemas.pl.PrahaClient$RawSlot$
 services.cinemas.pl.PromKepaClient
 services.cinemas.pl.PromKepaClient$
 services.cinemas.pl.PromKepaClient$Event

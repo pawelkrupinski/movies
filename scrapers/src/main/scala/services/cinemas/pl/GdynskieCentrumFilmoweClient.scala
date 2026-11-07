@@ -6,7 +6,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
@@ -65,41 +65,15 @@ object GdynskieCentrumFilmoweClient {
   val BaseUrl       = "https://gcf.org.pl"
   val RepertoireUrl = s"$BaseUrl/kino-studyjne/repertuar/"
 
-
-  private[cinemas] case class RawSlot(
-    title:   String,
-    format:  List[String],
-    poster:  Option[String],
-    dateTime: LocalDateTime,
-    booking: Option[String],
-    room:    Option[String]
-  )
-
   private[cinemas] def parseHtml(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document   = Jsoup.parse(html)
     val slots = document.select("div.film-width").asScala.toSeq.flatMap(parseFilmBlock)
 
-    SlotsToMovies.fold(
-      slots,
-      keyOf      = _.title,
-      showtimeOf = s => Showtime(s.dateTime, s.booking, s.room, s.format),
-      distinctBy = s => (s.dateTime, s.room)
-    ) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema, distinctBy = SlotsToMovies.byTimeAndRoom)
   }
 
   /** Parse all screenings out of one `div.film-width` block. */
-  private def parseFilmBlock(filmDiv: Element): Seq[RawSlot] = {
+  private def parseFilmBlock(filmDiv: Element): Seq[ScrapedSlot] = {
     // Title is on the anchor wrapping the image, via its `title` attribute. The
     // venue bakes the version into the title ("Hopnięci | DUBBING"); peel it off
     // and carry it as a per-showtime badge so the dub/napisy variants collapse
@@ -126,7 +100,7 @@ object GdynskieCentrumFilmoweClient {
             val hourStr = a.attr("data-hour").trim
             val booking = Option(a.attr("href")).filter(u => u.nonEmpty && u != "#")
             parseDateTime(dateStr, hourStr).map { dt =>
-              RawSlot(t, fmt, poster, dt, booking, hall)
+              ScrapedSlot(t, dt, booking, posterUrl = poster, room = hall, format = fmt)
             }
           }
         }
