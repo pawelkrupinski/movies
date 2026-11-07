@@ -11,8 +11,8 @@ import scala.jdk.CollectionConverters._
 /**
  * BENCHMARK (not for landing): whole-resolve cost against kept listings. The newest recording's corpus, plus the departed
  * listings of the last W days (synthetic history, as scripts.RetentionWindows) kept by [[ListingRetention.retained]],
- * each kept listing replicated R times (`--replicate`: copy i of a kept listing is the same listing under a distinct key,
- * at a venue rotated through the country's venues — 90-day volume from 24 days of history).
+ * each kept listing replicated R times (`--replicate`: copy i of a kept listing is the same listing under a distinct key and
+ * raw-title spelling — its own node — at a venue rotated through the country's venues: 90-day volume from 24 days of history).
  *
  *   worker/Test/runMain scripts.KeptListingsBench <cc> <fixtures> --older <corpus>@<ISO> ... --windows 0,9,18
  *     --replicate 1,3 --repeat 3 --jfr 18x3 --out DIR
@@ -59,8 +59,11 @@ object KeptListingsBench {
     def replicated(kept: Seq[Listing], r: Int): Seq[Listing] = kept ++ (1 until r).flatMap { i =>
       kept.zipWithIndex.map { case (l, n) =>
         val cinema = venues((n * 7 + i * 13) % venues.size)
-        val key    = services.movies.ListingKey.Native(cinema.displayName, s"kept-replica-$i-$n", l.rawTitle)
-        l.copy(key = key, cinema = cinema)
+        // a node is its evidence, venue-free: copy i spells the raw title with i trailing spaces, so it is a node of its
+        // own (as a 90-day history's other spellings are) under the very same title keys, facts and searches
+        val raw    = l.rawTitle + " " * i
+        val key    = services.movies.ListingKey.Native(cinema.displayName, s"kept-replica-$i-$n", raw)
+        l.copy(key = key, cinema = cinema, rawTitle = raw)
       }
     }
     def resolve(kept: Seq[Listing]) = IdentityResolver.resolve(present ++ kept, lookups, reads.normalizer, ResolveInputs.Unpinned)
@@ -79,9 +82,10 @@ object KeptListingsBench {
     resolve(Nil)
 
     val baseline = takes(resolve(Nil))
-    val summary  = new StringBuilder("window\treplicas\trepeat\tkept\twallSeconds\tcpuSeconds\tallocatedGb\tliveHeapMb\tpresentTakesMoved\n")
+    val summary  = new StringBuilder("window\treplicas\trepeat\tkept\tnodes\tlargestFamily\twallSeconds\tcpuSeconds\tallocatedGb\tliveHeapMb\tpresentTakesMoved\tretainSeconds\n")
     for (days <- windows; r <- replicas if days > 0 || r == 1) {
-      val kept = replicated(keptAt(days), r)
+      val r0 = System.nanoTime(); val keptReal = keptAt(days); val retainSeconds = (System.nanoTime() - r0) / 1e9
+      val kept = replicated(keptReal, r)
       (1 to repeat).foreach { n =>
         val profiling = jfr.contains((days, r)) && n == repeat
         val recordingJfr = Option.when(profiling) {
@@ -97,8 +101,9 @@ object KeptListingsBench {
           rec.stop(); val file = out.resolve(s"resolve-${country.code}-${days}d-x$r.jfr"); rec.dump(file); rec.close()
           hottest(file)
         }
-        summary.append(f"$days\t$r\t$n\t${kept.size}\t$wall%.1f\t$cpu%.1f\t$gb%.2f\t$live%.0f\t$moved\n")
-        println(f"[KeptListingsBench] ${country.code} ${days}d x$r #$n: kept ${kept.size}, wall $wall%.1fs, cpu $cpu%.1fs, alloc $gb%.2fGB, live +$live%.0fMB, present takes moved vs 0-kept $moved")
+        val families = resolution.familyOf.values.groupBy(identity).values.map(_.size)
+        summary.append(f"$days\t$r\t$n\t${kept.size}\t${resolution.nodes}\t${families.max}\t$wall%.1f\t$cpu%.1f\t$gb%.2f\t$live%.0f\t$moved\t$retainSeconds%.2f\n")
+        println(f"[KeptListingsBench] ${country.code} ${days}d x$r #$n: kept ${kept.size}, nodes ${resolution.nodes}, largest family ${families.max}, wall $wall%.1fs, cpu $cpu%.1fs, alloc $gb%.2fGB, live +$live%.0fMB, present takes moved vs 0-kept $moved, retained() $retainSeconds%.2fs")
       }
     }
     Files.write(out.resolve(s"bench-${country.code}.tsv"), summary.toString.getBytes(StandardCharsets.UTF_8))
