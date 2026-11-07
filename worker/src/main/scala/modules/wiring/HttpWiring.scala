@@ -4,9 +4,7 @@ import clients.TmdbClient
 import modules.WorkerWiring
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, MongoOmdbBudget, OMDbClient, OmdbBudget, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
-import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust}
-
-import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
+import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, RetryingHttpFetch, ThrottledHttpFetch, TlsTrust}
 
 /** The two phase-labelled HTTP chains over ONE wire leaf, and the third-party
  *  metadata / rating / resolution clients that draw from the `enrich` one.
@@ -171,7 +169,7 @@ object HttpWiring {
             meter = breakerMeter, clock = clock, onTransition = breakerListener),
           sleep),
         paceFor = pace, clock = clock, sleep = sleep),
-      fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
+      fleetHostPace, PacedHttpFetch.configuredFleetInterval(configuration),
       PacedHttpFetch.FleetHorizon, clock, sleep = sleep, paceName = "the fleet's pace")
   }
 }

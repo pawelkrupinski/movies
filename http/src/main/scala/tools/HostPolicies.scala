@@ -2,7 +2,7 @@ package tools
 
 import java.util.Locale
 
-import settings.{HostPace, PaceKnob, ProcessConfiguration}
+import settings.{HostPace, PaceKnob}
 
 import java.net.URI
 import java.net.http.HttpClient
@@ -480,27 +480,28 @@ object HostPolicies {
    *  Resolved PER REQUEST rather than baked into the table at class-init, so a
    *  `paceKnob` flip on `/admin/config` takes effect without a worker restart.
    *  The read is a map lookup against the override cache — cheap enough to sit
-   *  on the request path, and it only runs for the few hosts that are paced. */
-  def requestIntervalFor(url: String, configuration: ProcessConfiguration): Option[Duration] =
-    policyFor(url).flatMap(tunedInterval(_, configuration))
+   *  on the request path, and it only runs for the few hosts that are paced. `pace` is that read: a knob's
+   *  live value, given the compiled-in default (`ProcessConfiguration.hostPace`, passed by
+   *  `PacedHttpFetch.configuredInterval`). */
+  def requestIntervalFor(url: String, pace: (PaceKnob, HostPace) => HostPace): Option[Duration] =
+    policyFor(url).flatMap(tunedInterval(_, pace))
 
   /** A policy's live pace: its knob's current value if it names one, else the
    *  compiled-in default. The resolver ignores a non-positive or
    *  unparseable override, so a fat-fingered `0` falls back to the default
    *  rather than silently unpacing a host we know we out-run. */
-  private def tunedInterval(policy: HostPolicy, configuration: ProcessConfiguration): Option[Duration] =
+  private def tunedInterval(policy: HostPolicy, pace: (PaceKnob, HostPace) => HostPace): Option[Duration] =
     policy.paceKnob match {
       case None       => policy.minRequestInterval
-      case Some(knob) =>
-        Some(configuration.hostPace(knob, HostPace(policy.minRequestInterval.getOrElse(Duration.ZERO))).value)
+      case Some(knob) => Some(pace(knob, HostPace(policy.minRequestInterval.getOrElse(Duration.ZERO))).value)
     }
 
   /** The fleet-wide minimum gap between two requests to `url`'s host, if the fleet shares a pace for it
    *  ([[PacedHttpFetch]]); its knob's live value when it names one. */
-  def fleetIntervalFor(url: String, configuration: ProcessConfiguration): Option[Duration] =
+  def fleetIntervalFor(url: String, pace: (PaceKnob, HostPace) => HostPace): Option[Duration] =
     policyFor(url).flatMap(policy => policy.fleetPaceKnob match {
       case None       => policy.fleetMinInterval
-      case Some(knob) => Some(configuration.hostPace(knob, HostPace(policy.fleetMinInterval.getOrElse(Duration.ZERO))).value)
+      case Some(knob) => Some(pace(knob, HostPace(policy.fleetMinInterval.getOrElse(Duration.ZERO))).value)
     })
 
   /** The connect (TCP+TLS handshake) budget for `url`: the matching host policy's,

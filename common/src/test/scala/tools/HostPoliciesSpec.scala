@@ -42,8 +42,8 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
       HostPolicies.httpVersionFor(url) shouldBe row.httpVersion
       // The pace goes through the live knob, so compare the two lookups that
       // share that path rather than the compiled-in value an override may shift.
-      HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())) shouldBe HostPolicies.requestIntervalFor(exactHost(suffix), new _root_.settings.ProcessConfiguration(Env.of()))
-      HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())).isDefined shouldBe row.minRequestInterval.isDefined
+      HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace) shouldBe HostPolicies.requestIntervalFor(exactHost(suffix), new _root_.settings.ProcessConfiguration(Env.of()).hostPace)
+      HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace).isDefined shouldBe row.minRequestInterval.isDefined
     }
   }
 
@@ -53,18 +53,18 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     val url     = exactHost("filmstarts.de")
     val flipped = Env.of()
     flipped.installOverrides(Map("KINOWO_FILMSTARTS_PACE_MS" -> "4321").get)
-    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped))  shouldBe Some(java.time.Duration.ofMillis(4321))
-    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())) should not be Some(java.time.Duration.ofMillis(4321))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped).hostPace)  shouldBe Some(java.time.Duration.ofMillis(4321))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace) should not be Some(java.time.Duration.ofMillis(4321))
   }
 
   "a fleet-paced row" should "hold Wikidata to one pace across the fleet, retuned by its knob, and leave the process pace alone" in {
     val url     = "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=Klondike"
     val flipped = Env.of()
     flipped.installOverrides(Map("KINOWO_WIKIDATA_FLEET_PACE_MS" -> "1500").get)
-    HostPolicies.fleetIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()))  shouldBe Some(java.time.Duration.ofMillis(500))
-    HostPolicies.fleetIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped))   shouldBe Some(java.time.Duration.ofMillis(1500))
-    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())) shouldBe None
-    HostPolicies.fleetIntervalFor(exactHost("filmstarts.de"), new _root_.settings.ProcessConfiguration(Env.of())) shouldBe None
+    HostPolicies.fleetIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace)  shouldBe Some(java.time.Duration.ofMillis(500))
+    HostPolicies.fleetIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped).hostPace)   shouldBe Some(java.time.Duration.ofMillis(1500))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace) shouldBe None
+    HostPolicies.fleetIntervalFor(exactHost("filmstarts.de"), new _root_.settings.ProcessConfiguration(Env.of()).hostPace) shouldBe None
   }
 
   it should "leave a host that merely ENDS with the suffix text on the defaults" in {
@@ -74,7 +74,7 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
       HostPolicies.requestTimeoutFor(url) shouldBe HostPolicies.DefaultRequestTimeout
       HostPolicies.headersFor(url) shouldBe empty
       HostPolicies.httpVersionFor(url) shouldBe HostPolicies.DefaultHttpVersion
-      HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of())) shouldBe None
+      HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace) shouldBe None
     }
   }
 
@@ -129,16 +129,16 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     val url     = "https://next-live.kinoheld.de/graphql"
     val flipped = Env.of()
     flipped.installOverrides(Map(_root_.settings.PaceKnob.Kinoheld.key -> "900").get)
-    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()))  shouldBe Some(Duration.ofMillis(500))
-    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped))   shouldBe Some(Duration.ofMillis(900))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace)  shouldBe Some(Duration.ofMillis(500))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped).hostPace)   shouldBe Some(Duration.ofMillis(900))
   }
 
   it should "pace Cineamo's API, retunable by its own knob" in {
     val url     = "https://api.cineamo.com/showings?cinemaId=997&page=1"
     val flipped = Env.of()
     flipped.installOverrides(Map(_root_.settings.PaceKnob.Cineamo.key -> "350").get)
-    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()))  shouldBe Some(Duration.ofMillis(200))
-    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped))   shouldBe Some(Duration.ofMillis(350))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(Env.of()).hostPace)  shouldBe Some(Duration.ofMillis(200))
+    HostPolicies.requestIntervalFor(url, new _root_.settings.ProcessConfiguration(flipped).hostPace)   shouldBe Some(Duration.ofMillis(350))
   }
 
   // ── Slow-TLS connect budget (Kino Iluzjon) ────────────────────────────────

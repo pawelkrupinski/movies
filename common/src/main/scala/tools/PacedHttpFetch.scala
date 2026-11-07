@@ -77,5 +77,9 @@ object PacedHttpFetch {
    *  ([[HostPolicies]]) so a paced host is a DATA row like any
    *  other host override — never an if-branch here. */
   def configuredInterval(configuration: settings.ProcessConfiguration): String => Option[FiniteDuration] =
-    url => HostPolicies.requestIntervalFor(url, configuration).map(_.toMillis.millis)
+    url => HostPolicies.requestIntervalFor(url, configuration.hostPace).map(_.toMillis.millis)
+
+  /** The fleet-wide pacing interval for `url`'s host ([[HostPolicies.fleetIntervalFor]]), its knob read live. */
+  def configuredFleetInterval(configuration: settings.ProcessConfiguration): String => Option[FiniteDuration] =
+    url => HostPolicies.fleetIntervalFor(url, configuration.hostPace).map(_.toMillis.millis)
 }
