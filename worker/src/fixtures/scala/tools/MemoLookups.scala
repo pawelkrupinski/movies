@@ -20,6 +20,9 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   // into it); a newer one is passed through by name in the slice's wiring (`OlderRefs.NewerLookups`)
   override def cast(id: Int): Answer[Option[Seq[String]]]               = casts.computeIfAbsent(id, _ => inner.cast(id))
   override def releaseDay(id: Int): Answer[Option[java.time.LocalDate]] = inner.releaseDay(id)
+  // Unlocked, unlike `prefetch`: a source's prefetchAnswered may let go of its documents (StoredTmdbLookups' does), so it
+  // assumes ONE caller at a time and none beside a prefetch -- true while no resolver calls it (only TrackedLookups, after
+  // its own prefetch, and SuspectTakeCount do) and no memo is shared by two TrackedLookups on parallel threads
   override def prefetchAnswered(): Unit                                 = inner.prefetchAnswered()
   override def released(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit =
     inner.released(qs, ids, pages)
