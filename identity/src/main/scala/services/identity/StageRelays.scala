@@ -500,12 +500,6 @@ object StageRelays {
   private[identity] def workSearches(l: Listing, year: Int): Seq[String] =
     l.billedStageWorks.toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year")
 
-  /** Is the listing's whole title a stage work, stating no year and no credit — a running time at most, which
-   *  [[Listing.broadcastSeason]] reads as naming its staging? A running time names no staging by itself: UK Empire Theatre
-   *  Halstead's bare "Romeo and Juliet" [170′], screening on 25 May 2027, is the RBO 2026/27 relay aired that day, which
-   *  no search of the work's name alone reaches — the broadcast join ([[agreement.Broadcast]]) tells it from a film by
-   *  its day. A credit does name one (Jacquot's "Tosca"), and a title going on past the work is a film's ("Lord Of The
-   *  Rings: The Fellowship Of The Ring", the musical's name only its head). */
   /** Is `f` the season record of the work `l`'s whole title bills bare ([[barelyTimed]]), of the very season its
    *  screenings fall in ([[Listing.screenedSeason]])? A house relays the work that season, and a bare billing of it then
    *  names the relay as much as any film of the title: UK Theatr Gwaun Fishguard's "Romeo and Juliet", screening on 25 May
@@ -513,6 +507,12 @@ object StageRelays {
   def bareWorksSeasonRecord(l: Listing, f: Film): Boolean =
     barelyTimed(l) && l.screenedSeason.exists(f.season.contains) && stageWorks(f).exists(l.billedStageWorks)
 
+  /** Is the listing's whole title a stage work, stating no year and no credit — a running time at most, which
+   *  [[Listing.broadcastSeason]] reads as naming its staging? A running time names no staging by itself: UK Empire Theatre
+   *  Halstead's bare "Romeo and Juliet" [170′], screening on 25 May 2027, is the RBO 2026/27 relay aired that day, which
+   *  no search of the work's name alone reaches — the broadcast join ([[agreement.Broadcast]]) tells it from a film by
+   *  its day. A credit does name one (Jacquot's "Tosca"), and a title going on past the work is a film's ("Lord Of The
+   *  Rings: The Fellowship Of The Ring", the musical's name only its head). */
   private def barelyTimed(l: Listing): Boolean =
     l.statedYear.isEmpty && l.directors.isEmpty && l.ownTitles.exists(title => StageWorks.resolver.named(key(title)).nonEmpty)
 
