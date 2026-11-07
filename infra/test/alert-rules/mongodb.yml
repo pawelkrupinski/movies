@@ -562,3 +562,59 @@ tests:
             exp_annotations:
               summary: "mongod on mongo-1 holds 78.48% of the machine's memory"
               description: "mongod's resident memory is past three quarters of the host's RAM and there is no cgroup limit to stop it -- the next thing to happen is the kernel's OOM killer, and a mongod kill takes every city's listings with it until the web tier re-hydrates. First check the WiredTiger cache is still pinned (`db.serverStatus().wiredTiger.cache [\"maximum bytes configured\"]` should read 1GB; roles/mongodb.nix `wiredTigerCacheSizeGB`), then who is holding memory outside it: `db.serverStatus().tcmalloc` for freed-but-unreleased heap and `db.serverStatus().connections` for a client pool that has grown. Growing the machine is the fix only once neither of those explains it."
+
+  # ---------------------------------------------------------------------------------------------
+  # THE IDENTITY ARCHIVE: DE and UK's identity_retained, data plus indexes. Half a gigabyte: quiet,
+  # its size series present. 2.4 GB for over an hour: IdentityRetainedArchiveLarge fires. No
+  # collstats series at all: the absent companion fires after its 30-minute hold.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: the identity archive past 2 GB fires, below it and reported it is quiet
+    input_series:
+      - series: 'mongodb_collstats_storageStats_storageSize{host="mongo-1",database="kinowo_de",collection="identity_retained"}'
+        values: '300000000x30 1600000000x80'
+      - series: 'mongodb_collstats_storageStats_totalIndexSize{host="mongo-1",database="kinowo_de",collection="identity_retained"}'
+        values: '50000000x30 400000000x80'
+      - series: 'mongodb_collstats_storageStats_storageSize{host="mongo-1",database="kinowo_uk",collection="identity_retained"}'
+        values: '100000000x30 350000000x80'
+      - series: 'mongodb_collstats_storageStats_totalIndexSize{host="mongo-1",database="kinowo_uk",collection="identity_retained"}'
+        values: '20000000x30 50000000x80'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: IdentityRetainedArchiveLarge
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: IdentityRetainedSizeAbsent
+        exp_alerts: []
+      - eval_time: 80m
+        alertname: IdentityRetainedArchiveLarge
+        exp_alerts: []
+      - eval_time: 95m
+        alertname: IdentityRetainedArchiveLarge
+        exp_alerts:
+          - exp_labels:
+              domain: platform
+              severity: "warning"
+            exp_annotations:
+              summary: "The identity archive (identity_retained) holds 2.235GiB on mongo-1"
+              description: "identity_retained keeps every departed listing's row, expired, never deleted. Expected growth is about 0.5-1 GB a year. Check which country grew (`mongodb_collstats_storageStats_count{collection=\"identity_retained\"}` by database) and whether a listing that departs again replaced its row (one row per `_id`, the listing key). Then wipe by age: `deleteMany` over MongoRetainedListingStore.expiredBefore(T), an indexed range."
+
+  - interval: 1m
+    name: no identity archive size series fires its absent companion after the hold
+    input_series:
+      - series: 'up{job="node",host="mongo-1"}'
+        values: "1x60"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: IdentityRetainedSizeAbsent
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: IdentityRetainedSizeAbsent
+        exp_alerts:
+          - exp_labels:
+              collection: identity_retained
+              domain: platform
+              severity: "warning"
+            exp_annotations:
+              summary: "Nothing is reporting the identity archive's size on mongo-1"
+              description: "`IdentityRetainedArchiveLarge` cannot fire without this series. Suspect the exporter's ExecStart first: `--collector.collstats` and the `--mongodb.collstats-colls` list of the identity_retained collections (roles/mongodb-exporter.nix). Then the metric name, which is the exporter's `$collStats` flattened (`storageStats.storageSize`)."

@@ -66,6 +66,20 @@ allow:
 # whole window is the healthy case, not a dead selector. They are excluded from the dead-alert
 # check and from rollout clipping.
 conditional_metrics:
+  mongodb_collstats_storageStats_storageSize:
+    reason: >-
+      Published by mongodb-exporter's collstats collector for the identity_retained allow-list
+      (roles/mongodb-exporter.nix, 2026-11-07), absent from the fleet until that role is applied to
+      mongo-1 (infra/bin/deploy mongo-1 --apply). IdentityRetainedArchiveLarge and its absent()
+      companion read it. Strike this entry once a metric-names.json snapshot taken after the apply holds it.
+  mongodb_collstats_storageStats_totalIndexSize:
+    reason: >-
+      As mongodb_collstats_storageStats_storageSize: the identity_retained collstats, published once
+      the exporter role is applied to mongo-1.
+  mongodb_collstats_storageStats_count:
+    reason: >-
+      As mongodb_collstats_storageStats_storageSize: the identity_retained collstats, published once
+      the exporter role is applied to mongo-1. IdentityRetainedArchiveLarge's description names it.
   nixos_auto_apply_excluded:
     reason: >-
       Published by fleet/auto-apply.nix only on a host with `excludedBecause` set; no host is
