@@ -32,8 +32,8 @@ def inst(slot, cls, busy=False, idle_for=0, started_ago=3600):
     return rs.Instance(slot, cls, busy, NOW - idle_for, NOW - started_ago)
 
 
-def readings(available=500, ci_free=500, class_free=None, cpu_busy=0.0, cores=1000, builders_ws=0.0):
-    return rs.Readings(available, ci_free, dict(class_free or {}), cpu_busy, cores, builders_ws)
+def readings(available=500, ci_free=500, class_free=None, cpu_busy=0.0, cores=1000, busy_builders=()):
+    return rs.Readings(available, ci_free, dict(class_free or {}), cpu_busy, cores, tuple(busy_builders))
 
 
 # Plenty of everything: only the queue, the slots and bitcashier's runners decide. The recorded tests pass ci-runner's 32.
@@ -43,8 +43,9 @@ CORES = 32
 
 class MemoryRoomTest(unittest.TestCase):
     """The memory a new job needs must be free NOW: the tighter of the host's MemAvailable and ci.slice's headroom, less
-    a reserve for every bitcashier runner that is idle and may start, less a safety margin, less the expected size of
-    every runner of ours that has not shown its memory yet."""
+    a reserve for the bitcashier jobs that may start before the next reading (builder_burst builders at what a busy one
+    holds, every idle deployer), less a safety margin, less the expected size of every runner of ours that has not
+    shown its memory yet."""
 
     def test_whole_expected_jobs_in_the_live_headroom(self):
         # 72 GiB free, no bitcashier runner idle to reserve for: (72 - 6) // 11 = 6
@@ -54,14 +55,24 @@ class MemoryRoomTest(unittest.TestCase):
     def test_the_tighter_of_the_host_and_ci_slice(self):
         self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), readings(available=90, ci_free=39), 0), 3)
 
-    def test_each_idle_bitcashier_runner_keeps_its_reserve(self):
-        # 6 idle builders at the 4 GiB floor, 6 idle deployers at 1 GiB: 72 - 24 - 6 - 6 = 36 -> 3
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(6, 0), readings(available=72, ci_free=90), 0), 3)
+    def test_a_burst_of_idle_builders_keeps_its_reserve(self):
+        # 6 idle builders, of which builder_burst (4) reserve the 4 GiB floor; 6 idle deployers 1 GiB:
+        # 72 - 16 - 6 - 6 = 44 -> 4
+        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(6, 0), readings(available=72, ci_free=90), 0), 4)
+        # fewer idle than the burst: only those
+        self.assertEqual(rs.reserved_builders(CFG, rs.Bitcashier(10, 0)), 2)
+        self.assertEqual(rs.reserved_builders(CFG, rs.Bitcashier(12, 0)), 0)
 
-    def test_an_idle_builders_reserve_is_what_a_busy_one_holds_now(self):
-        # 6 busy builders hold 30 GiB of working set (5 each): the 6 idle ones reserve 30, the deployers 6
-        r = readings(available=72, ci_free=90, builders_ws=30)
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(6, 0), r, 0), 2)
+    def test_a_builders_reserve_is_what_the_median_busy_one_holds_now(self):
+        # 6 busy builders at 3..9 GiB: the median 5.5, for each of the 4 reserved; the deployers 6
+        r = readings(available=72, ci_free=90, busy_builders=(3, 4, 5, 6, 7, 9))
+        self.assertEqual(rs.builder_reserve_gib(CFG, r), 5.5)
+        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(6, 0), r, 0), 3)  # 72 - 22 - 6 - 6 = 38
+
+    def test_a_builders_reserve_stays_within_its_floor_and_cap(self):
+        self.assertEqual(rs.builder_reserve_gib(CFG, readings()), CFG.per_idle_builder_gib)  # none busy
+        self.assertEqual(rs.builder_reserve_gib(CFG, readings(busy_builders=(1,))), CFG.per_idle_builder_gib)
+        self.assertEqual(rs.builder_reserve_gib(CFG, readings(busy_builders=(30, 40))), CFG.per_busy_builder_cap_gib)
 
     def test_a_runner_that_has_not_allocated_yet_counts_at_its_expected_size(self):
         r = readings(available=72, ci_free=90)
@@ -98,22 +109,50 @@ class RecordedReadingsTest(unittest.TestCase):
     def busy_morning(self, cpu_busy, measure_slice_gib):
         ours = [inst(s, "measure", busy=True) for s in (1, 2, 3)]
         r = readings(available=58, ci_free=50, class_free={"measure": measure_slice_gib - 31}, cpu_busy=cpu_busy,
-                     cores=CORES, builders_ws=9 * 5)
+                     cores=CORES, busy_builders=[5] * 9)
         return rs.decide(CFG, rs.Bitcashier(9, 0), queued(measure=32), ours, NOW, r)
 
     def test_today_with_the_cpu_saturated_starts_nothing_more(self):
         self.assertEqual(self.busy_morning(cpu_busy=31.4, measure_slice_gib=80).starts, ())
 
     def test_today_with_cpu_to_spare_starts_what_the_memory_holds(self):
-        # 50 - (3 idle builders x 5, what a busy one holds + 6 deployers x 1) - 6 margin = 23 GiB: 2 more jobs of 11
+        # 50 - (3 idle builders x 5, what the median busy one holds + 6 deployers x 1) - 6 margin = 23 GiB: 2 more of 11
         d = self.busy_morning(cpu_busy=12, measure_slice_gib=80)
         self.assertEqual(d.starts, ((4, "measure"), (5, "measure")))
 
     def test_an_idle_host_takes_jobs_up_to_its_memory(self):
-        # bitcashier idle: (105 GiB available - 12 x 4 - 6 x 1 reserved - 6 margin) // 11 = 4 (the measure slice
-        # holds (80 - 6) // 11 = 6, the CPU (27.2 - 2) // 4 = 6)
+        # bitcashier idle: (105 GiB available - 4 x 4 - 6 x 1 reserved - 6 margin) // 11 = 7; the measure slice holds
+        # (80 - 6) // 11 = 6, the CPU (27.2 - 2) // 4 = 6
         r = readings(available=105, ci_free=115, class_free={"measure": 80}, cpu_busy=2, cores=CORES)
-        self.assertEqual(len(rs.decide(CFG, IDLE, queued(measure=32), [], NOW, r).starts), 4)
+        self.assertEqual(len(rs.decide(CFG, IDLE, queued(measure=32), [], NOW, r).starts), 6)
+
+    # 13:30Z, the owner's "now 4 tasks are running but only half the cpu is used": bitcashier 1/12 builders busy,
+    # 0/6 deployers; 4 movies runners busy, 5 measurements and 5 light jobs queued; host 92 GiB free, ci.slice 87, the
+    # measure slice 55; CPU 10 of 32 busy. The busy builder's own unit holds ~5 GiB, but the old rule split ci-check's
+    # whole working set (the idle runners' processes and caches, ~55 GiB) over the one busy builder and reserved that
+    # for each of 11 idle ones: room 0, ten jobs queued on a half-idle host.
+    def at_1330(self, busy_builder_gib):
+        ours = [inst(1, "measure", busy=True), inst(2, "measure", busy=True), inst(3, "light", busy=True),
+                inst(4, "check", busy=True)]
+        r = readings(available=92, ci_free=87, class_free={"measure": 55}, cpu_busy=10, cores=CORES,
+                     busy_builders=[busy_builder_gib])
+        return rs.decide(CFG, rs.Bitcashier(1, 0), queued(measure=5, light=5), ours, NOW, r)
+
+    def test_1330_a_quiet_bitcashier_leaves_movies_the_idle_cpu(self):
+        # memory: 87 - (4 x 5 + 6 x 1) - 6 = 55 -> 5; the CPU: (27.2 - 10) // 4 = 4; the measure slice (55 - 6) // 11 = 4
+        d = self.at_1330(busy_builder_gib=5)
+        self.assertEqual(d.room, 4)
+        self.assertEqual(len(d.starts), 4)
+
+    def test_1330_one_huge_busy_builder_reserves_no_more_than_the_cap(self):
+        # even a busy builder at 55 GiB reserves the 8 GiB cap: 87 - (4 x 8 + 6) - 6 = 43 -> 3
+        self.assertGreaterEqual(self.at_1330(busy_builder_gib=55).room, 2)
+
+    def test_bitcashier_saturated_leaves_no_room(self):
+        r = readings(available=92, ci_free=87, class_free={"measure": 55}, cpu_busy=10, cores=CORES,
+                     busy_builders=[5] * 12)
+        d = rs.decide(CFG, rs.Bitcashier(12, 0), queued(measure=5), [], NOW, r)
+        self.assertEqual((d.room, d.starts), (0, ()))
 
     # 07:40-08:22Z: the fixed budgets started six measurements at once into the empty 48 GiB slice, then three more at
     # 07:51 beside six running; the slice hit its 48 GiB and its OOM killer took 18 processes (exit 137).
@@ -342,6 +381,13 @@ class ReadingsTest(unittest.TestCase):
             f.write(f"cpu  {user} 0 0 {idle} 0 0 0 0 0 0\ncpu0 1 0 0 1 0 0 0 0 0 0\n")
         return d
 
+    def process(self, cgroup_dir, pid, comm):
+        with open(os.path.join(cgroup_dir, "cgroup.procs"), "a") as f:
+            f.write(f"{pid}\n")
+        os.makedirs(os.path.join(self.root, "proc", str(pid)), exist_ok=True)
+        with open(os.path.join(self.root, "proc", str(pid), "comm"), "w") as f:
+            f.write(comm + "\n")
+
     def cfg(self):
         cg = os.path.join(self.root, "cg")
         return rs.Config(ci_cgroup=os.path.join(cg, "ci.slice"),
@@ -355,15 +401,17 @@ class ReadingsTest(unittest.TestCase):
         self.cgroup("ci.slice/ci-movies.slice/ci-movies-measure.slice", 80 * GIB, 31 * GIB, 6 * GIB)
         with open(os.path.join(self.cgroup("ci.slice/ci-movies.slice/ci-movies-check.slice", 0, 0, 0), "memory.max"), "w") as f:
             f.write("max\n")  # no limit: the class is held by the host alone
-        self.cgroup("ci.slice/ci-check.slice/builder-1.service", 0, 5 * GIB, 1 * GIB)
-        self.cgroup("ci.slice/ci-check.slice/builder-2.service", 0, 3 * GIB, 1 * GIB)
+        # three builders: two run a job (a Runner.Worker among their processes), one idle with a big cache
+        for n, current, comm in ((1, 5, "Runner.Worker"), (2, 3, "Runner.Worker"), (3, 40, "Runner.Listener")):
+            d = self.cgroup(f"ci.slice/ci-check.slice/builder-{n}.service", 0, current * GIB, 1 * GIB)
+            self.process(d, 100 + n, comm)
         self.proc(58 * 2**20, user=0, idle=0)
         cpu = rs.CpuMeter(window_seconds=300)
         r = rs.read_readings(self.cfg(), cpu, NOW)
         self.assertEqual(r.mem_available_gib, 58)
         self.assertEqual(r.ci_free_gib, 76)
         self.assertEqual(r.class_free_gib, {"measure": 55})
-        self.assertEqual(r.builders_working_set_gib, 6)
+        self.assertEqual(sorted(r.busy_builder_gib), [2, 4])  # the busy units' own working sets; the idle one's not
         self.assertIsNone(r.cpu_busy_cores)  # one sample is no rate yet
 
     def test_cpu_is_the_busy_share_over_the_window_in_cores(self):
