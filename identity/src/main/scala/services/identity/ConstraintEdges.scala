@@ -125,6 +125,31 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         families.readsAsReused(other)
     }
 
+  /** Do the TMDB-keyed feeds of the two nodes link two different films, neither link overruled by the title's other
+   *  sources ([[FamilyScope.overruled]])? Each operator picked its film's record: two picks are two films, and a title
+   *  alone joining them hands one the other's namesake. DE Universum-City Karlsruhe's "Lauras Stern" (cineamo 903746m,
+   *  the 2021 film, its 75 minutes) joined by its same title the three venues Cineamo links to the 2004 film (12697m)
+   *  and took it (recording 42332112286). An overruled link is the operator's slip against the title's other sources
+   *  (DE "Karla", "Momo"): it keeps apart nothing. Billed alike only: two titles meeting by an original title keep the
+   *  join, the cluster's other spellings reading through it (DE "L'ÂGE D'OR" ×3 lost Buñuel's film when Studio-Kino's
+   *  "Das goldene Zeitalter", linked to a 2025 namesake, was kept apart from its linked sibling). And only a pick each
+   *  node's own evidence holds up -- its link's film rated no lower than the other's: DE Neues Arena's "IN THE MOOD FOR
+   *  LOVE", Cineamo-linked to a 31-minute 2015 short (646676m), is Wong Kar-wai's film beside Kino im DFF's 843m. */
+  private def linkedApart(first: EvidenceNode, second: EvidenceNode): Boolean =
+    scoring.generation.numbersFilmsByTmdbId && sanitized(first.evidence.cleanTitle) == sanitized(second.evidence.cleanTitle) && {
+      def link(node: EvidenceNode) = { val scope = families.scopeOf(node); scope.feedLinked(node).filter(_ => scope.overruled(node).isEmpty).map(_._2) }
+      // the node's own evidence rates its link's film no lower than the other's: a pick its own scoring holds up
+      def holdsUp(node: EvidenceNode, own: Int, others: Int) = {
+        val scored = families.scopeOf(node).of(node)
+        def probability(film: Int) = scored.find(_.candidate.tmdbId == film).filterNot(_.denied).map(_.probability)
+        probability(own).exists(mine => probability(others).forall(mine >= _))
+      }
+      (link(first), link(second)) match {
+        case (Some(one), Some(other)) => one != other && holdsUp(first, one, other) && holdsUp(second, other, one)
+        case _                        => false
+      }
+    }
+
   /** Is `kept` a node of kept listings alone ([[Listing.kept]]) and `other` one whose feed link the present sources
    *  overrule toward another film ([[FamilyScope.overruled]])? The kept facts keep their own film's details alive; they
    *  never join a listing whose own sources say it is another film. DE "Eternity", prod-latest 41265286306: Caligari's
@@ -152,7 +177,8 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
           copiedOriginalJoinsAnotherFilm(second, first, secondFilm, firstFilm))(ConstraintEdges.CopiedOriginalApart),
         Option.when(reusedPageDeniesLink(first, second, firstFilm, secondFilm) || reusedPageDeniesLink(second, first, secondFilm, firstFilm))(
           ConstraintEdges.ReusedPageApart),
-        Option.when(keptBesideOverruled(first, second) || keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart)
+        Option.when(keptBesideOverruled(first, second) || keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart),
+        Option.when(linkedApart(first, second))(ConstraintEdges.LinkedApart)
       ).flatten.filterNot(reason => RuleAblation.disables("apart:" + DecisionTrace.id(reason)))
       val musts = Seq(
         Option.when(sameFilm)((1, "same-film")),
@@ -185,6 +211,8 @@ private[identity] object ConstraintEdges {
   val ReusedPageApart = "reused-page-apart"
   /** The cannot-link of a node of kept listings and one whose feed link the present sources overrule. */
   val KeptOverruledApart = "kept-overruled-apart"
+  /** The cannot-link of two nodes whose TMDB-keyed feeds link two films, neither link overruled. */
+  val LinkedApart = "linked-apart"
 
   /** The must-link tiers a title draws: same title, same search form or original title, one
    *  title a segment of the other. */
