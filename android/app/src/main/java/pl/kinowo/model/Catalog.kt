@@ -17,6 +17,8 @@ data class Catalog(
     val cities: List<City>,
     /** The server's old-owner table: which country a link naming none means. */
     val bareSlugOwners: Map<String, String> = emptyMap(),
+    /** The server's genre table: what a link's `?genre=` spelling means. */
+    val genreSpellings: GenreSpellings = GenreSpellings(),
 ) {
     /** The version-filter pair of [countryCode] — what a deep link's `?lang=` is
      *  validated against, the pair being the linked city's country's own. */
@@ -43,14 +45,35 @@ data class Catalog(
 }
 
 /** The `/api/catalog` response body (and the `catalog` field of the seed);
- *  `bareSlugOwners` is absent from an older server's. */
+ *  `bareSlugOwners` and `genres` are absent from an older server's. */
 @Serializable
 data class CatalogBody(
     val countries: List<CountryDto>,
     val cities: List<@Serializable(with = CatalogCitySerializer::class) City>,
     val bareSlugOwners: Map<String, String>? = null,
+    val genres: Map<String, List<String>>? = null,
 ) {
-    fun toCatalog() = Catalog(countries.map { it.toCountry() }, cities, bareSlugOwners.orEmpty())
+    fun toCatalog() = Catalog(countries.map { it.toCountry() }, cities, bareSlugOwners.orEmpty(), GenreSpellings(genres.orEmpty()))
+}
+
+/**
+ * The catalog's genre table (`/api/catalog`'s `genres`: each master genre's id ->
+ * every spelling the server folds into it, its display names first). A link the
+ * web minted while venues printed their own spelling (`?genre=przygoda`) would
+ * 301 on the web onto the deployment's name ("Przygodowy"), but a link the app
+ * claims never reaches that redirect: read through this table it keeps every
+ * spelling of its genre, so it matches the served name. Matched
+ * case-insensitively, as the server does. Empty (an older server's catalog):
+ * every link value is taken as it is. Mirrors iOS `GenreSpellings`.
+ */
+data class GenreSpellings(val byId: Map<String, List<String>> = emptyMap()) {
+    private val idOf: Map<String, String> =
+        byId.flatMap { (id, spellings) -> spellings.map { it.lowercase() to id } }.toMap()
+
+    /** [linked], each value followed by the other spellings of its genre; a value
+     *  no genre claims stays as it is. */
+    fun expanded(linked: List<String>): List<String> =
+        linked.flatMap { value -> listOf(value) + idOf[value.lowercase()]?.let { byId[it] }.orEmpty() }.distinct()
 }
 
 /**

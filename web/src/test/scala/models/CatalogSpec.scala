@@ -292,4 +292,17 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     ((read \ "name").as[String], (read \ "region").as[String], (read \ "aliases").as[Seq[String]]) shouldBe
       ((name, "Eng\"land", Seq("x\"y")))
   }
+
+  // An app reads `?genre=` off a link the web may have minted under an old spelling ("przygoda"); the web 301s it onto
+  // the master set's name, but a link an app claims never reaches that redirect. The catalog carries the set: each id's
+  // every spelling, so the app reads the link's spelling as its id.
+  it should "carry every spelling of each master genre under its id, the display names first" in {
+    val genres = (Json.parse(Catalog.json) \ "genres").as[Map[String, Seq[String]]]
+    genres.keySet shouldBe services.cinemas.GenreNames.All.map(_.id).toSet
+    genres("adventure").take(4) shouldBe Seq("Przygodowy", "Adventure", "Abenteuer", "Aventura")
+    genres("adventure") should contain ("przygoda")
+    genres("tvmovie") should contain allOf ("Film TV", "TV Movie", "film telewizyjny", "fernsehfilm")
+    genres.values.foreach(spellings => spellings.map(_.toLowerCase(java.util.Locale.ROOT)).distinct should have size spellings.size)   // each once, as an app matches: by case
+    genres.values.flatten.map(_.toLowerCase(java.util.Locale.ROOT)).foreach(s => services.cinemas.GenreNames.idOf(s) should not be empty)
+  }
 }

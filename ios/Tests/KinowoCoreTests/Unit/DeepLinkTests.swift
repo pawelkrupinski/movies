@@ -348,6 +348,21 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertEqual(Set(comma.includedGenres), ["Komedia", "Dramat"])
     }
 
+    /// A link the web minted while venues printed their own spelling: the web 301s
+    /// `?genre=przygoda` onto "Przygodowy", but the app never sees that redirect.
+    /// Read through the catalog's genre table it keeps its genre's served name.
+    func testAnOldGenreSpellingKeepsItsGenreThroughTheCatalogTable() throws {
+        struct Seed: Decodable { struct Body: Decodable { let genres: [String: [String]] }; let catalog: Body }
+        let table = try JSONDecoder().decode(Seed.self, from: try AppSources.data("Kinowo/catalog-seed.json")).catalog.genres
+        let link = DeepLink.parse(URL(string: "https://kinowo.net/poznan/?genre=przygoda&genre=FILM%20TV&genre=Adaptacja")!,
+                                  genreSpellings: GenreSpellings(table))!.filters
+        let universe: Set<String> = ["Przygodowy", "Film TV", "Adaptacja", "Dramat"]
+        XCTAssertEqual(link.excluded(link.includedGenres, universe: universe), ["Dramat"])
+        // An older server's catalog has no table: the link's values as they are.
+        let bare = parse("https://kinowo.net/poznan/?genre=przygoda")!.filters
+        XCTAssertEqual(bare.includedGenres, ["przygoda"])
+    }
+
     func testInclusionConvertsToExclusionAgainstUniverse() {
         let f = parse("https://kinowo.net/poznan/?country=USA&country=Polska")!.filters
         let universe: Set<String> = ["USA", "Polska", "Francja", "Niemcy"]

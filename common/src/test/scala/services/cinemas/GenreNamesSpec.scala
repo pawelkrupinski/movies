@@ -53,6 +53,15 @@ class GenreNamesSpec extends AnyFlatSpec with Matchers {
     GenreNames.All.foreach(g => Seq(g.pl, g.en, g.de, g.es).foreach(_.trim should not be empty))
   }
 
+  "an alias" should "be listed once, lowercase, and never be a display name, which is read already" in {
+    val spellings = GenreNames.AliasRows.map(_._1)
+    spellings.diff(spellings.distinct) shouldBe empty
+    spellings.foreach(s => s shouldBe s.toLowerCase(java.util.Locale.ROOT))
+    val names = GenreNames.All.flatMap(g => Seq(g.pl, g.en, g.de, g.es)).map(_.toLowerCase(java.util.Locale.ROOT)).toSet
+    spellings.filter(names) shouldBe empty
+    GenreNames.AliasRows.map(_._2).toSet -- GenreNames.All.map(_.id) shouldBe empty
+  }
+
   "a placeholder" should "not be a genre" in {
     Seq("Unknown", "Undefiniert", "Default", "Laufzeit: k. A.").foreach(GenreNames.isPlaceholder(_) shouldBe true)
     GenreNames.isPlaceholder("Drama") shouldBe false

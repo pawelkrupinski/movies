@@ -5,6 +5,7 @@ import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Cities
 import pl.kinowo.model.City
+import pl.kinowo.model.GenreSpellings
 import pl.kinowo.model.VersionTokens
 import pl.kinowo.model.slugsLeadingHere
 import java.net.URI
@@ -97,6 +98,7 @@ data class DeepLink(
             cities: List<City> = Cities.all,
             bareSlugOwners: Map<String, String> = emptyMap(),
             versionTokensOfCountry: (countryCode: String) -> VersionTokens = { VersionTokens.POLAND },
+            genreSpellings: GenreSpellings = GenreSpellings(),
         ): DeepLink? {
             // Split the query (and any fragment) off the raw string BEFORE
             // handing the base to java.net.URI. The single-arg URI(String)
@@ -165,7 +167,7 @@ data class DeepLink(
                 query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
             } else null
 
-            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, versionTokensOfCountry(country)), country)
+            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, versionTokensOfCountry(country), genreSpellings), country)
         }
 
         /** `(country, city slug)` for a link's [slug]: within the country the URL
@@ -263,8 +265,13 @@ data class DeepLinkFilters(
         private val ISO_DATE = Regex("""^\d{4}-\d{2}-\d{2}$""")
 
         /** [versionTokens] is the pair `?lang=` may take — the linked country's;
-         *  anything else is dropped like any other garbage value. */
-        fun from(query: List<Pair<String, String>>, versionTokens: VersionTokens = VersionTokens.POLAND): DeepLinkFilters {
+         *  anything else is dropped like any other garbage value. [genreSpellings]
+         *  reads each `?genre=` as every spelling of its genre. */
+        fun from(
+            query: List<Pair<String, String>>,
+            versionTokens: VersionTokens = VersionTokens.POLAND,
+            genreSpellings: GenreSpellings = GenreSpellings(),
+        ): DeepLinkFilters {
             fun first(key: String): String? =
                 query.firstOrNull { it.first == key }?.second?.takeIf { it.isNotEmpty() }
             // Repeated params AND legacy comma-lists both flatten to one set.
@@ -282,7 +289,7 @@ data class DeepLinkFilters(
                 fromMinute = from?.second,
                 sort = first("sort")?.let { v -> SortOption.entries.firstOrNull { it.name.equals(v, ignoreCase = true) } },
                 includedCountries = all("country"),
-                includedGenres = all("genre"),
+                includedGenres = genreSpellings.expanded(all("genre")),
                 includedDirectors = all("director"),
                 includedCast = all("cast"),
                 enabledCinemas = if (query.any { it.first == "cinema" }) all("cinema") else null,

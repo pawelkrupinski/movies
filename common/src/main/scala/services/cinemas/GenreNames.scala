@@ -61,26 +61,29 @@ object GenreNames {
     Genre("erotic",      "Erotyczny",     "Erotic",          "Erotik",         "Erótico"),
   )
 
-  /** Spellings that are not a genre's display name in some language (lowercase) -> its id. */
-  private val Aliases: Map[String, String] = Map(
-    "przygoda" -> "adventure", "przygodowy" -> "adventure", "przygodowe" -> "adventure",
-    "dla dzieci" -> "family", "kids & family" -> "family", "kids and family" -> "family", "familie" -> "family",
-    "dokument" -> "documentary", "dokumentation" -> "documentary", "dokumentalny" -> "documentary", "doku" -> "documentary",
+  /** Spellings that are not a genre's display name in some language (lowercase) -> its id: each once, and never a
+   *  display name ([[IdOfSpelling]] reads those already), so a row here always says something. A sequence, not a map
+   *  literal, so a repeated spelling is seen (GenreNamesSpec) rather than silently collapsed. */
+  private[cinemas] val AliasRows: Seq[(String, String)] = Seq(
+    "przygoda" -> "adventure", "przygodowe" -> "adventure",
+    "dla dzieci" -> "family", "kids & family" -> "family", "kids and family" -> "family",
+    "dokument" -> "documentary", "dokumentation" -> "documentary", "doku" -> "documentary", "przyrodniczy" -> "documentary",
     "animowany" -> "animation", "trickfilm" -> "animation", "zeichentrick" -> "animation", "animowane" -> "animation",
-    "film telewizyjny" -> "tvmovie", "film tv" -> "tvmovie", "tv film" -> "tvmovie", "fernsehfilm" -> "tvmovie", "película de televisión" -> "tvmovie",
-    "science fiction" -> "scifi", "sci-fi" -> "scifi", "sci fi" -> "scifi", "scifi" -> "scifi", "science-fiction" -> "scifi", "ciencia ficción" -> "scifi",
+    "film telewizyjny" -> "tvmovie", "tv film" -> "tvmovie", "fernsehfilm" -> "tvmovie", "película de televisión" -> "tvmovie",
+    "sci fi" -> "scifi", "scifi" -> "scifi", "science-fiction" -> "scifi",
     "romanze" -> "romance", "lovestory" -> "romance", "love story" -> "romance", "melodramat" -> "romance",
-    "del oeste" -> "western", "suspense" -> "thriller", "sensacyjny" -> "thriller",
-    "oper" -> "opera", "klassisches konzert" -> "concert", "konzert (u)" -> "concert", "live concert" -> "concert", "jazz konzert" -> "concert",
-    "tanz" -> "ballet", "balet" -> "ballet", "spektakl teatralny" -> "theatre", "teatr improwizowany" -> "theatre",
-    "spektakl muzyczny" -> "musical", "biograficzny" -> "biography", "biopic" -> "biography", "biographie" -> "biography",
-    "krótkometrażowy" -> "short", "kurzfilm" -> "short", "sportowy" -> "sport", "sport event" -> "sport", "sport" -> "sport",
-    "live performance" -> "live", "live show" -> "live", "liveveranstaltung" -> "live", "comedy live" -> "live",
-    "tragikomödie" -> "comedydrama", "komediodramat" -> "comedydrama",
-    "komödie" -> "comedy", "komedia" -> "comedy", "kriegsfilm" -> "war", "bélica" -> "war",
-    "special event" -> "event", "festival" -> "event", "festiwal" -> "event", "pop" -> "concert", "rock" -> "concert", "zarzuela" -> "musical", "przyrodniczy" -> "documentary", "spotkanie" -> "event", "pokaz specjalny" -> "event", "retransmisja" -> "event",
-    "alternativer content" -> "event", "erotyczny" -> "erotic", "erotik" -> "erotic",
+    "del oeste" -> "western",
+    "sensacyjny" -> "thriller",
+    "klassisches konzert" -> "concert", "konzert (u)" -> "concert", "live concert" -> "concert", "jazz konzert" -> "concert", "pop" -> "concert", "rock" -> "concert",
+    "tanz" -> "ballet",
+    "spektakl teatralny" -> "theatre", "teatr improwizowany" -> "theatre",
+    "spektakl muzyczny" -> "musical", "zarzuela" -> "musical",
+    "biopic" -> "biography",
+    "sport event" -> "sport",
+    "live show" -> "live", "comedy live" -> "live",
+    "festival" -> "event", "festiwal" -> "event", "spotkanie" -> "event", "pokaz specjalny" -> "event", "retransmisja" -> "event", "alternativer content" -> "event",
   )
+  private val Aliases: Map[String, String] = AliasRows.toMap
 
   /** What a feed prints where it has no genre: not a genre, so not served as one. */
   private val Placeholders = Set("unknown", "undefiniert", "default", "laufzeit: k. a.", "n/a", "-")
@@ -91,6 +94,13 @@ object GenreNames {
 
   private val IdOfSpelling: Map[String, String] =
     Aliases ++ All.flatMap(g => Seq(g.pl, g.en, g.de, g.es).map(_.toLowerCase(Locale.ROOT) -> g.id))
+
+  /** Each genre's id -> every spelling [[idOf]] reads as it, its display names first, each once by case (in [[All]]
+   *  order): the table the apps read a `?genre=` link through (`/api/catalog`'s `genres`), as the web's 301 does. */
+  lazy val spellings: Seq[(String, Seq[String])] = All.map { g =>
+    val aliases = Aliases.collect { case (spelling, id) if id == g.id => spelling }.toSeq.sorted
+    g.id -> (Seq(g.pl, g.en, g.de, g.es) ++ aliases).distinctBy(_.toLowerCase(Locale.ROOT))
+  }
 
   /** The id of the master genre `genre` is a spelling of, if any. */
   def idOf(genre: String): Option[String] = IdOfSpelling.get(genre.trim.toLowerCase(Locale.ROOT))

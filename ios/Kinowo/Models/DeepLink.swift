@@ -81,9 +81,13 @@ struct DeepLink: Equatable {
     /// the default is Poland's pair, the one every link was checked against
     /// before the catalog carried the field. (`Country` lives in another SPM
     /// target, so the pair arrives as bare strings.)
+    ///
+    /// `genreSpellings` is the catalog's genre table (`GenreSpellings`): a
+    /// `?genre=` the web minted under an old spelling reads as its genre.
     static func parse(_ url: URL,
                       cities: [City] = City.all,
                       bareSlugOwners: [String: String] = [:],
+                      genreSpellings: GenreSpellings = GenreSpellings(),
                       languageTokensOfCountry: (String) -> Set<String> = { _ in DeepLinkFilters.polishLanguageTokens })
         -> DeepLink? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
@@ -137,7 +141,8 @@ struct DeepLink: Equatable {
             filmTitle: filmTitle.flatMap { $0.isEmpty ? nil : $0 },
             filmSlug: filmSlug.flatMap { $0.isEmpty ? nil : $0 },
             filters: DeepLinkFilters(queryItems: components.queryItems ?? [],
-                                     languageTokens: languageTokensOfCountry(country)),
+                                     languageTokens: languageTokensOfCountry(country),
+                                     genreSpellings: genreSpellings),
             countryCode: country
         )
     }
@@ -163,6 +168,36 @@ struct DeepLink: Equatable {
 
     private static func pathSegments(_ path: String) -> [String] {
         path.split(separator: "/").map(String.init)
+    }
+}
+
+/// The catalog's genre table (`/api/catalog`'s `genres`: each master genre's id
+/// -> every spelling the server folds into it, its display names first). A link
+/// the web minted while venues printed their own spelling (`?genre=przygoda`)
+/// would 301 on the web onto the deployment's name ("Przygodowy"), but a link
+/// the app claims never reaches that redirect: read through this table it keeps
+/// every spelling of its genre, so it matches the served name. Matched
+/// case-insensitively, as the server does. Empty (an older server's catalog):
+/// every link value is taken as it is.
+struct GenreSpellings: Equatable {
+    private let byId: [String: [String]]
+    private let idOf: [String: String]
+
+    init(_ table: [String: [String]] = [:]) {
+        byId = table
+        var ids: [String: String] = [:]
+        for (id, spellings) in table { for s in spellings { ids[s.lowercased()] = id } }
+        idOf = ids
+    }
+
+    /// `linked`, each value followed by the other spellings of its genre; a value
+    /// no genre claims stays as it is.
+    func expanded(_ linked: [String]) -> [String] {
+        var out: [String] = []
+        for value in linked {
+            for s in [value] + (idOf[value.lowercased()].flatMap { byId[$0] } ?? []) where !out.contains(s) { out.append(s) }
+        }
+        return out
     }
 }
 
@@ -203,7 +238,9 @@ struct DeepLinkFilters: Equatable {
 
     /// `languageTokens` is the set `?lang=` may take — the linked country's
     /// version pair; anything else is dropped like any other garbage value.
-    init(queryItems: [URLQueryItem], languageTokens: Set<String> = polishLanguageTokens) {
+    /// `genreSpellings` reads each `?genre=` as every spelling of its genre.
+    init(queryItems: [URLQueryItem], languageTokens: Set<String> = polishLanguageTokens,
+         genreSpellings: GenreSpellings = GenreSpellings()) {
         func first(_ key: String) -> String? {
             queryItems.first(where: { $0.name == key })?.value.flatMap { $0.isEmpty ? nil : $0 }
         }
@@ -227,7 +264,7 @@ struct DeepLinkFilters: Equatable {
         sort = first("sort").flatMap(SortOption.init(rawValue:))
 
         includedCountries = all("country")
-        includedGenres = all("genre")
+        includedGenres = genreSpellings.expanded(all("genre"))
         includedDirectors = all("director")
         includedCast = all("cast")
         enabledCinemas = queryItems.contains { $0.name == "cinema" } ? all("cinema") : nil

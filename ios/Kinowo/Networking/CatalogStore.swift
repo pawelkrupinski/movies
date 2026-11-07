@@ -18,6 +18,8 @@ final class CatalogStore {
     private(set) var cities: [City]
     /// The server's old-owner table: which country a link naming none means.
     private(set) var bareSlugOwners: [String: String] = [:]
+    /// The server's genre table: what a link's `?genre=` spelling means.
+    private(set) var genreSpellings = GenreSpellings()
 
     private let session: URLSession
     private let cache: CatalogCache
@@ -44,11 +46,13 @@ final class CatalogStore {
             countries = parsed.countries
             cities = parsed.cities
             bareSlugOwners = parsed.bareSlugOwners
+            genreSpellings = parsed.genreSpellings
             etag = persisted.etag
         } else if let seed = CatalogStore.loadBundledSeed() {
             countries = seed.body.countries
             cities = seed.body.cities
             bareSlugOwners = seed.body.bareSlugOwners
+            genreSpellings = seed.body.genreSpellings
             etag = seed.etag
         } else {
             countries = Country.all
@@ -81,6 +85,7 @@ final class CatalogStore {
             countries = parsed.countries
             cities = parsed.cities
             bareSlugOwners = parsed.bareSlugOwners
+            genreSpellings = parsed.genreSpellings
             etag = http.value(forHTTPHeaderField: "Etag")
             lastFetched = now
             cache.save(body: body, etag: etag)
@@ -149,18 +154,20 @@ final class CatalogStore {
 // MARK: - Wire / seed decoding
 
 /// The `/api/catalog` response body (and the `catalog` field of the bundled
-/// seed): `{"countries":[…],"cities":[…],"bareSlugOwners":{…}}`. Countries arrive
-/// in the wire shape ([CountryDTO]) and are resolved to [Country]; cities decode
-/// directly; `bareSlugOwners` is absent from an older server's catalog.
+/// seed): `{"countries":[…],"cities":[…],"bareSlugOwners":{…},"genres":{…}}`.
+/// Countries arrive in the wire shape ([CountryDTO]) and are resolved to
+/// [Country]; cities decode directly; `bareSlugOwners` and `genres` are absent
+/// from an older server's catalog.
 struct CatalogBody: Decodable {
     let countries: [CountryDTO]
     let cities: [City]
     let bareSlugOwners: [String: String]?
+    let genres: [String: [String]]?
 
-    typealias Resolved = (countries: [Country], cities: [City], bareSlugOwners: [String: String])
+    typealias Resolved = (countries: [Country], cities: [City], bareSlugOwners: [String: String], genreSpellings: GenreSpellings)
 
     func resolved() -> Resolved {
-        (countries.compactMap { $0.toCountry() }, cities, bareSlugOwners ?? [:])
+        (countries.compactMap { $0.toCountry() }, cities, bareSlugOwners ?? [:], GenreSpellings(genres ?? [:]))
     }
 
     static func decode(_ json: String) -> Resolved? {

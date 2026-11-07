@@ -516,7 +516,8 @@ class KinowoViewModel(
         // recognised, not just the compile-time `Cities.all` roster.
         val catalog = countryCatalog.value
         val link = DeepLink.parse(rawUrl, cities = catalog.cities, bareSlugOwners = catalog.bareSlugOwners,
-                                  versionTokensOfCountry = catalog::versionTokensOfCountry) ?: return@launch
+                                  versionTokensOfCountry = catalog::versionTokensOfCountry,
+                                  genreSpellings = catalog.genreSpellings) ?: return@launch
         // The STORED choices, not this ViewModel's `stateIn` mirrors, which
         // still read null until DataStore's first emission lands.
         val (storedCountry, storedCity) = prefs.countryAndCity.first()

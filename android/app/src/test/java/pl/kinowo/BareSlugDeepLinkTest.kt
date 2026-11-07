@@ -32,6 +32,18 @@ class BareSlugDeepLinkTest {
     private fun parse(url: String) =
         DeepLink.parse(url, cities = catalog.cities, bareSlugOwners = catalog.bareSlugOwners)
 
+    /** A link the web minted while venues printed their own spelling: the web 301s
+     *  `?genre=przygoda` onto "Przygodowy", but the app never sees that redirect.
+     *  Read through the catalog's genre table it keeps its genre's served name. */
+    @Test fun anOldGenreSpellingKeepsItsGenreThroughTheCatalogTable() {
+        val link = DeepLink.parse("https://kinowo.net/poznan/?genre=przygoda&genre=FILM%20TV&genre=Adaptacja",
+            cities = catalog.cities, genreSpellings = catalog.genreSpellings)!!.filters
+        val universe = setOf("Przygodowy", "Film TV", "Adaptacja", "Dramat")
+        assertEquals(setOf("Dramat"), link.excluded(link.includedGenres, universe))
+        // An older server's catalog has no table: the link's values as they are.
+        assertEquals(listOf("przygoda"), DeepLink.parse("https://kinowo.net/poznan/?genre=przygoda")!!.filters.includedGenres)
+    }
+
     @Test fun aRetiredSlugAnotherCountryHasLiveOpensTheNamedCountrysPage() {
         val link = parse("https://showtimes.cc/uk/kent/movie/dune")!!
         assertEquals("uk", link.countryCode)
