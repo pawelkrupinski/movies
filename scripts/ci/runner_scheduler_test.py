@@ -50,7 +50,7 @@ class MemoryRoomTest(unittest.TestCase):
     def test_whole_expected_jobs_in_the_live_headroom(self):
         # 72 GiB free, no bitcashier runner idle to reserve for: (72 - 6) // 11 = 6
         r = readings(available=72, ci_free=90)
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), r, pending=0), 6)
+        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), r, pending_gib=0), 6)
 
     def test_the_tighter_of_the_host_and_ci_slice(self):
         self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), readings(available=90, ci_free=39), 0), 3)
@@ -76,7 +76,7 @@ class MemoryRoomTest(unittest.TestCase):
 
     def test_a_runner_that_has_not_allocated_yet_counts_at_its_expected_size(self):
         r = readings(available=72, ci_free=90)
-        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), r, pending=2), 4)
+        self.assertEqual(rs.memory_room(CFG, rs.Bitcashier(12, 6), r, pending_gib=2 * 11), 4)
 
     def test_overcommitted_is_negative(self):
         self.assertLess(rs.memory_room(CFG, rs.Bitcashier(12, 6), readings(available=3, ci_free=10), 0), 0)
@@ -88,10 +88,10 @@ class CpuRoomTest(unittest.TestCase):
 
     def test_room_up_to_the_target_in_whole_jobs(self):
         # 85 % of 32 = 27.2 cores; 16 busy: (27.2 - 16) // 4 = 2
-        self.assertEqual(rs.cpu_room(CFG, readings(cpu_busy=16, cores=CORES), pending=0), 2)
+        self.assertEqual(rs.cpu_room(CFG, readings(cpu_busy=16, cores=CORES), pending_cpus=0), 2)
 
     def test_a_just_started_job_counts_at_its_cores(self):
-        self.assertEqual(rs.cpu_room(CFG, readings(cpu_busy=16, cores=CORES), pending=1), 1)
+        self.assertEqual(rs.cpu_room(CFG, readings(cpu_busy=16, cores=CORES), pending_cpus=4), 1)
 
     def test_a_saturated_host_has_none(self):
         self.assertLessEqual(rs.cpu_room(CFG, readings(cpu_busy=31.4, cores=CORES), 0), 0)
@@ -142,11 +142,28 @@ class RecordedReadingsTest(unittest.TestCase):
         # memory: 87 - (4 x 5 + 6 x 1) - 6 = 55 -> 5; the CPU: (27.2 - 10) // 4 = 4; the measure slice (55 - 6) // 11 = 4
         d = self.at_1330(busy_builder_gib=5)
         self.assertEqual(d.room, 4)
-        self.assertEqual(len(d.starts), 4)
+        # and the light lane beside them: 11 GiB and (30.4 - 10 - 16) = 4.4 cores left hold its 3 slots at 1 / 1
+        self.assertEqual([c for _, c in d.starts], ["measure"] * 4 + ["light"] * 3)
 
     def test_1330_one_huge_busy_builder_reserves_no_more_than_the_cap(self):
         # even a busy builder at 55 GiB reserves the 8 GiB cap: 87 - (4 x 8 + 6) - 6 = 43 -> 3
         self.assertGreaterEqual(self.at_1330(busy_builder_gib=55).room, 2)
+
+    # 12:32-12:58Z: identity run 42370669779's timings job (label `movies`, 10 s, well under 1 GiB) queued 26 min behind
+    # 20 measurements, every job charged a measurement's 11 GiB and 4 cores and light ranked last. Light jobs now
+    # have their own lane at their own size.
+    def test_a_light_job_starts_beside_a_measure_queue_the_cpu_holds_back(self):
+        ours = [inst(s, "measure", busy=True) for s in range(1, 6)]
+        r = readings(available=44, ci_free=44, class_free={"measure": 25}, cpu_busy=26, cores=CORES)
+        d = rs.decide(CFG, rs.Bitcashier(6, 1), queued(measure=20, light=1), ours, NOW, r)
+        self.assertEqual(d.starts, ((11, "light"),))  # (27.2 - 26) < 4 cores: no measurement; 1 GiB, 1 core: yes
+        self.assertEqual(d.room, 0)
+
+    def test_a_light_job_starts_while_bitcashier_is_saturated(self):
+        r = readings(available=44, ci_free=44, class_free={"measure": 48}, cpu_busy=20, cores=CORES,
+                     busy_builders=[5] * 12)
+        d = rs.decide(CFG, rs.Bitcashier(12, 0), queued(measure=20, light=1), [], NOW, r)
+        self.assertEqual((d.room, d.starts), (0, ((11, "light"),)))
 
     def test_bitcashier_saturated_leaves_no_room(self):
         r = readings(available=92, ci_free=87, class_free={"measure": 55}, cpu_busy=10, cores=CORES,
@@ -187,10 +204,10 @@ class DecideTest(unittest.TestCase):
         d = rs.decide(CFG, IDLE, queued(check=40), [], NOW, ROOMY)
         self.assertEqual(len(d.starts), CFG.max_slots)
 
-    def test_landing_checks_then_measurements_then_light_jobs(self):
-        small = rs.Config(max_slots=4)
-        d = rs.decide(small, IDLE, queued(light=2, measure=2, check=1), [], NOW, ROOMY)
-        self.assertEqual([c for _, c in d.starts], ["check", "measure", "measure", "light"])
+    def test_landing_checks_then_measurements_and_light_jobs_in_their_own_lane(self):
+        small = rs.Config(max_slots=3)
+        d = rs.decide(small, IDLE, queued(light=2, measure=3, check=1), [], NOW, ROOMY)
+        self.assertEqual(d.starts, ((1, "check"), (2, "measure"), (3, "measure"), (4, "light"), (5, "light")))
 
     def test_a_waiting_runner_of_the_class_counts_against_its_queue(self):
         d = rs.decide(CFG, IDLE, queued(check=2), [inst(1, "check")], NOW, ROOMY)
@@ -217,6 +234,26 @@ class DecideTest(unittest.TestCase):
         d = rs.decide(CFG, rs.Bitcashier(12, 0), queued(check=3), ours, NOW, ROOMY)
         self.assertEqual(d.starts, ())
         self.assertEqual(d.stops, (1,))  # the busy one finishes its job
+
+    def test_the_light_lane_holds_its_own_slots_only(self):
+        d = rs.decide(CFG, IDLE, queued(light=10), [], NOW, ROOMY)
+        self.assertEqual(d.starts, ((11, "light"), (12, "light"), (13, "light")))
+        self.assertEqual(d.room, CFG.max_slots)  # the heavy slots are untouched
+
+    def test_the_light_lane_never_starts_on_a_full_cpu(self):
+        # 95 % of 32 = 30.4 cores: 30 busy leaves under one
+        self.assertEqual(rs.decide(CFG, IDLE, queued(light=1), [], NOW, readings(cpu_busy=30, cores=CORES)).starts, ())
+        self.assertEqual(rs.decide(CFG, IDLE, queued(light=1), [], NOW, readings(cpu_busy=None, cores=CORES)).starts, ())
+
+    def test_the_light_lane_needs_its_size_free(self):
+        # bitcashier saturated, 6.5 GiB less the 6 margin: half a light job
+        r = readings(available=6.5, ci_free=6.5, cpu_busy=0, cores=CORES)
+        self.assertEqual(rs.decide(CFG, rs.Bitcashier(12, 6), queued(light=1), [], NOW, r).starts, ())
+
+    def test_bitcashier_saturated_keeps_an_idle_light_runner_for_its_queued_job(self):
+        ours = [inst(1, "measure"), inst(11, "light")]
+        d = rs.decide(CFG, rs.Bitcashier(12, 0), queued(measure=1, light=1), ours, NOW, ROOMY)
+        self.assertEqual((d.stops, d.starts), ((1,), ()))
 
     def test_bitcashier_needing_memory_stops_idle_runners_from_the_lowest_class(self):
         # bitcashier started work: 12 GiB left, less 5 reserved and the 6 margin, holds neither waiting runner's 11
@@ -258,6 +295,12 @@ class DemandTest(unittest.TestCase):
 
 
 class ConfigTest(unittest.TestCase):
+    def test_every_class_needs_a_size(self):
+        with self.assertRaises(ValueError):
+            rs.Config(job_expected_gib={"check": 11, "measure": 11})
+        with self.assertRaises(ValueError):
+            rs.Config(job_cpus={"check": 4, "measure": 4, "light": 1, "main": 4})
+
     def test_an_unknown_key_fails_rather_than_being_ignored(self):
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as f:
             json.dump({"max_slot": 12}, f)
