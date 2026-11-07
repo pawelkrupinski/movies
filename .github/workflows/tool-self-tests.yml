@@ -24,6 +24,7 @@ on:
             - 'android/scripts/**'
             - 'ios/scripts/**'
             - 'infra/bin/**'
+            - 'infra/nix/files/**'
             - 'data/**'
             - '.github/workflows/tool-self-tests.yml'
             # what identity-slice and title-trace drop into an old ref (their TOOL_FILES; IdentitySliceOldRefGateSpec)
