@@ -21,12 +21,7 @@ class FiledAnswersSpec extends AnyFlatSpec with Matchers with ScratchDirectories
     finds = Map("tt1" -> Some(1710881)), queries = Map(CandidateQuery.Title("Treasure Island") -> Seq(treasure))), "uk.json.gz")
 
   /** A recording answering one search and gapping every other question. */
-  private val recording = new IdentityLookups {
-    def hasDetail(l: Listing): Boolean = false
-    def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Unknown
-    def candidates(q: CandidateQuery): Answer[Seq[Hit]] = if (q == CandidateQuery.Title("Heat")) Answer.Known(Nil) else Answer.Unknown
-    def film(id: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
-  }
+  private val recording = new KnownSearchesLookups(Map(CandidateQuery.Title("Heat") -> Nil))
 
   "Prod's filed family answers" should "be served, and note exactly those read" in {
     val docs = new FiledAnswers.Noting(filed)

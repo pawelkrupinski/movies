@@ -26,18 +26,12 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     }
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
   }
-  private val nothingStored = new IdentityLookups {
-    def hasDetail(listing: Listing): Boolean                      = false
-    def detail(listing: Listing): Answer[Option[DetailFacts]]     = Answer.Known(None)
-    def candidates(q: CandidateQuery): Answer[Seq[Hit]]          = Answer.Unknown
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
-  }
 
   "the model's live asks" should "ask a new question at once, then leave one left unanswered to the fill for a day" in {
     val clock   = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val live    = new Live(Answer.Unknown)
-    val lookups = new StoredFirstLookups(nothingStored, live, LiveAsks.remembered(memory))
+    val lookups = new StoredFirstLookups(UnansweredTmdbLookups, live, LiveAsks.remembered(memory))
     lookups.candidates(lalka) shouldBe Answer.Unknown
     lookups.candidates(lalka) shouldBe Answer.Unknown
     live.asked shouldBe 1                                                     // asked once, then the gap it is
@@ -51,7 +45,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     val clock   = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val live    = new Live(Answer.Unknown, fail = true)
-    val lookups = new StoredFirstLookups(nothingStored, live, LiveAsks.remembered(memory))
+    val lookups = new StoredFirstLookups(UnansweredTmdbLookups, live, LiveAsks.remembered(memory))
     lookups.candidates(lalka)
     lookups.candidates(lalka)
     live.asked shouldBe 1
@@ -64,7 +58,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     // docs/design/identity-structural-fixes.md fix 4b: given up (failed its give-up count in a row) is decided on, never awaited
     val clock   = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
-    val lookups = new StoredFirstLookups(nothingStored, new Live(Answer.Unknown), LiveAsks.remembered(memory))
+    val lookups = new StoredFirstLookups(UnansweredTmdbLookups, new Live(Answer.Unknown), LiveAsks.remembered(memory))
     val question = Question.Candidate(lalka)
     val giveUp   = QuestionPolicies.giveUpFailures(question.kind)
     (1 until giveUp).foreach(_ => memory.failed(Seq(question)))
@@ -77,10 +71,10 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     val clock    = new MutableClock(Instant.parse("2026-10-24T12:00:00Z"))
     val docs     = new InMemoryTmdbDocuments
     val answered = new Live(Answer.Known(Nil))
-    new StoredFirstLookups(nothingStored, answered, LiveAsks.remembered(new QuestionMemory(docs, "pl-PL", clock))).candidates(lalka) shouldBe Answer.Known(Nil)
+    new StoredFirstLookups(UnansweredTmdbLookups, answered, LiveAsks.remembered(new QuestionMemory(docs, "pl-PL", clock))).candidates(lalka) shouldBe Answer.Known(Nil)
     docs.size(TmdbKind.Marker) shouldBe 0
     val always = new Live(Answer.Unknown)
-    val plain  = new StoredFirstLookups(nothingStored, always)
+    val plain  = new StoredFirstLookups(UnansweredTmdbLookups, always)
     plain.candidates(lalka); plain.candidates(lalka)
     always.asked shouldBe 2
   }
@@ -93,7 +87,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     val imdb    = "v3.sg.media-imdb.com"
     val query   = CandidateQuery.Imdb("Lalka")
     val live    = new Live(Answer.Unknown, fail = true, failing = s"https://$imdb/suggestion/l/lalka.json")
-    new StoredFirstLookups(nothingStored, live, LiveAsks.remembered(memory)).candidates(query)
+    new StoredFirstLookups(UnansweredTmdbLookups, live, LiveAsks.remembered(memory)).candidates(query)
     memory.outcome(Question.Candidate(query)).collect { case f: QuestionMemory.Outcome.Failed => f.host } shouldBe Some(Some(imdb))
     clock.advance(Duration.ofSeconds(30))
     memory.recovered(QuestionMemory.TmdbHost)

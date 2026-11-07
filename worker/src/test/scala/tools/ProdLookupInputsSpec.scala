@@ -9,7 +9,6 @@ import services.identity.adapters.{InMemoryTmdbDocuments, QuestionMemory, TmdbKi
 import services.scrapes.{ArchivedScrape, SuccessfulScrape}
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
-import java.util.concurrent.atomic.AtomicInteger
 import scala.jdk.CollectionConverters._
 
 /** The live drift check's whole resolve answers its questions as the worker answers its model — prod's TMDB store, venue
@@ -28,18 +27,10 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
   private val prod = ProdLookupInputs.Captured(
     answers = Map(TmdbKind.Query -> Map(prinzSearch -> query(1001)), TmdbKind.Film -> Map("1001" -> hitDoc(prinz2026))), whole = Map.empty, pages = Nil)
 
-  /** The recording's live answers, counting every question it is asked. */
-  private final class Recording(answers: Map[CandidateQuery, Seq[Hit]]) extends IdentityLookups {
-    val asked = new AtomicInteger
-    def hasDetail(listing: Listing): Boolean                      = false
-    def detail(listing: Listing): Answer[Option[DetailFacts]]     = Answer.Unknown
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]       = { asked.incrementAndGet(); answers.get(query).fold[Answer[Seq[Hit]]](Answer.Unknown)(Answer.Known(_)) }
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
-  }
   private def lookupsOver(docs: ProdLookupInputs.Held, live: IdentityLookups) = ProdLookupInputs.lookups(docs, Nil, Nil, live, poland, clock)
 
   "the worker's lookups over a capture" should "answer from prod's store ahead of the recording's live answer, and the recording's on a gap" in {
-    val live    = new Recording(Map(CandidateQuery.Title("Der kleine Prinz") -> Seq(prinz2015), CandidateQuery.Title("Neu") -> Seq(Hit(5, "Neu", None, None, 1.0))))
+    val live    = new KnownSearchesLookups(Map(CandidateQuery.Title("Der kleine Prinz") -> Seq(prinz2015), CandidateQuery.Title("Neu") -> Seq(Hit(5, "Neu", None, None, 1.0))))
     val lookups = lookupsOver(new ProdLookupInputs.Held(prod), live)
     lookups.candidates(CandidateQuery.Title("Der kleine Prinz")).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(1001))
     live.asked.get shouldBe 0
@@ -49,7 +40,7 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
   it should "leave a gap prod's question memory holds back a gap, never asking the recording" in {
     val held = new ProdLookupInputs.Held(prod)
     new QuestionMemory(held, language, clock).unanswered(Seq(Question.Candidate(CandidateQuery.Title("Neu"))))
-    val live = new Recording(Map(CandidateQuery.Title("Neu") -> Seq(Hit(5, "Neu", None, None, 1.0))))
+    val live = new KnownSearchesLookups(Map(CandidateQuery.Title("Neu") -> Seq(Hit(5, "Neu", None, None, 1.0))))
     lookupsOver(held, live).candidates(CandidateQuery.Title("Neu")) shouldBe Answer.Unknown
     live.asked.get shouldBe 0
   }
@@ -63,7 +54,7 @@ class ProdLookupInputsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     val read      = new BsonDocument("_id", new BsonString(s"$group|$page")).append("group", new BsonString(group)).append("page", new BsonString(page))
       .append("readAt", new BsonDateTime(clock.millis())).append("director", new BsonArray(Seq(new BsonString("Na Hong-jin")).asJava))
       .append("releaseYear", new BsonInt32(2026))
-    val lookups = ProdLookupInputs.lookups(new ProdLookupInputs.Held(prod.copy(pages = Seq(read))), Seq(read), enrichers, new Recording(Map.empty), poland, clock)
+    val lookups = ProdLookupInputs.lookups(new ProdLookupInputs.Held(prod.copy(pages = Seq(read))), Seq(read), enrichers, new KnownSearchesLookups(Map.empty), poland, clock)
     val facts   = lookups.detail(listing).answered.flatten.getOrElse(fail(s"no detail for $listing"))
     (facts.directors, facts.year) shouldBe (Seq("Na Hong-jin"), Some(2026))
   }

@@ -29,7 +29,7 @@ object MirrorRecompute {
   def corpusAt(db: MongoDatabase, country: Country, at: Instant, normalizer: TitleNormalizer): Corpus = {
     val world   = MirrorWorld.at(db, country, at, normalizer)
     val lookups = tools.ProdLookupInputs.lookups(world.documents, world.pages, tools.ProdLookupInputs.enrichersOf(country, world.clock),
-      scripts.IdentityHistoryTools.Refused, country, world.clock)
+      RefusingLookups, country, world.clock)
     Corpus(world.listings, new tools.MemoLookups(lookups))
   }
 

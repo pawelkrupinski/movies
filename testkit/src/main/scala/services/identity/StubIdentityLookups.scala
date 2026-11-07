@@ -18,3 +18,22 @@ object UnansweredTmdbLookups extends IdentityLookups {
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = Answer.Unknown
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
 }
+
+/** A source that answers nothing yet: every page, search and film read a gap — an offline replay's live leg, which
+ *  makes no request. */
+object RefusingLookups extends IdentityLookups {
+  def hasDetail(listing: Listing): Boolean                     = false
+  def detail(listing: Listing): Answer[Option[DetailFacts]]    = Answer.Unknown
+  def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = Answer.Unknown
+  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
+}
+
+/** A source that knows exactly `answers`' searches, every other question a gap as [[RefusingLookups]]' are — a
+ *  recording's live answers. `asked` counts the searches put to it. */
+final class KnownSearchesLookups(answers: Map[CandidateQuery, Seq[Hit]]) extends ForwardingIdentityLookups(RefusingLookups) {
+  val asked = new java.util.concurrent.atomic.AtomicInteger
+  override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = {
+    asked.incrementAndGet()
+    answers.get(query).fold[Answer[Seq[Hit]]](Answer.Unknown)(Answer.Known(_))
+  }
+}

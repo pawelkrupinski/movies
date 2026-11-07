@@ -13,12 +13,7 @@ class IdentitySliceFaithfulnessSpec extends AnyFlatSpec with Matchers {
   private val withLive = tools.FiledAnswers(noLive.capture, "de.json.gz", Map("GET https://v3.sg.media-imdb.com/suggestion/w/when.json" -> "{}"))
 
   /** Answers one search, gaps every other question. */
-  private val recording = new IdentityLookups {
-    def hasDetail(l: Listing): Boolean = false
-    def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Unknown
-    def candidates(q: CandidateQuery): Answer[Seq[Hit]] = if (q == CandidateQuery.Title("Heat")) Answer.Known(Nil) else Answer.Unknown
-    def film(id: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
-  }
+  private val recording = new KnownSearchesLookups(Map(CandidateQuery.Title("Heat") -> Nil))
 
   "The questions a slice's decision asks" should "be noted when unanswered, as a trace renders them, and only then" in {
     val asking = new IdentitySlice.Asking(recording)

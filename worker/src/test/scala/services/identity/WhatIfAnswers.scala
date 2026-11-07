@@ -56,7 +56,7 @@ object WhatIfAnswers {
 
   private def refusing(held: TmdbDocuments, country: Country, clock: java.time.Clock): Source = new Source {
     val docs: TmdbDocuments = held
-    val live: IdentityLookups = Refused
+    val live: IdentityLookups = RefusingLookups
     val stage: scripts.StageAnswers.Sources = sources(country, Map.empty, NoFetch, _ => Nil, findIn(held, clock, _ => None))
     def report(): String = ""
   }
@@ -108,13 +108,6 @@ object WhatIfAnswers {
       .fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_))
   }
 
-  /** Every live ask refused: a gap stays the gap the mirror's store holds, nothing is fetched. */
-  object Refused extends IdentityLookups {
-    def hasDetail(listing: Listing): Boolean                      = false
-    def detail(listing: Listing): Answer[Option[DetailFacts]]     = Answer.Unknown
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]       = Answer.Unknown
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
-  }
 
   /** No request leaves: a family, poster or catalogue ask fails, as an unreachable site's. */
   object NoFetch extends tools.HttpFetch {

@@ -61,7 +61,7 @@ object IdentityHistoryTools {
     val pages      = replay.pages(Await.result(db.getCollection[BsonDocument](services.venuepages.MongoVenuePageStore.Collection).find()
       .batchSize(tools.MongoReplies.Default).toFuture(), 5.minutes))
     val lookups    = tools.ProdLookupInputs.lookups(replay.documents(new MongoTmdbDocuments(db)), pages,
-      tools.ProdLookupInputs.enrichersOf(country, clock), Refused, country, clock)
+      tools.ProdLookupInputs.enrichersOf(country, clock), RefusingLookups, country, clock)
     val core       = listings.filter(l => matches(l.key))
     val pins       = new MongoPinStore(Some(db)).all()
     println(s"replaying $country at ${Instant.ofEpochMilli(at)}: ${listings.size} listings, ${core.size} selected")
@@ -73,11 +73,4 @@ object IdentityHistoryTools {
     }
   }
 
-  /** Every live ask refused: a replay reads what the store held, never TMDB now. */
-  object Refused extends IdentityLookups {
-    def hasDetail(listing: Listing): Boolean                      = false
-    def detail(listing: Listing): Answer[Option[DetailFacts]]     = Answer.Unknown
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]       = Answer.Unknown
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Unknown
-  }
 }
