@@ -240,9 +240,9 @@ jobs:
                   GH_REPO: ${{ github.repository }}
               run: |
                   . scripts/ci/bounded-step.sh
-                  # allow-silenced: an unreadable run list judges the parent alone (harness_aa.py), never skips the decision
                   # The previous run that RAN (harness_aa.py since): a queued run a newer push replaced shows cancelled, and its
                   # head as `since` would leave that push's harness change out of every run's range.
+                  # allow-silenced: an unreadable run list judges the parent alone (harness_aa.py), never skips the decision
                   since=$(timeout 60 gh run list --workflow identity-model-convergence.yml --branch main --limit 30 \
                       --json databaseId,headSha,conclusion 2> /dev/null | python3 scripts/ci/harness_aa.py since --run-id "$GITHUB_RUN_ID" 2> /dev/null || true)
                   python3 scripts/ci/harness_aa.py decide --head "$GITHUB_SHA" --since "$since" >> "$GITHUB_OUTPUT"
