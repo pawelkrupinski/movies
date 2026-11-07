@@ -54,6 +54,37 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     StageAnswers.givenUp(answered = false, failures = Some(tools.AgreementQuestionRounds.Attempts)) shouldBe true
   }
 
+  // A catalogue question the recording cannot answer (a Wikidata id it never met: a gap, served as `{}`) is a FAILED ask,
+  // as the worker's memory records one: attempted, so the cluster waiting on it settles, and given up as unreachable after
+  // the replay's attempts, so the settle goes quiet. Unmarked, every DE family walk meeting webedia 186596 ran its settle's
+  // 60 rounds on every subset (Identity family explorer #5).
+  "the replay's catalogue asks" should "mark a failed ask attempted, in its backoff until given up as unreachable" in {
+    import services.identity.{CatalogueId, CatalogueQuestion, Question}
+    val de  = models.Country.all.find(_.code == "de").get
+    val gap = new tools.HttpFetch { def get(url: String): String = "{}"; def post(url: String, body: String, contentType: String): String = "{}" }
+    val sources = new StageAnswers.Sources {
+      def country: models.Country                            = de
+      def normalizer: services.movies.TitleNormalizer        = services.movies.TitleNormalizer.forCountry(de)
+      def families: Seq[VoterFamily]                         = Nil
+      def sources: Map[VoterFamily, services.identity.adapters.FamilySource] = Map.empty
+      def fetch: tools.HttpFetch                             = gap
+      def posterImages(tmdbId: Int): Seq[clients.TmdbClient.PosterImage] = Nil
+      def find(imdb: String): services.identity.Answer[Option[Int]] = services.identity.Answer.Unknown
+    }
+    val clock    = new MutableClock(Instant.parse("2026-11-07T08:00:00Z"))
+    val answers  = new StageAnswers(sources, new InMemoryTmdbDocuments, clock, _ => None)
+    val asked    = CatalogueQuestion.Id(CatalogueId("webedia", "186596"))
+    val question = Question.Catalogue(asked)
+    answers.attempted(question) shouldBe false
+    answers.fileCatalogue(Seq(asked))
+    answers.attempted(question) shouldBe true
+    answers.tried(question) shouldBe true
+    answers.givenUp(question) shouldBe false
+    (2 to tools.AgreementQuestionRounds.Attempts).foreach(_ => answers.fileCatalogue(Seq(asked)))
+    answers.givenUp(question) shouldBe true
+    answers.unreachableCatalogue shouldBe Set(asked)
+  }
+
   // ...and what it costs: how many listings each projection serves Pending, and for how long each stays so.
   "the pending spans" should "count the listings Pending at each projection and time each stretch, decided or still open" in {
     import services.movies.ListingKey
