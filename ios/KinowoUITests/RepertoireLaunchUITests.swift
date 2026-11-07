@@ -29,6 +29,13 @@ final class RepertoireLaunchUITests: XCTestCase {
         // app loads it, so that a missing grid names its cause instead of only failing.
         let probe = LiveListingProbe(Self.liveListing, timeout: 25)
         defer { probe.cancel() }
+        // Tomorrow, never the launch's default "today": Warsaw's last showing starts by ~22:45, so
+        // from then until midnight today's grid is rightly empty and this failed every late
+        // evening (Order independence #52 at 23:49 Warsaw: "The app shows the empty listing"
+        // over a served 2 MB listing). Tomorrow is a full day at every hour.
+        let tomorrow = app.buttons[A11y.TopBar.datePillTomorrow]
+        XCTAssertTrue(tomorrow.waitForExistence(timeout: 30), "The Jutro day pill is missing after launch")
+        tomorrow.tap()
 
         // 30s — cold launch + the first network fetch of the listing over the
         // simulator's host network, a few hundred KB of JSON before the grid
