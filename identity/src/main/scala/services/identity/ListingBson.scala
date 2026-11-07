@@ -34,6 +34,10 @@ object ListingBson {
     d
   }
 
+  /** Whether this code's roster still has the venue `d` names: a capture or history written before a venue left the
+   *  roster holds its listings, which [[of]] cannot place (Identity model convergence #1041, Germany's "Kino in Dorfen"). */
+  def placeable(d: BsonDocument): Boolean = Source.byDisplayName.get(d.getString("cinema").getValue).flatMap(Source.cinemaOf).isDefined
+
   def of(d: BsonDocument): Listing = {
     val name   = d.getString("cinema").getValue
     val cinema = Source.byDisplayName.get(name).flatMap(Source.cinemaOf).getOrElse(sys.error(s"no venue named $name"))

@@ -385,13 +385,22 @@ object UnmatchedClusters {
     try out.write(d.toJson(JsonWriterSettings.builder().outputMode(JsonMode.RELAXED).build()).getBytes(StandardCharsets.UTF_8)) finally out.close()
   }
 
+  /** The capture's listings this roster can place: a venue retired since the capture was recorded is no input to this
+   *  code's model, as it is none to production's once it stops scraping it -- left out, and named. */
+  private def placedListings(path: Path, listings: Seq[BsonDocument]): Seq[Listing] = {
+    val (placed, retired) = listings.partition(ListingBson.placeable)
+    if (retired.nonEmpty) System.err.println(s"$path: ${retired.size} listing(s) of venue(s) this roster no longer has left out: " +
+      retired.map(_.getString("cinema").getValue).distinct.sorted.mkString(", "))
+    placed.map(ListingBson.of)
+  }
+
   def read(path: Path): Capture = {
     val in = new GZIPInputStream(Files.newInputStream(path))
     val d  = try BsonDocument.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8)) finally in.close()
     val country = Country.all.find(_.code == d.getString("country").getValue).getOrElse(sys.error(s"no country in $path"))
     def docs(name: String) = d.getArray(name).getValues.asScala.toSeq.map(_.asDocument)
     Capture(country,
-      docs("listings").map(ListingBson.of),
+      placedListings(path, docs("listings")),
       docs("decisions").map(ResolverDecisionBson.decode),
       (docs("queries") ++ (if (d.containsKey("titleCredits")) docs("titleCredits") else Nil))
         .map(q => queryOf(q) -> q.getArray("hits").getValues.asScala.toSeq.map(h => hitOf(h.asDocument))).toMap,
