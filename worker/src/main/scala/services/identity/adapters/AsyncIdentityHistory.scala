@@ -18,8 +18,11 @@ import scala.concurrent.duration._
  * [[AsyncIdentityHistory.DurableBatch]], before [[append]] returns — right after the projection's own film write. A
  * worker killed by an OOM or a SIGKILL runs no stop(), so whatever the queue held is lost, and a take lost there leaves
  * identity_history a gap exactly around the restart (flip-timeline, the replays, [[TakeReversals]]' boot seed). The
- * cost: one insert per projection that moved a take (p50 1 take, p99 34-149, a few ms; 2026-11-06). A take batch whose
- * insert throws is queued instead.
+ * cost: one insert per projection that moved a take (p50 1 take, p99 34-149, a few ms; 2026-11-06). Bounded: at most
+ * [[AsyncIdentityHistory.DurableLimit]] takes an append are written so (a deploy's projection moving tens of thousands
+ * would otherwise insert hundreds of times on the projection's thread), the rest queued; and once a take insert throws,
+ * every take is queued -- the failed batch and the rest -- until the writer reaches the store again, so a Mongo that is
+ * down costs the projection one timeout, not one per batch and per projection.
  */
 final class AsyncIdentityHistory(inner: IdentityHistory, dropped: Long => Unit, capacity: Int = AsyncIdentityHistory.Capacity)
     extends IdentityHistory with services.Stoppable with Logging {
@@ -30,14 +33,25 @@ final class AsyncIdentityHistory(inner: IdentityHistory, dropped: Long => Unit, 
     t.setDaemon(true); t.start(); t
   }
 
+  /** Whether take entries are written on the caller's thread: false from a take insert that threw until the writer's
+   *  next insert lands. */
+  @volatile private var reachable = true
+  private[adapters] def takesOnCaller: Boolean = reachable
+
   def append(entries: Seq[HistoryEntry]): Unit = {
-    val (durable, queued) = entries.partition(e => AsyncIdentityHistory.Durable(e.kind))
+    val (takes, others) = entries.partition(e => AsyncIdentityHistory.Durable(e.kind))
+    val (durable, over) = takes.splitAt(AsyncIdentityHistory.DurableLimit)
     val unwritten = durable.grouped(AsyncIdentityHistory.DurableBatch).flatMap { batch =>
-      try { inner.append(batch); Nil }
-      catch { case scala.util.control.NonFatal(e) => logger.warn(s"identity history: ${batch.size} take(s) queued, not written: $e"); batch }
+      if (!reachable) batch
+      else
+        try { inner.append(batch); Nil }
+        catch { case scala.util.control.NonFatal(e) =>
+          reachable = false
+          logger.warn(s"identity history: a take insert failed -- takes queued until the store is reached again: $e"); batch
+        }
     }.toSeq
     var lost = 0L
-    (unwritten ++ queued).foreach(e => if (!queue.offer(e)) lost += 1)
+    (unwritten ++ over ++ others).foreach(e => if (!queue.offer(e)) lost += 1)
     if (lost > 0) dropped(lost)
   }
 
@@ -47,7 +61,7 @@ final class AsyncIdentityHistory(inner: IdentityHistory, dropped: Long => Unit, 
       val batch = new java.util.ArrayList[HistoryEntry](AsyncIdentityHistory.Batch)
       batch.add(first)
       queue.drainTo(batch, AsyncIdentityHistory.Batch - 1)
-      try inner.append(scala.jdk.CollectionConverters.ListHasAsScala(batch).asScala.toSeq)
+      try { inner.append(scala.jdk.CollectionConverters.ListHasAsScala(batch).asScala.toSeq); reachable = true }
       catch { case scala.util.control.NonFatal(e) => logger.warn(s"identity history: ${batch.size} entr(ies) not written: $e") }
     }
   }
@@ -72,4 +86,7 @@ object AsyncIdentityHistory {
   val Durable: Set[String] = Set(HistoryEntry.Take)
   /** Take entries one synchronous insert writes at most (a German take entry is ~24 kB: ~2.4 MB an insert). */
   val DurableBatch = 100
+  /** Take entries one append writes on the caller's thread at most: ten inserts, past the prod p99 of 34-149 takes a
+   *  projection (2026-11-06) many times over; a deploy's projection moving more queues the rest. */
+  val DurableLimit = 1000
 }

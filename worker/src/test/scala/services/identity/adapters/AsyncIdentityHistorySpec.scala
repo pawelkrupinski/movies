@@ -64,6 +64,48 @@ class AsyncIdentityHistorySpec extends AnyFlatSpec with Matchers {
     finally stalled.countDown()
   }
 
+  /** A store counting the inserts made on a caller's thread (not the history's writer), failing those while `down`; the
+   *  writer's wait on `writerOpen`. */
+  private final class CallerInserts(writerOpen: CountDownLatch = new CountDownLatch(0)) extends IdentityHistory {
+    val written  = new InMemoryIdentityHistory
+    val onCaller = new AtomicLong
+    @volatile var down = false
+    def append(entries: Seq[HistoryEntry]): Unit =
+      if (Thread.currentThread.getName == "identity-history-writer") { writerOpen.await(); written.append(entries) }
+      else { onCaller.incrementAndGet(); if (down) throw new RuntimeException("mongo down") else written.append(entries) }
+  }
+  private def takeEntry(i: Int) = HistoryEntry(HistoryEntry.Take, s"N|Kino|page|Film $i", 1000L + i, None, None, "b1")
+
+  "a projection moving many takes" should "write at most a bounded number of them on its own thread, queueing the rest" in {
+    // a deploy's projection moving tens of thousands of takes did hundreds of ~2.4 MB inserts on the projection's thread
+    val store   = new CallerInserts
+    val history = new AsyncIdentityHistory(store, _ => ())
+    history.append((1 to 20000).map(takeEntry))
+    store.onCaller.get shouldBe (AsyncIdentityHistory.DurableLimit / AsyncIdentityHistory.DurableBatch).toLong
+    history.stopWithin(10.seconds)
+    store.written.since(Seq(HistoryEntry.Take), 0L).size shouldBe 20000
+  }
+
+  "a take insert that fails" should "send the projection's takes to the queue until the writer reaches the store again" in {
+    // Mongo down: every 100-take batch waited out the driver's timeout on the projection's thread, append after append
+    val writerOpen = new CountDownLatch(1)
+    val store   = new CallerInserts(writerOpen)
+    val history = new AsyncIdentityHistory(store, _ => ())
+    store.down = true
+    history.append((1 to 300).map(takeEntry))
+    history.append((301 to 400).map(takeEntry))
+    store.onCaller.get shouldBe 1L                                   // one attempt, then queued
+    store.down = false
+    writerOpen.countDown()
+    val deadline = System.nanoTime() + tools.SpecTimeouts.Io.toNanos
+    while (!history.takesOnCaller && System.nanoTime() < deadline) Thread.onSpinWait()
+    history.takesOnCaller shouldBe true
+    history.append((401 to 450).map(takeEntry))                      // the writer wrote: the takes are the caller's again
+    store.onCaller.get shouldBe 2L
+    history.stopWithin(10.seconds)
+    store.written.since(Seq(HistoryEntry.Take), 0L).size shouldBe 450
+  }
+
   "the model's drains and the TMDB store's filings" should "finish with the history's store blocked outright" in {
     val clock   = new MutableClock(TestWiring.FixedInstant)
     val store   = new Blocked
