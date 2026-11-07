@@ -6,7 +6,7 @@ import services.cinemas.common.SlotsToMovies
 import models._
 import tools.{DaemonExecutors, HttpFetch, HttpRead, ParallelDetailFetch}
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse}
+import services.cinemas.common.{CinemaScraper, ListingPages, ListingSource, ScraperParse}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -63,6 +63,8 @@ class FilmwebShowtimesClient(
   import FilmwebShowtimesClient._
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiBase)
+
+  override def listingSource: ListingSource = ListingSource.Filmweb
 
   // The browser-renderable public page is the canonical
   // `/showtimes/<City>/<Name>-<id>`, resolved at boot from `/info` by
@@ -201,12 +203,13 @@ object FilmwebShowtimesClient extends play.api.Logging {
     s"https://www.filmweb.pl/showtimes/${enc(city)}/${enc(name)}-$cinemaId"
   }
 
-  /** Resolve the canonical /uptime link for every given Filmweb venue, in
+  /** Resolve the canonical /uptime link for every Filmweb venue among `scrapers`, in
    *  parallel and tolerant — a venue whose `/info` fails is simply absent (the
    *  caller keeps its `/cinema/-<id>` fallback). Bounded concurrency keeps us
    *  well under Filmweb's soft limits; a 60s overall cap stops a slow/down
    *  Filmweb from stalling worker boot (the unresolved venues fall back). */
-  def resolveAll(clients: Seq[FilmwebShowtimesClient], maxConcurrent: Int = 5): Map[String, String] = {
+  def resolveAll(scrapers: Seq[CinemaScraper], maxConcurrent: Int = 5): Map[String, String] = {
+    val clients = scrapers.collect { case client: FilmwebShowtimesClient => client }
     if (clients.isEmpty) return Map.empty
     val executionContext = DaemonExecutors.boundedEC("filmweb-source-urls", maxConcurrent)
     try {
@@ -234,14 +237,6 @@ object FilmwebShowtimesClient extends play.api.Logging {
   def titleInfoUrl(filmId: Long): String = s"$ApiBase/title/$filmId/info"
 
   def filmPageUrl(filmId: Long): String = s"https://www.filmweb.pl/film/$filmId"
-
-  /** Whether `url` is one of the film pages `filmPageUrl` builds — i.e. a Filmweb
-   *  FALLBACK row's detail reference. A cinema in Filmweb fallback serves Filmweb
-   *  data under its OWN source slot with such a URL; the cinema's native
-   *  `DetailEnricher` parses its own event page and can never read filmweb.pl, so
-   *  no detail-fetch site may point `fetchFilmDetail` at one (the synopsis/cast/
-   *  hints those rows need come from TMDB enrichment, not the cinema). */
-  def isFilmwebFilmUrl(url: String): Boolean = url.contains("filmweb.pl/film/")
 
   /** Poster URL: prepend the film-poster bucket and swap the `$` size placeholder for `3`
    *  (500×720; `2` is a 140×200 thumbnail). The `ppo` bucket this was once built on answers 403

@@ -1,6 +1,5 @@
 package services.cinemas.common
 
-import services.cinemas.pl.FilmwebShowtimesClient
 /**
  * Decides which scrapers get a Filmweb fallback when their primary fetch throws
  * or comes back empty.
@@ -10,7 +9,7 @@ import services.cinemas.pl.FilmwebShowtimesClient
  *   - Chains (Cinema City / Helios / Multikino, flagged via `CinemaScraper.chain`)
  *     are excluded — their own networks are the source of truth, are reliably
  *     fed, and Filmweb doesn't model them venue-for-venue.
- *   - A `FilmwebShowtimesClient` primary is excluded too — falling a Filmweb
+ *   - A primary whose `listingSource` is Filmweb is excluded too — falling a Filmweb
  *     feed back to Filmweb is moot.
  *
  * Everything else — the ordinary single-venue HTML/JSON scrapers — is eligible.
@@ -19,5 +18,5 @@ import services.cinemas.pl.FilmwebShowtimesClient
  */
 object FallbackEligibility {
   def eligible(s: CinemaScraper): Boolean =
-    !s.chain && !s.isInstanceOf[FilmwebShowtimesClient]
+    !s.chain && s.listingSource != ListingSource.Filmweb
 }

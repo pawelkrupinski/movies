@@ -8641,6 +8641,8 @@ services.cinemas.common.AdaptiveTimeoutScraper
 services.cinemas.common.AdaptiveTimeoutScraper$$anon$1
 services.cinemas.common.AgeRating
 services.cinemas.common.AgeRating$
+services.cinemas.common.AggregatorUrls
+services.cinemas.common.AggregatorUrls$
 services.cinemas.common.ChunkPlan
 services.cinemas.common.ChunkPlan$
 services.cinemas.common.ChunkedCinemaScraper
@@ -8751,6 +8753,11 @@ services.cinemas.common.ListingPages
 services.cinemas.common.ListingPages$
 services.cinemas.common.ListingReads
 services.cinemas.common.ListingReads$
+services.cinemas.common.ListingSource
+services.cinemas.common.ListingSource$
+services.cinemas.common.ListingSource$$anon$1
+services.cinemas.common.ListingSource$Aggregator
+services.cinemas.common.ListingSource$Aggregator$
 services.cinemas.common.MultiListingScraper
 services.cinemas.common.NearTermProgramme
 services.cinemas.common.NearTermProgramme$
@@ -9021,6 +9028,7 @@ services.cinemas.pl.FilmwebShowtimesClient
 services.cinemas.pl.FilmwebShowtimesClient$
 services.cinemas.pl.FilmwebShowtimesClient$$anon$1
 services.cinemas.pl.FilmwebShowtimesClient$$anon$2
+services.cinemas.pl.FilmwebShowtimesClient$$anon$3
 services.cinemas.pl.FilmwebShowtimesClient$CinemaInfo
 services.cinemas.pl.FilmwebShowtimesClient$CinemaInfo$
 services.cinemas.pl.FilmwebShowtimesClient$FilmInfo

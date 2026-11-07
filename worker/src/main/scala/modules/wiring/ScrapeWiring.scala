@@ -7,7 +7,7 @@ import modules.WorkerWiring
 import services.MongoCachingDetailFetch
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.cinemas.de.GermanFeed
-import services.cinemas.common.{AdaptiveTimeoutScraper, ChunkedCinemaScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
+import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, ListingSource, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
@@ -124,9 +124,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // Filmweb's /info at boot (city + name aren't in our model); tolerant, so a
   // venue whose resolve fails keeps the fallback.
   protected lazy val sourceUrls: Map[String, String] = {
-    val base           = CinemaClientMarkers.sourceUrls(countryScrapers)
-    val filmwebClients = countryScrapers.collect { case f: FilmwebShowtimesClient => f }
-    base ++ FilmwebShowtimesClient.resolveAll(filmwebClients)
+    CinemaClientMarkers.sourceUrls(countryScrapers) ++ FilmwebShowtimesClient.resolveAll(countryScrapers)
   }
 
   // Fired on each ENTER / PROBE_FAILED / RECOVERED / UNCOVERED transition: alerts on the
@@ -141,12 +139,12 @@ trait ScrapeWiring { self: WorkerWiring =>
       uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
     }
 
-  // This country's cinemas whose ONLY scraper is a FilmwebShowtimesClient — served by Filmweb by
+  // This country's cinemas whose ONLY scraper reads Filmweb's listing — served by Filmweb by
   // design, not as a fallback. Feeds the FilmwebDropAlerter (a Filmweb-only venue
   // going empty means migrate it to an own-site scraper).
   lazy val filmwebOnlyCinemas: Set[String] =
     countryScrapers.groupBy(_.cinema)
-      .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.isInstanceOf[FilmwebShowtimesClient]) =>
+      .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.listingSource == ListingSource.Filmweb) =>
         c.displayName }
       .toSet
 
@@ -163,7 +161,7 @@ trait ScrapeWiring { self: WorkerWiring =>
         // scrape (retries included) to an adaptive per-host-and-venue budget, OUTSIDE retry
         // but INSIDE the uptime recorder so a cut surfaces as a normal failure.
         val inner: CinemaScraper =
-          if (raw.isInstanceOf[ChunkedCinemaScraper]) retried
+          if (raw.scrapedInChunks) retried
           else new AdaptiveTimeoutScraper(retried, hostScrapeStats, adaptiveTimeoutExecutor)
         recordingScraper(inner, FallbackEligibility.eligible(raw))
       }

@@ -19,6 +19,11 @@ class MultiListingScraper(override val cinema: Cinema, val listings: Seq[CinemaS
   def scrapeHosts: Set[String] = listings.flatMap(_.scrapeHosts).toSet
   override def maxFetchAttempts: Int = listings.map(_.maxFetchAttempts).max
   override def chain: Boolean = listings.exists(_.chain)
+  /** The listings' common source; listings read from different publishers are the venue's own. */
+  override def listingSource: ListingSource = listings.map(_.listingSource).distinct match {
+    case Seq(only) => only
+    case _         => ListingSource.OwnSite
+  }
   override def listingIsComplete: Boolean = listings.forall(_.listingIsComplete)
   override def noScheduleListed: Boolean  = listings.forall(_.noScheduleListed)
   override def sourceUrl: Option[String] = listings.flatMap(_.sourceUrl).headOption

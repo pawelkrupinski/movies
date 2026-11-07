@@ -29,6 +29,8 @@ object ChunkPlan {
  */
 trait ChunkedCinemaScraper extends CinemaScraper {
 
+  final override def scrapedInChunks: Boolean = true
+
   /** Enumerate the chunk keys for one scrape, known upfront. May fetch a nav /
    *  index page (whose failure fails the whole scrape, recorded as a normal
    *  outcome). Each key must map to an independently-fetchable unit. */

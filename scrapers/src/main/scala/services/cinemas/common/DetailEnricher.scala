@@ -4,7 +4,6 @@ import services.movies.LatestTitleYear
 
 import services.movies.ScreeningTokens
 import models.{Cinema, MovieRecord, Source, SourceData}
-import services.cinemas.pl.FilmwebShowtimesClient
 
 /**
  * The per-film detail fields a cinema fetches *separately* from its listing —
@@ -228,5 +227,5 @@ object DetailEnricher {
    *  and what tells a detail's writer which slots a fetched page belongs to: a venue that
    *  lists a film as several editions, each with its own page, owns one page per slot. */
   def nativeRefOf(slot: SourceData): Option[String] =
-    slot.filmUrl.filterNot(FilmwebShowtimesClient.isFilmwebFilmUrl)
+    slot.filmUrl.filterNot(AggregatorUrls.isFilmwebFilmUrl)
 }

@@ -57,6 +57,15 @@ trait CinemaScraper {
    *  single-venue scraper is fallback-eligible. */
   def chain: Boolean = false
 
+  /** Who publishes the listing this scraper reads — the venue itself, or an aggregator
+   *  such as Filmweb. Defaults to the venue's own; an aggregator's client overrides it. */
+  def listingSource: ListingSource = ListingSource.OwnSite
+
+  /** Whether this venue is scraped through the chunk fan-out (`ChunkScrapePlanner`), each
+   *  chunk its own bounded task, rather than in one `fetch()`. True exactly for a
+   *  [[ChunkedCinemaScraper]]. */
+  def scrapedInChunks: Boolean = false
+
   /** Whether `fetch()` returned the venue's WHOLE listing as far as the scraper's own
    *  structure knows — false for a chunked scrape reduced from some of its date-chunks. Only
    *  the shared wrappers in this package answer it; a client never does
