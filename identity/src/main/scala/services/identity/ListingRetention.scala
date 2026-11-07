@@ -90,11 +90,16 @@ object ListingRetention {
     def of(listing: Listing): Billing = Billing(listing.key.venue, listing.key.rawTitle.toLowerCase(java.util.Locale.ROOT))
   }
 
-  /** Is `listing` billed again by its own venue ([[Billing]]) with no other year: the same listing come back, so what came
-   *  back replaces it. A year on both sides that differs is another film under that title (Cinema-Arthouse's "Sinn und
-   *  Sinnlichkeit", Ang Lee 1995 and Georgia Oakley 2026), still kept. */
-  private def returned(listing: Listing, back: Map[Billing, Seq[Option[Int]]]): Boolean =
-    back.get(Billing.of(listing)).exists(_.exists(year => year.isEmpty || listing.year.isEmpty || year == listing.year))
+  /** Is `listing` billed again by its own venue ([[Billing]]) with no other year, and not page for page: the same listing
+   *  come back, so what came back replaces it. A year on both sides that differs is another film under that title
+   *  (Cinema-Arthouse's "Sinn und Sinnlichkeit", Ang Lee 1995 and Georgia Oakley 2026), still kept; so is a page of the
+   *  venue's beside another page under the same title -- its own pages tell its listings apart (Fontane Klub's two "Lars
+   *  Redlich" pages), and only a page lent or withdrawn (Published to Native and back) is one listing re-keyed. */
+  private def returned(listing: Listing, back: Map[Billing, Seq[Listing]]): Boolean =
+    back.get(Billing.of(listing)).exists(_.exists { present =>
+      !(isNative(listing) && isNative(present)) && (present.year.isEmpty || listing.year.isEmpty || present.year == listing.year)
+    })
+  private def isNative(listing: Listing): Boolean = listing.key match { case _: services.movies.ListingKey.Native => true; case _ => false }
 
   /** Of `departed`, those `present` bills again under another key ([[returned]]): the same listings back, never kept --
    *  and, as their twins are billed, no input left to hold: the worker deletes them from its store. */
@@ -102,7 +107,7 @@ object ListingRetention {
     if (departed.isEmpty || present.isEmpty) Nil
     else {
       val billed = present.iterator.map(_.key).toSet
-      val back   = present.groupMap(Billing.of)(_.year)
+      val back   = present.groupBy(Billing.of)
       departed.filter(listing => !billed(listing.key) && returned(listing, back))
     }
 

@@ -78,6 +78,12 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
     ListingRetention.retained(Seq(lee), Seq(oakley), normalizer).map(_.key) shouldBe Seq(lee.key)
   }
 
+  it should "still be kept beside another page of its venue's under the same title (Fontane Klub's two \"Lars Redlich\" pages)" in {
+    val one = at(0, "Lars Redlich – Unaufhaltsam unterhaltsam!", None, Some("https://www.kinoheld.de/film/69b4b647e37534036bbb87a4"))
+    val two = at(1, "Lars Redlich – Unaufhaltsam unterhaltsam!", None, Some("https://www.kinoheld.de/film/69b4b647e37534036bbb87a5"))
+    ListingRetention.retained(Seq(one), Seq(two), normalizer).map(_.key) shouldBe Seq(one.key)
+  }
+
   it should "still be kept beside another venue billing it under the same title" in {
     val gone  = at(0, "Black Water", None, None)
     val other = at(1, "Black Water", Some(2026), None, venue = base(1).cinema)
