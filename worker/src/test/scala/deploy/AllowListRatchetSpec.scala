@@ -34,7 +34,9 @@ class AllowListRatchetSpec extends AnyFlatSpec with Matchers {
     hook should include("python3 scripts/ci/commit_rules.py \"$1\"")
     hook should include("check_allowlists() { commit_rules allowlists; }")
     hook should include("grep -qxF -- \"$path\" .github/allow-lists.txt && allowlists=1")
-    hook should include("scripts/identity-drift-ci --head \"$head_sha\" --against main")
+    // the birth check runs every drift row against main's newest run, through drift_ci (which shows its progress)
+    hook should include("drift_ci \"$tmp/drift-birth.log\" --head \"$head_sha\" --against main")
+    hook should include("{ scripts/identity-drift-ci \"$@\" 2>&1;")
     RepoFile.read(".github/identity-drift-gate-paths.txt") should include("test/resources/fixtures/identity-flips-allow.tsv")
   }
 

@@ -523,6 +523,7 @@ printf '# reviewed flips\ncountry\tvenue\trawTitle\treason\n' > "$area/test/reso
 cat > "$area/scripts/identity-drift-ci" <<'STUB'
 #!/usr/bin/env bash
 echo "identity-drift-ci $*" >> "$AREA_CALLS"
+echo "identity-drift-ci: run 99: 0/2 drift row(s) ended, run queued, 21 min" >&2
 [ "${DRIFT_RC:-0}" = 1 ] && echo "DRIFT RED: takes-drift-2 (germany)"
 exit "${DRIFT_RC:-0}"
 STUB
@@ -545,6 +546,9 @@ check "a Fixes-Red push touching a drift path runs the red's drift rows, each cl
   "$code $(calls "identity-drift-ci --head $(scratch_git "$area" rev-parse HEAD) --for-red 2517") $(calls 'for-red 3726')"
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a fix\n\nFixes-Red: 3726' DRIFT_RC=1)"
 check "...a red drift row refuses the push, naming the check" "1 1" "$code $(grep -c 'blocked by: identitydrift' "$testroot/area-out")"
+# #1041's land: the drift rows sat queued on a saturated ci-runner, the hook printed nothing for 20 minutes, and agentctl
+# ended it as a stalled check -- each poll's progress line is shown as it comes
+check "...and shows the run's progress while it waits" "1" "$(grep -c 'identity-drift-ci: run 99: 0/2 drift row(s) ended' "$testroot/area-out")"
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a fix\n\nFixes-Red: 3726' DRIFT_RC=2)"
 check "...a run that could not be made warns and passes" "0 1" "$code $(grep -c 'no verdict for Fixes-Red: 3726' "$testroot/area-out")"
 code="$(drift_push identity/src/main/scala/services/identity/Resolver.scala $'a speed-up\n\nFixes-Red: 3726\nRed-Unrelated: CI speed-up')"
