@@ -32,7 +32,7 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
 
   it should "resolve the identity retention window in days, its default for an unset or unusable value" in {
     import scala.concurrent.duration.*
-    val default = IdentityRetentionWindow(60.days)
+    val default = IdentityRetentionWindow(7.days)
     resolvedFrom().identityRetentionWindow(default) shouldBe default
     resolvedFrom("KINOWO_IDENTITY_RETENTION_DAYS" -> "90").identityRetentionWindow(default) shouldBe IdentityRetentionWindow(90.days)
     resolvedFrom("KINOWO_IDENTITY_RETENTION_DAYS" -> "-3").identityRetentionWindow(default) shouldBe default
