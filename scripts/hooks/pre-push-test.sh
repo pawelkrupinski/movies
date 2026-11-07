@@ -381,6 +381,7 @@ identity first [ -z "${FIRST_FAILS:-}" ] || { echo "SLICE ANSWERS MISSING: uk-ha
 identity sbt identity/test
 identity sbt worker/testOnly services.identity.*
 page sbt web/PageTest/test
+page sh cat > /dev/null; echo stdin-reader >> "$AREA_CALLS"
 page sh echo playwright-chromium >> "$AREA_CALLS"
 TESTS
 cat > "$area/scripts/sbt-warm" <<'STUB'

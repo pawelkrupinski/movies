@@ -1174,7 +1174,7 @@ run_local_tests() { # <set>
     if [ -z "${PREPUSH_IDENTITY_SHARD:-}" ] || [ "$1" != identity ] || [ "${PREPUSH_IDENTITY_SHARD%%/*}" = 1 ]; then
         while IFS= read -r line; do
             [ -n "$line" ] || continue
-            if ! bash -c "$line" > "$tmp/$1.first.log" 2>&1; then
+            if ! bash -c "$line" < /dev/null > "$tmp/$1.first.log" 2>&1; then
                 cat "$tmp/$1.first.log" >&2
                 warn "$1: \`$line\` failed (full log: $tmp/$1.first.log)"
                 return 1
@@ -1256,7 +1256,7 @@ run_local_tests() { # <set>
     if [ "$rc" = 0 ] && [ "$sh_lines" = 1 ]; then
         while IFS= read -r line; do
             [ -n "$line" ] || continue
-            bash -c "$line" >> "$tmp/$1.log" 2>&1 || { rc=1; break; }
+            bash -c "$line" < /dev/null >> "$tmp/$1.log" 2>&1 || { rc=1; break; }
         done < <(local_test_lines "$1" sh)
     fi
     if [ "$rc" != 0 ]; then
