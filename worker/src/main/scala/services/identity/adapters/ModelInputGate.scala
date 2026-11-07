@@ -33,6 +33,10 @@ final class ModelInputGate(
   private val pending = new ConcurrentHashMap[ListingKey, Held]()
   /** The stand-ins of listings promoted since the last drain: let go by the next. */
   private val releasedStandIns = mutable.ArrayBuffer.empty[ListingKey]
+  /** The keys whose last write to `store` failed -- a hold's row or a release -- written again by the next [[persist]],
+   *  from what the gate holds then. A row is otherwise written only as its hold moves, so one lost write was lost for good
+   *  and a restart took the unready version in. */
+  private val unwritten = mutable.Set.empty[ListingKey]
 
   /** The held listings new to the model (no version of theirs taken in), by key. */
   def heldNew: Seq[Held] = pending.values.asScala.filter(_.ready.isEmpty).toSeq.sortBy(h => ListingKey.serialised(h.newest.key))
@@ -77,7 +81,7 @@ final class ModelInputGate(
     } }
     val promoted = promote(billed)
     released ++= promoted.map(_.key)
-    if (written.nonEmpty || released.nonEmpty) persist(written.toSeq, released.toSeq)
+    persist(written.toSeq, released.toSeq)
     report()
     (taken, promoted)
   }
@@ -88,7 +92,7 @@ final class ModelInputGate(
    *  listing is billed no more released. Idempotent: whether a version is ready is never stored, so a take-up after one
    *  that stopped mid-way reads the same. An unread store holds nothing back: no read is a reason to keep a version out. */
   def resume(present: Seq[Listing]): Seq[Listing] = {
-    pending.clear(); releasedStandIns.clear()
+    pending.clear(); releasedStandIns.clear(); unwritten.clear()
     val rows = scala.util.Try(store.read()).fold(
       failed => { logger.warn(s"identity model: the held listings could not be read -- none held: $failed"); Nil }, identity)
     val taken =
@@ -112,7 +116,7 @@ final class ModelInputGate(
               row.ready
             }
         } }
-        if (released.nonEmpty) persist(Nil, released.toSeq)
+        persist(Nil, released.toSeq)
         if (bootPromoted.nonEmpty) metrics.promoted(bootPromoted.toSeq, atBoot = true)
         logger.info(s"identity model: ${pending.size} listing(s) held on their questions resumed, ${released.size} released" +
           pending.values.asScala.toSeq.sortBy(_.since).take(20).map(h => s"; ${ModelInputGate.described(h.newest.key)} " +
@@ -168,11 +172,20 @@ final class ModelInputGate(
     metrics.held(pending.size, oldest.fold(0.0)(since => (now - since).max(0L) / 1000.0))
   }
 
-  /** A write of the held listings: one that fails is logged, never the drain's failure -- the next move writes again, and a
-   *  take-up reads readiness afresh. */
-  private def persist(written: Seq[PendingListingStore.Pending], released: Seq[ListingKey]): Unit =
-    try store.update(written, released)
-    catch { case NonFatal(e) => logger.warn(s"identity model: the held listings could not be written: $e") }
+  /** A write of the held listings, with every key whose last write failed written again as the gate holds it now (its row,
+   *  or its release): one that fails is logged, never the drain's failure, and its keys are written again by the next. */
+  private def persist(written: Seq[PendingListingStore.Pending], released: Seq[ListingKey]): Unit = {
+    val fresh   = written.iterator.map(_.key).toSet ++ released
+    val retried = unwritten.iterator.filterNot(fresh).toSeq
+    val rows    = written ++ retried.flatMap(key => Option(pending.get(key)).map(h => PendingListingStore.Pending(key, h.ready, h.since)))
+    val gone    = released ++ retried.filterNot(pending.containsKey)
+    if (rows.nonEmpty || gone.nonEmpty)
+      try { store.update(rows, gone); unwritten.clear() }
+      catch { case NonFatal(e) =>
+        unwritten ++= rows.iterator.map(_.key) ++= gone
+        logger.warn(s"identity model: the held listings could not be written -- written again at the next drain: $e")
+      }
+  }
 }
 
 object ModelInputGate {

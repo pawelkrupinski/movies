@@ -95,7 +95,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     /** The families' answers as the input gate reads them: a listing waits on one question per title not answered yet. */
     val families = new Families
     /** The held listings' store, which outlives a service as `identity_pending` outlives a worker. */
-    val pendingStore = new PendingListingStore.InMemory
+    var pendingStore: PendingListingStore = new PendingListingStore.InMemory
     var newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Shown
     /** What the gate tells its metrics: the held count and oldest wait after each drain, and each promotion. */
     val gate = new GateReports
@@ -709,6 +709,33 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val third = world.service()
     third.takeUp()
     third.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.year shouldBe Some(1968)
+  }
+
+  it should "write again a held listing whose row a failed write lost, so a restart still holds it" in {
+    // identity_pending's write failing once (a Mongo blip) left the hold unwritten for good: rows are written as a hold's
+    // ready version moves, and it had not -- a restart then took the unready version in at once
+    val world = new World
+    val failNext = new java.util.concurrent.atomic.AtomicBoolean(false)
+    val store = world.pendingStore
+    world.pendingStore = new PendingListingStore {
+      def read(): Seq[PendingListingStore.Pending] = store.read()
+      def update(pending: Seq[PendingListingStore.Pending], released: Iterable[ListingKey]): Unit =
+        if (failNext.getAndSet(false)) throw new RuntimeException("write timed out") else store.update(pending, released)
+    }
+    val first = world.service()
+    first.takeUp()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    first.drain()
+    world.families.unanswered = Set("Lalka")
+    failNext.set(true)
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(1968))))
+    first.drain()
+    store.read() shouldBe empty                                                       // the write failed
+    first.drain()                                                                     // nothing moved: written again
+    store.read().loneElement.ready.flatMap(_.year) shouldBe Some(2025)
+    val again = world.service()
+    again.takeUp()
+    again.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.year shouldBe Some(2025)
   }
 
   it should "promote at boot a version whose answers were filed while the worker was down" in {
