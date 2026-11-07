@@ -103,4 +103,33 @@ class ConstraintSolverSpec extends AnyFlatSpec with Matchers {
       ConstraintSolver.solve(nodes, cs, films).foreach(c => c.flatMap(films.get).distinct.size should be <= 1)
     }
   }
+
+  // Rule 3's ambiguity test, asked of every node a tier joins: a bare title must-linked to every spelling of a family
+  // reaches every one of their roots, so a test over every PAIR of roots made the solver cubic in a family of kept spellings
+  "The ambiguity test" should "answer as the pairwise test does, whatever the roots, cannot-links and films" in {
+    import scala.collection.mutable
+    (1L to 3000L).foreach { seed =>
+      val rnd    = new Random(seed)
+      val ids    = 0 until (1 + rnd.nextInt(12))
+      val roots  = ids.filter(_ => rnd.nextDouble() < 0.6).toSet
+      val cannot = mutable.HashMap.from(ids.map(i => i -> mutable.Set.from(ids.filter(j => j != i && rnd.nextDouble() < 0.1))))
+      val film   = mutable.HashMap.from(ids.filter(_ => rnd.nextDouble() < 0.3).map(i => i -> rnd.nextInt(3)))
+      val pairwise = roots.exists(r => roots.exists(ConstraintSolver.forbids(cannot, film, r, _)))
+      withClue(s"seed $seed: ")(ConstraintSolver.anyForbidden(roots, cannot, film) shouldBe pairwise)
+    }
+  }
+
+  it should "read each root's cannot-links once, not once per pair of roots" in {
+    import scala.collection.mutable
+    // a hub reaching 2,000 roots, none of them apart: the pairwise test read the cannot-links 4,000,000 times
+    var reads = 0
+    // counted by a map that tells its reads: the solver's own map type, whose subclassing is deprecated, not forbidden
+    @scala.annotation.nowarn("cat=deprecation")
+    val cannot = new mutable.HashMap[Int, mutable.Set[Int]]() {
+      override def getOrElse[V1 >: mutable.Set[Int]](key: Int, default: => V1): V1 = { reads += 1; super.getOrElse(key, default) }
+    }
+    (0 until 2000).foreach(i => cannot(i) = mutable.Set(i + 5000))
+    ConstraintSolver.anyForbidden((0 until 2000).toSet, cannot, mutable.HashMap.empty) shouldBe false
+    reads should be <= 2000
+  }
 }

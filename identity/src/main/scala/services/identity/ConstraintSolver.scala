@@ -50,6 +50,28 @@ object ConstraintSolver {
     (apart != null && apart.contains(rb)) || (film.contains(ra) && film.contains(rb) && film(ra) != film(rb))
   }
 
+  /** Whether any two of `roots` (a root with itself too) may not join ([[forbids]]): two of them holding different films,
+   *  or one cannot-linked to another of them. Rule 3's ambiguity test, read in time linear in the roots: a bare title's
+   *  node must-linked to every spelling of a family reaches hundreds of roots, and asking [[forbids]] of every PAIR of
+   *  them was cubic in the family (a family of every kept spelling of a title, 2026-11-07: the solver 7 → 238 JFR
+   *  samples of a UK resolve). The same answer as the pairwise one: a film pair differs exactly when two films are held,
+   *  and a cannot-link pair is a root whose cannot-links meet the roots. */
+  private[identity] def anyForbidden(roots: Set[Int], cannot: scala.collection.mutable.HashMap[Int, scala.collection.mutable.Set[Int]],
+                                     film: scala.collection.mutable.HashMap[Int, Int]): Boolean = {
+    var held = Option.empty[Int]
+    roots.exists { r =>
+      val own = film.getOrElse(r, Int.MinValue)
+      val twoFilms = film.contains(r) && (held match {
+        case Some(other) => other != own
+        case None        => held = Some(own); false
+      })
+      twoFilms || {
+        val apart = cannot.getOrElse(r, null)
+        apart != null && apart.nonEmpty && (if (apart.size < roots.size) apart.exists(roots) else roots.exists(apart.contains))
+      }
+    }
+  }
+
   private[identity] def solveAs[K](nodes: Seq[K], constraints: Seq[Constraint[K]], presentation: Presentation,
                                    films: Map[K, Int] = Map.empty[K, Int])
                                   (implicit ord: Ordering[K]): Seq[Seq[K]] = {
@@ -102,7 +124,7 @@ object ConstraintSolver {
           reach(a) = reach.getOrElse(a, Set(find(a))) + find(b)
           reach(b) = reach.getOrElse(b, Set(find(b))) + find(a)
         }
-        ambiguous ++= reach.collect { case (node, roots) if roots.exists(r => roots.exists(forbidden(r, _))) => node }
+        ambiguous ++= reach.collect { case (node, roots) if ConstraintSolver.anyForbidden(roots, cannot, film) => node }
         edges.foreach { case (_, a, b) => if (!ambiguous(a) && !ambiguous(b)) join(a, b) }
       }
     }
