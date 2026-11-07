@@ -72,6 +72,23 @@ class DecideTest(unittest.TestCase):
         self.assertEqual(d.starts, ((9, "check"), (10, "check")))
         self.assertEqual(d.stops, ())
 
+    # Verify scrape recording #14: nine measurement runners in ci-movies-measure.slice's 48 GiB, ~11 GiB of JVM each --
+    # the slice's OOM killer took five of them (exit 137). A class's slice holds as many runners as fit at a job's worst
+    # case (the container's --memory), never more.
+    def test_a_class_never_outgrows_its_slice(self):
+        caps = {"measure": 48 * 2**30 // (CFG.job_max_gib * 2**30)}  # 48 GiB / 16 GiB = 3
+        d = rs.decide(CFG, IDLE, queued(measure=9), [], NOW, caps)
+        self.assertEqual([c for _, c in d.starts], ["measure"] * 3)
+
+    def test_running_runners_count_against_their_class_slice(self):
+        ours = [inst(1, "measure", busy=True), inst(2, "measure", busy=True)]
+        d = rs.decide(CFG, IDLE, queued(measure=5, check=1), ours, NOW, {"measure": 3})
+        self.assertEqual(d.starts, ((3, "check"), (4, "measure")))
+
+    def test_a_class_with_no_slice_limit_is_capped_by_the_ceiling_alone(self):
+        d = rs.decide(CFG, IDLE, queued(check=12), [], NOW, {"measure": 3})
+        self.assertEqual(len(d.starts), 10)
+
     def test_bitcashier_saturated_starts_nothing_and_frees_idle_runners(self):
         ours = [inst(1, "measure"), inst(2, "check", busy=True)]
         d = rs.decide(CFG, rs.Bitcashier(12, 0), queued(check=3), ours, NOW)
@@ -213,6 +230,16 @@ class HostTest(unittest.TestCase):
         docker = FakeDocker(["Runner.Listener"])
         self.host(docker).stop(2)
         self.assertTrue([c for c in docker.calls if c[:2] == ["systemctl", "stop"]])
+
+    def test_a_class_slice_cap_is_its_memory_max_in_worst_case_jobs(self):
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root)
+        for cls, limit in (("measure", str(48 * 2**30)), ("check", "max")):
+            os.makedirs(os.path.join(root, f"ci-movies-{cls}.slice"))
+            with open(os.path.join(root, f"ci-movies-{cls}.slice", "memory.max"), "w") as f:
+                f.write(limit + "\n")
+        cfg = rs.Config(class_cgroup=os.path.join(root, "ci-movies-{cls}.slice"))
+        self.assertEqual(rs.class_caps(cfg), {"measure": 3})  # "max" and a missing slice cap nothing
 
 
 if __name__ == "__main__":

@@ -12,6 +12,9 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
     MemoryMax leaves after bitcashier's reserve -- a floor for an idle bitcashier plus a share per busy bitcashier job
     (its builders peaked at 93 GiB together) -- in whole jobs, and never past `max_slots`. With bitcashier idle that is
     ~10 movies jobs, falling as bitcashier's jobs start.
+  * EACH CLASS'S SLICE has its own MemoryMax (ci-movies-measure.slice: 48 GiB), so a class never has more runners than
+    its slice holds at a job's worst case (`job_max_gib`, the container's --memory): Verify scrape recording #14 ran nine
+    measurements in 48 GiB and the slice's OOM killer took five (exit 137).
   * PRIORITY between movies' own jobs: landing checks (`movies-check`), then measurements (`movies-measure`), then the
     light jobs around them (`movies`). A runner is started for a QUEUED job of a class only (ephemeral, one job, the
     label of that class alone), the highest class first, so a free slot goes to a waiting landing check before a
@@ -53,6 +56,10 @@ class Config:
     repo: str = "pawelkrupinski/movies"
     max_slots: int = 10
     job_gib: int = 10
+    # a job's worst case: the container's --memory (movies-runner@.service), what a class's own slice must hold per runner
+    job_max_gib: int = 16
+    # each class's slice (RUNNER_SLICE), whose memory.max caps that class on its own ({cls} is the class)
+    class_cgroup: str = "/sys/fs/cgroup/ci.slice/ci-movies.slice/ci-movies-{cls}.slice"
     ci_memory_gib: int = 115
     bitcashier_reserve_gib: int = 8
     per_busy_bitcashier_gib: int = 8
@@ -115,9 +122,23 @@ def ceiling(cfg: Config, bc: Bitcashier) -> int:
     return max(0, min(cfg.max_slots, left // cfg.job_gib))
 
 
-def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float) -> Decision:
+def class_caps(cfg: Config) -> dict:
+    """The most runners each class's slice holds: its memory.max in worst-case jobs. A slice without a limit ("max") or
+    unreadable caps nothing -- the ceiling still holds every class together."""
+    caps = {}
+    for cls in CLASSES:
+        try:
+            limit = open(os.path.join(cfg.class_cgroup.format(cls=cls), "memory.max")).read().strip()
+        except OSError:
+            continue
+        if limit.isdigit():
+            caps[cls] = int(limit) // (cfg.job_max_gib * 2**30)
+    return caps
+
+
+def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, caps: dict | None = None) -> Decision:
     """The runners to start ((slot, class), highest class first) and the idle ones to stop, for `demand` (queued jobs
-    per class) and the `instances` that exist."""
+    per class) and the `instances` that exist; `caps` the most runners a class's own slice holds (class_caps)."""
     top = ceiling(cfg, bc)
     full = saturated(cfg, bc)
     rank = {c: i for i, c in enumerate(CLASSES)}
@@ -144,6 +165,8 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     for cls in CLASSES:
         waiting = sum(1 for i in alive if i.cls == cls and not i.busy)
         need = max(0, demand.get(cls, 0) - waiting)
+        if cls in (caps or {}):
+            need = min(need, max(0, caps[cls] - sum(1 for i in alive if i.cls == cls)))
         for _ in range(min(need, room, len(free_slots))):
             starts.append((free_slots.pop(0), cls))
             room -= 1
@@ -303,9 +326,10 @@ def tick(cfg: Config, host: Host, reader: GitHub, dry_run: bool = False) -> Deci
     bc = Bitcashier(busy_runners(cfg.builder_cgroups), busy_runners(cfg.deployer_cgroups))
     demand = demand_of(reader.queued_jobs())
     instances = host.instances(now)
-    d = decide(cfg, bc, demand, instances, now)
+    caps = class_caps(cfg)
+    d = decide(cfg, bc, demand, instances, now, caps)
     print(f"bitcashier busy {bc.busy_builders}/{cfg.builders} builders {bc.busy_deployers}/{cfg.deployers} deployers"
-          f"{' SATURATED' if d.saturated else ''}; ceiling {d.ceiling}; queued {demand}; "
+          f"{' SATURATED' if d.saturated else ''}; ceiling {d.ceiling}; class caps {caps}; queued {demand}; "
           f"ours {[(i.slot, i.cls, 'busy' if i.busy else 'idle') for i in instances]}; "
           f"start {list(d.starts)} stop {list(d.stops)}", flush=True)
     if dry_run:
