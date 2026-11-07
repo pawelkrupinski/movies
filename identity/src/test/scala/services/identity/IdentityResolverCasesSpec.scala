@@ -2902,6 +2902,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // DE "Lauras Stern", recording 42332112286: Cineamo links three venues' bare "Lauras Stern" [77′] to the 2004 film (12697m)
+  // [2004 bound] and Universum-City Karlsruhe's [75′] to the 2021 one (903746m), its own facts telling the two apart. The
+  // title alone joined Universum to the others and handed it the 2004 film; two operators' picks are two films.
+  "Two venues a TMDB-keyed feed links to two namesakes" should "keep apart, each its own link's film" in {
+    val films   = Seq(F(12697, "Lauras Stern", 2004, "Piet De Rycker", 77, 2.4, original = Some("Laura's Star")),
+      F(903746, "Lauras Stern", 2021, "Joya Thome", 77, 2.6, original = Some("Laura's Star")))
+    def laura(venue: Cinema, runtime: Int, upper: Option[Int], id: String) =
+      fed(listing(venue, "Lauras Stern", runtime = Some(runtime)).copy(originalTitle = Some("Laura's Star"), yearUpperBound = upper), "cineamo", id)
+    val older   = Seq(KinoMikro, KinoOaza, KinoPalacowe).map(laura(_, 77, Some(2004), "12697m"))
+    val newer   = laura(KinoMuza, 75, None, "903746m")
+    val r       = shipped(older :+ newer, films)
+    withClue((older :+ newer).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(newer.key).film should not be Some(12697)
+      older.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(12697))
+    }
+  }
+
   // DE "Eternity", prod-latest 41265286306 (2026-11-01): Cineamo links the bare "Eternity" [2025] of the venues screening
   // Susanne Regina Meures' 2026 film (Florentina Holzinger's glacier piece) to David Freyne's 2025 romcom (1259102m, its
   // year copied); Zazie's and kinoheld's entries credit Meures and date it 2026, overruling the link. Caligari's kinoheld
