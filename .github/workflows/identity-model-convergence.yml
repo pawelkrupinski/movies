@@ -228,7 +228,7 @@ jobs:
               # (GITHUB_RUN_NUMBER: kept for the facts; seeds no longer rotate, drift-gate-seeds.tsv)
               run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
             # THE A/A ROW (scripts/ci/harness_aa.py): only main's full suite, never a takes-only or drift-only dispatch, and
-            # only when the range since the previous convergence run's head on main (else the parent) changed a harness
+            # only when the range since the previous convergence run's head on main that ran (else the parent) changed a harness
             # path. An unreadable run list judges the parent alone; this step failing runs no A/A row (the output's fallback).
             - name: Did this push change the drift harness (its A/A row)?
               id: aa
@@ -241,8 +241,10 @@ jobs:
               run: |
                   . scripts/ci/bounded-step.sh
                   # allow-silenced: an unreadable run list judges the parent alone (harness_aa.py), never skips the decision
-                  since=$(timeout 60 gh run list --workflow identity-model-convergence.yml --branch main --limit 5 \
-                      --json databaseId,headSha --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)][0].headSha // \"\"" 2> /dev/null || true)
+                  # The previous run that RAN (harness_aa.py since): a queued run a newer push replaced shows cancelled, and its
+                  # head as `since` would leave that push's harness change out of every run's range.
+                  since=$(timeout 60 gh run list --workflow identity-model-convergence.yml --branch main --limit 30 \
+                      --json databaseId,headSha,conclusion 2> /dev/null | python3 scripts/ci/harness_aa.py since --run-id "$GITHUB_RUN_ID" 2> /dev/null || true)
                   python3 scripts/ci/harness_aa.py decide --head "$GITHUB_SHA" --since "$since" >> "$GITHUB_OUTPUT"
             - if: ${{ always() }}
               run: scripts/ci/bounded-step.sh --reap

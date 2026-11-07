@@ -5,6 +5,7 @@ differing is the harness's fault), and the wiring that runs it in main's converg
 
     python3 scripts/ci/harness_aa_test.py
 """
+import json
 import os
 import re
 import subprocess
@@ -86,6 +87,28 @@ class HarnessAaTest(unittest.TestCase):
         self.assertIn("harness-aa=true", out)
         self.assertIn("parent", err)
 
+    def since(self, runs, run_id=500):
+        done = subprocess.run([sys.executable, "-I", TOOL, "since", "--run-id", str(run_id)], input=json.dumps(runs),
+                              capture_output=True, text=True)
+        return done.returncode, done.stdout.strip()
+
+    def test_since_is_the_previous_run_that_ran_never_a_cancelled_or_newer_one(self):
+        # gh run list, newest first: a newer push's queued run (600), this run (500), a queued run a newer push
+        # replaced (cancelled, 450: its push's harness change would leave every range), then the run before it (400)
+        runs = [{"databaseId": 600, "headSha": "c" * 40, "status": "queued", "conclusion": ""},
+                {"databaseId": 500, "headSha": "b" * 40, "status": "in_progress", "conclusion": ""},
+                {"databaseId": 450, "headSha": "x" * 40, "status": "completed", "conclusion": "cancelled"},
+                {"databaseId": 420, "headSha": "y" * 40, "status": "completed", "conclusion": "skipped"},
+                {"databaseId": 400, "headSha": "a" * 40, "status": "completed", "conclusion": "failure"}]
+        self.assertEqual((0, "a" * 40), self.since(runs))
+        self.assertEqual((0, "a" * 40), self.since(runs[2:]), "this run missing from the list")
+        runs[3]["conclusion"] = "cancelled"
+        self.assertEqual((0, "b" * 40), self.since(runs, 600), "an in-progress earlier run ran its own range")
+
+    def test_no_run_before_this_one_is_no_since(self):
+        self.assertEqual((0, ""), self.since([{"databaseId": 500, "headSha": "b" * 40, "conclusion": ""}]))
+        self.assertEqual((0, ""), self.since([]))
+
     def judge(self, code, verdict):
         v = self.write("out/verdict.txt", verdict)
         return self.run_tool("judge", "--cc", "de", "--code", str(code), "--verdict", v)
@@ -137,6 +160,7 @@ class HarnessAaTest(unittest.TestCase):
         conv = open(os.path.join(ROOT, ".github/workflows/identity-model-convergence.yml")).read()
         leg = open(os.path.join(ROOT, ".github/workflows/country-convergence-leg.yml")).read()
         self.assertIn("scripts/ci/harness_aa.py decide", conv)
+        self.assertIn("harness_aa.py since --run-id \"$GITHUB_RUN_ID\"", conv)
         self.assertIn("harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}", conv)
         self.assertIn("harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}", conv)
         self.assertIn("scripts/ci/harness_aa.py judge", leg)

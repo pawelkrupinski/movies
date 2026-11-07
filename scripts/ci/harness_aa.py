@@ -20,6 +20,10 @@ green run on main, so a red there reports and holds no push until then.
 usage: harness_aa.py decide --head SHA [--since SHA] [--paths FILE]
          prints `harness-aa=true|false` and `harness-aa-paths=<changed harness paths>` (GITHUB_OUTPUT lines): the range is
          since..head, `since` the previous convergence run's head on main; empty, unknown or not an ancestor: head's parent.
+       harness_aa.py since --run-id ID < gh-run-list.json
+         prints the head of the newest convergence run on main before run ID that ran (`gh run list --json
+         databaseId,headSha,conclusion` on stdin): never a CANCELLED one (a queued run a newer push replaced -- its push's
+         harness change would fall outside every run's range), a skipped one, or a newer one; empty when none is listed.
        harness_aa.py judge --cc CC --code N --verdict FILE
          the A/A row's drift-check exit N: 0 PASS; 1 with a `not deterministic` verdict: HARNESS FAULT (exit 1); 1
          otherwise (a divergence: the head's own, judged by takes-drift-1/2): a notice, exit 0; anything else: exit 2.
@@ -70,6 +74,12 @@ def decide(head: str, since: str, paths_file: str) -> int:
     print(f"harness-aa={'true' if hit else 'false'}")
     print(f"harness-aa-paths={' '.join(hit)}")
     return 0
+
+
+def since(run_id: int, runs: list[dict]) -> str:
+    earlier = [r for r in runs if int(r.get("databaseId") or 0) < run_id
+               and (r.get("conclusion") or "") not in ("cancelled", "skipped")]
+    return max(earlier, key=lambda r: int(r["databaseId"]))["headSha"] if earlier else ""
 
 
 def judge(cc: str, code: int, verdict_file: str) -> int:
@@ -142,7 +152,7 @@ def moved(cc: str, a: str, b: str) -> int:
 
 def main(argv: list[str]) -> int:
     usage = __doc__.split("usage: ", 1)[1].split("Tested by", 1)[0]
-    if not argv or argv[0] not in ("decide", "judge", "takes", "moved"):
+    if not argv or argv[0] not in ("decide", "since", "judge", "takes", "moved"):
         print(f"usage: {usage}", file=sys.stderr)
         return 2
     opts, rest = {}, argv[1:]
@@ -155,6 +165,9 @@ def main(argv: list[str]) -> int:
     try:
         if argv[0] == "decide":
             return decide(opts["head"], opts.get("since", ""), opts.get("paths", PATHS))
+        if argv[0] == "since":
+            print(since(int(opts["run-id"]), json.load(sys.stdin)))
+            return 0
         if argv[0] == "takes":
             return takes(opts["cc"], opts["a"], opts["b"])
         if argv[0] == "moved":
