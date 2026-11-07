@@ -10,6 +10,11 @@ private[identity] final class EvidenceNode(val evidence: Evidence, val listings:
   lazy val titleWords: Seq[String] = services.movies.TitleContainment.tokens(evidence.title)
   /** The country (ISO-3166-1) of its venue — what [[ReleaseVeto]] asks a namesake's releases of. */
   lazy val country: Option[String] = EvidenceNode.countryOf(listings.head.cinema)
+  /** Whether what its listings' cast fields list is the film's cast ([[CastEvidence.castIsTheFilms]]), once per node: its
+   *  scope's billing, and the corroboration of each cluster holding it, ask it again — every scope a family's rounds
+   *  build, every cluster a decision reads — and each asking walked every listing's title through the relay, stage-work,
+   *  several-works and performance tests (a quarter of what kept spellings added to a UK resolve, JFR 2026-11-07). */
+  lazy val castIsTheFilms: Boolean = CastEvidence.castIsTheFilms(listings)
   /** The evidence as text: title, stated year, directors. */
   def name: String        = s"'${evidence.title}'${evidence.statedYear.fold("")(year => s" [$year]")}" +
     (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "")

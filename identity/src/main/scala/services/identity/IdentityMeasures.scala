@@ -309,6 +309,10 @@ object IdentityMeasures {
       ownTitles.distinct.flatMap(t => IdentityMeasures.Qualifiers.split(t, IdentityMeasures.shapes(Seq(t))))
     private[identity] lazy val billedWorks: Set[Seq[String]] =
       titles.flatMap(SearchTitles.candidates(_, None)).map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
+    /** [[billedWorks]] but those only how a broadcast is screened ([[StageRelays.billings]]), once per record: every
+     *  listing scored against the record asked the label test of each work it shares with it (a twelfth of what kept
+     *  spellings added to a UK resolve, JFR 2026-11-07). */
+    private[identity] lazy val billedWorksBesideLabels: Set[Seq[String]] = billedWorks.filterNot(StageRelays.broadcastLabel)
     /** The title, original title and alternative titles, in that order, as comparison forms once
      *  per record (`titleRelation`). */
     private[identity] lazy val forms: Seq[IdentityMeasures.TitleForm] =

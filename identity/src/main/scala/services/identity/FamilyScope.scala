@@ -443,7 +443,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def billingOf(node: EvidenceNode): Billing = billingMemo.getOrElseUpdate(node.id, {
     val listing = node.evidence.published
     Billing(BillingPieces.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title)), node.listings.exists(ListingShape.billsASilentFilm),
-      node.listings.exists(_.listedCast.nonEmpty) && CastEvidence.castIsTheFilms(node.listings))
+      node.listings.exists(_.listedCast.nonEmpty) && node.castIsTheFilms)
   })
   private val billingMemo = mutable.HashMap.empty[String, Billing]
 

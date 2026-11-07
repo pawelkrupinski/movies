@@ -167,6 +167,14 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
     CastEvidence.mismatch(Seq(FilmTable.listing(models.Multikino, "Lalka")), has1968, Some("pl"), castIsTheFilms = true) shouldBe None
   }
 
+  it should "be told once per evidence node, as every scope and cluster holding the node asks it: the node's listings' own verdict" in {
+    val relay = lalkaAt(Seq("Paul Marque, Sae Eun Park, Francesco Mura"), title = "Balet z Opery Paryskiej 2026-2027: Romeo i Julia")
+    def node(listings: Listing*) = new EvidenceNode(Evidence.of(listings.head, None, TitleDecorations.None), listings)
+    node(lalkaAt(helios)).castIsTheFilms shouldBe true
+    node(lalkaAt(helios), relay).castIsTheFilms shouldBe false
+    node(relay).castIsTheFilms shouldBe CastEvidence.castIsTheFilms(Seq(relay))
+  }
+
   "a listed cast" should "name a name whatever order its words come in (UK 'Raise the Red Lantern': 'Li Gong' is TMDB's 'Gong Li')" in {
     FilmCast.of(Seq("Gong Li", "He Saifei")).get.namedBy(ListedCast.of(Seq("Li Gong | Saifei He"))) shouldBe 2
   }

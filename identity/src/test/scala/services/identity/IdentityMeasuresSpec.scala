@@ -1315,6 +1315,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(dracula, Film("The Mummy"))("originalTitle") shouldBe Category("disjoint")
   }
 
+  "a record's billed works beside its broadcast labels" should "be its billed works but a broadcast's label, read once per record" in {
+    val record = Film("BTS World Tour 'Arirang' in Buenos Aires: Live Viewing")
+    record.billedWorks.exists(StageRelays.broadcastLabel) shouldBe true
+    record.billedWorksBesideLabels shouldBe record.billedWorks.filterNot(StageRelays.broadcastLabel)
+    record.billedWorksBesideLabels should not be empty
+    // what a billing reads is the works both bill, the label aside, as it was before the filter moved to the record
+    val bts = Listing("BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING")
+    StageRelays.billings(bts, record).map(_.work).toSet.intersect(Set("liveviewing", "live viewing")) shouldBe empty
+  }
+
   "a listing's exact top hits" should "be the films its title names exactly that a title search returned FIRST" in {
     val listing = Listing("Godzilla vs. Megalon")
     val megalon = Film("Godzilla vs. Megalon", year = Some(1973))

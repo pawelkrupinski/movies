@@ -54,7 +54,7 @@ private[identity] object Corroboration {
     val season     = own.seasonProduction || own.number("season.delta").contains(0.0)
     def castNamed(scored: Scored) = scored.candidate.film.cast.exists(cast => node.listings.exists(listing =>
       listing.listedCast.nonEmpty && cast.namedBy(listing.listedCast) >= CastEvidence.Names))
-    val cast       = castNamed(own) && CastEvidence.castIsTheFilms(node.listings) &&
+    val cast       = castNamed(own) && node.castIsTheFilms &&
       !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && castNamed(rival))
     Seq("year" -> agree("year"), "director" -> agree("director"), "original title" -> original, "runtime" -> runtime, "feed id" -> feedId,
       "season" -> season, "cast" -> cast)
