@@ -153,13 +153,49 @@ class ShardAndMergeTest(unittest.TestCase):
         import json
         import tempfile
         with tempfile.TemporaryDirectory() as d:
-            shard = os.path.join(d, "state.json")
-            with open(shard, "w") as f:
+            os.makedirs(os.path.join(d, "shards"))
+            with open(os.path.join(d, "shards", "state.json"), "w") as f:
                 json.dump({"round": 2, "settled": {"r0": outcome()}, "interactions": [], "fired": {},
                            "pending": [{"id": "b001a", "rules": ["r1"]}]}, f)
             with contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(ablation.main(["--out", os.path.join(d, "merged"), "--merge", shard]), 0)
+                self.assertEqual(ablation.main(["--out", os.path.join(d, "merged"), "--merge", os.path.join(d, "shards")]), 0)
             self.assertTrue(os.path.exists(os.path.join(d, "merged", "report.md")))
+
+    def test_the_merge_finds_each_shard_s_state_however_the_download_laid_the_shards_out(self):
+        # run 42377038878's collect: download-artifact@v6 extracts a pattern matching ONE artifact straight into its
+        # path (shards/ablation/state.json), two or more each into a directory of its name (shards/<name>/ablation/...)
+        import contextlib
+        import io
+        import json
+        import tempfile
+
+        def state(rule):
+            return {"round": 1, "settled": {rule: outcome()}, "interactions": [], "fired": {}, "pending": []}
+
+        layouts = {"one artifact": {"ablation/state.json": state("r0")},
+                   "two artifacts": {"identity-rule-ablation-shard-0/ablation/state.json": state("r0"),
+                                     "identity-rule-ablation-shard-1/ablation/state.json": state("r1")}}
+        for layout, files in layouts.items():
+            with self.subTest(layout), tempfile.TemporaryDirectory() as d:
+                shards = os.path.join(d, "shards")
+                for path, content in files.items():
+                    os.makedirs(os.path.dirname(os.path.join(shards, path)), exist_ok=True)
+                    with open(os.path.join(shards, path), "w") as f:
+                        json.dump(content, f)
+                with contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(ablation.main(["--out", os.path.join(d, "merged"), "--merge", shards]), 0)
+                with open(os.path.join(d, "merged", "state.json")) as f:
+                    self.assertEqual(sorted(json.load(f)["settled"]), sorted(r for s in files.values() for r in s["settled"]))
+
+    def test_a_merge_that_finds_no_shard_state_fails_saying_where_it_looked(self):
+        import contextlib
+        import io
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            err = io.StringIO()
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                self.assertEqual(ablation.main(["--out", os.path.join(d, "merged"), "--merge", d]), 1)
+            self.assertIn("no shard state.json under", err.getvalue())
 
     def test_sbt_runs_against_ci_s_mongodb_when_one_is_named(self):
         old = os.environ.pop("MONGODB_URI", None)

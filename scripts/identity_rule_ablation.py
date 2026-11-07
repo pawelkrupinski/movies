@@ -271,6 +271,12 @@ def shard_of(configs, shard):
     return [c for k, c in enumerate(configs) if k % n == i]
 
 
+def shard_states(root):
+    """Every shard's state.json under root, at any depth: download-artifact@v6 extracts a pattern matching ONE artifact
+    straight into its path, two or more each into a directory of its name (run 42377038878's collect)."""
+    return sorted(os.path.join(d, "state.json") for d, _, files in os.walk(root) if "state.json" in files)
+
+
 def merge(states):
     """One state of several shards' (each settling its own rules): their settled rules, interactions and fired counts."""
     out = {"round": max((s.get("round", 0) for s in states), default=0), "settled": {}, "interactions": [], "pending": [], "fired": {}}
@@ -342,16 +348,21 @@ def main(argv=None):
                    "a later run with the same --out resumes from its state.json")
     p.add_argument("--deadline-minutes", type=float, default=0,
                    help="stop a round's sbt run this many minutes in, keeping its state for a resumed run (0: none)")
-    p.add_argument("--merge", nargs="*", help="state.json files of several shards: write their one report to --out, run nothing")
+    p.add_argument("--merge", metavar="DIR", help="the shards' downloaded artifacts: merge every state.json under DIR into "
+                   "one report in --out, run nothing")
     a = p.parse_args(argv)
     started = time.monotonic()
     if a.merge is not None:
-        state = merge([json.load(open(path, encoding="utf-8")) for path in a.merge])
+        states = shard_states(a.merge)
+        if not states:
+            print(f"[ablation] no shard state.json under {a.merge}: no row uploaded its state", file=sys.stderr)
+            return 1
+        state = merge([json.load(open(path, encoding="utf-8")) for path in states])
         os.makedirs(a.out, exist_ok=True)
         with open(os.path.join(a.out, "state.json"), "w", encoding="utf-8") as f:
             json.dump(state, f, indent=1)
         write_report(state, os.path.join(a.out, "report.md"))
-        print(f"[ablation] merged {len(a.merge)} shards: {len(state['settled'])} rules settled, {len(state['pending'])} unsettled")
+        print(f"[ablation] merged {len(states)} shards: {len(state['settled'])} rules settled, {len(state['pending'])} unsettled")
         # configurations left are a sweep's next dispatch (resume-run), not a failure: every `rounds`-bounded row leaves some
         return 0
     repo = os.path.dirname(HERE)

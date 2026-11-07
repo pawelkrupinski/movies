@@ -216,8 +216,8 @@ jobs:
               shell: bash
               run: |
                   set -o pipefail
-                  # each row's artifact keeps its `ablation/` directory (it uploads ablation.out beside it)
-                  python3 -I scripts/identity_rule_ablation.py --out merged --merge shards/*/ablation/state.json | tee merged.out
+                  # every state.json under shards/, however the download laid them out (one artifact or several)
+                  python3 -I scripts/identity_rule_ablation.py --out merged --merge shards | tee merged.out
                   cat merged/report.md >> "$GITHUB_STEP_SUMMARY"
 
             - uses: actions/upload-artifact@v6

@@ -86,9 +86,10 @@ class CiRowTimeoutSpec extends AnyFlatSpec with Matchers {
 
   "the rule ablation's collect job" should "merge the state each ablate row uploads, where the upload puts it" in {
     // the upload's paths share the workspace, not ablation/ (ablation.out sits beside it): `shards/*/state.json` matched
-    // nothing, and every collect since went red with no report
+    // nothing, and every collect since went red with no report. Then download-artifact@v6 put a lone row's artifact
+    // straight into shards/ (run 42377038878): --merge searches all of shards/, however the download laid it out
     val collect = RepoFile.jobs(RepoFile.read(".github/workflows/identity-rule-ablation.yml"))("collect")
     WorkflowText.steps(ablate).flatMap(_.get("with")).mkString("\n") should include("ablation.out")
-    WorkflowText.steps(collect).flatMap(_.get("run")).mkString("\n") should include("--merge shards/*/ablation/state.json")
+    WorkflowText.steps(collect).flatMap(_.get("run")).mkString("\n") should include("--merge shards ")
   }
 }
