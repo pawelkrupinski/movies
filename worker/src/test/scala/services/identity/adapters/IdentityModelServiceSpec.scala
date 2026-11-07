@@ -270,6 +270,31 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     holds(again) should not contain kept                                             // a take-up reads it alike
   }
 
+  // Unconfigured, the window is seven days (ListingRetention.DefaultMaxAge, the main session's choice of 2026-11-07): a
+  // week after its departure a kept listing is still an input, eight days after it is not.
+  it should "keep a departed listing for seven days by default" in {
+    val world = new World
+    val clock = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-06T10:00:00Z"))
+    world.clock = clock
+    val first = world.service()
+    first.takeUp()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)), movie(Multikino, "Matilda")))
+    world.scrape(first, Helios, Seq(movie(Helios, "Lalka")))
+    first.drain()
+    world.scrape(first, Multikino, Seq(movie(Multikino, "Matilda")))
+    first.drain()
+    val kept = ListingKey.of(Multikino, movie(Multikino, "Lalka", Some(2025)))
+    def holds(service: IdentityModelService) = service.peek(10.seconds).get.listings.map(_.key).toSet
+    clock.advance(java.time.Duration.ofDays(7))
+    world.scrape(first, Helios, Seq(movie(Helios, "Lalka")))
+    first.drain()
+    holds(first) should contain(kept)
+    clock.advance(java.time.Duration.ofDays(1))
+    world.scrape(first, Helios, Seq(movie(Helios, "Lalka")))
+    first.drain()
+    holds(first) should not contain kept
+  }
+
   // A take-up asks every unread page of what it takes up, as `admit` asks a new listing's: a listing taken up -- billed
   // in the archive, or kept after its showtimes ended -- is decided Pending on its page, and nothing else asks for it.
   // Verify scrape recording #10 (US): kept Alamo Drafthouse listings no film row names held their families' takes

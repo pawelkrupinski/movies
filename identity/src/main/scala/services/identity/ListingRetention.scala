@@ -40,9 +40,12 @@ object ListingRetention {
 
   /** How long a departed listing stays an input unless the worker's config sets another window: past it, its facts go
    *  whatever is billed. A pure bound on the store, by the departure's age alone -- never by the order of leaves and
-   *  arrivals. Two months covers a film's run and a venue's later repeat of it; a longer window was measured to cure no
-   *  flip (docs/design/identity-listing-retention.md). */
-  val DefaultMaxAge: java.time.Duration = java.time.Duration.ofDays(60)
+   *  arrivals. Seven days, the main session's choice of 2026-11-07 (the owner's delegation: "the biggest retention that
+   *  doesn't degrade anything too much"): the kept set grows linearly with the window (DE ~680, UK ~810 listings a day
+   *  of history), and the resolve stays inside a ~10% budget at 9 days, not at 18 (UK +22%, DE +56%); a longer window
+   *  cures no flip (docs/design/identity-listing-retention.md). It was 60 days, and ~3-4 days in effect, since departures
+   *  were dated only from 2026-11-03. */
+  val DefaultMaxAge: java.time.Duration = java.time.Duration.ofDays(7)
 
   /** Is `departed` an input at `now`: it left no more than `window` before. */
   def live(departed: Departed, now: Long, window: java.time.Duration = DefaultMaxAge): Boolean = now - departed.at <= window.toMillis

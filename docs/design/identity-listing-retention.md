@@ -10,7 +10,8 @@ The owner, 2026-11-07, in order:
   stand.
 - "don't make it more stateful than it was". No new collection, cache or reference-tracking store.
 - "(listing having showtimes or being refernced by identity match) + 30 days (actually)", then "make it 6 months". The
-  window was then delegated to the main session, which kept 60 days (2026-11-07) on the measurements below.
+  window was then delegated to the main session ("the biggest retention that doesn't degrade anything too much"), which
+  chose 7 days (2026-11-07) on the measurements below.
 - Then: "also write and update all listings forever to mongo db (but not memory) ... marked as deleted when they would be
   deleted", "only if it doesn't degrade service / queries", "still wipe showtimes", "keep updated time so we could wipe by
   time in the future" (the archive, below).
@@ -25,12 +26,12 @@ today's test and the relation the model groups and backs by) and it departed no 
   listing would make an output an input: a decision with the listing among its members keeps it referenced, so it never
   leaves.
 - The window is typed config, `settings.IdentityRetentionWindow` (`KINOWO_IDENTITY_RETENTION_DAYS`), read in one place
-  (`ProcessConfiguration`), defaulting to `ListingRetention.DefaultMaxAge` (60 days, the old constant). It is counted from
-  `departedAt` against the model's clock, never the wall clock, so incremental == whole still holds. With the default
-  this is no behaviour change.
+  (`ProcessConfiguration`), defaulting to `ListingRetention.DefaultMaxAge`: 7 days. The old constant was 60 days, but
+  departures were dated only from 2026-11-03, so the window in effect was about 3-4 days, and 7 is a modest step up. It
+  is counted from `departedAt` against the model's clock, never the wall clock, so incremental == whole still holds.
 - **Not built: "while referenced, then + grace".** The accepted wording keeps a listing for as long as it is referenced
-  and only then starts the grace. That would drop the cap for evergreen titles. The main session chose the 60-day cap
-  instead (2026-11-07), on the measurements below, until the kept set's growth is seen to level off.
+  and only then starts the grace. That would drop the cap for evergreen titles. The main session chose a fixed cap
+  instead (2026-11-07), on the measurements below.
 
 ## What it cures, and what it does not
 
@@ -44,25 +45,35 @@ today's test and the relation the model groups and backs by) and it departed no 
 ## Costs, measured
 
 Dated departures exist only from 2026-11-03, and recordings keep their corpora for 14 days. So the history is
-SYNTHETIC (`scripts.RetentionWindows`, on the experiment branch `identity-retained-history`): every listing an older
+SYNTHETIC (`scripts.RetentionWindows`, kept as the tag `experiment/retention-windows`): every listing an older
 recording billed that the newest does not is departed, at the last older recording that billed it. The newest
-recording's corpus (DE, 2026-11-07, 32.5k listings) is resolved whole with each window's kept listings.
+recording's corpus (2026-11-07; DE 32.5k listings, UK 33k) is resolved whole with each window's kept listings, on a CI
+runner (run 42361106859). Model takes.
 
-| window (days of history) | departed | kept | take moves | of them to Pending |
-|---|---|---|---|---|
-| 2 | 634 | 543 | 10 | 7 |
-| 4 | 2,862 | 2,600 | 26 | 17 |
-| 6 | 4,910 | 4,461 | 77 | 68 |
-| 9 | 8,896 | 7,478 | 428 | 420 |
+| country | window (days) | kept | resolve s | film moves | right -> wrong | new wrong | right lost |
+|---|---|---|---|---|---|---|---|
+| DE | 0 | 0 | 53.6 | - | - | - | - |
+| DE | 9 | 6,596 | 51.7 | 31 | 0 | 0 | 1 |
+| DE | 18 | 12,255 | 83.6 (+56%) | 42 | 0 | 0 | 2 |
+| UK | 0 | 0 | 55.0 | - | - | - | - |
+| UK | 9 | 6,160 | 62.6 (+14%) | 72 | 0 | 0 | 4 |
+| UK | 18 | 14,537 | 67.3 (+22%) | 81 | 0 | 1 | 4 |
 
-- **Kept grows about 830 listings a day of history** under today's rule: +23% of the billed set after 9 days.
-  `identity_retained` was first dated on 2026-11-04, so the kept set will keep growing under the 60-day cap until about
-  January. Watch it (Metrics).
-- **Takes.** Almost every move is a family going Pending. That is a MEASUREMENT LIMIT, not a cost: a kept listing from
-  an older recording asks questions the newest recording's tree never answered, and the replay reads each gap as
-  awaited. In prod the worker asks them. One real film move by 9 days; no right -> wrong among the judged.
-- **Resolve time** was measured on a loaded laptop (load average 80-200). Those numbers are not usable. The CI sweep
-  (run 42361106859) is meant to measure it.
+- **Kept grows linearly with no plateau by 18 days**: DE ~680 a day of history, UK ~810. Extrapolated, a 60-day window
+  would keep more listings than are billed (DE at ~45-50 days).
+- **Resolve time**: within noise at DE 9 days (one run per point; DE's 2-day point read 77.8 s), +14% at UK 9 days,
+  +22% to +56% at 18. Seven days is the largest window the ~10% budget supports. It keeps about 5k listings in DE and
+  6k in UK, well under the billed sets.
+- **Takes**: no right -> wrong. The right lost (DE "KARLA" at Kommunales Kino Pforzheim; UK "Candyman (1992)" at four
+  Curzons, Pending) and UK's one new wrong (Beehive "Nostalgic Cinema: The Secret Garden", Pending) come with windows
+  longer than 7 days.
+- **A measurement limit**: thousands of "same film, now Pending" moves. A kept listing from an older recording asks
+  questions the newest recording's tree never answered, and the replay reads each gap as awaited. In prod the worker
+  asks them.
+- **Re-measure on real history**: the archive (below) keeps every departed listing's row and its dates, so a later
+  window change can be measured on real dated departures instead of a synthetic history. Due once prod has about three
+  weeks of them (around 2026-11-25): if `kinowo_worker_identity_projection_seconds` stayed flat as the kept set grew,
+  raise the default to 14 days.
 
 ## The archive: rows are expired, never deleted (milestone c)
 
