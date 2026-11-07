@@ -99,6 +99,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     /** The held listings' store, which outlives a service as `identity_pending` outlives a worker. */
     var pendingStore: PendingListingStore = new PendingListingStore.InMemory
     var newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Shown
+    var retentionWindow: java.time.Duration = ListingRetention.DefaultMaxAge
     /** What the gate tells its metrics: the held count and oldest wait after each drain, and each promotion. */
     val gate = new GateReports
     /** Where a service's woken drains run: a thread of its own, or -- for a spec that drains by hand alone -- nowhere. */
@@ -107,7 +108,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
       reads, () => listingsOf(scrapes), normalizer, 1.second, scheduler(), pageWait = pageWait,
       clock = clock, retainedStore = retained, readiness = families, pendingStore = pendingStore, newWhilePending = newWhilePending,
-      metrics = gate)
+      metrics = gate, retentionWindow = retentionWindow)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
       scrapes += cinema -> films; service.venueScraped(cinema, films)
     }
