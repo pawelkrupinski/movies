@@ -50,7 +50,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   it should "meter what the backstop rehydrate catches that the change stream missed" in {
     val repo  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt-foo"))), normalizer = titleNormalizer)
     val m     = new RecordingCacheMetrics
-    val cache = new CaffeineMovieCache(repo, cacheMetrics = m, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned) // boot hydrate counts Foo as changed
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, mirror = new CorpusMirror(cacheMetrics = m)) // boot hydrate counts Foo as changed
     m.reset()
     // The source diverged out-of-band while no stream applied it: Foo removed, Bar added.
     repo.delete("Foo", Some(2024))

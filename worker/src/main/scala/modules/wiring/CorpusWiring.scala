@@ -4,7 +4,7 @@ import scala.concurrent.duration.DurationInt
 import settings.{BootHydrateRetryInterval, CacheRehydrateInterval}
 
 import modules.WorkerWiring
-import services.movies.{CaffeineMovieCache, MongoMovieRepository, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
+import services.movies.{CaffeineMovieCache, CorpusMirror, MongoMovieRepository, MovieChangeStream, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, RetiredVenueRows, ScreeningTokens, VenueRoster, ScreeningsRepository, SlotsRepository, StrandedSideRowsCleanup, TitleNormalizer, UnscreenedCleanup}
 
 /** ── MovieRecord cache (write-through) ───────────────────────────────────────
  *  The `movies` corpus and its side collections, the write-through cache every
@@ -55,16 +55,23 @@ trait CorpusWiring { self: WorkerWiring =>
 
   lazy val movieCache: CaffeineMovieCache = managedResources.stopping(
     new CaffeineMovieCache(movieRepository,
-      retrigger = enrichmentRetrigger, cacheMetrics = taskMetrics,
+      retrigger = enrichmentRetrigger,
       normalizer = titleNormalizer, clock = clock,
       listingIntakeMetrics = taskMetrics,
       stringPool = workerMetrics.stringPool,
+      mirror = movieCacheMirror))
+
+  /** How [[movieCache]] is kept in step with `movies`: the boot hydrate's retry budget, the
+   *  backstop rehydrate's cadence, and the change-stream mirror ([[CorpusMirror]]). */
+  lazy val movieCacheMirror: CorpusMirror =
+    new CorpusMirror(
       bootHydrateMaxAttempts = configuration.bootHydrateMaxAttempts,
       bootHydrateRetry       = configuration.bootHydrateRetryInterval(BootHydrateRetryInterval(1.second)),
-      rehydrateInterval = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)),
+      cacheMetrics           = taskMetrics,
+      rehydrateInterval      = configuration.cacheRehydrateInterval(CacheRehydrateInterval(6.hours)),
       // The boot's other whole-corpus readers take the hydrate's read rather than read it again.
-      bootReaders = Seq(readModelBootStudy),
-      ticks = ticks))
+      bootReaders            = Seq(readModelBootStudy),
+      ticks                  = ticks)
 
   /** Where the scrape guards keep each venue's state (the listing intake's). */
   lazy val scrapeGuardLedger: services.movies.ScrapeGuardLedger = new services.scrapes.MongoScrapeGuardLedger(mongoConnection.database)

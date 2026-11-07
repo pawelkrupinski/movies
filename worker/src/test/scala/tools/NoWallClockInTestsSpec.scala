@@ -301,7 +301,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "worker/src/main/scala/services/identity/adapters/IdentityProjection.scala",
     "worker/src/main/scala/services/identity/adapters/IdentityModelService.scala",
     "worker/src/main/scala/services/readmodel/ReadModelProjector.scala",
-    "worker/src/main/scala/services/movies/CaffeineMovieCache.scala",
+    "worker/src/main/scala/services/movies/CorpusMirror.scala",
     "worker/src/main/scala/services/enrichment/CacheRefresher.scala",
     "worker/src/main/scala/services/enrichment/ImdbRatings.scala"
   )

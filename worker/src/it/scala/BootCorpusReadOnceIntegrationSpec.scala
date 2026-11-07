@@ -89,7 +89,8 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     val projector  = new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned, bootStudy = Some(study))
     val sweeper    = new ReadModelSweeper(projector.projection)
     val readers: Seq[BootCorpusReader] = if (handOver) Seq(study) else Nil
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, bootReaders = readers)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned,
+      mirror = new services.movies.CorpusMirror(bootReaders = readers))
     projector.prepare(sweeper)
     val registry = new io.prometheus.metrics.model.registry.PrometheusRegistry()
     val census   = new CorpusCensus(cache, WorkerCorpusMetrics.gauge(registry), WorkerSourceFilmsMetrics.gauge(registry),

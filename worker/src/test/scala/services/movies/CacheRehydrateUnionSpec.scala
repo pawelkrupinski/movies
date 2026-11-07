@@ -48,12 +48,12 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
   "boot hydrate" should "retry an empty findAll (Mongo not ready) so quiescent rows still load" in {
     val cache = new CaffeineMovieCache(
-      flakeyRepository(base), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(5), bootHydrateRetry = settings.BootHydrateRetryInterval(20.millis), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+      flakeyRepository(base), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, mirror = new CorpusMirror(bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(5), bootHydrateRetry = settings.BootHydrateRetryInterval(20.millis)))
     cache.entries should have size 1   // boot retried past the empty first findAll
   }
 
   it should "give up after the configured attempts on a genuinely empty repository" in {
-    val cache = new CaffeineMovieCache(repositoryOf(), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(3), bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
+    val cache = new CaffeineMovieCache(repositoryOf(), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, mirror = new CorpusMirror(bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(3), bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis)))
     cache.entries should have size 0  // no rows, and it didn't hang
   }
 
@@ -175,7 +175,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
     val log    = scala.collection.mutable.ListBuffer.empty[String]
     val reader = new RecordingBootReader(log)
     new CaffeineMovieCache(new PagedRepository(i => showingAt(s"Film $i", Multikino, Nil), pages = 2, between = i => log += s"reading page $i"),
-      normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(reader))
+      normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, mirror = new CorpusMirror(bootReaders = Seq(reader)))
     log.toList shouldBe List("page of Film 0", "reading page 1", "page of Film 1", "read ended: Whole")
   }
 
@@ -196,7 +196,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   "the boot hydrate" should "hand its complete read to the boot readers, once" in {
     val reader = new RecordingBootReader
     val cache  = new CaffeineMovieCache(repositoryOf(base, decorated), normalizer = titleNormalizer,
-      clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(reader))
+      clock = _root_.tools.SpecClock.Pinned, mirror = new CorpusMirror(bootReaders = Seq(reader)))
     reader.offers.map(_.map(_.map(_.title).toSet)) shouldBe Seq(Some(Set(base.title, decorated.title)))
     cache.rehydrate()                                      // a backstop read is not the boot's
     reader.offers should have size 1
@@ -206,20 +206,20 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   it should "hand over nothing but a None when its read failed, so each reader reads for itself" in {
     val reader = new RecordingBootReader
     new CaffeineMovieCache(new FailingReadRepository(base), normalizer = titleNormalizer,
-      clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(reader))
+      clock = _root_.tools.SpecClock.Pinned, mirror = new CorpusMirror(bootReaders = Seq(reader)))
     reader.offers shouldBe Seq(None)
   }
 
   // At boot an empty answer is as likely a Mongo not ready yet as an empty store (the retry above).
   it should "not hand over an empty answer as the corpus, but the first whole read a retry makes" in {
     val reader = new RecordingBootReader
-    new CaffeineMovieCache(flakeyRepository(base), bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(5),
-      bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis), normalizer = titleNormalizer,
-      clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(reader))
+    new CaffeineMovieCache(flakeyRepository(base), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned,
+      mirror = new CorpusMirror(bootHydrateMaxAttempts = settings.BootHydrateMaxAttempts(5),
+        bootHydrateRetry = settings.BootHydrateRetryInterval(5.millis), bootReaders = Seq(reader)))
     reader.offers.map(_.map(_.map(_.title))) shouldBe Seq(Some(Seq(base.title)))
 
     val empty = new RecordingBootReader
-    new CaffeineMovieCache(repositoryOf(), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, bootReaders = Seq(empty))
+    new CaffeineMovieCache(repositoryOf(), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned, mirror = new CorpusMirror(bootReaders = Seq(empty)))
     empty.offers shouldBe Seq(None)
   }
 }
