@@ -152,18 +152,23 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
 
   /** Does `node`, taking no film alone, credit a director that the film `other` holds was not directed by (`director`
    *  `different`: no credit of the record's is the same person), its credit standing -- every listing's own statement
-   *  ([[SourceReliability.Fact.Directors]] decided), or a credit naming a record of its very title by that director (a
-   *  copied credit then names the film its billing is, not a slip)? A title alone joining them would lend it a film its
-   *  own credit contradicts. DE Bambi's "Les Misérables" [2026, 99′] {Fred Cavayé, kinoheld's} joined ScharfrichterKino's
-   *  "Les Misérables - Die Geschichte von Jean Valjean" by a title segment and took Besnard's "Jean Valjean" (1376439),
-   *  beside Cavayé's own "Les Misérables" (2026, 1241803). */
+   *  ([[SourceReliability.Fact.Directors]] decided), or a credit naming a record of its very title by that director that
+   *  the billing's own year or running time fits too (a copied credit then names the film its billing is, not a slip)?
+   *  A title alone joining them would lend it a film its own credit contradicts. DE Bambi's "Les Misérables" [2026, 99′]
+   *  {Fred Cavayé, kinoheld's} joined ScharfrichterKino's "Les Misérables - Die Geschichte von Jean Valjean" by a title
+   *  segment and took Besnard's "Jean Valjean" (1376439), beside Cavayé's own "Les Misérables" (2026, 1241803).
+   *
+   *  A copied credit with no year or running time beside it is no such statement: DE Mal seh'n Kino's "THE THING WITH
+   *  FEATHERS" {Anja Oelofse} carries the credit kinoheld copied from Oelofse's 24-minute short of that title, and is
+   *  Southern's film the venue also bills as "Das Ding mit Federn". */
   private def creditDeniesHeld(node: EvidenceNode, otherFilm: Option[Int], nodeFilm: Option[Int]): Boolean =
     nodeFilm.isEmpty && otherFilm.exists { held =>
       lazy val scored = families.scopeOf(node).of(node)
       node.listings.forall(_.directors.nonEmpty) &&
         scored.find(_.candidate.tmdbId == held).exists(_.category("director").contains("different")) &&
         (node.listings.forall(SourceReliability.decides(_, SourceReliability.Fact.Directors)) ||
-          scored.exists(s => s.candidate.tmdbId != held && IdentityMeasures.sameDirector(s.measures) && s.category("title").contains("exact")))
+          scored.exists(s => s.candidate.tmdbId != held && IdentityMeasures.sameDirector(s.measures) && s.category("title").contains("exact") &&
+            (IdentityMeasures.ownAgreement(s.measures)._1("year") || IdentityMeasures.runtimeGap(s.measures).exists(_ <= Corroboration.RuntimeBand))))
     }
 
   /** Is `kept` a node of kept listings alone ([[Listing.kept]]) and `other` one whose feed link the present sources
