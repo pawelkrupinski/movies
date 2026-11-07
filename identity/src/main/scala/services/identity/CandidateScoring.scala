@@ -32,7 +32,8 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
    *  catalogue namesake of a bare billing under a film festival's banner ([[ListingShape.festivalsCatalogueNamesake]]),
    *  one work of a "//" double bill ([[MultiFilmBill.slashesAnotherWork]]), a film of another part than the one its title numbers and subtitles ([[IdentityMeasures.titlesAnotherPart]]), or
    *  of another instalment than the one its title numbers and its original title subtitles
-   *  ([[IdentityMeasures.numbersAnotherSubtitle]]). A learned cannot-link never denies a relay its own house's record of
+   *  ([[IdentityMeasures.numbersAnotherSubtitle]]), or another year's edition of the series its title dates
+   *  ([[IdentityMeasures.datesAnotherEdition]]). A learned cannot-link never denies a relay its own house's record of
    *  its work and season ([[RelayStage.particularRecordOf]]). */
   def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
     evidenceDenial(listing, film, measures).isDefined
@@ -58,6 +59,8 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
         Denial("a part its title gives a subtitle none of the film's titles holds")))
       .orElse(Option.when(IdentityMeasures.numbersAnotherSubtitle(listing, film))(
         Denial("an instalment its title numbers, whose subtitle none of the film's titles holds")))
+      .orElse(Option.when(IdentityMeasures.datesAnotherEdition(listing, film))(
+        Denial("another year's edition of the series its title dates")))
       // a relay's record of its house, work and season ([[RelayStage]]) files a broadcast's running time and its house's
       // banner on the work: the learned runtime-gap and title-overlap vetoes say nothing of it. Nor of the record of the
       // very season a relay's screenings broadcast its work in ([[StageRelays.screenedSeasonRecord]]), under a banner naming

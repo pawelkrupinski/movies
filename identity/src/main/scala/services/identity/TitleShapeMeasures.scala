@@ -51,6 +51,30 @@ private[identity] object TitleShapeMeasures {
       subtitles.forall(words => !words.exists(f.titleWords))
   }
 
+  /** A title closed by an EDITION's year ("Disney Jr Cinema Club 2026"): the series it names, as a key, and that year. */
+  private val EditionYear = """^(.*\S)\s+((?:19|20)\d{2})$""".r
+  private def editionOf(title: String): Option[(String, Int)] =
+    EditionYear.findFirstMatchIn(title.trim).map(m => key(m.group(1)) -> m.group(2).toInt).filter(_._1.nonEmpty)
+
+  /** Does the listing bill an annual series' edition of one year and the film's own titles close that series' name with
+   *  another year, never that one ("Disney Jr. Cinema Club 2025")? The listing's year is the one its title closes the
+   *  series' name with ("Disney Jr Cinema Club 2026"), else the year it states beside a title that is the series' name
+   *  whole (Regal Stowmarket's "Disney Jr. Cinema Club" [2026]), against an earlier edition only. An annual programme's record is its year's: UK Film
+   *  Theatre Leiston's and Nova Woking's 2026 club took the 2025 record whenever Regal Stowmarket's billing joined them,
+   *  and lost it as the family grew (drift slice film-theatre-leiston-disney-jr-cinema-club-2026). A series the film
+   *  names otherwise ("Blade Runner 2049") is no edition of it. */
+  def datesAnotherEdition(l: Listing, f: Film): Boolean = {
+    lazy val filed = f.ownTitles.flatMap(editionOf).distinct
+    val closed = l.ownTitles.flatMap(editionOf).distinct
+    if (closed.nonEmpty) closed.forall { case (series, year) => filed.exists(_._1 == series) && !filed.contains(series -> year) }
+    else l.year.exists { year =>
+      // a year stated beside the series' name whole dates a LATER edition only: a feed's year earlier than the edition's
+      // is its guess (US Lark Theater's "Women's Adventure Film Tour" [2025] screens TMDB's "… 2026" tour)
+      val series = l.ownTitles.map(key).toSet
+      filed.exists { case (name, filedYear) => series(name) && filedYear < year } && !filed.exists { case (name, filedYear) => series(name) && filedYear == year }
+    }
+  }
+
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27
    *  "The Metropolitan Opera: Così fan tutte" ×97, which read as a different director than Phelim McDermott and

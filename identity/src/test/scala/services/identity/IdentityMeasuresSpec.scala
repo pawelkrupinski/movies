@@ -1603,6 +1603,24 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Film("Star Wars: The Force Awakens", year = Some(2015))) shouldBe false
   }
 
+  "a billing of an annual series' edition" should "be another edition than a record the series' name dates by another year" in {
+    // UK Film Theatre Leiston's "Disney Jr Cinema Club 2026" and Regal Stowmarket's "Disney Jr. Cinema Club" [2026] beside
+    // TMDB's record of the 2025 club (drift slice film-theatre-leiston-disney-jr-cinema-club-2026)
+    val club2025 = Film("Disney Jr. Cinema Club 2025", year = Some(2025))
+    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr Cinema Club 2026"), club2025) shouldBe true
+    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr. Cinema Club", year = Some(2026)), club2025) shouldBe true
+    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr. Cinema Club 2025"), club2025) shouldBe false
+    // a stated year earlier than the record's edition is a feed's guess, not an earlier edition: US Lark Theater's
+    // "Women's Adventure Film Tour" [2025] screens TMDB's 2026 tour
+    IdentityMeasures.datesAnotherEdition(Listing("Women's Adventure Film Tour", year = Some(2025)),
+      Film("Women's Adventure Film Tour 2026", year = Some(2026))) shouldBe false
+    // undated: no edition billed
+    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr. Cinema Club"), club2025) shouldBe false
+    // a title its film names whole with its year, and a series the film names otherwise
+    IdentityMeasures.datesAnotherEdition(Listing("Blade Runner 2049"), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
+    IdentityMeasures.datesAnotherEdition(Listing("Blade Runner", year = Some(1982)), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
+  }
+
   "a numbered title whose original title gives a subtitle" should "be another instalment only when none of the film's titles holds it" in {
     // DE Kinopolis' "Der Herr der Ringe 2 (Extended Version)" (Forgejo recording 528) took Bakshi's 1978 film by its bare top hit
     val lotr2    = Listing("Der Herr der Ringe 2 (Extended Version)", originalTitle = Some("The Lord of the Rings: The Two Towers – Extended"))

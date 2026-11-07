@@ -56,6 +56,7 @@ object RuleContract {
     Declared("veto:one-work-of-a-double-bill-whose-other-piece-none-of-its-titles-holds", "CandidateScoring.evidenceDenial: listing's own billing vs the film record"),
     Declared("veto:a-part-its-title-gives-a-subtitle-none-of-the-film-s-titles-holds", "CandidateScoring.evidenceDenial: listing's own billing vs the film record"),
     Declared("veto:an-instalment-its-title-numbers-whose-subtitle-none-of-the-film-s-titles-holds", "CandidateScoring.evidenceDenial: listing's own billing vs the film record"),
+    Declared("veto:another-year-s-edition-of-the-series-its-title-dates", "CandidateScoring.evidenceDenial: listing's own billing vs the film record"),
     Declared("veto:a-namesake-of-the-film-whose-director-its-billing-names", "directorBilled: billing names a director, film's banner does not"),
     Declared("veto:another-instalment-than-the-one-the-title-numbers", "numeral category, own title vs film"),
     Declared("veto:pinned-never-this-film", "admin pin on the node's listing"),
