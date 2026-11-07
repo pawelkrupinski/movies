@@ -528,7 +528,7 @@ object Candidate {
 
 /** A lookup's answer, one of three and nothing else (docs/design/identity-structural-fixes.md, fix 4):
  *  - `Known`: what the source said, an empty answer (no film, no hit) included;
- *  - `Failed`: TERMINAL -- given up on (`QuestionMemory.givenUp`: failed its kind's give-up count in a row); a decision
+ *  - `Failed`: TERMINAL -- given up on (`QuestionMemory.failedPastGiveUp`: failed its kind's give-up count in a row); a decision
  *    may read it as no evidence, and is decided on;
  *  - `Unknown`: NOT YET answered -- never asked, in flight, or failed and due again. Never "no film": a decision that
  *    reads one is not decided, it awaits the question ([[ResolverDecision.awaits]]).
@@ -552,8 +552,6 @@ enum Answer[+A] {
     case Known(_)         => true
     case Failed | Unknown => false
   }
-  /** Decided on: answered, or failed for good. */
-  def isSettled: Boolean = this != Unknown
   /** Not answered yet: what a decision awaits ([[ResolverDecision.awaits]]); a failure for good is not. */
   def isAwaited: Boolean = this == Unknown
   def map[B](f: A => B): Answer[B] = this match {

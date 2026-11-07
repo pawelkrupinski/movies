@@ -122,7 +122,7 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     store.answers(VoterFamily.Metacritic).titled("Dune") shouldBe Answer.Unknown
     remembered.attempted(dune) shouldBe true
     remembered.outcome(dune).collect { case QuestionMemory.Outcome.Failed(0, _, host) => host } shouldBe Some(Some("www.rottentomatoes.com"))
-    remembered.concluded(dune) shouldBe false                                       // a wait: a take waiting on it waits
+    remembered.givenUp(dune) shouldBe false                                          // a wait: a take waiting on it waits
     projections.get shouldBe 2                                                       // attempted: a waiting cluster may settle
     handler.handle(AgreementAskers.task(dune)()) shouldBe HandlerOutcome.Skipped     // inside its wait: not asked again
     blocked.asked.get shouldBe 1

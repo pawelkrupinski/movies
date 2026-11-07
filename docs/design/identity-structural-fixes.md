@@ -165,13 +165,13 @@ backtest's definition): DE 134 reversals, 67 LATE-ANSWER (Geister's 56 among the
    listing alone -- its titles' and directors' searches, the records their hits name -- none for an event no film
    database holds; plus its venue page while its read was never attempted (`ListingReadiness.ofPage`,
    `PageWait.unattempted`). A function of the listing and the answers filed: the same whatever else is billed (R4).
-2. **The gate** (`IdentityModelService.gate`, `ListingReadiness`, `AgreementReadiness`): a listing billed otherwise than
-   the model holds it (new, or its facts moved) is taken in only once each of its questions is answered or concluded by
-   the question memory (`QuestionMemory.concluded`: a durable non-answer, or failures its kind gives up on; never one
-   still inside its retries, nor one never asked). Until then the model keeps the version it holds; the questions are
+2. **The gate** (`ModelInputGate`, `ListingReadiness`, `AgreementReadiness`): a listing billed otherwise than the model
+   holds it (new, or its facts moved) is taken in only once each of its questions was ATTEMPTED once by the question
+   memory's record (`QuestionMemory.attempted`: answered, durably unanswered or failed alike; never one merely queued).
+   Until then the model keeps the version it holds; the questions are
    asked through the queue claimed ahead of the agreement's own (`AgreementQuestions.enqueue(claimAhead = 0)`), and
    every filing wakes the model, whose next drain promotes each held listing whose questions closed -- no new scrape.
-   No clock of ours ends the wait: each ask terminates (2a: a turned-away ask fails, a family with no source is filed).
+   A listing held `ModelInputGate.MaxHold` (10 minutes) is taken in regardless, and counted.
 3. **A listing new to the model** is shown at once on its own decision, no film, Pending on its questions (the main
    session's choice (a); a later match is a gain, never a reversal), never joining another's decision. The one place to
    switch to (b), shown only once taken in: `IdentityModelService.NewWhilePending`.

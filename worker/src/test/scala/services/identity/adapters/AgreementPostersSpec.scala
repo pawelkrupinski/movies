@@ -224,12 +224,12 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
       clock.advanceSeconds(60)
     }
     store.venue(patria) shouldBe Answer.Unknown
-    memory.concluded(question) shouldBe false
+    memory.givenUp(question) shouldBe false
     // killed (no shutdown hook); a new worker over the same stores, the host still blocked a day after the first turn-away
     clock.advanceSeconds(QuestionPolicies.TurnAwayGiveUp.toSeconds - 24 * 60)
     val restarted = new QuestionMemory(docs, "pl-PL", clock)
     asker(store, hashing(blocked), memory = restarted).handle(venueTask()) shouldBe HandlerOutcome.Done
     (store.venue(patria), store.unread(PosterQuestion.Venue(patria))) shouldBe ((Answer.Known(None), true))
-    restarted.concluded(question) shouldBe true
+    restarted.givenUp(question) shouldBe true
   }
 }

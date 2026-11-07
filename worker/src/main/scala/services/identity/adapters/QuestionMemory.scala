@@ -128,25 +128,19 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
    *  backoff -- which leaves a take settled past it Pending. Answered, durably unanswered, given up on, or held nothing of
    *  (never attempted: the stage waits on that one as unattempted, not by this). */
   def givenUp(question: Question): Boolean = outcome(question) match {
-    case Some(Outcome.Failed(times, _, _)) => times >= QuestionPolicies.giveUpFailures(question.kind)
-    case _                                 => true
-  }
-
-  /** Asked and done with: an attempt the memory holds came to an answer, a durable non-answer, or failures its kind gives up
-   *  on ([[givenUp]]) -- never a question it holds no attempt of, which [[givenUp]] counts as given up. What a reader
-   *  decides on as settled (fix 1's input gate, the model's live asks). */
-  def concluded(question: Question): Boolean = outcome(question) match {
-    case Some(Outcome.Failed(times, _, _)) => times >= QuestionPolicies.giveUpFailures(question.kind)
-    case Some(_)                           => true
-    case None                              => false
+    case Some(failed: Outcome.Failed) => pastGiveUp(question, failed)
+    case _                            => true
   }
 
   /** Failed its kind's give-up count in a row ([[QuestionPolicies.giveUpFailures]]): what the model's stored-first lookups
    *  read as [[Answer.Failed]] (fix 4b) -- a durable non-answer is the store's to file, never read so. */
   def failedPastGiveUp(question: Question): Boolean = outcome(question) match {
-    case Some(Outcome.Failed(times, _, _)) => times >= QuestionPolicies.giveUpFailures(question.kind)
-    case _                                 => false
+    case Some(failed: Outcome.Failed) => pastGiveUp(question, failed)
+    case _                            => false
   }
+
+  private def pastGiveUp(question: Question, failed: Outcome.Failed): Boolean =
+    failed.attempts >= QuestionPolicies.giveUpFailures(question.kind)
 
   /** The questions whose ask failed just now — asked again on their kind's failure backoff — and how many times in a
    *  row each has failed now (counted since the last answer or durable non-answer). `host`: where the failing request
@@ -160,7 +154,7 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
    *  for good, and with it the poster's evidence. Yet every ask still terminates (fix 1's input gate waits on it): one
    *  turned away for [[QuestionPolicies.TurnAwayGiveUp]] with no real attempt between -- an answer, a non-answer or a
    *  failure ends the run -- counts its kind's give-up failures ([[QuestionPolicies.giveUpFailures]]), a terminal
-   *  failure as [[concluded]] reads it. The run's start is kept on the marker, so a restart ends no run early or late.
+   *  failure as [[givenUp]] and [[failedPastGiveUp]] read it. The run's start is kept on the marker, so a restart ends no run early or late.
    *  Returns how many failures each counts now. */
   def turnedAway(questions: Iterable[Question], host: Option[String] = None): Map[Question, Int] =
     failing(questions, host) { (question, previous, now) =>

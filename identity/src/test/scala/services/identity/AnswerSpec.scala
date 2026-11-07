@@ -27,9 +27,9 @@ class AnswerSpec extends AnyFlatSpec with Matchers {
   it should "tell a failure for good from a question not answered yet" in {
     (Answer.Failed: Answer[Int]).map(_ * 3) shouldBe Answer.Failed
     (Answer.Failed: Answer[Int]).flatMap(v => Answer.Known(v)) shouldBe Answer.Failed
-    Answer.Failed.isSettled shouldBe true
-    Answer.Unknown.isSettled shouldBe false
-    Answer.Known(None).isSettled shouldBe true
+    Answer.Failed.isAwaited shouldBe false
+    Answer.Unknown.isAwaited shouldBe true
+    Answer.Known(None).isAwaited shouldBe false
     Answer.Failed.isAnswered shouldBe false
     Answer.sequence(Seq(Answer.Known(1), Answer.Failed)) shouldBe Answer.Failed
     Answer.sequence(Seq(Answer.Failed, Answer.Unknown)) shouldBe Answer.Unknown
