@@ -27,7 +27,8 @@ object ProdRetained {
    *  ([[RetainedListingStore.fromHistory]]). Captured as read: each replay keeps of it what the take-up's rule keeps
    *  against the listings billed ([[services.identity.ListingRetention.retained]]). */
   def read(database: org.mongodb.scala.MongoDatabase, now: Long): Seq[Listing] =
-    new MongoRetainedListingStore(database).read().map(_.map(_.listing)).getOrElse {
+    // read only: the clock dates no write
+    new MongoRetainedListingStore(database, java.time.Clock.fixed(java.time.Instant.ofEpochMilli(now), java.time.ZoneOffset.UTC)).read().map(_.map(_.listing)).getOrElse {
       val history = new services.identity.adapters.MongoIdentityHistory(database, new services.TtlIndexMismatches)
       RetainedListingStore.fromHistory(history.since(Seq(services.identity.adapters.HistoryEntry.Listing),
         now - services.identity.adapters.IdentityHistory.Kept.toMillis).filter(_.at <= now))

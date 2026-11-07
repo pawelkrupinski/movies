@@ -64,6 +64,26 @@ recording's corpus (DE, 2026-11-07, 32.5k listings) is resolved whole with each 
 - **Resolve time** was measured on a loaded laptop (load average 80-200). Those numbers are not usable. The CI sweep
   (run 42361106859) is meant to measure it.
 
+## The archive: rows are expired, never deleted (milestone c)
+
+`identity_retained` keeps every row. One document per listing key (`_id`): a listing that departs again replaces its own
+row, never adds one. Where the store used to delete a row (the listing billed again, or past the window, or left out of a
+take-up's `replace`), it now EXPIRES it instead. `expiredAt` and `updatedAt` are set from the injected clock, and the
+row's screening days (`listing.screenings`) are stripped ("still wipe showtimes"). The row keeps the listing's details:
+title, facts, venue, links and timestamps. `updatedAt` is written on every insert, replace and expiry.
+
+- **Readers.** The store's `read` (the worker's take-up; `tools.ProdRetained`, the nightly recording's capture) asks for
+  `expiredAt: null`, the live rows and the marker. So neither memory nor the capture grows with the archive. The prod
+  mirror copies the whole collection, and no mirror tool reads it except through the store.
+- **Index.** One index, (`expiredAt`, `updatedAt`). The reader's query uses its prefix. A future wipe
+  (`MongoRetainedListingStore.expiredBefore`: `expiredAt > 0`, `updatedAt` < T; not `$exists`, which reads every index key) is a range on it. `MongoRetainedListingStoreIntegrationSpec` holds both to IXSCAN
+  over ten expired rows for every live one, and holds that the reader examines only the live rows and the marker.
+- **Disk.** Unique keys departing a day, measured on the mirror's `identity_history` from 10-29 to 11-06: DE ~410, UK ~530,
+  US ~1,730, ES ~180 (PL keeps no history). Only ~1% of keys depart twice in that week, so unique rows grow at roughly
+  the departure rate, ~2.9k a day across countries. At 310-900 B a row (the mirror's average object size per country)
+  that is about 0.5-1 GB a year. Mongo has no per-collection size metric (the exporter deliberately leaves collstats off);
+  the volume's `filesystem-capacity` alert covers it.
+
 ## Metrics
 
 The worker exports `kinowo_worker_identity_model_{present,kept,departed}_listings{country}` beside
