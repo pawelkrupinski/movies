@@ -202,7 +202,7 @@ if $offline; then
 fi
 
 status=0
-java -Xmx2g -cp "$(cat "$work/classpath")" scripts.IdentityCapture ${java_args[@]+"${java_args[@]}"} || status=$?
+java -Xmx2g -Djava.awt.headless=true -cp "$(cat "$work/classpath")" scripts.IdentityCapture ${java_args[@]+"${java_args[@]}"} || status=$?
 
 # Handed a corpus of its own, a capture stamps <cc>.inputs with the corpus's hash; identity-slice reads the recording.
 if $offline && ! $dry; then

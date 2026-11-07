@@ -11,7 +11,7 @@ root=${TAKES_SKIP_PROOF_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
 # can read otherwise (not sourced: it reaches the laptop tooling, none of which this needs)
 locale=(-Duser.language=en -Duser.country=US)
 sbt_cmd=(sbt "${locale[@]/#/-J}")
-java_cmd=(java -Xmx6g "${locale[@]}" --sun-misc-unsafe-memory-access=allow)
+java_cmd=(java -Xmx6g "${locale[@]}" -Djava.awt.headless=true --sun-misc-unsafe-memory-access=allow)
 log=$(mktemp) || exit 2
 trap 'rm -f "$log"' EXIT
 ( cd "$root" && "${sbt_cmd[@]}" -batch "testkit/compile" "export testkit/Runtime/fullClasspath" ) > "$log" 2>&1 \

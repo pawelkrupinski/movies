@@ -440,11 +440,13 @@ identity_classpath_compile() {
   [ -s "$cp" ] || { rm -f "$cp"; tail -40 "$log" >&2; identity_log "no classpath in sbt's output ($log)"; return 1; }
 }
 
-# The JVM every identity tool runs in: English number formats ("0.97", never "0,97"), no Unsafe warnings. IDENTITY_SBT
-# is sbt in the same locale (a heap and the commands appended: "${IDENTITY_SBT[@]}" -J-Xmx6g -batch ...).
+# The JVM every identity tool runs in: English number formats ("0.97", never "0,97"), no Unsafe warnings, AWT headless
+# (on macOS a JVM touching AWT without it registers as a foreground app and steals focus: every what-if resolve did;
+# scripts/tool-jvm-headless-test.sh guards it). IDENTITY_SBT is sbt in the same locale, headless from .jvmopts (a heap
+# and the commands appended: "${IDENTITY_SBT[@]}" -J-Xmx6g -batch ...).
 IDENTITY_LOCALE=(-Duser.language=en -Duser.country=US)
 # shellcheck disable=SC2034 # read by the scripts sourcing this
-IDENTITY_JAVA=(java -Xmx6g "${IDENTITY_LOCALE[@]}" --sun-misc-unsafe-memory-access=allow)
+IDENTITY_JAVA=(java -Xmx6g "${IDENTITY_LOCALE[@]}" -Djava.awt.headless=true --sun-misc-unsafe-memory-access=allow)
 # sized for a share of the cores on a Mac agents share (scripts/jvm-gate.sh): none, or one option
 identity_cpus=$(jvm_cpu_options); [ -z "$identity_cpus" ] || IDENTITY_JAVA+=("$identity_cpus")
 # shellcheck disable=SC2034 # read by the scripts sourcing this

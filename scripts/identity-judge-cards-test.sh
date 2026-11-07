@@ -48,7 +48,7 @@ java_line() { grep '^java' "$work/calls" | tail -1; }
 
 check "this checkout's capture, judged by this checkout's judgements" "0" "$(cards --country pl)"
 check "...handed to IdentityJudgeCards, run from the repository" \
-  "java $repo -Xmx6g -Duser.language=en -Duser.country=US --sun-misc-unsafe-memory-access=allow -cp $repo/worker/target/scala-3.9.0/test-classes:/lib/a.jar scripts.IdentityJudgeCards --fixtures $repo/test/resources/fixtures/identity-unmatched --labels $repo/test/resources/fixtures/identity-judgements.tsv --country pl" \
+  "java $repo -Xmx6g -Duser.language=en -Duser.country=US -Djava.awt.headless=true --sun-misc-unsafe-memory-access=allow -cp $repo/worker/target/scala-3.9.0/test-classes:/lib/a.jar scripts.IdentityJudgeCards --fixtures $repo/test/resources/fixtures/identity-unmatched --labels $repo/test/resources/fixtures/identity-judgements.tsv --country pl" \
   "$(java_line)"
 check "...saying a record the capture never read stays unknown without a TMDB key" "1" "$(grep -c 'no TMDB_API_KEY' "$work/err")"
 
