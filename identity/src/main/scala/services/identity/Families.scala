@@ -55,6 +55,13 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  Metropolitan Opera: Macbeth" ×6 from the Met's 2026/27 record, and its Fanciulla billing (the original title Vue's
    *  feed carries) withdrew Vue's "MET Opera 2026-27: La Fanciulla Del West" ×81 from the Met's 2026/27 Fanciulla.
    *
+   *  Nor does a sibling whose page reads as REUSED ([[readsAsReused]]: another record's original title and director copied
+   *  onto it) withdraw anyone: its facts are that record's, so they deny for itself only. A function of the sibling alone,
+   *  so a family's take no longer hangs on whether a feed-linked billing has arrived to cut it off (the reused-page
+   *  cannot-link, [[ConstraintEdges]]): DE Abaton's bare "De Gaulle Zeit des Widerstands" took Baudry's film alone, lost it
+   *  when Bambi's billing on kinoheld's page of Schauder's "Vater, Sohn und der Preis des Widerstands" arrived, and took it
+   *  back once Kino im E-Werk's Cineamo link did (the family explorer, recording 573).
+   *
    *  A sibling a rule took alone (`takenAlone`: its own take) withdraws nothing — its denial says it is another film, not
    *  that the node is — unless the film it took is one the node's own title names exactly while the node's take reads its
    *  title otherwise (another country's title, the original one) and no other venue's listing corroborates that take,
@@ -101,7 +108,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
       .flatMap { sibling =>
         val taken = takenAlone(sibling.id)
         // the title link last: a sibling taken alone almost never may withdraw, and a family can hold thousands of them
-        if (!taken.forall(namedCloser) || !links.titleLinked(node, sibling)) None
+        if (!taken.forall(namedCloser) || !links.titleLinked(node, sibling) || readsAsReusedIn(scope, sibling)) None
         else scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied &&
           withdraws(sibling, other, taken.isDefined)).map(other => sibling -> other)
       }
@@ -161,7 +168,8 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   /** Does `node`'s page read as REUSED ([[Acceptance.copiedBeyondItsBilling]]): a record its copied original title and the
    *  director it credits name stands in its pool, though its billing says more than that record's titles? Its facts are
    *  then the record's, copied onto the page, not its billing's film's. */
-  def readsAsReused(node: EvidenceNode): Boolean = scopeOf(node).of(node).exists(acceptance.copiedBeyondItsBilling)
+  def readsAsReused(node: EvidenceNode): Boolean = readsAsReusedIn(scopeOf(node), node)
+  private def readsAsReusedIn(scope: FamilyScope, node: EvidenceNode): Boolean = scope.of(node).exists(acceptance.copiedBeyondItsBilling)
 
   /** Does `n`'s evidence deny `film` — scored, or, for a film it has no evidence path to, its own
    *  evidence against the film's record? */
