@@ -338,6 +338,37 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     pages.requested.toSet shouldBe Set(kept, billed)
   }
 
+  // Prod DE, 2026-11-06: 947 departed listings stored beside their own live twin -- the same venue's billing under another
+  // key (SecondFeedFacts lending a bare Cineamo row kinoheld's page and year; a feed re-casing a title). Duplicates, not
+  // departures: a take-up deletes them from the store, so neither the model nor the store holds both.
+  private def bare(cinema: Cinema, title: String): CinemaMovie = movie(cinema, title).copy(filmUrl = None)
+
+  it should "delete at take-up every stored departed listing its venue bills again under another key" in {
+    val world   = new World
+    world.scrapes = Map(Helios -> Seq(movie(Helios, "Lalka", Some(2026)), movie(Helios, "Matilda")))   // lent: a page, a year
+    val twin    = listingsOf(Map(Helios -> Seq(bare(Helios, "Lalka"))))                              // as billed before: bare
+    val other   = listingsOf(Map(Multikino -> Seq(movie(Multikino, "Matilda", Some(1996)))))          // a real departure
+    world.retained = new RetainedListingStore.InMemory(Some(RetainedListingStore.undated(twin ++ other)))
+    val service = world.service()
+    service.takeUp()
+    val held = service.peek(10.seconds).get.listings.map(_.key)
+    held should not contain twin.head.key
+    held should contain(other.head.key)
+    world.retained.read().get.map(_.listing.key) shouldBe other.map(_.key)
+  }
+
+  it should "never store as departed a listing that leaves as its venue bills it under another key, nor keep the stored one" in {
+    val world   = new World
+    world.scrapes = Map(Helios -> Seq(bare(Helios, "Lalka")), Multikino -> Seq(movie(Multikino, "Lalka", Some(2025))))
+    val service = world.service()
+    service.takeUp()
+    world.scrape(service, Helios, Seq(movie(Helios, "Lalka", Some(2026))))                           // the lent billing
+    service.drain()
+    val bareKey = ListingKey.of(Helios, bare(Helios, "Lalka"))
+    service.peek(10.seconds).get.listings.map(_.key) should not contain bareKey
+    world.retained.read().getOrElse(Nil).map(_.listing.key) should not contain bareKey
+  }
+
   it should "resume no recorded kept listing whose title no venue bills" in {
     val world = new World
     world.scrapes = Map(Helios -> Seq(movie(Helios, "Matilda")))

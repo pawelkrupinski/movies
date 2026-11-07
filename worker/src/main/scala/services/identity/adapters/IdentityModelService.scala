@@ -36,6 +36,9 @@ trait IdentityModelMetrics {
   /** After every drain and take-up: the listings billed (`present`), the departed ones the model holds as kept, and the
    *  departed ones the store holds as inputs ([[ListingRetention]]): the retention window's cost, watched before it bites. */
   def retention(present: Int, kept: Int, departed: Int): Unit = ()
+  /** Departed listings deleted from the store as twins of a listing billed again under another key
+   *  ([[ListingRetention.returnedUnderAnotherKey]]): `atBoot` by a take-up, else by a drain. */
+  def twinsDeleted(count: Int, atBoot: Boolean): Unit = ()
 }
 object IdentityModelMetrics {
   val Silent: IdentityModelMetrics = new IdentityModelMetrics {
@@ -308,8 +311,16 @@ final class IdentityModelService(
     val back     = seenKeys.filter(departed.containsKey)
     back.foreach(departed.remove)
     // a listing held as kept that its venue's page no longer names left before: it keeps the departure it has
-    val left     = leaving.iterator.filterNot(k => retained.contains(k) || seenKeys(k)).flatMap(k => engine.held(k).map(k -> _))
+    val leftAll  = leaving.iterator.filterNot(k => retained.contains(k) || seenKeys(k)).flatMap(k => engine.held(k).map(k -> _))
       .map { case (k, listing) => k -> ListingRetention.Departed(listing, now) }.toMap
+    // a departed listing its own venue bills again under another key (a lent page and year, another case) is back, not
+    // departed: one that leaves as its twin arrives is never written, one already stored is deleted
+    val twins    = if (seen.isEmpty || (departed.isEmpty && leftAll.isEmpty)) Set.empty[services.movies.ListingKey]
+                   else ListingRetention.returnedUnderAnotherKey((departed.values.asScala ++ leftAll.values).map(_.listing).toSeq, seen)
+                     .iterator.map(_.key).toSet
+    val left     = leftAll -- twins
+    twins.foreach(departed.remove)
+    if (twins.nonEmpty) deleteTwins(twins, atBoot = false)
     left.foreach { case (k, d) => departed.put(k, d) }
     val aged     = departed.asScala.collect { case (k, d) if !ListingRetention.live(d, now, retentionWindow) => k }.toSeq
     aged.foreach(departed.remove)
@@ -345,15 +356,27 @@ final class IdentityModelService(
         val stored  = read.getOrElse(heldBefore().map(ListingRetention.Departed(_, ListingRetention.Unknown)))
         val dated   = stored.map(d => if (d.at == ListingRetention.Unknown) d.copy(at = now) else d)
         val billed  = present.iterator.map(_.key).toSet
-        val (live, aged) = dated.filterNot(d => billed(d.listing.key)).partition(ListingRetention.live(_, now, retentionWindow))
+        val (inputs, aged) = dated.filterNot(d => billed(d.listing.key)).partition(ListingRetention.live(_, now, retentionWindow))
+        val twins = ListingRetention.returnedUnderAnotherKey(inputs.map(_.listing), present).iterator.map(_.key).toSet
+        val live  = inputs.filterNot(d => twins(d.listing.key))
+        if (twins.nonEmpty) deleteTwins(twins, atBoot = true)
         live.foreach(d => departed.put(d.listing.key, d))
-        if (read.isEmpty || stored.exists(_.at == ListingRetention.Unknown) || aged.nonEmpty || live.size != stored.size)
+        if (read.isEmpty || stored.exists(_.at == ListingRetention.Unknown) || aged.nonEmpty || live.size + twins.size != stored.size)
           persist(retainedStore.replace(live))
         val kept = ListingRetention.retainedAt(live, present, now, normalizer, formsOf, retentionWindow)
         kept.foreach(l => retained.add(l.key))
         if (stored.nonEmpty) logger.info(s"identity model: ${kept.size} kept listing(s) resumed of ${live.size} departed, ${aged.size} past ${retentionWindow.toDays} days")
         kept
       })
+  }
+
+  /** `twins` (departed listings billed again under another key) deleted from the store, logged and counted: duplicates, so
+   *  deleted, never expired. A delete that fails is logged; the next take-up or drain finds them again. */
+  private def deleteTwins(twins: Set[services.movies.ListingKey], atBoot: Boolean): Unit = {
+    persist(retainedStore.delete(twins))
+    metrics.twinsDeleted(twins.size, atBoot)
+    logger.info(s"identity model: ${twins.size} departed listing(s) deleted as twins of a listing billed again under another key" +
+      (if (atBoot) " (take-up)" else ""))
   }
 
   /** A write of the departed listings: one that fails is logged, never the drain's failure -- the next move writes again. */

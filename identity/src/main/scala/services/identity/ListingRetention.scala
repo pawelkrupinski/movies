@@ -70,8 +70,8 @@ object ListingRetention {
   /** [[retained]], each listing's title read by `forms` (the worker's cache of them). */
   def retained(departed: Seq[Listing], present: Seq[Listing], normalizer: TitleNormalizer, forms: Listing => TitleRelation.Forms): Seq[Listing] = {
     val billed = present.iterator.map(_.key).toSet
-    val back   = present.groupMap(Billing.of)(_.year)
-    val gone   = departed.filterNot(listing => billed(listing.key) || returned(listing, back))
+    val twins  = returnedUnderAnotherKey(departed, present).iterator.map(_.key).toSet
+    val gone   = departed.filterNot(listing => billed(listing.key) || twins(listing.key))
     if (gone.isEmpty || present.isEmpty) Nil
     else {
       val showing = new TitleRelation.Showing(present.map(forms), gone.map(forms), normalizer)
@@ -95,6 +95,16 @@ object ListingRetention {
    *  Sinnlichkeit", Ang Lee 1995 and Georgia Oakley 2026), still kept. */
   private def returned(listing: Listing, back: Map[Billing, Seq[Option[Int]]]): Boolean =
     back.get(Billing.of(listing)).exists(_.exists(year => year.isEmpty || listing.year.isEmpty || year == listing.year))
+
+  /** Of `departed`, those `present` bills again under another key ([[returned]]): the same listings back, never kept --
+   *  and, as their twins are billed, no input left to hold: the worker deletes them from its store. */
+  def returnedUnderAnotherKey(departed: Seq[Listing], present: Seq[Listing]): Seq[Listing] =
+    if (departed.isEmpty || present.isEmpty) Nil
+    else {
+      val billed = present.iterator.map(_.key).toSet
+      val back   = present.groupMap(Billing.of)(_.year)
+      departed.filter(listing => !billed(listing.key) && returned(listing, back))
+    }
 
   /** [[retained]] of the departed listings that are inputs at `now` within `window` ([[live]]). */
   def retainedAt(departed: Iterable[Departed], present: Seq[Listing], now: Long, normalizer: TitleNormalizer,

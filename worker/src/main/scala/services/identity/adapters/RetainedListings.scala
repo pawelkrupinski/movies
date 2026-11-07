@@ -29,6 +29,9 @@ trait RetainedListingStore {
   def update(departed: Seq[ListingRetention.Departed], released: Iterable[ListingKey]): Unit
   /** Exactly `departed`, nothing else. */
   def replace(departed: Seq[ListingRetention.Departed]): Unit
+  /** `keys` removed for good, not expired: departed rows whose own listing is billed again under another key
+   *  ([[ListingRetention.returnedUnderAnotherKey]]) -- duplicates, never a departure to keep a record of. */
+  def delete(keys: Iterable[ListingKey]): Unit
 }
 
 object RetainedListingStore {
@@ -39,6 +42,7 @@ object RetainedListingStore {
     def update(departed: Seq[ListingRetention.Departed], released: Iterable[ListingKey]): Unit =
       synchronized { held = Some(held.getOrElse(Map.empty) -- released ++ departed.map(d => d.listing.key -> d)) }
     def replace(departed: Seq[ListingRetention.Departed]): Unit = synchronized { held = Some(departed.map(d => d.listing.key -> d).toMap) }
+    def delete(keys: Iterable[ListingKey]): Unit = synchronized { held = held.map(_ -- keys) }
   }
 
   /** `listings` persisted before departures were dated (a recording's capture, a fixture): each [[ListingRetention.Unknown]],
@@ -93,6 +97,13 @@ final class MongoRetainedListingStore(db: MongoDatabase, clock: java.time.Clock)
     val keys = departed.map(d => ListingKey.serialised(d.listing.key)) :+ Written
     expire(Filters.nin("_id", keys*))
     put(departed)
+  }
+
+  /** The rows `keys` names deleted: a departed listing's twin, never a departure ([[RetainedListingStore.delete]]), so the
+   *  owner's "never deleted, marked expired" (2026-11-07) does not hold them: the owner, 2026-11-07, "delete the duplicates". */
+  def delete(keys: Iterable[ListingKey]): Unit = {
+    val ids = keys.map(ListingKey.serialised).toSeq
+    if (ids.nonEmpty) { Await.result(indexed.deleteMany(Filters.in("_id", ids*)).toFuture(), Timeout); () }
   }
 
   /** The live rows `which` names expired: kept, no input, their screening days stripped. */

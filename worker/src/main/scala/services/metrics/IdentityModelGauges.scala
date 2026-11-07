@@ -128,6 +128,12 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     .labelNames("country")
     .register(registry)
 
+  private val twinsDeleted: Counter = Counter.builder()
+    .name("kinowo_worker_identity_model_retained_twins_deleted_total")
+    .help("Departed listings deleted from identity_retained as twins of a listing its venue bills again under another key (at=boot: a take-up).")
+    .labelNames("country", "at")
+    .register(registry)
+
   private val promoted: Counter = Counter.builder()
     .name("kinowo_worker_identity_model_promoted_total")
     .help("Listings the identity model's input gate held and took in once answered: at a drain, or by a take-up (at=boot).")
@@ -166,6 +172,8 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
       IdentityModelGauges.this.held.labelValues(country).set(count.toDouble)
       heldOldest.labelValues(country).set(oldestSeconds)
     }
+    override def twinsDeleted(count: Int, atBoot: Boolean): Unit =
+      IdentityModelGauges.this.twinsDeleted.labelValues(country, if (atBoot) "boot" else "drain").inc(count.toDouble)
     override def retention(present: Int, kept: Int, departed: Int): Unit = {
       IdentityModelGauges.this.present.labelValues(country).set(present.toDouble)
       IdentityModelGauges.this.kept.labelValues(country).set(kept.toDouble)
