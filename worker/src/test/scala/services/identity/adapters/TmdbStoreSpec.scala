@@ -4,7 +4,7 @@ package adapters
 import tools.SpecTimeouts
 
 import clients.TmdbClient
-import clients.tools.{AnyMethodByUrlHttpFetch, FakeHttpFetch}
+import clients.tools.{AnyMethodByUrlHttpFetch, FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{HttpStatusException, MutableClock, TestWiring}
@@ -236,7 +236,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val w     = new World
     val query = CandidateQuery.TitleCredit("ES (ULRICH SCHAMONI)")
     w.lookups.candidates(query) shouldBe Answer.Unknown                                  // no suggestions filed: a gap
-    val suggestions = scala.io.Source.fromResource("fixtures/imdb/suggestion_es_ulrich_schamoni.json")(using scala.io.Codec.UTF8).mkString
+    val suggestions = FixtureFile.resource("fixtures/imdb/suggestion_es_ulrich_schamoni.json")
     w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("ES (ULRICH SCHAMONI)"), Success(suggestions))
     w.lookups.candidates(query) shouldBe Answer.Unknown                                  // his person search not filed yet
     w.normalizer.filed("GET", "https://api.themoviedb.org/3/search/person?query=Ulrich%20Schamoni",
@@ -250,7 +250,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   /** Schamoni's suggestions, his person search and his credits, filed as the live ask files them. */
-  private def schamoni(w: World, suggestions: String = scala.io.Source.fromResource("fixtures/imdb/suggestion_es_ulrich_schamoni.json")(using scala.io.Codec.UTF8).mkString): Unit = {
+  private def schamoni(w: World, suggestions: String = FixtureFile.resource("fixtures/imdb/suggestion_es_ulrich_schamoni.json")): Unit = {
     w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("ES (ULRICH SCHAMONI)"), Success(suggestions))
     w.normalizer.filed("GET", "https://api.themoviedb.org/3/search/person?query=Ulrich%20Schamoni",
       Success("""{"results":[{"id":77,"name":"Ulrich Schamoni","known_for_department":"Directing"}]}"""))
@@ -436,7 +436,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     override def get(url: String): String = {
       asked += url
       if (url.contains("/movie/1703624?language=pl-PL&append_to_response=credits,release_dates"))
-        scala.io.Source.fromResource("fixtures/tmdb/movie_1703624_met_samson_pl.json")(using scala.io.Codec.UTF8).mkString
+        FixtureFile.resource("fixtures/tmdb/movie_1703624_met_samson_pl.json")
       else throw new HttpStatusException(404, "GET", url, None)
     }
     override def post(url: String, body: String, contentType: String): String = throw new HttpStatusException(404, "POST", url, None)
@@ -448,7 +448,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record filed with its release year alone" should "have no day known, until TMDB's record read again files the day" in {
     val w   = new World
     val met = 1703624
-    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie_1703624_met_samson_pl.json")(using scala.io.Codec.UTF8).mkString
+    val recorded = FixtureFile.resource("fixtures/tmdb/movie_1703624_met_samson_pl.json")
     val yearOnly = minimalOf(recorded).as[play.api.libs.json.JsObject] + ("release_date" -> play.api.libs.json.JsString("2026"))
     w.store.filmPartial(met, TmdbStore.Partial.Local, yearOnly)
     w.store.filmPartial(met, TmdbStore.Partial.English, minimalOf(s"""{"id":$met,"title":"The Metropolitan Opera 2026/27: Samson et Dalila","release_date":"2026-12-05","alternative_titles":{"titles":[]}}"""))
@@ -470,7 +470,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record filed with its release year alone, read store-first" should "have no day known either" in {
     val w   = new World
     val met = 1703624
-    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie_1703624_met_samson_pl.json")(using scala.io.Codec.UTF8).mkString
+    val recorded = FixtureFile.resource("fixtures/tmdb/movie_1703624_met_samson_pl.json")
     w.store.filmPartial(met, TmdbStore.Partial.Local, minimalOf(recorded).as[play.api.libs.json.JsObject] + ("release_date" -> play.api.libs.json.JsString("2026")))
     w.store.filmPartial(met, TmdbStore.Partial.English, minimalOf(s"""{"id":$met,"title":"The Metropolitan Opera 2026/27: Samson et Dalila","release_date":"2026-12-05","alternative_titles":{"titles":[]}}"""))
     val lookups = new StoredFirstLookups(w.lookups, new LiveTmdb(w, popularity = 12.4))
@@ -499,7 +499,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record" should "answer every runtime its translations state, also when filed before records carried them" in {
     val w = new World
     val onceUpon = 311
-    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    def recorded(name: String) = FixtureFile.resource(s"fixtures/tmdb/$name")
     w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
     w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
     w.lookups.film(onceUpon).answered.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
@@ -514,7 +514,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record" should "keep its original language as filed" in {
     val w = new World
     val onceUpon = 311
-    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    def recorded(name: String) = FixtureFile.resource(s"fixtures/tmdb/$name")
     w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
     w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
     w.lookups.film(onceUpon).answered.flatten.flatMap(_.originalLanguage) shouldBe Some("en")
@@ -525,7 +525,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record" should "keep its genres as filed" in {
     val w = new World
     val onceUpon = 311
-    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    def recorded(name: String) = FixtureFile.resource(s"fixtures/tmdb/$name")
     w.store.filmPartial(onceUpon, TmdbStore.Partial.Local, minimalOf(recorded("movie_311_pl.json")))
     w.store.filmPartial(onceUpon, TmdbStore.Partial.English, minimalOf(recorded("movie_311_en.json")))
     val film = w.lookups.film(onceUpon).answered.flatten
@@ -538,7 +538,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record" should "carry its tagline as filed" in {
     val w = new World
     val banden = 627671
-    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    def recorded(name: String) = FixtureFile.resource(s"fixtures/tmdb/$name")
     w.store.filmPartial(banden, TmdbStore.Partial.Local, minimalOf(recorded("movie-627671-de.json")))
     w.store.filmPartial(banden, TmdbStore.Partial.English, minimalOf(recorded("movie-627671-en.json")))
     w.lookups.film(banden).answered.flatten.map(_.taglineKey) shouldBe
@@ -550,7 +550,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record filed from its localized response" should "know which countries TMDB dates a release of it in" in {
     val w    = new World
     val film = 56669   // "Obcy w domu" (1989), pl-PL `…?append_to_response=credits,release_dates`
-    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie-56669-credits-pl.json")(using scala.io.Codec.UTF8).mkString
+    val recorded = FixtureFile.resource("fixtures/tmdb/movie-56669-credits-pl.json")
     val filed = minimalOf(recorded)
     (filed \ TmdbFilmRecord.ReleaseCountries).asOpt[String] shouldBe Some("FRGBJPUS")
     (filed \ "release_dates").toOption shouldBe None
@@ -568,7 +568,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record filed from its localized response" should "keep the certificates TMDB records where a rating scale is read" in {
     val w    = new World
     val film = 1339713   // Curry Barker's "Obsession" (2026), en-GB `…?append_to_response=credits,release_dates`, recording 38713274617
-    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie_1339713_obsession_gb.json")(using scala.io.Codec.UTF8).mkString
+    val recorded = FixtureFile.resource("fixtures/tmdb/movie_1339713_obsession_gb.json")
     val filed = minimalOf(recorded)
     (filed \ TmdbFilmRecord.CertificatesField).asOpt[String] shouldBe Some("DE=16,ES=18,GB=18,US=R")
     w.store.filmPartial(film, TmdbStore.Partial.Local, filed)
@@ -581,7 +581,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   "a film's record filed from its localized response" should "keep its top-billed cast, and know none where it was filed without" in {
     val w    = new World
     val film = 56669   // "Obcy w domu" (1989): 24 credited, Gary Busey billed first
-    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie-56669-credits-pl.json")(using scala.io.Codec.UTF8).mkString
+    val recorded = FixtureFile.resource("fixtures/tmdb/movie-56669-credits-pl.json")
     val filed = minimalOf(recorded)
     w.store.filmPartial(film, TmdbStore.Partial.Local, filed)
     w.store.filmPartial(film, TmdbStore.Partial.English, minimalOf(s"""{"id":$film,"title":"Hider in the House","release_date":"1989-05-13","alternative_titles":{"titles":[]}}"""))
@@ -659,16 +659,15 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
 
   /** IMDb's suggestions for "Camino dla opornych", TMDB's find of their ids and IMDb's titles of each, as recorded. */
   private final class CaminoFetch extends tools.HttpFetch {
-    private def fixture(path: String) = scala.io.Source.fromResource(path)(using scala.io.Codec.UTF8).mkString
     val posted = mutable.ArrayBuffer.empty[String]
     override def get(url: String): String =
-      if (url.startsWith(services.enrichment.ImdbClient.SuggestionBase)) fixture("fixtures/imdb/suggestion_camino_dla_opornych.json")
-      else if (url.contains("/find/tt39814688")) fixture("fixtures/tmdb/find_compostelle_by_imdb_id.json")
+      if (url.startsWith(services.enrichment.ImdbClient.SuggestionBase)) FixtureFile.resource("fixtures/imdb/suggestion_camino_dla_opornych.json")
+      else if (url.contains("/find/tt39814688")) FixtureFile.resource("fixtures/tmdb/find_compostelle_by_imdb_id.json")
       else throw new HttpStatusException(404, "GET", url, None)
     override def post(url: String, body: String, contentType: String): String = {
       posted += body
       services.enrichment.ImdbClient.titlesQueryId(body) match {
-        case Some("tt39814688") => fixture("fixtures/imdb/akas_compostelle_polish_title.json")
+        case Some("tt39814688") => FixtureFile.resource("fixtures/imdb/akas_compostelle_polish_title.json")
         case other              => throw new HttpStatusException(404, "POST", s"$url $other", None)
       }
     }
@@ -690,7 +689,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   it should "be unknown to the store until IMDb's titles of a suggestion it does not display under the title are filed" in {
     val w = new World
     w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("Camino dla opornych"),
-      Success(scala.io.Source.fromResource("fixtures/imdb/suggestion_camino_dla_opornych.json")(using scala.io.Codec.UTF8).mkString))
+      Success(FixtureFile.resource("fixtures/imdb/suggestion_camino_dla_opornych.json")))
     w.lookups.candidates(CandidateQuery.ImdbTitled("Camino dla opornych")) shouldBe Answer.Unknown
   }
 
@@ -698,16 +697,15 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
    *  film, which TMDB holds, and Lixing Wang's 2020 one, which it does not), IMDb's titles of the suggestions it displays
    *  otherwise, and IMDb's record of the 2020 film — as recorded 2026-10-04. */
   private class SnowLeopardFetch extends tools.HttpFetch {
-    private def fixture(path: String) = scala.io.Source.fromResource(path)(using scala.io.Codec.UTF8).mkString
     override def get(url: String): String =
-      if (url.startsWith(services.enrichment.ImdbClient.SuggestionBase)) fixture("fixtures/imdb/suggestion_snow_leopard.json")
-      else if (url.contains("/find/tt21223152")) fixture("fixtures/tmdb/find_snow_leopard_2023.json")
-      else if (url.contains("/find/tt13920372")) fixture("fixtures/tmdb/find_snow_leopard_none.json")
+      if (url.startsWith(services.enrichment.ImdbClient.SuggestionBase)) FixtureFile.resource("fixtures/imdb/suggestion_snow_leopard.json")
+      else if (url.contains("/find/tt21223152")) FixtureFile.resource("fixtures/tmdb/find_snow_leopard_2023.json")
+      else if (url.contains("/find/tt13920372")) FixtureFile.resource("fixtures/tmdb/find_snow_leopard_none.json")
       else throw new HttpStatusException(404, "GET", url, None)
     override def post(url: String, body: String, contentType: String): String =
       (services.enrichment.ImdbClient.titlesQueryId(body), services.enrichment.ImdbClient.identityRecordId(body)) match {
-        case (Some(tt @ ("tt31034190" | "tt0077847")), _) => fixture(s"fixtures/imdb/akas_$tt.json")
-        case (_, Some("tt13920372"))                      => fixture("fixtures/imdb/identity_record_snow_leopard.json")
+        case (Some(tt @ ("tt31034190" | "tt0077847")), _) => FixtureFile.resource(s"fixtures/imdb/akas_$tt.json")
+        case (_, Some("tt13920372"))                      => FixtureFile.resource("fixtures/imdb/identity_record_snow_leopard.json")
         case other                                        => throw new HttpStatusException(404, "POST", s"$url $other", None)
       }
   }

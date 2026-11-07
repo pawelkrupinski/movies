@@ -1,7 +1,7 @@
 package clients.rialto
 
 import org.scalatest.matchers.should.Matchers
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.RialtoClient
 
@@ -52,7 +52,7 @@ class RialtoGenreSpec extends AnyFlatSpec with Matchers {
   // said "Dramat, ekranizacja" — split on whitespace into the genres "Gatunek" and "Nieznany",
   // which then overruled the slot's real ones. Recorded page from that run's enrichment tree.
   it should "read the page's own \"genre unknown\" placeholder as no genre, not as two genres" in {
-    val unknown = new String(Files.readAllBytes(Paths.get("test/resources/fixtures/rialto-genre-unknown/romeo-i-julia.html")))
+    val unknown = FixtureFile.read("test/resources/fixtures/rialto-genre-unknown/romeo-i-julia.html")
     client.parseGenres(unknown) shouldBe empty
     client.parseGenres("""<p class="movie-parameters">gatunek nieznany | 90 min</p>""") shouldBe empty
   }

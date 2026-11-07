@@ -5,7 +5,7 @@ import tools.SpecTimeouts
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.RottenTomatoesClient
-import clients.tools.{RequestLogHttpFetch, ScriptedByUrlHttpFetch}
+import clients.tools.{FixtureFile, RequestLogHttpFetch, ScriptedByUrlHttpFetch}
 import tools.{RendezvousHttpFetch, UpstreamNotFound}
 
 class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
@@ -157,12 +157,6 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // response. Each card carries the title/slug/year as attributes on the
   // custom element, with the link in a child <a data-qa="info-name" href="…/m/…">.
 
-  private def loadFixture(path: String): String = {
-    val stream = getClass.getResourceAsStream(path)
-    require(stream != null, s"fixture not found: $path")
-    try scala.io.Source.fromInputStream(stream, "UTF-8").mkString
-    finally stream.close()
-  }
 
   private val SearchTopGunFixture        = "/fixtures/rottentomatoes/search_top_gun.html"
   private val MovieTheDarkKnightFixture = "/fixtures/rottentomatoes/movie_the_dark_knight.html"
@@ -174,7 +168,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   "parseSearchResults" should "extract (slug, title, year) for every search-page-media-row in RT's HTML" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
-    val hits = c.parseSearchResults(loadFixture(SearchTopGunFixture))
+    val hits = c.parseSearchResults(FixtureFile.resource(SearchTopGunFixture))
     hits.map(_.slug)  shouldBe Seq(
       "top_gun_maverick", "top_gun", "10008578-top_gun",
       "tomcat_top_gun_2_resurrecting_the_f_14",
@@ -192,7 +186,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   "pickBestSearchHit" should "prefer an exact-title match and use year as the tie-breaker" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
-    val hits = c.parseSearchResults(loadFixture(SearchTopGunFixture))
+    val hits = c.parseSearchResults(FixtureFile.resource(SearchTopGunFixture))
     // Two exact "Top Gun" matches in the fixture (1986 and 1955). With
     // year=1986 the 1986 cut must win; with year=1955 the 1955 print wins.
     c.pickBestSearchHit(hits, "Top Gun", Some(1986)).map(_.slug) shouldBe Some("top_gun")
@@ -204,7 +198,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   it should "reject partial-only matches (no wild guessing — better None than wrong)" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
-    val hits = c.parseSearchResults(loadFixture(SearchTopGunFixture))
+    val hits = c.parseSearchResults(FixtureFile.resource(SearchTopGunFixture))
     // Nothing exact-matches "Tomcat" alone; the picker must NOT return any of
     // the "Tomcat: Top Gun 2 …" rows (different film). Return None instead.
     c.pickBestSearchHit(hits, "Inconnu de la Grande Arche", Some(2025)) shouldBe None
@@ -263,7 +257,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // urlFor's chain falls through to the search-page scrape when every slug
   // probe 404s — same pattern MC uses.
   "urlFor" should "fall through to the search-page scrape when slug probes 404" in {
-    val fixture = loadFixture(SearchTopGunFixture)
+    val fixture = FixtureFile.resource(SearchTopGunFixture)
     val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/m/")) UpstreamNotFound(url)
         else if (url.contains("/search")) fixture
@@ -300,12 +294,12 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // Before the scorecard parser this returned None (no JSON-LD); now it's 94.
   "parseScore" should "extract the Tomatometer percentage from the media-scorecard-json criticsScore (no JSON-LD)" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
-    c.parseScore(loadFixture(MovieScorecardFixture)) shouldBe Some(94)
+    c.parseScore(FixtureFile.resource(MovieScorecardFixture)) shouldBe Some(94)
   }
 
   it should "extract the Tomatometer percentage from the JSON-LD aggregateRating block (fallback for pages that still carry it)" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
-    c.parseScore(loadFixture(MovieTheDarkKnightFixture)) shouldBe Some(94)
+    c.parseScore(FixtureFile.resource(MovieTheDarkKnightFixture)) shouldBe Some(94)
   }
 
   // The zeroed-scorecard shape RT serves for films with no rated critics:
@@ -333,7 +327,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   }
 
   "scoreFor" should "fetch the URL and return the parsed Tomatometer percentage" in {
-    val fixture = loadFixture(MovieTheDarkKnightFixture)
+    val fixture = FixtureFile.resource(MovieTheDarkKnightFixture)
     val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url =>
         if (url == "https://www.rottentomatoes.com/m/the_dark_knight") fixture
         else throw new RuntimeException(s"unexpected URL: $url")))
@@ -476,7 +470,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   "pageFor" should "read the film's record off its page: name, origin year, director, details-list runtime and cast" in {
     // Recorded 2026-10-04 (trimmed): Dune's page also carries its trailer's length ("2:29", a 149.858 s PROMO video);
     // the film's own runtime is the details list's "2h 35m". RT names the film "Dune (2021)" to tell it from Lynch's.
-    val page = scala.io.Source.fromResource("fixtures/rottentomatoes/movie_dune_2021_runtime_beside_trailer.html")(using scala.io.Codec.UTF8).mkString
+    val page = FixtureFile.resource("fixtures/rottentomatoes/movie_dune_2021_runtime_beside_trailer.html")
     val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(_ => page))
     val read = c.pageFor(RottenTomatoesClient.movieUrl("dune_2021")).get
     (read.title, read.year, read.runtime, read.directors) shouldBe ((Some("Dune"), Some(2021), Some(155), Set("Denis Villeneuve")))

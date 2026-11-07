@@ -1,11 +1,10 @@
 package services.review
 
+import clients.tools.FixtureFile
 import models.Country
 import org.mongodb.scala.bson.BsonDocument
 import services.identity.{ResolverDecision, ResolverDecisionBson}
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
 
 /**
@@ -19,8 +18,7 @@ object ProdReviewSample {
   val Databases: Map[String, Country] = Map("kinowo" -> Country.Poland, "kinowo_uk" -> Country.UnitedKingdom,
     "kinowo_de" -> Country.Germany, "kinowo_us" -> Country.UnitedStates, "kinowo_es" -> Country.Spain)
 
-  lazy val root: BsonDocument = org.bson.BsonDocument.parse(new String(
-    Files.readAllBytes(Paths.get(getClass.getResource("/review/prod-review-sample.json").toURI)), StandardCharsets.UTF_8))
+  lazy val root: BsonDocument = org.bson.BsonDocument.parse(FixtureFile.resource("/review/prod-review-sample.json"))
 
   /** `collection`'s documents in `db`. */
   def documents(db: String, collection: String): Seq[BsonDocument] =

@@ -1,13 +1,13 @@
 package services.identity
 package adapters
 
+import clients.tools.FixtureFile
 import clients.TmdbClient
 import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{HttpFetch, HttpStatusException, MutableClock}
 
-import java.nio.file.{Files, Paths}
 import java.time.temporal.ChronoUnit
 import java.time.{Duration, Instant, LocalDate}
 import scala.collection.mutable
@@ -21,7 +21,7 @@ import scala.jdk.CollectionConverters._
 class TmdbChangesSweepSpec extends AnyFlatSpec with Matchers {
   import TmdbChangesSweepSpec._
 
-  private def fixture(name: String) = new String(Files.readAllBytes(Paths.get(s"test/resources/fixtures/tmdb/$name")), "UTF-8")
+  private def fixture(name: String) = FixtureFile.read(s"test/resources/fixtures/tmdb/$name")
   private val changeList = fixture("movie_changes_2026-09-28_page1.json")
   private val director   = 3214936   // credited Director on film 1782278 in its recorded edits
   private val producer   = 6509957   // credited Executive Producer there: not a credit the walk reads

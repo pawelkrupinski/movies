@@ -1,7 +1,7 @@
 package clients.enrichment
 
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.{FailingHttpFetch, PatchedHttpFetch}
+import clients.tools.{FailingHttpFetch, FixtureFile, PatchedHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import services.movies.MovieService
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -90,7 +90,7 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   // TMDB keeps a runtime per translation: "Once Upon a Time in America" is 229 minutes in pl-PL — the cut Polish cinemas
   // screen — and 139 (the US theatrical cut) in en-US. A Polish deployment's TMDB slot shows its own market's.
   it should "carry the runtime of the deployment language's translation, not English's" in {
-    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    def recorded(name: String) = FixtureFile.resource(s"fixtures/tmdb/$name")
     val fetch = tools.RoutingHttpFetch.getOnly(Map(
       "/movie/311/external_ids"     -> """{"imdb_id":"tt0087843"}""",
       "/movie/311/images"           -> """{"posters":[]}""",

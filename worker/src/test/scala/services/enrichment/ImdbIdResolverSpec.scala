@@ -1,6 +1,6 @@
 package services.enrichment
 
-import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
+import clients.tools.{FailingHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import tools.SpecClock.given
 
 import models.{MovieRecord, Multikino, Source, SourceData, Tmdb}
@@ -37,12 +37,6 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   private def imdbAnswering(answer: String => String): ImdbClient =
     new ImdbClient(http = new ScriptedByUrlHttpFetch(answer))
 
-  private def loadFixture(path: String): String = {
-    val stream = getClass.getResourceAsStream(path)
-    require(stream != null, s"fixture not found: $path")
-    try scala.io.Source.fromInputStream(stream, "UTF-8").mkString
-    finally stream.close()
-  }
 
   // ── onImdbIdMissing ─────────────────────────────────────────────────────────
 
@@ -55,7 +49,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), tmdbOnly)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, imdbStub(
-      Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))
+      Map("suggestion" -> FixtureFile.resource("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))
     ), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)
 
@@ -75,7 +69,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(
       Seq(("Mortal Kombat", Some(1995), holder), ("Mortal Kombat 2", Some(2026), seeking)), normalizer = titleNormalizer),
       normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> FixtureFile.resource("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)
     bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
     resolver.drain()
@@ -92,7 +86,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
         data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II"))))
       val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), row)), normalizer = titleNormalizer),
         normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-      val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
+      val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> FixtureFile.resource("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
       bus.subscribe(resolver.onImdbIdMissing)
       bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
       resolver.drain()
@@ -115,7 +109,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val key   = cache.keyOf("Mortal Kombat 2", Some(2026))
     val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => {
       cache.putIfPresent(key, _.copy(imdbId = Some("tt0000001")))
-      loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+      FixtureFile.resource("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
     })), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)
     bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
@@ -144,7 +138,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new ScriptedByUrlHttpFetch(url =>
       // The banner never reaches IMDb: only the bare film title answers.
       if (url.toLowerCase(java.util.Locale.ROOT).contains("kino") || url.toLowerCase(java.util.Locale.ROOT).contains("azji")) """{"d":[]}"""
-      else loadFixture("/fixtures/imdb/suggestion_ghost_in_the_shell.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
+      else FixtureFile.resource("/fixtures/imdb/suggestion_ghost_in_the_shell.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)
 
     bus.publish(ImdbIdMissing(
@@ -170,7 +164,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val resolver = new ImdbIdResolver(cache, imdbAnswering { url =>
       asked.incrementAndGet()
       if (down) throw new tools.HttpStatusException(503, "GET", url, retryAfter = None)
-      loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+      FixtureFile.resource("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
     }, retries = scheduler, random = () => 0.0, stopwatch = _root_.tools.SpecStopwatch.Frozen)
     val bus = new InProcessEventBus()
     bus.subscribe(resolver.onImdbIdMissing)
@@ -260,7 +254,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, imdbAnswering(url =>
       if (java.net.URLDecoder.decode(url, java.nio.charset.StandardCharsets.UTF_8).toLowerCase(java.util.Locale.ROOT).contains("kombat ii"))
-        loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+        FixtureFile.resource("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
       else """{"d":[]}"""), stopwatch = _root_.tools.SpecStopwatch.Frozen)
 
     resolver.resolveSync("Mortal Kombat 2", Some(2026), "Mortal Kombat 2")
@@ -389,7 +383,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   private def countingImdb(calls: java.util.concurrent.atomic.AtomicInteger): ImdbClient =
     new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => {
       calls.incrementAndGet()
-      loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+      FixtureFile.resource("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
     }))
 
   "lookupId" should "read a yearless row's year off its bracketed title, so a far-off namesake is refused" in {
@@ -399,7 +393,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val resolver = new ImdbIdResolver(
       new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty, normalizer = titleNormalizer),
         normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned),
-      imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_it.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
+      imdbStub(Map("suggestion" -> FixtureFile.resource("/fixtures/imdb/suggestion_it.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     resolver.lookupId("It (1990)", None) shouldBe None
     resolver.lookupId("It (2017)", None) shouldBe Some("tt1396484")
   }

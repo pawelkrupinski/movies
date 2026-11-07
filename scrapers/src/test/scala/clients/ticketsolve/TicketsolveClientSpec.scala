@@ -3,7 +3,7 @@ package clients.ticketsolve
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import models.{ChapterCardiff, NeuaddDwyforPwllheli, NerveCentreLondonderry, Number8Pershore, PocklingtonArtsCentre,
   PontardaweArtsCentre, TheatrColwyn, TheatrMwldanCardigan, WatershedBristol}
 import services.cinemas.uk.TicketsolveClient
@@ -169,7 +169,7 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   "TicketsolveClient.parse" should "not read a venue's age limit on an uncategorised show as a film certificate" in {
     // Mwldan's own "Clwb Mwldan: Sonic Sounds (18+)" club night, as its recorded feed holds it (show 873691292), its
     // category blanked: no feed has billed an uncategorised one yet, and so filed it would be no film.
-    val recorded = scala.io.Source.fromFile("test/resources/fixtures/ticketsolve/mwldan.ticketsolve.com/shows.xml", "UTF-8").mkString
+    val recorded = FixtureFile.read("test/resources/fixtures/ticketsolve/mwldan.ticketsolve.com/shows.xml")
     val from     = recorded.indexOf("<show id=\"873691292\">")
     val show     = recorded.substring(from, recorded.indexOf("</show>", from) + "</show>".length)
       .replaceAll("(?s)<event_category>.*?</event_category>", "<event_category></event_category>")

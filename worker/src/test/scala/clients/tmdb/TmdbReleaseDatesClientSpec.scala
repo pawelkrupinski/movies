@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import clients.{TmdbClient, TmdbResponses}
 import play.api.libs.json.{JsArray, Json}
-import clients.tools.{RequestLogHttpFetch, ScriptedByUrlHttpFetch}
+import clients.tools.{FixtureFile, RequestLogHttpFetch, ScriptedByUrlHttpFetch}
 import tools.HttpFetch
 
 import java.util.Locale
@@ -28,8 +28,7 @@ import java.util.Locale
 class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
 
   private def fixture(name: String): String =
-    scala.io.Source.fromInputStream(
-      getClass.getClassLoader.getResourceAsStream(s"fixtures/tmdb/$name")).mkString
+    FixtureFile.resource(s"fixtures/tmdb/$name")
 
   private val releaseDates = fixture("release_dates_inception.json")
 

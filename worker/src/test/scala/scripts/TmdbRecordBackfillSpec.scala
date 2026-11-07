@@ -1,7 +1,7 @@
 package scripts
 
 import clients.TmdbClient
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.bson.BsonDocument
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -20,7 +20,7 @@ class TmdbRecordBackfillSpec extends AnyFlatSpec with Matchers {
   /** The film every fixture tree holds TMDB's localized record of: Mulholland Drive, cast and language in it. */
   private val film = 1018
   private def recorded(name: String): String = {
-    val text = scala.io.Source.fromResource(s"fixtures/08-06-2026/api.themoviedb.org/3/movie/$name")(using scala.io.Codec.UTF8).mkString
+    val text = FixtureFile.resource(s"fixtures/08-06-2026/api.themoviedb.org/3/movie/$name")
     text.substring(text.indexOf('{'))
   }
 

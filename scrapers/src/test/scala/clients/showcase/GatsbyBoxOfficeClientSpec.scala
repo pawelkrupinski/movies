@@ -1,6 +1,6 @@
 package clients.showcase
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import models.{CinemaMovie, ShowcaseDeLuxBluewater}
 import org.scalatest.{LoneElement, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -222,7 +222,7 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
     // catalogue leaves null. "Dracula (4K Restoration)" is Terence Fisher's 1958 Hammer film, which
     // a bare title could not tell from Browning's 1931 "Dracula"; runtime arrives in seconds.
     val details = GatsbyBoxOfficeParser.parseDetails(
-      scala.io.Source.fromFile("test/resources/fixtures/everyman/film-details.json").mkString)
+      FixtureFile.read("test/resources/fixtures/everyman/film-details.json"))
     val dracula = details("1000051270")
     dracula.directors shouldBe Seq("Terence Fisher")
     dracula.runtimeMinutes.value shouldBe 93
@@ -234,14 +234,14 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
 
   it should "carry the film's certificate, which the UK brands never published before" in {
     val details = GatsbyBoxOfficeParser.parseDetails(
-      scala.io.Source.fromFile("test/resources/fixtures/everyman/film-details.json").mkString)
+      FixtureFile.read("test/resources/fixtures/everyman/film-details.json"))
     details("1000036867").certificate.value shouldBe "12A"     // Avengers Endgame: Encore
     details("1000051270").certificate shouldBe None            // Dracula (4K Restoration): not yet rated
   }
 
   it should "rate a listing only in its brand's own system" in {
-    val schedule  = scala.io.Source.fromFile(showcaseFixture("schedule")).mkString
-    val catalogue = scala.io.Source.fromFile(showcaseFixture("page-data")).mkString
+    val schedule  = FixtureFile.read(showcaseFixture("schedule").getPath)
+    val catalogue = FixtureFile.read(showcaseFixture("page-data").getPath)
     def rated(certificate: String, ratings: Set[String]) = {
       val details = Map("8488" -> GatsbyBoxOfficeParser.FilmDetails(Nil, None, Nil, None, Some(certificate)))
       GatsbyBoxOfficeParser.parse(schedule, catalogue, Bluewater, ShowcaseDeLuxBluewater, GatsbyBoxOfficeClient.ShowcaseBaseUrl, details, ratings)
@@ -254,8 +254,8 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
   }
 
   it should "fill the listing it belongs to, and leave the rest as the catalogue has them" in {
-    val schedule  = scala.io.Source.fromFile(showcaseFixture("schedule")).mkString
-    val catalogue = scala.io.Source.fromFile(showcaseFixture("page-data")).mkString
+    val schedule  = FixtureFile.read(showcaseFixture("schedule").getPath)
+    val catalogue = FixtureFile.read(showcaseFixture("page-data").getPath)
     val details   = Map("8488" -> GatsbyBoxOfficeParser.FilmDetails(Seq("Steven Spielberg"), Some(127), Seq("Sam Neill"), Some("Dinosaurs.")))
     val parsed    = GatsbyBoxOfficeParser.parse(schedule, catalogue, Bluewater, ShowcaseDeLuxBluewater, GatsbyBoxOfficeClient.ShowcaseBaseUrl, details)
     val jurassic  = parsed.find(_.movie.title == "Jurassic Park").value

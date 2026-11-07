@@ -1,10 +1,9 @@
 package services.sharecards
 
+import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
 
 /** How a Graph API answer to one re-scrape is read: the rate limit stops the whole fleet, anything
  *  else fails the one page — and either way the reason names Facebook's own code and message, which
@@ -12,7 +11,7 @@ import java.nio.file.{Files, Paths}
 class FacebookScrapeSpec extends AnyFlatSpec with Matchers {
 
   private def fixture(name: String): String =
-    new String(Files.readAllBytes(Paths.get(getClass.getResource(s"/fixtures/facebook-graph/$name").toURI)), StandardCharsets.UTF_8)
+    FixtureFile.resource(s"/fixtures/facebook-graph/$name")
 
   "A 2xx" should "be accepted" in {
     FacebookScrape.of(200, """{"id":"https://kinowo.net/"}""") shouldBe FacebookScrape.Accepted

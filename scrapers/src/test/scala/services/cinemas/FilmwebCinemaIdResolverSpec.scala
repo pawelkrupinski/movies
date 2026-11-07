@@ -1,5 +1,6 @@
 package services.cinemas
 
+import clients.tools.FixtureFile
 import models._
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
@@ -8,7 +9,6 @@ import tools.GetOnlyHttpFetch
 import services.cinemas.pl.FilmwebCinemaIdResolver
 import services.cinemas.pl.FilmwebCinemaIdResolver._
 
-import java.nio.file.{Files, Paths}
 
 /** Exercises the runtime Filmweb-id resolution offline: parse real town
  *  listings (`/api/v1/city/<id>/cinemas`, captured 2026-09-29), fuzzy-match our
@@ -18,7 +18,7 @@ import java.nio.file.{Files, Paths}
 class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def fixture(name: String): String =
-    new String(Files.readAllBytes(Paths.get(s"scrapers/src/test/resources/fixtures/filmweb-city-cinemas/$name")), "UTF-8")
+    FixtureFile.read(s"scrapers/src/test/resources/fixtures/filmweb-city-cinemas/$name")
 
   // Filmweb town ids, from the captured cities.json.
   private val KrakowId = 2

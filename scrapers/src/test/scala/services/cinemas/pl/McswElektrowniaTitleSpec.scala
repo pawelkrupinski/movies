@@ -1,10 +1,10 @@
 package services.cinemas.pl
 
+import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.McswElektrowniaCinemaClient.{TitleParts, parseDayPage, parseTitle}
 
-import java.nio.file.{Files, Path}
 import java.time.LocalDate
 
 /** Kino MCSW Elektrownia writes what it knows of a film into its title — country, genres, age, and a
@@ -51,7 +51,7 @@ class McswElektrowniaTitleSpec extends AnyFlatSpec with Matchers {
 
   "The day page" should "carry the parsed facts on every screening" in {
     // kino.mcswelektrownia.pl/MSI/mvc/pl?sort=Date&date=2026-10-03&datestart=0, captured 2026-10-01
-    val html  = Files.readString(Path.of("test/resources/fixtures/mcsw-elektrownia/day_page_genre_tail_glued_by_dash.html"))
+    val html  = FixtureFile.read("test/resources/fixtures/mcsw-elektrownia/day_page_genre_tail_glued_by_dash.html")
     val slots = parseDayPage(html, LocalDate.of(2026, 10, 3))
     slots.map(_.displayTitle).distinct should contain allOf ("LUNA I ROZGADANA ŚWINKA", "FOLWARK ZWIERZĘCY", "LALKA")
     slots.find(_.displayTitle == "FOLWARK ZWIERZĘCY").get.parts.format shouldBe List("2D", "DUB")

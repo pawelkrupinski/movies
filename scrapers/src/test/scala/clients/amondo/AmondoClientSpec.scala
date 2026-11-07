@@ -2,7 +2,7 @@ package clients.amondo
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import models.{KinoAmondo, Showtime}
 import services.cinemas.common.FilmDetail
 import services.cinemas.pl.AmondoClient
@@ -76,7 +76,7 @@ class AmondoClientSpec extends AnyFlatSpec with Matchers {
   }
 
   private def recordedDetail(slug: String): AmondoClient.Detail = AmondoClient.parseDetail(
-    new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(s"test/resources/fixtures/amondo-detail/$slug")), "UTF-8"))
+    FixtureFile.read(s"test/resources/fixtures/amondo-detail/$slug"))
 
   // Recorded 2026-09-25 (Record scrape fixtures 36181020153). Amondo's page for "Miłość,
   // śmierć i dojrzewanie w Camp Miasma" carries Jane Schoenbrun's film in its header, but its

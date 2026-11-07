@@ -1,5 +1,6 @@
 package services.identity
 
+import clients.tools.FixtureFile
 import models.Country
 import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -18,7 +19,7 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   private val poland  = Country.all.find(_.code == "pl").get
   private val query   = CandidateQuery.Title("Lalka")
   // TMDB's answer to a title search, as recorded (test/resources/fixtures/tmdb/search_lalka_2026.json)
-  private val search  = new String(Files.readAllBytes(Path.of("test/resources/fixtures/tmdb/search_lalka_2026.json")), java.nio.charset.StandardCharsets.UTF_8)
+  private val search  = FixtureFile.read("test/resources/fixtures/tmdb/search_lalka_2026.json")
   private def scratch(): Path = tempDirectory("what-if-answers")
 
   private def modelLookups(source: WhatIfAnswers.Source): IdentityLookups =

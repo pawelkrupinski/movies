@@ -1,6 +1,6 @@
 package clients.enrichment
 
-import clients.tools.FailingHttpFetch
+import clients.tools.{FailingHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{WikidataClient, WikidataClient as WD, WikidataIds}
@@ -15,12 +15,6 @@ import services.enrichment.{WikidataClient, WikidataClient as WD, WikidataIds}
  */
 class WikidataClientSpec extends AnyFlatSpec with Matchers {
 
-  private def loadFixture(path: String): String = {
-    val stream = getClass.getResourceAsStream(path)
-    require(stream != null, s"fixture not found: $path")
-    try scala.io.Source.fromInputStream(stream, "UTF-8").mkString
-    finally stream.close()
-  }
 
   // `UrlFragmentHttpFetch`, not a local stub: it parses the URL the way `RealHttpFetch`
   // does before routing, which is what a hand-rolled `String.contains` stub never did —
@@ -51,7 +45,7 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
   "itemsStating" should "map a batch of Webedia ids to the items stating them, with their TMDB and IMDb ids (recorded)" in {
     // A real query.wikidata.org answer for four DE Webedia ids: "Maria's Lovers" (234), "Fantasy" (325279), "Mein neues altes
     // Ich" (1000032825, an item TMDB links no id on) and "Die Unbeugsamen" (144766, on no item).
-    val client = wikidataStub(Map("query.wikidata.org/sparql" -> loadFixture("/fixtures/wikidata/sparql_webedia_items.json")))
+    val client = wikidataStub(Map("query.wikidata.org/sparql" -> FixtureFile.resource("/fixtures/wikidata/sparql_webedia_items.json")))
     client.itemsStating(Seq("P1265", "P8531"), Seq("325279", "234", "1000032825", "144766")) shouldBe Map(
       "234"        -> Seq(WD.StatingItem("Q2706930", "P1265", Some(77985), Some("tt0087682"))),
       "325279"     -> Seq(WD.StatingItem("Q135441923", "P1265", Some(1318829), Some("tt36112899"))),
@@ -69,15 +63,15 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
   "findImdbIdByFilmwebId" should "return the IMDb id when Wikidata has a P5032→P345 cross-reference" in {
     // Filmweb ID 1118 = "Popiół i diament" (1958) = Wikidata Q722281 = IMDb tt0052080
     val client = wikidataStub(Map(
-      "haswbstatement"  -> loadFixture("/fixtures/wikidata/search_filmwebid_1118.json"),
-      "wbgetentities"   -> loadFixture("/fixtures/wikidata/entities_Q722281.json"),
+      "haswbstatement"  -> FixtureFile.resource("/fixtures/wikidata/search_filmwebid_1118.json"),
+      "wbgetentities"   -> FixtureFile.resource("/fixtures/wikidata/entities_Q722281.json"),
     ))
     client.findImdbIdByFilmwebId("1118") shouldBe Some("tt0052080")
   }
 
   it should "return None when no Wikidata item matches the Filmweb id" in {
     val client = wikidataStub(Map(
-      "haswbstatement" -> loadFixture("/fixtures/wikidata/search_filmwebid_notfound.json"),
+      "haswbstatement" -> FixtureFile.resource("/fixtures/wikidata/search_filmwebid_notfound.json"),
     ))
     client.findImdbIdByFilmwebId("99999999") shouldBe None
   }
@@ -99,7 +93,7 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "THROW on Wikimedia's 200 maxlag error document (recorded) rather than read it as no hits" in {
-    val client = wikidataStub(Map("srsearch=" -> loadFixture("/fixtures/wikidata/search_maxlag_error.json")))
+    val client = wikidataStub(Map("srsearch=" -> FixtureFile.resource("/fixtures/wikidata/search_maxlag_error.json")))
     (the[tools.UnexpectedBodyException] thrownBy client.findImdbIdByFilmwebId("1118")).getMessage should include("no query.search")
   }
 
@@ -110,7 +104,7 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
     // external-id claims (P345 IMDb, P4947 TMDB, P1258 RT, P1712 MC, P6127 LBXD).
     val client = wikidataStub(Map(
       "haswbstatement" -> """{"query":{"search":[{"title":"Q83495"}]}}""",
-      "wbgetentities"  -> loadFixture("/fixtures/wikidata/entities_Q83495_allids.json"),
+      "wbgetentities"  -> FixtureFile.resource("/fixtures/wikidata/entities_Q83495_allids.json"),
     ))
     client.findIdsByFilmwebId("33986") shouldBe Some(WikidataIds(
       imdbId           = Some("tt0133093"),

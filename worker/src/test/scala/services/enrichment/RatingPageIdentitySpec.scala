@@ -5,13 +5,12 @@ import tools.SpecClock.given
 import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
+import clients.tools.{FailingHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import tools.UpstreamNotFound
 
-import java.nio.file.{Files, Paths}
 
 /**
  * A stored rating url that is another film's must drop on the next refresh — no manual
@@ -23,7 +22,7 @@ import java.nio.file.{Files, Paths}
 class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
 
   private def recorded(name: String): String =
-    new String(Files.readAllBytes(Paths.get(s"test/resources/fixtures/rating-page-identity/$name")), "UTF-8")
+    FixtureFile.read(s"test/resources/fixtures/rating-page-identity/$name")
 
   private def http(pages: Map[String, String]) = new ScriptedByUrlHttpFetch(url => pages.getOrElse(url, UpstreamNotFound(url)))
 

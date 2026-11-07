@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.ImdbClient
-import clients.tools.{ConstantHttpFetch, FailingHttpFetch, ScriptedByUrlHttpFetch}
+import clients.tools.{ConstantHttpFetch, FailingHttpFetch, FixtureFile, ScriptedByUrlHttpFetch}
 import tools.{HttpStatusException, RoutingHttpFetch}
 
 class ImdbClientSpec extends AnyFlatSpec with Matchers {
@@ -51,12 +51,6 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   // entry over video-game / TV / "imdbpicks" article entries with the same
   // title.
 
-  private def loadFixture(path: String): String = {
-    val stream = getClass.getResourceAsStream(path)
-    require(stream != null, s"fixture not found: $path")
-    try scala.io.Source.fromInputStream(stream, "UTF-8").mkString
-    finally stream.close()
-  }
 
   private val MortalKombatFixture = "/fixtures/imdb/suggestion_mortal_kombat_ii.json"
   // Captured live from https://v3.sg.media-imdb.com/suggestion/k/Kumotry.json
@@ -74,7 +68,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   private val BodyguardFixture = "/fixtures/imdb/suggestion_bodyguard.json"
 
   "parseSuggestions" should "return the tt-id of the movie that exact-title matches the query" in {
-    val body = loadFixture(MortalKombatFixture)
+    val body = FixtureFile.resource(MortalKombatFixture)
     // Mortal Kombat II (2026, movie) is the obvious hit; two video-game
     // entries share the title but must be filtered by qid.
     client.parseSuggestions(body, "Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
@@ -89,12 +83,12 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
    *  that the query is ambiguous. Refuse rather than guess — the same discipline
    *  `TmdbClient.searchUnique` applies on the TMDB side. */
   it should "refuse a yearless query when a leading-article variant matches just as well" in {
-    val body = loadFixture(BodyguardFixture)
+    val body = FixtureFile.resource(BodyguardFixture)
     client.parseSuggestions(body, "Bodyguard", None) shouldBe None
   }
 
   it should "pick the article-variant when the year says which film it is" in {
-    val body = loadFixture(BodyguardFixture)
+    val body = FixtureFile.resource(BodyguardFixture)
     // "The Bodyguard" (1992) is the Polish "Bodyguard"; the bare-title movie here is 2011.
     client.parseSuggestions(body, "Bodyguard", Some(1992)) shouldBe Some("tt0103855")
   }
@@ -117,7 +111,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
    *  AKA never appears in the payload, so the exact match was one film pretending to be
    *  the only one. Recorded from the hard-clusters PL responses (same URL). */
   it should "refuse a yearless query whose one exact match is outranked by IMDb's own top answer" in {
-    val body = loadFixture("/fixtures/imdb/suggestion_opetanie.json")
+    val body = FixtureFile.resource("/fixtures/imdb/suggestion_opetanie.json")
     client.parseSuggestions(body, "Opętanie", None) shouldBe None
     // With a year the ranking is evidence again, and it still binds.
     client.parseSuggestions(body, "Opętanie", Some(1973)) shouldBe Some("tt0070486")
@@ -129,16 +123,16 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
    *  a ballet. And Cultplex's "It (1990)" bound It (2017). The closest year is evidence only when
    *  it is close. Recorded from the hard-clusters UK responses (same URLs). */
   it should "refuse a title match whose year is far from the row's" in {
-    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_alices_adventures_in_wonderland.json"),
+    client.parseSuggestions(FixtureFile.resource("/fixtures/imdb/suggestion_alices_adventures_in_wonderland.json"),
       "Alice's Adventures in Wonderland", Some(2027)) shouldBe None
-    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_tosca.json"), "Tosca", Some(2027)) shouldBe None
-    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_it.json"), "It", Some(1990)) shouldBe None
+    client.parseSuggestions(FixtureFile.resource("/fixtures/imdb/suggestion_tosca.json"), "Tosca", Some(2027)) shouldBe None
+    client.parseSuggestions(FixtureFile.resource("/fixtures/imdb/suggestion_it.json"), "It", Some(1990)) shouldBe None
     // Nor may the foreign-title fallback bind IMDb's first MOVIE when IMDb's own top answer is
     // something else: "It (1990)" answers the 1990 miniseries first, then "Strike It Rich" (1990).
-    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_it_1990.json"), "It (1990)", Some(1990)) shouldBe None
+    client.parseSuggestions(FixtureFile.resource("/fixtures/imdb/suggestion_it_1990.json"), "It (1990)", Some(1990)) shouldBe None
     // A near year still binds: production vs release year.
-    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_it.json"), "It", Some(2018)) shouldBe Some("tt1396484")
-    client.parseSuggestions(loadFixture("/fixtures/imdb/suggestion_alices_adventures_in_wonderland.json"),
+    client.parseSuggestions(FixtureFile.resource("/fixtures/imdb/suggestion_it.json"), "It", Some(2018)) shouldBe Some("tt1396484")
+    client.parseSuggestions(FixtureFile.resource("/fixtures/imdb/suggestion_alices_adventures_in_wonderland.json"),
       "Alice's Adventures in Wonderland", Some(1972)) shouldBe Some("tt0068190")
   }
 
@@ -173,7 +167,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return None when nothing exact-matches the query (no wild guessing)" in {
-    val body = loadFixture(MortalKombatFixture)
+    val body = FixtureFile.resource(MortalKombatFixture)
     // Nothing in the fixture is exactly "Inconnu de la Grande Arche", and the
     // #1 movie (Mortal Kombat II, 2026) doesn't match the query year — return
     // None rather than picking the most popular Mortal Kombat film.
@@ -181,7 +175,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "resolve a foreign film listed under its international title via year-corroborated #1 hit" in {
-    val body = loadFixture(KumotryFixture)
+    val body = FixtureFile.resource(KumotryFixture)
     // "Kumotry" (PL, 2025) has no exact-title entry — IMDb lists it as
     // "Double Trouble". It is the top movie suggestion and its year matches,
     // so we bind to it rather than dropping the IMDb rating entirely.
@@ -189,14 +183,14 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "NOT take the #1 hit when its year contradicts the query year" in {
-    val body = loadFixture(KumotryFixture)
+    val body = FixtureFile.resource(KumotryFixture)
     // Same fixture, wrong year: the #1 hit is a 2025 film, so a 1999 query
     // gets no corroboration and no lower entry exact-matches → None.
     client.parseSuggestions(body, "Kumotry", Some(1999)) shouldBe None
   }
 
   it should "NOT take the #1 hit when the caller supplied no year" in {
-    val body = loadFixture(KumotryFixture)
+    val body = FixtureFile.resource(KumotryFixture)
     // Without a year there's no second signal to corroborate an AKA match —
     // the foreign-title fallback stays off rather than guessing.
     client.parseSuggestions(body, "Kumotry", None) shouldBe None
@@ -225,14 +219,14 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   "findId" should "read IMDb's recorded empty suggestion list as no match" in {
-    val noResults = loadFixture("/fixtures/imdb/suggestion_no_results.json")
+    val noResults = FixtureFile.resource("/fixtures/imdb/suggestion_no_results.json")
     new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => noResults))
       .findId("zzqqxxnotafilmqq", None) shouldBe None
   }
 
   it should "THROW, not answer no match, on a suggestion body that is not IMDb's JSON" in {
     // A malformed body was parsed in Try(...).toOption and read as "IMDb knows no such film".
-    val forbidden = loadFixture("/fixtures/imdb/graphql_403_forbidden.html")
+    val forbidden = FixtureFile.resource("/fixtures/imdb/graphql_403_forbidden.html")
     a[tools.UnexpectedBodyException] should be thrownBy
       new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => forbidden)).findId("Aftersun", None)
     a[tools.UnexpectedBodyException] should be thrownBy
@@ -252,7 +246,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   "suggestedIds" should "follow IMDb's movie suggestions whatever title it displays them under" in {
     // Captured from https://v3.sg.media-imdb.com/suggestion/s/Super+futrzak+i+złośliwa+wiewiórka.json (recording
     // 36807940234): IMDb matched the Polish title and displays the Finnish original, "Supermarsu ja suuri huijaus".
-    val c = new ImdbClient(http = RoutingHttpFetch.getOnly(Seq("v3.sg.media-imdb.com/suggestion/" -> loadFixture("/fixtures/imdb/suggestion_superfutrzak.json"))))
+    val c = new ImdbClient(http = RoutingHttpFetch.getOnly(Seq("v3.sg.media-imdb.com/suggestion/" -> FixtureFile.resource("/fixtures/imdb/suggestion_superfutrzak.json"))))
     c.suggestedIds("Super futrzak i złośliwa wiewiórka") shouldBe Seq("tt35166699")
     c.suggestedIds("  ") shouldBe Nil
   }
@@ -267,7 +261,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   "findId" should "hit the suggestion endpoint and return the parsed tt-id" in {
-    val fixture = loadFixture(MortalKombatFixture)
+    val fixture = FixtureFile.resource(MortalKombatFixture)
     val c = new ImdbClient(http = RoutingHttpFetch.getOnly(Seq("v3.sg.media-imdb.com/suggestion/" -> fixture)))
     c.findId("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
   }
@@ -404,7 +398,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
   it should "THROW when a proxy relays IMDb's CDN error page as a 200 (recorded body)" in {
     // parseRating ran in Try(...).toOption, so the 403 page read as "no rating".
-    val page = loadFixture("/fixtures/imdb/graphql_403_forbidden.html")
+    val page = FixtureFile.resource("/fixtures/imdb/graphql_403_forbidden.html")
     val c = new ImdbClient(http = new RoutingHttpFetch(Seq(GraphQlHost -> page)))
     a[tools.UnexpectedBodyException] should be thrownBy c.lookup("tt0816692")
     a[tools.UnexpectedBodyException] should be thrownBy c.details("tt0816692")
@@ -442,7 +436,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
   "an identity record" should "read IMDb's title, year, directors and countries as the identity measures read a film" in {
     // Kuzma (2026), recorded 2026-10-04: IMDb gives no running time, so none is read — unknown, not zero.
-    val body = scala.io.Source.fromResource("fixtures/imdb/identity_record_kuzma.json")(using scala.io.Codec.UTF8).mkString
+    val body = FixtureFile.resource("fixtures/imdb/identity_record_kuzma.json")
     val film = ImdbClient.identityRecordIn(play.api.libs.json.Json.parse(body))
     film.map(f => (f.title, f.originalTitle, f.year, f.runtime, f.directors, f.countries)) shouldBe
       Some(("Kuzma", Some("Kuzma"), Some(2026), None, Some(Seq("Artem Hryhorian")), Some(Seq("UA"))))
@@ -468,7 +462,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     (new ImdbClient(http), asked)
   }
   private def fixture(name: String): String =
-    scala.io.Source.fromResource(s"fixtures/imdb/$name")(using scala.io.Codec.UTF8).mkString
+    FixtureFile.resource(s"fixtures/imdb/$name")
 
   "searchTitles" should "read IMDb's own title search in its order, films only, by a title in any language" in {
     // Recorded 2026-10-04: mainSearch for the Polish "Diuna" finds the films IMDb titles "Dune" (via their Polish AKA)

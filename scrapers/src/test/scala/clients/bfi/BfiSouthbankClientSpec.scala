@@ -3,7 +3,7 @@ package clients.bfi
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import models.BfiLondonSouthbank
 import services.cinemas.uk.BfiSouthbankClient
 
@@ -106,7 +106,7 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
   // Each a film page's `section#shows` as cinemas.bfi.org.uk served it on 2026-10-16
   // (https://cinemas.bfi.org.uk/whats-on/<slug>), trimmed of its scripts and icons.
   private def shows(page: String) =
-    scala.io.Source.fromFile(s"test/resources/fixtures/bfi/shows-sections/$page.html", "UTF-8").mkString
+    FixtureFile.read(s"test/resources/fixtures/bfi/shows-sections/$page.html")
 
   "BfiSouthbankClient.performances" should "read the blocks of a page that carries no calendar" in {
     val dryWhite = BfiSouthbankClient.performances(shows("a-dry-white-season"), today)

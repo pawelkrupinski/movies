@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{FilmwebClient, ImdbClient, MetacriticClient, RottenTomatoesClient, WikidataClient}
@@ -9,14 +10,13 @@ import tools.{HttpFetch, HttpStatusException, RoutingHttpFetch}
 /** Each film database family read live, from recorded answers: its title search's films (films only), and its record
  *  of a film with the facts the identity measures read and the ids that link it to other families. */
 class FamilySourcesSpec extends AnyFlatSpec with Matchers {
-  private def fixture(path: String) = scala.io.Source.fromResource(path)(using scala.io.Codec.UTF8).mkString
 
   /** IMDb's GraphQL answers, routed by the query a body asks: one URL serves them all. */
   private final class ImdbFetch extends HttpFetch {
     override def get(url: String): String = throw new HttpStatusException(404, "GET", url, None)
     override def post(url: String, body: String, contentType: String): String =
-      if (body == ImdbClient.titleSearchBody("Diuna")) fixture("fixtures/imdb/title_search_diuna_films_and_series.json")
-      else if (ImdbClient.identityRecordId(body).contains("tt43338336")) fixture("fixtures/imdb/identity_record_kuzma.json")
+      if (body == ImdbClient.titleSearchBody("Diuna")) FixtureFile.resource("fixtures/imdb/title_search_diuna_films_and_series.json")
+      else if (ImdbClient.identityRecordId(body).contains("tt43338336")) FixtureFile.resource("fixtures/imdb/identity_record_kuzma.json")
       else throw new HttpStatusException(404, "POST", url, None)
   }
 
@@ -31,19 +31,19 @@ class FamilySourcesSpec extends AnyFlatSpec with Matchers {
   "Filmweb as a family" should "read a film's record off its info and preview, running time and countries included" in {
     val base = "www.filmweb.pl/api/v1/film/804771"
     val filmweb = new FilmwebFamily(new FilmwebClient(new RoutingHttpFetch(Seq(
-      s"$base/info"    -> fixture(s"fixtures/08-06-2026/$base/info"),
-      s"$base/preview" -> fixture(s"fixtures/08-06-2026/$base/preview")))))
+      s"$base/info"    -> FixtureFile.resource(s"fixtures/08-06-2026/$base/info"),
+      s"$base/preview" -> FixtureFile.resource(s"fixtures/08-06-2026/$base/preview")))))
     filmweb.record("804771").map(r => (r.film.title, r.film.year, r.film.runtime, r.film.directors, r.film.countries, r.crossIds)) shouldBe
       Some(("Basia", Some(2016), Some(11), Some(Seq("Marcin Wasilewski", "Łukasz Kacprowicz")), Some(Seq("PL")), Map("filmweb" -> "804771")))
   }
 
   "Rotten Tomatoes and Metacritic as families" should "read a film's name, year, running time and directors off its page" in {
     val rt = new RottenTomatoesFamily(new RottenTomatoesClient(new RoutingHttpFetch(Seq(
-      "/m/dune_2021" -> fixture("fixtures/rottentomatoes/movie_dune_2021_runtime_beside_trailer.html")))))
+      "/m/dune_2021" -> FixtureFile.resource("fixtures/rottentomatoes/movie_dune_2021_runtime_beside_trailer.html")))))
     rt.record("dune_2021").map(r => (r.film.title, r.film.year, r.film.runtime, r.crossIds)) shouldBe
       Some(("Dune", Some(2021), Some(155), Map("rt" -> "dune_2021")))
     val mc = new MetacriticFamily(new MetacriticClient(new RoutingHttpFetch(Seq(
-      "/movie/dune/" -> fixture("fixtures/metacritic/movie_dune_1984_duration_hours_as_minutes.html")))))
+      "/movie/dune/" -> FixtureFile.resource("fixtures/metacritic/movie_dune_1984_duration_hours_as_minutes.html")))))
     mc.record("dune").map(r => (r.film.title, r.film.year, r.film.runtime, r.film.directors, r.crossIds)) shouldBe
       Some(("Dune", Some(1984), Some(137), Some(Seq("David Lynch")), Map("metacritic" -> "dune")))
   }
@@ -54,7 +54,7 @@ class FamilySourcesSpec extends AnyFlatSpec with Matchers {
     private val api = "https://www.wikidata.org/w/api.php?"
     override def get(url: String): String = {
       java.net.URI.create(url)
-      answers.get(url.stripPrefix(api)).map(name => fixture(s"fixtures/wikidata/$name.json")).getOrElse(throw new HttpStatusException(404, "GET", url, None))
+      answers.get(url.stripPrefix(api)).map(name => FixtureFile.resource(s"fixtures/wikidata/$name.json")).getOrElse(throw new HttpStatusException(404, "GET", url, None))
     }
     override def post(url: String, body: String, contentType: String): String = throw new HttpStatusException(404, "POST", url, None)
   }

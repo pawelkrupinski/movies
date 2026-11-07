@@ -416,8 +416,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // take `.headOption` after the popularity sort, so this real payload silently
   // resolved dozens of Polish cinemas' actual "Lalka" listings to the French film.
   "searchYearExactTop" should "refuse when the year-scoped search returns two real exact-title matches" in {
-    val body  = scala.io.Source.fromInputStream(
-      getClass.getClassLoader.getResourceAsStream("fixtures/tmdb/search_lalka_2026.json")).mkString
+    val body  = FixtureFile.resource("fixtures/tmdb/search_lalka_2026.json")
     val fetch = stubFetch(body)
     val hit   = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026))
 

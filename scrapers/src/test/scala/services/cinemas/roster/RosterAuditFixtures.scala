@@ -1,7 +1,6 @@
 package services.cinemas.roster
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
+import clients.tools.FixtureFile
 
 /** Venue source pages recorded 2026-09-23 for the online roster audit's reader
  *  and comparator. Each was fetched from the URL its name gives:
@@ -15,7 +14,7 @@ import java.nio.file.{Files, Paths}
  */
 object RosterAuditFixtures {
   def page(name: String): String =
-    new String(Files.readAllBytes(Paths.get(s"scrapers/src/test/resources/fixtures/roster-audit/$name")), StandardCharsets.UTF_8)
+    FixtureFile.read(s"scrapers/src/test/resources/fixtures/roster-audit/$name")
 
   val Sroda477      = "bilety24-organiser-477-sroda-wielkopolska.html"
   val Ostrowiec1389 = "bilety24-organiser-1389-ostrowiec.html"

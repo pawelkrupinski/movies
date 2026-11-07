@@ -5,7 +5,7 @@ import tools.SpecTimeouts
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.MetacriticClient
-import clients.tools.{RequestLogHttpFetch, ScriptedByUrlHttpFetch}
+import clients.tools.{FixtureFile, RequestLogHttpFetch, ScriptedByUrlHttpFetch}
 import tools.{RendezvousHttpFetch, UpstreamNotFound}
 
 import services.enrichment.scraping.JsonLdAggregateRating
@@ -307,18 +307,12 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
          |</a>""".stripMargin
     }.mkString("<html><body>", "\n", "</body></html>")
 
-  private def loadFixture(path: String): String = {
-    val stream = getClass.getResourceAsStream(path)
-    require(stream != null, s"fixture not found: $path")
-    try scala.io.Source.fromInputStream(stream, "UTF-8").mkString
-    finally stream.close()
-  }
 
   private val SearchTopGunFixture = "/fixtures/metacritic/search_top_gun.html"
 
   "parseSearchResults" should "extract (slug, title, year) for every search-item card in MC's HTML" in {
     val c = new MetacriticClient(stub(Set.empty))
-    val hits = c.parseSearchResults(loadFixture(SearchTopGunFixture))
+    val hits = c.parseSearchResults(FixtureFile.resource(SearchTopGunFixture))
     hits.map(_.slug)  shouldBe Seq("top-gun-maverick", "top-gun", "top-five", "the-old-man-the-gun", "topsy-turvy")
     hits.map(_.title) shouldBe Seq("Top Gun: Maverick", "Top Gun", "Top Five", "The Old Man & the Gun", "Topsy-Turvy")
     hits.map(_.year)  shouldBe Seq(Some(2022), Some(1986), Some(2014), Some(2018), Some(1999))
@@ -326,7 +320,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   "pickBestSearchHit" should "prefer an exact-title match over partial matches" in {
     val c = new MetacriticClient(stub(Set.empty))
-    val hits = c.parseSearchResults(loadFixture(SearchTopGunFixture))
+    val hits = c.parseSearchResults(FixtureFile.resource(SearchTopGunFixture))
     // Querying "Top Gun" with no year hint: "Top Gun" (1986) is the only exact
     // match; "Top Gun: Maverick" is partial and must lose despite its later year.
     c.pickBestSearchHit(hits, "Top Gun", None).map(_.slug) shouldBe Some("top-gun")
@@ -363,7 +357,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // return None rather than guess.
   it should "return None when nothing exact-matches or modifier-suffix-matches the query (no wild guessing)" in {
     val c = new MetacriticClient(stub(Set.empty))
-    val hits = c.parseSearchResults(loadFixture(SearchTopGunFixture))
+    val hits = c.parseSearchResults(FixtureFile.resource(SearchTopGunFixture))
     // None of the fixture entries begin with "Inconnu de la Grande Arche".
     c.pickBestSearchHit(hits, "Inconnu de la Grande Arche", Some(2025)) shouldBe None
   }
@@ -387,7 +381,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   // urlFor's full chain falls through to search when every slug probe 404s.
   "urlFor" should "fall through to the search-page scrape when slug probes 404" in {
-    val fixture = loadFixture(SearchTopGunFixture)
+    val fixture = FixtureFile.resource(SearchTopGunFixture)
     val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/")) UpstreamNotFound(url)
         else if (url.contains("/search/")) fixture
@@ -433,13 +427,13 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   "parseMetascore" should "read aggregateRating.ratingValue from a real MC movie page" in {
     // The Dark Knight: MC Metascore 85 at time of capture.
-    JsonLdAggregateRating.of(loadFixture(MovieWithMetascoreFixture)).rating shouldBe Some(85)
+    JsonLdAggregateRating.of(FixtureFile.resource(MovieWithMetascoreFixture)).rating shouldBe Some(85)
   }
 
   it should "return None when MC hasn't aggregated a score (no aggregateRating in JSON-LD)" in {
     // Girl Climber: 2025 indie, no critic consensus yet — JSON-LD omits
     // `aggregateRating` entirely.
-    JsonLdAggregateRating.of(loadFixture(MovieWithoutMetascoreFixture)).rating shouldBe None
+    JsonLdAggregateRating.of(FixtureFile.resource(MovieWithoutMetascoreFixture)).rating shouldBe None
   }
 
   it should "return None for HTML that has no JSON-LD script (e.g. a 404 page)" in {
@@ -478,7 +472,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   }
 
   "metascoreFor" should "fetch the URL and return the parsed score" in {
-    val fixture = loadFixture(MovieWithMetascoreFixture)
+    val fixture = FixtureFile.resource(MovieWithMetascoreFixture)
     val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url == "https://www.metacritic.com/movie/the-dark-knight/") fixture
         else UpstreamNotFound(url)))
@@ -667,7 +661,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   "pageFor" should "read the Movie block's record, not a trailer's: name, year, director, runtime and cast" in {
     // Recorded 2026-10-04 (trimmed to the JSON-LD): each page also carries a trailer VideoObject with its own duration.
     def read(fixture: String) = {
-      val page = loadFixture(fixture)
+      val page = FixtureFile.resource(fixture)
       new MetacriticClient(new ScriptedByUrlHttpFetch(_ => page)).pageFor(MetacriticClient.movieUrl("x")).get
     }
     val dune = read("/fixtures/metacritic/movie_dune_1984_duration_hours_as_minutes.html")

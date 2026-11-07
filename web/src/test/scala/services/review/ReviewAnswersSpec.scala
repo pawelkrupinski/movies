@@ -1,11 +1,10 @@
 package services.review
 
+import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
 import java.time.Instant
 
 /** The answer history's meaning (shared by every store), the import of the hand-built pages' answers
@@ -68,7 +67,7 @@ class ReviewAnswersSpec extends AnyFlatSpec with Matchers {
   }
 
   "the hand-built review pages' answers" should "import whole, the film each card showed kept" in {
-    val json   = new String(Files.readAllBytes(Paths.get(getClass.getResource("/review/all-answers.json").toURI)), StandardCharsets.UTF_8)
+    val json   = FixtureFile.resource("/review/all-answers.json")
     val parsed = ReviewImport.parse(json)
     parsed should have size 71
     parsed.groupBy(a => (a.page, a.verdict)).view.mapValues(_.size).toMap shouldBe Map(
