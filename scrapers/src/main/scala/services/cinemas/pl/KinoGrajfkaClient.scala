@@ -1,12 +1,12 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDate
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -79,29 +79,16 @@ object KinoGrajfkaClient {
       terms.copy(releaseYear = terms.releaseYear.orElse(year))
     }
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, filmUrl: Option[String])
-
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
     val slots = document.select("article.ctc_event").asScala.toSeq.flatMap(parseArticle)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, bookingUrl = None)) { (_, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(group.head.title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
   /** One screening card: title + link from the header, date from the
    *  `span.index-cat` day/month/year triple, start time from `span.ctc-time`. */
-  private def parseArticle(article: Element): Option[RawSlot] = {
+  private def parseArticle(article: Element): Option[ScrapedSlot] = {
     val titleAnchor = Option(article.selectFirst("h2.entry-title-index a[href]"))
     val title       = titleAnchor.map(_.text.trim).filter(_.nonEmpty)
     val filmUrl     = titleAnchor.map(_.attr("abs:href")).filter(_.nonEmpty)
@@ -124,6 +111,6 @@ object KinoGrajfkaClient {
       y    <- year
       tm   <- time
       date <- Try(LocalDate.of(y, m, d)).toOption
-    } yield RawSlot(t, date.atTime(tm), filmUrl)
+    } yield ScrapedSlot(t, date.atTime(tm), filmUrl = filmUrl)
   }
 }

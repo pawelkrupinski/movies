@@ -8,9 +8,9 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDate
 import scala.jdk.CollectionConverters._
 
 /**
@@ -56,15 +56,6 @@ object KinoZbyszekClient {
   // The day-cell anchor carries the date as "26 Czerwiec 2026" — day, Polish
   // NOMINATIVE month name (capitalised), year.
 
-  private case class RawSlot(
-    title:     String,
-    dateTime:  LocalDateTime,
-    booking:   Option[String],
-    filmUrl:   Option[String],
-    poster:    Option[String],
-    formats:   List[String]
-  )
-
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
@@ -72,25 +63,14 @@ object KinoZbyszekClient {
       parseDate(day).toSeq.flatMap(date => day.select("li.event").asScala.toSeq.flatMap(parseEvent(_, date)))
     }
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, format = s.formats)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
   // The day's date from the cell anchor's `data-date`.
   private def parseDate(day: Element): Option[LocalDate] =
     Option(day.selectFirst("a[data-date]")).map(_.attr("data-date")).flatMap(ScraperParse.parseDayMonthYear)
 
-  private def parseEvent(ev: Element, date: LocalDate): Option[RawSlot] = {
+  private def parseEvent(ev: Element, date: LocalDate): Option[ScrapedSlot] = {
     val rawTitle = ev.attr("data-title").trim
     // "KINO NIECZYNNE" is the cinema-closed placeholder (always `data-hours=00:00`,
     // no ticket); it isn't a film, so drop it.
@@ -98,13 +78,13 @@ object KinoZbyszekClient {
     else
       for {
         time <- ScraperParse.parseHHmm(ev.attr("data-hours"))
-      } yield RawSlot(
-        title    = ScraperParse.sentenceCase(rawTitle),
-        dateTime = date.atTime(time),
-        booking  = Some(ev.attr("data-ticket").trim).filter(_.nonEmpty),
-        filmUrl  = Some(ev.attr("abs:data-link")).filter(_.nonEmpty),
-        poster   = Some(ev.attr("data-poster").trim).filter(_.nonEmpty),
-        formats  = FormatTags.FormatToken.get(ev.attr("data-soundtrack").trim.toLowerCase(Locale.ROOT)).toList
+      } yield ScrapedSlot(
+        title      = ScraperParse.sentenceCase(rawTitle),
+        dateTime   = date.atTime(time),
+        bookingUrl = Some(ev.attr("data-ticket").trim).filter(_.nonEmpty),
+        filmUrl    = Some(ev.attr("abs:data-link")).filter(_.nonEmpty),
+        posterUrl  = Some(ev.attr("data-poster").trim).filter(_.nonEmpty),
+        format     = FormatTags.FormatToken.get(ev.attr("data-soundtrack").trim.toLowerCase(Locale.ROOT)).toList
       )
   }
 }

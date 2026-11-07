@@ -5,7 +5,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element, TextNode}
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -50,7 +50,6 @@ class PionierClient(http: HttpFetch, override val cinema: Cinema = KinoPionier
 
   import PionierClient._
 
-
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(PageUrl)
 
@@ -70,18 +69,7 @@ class PionierClient(http: HttpFetch, override val cinema: Cinema = KinoPionier
     val document = Jsoup.parse(HttpRead.page(http, PageUrl))
     val slots = parseSlots(document)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, s.room)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 }
 
@@ -93,17 +81,9 @@ object PionierClient {
   private val DayIdPat = """dzien_(\d{4}-\d{2}-\d{2})""".r
   private val YearTokenPat = """\b(?:19|20)\d{2}\b""".r
 
-  private case class RawSlot(
-    title:    String,
-    dateTime: LocalDateTime,
-    room:     Option[String],
-    booking:  Option[String],
-    filmUrl:  Option[String]
-  )
-
   /** Walk `.repertuar-list` children in document order: day headings set the
     * current date, event boxes inherit it. */
-  private def parseSlots(document: org.jsoup.nodes.Document): Seq[RawSlot] = {
+  private def parseSlots(document: org.jsoup.nodes.Document): Seq[ScrapedSlot] = {
     var carriedDate: Option[LocalDate] = None
     val nodes = document.select("div.repertuar-list").asScala.headOption
       .map(_.children.asScala.toSeq)
@@ -123,7 +103,7 @@ object PionierClient {
           val booking = Option(element.selectFirst("a.bilet[href]")).map(_.attr("href"))
             .filter(h => h.nonEmpty && h != "#")
           val filmUrl = Option(element.selectFirst("h3 a[href]")).map(_.attr("href")).filter(_.nonEmpty)
-          RawSlot(title, LocalDateTime.of(date, time), room, booking, filmUrl)
+          ScrapedSlot(title, LocalDateTime.of(date, time), booking, filmUrl, room = room)
         }
       } else None
     }

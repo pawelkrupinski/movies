@@ -8,7 +8,7 @@ import tools.{HttpFetch, HttpRead}
 import services.movies.TitleNormalizer
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ListingPages, ScrapeHorizon, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, YearMonth}
 import java.time.format.DateTimeFormatter
@@ -55,7 +55,7 @@ class KinoKijowClient(
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     // Each month is read once: the walk parses a month to learn whether the
     // programme goes on, so its slots are kept rather than fetched again.
-    val byMonth = scala.collection.mutable.LinkedHashMap.empty[YearMonth, Try[Seq[RawSlot]]]
+    val byMonth = scala.collection.mutable.LinkedHashMap.empty[YearMonth, Try[Seq[ScrapedSlot]]]
     ScrapeHorizon.liveMonths(YearMonth.from(today)) { month =>
       byMonth.getOrElseUpdate(month,
         Try(HttpRead.page(http, monthUrl(month))).map(html => parseDocument(html, month, titles)))
@@ -64,18 +64,7 @@ class KinoKijowClient(
     ListingPages.requireAnyReached(byMonth.values)
     val slots = byMonth.values.toSeq.flatMap(_.toOption).flatten
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl), format = s.format)) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
   private def monthUrl(ym: YearMonth): String =
@@ -100,9 +89,7 @@ object KinoKijowClient {
   // eleven abbreviations happen to be ASCII, which is why it went unnoticed.
   private val DateTimePat = raw"""(\d{1,2})\s+(\p{L}+)\s+(${ScraperParse.ClockText})""".r
 
-  private[cinemas] case class RawSlot(title: String, format: List[String], dateTime: LocalDateTime, bookingUrl: String)
-
-  private[cinemas] def parseDocument(html: String, month: YearMonth, titles: TitleNormalizer): Seq[RawSlot] = {
+  private[cinemas] def parseDocument(html: String, month: YearMonth, titles: TitleNormalizer): Seq[ScrapedSlot] = {
     val document = Jsoup.parse(html)
     document.select("div.cd-timeline-content.eventlist").asScala.toSeq.flatMap { block =>
       // Prefer the desktop hidden span; fallback to h2 text which repeats the date
@@ -128,7 +115,7 @@ object KinoKijowClient {
         dt <- dateTime
         (t, fmt) <- titleTags
         bu <- bookingUrl
-      } yield RawSlot(t, fmt, dt, bu)
+      } yield ScrapedSlot(t, dt, bookingUrl = Some(bu), format = fmt)
     }
   }
 

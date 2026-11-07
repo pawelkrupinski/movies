@@ -8,7 +8,7 @@ import org.jsoup.nodes.{Element, Node, TextNode}
 import org.jsoup.select.NodeVisitor
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
@@ -50,31 +50,18 @@ object ArtKinoKrosnoClient {
   // "26 czerwca" → day + Polish genitive month (the weekday in parens is ignored).
   private val DatePat = ScraperParse.DayMonthPat
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, filmUrl: Option[String])
-
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
     val slots = document.select("div.tresc p").asScala.toSeq.flatMap(p => parseDay(p, today))
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.filmUrl)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
   /** One day's `<p>`: the leading date header anchors the date, then each
    *  `HH:MM - <a>TITLE</a>` line becomes a slot. A `<p>` with no date header
    *  (the photo banner, the empty `&nbsp;` spacers) yields nothing. */
-  private def parseDay(p: Element, today: LocalDate): Seq[RawSlot] =
+  private def parseDay(p: Element, today: LocalDate): Seq[ScrapedSlot] =
     dateOf(p, today) match {
       case None       => Seq.empty
       case Some(date) => slotsIn(p, date)
@@ -89,8 +76,8 @@ object ArtKinoKrosnoClient {
    *  buried several spans deeper (`<span><span>13:45 -</span> <a>PUCIO</a></span>`).
    *  A time is CONSUMED by the anchor it pairs with, so an anchor with no time
    *  of its own yields nothing rather than borrowing the previous line's. */
-  private def slotsIn(p: Element, date: LocalDate): Seq[RawSlot] = {
-    val slots            = Seq.newBuilder[RawSlot]
+  private def slotsIn(p: Element, date: LocalDate): Seq[ScrapedSlot] = {
+    val slots            = Seq.newBuilder[ScrapedSlot]
     var pending: Option[LocalTime] = None
 
     p.traverse(new NodeVisitor {
@@ -103,7 +90,8 @@ object ArtKinoKrosnoClient {
             time <- pending if title.nonEmpty
             dt   <- Try(LocalDateTime.of(date, time)).toOption
           } {
-            slots += RawSlot(title, dt, Option(link.attr("abs:href")).filter(_.nonEmpty))
+            val page = Option(link.attr("abs:href")).filter(_.nonEmpty)
+            slots += ScrapedSlot(title, dt, bookingUrl = page, filmUrl = page)
             pending = None
           }
         case _ => ()

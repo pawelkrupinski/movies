@@ -8,7 +8,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies, ListingPages}
+import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.concurrent.duration._
@@ -56,23 +56,11 @@ class KinoSokolSokolkaClient(http: HttpFetch, override val cinema: Cinema = Kino
 
     val slots = series.flatMap { s =>
       timeByUrl.get(s.detailUrl).flatten.toSeq.flatMap { time =>
-        s.dates.map(date => RawSlot(s.title, LocalDateTime.of(date, time), s.detailUrl, s.format))
+        s.dates.map(date => ScrapedSlot(s.title, LocalDateTime.of(date, time), Some(s.detailUrl), Some(s.detailUrl), format = s.format))
       }
     }
 
-    SlotsToMovies.fold(slots, _.title, sl => Showtime(sl.dateTime, Some(sl.url), format = sl.format)) {
-      (title, group, showtimes) =>
-        CinemaMovie(
-          movie     = Movie(title),
-          cinema    = cinema,
-          posterUrl = None,
-          filmUrl   = group.map(_.url).headOption,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 }
 
@@ -87,8 +75,6 @@ object KinoSokolSokolkaClient {
   /** One screening series off the grid: a single detail page run across one or
    *  more calendar dates, all sharing the labels and (detail-page) time. */
   private case class Series(title: String, dates: Seq[LocalDate], detailUrl: String, format: List[String])
-
-  private case class RawSlot(title: String, dateTime: LocalDateTime, url: String, format: List[String])
 
   /**
    * Collapse the calendar grid into one [[Series]] per detail page. A series'

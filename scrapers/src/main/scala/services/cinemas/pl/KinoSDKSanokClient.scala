@@ -4,7 +4,7 @@ import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.{Document, Element}
 import models._
 import tools.HttpFetch
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DayPickerProgramme, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, DayPickerProgramme, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -66,8 +66,6 @@ object KinoSDKSanokClient {
   def listingUrl(date: LocalDate): String =
     s"$BaseUrl/MSI/mvc/pl?sort=Flow&date=$date&datestart=0"
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], filmUrl: Option[String])
-
   /** The dates the listing's date picker enumerates — exactly the days that
    *  have events. Each is an ISO `datetime` attr on a `time` inside the picker;
    *  the trailing "więcej dni / KALENDARZ" entry has an empty `datetime` we skip. */
@@ -78,20 +76,20 @@ object KinoSDKSanokClient {
   /** Parse one day's listing into raw slots, stamping `date` (the day the
    *  listing was scoped to) onto each screening time. Reads only the desktop
    *  cards so the duplicated mobile cards don't double the showtimes. */
-  private def parseDay(doc: Document, date: LocalDate): Seq[RawSlot] =
+  private def parseDay(doc: Document, date: LocalDate): Seq[ScrapedSlot] =
     doc.select("div.list-group-item.visible-md.visible-lg").asScala.toSeq.flatMap(parseEvent(_, date))
 
-  private def parseEvent(card: Element, date: LocalDate): Seq[RawSlot] = {
+  private def parseEvent(card: Element, date: LocalDate): Seq[ScrapedSlot] = {
     val title   = Option(card.selectFirst("div.event-title")).map(_.text.trim).filter(_.nonEmpty)
     val filmUrl = Option(card.selectFirst("a[href*=/details/]")).map(_.attr("abs:href")).filter(_.nonEmpty)
     title.toSeq.flatMap { t =>
       card.select("ul.repo-event-dates-group li a.badge-circle").asScala.toSeq.flatMap { a =>
         ScraperParse.parseHHmm(a.text).map { time =>
-          RawSlot(
-            title    = t,
-            dateTime = LocalDateTime.of(date, time),
-            booking  = Option(a.attr("abs:href")).filter(_.nonEmpty),
-            filmUrl  = filmUrl
+          ScrapedSlot(
+            title      = t,
+            dateTime   = LocalDateTime.of(date, time),
+            bookingUrl = Option(a.attr("abs:href")).filter(_.nonEmpty),
+            filmUrl    = filmUrl
           )
         }
       }
@@ -101,17 +99,6 @@ object KinoSDKSanokClient {
   /** Group raw slots by title into one `CinemaMovie` each, de-duplicating
    *  identical showtimes (the same event can appear on several picker days)
    *  and sorting both the showtimes and the films deterministically. */
-  private def group(slots: Seq[RawSlot], cinema: Cinema): Seq[CinemaMovie] =
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+  private def group(slots: Seq[ScrapedSlot], cinema: Cinema): Seq[CinemaMovie] =
+    SlotsToMovies.basic(slots, cinema)
 }

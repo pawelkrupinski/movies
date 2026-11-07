@@ -5,7 +5,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import play.api.libs.json.{JsObject, Json}
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.time.format.DateTimeFormatter
@@ -55,8 +55,6 @@ object KinoJOKClient {
 
   private val DateTimeFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, filmUrl: Option[String])
-
   def parse(json: String, cinema: Cinema): Seq[CinemaMovie] = {
     // A body that isn't JSON (a maintenance page, a proxy's HTML) is a failed read and
     // throws; folded into `{}` it read as a venue with nothing on.
@@ -64,21 +62,10 @@ object KinoJOKClient {
     val events = (root \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
     val slots  = events.flatMap(parseEvent)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
-  private def parseEvent(ev: JsObject): Seq[RawSlot] = {
+  private def parseEvent(ev: JsObject): Seq[ScrapedSlot] = {
     val title = jsonText(ev \ "title")
     val url   = (ev \ "url").asOpt[String].filter(_.nonEmpty)
     val range = for {
@@ -92,6 +79,6 @@ object KinoJOKClient {
       t   <- title.toSeq
       dts <- range.toSeq
       dt  <- dts
-    } yield RawSlot(t, dt, url)
+    } yield ScrapedSlot(t, dt, filmUrl = url)
   }
 }

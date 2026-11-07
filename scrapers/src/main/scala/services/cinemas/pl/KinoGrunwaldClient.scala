@@ -5,7 +5,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 import java.nio.charset.Charset
 import java.time.LocalDate
@@ -52,27 +52,14 @@ object KinoGrunwaldClient {
   private val DateLine = raw"""^(\d{1,2})\.(\d{1,2})\s+\p{L}+\s*-\s*(${ScraperParse.ClockText})(?:\s+i\s+(${ScraperParse.ClockText}))?$$""".r
   private val PremierowoSuffix = """(?i)\s*-\s*premierowo\s*$""".r
 
-  private case class RawSlot(title: String, dateTime: java.time.LocalDateTime)
-
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, PageUrl)
     val slots = document.select("div[id^=wb_Text]").asScala.toSeq.flatMap(parseFilmDiv(_, today))
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, None)) { (title, _, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
-  private def parseFilmDiv(div: Element, today: LocalDate): Seq[RawSlot] = {
+  private def parseFilmDiv(div: Element, today: LocalDate): Seq[ScrapedSlot] = {
     val lines = linesOf(div)
     val (titleLines, rest) = lines.span(l => DateLine.findFirstMatchIn(l).isEmpty)
     if (rest.isEmpty) return Seq.empty
@@ -85,7 +72,7 @@ object KinoGrunwaldClient {
       val monthDay = Try(java.time.MonthDay.of(m.group(2).toInt, m.group(1).toInt)).toOption
       val date     = monthDay.flatMap(ScraperParse.upcomingDate(_, today))
       val times    = Seq(Option(m.group(3)), Option(m.group(4))).flatten.flatMap(ScraperParse.parseHHmm)
-      for { d <- date.toSeq; t <- times } yield RawSlot(title, d.atTime(t))
+      for { d <- date.toSeq; t <- times } yield ScrapedSlot(title, d.atTime(t))
     }
   }
 

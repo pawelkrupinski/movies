@@ -1,13 +1,12 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
 import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
-import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 
 /**
@@ -46,33 +45,14 @@ object KinoLotSwidnikClient {
   val BaseUrl   = "https://iframe22.biletyna.pl"
   val WidgetUrl = s"$BaseUrl/if/index/?ifid=22&q="
 
-  private case class RawSlot(
-    title:    String,
-    dateTime: LocalDateTime,
-    booking:  Option[String],
-    poster:   Option[String],
-    format:   List[String]
-  )
-
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
     val slots = document.select("div.iframe_all").asScala.toSeq.flatMap(parseScreening)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = None,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
-  private def parseScreening(block: Element): Option[RawSlot] = {
+  private def parseScreening(block: Element): Option[ScrapedSlot] = {
     val boldSpans = block.select("div.event-date span.B-font-weight--bold").asScala.toSeq
     for {
       dateSpan    <- boldSpans.headOption
@@ -83,12 +63,12 @@ object KinoLotSwidnikClient {
       raw          = titleAnchor.text.trim if raw.nonEmpty
     } yield {
       val (title, format) = FormatTags.extractFormatTags(raw)
-      RawSlot(
-        title    = title,
-        dateTime = date.atTime(time),
-        booking  = Option(block.selectFirst("a.B-btn.B-btn--accent[href^=\"/event/view/id/\"]")).map(_.attr("abs:href")).filter(_.nonEmpty),
-        poster   = Option(block.selectFirst("img.img-responsive[src^=\"/file/get/id/\"]")).map(_.attr("abs:src")).filter(_.nonEmpty),
-        format   = format
+      ScrapedSlot(
+        title      = title,
+        dateTime   = date.atTime(time),
+        bookingUrl = Option(block.selectFirst("a.B-btn.B-btn--accent[href^=\"/event/view/id/\"]")).map(_.attr("abs:href")).filter(_.nonEmpty),
+        posterUrl  = Option(block.selectFirst("img.img-responsive[src^=\"/file/get/id/\"]")).map(_.attr("abs:src")).filter(_.nonEmpty),
+        format     = format
       )
     }
   }

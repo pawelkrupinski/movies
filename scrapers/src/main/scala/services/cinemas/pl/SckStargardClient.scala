@@ -8,9 +8,8 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
-import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 
 /**
@@ -35,7 +34,7 @@ import scala.jdk.CollectionConverters._
  *
  * Wrappers with no `data-seance_link` are "coming soon" announcements (a
  * `.movie-date` "od DD.MM.YYYY" with no bookable screenings) — they yield no
- * showtimes and are dropped by [[SlotsToMovies.fold]].
+ * showtimes and are dropped by [[SlotsToMovies.basic]].
  *
  * The page is purely film screenings (no concerts/kabaret/theatre), so
  * [[OnlyMovieEventsFilter]] is not mixed in.
@@ -56,39 +55,18 @@ object SckStargardClient {
   val RepertoireUrl = s"$BaseUrl/repertuar-kina/"
 
 
-  private case class RawSlot(
-    title:    String,
-    dateTime: LocalDateTime,
-    booking:  Option[String],
-    poster:   Option[String],
-    format:   List[String]
-  )
-
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
     val slots = document.select("div.movie-wrapper").asScala.toSeq.flatMap(parseFilm)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, format = s.format)) {
-      (_, group, showtimes) =>
-        val head = group.head
-        CinemaMovie(
-          movie     = Movie(head.title),
-          cinema    = cinema,
-          posterUrl = group.flatMap(_.poster).headOption,
-          filmUrl   = None,
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
-  /** One film's slots: its title/poster/format plus one [[RawSlot]] per
+  /** One film's slots: its title/poster/format plus one [[ScrapedSlot]] per
    *  bookable `data-seance_link` anchor. A wrapper with no such anchor (a
    *  "coming soon" announcement) yields nothing. */
-  private def parseFilm(wrapper: Element): Seq[RawSlot] = {
+  private def parseFilm(wrapper: Element): Seq[ScrapedSlot] = {
     val title = Option(wrapper.selectFirst(".movie-title")).map(_.text.trim).filter(_.nonEmpty)
     title.toSeq.flatMap { filmTitle =>
       val poster = Option(wrapper.selectFirst(".movie-poster img"))
@@ -103,12 +81,12 @@ object SckStargardClient {
 
       wrapper.select(".movie-seances a[data-seance_link]").asScala.toSeq.flatMap { anchor =>
         ScraperParse.parseDateTime(anchor.attr("data-seance_link")).map { dt =>
-          RawSlot(
-            title    = filmTitle,
-            dateTime = dt,
-            booking  = Option(anchor.attr("abs:href")).filter(_.nonEmpty),
-            poster   = poster,
-            format   = format
+          ScrapedSlot(
+            title      = filmTitle,
+            dateTime   = dt,
+            bookingUrl = Option(anchor.attr("abs:href")).filter(_.nonEmpty),
+            posterUrl  = poster,
+            format     = format
           )
         }
       }

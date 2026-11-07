@@ -6,7 +6,7 @@ import services.movies.FormatTags
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -62,36 +62,16 @@ object KinoTomiClient {
 
   private val YouTubeId  = """[?&]v=([\w-]{11})""".r
 
-  private case class RawSlot(
-    title:    String,
-    dateTime: LocalDateTime,
-    booking:  Option[String],
-    format:   List[String],
-    filmUrl:  Option[String],
-    poster:   Option[String]
-  )
-
   private[pl] def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
     val slots = document.select("div.seat-plan-row[data-date]").asScala.toSeq.flatMap { day =>
       Try(LocalDate.parse(day.attr("data-date").trim)).toOption.toSeq
         .flatMap(date => day.select("ul.seat-plan-wrapper > li").asScala.toSeq.flatMap(filmRow(_, date)))
     }
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, s.format)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
-  private def filmRow(row: Element, date: LocalDate): Seq[RawSlot] =
+  private def filmRow(row: Element, date: LocalDate): Seq[ScrapedSlot] =
     Option(row.selectFirst(".movie-name a.name")).toSeq.flatMap { link =>
       val title   = link.ownText.trim
       val format  = Option(link.selectFirst("span")).map(s => FormatTags.formatTokensIn(s.text)).getOrElse(Nil)
@@ -100,7 +80,7 @@ object KinoTomiClient {
       if (title.isEmpty) Seq.empty
       else row.select(".movie-schedule a.item[href*='zamowienie/']").asScala.toSeq.flatMap { a =>
         ScraperParse.parseHHmm(a.text).map { time =>
-          RawSlot(title, LocalDateTime.of(date, time), Option(a.attr("abs:href")).filter(_.nonEmpty), format, filmUrl, poster)
+          ScrapedSlot(title, LocalDateTime.of(date, time), Option(a.attr("abs:href")).filter(_.nonEmpty), filmUrl, poster, format = format)
         }
       }
     }
