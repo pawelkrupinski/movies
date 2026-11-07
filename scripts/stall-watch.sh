@@ -81,8 +81,13 @@ stall_watch() { # <root pid> <seconds> <label> <stalled file> [<progress file>] 
   # failed to print directory name: Broken pipe" on the watchdog's stderr, which run-script-tests appends to the test's
   # own log -- Tool self-tests 41193766567 on github.com) and its stall-mark.* was left behind. Trapped, bash runs the
   # trap once the substitution is done, with the mark known, and removes it.
+  # ...AND MADE WITHOUT A `$(...)`: bash 5.2 (GitHub's ubuntu runner) runs a trap taken while it parses a command
+  # substitution with its parser still expecting that `)`, and the trap's own text then fails to parse ("trap: line 2:
+  # unexpected EOF while looking for matching `)'", Tool self-tests 42352127007 on github.com). The mark is named for
+  # the watchdog's own pid (each runs as its own process; a same-named mark left by a dead one is just reused).
   trap 'kill $nap 2> /dev/null; [ -n "$mark" ] && rm -f "$mark"; exit 0' TERM INT HUP
-  mark=$(mktemp "${TMPDIR:-/tmp}/stall-mark.XXXXXX") || return 1
+  mark="${TMPDIR:-/tmp}/stall-mark.${BASHPID:-$$}"
+  : > "$mark" || return 1
   last=-1
   while kill -0 "$root" 2> /dev/null; do
     sleep "$poll" & nap=$!; wait "$nap"; nap=""
