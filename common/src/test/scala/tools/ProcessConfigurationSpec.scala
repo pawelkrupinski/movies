@@ -30,6 +30,15 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("REVIEW_LABELS_FILE" -> "  ").reviewLabelsFile shouldBe None
   }
 
+  it should "resolve the identity retention window in days, its default for an unset or unusable value" in {
+    import scala.concurrent.duration.*
+    val default = IdentityRetentionWindow(60.days)
+    resolvedFrom().identityRetentionWindow(default) shouldBe default
+    resolvedFrom("KINOWO_IDENTITY_RETENTION_DAYS" -> "90").identityRetentionWindow(default) shouldBe IdentityRetentionWindow(90.days)
+    resolvedFrom("KINOWO_IDENTITY_RETENTION_DAYS" -> "-3").identityRetentionWindow(default) shouldBe default
+    IdentityRetentionWindow(2.days).duration shouldBe java.time.Duration.ofDays(2)
+  }
+
   it should "resolve a worker's countries, skipping and naming unknown codes" in {
     val resolved = resolvedFrom("KINOWO_COUNTRIES" -> "uk, xx ,de")
     resolved.workerCountries shouldBe WorkerCountries(Seq(Country.UnitedKingdom, Country.Germany))

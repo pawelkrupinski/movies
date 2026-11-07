@@ -223,7 +223,8 @@ class WorkerWiring(
       retainedStore = identityRetainedStore,
       heldBefore = () => identityHeldBefore(),
       readiness  = identityModelReadiness(pageWait),
-      pendingStore = identityPendingStore)
+      pendingStore = identityPendingStore,
+      retentionWindow = configuration.identityRetentionWindow(WorkerWiring.DefaultRetentionWindow).duration)
     identityTmdbStore.onChanged(model.filed)
     model
   }
@@ -667,6 +668,11 @@ object WorkerWiring {
 
   /** The fill's cadence: the settle's former 30 minutes, which its per-round allowance was measured
    *  against. */
+  /** How long a departed listing stays an identity input unless `KINOWO_IDENTITY_RETENTION_DAYS` says otherwise: 60 days,
+   *  the window main chose on 2026-11-07 after a longer one was measured to cure no flip and the kept set's growth under
+   *  it was not yet seen to level (docs/design/identity-listing-retention.md). */
+  val DefaultRetentionWindow: settings.IdentityRetentionWindow =
+    settings.IdentityRetentionWindow(scala.concurrent.duration.FiniteDuration(services.identity.ListingRetention.DefaultMaxAge.toDays, "days"))
   val DefaultLookupFillInterval: settings.IdentityLookupFillInterval =
     settings.IdentityLookupFillInterval(scala.concurrent.duration.Duration(30, "minutes"))
   /** Clear of the boot's scrape burst and the model's take-up. */

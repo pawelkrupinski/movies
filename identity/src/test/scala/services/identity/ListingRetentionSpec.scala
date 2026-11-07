@@ -71,11 +71,11 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
     ListingRetention.retained(Seq(listing(0, "Black Water")), Seq(listing(0, "Black Water"), listing(1, "Black Water")), normalizer) shouldBe empty
   }
 
-  it should "be an input no longer past MaxAge, whatever is billed: the store's bound is the departure's age alone" in {
+  it should "be an input no longer past the retention window, whatever is billed: the store's bound is the departure's age alone" in {
     val left    = ListingRetention.Departed(listing(0, "Black Water"), at = 1000L)
     val present = Seq(listing(1, "Black Water"))
     def keptAt(now: Long) = ListingRetention.retainedAt(Seq(left), present, now, normalizer, TitleRelation.of(_, normalizer)).map(_.key)
-    keptAt(1000L + ListingRetention.MaxAge.toMillis) shouldBe Seq(base(0).key)
-    keptAt(1001L + ListingRetention.MaxAge.toMillis) shouldBe empty
+    keptAt(1000L + ListingRetention.DefaultMaxAge.toMillis) shouldBe Seq(base(0).key)
+    keptAt(1001L + ListingRetention.DefaultMaxAge.toMillis) shouldBe empty
   }
 }

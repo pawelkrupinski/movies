@@ -154,6 +154,12 @@ final case class OrderPassIn(value: Path) extends AnyVal
  *  calibrated identity confidence served without ratings) for a country the worker wiring does not
  *  already gate (`ReadModelWiring.RatingGateCountries`: Germany, Spain). It cannot turn the gate off. */
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal
+/** `KINOWO_IDENTITY_RETENTION_DAYS` — how long a departed listing stays an identity input while a billed listing relates to
+ *  it by title (`services.identity.ListingRetention`), counted from its departure against the model's clock
+ *  (docs/design/identity-listing-retention.md). */
+final case class IdentityRetentionWindow(value: FiniteDuration) extends AnyVal {
+  def duration: java.time.Duration = java.time.Duration.ofMillis(value.toMillis)
+}
 /** `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` — how often the identity model's paced live lookup fill
  *  runs a round (its own claimed window, independent of the settle). */
 final case class IdentityLookupFillInterval(value: FiniteDuration) extends AnyVal
