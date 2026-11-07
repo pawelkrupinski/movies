@@ -666,12 +666,12 @@ object WorkerWiring {
    *  which is waiting on them anyway (`invokeAll`). */
   val IdentityPrefetchQueue = 4096
 
-  /** The fill's cadence: the settle's former 30 minutes, which its per-round allowance was measured
-   *  against. */
   /** How long a departed listing stays an identity input unless `KINOWO_IDENTITY_RETENTION_DAYS` says otherwise:
    *  [[services.identity.ListingRetention.DefaultMaxAge]], 7 days (docs/design/identity-listing-retention.md). */
   val DefaultRetentionWindow: settings.IdentityRetentionWindow =
     settings.IdentityRetentionWindow(scala.concurrent.duration.FiniteDuration(services.identity.ListingRetention.DefaultMaxAge.toDays, "days"))
+  /** The fill's cadence: the settle's former 30 minutes, which its per-round allowance was measured
+   *  against. */
   val DefaultLookupFillInterval: settings.IdentityLookupFillInterval =
     settings.IdentityLookupFillInterval(scala.concurrent.duration.Duration(30, "minutes"))
   /** Clear of the boot's scrape burst and the model's take-up. */
