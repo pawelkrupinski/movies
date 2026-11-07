@@ -4,8 +4,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
-import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
-import services.cinemas.pl.OnlyMovieEventsFilter
+import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
 import services.movies.BbfcCertificate
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}

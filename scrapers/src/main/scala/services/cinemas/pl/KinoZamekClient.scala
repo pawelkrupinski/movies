@@ -8,7 +8,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, ListingPages}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ListingPages}
 import tools.Whitespace.collapsedSpaces
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}

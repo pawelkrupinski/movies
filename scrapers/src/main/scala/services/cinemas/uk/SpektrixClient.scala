@@ -2,9 +2,8 @@ package services.cinemas.uk
 
 import models._
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
 import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.pl.OnlyMovieEventsFilter
 import services.movies.BbfcCertificate
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead, ReadOutcome}

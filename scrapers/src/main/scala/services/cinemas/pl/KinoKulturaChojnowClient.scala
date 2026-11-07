@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead}

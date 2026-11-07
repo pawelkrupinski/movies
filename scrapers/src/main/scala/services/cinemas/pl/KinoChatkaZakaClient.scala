@@ -4,7 +4,7 @@ import services.cinemas.common.ScraperParse
 import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._

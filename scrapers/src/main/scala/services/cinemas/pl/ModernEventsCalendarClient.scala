@@ -5,7 +5,7 @@ import services.movies.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import play.api.libs.json.{JsObject, JsString, Json}
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, YearMonth}

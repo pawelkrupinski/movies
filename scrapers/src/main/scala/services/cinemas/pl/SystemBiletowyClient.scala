@@ -8,7 +8,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 
 import java.time.{LocalDateTime, OffsetDateTime}
 import scala.util.Try

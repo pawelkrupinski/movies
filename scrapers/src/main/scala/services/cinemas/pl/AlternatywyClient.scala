@@ -5,7 +5,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.{LocalDate, Period}
 import java.util.Locale

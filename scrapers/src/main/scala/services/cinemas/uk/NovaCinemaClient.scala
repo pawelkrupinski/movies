@@ -3,8 +3,7 @@ package services.cinemas.uk
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
-import services.cinemas.pl.OnlyMovieEventsFilter
+import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 

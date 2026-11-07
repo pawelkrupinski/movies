@@ -7,7 +7,7 @@ import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter

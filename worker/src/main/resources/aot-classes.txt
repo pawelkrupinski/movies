@@ -8754,6 +8754,7 @@ services.cinemas.common.ListingReads$
 services.cinemas.common.MultiListingScraper
 services.cinemas.common.NearTermProgramme
 services.cinemas.common.NearTermProgramme$
+services.cinemas.common.OnlyMovieEventsFilter
 services.cinemas.common.PagedChunkScraper
 services.cinemas.common.PreScrapedCinemaScraper
 services.cinemas.common.PreScrapedCinemaScraper$
@@ -9482,7 +9483,6 @@ services.cinemas.pl.OkfIluzjaClient
 services.cinemas.pl.OkfIluzjaClient$
 services.cinemas.pl.OkfIluzjaClient$RawSlot
 services.cinemas.pl.OkfIluzjaClient$RawSlot$
-services.cinemas.pl.OnlyMovieEventsFilter
 services.cinemas.pl.PionierClient
 services.cinemas.pl.PionierClient$
 services.cinemas.pl.PionierClient$RawSlot

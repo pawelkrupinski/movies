@@ -15,7 +15,7 @@ import java.time.LocalDateTime
  *
  *  The calendar mixes the venue's films (a French-cinema review at 18:00) with
  *  its concerts/theatre, so the fixture list also carries a real venue concert
- *  ("Koncert: Muzyka łatwa…") that [[services.cinemas.pl.OnlyMovieEventsFilter]]
+ *  ("Koncert: Muzyka łatwa…") that [[services.cinemas.common.OnlyMovieEventsFilter]]
  *  must drop. Previously scraped from Filmweb, which had silently gone empty. */
 class KinoChatkaZakaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 

@@ -3,8 +3,7 @@ package services.cinemas.uk
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
-import services.cinemas.pl.OnlyMovieEventsFilter
+import services.cinemas.common.{CinemaScraper, ListingPages, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
 import services.movies.BbfcCertificate
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}

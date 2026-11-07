@@ -6,7 +6,7 @@ import services.movies.FormatTags
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies, OnlyMovieEventsFilter}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 

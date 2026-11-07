@@ -8,7 +8,7 @@ import tools.{HttpFetch, HttpRead}
 import services.movies.TitleNormalizer
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ListingPages, ScrapeHorizon, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, YearMonth}
 import java.time.format.DateTimeFormatter

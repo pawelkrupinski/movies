@@ -9,7 +9,7 @@ import models._
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._

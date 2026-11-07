@@ -4,9 +4,8 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
 import services.cinemas.common.ScraperParse.jsonText
-import services.cinemas.pl.OnlyMovieEventsFilter
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{Instant, LocalDate, LocalDateTime, ZoneId}

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import services.movies.FormatTags
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, DayPickerProgramme, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, DayPickerProgramme, ScraperParse, SlotsToMovies}
 import tools.HttpFetch
 
 import java.time.{LocalDate, LocalDateTime}

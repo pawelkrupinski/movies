@@ -6,7 +6,7 @@ import services.cinemas.common.ScraperParse
 import services.movies.FormatTags
 import models._
 import tools.{HttpFetch, HttpRead, ReadOutcome}
-import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ListingPages, ScrapeHorizon}
 
 import java.time.{LocalDate, YearMonth}
 import play.api.Logging
