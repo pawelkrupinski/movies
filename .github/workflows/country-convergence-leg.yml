@@ -1490,6 +1490,11 @@ jobs:
                   pattern: order-pass-${{ inputs.code }}-${{ matrix.phase }}-pass*
                   path: ${{ runner.temp }}/order-pass
                   merge-multiple: true
+            # A pass row that died (exit 137, Verify scrape recording #14) uploaded no corpus: named, never a test failure.
+            - name: Check both passes arrived
+              if: matrix.phase != 'takes-drift-aa'
+              shell: bash
+              run: scripts/ci/order-passes-present.sh "${{ runner.temp }}/order-pass" "${{ matrix.phase == 'order-independence-p01' && '0,1' || '1,2' }}" "${{ matrix.phase }}"
             - name: Compare the ${{ inputs.country }} ${{ matrix.phase }} passes
               if: matrix.phase != 'takes-drift-aa'
               id: suite
