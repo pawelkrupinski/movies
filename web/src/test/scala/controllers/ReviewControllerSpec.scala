@@ -100,6 +100,23 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     LabelsTsv.read(labels).map(r => (r.venue, r.rawTitle, r.film)).distinct should have size LabelsTsv.read(labels).size
   }
 
+  // An answer the labels file has not taken yet (no file configured, or its export failed) still hides its card: the
+  // kind counts are of the cards still awaiting an answer, as the list is.
+  it should "count by kind only the takes no answer stands for" in {
+    val labels = tempDirectory("agent-judged-counts").resolve("identity-judgements.tsv")
+    LabelsTsv.write(labels, Seq(LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right",
+      "agent judged 2026-10-22 (test): x", judged = "2026-10-22")))
+    Files.writeString(ReviewDigest.candidatesPath(labels), ReviewDigest.CandidatesHeader +
+      "\nde\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short\n")
+    val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> ReviewFixtures.source(now)),
+      new ReviewAnswers(new InMemoryReviewAnswerStore), labels, clock, labelsWritable = false)
+    def kinds = "Agent-judged \\d+|Candidates \\d+".r.findAllIn(contentAsString(c.agentJudged(None, None, 20, false)(FakeRequest()))).toSeq
+    kinds shouldBe Seq("Agent-judged 1", "Candidates 1")
+    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
+    status(c.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "right")))) shouldBe OK
+    kinds shouldBe Seq("Agent-judged 0", "Candidates 1")
+  }
+
   "a candidate's TMDB poster" should "redirect to the poster TMDB names for it, and be not found when TMDB names none or no key is set" in {
     val looked = controller(Mode.Dev, tmdbPosters = Some(howlsLookup)).tmdbPoster(4935, Some("pl"))(FakeRequest())
     status(looked) shouldBe SEE_OTHER

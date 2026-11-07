@@ -145,6 +145,9 @@ class ReviewController(cc: ControllerComponents,
       }
       val wanted    = country.filterNot(_ == "all").flatMap(Country.byCode).map(_.code)
       val awaiting  = ReviewDigest.pending(labelsRead._1, candidates, Set.empty).filter(i => wanted.forall(_ == i.country))
+      // what the counts count: the takes no answer stands for yet (one the labels file has not taken still hides its card)
+      val index     = new ReviewAnswers.Index(answers.current())
+      val open      = awaiting.filterNot(i => index.answerFor(i.id, i.members).isDefined)
       val shownKind = kind.filter(Set(ReviewDigest.Kinds.Agent, ReviewDigest.Kinds.Candidate))
       val countryOrder = Country.all.map(_.code).zipWithIndex.toMap
       val items     = nameFilms(ReviewDigest.ofKind(awaiting, shownKind)).sortBy(i => countryOrder.getOrElse(i.country, Int.MaxValue))
@@ -163,7 +166,7 @@ class ReviewController(cc: ControllerComponents,
       }
       render(ReviewPage.Digest, country, clusters.sortBy { case (_, i) => order(i.id) }.map { case (c, _) => c -> None }, limit, answered,
         errors ++ candidatesError ++ cardsError, ReviewView.Controls(kind = shownKind,
-          kindCounts = Some((awaiting.count(_.agentVerdict.isDefined), awaiting.count(_.agentVerdict.isEmpty)))), labelsRead, decorate = decorate)
+          kindCounts = Some((open.count(_.agentVerdict.isDefined), open.count(_.agentVerdict.isEmpty)))), labelsRead, decorate = decorate)
     }
   }
 
