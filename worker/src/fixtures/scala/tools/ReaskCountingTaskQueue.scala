@@ -1,7 +1,7 @@
 package tools
 
 import services.freshness.FreshnessStore
-import services.tasks.{DueWindow, EnqueueResult, QueueSnapshot, Task, TaskQueue, TaskType}
+import services.tasks.{DueWindow, EnqueueResult, ForwardingTaskQueue, TaskQueue, TaskType}
 
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
@@ -31,7 +31,7 @@ final class ReaskCountingTaskQueue(delegate: TaskQueue, freshness: => FreshnessS
                                    dueWindowFor: TaskType => Option[DueWindow],
                                    // The clock the producers gate on — the wiring's — so "is it
                                    // due?" is asked of the same instant they asked it of.
-                                   now: () => Instant) extends TaskQueue {
+                                   now: () => Instant) extends ForwardingTaskQueue(delegate) {
   private val reasks = new ConcurrentHashMap[TaskType, AtomicLong]()
 
   private val examples = new java.util.concurrent.ConcurrentLinkedQueue[String]()
@@ -53,18 +53,6 @@ final class ReaskCountingTaskQueue(delegate: TaskQueue, freshness: => FreshnessS
     }
     result
   }
-
-  override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = delegate.amendWaiting(dedupKey, fields)
-  override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = delegate.claim(workerId, lease, now)
-  override def complete(id: String, workerId: String): Unit = delegate.complete(id, workerId)
-  override def release(id: String, workerId: String, error: Option[String], notBefore: Option[Instant],
-                       refundAttempt: Boolean): Unit = delegate.release(id, workerId, error, notBefore, refundAttempt)
-  override def reapExpiredLeases(now: Instant): Int = delegate.reapExpiredLeases(now)
-  override def countByState(): Map[String, Long] = delegate.countByState()
-  override def waitingCount(taskType: TaskType): Int = delegate.waitingCount(taskType)
-  override def monitor(activeLimit: Int): QueueSnapshot = delegate.monitor(activeLimit)
-  override def watchWaiting(onWaiting: Option[java.time.Instant] => Unit): Option[AutoCloseable] = delegate.watchWaiting(onWaiting)
-  override def close(): Unit = delegate.close()
 }
 
 object ReaskCountingTaskQueue {

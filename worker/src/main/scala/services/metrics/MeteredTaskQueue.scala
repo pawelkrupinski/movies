@@ -1,6 +1,6 @@
 package services.metrics
 
-import services.tasks.{EnqueueResult, QueueSnapshot, Task, TaskQueue, TaskType}
+import services.tasks.{EnqueueResult, ForwardingTaskQueue, TaskQueue, TaskType}
 
 import java.time.Instant
 import scala.concurrent.duration.FiniteDuration
@@ -16,9 +16,9 @@ import scala.concurrent.duration.FiniteDuration
  * The claim/finish side is metered separately, by [[WorkerTaskMetrics]] acting
  * as the worker's `TaskObserver`, because only the worker knows the handler
  * outcome (done vs skipped vs reschedule) that a queue-level decorator can't see.
- * Every other method is a straight pass-through.
+ * Every other method is [[ForwardingTaskQueue]]'s straight pass-through.
  */
-class MeteredTaskQueue(delegate: TaskQueue, metrics: WorkerTaskMetrics) extends TaskQueue {
+class MeteredTaskQueue(delegate: TaskQueue, metrics: WorkerTaskMetrics) extends ForwardingTaskQueue(delegate) {
   import WorkerTaskMetrics.EnqueueResult.{Added, Deduped, Failed}
 
   override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant], claimAhead: FiniteDuration): EnqueueResult = {
@@ -30,18 +30,4 @@ class MeteredTaskQueue(delegate: TaskQueue, metrics: WorkerTaskMetrics) extends 
     })
     result
   }
-
-  override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = delegate.claim(workerId, lease, now)
-  override def complete(id: String, workerId: String): Unit = delegate.complete(id, workerId)
-  override def release(id: String, workerId: String, error: Option[String], notBefore: Option[Instant],
-                       refundAttempt: Boolean): Unit =
-    delegate.release(id, workerId, error, notBefore, refundAttempt)
-  override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = delegate.amendWaiting(dedupKey, fields)
-  override def raise(dedupKey: String, claimFrom: java.time.Instant): Boolean = delegate.raise(dedupKey, claimFrom)
-  override def reapExpiredLeases(now: Instant): Int = delegate.reapExpiredLeases(now)
-  override def countByState(): Map[String, Long] = delegate.countByState()
-  override def waitingCount(taskType: TaskType): Int = delegate.waitingCount(taskType)
-  override def monitor(activeLimit: Int): QueueSnapshot = delegate.monitor(activeLimit)
-  override def watchWaiting(onWaiting: Option[java.time.Instant] => Unit): Option[AutoCloseable] = delegate.watchWaiting(onWaiting)
-  override def close(): Unit = delegate.close()
 }

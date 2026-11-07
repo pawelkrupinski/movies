@@ -29,7 +29,7 @@ class CachingTaskQueue(
   delegate: TaskQueue,
   ttl:      FiniteDuration = 3.minutes,
   maxKeys:  Long           = 100000L
-) extends TaskQueue {
+) extends ForwardingTaskQueue(delegate) {
 
   // dedupKey -> present iff this instance enqueued it and hasn't seen it complete.
   // `recordStats` because the hit ratio IS the value of this cache: every hit is a
@@ -78,18 +78,6 @@ class CachingTaskQueue(
     Option(idToKey.getIfPresent(id)).foreach { key => idToKey.invalidate(id); active.invalidate(key) }
   }
 
-  // A released task is still active (back to waiting) — keep its cache entry so we
-  // don't re-enqueue it while it waits.
-  override def release(id: String, workerId: String, error: Option[String], notBefore: Option[Instant],
-                       refundAttempt: Boolean): Unit =
-    delegate.release(id, workerId, error, notBefore, refundAttempt)
-
-  override def amendWaiting(dedupKey: String, fields: Map[String, String]): Boolean = delegate.amendWaiting(dedupKey, fields)
-  override def raise(dedupKey: String, claimFrom: java.time.Instant): Boolean = delegate.raise(dedupKey, claimFrom)
-  override def reapExpiredLeases(now: Instant): Int = delegate.reapExpiredLeases(now)
-  override def countByState(): Map[String, Long] = delegate.countByState()
-  override def waitingCount(taskType: TaskType): Int = delegate.waitingCount(taskType)
-  override def monitor(activeLimit: Int): QueueSnapshot = delegate.monitor(activeLimit)
-  override def watchWaiting(onWaiting: Option[java.time.Instant] => Unit): Option[AutoCloseable] = delegate.watchWaiting(onWaiting)
-  override def close(): Unit = delegate.close()
+  // A released task is still active (back to waiting) — its cache entry is kept, by
+  // not decorating `release`, so we don't re-enqueue it while it waits.
 }
