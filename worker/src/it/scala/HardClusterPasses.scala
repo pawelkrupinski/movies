@@ -1,5 +1,6 @@
 package integration
 
+import tools.SpecPool
 import tools.SpecClock.given
 
 import tools.SpecTimeouts
@@ -10,7 +11,6 @@ import services.movies.{StoredMovieRecord, TitleNormalizer}
 import services.readmodel.FilmSlugs
 import tools._
 
-import java.util.concurrent.Executors
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Random, Try}
@@ -35,10 +35,10 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
   // Each country's file parsed on a thread of its own (pl/uk/us are ~4 MB gzipped): read in a row, the first boot thread
   // parsed all five while the pool's other seven waited on this lazy val.
   lazy val responses: Map[Country, RecordedResponses] = {
-    val pool = Executors.newFixedThreadPool(countries.size max 1)
-    try countries.map(c => c -> java.util.concurrent.CompletableFuture.supplyAsync(() => responsesOf(c), pool))
-      .map { case (c, f) => c -> f.join() }.toMap
-    finally pool.shutdown()
+    SpecPool.using(countries.size max 1) { pool =>
+      countries.map(c => c -> java.util.concurrent.CompletableFuture.supplyAsync(() => responsesOf(c), pool))
+        .map { case (c, f) => c -> f.join() }.toMap
+    }
   }
 
   private def responsesOf(country: Country): RecordedResponses = (
@@ -133,9 +133,8 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
   // Held as a Try: a lazy val whose initialiser throws is re-run on the next access, so one failed
   // boot re-ran every pass of every country for each test after it.
   private lazy val bootAttempt: Try[(Map[Country, Seq[(Pass, Seq[Film])]], Map[Country, Try[OutageRun]])] = Try {
-    val pool = Executors.newFixedThreadPool(8)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
-    try {
+    SpecPool.usingContext(8) { context =>
+      implicit val ec: ExecutionContext = context
       val outageRuns = Future.traverse(countries)(c => Future(c -> Try(outageRun(c))))
       val jobs = countries.flatMap { c =>
         (0 until Permutations).map(i => c -> (() => boot(c, s"p$i", OrderSeed + i, split = false))) :+
@@ -150,7 +149,7 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
       val (done, outs) = ProgressAwait.result("the hard-cluster passes' boot",
         Future.traverse(jobs) { case (c, job) => Future(c -> job()) }.zip(outageRuns), SpecTimeouts.Run, () => progress.get)()
       (done.groupMap(_._1)(_._2), outs.toMap)
-    } finally pool.shutdown()
+    }
   }
   def booted: Map[Country, Seq[(Pass, Seq[Film])]] = bootAttempt.get._1
 
@@ -176,9 +175,8 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
    * bug invisible. Resolving each spelling alone records those searches too.
    */
   private def recordEachSpellingAlone(): Unit = {
-    val pool = Executors.newFixedThreadPool(8)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
-    try {
+    SpecPool.usingContext(8) { context =>
+      implicit val ec: ExecutionContext = context
       val jobs = countries.flatMap { country =>
         CorpusFixture.read(HardClusters.corpusKey(country))
           .flatMap(row => row.films.map(row.cinema -> _))
@@ -194,7 +192,7 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
       ProgressAwait.result("recording each spelling alone", Future.traverse(jobs)(job => Future(Try(job()))), SpecTimeouts.Run,
         () => progress.get)()
       println(s"[hard-clusters] recorded ${jobs.size} spellings on their own")
-    } finally pool.shutdown()
+    }
   }
 
   /**

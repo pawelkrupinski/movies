@@ -1,5 +1,6 @@
 package services.cinemas.common
 
+import tools.SpecPool
 import models.{CinemaMovie, KinoMuza, Movie, Multikino, Showtime}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -59,14 +60,13 @@ class ListingReadsSpec extends AnyFlatSpec with Matchers {
   }
 
   "carry" should "report to the scrape's scope from another thread" in {
-    val pool = Executors.newSingleThreadExecutor()
-    try {
+    SpecPool.using(1) { pool =>
       val (_, reads) = ListingReads.during {
         val task = ListingReads.carry(ListingReads.pageFailed(down))
         pool.submit(new Runnable { def run(): Unit = task() }).get()
       }
       reads.complete shouldBe false
-    } finally pool.shutdown()
+    }
   }
 
   "a page the upstream says is gone (404)" should "leave the listing complete — it is an answer" in {

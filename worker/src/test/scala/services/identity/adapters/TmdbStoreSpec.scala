@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import tools.SpecPool
 import tools.SpecTimeouts
 
 import clients.TmdbClient
@@ -622,9 +623,9 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
 
   /** Run `writes` on threads of their own, all at once, and wait for every one — failing with the first that threw. */
   private def atOnce(writes: Seq[() => Unit]): Unit = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(writes.size)
-    try writes.map(write => pool.submit[Unit](() => write())).foreach(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
-    finally { pool.shutdownNow(); () }
+    SpecPool.using(writes.size) { pool =>
+      writes.map(write => pool.submit[Unit](() => write())).foreach(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
+    }
   }
 
   private def minimalOf(body: String): play.api.libs.json.JsValue = TmdbNormalizer.minimal(play.api.libs.json.Json.parse(body))

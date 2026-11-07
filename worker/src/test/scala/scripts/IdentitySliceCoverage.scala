@@ -1,5 +1,6 @@
 package scripts
 
+import tools.SpecPool
 import tools.SliceHttp
 
 import java.nio.file.{Files, Path}
@@ -62,9 +63,9 @@ object IdentitySliceCoverage {
 
   /** Every slice of `dirs` replayed, side by side (each decides from its own answers and shares nothing). */
   def coverage(dirs: Seq[Path]): Seq[Coverage] = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors))
-    try ParallelTasks.all(dirs)(coverageOf)(using scala.concurrent.ExecutionContext.fromExecutor(pool))
-    finally pool.shutdown()
+    SpecPool.usingContext(math.max(1, Runtime.getRuntime.availableProcessors)) { ec =>
+      ParallelTasks.all(dirs)(coverageOf)(using ec)
+    }
   }
 
   /** The recording cache key a slice names: `<cache>/recordings/<key>/pair/test/resources/fixtures`. */

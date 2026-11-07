@@ -1,5 +1,6 @@
 package services.identity
 
+import tools.SpecPool
 import clients.tools.FixtureFile
 import models.Country
 import org.bson.{BsonDocument, BsonString}
@@ -132,9 +133,9 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     val throttled = new Throttled(wire, start = 4)
     scala.util.Try(throttled.get("https://api.example.org/first"))
     most.set(0)
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(8)
-    try (1 to 16).map(i => pool.submit(() => throttled.get(s"https://api.example.org/$i"))).foreach(_.get)
-    finally pool.shutdownNow()
+    SpecPool.using(8) { pool =>
+      (1 to 16).map(i => pool.submit(() => throttled.get(s"https://api.example.org/$i"))).foreach(_.get)
+    }
     most.get shouldBe 2
     throttled.report() should include ("17 live request(s)")
     throttled.report() should include ("halved 1 time(s)")

@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import tools.SpecPool
 import tools.SpecTimeouts
 
 import clients.TmdbClient
@@ -77,9 +78,9 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     }
     val lookups = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("replay"))),
       new services.enrichment.ImdbClient(tools.RoutingHttpFetch.dead("imdb")), Nil)
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
-    try Seq("one", "two").map(title => pool.submit(() => lookups.candidates(CandidateQuery.Title(title)))).foreach(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
-    finally pool.shutdownNow()
+    SpecPool.using(2) { pool =>
+      Seq("one", "two").map(title => pool.submit(() => lookups.candidates(CandidateQuery.Title(title)))).foreach(_.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
+    }
     overlap.get shouldBe 2
   }
 
@@ -113,8 +114,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
     val release = new java.util.concurrent.CountDownLatch(1)
     val fetch   = new SuggestionReads(_ => { entered.countDown(); release.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); () })
     val lookups = fetch.lookups
-    val pool    = java.util.concurrent.Executors.newFixedThreadPool(2)
-    try {
+    SpecPool.using(2) { pool =>
       val first  = pool.submit(() => lookups.candidates(CandidateQuery.Imdb(Caligula)))
       entered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
       val waiter = new java.util.concurrent.atomic.AtomicReference[Thread]
@@ -126,7 +126,7 @@ class TmdbIdentityLookupsSpec extends AnyFlatSpec with Matchers {
       release.countDown()
       first.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS).answered.get.map(_.tmdbId) shouldBe Seq(1774981, 9453)
       second.get(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe Answer.Known(Nil)
-    } finally pool.shutdownNow()
+    }
     fetch.reads.get shouldBe 1
   }
 }

@@ -1,6 +1,7 @@
 package services.identity
 
 
+import tools.SpecPool
 import services.identity.adapters.IdentityProjection
 import tools.SpecClock.given
 
@@ -367,8 +368,9 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
   /** `run` over every seed, the seeds side by side: each builds its own worlds and shares nothing with another. One
    *  after another, the 750 seeds of the three tests below were the worker's longest suite (474 s on CI, 2026-10-27). */
   private def seeds(of: Range)(run: Int => Int): Seq[Int] = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors)
-    try scripts.ParallelTasks.all(of)(run)(using scala.concurrent.ExecutionContext.fromExecutor(pool)) finally pool.shutdown()
+    SpecPool.usingContext(Runtime.getRuntime.availableProcessors) { ec =>
+      scripts.ParallelTasks.all(of)(run)(using ec)
+    }
   }
 
   "A projection of what moved" should "store, tick after tick, exactly what a projection of the whole corpus stores" in {

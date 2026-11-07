@@ -1,5 +1,6 @@
 package controllers
 
+import tools.SpecPool
 import models.UserState
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -292,13 +293,12 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   "a hidden-films write" should "not lose any of many parallel hides for one user" in {
     val (ctl, repository, _) = fixture(Some(storedFor("de", "Der Film")))
-    val pool   = java.util.concurrent.Executors.newFixedThreadPool(16)
     val titles = (1 to 64).map(i => s"Film $i")
-    try {
+    SpecPool.using(16) { pool =>
       val results = titles.map(t => pool.submit(() =>
         status(ctl.hideFilm("pl", t)(FakeRequest("PUT", "/api/me/pl/hidden-films/x").withSession("userId" -> "u1")))))
       results.map(_.get).distinct shouldBe Seq(OK)
-    } finally pool.shutdown()
+    }
 
     val stored = repository.find("u1").value.hiddenFilmsByCountry
     stored("pl") shouldBe titles.toSet
@@ -347,15 +347,14 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   "a language PUT /api/me/state" should "not erase, nor be erased by, per-title hides racing it" in {
     val (ctl, repository, _) = fixture()
-    val pool   = java.util.concurrent.Executors.newFixedThreadPool(16)
     val titles = (1 to 32).map(i => s"Film $i")
-    try {
+    SpecPool.using(16) { pool =>
       val writes = titles.flatMap(t => Seq(
         pool.submit(() => status(ctl.hideFilm("pl", t)(FakeRequest("PUT", "/api/me/pl/hidden-films/x").withSession("userId" -> "u1")))),
         pool.submit(() => status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1")
           .withBody(Json.obj("language" -> "en")))))))
       writes.map(_.get).distinct shouldBe Seq(OK)
-    } finally pool.shutdown()
+    }
 
     val stored = repository.find("u1").value
     stored.hiddenFilmsByCountry("pl") shouldBe titles.toSet

@@ -1,5 +1,6 @@
 package services.identity
 
+import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.IdentitySlice
@@ -30,12 +31,12 @@ abstract class ReadSetClosureSpec(part: Int) extends AnyFlatSpec with Matchers w
    *  side (a test of another country cancels before it reads its slice's result). */
   private lazy val found: Map[Path, (Try[Seq[String]], Try[Seq[String]])] = {
     val dirs = SliceParts.inScope(slices, countriesInScope)
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    try dirs.zip(scripts.ParallelTasks.all(dirs) { dir =>
-      val read = Try(Read(dir))
-      (read.flatMap(r => Try(moved(r) ++ arrivals(r))), read.flatMap(r => Try(unreadSibling(r))))
-    }(using scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
-    finally pool.shutdown()
+    SpecPool.usingContext(math.max(1, Runtime.getRuntime.availableProcessors / 2)) { ec =>
+      dirs.zip(scripts.ParallelTasks.all(dirs) { dir =>
+        val read = Try(Read(dir))
+        (read.flatMap(r => Try(moved(r) ++ arrivals(r))), read.flatMap(r => Try(unreadSibling(r))))
+      }(using ec)).toMap
+    }
   }
 
   slices.foreach { dir =>

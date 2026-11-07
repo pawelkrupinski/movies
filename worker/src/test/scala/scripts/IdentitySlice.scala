@@ -1,5 +1,6 @@
 package scripts
 
+import tools.SpecPool
 import tools.TempDirectories
 import models.Country
 import org.bson.{BsonArray, BsonDocument, BsonString}
@@ -581,9 +582,9 @@ object IdentitySlice {
   /** `f` over `items`, `threads` at a time, each result handed to `each` in the items' order as soon as it and every one
    *  before it are done: the output of a parallel batch is the serial one's. */
   def inOrder[A, B](items: Seq[A], threads: Int)(f: A => B)(each: B => Unit): Unit = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, threads))
-    try items.map(item => pool.submit(() => f(item))).foreach(future => each(future.get()))
-    finally pool.shutdownNow()
+    SpecPool.using(math.max(1, threads)) { pool =>
+      items.map(item => pool.submit(() => f(item))).foreach(future => each(future.get()))
+    }
   }
 
   /** The result kept in `dir`, else `decide`d and kept there (none kept without a `dir`). */

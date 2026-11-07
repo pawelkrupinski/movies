@@ -1,5 +1,6 @@
 package services.movies
 
+import tools.SpecPool
 import tools.SpecTimeouts
 
 import controllers.FilmSchedule
@@ -8,7 +9,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.TestReadModel
 
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -53,19 +53,19 @@ class CorpusComparisonSpec extends AnyFlatSpec with Matchers {
     val live = new AtomicInteger()
     val peak = new AtomicInteger()
 
-    val pool = Executors.newFixedThreadPool(4)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
-    try Await.result(Future.sequence((0 until 4).map(pass => Future {
-      comparison.submit(pass) { () =>
-        peak.updateAndGet(_ max live.incrementAndGet())
-        // Wide enough that four passes arriving together would overlap if the
-        // materialisation were not the thing being serialised.
-        Thread.sleep(100)
-        live.decrementAndGet()
-        corpus("Ghost in the Shell")
-      }
-    })), SpecTimeouts.Io)
-    finally pool.shutdown()
+    SpecPool.usingContext(4) { context =>
+      implicit val ec: ExecutionContext = context
+      Await.result(Future.sequence((0 until 4).map(pass => Future {
+        comparison.submit(pass) { () =>
+          peak.updateAndGet(_ max live.incrementAndGet())
+          // Wide enough that four passes arriving together would overlap if the
+          // materialisation were not the thing being serialised.
+          Thread.sleep(100)
+          live.decrementAndGet()
+          corpus("Ghost in the Shell")
+        }
+      })), SpecTimeouts.Io)
+    }
 
     peak.get() shouldBe 1
     comparison.divergences shouldBe empty

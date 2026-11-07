@@ -1,5 +1,6 @@
 package services.identity
 
+import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.IdentitySlice
@@ -30,10 +31,10 @@ abstract class TitleRelationSpec(part: Int) extends AnyFlatSpec with Matchers wi
   // the slices in the change's countries only: a test of another country cancels before it reads its slice's result
   private lazy val found: Map[Path, Try[Seq[String]]] = {
     val dirs = SliceParts.inScope(slices, countriesInScope)
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    try dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(apart(dir)))(using
-      scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
-    finally pool.shutdown()
+    SpecPool.usingContext(math.max(1, Runtime.getRuntime.availableProcessors / 2)) { ec =>
+      dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(apart(dir)))(using
+        ec)).toMap
+    }
   }
 
   if (SliceParts.holdsWholeChecks(part))

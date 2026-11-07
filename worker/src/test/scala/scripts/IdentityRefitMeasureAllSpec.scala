@@ -1,5 +1,6 @@
 package scripts
 
+import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.IdentityCalibration
@@ -18,9 +19,8 @@ class IdentityRefitMeasureAllSpec extends AnyFlatSpec with Matchers with tools.C
     // two captures, and Poland's takes move with the rating cut, so the strict change still takes fewer films.
     assumeInScope("pl", "es")
     val replays = Seq(models.Country.Poland, models.Country.Spain).map(c => new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(c)), None))
-    val pool    = java.util.concurrent.Executors.newFixedThreadPool(4)
-    given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
-    try {
+    SpecPool.usingContext(4) { ec =>
+      given scala.concurrent.ExecutionContext = ec
       val control = baseline(replays, shipped)
       control.captures.map(_.decisions) shouldBe replays.map(_.capture.decisions)
       val changes = Seq(CutChange("listing-film", "showRatings", shipped.ratingCut, 0.999999), CutChange("listing-film", "showRatings", shipped.ratingCut, shipped.ratingCut))
@@ -29,7 +29,7 @@ class IdentityRefitMeasureAllSpec extends AnyFlatSpec with Matchers with tools.C
       all shouldBe changes.map(c => measureOn(replays, control, c.applyTo(control.calibration)))
       all.head.flatMap(_.takes).size should be < control.takes.size
       measureAll(replays, control, Nil) shouldBe empty
-    } finally pool.shutdown()
+    }
   }
 
   "A refit whose round 1 shards measured on other runners" should "refit and report byte for byte as the refit measured whole" in {

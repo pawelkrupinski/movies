@@ -1,11 +1,12 @@
 package scripts
 
+import tools.SpecPool
 import org.scalatest.concurrent.{Signaler, ThreadSignaler, TimeLimits}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.SpanSugar._
 
-import java.util.concurrent.{ExecutionException, Executors}
+import java.util.concurrent.ExecutionException
 import scala.concurrent.ExecutionContext
 
 class ParallelTasksSpec extends AnyFlatSpec with Matchers with TimeLimits {
@@ -14,8 +15,9 @@ class ParallelTasksSpec extends AnyFlatSpec with Matchers with TimeLimits {
   private given Signaler = ThreadSignaler
 
   private def onPool[A](body: ExecutionContext ?=> A): A = {
-    val pool = Executors.newFixedThreadPool(2)
-    try body(using ExecutionContext.fromExecutor(pool)) finally pool.shutdown()
+    SpecPool.usingContext(2) { ec =>
+      body(using ec)
+    }
   }
 
   "All tasks" should "return every result in the items' order" in {

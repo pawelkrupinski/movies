@@ -1,5 +1,6 @@
 package services.identity
 
+import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.{IdentityDrift, IdentityDriftSlicesSpec, IdentitySlice}
@@ -69,11 +70,11 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
   private lazy val found: Map[Path, Try[Walked]] = {
     val inScope = SliceParts.inScope(slices, countriesInScope).toSet
     val dirs    = slices.filter(dir => inScope(dir) || flippingHere.contains(dir))
-    val pool    = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
     val walking = cache.fold((dir: Path) => walked(dir))(at => (dir: Path) => Cached.walk(at, dir))
-    try dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(walking(dir)))(using
-      scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
-    finally pool.shutdown()
+    SpecPool.usingContext(math.max(1, Runtime.getRuntime.availableProcessors / 2)) { ec =>
+      dirs.zip(scripts.ParallelTasks.all(dirs)(dir => Try(walking(dir)))(using
+        ec)).toMap
+    }
   }
 
   if (SliceParts.holdsWholeChecks(part)) {
@@ -328,9 +329,9 @@ object PopulationMonotonicitySpec {
     def resolved[A](jobs: Seq[A])(run: A => (Takes, Takes)): Map[A, (Takes, Takes)] =
       if (threads <= 1) jobs.map(j => j -> run(j)).toMap
       else {
-        val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
-        try jobs.zip(scripts.ParallelTasks.all(jobs)(run)(using scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
-        finally pool.shutdown()
+        SpecPool.usingContext(threads) { ec =>
+          jobs.zip(scripts.ParallelTasks.all(jobs)(run)(using ec)).toMap
+        }
       }
     val stages = Seq[(String, ((Takes, Takes)) => Takes)]("model" -> (_._1), "final" -> (_._2))
 

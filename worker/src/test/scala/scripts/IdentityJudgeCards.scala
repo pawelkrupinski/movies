@@ -1,5 +1,6 @@
 package scripts
 
+import tools.SpecPool
 import models.Country
 import services.identity.{Answer, IdentityLookups, IdentityMeasures, SuspectTakes}
 import services.identity.adapters.TmdbIdentityLookups
@@ -10,7 +11,6 @@ import tools.UnmatchedClusters.{Capture, Label, Take}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.Locale
-import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
 
 /**
@@ -130,16 +130,15 @@ object IdentityJudgeCards {
   }
 
   private def fetchAll(ids: Seq[Int], lookups: IdentityLookups): Map[Int, IdentityMeasures.Film] = {
-    val pool = Executors.newFixedThreadPool(6)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
-    try {
+    SpecPool.usingContext(6) { context =>
+      implicit val ec: ExecutionContext = context
       val started = tools.Stopwatch.start()
       val got = ParallelTasks.all(ids)(id => id -> lookups.film(id)).collect {
         case (id, Answer.Known(Some(film))) => id -> film
       }.toMap
       if (ids.nonEmpty) println(f"[identity-judge-cards] TMDB live: ${got.size}/${ids.size} record(s) in ${started.seconds}%.1fs")
       got
-    } finally pool.shutdown()
+    }
   }
 
   // ── the files ────────────────────────────────────────────────────────────────────────────

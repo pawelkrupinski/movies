@@ -91,8 +91,9 @@ class IdentityLookupSweepSpec extends AnyFlatSpec with Matchers {
   // A recording leg's sweep met every lookup its tree lacked live and ONE AT A TIME: 274 s of the US
   // leg against 41 s for the same sweep replayed hermetically (runs 36974178044, 37029415020).
   private def pooled[A](body: java.util.concurrent.ExecutorService => A): A = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(4)
-    try body(pool) finally { pool.shutdownNow(); () }
+    SpecPool.using(4) { pool =>
+      body(pool)
+    }
   }
 
   "a sweep with a pool" should "ask its lookups side by side, and ask and answer exactly what it does one at a time" in pooled { pool =>

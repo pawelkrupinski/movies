@@ -1,5 +1,6 @@
 package integration
 
+import tools.SpecPool
 import models.{Cinema, CinemaMovie, Country}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -115,15 +116,14 @@ class IdentityCutoverIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // Held as a Try: a lazy val whose initialiser throws is re-run on the next access, so one failed
   // boot re-ran every boot for every test after it instead of failing each at once.
   private lazy val bootAttempt: Try[Map[Country, Seq[Pass]]] = Try {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(BootParallelism)
-    try {
+    SpecPool.using(BootParallelism) { pool =>
       def run[A](body: => A): java.util.concurrent.Future[A] = pool.submit(() => body)
       val passes = countries.map { c =>
         c -> Seq(run(cutPass(c, "p0", OrderSeed, halfFirst = false)), run(cutPass(c, "p1", OrderSeed + 1, halfFirst = false)),
           run(cutPass(c, "half", OrderSeed + 2, halfFirst = true)))
       }
       passes.map { case (c, fs) => c -> fs.map(_.get()) }.toMap
-    } finally pool.shutdownNow(): Unit
+    }
   }
   private def passes: Map[Country, Seq[Pass]] = bootAttempt.get
 

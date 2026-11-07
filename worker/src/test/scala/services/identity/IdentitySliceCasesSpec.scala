@@ -1,5 +1,6 @@
 package services.identity
 
+import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.IdentitySlice
@@ -29,10 +30,10 @@ class IdentitySliceCasesSpec extends AnyFlatSpec with Matchers with tools.Countr
    *  another. One after another, the 68 cases were the worker's longest suite (146 s on CI, run 3419). A case that
    *  fails to decide fails its own test only. */
   private lazy val takesByCase: Map[Path, Try[Map[(String, String), String]]] = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(Runtime.getRuntime.availableProcessors)
-    try cases.zip(scripts.ParallelTasks.all(cases)(dir => Try(IdentitySlice.takesOf(dir)))(using
-      scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
-    finally pool.shutdown()
+    SpecPool.usingContext(Runtime.getRuntime.availableProcessors) { ec =>
+      cases.zip(scripts.ParallelTasks.all(cases)(dir => Try(IdentitySlice.takesOf(dir)))(using
+        ec)).toMap
+    }
   }
 
   cases.foreach { dir =>

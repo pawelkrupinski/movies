@@ -1,5 +1,6 @@
 package services.identity
 
+import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.agreement.FamilyFinalReads
@@ -27,10 +28,10 @@ class FamilyIndexCompletenessSpec extends AnyFlatSpec with Matchers {
   import FamilyIndexCompletenessSpec._
 
   private lazy val checked: Map[Path, Try[Outcome]] = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    try Slices.zip(scripts.ParallelTasks.all(Slices)(dir => Try(check(dir)))(using
-      scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
-    finally pool.shutdown()
+    SpecPool.usingContext(math.max(1, Runtime.getRuntime.availableProcessors / 2)) { ec =>
+      Slices.zip(scripts.ParallelTasks.all(Slices)(dir => Try(check(dir)))(using
+        ec)).toMap
+    }
   }
 
   "the slices" should "be there" in { Slices should not be empty }

@@ -1,5 +1,6 @@
 package scripts
 
+import tools.SpecPool
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -31,10 +32,10 @@ abstract class IdentityDriftSlicesShard(shard: Int) extends AnyFlatSpec with Mat
 
   /** This shard's parts' findings, side by side: each replays its own answers and shares nothing with another. */
   private lazy val found: Map[Part, Try[Outcome]] = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    try parts.zip(ParallelTasks.all(parts)(part => Try(replayed(part.dir, part.seeds)))(using
-      scala.concurrent.ExecutionContext.fromExecutor(pool))).toMap
-    finally pool.shutdown()
+    SpecPool.usingContext(math.max(1, Runtime.getRuntime.availableProcessors / 2)) { ec =>
+      parts.zip(ParallelTasks.all(parts)(part => Try(replayed(part.dir, part.seeds)))(using
+        ec)).toMap
+    }
   }
 
   parts.foreach { part =>

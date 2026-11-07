@@ -1,5 +1,6 @@
 package services.identity
 
+import tools.SpecPool
 import play.api.libs.json.{Json, OFormat}
 import services.identity.agreement.FamilyFinalReads
 import services.movies.ListingKey
@@ -204,8 +205,9 @@ object FamilyConvergence {
         }
       if (inner <= 1) subsets.foreach(takes)
       else {
-        val pool = java.util.concurrent.Executors.newFixedThreadPool(inner)
-        try subsets.map(s => pool.submit(() => takes(s))).foreach(_.get) finally pool.shutdown()
+        SpecPool.using(inner) { pool =>
+          subsets.map(s => pool.submit(() => takes(s))).foreach(_.get)
+        }
       }
       val flips = for {
         (stage, pick) <- Seq[(String, ((Takes, Takes)) => Takes)]("model" -> (_._1), "final" -> (_._2))
