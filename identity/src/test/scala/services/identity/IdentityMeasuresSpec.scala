@@ -223,6 +223,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // [170′], screening on 25 May 2027, is searched with its season, which reaches the RBO 2026/27 relay aired that day
     IdentityMeasures.searchQueries(Listing("Romeo and Juliet", runtime = Some(170), screenedSeason = Some(2026))) should
       contain ("Romeo and Juliet 2026")
+    // a year it states that closes the season it screens in is searched as the season's opening year too, as the season's
+    // record is titled: UK Riverside Theatre Woodbridge's "Romeo and Juliet (2027)", screening on 25 May 2027, reached the
+    // RBO 2026/27 relay only by joining a sibling whose search did ("Romeo and Juliet 2027" finds nothing)
+    IdentityMeasures.searchQueries(Listing("Romeo and Juliet (2027)", screeningsSeason = Some(2026))) should
+      contain allOf ("Romeo and Juliet 2027", "Romeo and Juliet 2026")
+    // a year of another season names none of the one it screens in
+    IdentityMeasures.searchQueries(Listing("Romeo and Juliet (2029)", screeningsSeason = Some(2026))) should not contain "Romeo and Juliet 2026"
     // …but a film's title going on past the work names no relay: the musical's name is only its head
     IdentityMeasures.searchQueries(Listing("Lord Of The Rings: The Fellowship Of The Ring", runtime = Some(178), screenedSeason = Some(2026))) should
       not contain "Lord of the Rings 2026"
