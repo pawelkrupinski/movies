@@ -45,14 +45,35 @@ final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
    *  both read off the one Flicks page that dated it so. A feed's catalogue id stays each venue's own listing of it. */
   def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String, ownSource: String = "",
                     act: Authority.Act = Authority.Act.Corroborate): Int =
-    (backing(titleGroups, f).filter(Authority.counts(_, act)).map(Backer.origin).toSet - ownVenue - ownSource).size
+    countedBut(titleGroups, f, act, Read.Origin, ownVenue, ownSource)
   /** The SOURCES of `titleGroups` other than `ownSource` backing `f` ([[Backer.source]]): a feed entry's facts, copied
    *  onto every venue it lists, are one claim, counted once — what a feed's own link is weighed against
    *  (`services.identity.FeedLink`). `act`: what they are counted for, each entry only where its provenance may
    *  ([[Authority]]: a kept listing's entry never toward an overrule) -- whether the
    *  present sources overrule a present listing's link is theirs to say. */
   def sources(titleGroups: Seq[String], f: Film, ownSource: String, act: Authority.Act = Authority.Act.Corroborate): Int =
-    (backing(titleGroups, f).filter(Authority.counts(_, act)).map(Backer.source).toSet - ownSource).size
+    countedBut(titleGroups, f, act, Read.Source, ownSource, ownSource)
+
+  private enum Read { case Origin, Source }
+  // Each group's backers of a film counted for `act`, read as origins or sources, once per group, film and act: every
+  // listing scored against the film asked it again, each backer filtered and cut into its origin per call, and a
+  // family's kept spellings make every group longer and every pool wider (VenueBacking.corroborating 129 -> 403 JFR
+  // samples of a DE resolve with 61k kept, 2026-11-07).
+  private val read = scala.collection.mutable.HashMap.empty[(String, Authority.Act, Read), java.util.IdentityHashMap[Film, Set[String]]]
+  private def readOf(group: String, f: Film, act: Authority.Act, as: Read): Set[String] =
+    read.getOrElseUpdate((group, act, as), new java.util.IdentityHashMap[Film, Set[String]]()).computeIfAbsent(f, film => {
+      reads += 1
+      backing(Seq(group), film).filter(Authority.counts(_, act)).map(if (as == Read.Origin) Backer.origin else Backer.source).toSet
+    })
+  private var reads = 0
+  /** How many (group, film, act, reading) backings were read: the cost the counts are paid, whoever asks how often. */
+  private[identity] def backingsRead: Int = reads
+  /** How many of what `titleGroups` read as `as` back `f`, `but` and `besides` not counted. */
+  private def countedBut(titleGroups: Seq[String], f: Film, act: Authority.Act, as: Read, but: String, besides: String): Int = {
+    val sets = titleGroups.iterator.map(readOf(_, f, act, as)).filter(_.nonEmpty).toSeq
+    val all  = if (sets.sizeIs == 1) sets.head else sets.foldLeft(Set.empty[String])(_ ++ _)
+    all.size - (if (all(but)) 1 else 0) - (if (besides != but && all(besides)) 1 else 0)
+  }
 }
 
 object VenueBacking {

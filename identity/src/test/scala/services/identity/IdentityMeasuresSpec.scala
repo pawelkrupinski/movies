@@ -635,6 +635,21 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
         new VenueBacking(Map("candyman" -> group)).corroborating(Seq("candyman"), f, venue))
   }
 
+  it should "read a group's backing of a film once, however many of its members ask, and count as the sets did" in {
+    // a title billed at 300 venues, kept spellings among them: every member scored against the film asked the whole group
+    val page   = SourceReliability.pageClaim("https://www.flicks.us/movie/nt-live-hamlet/").get
+    val hamlet = Listing("NT Live: Hamlet", year = Some(2015))
+    val group  = (1 to 300).map(i => s"Venue $i" -> hamlet) ++ Seq(Backer("Burns Court", page) -> hamlet, Backer("Film Streams", page) -> hamlet)
+    val film   = Film("National Theatre Live: Hamlet", year = Some(2015))
+    val backing = new VenueBacking(Map("ntlivehamlet" -> group, "hamlet" -> Seq("Venue 7" -> hamlet, "Venue 900" -> hamlet)))
+    (1 to 300).foreach(i => backing.corroborating(Seq("ntlivehamlet"), film, s"Venue $i") shouldBe 300)
+    backing.backingsRead shouldBe 1
+    backing.corroborating(Seq("ntlivehamlet", "hamlet"), film, "Venue 900") shouldBe 301
+    backing.corroborating(Seq("ntlivehamlet"), film, "Venue 1", page) shouldBe 299
+    backing.sources(Seq("ntlivehamlet"), film, page) shouldBe 300
+    backing.backingsRead shouldBe 3
+  }
+
   it should "count nothing for a title group no venue lists" in {
     // PL, a decorated "Pucio ... 2D DUB" whose undecorated title no other venue lists bare: its
     // undecorated group is empty, not missing (the calibration's refit threw on it).
