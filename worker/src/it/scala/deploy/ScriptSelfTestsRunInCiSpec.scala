@@ -21,7 +21,7 @@ import scala.jdk.CollectionConverters.*
  */
 class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
 
-  private val RunnerRoots = Seq("scripts", ".github/scripts", ".github/actions", "android/scripts", "ios/scripts", "infra/bin", "data")
+  private val RunnerRoots = Seq("scripts", ".github/scripts", ".github/actions", "android/scripts", "ios/scripts", "infra/bin", "infra/nix/files", "data")
   private val SelfTest = """([\w-]+_test\.py|[\w-]+-test\.sh)""".r
   private val OffScheme = """(test_[\w-]+\.py|[\w-]+_spec\.py|[\w-]+-spec\.sh)""".r
   /** The assertion harness the shell specs source: named like a spec, it tests nothing itself. */

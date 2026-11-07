@@ -48,7 +48,7 @@ set -uo pipefail
 # GITHUB_OUTPUT would write into the calling step's own.
 unset GITHUB_STEP_SUMMARY GITHUB_OUTPUT
 
-Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin data"
+Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin infra/nix/files data"
 # The oldest python3 every Python tool runs on: macOS's /usr/bin/python3 (3.9). scripts/ci/python_floor_lint.py holds
 # the code to it -- no syntax, and no annotation evaluated at runtime, newer than this.
 PythonFloor="3.9"

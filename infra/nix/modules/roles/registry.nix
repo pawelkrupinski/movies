@@ -15,6 +15,8 @@
 let
   port = 5000;
   keep = 10;
+  # How long a commit-sha image ci pushed stays safe from the prune before publish re-tags it `main-*`.
+  handoffMinutes = 24 * 60;
   domain = "registry.kinowo.net";
   acmeWebroot = "/var/lib/acme/acme-challenge";
   reg = config.services.dockerRegistry;
@@ -22,45 +24,12 @@ let
   # The module keeps its generated config file private; its ExecStart is the one place it is named.
   registryConfig = lib.last (lib.splitString " " config.systemd.services.docker-registry.serviceConfig.ExecStart);
 
-  # KEEP THE NEWEST TEN `main-<14-digit UTC timestamp>-<sha7>` TAGS PER REPOSITORY, by digest, plus
-  # whatever `latest` points at; delete every other manifest. Those tags are what Flux's image
-  # policies order on (movies-gitops image-automation/automation.yaml), so whatever is deployed is
-  # always among the ten. The fixed-width timestamp is why a plain reverse sort is a time sort.
-  #
-  # A REPOSITORY WITH NO main-* TAG IS LEFT ALONE: no ordering means no notion of "newest", and
-  # guessing is how a prune deletes the one image something runs.
-  #
-  # Known race: ci.yml pushes `<sha>` and main.yml re-tags it as main-* a few minutes later. A prune
-  # landing in between deletes the not-yet-tagged image and that one deploy's re-tag fails; re-run it.
+  # KEEP THE NEWEST TEN `main-*` TAGS PER REPOSITORY, plus `latest` and ci's commit-sha hand-offs of the
+  # last day: ../../files/registry-prune.sh says why, and registry-prune-test.sh holds it.
   prune = pkgs.writeShellApplication {
     name = "registry-prune";
-    runtimeInputs = with pkgs; [ curl jq coreutils gnugrep ];
-    text = ''
-      api=http://127.0.0.1:${toString port}/v2
-      accept='application/vnd.oci.image.index.v1+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.docker.distribution.manifest.v2+json'
-      digest() {
-        curl -fsSI -H "Accept: $accept" "$api/$1/manifests/$2" |
-          tr -d '\r' | grep -i '^docker-content-digest:' | cut -d' ' -f2
-      }
-
-      for repo in $(curl -fsS "$api/_catalog?n=1000" | jq -r '.repositories[]?'); do
-        tags=$(curl -fsS "$api/$repo/tags/list" | jq -r '.tags[]?')
-        newest=$(grep -E '^main-[0-9]{14}-[0-9a-f]{7}$' <<<"$tags" | sort -r | head -n ${toString keep} || true)
-        if [ -z "$newest" ]; then
-          echo "$repo: no main-* tags, left alone"
-          continue
-        fi
-        keepers=$(for t in $newest $(grep -x latest <<<"$tags" || true); do digest "$repo" "$t"; done | sort -u)
-        deleted=0
-        for t in $tags; do
-          d=$(digest "$repo" "$t") || continue
-          if [ -z "$d" ] || grep -qx "$d" <<<"$keepers"; then continue; fi
-          # A digest shared by several tags goes with the first; the rest then 404, harmlessly.
-          if curl -fsS -o /dev/null -X DELETE "$api/$repo/manifests/$d"; then deleted=$((deleted + 1)); fi
-        done
-        echo "$repo: kept $(wc -l <<<"$keepers") image(s), deleted $deleted"
-      done
-    '';
+    runtimeInputs = with pkgs; [ curl jq coreutils gnugrep findutils ];
+    text = builtins.readFile ../../files/registry-prune.sh;
   };
 in
 {
@@ -95,7 +64,7 @@ in
     startAt = "*-*-* 04:00:00";
     serviceConfig.Type = "oneshot";
     script = ''
-      ${lib.getExe prune}
+      ${lib.getExe prune} http://127.0.0.1:${toString port}/v2 ${toString keep} ${reg.storagePath} ${toString handoffMinutes}
       # However the collector ends, the registry comes back up: the cluster pulls from it.
       trap 'systemctl start docker-registry.service' EXIT
       systemctl stop docker-registry.service
