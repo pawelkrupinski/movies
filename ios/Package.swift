@@ -148,6 +148,7 @@ let package = Package(
                 "Views/FlowLayout.swift",
                 "Views/Palette.swift",
                 "Views/PosterChainImage.swift",
+                "Views/InterfaceOrientationReader.swift",
                 "Views/RatingBadgesView.swift",
                 "Views/RatingPillStyle.swift",
                 "Views/ShowingsView.swift",

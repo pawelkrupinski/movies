@@ -10,18 +10,24 @@ struct ContentView: View {
     @Environment(\.stateSync) var sync
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.locale) private var locale
-    /// iPhone portrait is `.regular` height, landscape `.compact` — so this
-    /// flips on every portrait⇄landscape rotation. It's resolved from the
-    /// UIKit trait collection, NOT from SwiftUI's layout pass, so it stays
-    /// correct even when the layout cache goes stale after a rotation. Keying
-    /// the root view's `.id` on it forces a full re-layout against the real
-    /// window size — without it, a landscape⇄portrait flip can leave the whole
-    /// hierarchy (TopBar, grids, every geometry measurement) stuck reporting the old
-    /// orientation's width, so the grid overflows the portrait screen.
-    @Environment(\.verticalSizeClass) private var vSizeClass
+    /// Whether the window scene is in a landscape interface orientation, read
+    /// from UIKit by `InterfaceOrientationReader` — NOT from SwiftUI's layout
+    /// pass, so it stays correct even when the layout cache goes stale after a
+    /// rotation. Each change bumps `rotationGeneration`, the root view's `.id`,
+    /// forcing a full re-layout against the real window size — without it, a
+    /// landscape⇄portrait flip can leave the whole hierarchy (TopBar, grids,
+    /// every geometry measurement) stuck at the old orientation's width, so the
+    /// grid overflows the portrait screen. Not the vertical size class: that
+    /// flips only on a compact-height phone, and the unfolded iPhone Duo's inner
+    /// display (669 x 951 pt) is regular both ways, so rotated to portrait it
+    /// kept landscape's four columns, clipped at both edges.
+    @State private var interfaceLandscape: Bool?
+    /// Bumped on every change of `interfaceLandscape` after its first report:
+    /// the launch's first report must not rebuild the tree mid-layout.
+    @State private var rotationGeneration = 0
 
     /// The film-detail push stack. Held as ContentView state — NOT inside the
-    /// NavigationStack — so it survives the `.id(vSizeClass)` rebuild on every
+    /// NavigationStack — so it survives the `.id(rotationGeneration)` rebuild on every
     /// rotation. `.id` re-identifies (and tears down) only the NavigationStack
     /// subtree, leaving ContentView's own state intact; the rebuilt stack then
     /// restores its pushes from this binding. With a link-driven stack the
@@ -58,9 +64,10 @@ struct ContentView: View {
     @State private var viewportWidth: CGFloat = UIScreen.main.bounds.width
     /// The window's safe-area width and horizontal insets, from which follow
     /// the listing's width (published to the grid cards, the detail poster and
-    /// the top bar as `listingViewportWidth`) and whether the bar and grid run
-    /// under the horizontal insets. See the NavigationStack's measurement for
-    /// why it isn't `viewportWidth`, and `ListingSafeArea` for when they do.
+    /// the top bar as `listingViewportWidth`) and whether the grid runs under
+    /// the horizontal insets (the top bar never does). See the NavigationStack's
+    /// measurement for why it isn't `viewportWidth`, and `ListingSafeArea` for
+    /// when it does.
     @State private var listingSafeArea = ListingSafeArea(
         safeWidth: UIScreen.main.bounds.width, leading: 0, trailing: 0)
     /// Wide screens host search inline on the top bar; narrow ones keep it
@@ -140,7 +147,10 @@ struct ContentView: View {
                         .onTapGesture { searchFocused = false }
                         .allowsHitTesting(searchFocused)
                 )
-                .ignoresSafeArea(edges: listingSafeArea.ignoredEdges)
+                // The bottom only: the top bar stays inside the horizontal
+                // safe area, clear of a landscape phone's Dynamic Island; the
+                // paged grid below bleeds past it itself (`ignoredEdges`).
+                .ignoresSafeArea(edges: .bottom)
                 .toolbar(.hidden, for: .navigationBar)
                 // No under-bar treatment: the grid meets the opaque app-background
                 // bar with a hard edge — no frost, no separate strip, no gradient
@@ -197,9 +207,14 @@ struct ContentView: View {
         // Force a full re-layout on every portrait⇄landscape rotation. After a
         // rotation the SwiftUI hierarchy can stay stuck reporting the previous
         // orientation's width (the grid then overflows the portrait screen,
-        // "zoomed-in"); rebuilding on the trait-derived size class re-resolves
-        // every geometry measurement against the real window. See `vSizeClass`.
-        .id(vSizeClass)
+        // "zoomed-in"); rebuilding on UIKit's interface orientation re-resolves
+        // every geometry measurement against the real window. See
+        // `interfaceLandscape`.
+        .id(rotationGeneration)
+        .background(InterfaceOrientationReader { landscape in
+            if let previous = interfaceLandscape, previous != landscape { rotationGeneration += 1 }
+            interfaceLandscape = landscape
+        })
         // Card widths, the detail poster and the top bar's scale all derive
         // from the live window width rather than `UIScreen` at launch, so they
         // follow rotation and iPhone Duo fold / unfold.
@@ -662,9 +677,9 @@ extension EnvironmentValues {
 }
 
 private extension ListingSafeArea {
-    /// The safe-area edges the bar-and-grid stack and the paged grid ignore:
-    /// always the bottom (the grid scrolls under the home indicator), the
-    /// horizontal ones only when the listing bleeds into them.
+    /// The safe-area edges the paged grid ignores: always the bottom (the grid
+    /// scrolls under the home indicator), the horizontal ones only when it
+    /// bleeds into them.
     var ignoredEdges: Edge.Set {
         bleedsIntoHorizontalInsets ? [.bottom, .horizontal] : .bottom
     }

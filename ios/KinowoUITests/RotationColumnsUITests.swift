@@ -19,6 +19,10 @@ final class RotationColumnsUITests: XCTestCase {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
+        launchIntoDenseGrid()
+    }
+
+    private func launchIntoDenseGrid() {
         FixtureLaunch.intoGrid(app, environment: ["KINOWO_UITEST_SEED_POSTER": "1"])
 
         // "Wszystkie" guarantees a dense, multi-row grid regardless of the hour.
@@ -76,7 +80,7 @@ final class RotationColumnsUITests: XCTestCase {
     }
 
     /// Regression for "open a film, rotate the device, you're thrown back to
-    /// the grid". The `.id(vSizeClass)` that fixes the stale-width zoom rebuilds
+    /// the grid". The `.id(rotationGeneration)` that fixes the stale-width zoom rebuilds
     /// the whole NavigationStack on every rotation; when the push state lived
     /// inside that subtree, the rebuild dropped it and popped back to the film
     /// grid. The fix hoists the nav path into ContentView state so the rebuilt
@@ -101,7 +105,7 @@ final class RotationColumnsUITests: XCTestCase {
             poster.waitForExistence(timeout: 5),
             """
             Rotating while on a film's detail screen popped back to the grid — \
-            the detail poster is gone. The `.id(vSizeClass)` rebuild dropped the \
+            the detail poster is gone. The `.id(rotationGeneration)` rebuild dropped the \
             NavigationStack's push instead of restoring it from ContentView state.
             """
         )
@@ -143,15 +147,121 @@ final class RotationColumnsUITests: XCTestCase {
         )
     }
 
+    /// A grid reached by rotating must lay out as a fresh launch in that
+    /// orientation does: same column count, same leading and trailing card
+    /// edges, same Filtry position. Guards the rotation rebuild (`ContentView`'s
+    /// `rotationGeneration`), now keyed on UIKit's interface orientation rather
+    /// than the vertical size class, which the unfolded iPhone Duo's inner
+    /// display reports as regular both ways: rotated to portrait there, the
+    /// grid kept landscape's four columns, clipped at both edges. XCUITest
+    /// rotates only the Duo's cover display, so this runs on iPhone 17, where
+    /// the size class flips too; it guards the mechanism, not the Duo itself.
+    func testRotatedLayoutMatchesAFreshLaunchInEachOrientation() throws {
+        try rotateToLandscape()
+        let rotatedLandscape = try listingLayout()
+        XCUIDevice.shared.orientation = .portrait
+        Thread.sleep(forTimeInterval: 1.5)
+        let rotatedPortrait = try listingLayout()
+
+        app.terminate()
+        launchIntoDenseGrid()
+        let freshPortrait = try listingLayout()
+        app.terminate()
+        XCUIDevice.shared.orientation = .landscapeLeft
+        Thread.sleep(forTimeInterval: 1.5)
+        launchIntoDenseGrid()
+        let freshLandscape = try listingLayout()
+
+        assertSameLayout(rotatedPortrait, freshPortrait, "portrait")
+        assertSameLayout(rotatedLandscape, freshLandscape, "landscape")
+    }
+
+    /// In landscape the top bar stays inside the safe area, clear of the
+    /// Dynamic Island, while the grid runs the whole window, 12 pt in from each
+    /// physical edge, under the island's symmetric insets (the owner,
+    /// 2026-11-07). The bar used to run under the island with the grid. The
+    /// iPhone's insets are 62 pt, so Filtry ends well over 30 pt before the
+    /// grid's trailing card edge. (The unfolded iPhone Duo's one-sided status
+    /// column is not bled into, see `ListingSafeArea`; its inner display can't
+    /// be rotated from XCUITest anyway.)
+    func testLandscapeTopBarStaysInsideTheSafeAreaWhileTheGridSpansTheWindow() throws {
+        try XCTSkipIf(UIDevice.current.userInterfaceIdiom == .pad, "an iPad has no horizontal insets in landscape")
+        try rotateToLandscape()
+        app.terminate()
+        launchIntoDenseGrid()
+        let layout = try listingLayout()
+        let window = layout.window
+        let edgePadding: CGFloat = 12
+        XCTAssertEqual(layout.gridLeft, window.minX + edgePadding, accuracy: 3,
+            "the grid's leading card edge sits at x=\(Int(layout.gridLeft)), not \(Int(edgePadding))pt from the window's edge")
+        XCTAssertEqual(layout.gridRight, window.maxX - edgePadding, accuracy: 3,
+            "the grid's trailing card edge sits at x=\(Int(layout.gridRight)) in a \(Int(window.width))pt window — it stops at the safe area instead of running under the insets")
+        XCTAssertLessThanOrEqual(layout.filtry.maxX, layout.gridRight - 30,
+            "Filtry ends at x=\(Int(layout.filtry.maxX)), level with the grid's trailing edge (x=\(Int(layout.gridRight))) — the top bar runs under the Dynamic Island's inset")
+    }
+
+    /// Where the listing sits: the top row's column count, the grid's leading
+    /// and trailing card edges and the Filtry button's frame, all inside the window.
+    private struct ListingLayout {
+        let window: CGRect
+        let columns: Int
+        let gridLeft: CGFloat
+        let gridRight: CGFloat
+        let filtry: CGRect
+    }
+
+    private func listingLayout() throws -> ListingLayout {
+        let filtry = app.buttons[A11y.TopBar.filtryButton]
+        XCTAssertTrue(filtry.waitForExistence(timeout: 10), "Filtry button never appeared")
+        let cells = cellFrames()
+        XCTAssertFalse(cells.isEmpty, "Grid is empty")
+        let topY = cells.map { $0.minY }.min() ?? 0
+        let layout = ListingLayout(
+            window: app.frame,
+            columns: cells.filter { abs($0.minY - topY) < 8 }.count,
+            gridLeft: cells.map { $0.minX }.min() ?? 0,
+            gridRight: cells.map { $0.maxX }.max() ?? 0,
+            filtry: filtry.frame)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "listing \(Int(layout.window.width))x\(Int(layout.window.height))"
+        shot.lifetime = .keepAlways
+        add(shot)
+        return layout
+    }
+
+    private func assertSameLayout(_ rotated: ListingLayout, _ fresh: ListingLayout, _ orientation: String) {
+        let window = rotated.window
+        XCTAssertGreaterThanOrEqual(rotated.gridLeft, window.minX,
+            "\(orientation) after rotating: the grid starts at x=\(Int(rotated.gridLeft)), clipped off the left edge")
+        XCTAssertLessThanOrEqual(rotated.gridRight, window.maxX,
+            "\(orientation) after rotating: the grid ends at x=\(Int(rotated.gridRight)), past the \(Int(window.width))pt window")
+        XCTAssertLessThanOrEqual(rotated.filtry.maxX, window.maxX,
+            "\(orientation) after rotating: Filtry ends at x=\(Int(rotated.filtry.maxX)), past the \(Int(window.width))pt window")
+        XCTAssertEqual(rotated.columns, fresh.columns,
+            "\(orientation) after rotating shows \(rotated.columns) columns, a fresh launch \(fresh.columns): the grid kept the other orientation's width")
+        XCTAssertEqual(rotated.gridLeft, fresh.gridLeft, accuracy: 2,
+            "\(orientation) after rotating: grid's leading edge x=\(Int(rotated.gridLeft)), fresh launch x=\(Int(fresh.gridLeft))")
+        XCTAssertEqual(rotated.gridRight, fresh.gridRight, accuracy: 2,
+            "\(orientation) after rotating: grid's trailing edge x=\(Int(rotated.gridRight)), fresh launch x=\(Int(fresh.gridRight))")
+        XCTAssertEqual(rotated.filtry.maxX, fresh.filtry.maxX, accuracy: 2,
+            "\(orientation) after rotating: Filtry ends at x=\(Int(rotated.filtry.maxX)), fresh launch x=\(Int(fresh.filtry.maxX))")
+    }
+
     // MARK: - helpers
 
     /// Rotates to landscape and lets the layout settle — or skips the test on a
-    /// device type that does not rotate (the dual-screen "iPhone Duo" simulator
-    /// keeps every app's window portrait after `.landscapeLeft`), where none of
-    /// these rotation regressions can be exercised. CI pins iPhone 17, which rotates.
+    /// device that does not rotate (the "iPhone Duo" simulator FOLDED keeps every
+    /// app's window portrait after `.landscapeLeft`; unfolded it rotates), where
+    /// none of these rotation regressions can be exercised. CI pins iPhone 17,
+    /// which rotates.
     private func rotateToLandscape() throws {
         XCUIDevice.shared.orientation = .landscapeLeft
         Thread.sleep(forTimeInterval: 1.5)
+        // The unfolded iPhone Duo's inner display can take a few seconds more.
+        let deadline = Date().addingTimeInterval(6)
+        while app.frame.width <= app.frame.height, Date() < deadline {
+            Thread.sleep(forTimeInterval: 0.5)
+        }
         try XCTSkipUnless(app.frame.width > app.frame.height, "this device type does not rotate")
     }
 
