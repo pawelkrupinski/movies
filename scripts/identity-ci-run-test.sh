@@ -72,8 +72,10 @@ check "...and each reaches the dispatch (refused here), its branch deleted as be
 
 REJECT=1 ci_run rejected
 check "a push the remote rejects is no run" "2" "$(cat "$work/rejected.rc")"
-check "...and says why, in the remote's words" "true" \
-  "$(grep -qE '^identity-ci-run: could not push measure/[^ ]+: remote rejected \(unable to migrate objects to permanent storage\)$' "$work/rejected.err" && echo true || echo false)"
+# every line the tool said (the branch name masked), so a failure shows what it said instead (one red, 2026-11-07, did not)
+check "...and says why, in the remote's words" \
+  "identity-ci-run: could not push measure/B: remote rejected (unable to migrate objects to permanent storage)" \
+  "$(grep '^identity-ci-run: ' "$work/rejected.err" | sed -E 's#measure/[^ :]+#measure/B#' | paste -sd'|' -)"
 
 
 spec_summary
