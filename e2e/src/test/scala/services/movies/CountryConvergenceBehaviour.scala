@@ -1837,8 +1837,14 @@ abstract class CountryConvergenceBehaviour(
         val unchangedListings = unchanged.iterator.flatMap(r => r.record.data.toSeq.flatMap { case (s, d) => ListingKey.ofSource(s, d) }).toSet
         val enricherOf = w.detailEnrichers.groupBy(_.cinema.displayName)
         val heldRefs = w.movieCache.entries.iterator.flatMap(_._2.data.valuesIterator.flatMap(services.cinemas.common.DetailEnricher.nativeRefOf)).toSet
-        val awaited = w.identityModel.current(5.minutes).toSeq.flatMap(_.resolution.decisions)
-          .filter(_.members.exists(unchangedListings)).flatMap(_.awaits).distinct
+        val dayOne  = w.identityModel.current(5.minutes).toSeq.flatMap(_.resolution.decisions)
+        val awaited = dayOne.filter(_.members.exists(unchangedListings)).flatMap(_.awaits).distinct
+        // Whether a move the next day makes was already the day-one model's take (the corpus lagged it) or not (the
+        // model's own state lagged a whole resolve): each unchanged listing whose stored film is not the model's.
+        val modelTake = dayOne.flatMap(d => d.members.map(_.toString -> (d.film, d.headline))).toMap
+        CorpusDiff.modelAhead(unchanged.flatMap(r => r.record.data.toSeq.flatMap { case (s, d) => ListingKey.ofSource(s, d) }
+            .map(key => (r.title, key.toString, r.record.tmdbId))), modelTake)
+          .foreach(line => println(s"[${country.code}] day-one lag: $line"))
         awaited.take(40).foreach {
           case question @ services.identity.Question.VenuePage(ListingKey.Native(venue, page, _)) =>
             enricherOf.getOrElse(venue, Nil).foreach { e =>

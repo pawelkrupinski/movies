@@ -123,4 +123,21 @@ class CorpusDiffSpec extends AnyFlatSpec with Matchers {
     diff.linesIterator.count(_.startsWith("record ")) shouldBe 2
     diff should include ("…and 3 more film(s)")
   }
+  // Verify scrape recording #14, Germany: an unchanged listing moved film on the next day, and nothing said whether the
+  // first day's model already took that film (the corpus lagged the model) or did not (the model's own state lagged a
+  // whole resolve). Each listing whose stored film is not the day-one model's is named, with what the model takes.
+  "the day-one lag" should "name each listing whose stored film is not the model's, and nothing that agrees" in {
+    val stored = Seq(("BTS World Tour", "Olympia | BTS WORLD TOUR", None), ("Anora", "Kinoteka | ANORA", Some(1)))
+    val model  = Map("Olympia | BTS WORLD TOUR" -> (Some(1820088), "tmdb 1820088 (0.0%, OwnMatch)"),
+                     "Kinoteka | ANORA" -> (Some(1), "tmdb 1 (99.0%, OwnMatch)"))
+    CorpusDiff.modelAhead(stored, model) shouldBe
+      Seq("'BTS World Tour' ← Olympia | BTS WORLD TOUR: stored no film, the day-one model takes tmdb 1820088 (0.0%, OwnMatch)")
+  }
+
+  it should "say when the model holds no decision for a stored listing, and cap its lines" in {
+    val stored = (1 to 3).map(i => (s"Film $i", s"Kino | F$i", Some(i)))
+    CorpusDiff.modelAhead(stored, Map.empty, limit = 2) shouldBe Seq(
+      "'Film 1' ← Kino | F1: stored tmdb 1, the day-one model takes no decision", "'Film 2' ← Kino | F2: stored tmdb 2, the day-one model takes no decision",
+      "…and 1 more listing(s)")
+  }
 }

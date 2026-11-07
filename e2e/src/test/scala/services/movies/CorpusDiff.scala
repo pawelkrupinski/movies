@@ -29,6 +29,18 @@ object CorpusDiff {
     lines.take(limit) ++ Option.when(lines.sizeIs > limit)(s"…and ${lines.size - limit} more take(s)")
   }
 
+  /** Each listing whose stored film is not the one the model takes: `stored` (film title, listing, its stored tmdb id),
+   *  `model` (listing -> the model's film and its headline). Whether a next day's move was the corpus lagging the model
+   *  (named here) or the model lagging a whole resolve (nothing here), Verify scrape recording #14's Germany could not say. */
+  def modelAhead(stored: Seq[(String, String, Option[Int])], model: Map[String, (Option[Int], String)], limit: Int = 40): Seq[String] = {
+    val lines = stored.flatMap { case (title, listing, tmdb) =>
+      val taken = model.get(listing)
+      Option.when(!taken.exists(_._1 == tmdb))(
+        s"'$title' ← $listing: stored ${tmdb.fold("no film")(id => s"tmdb $id")}, the day-one model takes ${taken.fold("no decision")(_._2)}")
+    }
+    lines.take(limit) ++ Option.when(lines.sizeIs > limit)(s"…and ${lines.size - limit} more listing(s)")
+  }
+
   private def short(x: Any): String = {
     val t = x.toString
     if (t.length > 140) s"${t.take(140)}…(len ${t.length})" else t
