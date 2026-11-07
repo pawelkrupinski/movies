@@ -136,7 +136,7 @@ jobs:
                   job-status: ${{ job.status }}
 
     # The unit tests, SPLIT across five runners: the worker module (~6,300 tests, the heaviest) on four through
-    # build.sbt's WORKER_ROW filter, and common, identity and testkit on the fifth (`rest`). Two of the worker's rows are
+    # build.sbt's WORKER_ROW filter, and http, common, identity and testkit on the fifth (`rest`). Two of the worker's rows are
     # its HEAVY suites (build.sbt `HeavyRows`, 2026-10-28): the ones that re-decide a recording's slices or re-resolve
     # the checked-in captures, which the owner wants out of the unit rows but still run before every deploy -- they do:
     # main.yml's publish jobs `needs: ci`, this job's rows included. `worker-identity` runs the resolver's other specs,

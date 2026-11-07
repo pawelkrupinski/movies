@@ -3,9 +3,12 @@
 //   geodata — the GENERATED roster and geography tables (`models.*RosterData`, `CitySlugIndexData`,
 //             `VenueTowns`): plain tuples and strings, written by data/**/generate_*.py and read
 //             only through common's typed rosters. dependsOn nothing.
+//   http    — the HTTP-fetch family's core (`tools.HttpFetch`, its decorators, `RealHttpFetch`, `HostPolicies`,
+//             TLS trust, redirect guard): a leaf on nothing but the JDK and play.api.Logging, so an edit here
+//             reaches no identity-resolver source (none is in an identity `*-sources.txt`). dependsOn nothing.
 //   common  — shared domain + data layer (models, MovieRepository/MovieCache, Mongo,
-//             UptimeMonitor, the HTTP-fetch family): what more than one module builds on. Code only one
-//             app uses lives in that app. Plain Scala lib. dependsOn(geodata).
+//             UptimeMonitor, the HTTP fetchers that need it): what more than one module builds on. Code only one
+//             app uses lives in that app. Plain Scala lib. dependsOn(geodata, http).
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
 //   scrapers — the cinema scrapers (`services.cinemas`): every venue client, its catalogues and the
 //             scrape contract the worker drives them by. dependsOn(common, identity). A library, not
@@ -226,10 +229,30 @@ lazy val geodata = (project in file("geodata"))
   .settings(name := "geodata")
   .settings(noApiDocs)
 
+// ── HTTP leaf module ─────────────────────────────────────────────────────────
+//
+// The HTTP-fetch contract and the fetchers that need nothing of the domain (package `tools`, as before). Kept below
+// common so an edit to them recompiles from here up but never reaches the identity resolver's digest
+// (`IdentityRulesSources`): the pre-push hook and identity_impact.py read http/ as outside the identity area. The
+// fetchers that read the process configuration, Mongo or the uptime monitor (PacedHttpFetch, MonitoringHttpFetch,
+// FleetHostPace, ...) and those built on a digest-listed source (Stopwatch, HttpPath, BoundedCache) stay in common.
+lazy val http = (project in file("http"))
+  .settings(
+    name := "http",
+    libraryDependencies ++= Seq(
+      play, // play.api.Logging
+      scalatestPlay % Test,
+    ),
+  )
+  .settings(unitReportSettings, testOrderSettings)
+  .settings(ForkedTests.settings(Test, heap = "512m"))
+  .settings(UnitClasspathGuard.settings)
+  .settings(noApiDocs)
+
 // ── Shared module ────────────────────────────────────────────────────────────
 
 lazy val common = (project in file("common"))
-  .dependsOn(geodata)
+  .dependsOn(geodata, http)
   .settings(
     name := "common",
     // standard sbt layout: src/main/scala, src/test/scala, src/test/resources
@@ -302,7 +325,10 @@ lazy val identity = (project in file("identity"))
       val modules  = Seq(
         IdentityRulesSources.Module("identity", (Compile / compile).value),
         IdentityRulesSources.Module("common", (common / Compile / compile).value),
-        IdentityRulesSources.Module("geodata", (geodata / Compile / compile).value))
+        IdentityRulesSources.Module("geodata", (geodata / Compile / compile).value),
+        // listed so a resolver source that ever reached an http/ file would be digested (and fail
+        // http-outside-identity's check), never silently missed
+        IdentityRulesSources.Module("http", (http / Compile / compile).value))
       Seq(("identity-rules", IdentityRulesSources.Roots, Set.empty[String]),
           ("venue-slot", IdentityRulesSources.VenueSlotRoots, IdentityRulesSources.VenueSlotLeaves),
           ("agreement-rules", IdentityRulesSources.AgreementRoots, Set.empty[String])).flatMap { case (name, roots, leaves) =>
@@ -618,7 +644,7 @@ lazy val e2e = (project in file("e2e"))
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
 lazy val root = (project in file("."))
-  .aggregate(geodata, common, identity, scrapers, testkit, itkit, web, worker, e2e)
+  .aggregate(geodata, http, common, identity, scrapers, testkit, itkit, web, worker, e2e)
   .settings(
     name := "movies",
     publish / skip := true,
@@ -633,7 +659,7 @@ ForkedTests.forkSlots
 // instead of stopping at the first failing module. `testUnit` is the full local alias; keeping the
 // aggregating aliases means new modules join the existing CI jobs rather than
 // spawning new ones.
-addCommandAlias("testUnit", "; all common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
+addCommandAlias("testUnit", "; all http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
 // The e2e module MINUS the country-scoped specs. Those install a country's
 // TitleRuleSet into the process-global TitleNormalizer, so sharing a JVM with the
 // Polish whole-corpus specs (or with each other) silently normalises the wrong
@@ -647,10 +673,10 @@ addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/te
 // and the `e2e` module is itself FANNED OUT across four parallel shards (each
 // tagged heavy spec boots the full ~110s pipeline one or more times, so on one
 // runner the module was the long pole). See .github/workflows/ci.yml.
-addCommandAlias("testUnitNoE2e", "all common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test")
+addCommandAlias("testUnitNoE2e", "all http/Test/test common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test")
 addCommandAlias("testUnitWorker", "worker/Test/test")
 addCommandAlias("testUnitWorkerAndWeb", "all worker/Test/test web/Test/test scrapers/Test/test")
-addCommandAlias("testUnitRest", "all common/Test/test identity/Test/test testkit/Test/test")
+addCommandAlias("testUnitRest", "all http/Test/test common/Test/test identity/Test/test testkit/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged
 // @CorpusReplay) run by name, one per runner; `e2eRest` runs EVERYTHING ELSE in

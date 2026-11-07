@@ -42,9 +42,9 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
       "Env's process binding: environment variables, then system properties",
     "common/src/main/scala/settings/ProcessConfiguration.scala" ->
       "the ONE resolver: binds Env to the process and yields the typed values roots pass down",
-    "common/src/main/scala/tools/ProxyTunnelAuthentication.scala" ->
+    "http/src/main/scala/tools/ProxyTunnelAuthentication.scala" ->
       "writes a policy the JDK itself reads (jdk.http.auth.tunneling.disabledSchemes); applied once by each main",
-    "common/src/main/scala/tools/IssuerCertificateFetching.scala" ->
+    "http/src/main/scala/tools/IssuerCertificateFetching.scala" ->
       "writes a policy the JDK itself reads (com.sun.security.enableAIAcaIssuers + allowedAIALocations); applied once by each main",
     "worker/src/test/scala/tools/NoRuntimeLookupsInIdentitySpec.scala" ->
       "a lint's own fixtures: process reads quoted in strings it feeds its checker, never executed",

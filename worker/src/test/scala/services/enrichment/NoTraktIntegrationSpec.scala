@@ -28,7 +28,7 @@ import scala.jdk.CollectionConverters._
 class NoTraktIntegrationSpec extends AnyFlatSpec with Matchers {
 
   private val ScannedRoots: Seq[Path] =
-    Seq("worker/src/main/scala", "scrapers/src/main/scala", "common/src/main/scala", "web/src/main/scala").map(Paths.get(_))
+    Seq("worker/src/main/scala", "scrapers/src/main/scala", "common/src/main/scala", "http/src/main/scala", "web/src/main/scala").map(Paths.get(_))
 
   private val TraktReference = """(?i)trakt""".r
 

@@ -144,6 +144,7 @@ jobs:
                   patterns: |
                       web/**
                       geodata/**
+                      http/**
                       common/**
                       identity/**
                       build.sbt
@@ -178,6 +179,8 @@ jobs:
                       !worker/src/it/**
                       !worker/src/fixtures/**
                       geodata/**
+                      http/**
+                      !http/src/test/**
                       common/**
                       !common/src/test/**
                       identity/**

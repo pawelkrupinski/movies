@@ -11,7 +11,7 @@ import scala.util.Using
  *  directory is the repo root). */
 object ScalaSourceScan {
 
-  val MainRoots: Seq[String] = Seq("common/src/main", "geodata/src/main", "identity/src/main", "scrapers/src/main", "web/src/main", "worker/src/main")
+  val MainRoots: Seq[String] = Seq("common/src/main", "geodata/src/main", "http/src/main", "identity/src/main", "scrapers/src/main", "web/src/main", "worker/src/main")
 
   /** Every test-side tree: specs, integration and page specs, fixtures, the shared testkit and the it trees' itkit. */
   val TestRoots: Seq[String] = Seq(
