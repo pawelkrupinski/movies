@@ -5175,6 +5175,15 @@
           },
           "expr": "max by (country) (kinowo_worker_identity_projection_seconds{country=~\"$country\"})",
           "legendFormat": "{{country}} projection s"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (increase(kinowo_worker_identity_model_retained_twins_deleted_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} twins deleted"
         }
       ]
     }

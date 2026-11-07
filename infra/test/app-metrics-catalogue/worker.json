@@ -61,6 +61,7 @@
     {"name": "kinowo_worker_identity_model_promoted", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_promoted_total", "boot": "0", "labels": {"at": ["boot", "bound", "drain"]}},
     {"name": "kinowo_worker_identity_model_rebuilds", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_rebuilds_total", "boot": "0", "labels": {}},
     {"name": "kinowo_worker_identity_model_resolved", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_resolved_total", "boot": "0", "labels": {}},
+    {"name": "kinowo_worker_identity_model_retained_twins_deleted", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_retained_twins_deleted_total", "boot": "0", "labels": {"at": ["boot", "drain"]}},
     {"name": "kinowo_worker_identity_model_takeup_failures", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_model_takeup_failures_total", "boot": "0", "labels": {}},
     {"name": "kinowo_worker_identity_projection_drift", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_projection_drift_total", "boot": "0", "labels": {}},
     {"name": "kinowo_worker_identity_projection_reconciles", "tier": "worker", "type": "counter", "sample": "kinowo_worker_identity_projection_reconciles_total", "boot": "0", "labels": {"measured": ["false", "true"]}},

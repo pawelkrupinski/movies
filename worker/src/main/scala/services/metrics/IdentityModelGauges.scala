@@ -152,6 +152,7 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     Seq(resolved, rebuilds, takeUpFailures, historyDropped).foreach(_.labelValues(c))
     Seq("venue", "observation").foreach(events.labelValues(c, _))
     Seq("drain", "boot", "bound").foreach(promoted.labelValues(c, _))
+    Seq("drain", "boot").foreach(twinsDeleted.labelValues(c, _))
     holdSeconds.labelValues(c)
   }
 
