@@ -150,6 +150,24 @@ class MeasureTest(unittest.TestCase):
         self.assertIn("es: no identity-takes artifact", out)
         self.assertRegex(out, r"pl +model .* success")
 
+    def test_a_country_the_run_never_ran_is_not_measured_and_leaves_the_verdict_alone(self):
+        # a footprint-limited run holds only its countries' takes rows; collected over every country (--run), the rest
+        # read "no identity-takes artifact" and the verdict NOT LANDABLE for countries nobody measured
+        self.artifact("pl", BASE[:1], BASE[:1], self.final_none(), self.final_none())
+        rows = self.write("rows.json", json.dumps({"pl": "success", "de": "skipped"}))
+        code, out = self.run_measure("--countries", "pl,uk,de,us,es", "--rows", rows)
+        self.assertEqual(0, code, out)
+        for cc in ("uk", "de", "us", "es"):
+            self.assertRegex(out, rf"(?m)^{cc} .*not measured \(outside the footprint\)$")
+        self.assertIn("LANDABLE: no right take lost", out)
+
+    def test_no_country_measured_is_no_measurement(self):
+        rows = self.write("rows.json", json.dumps({"pl": "skipped"}))
+        os.makedirs(os.path.join(self.dir, "dl"), exist_ok=True)
+        code, out = self.run_measure("--countries", "pl,uk", "--rows", rows)
+        self.assertEqual(1, code, out)
+        self.assertIn("no country was measured", out)
+
     def test_the_takes_row_column_quotes_the_takes_line_over_the_corpus_shape_one(self):
         self.artifact("pl", BASE[:1], BASE[:1], self.final_none(), self.final_none(),
                       verdict="corpus shape (pl): 1 new finding\nidentity takes (pl): 9 listings -- lost 0")

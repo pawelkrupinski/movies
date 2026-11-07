@@ -69,7 +69,8 @@
 # (TitleWords.tokens folds every language into one set: a German word reads in a Polish title too -- until 2026-10-27 a
 # row reached only its language's countries, which was unsound); any other take-moving file -- the resolver, the shared
 # rules -- every country. A change touching none measures all, as before (the takes rows then say "nothing can have
-# moved" in seconds).
+# moved" in seconds). A country the run held no takes row of (a --run collected over every country) reads "not measured
+# (outside the footprint)" and leaves the verdict to the countries measured (identity_measure.py's UNMEASURED).
 #
 # THE FOOTPRINT MEASURE (--footprint, 2026-10-22). A change to the title rules alone -- title-rules.tsv, the
 # services/titlerules/ code (not TitleRulePlaceholders.scala, which FormatTags reads directly) and TitleNormalizer.scala:
@@ -278,6 +279,9 @@ measure_download() {
   esac
 }
 
+# A takes row's job is named `leg (<country>) / takes (<country>)` (the reusable leg's job inside the leg's matrix job;
+# `<country> / takes` before it). TAKES_ROW_JQ's takes_country: the country of a takes row's name, nothing for any other job.
+TAKES_ROW_JQ='def takes_country: capture("^(leg \\()?(?<country>[a-z-]+)\\)? / takes( \\([a-z-]+\\))?$").country;'
 collect() { # <run id> <commit whose judgements classify> [checkout: classify with its working tree's judgements]
   local id=$1 commit=$2 cache dl url rows judgements jobs checkout_judgements
   cache=$KINOWO_IDENTITY_CACHE/measure/$id dl=$KINOWO_IDENTITY_CACHE/measure/$id/artifacts
@@ -287,13 +291,13 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
   rows=$scratch/rows.json judgements=$scratch/identity-judgements.tsv
   mkdir -p "$cache"
   url=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json url --jq .url) || die "could not read run $id"
-  jobs=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq '(.jobs // [])[] | select(.name | endswith(" / takes")) | [.name, .conclusion] | @tsv') \
+  jobs=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq "$TAKES_ROW_JQ"'(.jobs // [])[] | (.name | takes_country) as $c | [$c, .conclusion] | @tsv') \
     || die "could not read run $id's jobs"
   { echo "{"; first=1
     while IFS=$'\t' read -r name conclusion; do
       [ -n "$name" ] || continue
       [ -n "$first" ] || echo ","; first=""
-      printf '"%s": "%s"' "$(identity_country_code "${name% / takes}")" "${conclusion:-unfinished}"
+      printf '"%s": "%s"' "$(identity_country_code "$name")" "${conclusion:-unfinished}"
     done <<< "$jobs"
     echo "}"; } > "$rows"
   identity_locked "measure-$id" measure_download "$id" "$cache" || die "run $id's takes could not be downloaded (above)"
@@ -323,7 +327,7 @@ timings() { # <run id> <artifacts dir>
       # The run "starts" when created; it is the first job that waited for a runner (and, on the main lane, for the lane).
       ([.jobs[].startedAt | s | select(. != null)] | min) as $first |
       "run: created \(.createdAt), waited for runners \(($first - (.createdAt|s)) // "?")s, then ran \(((.updatedAt|s) - $first) // "?")s",
-      (.jobs[] | select(.name | test(" / takes(-base)?$")) |
+      (.jobs[] | select(.name | test(" / takes(-base)?( \\([a-z-]+\\))?$")) |
         "  \(.name): \(((.completedAt|s) - (.startedAt|s)) // "?")s \(.conclusion // "unfinished")")') \
     || { say "run $id: could not read its timings"; return 0; }
   say "timings of run $id"
@@ -469,15 +473,15 @@ find_measurement() {
 # tail -- request-bisect, timings -- is a job hop apiece, each queued behind every other run's work
 # for a runner (on the old self-hosted CI it added 32 minutes to run 790's 52). So the wait ends at
 # whichever comes first: every measured country's takes row done, or the run done (cancelled included). The jobs come
-# from `run view --json jobs` ("<country> / takes"). Off by default: this script deletes the branch at exit, which
+# from `run view --json jobs` (TAKES_ROW_JQ). Off by default: this script deletes the branch at exit, which
 # would pull it from under the run's tail. IDENTITY_MEASURE_EARLY_COLLECT=1 turns it on (the self-test).
 early_collect=${IDENTITY_MEASURE_EARLY_COLLECT:-}
 [ "$early_collect" = 0 ] && early_collect=""
 takes_rows_done() { # <run id> <sha>: every measured country's takes row has ended
   local id=$1 rows cc state
-  rows=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq '(.jobs // [])[] | [.name, .status] | @tsv') || return 1
+  rows=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq "$TAKES_ROW_JQ"'(.jobs // [])[] | (.name | takes_country) as $c | [$c, .status] | @tsv') || return 1
   for cc in ${countries//,/ }; do
-    state=$(awk -F'\t' -v n="$(identity_country_name "$cc") / takes" '$1 == n { print $2; exit }' <<< "$rows")
+    state=$(awk -F'\t' -v n="$(identity_country_name "$cc")" '$1 == n { print $2; exit }' <<< "$rows")
     case $state in completed|success|failure|error|cancelled|skipped) ;; *) return 1 ;; esac
   done
 }

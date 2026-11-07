@@ -29,7 +29,10 @@ change reads every title the base's resolve read alike and so moves no take (its
 
 LANDABLE only when, over every country and both stages, right-lost, right->wrong and new-wrong are 0 and every
 country's check produced its moves (a row that could not run, or left no artifact, is no measurement); every unjudged
-move is then listed in full, to judge before landing.
+move is then listed in full, to judge before landing. A country the run held no takes row of (rows.json names the rows
+it held: a footprint-limited run holds only its countries'), or whose row was skipped, and that left no artifact, is
+NOT MEASURED (outside the footprint): shown as such, and no reason either way -- though a run measuring no country at all
+is no measurement.
 
 usage: identity_measure.py <download dir> --judgements F [--countries pl,uk,...] [--rows rows.json] [--run-url U]
                            [--json] [--examples N] [--moved-out FILE] [--kind full|footprint]
@@ -106,11 +109,19 @@ def classify(cc, base, head, rows):
     return out
 
 
-def read_country(directory, cc, rows):
-    """{"verdict": [lines], "base": sha, "stages": {stage: buckets}, "missing": reason or None} of one country's artifact."""
+UNMEASURED = "not measured (outside the footprint)"
+
+
+def read_country(directory, cc, rows, conclusions=None):
+    """{"verdict": [lines], "base": sha, "stages": {stage: buckets}, "missing": reason or None, "unmeasured": bool} of one
+    country's artifact. `conclusions`, the run's takes rows ({cc: conclusion}), tells a row that never ran from one that
+    failed before uploading."""
     root = os.path.join(directory, f"identity-takes-{cc}")
     if not os.path.isdir(root):
-        return {"verdict": [], "base": None, "stages": {}, "missing": "no identity-takes artifact (the row did not run, or failed before uploading)"}
+        if conclusions and conclusions.get(cc, "skipped") == "skipped":
+            return {"verdict": [], "base": None, "stages": {}, "missing": None, "unmeasured": True}
+        return {"verdict": [], "base": None, "stages": {}, "unmeasured": False,
+                "missing": "no identity-takes artifact (the row did not run, or failed before uploading)"}
     def text(name):
         path = os.path.join(root, name)
         if not os.path.exists(path):
@@ -118,7 +129,7 @@ def read_country(directory, cc, rows):
         with open(path, encoding="utf-8") as f:
             return f.read()
     verdict = [l for l in text("verdict.txt").splitlines() if l.strip()]
-    out = {"verdict": verdict, "base": text("base.txt").strip() or None, "stages": {}, "missing": None}
+    out = {"verdict": verdict, "base": text("base.txt").strip() or None, "stages": {}, "missing": None, "unmeasured": False}
     unchanged = any("nothing can have moved" in l or "no take can have moved" in l for l in verdict)
     for stage, name in STAGES:
         b_path, h_path = (os.path.join(root, side, name.format(cc=cc)) for side in ("base", "head"))
@@ -139,6 +150,8 @@ def read_country(directory, cc, rows):
 def landable(countries):
     """(landable?, [reason]) over every country's stages."""
     reasons = []
+    if countries and all(c["unmeasured"] for c in countries.values()):
+        reasons.append(f"no country was measured (no takes row of {', '.join(countries)} ran)")
     for cc, c in countries.items():
         if c["missing"]:
             reasons.append(f"{cc}: {c['missing']}")
@@ -176,6 +189,9 @@ def render(countries, rows, examples=3):
         row_state = rows.get(cc, "?")
         # the takes' own line ("identity takes (cc): ... lost N, changed N ...") when the check wrote one
         first = next((l for l in c["verdict"] if l.startswith("identity takes")), (c["verdict"] or [""])[0])[:70]
+        if c["unmeasured"]:
+            table.append([cc, "-", "-", "-", "-"] + ["-"] * len(BUCKETS) + [UNMEASURED])
+            continue
         if c["missing"] and not c["stages"]:
             table.append([cc, "-", "-", "-", "-"] + ["-"] * len(BUCKETS) + [f"{row_state}: {c['missing']}"])
             continue
@@ -224,7 +240,7 @@ def main(argv=None):
         if a.rows:
             with open(a.rows, encoding="utf-8") as f:
                 conclusions = json.load(f)
-        countries = {cc: read_country(a.dir, cc, rows) for cc in a.countries.split(",") if cc}
+        countries = {cc: read_country(a.dir, cc, rows, conclusions) for cc in a.countries.split(",") if cc}
     except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
         print(f"identity-measure: could not read the inputs: {type(e).__name__}: {e}", file=sys.stderr)
         return 2

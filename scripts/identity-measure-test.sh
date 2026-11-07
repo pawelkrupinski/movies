@@ -99,7 +99,7 @@ case "$1 $2" in
         jq -r "$jq_filter" <<'JSON'
 {"createdAt":"2026-10-15T06:42:54Z","startedAt":"2026-10-15T06:42:54Z","updatedAt":"2026-10-15T07:23:38Z",
  "jobs":[{"name":"preflight","startedAt":"2026-10-15T07:02:42Z","completedAt":"2026-10-15T07:02:47Z","conclusion":"success"},
-         {"name":"poland / takes","startedAt":"2026-10-15T07:02:49Z","completedAt":"2026-10-15T07:12:31Z","conclusion":"failure"}]}
+         {"name":"leg (poland) / takes (poland)","startedAt":"2026-10-15T07:02:49Z","completedAt":"2026-10-15T07:12:31Z","conclusion":"failure"}]}
 JSON
         ;;
       # RUN_PENDING=n: the run is still in progress for --run's first n reads of it
@@ -107,8 +107,10 @@ JSON
                                  [ "$pending" -le "${RUN_PENDING:-0}" ] && { printf 'in_progress\tmeasure/abc-1\t%s\n' "$HEAD_SHA"; exit 0; }
                                  printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
       # the takes rows' state (wait_for_takes asks .status), else their conclusions (collect)
-      jobs) if [[ "$jq_filter" == *.status* ]]; then printf 'poland / takes\t%s\n' "${TAKES_STATUS:-in_progress}"
-            else printf 'poland / takes\tfailure\n'; fi ;;
+      # the jobs as GitHub names them (the leg's matrix job, then the reusable leg's job), through the caller's --jq
+      jobs) jq -r "$jq_filter" <<< "{\"jobs\":[{\"name\":\"preflight\",\"status\":\"completed\",\"conclusion\":\"success\"},
+              {\"name\":\"leg (poland) / takes-base (poland)\",\"status\":\"completed\",\"conclusion\":\"success\"},
+              {\"name\":\"leg (poland) / takes (poland)\",\"status\":\"${TAKES_STATUS:-in_progress}\",\"conclusion\":\"failure\"}]}" ;;
       createdAt) echo "${RUN_CREATED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" ;;
     esac ;;
   "run download") [ -n "${DOWNLOAD_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
@@ -170,7 +172,7 @@ check "...printing the verdict" "true" "$(grep -q '^LANDABLE' "$work/out" && ech
 check "...and the takes row's own conclusion" "true" "$(grep -Eq '^pl +model .*failure' "$work/out" && echo true || echo false)"
 check "...and where its time went: the wait for runners, from the first job's start, not the run's" "true" \
   "$(grep -q 'waited for runners 1188s, then ran 1256s' "$work/out" && echo true || echo false)"
-check "...each takes row's job" "true" "$(grep -q 'poland / takes: 582s failure' "$work/out" && echo true || echo false)"
+check "...each takes row's job" "true" "$(grep -q 'leg (poland) / takes (poland): 582s failure' "$work/out" && echo true || echo false)"
 check "...and each row's phases, saying which a stored result spared" "true" \
   "$(grep -q 'pl phases: head-resolve 546s (resolved), base-resolve 3s (reused)' "$work/out" && echo true || echo false)"
 
@@ -232,6 +234,11 @@ scratch_git "$repo" push -q origin --delete "refs/heads/measure/$(cat "$work/stu
 
 scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
 check "--run collects a finished run" "1" "$(HEAD_SHA=$tip measure lost --run 777 --countries pl)"
+# a footprint-limited run holds only its countries' takes rows (here Poland's): collected over every country, the others
+# were never measured -- not NOT LANDABLE for want of their artifacts
+check "--run of a footprint-limited run over every country: the rest not measured, the verdict Poland's" "0" \
+  "$(HEAD_SHA=$tip measure landable --run 777)"
+check "...each other country saying so" "4" "$(grep -cE '^(uk|de|us|es) .*not measured \(outside the footprint\)$' "$work/out")"
 check "...and deletes its measure/ branch" "0" "$(measure_branches)"
 check "...dispatching nothing" "false" "$([ -f "$work/stub/dispatch" ] && echo true || echo false)"
 # --run of a run still in progress waits for it (bounded by --timeout), then collects: no poll loop of the caller's
