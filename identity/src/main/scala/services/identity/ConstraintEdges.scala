@@ -150,6 +150,22 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
       }
     }
 
+  /** Does `node`, taking no film alone, credit a director that the film `other` holds was not directed by (`director`
+   *  `different`: no credit of the record's is the same person), its credit standing -- every listing's own statement
+   *  ([[SourceReliability.Fact.Directors]] decided), or a credit naming a record of its very title by that director (a
+   *  copied credit then names the film its billing is, not a slip)? A title alone joining them would lend it a film its
+   *  own credit contradicts. DE Bambi's "Les Misérables" [2026, 99′] {Fred Cavayé, kinoheld's} joined ScharfrichterKino's
+   *  "Les Misérables - Die Geschichte von Jean Valjean" by a title segment and took Besnard's "Jean Valjean" (1376439),
+   *  beside Cavayé's own "Les Misérables" (2026, 1241803). */
+  private def creditDeniesHeld(node: EvidenceNode, otherFilm: Option[Int], nodeFilm: Option[Int]): Boolean =
+    nodeFilm.isEmpty && otherFilm.exists { held =>
+      lazy val scored = families.scopeOf(node).of(node)
+      node.listings.forall(_.directors.nonEmpty) &&
+        scored.find(_.candidate.tmdbId == held).exists(_.category("director").contains("different")) &&
+        (node.listings.forall(SourceReliability.decides(_, SourceReliability.Fact.Directors)) ||
+          scored.exists(s => s.candidate.tmdbId != held && IdentityMeasures.sameDirector(s.measures) && s.category("title").contains("exact")))
+    }
+
   /** Is `kept` a node of kept listings alone ([[Listing.kept]]) and `other` one whose feed link the present sources
    *  overrule toward another film ([[FamilyScope.overruled]])? The kept facts keep their own film's details alive; they
    *  never join a listing whose own sources say it is another film. DE "Eternity", prod-latest 41265286306: Caligari's
@@ -178,7 +194,8 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         Option.when(reusedPageDeniesLink(first, second, firstFilm, secondFilm) || reusedPageDeniesLink(second, first, secondFilm, firstFilm))(
           ConstraintEdges.ReusedPageApart),
         Option.when(keptBesideOverruled(first, second) || keptBesideOverruled(second, first))(ConstraintEdges.KeptOverruledApart),
-        Option.when(linkedApart(first, second))(ConstraintEdges.LinkedApart)
+        Option.when(linkedApart(first, second))(ConstraintEdges.LinkedApart),
+        Option.when(creditDeniesHeld(first, secondFilm, firstFilm) || creditDeniesHeld(second, firstFilm, secondFilm))(ConstraintEdges.CreditApart)
       ).flatten.filterNot(reason => RuleAblation.disables("apart:" + DecisionTrace.id(reason)))
       val musts = Seq(
         Option.when(sameFilm)((1, "same-film")),
@@ -213,6 +230,8 @@ private[identity] object ConstraintEdges {
   val KeptOverruledApart = "kept-overruled-apart"
   /** The cannot-link of two nodes whose TMDB-keyed feeds link two films, neither link overruled. */
   val LinkedApart = "linked-apart"
+  /** The cannot-link of a node crediting a director of its own and a node holding a film that director did not make. */
+  val CreditApart = "credit-apart"
 
   /** The must-link tiers a title draws: same title, same search form or original title, one
    *  title a segment of the other. */
