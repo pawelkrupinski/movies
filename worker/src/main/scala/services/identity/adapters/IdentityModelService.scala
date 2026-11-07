@@ -33,6 +33,9 @@ trait IdentityModelMetrics {
   def promoted(heldSeconds: Seq[Double], atBoot: Boolean): Unit = ()
   /** Held listings taken in past the hold's bound, its questions still open: the backstop, never the rule. */
   def bounded(heldSeconds: Seq[Double]): Unit = ()
+  /** After every drain and take-up: the listings billed (`present`), the departed ones the model holds as kept, and the
+   *  departed ones the store holds as inputs ([[ListingRetention]]): the retention window's cost, watched before it bites. */
+  def retention(present: Int, kept: Int, departed: Int): Unit = ()
 }
 object IdentityModelMetrics {
   val Silent: IdentityModelMetrics = new IdentityModelMetrics {
@@ -268,10 +271,14 @@ final class IdentityModelService(
       val batch = ModelBatch(scraped.size, changes.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
         engine.sizes)
       metrics.batch(batch)
+      reportRetention(engine)
       batched(batch)
       batch
     }
   }
+
+  private def reportRetention(engine: IncrementalResolver): Unit =
+    metrics.retention(engine.heldCount - retained.size, retained.size, departed.size)
 
   /** Every listing that left, with its last-seen facts and when it left ([[ListingRetention.Departed]]): an INPUT,
    *  persisted in `retainedStore` as it moves, and read back by a take-up ([[resumed]]). */
@@ -391,6 +398,7 @@ final class IdentityModelService(
     // The gauges from the moment the model is up, not from its first event.
     val sizes   = engine.sizes
     metrics.batch(ModelBatch(0, 0, engine.familiesResolved, engine.familyCount, started.seconds, sizes))
+    reportRetention(engine)
     logger.info(s"identity model: taken up — ${engine.heldCount} listings in ${engine.familyCount} families, " +
       s"${engine.familiesResolved} re-resolved (${engine.timings.render}; ${reading()}); ${sizes.render}")
     safely("announce the take-up")(takenUp())
