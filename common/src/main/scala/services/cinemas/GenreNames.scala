@@ -9,7 +9,8 @@ import java.util.Locale
  * is an alias of its id in [[Aliases]], matched case-insensitively and across languages.
  *
  * [[canonical]] runs wherever a genre enters the pipeline (a cinema slot in `SlotFields.genres`,
- * the TMDB and Filmweb slots), so stored data, the genre filter and its URLs, the page's pills and
+ * the TMDB and Filmweb slots) and again where a stored row's genres are read for the read model
+ * (`MovieRecord.genres`: a slot stored before an alias existed), so stored data, the genre filter and its URLs, the page's pills and
  * the JSON API all carry the deployment language's name of the id; the API also serves the ids
  * ([[idOf]]). A string no genre claims keeps its words with a capital first letter (all-capitals
  * text is lowercased first: "KONCERT" -> "Koncert") and has no id.

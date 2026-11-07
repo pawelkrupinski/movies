@@ -375,6 +375,22 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     movie.searchTitles shouldBe Seq("時をかける少女", "Toki o kakeru shôjo", "Toki o Kakeru Shōjo", "The Girl Who Leapt Through Time")
   }
 
+  // A stored slot keeps the spelling it was written with until its source is read again: a TMDB
+  // slot fetched before the genre master set printed "film TV", a venue's DE slot "Romanze" or a
+  // runtime placeholder. The card serves the master set's name in the screening country's language.
+  it should "serve a stored slot's old genre spelling as the master set names it, and no placeholder" in {
+    def genresOf(cinema: Cinema, metadata: Map[Source, SourceData], venueGenres: Seq[String] = Nil) = {
+      val record = MovieRecord(tmdbId = Some(1), data = metadata + (CinemaShowing(cinema, "film") ->
+        SourceData(title = Some("Film"), genres = venueGenres, showtimes = Seq(at("2026-06-12T18:00")))))
+      ReadModelProjection.resolve(StoredMovieRecord.fromStorage("film|2020", record, titleNormalizer), titleNormalizer).genres
+    }
+    val german = Country.Germany.cities.flatMap(_.cinemas).head
+    genresOf(Multikino, Map(Tmdb -> SourceData(genres = Seq("Fantasy", "film TV"))))              shouldBe Seq("Fantasy", "Film TV")
+    genresOf(Multikino, Map(Filmweb -> SourceData(genres = Seq("Dla dzieci", "Przyrodniczy"))))   shouldBe Seq("Familijny", "Dokumentalny")
+    genresOf(german, Map.empty, Seq("Romanze", "Trickfilm", "Laufzeit: k. A."))                  shouldBe Seq("Liebesfilm", "Animation")
+    genresOf(CineworldFeltham, Map(Tmdb -> SourceData(genres = Seq("Unknown"))), Seq("drama")) shouldBe Seq("Drama")
+  }
+
   it should "leave out a spelling that is the shown title again, and repeats of one" in {
     val record = MovieRecord(
       tmdbId = Some(1),

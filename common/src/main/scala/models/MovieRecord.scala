@@ -242,6 +242,11 @@ case class MovieRecord(
     City.all.filter(screening.contains)
   }
 
+  /** The language of the country this row's venues screen in (its first venue mapped to a city
+   *  decides: a row is one deployment's), `None` with no such venue. */
+  def screeningLanguage: Option[java.util.Locale] =
+    slotCinemas.flatMap(City.forCinema).nextOption().map(_.country.language)
+
   // ── Merged top-level values derived from `data` ──────────────────────────
   //
   // Two flavours of merge:
@@ -518,19 +523,24 @@ case class MovieRecord(
    *  pre-enrichment yearless orphan (`sanitize(title)|`) out of `web_movies`. */
   def readyToProject: Boolean = tmdbConcluded
 
-  /** Polish-language genre names — first non-empty list in genre-priority
+  /** Genre names — first non-empty list in genre-priority
    *  order: TMDB → Filmweb → cinema slots (in their normal priority order).
    *  Unlike `countries`, we don't union across sources because each source
    *  has its own taxonomy and spelling (TMDB's "Sci-Fi" vs Helios'
    *  "science fiction"); unioning would surface inconsistent labels for the
-   *  same concept. The list is taken verbatim from whichever source wins. */
+   *  same concept. Each list is spelled as the genre master set names it in the screening country's
+   *  language ([[services.movies.SlotFields.genres]]): a slot keeps the spelling it was stored with
+   *  until its source is read again (a TMDB slot fetched before the set printed "film TV"), and a
+   *  placeholder ("Unknown") is no genre, so the next source's list is taken instead. */
   def genres(using services.movies.LatestTitleYear): Seq[String] = {
-    def slotGenres(s: Source): Seq[String] = data.get(s).map(_.genres).getOrElse(Seq.empty)
+    val language = screeningLanguage
+    def served(genres: Seq[String]): Seq[String] = language.fold(genres)(services.movies.SlotFields.genres(genres, _))
+    def slotGenres(s: Source): Seq[String] = data.get(s).map(slot => served(slot.genres)).getOrElse(Seq.empty)
     val tmdb    = slotGenres(Tmdb)
     val filmweb = slotGenres(Filmweb)
     if (tmdb.nonEmpty)    tmdb
     else if (filmweb.nonEmpty) filmweb
-    else prioritizedCinema.iterator.map(_._2.genres).find(_.nonEmpty).getOrElse(Seq.empty)
+    else prioritizedCinema.iterator.map(slot => served(slot._2.genres)).find(_.nonEmpty).getOrElse(Seq.empty)
   }
 
   /** Age rating / certificate, CINEMA-first: the local screening venue's
