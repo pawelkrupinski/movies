@@ -5,7 +5,12 @@
 # a local `scripts/it-local.sh 'worker/IntegrationTest/runMain …'` over a laid recording.
 #
 #   scripts/identity-ci-run [--recording RUN|prod-latest] [--countries pl,de] [--head REF] [--heap 8g] [--out DIR] [--no-wait]
-#                           -- '<sbt command>'
+#                           [--command '<sbt command>' ...] [-- '<sbt command>']
+#
+#   SIDE BY SIDE, a movies-measure job each (scripts/ci/identity_run_shards.py): a command naming {cc} runs once per
+#   country, and each command (every --command, and the one after --) in a job of its own -- so two countries' commands
+#   that name their own files (no {cc}) go as two --command, never one `a; b` sbt line, which runs them one after the
+#   other (run 42370669779: 28 min in a row). Every job's output is laid into the one --out directory.
 #
 #   the command's placeholders: {cc} the country (the command runs once per country when it names it, else once),
 #   {fixtures} the laid pair's test/resources/fixtures, {corpus} its corpus/, {out} what comes back (per country with {cc})
@@ -15,9 +20,10 @@
 #   --head     the commit run (default HEAD; uncommitted changes are NOT run). Pushed as measure/<user>/<sha>-<rand>, deleted
 #              when the run ends (as scripts/identity-measure)
 #   --out      where the `identity-run` artifact lands (default target/identity-ci-run/<run>)
-#   --no-wait  dispatch, print the run, exit; fetch later with  gh run download <run> -n identity-run -D DIR
+#   --no-wait  dispatch, print the run, exit; fetch later with  gh run download <run> -p 'identity-run*' -D DIR (a
+#              directory a job; identity_run_collect lays them as one)
 #
-# Typical wall time: ~5 min of setup (recording download, sbt) plus the command. Exit: the run's own (0 success, 1 not),
+# Typical wall time: ~3 min of setup (recording download, sbt) plus the longest job's command. Exit: the run's own (0 success, 1 not),
 # 2 when it could not be made.
 set -uo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -36,8 +42,9 @@ while [ "$#" -gt 0 ]; do
     --heap) flag_value "$@"; heap=$2; shift 2 ;;
     --out) flag_value "$@"; out=$2; shift 2 ;;
     --no-wait) nowait=1; shift ;;
+    --command) flag_value "$@"; command+=${command:+$'\n'}$2; shift 2 ;;
     -h|--help) usage_from_header; exit 0 ;;
-    --) shift; command="$*"; break ;;
+    --) shift; [ "$#" -eq 0 ] || command+=${command:+$'\n'}$*; break ;;
     *) usage_error "unknown argument: $1 (the command goes after --)" ;;
   esac
 done
@@ -47,7 +54,7 @@ if [ "$recording" = prod-latest ]; then
   echo "identity-ci-run: --recording prod-latest is run $recording" >&2
 fi
 [ -z "$recording" ] || [[ "$recording" =~ ^[0-9]+$ ]] || usage_error "--recording takes a run id or prod-latest, not $recording"
-[ -n "$command" ] || usage_error "no command: put the sbt command after --"
+[ -n "$command" ] || usage_error "no command: put the sbt command after -- (or --command, one a job)"
 say() { echo "identity-ci-run: $*" >&2; }
 remote=${IDENTITY_MEASURE_REMOTE:-origin}
 commit=$(git rev-parse --verify -q "$head^{commit}") || die "no commit $head"
@@ -79,6 +86,9 @@ wait_for_run "$run" $(( ${IDENTITY_CI_RUN_TIMEOUT_MINUTES:-660} * 60 )) || die "
 say "run $run: $RUN_CONCLUSION"
 out=${out:-$(git rev-parse --show-toplevel)/target/identity-ci-run/$run}
 mkdir -p "$out"
-gh_download "$DISPATCH_GH_TIMEOUT" run download "$run" --name identity-run --dir "$out" || die "could not download run $run's identity-run artifact"
+jobs=$(mktemp -d) && trap 'rm -rf "$jobs"' EXIT
+gh_download "$DISPATCH_GH_TIMEOUT" run download "$run" --pattern 'identity-run*' --dir "$jobs" \
+  || die "could not download run $run's identity-run artifacts"
+identity_run_collect "$jobs" "$out" || die "run $run left no identity-run artifact"
 say "output in $out"
 [ "$RUN_CONCLUSION" = success ]

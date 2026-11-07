@@ -139,6 +139,20 @@ identity_push_measure_branch() {
   return "$rc"
 }
 
+# identity_run_collect <downloaded> <out>: identity-run.yml's jobs (one a shard, scripts/ci/identity_run_shards.py) each
+# upload an identity-run-<shard> artifact, and `gh run download --pattern` puts each in a directory of its own; this lays
+# them all into <out> as the one job uploaded them (<cc>/, sbt-<cc>.log, sbt.log). No such artifact: 1.
+identity_run_collect() {
+  local from=$1 out=$2 artifact found=1
+  mkdir -p "$out" || return 1
+  for artifact in "$from"/identity-run*/; do
+    [ -d "$artifact" ] || continue
+    cp -R "$artifact". "$out"/ || return 1
+    found=0
+  done
+  return "$found"
+}
+
 identity_capture() {
   local src=$1 dir sha cc; shift
   if [ -z "$src" ]; then echo "$IDENTITY_REPO/$IDENTITY_FIXTURES"; return; fi

@@ -31,7 +31,7 @@ tip=$(scratch_git "$repo" rev-parse HEAD)
 mkdir -p "$work/bin" "$work/pushes/active"
 # gh: refuses every call (the dispatch fails after the push, and the run ends there: the push is what is under test),
 # noting a dispatch's arguments
-printf '#!/usr/bin/env bash\n[ "$1 $2" != "workflow run" ] || echo "$*" >> "%s/dispatches"\nexit 1\n' "$work" > "$work/bin/gh"
+printf '#!/usr/bin/env bash\n[ "$1 $2" != "workflow run" ] || { printf "%%q " "$@"; echo; } >> "%s/dispatches"\nexit 1\n' "$work" > "$work/bin/gh"
 # git: the real one, but a measure/ push says when another push was under way meanwhile (an overlap), or -- with
 # $REJECT -- is rejected the way the remote rejected the racing ones
 real_git=$(command -v git)
@@ -57,10 +57,12 @@ exec "$real_git" "\$@"
 STUB
 chmod +x "$work/bin/gh" "$work/bin/git"
 
-ci_run() { # <name> [flags...]: identity-ci-run of the tip; exit code in $work/<name>.rc, stderr in $work/<name>.err
+ci_run() { # <name> [flags...] [-- command]: identity-ci-run of the tip (of Test/compile when no -- is given); exit code
+  # in $work/<name>.rc, stderr in $work/<name>.err
   local name=$1; shift
+  [[ " $* " == *" -- "* ]] || set -- "$@" -- 'Test/compile'
   ( cd "$repo" && KINOWO_GH="$work/bin/gh" KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_REMOTE=origin \
-      PATH="$work/bin:$PATH" "$REPO_ROOT/scripts/identity-ci-run" --head "$tip" "$@" -- 'Test/compile' > /dev/null 2> "$work/$name.err" )
+      PATH="$work/bin:$PATH" "$REPO_ROOT/scripts/identity-ci-run" --head "$tip" "$@" > /dev/null 2> "$work/$name.err" )
   echo $? > "$work/$name.rc"
 }
 
@@ -77,5 +79,27 @@ check "...and says why, in the remote's words" \
   "identity-ci-run: could not push measure/B: remote rejected (unable to migrate objects to permanent storage)" \
   "$(grep '^identity-ci-run: ' "$work/rejected.err" | sed -E 's#measure/[^ :]+#measure/B#' | paste -sd'|' -)"
 
+# Each --command is a job of its own (identity_run_shards.py: a line each), the one after -- the last of them
+: > "$work/dispatches"
+ci_run commands --command 'runMain Bench de --older a' --command 'runMain Bench uk' -- worker/run x
+check "every --command, and the one after --, dispatched as one line each" \
+  "\$'command=runMain Bench de --older a\\nrunMain Bench uk\\nworker/run x'" \
+  "$(grep -o "\$'command=[^']*'" "$work/dispatches")"
+
+# identity_run_collect: identity-run.yml's jobs each upload an identity-run-<shard> artifact (gh run download --pattern
+# puts each in a directory of its own); laid into one --out they are the one-job run's layout again.
+. "$REPO_ROOT/scripts/identity-tools.sh"
+jobs="$work/jobs" collected="$work/collected"
+mkdir -p "$jobs/identity-run-de/de" "$jobs/identity-run-uk/uk/sub" "$jobs/unrelated"
+echo de > "$jobs/identity-run-de/de/takes.tsv"; echo log-de > "$jobs/identity-run-de/sbt-de.log"
+echo uk > "$jobs/identity-run-uk/uk/sub/takes.tsv"; echo log-uk > "$jobs/identity-run-uk/sbt-uk.log"
+echo x > "$jobs/unrelated/x"
+identity_run_collect "$jobs" "$collected"; rc=$?
+check "every shard's artifact laid into one directory, as the one-job run uploaded it" \
+  "0|de/takes.tsv sbt-de.log sbt-uk.log uk/sub/takes.tsv" \
+  "$rc|$(cd "$collected" && find . -type f | sed 's#^\./##' | sort | paste -sd' ' -)"
+mkdir -p "$work/none"
+identity_run_collect "$work/none" "$work/none-out"
+check "...and no artifact at all is no output" "1" "$?"
 
 spec_summary
