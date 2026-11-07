@@ -275,7 +275,7 @@ tool_files() {
 # test, it and page trees, the fixtures.
 read_by_lint_specs() { # <path>
     case "$1" in
-        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|testkit/*) return 0 ;;
+        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|scrapers/src/fixtures/*|testkit/*) return 0 ;;
     esac
     return 1
 }
@@ -450,7 +450,7 @@ heavy_rows() { # <paths, one per line>
 # ── Which test configs a set of changed paths has to compile ────────────────────────────────────
 # One line per path on stdin; prints the sbt compile tasks, one per line, in dependency order. A
 # module's own test configs plus those of every module that depends on it (build.sbt's dependsOn):
-# geodata → common → identity → testkit → scrapers → worker (test->test on scrapers) → web (page->fixtures) → e2e. The build
+# geodata → common → identity → testkit → scrapers → worker (test->fixtures on scrapers) → web (page->fixtures) → e2e. The build
 # itself touches them all.
 compile_plan() {
     local common=0 identity=0 testkit=0 scrapers=0 worker=0 web=0 e2e=0 path

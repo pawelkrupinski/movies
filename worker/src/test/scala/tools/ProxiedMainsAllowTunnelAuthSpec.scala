@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters._
  *  builds the proxy applies the policy. */
 class ProxiedMainsAllowTunnelAuthSpec extends AnyFlatSpec with Matchers {
 
-  private val roots = Seq("worker/src/main/scala", "worker/src/fixtures/scala", "worker/src/test/scala", "scrapers/src/main/scala", "scrapers/src/test/scala", "common/src/main/scala", "identity/src/main/scala")
+  private val roots = Seq("worker/src/main/scala", "worker/src/fixtures/scala", "worker/src/test/scala", "scrapers/src/main/scala", "scrapers/src/test/scala", "scrapers/src/fixtures/scala", "common/src/main/scala", "identity/src/main/scala")
   private def sources: Seq[Path] = roots.map(Path.of(_)).filter(Files.isDirectory(_)).flatMap(root =>
     Files.walk(root).iterator().asScala.filter(_.toString.endsWith(".scala")).toSeq)
 

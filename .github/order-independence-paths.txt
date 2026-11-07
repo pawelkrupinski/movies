@@ -11,6 +11,7 @@ testkit/src/main/
 web/src/main/
 e2e/src/
 worker/src/fixtures/
+scrapers/src/fixtures/
 build.sbt
 project/
 .github/workflows/identity-model-convergence.yml

@@ -21,7 +21,7 @@ import sbt.Keys._
  * project/StaleTastyRetry.scala recovers a batch run from that.
  */
 object MainSourceInitChecks extends AutoPlugin {
-  // worker's `Fixtures` (build.sbt) by its name: a setting scoped to it is inert in a module without one.
+  // worker's and scrapers' `Fixtures` (build.sbt) by its name: a setting scoped to it is inert in a module without one.
   private val Fixtures = config("fixtures")
   override def trigger = allRequirements
   override def projectSettings: Seq[Setting[?]] = {

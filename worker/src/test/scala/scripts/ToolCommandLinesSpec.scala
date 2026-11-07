@@ -176,11 +176,13 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     refusedRun("de", "l", "h", "o")
   }
 
-  "every program under the worker's and the scrapers' test trees" should "have a main the JVM can start" in {
+  // The scrapers' test tree is not on this classpath (the worker depends on its fixtures config only): its programs are
+  // held by scrapers' clients.tools.ToolMainsSpec.
+  "every program under the worker's test tree and the scrapers' fixtures" should "have a main the JVM can start" in {
     // `def main(args)(using LatestTitleYear)` compiles to main(String[], LatestTitleYear): `runMain` finds no entry point
     val Package = """(?m)^package ([\w.]+)""".r
     val Object  = """(?m)^object (\w+)""".r
-    val programs = tools.ScalaSourceScan.scalaFiles(Seq("worker/src/test", "scrapers/src/test")).filter(tools.ScalaSourceScan.isProgram)
+    val programs = tools.ScalaSourceScan.scalaFiles(Seq("worker/src/test", "scrapers/src/fixtures")).filter(tools.ScalaSourceScan.isProgram)
     programs.size should be > 20
     val unstartable = programs.filterNot { path =>
       val source = tools.ScalaSourceScan.read(path)

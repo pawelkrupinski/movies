@@ -9,7 +9,9 @@
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
 //   scrapers — the cinema scrapers (`services.cinemas`): every venue client, its catalogues and the
 //             scrape contract the worker drives them by. dependsOn(common, identity). A library, not
-//             an app: the worker depends on it and ships its classes.
+//             an app: the worker depends on it and ships its classes. Its `fixtures` config
+//             (src/fixtures/scala) holds the doubles and recording tools the worker's specs reuse;
+//             the worker depends on it via "test->fixtures", never on the scraper specs.
 //   web     — content-serving Play app (controllers, Twirl views). The k3s web tier.
 //   worker  — scrape + enrich background app (plain `def main`). The per-country k3s worker pods.
 //             worker's `fixtures` sbt config (src/fixtures/scala) holds the fixture
@@ -376,10 +378,18 @@ lazy val itkit = (project in file("itkit"))
 // contract the worker drives them through (`services.cinemas.common`). A module of its own so an edit to one scraper
 // recompiles the scrapers, not the rest of the worker. Built on common and identity; the worker depends on it.
 lazy val scrapers = (project in file("scrapers"))
-  .dependsOn(common, identity, testkit % Test)
+  .dependsOn(common, identity, testkit % "test;fixtures->compile")
+  .configs(Fixtures)
   .settings(
     name := "scrapers",
     libraryDependencies ++= Seq(scalatestPlay % Test, scalatestScalaCheck % Test),
+    // The scrapers' doubles and recording tools the worker's specs reuse (StubCinemaScraper, ScriptedCinemaScraper,
+    // FakeDetailEnricher, RefusingHttpClient, RecordMissingFetch, RecordUsChains), in src/fixtures/scala, as the
+    // worker's own `Fixtures` config does: the worker depends on this narrow config ("test->fixtures"), not on the
+    // ~290 scraper specs of the full Test config. The scrapers' own specs see it on their Test classpath.
+    inConfig(Fixtures)(Defaults.configSettings),
+    Fixtures / scalaSource := baseDirectory.value / "src" / "fixtures" / "scala",
+    Test / unmanagedClasspath ++= (Fixtures / exportedProducts).value,
     // The scraper specs read their captured pages off the shared repo-root `test/resources` tree, by path and
     // through `getResourceAsStream("/fixtures/…")` — referenced in place on the test classpath, as the worker does.
     Test / unmanagedClasspath += Attributed.blank((LocalRootProject / baseDirectory).value / "test" / "resources"),
@@ -404,9 +414,10 @@ lazy val worker = (project in file("worker"))
   // `it` too: the integration specs need the same shared doubles the unit specs do —
   // notably the repositories that report an INCOMPLETE read, which is the only way to
   // test that a caller honours a completeness flag.
-  // `test->test` on scrapers: the worker's specs drive its scrape tasks through the scrapers' own test doubles
-  // (`StubCinemaScraper`, `ScriptedCinemaScraper`, `FakeDetailEnricher`) and recording tools.
-  .dependsOn(common, identity, scrapers % "compile->compile;test->test", testkit % "test,it,fixtures->compile", itkit % "it,fixtures->compile")
+  // `test->fixtures` on scrapers: the worker's specs drive its scrape tasks through the scrapers' own test doubles
+  // (`StubCinemaScraper`, `ScriptedCinemaScraper`, `FakeDetailEnricher`) and recording tools, which live in the
+  // scrapers' narrow `Fixtures` config, so the worker's Test does not compile the scraper specs.
+  .dependsOn(common, identity, scrapers % "compile->compile;test->fixtures", testkit % "test,it,fixtures->compile", itkit % "it,fixtures->compile")
   .enablePlugins(JavaAppPackaging)
   .configs(IntegrationTest, Fixtures)
   .settings(

@@ -184,6 +184,7 @@ jobs:
                       !identity/src/test/**
                       scrapers/**
                       !scrapers/src/test/**
+                      !scrapers/src/fixtures/**
                       build.sbt
                       project/**
                       Dockerfile

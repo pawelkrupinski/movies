@@ -99,7 +99,7 @@ object NoRealDependenciesInUnitSpecsSpec {
 
   /** The unit configs' trees: what `testUnit` compiles and runs. */
   val UnitRoots: Seq[String] =
-    Seq("common/src/test", "identity/src/test", "scrapers/src/test", "testkit/src/test", "web/src/test", "worker/src/test")
+    Seq("common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src/test", "web/src/test", "worker/src/test")
 
   /** This spec: its self-test feeds the matchers these shapes as string literals. */
   private val Self = "worker/src/test/scala/tools/NoRealDependenciesInUnitSpecsSpec.scala"
@@ -159,7 +159,7 @@ object NoRealDependenciesInUnitSpecsSpec {
       "worker/src/test/scala/modules/HealthEndpointSpec.scala"   -> "asks the worker's ops server, started in-process on a free port",
       "worker/src/test/scala/modules/HeapDumpEndpointSpec.scala" -> "asks the worker's ops server, started in-process on a free port",
       "worker/src/test/scala/modules/ProfileEndpointSpec.scala"  -> "asks the worker's ops server, started in-process on a free port",
-      "scrapers/src/test/scala/clients/tools/RecordMissingFetch.scala" -> ToolOnly,
+      "scrapers/src/fixtures/scala/clients/tools/RecordMissingFetch.scala" -> ToolOnly,
       "worker/src/test/scala/scripts/CaptureReplay.scala" -> CaptureReplayLive),
     "Hand the code a testkit HttpFetch fake (FakeHttpFetch, FailingHttpFetch, ScriptedByUrlHttpFetch) fed recorded " +
       "responses, or serve it in-process (tools.AnsweringHttpServer) -- or move the spec to an it tree:")

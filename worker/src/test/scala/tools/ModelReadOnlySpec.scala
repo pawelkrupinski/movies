@@ -23,7 +23,7 @@ class ModelReadOnlySpec extends AnyFlatSpec with Matchers {
     "worker/src/test/scala/services/identity/OlderRefs.scala" -> "ModelRead where the ref has it; whole only in a ref from before it")
 
   "a listing set the identity model or a measurement resolves" should "be read through ModelRead, never whole off a recording" in {
-    val roots = MainRoots ++ TestRoots.filterNot(Set("common/src/test", "identity/src/test", "scrapers/src/test", "web/src/test"))
+    val roots = MainRoots ++ TestRoots.filterNot(Set("common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "web/src/test"))
     val found = scalaFiles(roots).filterNot(p => p.toString.endsWith("Spec.scala") || Allowed.keySet(p.toString)).flatMap { path =>
       read(path).linesIterator.zipWithIndex.collect { case (line, i) if WholeRead.findFirstIn(code(line)).isDefined => s"$path:${i + 1}: ${line.trim}" }
     }
