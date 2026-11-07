@@ -142,6 +142,7 @@ scripts/ci/install-playwright.sh
 scripts/ci/jfr-every-jvm.sh
 scripts/ci/job_metrics.py
 scripts/ci/job_metrics_test.py
+scripts/ci/order-passes-present.sh
 scripts/ci/recording_health.py
 scripts/ci/shellcheck-action-runs.sh
 scripts/ci/tree-unchanged.sh
