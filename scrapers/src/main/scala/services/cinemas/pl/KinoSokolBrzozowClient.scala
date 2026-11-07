@@ -5,9 +5,8 @@ import services.movies.FormatTags
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, ScraperParse, SlotsToMovies}
 
-import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 
 /**
@@ -40,47 +39,32 @@ object KinoSokolBrzozowClient {
   val BaseUrl       = "http://bdk.brzozow.pl"
   val RepertoireUrl = s"$BaseUrl/kino/"
 
-  // "12 czerwca 2026" → day, Polish genitive month, year.
-  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String],
-                             filmUrl: Option[String], format: List[String])
-
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
     val slots = document.select("div.wp_theatre_event").asScala.toSeq.flatMap(parseEvent)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, format = s.format)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
-  private def parseEvent(ev: Element): Option[RawSlot] =
+  private def parseEvent(ev: Element): Option[ScrapedSlot] =
     for {
       titleElement <- Option(ev.selectFirst(".wp_theatre_event_title a"))
       title    = titleElement.text.trim if title.nonEmpty
       dateText <- Option(ev.selectFirst(".wp_theatre_event_startdate")).map(_.text)
       date     <- ScraperParse.parseDayMonthYear(dateText)
       time     <- Option(ev.selectFirst(".wp_theatre_event_starttime")).flatMap(t => ScraperParse.parseHHmm(t.text))
-    } yield RawSlot(
-      title    = title,
-      dateTime = date.atTime(time),
-      booking  = Option(ev.selectFirst("a.wp_theatre_event_tickets_url")).map(_.attr("abs:href")).filter(_.nonEmpty),
-      filmUrl  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
+    } yield ScrapedSlot(
+      title      = title,
+      dateTime   = date.atTime(time),
+      bookingUrl = Option(ev.selectFirst("a.wp_theatre_event_tickets_url")).map(_.attr("abs:href")).filter(_.nonEmpty),
+      filmUrl    = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
       // The venue line is this cinema's LANGUAGE VERSION, per screening — the
       // same film runs "2D dubbing pl" in the afternoon and "2D napisy pl" in the
       // evening. Nothing else on the page says so: the title is identical for
       // both, so the central `FormatTags` title strip cannot reach it and the two
       // showings were indistinguishable on the badge.
-      format   = Option(ev.selectFirst(".wp_theatre_event_venue"))
+      format     = Option(ev.selectFirst(".wp_theatre_event_venue"))
         .map(_.text).map(FormatTags.formatTokensIn).getOrElse(Nil)
     )
 }

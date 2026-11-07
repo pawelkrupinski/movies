@@ -8785,6 +8785,8 @@ services.cinemas.common.ScrapeOutcome$Failure$
 services.cinemas.common.ScrapeOutcome$Success$
 services.cinemas.common.ScrapeOutcomeListener
 services.cinemas.common.ScrapeOutcomeListener$
+services.cinemas.common.ScrapedSlot
+services.cinemas.common.ScrapedSlot$
 services.cinemas.common.ScraperParse
 services.cinemas.common.ScraperParse$
 services.cinemas.common.SecondFeedFacts

@@ -5,7 +5,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapedSlot, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -44,31 +44,18 @@ object KinoKarolinkaClient {
   private val FilmMarker  = "Kino Karolinka"
   private val TimePat     = raw"""godz\.?\s*(${ScraperParse.ClockText})""".r
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], filmUrl: Option[String])
-
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
     val slots = document.select("div.event-item").asScala.toSeq.flatMap(parseEvent)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
   /** A card is a film only when its heading carries the "Kino Karolinka" tag
    *  and it has a concrete `godz. HH:MM` time — that excludes concerts,
    *  theatre and multi-day festivals. */
-  private def parseEvent(card: Element): Option[RawSlot] =
+  private def parseEvent(card: Element): Option[ScrapedSlot] =
     for {
       heading <- Option(card.selectFirst("h2[class*=--heading]")).map(_.text.trim)
       if heading.contains(FilmMarker)
@@ -78,10 +65,10 @@ object KinoKarolinkaClient {
       // Headings are "<Film Title> | Kino Karolinka [| <series>]" — the film
       // title is the first pipe-segment; the rest are venue/series tags.
       title    = heading.split("\\|").head.trim if title.nonEmpty
-    } yield RawSlot(
-      title    = title,
-      dateTime = LocalDateTime.of(date, time),
-      booking  = Option(card.selectFirst("a[class*=--buy-ticket-button]")).map(_.attr("abs:href")).filter(_.nonEmpty),
-      filmUrl  = Option(card.selectFirst("a[class*=--main-link]")).map(_.attr("abs:href")).filter(_.nonEmpty)
+    } yield ScrapedSlot(
+      title      = title,
+      dateTime   = LocalDateTime.of(date, time),
+      bookingUrl = Option(card.selectFirst("a[class*=--buy-ticket-button]")).map(_.attr("abs:href")).filter(_.nonEmpty),
+      filmUrl    = Option(card.selectFirst("a[class*=--main-link]")).map(_.attr("abs:href")).filter(_.nonEmpty)
     )
 }

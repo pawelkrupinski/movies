@@ -5,7 +5,7 @@ import models._
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, ScrapedSlot, SlotsToMovies}
 
 import scala.jdk.CollectionConverters._
 
@@ -42,35 +42,16 @@ object KinoNowaFalaClient {
   val BaseUrl       = "https://kino.gizycko.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar/"
 
-  private case class RawSlot(
-    title:    String,
-    dateTime: java.time.LocalDateTime,
-    booking:  Option[String],
-    filmUrl:  Option[String],
-    poster:   Option[String]
-  )
-
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
     val slots = document.select("div.wp_theatre_event").asScala.toSeq.flatMap(parseEvent)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = group.flatMap(_.poster).headOption,
-        filmUrl   = group.flatMap(_.filmUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots, cinema)
   }
 
   /** One `div.wp_theatre_event` card's title/date/time/booking/poster. */
-  private def parseEvent(card: Element): Option[RawSlot] =
+  private def parseEvent(card: Element): Option[ScrapedSlot] =
     for {
       titleElement <- Option(card.selectFirst("div.wp_theatre_event_title a"))
       title    = titleElement.text.trim if title.nonEmpty
@@ -78,12 +59,12 @@ object KinoNowaFalaClient {
       date     <- ScraperParse.parseDayMonthYear(dateText)
       timeText <- Option(card.selectFirst("div.wp_theatre_event_time.wp_theatre_event_starttime")).map(_.text)
       time     <- ScraperParse.parseHHmm(timeText)
-    } yield RawSlot(
-      title    = title,
-      dateTime = date.atTime(time),
-      booking  = Option(card.selectFirst("div.wp_theatre_event_tickets a.wp_theatre_event_tickets_url"))
-                   .map(_.attr("abs:href")).filter(_.nonEmpty),
-      filmUrl  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
-      poster   = Option(card.selectFirst("figure img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty)
+    } yield ScrapedSlot(
+      title      = title,
+      dateTime   = date.atTime(time),
+      bookingUrl = Option(card.selectFirst("div.wp_theatre_event_tickets a.wp_theatre_event_tickets_url"))
+                     .map(_.attr("abs:href")).filter(_.nonEmpty),
+      filmUrl    = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
+      posterUrl  = Option(card.selectFirst("figure img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty)
     )
 }
