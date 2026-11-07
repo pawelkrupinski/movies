@@ -591,14 +591,14 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeter, dry_run: bool =
     d = decide(cfg, bc, demand, instances, now, r)
     gib = lambda v: "-" if v is None else f"{v:.0f}"  # noqa: E731
     cores = lambda v: "-" if v is None else f"{v:.1f}"  # noqa: E731
+    ours = [(i.slot, i.cls, "busy" if i.busy else "idle", gib(i.mem_gib), cores(i.cpu_cores)) for i in instances]
     print(f"bitcashier busy {bc.busy_builders}/{cfg.builders} builders {bc.busy_deployers}/{cfg.deployers} deployers"
           f"{' SATURATED' if d.saturated else ''}; room {d.room}; reserve {reserved_builders(cfg, bc)} builders "
           f"x {builder_reserve_gib(cfg, r):.1f} GiB; held by {d.limits}; "
           f"free GiB host {gib(r.mem_available_gib)} "
           f"ci {gib(r.ci_free_gib)} {({c: round(v) for c, v in r.class_free_gib.items()})}; cpu busy "
           f"{gib(r.cpu_busy_cores)}/{r.cpu_cores}; queued {demand}; "
-          f"ours {[(i.slot, i.cls, 'busy' if i.busy else 'idle', gib(i.mem_gib), cores(i.cpu_cores))
-                   for i in instances]}; "
+          f"ours {ours}; "
           f"start {list(d.starts)} stop {list(d.stops)}", flush=True)
     if dry_run:
         return d
