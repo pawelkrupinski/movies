@@ -68,12 +68,16 @@ if [ "$1 $2" = "run download" ]; then
   fi
   exit 0
 fi
-workflow="" jqexpr="" sub="$1"
+workflow="" jqexpr="" sub="$1" apipath="${2:-}"
 while [ $# -gt 0 ]; do
   case "$1" in --workflow) workflow="$2"; shift ;; --jq) jqexpr="$2"; shift ;; esac; shift
 done
-# `gh api repos/{owner}/{repo}/actions/runs/RUN --jq …`: one run, $STUB_RUN (JSON), through the hook's own filter
-[ "$sub" = api ] && { printf '%s' "${STUB_RUN:-{\}}" | jq -r "$jqexpr"; exit; }
+# `gh api repos/{owner}/{repo}/actions/runs/RUN --jq …`: one run, $STUB_RUN (JSON), through the hook's own filter;
+# `…/runs/RUN/jobs…`: its jobs, $STUB_RUN_JOBS (JSON)
+[ "$sub" = api ] && case "$apipath" in
+  */jobs*) printf '%s' "${STUB_RUN_JOBS:-{\}}" | jq -r "$jqexpr"; exit ;;
+  *) printf '%s' "${STUB_RUN:-{\}}" | jq -r "$jqexpr"; exit ;;
+esac
 case "$workflow" in
   Main) runs="${GH_MAIN:-[]}" ;; "Identity model convergence") runs="${GH_IMC:-[]}" ;; "Verify scrape recording") runs="${GH_REC:-[]}" ;;
   *) echo "unknown workflow $workflow" >&2; exit 1 ;;

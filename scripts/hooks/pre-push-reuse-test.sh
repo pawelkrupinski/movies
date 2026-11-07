@@ -62,7 +62,7 @@ check "a batch push with PREPUSH_REUSE_FAST=1 reuses the fast pass: nothing runs
   "$(reuse_push "$rbase..$fast_head" PREPUSH_REUSE_FAST=1) $(grep -c "the waiting batch's fast check passed" "$gate/err")"
 check "...an ordinary push of it runs its checks" "0 8" "$(reuse_push "$rbase..$fast_head")"
 # A REMOTE PASS: agentctl pushes a change its checks passed in CI with PREPUSH_REMOTE_RUN=<run id>; the run stands
-# for the checks only when GitHub says it is precommit-check.yml, a success, on exactly the pushed commit
+# for the checks only when GitHub says it is precommit-check.yml on exactly the pushed commit, and a success
 remote_head="$(commit_paths "a change checked in CI" -- scripts/z.sh)"
 gh_check_run() { printf '{"id":%s,"path":".github/workflows/%s","conclusion":"%s","head_sha":"%s"}' "$1" "$2" "$3" "$4"; }
 remote_push() { reuse_push "$rbase..$remote_head" PREPUSH_NO_REUSE=1 GH_MAIN="[$green]" GH_IMC="[$green]" PREPUSH_REMOTE_RUN=55 "$@"; }
@@ -76,6 +76,25 @@ check "...another workflow's success: the same" "0 10 1" \
 check "...a success on another commit: the same" "0 11 1" \
   "$(vouches "$(remote_push STUB_RUN="$(gh_check_run 55 precommit-check.yml success "$rbase")")")"
 check "...GitHub not answering: the same" "0 12 1" "$(vouches "$(remote_push STUB_RUN='not json')")"
+# ...and a run still going stands once every job its VERDICT_JOBS line (at the pushed commit) names is a success: a
+# report job still queued holds nothing (batch #20, 2026-11-07); a verdict job still going or any failed job does not
+mkdir -p "$grepo/.github/workflows"
+printf 'env:\n    LANG: C.UTF-8\n    VERDICT_JOBS: plan, check (*)\n' > "$grepo/.github/workflows/precommit-check.yml"
+going_head="$(commit_paths "a change whose check run still reports" -- .github/workflows/precommit-check.yml scripts/z.sh)"
+going_run="$(printf '{"id":55,"path":".github/workflows/precommit-check.yml","conclusion":null,"head_sha":"%s"}' "$going_head")"
+going_push() { reuse_push "$rbase..$going_head" PREPUSH_NO_REUSE=1 GH_MAIN="[$green]" GH_IMC="[$green]" PREPUSH_REMOTE_RUN=55 \
+  STUB_RUN="$going_run" STUB_RUN_JOBS="$1"; }
+job() { printf '{"status":"%s","conclusion":%s,"name":"%s"}' "$1" "$2" "$3"; }
+checks_green="$(job completed '"success"' plan),$(job completed '"success"' 'check (rest)'),$(job completed '"skipped"' 'check (page)')"
+check "...a run still going whose verdict jobs all passed, a report still queued: no check runs here" "0 12 1" \
+  "$(going_push "{\"jobs\":[$checks_green,$(job queued null 'timings / report (timings)')]}") $(grep -c 'passed in CI' "$gate/err")"
+check "...a verdict job still going: every check runs here" "0 13 1" \
+  "$(vouches "$(going_push "{\"jobs\":[$checks_green,$(job in_progress null 'check (identity 1/3)')]}")")"
+check "...any job failed, named or not: the same" "0 14 1" \
+  "$(vouches "$(going_push "{\"jobs\":[$checks_green,$(job completed '"failure"' 'timings / report (timings)')]}")")"
+check "...a commit declaring no verdict jobs: the run's own end decides" "0 15 1" \
+  "$(vouches "$(remote_push STUB_RUN="$(printf '{"id":55,"path":".github/workflows/precommit-check.yml","conclusion":null,"head_sha":"%s"}' "$remote_head")" \
+     STUB_RUN_JOBS="{\"jobs\":[$checks_green]}")")"
 head -7 "$reuse/runs" > "$reuse/runs.kept" && mv "$reuse/runs.kept" "$reuse/runs"  # the counts below start from 7
 scratch_git "$grepo" reset -q --hard "$docs_only"
 # A hook that differs by one byte: a copy beside the helpers it sources, a comment appended.

@@ -11,6 +11,23 @@ import org.scalatest.matchers.should.Matchers
 class LandingCheckSplitSpec extends AnyFlatSpec with Matchers {
   private lazy val jobs = RepoFile.jobs(RepoFile.read(".github/workflows/precommit-check.yml"))
 
+  /** The check's verdict is its check jobs' (the VERDICT_JOBS line, read by agentctl and the hook's remote pass): a job
+   *  the line does not name would be judged only if it failed, so every job of the workflow is a check the line names. */
+  "the landing check" should "name every one of its jobs among the verdict's" in {
+    val line = RepoFile.read(".github/workflows/precommit-check.yml").linesIterator.map(_.trim)
+      .collectFirst { case s"VERDICT_JOBS: $globs" => globs }.getOrElse(fail("no VERDICT_JOBS line"))
+    val globs = line.split(",").map(_.trim).filter(_.nonEmpty).toSeq
+    def matches(glob: String, name: String) =
+      name.matches(glob.split("\\*", -1).map(java.util.regex.Pattern.quote).mkString(".*"))
+    val names = jobs.map { case (id, job) =>
+      job.linesIterator.map(_.trim).collectFirst { case s"name: $n" => n }.getOrElse(id)
+    }
+    names should not be empty
+    names.filterNot(n => globs.exists(matches(_, n))) shouldBe empty
+    // an expanded matrix name is one too
+    Seq("check (identity 1/3)", "heavy rows (itrest)").filterNot(n => globs.exists(matches(_, n))) shouldBe empty
+  }
+
   "the landing check" should "run the page area and the old refs in jobs of their own, each with a cap of its own" in {
     Map("check" -> "rest", "check-identity" -> "identity", "check-oldrefs" -> "oldrefs", "check-page" -> "page").foreach { case (job, share) =>
       jobs(job) should include(s"SHARE: $share")

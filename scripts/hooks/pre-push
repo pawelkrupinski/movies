@@ -977,14 +977,38 @@ if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUS
 fi
 # A REMOTE PASS (agentctl's remote checks: under memory or CPU pressure a queued change's checks run in CI,
 # .github/workflows/precommit-check.yml on a check/<entry> branch): the push to main carries PREPUSH_REMOTE_RUN=<run id>,
-# and that run stands for this hook's checks only once GitHub says it is a precommit-check.yml run that SUCCEEDED on
-# exactly the commit pushed. Anything else -- another workflow, a failure, a run still going, another commit, gh
-# silent -- and every check runs here. The red gate ran above.
+# and that run stands for this hook's checks only once GitHub says it is a precommit-check.yml run on exactly the commit
+# pushed that SUCCEEDED -- or, still going, whose verdict jobs (its VERDICT_JOBS line at that commit, the globs agentctl
+# decides by) all concluded in success or skipped, with no job of it failed: a report still queued holds nothing
+# (2026-11-07). Anything else -- another workflow, a failure, a verdict job still going, another commit, no
+# VERDICT_JOBS line, gh silent -- and every check runs here. The red gate ran above.
 remote_pass() { # <run id> -> 0 when GitHub vouches for it
-    local said
+    local said line jobs status conclusion name glob named=0 hit
+    local -a globs=()
     said="$(bounded "$GhSeconds" gh api "repos/{owner}/{repo}/actions/runs/$1" \
         --jq '"\(.path) \(.conclusion) \(.head_sha)"' 2>/dev/null)" || return 1
-    [ "$said" = ".github/workflows/precommit-check.yml success $head_sha" ]
+    [ "$said" = ".github/workflows/precommit-check.yml success $head_sha" ] && return 0
+    [ "$said" = ".github/workflows/precommit-check.yml null $head_sha" ] || return 1
+    line="$(git show "$head_sha:.github/workflows/precommit-check.yml" 2>/dev/null \
+        | sed -n "s/^[[:space:]][[:space:]]*VERDICT_JOBS:[[:space:]]*['\"]\{0,1\}\([^'\"#]*\).*/\1/p" | head -1)"
+    IFS=, read -r -a globs <<< "$line"
+    jobs="$(bounded "$GhSeconds" gh api "repos/{owner}/{repo}/actions/runs/$1/jobs?per_page=100" \
+        --jq '.jobs[] | "\(.status)\t\(.conclusion)\t\(.name)"' 2>/dev/null)" || return 1
+    while IFS=$'\t' read -r status conclusion name; do
+        [ -n "$status" ] || continue
+        case "$conclusion" in failure|timed_out|startup_failure|action_required) return 1 ;; esac
+        hit=0
+        for glob in "${globs[@]}"; do
+            glob="${glob#"${glob%%[![:space:]]*}"}"; glob="${glob%"${glob##*[![:space:]]}"}"
+            # shellcheck disable=SC2254 # the glob is the pattern
+            [ -n "$glob" ] && case "$name" in $glob) hit=1 ;; esac
+        done
+        [ "$hit" = 1 ] || continue
+        named=$((named + 1))
+        [ "$status" = completed ] && case "$conclusion" in success|skipped|neutral) continue ;; esac
+        return 1
+    done <<< "$jobs"
+    [ "$named" -gt 0 ]
 }
 if [ -n "${PREPUSH_REMOTE_RUN:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ "$to_main" = 1 ]; then
     if remote_pass "$PREPUSH_REMOTE_RUN"; then

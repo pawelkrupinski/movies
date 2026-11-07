@@ -30,6 +30,12 @@ env:
     # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
     # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
     LANG: C.UTF-8
+    # THE VERDICT'S JOBS, as globs of their names (fnmatch): the check is decided once every job named here has
+    # concluded -- agentctl's remote check (~/bin AGENTCTL.md "remote checks") and the hook's remote pass read this line
+    # at the checked commit -- so a job outside it (a report, a publish) never holds a landing batch: batch #20 waited 27+
+    # min past its last check job behind a queued `timings / report` (2026-11-07). Any job that fails still fails the
+    # check. Every job of this workflow is a check and must be named (LandingCheckSplitSpec).
+    VERDICT_JOBS: plan, check (*), heavy rows (*)
 
 jobs:
     # WHAT THE CHANGE SELECTS (scripts/ci/precommit-share.sh checks plan: the hook's own selection, PREPUSH_LIST=1, with
