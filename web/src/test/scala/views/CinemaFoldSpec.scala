@@ -1,5 +1,6 @@
 package views
 
+import controllers.FilmSchedules
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule}
@@ -36,21 +37,12 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
    *  `linkCount` drives the separate cinema-link row under the title. */
   private def schedule(counts: Int*)(linkCount: Int = 0): FilmSchedule = {
     val cinemas = Cinema.all.distinct
-    FilmSchedule(
-      movie          = Movie("Test movie", Some(120)),
-      posterUrl      = None,
-      synopsis       = None,
-      cast           = Seq.empty,
-      director       = Seq.empty,
+    FilmSchedules.of(Movie("Test movie", Some(120)), date,
       cinemaFilmUrls = cinemas.take(linkCount).map(c => c -> s"https://example.test/${c.pillName}"),
       showings       = counts.zipWithIndex.map { case (count, day) =>
         date.plusDays(day) -> cinemas.take(count).map(c =>
           CinemaShowtimes(c, Seq(Showtime(baseTime.plusDays(day), None, Some("Sala 1"), List("2D")))))
-      },
-      resolved       = TestReadModel.resolved("Test movie", None, MovieRecord()),
-      slug           = controllers.FilmHref.slugOf("Test movie"),
-      asOf           = date
-    )
+      })
   }
 
   private def cinemaGroups(html: String): Int = """class="cinema-group"""".r.findAllIn(html).size

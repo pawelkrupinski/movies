@@ -1,6 +1,5 @@
 package integration
 
-import models.Country
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, Json}
 import services.identity._
 import services.identity.adapters.{FamilyAnswerStore, InMemoryTmdbDocuments, PosterAnswerStore, TmdbIdentityLookups, TmdbKind}
@@ -36,15 +35,13 @@ object IdentityResolveDump {
   import IdentityShadow._
 
   val commandLine: CommandLine = CommandLine("IdentityResolveDump", "Writes every listing's decision of the resolver over recorded full corpora.",
-    CommandLine.Value("out", "dir", "where decisions-<cc>.jsonl is written (required)"),
-    CommandLine.Value("full", "codes", "the countries whose recorded corpora are resolved, comma-separated (required)"),
-    CommandLine.Value("corpus-dir", "dir", "the directory holding cinema-scrapes-<cc>.json.gz (required)"),
-    CommandLine.Value("fixtures", "dir", "the directory holding enrichment-<cc>/ (default: KINOWO_FIXTURE_ROOT, else the repository's)"),
+    ((CommandLine.Value("out", "dir", "where decisions-<cc>.jsonl is written (required)") +:
+      CorpusArgs.options("the countries whose recorded corpora are resolved")) ++ Seq(
     CommandLine.Value("trace", "file", "also write every title reading the resolve made there (services.movies.NormalizerTrace): what " +
       "scripts/identity-measure --footprint replays under a title-rule change"),
     CommandLine.Value("population", "chains", "also walk every family of two listings or more along this many arrival chains " +
       "(services.identity.PopulationMonotonicity, report only): population-flips-<cc>.json and a kind=identity.population_flips line"),
-    CommandLine.Value("population-seconds", "seconds", "the population walk's time budget per country", default = Some("900")))
+    CommandLine.Value("population-seconds", "seconds", "the population walk's time budget per country", default = Some("900"))))*)
 
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
@@ -55,23 +52,14 @@ object IdentityResolveDump {
 
   /** Every country named resolved and written; whether any could not be. */
   private def run(arguments: CommandLine.Arguments): Boolean = {
-    val countries = arguments.required("full").split(",").toSeq.map(_.trim).filter(_.nonEmpty).map(code =>
-      Country.byCode(code).getOrElse(arguments.fail(s"--full: no country $code (one of ${Country.all.map(_.code).mkString(", ")})")))
-    val out       = arguments.requiredPath("out")
-    val corpusDir = arguments.requiredPath("corpus-dir")
-    val configuration = settings.ProcessConfiguration.resolve()
-    val root      = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(configuration.fixtureRoot)
-    val target    = IntegrationMongoTarget.from(configuration).getOrElse(arguments.fail("MONGODB_URI names no throwaway Mongo to seed the corpora into"))
-    target.requireThrowaway()
-    val corpora   = IdentityShadow.full(countries.toSet, corpusDir, root, configuration.identityLiveGaps)
-    val missing   = countries.filterNot(c => corpora.exists(_.country == c))
-    missing.foreach(c => System.err.println(s"[IdentityResolveDump] no cinema-scrapes-${c.code}.json.gz in $corpusDir"))
-    val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
-    val failed    = try corpora.filterNot { c =>
+    val read     = CorpusArgs.of(arguments, "IdentityResolveDump")
+    import read.{configuration, target, root, out}
+    val storages = mutable.ListBuffer.empty[ConvergenceStorage]
+    val failed   = try read.corpora.filterNot { c =>
       Try(dump(configuration, target, root, c, out, storages, arguments.int("population").map(_ -> arguments.double("population-seconds").get))).fold({ e =>
         System.err.println(s"[${c.label}] FAILED: $e"); e.printStackTrace(); false }, _ => true)
     } finally storages.foreach(s => Try(s.close()))
-    missing.nonEmpty || failed.nonEmpty
+    read.missing.nonEmpty || failed.nonEmpty
   }
 
   /** Every listing of `c` resolved and its decision written to `<out>/decisions-<cc>.jsonl` (and the rest, above). */

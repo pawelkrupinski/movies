@@ -15,48 +15,26 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class MultikinoParserGenresSpec extends AnyFlatSpec with Matchers {
 
-  private def filmJson(genres: String, title: String = "Test Film"): String = s"""
-    {"result":[{
-      "filmTitle": "$title",
-      "filmId": "TST",
-      "filmUrl": "/filmy/test",
-      "posterImageSrc": "/poster.jpg",
-      "synopsisShort": "",
-      "cast": "",
-      "director": "",
-      "originalTitle": "",
-      "movieXchangeCode": "",
-      "showingGroups": [],
-      "trailers": [],
-      "genres": $genres
-    }]}
-  """
-
   "MultikinoParser" should "leave genres empty when the array is empty (current production shape)" in {
-    MultikinoParser.parse(filmJson("[]"), titles = titleNormalizer).head.movie.genres shouldBe empty
+    MultikinoParser.parse(MultikinoFilmJson(""""genres": []"""), titles = titleNormalizer).head.movie.genres shouldBe empty
   }
 
   it should "leave genres empty when the field is absent" in {
-    val json = """{"result":[{
-      "filmTitle":"X","filmId":"1","filmUrl":"/x","posterImageSrc":"/p.jpg",
-      "synopsisShort":"","cast":"","director":"","originalTitle":"",
-      "movieXchangeCode":"","showingGroups":[],"trailers":[]
-    }]}"""
-    MultikinoParser.parse(json, titles = titleNormalizer).head.movie.genres shouldBe empty
+    MultikinoParser.parse(MultikinoFilmJson(), titles = titleNormalizer).head.movie.genres shouldBe empty
   }
 
   it should "extract genre names from a list of {name} objects" in {
     val genres = """[{"name":"Komedia"},{"name":"Romans"}]"""
-    MultikinoParser.parse(filmJson(genres), titles = titleNormalizer).head.movie.genres shouldBe Seq("Komedia", "Romans")
+    MultikinoParser.parse(MultikinoFilmJson(s""""genres": $genres"""), titles = titleNormalizer).head.movie.genres shouldBe Seq("Komedia", "Romans")
   }
 
   it should "extract genre names from a list of bare strings" in {
     val genres = """["Dramat","Historyczny"]"""
-    MultikinoParser.parse(filmJson(genres), titles = titleNormalizer).head.movie.genres shouldBe Seq("Dramat", "Historyczny")
+    MultikinoParser.parse(MultikinoFilmJson(s""""genres": $genres"""), titles = titleNormalizer).head.movie.genres shouldBe Seq("Dramat", "Historyczny")
   }
 
   it should "skip entries with neither a name nor a string value" in {
     val genres = """[{"name":"Komedia"},{},{"name":""},"Sci-Fi"]"""
-    MultikinoParser.parse(filmJson(genres), titles = titleNormalizer).head.movie.genres shouldBe Seq("Komedia", "Sci-Fi")
+    MultikinoParser.parse(MultikinoFilmJson(s""""genres": $genres"""), titles = titleNormalizer).head.movie.genres shouldBe Seq("Komedia", "Sci-Fi")
   }
 }

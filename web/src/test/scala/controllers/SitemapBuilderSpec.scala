@@ -1,7 +1,6 @@
 package controllers
 
 import models._
-import services.readmodel.TestReadModel
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -21,22 +20,13 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     go(0, 0)
   }
 
-  private def film(title: String, cinema: Cinema, slugOverride: Option[String] = None): FilmSchedule = FilmSchedule(
-    movie          = Movie(title = title),
-    posterUrl      = None,
-    synopsis       = None,
-    cast           = Nil,
-    director       = Nil,
-    cinemaFilmUrls = Nil,
-    showings       = Seq(
+  private def film(title: String, cinema: Cinema, slugOverride: Option[String] = None): FilmSchedule = FilmSchedules.of(Movie(title = title), LocalDate.of(2026, 5, 17),
+    showings = Seq(
       LocalDate.of(2026, 5, 17) -> Seq(CinemaShowtimes(cinema, Seq(
         Showtime(dateTime = LocalDateTime.of(2026, 5, 17, 18, 0), bookingUrl = None)
       )))
     ),
-    resolved       = TestReadModel.resolved(title, None, MovieRecord()),
-    slug           = slugOverride.orElse(FilmHref.slugOf(title)),
-    asOf           = LocalDate.of(2026, 5, 17)
-  )
+    slug     = slugOverride)
 
   private val entries: Seq[(City, Seq[FilmSchedule])] = Seq(
     Poznan  -> Seq(film("Belle", Multikino), film("Diuna: Część druga", Helios)),

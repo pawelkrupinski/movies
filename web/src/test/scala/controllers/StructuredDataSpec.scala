@@ -43,15 +43,12 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
       }
       d -> perCinema
     }
-    FilmSchedule(
-      movie = Movie(title = title, runtimeMinutes = Some(166), releaseYear = Some(2024),
-        countries = Seq("USA"), genres = Seq("Sci-Fi", "Dramat")),
+    FilmSchedules.of(
+      Movie(title = title, runtimeMinutes = Some(166), releaseYear = Some(2024),
+        countries = Seq("USA"), genres = Seq("Sci-Fi", "Dramat")), java.time.LocalDate.of(2026, 6, 4),
       posterUrl = posterUrl, synopsis = synopsis,
       cast = Seq("Timothée Chalamet", "Zendaya"), director = Seq("Denis Villeneuve"),
-      cinemaFilmUrls = Nil, showings = byDate, resolved = resolved(title, r),
-      slug = slugOverride.orElse(FilmHref.slugOf(title)),
-      asOf = java.time.LocalDate.of(2026, 6, 4),
-    )
+      showings = byDate, resolved = Some(resolved(title, r)), slug = slugOverride)
   }
 
   private def parseArray(s: String): Seq[JsObject] =

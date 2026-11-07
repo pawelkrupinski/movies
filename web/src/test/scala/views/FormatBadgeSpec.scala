@@ -1,5 +1,6 @@
 package views
 
+import controllers.FilmSchedules
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule}
@@ -22,18 +23,9 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
   private def schedule(showtimes: Seq[Showtime], ageRating: Option[String] = None): FilmSchedule = {
     val record = MovieRecord(
       data = ageRating.fold(Map.empty[Source, SourceData])(r => Map(Tmdb -> SourceData(ageRating = Some(r)))))
-    FilmSchedule(
-      movie          = Movie("Test movie", Some(120)),
-      posterUrl      = None,
-      synopsis       = None,
-      cast           = Seq.empty,
-      director       = Seq.empty,
-      cinemaFilmUrls = Nil,
-      showings       = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, showtimes))),
-      resolved       = TestReadModel.resolved("Test movie", None, record),
-      slug           = controllers.FilmHref.slugOf("Test movie"),
-      asOf           = LocalDate.of(2026, 5, 13)
-    )
+    FilmSchedules.of(Movie("Test movie", Some(120)), LocalDate.of(2026, 5, 13),
+      showings = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, showtimes))),
+      record   = record)
   }
 
   /** One film screened at two cinemas on the same day. */

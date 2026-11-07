@@ -1,7 +1,6 @@
 package controllers
 
 import models._
-import services.readmodel.TestReadModel
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -28,20 +27,12 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     director:  Seq[String] = Nil,
     cast:      Seq[String] = Nil,
     format:    List[String] = Nil,
-  ): FilmSchedule = FilmSchedule(
-    movie         = movie(title, countries, genres),
-    posterUrl     = None,
-    synopsis      = None,
-    cast          = cast,
-    director      = director,
-    cinemaFilmUrls = Nil,
-    showings      = Seq(
+  ): FilmSchedule = FilmSchedules.of(movie(title, countries, genres), LocalDate.of(2026, 5, 17),
+    cast     = cast,
+    director = director,
+    showings = Seq(
       LocalDate.of(2026, 5, 17) -> Seq(CinemaShowtimes(cinema, rooms.map(r => slot(r, "18:00", format))))
-    ),
-    resolved      = TestReadModel.resolved(title, None, MovieRecord()),
-    slug          = FilmHref.slugOf(title),
-    asOf          = LocalDate.of(2026, 5, 17)
-  )
+    ))
 
   private val schedules: Seq[FilmSchedule] = Seq(
     film("Belle",                 Multikino, Seq("Sala 5", "Sala 7"), List("Japonia"),  genres = Seq("Animacja"), director = Seq("Mamoru Hosoda"), format = List("IMAX", "2D")),

@@ -1,5 +1,6 @@
 package views
 
+import controllers.FilmSchedules
 import testsupport.TestMessages.given
 
 import controllers.{CaffeineFilmCardFragments, CinemaShowtimes, FilmCardFragments, FilmSchedule}
@@ -22,8 +23,7 @@ class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
   private val day = LocalDate.of(2026, 5, 13)
   private val cinemas = Cinema.all.distinct.filter(c => City.forCinema(c).contains(city)).take(6)
 
-  private def film(n: Int, firstHour: Int = 10, imdb: Double = 7.1, cinemas: Seq[Cinema] = cinemas): FilmSchedule = FilmSchedule(
-    movie = Movie(s"Film $n", Some(110)), posterUrl = Some(s"https://image.example/$n.jpg"), synopsis = None,
+  private def film(n: Int, firstHour: Int = 10, imdb: Double = 7.1, cinemas: Seq[Cinema] = cinemas): FilmSchedule = FilmSchedules.of(Movie(s"Film $n", Some(110)), day, posterUrl = Some(s"https://image.example/$n.jpg"),
     cast = Seq("Actor One", "Actor Two"), director = Seq("A Director"),
     cinemaFilmUrls = cinemas.take(2).map(c => c -> s"https://kino.example/film-$n"),
     showings = (0 until 4).map { d =>
@@ -31,8 +31,8 @@ class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
       date -> cinemas.map(c => CinemaShowtimes(c, (0 until 5).map(s =>
         Showtime(date.atTime(firstHour + s * 2, 15), Some(s"https://kino.example/book?film=$n&date=$date&id=${n * 100 + s}"), None, Nil))))
     },
-    resolved = TestReadModel.resolved(s"Film $n", Some(2026), MovieRecord(imdbId = Some(s"tt$n"), imdbRating = Some(imdb))),
-    slug = Some(s"film-$n"), asOf = day)
+    resolved = Some(TestReadModel.resolved(s"Film $n", Some(2026), MovieRecord(imdbId = Some(s"tt$n"), imdbRating = Some(imdb)))),
+    slug = Some(s"film-$n"))
 
   private def listing(films: Seq[FilmSchedule], fragments: FilmCardFragments): String =
     views.html._filmCards(films)(using city, summon, fragments).body

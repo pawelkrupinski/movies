@@ -1,5 +1,6 @@
 package views
 
+import controllers.FilmSchedules
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule, ShowingsMarkup}
@@ -24,18 +25,9 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
   private def schedule(showings: (LocalDate, Seq[Showtime])*): FilmSchedule = scheduleWith(Nil, showings*)
 
   private def scheduleWith(cinemaFilmUrls: Seq[(models.Cinema, String)], showings: (LocalDate, Seq[Showtime])*): FilmSchedule =
-    FilmSchedule(
-      movie          = Movie("Test movie", Some(120)),
-      posterUrl      = None,
-      synopsis       = None,
-      cast           = Seq.empty,
-      director       = Seq.empty,
+    FilmSchedules.of(Movie("Test movie", Some(120)), showings.head._1,
       cinemaFilmUrls = cinemaFilmUrls,
-      showings       = showings.map { case (date, slots) => date -> Seq(CinemaShowtimes(Helios, slots)) },
-      resolved       = TestReadModel.resolved("Test movie", None, MovieRecord()),
-      slug           = controllers.FilmHref.slugOf("Test movie"),
-      asOf           = showings.head._1
-    )
+      showings       = showings.map { case (date, slots) => date -> Seq(CinemaShowtimes(Helios, slots)) })
 
   private def slot(at: LocalDateTime) = Showtime(at, Some(s"https://helios.pl/book/${at.getHour}"), None, Nil)
   private def expiresAt(at: LocalDateTime) = at.plus(Showtime.Grace).atZone(city.zoneId).toInstant.toEpochMilli

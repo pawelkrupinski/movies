@@ -1,5 +1,6 @@
 package views
 
+import controllers.FilmSchedules
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule}
@@ -23,21 +24,11 @@ class NavbarImaxFilterSpec extends AnyFlatSpec with Matchers {
   private val today = LocalDate.of(2026, 6, 8)
 
   /** One film playing `formats.head` today, `formats(1)` tomorrow, … */
-  private def schedule(formats: List[String]*): FilmSchedule = FilmSchedule(
-    movie          = Movie("Test movie", Some(120)),
-    posterUrl      = None,
-    synopsis       = None,
-    cast           = Seq.empty,
-    director       = Seq.empty,
-    cinemaFilmUrls = Seq.empty,
-    showings       = formats.zipWithIndex.map { case (format, day) =>
+  private def schedule(formats: List[String]*): FilmSchedule = FilmSchedules.of(Movie("Test movie", Some(120)), today,
+    showings = formats.zipWithIndex.map { case (format, day) =>
       today.plusDays(day) -> Seq(CinemaShowtimes(Cinema.all.head,
         Seq(Showtime(LocalDateTime.of(today.plusDays(day), java.time.LocalTime.of(18, 0)), None, None, format))))
-    },
-    resolved       = TestReadModel.resolved("Test movie", None, MovieRecord()),
-    slug           = controllers.FilmHref.slugOf("Test movie"),
-    asOf           = today
-  )
+    })
 
   private def render(films: FilmSchedule*): String =
     views.html.repertoire(

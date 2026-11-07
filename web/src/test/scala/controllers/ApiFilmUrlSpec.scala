@@ -4,7 +4,6 @@ import models.{Helios, Movie, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
-import services.readmodel.TestReadModel
 
 import java.net.URI
 import java.time.{LocalDate, LocalDateTime}
@@ -26,23 +25,16 @@ class ApiFilmUrlSpec extends AnyFlatSpec with Matchers {
   private val ScrapedPoster = "http://kinobulgarska19.pl/wp-content/uploads/2026/05/Milcząca-przyjaciółka_plakat-PL_LQ.jpg"
 
   private val film: FilmSchedule =
-    FilmSchedule(
-      movie          = Movie("Milcząca przyjaciółka", runtimeMinutes = Some(120), releaseYear = Some(2025), genres = Nil),
+    FilmSchedules.of(Movie("Milcząca przyjaciółka", runtimeMinutes = Some(120), releaseYear = Some(2025), genres = Nil), LocalDate.of(2026, 6, 4),
       posterUrl      = Some(ScrapedPoster),
       synopsis       = Some("…"),
-      cast           = Nil,
-      director       = Nil,
       cinemaFilmUrls = Seq(Helios -> "https://helios.pl/film/Milcząca-przyjaciółka"),
       showings       = Seq(LocalDate.of(2026, 6, 4) -> Seq(CinemaShowtimes(Helios, Seq(
         Showtime(LocalDateTime.of(2026, 6, 4, 18, 0), Some("https://helios.pl/bilet?film=Milcząca przyjaciółka"), Some("Sala 1"), List("2D"))
       )))),
-      resolved       = TestReadModel.resolved("Milcząca przyjaciółka", Some(2025),
-        MovieRecord(imdbId = Some("tt0000001"), data = Map[Source, SourceData](
-          Helios -> SourceData(posterUrl = Some(ScrapedPoster)),
-          Tmdb   -> SourceData(posterUrl = Some("https://image.tmdb.org/t/p/original/ok.jpg"))))),
-      slug           = FilmHref.slugOf("Milcząca przyjaciółka"),
-      asOf           = LocalDate.of(2026, 6, 4)
-    )
+      record         = MovieRecord(imdbId = Some("tt0000001"), data = Map[Source, SourceData](
+        Helios -> SourceData(posterUrl = Some(ScrapedPoster)),
+        Tmdb   -> SourceData(posterUrl = Some("https://image.tmdb.org/t/p/original/ok.jpg")))))
 
   /** Every string under a key that names a URL, anywhere in the tree. */
   private def urlFields(json: JsValue, path: String = ""): Seq[(String, String)] = json match {

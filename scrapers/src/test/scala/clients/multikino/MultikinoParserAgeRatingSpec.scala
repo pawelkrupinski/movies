@@ -23,26 +23,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class MultikinoParserAgeRatingSpec extends AnyFlatSpec with Matchers {
 
-  private def filmJson(certificate: String, title: String = "Test Film"): String = s"""
-    {"result":[{
-      "filmTitle": "$title",
-      "filmId": "TST",
-      "filmUrl": "/filmy/test",
-      "posterImageSrc": "/poster.jpg",
-      "synopsisShort": "",
-      "cast": "",
-      "director": "",
-      "originalTitle": "",
-      "movieXchangeCode": "",
-      "showingGroups": [],
-      "trailers": [],
-      "genres": [],
-      "certificate": $certificate
-    }]}
-  """
-
   private def ageRatingOf(certificate: String): Option[String] =
-    MultikinoParser.parse(filmJson(certificate), titles = titleNormalizer).head.ageRating
+    MultikinoParser.parse(MultikinoFilmJson(""""genres": []""", s""""certificate": $certificate"""), titles = titleNormalizer).head.ageRating
 
   "MultikinoParser" should "read the Polish rating from certificate.name (real fixture)" in {
     val movies  = new MultikinoClient(new FakeHttpFetch("new-cities"), "0003", MultikinoZabrze, titles = titleNormalizer).fetch()

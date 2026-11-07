@@ -4,7 +4,6 @@ import models.{Helios, Movie, MovieRecord}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsBoolean, Json}
-import services.readmodel.TestReadModel
 
 import java.time.LocalDate
 
@@ -14,18 +13,8 @@ import java.time.LocalDate
 class ApiFilmProvisionalSpec extends AnyFlatSpec with Matchers {
 
   private def film(record: MovieRecord): FilmSchedule =
-    FilmSchedule(
-      movie          = Movie("Rose", runtimeMinutes = Some(106), releaseYear = Some(2022), genres = Nil),
-      posterUrl      = None,
-      synopsis       = None,
-      cast           = Nil,
-      director       = Nil,
-      cinemaFilmUrls = Seq(Helios -> "https://helios.pl/film/rose"),
-      showings       = Nil,
-      resolved       = TestReadModel.resolved("Rose", Some(2022), record),
-      slug           = FilmHref.slugOf("Rose"),
-      asOf           = LocalDate.of(2026, 10, 31)
-    )
+    FilmSchedules.of(Movie("Rose", runtimeMinutes = Some(106), releaseYear = Some(2022), genres = Nil), LocalDate.of(2026, 10, 31),
+      cinemaFilmUrls = Seq(Helios -> "https://helios.pl/film/rose"), record = record)
 
   "the repertoire film" should "say provisional while its identity take is Pending" in {
     val json = Json.toJson(ApiFilm.from(film(MovieRecord(tmdbId = Some(901251), tmdbProvisional = Some(true))), java.util.Locale.ENGLISH))

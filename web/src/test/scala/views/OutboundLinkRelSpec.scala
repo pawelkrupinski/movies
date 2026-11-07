@@ -1,5 +1,6 @@
 package views
 
+import controllers.FilmSchedules
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule}
@@ -32,20 +33,11 @@ class OutboundLinkRelSpec extends AnyFlatSpec with Matchers {
   private val baseTime = LocalDateTime.of(2026, 5, 13, 18, 0)
 
   private def schedule(cinemaFilmUrls: Seq[(models.Cinema, String)] = Nil): FilmSchedule =
-    FilmSchedule(
-      movie          = Movie("Test movie", Some(120)),
-      posterUrl      = None,
-      synopsis       = None,
-      cast           = Seq.empty,
-      director       = Seq.empty,
+    FilmSchedules.of(Movie("Test movie", Some(120)), LocalDate.of(2026, 5, 13),
       cinemaFilmUrls = cinemaFilmUrls,
       showings       = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, Seq(
         Showtime(baseTime, Some("https://helios.pl/book/1"), Some("Sala 1"), List("2D"))
-      )))),
-      resolved       = TestReadModel.resolved("Test movie", None, MovieRecord()),
-      slug           = controllers.FilmHref.slugOf("Test movie"),
-      asOf           = LocalDate.of(2026, 5, 13)
-    )
+      )))))
 
   // Every `<a>` pointing off-site must be nofollowed; nothing internal may be.
   private def externalAnchors(html: String): Seq[String] =
