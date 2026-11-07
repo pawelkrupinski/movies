@@ -92,12 +92,14 @@ object ListingRetention {
 
   /** Is `listing` billed again by its own venue ([[Billing]]) with no other year, and not page for page: the same listing
    *  come back, so what came back replaces it. A year on both sides that differs is another film under that title
-   *  (Cinema-Arthouse's "Sinn und Sinnlichkeit", Ang Lee 1995 and Georgia Oakley 2026), still kept; so is a page of the
+   *  (Cinema-Arthouse's "Sinn und Sinnlichkeit", Ang Lee 1995 and Georgia Oakley 2026), still kept, as is one crediting
+   *  directors none of whom the present one credits; so is a page of the
    *  venue's beside another page under the same title -- its own pages tell its listings apart (Fontane Klub's two "Lars
    *  Redlich" pages), and only a page lent or withdrawn (Published to Native and back) is one listing re-keyed. */
   private def returned(listing: Listing, back: Map[Billing, Seq[Listing]]): Boolean =
     back.get(Billing.of(listing)).exists(_.exists { present =>
-      !(isNative(listing) && isNative(present)) && (present.year.isEmpty || listing.year.isEmpty || present.year == listing.year)
+      !(isNative(listing) && isNative(present)) && (present.year.isEmpty || listing.year.isEmpty || present.year == listing.year) &&
+        (present.directors.isEmpty || listing.directors.isEmpty || present.directors.exists(listing.directors.contains))
     })
   private def isNative(listing: Listing): Boolean = listing.key match { case _: services.movies.ListingKey.Native => true; case _ => false }
 

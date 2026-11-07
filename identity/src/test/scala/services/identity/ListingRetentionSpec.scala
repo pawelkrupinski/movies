@@ -78,6 +78,12 @@ class ListingRetentionSpec extends AnyFlatSpec with Matchers {
     ListingRetention.retained(Seq(lee), Seq(oakley), normalizer).map(_.key) shouldBe Seq(lee.key)
   }
 
+  it should "still be kept beside its venue's billing of the title crediting none of its directors" in {
+    val lee    = at(0, "Sinn und Sinnlichkeit", None, Some("https://www.kinoheld.de/film/sinn")).copy(directors = Seq("Ang Lee"))
+    val oakley = at(1, "Sinn und Sinnlichkeit", None, None).copy(directors = Seq("Georgia Oakley"))
+    ListingRetention.retained(Seq(lee), Seq(oakley), normalizer).map(_.key) shouldBe Seq(lee.key)
+  }
+
   it should "still be kept beside another page of its venue's under the same title (Fontane Klub's two \"Lars Redlich\" pages)" in {
     val one = at(0, "Lars Redlich – Unaufhaltsam unterhaltsam!", None, Some("https://www.kinoheld.de/film/69b4b647e37534036bbb87a4"))
     val two = at(1, "Lars Redlich – Unaufhaltsam unterhaltsam!", None, Some("https://www.kinoheld.de/film/69b4b647e37534036bbb87a5"))
