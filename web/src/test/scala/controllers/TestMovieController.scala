@@ -71,18 +71,21 @@ object TestMovieController {
     filmCards: FilmCardFragments = FilmCardFragments.Uncached,
   ): (MovieController, WebReadModel) = {
     val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
+    val service    = new MovieControllerService(readModel_, clock)
+    // The REAL bundles, not Play's empty stub default — `CityRequests` resolves
+    // its fixed deployment `Messages` off the `MessagesApi`, so a spec asserting
+    // on actual rendered copy needs the checked-in `messages`/`messages.en`/…
+    // behind it.
+    val cc = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi)
+    val cityRequests = new CityRequests(cc.messagesApi, servingCountry, readModel_, responseCache,
+      now = () => service.now(), build = settings.CommitSha("unknown"))
     val ctrl  = new MovieController(
-      // The REAL bundles, not Play's empty stub default — `MovieController`
-      // resolves its fixed deployment `Messages` off `cc.messagesApi`, so a
-      // spec asserting on actual rendered copy needs the checked-in
-      // `messages`/`messages.en`/… behind it.
-      cc                     = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi),
-      movieControllerService = new MovieControllerService(readModel_, clock),
+      cc                     = cc,
+      cityRequests           = cityRequests,
+      movieControllerService = service,
       readModel              = readModel_,
       oauthProviders         = Set.empty,
       environment            = mode,
-      responseCache          = responseCache,
-      servingCountry         = servingCountry,
       minifier               = tools.Minifier.forMode(mode),
       pageTags               = pageTags,
       recordRender           = recordRender,

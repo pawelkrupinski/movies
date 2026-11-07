@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CatalogController, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LegalController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
+import controllers.{CatalogController, CityRequests, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LegalController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
 import modules.Wiring
 
 /** ── The public site ───────────────────────────────────────────────────────
@@ -41,14 +41,17 @@ trait ControllersWiring { self: Wiring =>
   lazy val facebookFetchRecorder: Option[services.facebook.FacebookFetchRecorder] =
     fleetConnection.database.map(db => managedResources.stopping(new services.facebook.FacebookFetchRecorder(
       new services.facebook.MongoFacebookFetches(db.getCollection(services.facebook.FacebookFetches.Collection)), clock, stopwatch, ticks)))
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache,
-    servingCountry = country, minifier = minifier,
+  // What every `/{city}/…` controller shares: our cities, the city cookie, the
+  // deployment's language and the conditional GET over the shared gzip cache.
+  lazy val cityRequests = new CityRequests(controllerComponents.messagesApi, country, webReadModel, encodedResponseCache,
+    now = () => movieControllerService.now(), build = processConfiguration.commit)
+  lazy val movieController  = new MovieController(controllerComponents, cityRequests, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode,
+    minifier = minifier,
     // Read per render, so an `/admin/config` change reaches the page.
     pageTags = () => controllers.PageTags.from(processConfiguration),
     filmCards = filmCards,
     recordRender = webRenderMetrics.record,
-    filmPageServed = (userAgent, url) => facebookFetchRecorder.foreach(_.served(userAgent, url)),
-    build = processConfiguration.commit)
+    filmPageServed = (userAgent, url) => facebookFetchRecorder.foreach(_.served(userAgent, url)))
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

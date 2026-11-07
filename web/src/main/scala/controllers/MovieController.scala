@@ -8,6 +8,10 @@ import services.readmodel.WebReadModel
 import java.time.LocalDate
 
 class MovieController( cc: ControllerComponents,
+                       // Which cities are ours, the remembered-city cookie, the deployment's
+                       // one language and the conditional GET — shared with every other
+                       // city-route controller (`CityRequests`).
+                       cityRequests: CityRequests,
                        movieControllerService: MovieControllerService,
                        readModel: WebReadModel,
                        // NO `UserRepository` — deliberately, and it is the strongest
@@ -20,13 +24,6 @@ class MovieController( cc: ControllerComponents,
                        // per client at `/api/me`.
                        oauthProviders: Set[String],
                        environment: Mode,
-                       responseCache: EncodedResponseCache,
-                       // The ONE country this deployment serves — which cities are
-                       // ours (`withCity`) and which the sitemap advertises. Injected
-                       // rather than read from the process configuration at each use so a spec
-                       // can exercise a non-Polish host by passing one, instead of
-                       // mutating the process-global env that parallel suites share.
-                       servingCountry: models.Country,
                        // Rewrites every page's inline `<script>`/`<style>`
                        // blocks — the composition root's choice for this mode
                        // (`Minifier.forMode`), so its memo caches live and die
@@ -46,10 +43,9 @@ class MovieController( cc: ControllerComponents,
                        // (`CityPath.filmUrl`) — for the record of the pages Facebook's crawler
                        // fetched (`FacebookFetchRecorder`); nowhere unless the composition root says.
                        filmPageServed: (Option[String], String) => Unit = (_, _) => (),
-                       // The build serving the pages — in every validator, so two builds side by
-                       // side in a rolling deploy never answer one another's revalidation with a 304.
-                       build: settings.CommitSha = settings.CommitSha("unknown"),
                      ) extends AbstractController(cc) {
+
+  import cityRequests.{cityCookie, conditionalResponse, deploymentMessages, servingCountry, withCity}
 
   private implicit val fragments: FilmCardFragments = filmCards
 
@@ -67,35 +63,6 @@ class MovieController( cc: ControllerComponents,
 
   /** How many listings' JSON-LD this controller is holding — for the spec. */
   private[controllers] def structuredDataHeld: Long = { cityStructuredData.cleanUp(); cityStructuredData.estimatedSize() }
-
-  // The deployment's own, and ONLY, language. Every visitor gets this same
-  // rendered `Messages` regardless of `Accept-Language`, cookie, or anything
-  // else about the request — an explicit language pick swaps the visible
-  // copy client-side instead (`shared.js`'s `applyLanguage`, fed by the
-  // language pack `I18nPacks` embeds), so the server never has to branch per
-  // visitor and every plain city URL stays edge-cacheable unconditionally
-  // (see `cacheablePlainPage` below).
-  //
-  // BARE ("pl", not "pl-PL"), NOT `Lang(servingCountry.language)` directly —
-  // `cc.messagesApi.preferred(...)` always normalises its result down to one
-  // of the region-less codes actually registered in `play.i18n.langs`.
-  private val deploymentDefaultLang: play.api.i18n.Lang = play.api.i18n.Lang(servingCountry.language.getLanguage)
-
-  // The one `Messages` every render on this deployment uses — memoised, since it is
-  // the one language and its fixed labels never change (`MemoisedMessages`).
-  private val deploymentMessages: play.api.i18n.Messages = new MemoisedMessages(cc.messagesApi.preferred(Seq(deploymentDefaultLang)))
-
-  // Validators, `Cache-Control`, the 304 short-circuit and the gzip blob for
-  // every client-independent response this controller serves. The validator
-  // starts from the city's own read-model stamp, or the model-wide one for a
-  // payload with no city in it -- see `ConditionalResponse.validatorFor` for why that
-  // distinction, and the city's calendar day, decide when a held copy retires.
-  private val conditionalResponse = new ConditionalResponse(
-    responseCache,
-    modelStamp = city => city.fold(readModel.lastModified)(c => readModel.lastModifiedFor(c.slug)),
-    now        = () => movieControllerService.now(),
-    build      = build,
-  )
 
   // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for
   // EVERY visitor at a given cache version — signed in or not, which is the whole
@@ -134,25 +101,6 @@ class MovieController( cc: ControllerComponents,
    *  `String` and then copies it into bytes: two thirds of what a Warsaw film page
    *  allocated, and most of a browse page. Same bytes, same content type. */
   private def okHtml(page: play.twirl.api.Html): Result = Ok(ResponseBody.html(page).plain).as(HtmlContentType)
-
-  // Every city-scoped handler wraps its body in this so resolution + not-found
-  // behaviour lives in one place — see `ServedCity` for the country scope. The
-  // unknown-city 404 renders in `deploymentMessages` (see above), not a
-  // per-request resolution — except on the `showtimes.cc` front door, which speaks
-  // the brand's English ([[FrontDoorMessages]]); `ServedCity.resolve` picks which.
-  private val frontDoorMessages: play.api.i18n.Messages = FrontDoorMessages(cc.messagesApi)
-  private def withCity(slug: String, request: RequestHeader)(f: City => Result): Result =
-    ServedCity.resolve(slug, request, servingCountry, deploymentMessages, frontDoorMessages)(f)
-
-  // Persist the viewed city so the bare `/` landing can bounce a returning
-  // visitor straight to it. Readable by JS (httpOnly = false) so the client can
-  // also honour it; long-lived; scoped to the deployment's MOUNT POINT so it
-  // rides every request of this country's site and none of a neighbour's — on
-  // the shared brand domain a cookie at "/" would be sent to (and overwritten
-  // by) `/de` and `/us`, bouncing a UK visitor's landing to a city that country
-  // does not serve.
-  private def cityCookie(city: City): Cookie =
-    Cookie("city", city.slug, maxAge = Some(60 * 60 * 24 * 365), path = city.country.mountPath, httpOnly = false)
 
   /** The main "Filmy" listing — repertoire view, full corpus, OG meta derived
    *  from `?…` filter parameters. Shared between `/` and `/movies` (no
