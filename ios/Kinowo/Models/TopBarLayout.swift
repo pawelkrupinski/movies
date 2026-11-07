@@ -22,6 +22,23 @@ enum TopBarLayout {
 
     static func searchInline(width: CGFloat) -> Bool { width >= wideThreshold }
 
+    /// Width of the inline search field on a bar `rowWidth` wide: what is left
+    /// once the fixed items (🎬, Filtry), the gaps and the date pills at their
+    /// text-fitting width are placed, capped at `cap`. The pills keep their
+    /// width and the field gives way, down to nothing: sized together by a
+    /// plain HStack, the field held its full cap beside the pills and the bar
+    /// came out 736 pt wide on the unfolded iPhone Duo's 669 pt portrait,
+    /// clipping both ends.
+    static func inlineSearchWidth(
+        rowWidth: CGFloat,
+        fixedWidths: CGFloat,
+        pillsWidth: CGFloat,
+        gaps: CGFloat,
+        cap: CGFloat
+    ) -> CGFloat {
+        min(cap, max(0, rowWidth - fixedWidths - pillsWidth - gaps))
+    }
+
     /// Whether all date pills should render at one uniform width.
     ///
     /// Equal width forces every pill to at least the widest label's intrinsic

@@ -67,4 +67,26 @@ final class TopBarLayoutTests: XCTestCase {
         XCTAssertFalse(TopBarLayout.datePillsEqualWidth(
             available: 10_000, intrinsicWidths: [], spacing: 6))
     }
+
+    func testInlineSearchGivesWayToThePillsOnTheUnfoldedDuoPortrait() {
+        // Unfolded iPhone Duo portrait, scale 1.2: a 645 pt row (669 less 24 pt
+        // padding), 🎬 33 + Filtry 42 pt, the pills 327.8 pt at text width,
+        // three 7.2 pt gaps (measured). The field gets the 220.6 pt left, not
+        // its 288 pt cap, which made the bar 736 pt wide.
+        let width = TopBarLayout.inlineSearchWidth(
+            rowWidth: 645, fixedWidths: 75, pillsWidth: 327.8, gaps: 21.6, cap: 288)
+        XCTAssertEqual(width, 220.6, accuracy: 0.01)
+        XCTAssertLessThanOrEqual(75 + 327.8 + 21.6 + width, 645)
+    }
+
+    func testInlineSearchStopsAtItsCapOnAWideBar() {
+        // iPad landscape: plenty of room, the field stays at its cap.
+        XCTAssertEqual(TopBarLayout.inlineSearchWidth(
+            rowWidth: 1_300, fixedWidths: 75, pillsWidth: 327.8, gaps: 21.6, cap: 288), 288)
+    }
+
+    func testInlineSearchCollapsesRatherThanGoNegative() {
+        XCTAssertEqual(TopBarLayout.inlineSearchWidth(
+            rowWidth: 380, fixedWidths: 75, pillsWidth: 327.8, gaps: 21.6, cap: 288), 0)
+    }
 }

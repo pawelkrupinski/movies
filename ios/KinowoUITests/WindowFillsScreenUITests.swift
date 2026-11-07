@@ -30,8 +30,13 @@ final class WindowFillsScreenUITests: XCTestCase {
 
     func testWindowFillsTheScreenAndTheGridUsesItsWidth() throws {
         // A screenshot's image is sized in points, so it is the screen's bounds.
-        let screen = XCUIScreen.main.screenshot().image.size
+        // The unfolded iPhone Duo has two screens and `XCUIScreen.main` is the
+        // folded cover one, so compare against the screen the window is on:
+        // the one whose size matches it, else the main screen.
         let window = app.windows.firstMatch.frame
+        let screens = XCUIScreen.screens.map { $0.screenshot().image.size }
+        let screen = screens.first { abs($0.width - window.width) < 1 && abs($0.height - window.height) < 1 }
+            ?? XCUIScreen.main.screenshot().image.size
         XCTAssertEqual(window.width, screen.width, accuracy: 1,
                        "window \(Int(window.width))pt wide on a \(Int(screen.width))pt screen — running in a compatibility frame?")
         XCTAssertEqual(window.height, screen.height, accuracy: 1,
@@ -57,6 +62,24 @@ final class WindowFillsScreenUITests: XCTestCase {
     /// the left edge. In portrait the bar and the grid share the safe-area
     /// width: the grid starts inside the screen and ends where the bar does
     /// (Filtry's right edge, a couple of points apart), neither in the column.
+    /// The top bar fits the window by itself (portrait has no horizontal
+    /// insets, so the window is the safe area): its leading pill and Filtry lie
+    /// inside it. On the unfolded iPhone Duo's 669 pt portrait the bar was
+    /// 736 pt wide (the inline search field held its full width beside the
+    /// pills), clipping the 🎬 and half of Filtry and dragging the grid 34 pt
+    /// off both edges. Run on the "iPhone Duo" simulator unfolded, iPhone 17
+    /// and iPad mini.
+    func testTopBarFitsTheWindowInPortrait() throws {
+        let today = app.buttons[A11y.TopBar.datePillToday]
+        let filtry = app.buttons[A11y.TopBar.filtryButton]
+        XCTAssertTrue(filtry.waitForExistence(timeout: 10), "Filtry button never appeared")
+        let window = app.frame
+        XCTAssertGreaterThanOrEqual(today.frame.minX, window.minX + 20,
+            "the Dziś pill starts at x=\(Int(today.frame.minX)) — the bar's leading 🎬 is off the \(Int(window.width))pt window's left edge")
+        XCTAssertLessThanOrEqual(filtry.frame.maxX, window.maxX,
+            "Filtry ends at x=\(Int(filtry.frame.maxX)), past the \(Int(window.width))pt window's right edge")
+    }
+
     func testGridStaysWithinTheTopBarInPortrait() throws {
         let filtry = app.buttons[A11y.TopBar.filtryButton]
         XCTAssertTrue(filtry.waitForExistence(timeout: 10), "Filtry button never appeared")

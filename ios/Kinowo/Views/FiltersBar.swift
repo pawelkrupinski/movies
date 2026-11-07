@@ -92,16 +92,20 @@ struct TopBar: View {
         // `DatePillsRow`, so every gap on the bar — 🎬 → pills,
         // pills → search/Filtry — reads as the same width as the
         // gaps between the four pills.
-        HStack(spacing: 6 * scale) {
+        TopBarRow(spacing: 6 * scale, searchCap: 240 * scale) {
             Text(verbatim: "🎬")
                 .font(.system(size: 24 * scale))
             DatePillsRow(dateFilter: $dateFilter, scale: scale)
                 .frame(maxWidth: .infinity)
+                // A fresh row when search moves inline: its measured width (and
+                // so equal-width mode) must not carry over from the wider slot it
+                // had without the field, which truncated "Wszystkie".
+                .id(searchInline)
             if searchInline {
-                // Cap the field so it stays a comfortable type-into width
-                // rather than eating the whole row — the pills get the rest.
+                // `TopBarRow` sizes it: capped so it stays a comfortable
+                // type-into width rather than eating the whole row, and giving
+                // way to the pills when the row is tight.
                 InlineSearchField(search: $search, focused: $searchFocused, scale: scale)
-                    .frame(maxWidth: 240 * scale)
             }
             Button(action: onTapFilters) {
                 // `line.3.horizontal.decrease.circle` is the funnel-in-
@@ -160,6 +164,54 @@ struct TopBar: View {
         max(0.85, min(1.2, width / 393))
     }
 
+}
+
+/// The top bar's row: 🎬, the date pills, the inline search field when there
+/// is one, and Filtry, left to right with one gap. 🎬 and Filtry take their
+/// own width, the search field what `TopBarLayout.inlineSearchWidth` leaves it
+/// beside the pills at their text-fitting width, and the pills the rest. An
+/// HStack sized the field and the pills together, so the field kept its full
+/// cap while the pills kept their text width, and the bar ran wider than the
+/// unfolded iPhone Duo's 669 pt portrait screen.
+struct TopBarRow: Layout {
+    let spacing: CGFloat
+    let searchCap: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        let idealWidth = ideals.map(\.width).reduce(0, +) + gaps(subviews)
+        return CGSize(width: proposal.width ?? idealWidth,
+                      height: ideals.map(\.height).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        for (subview, width) in zip(subviews, widths(rowWidth: bounds.width, subviews: subviews)) {
+            subview.place(at: CGPoint(x: x, y: bounds.midY), anchor: .leading,
+                          proposal: ProposedViewSize(width: width, height: nil))
+            x += width + spacing
+        }
+    }
+
+    private func gaps(_ subviews: Subviews) -> CGFloat {
+        spacing * CGFloat(max(0, subviews.count - 1))
+    }
+
+    /// 🎬, pills, [search,] Filtry.
+    private func widths(rowWidth: CGFloat, subviews: Subviews) -> [CGFloat] {
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified).width }
+        guard ideals.count >= 3 else { return ideals }
+        let fixed = ideals[0] + ideals[ideals.count - 1]
+        let search = ideals.count == 4
+            ? TopBarLayout.inlineSearchWidth(rowWidth: rowWidth, fixedWidths: fixed,
+                                             pillsWidth: ideals[1],
+                                             gaps: gaps(subviews), cap: searchCap)
+            : 0
+        let pills = max(0, rowWidth - fixed - gaps(subviews) - search)
+        return ideals.count == 4
+            ? [ideals[0], pills, search, ideals[3]]
+            : [ideals[0], pills, ideals[2]]
+    }
 }
 
 // The four date pills (today / tomorrow / 7 days / anytime). When the row is
