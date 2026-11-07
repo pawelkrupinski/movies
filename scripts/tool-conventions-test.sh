@@ -251,4 +251,10 @@ stalled_exit=$(CASE_BOUND=1 lib 'sleep 30' 2> "$work/stalled" | tail -1)
 check "a stalled lib case names itself (CASE_BOUND, 1 s here) and carries the report" "named report exit=124" \
   "$(grep -q 'lib: stalled past 1s: sleep 30' "$work/stalled" && printf named) $(grep -q 'stall report: process group' "$work/stalled" && printf report) $stalled_exit"
 
+# ── TOOL_NAME is the tool's own, never its children's ───────────────────────────────────────────────
+# Exported, it renames every tool the script starts: land-precheck's export made identity-ci-run die as
+# "land-precheck: could not push ..." (2026-11-07, its self-test red in every precheck and nowhere else).
+check "no script exports TOOL_NAME (a child tool would die under the parent's name)" "" \
+  "$(cd "$REPO_ROOT" && grep -rlE '^[[:space:]]*export[[:space:]]+TOOL_NAME' scripts .github/scripts infra/bin 2>/dev/null)"
+
 spec_summary

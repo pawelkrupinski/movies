@@ -24,7 +24,8 @@
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$here/tool-conventions.sh"
-export TOOL_NAME=land-precheck
+# shellcheck disable=SC2034 # read by tool-conventions.sh's die; not exported: the tools it starts keep their own names
+TOOL_NAME=land-precheck
 
 base=origin/main head=HEAD
 while [ $# -gt 0 ]; do
