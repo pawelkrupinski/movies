@@ -874,7 +874,6 @@ private[models] object CitySlugIndexData {
     "doerzbach" -> "bad-mergentheim",
     "donaueschingen-baden-wuerttemberg" -> "donaueschingen",
     "donzdorf" -> "goeppingen",
-    "dorfen-bayern" -> "dorfen",
     "dortmund-nordrhein-westfalen" -> "dortmund",
     "dorzbach" -> "bad-mergentheim",
     "dreieich-hessen" -> "dreieich",
@@ -1075,9 +1074,9 @@ private[models] object CitySlugIndexData {
     "hoechst-im-odenwald" -> "erbach-im-odenwald",
     "hof-bayern" -> "hof",
     "hofgeismar" -> "warburg",
+    "hofheim-am-taunus-hessen" -> "hofheim-am-taunus",
   )
   private def de1: Seq[(String, String)] = Seq(
-    "hofheim-am-taunus-hessen" -> "hofheim-am-taunus",
     "hohenstein-ernstthal" -> "limbach-oberfrohna",
     "hollfeld" -> "bayreuth",
     "holzkirchen-bayern" -> "holzkirchen",
@@ -1477,9 +1476,9 @@ private[models] object CitySlugIndexData {
     "schonberg" -> "bad-oldesloe",
     "schongau-bayern" -> "schongau",
     "schopfheim" -> "rheinfelden",
+    "schorndorf-baden-wuerttemberg" -> "schorndorf",
   )
   private def de2: Seq[(String, String)] = Seq(
-    "schorndorf-baden-wuerttemberg" -> "schorndorf",
     "schramberg" -> "rottweil",
     "schrobenhausen" -> "neuburg-an-der-donau",
     "schrozberg" -> "rothenburg",
@@ -1534,7 +1533,7 @@ private[models] object CitySlugIndexData {
     "syke" -> "delmenhorst",
     "tauberbischofsheim-baden-wuerttemberg" -> "tauberbischofsheim",
     "taucha-sachsen" -> "taucha",
-    "taufkirchen-vils" -> "dorfen",
+    "taufkirchen-vils" -> "erding",
     "templin-brandenburg" -> "templin",
     "tettnang" -> "friedrichshafen",
     "thale" -> "halberstadt",
