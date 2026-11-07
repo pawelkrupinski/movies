@@ -7,9 +7,8 @@ import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import org.jsoup.nodes.Document
 import services.movies.TitleNormalizer
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies, VenueCredits}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapedSlot, SlotsToMovies, VenueCredits}
 
-import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 
 /**
@@ -111,10 +110,6 @@ object Bilety24OrganizerClient {
   // The screening's own id, shared by both links the page gives it — see `parse`.
   private val EventId = """[?&]id=(\d+)""".r
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, eventUrl: Option[String],
-                            format: List[String])
-
-
   def parse(html: String, cinema: Cinema, titles: TitleNormalizer): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
@@ -133,7 +128,8 @@ object Bilety24OrganizerClient {
           val clean = stripProgrammeTag(withTag)
           // The `Film:` anchor's href is the `/kino/<slug>` event page — kept
           // both as the slot's booking link and as the film's detail `filmUrl`.
-          RawSlot(clean, dt, Option(a.attr("abs:href")).filter(_.nonEmpty), format)
+          val eventUrl = Option(a.attr("abs:href")).filter(_.nonEmpty)
+          ScrapedSlot(clean, dt, bookingUrl = eventUrl, filmUrl = eventUrl, format = format)
         }
       }
     }
@@ -144,25 +140,10 @@ object Bilety24OrganizerClient {
       // (Środa's programme under Braniewo's Baszta, 2026-09-22). One slot per
       // screening id, the event page first; a screening linked ONLY by its buy
       // button still keeps it. Stable sort, so the page's own order otherwise stands.
-      .sortBy(s => !s.eventUrl.exists(_.contains("/kino/")))
-      .distinctBy(s => (s.dateTime, s.eventUrl.flatMap(EventId.findFirstMatchIn(_)).map(_.group(1)).orElse(s.eventUrl)))
+      .sortBy(s => !s.bookingUrl.exists(_.contains("/kino/")))
+      .distinctBy(s => (s.dateTime, s.bookingUrl.flatMap(EventId.findFirstMatchIn(_)).map(_.group(1)).orElse(s.bookingUrl)))
 
-    SlotsToMovies.fold(
-      slots.filter(_.title.nonEmpty),
-      keyOf      = s => titles.cinemaClean(cinema.slug, s.title),
-      showtimeOf = s => Showtime(s.dateTime, s.eventUrl, format = s.format)
-    ) { (title, group, showtimes) =>
-      CinemaMovie(
-        movie     = Movie(title),
-        cinema    = cinema,
-        posterUrl = None,
-        filmUrl   = group.flatMap(_.eventUrl).headOption,
-        synopsis  = None,
-        cast      = Seq.empty,
-        director  = Seq.empty,
-        showtimes = showtimes
-      )
-    }
+    SlotsToMovies.basic(slots.filter(_.title.nonEmpty).map(s => s.copy(title = titles.cinemaClean(cinema.slug, s.title))), cinema)
   }
 
   // ── Per-film event page (deferred display enrichment) ───────────────────────

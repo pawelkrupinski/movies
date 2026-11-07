@@ -8929,8 +8929,6 @@ services.cinemas.pl.Bilety24Client
 services.cinemas.pl.Bilety24Client$
 services.cinemas.pl.Bilety24OrganizerClient
 services.cinemas.pl.Bilety24OrganizerClient$
-services.cinemas.pl.Bilety24OrganizerClient$RawSlot
-services.cinemas.pl.Bilety24OrganizerClient$RawSlot$
 services.cinemas.pl.Bilety24SubdomainClient
 services.cinemas.pl.Bilety24SubdomainClient$
 services.cinemas.pl.BiletynaClient
