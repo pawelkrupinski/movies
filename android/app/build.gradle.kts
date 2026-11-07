@@ -294,6 +294,8 @@ kotlin {
     }
 }
 
+val robolectricAndroidAll: Configuration by configurations.creating { isTransitive = false }
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
     implementation(composeBom)
@@ -373,6 +375,9 @@ dependencies {
     // createComposeRule launches.
     testImplementation(composeBom)
     testImplementation("org.robolectric:robolectric:4.16.1")
+    // The SDK 34 runtime every Robolectric test loads (@Config(sdk = [34])), at the
+    // instrumentation level robolectric 4.16.1 expects: bump the two together.
+    robolectricAndroidAll("org.robolectric:android-all-instrumented:14-robolectric-10818077-i7")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     // ApplicationProvider for the DataStore round-trip test (off-device).
     testImplementation("androidx.test:core-ktx:1.7.0")
@@ -900,6 +905,23 @@ tasks.register("runOnDevice") {
         sh(adb, "-s", serial, "shell", "am", "start", "-n", component)
         logger.lifecycle("✓ Launched the release build on $serial.")
     }
+}
+
+// ROBOLECTRIC'S ANDROID RUNTIME THROUGH GRADLE. Left to itself, Robolectric downloads the
+// ~150 MB android-all jar from Maven Central at test time, into ~/.m2, which no CI cache
+// keeps: every CI run fetched it again, and on 2026-11-07 Maven Central answered 429 and
+// 68 Robolectric classes failed (Android #430, Order independence #51). Gradle resolves
+// it instead, from its dependency cache (kept by setup-gradle, with Gradle's own retries),
+// and the tests run Robolectric offline over that copy: a missing jar fails, never fetches.
+val robolectricAndroidAllDir = layout.buildDirectory.dir("robolectric-android-all")
+val syncRobolectricAndroidAll by tasks.registering(Sync::class) {
+    from(robolectricAndroidAll)
+    into(robolectricAndroidAllDir)
+}
+tasks.withType<Test>().configureEach {
+    dependsOn(syncRobolectricAndroidAll)
+    systemProperty("robolectric.offline", "true")
+    systemProperty("robolectric.dependency.dir", robolectricAndroidAllDir.get().asFile.absolutePath)
 }
 
 // PlayListingTest reads `src/main/play/` off the filesystem rather than from the
