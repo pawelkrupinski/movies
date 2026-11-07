@@ -98,6 +98,13 @@ EVENT_ONLY_VALUES = {
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).
     ("kinowo_worker_readmodel_write_burst_seconds_count", "trigger", ""),
     ("kinowo_worker_readmodel_write_burst_seconds_sum", "trigger", ""),
+    # NOT PUBLISHED YET (2026-11-07): the exporter's collstats collector is new with 50d03f0341 and is
+    # enabled for the identity_retained collections only (roles/mongodb-exporter.nix), so the fleet has no
+    # `mongodb_collstats_*` series to snapshot until mongo-1 runs it (mongodb.rules' IdentityRetained*).
+    # Re-snapshot once it does, then drop these.
+    *{(metric, "collection", "identity_retained")
+      for metric in ("mongodb_collstats_storageStats_storageSize", "mongodb_collstats_storageStats_totalIndexSize",
+                     "mongodb_collstats_storageStats_count")},
     # COLLECTORS ABSENT FROM THE SNAPSHOT: the GC alerts (jvm-heap.rules) name every HotSpot
     # collector's old-generation bean and pool, so a collector change in infra/jvm/<tier>.options
     # keeps them covering the tier instead of silently matching nothing. The snapshot predates the
