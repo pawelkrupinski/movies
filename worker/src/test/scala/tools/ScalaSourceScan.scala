@@ -15,7 +15,7 @@ object ScalaSourceScan {
 
   /** Every test-side tree: specs, integration and page specs, fixtures, the shared testkit and the it trees' itkit. */
   val TestRoots: Seq[String] = Seq(
-    "common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src", "itkit/src", "web/src/test", "web/src/it", "web/src/page",
+    "base/src/test", "http/src/test", "http/src/fixtures", "common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src", "itkit/src", "web/src/test", "web/src/it", "web/src/page",
     "worker/src/test", "worker/src/it", "worker/src/fixtures", "e2e/src/test")
 
   /** One class/def parameter that has a default: where, whose, and the default's text. */

@@ -275,7 +275,7 @@ tool_files() {
 # test, it and page trees, the fixtures.
 read_by_lint_specs() { # <path>
     case "$1" in
-        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|scrapers/src/fixtures/*|testkit/*) return 0 ;;
+        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|scrapers/src/fixtures/*|http/src/fixtures/*|testkit/*) return 0 ;;
     esac
     return 1
 }

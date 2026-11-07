@@ -184,6 +184,7 @@ jobs:
                       !base/src/test/**
                       http/**
                       !http/src/test/**
+                      !http/src/fixtures/**
                       common/**
                       !common/src/test/**
                       identity/**

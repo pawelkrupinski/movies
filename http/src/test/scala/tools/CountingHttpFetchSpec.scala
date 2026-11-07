@@ -1,5 +1,6 @@
 package tools
 
+import clients.tools.AnyMethodByUrlHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -7,16 +8,9 @@ import scala.collection.mutable
 
 class CountingHttpFetchSpec extends AnyFlatSpec with Matchers {
 
-  /** Delegate that returns a body or throws a scripted error for the next call. */
-  private class StubFetch(outcome: () => String) extends HttpFetch {
-    def get(url: String): String = outcome()
-    def post(url: String, body: String, contentType: String): String = outcome()
-    override def getBytes(url: String): Array[Byte] = outcome().getBytes("UTF-8")
-  }
-
   private def recordingFetch(outcome: () => String) = {
     val seen = mutable.ListBuffer.empty[String]
-    val fetch = new CountingHttpFetch(new StubFetch(outcome), (o: String) => { seen += o; () })
+    val fetch = new CountingHttpFetch(new AnyMethodByUrlHttpFetch(_ => outcome()), (o: String) => { seen += o; () })
     (fetch, seen)
   }
 
@@ -124,7 +118,7 @@ class CountingHttpFetchSpec extends AnyFlatSpec with Matchers {
       def record(outcome: String): Unit = { seen += (url -> outcome); () }
       override def forRequest(requestUrl: String): HttpOutcomeRecorder = recorder(requestUrl)
     }
-    val fetch = new CountingHttpFetch(new StubFetch(ok), recorder("none"))
+    val fetch = new CountingHttpFetch(new AnyMethodByUrlHttpFetch(_ => ok()), recorder("none"))
     fetch.get("https://a.example/1")
     fetch.post("https://b.example/2", "b", "application/json")
     fetch.getAsync("https://c.example/3").join()
@@ -140,7 +134,7 @@ class CountingHttpFetchSpec extends AnyFlatSpec with Matchers {
       def record(outcome: String): Unit = { seen += (path -> outcome); () }
       override def forPath(asked: String): HttpOutcomeRecorder = recorder(asked)
     }
-    val fetch = new CountingHttpFetch(new StubFetch(ok), recorder("unset"))
+    val fetch = new CountingHttpFetch(new AnyMethodByUrlHttpFetch(_ => ok()), recorder("unset"))
     HttpPath.within(HttpPath.Fill)(fetch.get("https://a.example/1"))
     // completed on another thread, after the scope has closed
     HttpPath.within(HttpPath.Live)(fetch.getAsync("https://b.example/2")).join()

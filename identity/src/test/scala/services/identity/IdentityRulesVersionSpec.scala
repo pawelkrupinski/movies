@@ -24,7 +24,7 @@ class IdentityRulesVersionSpec extends AnyFlatSpec with Matchers {
 
   it should "leave out code and data the resolver never reaches" in {
     digested should contain noneOf ("common/src/main/scala/services/readmodel/ReadModelProjection.scala", "common/src/main/scala/tools/PacedHttpFetch.scala",
-      "common/src/main/scala/services/movies/MovieCache.scala", "identity/src/main/scala/services/identity/IdentityProjectionPlan.scala", "common/src/main/resources/certs/certum-trusted-root-ca.pem")
+      "common/src/main/scala/services/movies/MovieCache.scala", "identity/src/main/scala/services/identity/IdentityProjectionPlan.scala", "http/src/main/resources/certs/certum-trusted-root-ca.pem")
   }
 
   // The HTTP leaf module is outside the identity area: the pre-push hook runs no identity test for an http/ edit and

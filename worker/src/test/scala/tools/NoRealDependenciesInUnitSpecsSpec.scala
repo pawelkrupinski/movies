@@ -99,7 +99,7 @@ object NoRealDependenciesInUnitSpecsSpec {
 
   /** The unit configs' trees: what `testUnit` compiles and runs. */
   val UnitRoots: Seq[String] =
-    Seq("common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src/test", "web/src/test", "worker/src/test")
+    Seq("base/src/test", "http/src/test", "http/src/fixtures", "common/src/test", "identity/src/test", "scrapers/src/test", "scrapers/src/fixtures", "testkit/src/test", "web/src/test", "worker/src/test")
 
   /** This spec: its self-test feeds the matchers these shapes as string literals. */
   private val Self = "worker/src/test/scala/tools/NoRealDependenciesInUnitSpecsSpec.scala"
@@ -149,7 +149,7 @@ object NoRealDependenciesInUnitSpecsSpec {
   val network: Rule = Rule("network",
     """\bnew RealHttpFetch\b|\bRealHttpFetch\(|\bHttpClient\.new(?:HttpClient|Builder)\b|\bnew (?:java\.net\.)?Socket\(|\.openConnection\(|\.openStream\(|\bInetAddress\.getBy""".r,
     Map(
-      "common/src/test/scala/tools/RealHttpFetchSpec.scala" ->
+      "http/src/test/scala/tools/RealHttpFetchSpec.scala" ->
         "RealHttpFetch IS the code under test; every exchange is with a server the spec starts in-process",
       "common/src/test/scala/tools/HostPoliciesSpec.scala" -> "builds a request with RealHttpFetch and reads it; sends nothing",
       "scrapers/src/test/scala/clients/zyte/ZyteFetchSpec.scala" ->

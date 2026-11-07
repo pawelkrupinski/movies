@@ -18,6 +18,7 @@ scrapers/src/main/**
 worker/src/main/**
 worker/src/fixtures/**
 scrapers/src/fixtures/**
+http/src/fixtures/**
 testkit/src/main/**
 itkit/src/main/**
 # The tools a leg's takes check and hard-cluster ratchet run (scripts/ci/identity-takes-check.sh, scripts/hard-clusters.sh):

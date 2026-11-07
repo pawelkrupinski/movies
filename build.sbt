@@ -259,6 +259,7 @@ lazy val base = (project in file("base"))
 // ThrottledHttpFetch, ...) stay in common.
 lazy val http = (project in file("http"))
   .dependsOn(base)
+  .configs(Fixtures)
   .settings(
     name := "http",
     libraryDependencies ++= Seq(
@@ -266,6 +267,12 @@ lazy val http = (project in file("http"))
       Dependencies.caffeine, // CachingDetailFetch
       scalatestPlay % Test,
     ),
+    // The HTTP test doubles every module's specs share (ConstantHttpFetch, FailingHttpFetch, FakeHttpFetch,
+    // RecordingHttpFetch, ScriptedByUrlHttpFetch, RoutingHttpFetch, AnsweringHttpServer, ...), in src/fixtures/scala:
+    // http's own specs use them, and testkit re-exports them ("compile->fixtures") so its users import them unchanged.
+    inConfig(Fixtures)(Defaults.configSettings),
+    Fixtures / scalaSource := baseDirectory.value / "src" / "fixtures" / "scala",
+    Test / unmanagedClasspath ++= (Fixtures / exportedProducts).value,
   )
   .settings(unitReportSettings, testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))
@@ -393,7 +400,7 @@ lazy val identity = (project in file("identity"))
 // common. Depends on common for HttpFetch/MovieRepository/models; carries scalatest on
 // the compile classpath because Eventually returns an `org.scalatest.Assertion`.
 lazy val testkit = (project in file("testkit"))
-  .dependsOn(common, identity)
+  .dependsOn(common, identity, http % "compile->compile;compile->fixtures")
   .settings(testOrderSettings)
   .settings(ForkedTests.settings(Test, heap = "512m"))
   .settings(UnitClasspathGuard.settings)

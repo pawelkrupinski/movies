@@ -63,7 +63,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
       "rule 2 compares literals with today on purpose (see the class doc)",
     "worker/src/test/scala/tools/NoDefaultZoneSpec.scala" ->
       "its self-test feeds the zone matcher these reads as string literals",
-    "common/src/test/scala/tools/TlsTrustSpec.scala" ->
+    "http/src/test/scala/tools/TlsTrustSpec.scala" ->
       "documents that a pinned certificate really is expired — a statement about today by design",
     "worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala" ->
       "a RECORDING's requests go out live, so its pacers measure their slots in real time (a hermetic replay keeps the frozen clock)",

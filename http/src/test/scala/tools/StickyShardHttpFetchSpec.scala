@@ -1,18 +1,14 @@
 package tools
 
+import clients.tools.ConstantHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class StickyShardHttpFetchSpec extends AnyFlatSpec with Matchers {
 
-  /** A shard that just echoes its own tag, so a routed get reveals which shard
-   *  handled it. */
-  private class TaggedShard(tag: String) extends GetOnlyHttpFetch {
-    override def get(url: String): String = tag
-  }
-
+  /** Shards that each answer their own tag, so a routed get reveals which shard handled it. */
   private def shards(tags: String*): IndexedSeq[HttpFetch] =
-    tags.map(new TaggedShard(_)).toIndexedSeq
+    tags.map(new ConstantHttpFetch(_)).toIndexedSeq
 
   private def multikinoApi(cinemaId: String) =
     s"https://www.multikino.pl/api/microservice/showings/cinemas/$cinemaId/films?minEmbargoLevel=2"
