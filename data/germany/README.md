@@ -51,6 +51,8 @@ source the shipped German model is generated FROM. Germany has been live at
   source, its shows there over the next fortnight and its whole horizon, its primary
   and its fallback chain; `summary` holds the country-wide split.
   `scripts/generate_sources.py` turns it into `GermanSourcesData.scala`.
+- **`feed-mirrors.json`** — the feeds that serve ANOTHER venue's programme, which
+  `generate_sources.py` leaves out of the venue's chain (`scripts/feed_mirrors.py`, below).
 - `filmstarts-addresses.json` — every rostered venue's address off its Filmstarts
   page, and `filmstarts-sweep.json` — the live Filmstarts venues the roster lacks,
   both from `scripts/sweep_filmstarts_ids.py` (below).
@@ -207,6 +209,29 @@ mixes in screenings in Sellin), and the Cineweb sites of Wittingen, Einbeck and
 
 Rerun it — `python3 data/germany/scripts/harvest_sources.py`, then
 `generate_sources.py` — to re-measure; a near-tie never flips a venue, a real gain does.
+
+**A feed can be another venue's programme.** kinoheld's "Filmwelt Grünstadt" (695) listed
+Luxor Filmpalast Heidelberg's shows, each booking `ticket-cloud.de/Luxor-Heidelberg/Show/<id>`;
+the harvest matched kinoheld's "CinemaxX Hannover - Raschplatz" to Kino am Raschplatz. Counted,
+such a copy is the more complete source, so the harvest made it the venue's primary: the venue
+showed the other cinema's programme, every screening counted at two venues (the identity
+model's venue counts and rivals with it), and its own programme went unserved.
+`scripts/feed_mirrors.py` finds them off the prod mirror's served scrapes: two venues whose feeds
+share at least 90% of each one's booking URLs serve one programme, owned by the venue the URLs
+name (its name's or town's words: the tenant "Luxor-Heidelberg", the chain host `cinemaxx.de`);
+a pair they name alike was checked by hand (its `DECIDED`). The copy goes to `feed-mirrors.json`
+and stays there; `generate_sources.py` serves the venue from its next feed, and refuses a venue
+the copies leave feedless -- the other venue listed twice, for `retired.json`. On the mirror of
+2026-11-06: five copies (Grünstadt, Kino am Raschplatz, the Adria, Lippstadt's kinoheld entry
+serving Cineplex Germering's tenant 359, kinoheld's "Kino in Dorfen" = sKino, retired), and,
+below the bar, houses of one operator sharing a booking system (Citydome / Kinopolis Darmstadt,
+the Filmhaus-Huber houses) and Ludwigsburg's two houses, which Cineamo both gives their joint
+programme (kept: neither feed says which house a show is in). Rerun it after a harvest:
+
+```
+scripts/local-mirror/freshness de && python3 data/germany/scripts/feed_mirrors.py
+python3 data/germany/scripts/generate_sources.py
+```
 
 ## How the harvest was produced
 

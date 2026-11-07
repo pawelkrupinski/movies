@@ -3305,25 +3305,6 @@
    ]
   },
   {
-   "slug": "dorfen",
-   "kind": "cluster",
-   "name": "Dorfen",
-   "anchor": "Dorfen",
-   "bundesland": "Bayern",
-   "qualifiedSlug": "dorfen-bayern",
-   "lat": 48.2704,
-   "lon": 12.1606,
-   "towns": [
-    "Dorfen",
-    "Taufkirchen (Vils)"
-   ],
-   "cinemas": [
-    "Kinocafe",
-    "sKino im Jakobmayer",
-    "Kino in Dorfen"
-   ]
-  },
-  {
    "slug": "dreieich",
    "kind": "cluster",
    "name": "Dreieich",
@@ -3620,12 +3601,16 @@
    "towns": [
     "Erding",
     "Neufahrn",
-    "Moosburg"
+    "Moosburg",
+    "Dorfen",
+    "Taufkirchen (Vils)"
    ],
    "cinemas": [
     "Cineplex Erding",
     "Cineplex Neufahrn",
-    "Rosenhof-Lichtspiele"
+    "Kinocafe",
+    "Rosenhof-Lichtspiele",
+    "sKino im Jakobmayer"
    ]
   },
   {
@@ -8732,6 +8717,10 @@
   "bernkastel-kues": {
    "page": "wittlich",
    "qualifiedSlug": "bernkastel-kues-rheinland-pfalz"
+  },
+  "dorfen": {
+   "page": "erding",
+   "qualifiedSlug": "dorfen-bayern"
   },
   "dorsten": {
    "page": "marl",

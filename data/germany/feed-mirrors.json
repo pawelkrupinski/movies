@@ -1,0 +1,66 @@
+{
+ "measuredOn": "2026-11-07",
+ "mirrorShare": 0.9,
+ "copies": [
+  {
+   "venue": "A0008",
+   "name": "Adria Filmtheater Steglitz",
+   "source": "kinoheld",
+   "handle": "295",
+   "of": "A1184",
+   "ofName": "Cineplex Titania",
+   "shared": 282,
+   "total": 283,
+   "example": "tickets.cineplex.de/checkout/322/004e0c00023fwbxjyb",
+   "decidedBy": "booking urls name the other"
+  },
+  {
+   "venue": "A0590",
+   "name": "Kino am Raschplatz",
+   "source": "kinoheld",
+   "handle": "246",
+   "of": "A0296",
+   "ofName": "CinemaxX Raschplatz",
+   "shared": 295,
+   "total": 304,
+   "example": "www.cinemaxx.de/buchtickets/zusammenfassung/1304/ho00001340/44844",
+   "decidedBy": "booking urls name the other"
+  },
+  {
+   "venue": "kinoheld:2323",
+   "name": "Kino in Dorfen",
+   "source": "kinoheld",
+   "handle": "2323",
+   "of": "A2671",
+   "ofName": "sKino im Jakobmayer",
+   "shared": 83,
+   "total": 83,
+   "example": "kinotickets.express/dorfen/booking/17569",
+   "decidedBy": "hand-checked"
+  },
+  {
+   "venue": "A2700",
+   "name": "Filmwelt Grünstadt",
+   "source": "kinoheld",
+   "handle": "695",
+   "of": "A2874",
+   "ofName": "Luxor Filmpalast Heidelberg",
+   "shared": 393,
+   "total": 397,
+   "example": "ticket-cloud.de/luxor-heidelberg/show/2389489",
+   "decidedBy": "booking urls name the other"
+  },
+  {
+   "venue": "A2897",
+   "name": "Cinema+Studio Lippstadt",
+   "source": "kinoheld",
+   "handle": "262",
+   "of": "A2705",
+   "ofName": "Cineplex Germering",
+   "shared": 255,
+   "total": 255,
+   "example": "tickets.cineplex.de/checkout/359/00dd0c00023fwbxjyb",
+   "decidedBy": "booking urls name the other"
+  }
+ ]
+}
