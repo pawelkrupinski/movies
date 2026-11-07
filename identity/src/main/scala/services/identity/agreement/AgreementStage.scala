@@ -978,14 +978,9 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     case _                                 => attempted(gap)
   }
 
-  /** `answer` to `question`, or — not answered though attempted (it failed, or came to nothing durable) — `Failed`: read
-   *  as no evidence where it is decided on ([[Answer.failedAs]]), the take decided without it (the settle rule,
-   *  docs/design/identity-questions.md step 4). THE one place an answer not given yet is decided on as if given up: an
-   *  attempt still inside its retries is read as Failed too (docs/design/identity-structural-fixes.md, fix 4; fix 1
-   *  removes it). The caller notes the question asked all the same, so it is asked on every pass and read again once
-   *  answered. */
+  /** [[AgreementStage.settledBy]] this stage's `attempted`. */
   private[agreement] def settled[A](question: Question, answer: Answer[A]): Answer[A] =
-    if (answer == Answer.Unknown && attempted(question)) Answer.Failed else answer
+    AgreementStage.settledBy(attempted)(question, answer)
 
   /** The questions a settled verdict's families never answered ([[settles]]): its receipt's unanswered entries
    *  ([[Dependency.Unanswered]]) — read off the verdict found by its listings, never kept by a key, so a restart's
@@ -1032,6 +1027,16 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
 }
 
 object AgreementStage {
+  /** `answer` to `question`, or -- not answered though `attempted` (it failed, or came to nothing durable) -- `Failed`:
+   *  read as no evidence where it is decided on ([[Answer.failedAs]]), the take decided without it (the settle rule,
+   *  docs/design/identity-questions.md step 4). THE one place an answer not given yet is decided on as if given up -- the
+   *  stage's reads ([[AgreementStage.settled]]), the catalogue's ([[Catalogue]]), TMDB's finds ([[Agreement.tmdbFound]])
+   *  and the house productions ([[AgreementCandidates.productionsOf]]) alike: an attempt still inside its retries is
+   *  read as Failed too (docs/design/identity-structural-fixes.md, fix 4; fix 1 removes it). The caller notes the
+   *  question asked all the same, so it is asked on every pass and read again once answered. */
+  def settledBy[A](attempted: Question => Boolean)(question: Question, answer: Answer[A]): Answer[A] =
+    if (answer == Answer.Unknown && attempted(question)) Answer.Failed else answer
+
   /** `inner`'s venue pages alone: TMDB's searches and records unknown, a film's cast and description none to go on —
    *  as the worker's venue lookups answer them (VenueDetailLookups). TMDB is the stage's `tmdb`. */
   final class PagesOnly private (val inner: IdentityLookups) extends IdentityLookups {

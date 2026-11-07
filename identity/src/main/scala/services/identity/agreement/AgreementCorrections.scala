@@ -160,7 +160,7 @@ private[agreement] trait AgreementCorrections { this: AgreementStage =>
       // as one a poster questions, and corrected only where the rest decides it without the poster
       val unread  = posters != Answer.Unknown && vetoed.isEmpty && PosterEvidence.urls(listings).exists { url =>
         val poster = AgreementStage.PosterQuestion.Venue(url)
-        reading.posters.unread(poster) || reading.posters.venue(url) == Answer.Unknown && attempted(Question.Poster(poster))
+        reading.posters.unread(poster) || settled(Question.Poster(poster), reading.posters.venue(url)) == Answer.Failed
       }
       val questioned = vetoed.isDefined || unread
       // (e) the venues' own programmes on `listedOn`'s site, asked only of a take a poster questions: a few venues' a day

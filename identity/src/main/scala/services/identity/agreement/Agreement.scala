@@ -350,13 +350,10 @@ object Agreement {
   private[identity] def tmdbFound(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[Question],
                                   attempted: Question => Boolean = _ => false): Answer[Option[Int]] = {
     val answer = tmdbOf(tt)
-    if (answer != Answer.Unknown) answer
-    else {
-      // asked every pass; once attempted and not answered, Failed: read as TMDB holding none where it is decided on
-      // (Answer.failedAs), the take decided without it
-      finding += Question.Find(tt)
-      if (attempted(Question.Find(tt))) Answer.Failed else answer
-    }
+    // asked every pass; once attempted and not answered, Failed: read as TMDB holding none where it is decided on
+    // (Answer.failedAs), the take decided without it
+    if (answer == Answer.Unknown) finding += Question.Find(tt)
+    AgreementStage.settledBy(attempted)(Question.Find(tt), answer)
   }
 
   /** Did `verdict` weigh the film (`isIt`, its takers' `records`) and turn it down — take none, its evidence leaning to

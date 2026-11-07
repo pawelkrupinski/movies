@@ -44,11 +44,9 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
     def noted[A](family: VoterFamily, question: String, answer: Answer[A]): Option[A] = {
       // a verdict's fill reads them: in its receipt, answered or not
       reads.foreach(_(Dependency.Answer(Question.Family(family, question))) = Dependency.digest(answer))
-      if (answer == Answer.Unknown) {
-        val gap = Question.Family(family, question)
-        asked += gap
-        if (!attempted(gap)) unknown = true
-      }
+      val gap = Question.Family(family, question)
+      if (answer == Answer.Unknown) asked += gap
+      if (settled(gap, answer).isAwaited) unknown = true
       answer.answered
     }
     val found = familiesInOrder.flatMap { case (family, answers) =>
