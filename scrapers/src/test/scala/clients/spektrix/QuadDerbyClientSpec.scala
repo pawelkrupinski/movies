@@ -3,10 +3,9 @@ package clients.spektrix
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models.QuadDerby
 import services.cinemas.uk.QuadDerbyClient
-import tools.GetOnlyHttpFetch
 
 import java.io.IOException
 import java.time.LocalDate
@@ -39,10 +38,8 @@ class QuadDerbyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "still list the box office's films when the venue's own programme page fails, only without their pages" in {
     val replay = new FakeHttpFetch("quad-derby")
-    val fetch = new GetOnlyHttpFetch {
-      def get(url: String): String =
-        if (url == QuadDerbyClient.WhatsOnUrl) throw new IOException("programme refused") else replay.get(url)
-    }
+    val fetch = new ScriptedByUrlHttpFetch(url =>
+        if (url == QuadDerbyClient.WhatsOnUrl) throw new IOException("programme refused") else replay.get(url))
     val listed = new QuadDerbyClient(fetch, LocalDate.of(2026, 10, 18)).fetch()
     listed.map(_.movie.title) shouldBe results.map(_.movie.title)
     listed.flatMap(_.filmUrl) shouldBe empty

@@ -1,5 +1,6 @@
 package services.cinemas
 
+import clients.tools.ConstantHttpFetch
 import tools.HttpFetch
 import models.{KinoBajka, KinoCyfroweKino, KinoFarys, KinoNaStarowce, KinoOskard, KinoStaryMlyn}
 import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
@@ -20,10 +21,7 @@ import java.time.YearMonth
  *  this spec is the CODE half — that each client actually calls `cinemaClean`. */
 class DedicatedCinemaTitleCleanSpec extends AnyFlatSpec with Matchers {
 
-  private val NoopHttp: HttpFetch = new HttpFetch {
-    def get(url: String): String = ""
-    def post(url: String, body: String, contentType: String): String = ""
-  }
+  private val NoopHttp: HttpFetch = new ConstantHttpFetch("")
 
   // Two rule sets held as ORDINARY instances and passed to the client under test.
   // Not `TitleNormalizer.withRules`: the clients now take their normalizer as a

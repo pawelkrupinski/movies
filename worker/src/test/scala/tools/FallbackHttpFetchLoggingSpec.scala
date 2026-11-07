@@ -1,7 +1,7 @@
 package tools
 
 import ch.qos.logback.classic.Level
-import clients.tools.{ConstantHttpFetch, FailingHttpFetch}
+import clients.tools.{ConstantHttpFetch, FailingHttpFetch, ScriptedByUrlHttpFetch}
 import ch.qos.logback.classic.spi.ILoggingEvent
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -92,12 +92,8 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
    */
   it should "propagate a last-backend NOT FOUND instead of burying it in a composite failure" in {
     val chain = new FallbackHttpFetch(Seq(
-      "fixtures" -> new GetOnlyHttpFetch {
-        override def get(url: String): String = throw new java.io.FileNotFoundException("no fixture for " + url)
-      },
-      "live" -> new GetOnlyHttpFetch {
-        override def get(url: String): String = throw new HttpStatusException(404, "GET", url, None)
-      }), _root_.tools.SpecStopwatch.Frozen)
+      "fixtures" -> new ScriptedByUrlHttpFetch(url => throw new java.io.FileNotFoundException("no fixture for " + url)),
+      "live" -> new ScriptedByUrlHttpFetch(url => throw new HttpStatusException(404, "GET", url, None))), _root_.tools.SpecStopwatch.Frozen)
 
     // The shape the slug ladders depend on: absent, not broken.
     ReadOutcome.of(chain.get("https://www.metacritic.com/movie/nope")).toOptionOrThrow shouldBe None
@@ -107,12 +103,8 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   // mistaken for "this film has no page" -- the distinction ReadOutcome exists for.
   it should "still report a composite failure when the last backend did not answer" in {
     val chain = new FallbackHttpFetch(Seq(
-      "fixtures" -> new GetOnlyHttpFetch {
-        override def get(url: String): String = throw new java.io.FileNotFoundException("no fixture")
-      },
-      "live" -> new GetOnlyHttpFetch {
-        override def get(url: String): String = throw new HttpStatusException(503, "GET", url, None)
-      }), _root_.tools.SpecStopwatch.Frozen)
+      "fixtures" -> new ScriptedByUrlHttpFetch(_ => throw new java.io.FileNotFoundException("no fixture")),
+      "live" -> new ScriptedByUrlHttpFetch(url => throw new HttpStatusException(503, "GET", url, None))), _root_.tools.SpecStopwatch.Frozen)
 
     a [RuntimeException] should be thrownBy
       ReadOutcome.of(chain.get("https://www.metacritic.com/movie/nope")).toOptionOrThrow
@@ -169,9 +161,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
 
   it should "log a recovery, and warn afresh if the URL then fails again" in {
     var up    = false
-    val live  = new GetOnlyHttpFetch {
-      override def get(url: String): String = if (up) "answer" else throw new HttpStatusException(403, "GET", url, None)
-    }
+    val live  = new ScriptedByUrlHttpFetch(url => if (up) "answer" else throw new HttpStatusException(403, "GET", url, None))
     val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> live), _root_.tools.SpecStopwatch.Frozen)
     val url   = uniqueUrl("recovered")
 

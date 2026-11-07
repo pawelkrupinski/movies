@@ -1,5 +1,6 @@
 package clients.tools
 
+import clients.tools.ScriptedByUrlHttpFetch
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -32,9 +33,7 @@ class RecorderChainCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
   /** Stand-in for the proxy leg: serves `body` for any URL without consulting a
    *  fallback — the same shape as a proxy tunnel that succeeds. */
-  private def proxyServing(body: String): HttpFetch = new GetOnlyHttpFetch {
-    override def get(url: String): String = body
-  }
+  private def proxyServing(body: String): HttpFetch = new ScriptedByUrlHttpFetch(_ => body)
 
   private def filmsFixture(directory: String): File =
     new File(s"test/resources/fixtures/recorder-chain-capture-spec/$directory/" +

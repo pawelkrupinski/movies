@@ -1,5 +1,6 @@
 package services.enrichment
 
+import clients.tools.FailingHttpFetch
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 
 import models.MovieRecord
@@ -69,20 +70,14 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(("Foo", Some(2024), tmdbOnly)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     // ImdbClient must never be invoked — the stub throws on any request.
-    val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = throw new RuntimeException("should not be called")
-      override def post(url: String, body: String, contentType: String): String = get(url)
-    }))
+    val ratings = new ImdbRatings(cache, new ImdbClient(http = new FailingHttpFetch((_, _) => new RuntimeException("should not be called"))))
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Foo", Some(2024)))
   }
 
   it should "be a no-op when the cache has no entry for the key" in {
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val ratings = new ImdbRatings(cache, new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = throw new RuntimeException("should not be called")
-      override def post(url: String, body: String, contentType: String): String = get(url)
-    }))
+    val ratings = new ImdbRatings(cache, new ImdbClient(http = new FailingHttpFetch((_, _) => new RuntimeException("should not be called"))))
 
     noException should be thrownBy ratings.refreshOneSync(cache.keyOf("Missing", None))
   }
@@ -153,11 +148,7 @@ class ImdbRatingsSpec extends AnyFlatSpec with Matchers {
   // instead, and booked a healthy "checked, unchanged" refresh over a dead
   // source for ~47h on 2026-07-30.
 
-  private def blockedImdb(code: Int): ImdbClient = new ImdbClient(http = new HttpFetch {
-    def get(url: String): String = throw new tools.HttpStatusException(code, "GET", "https://x", None)
-    override def post(url: String, body: String, contentType: String): String =
-      throw new tools.HttpStatusException(code, "POST", "https://caching.graphql.imdb.com/", None)
-  })
+  private def blockedImdb(code: Int): ImdbClient = new ImdbClient(http = new FailingHttpFetch(code))
 
   "refreshOneSync" should "propagate a blocked source instead of reporting 'no rating'" in {
     val repository = new InMemoryMovieRepository(Seq(("Foo", Some(2024), mkEnrichment("tt1", rating = Some(5.0)))), normalizer = titleNormalizer)

@@ -3,7 +3,7 @@ package clients.enrichment
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.ImdbClient
-import clients.tools.FailingHttpFetch
+import clients.tools.{ConstantHttpFetch, FailingHttpFetch, ScriptedByUrlHttpFetch}
 import tools.{HttpStatusException, RoutingHttpFetch}
 
 class ImdbClientSpec extends AnyFlatSpec with Matchers {
@@ -226,7 +226,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
 
   "findId" should "read IMDb's recorded empty suggestion list as no match" in {
     val noResults = loadFixture("/fixtures/imdb/suggestion_no_results.json")
-    new ImdbClient(http = new tools.GetOnlyHttpFetch { def get(url: String): String = noResults })
+    new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => noResults))
       .findId("zzqqxxnotafilmqq", None) shouldBe None
   }
 
@@ -234,9 +234,9 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     // A malformed body was parsed in Try(...).toOption and read as "IMDb knows no such film".
     val forbidden = loadFixture("/fixtures/imdb/graphql_403_forbidden.html")
     a[tools.UnexpectedBodyException] should be thrownBy
-      new ImdbClient(http = new tools.GetOnlyHttpFetch { def get(url: String): String = forbidden }).findId("Aftersun", None)
+      new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => forbidden)).findId("Aftersun", None)
     a[tools.UnexpectedBodyException] should be thrownBy
-      new ImdbClient(http = new tools.GetOnlyHttpFetch { def get(url: String): String = "{}" }).suggestedIds("Aftersun")
+      new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => "{}")).suggestedIds("Aftersun")
   }
 
   // Regression: cinema title carries an en-dash, IMDb stores a plain hyphen.
@@ -260,10 +260,7 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
   "a read that answered no JSON" should "throw, not read as no rating / no suggestions / no details" in {
     // A CDN challenge or proxy error page served with HTTP 200 is no answer from IMDb: as None / Nil it
     // booked a blocked IMDb as "rating none", and the identity store kept the empty suggestion list.
-    val blocked = new ImdbClient(new tools.HttpFetch {
-      def get(url: String): String = "<html><body>Request blocked</body></html>"
-      def post(url: String, body: String, contentType: String): String = get(url)
-    })
+    val blocked = new ImdbClient(new ConstantHttpFetch("<html><body>Request blocked</body></html>"))
     a [tools.UnexpectedBodyException] should be thrownBy blocked.lookup("tt0468569")
     a [tools.UnexpectedBodyException] should be thrownBy blocked.details("tt0468569")
     a [tools.UnexpectedBodyException] should be thrownBy blocked.suggestedIds("The Dark Knight")

@@ -1,8 +1,9 @@
 package clients.zyte
 
+import clients.tools.ScriptedByUrlHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{FallbackHttpFetch, GetOnlyHttpFetch, HttpFetch, HttpOutcome, HttpOutcomeRecorder, HttpStatusException}
+import tools.{FallbackHttpFetch, HttpFetch, HttpOutcome, HttpOutcomeRecorder, HttpStatusException}
 
 import java.net.http.HttpClient
 import scala.collection.mutable
@@ -18,9 +19,7 @@ import services.cinemas.common.ZyteFallback
  */
 class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
 
-  private val direct: HttpFetch = new GetOnlyHttpFetch {
-    override def get(url: String): String = "direct-body"
-  }
+  private val direct: HttpFetch = new ScriptedByUrlHttpFetch(_ => "direct-body")
 
   private def unbuilt: HttpClient = fail("the Zyte client was built for a chain with no Zyte leg")
 
@@ -51,9 +50,7 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
   "the Zyte chain" should "meter each Zyte attempt's outcome, and not the direct leg's" in {
     val outcomes = mutable.ListBuffer.empty[String]
     val meter: HttpOutcomeRecorder = (outcome: String) => outcomes += outcome
-    val rejecting = new GetOnlyHttpFetch {
-      override def get(url: String): String = throw new HttpStatusException(401, "GET", url, None)
-    }
+    val rejecting = new ScriptedByUrlHttpFetch(url => throw new HttpStatusException(401, "GET", url, None))
     val chain = ZyteFallback.chain(Some(rejecting), direct, meter, _root_.tools.SpecStopwatch.Frozen)
 
     chain.get("https://vwc.odeon.co.uk/a") shouldBe "direct-body"
@@ -63,7 +60,7 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
 
   it should "record a success when Zyte answers" in {
     val outcomes = mutable.ListBuffer.empty[String]
-    val zyte = new GetOnlyHttpFetch { override def get(url: String): String = "zyte-body" }
+    val zyte = new ScriptedByUrlHttpFetch(_ => "zyte-body")
     ZyteFallback.chain(Some(zyte), direct, (o: String) => outcomes += o, _root_.tools.SpecStopwatch.Frozen).get("https://x/") shouldBe "zyte-body"
     outcomes.toList shouldBe List(HttpOutcome.Success)
   }
@@ -72,13 +69,9 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
   // refusal (see EgressWiringSpec's proxyPrimary case).
   it should "end on the origin's not-found relayed by Zyte rather than trying the blocked direct leg" in {
     var directCalls = 0
-    val blockedDirect = new GetOnlyHttpFetch {
-      override def get(url: String): String = { directCalls += 1; throw new HttpStatusException(403, "GET", url, None) }
-    }
-    val zyte = new GetOnlyHttpFetch {
-      override def get(url: String): String =
-        throw new services.cinemas.common.ZyteOriginStatusException(404, url, s"Zyte API call returned upstream status=404 for $url")
-    }
+    val blockedDirect = new ScriptedByUrlHttpFetch(url => { directCalls += 1; throw new HttpStatusException(403, "GET", url, None) })
+    val zyte = new ScriptedByUrlHttpFetch(url =>
+        throw new services.cinemas.common.ZyteOriginStatusException(404, url, s"Zyte API call returned upstream status=404 for $url"))
     val thrown = the[HttpStatusException] thrownBy
       ZyteFallback.chain(Some(zyte), blockedDirect, HttpOutcomeRecorder.noop, _root_.tools.SpecStopwatch.Frozen).get("https://vwc.odeon.co.uk/d")
     thrown.code shouldBe 404

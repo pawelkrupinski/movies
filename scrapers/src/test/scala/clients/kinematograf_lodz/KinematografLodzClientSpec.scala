@@ -4,8 +4,7 @@ import models.{KinematografLodz, KinoCharlie}
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import tools.GetOnlyHttpFetch
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import services.cinemas.pl.KinematografLodzClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -71,9 +70,7 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
   </body></html>"""
 
   // Stub HTTP that returns the sample HTML for any URL.
-  private val http = new GetOnlyHttpFetch {
-    def get(url: String): String = sampleHtml
-  }
+  private val http = new ScriptedByUrlHttpFetch(_ => sampleHtml)
 
   private val testCinema = KinoCharlie  // stand-in; real integration uses KinematografLodz
   private val today      = LocalDate.of(2026, 6, 7)

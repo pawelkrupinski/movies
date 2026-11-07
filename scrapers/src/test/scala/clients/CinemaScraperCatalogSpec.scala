@@ -1,6 +1,6 @@
 package clients
 
-import clients.tools.{FailingHttpFetch, FakeHttpFetch}
+import clients.tools.{FailingHttpFetch, FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models._
 import org.scalatest.{LoneElement, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,7 +13,7 @@ import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues}
 import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, QuadDerbyClient, SavoyClient, SpektrixClient, TicketsolveClient}
 import services.cinemas.us.{AmcClient, RegalClient}
-import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
+import _root_.tools.{CachingDetailFetch, HttpFetch}
 import services.freshness.{Freshness, FreshnessKind}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -356,11 +356,9 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   it should "route UK Flicks venues through the injected residential-proxy seam, not the shared http" in {
     val sessions  = new FakeHttpFetch("flicks")
     val programme = s"${FlicksMarket.UnitedKingdom.baseUrl}/cinema/arc-cinema-at-the-royalty-great-yarmouth/"
-    val flicks = new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val flicks = new ScriptedByUrlHttpFetch(url =>
         if (url == programme) """<div class="timetable__day" data-date="2026-07-11"></div>"""
-        else sessions.get(url)
-    }
+        else sessions.get(url))
     // Arc Cinema Great Yarmouth is a genuine flicks-primary independent (unlike the
     // chain venues, which moved to own-site clients with flicks only as fallback).
     val scraper = catalog(flicks = flicks).all.find(_.cinema == ArcCinemaGreatYarmouth).value

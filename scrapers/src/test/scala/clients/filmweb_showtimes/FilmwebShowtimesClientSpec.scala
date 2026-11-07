@@ -2,7 +2,7 @@ package clients.filmweb_showtimes
 
 import models.{KinoTatry, Multikino}
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.FilmwebShowtimesClient
@@ -91,12 +91,10 @@ class FilmwebShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   // the venue from ever pruning while one film's info kept failing). An untitled film IS dropped,
   // and its failed page does make the listing incomplete.
 
-  private def withFailingInfo(titled: Boolean) = new tools.GetOnlyHttpFetch {
-    override def get(url: String): String =
+  private def withFailingInfo(titled: Boolean) = new ScriptedByUrlHttpFetch(url =>
       if (url.contains("/title/582/info")) throw new java.io.IOException("info down")
       else if (titled && url.contains("/seances")) http.get(url).replace("{\"film\":582,", "{\"film\":582,\"title\":\"Kosmiczny mecz\",")
-      else http.get(url)
-  }
+      else http.get(url))
 
   "FilmwebShowtimesClient with a failing title/info page" should "keep the listing complete when the seance names the film itself" in {
     val (movies, reads) = services.cinemas.common.ListingReads.during(

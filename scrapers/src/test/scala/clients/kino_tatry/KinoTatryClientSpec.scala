@@ -1,7 +1,7 @@
 package clients.kino_tatry
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models.KinoTatry
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -59,10 +59,8 @@ class KinoTatryClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "keep the listing complete when a detail page fails — it carries only the release year" in {
     val recorded = new FakeHttpFetch("08-06-2026")
-    val failingDetail = new tools.GetOnlyHttpFetch {
-      override def get(url: String): String =
-        if (url.contains("/repertuar/pianista/")) throw new java.io.IOException("detail down") else recorded.get(url)
-    }
+    val failingDetail = new ScriptedByUrlHttpFetch(url =>
+        if (url.contains("/repertuar/pianista/")) throw new java.io.IOException("detail down") else recorded.get(url))
     val (movies, reads) = services.cinemas.common.ListingReads.during(
       new KinoTatryClient(failingDetail, KinoTatry, today = LocalDate.of(2026, 6, 8)).fetch())
     movies.find(_.movie.title == "PIANISTA").value.movie.releaseYear shouldBe None

@@ -1,5 +1,6 @@
 package tools
 
+import clients.tools.ScriptedByUrlHttpFetch
 import services.movies.SingleCountryNormalizer
 
 import models.Country
@@ -588,9 +589,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
         settings.FixtureRoot.RepositoryRelative) {
     override protected def realHttpLeaf: HttpFetch = direct
     override protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
-      Some(IndexedSeq(new GetOnlyHttpFetch {
-        override def get(url: String): String = { proxied.add(url); throw new java.io.IOException("proxy: Tunnel failed, got: 503") }
-      }))
+      Some(IndexedSeq(new ScriptedByUrlHttpFetch(url => { proxied.add(url); throw new java.io.IOException("proxy: Tunnel failed, got: 503") })))
     override protected def zyteApiKey: Option[settings.ZyteApiKey] = Some(settings.ZyteApiKey("paid-key"))
     override lazy val zyteHttpClient: clients.zyte.RefusingHttpClient = new clients.zyte.RefusingHttpClient
   }
@@ -666,12 +665,8 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
                                              environment: Env = Env.of())
       extends ArchiveReplayWiring(Country.UnitedKingdom, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
         settings.FixtureRoot.RepositoryRelative, environment = environment) {
-    override protected def recordingWire: HttpFetch = new GetOnlyHttpFetch {
-      override def get(url: String): String = throw new HttpStatusException(403, "GET", url, None)
-    }
-    override protected lazy val recordingProxy: Option[HttpFetch] = Some(new GetOnlyHttpFetch {
-      override def get(url: String): String = { proxied.add(url); "proxied body" }
-    })
+    override protected def recordingWire: HttpFetch = new ScriptedByUrlHttpFetch(url => throw new HttpStatusException(403, "GET", url, None))
+    override protected lazy val recordingProxy: Option[HttpFetch] = Some(new ScriptedByUrlHttpFetch(url => { proxied.add(url); "proxied body" }))
   }
 
   // Record scrape fixtures 38355584482: every Cineworld detail read 403'd from the runner, so the UK recording held no

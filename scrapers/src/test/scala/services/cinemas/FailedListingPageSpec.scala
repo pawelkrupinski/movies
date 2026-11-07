@@ -1,6 +1,6 @@
 package services.cinemas
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models.{KinoMuzeumGdansk, KinoSfinks}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -83,11 +83,9 @@ class FailedListingPageSpec extends AnyFlatSpec with Matchers {
   // body is the transport shape HttpRead's own check matches (see HttpReadSpec) — the client
   // never gets to parse it.
   "a cinema whose listing page is a challenge interstitial" should "fail the scrape, not land an empty listing" in {
-    val challenge = new tools.GetOnlyHttpFetch {
-      def get(url: String): String =
+    val challenge = new ScriptedByUrlHttpFetch(_ =>
         "<!DOCTYPE html><html><head><title>Just a moment...</title></head><body>" +
-          "<script>(function(){window._cf_chl_opt={cType: 'managed'};}());</script></body></html>"
-    }
+          "<script>(function(){window._cf_chl_opt={cType: 'managed'};}());</script></body></html>")
     a[tools.UnexpectedBodyException] should be thrownBy new KinoKulturaClient(challenge).fetchWithSource()
   }
 }

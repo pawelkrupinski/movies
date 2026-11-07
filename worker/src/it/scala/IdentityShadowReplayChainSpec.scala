@@ -1,5 +1,6 @@
 package integration
 
+import clients.tools.AnyMethodByUrlHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{CachedResponse, EnrichmentCache, HttpFetch, InMemoryEnrichmentCacheStore, MissingFixtures, RecordedCorpus}
@@ -39,10 +40,7 @@ class IdentityShadowReplayChainSpec extends AnyFlatSpec with Matchers {
   "a live gap" should "stay a gap for the rest of the run when its read failed, asked once, and kept nowhere" in {
     val url   = s"https://api.themoviedb.org/3/movie/${java.util.UUID.randomUUID()}?api_key=${IdentityShadow.StubTmdbKey}"
     val reads = new java.util.concurrent.atomic.AtomicInteger
-    val down  = new HttpFetch {
-      def get(url: String): String = { reads.incrementAndGet(); throw new java.io.IOException("connection reset") }
-      def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val down  = new AnyMethodByUrlHttpFetch(_ => { reads.incrementAndGet(); throw new java.io.IOException("connection reset") })
     val leaf = new RecordedCorpus.GapLeaf(new MissingFixtures)
     val live = new IdentityShadow.LiveGapLeaf(settings.IdentityLiveGaps("key"), leaf, settings.IdentityLivePerHost(1), down)
     live.get(url) shouldBe "{}"
@@ -56,10 +54,7 @@ class IdentityShadowReplayChainSpec extends AnyFlatSpec with Matchers {
     val tmdb  = s"https://api.themoviedb.org/3/search/movie?query=${java.util.UUID.randomUUID()}&api_key=${IdentityShadow.StubTmdbKey}"
     val imdb  = s"https://v3.sg.media-imdb.com/suggestion/x/${java.util.UUID.randomUUID()}.json"
     val venue = s"https://venue.example/film/${java.util.UUID.randomUUID()}"
-    val up = new HttpFetch {
-      def get(url: String): String = s"answer of ${url.replace("api_key=key", s"api_key=${IdentityShadow.StubTmdbKey}")}"
-      def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val up = new AnyMethodByUrlHttpFetch(url => s"answer of ${url.replace("api_key=key", s"api_key=${IdentityShadow.StubTmdbKey}")}")
     val live = new IdentityShadow.LiveGapLeaf(settings.IdentityLiveGaps("key"), new RecordedCorpus.GapLeaf(new MissingFixtures),
       settings.IdentityLivePerHost(1), up)
     try {

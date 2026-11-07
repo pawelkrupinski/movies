@@ -2,7 +2,7 @@ package clients.nowe_horyzonty
 
 import org.scalatest.matchers.should.Matchers
 import models.{KinoNoweHoryzonty, Showtime}
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.common.FilmDetail
 import services.cinemas.pl.NoweHoryzontyClient
@@ -173,9 +173,7 @@ class NoweHoryzontyClientSpec extends AnyFlatSpec with Matchers {
 
   it should "stop walking once the programme runs out, so a dormant venue stays cheap" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[String]
-    val counting = new tools.GetOnlyHttpFetch {
-      def get(url: String): String = { asked += url; emptyDay }
-    }
+    val counting = new ScriptedByUrlHttpFetch(url => { asked += url; emptyDay })
     val dormant = new NoweHoryzontyClient(counting, LocalDate.of(2026, 8, 5))
 
     dormant.fetch() shouldBe empty

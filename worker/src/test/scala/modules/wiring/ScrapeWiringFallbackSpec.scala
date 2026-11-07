@@ -1,5 +1,6 @@
 package modules.wiring
 
+import clients.tools.ScriptedByUrlHttpFetch
 import models.{Cinema, CinemaMovie, KinoMikro}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -86,9 +87,7 @@ class ScrapeWiringFallbackSpec extends AnyFlatSpec with Matchers {
   // primary gets: a feed whose requests stall (a Flicks fallback walks every day tab in turn)
   // held the scrape slot for as long as all its request timeouts summed.
   it should "cut a fallback that runs past its budget, and page the venue uncovered" in {
-    val stalling = new tools.GetOnlyHttpFetch {
-      override def get(url: String): String = { if (url.contains("kinoprogramm.com")) Thread.sleep(5000); "" }
-    }
+    val stalling = new ScriptedByUrlHttpFetch(url => { if (url.contains("kinoprogramm.com")) Thread.sleep(5000); "" })
     val testClock = new MutableClock(TestWiring.FixedInstant)
     val wiring = new FixtureTestWiring("08-06-2026") {
       override lazy val clock: java.time.Clock = testClock

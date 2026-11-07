@@ -1,7 +1,7 @@
 package clients.ekobilet
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, PatchedHttpFetch}
 import models.{KinoCKiTIlza, KinoDKGora, KinoJaworzyna, KinoMeduza, KinoMilenium, KinoOpolanka, KinoRadosc, KinoRejs, KinoStarowka, KinoTon, KinoWielickaMediateka, KinoZaciszeWasosz}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -67,11 +67,7 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "fail, not report an empty listing, when every date-strip page fails behind an empty landing" in {
     val replay = new FakeHttpFetch("ekobilet-jaworzyna")
-    val stripDown = new tools.HttpFetch {
-      def get(url: String): String =
-        if (url.contains("?date=")) throw new java.io.IOException(s"proxy: Tunnel failed ($url)") else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val stripDown = new PatchedHttpFetch(replay)({ case url if url.contains("?date=") => throw new java.io.IOException(s"proxy: Tunnel failed ($url)") })
     a[java.io.IOException] should be thrownBy
       new EkobiletClient(stripDown, "kino-jaworzyna", KinoJaworzyna, today = LocalDate.of(2026, 6, 11)).fetch()
   }

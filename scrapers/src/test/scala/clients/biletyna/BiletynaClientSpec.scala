@@ -4,7 +4,7 @@ import models._
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.OptionValues
 import play.api.libs.json.Json
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.{BiletynaClient, BiletynaPlacePage}
@@ -245,7 +245,7 @@ class BiletynaClientSpec
   it should "fail loudly when a full page names no hall to page the rest from" in {
     val page = new FakeHttpFetch("biletyna-filmweb-desynced").get("https://biletyna.pl/Zyrardow/Kino-Len")
       .replaceAll("""get_filter\s*=\s*\{.*?\};""", "")
-    val http = new tools.GetOnlyHttpFetch { def get(url: String): String = page }
+    val http = new ScriptedByUrlHttpFetch(_ => page)
     an[IllegalStateException] should be thrownBy
       new BiletynaClient(http, BiletynaPlacePage("https://biletyna.pl/Zyrardow/Kino-Len"), KinoLen).fetch()
   }

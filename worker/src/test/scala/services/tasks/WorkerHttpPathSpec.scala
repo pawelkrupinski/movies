@@ -1,5 +1,6 @@
 package services.tasks
 
+import clients.tools.ConstantHttpFetch
 import clients.TmdbClient
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import io.prometheus.metrics.model.snapshots.CounterSnapshot.CounterDataPointSnapshot
@@ -34,11 +35,7 @@ class WorkerHttpPathSpec extends AnyFlatSpec with Matchers {
   /** The counted wire: every request answered with an empty TMDB / IMDb body, and counted as the worker counts it. */
   private final class Wire {
     private val metrics = new WorkerHttpMetrics(Seq("pl"), new PrometheusRegistry())
-    private val leaf = new HttpFetch {
-      def get(url: String): String = """{"results":[],"crew":[],"cast":[],"total_pages":1,"d":[],"q":"x","v":1}"""
-      override def get(url: String, headers: Map[String, String]): String = get(url)
-      def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    private val leaf = new ConstantHttpFetch("""{"results":[],"crew":[],"cast":[],"total_pages":1,"d":[],"q":"x","v":1}""")
     val fetch: HttpFetch = new CountingHttpFetch(leaf, metrics.recorderFor("pl", WorkerHttpMetrics.Phase.Enrich))
     val tmdb: TmdbClient = tmdbOver(fetch)
     def tmdbOver(http: HttpFetch): TmdbClient =

@@ -1,6 +1,6 @@
 package clients.iksoris
 
-import clients.tools.{FailingHttpFetch, FakeHttpFetch}
+import clients.tools.{FailingHttpFetch, FakeHttpFetch, PatchedHttpFetch}
 import models.KinoWCK
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -69,13 +69,10 @@ class IksorisCalendarClientSpec extends AnyFlatSpec with Matchers with OptionVal
     // served as December's: a venue on a break that sells the months after it.
     val replay = new FakeHttpFetch("kino-wck")
     def month(n: Int) = IksorisCalendarClient.calendarUrl(page, java.time.YearMonth.of(2026, n))
-    val dark = new tools.HttpFetch {
-      def get(url: String): String =
-        if (url == month(10)) replay.get(month(11))
-        else if (url == month(12)) replay.get(month(10))
-        else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val dark = new PatchedHttpFetch(replay)({
+      case url if url == month(10) => replay.get(month(11))
+      case url if url == month(12) => replay.get(month(10))
+    })
     val dates = new IksorisCalendarClient(dark, page, KinoWCK, today).fetch()
       .flatMap(_.showtimes).map(_.dateTime.toLocalDate).toSet
     dates should contain allOf (LocalDate.of(2026, 9, 27), LocalDate.of(2026, 10, 25))
@@ -84,10 +81,7 @@ class IksorisCalendarClientSpec extends AnyFlatSpec with Matchers with OptionVal
   it should "drop only the day whose answer is not JSON (a session page), keeping the rest" in {
     val replay = new FakeHttpFetch("kino-wck")
     val brokenDay = IksorisCalendarClient.dayUrl(page, LocalDate.of(2026, 9, 27))
-    val sessionPage = new tools.HttpFetch {
-      def get(url: String): String = if (url == brokenDay) "<html><body>Sesja wygasła</body></html>" else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val sessionPage = new PatchedHttpFetch(replay)({ case url if url == brokenDay => "<html><body>Sesja wygasła</body></html>" })
     val dates = new IksorisCalendarClient(sessionPage, page, KinoWCK, today).fetch()
       .flatMap(_.showtimes).map(_.dateTime.toLocalDate).toSet
     dates should have size 24
@@ -102,10 +96,7 @@ class IksorisCalendarClientSpec extends AnyFlatSpec with Matchers with OptionVal
   it should "fail the scrape when this month's calendar answers 200 without a calendar" in {
     val replay = new FakeHttpFetch("kino-wck")
     val thisMonth = IksorisCalendarClient.calendarUrl(page, java.time.YearMonth.from(today))
-    val erroring = new tools.HttpFetch {
-      def get(url: String): String = if (url == thisMonth) """{"status":"error"}""" else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val erroring = new PatchedHttpFetch(replay)({ case url if url == thisMonth => """{"status":"error"}""" })
     an[IllegalStateException] should be thrownBy new IksorisCalendarClient(erroring, page, KinoWCK, today).fetch()
   }
 
@@ -114,10 +105,7 @@ class IksorisCalendarClientSpec extends AnyFlatSpec with Matchers with OptionVal
   // month of such days became a "complete" listing of nothing.
   it should "treat a day reply without its data array as a failed read" in {
     val replay = new FakeHttpFetch("kino-wck")
-    val erroring = new tools.HttpFetch {
-      def get(url: String): String = if (url.contains("pobierzTerminy")) """{"status":"error"}""" else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val erroring = new PatchedHttpFetch(replay)({ case url if url.contains("pobierzTerminy") => """{"status":"error"}""" })
     an[IllegalStateException] should be thrownBy new IksorisCalendarClient(erroring, page, KinoWCK, today).fetch()
   }
 }

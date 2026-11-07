@@ -2,7 +2,7 @@ package clients.mcsw_elektrownia
 
 import org.scalatest.OptionValues
 import models.McswElektrowniaCinema
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.McswElektrowniaCinemaClient
@@ -89,12 +89,10 @@ class McswElektrowniaCinemaClientSpec extends AnyFlatSpec with Matchers with Opt
 
   it should "keep walking past the old one-week window" in {
     val asked = scala.collection.mutable.ArrayBuffer.empty[String]
-    val stub = new tools.GetOnlyHttpFetch {
-      def get(url: String): String = {
+    val stub = new ScriptedByUrlHttpFetch(url => {
         asked += url
         dayHtml(LocalDate.parse("""date=(\d{4}-\d{2}-\d{2})""".r.findFirstMatchIn(url).map(_.group(1)).get))
-      }
-    }
+      })
     val days = new McswElektrowniaCinemaClient(stub, McswElektrowniaCinema, start)
       .fetch().flatMap(_.showtimes).map(_.dateTime.toLocalDate).distinct
 

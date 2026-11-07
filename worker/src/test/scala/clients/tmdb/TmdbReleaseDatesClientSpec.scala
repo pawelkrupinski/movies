@@ -4,10 +4,10 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import clients.{TmdbClient, TmdbResponses}
 import play.api.libs.json.{JsArray, Json}
-import tools.GetOnlyHttpFetch
+import clients.tools.{RequestLogHttpFetch, ScriptedByUrlHttpFetch}
+import tools.HttpFetch
 
 import java.util.Locale
-import scala.collection.mutable
 
 /**
  * TMDB's release-dates block, replayed through `TmdbClient` from a REAL recorded payload
@@ -35,21 +35,15 @@ class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
 
   /** Replays the recorded payload for the release-dates URL and records every URL asked
    *  for, so the request COUNT is observable and not just the parse. */
-  private class RecordingFetch(responses: Map[String => Boolean, String]) extends GetOnlyHttpFetch {
-    val urls = mutable.ListBuffer.empty[String]
-    override def get(url: String): String = {
-      urls += url
-      responses.collectFirst { case (matches, body) if matches(url) => body }
-        .getOrElse(throw new java.io.FileNotFoundException(url))
-    }
-    override def get(url: String, headers: Map[String, String]): String = get(url)
-  }
+  private def recording(responses: Map[String => Boolean, String]) = new RequestLogHttpFetch(new ScriptedByUrlHttpFetch(url =>
+    responses.collectFirst { case (matches, body) if matches(url) => body }
+      .getOrElse(throw new java.io.FileNotFoundException(url))))
 
-  private def client(fetch: GetOnlyHttpFetch, language: Locale) =
+  private def client(fetch: HttpFetch, language: Locale) =
     new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key")), language = language)
 
   "the release-dates endpoint" should "yield the DEPLOYMENT country's certification from a real payload" in {
-    val gb = new RecordingFetch(Map(((_: String).contains("/release_dates")) -> releaseDates))
+    val gb = recording(Map(((_: String).contains("/release_dates")) -> releaseDates))
     client(gb, Locale.UK).fullDetails(27205)   // the detail call throws (no fixture) → None overall
     // …but the certification selection ran against the real body, which is what this pins.
     TmdbResponses.certificationFor(Json.parse(releaseDates), "GB") shouldBe Some("12A")
@@ -86,10 +80,10 @@ class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
     // request. It shipped as a separate call to spare the detail fixtures a re-fingerprint;
     // that bought a per-resolve round-trip and, worse, left the endpoint with no fixture in
     // the committed corpus, so CI resolved every film with no age rating at all.
-    val fetch = new RecordingFetch(Map(((_: String).contains("/movie/27205")) -> detailWithAppend))
+    val fetch = recording(Map(((_: String).contains("/movie/27205")) -> detailWithAppend))
     client(fetch, Locale.UK).fullDetails(27205)
 
-    val detailCalls = fetch.urls.filter(_.contains("/movie/27205"))
+    val detailCalls = fetch.gets.filter(_.contains("/movie/27205"))
     withClue(s"calls were ${detailCalls.mkString(", ")}: ") {
       detailCalls.count(_.endsWith("/release_dates")) shouldBe 0
       detailCalls.count(_.contains("append_to_response=credits,release_dates")) shouldBe 1
@@ -97,14 +91,14 @@ class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read the appended block, so the film carries its certification" in {
-    val fetch = new RecordingFetch(Map(((_: String).contains("/movie/27205")) -> detailWithAppend))
+    val fetch = recording(Map(((_: String).contains("/movie/27205")) -> detailWithAppend))
     client(fetch, Locale.UK).fullDetails(27205).flatMap(_.ageRating) shouldBe Some("12A")
   }
 
   it should "carry no rating when the body has no appended block, rather than throwing" in {
     // An older recorded body, or a TMDB response that dropped the append: the film simply
     // has no TMDB-sourced rating, exactly as before the feature existed.
-    val fetch = new RecordingFetch(Map(((_: String).contains("/movie/27205")) ->
+    val fetch = recording(Map(((_: String).contains("/movie/27205")) ->
       """{"title":"Inception","genres":[],"production_countries":[]}"""))
     client(fetch, Locale.UK).fullDetails(27205).flatMap(_.ageRating) shouldBe None
   }

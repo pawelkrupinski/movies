@@ -1,16 +1,17 @@
 package services.cinemas
 
+import clients.tools.ScriptedByUrlHttpFetch
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{GetOnlyHttpFetch, HttpFetch}
+import tools.HttpFetch
 import services.cinemas.common.{AggregatorUrls, CinemaScraper, FallbackEligibility, ListingSource, RetryingCinemaScraper, WebediaMarket, WebediaShowtimesClient}
 import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 class FallbackEligibilitySpec extends AnyFlatSpec with Matchers {
 
-  private val noHttp: HttpFetch = new GetOnlyHttpFetch { def get(url: String): String = "" }
+  private val noHttp: HttpFetch = new ScriptedByUrlHttpFetch(_ => "")
 
   "CinemaScraper.chain" should "be true for the chain clients and false by default" in {
     new MultikinoClient(noHttp, titles = titleNormalizer).chain                                                shouldBe true

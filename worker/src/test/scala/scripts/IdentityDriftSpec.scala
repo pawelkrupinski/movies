@@ -1,5 +1,6 @@
 package scripts
 
+import clients.tools.ConstantHttpFetch
 import org.bson.{BsonArray, BsonDocument, BsonInt64}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -61,7 +62,7 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
   "the replay's catalogue asks" should "mark a failed ask attempted, in its backoff until given up as unreachable" in {
     import services.identity.{CatalogueId, CatalogueQuestion, Question}
     val de  = models.Country.all.find(_.code == "de").get
-    val gap = new tools.HttpFetch { def get(url: String): String = "{}"; def post(url: String, body: String, contentType: String): String = "{}" }
+    val gap = new ConstantHttpFetch("{}")
     val sources = new StageAnswers.Sources {
       def country: models.Country                            = de
       def normalizer: services.movies.TitleNormalizer        = services.movies.TitleNormalizer.forCountry(de)

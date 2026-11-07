@@ -122,10 +122,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
     val pub  = keys.getPublic.asInstanceOf[RSAPublicKey]
     val jwks = s"""{"keys":[{"kid":"k1","n":"${b64.encodeToString(pub.getModulus.toByteArray)}","e":"${b64.encodeToString(pub.getPublicExponent.toByteArray)}"}]}"""
     val wiring = new ClockedWiring {
-      override lazy val httpFetch: HttpFetch = new HttpFetch {
-        def get(url: String): String = jwks
-        def post(url: String, body: String, contentType: String): String = fail(s"unexpected POST $url")
-      }
+      override lazy val httpFetch: HttpFetch = new clients.tools.ScriptedByUrlHttpFetch(_ => jwks)
     }
     def part(json: String) = b64.encodeToString(json.getBytes(UTF_8))
     val body = part("""{"kid":"k1","alg":"RS256"}""") + "." + part(

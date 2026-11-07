@@ -1,10 +1,11 @@
 package clients.enrichment
 
+import clients.tools.ScriptedByUrlHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.LetterboxdClient
 import services.enrichment.LetterboxdClient.FilmIds
-import tools.{GetOnlyHttpFetch, UpstreamNotFound}
+import tools.UpstreamNotFound
 
 class LetterboxdClientSpec extends AnyFlatSpec with Matchers {
 
@@ -19,12 +20,8 @@ class LetterboxdClientSpec extends AnyFlatSpec with Matchers {
   }
   private val InceptionFixture = "/fixtures/letterboxd/film_inception.html"
 
-  private def stub(body: String) = new GetOnlyHttpFetch {
-    def get(url: String): String = body
-  }
-  private def notFound = new GetOnlyHttpFetch {
-    def get(url: String): String = UpstreamNotFound(url)
-  }
+  private def stub(body: String) = new ScriptedByUrlHttpFetch(_ => body)
+  private def notFound = new ScriptedByUrlHttpFetch(url => UpstreamNotFound(url))
 
   "parse" should "extract both the TMDB id (body attr) and the IMDb id (footer link)" in {
     val c = new LetterboxdClient(stub(""))
@@ -46,31 +43,25 @@ class LetterboxdClientSpec extends AnyFlatSpec with Matchers {
 
   "byImdbId" should "fetch the /imdb/{id}/ page and read its ids" in {
     val fixture = loadFixture(InceptionFixture)
-    val c = new LetterboxdClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new LetterboxdClient(new ScriptedByUrlHttpFetch(url =>
         if (url == "https://letterboxd.com/imdb/tt1375666/") fixture
-        else throw new RuntimeException(s"unexpected URL: $url")
-    })
+        else throw new RuntimeException(s"unexpected URL: $url")))
     c.byImdbId("tt1375666") shouldBe Some(FilmIds(Some(27205), Some("tt1375666")))
   }
 
   "byTmdbId" should "fetch the /tmdb/{id}/ page and read its ids" in {
     val fixture = loadFixture(InceptionFixture)
-    val c = new LetterboxdClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new LetterboxdClient(new ScriptedByUrlHttpFetch(url =>
         if (url == "https://letterboxd.com/tmdb/27205/") fixture
-        else throw new RuntimeException(s"unexpected URL: $url")
-    })
+        else throw new RuntimeException(s"unexpected URL: $url")))
     c.byTmdbId(27205) shouldBe Some(FilmIds(Some(27205), Some("tt1375666")))
   }
 
   "bySlug" should "fetch the /film/{slug}/ page a venue links and read its ids" in {
     val fixture = loadFixture(InceptionFixture)
-    val c = new LetterboxdClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new LetterboxdClient(new ScriptedByUrlHttpFetch(url =>
         if (url == "https://letterboxd.com/film/inception/") fixture
-        else throw new RuntimeException(s"unexpected URL: $url")
-    })
+        else throw new RuntimeException(s"unexpected URL: $url")))
     c.bySlug("inception") shouldBe Some(FilmIds(Some(27205), Some("tt1375666")))
     new LetterboxdClient(notFound).bySlug("no-such-film") shouldBe None
   }
@@ -82,20 +73,16 @@ class LetterboxdClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return None for the 200 unknown-id pages Letterboxd serves (recorded)" in {
-    val c = new LetterboxdClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new LetterboxdClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/tmdb/")) loadFixture("/fixtures/letterboxd/tmdb_import_result_unknown_id.html")
-        else loadFixture("/fixtures/letterboxd/imdb_id_not_found.html")
-    })
+        else loadFixture("/fixtures/letterboxd/imdb_id_not_found.html")))
     c.byTmdbId(999999999) shouldBe None
     c.byImdbId("tt0000000") shouldBe None
   }
 
   it should "THROW, not answer None, when the read failed or the page is not Letterboxd's" in {
     // Was Try(http.get(url)).toOption: a Cloudflare block read as "no such film".
-    a[tools.HttpStatusException] should be thrownBy new LetterboxdClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new tools.HttpStatusException(403, "GET", url, None)
-    }).byTmdbId(27205)
+    a[tools.HttpStatusException] should be thrownBy new LetterboxdClient(new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(403, "GET", url, None))).byTmdbId(27205)
     a[tools.UnexpectedBodyException] should be thrownBy
       new LetterboxdClient(stub("<html><body>Service temporarily unavailable</body></html>")).byTmdbId(27205)
   }

@@ -1,10 +1,9 @@
 package clients.charlie_monroe
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models.{CharlieMonroe, Showtime}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import tools.GetOnlyHttpFetch
 import services.cinemas.pl.CharlieMonroeClient
 
 import java.time.LocalDateTime
@@ -315,10 +314,8 @@ class CharlieMonroeClientSpec extends AnyFlatSpec with Matchers {
         |</article>
         |</body></html>""".stripMargin
 
-    val fake = new GetOnlyHttpFetch {
-      override def get(url: String): String =
-        if (url == "https://kinomalta.pl/seanse") html else ""
-    }
+    val fake = new ScriptedByUrlHttpFetch(url =>
+        if (url == "https://kinomalta.pl/seanse") html else "")
     val st = new CharlieMonroeClient(fake).fetch().head.showtimes
     st.head shouldBe Showtime(
       LocalDateTime.of(2026, 6, 2, 19, 45), Some("https://bilety.kinomalta.pl/x"), Some("Sala Audrey"), Nil

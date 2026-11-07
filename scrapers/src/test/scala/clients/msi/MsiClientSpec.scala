@@ -2,7 +2,7 @@ package clients.msi
 
 import models._
 import org.scalatest.prop.TableDrivenPropertyChecks
-import clients.tools.{FailingHttpFetch, FakeHttpFetch}
+import clients.tools.{FailingHttpFetch, FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.OptionValues
 import tools.HttpStatusException
 import org.scalatest.matchers.should.Matchers
@@ -329,9 +329,7 @@ class MsiClientSpec
         |<div class="movies-movie__single__title" title="Jakiś film"></div>
         |<div class="movies-movie__single__options d-none"><ul class="movies-movie__single__options__hours">
         |<a href="/MSI/Default.aspx?event_id=1">14 paź 18:30</a></ul></div></div>""".stripMargin
-    val onlyOctober = new tools.GetOnlyHttpFetch {
-      def get(url: String): String = if (url.contains("date=2026-10")) page else ""
-    }
+    val onlyOctober = new ScriptedByUrlHttpFetch(url => if (url.contains("date=2026-10")) page else "")
 
     val showtimes = new MsiClient(onlyOctober, "https://bilety.cinemaone.pl", Cinema1Gdansk,
       today = LocalDate.of(2026, 10, 1)).fetch().flatMap(_.showtimes)
@@ -463,10 +461,8 @@ class MsiClientSpec
   // so every listing stays — the scrape before labels — rather than the scrape failing.
   it should "keep every listing when the labels feed is not JSON" in {
     val recorded = new FakeHttpFetch("kino-gok-stage")
-    val htmlLabels = new tools.GetOnlyHttpFetch {
-      def get(url: String): String =
-        if (url.endsWith("/Repertoire/GetShortEventsWithFilters")) "<html><body>Repertuar</body></html>" else recorded.get(url)
-    }
+    val htmlLabels = new ScriptedByUrlHttpFetch(url =>
+        if (url.endsWith("/Repertoire/GetShortEventsWithFilters")) "<html><body>Repertuar</body></html>" else recorded.get(url))
     new MsiClient(htmlLabels, "https://bilety.goktychowo.pl", KinoGOK, today = LocalDate.of(2026, 10, 13))
       .fetch().map(_.movie.title).sorted shouldBe Seq("Bonobo", "Lalka", "Luna i rozgadana świnka")
   }
@@ -510,10 +506,8 @@ class MsiClientSharedPortalSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fail rather than list the other venue's films when the labels feed is unreadable" in {
-    val noLabels = new tools.GetOnlyHttpFetch {
-      def get(url: String): String =
-        if (url.endsWith("/Repertoire/GetShortEventsWithFilters")) "<html><body>Repertuar</body></html>" else recorded.get(url)
-    }
+    val noLabels = new ScriptedByUrlHttpFetch(url =>
+        if (url.endsWith("/Repertoire/GetShortEventsWithFilters")) "<html><body>Repertuar</body></html>" else recorded.get(url))
     an[IllegalStateException] should be thrownBy charlie(noLabels, Set("Kino Spójna"))
   }
 }

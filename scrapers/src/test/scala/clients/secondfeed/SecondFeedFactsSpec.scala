@@ -1,6 +1,6 @@
 package clients.secondfeed
 
-import clients.tools.{FakeHttpFetch, WriteSecondFeedFacts}
+import clients.tools.{FailingHttpFetch, FakeHttpFetch, WriteSecondFeedFacts}
 import models.{Cinema, CinemaMovie, GermanCinema}
 import org.scalatest.LoneElement
 import org.scalatest.flatspec.AnyFlatSpec
@@ -119,10 +119,7 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
   }
 
   it should "list Cineamo's programme as it came, complete, when kinoheld fails" in {
-    val failing = new HttpFetch {
-      def get(url: String): String = throw new IOException("kinoheld refused")
-      override def post(url: String, body: String, contentType: String): String = throw new IOException("kinoheld refused")
-    }
+    val failing = new FailingHttpFetch((_, _) => new IOException("kinoheld refused"))
     val (primary, second) = feeds("Cinema Borken", failing)
     val (rows, reads) = ListingReads.during(new SecondFeedFacts(primary, second, _ => scala.util.Success(Nil)).fetch())
     rows shouldBe primary.fetch()
@@ -133,10 +130,7 @@ class SecondFeedFactsSpec extends AnyFlatSpec with Matchers with LoneElement {
   // 429, worst in a restart's boot burst. Now the venue's last stored listing lends them again: the same rows the scrape
   // archive (Mongo) kept, so a worker killed after a good read, booting into a failed one, lists what it listed before.
   it should "keep lending the facts it lent last time when kinoheld then fails, across a restart" in {
-    val failing = new HttpFetch {
-      def get(url: String): String = throw new IOException("kinoheld 429")
-      override def post(url: String, body: String, contentType: String): String = throw new IOException("kinoheld 429")
-    }
+    val failing = new FailingHttpFetch((_, _) => new IOException("kinoheld 429"))
     val archive = new services.scrapes.InMemoryScrapeArchiveRepository   // durable: what Mongo keeps across the restart
     def lastListing(cinema: Cinema) = archive.read(cinema).map(_.fold(Seq.empty[CinemaMovie])(_.films))
     val (primary, second) = feeds("Cinema Borken")

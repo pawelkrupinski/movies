@@ -1,6 +1,6 @@
 package clients.cinemas
 
-import clients.tools.{FailingHttpFetch, FakeHttpFetch}
+import clients.tools.{FailingHttpFetch, FakeHttpFetch, PatchedHttpFetch}
 import models.KinoRemus
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -96,11 +96,7 @@ class KinoRemusClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // feed is the programme. KDK being down must cost the links, not every screening.
   it should "keep every screening, unlinked, when only the KDK film list fails" in {
     val replay = new FakeHttpFetch("kino-remus")
-    val kdkDown = new tools.HttpFetch {
-      def get(url: String): String =
-        if (url == KinoRemusClient.FilmListUrl) throw new HttpStatusException(503, "GET", url, None) else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val kdkDown = new PatchedHttpFetch(replay)({ case url if url == KinoRemusClient.FilmListUrl => throw new HttpStatusException(503, "GET", url, None) })
     val unlinked = new KinoRemusClient(kdkDown, KinoRemus).fetch()
     unlinked.flatMap(_.showtimes) should have size 64
     unlinked.flatMap(_.filmUrl) shouldBe empty

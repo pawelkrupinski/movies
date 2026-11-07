@@ -1,16 +1,14 @@
 package services.enrichment
 
+import clients.tools.ScriptedByUrlHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.GetOnlyHttpFetch
 
 /** Cinemeta's title→imdbId corroboration: an exact title binds; a fuzzy hit binds
  *  only with a corroborating year; a year-contradicting hit is refused. */
 class CinemetaClientSpec extends AnyFlatSpec with Matchers {
 
-  private def client(body: String) = new CinemetaClient(new GetOnlyHttpFetch {
-    def get(url: String): String = if (url.contains("search=")) body else throw new RuntimeException(s"unstubbed: $url")
-  })
+  private def client(body: String) = new CinemetaClient(new ScriptedByUrlHttpFetch(url => if (url.contains("search=")) body else throw new RuntimeException(s"unstubbed: $url")))
 
   "CinemetaClient" should "bind the imdbId on an exact title match" in {
     client("""{"metas":[{"id":"tt31000001","name":"Cactus Pears","releaseInfo":"2026"}]}""")
@@ -49,8 +47,6 @@ class CinemetaClientSpec extends AnyFlatSpec with Matchers {
     // Was Try { ... }.toOption.flatten: an outage read as "Cinemeta has no such film".
     a[tools.UnexpectedBodyException] should be thrownBy client("<html><body>502 Bad Gateway</body></html>").findImdbId(Seq("Aftersun"), None)
     a[tools.UnexpectedBodyException] should be thrownBy client("""{"err":"rate limited"}""").findImdbId(Seq("Aftersun"), None)
-    a[tools.HttpStatusException] should be thrownBy new CinemetaClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None)
-    }).findImdbId(Seq("Aftersun"), None)
+    a[tools.HttpStatusException] should be thrownBy new CinemetaClient(new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(503, "GET", url, None))).findImdbId(Seq("Aftersun"), None)
   }
 }

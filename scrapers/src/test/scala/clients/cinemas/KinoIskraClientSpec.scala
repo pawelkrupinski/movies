@@ -1,6 +1,6 @@
 package clients.cinemas
 
-import clients.tools.{FailingHttpFetch, FakeHttpFetch}
+import clients.tools.{FailingHttpFetch, FakeHttpFetch, PatchedHttpFetch}
 import models.{KinoIskra, Showtime}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -85,10 +85,7 @@ class KinoIskraClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "list a film whose record failed to load, just without its metadata" in {
     val replay = new FakeHttpFetch("kino-iskra")
     val marsupilamiRecord = KinoIskraClient.movieUrl(film("Marsupilami").filmUrl.value.dropWhile(_ != '#').drop(1))
-    val oneDown = new tools.HttpFetch {
-      def get(url: String): String = if (url == marsupilamiRecord) throw new HttpStatusException(503, "GET", url, None) else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val oneDown = new PatchedHttpFetch(replay)({ case url if url == marsupilamiRecord => throw new HttpStatusException(503, "GET", url, None) })
     val partial = new KinoIskraClient(oneDown, KinoIskra, today).fetch()
     partial should have size 16
     val marsupilami = partial.find(_.movie.title == "Marsupilami").value
@@ -103,13 +100,10 @@ class KinoIskraClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val replay  = new FakeHttpFetch("kino-iskra")
     val record  = KinoIskraClient.movieUrl(film("Odyseja").filmUrl.value.dropWhile(_ != '#').drop(1))
     // the same film, billed under a title the classifier reads as a stage show
-    def billedAsEvent(down: Boolean) = new tools.HttpFetch {
-      def get(url: String): String =
-        if (url == KinoIskraClient.RepertoireUrl) replay.get(url).replace(">Odyseja<", ">Stand-up: Odyseja<")
-        else if (down && url == record) throw new HttpStatusException(503, "GET", url, None)
-        else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    def billedAsEvent(down: Boolean) = new PatchedHttpFetch(replay)({
+      case url if url == KinoIskraClient.RepertoireUrl => replay.get(url).replace(">Odyseja<", ">Stand-up: Odyseja<")
+      case url if down && url == record => throw new HttpStatusException(503, "GET", url, None)
+    })
     val title = "Stand-up: Odyseja"
     new KinoIskraClient(billedAsEvent(down = false), KinoIskra, today).fetch().map(_.movie.title) should contain(title)
     val (partial, reads) = services.cinemas.common.ListingReads.during(new KinoIskraClient(billedAsEvent(down = true), KinoIskra, today).fetch())
@@ -120,10 +114,7 @@ class KinoIskraClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "not count a failed record against the listing when it only leaves a film bare" in {
     val replay  = new FakeHttpFetch("kino-iskra")
     val record  = KinoIskraClient.movieUrl(film("Marsupilami").filmUrl.value.dropWhile(_ != '#').drop(1))
-    val oneDown = new tools.HttpFetch {
-      def get(url: String): String = if (url == record) throw new HttpStatusException(503, "GET", url, None) else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val oneDown = new PatchedHttpFetch(replay)({ case url if url == record => throw new HttpStatusException(503, "GET", url, None) })
     services.cinemas.common.ListingReads.during(new KinoIskraClient(oneDown, KinoIskra, today).fetch())._2.complete shouldBe true
   }
 
@@ -140,14 +131,11 @@ class KinoIskraClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "not count a failed version's record when the film's other version proves it a film" in {
     val replay   = new FakeHttpFetch("kino-iskra")
     val failing  = KinoIskraClient.movieUrl("2326") // the capture's dubbed version; 2325 is the subtitled one
-    def billedAsEvent = new tools.HttpFetch {
-      def get(url: String): String =
-        if (url == KinoIskraClient.RepertoireUrl)
-          replay.get(url).replace("Avengers: Koniec gry - wersja rozszerzona", "Stand-up: Avengers")
-        else if (url == failing) throw new HttpStatusException(503, "GET", url, None)
-        else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    def billedAsEvent = new PatchedHttpFetch(replay)({
+      case url if url == KinoIskraClient.RepertoireUrl =>
+        replay.get(url).replace("Avengers: Koniec gry - wersja rozszerzona", "Stand-up: Avengers")
+      case url if url == failing => throw new HttpStatusException(503, "GET", url, None)
+    })
     val (listed, reads) = services.cinemas.common.ListingReads.during(new KinoIskraClient(billedAsEvent, KinoIskra, today).fetch())
     listed.map(_.movie.title) should contain("Stand-up: Avengers")
     reads.complete shouldBe true

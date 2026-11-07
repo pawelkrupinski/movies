@@ -1,5 +1,6 @@
 package services.metrics
 
+import clients.tools.{AnyMethodByUrlHttpFetch, FailingHttpFetch}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,10 +13,7 @@ import java.time.Instant
 class HttpBreakerMetricsSpec extends AnyFlatSpec with Matchers {
 
   private val clock = new tools.MutableClock(Instant.parse("2026-10-04T10:00:00Z"))
-  private val down: HttpFetch = new HttpFetch {
-    def get(url: String): String = throw new HttpStatusException(503, "GET", url, None)
-    def post(url: String, body: String, contentType: String): String = get(url)
-  }
+  private val down: HttpFetch = new FailingHttpFetch(503)
   private def breakerOn(metrics: HttpBreakerMetrics, leg: String) =
     new HostCircuitBreakerHttpFetch(down, failureThreshold = 2, clock = clock, report = Some(_ => ()),
       meter = metrics.meterFor("uk", leg))
@@ -44,11 +42,8 @@ class HttpBreakerMetricsSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     val metrics  = new HttpBreakerMetrics(Seq("pl"), registry)
     var healthy  = false
-    val flaky: HttpFetch = new HttpFetch {
-      def get(url: String): String =
-        if (healthy) "ok" else throw new HttpStatusException(503, "GET", url, None)
-      def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val flaky: HttpFetch = new AnyMethodByUrlHttpFetch(url =>
+      if (healthy) "ok" else throw new HttpStatusException(503, "GET", url, None))
     val breaker = new HostCircuitBreakerHttpFetch(flaky, failureThreshold = 2, clock = clock, report = Some(_ => ()),
       meter = metrics.meterFor("pl", HttpBreakerMetrics.Leg.Scrape))
 

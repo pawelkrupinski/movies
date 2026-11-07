@@ -1,7 +1,7 @@
 package clients.kino_swiatowid_elblag
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models.KinoSwiatowidElblag
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -78,9 +78,7 @@ class KinoSwiatowidElblagClientSpec extends AnyFlatSpec with Matchers with Optio
          |  <p class="movie-card__description"></p>
          |  <ul class="movie-card__showtimes"><li><a href="https://bilet.swiatowid.elblag.pl/index.php/kup-bilet/koncert-x">19:00</a></li></ul>
          |</div>""".stripMargin
-    val stub = new GetOnlyHttpFetch {
-      def get(url: String): String = if (url.contains(s"dzien=$day")) eventHtml else "<html></html>"
-    }
+    val stub = new ScriptedByUrlHttpFetch(url => if (url.contains(s"dzien=$day")) eventHtml else "<html></html>")
     val filtered = new KinoSwiatowidElblagClient(stub, KinoSwiatowidElblag, LocalDate.parse(day)).fetch()
     filtered.map(_.movie.title) should not contain "Koncert Joscho Stephan Trio"
   }
@@ -114,9 +112,7 @@ class KinoSwiatowidElblagClientSpec extends AnyFlatSpec with Matchers with Optio
 
   it should "stop once the programme runs out, so a dormant venue stays cheap" in {
     val asked = ArrayBuffer.empty[String]
-    val stub = new GetOnlyHttpFetch {
-      def get(url: String): String = { asked += url; "<html></html>" }
-    }
+    val stub = new ScriptedByUrlHttpFetch(url => { asked += url; "<html></html>" })
     val client = new KinoSwiatowidElblagClient(stub, KinoSwiatowidElblag, LocalDate.of(2026, 9, 1))
 
     client.planChunks() shouldBe empty

@@ -1,6 +1,6 @@
 package clients.helios
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.pl.HeliosClient
@@ -33,10 +33,8 @@ class HeliosClientEventRoomSpec extends AnyFlatSpec with Matchers {
   // the room empty and the listing complete; reported, it kept the venue from ever pruning.
   it should "leave the room empty, and the listing's completeness untouched, when a screen lookup fails" in {
     val recorded = new FakeHttpFetch("helios/event-room")
-    val failingScreens = new tools.GetOnlyHttpFetch {
-      override def get(url: String): String =
-        if (url.contains("/screen/")) throw new java.io.IOException("screen lookup down") else recorded.get(url)
-    }
+    val failingScreens = new ScriptedByUrlHttpFetch(url =>
+        if (url.contains("/screen/")) throw new java.io.IOException("screen lookup down") else recorded.get(url))
     val (movies, reads) = services.cinemas.common.ListingReads.during(
       new HeliosClient(failingScreens, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch())
     movies.flatMap(_.showtimes).flatMap(_.room) shouldBe empty
@@ -64,10 +62,8 @@ class HeliosClientEventRoomSpec extends AnyFlatSpec with Matchers {
   // and leaves the listing complete.
   it should "keep the event, and the listing complete, when the film it names cannot be read" in {
     val recorded = new FakeHttpFetch("helios/event-room")
-    val failingFilm = new tools.GetOnlyHttpFetch {
-      override def get(url: String): String =
-        if (url.contains("/movie/590c78c8")) throw new java.io.IOException("film lookup down") else recorded.get(url)
-    }
+    val failingFilm = new ScriptedByUrlHttpFetch(url =>
+        if (url.contains("/movie/590c78c8")) throw new java.io.IOException("film lookup down") else recorded.get(url))
     val (movies, reads) = services.cinemas.common.ListingReads.during(
       new HeliosClient(failingFilm, titles = titleNormalizer, today = _root_.tools.SpecClock.PinnedDay).fetch())
     movies.find(_.movie.title.contains("All You Need Is Kill")).map(_.director) shouldBe Some(Nil)

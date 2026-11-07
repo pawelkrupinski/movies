@@ -5,11 +5,11 @@ import tools.SpecClock.given
 import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.FailingHttpFetch
+import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import tools.{GetOnlyHttpFetch, UpstreamNotFound}
+import tools.UpstreamNotFound
 
 import java.nio.file.{Files, Paths}
 
@@ -25,9 +25,7 @@ class RatingPageIdentitySpec extends AnyFlatSpec with Matchers {
   private def recorded(name: String): String =
     new String(Files.readAllBytes(Paths.get(s"test/resources/fixtures/rating-page-identity/$name")), "UTF-8")
 
-  private def http(pages: Map[String, String]) = new GetOnlyHttpFetch {
-    def get(url: String): String = pages.getOrElse(url, UpstreamNotFound(url))
-  }
+  private def http(pages: Map[String, String]) = new ScriptedByUrlHttpFetch(url => pages.getOrElse(url, UpstreamNotFound(url)))
 
   private val tmdb = new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None)
 

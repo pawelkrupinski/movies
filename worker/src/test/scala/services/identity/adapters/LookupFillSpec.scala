@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import clients.tools.{AnyMethodByUrlHttpFetch, ConstantHttpFetch, FailingHttpFetch}
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -176,16 +177,11 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val clock   = new tools.MutableClock(TestWiring.FixedInstant)
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val Seq(absent, refused, failing) = Seq("Absent", "Refused", "Failing").map(CandidateQuery.Title(_))
-    val service = new HttpFetch {
-      private def answer(url: String): String =
-        if (url.contains("Failing")) throw new HttpStatusException(503, "GET", url, None)
-        else if (url.contains("Refused")) throw new HttpStatusException(403, "GET", url, None)
-        else if (url.contains("Absent")) throw new HttpStatusException(404, "GET", url, None)
-        else """{"results":[],"crew":[],"cast":[]}"""
-      override def get(url: String): String                                    = answer(url)
-      override def get(url: String, headers: Map[String, String]): String      = answer(url)
-      override def post(url: String, body: String, contentType: String): String = answer(url)
-    }
+    val service = new AnyMethodByUrlHttpFetch(url =>
+      if (url.contains("Failing")) throw new HttpStatusException(503, "GET", url, None)
+      else if (url.contains("Refused")) throw new HttpStatusException(403, "GET", url, None)
+      else if (url.contains("Absent")) throw new HttpStatusException(404, "GET", url, None)
+      else """{"results":[],"crew":[],"cast":[]}""")
     // Two rounds: the 503 backs the host off, which would defer anything asked after it.
     fill(store(), service, gaps = _ => AnswersChanged(Set(absent, refused), Set.empty), memory = Some(memory)).round()
     fill(store(), service, gaps = _ => AnswersChanged(Set(failing), Set.empty), memory = Some(memory)).round()
@@ -204,15 +200,10 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val imdb    = "v3.sg.media-imdb.com"
     @volatile var imdbDown = true
-    val service = new HttpFetch {
-      private def answer(url: String): String =
-        if (url.contains(imdb) && imdbDown) throw new java.net.http.HttpTimeoutException("request timed out")
-        else if (url.contains(imdb)) """{"d":[],"q":"x","v":1}"""
-        else """{"results":[],"crew":[],"cast":[]}"""
-      override def get(url: String): String                                    = answer(url)
-      override def get(url: String, headers: Map[String, String]): String      = answer(url)
-      override def post(url: String, body: String, contentType: String): String = answer(url)
-    }
+    val service = new AnyMethodByUrlHttpFetch(url =>
+      if (url.contains(imdb) && imdbDown) throw new java.net.http.HttpTimeoutException("request timed out")
+      else if (url.contains(imdb)) """{"d":[],"q":"x","v":1}"""
+      else """{"results":[],"crew":[],"cast":[]}""")
     val down = (1 to 3).map(i => CandidateQuery.Imdb(s"Down $i"))
     fill(store(), service, gaps = _ => AnswersChanged(down.toSet + CandidateQuery.Title("Answered"), Set.empty), memory = Some(memory)).round()
     memory.outcome(Question.Candidate(down.head)).collect { case f: QuestionMemory.Outcome.Failed => f.host } shouldBe Some(Some(imdb))
@@ -249,10 +240,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val interval = 1000L
     val clock    = new tools.MutableClock(Instant.EPOCH)
     def at       = clock.millis()
-    val pacer    = PacedHttpFetch.perProcess(new HttpFetch {
-      override def get(url: String): String                                    = "{}"
-      override def post(url: String, body: String, contentType: String): String = "{}"
-    }, _ => Some(interval.millis), clock = clock, sleep = ms => clock.advanceMillis(ms))
+    val pacer    = PacedHttpFetch.perProcess(new ConstantHttpFetch("{}"), _ => Some(interval.millis), clock = clock, sleep = ms => clock.advanceMillis(ms))
     val rate     = IdentityLookupFillRate(6)   // one every 10 s
     val budget   = new LookupFillBudget(rate.allowanceOver(10.minutes), rate.pace, _ => ())
     val live     = new LookupFillLiveFetch(pacer, budget)
@@ -321,14 +309,9 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val tmdb    = store()
     val search  = CandidateQuery.Title("Answered")
-    val service = new HttpFetch {
-      private def answer(url: String): String =
-        if (url.contains("/movie/77?")) throw new HttpStatusException(500, "GET", url, None)
-        else """{"results":[],"crew":[],"cast":[]}"""
-      override def get(url: String): String                                    = answer(url)
-      override def get(url: String, headers: Map[String, String]): String      = answer(url)
-      override def post(url: String, body: String, contentType: String): String = answer(url)
-    }
+    val service = new AnyMethodByUrlHttpFetch(url =>
+      if (url.contains("/movie/77?")) throw new HttpStatusException(500, "GET", url, None)
+      else """{"results":[],"crew":[],"cast":[]}""")
     def model = new StoredTmdbLookups(tmdb, "pl-PL", UnansweredTmdbLookups, new ObservationReads)
     def round(): Unit = {
       fill(tmdb, service, gaps = _ => AnswersChanged(Set(search), Set(77)), memory = Some(memory), fillClock = clock).round()
@@ -344,12 +327,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val clock   = new tools.MutableClock(TestWiring.FixedInstant)
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val tmdb    = store()
-    val service = new HttpFetch {
-      private def answer(url: String): String = throw new HttpStatusException(500, "GET", url, None)
-      override def get(url: String): String                                    = answer(url)
-      override def get(url: String, headers: Map[String, String]): String      = answer(url)
-      override def post(url: String, body: String, contentType: String): String = answer(url)
-    }
+    val service = new FailingHttpFetch(500)
     (1 to QuestionPolicies.RecordGiveUpFailures + 2).foreach { _ =>
       fill(tmdb, service, gaps = _ => AnswersChanged(Set.empty, Set(77)), memory = Some(memory), fillClock = clock).round()
       clock.advance(java.time.Duration.ofHours(7))
@@ -363,14 +341,9 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val clock   = new tools.MutableClock(TestWiring.FixedInstant)
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     var failing = true
-    val service = new HttpFetch {
-      private def answer(url: String): String =
-        if (failing && url.contains("/movie/77?")) throw new HttpStatusException(500, "GET", url, None)
-        else """{"id":77,"title":"Seventy-Seven","results":[],"crew":[],"cast":[]}"""
-      override def get(url: String): String                                    = answer(url)
-      override def get(url: String, headers: Map[String, String]): String      = answer(url)
-      override def post(url: String, body: String, contentType: String): String = answer(url)
-    }
+    val service = new AnyMethodByUrlHttpFetch(url =>
+      if (failing && url.contains("/movie/77?")) throw new HttpStatusException(500, "GET", url, None)
+      else """{"id":77,"title":"Seventy-Seven","results":[],"crew":[],"cast":[]}""")
     def round(): Unit = {
       fill(store(), service, gaps = _ => AnswersChanged(Set(CandidateQuery.Title("Answered")), Set(77)), memory = Some(memory),
         fillClock = clock).round()
@@ -386,15 +359,10 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val clock   = new tools.MutableClock(TestWiring.FixedInstant)
     val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
     val tmdb    = store()
-    val service = new HttpFetch {
-      private def answer(url: String): String =
-        if (url.contains("/movie/77?") && url.contains("language=en-US")) throw new HttpStatusException(500, "GET", url, None)
-        else if (url.contains("/movie/77?")) """{"id":77,"title":"Siedemdziesiąt siedem","original_title":"Seventy-Seven","release_date":"2026-01-02","credits":{"crew":[],"cast":[]}}"""
-        else """{"results":[],"crew":[],"cast":[]}"""
-      override def get(url: String): String                                    = answer(url)
-      override def get(url: String, headers: Map[String, String]): String      = answer(url)
-      override def post(url: String, body: String, contentType: String): String = answer(url)
-    }
+    val service = new AnyMethodByUrlHttpFetch(url =>
+      if (url.contains("/movie/77?") && url.contains("language=en-US")) throw new HttpStatusException(500, "GET", url, None)
+      else if (url.contains("/movie/77?")) """{"id":77,"title":"Siedemdziesiąt siedem","original_title":"Seventy-Seven","release_date":"2026-01-02","credits":{"crew":[],"cast":[]}}"""
+      else """{"results":[],"crew":[],"cast":[]}""")
     (1 to QuestionPolicies.RecordGiveUpFailures).foreach { _ =>
       fill(tmdb, service, gaps = _ => AnswersChanged(Set(CandidateQuery.Title("Answered")), Set(77)), memory = Some(memory),
         fillClock = clock).round()

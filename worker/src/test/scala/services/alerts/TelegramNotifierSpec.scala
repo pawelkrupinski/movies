@@ -1,5 +1,6 @@
 package services.alerts
 
+import clients.tools.ScriptedByUrlHttpFetch
 import settings.{TelegramBotToken, TelegramChatId, TelegramRoute, TelegramTopicId}
 
 import ch.qos.logback.classic.Level
@@ -18,7 +19,7 @@ class TelegramNotifierSpec extends AnyFlatSpec with Matchers {
     def get(u: String): String = { url = u; "" }
   }
 
-  private val failing: HttpFetch = new GetOnlyHttpFetch { def get(u: String): String = throw new RuntimeException("network down") }
+  private val failing: HttpFetch = new ScriptedByUrlHttpFetch(_ => throw new RuntimeException("network down"))
 
   private def route(chat: Long = 1L) = TelegramRoute(TelegramBotToken("T"), TelegramChatId(chat), None)
 

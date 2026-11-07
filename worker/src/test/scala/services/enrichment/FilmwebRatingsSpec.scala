@@ -6,9 +6,9 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import clients.TmdbClient
 import models.{Filmweb, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.FailingHttpFetch
+import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
-import tools.{GetOnlyHttpFetch, RoutingHttpFetch, UpstreamNotFound}
+import tools.{RoutingHttpFetch, UpstreamNotFound}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -231,12 +231,10 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     //   - Persist the URL + rating.
     val tmdbBody    = """{"id":693134,"title":"Dune: Part Two","release_date":"2024-02-27","alternative_titles":{"titles":[]}}"""
     val creditsBody = """{"id":693134,"crew":[{"job":"Director","name":"Denis Villeneuve"}]}"""
-    val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val tmdb = new TmdbClient(http = new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/693134?")) tmdbBody
         else if (url.contains("/movie/693134/credits")) creditsBody
-        else UpstreamNotFound(url)
-    }, apiKey = Some(settings.TmdbApiKey("stub")))
+        else UpstreamNotFound(url)), apiKey = Some(settings.TmdbApiKey("stub")))
 
     val repository = new InMemoryMovieRepository(Seq(
       ("Diuna: Część druga", Some(2024), MovieRecord(
@@ -274,12 +272,10 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     // → tightened lookup returns None → row stays URL-less.
     val tmdbBody    = """{"id":682507,"title":"Belle","release_date":"2021-07-16","alternative_titles":{"titles":[]}}"""
     val creditsBody = """{"id":682507,"crew":[{"job":"Director","name":"Mamoru Hosoda"}]}"""
-    val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val tmdb = new TmdbClient(http = new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/682507?")) tmdbBody
         else if (url.contains("/movie/682507/credits")) creditsBody
-        else UpstreamNotFound(url)
-    }, apiKey = Some(settings.TmdbApiKey("stub")))
+        else UpstreamNotFound(url)), apiKey = Some(settings.TmdbApiKey("stub")))
 
     val repository = new InMemoryMovieRepository(Seq(
       ("Belle", Some(2021), MovieRecord(

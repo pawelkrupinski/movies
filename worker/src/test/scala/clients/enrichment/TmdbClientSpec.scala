@@ -1,10 +1,9 @@
 package clients.enrichment
 
 import clients.{TmdbClient, TmdbResponses}
-import clients.tools.FixtureFile
+import clients.tools.{FixtureFile, RequestLogHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.GetOnlyHttpFetch
 
 class TmdbClientSpec extends AnyFlatSpec with Matchers {
 
@@ -199,11 +198,9 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         |}""".stripMargin
     // Serve the body ONLY for an en-GB detail request; anything Polish (or a
     // hardcoded `pl-PL`) throws, so the assertion fails if the language leaks.
-    val fake = new tools.GetOnlyHttpFetch {
-      def get(url: String): String =
+    val fake = new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/42?language=en-GB")) english
-        else throw new RuntimeException(s"expected an en-GB request, got: $url")
-    }
+        else throw new RuntimeException(s"expected an en-GB request, got: $url"))
     val ukClient = new TmdbClient(http = fake, apiKey = Some(settings.TmdbApiKey("fake")),
       language = java.util.Locale.forLanguageTag("en-GB"))
     val d = ukClient.fullDetails(42).get
@@ -408,10 +405,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
 
   /** Replays a captured payload for any URL — `crewIds` reaches the network, so the
    *  parser cannot be reached without one. */
-  private class StubFetch(body: String) extends GetOnlyHttpFetch {
-    var lastUrl: String = ""
-    override def get(url: String): String = { lastUrl = url; body }
-  }
+  private def stubFetch(body: String) = new RequestLogHttpFetch(new ScriptedByUrlHttpFetch(_ => body))
 
   // Prod 2026-09-09. `GET /search/movie?query=Lalka&language=pl-PL&year=2026&
   // primary_release_year=2026` — recorded 2026-09-09, `test/resources/fixtures/
@@ -424,10 +418,10 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   "searchYearExactTop" should "refuse when the year-scoped search returns two real exact-title matches" in {
     val body  = scala.io.Source.fromInputStream(
       getClass.getClassLoader.getResourceAsStream("fixtures/tmdb/search_lalka_2026.json")).mkString
-    val fetch = new StubFetch(body)
+    val fetch = stubFetch(body)
     val hit   = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026))
 
-    withClue(s"fetched ${fetch.lastUrl}: ")(fetch.lastUrl should include ("/search/movie"))
+    withClue(s"fetched ${fetch.gets.lastOption.getOrElse("")}: ")(fetch.gets.lastOption.getOrElse("") should include ("/search/movie"))
     hit shouldBe None
   }
 
@@ -441,7 +435,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         |{"id":1321666,"title":"Lalka","original_title":"Lalka","release_date":"2026-09-30",
         | "popularity":2.5181,"overview":"Nowa adaptacja powieści Bolesława Prusa o tym samym tytule."}
         |]}""".stripMargin
-    val fetch = new StubFetch(body)
+    val fetch = stubFetch(body)
     new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).searchYearExactTop("Lalka", Some(2026)) shouldBe
       Some(TmdbClient.SearchResult(1321666, "Lalka", Some("Lalka"), Some(2026), 2.5181,
         Some("Nowa adaptacja powieści Bolesława Prusa o tym samym tytule.")))
@@ -455,10 +449,10 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   "crewIds" should "read every crew member's person id from a real credits payload" in {
     val body  = FixtureFile.read(
       "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0")
-    val fetch = new StubFetch(body)
+    val fetch = stubFetch(body)
     val ids   = new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398)
 
-    withClue(s"fetched ${fetch.lastUrl}: ")(fetch.lastUrl should include ("/movie/365398/credits"))
+    withClue(s"fetched ${fetch.gets.lastOption.getOrElse("")}: ")(fetch.gets.lastOption.getOrElse("") should include ("/movie/365398/credits"))
     // The whole crew, not only the Director: a venue crediting the film's OTHER
     // director or someone TMDB files under a different job is why this exists.
     ids should contain allOf (1490115, 1527343, 2619643)
@@ -468,9 +462,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // A FAILED credits read throws (TmdbClientFailedReadSpec); a 404 is TMDB answering that
   // it has no such film, which is an empty crew rather than a failure.
   it should "read a 404 as no crew, not as a failure" in {
-    val fetch = new GetOnlyHttpFetch {
-      override def get(url: String): String = throw new tools.HttpStatusException(404, "GET", url, None)
-    }
+    val fetch = new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(404, "GET", url, None))
     new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("stub"))).crewIds(365398) shouldBe empty
   }
 

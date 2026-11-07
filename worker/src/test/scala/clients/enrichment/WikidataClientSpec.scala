@@ -1,9 +1,9 @@
 package clients.enrichment
 
+import clients.tools.FailingHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.{WikidataClient, WikidataClient as WD, WikidataIds}
-import tools.HttpFetch
 
 /**
  * Fixture-driven tests for WikidataClient.
@@ -94,11 +94,7 @@ class WikidataClientSpec extends AnyFlatSpec with Matchers {
 
   it should "THROW, not answer None, when the HTTP call fails" in {
     // It answered None, so the resolver ladders read a Wikidata outage as "no such film".
-    val client = new WikidataClient(new HttpFetch {
-      def get(url: String): String = throw new java.io.IOException("network error")
-      override def get(url: String, headers: Map[String, String]): String = get(url)
-      override def post(url: String, body: String, contentType: String): String = ???
-    })
+    val client = new WikidataClient(new FailingHttpFetch((_, _) => new java.io.IOException("network error")))
     a[java.io.IOException] should be thrownBy client.findImdbIdByFilmwebId("1118")
   }
 

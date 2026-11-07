@@ -1,6 +1,6 @@
 package services.cinemas
 
-import clients.tools.UrlFragmentHttpFetch
+import clients.tools.{ConstantHttpFetch, UrlFragmentHttpFetch}
 import models.{CinemaCityPoznanPlaza, KinoDiana, KinoFarys, KinoJOK, KinoLen}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -60,10 +60,7 @@ class ListingParseFailureSpec extends AnyFlatSpec with Matchers {
   // Filmweb answering with an error page is a Filmweb that is down; a day's page used to
   // parse as a quiet one, so the whole scrape read as a dormant venue.
   "FilmwebShowtimesClient" should "fail the scrape when its programme page is unparseable" in {
-    val errorPages = new tools.HttpFetch {
-      def get(url: String): String = ErrorPage
-      def post(url: String, body: String, contentType: String): String = ErrorPage
-    }
+    val errorPages = new ConstantHttpFetch(ErrorPage)
     an[Exception] should be thrownBy
       new FilmwebShowtimesClient(errorPages, 2352, KinoDiana).fetch()
   }

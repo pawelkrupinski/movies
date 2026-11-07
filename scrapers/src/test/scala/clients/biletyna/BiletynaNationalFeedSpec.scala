@@ -1,6 +1,6 @@
 package clients.biletyna
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, PatchedHttpFetch, RequestLogHttpFetch}
 import com.github.benmanes.caffeine.cache.Ticker
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,20 +9,12 @@ import services.cinemas.pl.{BiletynaClient, BiletynaNationalFeed, BiletynaPlaceP
 import tools.HttpFetch
 
 import java.util.concurrent.atomic.AtomicLong
-import scala.collection.mutable
 import scala.concurrent.duration._
 
 /** Replays biletyna's national event feed and three venues' place pages, all
  *  captured live 2026-09-27 within the same minute, so the two reads can be held
  *  to each other screening for screening. */
 class BiletynaNationalFeedSpec extends AnyFlatSpec with Matchers {
-
-  /** Records every URL asked for, so a test can say which requests a read cost. */
-  private class Recorded(underlying: HttpFetch) extends HttpFetch {
-    val asked: mutable.Buffer[String] = mutable.Buffer.empty
-    def get(url: String): String = { asked.synchronized(asked += url); underlying.get(url) }
-    def post(url: String, body: String, contentType: String): String = underlying.post(url, body, contentType)
-  }
 
   private val venues = Seq(
     KinoUciechaCzluchow -> BiletynaPlacePage("https://biletyna.pl/Czluchow/Kino-Uciecha"),
@@ -48,21 +40,21 @@ class BiletynaNationalFeedSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read the feed once for every venue scraped inside its TTL, and never a place page" in {
-    val http = new Recorded(new FakeHttpFetch("biletyna-national"))
+    val http = new RequestLogHttpFetch(new FakeHttpFetch("biletyna-national"))
     val feed = feedOver(http)
     for ((cinema, page) <- venues) new BiletynaClient(http, page, cinema, nationalFeed = Some(feed)).fetch()
-    http.asked.toSeq shouldBe (1 to 7).map(BiletynaNationalFeed.pageUrl)
+    http.gets.toSeq shouldBe (1 to 7).map(BiletynaNationalFeed.pageUrl)
   }
 
   it should "read the feed again once its TTL has passed" in {
-    val http  = new Recorded(new FakeHttpFetch("biletyna-national"))
+    val http  = new RequestLogHttpFetch(new FakeHttpFetch("biletyna-national"))
     val now   = new AtomicLong(0L)
     val feed  = feedOver(http, () => now.get)
     val (cinema, page) = venues.head
     new BiletynaClient(http, page, cinema, nationalFeed = Some(feed)).fetch()
     now.addAndGet((BiletynaNationalFeed.DefaultTtl + 1.second).toNanos)
     new BiletynaClient(http, page, cinema, nationalFeed = Some(feed)).fetch()
-    http.asked.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 2
+    http.gets.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 2
   }
 
   "a venue whose feed read fails" should "fall back to its own place page, not read empty" in {
@@ -75,14 +67,14 @@ class BiletynaNationalFeedSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not cost every other venue in the window the same failed feed read" in {
-    val http = new Recorded(new FakeHttpFetch("filmweb-only-switch"))
+    val http = new RequestLogHttpFetch(new FakeHttpFetch("filmweb-only-switch"))
     val now  = new AtomicLong(0L)
     val feed = feedOver(http, () => now.get)
     for ((cinema, page) <- venues) new BiletynaClient(http, page, cinema, nationalFeed = Some(feed)).fetch()
-    http.asked.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 1
+    http.gets.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 1
     now.addAndGet((BiletynaNationalFeed.FailureHold + 1.second).toNanos)
     new BiletynaClient(http, venues.head._2, venues.head._1, nationalFeed = Some(feed)).fetch()
-    http.asked.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 2
+    http.gets.count(_ == BiletynaNationalFeed.pageUrl(1)) shouldBe 2
   }
 
   // Were the server to serve fewer records a page than `ipp` asks, page 1 would already be short,
@@ -99,21 +91,18 @@ class BiletynaNationalFeedSpec extends AnyFlatSpec with Matchers {
     }).filter(r => (r \ "v2_hall_seo_url").asOpt[String].contains(path))
     records.size should be > 4
     val clamp   = records.size / 3   // three short pages and a remainder
-    val clamped = new HttpFetch {
-      def get(url: String): String = {
-        val n = url.split("page=").last.toInt
-        Json.obj("status" -> true, "events" -> JsArray(records.slice((n - 1) * clamp, n * clamp))).toString
-      }
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val clamped = new PatchedHttpFetch(replay)({ case url =>
+      val n = url.split("page=").last.toInt
+      Json.obj("status" -> true, "events" -> JsArray(records.slice((n - 1) * clamp, n * clamp))).toString
+    })
     feedOver(clamped).eventsAt(page).map(_.size) shouldBe Some(records.size)
   }
 
   "a venue the feed files nothing under" should "be read off its own place page" in {
-    val http = new Recorded(new FakeHttpFetch("biletyna-national"))
+    val http = new RequestLogHttpFetch(new FakeHttpFetch("biletyna-national"))
     val feed = new BiletynaNationalFeed(http, Set.empty)   // knows none of our halls
     val (cinema, page) = venues.head
     new BiletynaClient(http, page, cinema, nationalFeed = Some(feed)).fetch() should not be empty
-    http.asked should contain (page.url)
+    http.gets should contain (page.url)
   }
 }

@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import clients.tools.ConstantHttpFetch
 import org.bson.BsonDocument
 import org.scalatest.LoneElement
 import org.scalatest.flatspec.AnyFlatSpec
@@ -33,10 +34,7 @@ class TmdbNormalizerSpec extends AnyFlatSpec with Matchers with LoneElement {
   // prefetch's 64 threads and every enrichment thread.
   "a film response the pipeline reads" should "leave no parse behind on its thread" in {
     val bodies  = new tools.JsonBodies
-    val fetch   = new tools.HttpFetch {
-      override def get(url: String): String = """{"id":7,"title":"Lalka","credits":{"crew":[],"cast":[]},"alternative_titles":{"titles":[]}}"""
-      override def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val fetch   = new ConstantHttpFetch("""{"id":7,"title":"Lalka","credits":{"crew":[],"cast":[]},"alternative_titles":{"titles":[]}}""")
     val store  = new TmdbStore(new InMemoryTmdbDocuments, java.time.Clock.fixed(java.time.Instant.parse("2026-09-26T10:00:00Z"), java.time.ZoneOffset.UTC))
     val client = new clients.TmdbClient(new NormalizingHttpFetch(fetch, new TmdbNormalizer(store, bodies)),
       apiKey = Some(settings.TmdbApiKey("k")), bodies = bodies)

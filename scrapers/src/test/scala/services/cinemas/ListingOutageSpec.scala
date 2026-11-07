@@ -26,10 +26,8 @@ class ListingOutageSpec extends AnyFlatSpec with Matchers {
   "FilmwebShowtimesClient" should "fail the scrape when its programme page timed out, not report it empty" in {
     // Hangs until the test ends, so the abandoned page fetches don't outlive it.
     val release = new java.util.concurrent.CountDownLatch(1)
-    val hanging = new tools.HttpFetch {
-      def get(url: String): String = { release.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); "[]" }
-      def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val hanging = new clients.tools.AnyMethodByUrlHttpFetch(_ =>
+      { release.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS); "[]" })
     val client = new FilmwebShowtimesClient(hanging, 2352, KinoDiana,
       pageTimeout = scala.concurrent.duration.DurationInt(50).millis)
     try a[java.util.concurrent.TimeoutException] should be thrownBy client.fetch()

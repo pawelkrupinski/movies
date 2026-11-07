@@ -1,6 +1,7 @@
 package services.identity
 package adapters
 
+import clients.tools.FailingHttpFetch
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.MutableClock
@@ -20,10 +21,7 @@ class LiveAsksSpec extends AnyFlatSpec with Matchers {
     def candidates(q: CandidateQuery): Answer[Seq[Hit]] = {
       asked += 1
       // a read that fails counts on this thread, through the counted fetch the live lookups ask
-      if (fail) scala.util.Try(new LiveAsks.Counted(new tools.HttpFetch {
-        def get(url: String): String = throw new java.net.SocketTimeoutException("slow")
-        def post(url: String, body: String, contentType: String): String = get(url)
-      }).get(failing))
+      if (fail) scala.util.Try(new LiveAsks.Counted(new FailingHttpFetch((_, _) => new java.net.SocketTimeoutException("slow"))).get(failing))
       answer
     }
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)

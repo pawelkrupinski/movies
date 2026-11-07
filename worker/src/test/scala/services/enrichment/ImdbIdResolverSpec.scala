@@ -1,5 +1,6 @@
 package services.enrichment
 
+import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
 import tools.SpecClock.given
 
 import models.{MovieRecord, Multikino, Source, SourceData, Tmdb}
@@ -28,21 +29,13 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   // value is the JSON body to return. No POST path needed — the resolver
   // never calls into ratings.
   private def imdbStub(suggestions: Map[String, String]): ImdbClient =
-    new ImdbClient(http = new HttpFetch {
-      def get(url: String): String =
-        suggestions.collectFirst { case (q, body) if url.toLowerCase(java.util.Locale.ROOT).contains(q.toLowerCase(java.util.Locale.ROOT)) => body }
-          .getOrElse(throw new RuntimeException(s"no stubbed suggestion for $url"))
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("ImdbIdResolver should not POST")
-    })
+    new ImdbClient(http = new ScriptedByUrlHttpFetch(url =>
+      suggestions.collectFirst { case (q, body) if url.toLowerCase(java.util.Locale.ROOT).contains(q.toLowerCase(java.util.Locale.ROOT)) => body }
+        .getOrElse(throw new RuntimeException(s"no stubbed suggestion for $url"))))
 
   /** An IMDb whose suggestion endpoint answers as `answer` does. */
   private def imdbAnswering(answer: String => String): ImdbClient =
-    new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = answer(url)
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("ImdbIdResolver should not POST")
-    })
+    new ImdbClient(http = new ScriptedByUrlHttpFetch(answer))
 
   private def loadFixture(path: String): String = {
     val stream = getClass.getResourceAsStream(path)
@@ -120,14 +113,10 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), row)), normalizer = titleNormalizer),
       normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val key   = cache.keyOf("Mortal Kombat 2", Some(2026))
-    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = {
-        cache.putIfPresent(key, _.copy(imdbId = Some("tt0000001")))
-        loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
-      }
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("ImdbIdResolver should not POST")
-    }), stopwatch = _root_.tools.SpecStopwatch.Frozen)
+    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => {
+      cache.putIfPresent(key, _.copy(imdbId = Some("tt0000001")))
+      loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+    })), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)
     bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
     resolver.drain()
@@ -152,14 +141,10 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(
       Seq(("Ghost in the Shell | Kino Azji", Some(1995), decorated)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new HttpFetch {
-      def get(url: String): String =
-        // The banner never reaches IMDb: only the bare film title answers.
-        if (url.toLowerCase(java.util.Locale.ROOT).contains("kino") || url.toLowerCase(java.util.Locale.ROOT).contains("azji")) """{"d":[]}"""
-        else loadFixture("/fixtures/imdb/suggestion_ghost_in_the_shell.json")
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("ImdbIdResolver should not POST")
-    }), stopwatch = _root_.tools.SpecStopwatch.Frozen)
+    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new ScriptedByUrlHttpFetch(url =>
+      // The banner never reaches IMDb: only the bare film title answers.
+      if (url.toLowerCase(java.util.Locale.ROOT).contains("kino") || url.toLowerCase(java.util.Locale.ROOT).contains("azji")) """{"d":[]}"""
+      else loadFixture("/fixtures/imdb/suggestion_ghost_in_the_shell.json"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)
 
     bus.publish(ImdbIdMissing(
@@ -312,11 +297,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     // Stub that THROWS if findId or any HTTP call lands — confirms the
     // resolver short-circuits before hitting IMDb when the id is already
     // present on the row.
-    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = throw new RuntimeException("findId should not be called")
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("lookup should not be called")
-    }), stopwatch = _root_.tools.SpecStopwatch.Frozen)
+    val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new FailingHttpFetch((method, _) => new RuntimeException(s"$method should not be called"))), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Foo", None, "Foo"))
@@ -373,9 +354,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   it should "still reach Cinemeta when OMDb cannot be read (down, or its daily quota spent)" in {
     val noImdb = MovieRecord(tmdbId = Some(7702))
     val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Cactus Pears", Some(2026), noImdb)), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val omdb   = new OMDbClient(new tools.GetOnlyHttpFetch {
-      def get(url: String): String = throw new tools.HttpStatusException(401, "GET", url, None)
-    }, apiKey = Some(settings.OmdbApiKey("stub")), clock = tools.SpecClock.Pinned)
+    val omdb   = new OMDbClient(new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(401, "GET", url, None)), apiKey = Some(settings.OmdbApiKey("stub")), clock = tools.SpecClock.Pinned)
     val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
       """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
@@ -387,9 +366,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
 
   // ── a failed rung is not a "no match" ───────────────────────────────────────
 
-  private def imdbDown: ImdbClient = new ImdbClient(http = new tools.GetOnlyHttpFetch {
-    def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None)
-  })
+  private def imdbDown: ImdbClient = new ImdbClient(http = new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(503, "GET", url, None)))
 
   "the ladder" should "throw, not conclude 'no match', when IMDb's read failed and no backstop answered" in {
     // IMDb's suggestion endpoint blocked used to come back as None and be logged (and
@@ -410,14 +387,10 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   // ── hint-keyed cache ─────────────────────────────────────────────────────────
 
   private def countingImdb(calls: java.util.concurrent.atomic.AtomicInteger): ImdbClient =
-    new ImdbClient(http = new HttpFetch {
-      def get(url: String): String = {
-        calls.incrementAndGet()
-        loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
-      }
-      override def post(url: String, body: String, contentType: String): String =
-        throw new RuntimeException("ImdbIdResolver should not POST")
-    })
+    new ImdbClient(http = new ScriptedByUrlHttpFetch(_ => {
+      calls.incrementAndGet()
+      loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
+    }))
 
   "lookupId" should "read a yearless row's year off its bracketed title, so a far-off namesake is refused" in {
     // Cultplex lists "It (1990)" with no year field. Searched as "It" with no year, the one
@@ -494,19 +467,15 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     )
     val repository = new InMemoryMovieRepository(Seq(("Matrix", Some(1999), record)), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val wikidataStub = new WikidataClient(new HttpFetch {
-      def get(url: String): String =
-        if (url.contains("haswbstatement")) """{"query":{"search":[{"title":"Q83495"}]}}"""
-        else if (url.contains("wbgetentities"))
-          """{"entities":{"Q83495":{"claims":{
-            |"P345":[{"mainsnak":{"datavalue":{"value":"tt0133093"}}}],
-            |"P1258":[{"mainsnak":{"datavalue":{"value":"m/the_matrix"}}}],
-            |"P1712":[{"mainsnak":{"datavalue":{"value":"movie/the-matrix"}}}]
-            |}}}}""".stripMargin
-        else throw new RuntimeException(s"unexpected url: $url")
-      override def get(url: String, headers: Map[String, String]): String = get(url)
-      override def post(url: String, body: String, contentType: String): String = ???
-    })
+    val wikidataStub = new WikidataClient(new ScriptedByUrlHttpFetch(url =>
+      if (url.contains("haswbstatement")) """{"query":{"search":[{"title":"Q83495"}]}}"""
+      else if (url.contains("wbgetentities"))
+        """{"entities":{"Q83495":{"claims":{
+          |"P345":[{"mainsnak":{"datavalue":{"value":"tt0133093"}}}],
+          |"P1258":[{"mainsnak":{"datavalue":{"value":"m/the_matrix"}}}],
+          |"P1712":[{"mainsnak":{"datavalue":{"value":"movie/the-matrix"}}}]
+          |}}}}""".stripMargin
+      else throw new RuntimeException(s"unexpected url: $url")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
       wikidata = Some(wikidataStub), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)
@@ -534,11 +503,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq(("Unknown Film", Some(2024), record)), normalizer = titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.upserts.clear()
-    val wikidataThrows = new WikidataClient(new HttpFetch {
-      def get(url: String): String = throw new RuntimeException("Wikidata should not be called for search URLs")
-      override def get(url: String, headers: Map[String, String]): String = get(url)
-      override def post(url: String, body: String, contentType: String): String = ???
-    })
+    val wikidataThrows = new WikidataClient(new FailingHttpFetch((_, _) => new RuntimeException("Wikidata should not be called for search URLs")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
       wikidata = Some(wikidataThrows), stopwatch = _root_.tools.SpecStopwatch.Frozen)
     bus.subscribe(resolver.onImdbIdMissing)

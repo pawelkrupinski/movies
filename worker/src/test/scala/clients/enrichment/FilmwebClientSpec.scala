@@ -1,11 +1,11 @@
 package clients.enrichment
 
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.FailingHttpFetch
+import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.FilmwebClient
 import services.enrichment.FilmwebClient.{Candidate, SearchHit}
-import tools.{GetOnlyHttpFetch, RoutingHttpFetch, UpstreamNotFound}
+import tools.{RoutingHttpFetch, UpstreamNotFound}
 
 class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
@@ -19,7 +19,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
   "the API reads" should "read Filmweb's 204-empty answer for an unknown film id (recorded) as no film" in {
     // `curl https://www.filmweb.pl/api/v1/film/999999999/info` → HTTP 204, empty body.
-    val c = new FilmwebClient(new GetOnlyHttpFetch { def get(url: String): String = "" })
+    val c = new FilmwebClient(new ScriptedByUrlHttpFetch(_ => ""))
     c.info(999999999) shouldBe None
     c.rating(999999999) shouldBe None
     c.preview(999999999) shouldBe None
@@ -29,7 +29,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     // These were parsed in Try(...).toOption: a Filmweb HTML page (recorded, the site's
     // own front page, trimmed) read as "no such film" / "no rating".
     val page = clients.tools.FixtureFile.read("test/resources/fixtures/filmweb/homepage-head.html")
-    val c = new FilmwebClient(new GetOnlyHttpFetch { def get(url: String): String = page })
+    val c = new FilmwebClient(new ScriptedByUrlHttpFetch(_ => page))
     a[tools.UnexpectedBodyException] should be thrownBy c.info(1)
     a[tools.UnexpectedBodyException] should be thrownBy c.rating(1)
     a[tools.UnexpectedBodyException] should be thrownBy c.search("Aftersun")
@@ -40,9 +40,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
   "search" should "query Filmweb with a case- and diacritic-folded title, so a row's exact spelling can't shift the recorded fixture" in {
     def queryUrlFor(title: String): String = {
       val urls = scala.collection.mutable.ListBuffer.empty[String]
-      new FilmwebClient(new GetOnlyHttpFetch {
-        override def get(url: String): String = { urls += url; """{"searchHits":[]}""" }
-      }).search(title)
+      new FilmwebClient(new ScriptedByUrlHttpFetch(url => { urls += url; """{"searchHits":[]}""" })).search(title)
       urls.head
     }
     // "Słodkie Życie" → deburr + lowercase → "slodkie zycie" → URL-encoded.
@@ -197,7 +195,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
 
   "a /film read that answered no JSON" should "throw, not read as no rating / no info / no preview" in {
     // A block or error page served with HTTP 200 is no answer: as None it booked Filmweb as "no rating".
-    val blocked = new FilmwebClient(new GetOnlyHttpFetch { def get(url: String): String = "<html>Access denied</html>" })
+    val blocked = new FilmwebClient(new ScriptedByUrlHttpFetch(_ => "<html>Access denied</html>"))
     a [tools.UnexpectedBodyException] should be thrownBy blocked.rating(30940)
     a [tools.UnexpectedBodyException] should be thrownBy blocked.info(30940)
     a [tools.UnexpectedBodyException] should be thrownBy blocked.preview(30940)
@@ -618,15 +616,13 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     // banner) returns nothing; the pipe-stripped "Reze Arc" variant surfaces the
     // film. Stub returns empty for any search whose query still carries the
     // banner, the hit otherwise.
-    val fw = new FilmwebClient(new GetOnlyHttpFetch {
-      override def get(url: String): String =
+    val fw = new FilmwebClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/live/search"))
           if (url.contains("festiwal")) """{"searchHits":[]}"""
           else """{"searchHits":[{"id":7,"type":"film","matchedTitle":"Reze Arc"}]}"""
         else if (url.contains("/film/7/info"))   """{"title":"Reze Arc","year":2025}"""
         else if (url.contains("/film/7/rating")) """{"rate":7.5,"count":10}"""
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     val r = fw.lookup("Reze Arc | 26. Festiwal Filmowy", Some(2025))
     r should not be empty
     r.get.url should include ("-7")
@@ -638,8 +634,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
   // attempt, so a candidate shared by two queries is fetched once, not twice.
   it should "fetch a candidate shared by two query variants only once" in {
     val requested = scala.collection.mutable.ListBuffer.empty[String]
-    val fw = new FilmwebClient(new GetOnlyHttpFetch {
-      override def get(url: String): String = {
+    val fw = new FilmwebClient(new ScriptedByUrlHttpFetch(url => {
         requested += url
         // Both queries surface the same candidate 7, which never clears the
         // title bar — so the lookup walks every variant and returns None.
@@ -647,8 +642,7 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
         else if (url.contains("/film/7/info"))  """{"title":"Something Else","year":2015}"""
         else if (url.contains("/film/7/preview")) """{"directors":[{"name":"Nobody"}]}"""
         else UpstreamNotFound(url)
-      }
-    })
+      }))
 
     fw.lookup("Reze Arc | 26. Festiwal Filmowy", Some(2025), directors = Set("Jane Doe")) shouldBe None
 

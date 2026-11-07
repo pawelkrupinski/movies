@@ -1,13 +1,12 @@
 package clients.cinemaplus
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models.UsRoster
 import org.scalatest.{LoneElement, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.ListingReads
 import services.cinemas.us.CinemaPlusClient
-import tools.GetOnlyHttpFetch
 
 import java.io.IOException
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -71,10 +70,8 @@ class CinemaPlusClientSpec extends AnyFlatSpec with Matchers with OptionValues w
 
   it should "keep the other days when one day's page fails, and mark the listing incomplete" in {
     val replay = new FakeHttpFetch("cinemaplus")
-    val fetch = new GetOnlyHttpFetch {
-      def get(url: String): String =
-        if (url.endsWith("?date=2026-10-13")) throw new IOException("day refused") else replay.get(url)
-    }
+    val fetch = new ScriptedByUrlHttpFetch(url =>
+        if (url.endsWith("?date=2026-10-13")) throw new IOException("day refused") else replay.get(url))
     val (gem, reads) = ListingReads.during(new CinemaPlusClient(fetch, Site, "/gem-theater-riverton", Gem, today).fetch())
     gem.flatMap(_.showtimes).map(_.dateTime.toLocalDate).distinct.sorted shouldBe
       Seq(12, 14, 15).map(LocalDate.of(2026, 10, _))
@@ -82,7 +79,7 @@ class CinemaPlusClientSpec extends AnyFlatSpec with Matchers with OptionValues w
   }
 
   it should "fail the scrape when the venue page itself cannot be read" in {
-    val fetch = new GetOnlyHttpFetch { def get(url: String): String = throw new IOException("venue refused") }
+    val fetch = new ScriptedByUrlHttpFetch(_ => throw new IOException("venue refused"))
     an[IOException] should be thrownBy new CinemaPlusClient(fetch, Site, "/gem-theater-riverton", Gem, today).fetch()
   }
 

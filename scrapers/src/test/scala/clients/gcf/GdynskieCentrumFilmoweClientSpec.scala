@@ -1,7 +1,7 @@
 package clients.gcf
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models.GdynskieCentrumFilmowe
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -62,7 +62,7 @@ class GdynskieCentrumFilmoweClientSpec extends AnyFlatSpec with Matchers with Op
         |<div class="projection"><div class="projection-location">Sala 1</div>
         |<a class="film-hours" data-date="2026-06-20" data-hour="18:00" href="https://bilet.gcf.org.pl/MSI/x"></a>
         |</div></div>""".stripMargin
-    val stub   = new GetOnlyHttpFetch { def get(url: String): String = html }
+    val stub   = new ScriptedByUrlHttpFetch(_ => html)
     val movies = new GdynskieCentrumFilmoweClient(stub, GdynskieCentrumFilmowe).fetch()
     val film   = movies.find(_.movie.title == "Hopnięci").value
     film.movie.title shouldBe "Hopnięci" // not "Hopnięci | DUBBING"

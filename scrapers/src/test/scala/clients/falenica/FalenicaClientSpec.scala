@@ -1,10 +1,9 @@
 package clients.falenica
 
 import models.{Showtime, StacjaFalenica}
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import tools.GetOnlyHttpFetch
 import services.cinemas.pl.FalenicaClient
 
 import java.time.LocalDateTime
@@ -53,9 +52,7 @@ class FalenicaClientSpec extends AnyFlatSpec with Matchers {
         |<div class="entry-terms__time">18:00</div>
         |<div class="entry-terms__cta"><a href="https://ksf.systembiletowy.pl/x">Kup bilet</a></div>
         |</div>""".stripMargin
-    val stub = new GetOnlyHttpFetch {
-      def get(url: String): String = if (url.contains("/filmy/")) detail else listing
-    }
+    val stub = new ScriptedByUrlHttpFetch(url => if (url.contains("/filmy/")) detail else listing)
     val movies = new FalenicaClient(stub).fetch()
     val film   = movies.find(_.movie.title == "Test Film").getOrElse(fail("no Test Film"))
     film.director shouldBe Seq("Jane Doe")
@@ -77,9 +74,7 @@ class FalenicaClientSpec extends AnyFlatSpec with Matchers {
         |<div class="entry-terms__time">19:00</div>
         |<div class="entry-terms__cta"><a href="https://ksf.systembiletowy.pl/y">Kup bilet</a></div>
         |</div>""".stripMargin
-    val stub = new GetOnlyHttpFetch {
-      def get(url: String): String = if (url.contains("/filmy/")) detail else listing
-    }
+    val stub = new ScriptedByUrlHttpFetch(url => if (url.contains("/filmy/")) detail else listing)
     val movies = new FalenicaClient(stub).fetch()
     movies.find(_.movie.title == "Trashed Film") should not be empty
   }

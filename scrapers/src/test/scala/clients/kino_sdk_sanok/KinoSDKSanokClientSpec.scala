@@ -1,7 +1,7 @@
 package clients.kino_sdk_sanok
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, PatchedHttpFetch}
 import models.KinoSDK
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -38,10 +38,7 @@ class KinoSDKSanokClientSpec extends AnyFlatSpec with Matchers with OptionValues
   it should "drop only a later day that fails to load, keeping the rest" in {
     val replay  = new FakeHttpFetch("kino-sdk-sanok")
     val brokenDay = KinoSDKSanokClient.listingUrl(LocalDate.of(2026, 6, 21))
-    val oneDown = new tools.HttpFetch {
-      def get(url: String): String = if (url == brokenDay) throw new java.io.IOException("reset") else replay.get(url)
-      def post(url: String, body: String, contentType: String): String = replay.post(url, body, contentType)
-    }
+    val oneDown = new PatchedHttpFetch(replay)({ case url if url == brokenDay => throw new java.io.IOException("reset") })
     val partial = new KinoSDKSanokClient(oneDown, KinoSDK, today = LocalDate.of(2026, 6, 16)).fetch()
     val days    = partial.flatMap(_.showtimes).map(_.dateTime.toLocalDate).toSet
     days should not contain LocalDate.of(2026, 6, 21)

@@ -5,7 +5,8 @@ import tools.SpecTimeouts
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.MetacriticClient
-import tools.{GetOnlyHttpFetch, RendezvousHttpFetch, UpstreamNotFound}
+import clients.tools.{RequestLogHttpFetch, ScriptedByUrlHttpFetch}
+import tools.{RendezvousHttpFetch, UpstreamNotFound}
 
 import services.enrichment.scraping.JsonLdAggregateRating
 
@@ -46,11 +47,9 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   }
 
   // Stub fetch that throws for any URL containing one of the 404 fragments.
-  private def stub(notFound: Set[String]) = new GetOnlyHttpFetch {
-    def get(url: String): String =
+  private def stub(notFound: Set[String]) = new ScriptedByUrlHttpFetch(url =>
       if (notFound.exists(url.contains)) UpstreamNotFound(url)
-      else "OK"
-  }
+      else "OK")
 
   "canonicalUrl" should "return Some when the canonical URL responds 200" in {
     val c = new MetacriticClient(stub(Set.empty))
@@ -102,25 +101,21 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // With the film's year known and conflicting, the probe is rejected and
   // (search empty) the whole resolve returns None.
   "urlFor with a year" should "reject a de-articled slug whose page year conflicts with the film's" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/movie/the-north/")) UpstreamNotFound(url)
         else if (url.endsWith("/movie/north/")) moviePage("North", 1994, 33)
         else if (url.contains("/search/")) "<html><body></body></html>"
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.urlFor("The North", year = Some(2026)) shouldBe None
   }
 
   it should "accept a de-articled slug whose page year matches the film's" in {
     // Same probe shape, but now the film really is the 1994 "North" — the year
     // agrees, so the de-articled slug is accepted.
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/movie/the-north/")) UpstreamNotFound(url)
         else if (url.endsWith("/movie/north/")) moviePage("North", 1994, 33)
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.urlFor("The North", year = Some(1994)) shouldBe
       Some("https://www.metacritic.com/movie/north")
   }
@@ -129,11 +124,9 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     // The year guard's tolerance is wide enough to keep legitimate drift: "Picnic
     // at Hanging Rock" is 1975 on TMDB (Australian release) but 1979 on Metacritic
     // (US release) — the same film, 4 years apart, well inside tolerance.
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/movie/picnic-at-hanging-rock/")) moviePage("Picnic at Hanging Rock", 1979, 81)
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.urlFor("Picnic at Hanging Rock", year = Some(1975)) shouldBe
       Some("https://www.metacritic.com/movie/picnic-at-hanging-rock")
   }
@@ -143,23 +136,19 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // article to drop), so the guard must cover the primary slug too, not just the
   // de-articled variant. 30 years apart → rejected → search fallback empty → None.
   it should "reject the primary slug when its page year conflicts by decades (same-name different film)" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/movie/michael/")) moviePage("Michael", 1996, 38)
         else if (url.contains("/search/")) "<html><body></body></html>"
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.urlFor("Michael", year = Some(2026)) shouldBe None
   }
 
   it should "accept a probed page when the film year is unknown (no grounds to reject)" in {
     // No year passed → the year guard never fires; behaviour matches the
     // pre-guard resolver.
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/movie/north/")) moviePage("North", 1994, 33)
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.urlFor("North") shouldBe Some("https://www.metacritic.com/movie/north")
   }
 
@@ -176,14 +165,12 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // wrong film's page. The real film lives at `/movie/the-odyssey-2026` with a
   // Metascore of 89, and nothing in the ladder ever probed that slug.
   "urlFor with a year" should "prefer the year-suffixed slug, which Metacritic uses to disambiguate same-titled films" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/movie/the-odyssey-2026/")) moviePage("The Odyssey", 2026, 89)
         // The wrong film at the bare slug: no parseable year (MC's placeholder
         // for a film with no release date), so the year guard cannot reject it.
         else if (url.endsWith("/movie/the-odyssey/")) undatedMoviePage("The Odyssey")
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
 
     c.urlFor("The Odyssey", year = Some(2026)) shouldBe
       Some("https://www.metacritic.com/movie/the-odyssey-2026")
@@ -191,12 +178,10 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fall back to the bare slug when no year-suffixed page exists" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/movie/the-dark-knight-2008/")) UpstreamNotFound(url)
         else if (url.endsWith("/movie/the-dark-knight/")) moviePage("The Dark Knight", 2008, 84)
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.urlFor("The Dark Knight", year = Some(2008)) shouldBe
       Some("https://www.metacritic.com/movie/the-dark-knight")
   }
@@ -215,40 +200,32 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // far away it was. So the year guard pushed work onto an unguarded route.
   // Same shape put Zulawski's "Possession" (1981) on a 2008 page.
   "search fallback" should "reject an exact-title hit whose year is beyond tolerance, not merely rank it last" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/")) UpstreamNotFound(url)
-        else searchPage(Seq(("the-trial-el-juicio", "The Trial", 2023)))
-    })
+        else searchPage(Seq(("the-trial-el-juicio", "The Trial", 2023)))))
     c.urlFor("The Trial", year = Some(1962)) shouldBe None
   }
 
   it should "still accept an exact-title hit inside tolerance" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/")) UpstreamNotFound(url)
-        else searchPage(Seq(("the-trial", "The Trial", 1963)))
-    })
+        else searchPage(Seq(("the-trial", "The Trial", 1963)))))
     c.urlFor("The Trial", year = Some(1962)) shouldBe
       Some("https://www.metacritic.com/movie/the-trial")
   }
 
   it should "keep an undated hit — an unknown year is not grounds to reject" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/")) UpstreamNotFound(url)
-        else searchPage(Seq(("some-film", "Some Film", 0)))
-    })
+        else searchPage(Seq(("some-film", "Some Film", 0)))))
     c.urlFor("Some Film", year = Some(2026)) shouldBe
       Some("https://www.metacritic.com/movie/some-film")
   }
 
   it should "prefer the closest year among several compatible hits" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/")) UpstreamNotFound(url)
-        else searchPage(Seq(("far", "Twins", 2035), ("near", "Twins", 2027)))
-    })
+        else searchPage(Seq(("far", "Twins", 2035), ("near", "Twins", 2027)))))
     c.urlFor("Twins", year = Some(2026)) shouldBe
       Some("https://www.metacritic.com/movie/near")
   }
@@ -305,11 +282,9 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   it should "return None when neither primary nor fallback resolve and the search page is empty" in {
     // Stub 404s every probe AND returns an empty search page → no fallback path.
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/")) UpstreamNotFound(url)
-        else "<html><body></body></html>"  // search page with no items
-    })
+        else "<html><body></body></html>"))  // search page with no items
     c.urlFor("foo", Some("bar")) shouldBe None
   }
 
@@ -413,12 +388,10 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // urlFor's full chain falls through to search when every slug probe 404s.
   "urlFor" should "fall through to the search-page scrape when slug probes 404" in {
     val fixture = loadFixture(SearchTopGunFixture)
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/")) UpstreamNotFound(url)
         else if (url.contains("/search/")) fixture
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     // Primary slug "top-gun" 404s; the search scrape sees Top Gun (1986) as
     // the only exact-title match and returns it.
     c.urlFor("Top Gun") shouldBe Some("https://www.metacritic.com/movie/top-gun")
@@ -438,12 +411,10 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
         |  <div>Mar 03, 2018</div>
         |</a>
         |</body></html>""".stripMargin
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/")) UpstreamNotFound(url)
         else if (url.contains("/search/")) html
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.urlFor("I Vitelloni", year = Some(2024)) shouldBe
       Some("https://www.metacritic.com/movie/i-vitelloni-re-release")
     c.urlFor("I Vitelloni", year = Some(2018)) shouldBe
@@ -508,18 +479,14 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
 
   "metascoreFor" should "fetch the URL and return the parsed score" in {
     val fixture = loadFixture(MovieWithMetascoreFixture)
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url == "https://www.metacritic.com/movie/the-dark-knight/") fixture
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.metascoreFor("https://www.metacritic.com/movie/the-dark-knight") shouldBe Some(85)
   }
 
   it should "return None when the HTTP fetch fails" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = UpstreamNotFound(url)
-    })
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url => UpstreamNotFound(url)))
     c.metascoreFor("https://www.metacritic.com/movie/whatever") shouldBe None
   }
 
@@ -531,15 +498,9 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // that ladder costs — how many round trips each probe takes, and whether the
   // same URL is ever probed twice.
 
-  /** Records every URL fetched, and answers each one from `respond`. Backed by
-   *  a `CopyOnWriteArrayList` because `canonicalResolve` now fires same-title
-   *  slug-variant probes CONCURRENTLY (`ConcurrentCandidateProbe`) — a plain
-   *  `mutable.ListBuffer` would race under concurrent writes from those probes. */
-  private class RecordingFetch(respond: String => String) extends GetOnlyHttpFetch {
-    private val recorded = new java.util.concurrent.CopyOnWriteArrayList[String]()
-    def requested: List[String] = { import scala.jdk.CollectionConverters._; recorded.asScala.toList }
-    def get(url: String): String = { recorded.add(url); respond(url) }
-  }
+  /** Every URL asked for is logged (`gets`): the client's slug-variant probes run
+   *  CONCURRENTLY (`ConcurrentCandidateProbe`), which `RequestLogHttpFetch`'s queue survives. */
+  private def recording(respond: String => String) = new RequestLogHttpFetch(new ScriptedByUrlHttpFetch(respond))
 
   private def notFound: String => String = url => UpstreamNotFound(url)
 
@@ -548,35 +509,33 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // probes up to eight of them. RealHttpFetch follows redirects silently, so
   // this never surfaced as an error, only as latency.
   "the slug probe" should "request the trailing-slash form Metacritic redirects to" in {
-    val fetch = new RecordingFetch(notFound)
+    val fetch = recording(notFound)
     new MetacriticClient(fetch).urlFor("The Dark Knight", year = Some(2008))
 
-    val probes = fetch.requested.filter(_.contains("/movie/")).toList
+    val probes = fetch.gets.filter(_.contains("/movie/")).toList
     probes should not be empty
     all (probes) should endWith ("/")
   }
 
   it should "keep storing the slash-less canonical URL (existing rows carry that form)" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = moviePage("The Dark Knight", 2008, 84)
-    })
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(_ => moviePage("The Dark Knight", 2008, 84)))
     c.urlFor("The Dark Knight") shouldBe Some("https://www.metacritic.com/movie/the-dark-knight")
   }
 
   it should "add the slash when reading a score off a URL stored before this change" in {
-    val fetch = new RecordingFetch(_ => moviePage("The Dark Knight", 2008, 84))
+    val fetch = recording(_ => moviePage("The Dark Knight", 2008, 84))
     new MetacriticClient(fetch).metascoreFor("https://www.metacritic.com/movie/the-dark-knight") shouldBe Some(84)
-    fetch.requested.toList shouldBe List("https://www.metacritic.com/movie/the-dark-knight/")
+    fetch.gets.toList shouldBe List("https://www.metacritic.com/movie/the-dark-knight/")
   }
 
   // "The Sting" and its cleanTitle "Sting" produce overlapping slug lists —
   // the de-articled variant of the first IS the second. Probing the shared
   // slugs once per ladder rather than once per title is free latency back.
   "a resolution attempt" should "probe a slug shared by two candidate titles only once" in {
-    val fetch = new RecordingFetch(notFound)
+    val fetch = recording(notFound)
     new MetacriticClient(fetch).resolve("The Sting", Some("Sting"), Some(1973))
 
-    val probes = fetch.requested.filter(_.contains("/movie/")).toList
+    val probes = fetch.gets.filter(_.contains("/movie/")).toList
     probes.distinct shouldBe probes
     probes should contain ("https://www.metacritic.com/movie/sting/")
   }
@@ -585,21 +544,21 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     // The shape MetascoreRatings drives: an original title, then TMDB's
     // English title, then the US release title — the last two re-deriving
     // slugs the first already probed.
-    val fetch = new RecordingFetch(notFound)
+    val fetch = recording(notFound)
     new MetacriticClient(fetch)
       .resolveAcross(Seq("The Sting", "Sting", "The Sting"), Some("Sting"), Some(1973))
 
-    fetch.requested.distinct shouldBe fetch.requested
+    fetch.gets.distinct shouldBe fetch.gets
   }
 
   it should "return the first title that resolves and stop there" in {
-    val fetch = new RecordingFetch(url =>
+    val fetch = recording(url =>
       if (url.contains("/movie/inception/")) moviePage("Inception", 2010, 74)
       else UpstreamNotFound(url))
     val c = new MetacriticClient(fetch)
     c.resolveAcross(Seq("Poczatek", "Inception", "Never Reached"), None, None).map(_.url) shouldBe
       Some("https://www.metacritic.com/movie/inception")
-    fetch.requested.exists(_.contains("never-reached")) shouldBe false
+    fetch.gets.exists(_.contains("never-reached")) shouldBe false
   }
 
   // ── Two same-titled films of the same year ────────────────────────────────
@@ -661,16 +620,12 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   }
 
   "canonicalResolve" should "refuse a same-title same-year page by a different director" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = pageFor("Dag Johan Haugerud", "2025")
-    })
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(_ => pageFor("Dag Johan Haugerud", "2025")))
     c.canonicalResolve("Dreams", Some(2025), Set("Michel Franco")) shouldBe None
   }
 
   it should "still accept the page when the director agrees" in {
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = pageFor("Michel Franco", "2025")
-    })
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(_ => pageFor("Michel Franco", "2025")))
     c.canonicalResolve("Dreams", Some(2025), Set("Michel Franco")).map(_.url) shouldBe
       Some("https://www.metacritic.com/movie/dreams-2025")
   }
@@ -697,16 +652,14 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // resolution picked whichever response landed first, the wrong film would win.
   it should "keep priority order deciding the winner even when a later, wrong-film candidate answers faster" in {
     val wrongFilmAnswered = new java.util.concurrent.CountDownLatch(1)
-    val c = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/movie/the-odyssey-2026/")) {
           // The right film answers only once the wrong one already has (bounded, in case it is never asked).
           wrongFilmAnswered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
           moviePage("The Odyssey", 2026, 89)
         }
         else if (url.endsWith("/movie/the-odyssey/")) try undatedMoviePage("The Odyssey") finally wrongFilmAnswered.countDown()
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.urlFor("The Odyssey", year = Some(2026)) shouldBe
       Some("https://www.metacritic.com/movie/the-odyssey-2026")
   }
@@ -715,7 +668,7 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     // Recorded 2026-10-04 (trimmed to the JSON-LD): each page also carries a trailer VideoObject with its own duration.
     def read(fixture: String) = {
       val page = loadFixture(fixture)
-      new MetacriticClient(new GetOnlyHttpFetch { def get(url: String): String = page }).pageFor(MetacriticClient.movieUrl("x")).get
+      new MetacriticClient(new ScriptedByUrlHttpFetch(_ => page)).pageFor(MetacriticClient.movieUrl("x")).get
     }
     val dune = read("/fixtures/metacritic/movie_dune_1984_duration_hours_as_minutes.html")
     (dune.title, dune.year, dune.runtime, dune.directors) shouldBe ((Some("Dune"), Some(1984), Some(137), Set("David Lynch")))

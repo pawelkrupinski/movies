@@ -1,7 +1,7 @@
 package clients.modern_events_calendar
 
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import models.{KinoCKZambrow, KinoSokolNisko}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -98,10 +98,7 @@ class ModernEventsCalendarClientSpec extends AnyFlatSpec with Matchers with Opti
 
   it should "read a runtime with words before the number, in any case" in {
     def runtime(line: String) = {
-      val page = new tools.HttpFetch {
-        def get(url: String): String = s"""<div class="entry-content"><p>$line</p></div>"""
-        def post(url: String, body: String, contentType: String): String = ""
-      }
+      val page = new ScriptedByUrlHttpFetch(_ => s"""<div class="entry-content"><p>$line</p></div>""")
       new ModernEventsCalendarClient(page, ModernEventsCalendarPage("https://kino.mokzambrow.pl/"), KinoCKZambrow, today)
         .fetchFilmDetail("https://kino.mokzambrow.pl/odzyskany/").flatMap(_.runtimeMinutes)
     }

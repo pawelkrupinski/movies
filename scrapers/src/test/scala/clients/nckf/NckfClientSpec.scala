@@ -1,10 +1,10 @@
 package clients.nckf
 
+import clients.tools.ScriptedByUrlHttpFetch
 import models.KinoBajka
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import tools.GetOnlyHttpFetch
 import services.cinemas.pl.NckfClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -76,9 +76,7 @@ class NckfClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     </div>
   </body></html>"""
 
-  private val http = new GetOnlyHttpFetch {
-    def get(url: String): String = sampleHtml
-  }
+  private val http = new ScriptedByUrlHttpFetch(_ => sampleHtml)
 
   private val testCinema = KinoBajka  // stand-in; real integration uses Nckf
   private val today      = LocalDate.of(2026, 6, 7)

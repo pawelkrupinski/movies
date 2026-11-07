@@ -1,5 +1,6 @@
 package modules
 
+import clients.tools.{AnyMethodByUrlHttpFetch, ScriptedByUrlHttpFetch}
 import tools.SpecClock.given
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -10,7 +11,7 @@ import services.MongoConnection
 import services.events.ImdbIdMissing
 import services.tasks.{ScrapeReaper, TaskType}
 import services.metrics.{PrometheusExposition, WorkerHttpMetrics}
-import tools.{ExecutionBudget, GetOnlyHttpFetch, HttpFetch, SharedExecutionBudget, TestWiring}
+import tools.{ExecutionBudget, HttpFetch, SharedExecutionBudget, TestWiring}
 
 import scala.concurrent.duration._
 
@@ -229,9 +230,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // slug-probing and 429s blurring it. Drives a real call through each full chain
   // over a fake leaf (no network) and asserts the two land on different series.
   class PhaseLeafProbe extends SpyWiring {
-    override protected def realHttpLeaf: HttpFetch = new GetOnlyHttpFetch {
-      override def get(url: String): String = "ok"
-    }
+    override protected def realHttpLeaf: HttpFetch = new ScriptedByUrlHttpFetch(_ => "ok")
   }
 
   // Both side collections must be wired into the worker's repository, or their writes
@@ -489,10 +488,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // after — never asked again per take-up.
   "the identity model's lookups" should "ask TMDB live only for what the model's store lacks, and file the answer there" in {
     val requests = new java.util.concurrent.atomic.AtomicInteger()
-    val counting: HttpFetch = new HttpFetch {
-      override def get(url: String): String = { requests.incrementAndGet(); """{"results":[]}""" }
-      override def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val counting: HttpFetch = new AnyMethodByUrlHttpFetch(_ => { requests.incrementAndGet(); """{"results":[]}""" })
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4),
       tools.Env.of("TMDB_API_KEY" -> "test-key")) {
       override lazy val enrichmentFetch: HttpFetch = counting
@@ -511,10 +507,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   "the agreement stage's fill" should "read TMDB as the model does: what the store lacks asked live" in {
     import services.identity.agreement.VoterFamily
     val requests = new java.util.concurrent.atomic.AtomicInteger()
-    val counting: HttpFetch = new HttpFetch {
-      override def get(url: String): String = { requests.incrementAndGet(); """{"results":[]}""" }
-      override def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val counting: HttpFetch = new AnyMethodByUrlHttpFetch(_ => { requests.incrementAndGet(); """{"results":[]}""" })
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("TMDB_API_KEY" -> "test-key")) {
       override lazy val enrichmentFetch: HttpFetch = counting
     }
@@ -649,11 +642,8 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     import services.identity.agreement.VoterFamily
     val host    = "films.example.org"
     @volatile var down = true
-    val leaf: HttpFetch = new HttpFetch {
-      override def get(url: String): String =
-        if (down) throw new tools.HttpStatusException(503, "GET", url, None) else "{}"
-      override def post(url: String, body: String, contentType: String): String = get(url)
-    }
+    val leaf: HttpFetch = new AnyMethodByUrlHttpFetch(url =>
+      if (down) throw new tools.HttpStatusException(503, "GET", url, None) else "{}")
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4)) {
       override protected def realHttpLeaf: HttpFetch = leaf
       override protected lazy val identityHostRecoveryExecutor: java.util.concurrent.ExecutorService = tools.DaemonExecutors.directExecutor()

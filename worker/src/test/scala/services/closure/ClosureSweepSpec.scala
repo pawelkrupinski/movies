@@ -1,12 +1,13 @@
 package services.closure
 
+import clients.tools.ScriptedByUrlHttpFetch
 import models.{Cinema, GermanRoster, UsRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.fallback.{FallbackState, InMemoryFallbackStore}
 import services.scrapes._
 import services.cinemas.ScriptedCinemaScraper
-import tools.{GetOnlyHttpFetch, HttpStatusException}
+import tools.HttpStatusException
 
 import java.time.temporal.ChronoUnit.DAYS
 import java.time.{Clock, Instant, ZoneOffset}
@@ -45,9 +46,7 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
       def request(directory: RosterDirectory, venues: Seq[RetirementRequest]): Unit =
         if (dispatchFails) throw new IllegalStateException("HTTP 401") else requested += (directory -> venues)
     })
-    private val fetch = new GetOnlyHttpFetch {
-      def get(url: String): String = { fetched += url; sites(url).fold(throw _, identity) }
-    }
+    private val fetch = new ScriptedByUrlHttpFetch(url => { fetched += url; sites(url).fold(throw _, identity) })
     val sweep = new ClosureSweep(() => candidates, archive, fallbacks,
       new VenueChecks(venue => websites.get(venue), fetch),
       ledger, pages += _, dispatch,
@@ -279,7 +278,7 @@ class ClosureSweepSpec extends AnyFlatSpec with Matchers with org.scalatest.Lone
     h.ledger.record(hochland.displayName, LedgerEntry(LedgerKind.Closed, daysAgo(1), ""))
     val broken = new ClosureSweep(() => Seq(ClosureCandidate(hochland, hasFallback = true)),
       new InMemoryScrapeArchiveRepository { override def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = tools.ScanOutcome.of(whole = false, "unreadable on purpose") },
-      h.fallbacks, new VenueChecks(VenueWebsites(Map.empty), new GetOnlyHttpFetch { def get(url: String): String = fail(url) }),
+      h.fallbacks, new VenueChecks(VenueWebsites(Map.empty), new ScriptedByUrlHttpFetch(url => fail(url))),
       h.ledger, h.pages += _, h.dispatch, Clock.fixed(now, ZoneOffset.UTC))
     // Skipped, it is not a completed run: an archive unreadable every day must go stale.
     val ticks = new tools.RecordingTickRecorder

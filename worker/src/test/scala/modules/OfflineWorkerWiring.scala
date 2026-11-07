@@ -1,5 +1,6 @@
 package modules
 
+import clients.tools.FailingHttpFetch
 import models.{Cinema, Country}
 import services.MongoConnection
 import tools.{HttpFetch, ObjectGraph, SameThreadExecutionBudget}
@@ -9,10 +10,7 @@ import tools.{HttpFetch, ObjectGraph, SameThreadExecutionBudget}
 class OfflineWorkerWiring(c: Country) extends WorkerWiring(c, new SameThreadExecutionBudget) {
   override lazy val mongoConnection: MongoConnection =
     new MongoConnection(uri = None, dbName = settings.MongoDatabaseName("unused"), required = services.MongoRequirement.Optional)
-  override protected def realHttpLeaf: HttpFetch = new HttpFetch {
-    def get(url: String): String = throw new java.io.IOException(s"no network in this spec: $url")
-    def post(url: String, body: String, contentType: String): String = get(url)
-  }
+  override protected def realHttpLeaf: HttpFetch = new FailingHttpFetch((_, url) => new java.io.IOException(s"no network in this spec: $url"))
   override lazy val filmwebFallbackIds: Map[Cinema, Int] = Map.empty
 
   /** Build EVERY member the wiring declares — not a hand-kept list of the ones someone

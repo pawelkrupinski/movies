@@ -2,7 +2,7 @@ package clients.bilety24
 
 import models._
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.Bilety24SubdomainClient
@@ -56,10 +56,8 @@ class Bilety24SubdomainClientSpec extends AnyFlatSpec with Matchers with OptionV
     else s"""<a href="/kino/jakis-film" title="Film: Jakiś film - $day 18:00 - Oborniki">seans</a>"""
 
   it should "reach screenings scattered weeks out, across the blank days between them" in {
-    val stub = new tools.GetOnlyHttpFetch {
-      def get(url: String): String =
-        dayHtml(LocalDate.parse("""b24_day=(\d{4}-\d{2}-\d{2})""".r.findFirstMatchIn(url).map(_.group(1)).get))
-    }
+    val stub = new ScriptedByUrlHttpFetch(url =>
+        dayHtml(LocalDate.parse("""b24_day=(\d{4}-\d{2}-\d{2})""".r.findFirstMatchIn(url).map(_.group(1)).get)))
     val walked = new Bilety24SubdomainClient(
       stub, "https://kulturalne-oborniki.bilety24.pl/repertuar/", KinoAstra,
       today = start, titles = titleNormalizer

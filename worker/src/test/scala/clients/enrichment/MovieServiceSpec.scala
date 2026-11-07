@@ -1,7 +1,7 @@
 package clients.enrichment
 
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.FailingHttpFetch
+import clients.tools.{FailingHttpFetch, PatchedHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import services.movies.MovieService
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -76,13 +76,9 @@ class MovieServiceSpec extends AnyFlatSpec with Matchers {
   "withFilmDetails" should "apply nothing while TMDB fails to answer the film's ids, so the next projection asks again" in {
     val failing = new java.util.concurrent.atomic.AtomicBoolean(true)
     val fixture = new clients.tools.FakeHttpFetch("08-06-2026")
-    val fetch = new tools.HttpFetch {
-      private def check(url: String): Unit =
-        if (failing.get && url.contains("/external_ids")) throw new tools.HttpStatusException(503, "GET", url, retryAfter = None)
-      override def get(url: String): String = { check(url); fixture.get(url) }
-      override def get(url: String, headers: Map[String, String]): String = { check(url); fixture.get(url, headers) }
-      override def post(url: String, body: String, contentType: String): String = fixture.post(url, body, contentType)
-    }
+    val fetch = new PatchedHttpFetch(fixture)({
+      case url if failing.get && url.contains("/external_ids") => throw new tools.HttpStatusException(503, "GET", url, retryAfter = None)
+    })
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val svc = new MovieService(cache, new InProcessEventBus(),
       new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("test-key"))), clock = _root_.tools.SpecClock.Pinned)

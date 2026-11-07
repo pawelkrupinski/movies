@@ -6,7 +6,7 @@ import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import clients.TmdbClient
 import models.{MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.FailingHttpFetch
+import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -27,8 +27,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   // Stub MC client that maps URL → JSON-LD HTML and lets the real parser run.
   private def mcStub(scores: Map[String, Option[Int]]): MetacriticClient = {
-    new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    new MetacriticClient(new ScriptedByUrlHttpFetch(url =>
         // MC 301s /movie/<slug> to /movie/<slug>/, so the client requests the
         // trailing-slash form; the page it lands on is the same one either way.
         scores.get(url.stripSuffix("/")) match {
@@ -37,8 +36,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
             // Page exists but no aggregated score yet — JSON-LD omits aggregateRating.
             """<html><head><script type="application/ld+json">{"@type":"Movie"}</script></head><body></body></html>"""
           case None => UpstreamNotFound(url)
-        }
-    })
+        }))
   }
 
   private def mkEnrichment(
@@ -100,9 +98,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   it should "swallow MC fetch failures (network blip, Cloudflare challenge) without throwing" in {
     val repository  = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt9", mcUrl = Some(Url), metascore = Some(70)))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val brokenMc = new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("boom")
-    })
+    val brokenMc = new MetacriticClient(new ScriptedByUrlHttpFetch(_ => throw new RuntimeException("boom")))
     val rates = new MetascoreRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), brokenMc)
 
     a[RuntimeException] should be thrownBy rates.refreshOneSync(cache.keyOf("X", None))
@@ -118,9 +114,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   it should "leave the row clean when Metacritic has no page for the film" in {
     val repository  = new InMemoryMovieRepository(Seq(("X", None, mkEnrichment("tt9", mcUrl = None, metascore = None))), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val rates = new MetascoreRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = UpstreamNotFound(url)
-    }))
+    val rates = new MetascoreRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), new MetacriticClient(new ScriptedByUrlHttpFetch(url => UpstreamNotFound(url))))
 
     noException should be thrownBy rates.refreshOneSync(cache.keyOf("X", None))
     cache.get(cache.keyOf("X", None)).flatMap(_.metacriticUrl) shouldBe None
@@ -129,9 +123,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
 
   it should "be a no-op when the cache has no entry for the key" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val rates = new MetascoreRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new RuntimeException("should not be called")
-    }))
+    val rates = new MetascoreRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), new MetacriticClient(new ScriptedByUrlHttpFetch(_ => throw new RuntimeException("should not be called"))))
 
     noException should be thrownBy rates.refreshOneSync(cache.keyOf("Missing", None))
   }
@@ -180,11 +172,9 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
         {"iso_3166_1":"US","title":"Harry Potter and the Sorcerer's Stone","type":""}
       ]}
     }"""
-    val tmdb = new TmdbClient(http = new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val tmdb = new TmdbClient(http = new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/movie/671?")) tmdbBody
-        else UpstreamNotFound(url)
-    }, apiKey = Some(settings.TmdbApiKey("stub")))
+        else UpstreamNotFound(url)), apiKey = Some(settings.TmdbApiKey("stub")))
 
     val repository = new InMemoryMovieRepository(Seq(
       ("Harry Potter i Kamień filozoficzny", Some(2001), MovieRecord(
@@ -220,9 +210,7 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   // Counts every GET. Returns a scored MC page for ANY url — so the only thing
   // it measures is HOW MANY times the page is fetched.
   private def countingMc(gets: java.util.concurrent.atomic.AtomicInteger): MetacriticClient =
-    new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = { gets.incrementAndGet(); scorePage(70) }
-    })
+    new MetacriticClient(new ScriptedByUrlHttpFetch(_ => { gets.incrementAndGet(); scorePage(70) }))
 
   "refreshOneSync (URL discovery)" should
     "fetch the movie page only once — the slug-probe body carries the score" in {
@@ -254,13 +242,11 @@ class MetascoreRatingsSpec extends AnyFlatSpec with Matchers {
   ), normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
   private val TheSting = "https://www.metacritic.com/movie/the-sting"
   private def stingMc(gets: java.util.concurrent.atomic.AtomicInteger): MetacriticClient =
-    new MetacriticClient(new GetOnlyHttpFetch {
-      def get(url: String): String = {
+    new MetacriticClient(new ScriptedByUrlHttpFetch(url => {
         gets.incrementAndGet()
         if (url.stripSuffix("/") == TheSting) UpstreamNotFound(url)
         else scorePage(70)   // /movie/sting (and any score re-fetch of it)
-      }
-    })
+      }))
 
   "the MC url cache" should "resolve the slug once across two rows sharing the hints" in {
     val gets = new java.util.concurrent.atomic.AtomicInteger(0)

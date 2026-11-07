@@ -5,7 +5,8 @@ import tools.SpecTimeouts
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.enrichment.RottenTomatoesClient
-import tools.{GetOnlyHttpFetch, RendezvousHttpFetch, UpstreamNotFound}
+import clients.tools.{RequestLogHttpFetch, ScriptedByUrlHttpFetch}
+import tools.{RendezvousHttpFetch, UpstreamNotFound}
 
 class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
@@ -25,11 +26,9 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     RottenTomatoesClient.slugify("  Top   Gun!! ") shouldBe "top_gun"
   }
 
-  private def stub(notFound: Set[String]) = new GetOnlyHttpFetch {
-    def get(url: String): String =
+  private def stub(notFound: Set[String]) = new ScriptedByUrlHttpFetch(url =>
       if (notFound.exists(url.contains)) UpstreamNotFound(url)
-      else "OK"
-  }
+      else "OK")
 
   "canonicalUrl" should "return Some when 200" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
@@ -121,20 +120,16 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // year is known and conflicts, that probe is rejected. Here the year-suffixed
   // and de-articled probes 404; the plain /m/north 200s but is a 1994 film.
   "canonicalUrl with a year" should "reject a probed slug whose page year conflicts" in {
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/m/north")) rtMoviePage(1994)
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.canonicalUrl("North", Some(2026)) shouldBe None
   }
 
   it should "accept a probed slug whose page year matches within tolerance" in {
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/m/the_north")) rtMoviePage(2025)
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     // slug_year (the_north_2026) 404s, plain the_north 200s with a 2025 page —
     // one year off, inside tolerance → accepted.
     c.canonicalUrl("The North", Some(2026)) shouldBe
@@ -269,12 +264,10 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // probe 404s — same pattern MC uses.
   "urlFor" should "fall through to the search-page scrape when slug probes 404" in {
     val fixture = loadFixture(SearchTopGunFixture)
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/m/")) UpstreamNotFound(url)
         else if (url.contains("/search")) fixture
-        else throw new RuntimeException(s"unexpected URL: $url")
-    })
+        else throw new RuntimeException(s"unexpected URL: $url")))
     // Primary slug "top_gun" 404s; the search scrape sees "Top Gun" as an
     // exact title match and (with year=1986) picks the 1986 cut.
     c.urlFor("Top Gun", None, Some(1986)) shouldBe Some("https://www.rottentomatoes.com/m/top_gun")
@@ -289,11 +282,9 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return None when neither primary nor fallback resolve and the search yields nothing" in {
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url =>
         if (url.contains("/m/")) UpstreamNotFound(url)
-        else "<html><body></body></html>"
-    })
+        else "<html><body></body></html>"))
     c.urlFor("foo", Some("bar")) shouldBe None
   }
 
@@ -343,28 +334,20 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   "scoreFor" should "fetch the URL and return the parsed Tomatometer percentage" in {
     val fixture = loadFixture(MovieTheDarkKnightFixture)
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url =>
         if (url == "https://www.rottentomatoes.com/m/the_dark_knight") fixture
-        else throw new RuntimeException(s"unexpected URL: $url")
-    })
+        else throw new RuntimeException(s"unexpected URL: $url")))
     c.scoreFor("https://www.rottentomatoes.com/m/the_dark_knight") shouldBe Some(94)
   }
 
   it should "return None when the page is gone, and THROW when the read failed" in {
-    new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String = UpstreamNotFound(url)
-    }).scoreFor("https://www.rottentomatoes.com/m/whatever") shouldBe None
+    new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url => UpstreamNotFound(url))).scoreFor("https://www.rottentomatoes.com/m/whatever") shouldBe None
     // Was Try(http.get(url)).toOption: a 503 read as "no Tomatometer".
-    a[tools.HttpStatusException] should be thrownBy new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None)
-    }).scoreFor("https://www.rottentomatoes.com/m/whatever")
+    a[tools.HttpStatusException] should be thrownBy new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(503, "GET", url, None))).scoreFor("https://www.rottentomatoes.com/m/whatever")
   }
 
   it should "throw, not answer None, when the read fails — a blocked RT is no verdict on the score" in {
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String = throw new tools.HttpStatusException(503, "GET", url, None)
-    })
+    val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url => throw new tools.HttpStatusException(503, "GET", url, None)))
     a [tools.HttpStatusException] should be thrownBy c.scoreFor("https://www.rottentomatoes.com/m/whatever")
     a [tools.HttpStatusException] should be thrownBy c.pageFor("https://www.rottentomatoes.com/m/whatever")
   }
@@ -382,43 +365,37 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // lists overlap — "The Sting" de-articles to the same "sting" its cleanTitle
   // slugs to directly. One attempt across all three probes each URL once.
 
-  /** Records every URL fetched, and answers each one from `respond`. Backed by
-   *  a `CopyOnWriteArrayList` because `canonicalUrl` now fires same-title
-   *  slug-variant probes CONCURRENTLY (`ConcurrentCandidateProbe`) — a plain
-   *  `mutable.ListBuffer` would race under concurrent writes from those probes. */
-  private class RecordingFetch(respond: String => String) extends GetOnlyHttpFetch {
-    private val recorded = new java.util.concurrent.CopyOnWriteArrayList[String]()
-    def requested: List[String] = { import scala.jdk.CollectionConverters._; recorded.asScala.toList }
-    def get(url: String): String = { recorded.add(url); respond(url) }
-  }
+  /** Every URL asked for is logged (`gets`): the client's slug-variant probes run
+   *  CONCURRENTLY (`ConcurrentCandidateProbe`), which `RequestLogHttpFetch`'s queue survives. */
+  private def recording(respond: String => String) = new RequestLogHttpFetch(new ScriptedByUrlHttpFetch(respond))
 
   private def notFound: String => String = url => UpstreamNotFound(url)
 
   "a resolution attempt" should "probe a slug shared by two candidate titles only once" in {
-    val fetch = new RecordingFetch(notFound)
+    val fetch = recording(notFound)
     new RottenTomatoesClient(fetch).urlFor("The Sting", Some("Sting"), Some(1973))
 
-    val probes = fetch.requested.filter(_.contains("/m/")).toList
+    val probes = fetch.gets.filter(_.contains("/m/")).toList
     probes.distinct shouldBe probes
     probes should contain ("https://www.rottentomatoes.com/m/sting")
   }
 
   "urlForAny" should "walk each title's ladder in turn, fetching no URL twice" in {
-    val fetch = new RecordingFetch(notFound)
+    val fetch = recording(notFound)
     new RottenTomatoesClient(fetch).urlForAny(Seq("The Sting", "Sting", "The Sting"), Some("Sting"), Some(1973))
 
-    fetch.requested.distinct shouldBe fetch.requested
+    fetch.gets.distinct shouldBe fetch.gets
   }
 
   it should "return the first title that resolves and stop there" in {
-    val fetch = new RecordingFetch(url =>
+    val fetch = recording(url =>
       if (url.endsWith("/m/inception")) rtMoviePage(2010)
       else UpstreamNotFound(url))
     val c = new RottenTomatoesClient(fetch)
 
     c.urlForAny(Seq("Poczatek", "Inception", "Never Reached")) shouldBe
       Some("https://www.rottentomatoes.com/m/inception")
-    fetch.requested.exists(_.contains("never_reached")) shouldBe false
+    fetch.gets.exists(_.contains("never_reached")) shouldBe false
   }
 
   it should "not take a lone Restored hit dated as the ORIGINAL film" in {
@@ -483,8 +460,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // undated (possibly wrong) page would win.
   it should "keep priority order deciding the winner even when a later, undated candidate answers faster" in {
     val undatedAnswered = new java.util.concurrent.CountDownLatch(1)
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
-      def get(url: String): String =
+    val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(url =>
         if (url.endsWith("/m/the_north_2026")) {
           // The dated page answers only once the undated one already has (bounded, in case it is never asked).
           undatedAnswered.await(SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -492,8 +468,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
         }
         else if (url.endsWith("/m/the_north"))
           try """<html><body><script>{"mediaType":"movie"}</script></body></html>""" finally undatedAnswered.countDown()
-        else UpstreamNotFound(url)
-    })
+        else UpstreamNotFound(url)))
     c.canonicalUrl("The North", Some(2026)) shouldBe
       Some("https://www.rottentomatoes.com/m/the_north_2026")
   }
@@ -502,7 +477,7 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     // Recorded 2026-10-04 (trimmed): Dune's page also carries its trailer's length ("2:29", a 149.858 s PROMO video);
     // the film's own runtime is the details list's "2h 35m". RT names the film "Dune (2021)" to tell it from Lynch's.
     val page = scala.io.Source.fromResource("fixtures/rottentomatoes/movie_dune_2021_runtime_beside_trailer.html")(using scala.io.Codec.UTF8).mkString
-    val c = new RottenTomatoesClient(new GetOnlyHttpFetch { def get(url: String): String = page })
+    val c = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(_ => page))
     val read = c.pageFor(RottenTomatoesClient.movieUrl("dune_2021")).get
     (read.title, read.year, read.runtime, read.directors) shouldBe ((Some("Dune"), Some(2021), Some(155), Set("Denis Villeneuve")))
     read.cast should contain ("Timothée Chalamet")

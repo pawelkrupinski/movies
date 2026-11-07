@@ -5,13 +5,13 @@ import tools.SpecClock.given
 import clients.TmdbClient
 import models.{KinoMuza, MovieRecord, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
-import clients.tools.FailingHttpFetch
+import clients.tools.{FailingHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CaffeineMovieCache, InMemoryMovieRepository}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.resolution.TmdbAttempt
 import services.tasks.RatingSources
-import tools.{GetOnlyHttpFetch, UpstreamNotFound}
+import tools.UpstreamNotFound
 
 import java.time.Instant
 
@@ -83,7 +83,7 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
         |<body><rt-text slot="criticsScore">77%</rt-text><script>{"releaseYear":"1999"}</script></body></html>""".stripMargin
     val (cache, key, _) = unmatched("Przekleństwa niewinności", Some(2026), Seq("Sofia Coppola"))
     cache.putIfPresent(key, _.copy(rottenTomatoesUrl = Some(url)))
-    val rt = new RottenTomatoesClient(new GetOnlyHttpFetch { def get(u: String): String = if (u == url) page else UpstreamNotFound(u) })
+    val rt = new RottenTomatoesClient(new ScriptedByUrlHttpFetch(u => if (u == url) page else UpstreamNotFound(u)))
     new RottenTomatoesRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), rt).refreshOneSync(key)
     cache.get(key).flatMap(_.rottenTomatoesUrl) shouldBe Some(url)
   }
@@ -96,9 +96,7 @@ class TmdbLessRatingLinksSpec extends AnyFlatSpec with Matchers {
          |</script></head><body></body></html>""".stripMargin
     def resolving(pages: Map[String, String]) = {
       val (cache, key, _) = unmatched("NADZY | Kino dyskomfortu", Some(2026), Seq("Mike Leigh"))
-      val mc = new MetacriticClient(new GetOnlyHttpFetch {
-        def get(url: String): String = pages.get(url.stripSuffix("/")).orElse(pages.get(url)).getOrElse(UpstreamNotFound(url))
-      })
+      val mc = new MetacriticClient(new ScriptedByUrlHttpFetch(url => pages.get(url.stripSuffix("/")).orElse(pages.get(url)).getOrElse(UpstreamNotFound(url))))
       new MetascoreRatings(cache, new TmdbClient(FailingHttpFetch.Unexpected, apiKey = None), mc).refreshOneSync(key)
       cache.get(key).flatMap(_.metacriticUrl)
     }
