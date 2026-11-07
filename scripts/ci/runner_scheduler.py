@@ -207,7 +207,9 @@ class Host:
                 self.idle_since.pop(slot, None)
                 continue
             cls = dict(l.split("=", 1) for l in open(env).read().splitlines() if "=" in l).get("RUNNER_CLASS", "light")
-            busy = self.runs_job(slot)
+            # Still starting (ExecStartPre mints its registration token; no container to probe yet): no job yet, so it
+            # waits for one -- read busy, the next tick started a second runner for the same queued job.
+            busy = state != "activating" and self.runs_job(slot)
             if busy:
                 self.idle_since.pop(slot, None)
             since = self.idle_since.setdefault(slot, os.path.getmtime(env)) if not busy else now

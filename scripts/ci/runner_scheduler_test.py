@@ -142,13 +142,13 @@ class FakeDocker:
     """`systemctl` and `docker top` as ci-runner answers them. `docker top` hands its ps options to ps and then looks for
     a PID column to keep the container's own rows: without one it exits 1 ("Couldn't find PID field in ps output")."""
 
-    def __init__(self, comms, top_fails=False):
-        self.comms, self.top_fails, self.calls = comms, top_fails, []
+    def __init__(self, comms, top_fails=False, state="active"):
+        self.comms, self.top_fails, self.state, self.calls = comms, top_fails, state, []
 
     def __call__(self, cmd, timeout=30):
         self.calls.append(cmd)
         if cmd[0] == "systemctl":
-            return rs.subprocess.CompletedProcess(cmd, 0, "active\n" if cmd[1] == "is-active" else "", "")
+            return rs.subprocess.CompletedProcess(cmd, 0, f"{self.state}\n" if cmd[1] == "is-active" else "", "")
         fields = cmd[cmd.index("-eo") + 1].split(",")
         if self.top_fails or "pid" not in fields:
             return rs.subprocess.CompletedProcess(cmd, 1, "", "Error response from daemon: Couldn't find PID field in ps output\n")
@@ -185,6 +185,18 @@ class HostTest(unittest.TestCase):
             [i] = self.host(FakeDocker([], top_fails=True)).instances(NOW)
         self.assertTrue(i.busy)
         self.assertIn("Couldn't find PID field", err.getvalue())
+
+    def test_a_slot_still_starting_waits_for_its_job_and_no_second_runner_is_started_for_it(self):
+        # activating: ExecStartPre mints its registration token, no container yet, so `docker top` fails. Read as busy, it
+        # counted as no runner waiting for the queued job, and the next tick started another one for the same job.
+        docker = FakeDocker([], top_fails=True, state="activating")
+        with unittest.mock.patch("sys.stderr", new_callable=io.StringIO):
+            host = self.host(docker)
+            [i] = host.instances(NOW)
+            self.assertFalse(i.busy)
+            self.assertEqual((), rs.decide(rs.Config(), rs.Bitcashier(0, 0), {"check": 1}, [i], NOW).starts)
+            host.stop(2)  # nor is it stopped on doubt
+        self.assertFalse([c for c in docker.calls if c[:2] == ["systemctl", "stop"]])
 
     def test_a_busy_runner_is_never_stopped(self):
         docker = FakeDocker(["Runner.Worker"])
