@@ -77,7 +77,7 @@ class ReviewController(cc: ControllerComponents,
                      priorities: Map[String, ReviewPriority] = Map.empty,
                      decorate: ReviewCard => ReviewCard = identity): Result = {
     val index    = new ReviewAnswers.Index(answers.current())
-    val (done, notDone) = selected.partition { case (c, _) => index.answerFor(c.id, c.reviewMembers).isDefined }
+    val (done, notDone) = selected.partition { case (c, _) => index.answerFor(c).isDefined }
     val open     = if (showAnswered) selected else notDone
     val shown    = open.take(limit)
     val (labels, labelsError) = labelsRead
@@ -144,10 +144,11 @@ class ReviewController(cc: ControllerComponents,
         case Failure(e)    => ("", Some(s"could not read $cardsPath: ${e.getMessage}"))
       }
       val wanted    = country.filterNot(_ == "all").flatMap(Country.byCode).map(_.code)
-      val awaiting  = ReviewDigest.pending(labelsRead._1, candidates, Set.empty).filter(i => wanted.forall(_ == i.country))
-      // what the counts count: the takes no answer stands for yet (one the labels file has not taken still hides its card)
+      val awaiting  = ReviewDigest.pending(labelsRead._1, candidates).filter(i => wanted.forall(_ == i.country))
+      // what the counts count: the takes no answer stands for yet (one the labels file has not taken still hides its card),
+      // each looked up by its own key alone, as its card is: another tab's answer of its listing settles another film
       val index     = new ReviewAnswers.Index(answers.current())
-      val open      = awaiting.filterNot(i => index.answerFor(i.id, i.members).isDefined)
+      val open      = awaiting.filterNot(i => index.answerFor(i.id, Nil).isDefined)
       val shownKind = kind.filter(Set(ReviewDigest.Kinds.Agent, ReviewDigest.Kinds.Candidate))
       val countryOrder = Country.all.map(_.code).zipWithIndex.toMap
       val items     = nameFilms(ReviewDigest.ofKind(awaiting, shownKind)).sortBy(i => countryOrder.getOrElse(i.country, Int.MaxValue))

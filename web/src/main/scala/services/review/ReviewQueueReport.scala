@@ -19,7 +19,7 @@ object ReviewQueueReport {
 
   def queued(country: Country, source: ReviewSource, judged: JudgedListings, answered: ReviewAnswers.Index): Queued =
     Queued(country, ReviewSelection.queue(source.decisions(unmatchedOnly = false).map(ReviewCluster.of(country, _)), source.served(), judged)
-      .filter { case (c, p) => p.score > 0 && answered.answerFor(c.id, c.reviewMembers).isEmpty })
+      .filter { case (c, p) => p.score > 0 && answered.answerFor(c).isEmpty })
 
   def render(queues: Seq[Queued], top: Int, answers: Int): String = {
     def share(part: Int, whole: Int) = if (whole == 0) "-" else f"${100.0 * part / whole}%.0f%%"

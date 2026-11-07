@@ -39,7 +39,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     val c = new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map(Country.Poland -> ReviewFixtures.source(now)), answers, labels, clock,
       labelsWritable = false)
     val card = ReviewDigest.pending(Seq(LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right",
-      "agent judged 2026-10-22 (test): x", judged = "2026-10-22")), Nil, Set.empty).head.payload
+      "agent judged 2026-10-22 (test): x", judged = "2026-10-22")), Nil).head.payload
     val reply = contentAsJson(c.answer()(FakeRequest().withBody(Json.obj("card" -> card, "verdict" -> "right"))))
     (reply \ "exportError").as[String] should include("REVIEW_LABELS_FILE is not set")
     answers.history() should have size 1
@@ -70,7 +70,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     html should include("/debug/review/tmdb-poster/1247239?country=de")
     contentAsString(dev.agentJudged(Some("de"), None, 20, false)(FakeRequest())) should not include "Ruchomy zamek Hauru"
     // answered: the agent's row becomes the user's, and leaves the digest
-    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
+    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil).head
     status(dev.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "right")))) shouldBe OK
     LabelsTsv.read(labels).head.note should startWith("review page: right: tmdb:4935 (was: right: agent judged")
     contentAsString(dev.agentJudged(None, None, 20, false)(FakeRequest())) should (not include "Ruchomy zamek Hauru" and include("Latcho Drom"))
@@ -93,7 +93,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     agent should (include("Kino Inne") and include("tmdb:77") and include("suggested: right, decisive") and not include "not this")
     contentAsString(dev.agentJudged(None, Some("candidate"), 20, false)(FakeRequest())) should (include("Latcho Drom") and not include "Ruchomy zamek Hauru")
     // another film: the chosen one right, the agent's row in place its own, the file lint-clean in its keys (one row per key)
-    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
+    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil).head
     val reply = dev.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "film", "ref" -> "tmdb:999")))
     status(reply) shouldBe OK
     LabelsTsv.read(labels).map(r => (r.venue, r.film, r.verdict)) should contain (("Kino Opalenica", "tmdb:999", "right"))
@@ -112,9 +112,24 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
       new ReviewAnswers(new InMemoryReviewAnswerStore), labels, clock, labelsWritable = false)
     def kinds = "Agent-judged \\d+|Candidates \\d+".r.findAllIn(contentAsString(c.agentJudged(None, None, 20, false)(FakeRequest()))).toSeq
     kinds shouldBe Seq("Agent-judged 1", "Candidates 1")
-    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil, Set.empty).head
+    val item = ReviewDigest.pending(LabelsTsv.read(labels), Nil).head
     status(c.answer()(FakeRequest().withBody(Json.obj("card" -> item.payload, "verdict" -> "right")))) shouldBe OK
     kinds shouldBe Seq("Agent-judged 0", "Candidates 1")
+  }
+
+  it should "still list an agent's judgement of a listing another tab answered for another film: that answer settles only its own film" in {
+    val labels  = tempDirectory("cross-tab").resolve("identity-judgements.tsv")
+    LabelsTsv.write(labels, Seq(LabelRow("pl", "Kino Opalenica", "FRANZ KAFKA", "tmdb:77", "wrong", "AGENT-JUDGED 2026-10-22 (test): not Franz",
+      judged = "2026-10-22")))
+    val dev   = controller(Mode.Dev, labels = labels)
+    val queue = ReviewCards.build(ReviewFixtures.source(now), Seq(ReviewCluster.of(Country.Poland, heldDecision) -> None), Nil,
+      new ReviewAnswers.Index(Nil)).head.payload(ReviewPage.Queue)
+    status(dev.answer()(FakeRequest().withBody(Json.obj("card" -> queue, "verdict" -> "right")))) shouldBe OK
+    // the queue's answer wrote Franz right and left the agent's tmdb:77 row the agent's: still awaiting the user
+    LabelsTsv.read(labels).map(r => (r.film, r.verdict)) shouldBe Seq(("tmdb:77", "wrong"), ("tmdb:1157322", "right"))
+    val html = contentAsString(dev.agentJudged(Some("pl"), None, 20, false)(FakeRequest()))
+    html should include("FRANZ KAFKA")
+    html should include("agent judged wrong · 2026-10-22")
   }
 
   "a candidate's TMDB poster" should "redirect to the poster TMDB names for it, and be not found when TMDB names none or no key is set" in {

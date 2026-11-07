@@ -122,7 +122,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     new ReviewController(Helpers.stubControllerComponents(), Mode.Dev, Map.empty, digestAnswers, digestLabels, ticking)
   }
   private lazy val digestItems = ReviewDigest.pending(LabelsTsv.read(digestLabels),
-    ReviewDigest.readCandidates(ReviewDigest.candidatesPath(digestLabels)), Set.empty)
+    ReviewDigest.readCandidates(ReviewDigest.candidatesPath(digestLabels)))
 
   private def dynamic(exchange: HttpExchange): Boolean = {
     val path = exchange.getRequestURI.getPath

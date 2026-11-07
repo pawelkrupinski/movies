@@ -72,13 +72,13 @@ object ReviewDigest {
       }
 
   /** Every item awaiting the user: each agent-judged row, and each candidate no row judges yet (an agent's row for the
-   *  same take stands for it, any other row has judged it), less those `answered` on the digest since the last export —
-   *  by country, then billing. */
-  def pending(labels: Seq[LabelRow], candidates: Seq[DigestItem], answered: Set[String]): Seq[DigestItem] = {
+   *  same take stands for it, any other row has judged it) — by country, then billing. One answered but not yet exported
+   *  is still here: the page shows it answered ([[ReviewAnswers.Index.answerFor]]). */
+  def pending(labels: Seq[LabelRow], candidates: Seq[DigestItem]): Seq[DigestItem] = {
     val agents = labels.filter(r => agentJudged(r.note)).flatMap(r => FilmRef.formed(r.film).map(f =>
       DigestItem(r.country, r.venue, r.rawTitle, f, Option(r.filmTitle).filter(_.nonEmpty), Some(r.verdict), r.judged, r.note)))
     val open   = candidates.filterNot(c => labels.exists(_.sameJudgement(c.asLabel)))
-    (agents ++ open).filterNot(i => answered(i.id)).sortBy(i => (i.country, i.rawTitle.toLowerCase(java.util.Locale.ROOT), i.venue, i.film.render))
+    (agents ++ open).sortBy(i => (i.country, i.rawTitle.toLowerCase(java.util.Locale.ROOT), i.venue, i.film.render))
   }
 
   /** The items of one kind: `agent` (an agent's judgement) or `candidate` (flagged, not judged); any other value (or none) is all. */
@@ -133,7 +133,4 @@ object ReviewDigest {
         (tookOther.toSeq ++ seed.candidates.filterNot(_.film == film)).distinctBy(_.film))
     seed.copy(members = Seq(member), film = if (agrees) seed.film else None, candidates = candidates, answerKey = Some(item.id))
   }
-
-  /** The digest's answers standing: their items' ids. */
-  def answered(current: Seq[ReviewAnswer]): Set[String] = current.filter(_.page == ReviewPage.Digest).map(_.clusterId).toSet
 }

@@ -34,7 +34,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
   private val agentsOwn = candidate("de", "KiKuBi", "Rose", 846864)     // the agent's row stands for it
 
   "the digest" should "list every agent judgement the user has not confirmed, by each spelling of the marker, and the candidates no row judges" in {
-    val items = ReviewDigest.pending(Seq(agentRose, agentRoseNo, blade, hayFever, confirmed, plain), Seq(dads, latcho, judgedOne, agentsOwn), Set.empty)
+    val items = ReviewDigest.pending(Seq(agentRose, agentRoseNo, blade, hayFever, confirmed, plain), Seq(dads, latcho, judgedOne, agentsOwn))
     items.map(i => (i.country, i.rawTitle, i.film.render, i.agentVerdict)) shouldBe Seq(
       ("de", "Blade", "tmdb:36647", Some("right")),
       ("de", "Latcho Drom", "tmdb:1247239", None),
@@ -46,19 +46,21 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
   }
 
   it should "give one listing's two films two items, each answered on its own" in {
-    val items = ReviewDigest.pending(Seq(agentRose, agentRoseNo), Nil, Set.empty)
+    val items = ReviewDigest.pending(Seq(agentRose, agentRoseNo), Nil)
     items.map(_.id).distinct should have size 2
     val first = answerTo(items.head, ReviewVerdict.Right, at)
     val second = answerTo(items(1), ReviewVerdict.Wrong, at.plusSeconds(1))
     ReviewAnswers.current(Seq(first, second)) shouldBe Seq(first, second)
     // an Undo of one leaves the other standing
     ReviewAnswers.current(Seq(first, second, answerTo(items.head, ReviewVerdict.Undo, at.plusSeconds(2)))) shouldBe Seq(second)
-    ReviewDigest.pending(Seq(agentRose, agentRoseNo), Nil, ReviewDigest.answered(Seq(second))).map(_.film) shouldBe Seq(FilmRef.tmdb(1176962))
+    val index = new ReviewAnswers.Index(Seq(second))
+    items.filter(i => index.answerFor(ReviewDigest.clusterOf(models.Country.byCode(i.country).get, i, Nil)).isEmpty).map(_.film) shouldBe
+      Seq(FilmRef.tmdb(1176962))
   }
 
   "an answer on the digest" should "make a confirmed agent judgement the user's, flip an overruled one, and add a candidate's row" in {
     withLabels(Seq(agentRose, agentRoseNo, plain)) { path =>
-      val items  = ReviewDigest.pending(LabelsTsv.read(path), Seq(latcho), Set.empty)
+      val items  = ReviewDigest.pending(LabelsTsv.read(path), Seq(latcho))
       def item(film: Int) = items.find(_.film == FilmRef.tmdb(film)).get
       val history = Seq(answerTo(item(846864), ReviewVerdict.Right, at), answerTo(item(1176962), ReviewVerdict.Right, at.plusSeconds(1)),
         answerTo(item(1247239), ReviewVerdict.Event, at.plusSeconds(2)))
@@ -70,11 +72,11 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
         ("Rose", "tmdb:1176962", "right", s"review page: right: tmdb:1176962 (was: wrong: ${agentRoseNo.note})"),
         ("Enjô", "tmdb:97149", "right", plain.note),
         ("Latcho Drom", "tmdb:1247239", "wrong", "review page: not a film: Short (2026)"))
-      ReviewDigest.pending(rows, Seq(latcho), Set.empty) shouldBe empty
+      ReviewDigest.pending(rows, Seq(latcho)) shouldBe empty
       // the confirmation undone: the agent's row is the agent's again, and back on the digest
       LabelsExport.exportTo(path, history :+ answerTo(item(846864), ReviewVerdict.Undo, at.plusSeconds(3)))
       LabelsTsv.read(path).find(_.film == "tmdb:846864").get.note shouldBe agentRose.note
-      ReviewDigest.pending(LabelsTsv.read(path), Nil, Set.empty).map(_.film) shouldBe Seq(FilmRef.tmdb(846864))
+      ReviewDigest.pending(LabelsTsv.read(path), Nil).map(_.film) shouldBe Seq(FilmRef.tmdb(846864))
     }
   }
 
@@ -82,7 +84,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
     val star = row("*", "Rose", "tmdb:1712584", "wrong", "agent judged 2026-10-22 (prodreg rose): Babayan's French Rose")
     val own  = row("Metropol Düsseldorf", "Rose", "tmdb:1712584", "right", "agent judged 2026-10-22 (prodreg rose): kinoheld credits Babayan")
     withLabels(Seq(own, star)) { path =>
-      val item = ReviewDigest.pending(LabelsTsv.read(path), Nil, Set.empty).find(_.venue == "*").get
+      val item = ReviewDigest.pending(LabelsTsv.read(path), Nil).find(_.venue == "*").get
       LabelsExport.exportTo(path, Seq(answerTo(item, ReviewVerdict.Wrong, at))).confirmed shouldBe 1
       LabelsTsv.read(path).map(r => (r.venue, r.verdict, ReviewDigest.userJudged(r.note))) shouldBe
         Seq(("Metropol Düsseldorf", "right", false), ("*", "wrong", true))
@@ -90,7 +92,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
   }
 
   it should "tell agent judgements from candidates, and name the other judgements of a billing" in {
-    val items = ReviewDigest.pending(Seq(agentRose, agentRoseNo, blade), Seq(latcho), Set.empty)
+    val items = ReviewDigest.pending(Seq(agentRose, agentRoseNo, blade), Seq(latcho))
     ReviewDigest.ofKind(items, Some("agent")).map(_.rawTitle) shouldBe Seq("Blade", "Rose", "Rose")
     ReviewDigest.ofKind(items, Some("candidate")).map(_.rawTitle) shouldBe Seq("Latcho Drom")
     ReviewDigest.ofKind(items, None) shouldBe items
@@ -99,7 +101,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
 
   it should "take from the judge cards the blocks naming its billing and film" in {
     val cards = "# cards\n\n## Rose x tmdb:846864\nright\n\n## Rose x tmdb:1176962\nwrong\n\n## Blade x tmdb:846864\nother billing"
-    val item  = ReviewDigest.pending(Seq(agentRose), Nil, Set.empty).head
+    val item  = ReviewDigest.pending(Seq(agentRose), Nil).head
     ReviewDigest.judgeCard(cards, item) shouldBe "Rose x tmdb:846864\nright"
     ReviewDigest.judgeCard("", item) shouldBe ""
     ReviewDigest.judgeCardsPath(Paths.get("/w/test/resources/fixtures/identity-judgements.tsv")) shouldBe Paths.get("/w/target/identity-judge/cards.md")
@@ -110,7 +112,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
   it should "reopen a known-wrong row the user overrules to right, so the judgements lint still holds" in {
     val known = agentRoseNo.copy(state = "known-wrong", scope = "rows", reason = "kept")
     withLabels(Seq(known)) { path =>
-      val item = ReviewDigest.pending(LabelsTsv.read(path), Nil, Set.empty).head
+      val item = ReviewDigest.pending(LabelsTsv.read(path), Nil).head
       LabelsExport.exportTo(path, Seq(answerTo(item, ReviewVerdict.Right, at)))
       LabelsTsv.read(path).map(r => (r.verdict, r.state, r.scope, r.reason)) shouldBe Seq(("right", "open", "", ""))
     }
@@ -122,7 +124,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
     val hall    = ListingKey.Published("KiKuBi", "Rose", None, Nil)
     val sibling = ListingKey.Published("Other Kino", "Rose", None, Nil)
     val decision = ResolverDecision(Seq(hall, sibling), Some(1176962), 0.9, ResolverDecision.Basis.OwnMatch, Seq("own match 1176962 at 90.0%"))()
-    val item = ReviewDigest.pending(Seq(agentRose), Nil, Set.empty).head   // judged right: tmdb:846864
+    val item = ReviewDigest.pending(Seq(agentRose), Nil).head   // judged right: tmdb:846864
     val card = ReviewDigest.clusterOf(models.Country.Germany, item, Seq(decision))
     card.members shouldBe Seq(hall)                       // that listing alone: an answer labels no sibling
     card.id shouldBe item.id
@@ -143,7 +145,7 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
     val candidates = ReviewDigest.readCandidates(ReviewDigest.candidatesPath(root.resolve(labels)))
     candidates.map(c => (c.country, c.rawTitle)) should contain allOf (("de", "Latcho Drom"), ("de", "Huis clos"), ("de", "Snake Eyes"), ("us", "The Dads"))
     candidates.count(_.rawTitle == "The Dads") shouldBe 3
-    ReviewDigest.pending(LabelsTsv.read(root.resolve(labels)), candidates, Set.empty).count(_.agentVerdict.isDefined) should be > 0
+    ReviewDigest.pending(LabelsTsv.read(root.resolve(labels)), candidates).count(_.agentVerdict.isDefined) should be > 0
   }
 
   /** The answer the digest page posts for `item`: its payload, as the answer route parses it. */

@@ -156,5 +156,10 @@ object ReviewAnswers {
     private val byIdentity = current.filterNot(_.page == ReviewPage.Digest).flatMap(a => a.members.map(_.identity -> a)).toMap
     def answerFor(clusterId: String, members: Seq[ReviewMember]): Option[ReviewAnswer] =
       byId.get(clusterId).orElse(members.iterator.flatMap(m => byIdentity.get(m.identity)).nextOption())
+
+    /** A card's answer: a cluster answered under its own key (the Agent-judged tab's, one listing AND film) by that key
+     *  alone — another tab's answer of its listing settles the film that answer named, not the agent's. */
+    def answerFor(cluster: ReviewCluster): Option[ReviewAnswer] =
+      if (cluster.answerKey.isDefined) byId.get(cluster.id) else answerFor(cluster.id, cluster.reviewMembers)
   }
 }

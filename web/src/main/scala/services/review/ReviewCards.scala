@@ -150,7 +150,7 @@ object ReviewCards {
       val code = cluster.country.code
       val overlay = labels.filter(l => l.country == code &&
         cluster.members.exists(m => m.rawTitle == l.rawTitle && (l.venue == "*" || l.venue == m.venue)))
-      ReviewCard(cluster, members, films, overlay, answers.answerFor(cluster.id, cluster.reviewMembers), at)
+      ReviewCard(cluster, members, films, overlay, answers.answerFor(cluster), at)
     }
   }
 
