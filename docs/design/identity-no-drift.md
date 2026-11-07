@@ -598,6 +598,13 @@ unchanged.
   `family-flips-<cc>.tsv` (listing, flip chain, the rules the walk fired), `family-flips-ranked.tsv` (every flip by deciding
   rule, most listings first: structural fix 2's list, the rule burn-down), `family-flips-new.tsv` (new since the last walk, also
   on the run's summary) and a dated copy of the ranking (30 kept). A country with a shard missing keeps last night's file.
+- **A departure is a kept listing, not an absence (2026-11-07).** The add/remove shape (A at m, B once x arrives, A again
+  once x leaves) read x's leaving as its absence. The worker keeps a departed listing that a billed one relates to by title
+  (`ListingRetention.retained`), and the kept listing decides as when billed (`Authority`'s table). So the walk now takes
+  "x leaves" as m with x kept, absent only where nothing keeps it. Measured over recording 573 (run 42358278155, DE and UK
+  corpus walks): DE 96 -> 18 flips, UK 99 -> 33, every one of the 144 add/remove-only flips gone and no new one. The 51
+  left are arrival flips (Titans, Momo, The Killer, Fallen Angels, Grinch, Romeo and Juliet, PFF Hen, Miracle on 34th,
+  Manon). A longer retention window therefore cures no flip (docs/design/identity-listing-retention.md).
 - **No backlog rows.** The explorer does not file its flips (Actions cannot push main, and these are explored, not owed): a
   flip enters `identity-flip-backlog.tsv` (kind `family`) only through a named decision, as any other row.
 

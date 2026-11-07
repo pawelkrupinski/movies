@@ -6,25 +6,39 @@ import org.scalatest.matchers.should.Matchers
 import java.nio.file.Path
 
 /** The per-family convergence check ([[FamilyConvergence]]) over committed slices of known flips: it finds them by the
- *  lattice -- Lichtblick "Buddies", a final-take flip the drift seeds needed luck for, and Quad Derby's "Oxide Ghosts" --
- *  and a second run over its cache walks nothing again, unless a read of a family's closure moved. */
+ *  lattice -- Filmwelt Grünstadt's "Titans", a final-take arrival flip, and CinemaxX's bare "Titans" in the model -- names
+ *  none where a departure is only ever a kept listing (Lichtblick "Buddies", Quad Derby's "Oxide Ghosts": add/remove flips
+ *  of a departure read as an absence), and a second run over its cache walks nothing again, unless a read of a family's
+ *  closure moved. */
 class FamilyConvergenceSpec extends AnyFlatSpec with Matchers with tools.ScratchDirectories {
   private val slices  = Path.of("test", "resources", "fixtures", "drift-slices")
   private val buddies = slices.resolve("de/programmkino-lichtblick-e-v-buddies-69181215")
   private val oxide   = slices.resolve("uk/quad-derby-oxide-ghosts-the-brass-eye-tapes-q-a-18--7c64f181")
+  private val titans  = slices.resolve("de/dammtor-titans-0bd19a4c")
   private val options = FamilyConvergence.Options(threads = 2)
 
   private lazy val first = FamilyConvergence.check(FamilyConvergence.sliceCorpus(buddies, "rules-1"), Map.empty, options)
 
-  "The per-family check" should "find Lichtblick's Buddies flip in the final take, which the model alone does not take" in {
-    first.walked shouldBe first.verdicts.size
-    val flips = first.flips.map(_._2)
-    flips.filter(f => f.stage == "final" && f.listing.startsWith("Programmkino Lichtblick")) should not be empty
+  private lazy val titansRun = FamilyConvergence.check(FamilyConvergence.sliceCorpus(titans, "rules-1"), Map.empty, options)
+
+  "The per-family check" should "find Filmwelt Grünstadt's Titans flip in the final take, which the model alone does not take" in {
+    val flips = titansRun.flips.map(_._2).filter(_.listing.startsWith("Filmwelt Grünstadt"))
+    flips.map(_.stage) shouldBe Seq("final")
+    flips.map(_.kind) shouldBe Seq("arrival")
   }
 
-  it should "find Quad Derby's Oxide Ghosts flip" in {
+  it should "find the bare CinemaxX Titans arrival flip in the model" in {
+    titansRun.flips.map(_._2).exists(f => f.stage == "model" && f.kind == "arrival" && f.listing.startsWith("CinemaxX Dammtor")) shouldBe true
+  }
+
+  // A departure is no absence: the worker keeps a departed listing a billed one relates to by title, through the very
+  // function the walk keeps it by (ListingRetention.retained; IdentityModelServiceSpec holds the worker to it, whatever the
+  // order of leaves and arrivals). Buddies and Oxide Ghosts flipped only when a listing that had arrived left again.
+  it should "name no add/remove flip where the departed listing is kept as the worker keeps it (Buddies, Oxide Ghosts)" in {
+    first.walked shouldBe first.verdicts.size
+    first.flips.map(_._2).filter(_.listing.startsWith("Programmkino Lichtblick")) shouldBe empty
     val run = FamilyConvergence.check(FamilyConvergence.sliceCorpus(oxide, "rules-1"), Map.empty, options)
-    run.flips.map(_._2.listing).exists(_.startsWith("Quad Derby")) shouldBe true
+    run.flips.map(_._2).filter(_.listing.startsWith("Quad Derby")) shouldBe empty
   }
 
   it should "reuse every cached verdict whose key and closure stand, and walk again one whose closure moved or whose rules did" in {
@@ -67,18 +81,34 @@ class FamilyConvergenceSpec extends AnyFlatSpec with Matchers with tools.Scratch
     run(Seq("accept:no-such-rule")).walked shouldBe 0
   }
 
+  // A departure is no absence: the worker keeps a departed listing a billed one relates to by title
+  // (ListingRetention.retained), and it decides as when billed. The walk took a departure for an absence and named an
+  // add/remove flip wherever a listing's arrival moved a take: 144 DE and UK flips of the explorer, none reachable
+  // (convergence run 42358278155). Listing 0 takes A alone and B beside listing 1.
+  "An add/remove flip" should "be named only where listing 1's departure, kept as the worker keeps it, gives A back" in {
+    val everyone = FamilyConvergence.Subset(0, 1)
+    val subsets  = Seq(FamilyConvergence.Subset(0), everyone)
+    def take(m: FamilyConvergence.Subset) = Some(if (m(1)) "tmdb:2" else "tmdb:1")
+    def label(m: FamilyConvergence.Subset) = m.toSeq.map(i => s"v$i").mkString("{", ", ", "}")
+    // kept on departure, it decides as when billed: B stays, no flip
+    FamilyConvergence.flipOf(0, everyone, subsets, take, (_, _) => Some("tmdb:2"), label) shouldBe None
+    // nothing keeps it (no billed listing relates to it): its departure is an absence, and the take goes back to A
+    FamilyConvergence.flipOf(0, everyone, subsets, take, (m, _) => take(m), label) shouldBe
+      Some("add/remove" -> "tmdb:1@{v0} -> tmdb:2@{v0, v1} -> tmdb:1@{v0} + {v1} departed")
+  }
+
   "A corpus run's shards" should "split its families, each walked by exactly one, and its flips be the backlog's rows" in {
     // a CI row walks one shard of a country (scripts/ci/identity-family-check.sh): together they walk every family once
-    val corpus = FamilyConvergence.sliceCorpus(slices.resolve("uk/nerve-centre-londonderry-the-ladykillers-039701b7"), "rules-1")
+    val corpus = FamilyConvergence.sliceCorpus(titans, "rules-1")
     val whole  = FamilyConvergence.check(corpus, Map.empty, options)
     val parts  = (1 to 3).map(i => FamilyConvergence.check(corpus, Map.empty, options.copy(shard = Some(i -> 3))))
     parts.flatMap(_.verdicts.map(_.family)).sorted shouldBe whole.verdicts.map(_.family).sorted
     parts.flatMap(_.flips.map(_._2)).toSet shouldBe whole.flips.map(_._2).toSet
     // identity-flip-backlog.tsv's shape, kind `family`: one row a listing, its venue and raw title apart
-    val rows = FamilyConvergence.flipsTsv("uk", whole).linesIterator.toSeq
+    val rows = FamilyConvergence.flipsTsv("de", whole).linesIterator.toSeq
     rows.head shouldBe "kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote"
-    val ladykillers = rows.tail.map(_.split("\t", -1).toSeq).find(_(5) == "The Ladykillers | Cinematic Breakfast")
-    ladykillers.map(r => (r(0), r(1), r(4))) shouldBe Some(("family", "uk", "Nerve Centre Londonderry"))
+    val dammtor = rows.tail.map(_.split("\t", -1).toSeq).find(r => r(4) == "CinemaxX Dammtor" && r(5) == "Titans")
+    dammtor.map(r => (r(0), r(1))) shouldBe Some(("family", "de"))
   }
 
   "Balanced shards" should "put the costliest family alone and fill the lightest row first, the same every time" in {
@@ -97,7 +127,7 @@ class FamilyConvergenceSpec extends AnyFlatSpec with Matchers with tools.Scratch
   }
 
   it should "still walk every family once, whatever the costs" in {
-    val corpus = FamilyConvergence.sliceCorpus(slices.resolve("uk/nerve-centre-londonderry-the-ladykillers-039701b7"), "rules-1")
+    val corpus = FamilyConvergence.sliceCorpus(titans, "rules-1")
     val whole  = FamilyConvergence.check(corpus, Map.empty, options)
     val costs  = whole.verdicts.zipWithIndex.map { case (v, i) => v.family -> (i + 1.0) * 10 }.toMap
     val parts  = (1 to 2).map(i => FamilyConvergence.check(corpus, Map.empty, options.copy(shard = Some(i -> 2), costs = costs)))

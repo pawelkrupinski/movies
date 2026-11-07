@@ -155,9 +155,15 @@ object FamilyConvergence {
       val fired   = TrieMap.empty[ListingKey, Set[String]]
       def note(kind: String, id: String, digest: Long): Unit = closure.update(Read(kind, id, digest), ())
       type Takes = Map[ListingKey, Option[String]]
-      val memo = TrieMap.empty[Subset, (Takes, Takes)]
-      def takes(subset: Subset): (Takes, Takes) = memo.getOrElseUpdate(subset, {
-        val present  = subset.toSeq.map(members)
+      val memo = TrieMap.empty[(Subset, Subset), (Takes, Takes)]
+      def takes(subset: Subset): (Takes, Takes) = takesWith(subset, Subset.empty)
+      // `subset` billed, and `gone` of the family departed: kept beside it as the worker keeps a departed listing
+      // ([[ListingRetention.retained]], a billed listing relating to it by title), else absent
+      def takesWith(subset: Subset, gone: Subset): (Takes, Takes) = {
+        val billed = subset.toSeq.map(members)
+        val kept   = if (gone.isEmpty) Nil else ListingRetention.retained(gone.toSeq.map(members), billed, reads.normalizer)
+        if (gone.nonEmpty && kept.isEmpty) takes(subset) else memo.getOrElseUpdate((subset, Subset(kept.map(l => members.indexWhere(_.key == l.key))*)), {
+        val present  = billed ++ kept
         val context  = new FamilyIndex.RecordingContext(without(generation.context, keys -- present.map(_.key)))
         val recorded = new FamilyIndex.RecordingLookups(lookups)
         val regions  = IdentityResolver.resolveRegion(present, recorded, reads.normalizer, inputs.calibration, inputs.pins, inputs.decorations, context)
@@ -180,6 +186,7 @@ object FamilyConvergence {
         val model = decided.flatMap(d => d.members.map(_ -> PopulationMonotonicity.takeOf(d))).toMap
         (model, settled.takes)
       })
+      }
       def label(subset: Subset) = subset.toSeq.map(members(_).venue).mkString("{", ", ", "}")
       val everyone = Subset(members.indices*)
       val (tier, subsets) =
@@ -203,7 +210,8 @@ object FamilyConvergence {
       val flips = for {
         (stage, pick) <- Seq[(String, ((Takes, Takes)) => Takes)]("model" -> (_._1), "final" -> (_._2))
         own           <- members.indices
-        flip          <- flipOf(own, everyone, subsets, subset => pick(takes(subset)).get(members(own).key).flatten, label)
+        flip          <- flipOf(own, everyone, subsets, subset => pick(takes(subset)).get(members(own).key).flatten,
+                           (subset, gone) => pick(takesWith(subset, Subset(gone))).get(members(own).key).flatten, label)
       } yield Flip(stage, s"${members(own).venue} | ${members(own).rawTitle}", flip._1, flip._2, fired.getOrElse(members(own).key, Set.empty).toSeq.sorted)
       // the closure: what the walk read beyond the family's own entry and settle, which the key already holds
       val own = entry.context.keySet.map(_.id) ++ entry.answers.keySet.map(Dependency.encode) ++
@@ -237,8 +245,13 @@ object FamilyConvergence {
   val Subset = scala.collection.immutable.BitSet
 
   /** A listing's first flip over the computed `subsets` (each holding it): an arrival A -> B -> A along nested subsets,
-   *  else an add/remove A -> B one listing of `everyone` apart. */
-  def flipOf(own: Int, everyone: Subset, subsets: Seq[Subset], take: Subset => Option[String], label: Subset => String): Option[(String, String)] = {
+   *  else an add/remove: A at m, B once listing x arrives, and A again once x DEPARTS -- `departed(m, x)`, the take with m
+   *  billed and x kept as the worker keeps a departed listing ([[ListingRetention.retained]]: a billed listing relating to
+   *  it by title), absent where nothing keeps it. A departure is no absence: the explorer walked it as one and named 144
+   *  DE and UK flips prod cannot reach, its kept listing deciding as when billed (convergence run 42358278155,
+   *  recording 573: DE 78 and UK 66 add/remove flips, none once the departed listing is kept; the 51 arrival flips stand). */
+  def flipOf(own: Int, everyone: Subset, subsets: Seq[Subset], take: Subset => Option[String],
+             departed: (Subset, Int) => Option[String], label: Subset => String): Option[(String, String)] = {
     val vals = subsets.filter(_(own)).flatMap(m => take(m).map(m -> _))
     def within(a: Subset, b: Subset) = a != b && a.subsetOf(b)
     vals.iterator.flatMap { case (m2, b) =>
@@ -248,7 +261,8 @@ object FamilyConvergence {
     }.nextOption().map("arrival" -> _).orElse {
       val at = vals.toMap
       vals.iterator.flatMap { case (m, a) =>
-        (everyone -- m).iterator.flatMap(x => at.get(m + x).filter(_ != a).map(b => s"$a@${label(m)} -> $b@${label(m + x)} -> $a"))
+        (everyone -- m).iterator.flatMap(x => at.get(m + x).filter(_ != a).filter(_ => departed(m, x).contains(a))
+          .map(b => s"$a@${label(m)} -> $b@${label(m + x)} -> $a@${label(m)} + ${label(Subset(x))} departed"))
       }.nextOption().map("add/remove" -> _)
     }
   }
