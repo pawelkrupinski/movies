@@ -992,6 +992,8 @@ remote_pass() { # <run id> -> 0 when GitHub vouches for it
     line="$(git show "$head_sha:.github/workflows/precommit-check.yml" 2>/dev/null \
         | sed -n "s/^[[:space:]][[:space:]]*VERDICT_JOBS:[[:space:]]*['\"]\{0,1\}\([^'\"#]*\).*/\1/p" | head -1)"
     IFS=, read -r -a globs <<< "$line"
+    # no VERDICT_JOBS line: nothing to decide by (and "${globs[@]}" of an empty array is unbound under set -u in bash 3.2)
+    [ "${#globs[@]}" -gt 0 ] || return 1
     jobs="$(bounded "$GhSeconds" gh api "repos/{owner}/{repo}/actions/runs/$1/jobs?per_page=100" \
         --jq '.jobs[] | "\(.status)\t\(.conclusion)\t\(.name)"' 2>/dev/null)" || return 1
     while IFS=$'\t' read -r status conclusion name; do

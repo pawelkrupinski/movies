@@ -83,18 +83,25 @@ printf 'env:\n    LANG: C.UTF-8\n    VERDICT_JOBS: plan, check (*)\n' > "$grepo/
 going_head="$(commit_paths "a change whose check run still reports" -- .github/workflows/precommit-check.yml scripts/z.sh)"
 going_run="$(printf '{"id":55,"path":".github/workflows/precommit-check.yml","conclusion":null,"head_sha":"%s"}' "$going_head")"
 going_push() { reuse_push "$rbase..$going_head" PREPUSH_NO_REUSE=1 GH_MAIN="[$green]" GH_IMC="[$green]" PREPUSH_REMOTE_RUN=55 \
-  STUB_RUN="$going_run" STUB_RUN_JOBS="$1"; }
+  STUB_RUN="$going_run" STUB_RUN_JOBS="{\"jobs\":[$1]}"; }
 job() { printf '{"status":"%s","conclusion":%s,"name":"%s"}' "$1" "$2" "$3"; }
 checks_green="$(job completed '"success"' plan),$(job completed '"success"' 'check (rest)'),$(job completed '"skipped"' 'check (page)')"
+# Every jobs list is built here, at the top level: under bash 3.2 (the floor the hook's scripttests check runs these at,
+# run-script-tests --bash /bin/bash) a \" or a quoted ')' inside a $(...) nested in a "$(...)" reached the stub mangled,
+# its jq read nothing, and all four cases below failed in the push while passing under bash 5 (2026-11-07)
+queued_report="$(job queued null 'timings / report (timings)')"
+identity_going="$(job in_progress null 'check (identity 1/3)')"
+failed_report="$(job completed '"failure"' 'timings / report (timings)')"
+green_jobs="{\"jobs\":[$checks_green]}"
+going_undeclared="$(printf '{"id":55,"path":".github/workflows/precommit-check.yml","conclusion":null,"head_sha":"%s"}' "$remote_head")"
 check "...a run still going whose verdict jobs all passed, a report still queued: no check runs here" "0 12 1" \
-  "$(going_push "{\"jobs\":[$checks_green,$(job queued null 'timings / report (timings)')]}") $(grep -c 'passed in CI' "$gate/err")"
+  "$(going_push "$checks_green,$queued_report") $(grep -c 'passed in CI' "$gate/err")"
 check "...a verdict job still going: every check runs here" "0 13 1" \
-  "$(vouches "$(going_push "{\"jobs\":[$checks_green,$(job in_progress null 'check (identity 1/3)')]}")")"
+  "$(vouches "$(going_push "$checks_green,$identity_going")")"
 check "...any job failed, named or not: the same" "0 14 1" \
-  "$(vouches "$(going_push "{\"jobs\":[$checks_green,$(job completed '"failure"' 'timings / report (timings)')]}")")"
+  "$(vouches "$(going_push "$checks_green,$failed_report")")"
 check "...a commit declaring no verdict jobs: the run's own end decides" "0 15 1" \
-  "$(vouches "$(remote_push STUB_RUN="$(printf '{"id":55,"path":".github/workflows/precommit-check.yml","conclusion":null,"head_sha":"%s"}' "$remote_head")" \
-     STUB_RUN_JOBS="{\"jobs\":[$checks_green]}")")"
+  "$(vouches "$(remote_push STUB_RUN="$going_undeclared" STUB_RUN_JOBS="$green_jobs")")"
 head -7 "$reuse/runs" > "$reuse/runs.kept" && mv "$reuse/runs.kept" "$reuse/runs"  # the counts below start from 7
 scratch_git "$grepo" reset -q --hard "$docs_only"
 # A hook that differs by one byte: a copy beside the helpers it sources, a comment appended.
