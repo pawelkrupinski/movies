@@ -46,7 +46,7 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     new RefreshingSnapshot[Int]("spec", () => read(), () => newest, refreshAfter = 15.seconds, clock, store)
 
   /** What a previous app run left behind. */
-  private final class MapStore extends SnapshotStore {
+  private class MapStore extends SnapshotStore {
     val saved = scala.collection.concurrent.TrieMap.empty[String, DebugSnapshot[?]]
     def load[A](key: String): Option[DebugSnapshot[A]] = saved.get(key).map(_.asInstanceOf[DebugSnapshot[A]])
     def save[A](key: String, snapshot: DebugSnapshot[A]): Unit = saved(key) = snapshot
@@ -128,6 +128,43 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
 
     read.gate.countDown()
     eventually(snapshot.get().value == 1)
+  }
+
+  // Order independence #46 (shuffled, a loaded runner): a get judged the restored snapshot stale, the
+  // re-read already running then published and cleared its marker, and only then did the get reach
+  // refresh -- it started a SECOND read for the same staleness, whose 2 replaced the 1 the case waited
+  // for. The clock the get's staleness check reads is where it is held, so that window is stepped exactly.
+  it should "start no second read for a staleness the read in flight has answered meanwhile" in {
+    final class SignallingStore extends MapStore {
+      val firstSaved = new CountDownLatch(1)
+      override def save[A](key: String, snapshot: DebugSnapshot[A]): Unit = { super.save(key, snapshot); firstSaved.countDown() }
+    }
+    val store = new SignallingStore
+    store.saved("spec") = DebugSnapshot(41, None, Some(Start.minusSeconds(3600)))
+    val read      = new GatedRead
+    read.gate     = new CountDownLatch(1)
+    val submitted = new AtomicInteger(0)
+    val counting  = new ExecutionContext {
+      def execute(task: Runnable): Unit = { submitted.incrementAndGet(); tools.DedicatedThreads.execute(task) }
+      def reportFailure(cause: Throwable): Unit = tools.DedicatedThreads.reportFailure(cause)
+    }
+    val before    = new AtomicInteger(-1)
+    val clock = new MutableClock(Start)
+    val snapshot = new RefreshingSnapshot[Int]("spec", () => read(), () => None, refreshAfter = 15.seconds, clock, store)(
+      using counting)
+    answeredWhileHeld(read)(snapshot.get()).value shouldBe 41           // the restored 41 is stale: one read starts
+
+    tools.Answered.at("a stale get that reaches refresh after the read landed") {
+      clock.onNextReadBy(Thread.currentThread) {                          // the get's staleness check
+        read.gate.countDown()                                             // the read in flight finishes...
+        store.firstSaved.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)   // ...publishes, clears, saves
+        before.set(submitted.get())
+      }
+      snapshot.get()
+    }.value shouldBe 41
+    before.get() should be >= 0                                         // the hold ran
+    withClue("tasks submitted by the second get after the read landed (a second read):")(submitted.get() - before.get() shouldBe 0)
+    snapshot.get().value shouldBe 1
   }
 
   it should "store every read, stamped with when it was taken" in {

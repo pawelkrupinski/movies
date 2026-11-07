@@ -117,12 +117,13 @@ final class RefreshingSnapshot[A](
 
   def get(): DebugSnapshot[A] = {
     restore()
-    current.get() match {
+    val seen = current.get()
+    seen match {
       case Some(snapshot) =>
-        if (olderThan(snapshot, refreshAfter)) refresh()
+        if (olderThan(snapshot, refreshAfter)) refresh(seen)
         snapshot
       // The 70 s sits above the reads' own 60 s timeouts, so an inner timeout fires (and logs) first.
-      case None => Await.result(refresh(), 70.seconds)
+      case None => Await.result(refresh(seen), 70.seconds)
     }
   }
 
@@ -131,7 +132,8 @@ final class RefreshingSnapshot[A](
    *  snapshots can do them one at a time rather than all contending at once. */
   def refreshIfOlderThan(threshold: FiniteDuration): Future[Unit] = {
     restore()
-    if (current.get().forall(olderThan(_, threshold))) refresh().map(_ => ()).recover { case _ => () }
+    val seen = current.get()
+    if (seen.forall(olderThan(_, threshold))) refresh(seen).map(_ => ()).recover { case _ => () }
     else Future.unit
   }
 
@@ -154,36 +156,44 @@ final class RefreshingSnapshot[A](
     }
   }
 
-  private def refresh(): Future[DebugSnapshot[A]] = {
+  /** Re-read for a caller that judged `seen` (what [[current]] held when it looked) stale. */
+  private def refresh(seen: Option[DebugSnapshot[A]]): Future[DebugSnapshot[A]] = {
     val promise = Promise[DebugSnapshot[A]]()
     val marker  = Some(promise.future)
     if (inFlight.compareAndSet(None, marker)) {
-      promise.completeWith(Future {
-        // Over before the future completes, on the read's own thread: a callback queued after
-        // completion left a window in which a stale ask joined the FINISHED read and started none.
-        try {
-          // Read the mirror's newest stamp and the clock BEFORE the data: the badge may
-          // then overstate the data's age by the read's duration, but never understate it.
-          val newest   = freshness.newestUpdate()
-          val started  = clock.instant()
-          val snapshot = DebugSnapshot(read(), newest, Some(started))
-          // Published before the future completes, so a caller woken by it already sees it.
-          current.set(Some(snapshot))
-          logger.info(s"$label: read in ${JDuration.between(started, clock.instant()).toMillis} ms")
-          snapshot
-        } finally inFlight.set(None)
-      })
-      // A read the executor refused never ran the body that clears the marker: cleared here too, or
-      // every later ask joined that failed read and none was ever started again.
-      promise.future.onComplete(_ => { inFlight.compareAndSet(marker, None); () })(using ExecutionContext.parasitic)
-      promise.future.onComplete {
-        // Stored after the waiting caller is released, not on its time.
-        case Success(snapshot)  => saveIfNewest(snapshot)
-        case Failure(exception) =>
-          logger.warn(s"$label: re-read failed, keeping the previous snapshot: " +
-            s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
+      val now = current.get()
+      // A read that landed after the caller looked has answered its staleness already: another now read
+      // twice for one stale snapshot (Order independence #46, RefreshingSnapshotSpec). `now` is never
+      // None once `seen` was not: a snapshot is only ever replaced.
+      if (now ne seen) { inFlight.compareAndSet(marker, None); Future.successful(now.get) }
+      else {
+        promise.completeWith(Future {
+          // Over before the future completes, on the read's own thread: a callback queued after
+          // completion left a window in which a stale ask joined the FINISHED read and started none.
+          try {
+            // Read the mirror's newest stamp and the clock BEFORE the data: the badge may
+            // then overstate the data's age by the read's duration, but never understate it.
+            val newest   = freshness.newestUpdate()
+            val started  = clock.instant()
+            val snapshot = DebugSnapshot(read(), newest, Some(started))
+            // Published before the future completes, so a caller woken by it already sees it.
+            current.set(Some(snapshot))
+            logger.info(s"$label: read in ${JDuration.between(started, clock.instant()).toMillis} ms")
+            snapshot
+          } finally inFlight.set(None)
+        })
+        // A read the executor refused never ran the body that clears the marker: cleared here too, or
+        // every later ask joined that failed read and none was ever started again.
+        promise.future.onComplete(_ => { inFlight.compareAndSet(marker, None); () })(using ExecutionContext.parasitic)
+        promise.future.onComplete {
+          // Stored after the waiting caller is released, not on its time.
+          case Success(snapshot)  => saveIfNewest(snapshot)
+          case Failure(exception) =>
+            logger.warn(s"$label: re-read failed, keeping the previous snapshot: " +
+              s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
+        }
+        promise.future
       }
-      promise.future
-    } else inFlight.get().getOrElse(refresh())
+    } else inFlight.get().getOrElse(refresh(seen))
   }
 }

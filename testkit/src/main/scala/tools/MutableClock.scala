@@ -14,7 +14,13 @@ final class MutableClock(start: Instant) extends Clock {
   def advanceMillis(millis: Long): Unit   = advance(Duration.ofMillis(millis))
   /** Jump to `at` — backwards too, for a spec proving a rewound clock changes nothing. */
   def setTo(at: Instant): Unit            = now = at
-  override def instant(): Instant         = now
+  override def instant(): Instant         = { beforeRead.filter(_._1 eq Thread.currentThread).foreach { (_, action) => beforeRead = None; action() }; now }
+
+  /** Run `action` inside the next read `thread` makes, before it gets its answer: a spec holds a caller
+   *  exactly between two of its steps (RefreshingSnapshotSpec: a staleness judged, its refresh not yet
+   *  reached) without a timing. Once, then cleared. */
+  def onNextReadBy(thread: Thread)(action: => Unit): Unit = beforeRead = Some((thread, () => action))
+  @volatile private var beforeRead: Option[(Thread, () => Unit)] = None
   override def getZone: ZoneId            = ZoneOffset.UTC
   override def withZone(zone: ZoneId): Clock = this
 
