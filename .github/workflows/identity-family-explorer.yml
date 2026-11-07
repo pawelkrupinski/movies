@@ -126,11 +126,15 @@ jobs:
         timeout-minutes: 15
         permissions:
             contents: write
+            # the walk rows' shards (./.github/actions/download-artifacts)
+            actions: read
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts
-            - uses: actions/download-artifact@v6
+                  sparse-checkout: |
+                      scripts
+                      .github/actions/download-artifacts
+            - uses: ./.github/actions/download-artifacts
               with:
                   pattern: identity-family-*
                   path: ${{ runner.temp }}/family-shards

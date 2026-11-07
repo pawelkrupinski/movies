@@ -94,6 +94,7 @@ test/resources/fixtures/identity-judgements.tsv
 # workflows run (`uses: ./...` and every .github/ or scripts/ path they name, transitively). Do not edit.
 .github/actions/changed-paths/action.yml
 .github/actions/deployed-base/action.yml
+.github/actions/download-artifacts/action.yml
 .github/actions/job-telemetry/action.yml
 .github/actions/mark-grafana-deploy/action.yml
 .github/actions/run-page-test/action.yml

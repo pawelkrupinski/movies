@@ -1468,7 +1468,7 @@ jobs:
                   replay:        'false'
             - name: Download the drift harness's two A/A passes
               if: ${{ !cancelled() && matrix.phase == 'takes-drift-aa' }}
-              uses: actions/download-artifact@v6
+              uses: ./.github/actions/download-artifacts
               with:
                   # each into a directory of its name: the two hold the same file names
                   pattern: identity-drift-${{ inputs.code }}-takes-drift-aa-pass*

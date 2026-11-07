@@ -168,6 +168,8 @@ jobs:
             contents: write
             pull-requests: write
             issues: write
+            # the countries' captures (./.github/actions/download-artifacts)
+            actions: read
         env:
             BRANCH: chore/identity-capture
             OPEN_PR: ${{ inputs.open-pr && 'true' || 'false' }}
@@ -188,7 +190,7 @@ jobs:
                   ref: ${{ inputs.open-pr && 'chore/identity-capture' || 'main' }}
                   token: ${{ steps.app-token.outputs.token || github.token }}
 
-            - uses: actions/download-artifact@v6
+            - uses: ./.github/actions/download-artifacts
               if: ${{ !inputs.open-pr }}
               with:
                   pattern: identity-capture-*

@@ -1,0 +1,27 @@
+name: Download this run's artifacts, each into a directory of its name
+description: >
+    Every artifact of this run matching `pattern`, each into `path/<artifact name>` -- the only match too. Not
+    actions/download-artifact@v6, which extracts a pattern matching ONE artifact straight into `path`, so a reader's
+    `path/<name-pattern>/...` glob found nothing whenever one row ran (Identity rule ablation run 42377038878).
+    download_artifact_layout_test.py keeps every pattern download either merged or here. The job needs `actions: read`.
+inputs:
+    pattern:
+        description: The artifact names to download, a glob.
+        required: true
+    path:
+        description: The directory to download into.
+        required: true
+runs:
+    using: composite
+    steps:
+        - shell: bash
+          env:
+              GH_TOKEN: ${{ github.token }}
+              PATTERN: ${{ inputs.pattern }}
+              DEST: ${{ inputs.path }}
+          run: |
+              set -euo pipefail
+              mkdir -p "$DEST"
+              # `-p` always nests by artifact name; no match is a failure gh reports ("no artifact matches")
+              gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -p "$PATTERN" -D "$DEST"
+              ls -1 "$DEST" | sed "s/^/downloaded /"
