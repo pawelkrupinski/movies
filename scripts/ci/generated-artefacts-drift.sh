@@ -18,7 +18,7 @@
 #   data/germany/venues.json + city-coords.json → data/germany/scripts/build_pages.py → data/germany/pages.json
 #   data/spain/town-coords.json → data/spain/scripts/build_pages.py   → data/spain/pages.json
 #   data/germany, data/spain, data/us → their generate_roster.py     → *RosterData.scala
-#   data/germany/venue-sources.json → data/germany/scripts/generate_sources.py → GermanSourcesData.scala
+#   data/germany/venue-sources.json (less feed-mirrors.json) → data/germany/scripts/generate_sources.py → GermanSourcesData.scala
 #   data/spain/{taquilla,artesiete}.json → data/spain/scripts/generate_own_sources.py → SpanishOwnSourcesData.scala
 #
 # An edit to any link that skips the regeneration below it compiles, passes every spec that

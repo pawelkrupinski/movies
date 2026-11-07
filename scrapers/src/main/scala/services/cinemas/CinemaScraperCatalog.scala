@@ -269,7 +269,7 @@ class CinemaScraperCatalog(
    *  are wired in above: which page lists which venue is data (`models.PolishPages`
    *  and `models.UkPages`, re-clustered by each country's `build_pages.py`), and a
    *  re-cluster must not need a single scraper moved here to take effect. The
-   *  data-driven countries (Germany's 448, the US's 1,995, Spain's 240 pages) are
+   *  data-driven countries (Germany's 447, the US's 1,995, Spain's 240 pages) are
    *  built per city to begin with. */
   private val wiredGroups: Seq[Seq[CinemaScraper]] =
     Seq(poland.scrapers, uk.scrapers) ++ (germanBaseByCity.values ++ usBaseByCity.values ++ spanishBaseByCity.values).toSeq

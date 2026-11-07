@@ -1,5 +1,5 @@
 // GENERATED from data/germany/venue-sources.json by data/germany/scripts/generate_sources.py
-// -- do NOT edit by hand. Measured 2026-10-11: 1184 venues served other than
+// -- do NOT edit by hand. Measured 2026-10-11: 1183 venues served other than
 // Filmstarts-then-kinoprogramm.com. Regenerate after re-running harvest_sources.py; see data/germany/README.md.
 package services.cinemas.de
 
@@ -18,7 +18,7 @@ private[de] object GermanSourcesData {
     "A0005" -> Seq(c("945"), k("1499", "/kino/celle/achteinhalb"), f("A0005"), p("/kino/celle/kino-achteinhalb-46417")),
     "A0006" -> Seq(c("242"), k("1325", "/kino/berlin/acud-kino"), f("A0006"), p("/kino/berlin/acud-kino-31396")),
     "A0007" -> Seq(c("8"), k("296", "/kino/wiesbaden/cineplex"), f("A0007")),
-    "A0008" -> Seq(k("295", "/kino/berlin/cineplex"), c("142"), f("A0008"), p("/kino/berlin/adria-filmtheater-31359")),
+    "A0008" -> Seq(c("142"), f("A0008"), p("/kino/berlin/adria-filmtheater-31359")),
     "A0009" -> Seq(f("A0009"), c("549"), k("63", "/kino/cuxhaven/bali-kino-center-cuxhaven")),
     "A0010" -> Seq(c("1159"), k("1888", "/kino/bielefeld/ajz-kino"), f("A0010"), p("/kino/bielefeld/ajz-kino-61137")),
     "A0013" -> Seq(c("145"), k("321", "/kino/falkensee/cineplex-falkensee-kino-ala"), f("A0013")),
@@ -381,7 +381,7 @@ private[de] object GermanSourcesData {
     "A0582" -> Seq(f("A0582"), c("689"), k("596", "/kino/geislingen/gloria-kino-center-geislingen"), p("/kino/geislingen-an-der-steige/gloria-kino-center-32769")),
     "A0585" -> Seq(c("774"), f("A0585"), k("3659", "/kino/schwaebisch-hall/kinostar-gloria-schwaebisch-hall")),
     "A0588" -> Seq(c("543"), k("1330", "/kino/bremen/gondel-filmtheater-bremen"), f("A0588"), p("/kino/bremen/gondel-32366")),
-    "A0590" -> Seq(k("246", "/kino/hannover/cinemaxx-hannover-raschplatz"), c("577"), f("A0590"), p("/kino/hannover/kino-am-raschplatz-60676")),
+    "A0590" -> Seq(c("577"), f("A0590"), p("/kino/hannover/kino-am-raschplatz-60676")),
     "A0591" -> Seq(f("A0591"), c("364"), k("609", "/kino/grevenbroich/grefi-kino-grevenbroich"), p("/kino/grevenbroich/grefikinocenter-33182")),
     "A0592" -> Seq(f("A0592"), c("1169")),
     "A0593" -> Seq(c("1423"), k("700", "/kino/murnau-am-staffelsee/kino-im-griesbraeu"), f("A0593")),
@@ -1091,7 +1091,7 @@ private[de] object GermanSourcesData {
     "A2689" -> Seq(c("30"), k("322", "/kino/baden-baden/cineplex"), f("A2689"), p("/kino/badenbaden/cineplex-86277")),
     "A2691" -> Seq(f("A2691"), c("1168"), k("615", "/kino/offenbach-am-main/hafenkino"), p("/kino/offenbach-am-main/hafenkino-programmkino-im-kulturzentrum-hafen-2-86217")),
     "A2694" -> Seq(c("1170"), k("177", "/kino/brake/centraltheater-brake"), f("A2694"), p("/kino/brake/centraltheater-brake-86458")),
-    "A2700" -> Seq(k("695", "/kino/gruenstadt/filmwelt-gruenstadt"), c("448"), f("A2700"), p("/kino/gruenstadt/filmwelt-gruenstadt-86677")),
+    "A2700" -> Seq(c("448"), f("A2700"), p("/kino/gruenstadt/filmwelt-gruenstadt-86677")),
     "A2704" -> Seq(c("31"), f("A2704"), p("/kino/baunatal/cineplex-87219")),
     "A2705" -> Seq(c("39"), f("A2705"), p("/kino/germering/cineplex-87221")),
     "A2707" -> Seq(f("A2707"), c("1172"), k("1898", "/kino/bad-gandersheim/kino-gandeon"), p("/kino/bad-gandersheim/kino-gandeon-87077")),
@@ -1153,7 +1153,7 @@ private[de] object GermanSourcesData {
     "A2891" -> Seq(c("274"), k("985", "/kino/eberswalde/movie-magic-eberswalde"), f("A2891")),
     "A2894" -> Seq(c("930"), k("236", "/kino/heilbronn/cinemaxx"), f("A2894"), p("/kino/heilbronn/cinemaxx-42206")),
     "A2895" -> Seq(c("1234"), k("2190", "/kino/nordhorn/uci-kinowelt-nordhorn"), f("A2895")),
-    "A2897" -> Seq(k("262", "/kino/lippstadt/cineplex-cinema-studio-center"), c("3396"), f("A2897")),
+    "A2897" -> Seq(c("3396"), f("A2897")),
     "A2898" -> Seq(c("1071"), k("1444", "/kino/eschborn-taunus/eschborn-k"), f("A2898"), p("/kino/eschborn/eschborn-k-75177")),
     "A2899" -> Seq(c("1249"), k("2135", "/kino/kamp-lintfort/hall-of-fame"), p("/kino/kamplintfort/hall-of-fame-91817"), f("A2899")),
     "A2900" -> Seq(c("1243"), k("2223", "/kino/hamburg/astor-film-lounge-hafencity"), f("A2900"), p("/kino/hamburg/astor-film-lounge-hafencity-91617")),
@@ -1197,7 +1197,6 @@ private[de] object GermanSourcesData {
     "cineamo:773" -> Seq(k("3657", "/kino/schwaebisch-hall/kinostar-lichtspiele-schwaebisch-hall"), c("773")),
     "kinoheld:1372" -> Seq(k("1372", "/kino/masserberg/kino-im-badehaus-masserberg")),
     "kinoheld:1461" -> Seq(k("1461", "/kino/bonn/arthaus-kino-im-rheinischen-landesmuseum")),
-    "kinoheld:2323" -> Seq(k("2323", "/kino/brunn-bei-dorfen-stadt/kino-in-dorfen")),
     "kinoheld:2417" -> Seq(k("2417", "/kino/aachen/raststaette")),
     "kinoheld:3501" -> Seq(k("3501", "/kino/mannheim/kino-im-stadthaus-64885a71ab19f")),
     "kinoheld:3581" -> Seq(k("3581", "/kino/velbert/forum-velbert")),

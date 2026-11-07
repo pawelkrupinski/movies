@@ -328,5 +328,11 @@
     "reason": "duplicate",
     "retiredOn": "2026-10-12",
     "evidence": "The Central's old Maxstrasse 2 listing; the cinema is now Central im Buergerbraeu (A2742, Frankfurter Str. 87), rostered and served (Cineamo 1081). Its site central-bb.de sells through kinoheld's 'central-programmkino' (cinema MTI5MzIwNA in its sitefactory, 133 shows to 2027-06 on 2026-10-12) -- the same slug as kinoheld 1067, A2742's. A2621 has no showtimes on any source."
+  },
+  "kinoheld:2323": {
+    "name": "Kino in Dorfen",
+    "reason": "duplicate",
+    "retiredOn": "2026-11-07",
+    "evidence": "OPEN, and already rostered as A2671 sKino im Jakobmayer: kinoheld's entry 2323 (Lerchenhub 1) lists sKino's programme, every show booking kinotickets.express/dorfen -- 83 of its 83 booking URLs are sKino's on the DE prod mirror of 2026-11-06 (data/germany/feed-mirrors.json)."
   }
 }
