@@ -1436,6 +1436,35 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       .filter { case (raw, query) => listingQuery(titles, models.KinoCentrum3D, raw) == query }.map(_._1) shouldBe empty
   }
 
+  /** Listings of the 2026-11 UK / US recordings whose query kept a marker (SearchQueryMarkersSpec): a restoration note
+   *  a box office closed with one bracket too many, a "4K Restoration" print tag billed between a series and its bill,
+   *  and a Q&A after "plus" naming who gives it — the "+" and "with" spellings of the same tail beside it. */
+  private val novemberScreeningMarkerListings: Seq[(String, String)] = Seq(
+    "Rocky (50th Anniversary, 4K Restoration))"                               -> "Rocky",
+    "Arrietty (4K Restoration))"                                              -> "Arrietty",
+    "Thunderbirds 4K Restoration Bill Altantic Inferno and Attack of the Alligators!" ->
+      "Thunderbirds Bill Altantic Inferno and Attack of the Alligators!",
+    "The Family Recipe Plus Director Q&A"                                     -> "The Family Recipe",
+    "Premature plus Writer/Director Q&A"                                      -> "Premature",
+    "The Model with Director Q&A"                                             -> "The Model",
+    "Voices of the Shenandoah River with Q&A"                                 -> "Voices of the Shenandoah River"
+  )
+
+  "A screening marker the 2026-11 recordings billed" should "leave the listing's search query" in {
+    val titles = new TitleNormalizer(withExtras)
+    novemberScreeningMarkerListings.foreach { case (raw, query) =>
+      withClue(s"searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) shouldBe query)
+    }
+  }
+
+  it should "leave a title holding the words, and a restoration billed with something after it, alone" in {
+    val titles = new TitleNormalizer(withExtras)
+    Seq("Q&A with the Director", "The Director", "Plus One", "With Love").foreach { t =>
+      withClue(s"searchQuery of '$t': ")(listingQuery(titles, models.KinoCentrum3D, t) shouldBe t)
+    }
+    listingQuery(titles, models.KinoCentrum3D, "Arrietty - 4k Restoration - subtitled") shouldBe "Arrietty"
+  }
+
   it should "leave a film whose title merely holds the words, and a format tag after a pipe, alone" in {
     val titles = new TitleNormalizer(withExtras)
     Seq("Silver Screen", "Plus One", "The Parent Trap", "Relaxed", "M*A*S*H", "Ocean's Eleven", "Jaws 3-D",

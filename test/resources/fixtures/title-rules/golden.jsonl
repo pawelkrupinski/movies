@@ -2213,7 +2213,7 @@
 {"text":"CHÉRI, ICH KOMME! - DIE ERFINDUNG DER LUST"}
 {"text":"CHŁOPIEC NA KRAŃCACH ŚWIATA"}
 {"text":"CHŁOPIEC NA KRAŃCACH ŚWIATA/Kino Cafe","pl,uk,de,us,es":{"venue":{"kino-oskard":"CHŁOPIEC NA KRAŃCACH ŚWIATA"}}}
-{"text":"CICADA MUSIC VIDEO WITH LIVE Q&A + WICKER MAN (1973) DOUBLE FEATURE"}
+{"text":"CICADA MUSIC VIDEO WITH LIVE Q&A + WICKER MAN (1973) DOUBLE FEATURE","pl,uk,de,us,es":{"query":"CICADA MUSIC VIDEO"}}
 {"text":"CINC: Maracuda (Català)"}
 {"text":"CINEBRASIL: NARCISO"}
 {"text":"CINEBRASIL: PRECISAMOS FALAR"}
@@ -11985,7 +11985,7 @@
 {"text":"Pretty Babies"}
 {"text":"Pretty Woman"}
 {"text":"Pretty in Pink"}
-{"text":"Preview: All Rivers Spill Their Stories to the Sea + director Q&A (12A)","pl,uk,de,us,es":{"query":"All Rivers Spill Their Stories to the Sea + director Q&A","programme":"Preview: ","bannerEnd":9}}
+{"text":"Preview: All Rivers Spill Their Stories to the Sea + director Q&A (12A)","pl,uk,de,us,es":{"query":"All Rivers Spill Their Stories to the Sea","programme":"Preview: ","bannerEnd":9}}
 {"text":"Preview: Dune: Part Three","pl,uk,de,us,es":{"query":"Dune: Part Three","programme":"Preview: ","bannerEnd":9}}
 {"text":"Preview: Fatherland (12A) S","pl,uk,de,us,es":{"query":"Fatherland (12A) S","programme":"Preview: ","bannerEnd":9}}
 {"text":"Preview: Minotaur (18) S","pl,uk,de,us,es":{"query":"Minotaur (18) S","programme":"Preview: ","bannerEnd":9}}
@@ -14019,7 +14019,7 @@
 {"text":"Space Cadet (2025)","pl,uk,de,us,es":{"key":"Space Cadet","venue":{"kino-kinematograf":"Space Cadet"}}}
 {"text":"Space Jam"}
 {"text":"Space Jam - 30th Anniversary","pl,uk,de,us,es":{"query":"Space Jam"}}
-{"text":"Space: 1999: 4K Restoration Double Bill"}
+{"text":"Space: 1999: 4K Restoration Double Bill","pl,uk,de,us,es":{"query":"Space: 1999: Double Bill"}}
 {"text":"Space: The New Frontier"}
 {"text":"Spaceballs"}
 {"text":"Spaceballs - Mel Brooks verrückte Raumfahrt"}
