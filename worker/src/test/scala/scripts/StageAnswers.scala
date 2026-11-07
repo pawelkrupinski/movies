@@ -27,6 +27,11 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
   private val hashing = new PosterHashing(new services.sharecards.EgressPosterDownload(answering.fetch), new services.sharecards.VipsPosterShrinker(binary = None),
     answering.posterImages, answering.country.language.getLanguage)
   private val failures = new ConcurrentHashMap[(VoterFamily, String), Integer]()
+  /** The catalogue questions whose ask failed, and how often: the family questions' [[failures]] for the catalogue, as
+   *  production's memory records any failed ask (`AgreementHandlers.asking` -> `QuestionMemory.failed`). Without it a
+   *  question the recording cannot answer (a Wikidata id it never met: a gap, read as `{}`) was never attempted, its
+   *  cluster never settled, and every settle ran its 60 rounds (Identity family explorer #5, DE). */
+  private val catalogueFailures = new ConcurrentHashMap[CatalogueQuestion, Integer]()
   /** The family questions an ask of this stage filed: answered, given up on by nothing. */
   private val answered = ConcurrentHashMap.newKeySet[(VoterFamily, String)]()
   /** How many attempts were marked: production's memory's marks (`QuestionMemory.marks`), which the stage reads to
@@ -36,6 +41,7 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
    *  waiting on it settles ([[AgreementStage.settles]]). An answer filed is attempted by itself. */
   def attempted(question: Question): Boolean = question match {
     case Question.Family(family, asked) => failures.containsKey((family, asked))
+    case Question.Catalogue(asked)      => catalogueFailures.containsKey(asked)
     case _                              => false
   }
   /** Asked and come to an outcome -- answered (filed, or a durable non-answer) or failed: production's memory's
@@ -43,6 +49,7 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
   def tried(question: Question): Boolean = question match {
     case Question.Family(family, asked) =>
       answered.contains((family, asked)) || failures.containsKey((family, asked)) || released.contains((family, asked))
+    case Question.Catalogue(asked)      => catalogueFailures.containsKey(asked)
     case _                              => false
   }
   /** Answered or given up on, as production's memory reads it (`QuestionMemory.givenUp`): a family question that
@@ -50,9 +57,13 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
    *  past it is Pending until it is filed or unreachable (the owner, 2026-10-31). */
   def givenUp(question: Question): Boolean = question match {
     case Question.Family(family, asked) => StageAnswers.givenUp(answered.contains((family, asked)), Option(failures.get((family, asked))).map(_.intValue))
+    case Question.Catalogue(asked)      => StageAnswers.givenUp(answered = false, Option(catalogueFailures.get(asked)).map(_.intValue))
     case _                              => true
   }
   def unreachable: Set[(VoterFamily, String)] = failures.asScala.filter(_._2 >= tools.AgreementQuestionRounds.Attempts).keySet.toSet
+  /** The catalogue questions given up on as unreachable: asked no more, as [[unreachable]]'s family questions. */
+  def unreachableCatalogue: Set[CatalogueQuestion] =
+    catalogueFailures.asScala.filter(_._2 >= tools.AgreementQuestionRounds.Attempts).keySet.toSet
   def tmdbOf(imdb: String): Answer[Option[Int]] = found(imdb).fold(answering.find(imdb))(Answer.Known(_))
   def stage(lookups: IdentityLookups, verdicts: services.identity.agreement.AgreementVerdicts, budgets: Boolean,
             keys: services.identity.agreement.AgreementKeys = new services.identity.agreement.InMemoryAgreementKeys,
@@ -68,18 +79,27 @@ class StageAnswers(answering: StageAnswers.Sources, docs: TmdbDocuments, clock: 
     Question.families(stage.wanted) -- unreachable
   /** Whether the stage's last apply left something to answer. */
   def open(stage: AgreementStage): Boolean =
-    askable(stage).nonEmpty || stage.wanted.exists { case Question.Poster(_) | Question.Catalogue(_) => true; case _ => false }
+    askable(stage).nonEmpty || askableCatalogue(stage).nonEmpty || stage.wanted.exists { case Question.Poster(_) => true; case _ => false }
+  /** The catalogue questions the stage's last apply left open, none given up as unreachable. */
+  def askableCatalogue(stage: AgreementStage): Set[CatalogueQuestion] =
+    stage.wanted.collect { case Question.Catalogue(q) => q } -- unreachableCatalogue
   /** What the stage's last apply left open, for a settle round's line. */
   def described(stage: AgreementStage): String =
     s"${askable(stage).size} question(s), ${stage.wanted.count(_.isInstanceOf[Question.Poster])} poster(s), " +
-      s"${stage.wanted.count(_.isInstanceOf[Question.Catalogue])} catalogue question(s) open, backlog ${stage.backlog}"
+      s"${askableCatalogue(stage).size} catalogue question(s) open, backlog ${stage.backlog}"
   /** One round of the queue's work: the stage's open questions answered — a held filed answer released, the rest
    *  asked of the sources — its posters hashed and its catalogue questions filed. */
   def answer(stage: AgreementStage, release: String => Boolean): Unit = {
     val open = StageAnswers.asks(store, askable(stage).toSeq, release)
     tools.ConcurrentAsks.each(stage.wanted.toSeq.collect { case Question.Poster(q) => q }, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
-    catalogue.file(stage.wanted.collect { case Question.Catalogue(q) => q })
+    fileCatalogue(askableCatalogue(stage))
     file(open)
+  }
+  /** `questions` asked of the catalogue and filed; each whose ask failed marked attempted, as a failed family ask is. */
+  def fileCatalogue(questions: Iterable[CatalogueQuestion]): Unit = {
+    val failed = catalogue.failedOf(questions)
+    failed.foreach(question => catalogueFailures.merge(question, 1, (a, b) => a + b))
+    if (failed.nonEmpty) { val _ = marks.incrementAndGet() }
   }
   /** The family questions a stage asks INLINE ([[AgreementStage.AskNow]]): answered before its apply reads them again,
    *  as the worker's inline asks answer them ([[services.identity.adapters.InlineFamilyAsks]]) — else a take the worker
