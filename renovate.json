@@ -40,6 +40,15 @@
       "matchManagers": ["gradle"],
       "matchPackageNames": ["org.jetbrains.kotlinx:kotlinx-coroutines-**"],
       "groupName": "kotlinx-coroutines"
+    },
+    {
+      "description": "Robolectric and the android-all-instrumented SDK runtime it loads (android/app/build.gradle.kts's robolectricAndroidAll configuration) are versioned to each other's instrumentation level: a bump of one alone fails every Robolectric test. Pinned by android/scripts/renovate_config_test.py.",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": [
+        "org.robolectric:robolectric",
+        "org.robolectric:android-all-instrumented"
+      ],
+      "groupName": "Robolectric"
     }
   ]
 }
