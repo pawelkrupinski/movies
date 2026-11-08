@@ -28,6 +28,21 @@ MODEL VERSION BUMP: the identity-rules digest moves (resolver source changed); s
 
 ## Cost
 
-(filled in below from the what-if and the measure)
+Evidence nodes and searches over the prod mirror (snapshot 2026-11-08, detail pages left out), base key -> head key:
+
+| cc | listings | keyed by season | nodes | distinct searches | searches over nodes |
+|---|---|---|---|---|---|
+| pl | 11113 | 243 | 3280 -> 3280 | 12457 -> 12457 | 19602 -> 19602 |
+| de | 32507 | 2202 | 7617 -> 7623 (+6) | 35675 -> 35675 | 52059 -> 52257 |
+| uk | 32956 | 4018 | 4978 -> 4979 (+1) | 17132 -> 17132 | 29990 -> 30003 |
+| es | 6033 | 137 | 490 -> 490 | 2330 -> 2330 | 2953 -> 2953 |
+| us | 89309 | 5446 | 2288 -> 2288 | 9311 -> 9311 | 11409 -> 11409 |
+
+The seven splits are season-named RBO billings with screenings in both 2026/27 and 2027/28 (DE "RBO 2026/27: Romeo und
+Julia" x6 shapes, UK "RBO Cinema Season 2026-27: Manon"). No new distinct search: TMDB is asked nothing more, and the
+searches over nodes, answered from the resolve's own cache, grow 0.4% in DE and less elsewhere.
 
 ## Measured
+
+`scripts/identity-what-if` (prod mirror, synced 2026-11-06, base 3c4f6b0731): every family re-resolved (the key reaches
+all); pl, de, uk, es, us model and final: 0 takes moved.
