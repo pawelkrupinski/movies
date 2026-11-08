@@ -84,7 +84,8 @@ struct CityGate: View {
 struct CityResolverView: View {
     @Environment(UserPreferences.self) var prefs
     @Environment(CatalogStore.self) var catalog
-    @StateObject private var resolver = LocationCityResolver()
+    /// The app's one resolver, built in `KinowoApp`.
+    @EnvironmentObject private var resolver: LocationCityResolver
     @State private var detected: City?
     @State private var showChoice = false
 
@@ -202,10 +203,9 @@ struct CityChoiceView: View {
     /// `nil` when location was unavailable (then there's nothing to suppress).
     var nearest: City?
 
-    /// The "use my location" toolbar button's own resolver — separate from the
-    /// gate's `CityResolverView`, since this button re-runs the same check on
-    /// demand rather than once on first launch.
-    @StateObject private var locateResolver = LocationCityResolver()
+    /// The app's one resolver (`KinowoApp`), which the "use my location"
+    /// toolbar button re-runs on demand.
+    @EnvironmentObject private var locateResolver: LocationCityResolver
     /// A fix is in flight for the toolbar button — disables it and swaps its
     /// icon for a spinner so a second tap can't stack a second request.
     @State private var locating = false

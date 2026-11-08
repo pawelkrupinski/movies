@@ -34,10 +34,17 @@ extension CLLocationManager: LocationRequesting {}
 /// unit-tested cross-platform; what this class owns, and what
 /// `LocationCityResolverTests` covers, is the ORDER and the DEADLINES.
 ///
-/// An `ObservableObject` though it publishes nothing: so a view holds it as a
-/// `@StateObject`, whose autoclosure builds it once per view identity. Held as
-/// `@State`, its initial value ran on every view-struct init — a fresh
-/// `CLLocationManager` and delegate each time, thrown away.
+/// Built ONCE, by the composition root (`KinowoApp`), and handed to the gate,
+/// the picker's "use my location" button and `ContentView`'s app-open "switch
+/// city?" check through the environment. So two requests can be in flight at
+/// once — at most one city `Outcome` and one bare `Coordinate`: one fix answers
+/// both, the deadline ends both, and a second request of the same kind
+/// supersedes the first (answered `.unavailable` / `nil`).
+///
+/// An `ObservableObject` though it publishes nothing: so the app holds it as a
+/// `@StateObject`, whose autoclosure builds it once. Held as `@State`, its
+/// initial value runs on every struct init — a fresh `CLLocationManager` and
+/// delegate each time, thrown away.
 @MainActor
 final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerDelegate {
     enum Outcome: Equatable {
@@ -140,7 +147,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         self.countryCode = countryCode
         self.cities = cities
         return await withCheckedContinuation { (cont: CheckedContinuation<Outcome, Never>) in
-            continuation = cont
+            supersedeOutcome(with: cont)
             self.log.notice("gate: resolving in \(countryCode, privacy: .public) against \(cities.count, privacy: .public) cities, authorization=\(self.requester.authorizationStatus.rawValue, privacy: .public)")
             start(for: requester.authorizationStatus)
         }
@@ -154,7 +161,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         self.countryCode = nil
         self.cities = cities
         return await withCheckedContinuation { (cont: CheckedContinuation<Outcome, Never>) in
-            continuation = cont
+            supersedeOutcome(with: cont)
             self.log.notice("gate: resolving across every country against \(cities.count, privacy: .public) cities, authorization=\(self.requester.authorizationStatus.rawValue, privacy: .public)")
             start(for: requester.authorizationStatus)
         }
@@ -173,9 +180,18 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
             return nil
         }
         return await withCheckedContinuation { (cont: CheckedContinuation<Coordinate?, Never>) in
+            let superseded = coordinateContinuation
             coordinateContinuation = cont
+            superseded?.resume(returning: nil)
             requestFix()
         }
+    }
+
+    /// Park `cont` as THE city request, answering the one it replaces.
+    private func supersedeOutcome(with cont: CheckedContinuation<Outcome, Never>) {
+        let superseded = continuation
+        continuation = cont
+        superseded?.resume(returning: .unavailable)
     }
 
     // MARK: - Flow
@@ -280,10 +296,8 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     /// check) wants it raw; the gate's request wants it resolved to a `City`.
     func deliverFix(lat: Double, lon: Double) {
         guard isAwaitingOutcome else { return }
-        if coordinateContinuation != nil {
-            finishCoordinate(Coordinate(lat: lat, lon: lon))
-            return
-        }
+        finishCoordinate(Coordinate(lat: lat, lon: lon))
+        guard continuation != nil else { return }
         let city = countryCode.map { cities.nearestWithin100km(lat: lat, lon: lon, inCountry: $0) }
             ?? cities.nearestWithin100km(lat: lat, lon: lon)
         if let city {
@@ -310,8 +324,8 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         deliverNoFix()
     }
 
-    /// Fail whichever request is in flight: the coordinate request resolves
-    /// to `nil`, the gate's `Outcome` request to `.unavailable`. A fix we can
+    /// Fail every request in flight: the coordinate request resolves to
+    /// `nil`, the gate's `Outcome` request to `.unavailable`. A fix we can
     /// no longer get fresh is still worth answering with a STALE one — an
     /// hours-old fix names the right city far more often than not, and the
     /// alternative is handing the user a 41-city list they already told us they
@@ -327,11 +341,8 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
                 return
             }
             log.notice("gate: no fix at all — falling back to the manual list")
-            if coordinateContinuation != nil {
-                finishCoordinate(nil)
-            } else {
-                finish(.unavailable)
-            }
+            finishCoordinate(nil)
+            finish(.unavailable)
         }
     }
 
@@ -355,16 +366,22 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
 
     private func finish(_ outcome: Outcome) {
         guard let cont = continuation else { return }
-        cancelTimeout()
         continuation = nil
+        cancelTimeoutWhenIdle()
         cont.resume(returning: outcome)
     }
 
     private func finishCoordinate(_ coordinate: Coordinate?) {
         guard let cont = coordinateContinuation else { return }
-        cancelTimeout()
         coordinateContinuation = nil
+        cancelTimeoutWhenIdle()
         cont.resume(returning: coordinate)
+    }
+
+    /// The deadline belongs to every request in flight: only the last one
+    /// to finish disarms it.
+    private func cancelTimeoutWhenIdle() {
+        if !isAwaitingOutcome { cancelTimeout() }
     }
 
     // MARK: - CLLocationManagerDelegate

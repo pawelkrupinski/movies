@@ -12,6 +12,10 @@ struct KinowoApp: App {
     @State private var sync: StateSyncService
     @State private var deepLink = DeepLinkCoordinator()
     @State private var clientSupport = ClientSupportStore()
+    /// The one location resolver: the city gate, the picker's "use my
+    /// location" button and `ContentView`'s "switch city?" check share it.
+    /// A `@StateObject`, so it (and its `CLLocationManager`) is built once.
+    @StateObject private var locationResolver = LocationCityResolver()
     /// The one poster disk cache: the grid and detail images read it through
     /// the environment, `store` purges it daily.
     private let posters: PosterStore
@@ -90,6 +94,7 @@ struct KinowoApp: App {
                 .environment(authService)
                 .environment(\.stateSync, sync)
                 .environment(deepLink)
+                .environmentObject(locationResolver)
                 .environment(\.posterStore, posters)
                 // Follow the selected (country-independent) language for
                 // in-session SwiftUI `Text(LocalizedStringKey)` resolution

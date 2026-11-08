@@ -87,10 +87,10 @@ struct ContentView: View {
 
     /// "You're nearer another city — switch?" prompt. Populated by the
     /// authorized-only location check on open / foreground; presenting the
-    /// alert when non-nil. The resolver is held as state so it survives
-    /// across the async fix.
+    /// alert when non-nil.
     @State private var citySwitchSuggestion: City.CitySwitchSuggestion?
-    @StateObject private var locationResolver = LocationCityResolver()
+    /// The app's one resolver, built in `KinowoApp`.
+    @EnvironmentObject private var locationResolver: LocationCityResolver
 
     /// Run after the carousel commits a day change (it has already advanced
     /// `dateFilter`): flash the new day's name and retire the onboarding hint.

@@ -69,6 +69,24 @@ private let granted = CLAuthorizationStatus.authorizedWhenInUse
 private let granted = CLAuthorizationStatus.authorizedAlways
 #endif
 
+/// Resumes a continuation once, with whichever answer arrives first.
+private final class LockedAnswer<T: Sendable>: Sendable {
+    private let pending = OSAllocatedUnfairLock<CheckedContinuation<T?, Never>?>(initialState: nil)
+
+    func arm(_ continuation: CheckedContinuation<T?, Never>) { pending.withLock { $0 = continuation } }
+
+    /// Whether this answer was the first.
+    @discardableResult
+    func resume(_ answer: T?) -> Bool {
+        let continuation = pending.withLock { pending in
+            defer { pending = nil }
+            return pending
+        }
+        continuation?.resume(returning: answer)
+        return continuation != nil
+    }
+}
+
 /// A file-scope constant rather than a test property: `async let` hands it to a
 /// child task, which a main-actor-isolated property can't be.
 private let cities = [
@@ -88,6 +106,26 @@ final class LocationCityResolverTests: XCTestCase {
             verticalAccuracy: -1,
             timestamp: Date().addingTimeInterval(-secondsOld)
         )
+    }
+
+    /// `request`'s answer, or `nil` when none comes within five seconds — a
+    /// request left holding a continuation nobody resumes fails the test
+    /// instead of hanging the suite.
+    private func answer<T: Sendable>(
+        _ request: @escaping @MainActor () async -> T,
+        file: StaticString = #filePath, line: UInt = #line
+    ) -> Task<T?, Never> {
+        let box = LockedAnswer<T>()
+        return Task { @MainActor in
+            await withCheckedContinuation { (done: CheckedContinuation<T?, Never>) in
+                box.arm(done)
+                Task { @MainActor in box.resume(await request()) }
+                Task {
+                    try? await Task.sleep(for: .seconds(5))
+                    if box.resume(nil) { XCTFail("the request was never answered", file: file, line: line) }
+                }
+            }
+        }
     }
 
     /// Poll until the resolver has reached the state `condition` names — it
@@ -394,10 +432,82 @@ final class LocationCityResolverTests: XCTestCase {
         XCTAssertEqual(requester.locationRequests, 1)
     }
 
-    /// The views hold the resolver as a `@StateObject`: its autoclosure builds the resolver once per view
-    /// identity, never on a view-struct init that SwiftUI throws away (a `@State` initial value is built on
-    /// every one — a fresh `CLLocationManager` each time). The views themselves are in no test target; this
-    /// pins what they rely on.
+    /// The app builds ONE resolver (`KinowoApp`) for the gate, the picker's
+    /// "use my location" button and the app-open "switch city?" check, so a
+    /// silent coordinate check can still be in flight when the gate asks for a
+    /// city (a country switch tears `ContentView` down mid-check). One fix
+    /// answers both, and finishing the first must not disarm the deadline the
+    /// other still waits on.
+    func testOneFixAnswersACoordinateCheckAndACityRequestInFlightTogether() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+
+        let coordinate = answer { await resolver.resolveIfAuthorized() }
+        await waitUntil { requester.locationRequests == 1 }
+        let outcome = answer { await resolver.resolve(in: "pl", cities: cities) }
+        await waitUntil { requester.locationRequests == 2 }
+        resolver.deliverFix(lat: 52.4064, lon: 16.9252)
+
+        let pickedCoordinate = await coordinate.value
+        let pickedOutcome = await outcome.value
+        XCTAssertEqual(pickedCoordinate, LocationCityResolver.Coordinate(lat: 52.4064, lon: 16.9252))
+        XCTAssertEqual(pickedOutcome, .city(cities[0]))
+    }
+
+    /// With both requests in flight and no fix ever landing, the deadline ends
+    /// both: neither waits forever on a fix the other's answer used up.
+    func testTheDeadlineEndsEveryRequestInFlight() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.05)
+
+        let coordinate = answer { await resolver.resolveIfAuthorized() }
+        let outcome = answer { await resolver.resolve(in: "pl", cities: cities) }
+
+        let pickedCoordinate = await coordinate.value
+        let pickedOutcome = await outcome.value
+        XCTAssertEqual(pickedCoordinate, .some(nil))
+        XCTAssertEqual(pickedOutcome, .unavailable)
+    }
+
+    /// A second city request while one is in flight supersedes it: the first
+    /// caller is answered `.unavailable` (its manual list) rather than left
+    /// awaiting a continuation nobody holds any more.
+    func testASecondCityRequestSupersedesTheFirst() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+
+        let first = answer { await resolver.resolve(in: "pl", cities: cities) }
+        await waitUntil { requester.locationRequests == 1 }
+        let second = answer { await resolver.resolveAnyCountry(cities: cities) }
+        await waitUntil { requester.locationRequests == 2 }
+        resolver.deliverFix(lat: 52.2297, lon: 21.0122)
+
+        let firstOutcome = await first.value
+        let secondOutcome = await second.value
+        XCTAssertEqual(firstOutcome, .unavailable)
+        XCTAssertEqual(secondOutcome, .city(cities[1]))
+    }
+
+    /// Likewise a second silent check supersedes the first, answered `nil`.
+    func testASecondCoordinateCheckSupersedesTheFirst() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+
+        let first = answer { await resolver.resolveIfAuthorized() }
+        await waitUntil { requester.locationRequests == 1 }
+        let second = answer { await resolver.resolveIfAuthorized() }
+        await waitUntil { requester.locationRequests == 2 }
+        resolver.deliverFix(lat: 52.2297, lon: 21.0122)
+
+        let firstCoordinate = await first.value
+        let secondCoordinate = await second.value
+        XCTAssertEqual(firstCoordinate, .some(nil))
+        XCTAssertEqual(secondCoordinate, LocationCityResolver.Coordinate(lat: 52.2297, lon: 21.0122))
+    }
+
+    /// `KinowoApp` holds the resolver as a `@StateObject`: its autoclosure builds the resolver once, never on
+    /// a struct init that SwiftUI throws away (a `@State` initial value is built on every one — a fresh
+    /// `CLLocationManager` each time). The app is in no test target; this pins what it relies on.
     @MainActor
     func testHeldAsAStateObjectTheResolverIsNotBuiltByAViewInit() {
         var built = 0
