@@ -157,7 +157,9 @@ class HarnessAaTest(unittest.TestCase):
         self.assertEqual("unknown", self.run_tool("moved", "--cc", "de", "--a", a, "--b", missing)[1].strip())
 
     def test_the_wiring_runs_the_a_a_row_on_a_harness_push_to_main(self):
-        conv = open(os.path.join(ROOT, ".github/workflows/identity-model-convergence.yml")).read()
+        # the A/A rows are Identity takes' since the takes rows split from convergence (the owner, 2026-11-08)
+        with open(os.path.join(ROOT, ".github/workflows/identity-takes.yml")) as f:
+            conv = f.read()
         leg = open(os.path.join(ROOT, ".github/workflows/country-convergence-leg.yml")).read()
         self.assertIn("scripts/ci/harness_aa.py decide", conv)
         self.assertIn("harness_aa.py since --run-id \"$GITHUB_RUN_ID\"", conv)
@@ -171,7 +173,7 @@ class HarnessAaTest(unittest.TestCase):
         for country in ("poland", "germany", "united-kingdom", "spain", "united-states"):
             for row in ("takes-drift-aa", "takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"):
                 # registered: `unproven` until its first green run on main, that run's number after
-                self.assertRegex(rows, rf"(?m)^job\tidentity-model-convergence\.yml\t{re.escape(row)} \({country}\)\t(unproven|[0-9]+)")
+                self.assertRegex(rows, rf"(?m)^job\tidentity-takes\.yml\t{re.escape(row)} \({country}\)\t(unproven|[0-9]+)")
         paths = open(os.path.join(ROOT, ".github/harness-aa-paths.txt")).read()
         self.assertIn("scripts/ci/identity-takes-check.sh", paths, "the takes harness is a harness path too")
 

@@ -6,7 +6,7 @@ of its inputs (the shared rng that changed what a change asked) reads as the res
 ~71 red hours, harness-bug. An A/A run -- the harness at one commit replayed twice against ITSELF -- has nothing a
 resolver change could move, so any difference is the harness's own fault, and fails as such.
 
-WHERE. In main's convergence (identity-model-convergence.yml), AFTER landing, never in pre-push or `agentctl land`: the
+WHERE. In main's Identity takes (identity-takes.yml, the takes rows' workflow since 2026-11-08), AFTER landing, never in pre-push or `agentctl land`: the
 preflight runs `decide`, and when the push changed a path of .github/harness-aa-paths.txt each leg adds two rows,
 `takes-drift-aa-pass0|1 (<country>)`, side by side, each running scripts/ci/identity-drift-check.sh once on the row-1
 seeds with DRIFT_BASE=<head> (no base replay: base and head are one commit), then `judge`; its `order-compare` job then
