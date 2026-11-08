@@ -669,5 +669,9 @@ check "the summary shows the failing test after 120 passing ones" 1 "$(grep -c '
 check "...with its message" 1 "$(grep -c 'direct git calls' <<< "$fs_out")"
 check "...and sbt's failing spec and task" 2 "$(grep -cE 'SharedMachineStateLintSpec|TestsFailedException' <<< "$fs_out")"
 check "...and no passing test's name" 0 "$(grep -c 'should pass' <<< "$fs_out")"
+# A run that failed before any test or [error] line (sbt-warm refused, a JVM that never started) still says why.
+printf 'sbt-warm: started the server\nsbt-warm: the server did not answer within 600 s\n' > "$fs_log"
+fs_out="$("$REPO_ROOT/scripts/hooks/pre-push" --failure-summary "$fs_log" < /dev/null 2>&1)"
+check "a failure with no test or [error] line shows the log's end" 1 "$(grep -c 'did not answer within' <<< "$fs_out")"
 
 spec_summary

@@ -546,11 +546,15 @@ lint_plan() {
 # `grep -E 'FAILED|should|...' | head -60` once filled its 60 lines with passing `- should ...` names and left a failed
 # check naming no test (land 4ae7f84e4c, 2026-11-08). `--failure-summary <log>` prints it (pre-push-test.sh).
 failure_summary() { # <log>
+    local shown
     # a failing test, then its message: the lines indented under it (`[info]   ...`), at most four
-    awk '/\*\*\* (FAILED|ABORTED) \*\*\*/ { print; under = 4; next }
+    shown="$(awk '/\*\*\* (FAILED|ABORTED) \*\*\*/ { print; under = 4; next }
          under > 0 && /^(\033\[[0-9;]*m)*\[(\033\[[0-9;]*m)*info(\033\[[0-9;]*m)*\](\033\[[0-9;]*m)* (\033\[[0-9;]*m)*  / { print; under--; next }
          { under = 0 }' "$1" | head -80
-    grep -E '\[error\]|\*\*\* [0-9]+ TESTS? FAILED|✘|[0-9]+ failed|Error:' "$1" | head -40
+    grep -E '\[error\]|\*\*\* [0-9]+ TESTS? FAILED|✘|[0-9]+ failed|Error:' "$1" | head -40)"
+    # a run that failed before any test or [error] line (sbt-warm refused, a JVM that never started): the log's end,
+    # less the population walk's lines, which run_local_tests has shown already
+    if [ -n "$shown" ]; then printf '%s\n' "$shown"; else grep -v '^population walk: ' "$1" | tail -20; fi
     return 0
 }
 
