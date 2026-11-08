@@ -197,7 +197,7 @@ root="$(git rev-parse --show-toplevel)" || exit 1
 # checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
 # the dry runs (--plan, --compile-plan, --range, --checks-only), which name the file they mean.
 case "${1:-}" in
-    --plan|--compile-plan|--range|--checks-only|--fast-only) ;;
+    --plan|--compile-plan|--range|--checks-only|--fast-only|--failure-summary) ;;
     *)
         if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
             hooks_path="$(git config --get core.hooksPath || true)"
@@ -241,7 +241,7 @@ root_warning=""
 # A plan mode only prints what a push would run: the root checkout's state means nothing to it, and the check's
 # `git status` over the whole root is the cost of every plan call -- in a Linux container, where the bind mount's
 # stat data never matches the index, a full rehash: pre-push-test.sh's ~20 plan calls ran past its 600 s bound.
-case "${1:-}" in --plan|--compile-plan|--lint-plan) root_check="" ;; esac
+case "${1:-}" in --plan|--compile-plan|--lint-plan|--failure-summary) root_check="" ;; esac
 [ ! -x "$root_check" ] || root_warning="$("$root_check" "$root" 2>&1)"
 [ -z "$root_warning" ] || printf '\033[33m! pre-push\033[0m %s\n' "$root_warning" >&2
 tree="" area_tests=""
@@ -541,10 +541,24 @@ lint_plan() {
     return 0
 }
 
+# What a failed sbt (or area) run shows of its log: every failing test with its message's first lines, THEN sbt's
+# [error] lines (`Failed tests:`, the specs, the task), each capped. Failures first, so the cap never cuts them: a single
+# `grep -E 'FAILED|should|...' | head -60` once filled its 60 lines with passing `- should ...` names and left a failed
+# check naming no test (land 4ae7f84e4c, 2026-11-08). `--failure-summary <log>` prints it (pre-push-test.sh).
+failure_summary() { # <log>
+    # a failing test, then its message: the lines indented under it (`[info]   ...`), at most four
+    awk '/\*\*\* (FAILED|ABORTED) \*\*\*/ { print; under = 4; next }
+         under > 0 && /^(\033\[[0-9;]*m)*\[(\033\[[0-9;]*m)*info(\033\[[0-9;]*m)*\](\033\[[0-9;]*m)* (\033\[[0-9;]*m)*  / { print; under--; next }
+         { under = 0 }' "$1" | head -80
+    grep -E '\[error\]|\*\*\* [0-9]+ TESTS? FAILED|✘|[0-9]+ failed|Error:' "$1" | head -40
+    return 0
+}
+
 case "${1:-}" in
     --plan)         plan; exit 0 ;;
     --compile-plan) compile_plan; exit 0 ;;
     --lint-plan)    lint_plan; exit 0 ;;
+    --failure-summary) failure_summary "$2"; exit 0 ;;
 esac
 
 log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
@@ -1189,7 +1203,7 @@ check_sbt() {
         run=("$root/scripts/sbt-warm" "${line%; }")
     fi
     "${run[@]}" > "$tmp/sbt.log" 2>&1 \
-        || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
+        || { failure_summary "$tmp/sbt.log" >&2; warn "full log: $tmp/sbt.log"; return 1; }
     [ "$gitops_stale" = 0 ]
 }
 
@@ -1294,7 +1308,7 @@ run_local_tests() { # <set>
         done < <(local_test_lines "$1" sh)
     fi
     if [ "$rc" != 0 ]; then
-        grep -E '\*\*\* FAILED|\[error\]|✘|[0-9]+ failed|Error:' "$tmp/$1.log" | head -60 >&2
+        failure_summary "$tmp/$1.log" >&2
         warn "full log: $tmp/$1.log"
         return 1
     fi

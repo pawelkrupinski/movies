@@ -652,4 +652,22 @@ check "...but a foreign directory's hooks, which would stop running, are still r
   "$code $(scratch_git "$hp/clone" config --get core.hooksPath)"
 rm -rf "$hp"
 
+printf '\033[36m▸\033[0m pre-push --failure-summary\n'
+# A failed sbt run's summary names its failures however many passing tests came before them: land 4ae7f84e4c's showed
+# 60 passing `- should ...` lines and no failing test (2026-11-08).
+fs_log="$testroot/sbt-failed.log"
+{ for i in $(seq 1 120); do echo "[info] - should pass case $i"; done
+  echo "[info] - should build scratch repositories through the helper *** FAILED ***"
+  echo "[info]   1 direct git calls in tests: scripts/x-test.sh:46"
+  for i in $(seq 1 30); do echo "[info] - should pass later case $i"; done
+  echo "[info] *** 1 TEST FAILED ***"
+  echo "[error] Failed tests:"
+  echo "[error] 	deploy.SharedMachineStateLintSpec"
+  echo "[error] (worker / Test / testOnly) sbt.TestsFailedException: Tests unsuccessful"; } > "$fs_log"
+fs_out="$("$REPO_ROOT/scripts/hooks/pre-push" --failure-summary "$fs_log" < /dev/null 2>&1)"
+check "the summary shows the failing test after 120 passing ones" 1 "$(grep -c 'helper \*\*\* FAILED' <<< "$fs_out")"
+check "...with its message" 1 "$(grep -c 'direct git calls' <<< "$fs_out")"
+check "...and sbt's failing spec and task" 2 "$(grep -cE 'SharedMachineStateLintSpec|TestsFailedException' <<< "$fs_out")"
+check "...and no passing test's name" 0 "$(grep -c 'should pass' <<< "$fs_out")"
+
 spec_summary
