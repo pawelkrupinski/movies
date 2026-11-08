@@ -459,7 +459,7 @@ in
   # lacks. Turning it on: add `scheduled-dispatch/github-app-key` (the kinowo-lander App's private key,
   # the same key ci-runner holds as agentctl/lander-app-key) to ../../secrets/monitoring-1.yaml, then
   # set this to true and deploy.
-  fleet.scheduledDispatch.enable = false;
+  fleet.scheduledDispatch.enable = true;
 
   system.stateVersion = "26.05";
 
