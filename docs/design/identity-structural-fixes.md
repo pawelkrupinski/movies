@@ -197,8 +197,8 @@ past which a held listing is taken in and counted (`promoted_total{at="bound"}`)
 its old version as its stand-in; and a new listing hidden while held (`NewWhilePending.Default = Hidden`).
 
 **Not in the gate** (cluster-level, the stage's waits as before): the posters of a cluster's candidates, the find of an
-agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) stay until
-1c measures what is left of them.
+agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) STAY (1c
+dropped, below): they ask what a reshaped cluster leads to, which no listing's own questions name.
 
 **Measured by:**
 - newly appearing listings' latency to their first decided take, before and after (prod logs, the take-change log's
@@ -211,13 +211,19 @@ agreed IMDb id, the fill's TMDB answers -- questions only a population leads to.
 - the flip rate from the prod flip monitor (a worker counter of reversals by pattern, built by another agent): its
   value for the 7 days before the deploy against the 7 after is the proof; the R-lost pattern should fall to ~0.
 
-**Retires** the parked inline-ask cancel (agentctl item parked until 2026-11-09): with no inline asks, there is
-nothing to cancel, and step 2b ("cancel a cluster's unstarted inline futures at the deadline") is superseded. An
-experiment entry records it.
+**Retires** the parked inline-ask cancel (agentctl item parked until 2026-11-09): the gate holds a listing until its
+questions are attempted, so step 2b ("cancel a cluster's unstarted inline futures at the deadline") is superseded. An
+experiment entry records it (experiment/inline-ask-cancel).
 
 **Milestones.** 1a+1b the gate, restart-safe (behaviour change: what-if, CI measure, drift; prod numbers after the
-deploy); 1c the inline asks deleted once the gate's prod numbers show what is left of them, with the parked cancel's
-experiment entry. STOP after 1 lands.
+deploy); STOP after 1 lands.
+
+**1c, the inline asks deleted: DROPPED (the owner, 2026-11-08).** The gate's prod numbers showed what is left of them,
+and it is not nothing: a promotion can regroup a family (PL, 2026-11-07 14:33: Kino Muza's "André rieu pada śnieg!"
+promoted, 62 listings into 19 new clusters), and the stage, resolving each new cluster whole, raises questions none of
+its listings' own questions name -- the inline ask asked ~200 of them while the gate held nothing. The correction ask
+(`newCorrection`) is outside the gate too. Deleting them would need the stage (or the gate) to ask a reshaped cluster's
+questions ahead; at 204 inline asks a day (PL only) they stay.
 
 ## Fix 3: one shared replay core (alongside or third)
 
