@@ -439,8 +439,11 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
       broadcastSeason.fold("")(season => s"\u0000broadcast:$season") +
       screenedSeason.filterNot(broadcastSeason.contains).fold("")(season => s"\u0000screened:$season") +
-      // only where it bounds what the title names, so every other listing keeps its key
-      screeningsSeason.filter(_ => TitleSeason.of(Seq(title, rawTitle)) != TitleSeason.of(Seq(title, rawTitle), screeningsSeason))
+      // only where a rule reads it -- it bounds what the title names, or the billing is a stage work's, whose season rules
+      // read it ([[StageRelays.readsItsScreeningsSeason]]) and no season above keys it yet -- so every other listing keeps
+      // its key, and a film's run past July re-resolves nothing
+      screeningsSeason.filter(season => TitleSeason.of(Seq(title, rawTitle)) != TitleSeason.of(Seq(title, rawTitle), screeningsSeason) ||
+        (!broadcastSeason.contains(season) && !screenedSeason.contains(season) && StageRelays.readsItsScreeningsSeason(measured)))
         .fold("")(season => s"\u0000screenings:$season") +
       (if (airDays.isEmpty) "" else airDays.mkString("\u0000aired:", ",", "")) +
       // only where a venue bills one, so every other listing keeps its key

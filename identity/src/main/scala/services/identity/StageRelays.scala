@@ -496,6 +496,13 @@ object StageRelays {
    *  went with the family's venues (structural fix 2). A function of the listing's own year and days. */
   private def closedSeason(l: Listing): Option[Int] = l.screeningsSeason.filter(season => l.statedYear.contains(season + 1))
 
+  /** Do the season rules read the season `l`'s screenings fall in ([[closedSeason]], [[RelayStage.of]],
+   *  [[bareWorksSeasonRecord]])? Wherever its billing names a stage house or a stage work. That season is then part of the
+   *  evidence its node is keyed by ([[Evidence.key]]): UK Riverside's "Romeo and Juliet (2027)", screening on 25 May 2027,
+   *  searches "Romeo and Juliet 2026" and a billing alike screening in October 2027 does not — one node held both, searched
+   *  as whichever listing headed it. */
+  private[identity] def readsItsScreeningsSeason(l: Listing): Boolean = l.billsAStageHouse || l.billedStageWorks.nonEmpty
+
   /** The work `l` bills searched beside `year`, under each of its search names ("Manon 2026"). */
   private[identity] def workSearches(l: Listing, year: Int): Seq[String] =
     l.billedStageWorks.toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year")
