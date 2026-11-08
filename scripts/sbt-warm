@@ -607,12 +607,55 @@ client_and_server_cpu() {
   # shellcheck disable=SC2046 # one pid per word
   stall_cpu_centis $(client_and_server_pids)
 }
+# Ends the client: TERM, then KILL 5 s later. A bare TERM-then-`wait` hung a call for good on a client that did not end
+# (2026-11-07: an sbtn client of a vanished server, the laptop in swap); a process that survives even KILL (uninterruptible)
+# is abandoned, never waited for.
+end_client() {
+  local pids i
+  pids=$(stall_tree_pids "$client")
+  # shellcheck disable=SC2086 # one pid per word
+  kill $pids 2> /dev/null
+  # the client's own end is no proof its tree ended (the sbt-guard wrapper ends on TERM, the sbt under it may ignore it)
+  for i in 1 2 3 4 5 6 7 8 9 10; do tree_running $pids || break; sleep 0.5; done
+  # shellcheck disable=SC2086
+  tree_running $pids && kill -9 $pids 2> /dev/null
+  for i in 1 2 3 4; do client_running || break; sleep 0.5; done
+  if client_running; then log "client pid $client survives KILL: abandoned"; else wait "$client" 2> /dev/null; fi
+}
+# whether one of the <pid>s runs (an ended one not yet waited for, a zombie, does not)
+tree_running() { # <pid>...
+  ps -o stat= -p "$(echo "$@" | tr ' ' ',')" 2> /dev/null | grep -qv '^Z'
+}
+# whether the client still runs: an ended one not yet waited for (a zombie) does not
+client_running() { kill -0 "$client" 2> /dev/null && [ "$(ps -o stat= -p "$client" 2> /dev/null | cut -c1)" != Z ]; }
+# SERVER LIVENESS: a client whose server vanished (the JVM reaper's kill, memory pressure) can wait on its dead socket for
+# hours, at 0% CPU, and the stall bound is minutes (StallSeconds, 600). So every KINOWO_SBT_WARM_LIVENESS_SECONDS (15) the
+# call looks for the checkout's server: one seen during the call and gone at two checks in a row, or none ever seen
+# KINOWO_SBT_WARM_START_SECONDS (240) after the client started (it starts the server itself), ends the client at once.
+ServerSeen=0
+server_gone() {
+  local waited=$1
+  if server_pid "$root" > /dev/null; then ServerSeen=1; GoneChecks=0; return 1; fi
+  GoneChecks=$((GoneChecks + 1))
+  if [ "$ServerSeen" = 1 ]; then [ "$GoneChecks" -ge 2 ]; else [ "$waited" -ge "${KINOWO_SBT_WARM_START_SECONDS:-240}" ]; fi
+}
 # Waits for the client: its status, or 75 once it made no progress for StallSeconds (the server then dumped and stopped)
 watch_client() {
   local poll=${KINOWO_STALL_POLL_SECONDS:-30} need=${KINOWO_STALL_CPU_CENTIS:-100} next quiet=0 last now spid dump
-  last=$(client_and_server_cpu); next=$((SECONDS + poll))
+  local live=${KINOWO_SBT_WARM_LIVENESS_SECONDS:-15} nextlive started=$SECONDS
+  last=$(client_and_server_cpu); next=$((SECONDS + poll)); nextlive=$((SECONDS + live)); ServerSeen=0; GoneChecks=0
   while kill -0 "$client" 2> /dev/null; do
     sleep 0.5
+    if [ "$SECONDS" -ge "$nextlive" ]; then
+      nextlive=$((SECONDS + live))
+      if server_gone $((SECONDS - started)); then
+        log "the server of $root is gone, and the client of \`$command\` waits on it: ending the client"
+        end_client
+        rm -f "$root/project/target/active.json"
+        StallDump=""; StallWhy="its server vanished"
+        return 75
+      fi
+    fi
     [ "$SECONDS" -ge "$next" ] || continue
     next=$((SECONDS + poll)); now=$(client_and_server_cpu)
     # progress: CPU, or a process of theirs runnable at the poll (a busy one on a loaded machine; stall-watch.sh)
@@ -636,14 +679,12 @@ watch_client() {
     else
       log "no progress for ${quiet}s on \`$command\`, and no server of $root runs: the client waits on nothing"
     fi
-    # shellcheck disable=SC2046 # one pid per word
-    kill $(stall_tree_pids "$client") 2> /dev/null
+    end_client
     stop_servers_of "$root" "no progress for ${quiet}s on \`$command\` (thread dump: ${spid:+$dump})"
     for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
     for spid in $(server_pids "$root"); do stop_server -9 "$spid" "$root" "stalled, alive 10 s after SIGTERM"; done
     rm -f "$root/project/target/active.json"
-    wait "$client" 2> /dev/null
-    StallDump=$dump
+    StallDump=$dump; StallWhy="no progress for ${StallSeconds}s"
     return 75
   done
   wait "$client"
@@ -658,7 +699,7 @@ else
     first=$StallDump
     run_client; watch_client; rc=$?
     if [ "$rc" = 75 ]; then
-      echo "sbt-warm STALLED: $command (no progress for ${StallSeconds}s, twice, each in a fresh server; thread dumps: $first $StallDump)" >&2
+      echo "sbt-warm STALLED: $command (${StallWhy}, twice, each in a fresh server; thread dumps: ${first:--} ${StallDump:--})" >&2
       [ -n "${KINOWO_STALL_FILE:-}" ] && echo "sbt-warm $command" >> "$KINOWO_STALL_FILE"
     fi
   fi
