@@ -33,7 +33,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   private val SfFilm = "Bay Area Feature"
 
   private def filmIn(cinema: Cinema, title: String, imdb: String): MovieRecord = {
-    val now = TestMovieController.now
+    val now = TestCityControllers.now
     MovieRecord(
       imdbId = Some(imdb),
       data = Map[Source, SourceData](
@@ -50,7 +50,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
 
   /** A US-serving deployment holding one film in an LA venue and one in an SF
    *  venue — two different California pages, and so two different cities. */
-  private def usController(): MovieController = TestMovieController.build(
+  private def usController(): TestCityControllers = TestCityControllers.build(
     Seq(
       (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
       (SfFilm, Some(2024), filmIn(sfCinema, SfFilm, "tt102")),
@@ -58,7 +58,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     // A US host renders English — asserted on below — for free from
     // `servingCountry` now (`MovieController` derives its `Messages` from it).
     servingCountry = Country.UnitedStates,
-  )._1
+  )
 
   private def req(path: String) = EdgeRequest(path, host = "showtimes.cc")
 
@@ -73,7 +73,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   // ── The metro's own listing ─────────────────────────────────────────────────
 
   "/los-angeles/" should "render the repertoire scoped to that page only" in {
-    val res = usController().index("los-angeles")(req("/los-angeles/"))
+    val res = usController().movie.index("los-angeles")(req("/los-angeles/"))
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include(LaFilm)
@@ -83,7 +83,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "offer only that metro's cinemas to the filter panel" in {
-    val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
+    val html = contentAsString(usController().movie.index("los-angeles")(req("/los-angeles/")))
     html should include(laCinema.displayName)
     html should not include sfCinema.displayName
     // Los Angeles is the city alone now — 40 venues, one flat list.
@@ -91,7 +91,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "title, describe and canonicalise itself by the city" in {
-    val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
+    val html = contentAsString(usController().movie.index("los-angeles")(req("/los-angeles/")))
     html should include("<title>Cinema listings in Los Angeles")
     html should include("""<link rel="canonical" href="https://showtimes.cc/us/los-angeles/"""")
   }
@@ -104,7 +104,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   // the right slug in that constant; that the cookie is then written is asserted
   // in a real browser by `PageJsBehaviourSpec`.
   it should "remember the page as the city, so the bare / bounces back to it" in {
-    val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
+    val html = contentAsString(usController().movie.index("los-angeles")(req("/los-angeles/")))
     html should include ("CURRENT_CITY")
     html should include ("\"los-angeles\";")
   }
@@ -112,7 +112,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   it should "name its country for the client, and not carry every country's city catalog" in {
     // `shared.js` keys a visitor's per-country state by this; the whole catalog it
     // was once looked up in is the `/` picker's to embed, not every listing's.
-    val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
+    val html = contentAsString(usController().movie.index("los-angeles")(req("/los-angeles/")))
     html should include ("CURRENT_COUNTRY     = \"us\"")
     html should not include "KINOWO_CATALOG"
     html should not include "\"slug\":\"san-francisco\""
@@ -159,14 +159,14 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   "A US page" should "leave its cinema list flat rather than wrapping it in one group" in {
     // No US page has districts, and a single collapsible section around the whole
     // list would be chrome with no choice in it.
-    val res = usController().index("san-diego")(req("/san-diego/"))
+    val res = usController().movie.index("san-diego")(req("/san-diego/"))
     status(res) shouldBe OK
     contentAsString(res) should include ("CINEMA_AREAS       = []")
   }
 
   "A one-cinema town" should "still serve its own listing — its venue list IS the page" in {
     // Bishop, California: one cinema, 59 km from the next — too far to share a page.
-    val res = usController().index("bishop")(req("/bishop/"))
+    val res = usController().movie.index("bishop")(req("/bishop/"))
     status(res) shouldBe OK
     contentAsString(res) should include ("CINEMA_AREAS       = []")
   }
@@ -177,7 +177,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     val us = usController()
     Seq("texas", "new-jersey").foreach { slug =>
       withClue(s"$slug: ") {
-        val res = us.index(slug)(req(s"/$slug/"))
+        val res = us.movie.index(slug)(req(s"/$slug/"))
         status(res) shouldBe NOT_FOUND
         // The tell of the bug this replaced: a 200 carrying every film in the state.
         contentAsString(res) should not include SfFilm
@@ -185,20 +185,20 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     }
     // A state's name answers only where a TOWN has it: /california/ is
     // California, Maryland, listing that town's cinemas — not the state's.
-    val california = us.index("california")(req("/california/"))
+    val california = us.movie.index("california")(req("/california/"))
     status(california) shouldBe OK
     contentAsString(california) should not include SfFilm
   }
 
   "An unknown or foreign city" should "404 like every other city-scoped route" in {
     val us = usController()
-    status(us.index("atlantis")(req("/atlantis/"))) shouldBe NOT_FOUND
+    status(us.movie.index("atlantis")(req("/atlantis/"))) shouldBe NOT_FOUND
     // Poznań is real, but not on a US host.
-    status(us.index("poznan")(req("/poznan/")))     shouldBe NOT_FOUND
+    status(us.movie.index("poznan")(req("/poznan/")))     shouldBe NOT_FOUND
   }
 
   "/los-angeles/movies with no filter axis" should "serve the page's listing, not a browse page" in {
-    val res = usController().browse("los-angeles", None, None, None, None)(req("/los-angeles/movies"))
+    val res = usController().movie.browse("los-angeles", None, None, None, None)(req("/los-angeles/movies"))
     status(res) shouldBe OK
     contentAsString(res) should include(LaFilm)
     contentAsString(res) should not include SfFilm
@@ -210,13 +210,13 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
    *  have no level below the city. They get the page, whole. */
   "The mobile API" should "serve the page's own universe" in {
     val us = usController()
-    val repertoire = contentAsString(us.apiRepertoire("los-angeles")(req("/los-angeles/api/repertoire")))
+    val repertoire = contentAsString(us.api.apiRepertoire("los-angeles")(req("/los-angeles/api/repertoire")))
     repertoire should include(LaFilm)
     repertoire should not include SfFilm
 
-    status(us.apiDetails("los-angeles")(req("/los-angeles/api/details"))) shouldBe OK
+    status(us.api.apiDetails("los-angeles")(req("/los-angeles/api/details"))) shouldBe OK
 
-    val cinemas = contentAsString(us.apiCinemas("los-angeles")(req("/los-angeles/api/cinemas")))
+    val cinemas = contentAsString(us.api.apiCinemas("los-angeles")(req("/los-angeles/api/cinemas")))
     cinemas should include(laCinema.displayName)
     cinemas should not include sfCinema.displayName
   }
@@ -224,7 +224,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   // ── What must NOT change ────────────────────────────────────────────────────
 
   "London" should "keep serving its own listing, split into its five compass areas" in {
-    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom)._1
+    val uk = TestCityControllers.build(Seq.empty, servingCountry = Country.UnitedKingdom).movie
     val res = uk.index("london")(req("/london/"))
     status(res) shouldBe OK
     val body = contentAsString(res)
@@ -234,7 +234,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still arm the first-visit area picker, its only way to pick an area" in {
-    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom)._1
+    val uk = TestCityControllers.build(Seq.empty, servingCountry = Country.UnitedKingdom).movie
     val body = contentAsString(uk.index("london")(req("/london/")))
     // The overlay opens for any city with areas; the flag that used to suppress
     // it existed only for the states that had a chooser screen instead.
@@ -243,9 +243,9 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   "A flat city" should "be untouched — its index is still its listing" in {
-    val pl = TestMovieController.build(
+    val pl = TestCityControllers.build(
       Seq(("Testowy Film", Some(2024), filmIn(models.Helios, "Testowy Film", "tt1")))
-    )._1
+    ).movie
     val html = contentAsString(pl.index("poznan")(req("/poznan/")))
     html should include("Testowy Film")
     html should include("CINEMA_AREAS       = []")

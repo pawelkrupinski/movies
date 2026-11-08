@@ -1,6 +1,6 @@
 package views
 
-import controllers.TestMovieController
+import controllers.TestCityControllers
 import models.{Helios, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -24,7 +24,7 @@ class UntrustedDataNeutralisedSpec extends AnyFlatSpec with Matchers {
   private val Title     = s"Zło $Breakout"
   private val Hostile   = Seq("javascript:alert(2)", "data:text/html,alert3", "JaVaScRiPt:alert(4)", " javascript:alert(5)", "data:image/svg+xml,alert6")
 
-  private val (controller, _) = TestMovieController.build(Seq((Title, Some(2025), MovieRecord(
+  private val controller = TestCityControllers.build(Seq((Title, Some(2025), MovieRecord(
     metascore     = Some(70),
     metacriticUrl = Some(Hostile(3)),
     data = Map[Source, SourceData](
@@ -34,7 +34,7 @@ class UntrustedDataNeutralisedSpec extends AnyFlatSpec with Matchers {
         director  = Seq("Reżyser"),
         posterUrl = Some(Hostile(0)),
         filmUrl   = Some(Hostile(2)),
-        showtimes = Seq(Showtime(TestMovieController.now.plusHours(2), Some(Hostile(1)), None, Nil))),
+        showtimes = Seq(Showtime(TestCityControllers.now.plusHours(2), Some(Hostile(1)), None, Nil))),
       Tmdb -> SourceData(posterUrl = Some(Hostile(4))))))))
 
   private def page(result: scala.concurrent.Future[play.api.mvc.Result]): String = {
@@ -45,12 +45,12 @@ class UntrustedDataNeutralisedSpec extends AnyFlatSpec with Matchers {
   private def slug: String =
     """/poznan/movie/([a-z0-9-]+)""".r.findFirstMatchIn(listing).map(_.group(1)).getOrElse(fail("the listing links no film page"))
 
-  private lazy val listing = page(controller.index("poznan").apply(FakeRequest(GET, "/poznan/")))
+  private lazy val listing = page(controller.movie.index("poznan").apply(FakeRequest(GET, "/poznan/")))
 
   private lazy val pages: Seq[(String, String)] = Seq(
     "listing"   -> listing,
-    "film page" -> page(controller.filmBySlug("poznan", slug).apply(FakeRequest(GET, s"/poznan/movie/$slug"))),
-    "browse"    -> page(controller.browse("poznan", None, Some("Reżyser"), None, None).apply(FakeRequest(GET, "/poznan/movies"))),
+    "film page" -> page(controller.movie.filmBySlug("poznan", slug).apply(FakeRequest(GET, s"/poznan/movie/$slug"))),
+    "browse"    -> page(controller.movie.browse("poznan", None, Some("Reżyser"), None, None).apply(FakeRequest(GET, "/poznan/movies"))),
   )
 
   "every public page" should "render the film (or the check below proves nothing)" in {

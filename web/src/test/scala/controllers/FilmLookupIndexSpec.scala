@@ -29,7 +29,7 @@ class FilmLookupIndexSpec extends AnyFlatSpec with Matchers {
   }
 
   private def showing(at: LocalDateTime) = Seq(Showtime(at, None, None, Nil))
-  private val now = TestMovieController.now
+  private val now = TestCityControllers.now
 
   private val records = Seq(
     // Live in Poznań, and displayed with an Arabic numeral — the shape an old
@@ -46,7 +46,7 @@ class FilmLookupIndexSpec extends AnyFlatSpec with Matchers {
   private def warmService(): (MovieControllerService, CountingReadModel) = {
     val readModel = new CountingReadModel(TestReadModel.store(records))
     readModel.reload()
-    val service = new MovieControllerService(readModel, clock = TestMovieController.clock)
+    val service = new MovieControllerService(readModel, clock = TestCityControllers.clock)
     service.film(Poznan, "Rocky 2").map(_.movie.title) shouldBe Some("Rocky 2")
     readModel.allMoviesCalls.set(0)
     readModel.movieCalls.set(0)

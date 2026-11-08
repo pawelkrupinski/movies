@@ -46,9 +46,9 @@ class RenderBudgetSpec extends AnyFlatSpec with Matchers {
    *  renders the shared stylesheets once rather than per page (a test-mode controller passes them through,
    *  and its film page cost 3.6 MB against production's 1.7); `blobs`: the response cache, by
    *  default one too small to hold any body, so every request renders. */
-  private def controller(blobs: EncodedResponseCache = TestResponseCache(maxBytes = 1)): MovieController =
-    TestMovieController.build(Nil, mode = play.api.Mode.Prod, readModel = Some(wiring.webReadModel), clock = clock, responseCache = blobs,
-      filmCards = new CaffeineFilmCardFragments(CaffeineFilmCardFragments.DefaultMaxBytes))._1
+  private def controller(blobs: EncodedResponseCache = TestResponseCache(maxBytes = 1)): TestCityControllers =
+    TestCityControllers.build(Nil, mode = play.api.Mode.Prod, readModel = Some(wiring.webReadModel), clock = clock, responseCache = blobs,
+      filmCards = new CaffeineFilmCardFragments(CaffeineFilmCardFragments.DefaultMaxBytes))
 
   private val city: City = models.Poznan
   private lazy val schedules = new MovieControllerService(wiring.webReadModel, clock).toSchedules(city)
@@ -58,11 +58,11 @@ class RenderBudgetSpec extends AnyFlatSpec with Matchers {
   private lazy val country = schedules.flatMap(_.movie.countries).groupBy(identity).toSeq.map { case (c, n) => (n.size, c) }.max._2
 
   /** What each budgeted request asks of a controller. */
-  private def listing(c: MovieController)  = served(c.index(city.slug), s"/${city.slug}/")
-  private def filmPage(c: MovieController) = served(c.filmBySlug(city.slug, film.slug.get), s"/${city.slug}/movie/${film.slug.get}")
-  private def browse(c: MovieController)   = served(c.browse(city.slug, Some(country), None, None, None), s"/${city.slug}/movies?country=$country")
-  private def repertoire(c: MovieController) = served(c.apiRepertoire(city.slug), s"/${city.slug}/api/repertoire")
-  private def details(c: MovieController)  = served(c.apiDetails(city.slug), s"/${city.slug}/api/details")
+  private def listing(c: TestCityControllers)  = served(c.movie.index(city.slug), s"/${city.slug}/")
+  private def filmPage(c: TestCityControllers) = served(c.movie.filmBySlug(city.slug, film.slug.get), s"/${city.slug}/movie/${film.slug.get}")
+  private def browse(c: TestCityControllers)   = served(c.movie.browse(city.slug, Some(country), None, None, None), s"/${city.slug}/movies?country=$country")
+  private def repertoire(c: TestCityControllers) = served(c.api.apiRepertoire(city.slug), s"/${city.slug}/api/repertoire")
+  private def details(c: TestCityControllers)  = served(c.api.apiDetails(city.slug), s"/${city.slug}/api/details")
   private def landing(l: LandingController) = served(l.index(), "/")
 
   /** The body `action` serves a gzip-accepting client at `uri` — on this thread, or the spec fails. */

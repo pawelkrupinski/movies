@@ -19,7 +19,7 @@ import play.api.test.Helpers._
 class CanonicalLinkSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def controller(): MovieController =
-    TestMovieController.build(Seq(TestMovieController.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))))._1
+    TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1")))).movie
 
   private def req(path: String) = EdgeRequest(path)
 
@@ -51,7 +51,7 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers with OptionValues {
   // worst place for that to happen: it is an instruction to search engines to
   // index the OTHER address, and the other address 404s.
   "a country sharing the brand domain" should "canonicalise under its mount point" in {
-    val uk   = TestMovieController.build(Nil, servingCountry = models.Country.UnitedKingdom)._1
+    val uk   = TestCityControllers.build(Nil, servingCountry = models.Country.UnitedKingdom).movie
     val html = contentAsString(uk.index("canterbury")(
       EdgeRequest("/canterbury/", host = "showtimes.cc")))
     canonicalOf(html) shouldBe Some("https://showtimes.cc/uk/canterbury/")

@@ -34,7 +34,7 @@ class ScheduleOrderingSpec extends AnyFlatSpec with Matchers {
       Helios     -> slot(),
     ))
     val service = new MovieControllerService(
-      TestReadModel.fromRecords(Seq(("Milcząca przyjaciółka", Some(2026), record))), clock = TestMovieController.clock)
+      TestReadModel.fromRecords(Seq(("Milcząca przyjaciółka", Some(2026), record))), clock = TestCityControllers.clock)
 
     val schedules = service.toSchedules(Poznan, now)
     schedules should have size 1
@@ -48,7 +48,7 @@ class ScheduleOrderingSpec extends AnyFlatSpec with Matchers {
     val films = Seq(1948, 1996, 2009, 2015, 2021).map(year =>
       ("Hamlet", Some(year), MovieRecord(data = Map[Source, SourceData](KinoApollo -> SourceData(title = Some("Hamlet"),
         showtimes = Seq(Showtime(showAt, bookingUrl = None)))))))
-    val schedules = new MovieControllerService(TestReadModel.fromRecords(films), clock = TestMovieController.clock).toSchedules(Poznan, now)
+    val schedules = new MovieControllerService(TestReadModel.fromRecords(films), clock = TestCityControllers.clock).toSchedules(Poznan, now)
     schedules.map(_.movie.title).distinct shouldBe Seq("Hamlet")
     schedules should have size 5
     schedules.map(_.resolved._id) shouldBe schedules.map(_.resolved._id).sorted

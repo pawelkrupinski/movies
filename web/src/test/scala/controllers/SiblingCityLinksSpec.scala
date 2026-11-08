@@ -20,7 +20,7 @@ import play.api.test.Helpers._
 class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
 
   private def recordShowingIn(title: String, cinemas: Source*): MovieRecord = {
-    val now = TestMovieController.now
+    val now = TestCityControllers.now
     MovieRecord(
       imdbId = Some("tt00000001"),
       data = cinemas.map(_ -> SourceData(
@@ -34,9 +34,9 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
   "a film's page" should "link to its own page in every other city currently showing it" in {
     val title = "Zmierzch"
     val record = recordShowingIn(title, Helios, CinemaCityWroclavia)
-    val (ctrl, _) = TestMovieController.build(Seq((title, Some(2025), record)))
+    val ctrl = TestCityControllers.build(Seq((title, Some(2025), record)))
 
-    val result = ctrl.filmBySlug("poznan", "zmierzch").apply(FakeRequest(GET, "/poznan/movie/zmierzch"))
+    val result = ctrl.movie.filmBySlug("poznan", "zmierzch").apply(FakeRequest(GET, "/poznan/movie/zmierzch"))
     status(result) shouldBe OK
     val html = contentAsString(result)
 
@@ -51,9 +51,9 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
   it should "render no trigger or popup when no other city is currently showing it" in {
     val title = "Odyseja"
     val record = recordShowingIn(title, Helios)
-    val (ctrl, _) = TestMovieController.build(Seq((title, Some(2025), record)))
+    val ctrl = TestCityControllers.build(Seq((title, Some(2025), record)))
 
-    val html = contentAsString(ctrl.filmBySlug("poznan", "odyseja").apply(FakeRequest(GET, "/poznan/movie/odyseja")))
+    val html = contentAsString(ctrl.movie.filmBySlug("poznan", "odyseja").apply(FakeRequest(GET, "/poznan/movie/odyseja")))
 
     // The class NAMES are always present — `_filmDetailStyles` emits their CSS
     // rules on every film page regardless. It's the actual ELEMENTS (the
@@ -65,7 +65,7 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
 
   "MovieControllerService.citiesShowing" should "exclude a city whose only showings of the film have already ended" in {
     val title = "Stary Film"
-    val now = TestMovieController.now
+    val now = TestCityControllers.now
     val record = MovieRecord(
       imdbId = Some("tt00000002"),
       data = Map(
@@ -73,8 +73,8 @@ class SiblingCityLinksSpec extends AnyFlatSpec with Matchers {
         CinemaCityWroclavia -> SourceData(title = Some(title), releaseYear = Some(2020), showtimes = Seq(models.Showtime(now.minusDays(1), None, None, Nil)))
       )
     )
-    val (_, readModel) = TestMovieController.build(Seq((title, Some(2020), record)))
-    val service = new MovieControllerService(readModel, clock = TestMovieController.clock)
+    val readModel = TestCityControllers.build(Seq((title, Some(2020), record))).readModel
+    val service = new MovieControllerService(readModel, clock = TestCityControllers.clock)
 
     val filmId = readModel.filmSlugs.idFor("stary-film").getOrElse(fail("expected the fixture film to have a slug"))
     val siblings = service.citiesShowing(filmId, excluding = models.Poznan, country = models.Country.default, now)

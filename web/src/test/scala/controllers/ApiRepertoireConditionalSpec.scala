@@ -15,8 +15,14 @@ import java.util.zip.GZIPInputStream
 
 class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(clock: java.time.Clock = TestMovieController.clock): (MovieController, WebReadModel) = {
-    val now = TestMovieController.now
+  /** The API controller and its read model, out of [[buildControllers]]. */
+  private def buildController(clock: java.time.Clock = TestCityControllers.clock): (MovieApiController, WebReadModel) = {
+    val wired = buildControllers(clock)
+    (wired.api, wired.readModel)
+  }
+
+  private def buildControllers(clock: java.time.Clock = TestCityControllers.clock): TestCityControllers = {
+    val now = TestCityControllers.now
     val record = MovieRecord(
       imdbId = Some("tt999"),
       data = Map[Source, SourceData](
@@ -32,7 +38,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
       )
     )
     val rows = Seq(("Test Film", Some(2024), record))
-    TestMovieController.build(rows, readModel = Some(services.readmodel.TestReadModel.fromRecords(rows, clock)))
+    TestCityControllers.build(rows, readModel = Some(services.readmodel.TestReadModel.fromRecords(rows, clock)))
   }
 
   it should "keep the lean listing free of detail-only fields" in {
@@ -111,13 +117,13 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // films sharing a title is the case that tells the two apart: `FilmSlugs` qualifies
   // the older one with its year, and only the ASSIGNED slug carries that.
   it should "serve the ASSIGNED slug, not a re-fold of the title" in {
-    val now = TestMovieController.now
+    val now = TestCityControllers.now
     def rec(year: Int) = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Zaproszenie"), releaseYear = Some(year),
         synopsis = Some("s"), trailerUrl = Some("https://www.youtube.com/watch?v=abc123DEF45"),
         showtimes = Seq(models.Showtime(now.plusHours(2), None, None, Nil)))))
-    val (ctrl, _) = TestMovieController.build(
-      Seq(("Zaproszenie", Some(2026), rec(2026)), ("Zaproszenie", Some(1986), rec(1986))))
+    val ctrl = TestCityControllers.build(
+      Seq(("Zaproszenie", Some(2026), rec(2026)), ("Zaproszenie", Some(1986), rec(1986)))).api
 
     val slugs = play.api.libs.json.Json.parse(contentAsString(ctrl.apiRepertoire("poznan")(FakeRequest())))
       .as[Seq[play.api.libs.json.JsValue]].map(f => (f \ "slug").as[String]).toSet
@@ -155,7 +161,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return 200 after a cache mutation even with the old If-Modified-Since" in {
-    val clock         = new tools.MutableClock(TestMovieController.clock.instant())
+    val clock         = new tools.MutableClock(TestCityControllers.clock.instant())
     val (ctrl, cache) = buildController(clock)
     val first = ctrl.apiRepertoire("poznan")(FakeRequest())
     val lastMod = header("Last-Modified", first).get
@@ -282,7 +288,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // one of combinatorially many near-duplicates of the listing, so they are kept
   // out of the edge deliberately rather than by accident.
   it should "keep the facet pages out of the shared cache" in {
-    val (ctrl, _) = buildController()
+    val ctrl = buildControllers().movie
     val cc = header("Cache-Control",
       ctrl.browse("poznan", None, Some("Nolan"), None, None)(FakeRequest())).getOrElse("")
     cc should not include ("public")
@@ -297,17 +303,17 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // was measured. `days` is what lets a client ask for the part it will show.
 
   private def windowController() = {
-    val today = TestMovieController.now
+    val today = TestCityControllers.now
     def rec(title: String, when: LocalDateTime) = MovieRecord(
       imdbId = Some("tt" + title.hashCode.abs),
       data = Map[Source, SourceData](Helios -> SourceData(
         title = Some(title), releaseYear = Some(2024),
         showtimes = Seq(models.Showtime(when, None, None, Nil)))))
-    TestMovieController.build(Seq(
+    TestCityControllers.build(Seq(
       ("Today Film",  Some(2024), rec("Today Film",  today.plusHours(2))),
       ("Soon Film",   Some(2024), rec("Soon Film",   today.plusDays(3))),
       ("Distant Film",Some(2024), rec("Distant Film",today.plusDays(90))),
-    ))
+    )).api
   }
 
   private def titlesFrom(result: scala.concurrent.Future[play.api.mvc.Result]): Seq[String] =
@@ -315,13 +321,13 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
       .as[Seq[play.api.libs.json.JsValue]].map(j => (j \ "title").as[String])
 
   it should "return the whole corpus when no window is asked for" in {
-    val (ctrl, _) = windowController()
+    val ctrl = windowController()
     titlesFrom(ctrl.apiRepertoire("poznan")(FakeRequest())) should contain allOf
       ("Today Film", "Soon Film", "Distant Film")
   }
 
   it should "keep only films showing inside the window, and drop the rest entirely" in {
-    val (ctrl, _) = windowController()
+    val ctrl = windowController()
     val titles = titlesFrom(ctrl.apiRepertoire("poznan", Some(7))(FakeRequest("GET","/poznan/api/repertoire?days=7")))
     titles should contain ("Today Film")
     titles should contain ("Soon Film")
@@ -344,7 +350,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     // entry -- and whichever rendered first wins, silently, with a 200 and a
     // plausible body. Exercised through the GZIP path on purpose: that is the
     // only path the cache is on.
-    val (ctrl, _) = windowController()
+    val ctrl = windowController()
     def titles(r: scala.concurrent.Future[play.api.mvc.Result]) =
       play.api.libs.json.Json.parse(gunzip(contentAsBytes(r)))
         .as[Seq[play.api.libs.json.JsValue]].map(j => (j \ "title").as[String])
@@ -356,7 +362,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
     // And in the other order, so neither can be the one that merely happened to
     // render first.
-    val (ctrl2, _) = windowController()
+    val ctrl2 = windowController()
     val wideFirst   = titles(ctrl2.apiRepertoire("poznan", None)(gzipRequest("/poznan/api/repertoire")))
     val narrowAfter = titles(ctrl2.apiRepertoire("poznan", Some(7))(gzipRequest("/poznan/api/repertoire?days=7")))
     wideFirst   should contain    ("Distant Film")
@@ -398,7 +404,7 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   it should "give two windows of one path DIFFERENT etags" in {
     // Same path, different bodies. A shared validator would let a cache answer
     // "not modified" to a client holding the other window's copy.
-    val (ctrl, _) = windowController()
+    val ctrl = windowController()
     val wide   = header("ETag", ctrl.apiRepertoire("poznan", None)(FakeRequest())).value
     val narrow = header("ETag", ctrl.apiRepertoire("poznan", Some(7))(
       FakeRequest("GET", "/poznan/api/repertoire?days=7"))).value
@@ -429,15 +435,14 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   /** Two Polish cities screening the same film, wired straight to the store so
    *  the spec can push single change-stream events at one city. */
-  private def twoCities(): (MovieController, services.readmodel.InMemoryReadModelRepository, WebReadModel) = {
+  private def twoCities(): (MovieApiController, services.readmodel.InMemoryReadModelRepository, WebReadModel) = {
     val store = new services.readmodel.InMemoryReadModelRepository
     store.upsertMovie(resolved("belle|2021", "Belle"))
     store.upsertScreening(models.CityScreening("s-waw", "belle|2021", "warszawa", "Muranow", None, Nil))
     store.upsertScreening(models.CityScreening("s-poz", "belle|2021", "poznan", "Malta", None, Nil))
     val readModel = new WebReadModel(store, clock = _root_.tools.SpecClock.Pinned)
     readModel.start()
-    val (ctrl, _) = TestMovieController.build(Seq.empty, readModel = Some(readModel))
-    (ctrl, store, readModel)
+    (TestCityControllers.build(Seq.empty, readModel = Some(readModel)).api, store, readModel)
   }
 
   "A conditional GET for one city" should "still be answered 304 after ANOTHER city's showtimes change" in {
@@ -491,17 +496,18 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // came from. The kept objects must still add up to exactly what serializing the
   // whole payload writes.
 
-  private def twoFilmController(): (MovieController, WebReadModel) = {
-    val now = TestMovieController.now
+  private def twoFilmController(): (MovieApiController, WebReadModel) = {
+    val now = TestCityControllers.now
     def record(title: String, synopsis: Option[String]) = MovieRecord(data = Map[Source, SourceData](
       Helios -> SourceData(title = Some(title), releaseYear = Some(2024), synopsis = synopsis,
                            showtimes = Seq(models.Showtime(now.plusHours(2), None, None, Nil), models.Showtime(now.plusDays(3), None, None, Nil)))))
-    TestMovieController.build(Seq(("Pierwszy", Some(2024), record("Pierwszy", Some("Opis."))), ("Drugi", Some(2024), record("Drugi", None))))
+    val wired = TestCityControllers.build(Seq(("Pierwszy", Some(2024), record("Pierwszy", Some("Opis."))), ("Drugi", Some(2024), record("Drugi", None))))
+    (wired.api, wired.readModel)
   }
 
   "a city's API payloads" should "serialize each film once, writing what serializing the payload whole does" in {
     val (ctrl, readModel) = twoFilmController()
-    val service   = new MovieControllerService(readModel, TestMovieController.clock)
+    val service   = new MovieControllerService(readModel, TestCityControllers.clock)
     val schedules = service.toSchedules(models.Poznan)
     val today     = service.nowIn(models.Poznan).toLocalDate
     val language  = models.Poznan.country.language

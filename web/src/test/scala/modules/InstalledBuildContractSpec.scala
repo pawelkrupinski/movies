@@ -222,7 +222,7 @@ class InstalledBuildContractSpec extends AnyFlatSpec with Matchers with BeforeAn
     val title = "Yorkshire Feature"
     val film = models.MovieRecord(imdbId = Some("tt1010101"), data = Map[models.Source, models.SourceData](
       york.cinemas.head -> models.SourceData(title = Some(title), releaseYear = Some(2024),
-                                             showtimes = Seq(models.Showtime(controllers.TestMovieController.now.plusDays(2), None, None, Nil)))))
+                                             showtimes = Seq(models.Showtime(controllers.TestCityControllers.now.plusDays(2), None, None, Nil)))))
     val uk = new CityRoutesDeployment(Country.UnitedKingdom, films = Seq((title, Some(2024), film)))
     val qualified = InstalledBuildSlugs.of(Country.UnitedKingdom, york)
     qualified shouldBe "york-north-yorkshire"

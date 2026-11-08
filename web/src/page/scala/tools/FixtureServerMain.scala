@@ -230,15 +230,15 @@ object FixtureServerMain {
 
     // The three JSON endpoints the mobile apps consume — the Android `KinowoApi`
     // and iOS `RepertoireStore` / `DetailsStore` / cinema filter all decode these.
-    // Answered by the production `MovieController` actions themselves, over the
+    // Answered by the production `MovieApiController` actions themselves, over the
     // same read model the HTML routes render, so the mobile LocalServer suites
     // see the real wire: the per-film JSON cache and array writer, `?days=`,
     // and the server's own `Last-Modified` / `ETag` / 304 — which a route
     // projecting `ApiFilm` itself, stamping a constant date and ignoring
     // `If-Modified-Since`, never let them assert on.
-    val api = controllers.TestMovieController.build(
+    val api = controllers.TestCityControllers.build(
       Nil, readModel = Some(wiring.webReadModel),
-      clock = java.time.Clock.fixed(now.atZone(models.Country.default.zone).toInstant, java.time.ZoneOffset.UTC))._1
+      clock = java.time.Clock.fixed(now.atZone(models.Country.default.zone).toInstant, java.time.ZoneOffset.UTC)).api
 
     def apiAction(c: City, sub: String, request: play.api.mvc.RequestHeader): Option[play.api.mvc.Action[play.api.mvc.AnyContent]] =
       sub.takeWhile(_ != '?') match {

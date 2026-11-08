@@ -4,12 +4,17 @@ import play.api.Mode
 import play.api.test.Helpers
 import services.readmodel.{TestReadModel, WebReadModel}
 
-/** Shared builder for a fully-wired [[MovieController]] backed by an in-memory
+/** The city-route controllers one deployment wires — the HTML pages ([[movie]])
+ *  and the JSON API ([[api]]) — over ONE [[CityRequests]] and ONE read model, as
+ *  the composition root wires them, plus that [[WebReadModel]] so a test can
+ *  `reload()` to bump the mtime. */
+final case class TestCityControllers(movie: MovieController, api: MovieApiController, readModel: WebReadModel)
+
+/** Shared builder for fully-wired [[TestCityControllers]] backed by an in-memory
  *  read model and no live HTTP — the seam every controller spec needs. Pass the
- *  records the read model should hold; get back the controller and the concrete
- *  [[WebReadModel]] so a test can `reload()` to bump the mtime. The dev-only
- *  `/debug*` pages have their own builder, [[TestDebugController]]. */
-object TestMovieController {
+ *  records the read model should hold. The dev-only `/debug*` pages have their
+ *  own builder, [[TestDebugController]]. */
+object TestCityControllers {
 
   /** The instant every controller built here runs at, unless a spec passes its own. */
   val clock: java.time.Clock = java.time.Clock.fixed(java.time.Instant.parse("2026-06-10T10:00:00Z"), java.time.ZoneOffset.UTC)
@@ -69,7 +74,7 @@ object TestMovieController {
     // The rendered film cards kept across renders — none by default; production keeps them
     // (`CaffeineFilmCardFragments`), which a spec measuring a warm render passes.
     filmCards: FilmCardFragments = FilmCardFragments.Uncached,
-  ): (MovieController, WebReadModel) = {
+  ): TestCityControllers = {
     val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
     val service    = new MovieControllerService(readModel_, clock)
     // The REAL bundles, not Play's empty stub default — `CityRequests` resolves
@@ -79,7 +84,7 @@ object TestMovieController {
     val cc = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi)
     val cityRequests = new CityRequests(cc.messagesApi, servingCountry, readModel_, responseCache,
       now = () => service.now(), build = settings.CommitSha("unknown"))
-    val ctrl  = new MovieController(
+    val movie = new MovieController(
       cc                     = cc,
       cityRequests           = cityRequests,
       movieControllerService = service,
@@ -92,6 +97,6 @@ object TestMovieController {
       filmPageServed         = filmPageServed,
       filmCards              = filmCards,
     )
-    (ctrl, readModel_)
+    TestCityControllers(movie, new MovieApiController(cc, cityRequests, service), readModel_)
   }
 }

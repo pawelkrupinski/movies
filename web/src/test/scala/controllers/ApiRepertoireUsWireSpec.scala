@@ -28,9 +28,9 @@ class ApiRepertoireUsWireSpec extends AnyFlatSpec with Matchers {
 
   private val newYork = models.Country.UnitedStates.bySlug.get("new-york").getOrElse(fail("no new-york city"))
   private val venue   = newYork.cinemas.head
-  private val today   = java.time.LocalDate.of(2026, 6, 10) // TestMovieController.clock's date
+  private val today   = java.time.LocalDate.of(2026, 6, 10) // TestCityControllers.clock's date
 
-  private lazy val controller: MovieController = {
+  private lazy val wired: TestCityControllers = {
     val record = MovieRecord(
       imdbId            = Some("tt1234567"),
       imdbRating        = Some(7.4),
@@ -53,11 +53,11 @@ class ApiRepertoireUsWireSpec extends AnyFlatSpec with Matchers {
           genres = Seq("Drama"), countries = Seq("United States"), director = Seq("Jane Doe"), cast = Seq("John Roe"))
       )
     )
-    TestMovieController.build(Seq(("Wire Test", Some(2026), record)), servingCountry = models.Country.UnitedStates)._1
+    TestCityControllers.build(Seq(("Wire Test", Some(2026), record)), servingCountry = models.Country.UnitedStates)
   }
 
   private lazy val body: String = {
-    val result = controller.apiRepertoire(newYork.slug)(FakeRequest())
+    val result = wired.api.apiRepertoire(newYork.slug)(FakeRequest())
     status(result) shouldBe OK
     contentAsString(result)
   }
@@ -84,7 +84,7 @@ class ApiRepertoireUsWireSpec extends AnyFlatSpec with Matchers {
   }
 
   "A US city's listing page" should "offer no Filmweb link or score, in the cards or the JSON-LD" in {
-    val html = contentAsString(controller.index(newYork.slug)(FakeRequest("GET", s"/${newYork.slug}/")))
+    val html = contentAsString(wired.movie.index(newYork.slug)(FakeRequest("GET", s"/${newYork.slug}/")))
     html should include ("Wire Test")
     // Links and pills only: the page also embeds the Polish language pack, whose copy names Filmweb.
     // Links and pills only: the page also carries the pill's CSS and the Polish language

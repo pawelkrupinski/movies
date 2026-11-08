@@ -1,6 +1,6 @@
 package modules
 
-import controllers.TestMovieController
+import controllers.TestCityControllers
 import models.{Country, DeploymentOrigins}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
@@ -35,7 +35,7 @@ class FrontDoorRedirectFilterSpec extends AnyFlatSpec with Matchers with BeforeA
   /** The real chain for an apex request: the front door over a router that binds
    *  `/:city/` to the real `MovieController.index` — what answers an unknown slug. */
   private val cityRoute: RequestHeader => Future[Result] = {
-    val controller = TestMovieController.build(Nil, servingCountry = Country.Poland)._1
+    val controller = TestCityControllers.build(Nil, servingCountry = Country.Poland).movie
     rh => {
       val action: EssentialAction = rh.path.stripPrefix("/").split("/", -1).toSeq match {
         case Seq(city, "") => controller.index(city)

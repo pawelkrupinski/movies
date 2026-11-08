@@ -77,7 +77,7 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
   }
 
   private def controller(): MovieController = {
-    val now = TestMovieController.now
+    val now = TestCityControllers.now
     def record(title: String, data: SourceData) =
       (title, Some(2024), MovieRecord(
         imdbId = Some("tt" + math.abs(title.hashCode).toString.take(7)),
@@ -88,12 +88,12 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
           showtimes   = Seq(models.Showtime(now.plusHours(2), None, None, Nil)),
         )),
       ))
-    TestMovieController.build(Seq(
+    TestCityControllers.build(Seq(
       record("Country Match",  SourceData(countries = Seq("Polska"))),
       record("Director Match", SourceData(director  = Seq("Jane Doe"))),
       record("Cast Match",     SourceData(cast      = Seq("John Roe"))),
       record("Genre Match",    SourceData(genres    = Seq("Komedia"))),
-    ))._1
+    )).movie
   }
 
   /** Each axis has to filter its own field. The action matches the four options

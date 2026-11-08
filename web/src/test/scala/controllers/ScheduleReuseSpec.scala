@@ -25,12 +25,12 @@ class ScheduleReuseSpec extends AnyFlatSpec with Matchers {
     val repository = TestReadModel.store(Seq(("Milcząca przyjaciółka", Some(2026), record(hours*))))
     val readModel  = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     readModel.reload()
-    (repository, readModel, new MovieControllerService(readModel, clock = TestMovieController.clock))
+    (repository, readModel, new MovieControllerService(readModel, clock = TestCityControllers.clock))
   }
 
   /** What a service that has never built anything answers for the same read model. */
   private def fresh(readModel: WebReadModel, now: LocalDateTime) =
-    new MovieControllerService(readModel, clock = TestMovieController.clock).toSchedules(Poznan, now)
+    new MovieControllerService(readModel, clock = TestCityControllers.clock).toSchedules(Poznan, now)
 
   "toSchedules" should "hand back the same schedule while nothing it was built from has moved" in {
     val (_, _, service) = fixture(15, 18)

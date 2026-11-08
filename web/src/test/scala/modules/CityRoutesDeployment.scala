@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{MovieController, TestMovieController}
+import controllers.TestCityControllers
 import models.Country
 import org.apache.pekko.stream.Materializer
 import play.api.mvc.{EssentialAction, RequestHeader, Result, Results}
@@ -19,7 +19,7 @@ import scala.concurrent.{Await, Future}
  * The router binds the city shapes the routes file does that a visitor or an app
  * reaches — `/:city`, `/:city/`, the three `/:city/api/…` endpoints the apps call
  * and the film shapes a share link carries (`/movie/:slug`, `/movie?title=`, the
- * pre-rename `/film…`) — to the real `MovieController`; everything a request meets
+ * pre-rename `/film…`) — to the real city controllers; everything a request meets
  * before them is the production filter pair. Over the `films` it is handed, by
  * default none, so thousands of addresses render in seconds.
  */
@@ -27,21 +27,21 @@ final class CityRoutesDeployment(country: Country,
                                  legacy: LegacyAddressMetrics = SpecLegacyAddressMetrics.fresh(),
                                  films: Seq[(String, Option[Int], models.MovieRecord)] = Nil)
                                 (using Materializer) {
-  private val controller: MovieController = TestMovieController.build(films, servingCountry = country)._1
+  private val wired: TestCityControllers = TestCityControllers.build(films, servingCountry = country)
   private val mount = country.mountPath.stripSuffix("/")
 
   private def route(rh: RequestHeader): Future[Result] = {
     val rest = rh.path.stripPrefix(mount + "/")
     val action: EssentialAction = rest.split("/", -1).toSeq match {
-      case Seq(city)                      => controller.indexNoTrailingSlash(city)
-      case Seq(city, "")                  => controller.index(city)
-      case Seq(city, "api", "repertoire") => controller.apiRepertoire(city)
-      case Seq(city, "api", "details")    => controller.apiDetails(city)
-      case Seq(city, "api", "cinemas")    => controller.apiCinemas(city)
-      case Seq(city, "movie")             => controller.film(city, rh.getQueryString("title").getOrElse(""))
-      case Seq(city, "movie", slug)       => controller.filmBySlug(city, slug)
-      case Seq(city, "film")              => controller.filmLegacy(city)
-      case city +: "film" +: rest         => controller.filmSubPathLegacy(city, rest.mkString("/"))
+      case Seq(city)                      => wired.movie.indexNoTrailingSlash(city)
+      case Seq(city, "")                  => wired.movie.index(city)
+      case Seq(city, "api", "repertoire") => wired.api.apiRepertoire(city)
+      case Seq(city, "api", "details")    => wired.api.apiDetails(city)
+      case Seq(city, "api", "cinemas")    => wired.api.apiCinemas(city)
+      case Seq(city, "movie")             => wired.movie.film(city, rh.getQueryString("title").getOrElse(""))
+      case Seq(city, "movie", slug)       => wired.movie.filmBySlug(city, slug)
+      case Seq(city, "film")              => wired.movie.filmLegacy(city)
+      case city +: "film" +: rest         => wired.movie.filmSubPathLegacy(city, rest.mkString("/"))
       case _                              => EssentialAction(_ => play.api.libs.streams.Accumulator.done(Results.NotFound))
     }
     action(rh).run()

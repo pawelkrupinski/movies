@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CatalogController, CityRequests, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LegalController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
+import controllers.{CatalogController, CityRequests, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
 import modules.Wiring
 
 /** ── The public site ───────────────────────────────────────────────────────
@@ -52,6 +52,8 @@ trait ControllersWiring { self: Wiring =>
     filmCards = filmCards,
     recordRender = webRenderMetrics.record,
     filmPageServed = (userAgent, url) => facebookFetchRecorder.foreach(_.served(userAgent, url)))
+  // The per-city JSON the mobile apps read (`/{city}/api/*`).
+  lazy val movieApiController = new MovieApiController(controllerComponents, cityRequests, movieControllerService)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

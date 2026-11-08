@@ -35,7 +35,7 @@ import play.api.test.Helpers._
 class LanguagePickSpec extends AnyFlatSpec with Matchers {
 
   private def controller() =
-    TestMovieController.build(Seq(TestMovieController.showing("Test Film", Some(2024), imdbId = Some("tt999"))))._1
+    TestCityControllers.build(Seq(TestCityControllers.showing("Test Film", Some(2024), imdbId = Some("tt999")))).movie
 
   "the plain city listing" should "always render the deployment's default language, ignoring any PLAY_LANG cookie" in {
     val ctrl    = controller()

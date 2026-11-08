@@ -7,7 +7,7 @@ import play.api.test.Helpers._
 
 /** Links minted while venues printed their own genre spellings keep working: they 301 onto the vocabulary's. */
 class GenreLinkRedirectSpec extends AnyFlatSpec with Matchers {
-  private val controller = TestMovieController.build(Seq(TestMovieController.showing("Bing", Some(2025))))._1
+  private val controller = TestCityControllers.build(Seq(TestCityControllers.showing("Bing", Some(2025)))).movie
 
   "GET /{city}/movies?genre=przygoda" should "301 onto ?genre=Przygodowy" in {
     val result = controller.browse("poznan", None, None, None, Some("przygoda")).apply(FakeRequest(GET, "/poznan/movies?genre=przygoda"))

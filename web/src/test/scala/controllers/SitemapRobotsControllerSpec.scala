@@ -14,7 +14,7 @@ import java.time.Instant
 class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
 
   private def controller(): MovieController =
-    TestMovieController.build(Seq(TestMovieController.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))))._1
+    TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1")))).movie
 
   // X-Forwarded-* mirror the Fly edge so PageMeta.origin yields the prod host.
   private def req(path: String) = EdgeRequest(path)
@@ -79,7 +79,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
    *  address, so naming `/texas/` would sitemap a 404 while the towns people
    *  search for went unadvertised. */
   it should "advertise every US page, and no state" in {
-    val us   = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedStates)._1
+    val us   = TestCityControllers.build(Seq.empty, servingCountry = models.Country.UnitedStates).movie
     val body = contentAsString(us.sitemap(req("/sitemap.xml")))
     body should include("<loc>https://kinowo.net/us/los-angeles/</loc>")
     body should include("<loc>https://kinowo.net/us/san-francisco/</loc>")
@@ -97,7 +97,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
    *  deployment reachable at `/uk/canterbury/` is a file of 404s, and it is the one
    *  file a crawler trusts to enumerate the site. */
   it should "hang every URL off the mount point on a country sharing the brand domain" in {
-    val uk = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedKingdom)._1
+    val uk = TestCityControllers.build(Seq.empty, servingCountry = models.Country.UnitedKingdom).movie
     val body = contentAsString(uk.sitemap(
       EdgeRequest("/sitemap.xml", host = "showtimes.cc")))
     body should include("<loc>https://showtimes.cc/uk/</loc>")
@@ -159,7 +159,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
   private def resolvedMovie(id: String, title: String) =
     ResolvedMovie(id, title, None, None, Nil, None, Some(2026), Nil, Nil, Nil, Nil, None, Nil, ratings, 0.0)
   private def cityScreening(id: String, filmId: String, city: String, cinema: models.Cinema) =
-    CityScreening(id, filmId, city, cinema.displayName, None, Seq(models.Showtime(TestMovieController.now.plusDays(1), None)))
+    CityScreening(id, filmId, city, cinema.displayName, None, Seq(models.Showtime(TestCityControllers.now.plusDays(1), None)))
 
   private class StubReadModel(repository: InMemoryReadModelRepository, stamps: Map[String, Instant])
       extends WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned) {
@@ -177,7 +177,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     repository.upsertScreening(cityScreening("s-wroclaw", "diuna|2026", "wroclaw", MultikinoPasazGrunwaldzki))
     val readModel = new StubReadModel(repository, Map("poznan" -> PoznanStamp, "wroclaw" -> WroclawStamp))
     readModel.reload()
-    TestMovieController.build(Nil, readModel = Some(readModel))._1
+    TestCityControllers.build(Nil, readModel = Some(readModel)).movie
   }
 
   private def lastmodOf(xml: String, locSuffix: String): String = {
@@ -218,7 +218,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
 
   private def manyFilmsController(filmCount: Int): MovieController = {
     val repository = new InMemoryReadModelRepository
-    val now = TestMovieController.now.plusDays(1)
+    val now = TestCityControllers.now.plusDays(1)
     (1 to filmCount).foreach { i =>
       val id = s"film-$i|2026"
       repository.upsertMovie(resolvedMovie(id, s"Film $i"))
@@ -227,7 +227,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     }
     val readModel = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     readModel.reload()
-    TestMovieController.build(Nil, readModel = Some(readModel))._1
+    TestCityControllers.build(Nil, readModel = Some(readModel)).movie
   }
 
   "sitemap.xml" should "stay a flat file below the partition threshold" in {

@@ -17,10 +17,10 @@ class FilmPageFacebookFetchSpec extends AnyFlatSpec with Matchers {
     val fetches  = new InMemoryFacebookFetches
     val clock    = new MutableClock(java.time.Instant.parse("2026-10-14T18:00:00Z"))
     val recorder = new FacebookFetchRecorder(fetches, clock, _root_.tools.SpecStopwatch.Frozen)
-    val (ctrl, _) = TestMovieController.build(Seq(TestMovieController.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))),
+    val ctrl = TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))),
       filmPageServed = recorder.served)
     // Facebook's crawler follows a shared link with its own query (`fbclid`): the page it holds is still the film's.
-    val response = ctrl.filmBySlug("poznan", "testowy-film")(
+    val response = ctrl.movie.filmBySlug("poznan", "testowy-film")(
       EdgeRequest("/poznan/movie/testowy-film?fbclid=IwAR0abc").withHeaders(USER_AGENT -> userAgent))
     status(response) shouldBe OK
     recorder.stop()

@@ -16,13 +16,13 @@ import play.api.test.Helpers._
  */
 class ApiCinemasSpec extends AnyFlatSpec with Matchers {
 
-  private def controller(servingCountry: models.Country = models.Country.default): MovieController = {
-    TestMovieController.build(Seq(TestMovieController.showing("Test Film", imdbId = Some("tt999"),
-      otherSources = Map(Tmdb -> SourceData()))), servingCountry = servingCountry)._1
+  private def controller(servingCountry: models.Country = models.Country.default): TestCityControllers = {
+    TestCityControllers.build(Seq(TestCityControllers.showing("Test Film", imdbId = Some("tt999"),
+      otherSources = Map(Tmdb -> SourceData()))), servingCountry = servingCountry)
   }
 
   "apiCinemas for a flat city" should "list every venue and an empty areas array" in {
-    val result = controller().apiCinemas("poznan")(FakeRequest())
+    val result = controller().api.apiCinemas("poznan")(FakeRequest())
     status(result) shouldBe OK
     val json = Json.parse(contentAsString(result))
     (json \ "cinemas").as[Seq[String]] shouldBe models.Poznan.cinemaDisplayNames
@@ -32,7 +32,7 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
   "apiCinemas for London (split)" should "return the five compass areas partitioning the cinema list" in {
     // London is only ours on the UK deployment — a Poland host 404s it now,
     // so this states which country's host it is testing.
-    val result = controller(models.Country.UnitedKingdom).apiCinemas("london")(FakeRequest())
+    val result = controller(models.Country.UnitedKingdom).api.apiCinemas("london")(FakeRequest())
     status(result) shouldBe OK
     val json  = Json.parse(contentAsString(result))
     val cinemas = (json \ "cinemas").as[Seq[String]]
@@ -51,7 +51,7 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
   "apiCinemas for a US page" should "list its own venues flat, with no areas" in {
     // Los Angeles was a 133-venue metro split into twelve regions; it is the city
     // alone now, one list — no US page is big enough to need areas.
-    val result = controller(models.Country.UnitedStates).apiCinemas("los-angeles")(FakeRequest())
+    val result = controller(models.Country.UnitedStates).api.apiCinemas("los-angeles")(FakeRequest())
     status(result) shouldBe OK
     val json = Json.parse(contentAsString(result))
     (json \ "cinemas").as[Seq[String]] shouldBe models.Country.UnitedStates.bySlug.get("los-angeles").get.cinemaDisplayNames
@@ -59,18 +59,18 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
   }
 
   "apiCinemas" should "leave seasons out entirely for a city with no seasonal venue" in {
-    val json = Json.parse(contentAsString(controller().apiCinemas("poznan")(FakeRequest())))
+    val json = Json.parse(contentAsString(controller().api.apiCinemas("poznan")(FakeRequest())))
     (json \ "seasons").toOption shouldBe None
   }
 
   private val kreuzberg = models.GermanRoster.theaterIdByCinema.map(_.swap)("A2198")    // Freiluftkino Kreuzberg
   private val berlin    = models.City.all.find(_.cinemas.contains(kreuzberg)).get
   private def at(instant: String) = java.time.Clock.fixed(java.time.Instant.parse(instant), java.time.ZoneOffset.UTC)
-  private def germanController(clock: java.time.Clock): MovieController =
-    TestMovieController.build(Seq.empty, servingCountry = models.Country.Germany, clock = clock)._1
+  private def germanController(clock: java.time.Clock): TestCityControllers =
+    TestCityControllers.build(Seq.empty, servingCountry = models.Country.Germany, clock = clock)
 
   it should "name a city's seasonal venues with their window as month numbers, and whether today is outside it" in {
-    val json      = Json.parse(contentAsString(germanController(at("2026-11-20T12:00:00Z")).apiCinemas(berlin.slug)(FakeRequest())))
+    val json      = Json.parse(contentAsString(germanController(at("2026-11-20T12:00:00Z")).api.apiCinemas(berlin.slug)(FakeRequest())))
     val seasons   = (json \ "seasons").as[Seq[play.api.libs.json.JsValue]]
     seasons should contain (Json.obj("cinema" -> "Freiluftkino Kreuzberg", "opens" -> 5, "closes" -> 9, "offSeason" -> true))
     seasons.map(s => (s \ "cinema").as[String]) should not contain "Kino Central Berlin"
@@ -78,20 +78,20 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "read the server's own clock: in July the open-air screen is in season" in {
-    val json = Json.parse(contentAsString(germanController(at("2026-07-15T12:00:00Z")).apiCinemas(berlin.slug)(FakeRequest())))
+    val json = Json.parse(contentAsString(germanController(at("2026-07-15T12:00:00Z")).api.apiCinemas(berlin.slug)(FakeRequest())))
     (json \ "seasons").as[Seq[play.api.libs.json.JsValue]].find(s => (s \ "cinema").as[String] == "Freiluftkino Kreuzberg")
       .map(s => (s \ "offSeason").as[Boolean]) shouldBe Some(false)
   }
 
   // The web filter panel reads the same verdict off the listing page, never re-deriving it.
   "the listing page" should "hand its script the seasonal venues with the server's off-season verdict" in {
-    val html = contentAsString(germanController(at("2026-11-20T12:00:00Z")).index(berlin.slug)(FakeRequest()))
+    val html = contentAsString(germanController(at("2026-11-20T12:00:00Z")).movie.index(berlin.slug)(FakeRequest()))
     html should include ("window.CINEMA_SEASONS")
     html should include (""""Freiluftkino Kreuzberg":{"opens":5,"closes":9,"offSeason":true}""")
   }
 
   it should "emit no seasons where the city has none" in {
-    contentAsString(controller().index("poznan")(FakeRequest())) should not include "CINEMA_SEASONS"
+    contentAsString(controller().movie.index("poznan")(FakeRequest())) should not include "CINEMA_SEASONS"
   }
 
   // The payload is cached until the city's data moves, and nothing in the read model moves
@@ -105,28 +105,28 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
       (Json.parse(contentAsString(result)) \ "seasons").as[Seq[play.api.libs.json.JsValue]]
         .find(s => (s \ "cinema").as[String] == "Freiluftkino Kreuzberg").map(s => (s \ "offSeason").as[Boolean])
 
-    val september = controller.apiCinemas(berlin.slug)(FakeRequest())
+    val september = controller.api.apiCinemas(berlin.slug)(FakeRequest())
     kreuzbergOffSeason(september) shouldBe Some(false)
     val etag = header("ETag", september).get
-    status(controller.apiCinemas(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> etag))) shouldBe NOT_MODIFIED
+    status(controller.api.apiCinemas(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> etag))) shouldBe NOT_MODIFIED
 
     clock.setTo(java.time.Instant.parse("2026-09-30T22:30:00Z"))                               // 00:30 on 1 October
-    val october = controller.apiCinemas(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> etag))
+    val october = controller.api.apiCinemas(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> etag))
     status(october) shouldBe OK
     kreuzbergOffSeason(october) shouldBe Some(true)
     header("ETag", october) should not be Some(etag)
 
     // The listing page's `window.CINEMA_SEASONS` rides the same validator.
     clock.setTo(java.time.Instant.parse("2026-09-30T21:30:00Z"))
-    val page = controller.index(berlin.slug)(FakeRequest())
+    val page = controller.movie.index(berlin.slug)(FakeRequest())
     contentAsString(page) should include (""""Freiluftkino Kreuzberg":{"opens":5,"closes":9,"offSeason":false}""")
     clock.setTo(java.time.Instant.parse("2026-09-30T22:30:00Z"))
-    val nextPage = controller.index(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> header("ETag", page).get))
+    val nextPage = controller.movie.index(berlin.slug)(FakeRequest().withHeaders("If-None-Match" -> header("ETag", page).get))
     status(nextPage) shouldBe OK
     contentAsString(nextPage) should include (""""Freiluftkino Kreuzberg":{"opens":5,"closes":9,"offSeason":true}""")
   }
 
   "apiCinemas for an unknown city" should "404" in {
-    status(controller().apiCinemas("nieznane")(FakeRequest())) shouldBe NOT_FOUND
+    status(controller().api.apiCinemas("nieznane")(FakeRequest())) shouldBe NOT_FOUND
   }
 }

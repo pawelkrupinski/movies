@@ -20,8 +20,8 @@ import play.api.test.Helpers._
 class RenamedFilmPathRedirectSpec extends AnyFlatSpec with Matchers {
 
   private def controller(country: models.Country = models.Country.default): MovieController = {
-    TestMovieController.build(Seq(TestMovieController.showing("Incepcja", Some(2010), imdbId = Some("tt1375666"),
-      posterUrl = Some("https://cinema.example/poster.jpg"))), servingCountry = country)._1
+    TestCityControllers.build(Seq(TestCityControllers.showing("Incepcja", Some(2010), imdbId = Some("tt1375666"),
+      posterUrl = Some("https://cinema.example/poster.jpg"))), servingCountry = country).movie
   }
 
   private def locationOf(result: scala.concurrent.Future[play.api.mvc.Result]): String =

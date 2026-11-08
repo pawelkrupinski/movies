@@ -87,7 +87,7 @@ class WebWiringClockSpec extends AnyFlatSpec with Matchers {
       showtimes = Seq(models.Showtime(LocalDateTime.of(2020, 6, 10, 20, 0), None, None, Nil)))))
     val wiring = new ClockedWiring(Seq(("Clocked Film", None, record)))
     wiring.boot()
-    val body = contentAsString(wiring.movieController.apiRepertoire("poznan")(FakeRequest()))
+    val body = contentAsString(wiring.movieApiController.apiRepertoire("poznan")(FakeRequest()))
     body should include ("\"label\":\"Środa 10 czerwca\"")
   }
 

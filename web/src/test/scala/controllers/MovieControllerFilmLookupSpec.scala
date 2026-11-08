@@ -20,9 +20,9 @@ import play.api.test.Helpers._
 class MovieControllerFilmLookupSpec extends AnyFlatSpec with Matchers {
 
   private def buildController(title: String, year: Option[Int]): MovieController = {
-    TestMovieController.build(Seq(TestMovieController.showing(title, year, imdbId = Some("tt12340108"),
+    TestCityControllers.build(Seq(TestCityControllers.showing(title, year, imdbId = Some("tt12340108"),
       posterUrl = Some("https://cinema.example/poster.jpg"),
-      otherSources = Map(Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2"))))))._1
+      otherSources = Map(Tmdb -> SourceData(originalTitle = Some("The Devil Wears Prada 2")))))).movie
   }
 
   "GET /movie/{slug}" should "resolve a displayed title that contains a single-digit Arabic numeral" in {

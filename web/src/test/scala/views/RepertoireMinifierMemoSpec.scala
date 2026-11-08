@@ -20,7 +20,7 @@ class RepertoireMinifierMemoSpec extends AnyFlatSpec with Matchers {
 
   private implicit val city: City = models.Country.Poland.bySlug.get("poznan").getOrElse(fail("no city 'poznan'"))
   private val films = new controllers.MovieControllerService(
-    TestReadModel.fromRecords(Seq(("Film", Some(2026), MovieRecord()))), clock = controllers.TestMovieController.clock
+    TestReadModel.fromRecords(Seq(("Film", Some(2026), MovieRecord()))), clock = controllers.TestCityControllers.clock
   ).toSchedules(city)
 
   "the listing's inline blocks" should "minify once however many instants they are rendered at" in {

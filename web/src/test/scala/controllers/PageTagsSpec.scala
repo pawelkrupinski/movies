@@ -16,7 +16,7 @@ import tools.Env
 class PageTagsSpec extends AnyFlatSpec with Matchers {
 
   private def controller(env: Env): MovieController = {
-    TestMovieController.build(Seq(TestMovieController.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))), pageTags = () => PageTags.from(new settings.ProcessConfiguration(env)))._1
+    TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))), pageTags = () => PageTags.from(new settings.ProcessConfiguration(env))).movie
   }
 
   private def fbAppIdOf(html: String): Option[String] =

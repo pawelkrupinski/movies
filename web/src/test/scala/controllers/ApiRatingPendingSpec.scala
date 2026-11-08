@@ -19,9 +19,9 @@ class ApiRatingPendingSpec extends AnyFlatSpec with Matchers {
     MovieRecord(imdbId = Some("tt7654321"), filmwebUrl = Some("https://www.filmweb.pl/film/Przepis+na+swieta-2026-1"))
 
   private def bodyOf(record: MovieRecord): String = {
-    val showtime = models.Showtime(TestMovieController.now.plusHours(2), None, None, Nil)
+    val showtime = models.Showtime(TestCityControllers.now.plusHours(2), None, None, Nil)
     val row = record.copy(data = record.data + (Helios -> SourceData(title = Some("Pending Film"), releaseYear = Some(2026), showtimes = Seq(showtime))))
-    val (controller, _) = TestMovieController.build(Seq(("Pending Film", Some(2026), row)))
+    val controller = TestCityControllers.build(Seq(("Pending Film", Some(2026), row))).api
     contentAsString(controller.apiRepertoire("poznan")(FakeRequest()))
   }
 

@@ -14,7 +14,7 @@ import play.api.test.Helpers._
 class CityHeadingSpec extends AnyFlatSpec with Matchers {
 
   private def controller(): MovieController =
-    TestMovieController.build(Seq(TestMovieController.showing("Testowy Film", Some(2024), imdbId = Some("tt1"))))._1
+    TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1")))).movie
 
   private def h1Of(html: String): Option[String] =
     """<h1[^>]*>([^<]*)</h1>""".r.findFirstMatchIn(html).map(_.group(1))

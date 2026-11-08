@@ -26,7 +26,7 @@ import play.api.test.Helpers._
 class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
 
   private def controller() =
-    TestMovieController.build(Seq(TestMovieController.showing("Test Film", Some(2024), imdbId = Some("tt999"))))._1
+    TestCityControllers.build(Seq(TestCityControllers.showing("Test Film", Some(2024), imdbId = Some("tt999")))).movie
 
   // A real Play session, signed the way a browser's would be. Nothing on the
   // server side is meant to read it on this path — that is the point of sending

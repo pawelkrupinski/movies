@@ -11,10 +11,10 @@ import play.api.test.Helpers._
 class FilmSlugRoutingSpec extends AnyFlatSpec with Matchers {
 
   private def controllerFor(titles: (String, Int)*): MovieController =
-    TestMovieController.build(titles.map { case (title, year) =>
-      TestMovieController.showing(title, Some(year), imdbId = Some("tt" + math.abs(title.hashCode).toString.take(7)),
+    TestCityControllers.build(titles.map { case (title, year) =>
+      TestCityControllers.showing(title, Some(year), imdbId = Some("tt" + math.abs(title.hashCode).toString.take(7)),
         posterUrl = Some("https://cinema.example/poster.jpg"))
-    })._1
+    }).movie
 
   private def titleOf(html: String): String =
     "<title>(.*?)</title>".r.findFirstMatchIn(html).map(_.group(1)).getOrElse("")

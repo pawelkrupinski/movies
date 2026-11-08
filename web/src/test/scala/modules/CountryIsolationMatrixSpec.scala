@@ -213,14 +213,14 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
     }
 
     it should "answer /{city}/api/* with only its own cities and cinemas" in asDeployment(country) { wiring =>
-      val mc = wiring.movieController
+      val api = wiring.movieApiController
       val own = country.cities.flatMap(_.cinemas.map(_.displayName)).toSet
       val foreignCinemas = Country.all.filterNot(_ == country).flatMap(_.cities.flatMap(_.cinemas.map(_.displayName))).toSet -- own
       val foreignCities  = Country.all.filterNot(_ == country).flatMap(_.cities.map(_.slug)).toSet -- country.cities.map(_.slug)
       val answers = Seq(
-        "repertoire" -> body(country, s"/${city.slug}/api/repertoire", mc.apiRepertoire(city.slug, None)),
-        "details"    -> body(country, s"/${city.slug}/api/details", mc.apiDetails(city.slug)),
-        "cinemas"    -> body(country, s"/${city.slug}/api/cinemas", mc.apiCinemas(city.slug)),
+        "repertoire" -> body(country, s"/${city.slug}/api/repertoire", api.apiRepertoire(city.slug, None)),
+        "details"    -> body(country, s"/${city.slug}/api/details", api.apiDetails(city.slug)),
+        "cinemas"    -> body(country, s"/${city.slug}/api/cinemas", api.apiCinemas(city.slug)),
       )
       answers.toMap.apply("repertoire") should include (Title) // positive control
       answers.foreach { case (name, json) =>
@@ -231,7 +231,7 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
       }
       // A sibling country's city is not this deployment's to answer for.
       val elsewhere = cityOf(Country.all.find(_ != country).get)
-      status(mc.apiRepertoire(elsewhere.slug, None)(request(country, s"/${elsewhere.slug}/api/repertoire"))) shouldBe NOT_FOUND
+      status(api.apiRepertoire(elsewhere.slug, None)(request(country, s"/${elsewhere.slug}/api/repertoire"))) shouldBe NOT_FOUND
     }
   }
 

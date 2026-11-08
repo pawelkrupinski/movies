@@ -16,7 +16,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   private val card = "f0123456789abcd.jpg?v=0123456789abcdef"
 
   private def film(title: String) =
-    TestMovieController.showing(title, posterUrl = Some(s"https://cinema.example/${title.toLowerCase(java.util.Locale.ROOT)}.jpg"))
+    TestCityControllers.showing(title, posterUrl = Some(s"https://cinema.example/${title.toLowerCase(java.util.Locale.ROOT)}.jpg"))
 
   private val records = Seq(film("Diuna"), film("Belle"))
 
@@ -26,7 +26,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
     store.findAllMovies().filter(_.title == "Diuna").foreach(m => store.upsertMovie(m.copy(shareCard = Some(card))))
     val readModel = new WebReadModel(store, clock = _root_.tools.SpecClock.Pinned)
     readModel.reload()
-    TestMovieController.build(records, readModel = Some(readModel))._1
+    TestCityControllers.build(records, readModel = Some(readModel)).movie
   }
 
   private val request = FakeRequest().withHeaders("Host" -> "kinowo.net", "X-Forwarded-Proto" -> "https")

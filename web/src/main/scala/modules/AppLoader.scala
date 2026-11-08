@@ -208,7 +208,7 @@ class AppComponents(applicationContext: Context, val env: Env, val country: Coun
   // order is the order controllers first appear in the routes file, so moving a route must not touch this line.
   lazy val router: Router =
     AppLoader.rootOperationalRoutes(healthController.check, healthController.ready, metricsController.metrics)
-      .orElse(ConstructByType[Routes](httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, pickerController, debugController, identityStagingController, debugStreamController, ssoController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, reviewController, assets)
+      .orElse(ConstructByType[Routes](httpErrorHandler, landingController, wellKnownController, movieController, movieApiController, catalogController, clientSupportController, pickerController, debugController, identityStagingController, debugStreamController, ssoController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, reviewController, assets)
         .withPrefix(httpConfiguration.context))
 
   // Every metric family's series from boot, the routes seeded off the router: the inventory the "longest uncalled

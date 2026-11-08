@@ -18,7 +18,7 @@ import play.api.test.Helpers._
 class CityTrailingSlashRedirectSpec extends AnyFlatSpec with Matchers {
 
   private def controller(country: models.Country = models.Country.default): MovieController =
-    TestMovieController.build(Nil, servingCountry = country)._1
+    TestCityControllers.build(Nil, servingCountry = country).movie
 
   private def locationOf(result: scala.concurrent.Future[play.api.mvc.Result]): String =
     header(LOCATION, result).getOrElse(fail("no Location header"))

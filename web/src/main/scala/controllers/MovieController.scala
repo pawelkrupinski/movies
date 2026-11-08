@@ -5,7 +5,6 @@ import play.api.mvc._
 import play.api.Mode
 import services.readmodel.WebReadModel
 
-import java.time.LocalDate
 
 class MovieController( cc: ControllerComponents,
                        // Which cities are ours, the remembered-city cookie, the deployment's
@@ -54,9 +53,6 @@ class MovieController( cc: ControllerComponents,
   // render, and it changes only when the city's films do.
   private val cityStructuredData: com.github.benmanes.caffeine.cache.Cache[StructuredData.CityPageKey, String] =
     tools.BoundedCache.ofSize(512).build[StructuredData.CityPageKey, String]()
-
-  // A city's JSON payloads, each film's object serialized once and kept.
-  private[controllers] val jsonPayloads = new CityJsonPayloads
 
   // robots.txt and the sitemaps, cut from the live schedules and each city's own stamp.
   private val crawlerFiles = new CrawlerFiles(servingCountry, movieControllerService.toSchedules(_), city => readModel.lastModifiedFor(city.slug))
@@ -314,46 +310,6 @@ class MovieController( cc: ControllerComponents,
 
   private def okSitemap(body: String): Result =
     Ok(body).as("application/xml; charset=utf-8").withHeaders("Cache-Control" -> "public, max-age=3600")
-
-  /** Conditional-GET wrapper for the JSON API endpoints — the same mechanism as
-   *  the HTML pages (see [[ConditionalResponse.serve]]): a current `If-Modified-Since`
-   *  yields a bodiless 304 (what warm mobile clients hit), otherwise the payload
-   *  is served from the shared gzip cache under `RevalidatedAnywhere`, so the
-   *  edge may hold it too. Both the listing and the details payload track the
-   *  same city's stamp, so a 304 on one is a 304 on the other. */
-  private def conditionalJson(request: Request[AnyContent], city: City, cacheKey: String = "")(body: => ResponseBody): Result =
-    conditionalResponse.serve(request, "application/json", CachePolicy.RevalidatedAnywhere,
-                              cacheKey = cacheKey, city = Some(city))(body)
-
-  /** Lean listing — everything the grid + filters need, no heavy detail text.
-   *  Latency-sensitive; clients hit this on the critical path. */
-  def apiRepertoire(city: String, days: Option[Int] = None): Action[AnyContent] = Action { request =>
-    withCity(city, request) { c =>
-      val window = CityJsonPayloads.dayWindow(days)
-      conditionalJson(request, c, CityJsonPayloads.windowCacheKey(window)) {
-        jsonPayloads.repertoire(c, today(c), movieControllerService.toSchedules(c), window)
-      }
-    }
-  }
-
-  /** Detail-only payload (synopsis + trailers), keyed by title. Clients fetch
-   *  this in parallel with the listing and merge; keeping it off
-   *  `/{city}/api/repertoire` halves the listing's gzip size. */
-  def apiDetails(city: String): Action[AnyContent] = Action { request =>
-    withCity(city, request) { c =>
-      conditionalJson(request, c)(jsonPayloads.details(c, today(c), movieControllerService.toSchedules(c)))
-    }
-  }
-
-  /** The city's cinema universe + area grouping (static). Mobile fetches this
-   *  once per city to render the collapsible, per-area cinema filter — the
-   *  counterpart of the server-side `CINEMA_AREAS` the web page is handed. */
-  def apiCinemas(city: String): Action[AnyContent] = Action { request =>
-    withCity(city, request)(c => conditionalJson(request, c)(CityJsonPayloads.cinemas(c, today(c))))
-  }
-
-  /** The city's own calendar day, off the injected clock. */
-  private def today(city: City): LocalDate = movieControllerService.nowIn(city).toLocalDate
 
   /** `/{city}/film…` and `/{city}/filmy` — the pre-rename Polish spellings of
    *  the detail page and the browse facets, 301'd onto `/{city}/movie…` and
