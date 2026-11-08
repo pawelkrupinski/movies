@@ -506,7 +506,7 @@ check "...no hung client left behind" "0" "$(spec_still_running "$scratch/hung")
 rm -f "$scratch/hung"
 # 2026-11-07: an `sbt --client` waited > 1 h on a server that vanished (memory pressure), at 0% CPU, and ended nothing.
 # SERVER LIVENESS: a client whose server is gone is ended within the liveness poll, not the stall bound (600 s here, so
-# only liveness can end it); the client ignores TERM, so the end must be KILL; the retry in a fresh server meets the same
+# only liveness can end it: spec_bounded's deadline fails the case if it were the stall bound); the client ignores TERM, so the end must be KILL; the retry in a fresh server meets the same
 # (no server ever starts) and the call fails with the stall signal naming the vanished server.
 cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
@@ -514,13 +514,11 @@ trap '' TERM
 echo \$\$ >> "$scratch/hung"; while :; do sleep 1; done
 STUB
 fake_server "$scratch/stall"; server=$!; await_server "$server"
-( sleep 2; kill "$server" 2>/dev/null ) &
-started=$SECONDS
+( wait_until "the client is hung on the stub" test -s "$scratch/hung"; kill "$server" 2>/dev/null ) &
 out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=600 KINOWO_SBT_WARM_LIVENESS_SECONDS=1 KINOWO_SBT_WARM_START_SECONDS=4 \
   spec_bounded "$REPO_ROOT/scripts/sbt-warm" "common/testOnly x" 2>&1 >/dev/null); rc=$?
 check "a client whose server vanished fails fast with the stall signal naming the vanished server" "75 yes" \
   "$rc $(grep -q '^sbt-warm STALLED: common/testOnly x (its server vanished' <<<"$out" && echo yes || echo "no: $out")"
-check "...within seconds, not the stall bound" "yes" "$([ $((SECONDS - started)) -lt 60 ] && echo yes || echo no)"
 check "...and no hung client left behind, TERM ignored or not" "0" "$(spec_still_running "$scratch/hung")"
 rm -f "$scratch/hung"
 # a client using CPU is progress, however long it runs
