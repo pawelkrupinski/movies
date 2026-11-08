@@ -19,6 +19,9 @@ sys.path.insert(0, HERE)
 import runner_scheduler as rs  # noqa: E402
 
 CFG = rs.Config()
+# The recorded readings below predate the check lane and test the memory and CPU accounting alone: they run without it
+# (CheckLaneTest replays the lane on the same accounting).
+NO_LANE = rs.Config(check_lane_jobs=0)
 IDLE = rs.Bitcashier(0, 0)
 NOW = 1_000_000.0
 GIB = 2**30
@@ -120,7 +123,7 @@ class RecordedReadingsTest(unittest.TestCase):
         ours = [inst(s, "measure", busy=True) for s in (1, 2, 3)]
         r = readings(available=58, ci_free=50, class_free={"measure": measure_slice_gib - 31}, cpu_busy=cpu_busy,
                      cores=CORES, busy_builders=[5] * 9)
-        return rs.decide(CFG, rs.Bitcashier(9, 0), queued(measure=32), ours, NOW, r)
+        return rs.decide(NO_LANE, rs.Bitcashier(9, 0), queued(measure=32), ours, NOW, r)
 
     def test_today_with_the_cpu_saturated_starts_nothing_more(self):
         self.assertEqual(self.busy_morning(cpu_busy=31.4, measure_slice_gib=80).starts, ())
@@ -134,7 +137,7 @@ class RecordedReadingsTest(unittest.TestCase):
         # bitcashier idle: (105 GiB available - 4 x 4 - 6 x 1 reserved - 6 margin) // 11 = 7; the measure slice holds
         # (80 - 6) // 11 = 6, the CPU (27.2 - 2) // 4 = 6
         r = readings(available=105, ci_free=115, class_free={"measure": 80}, cpu_busy=2, cores=CORES)
-        self.assertEqual(len(rs.decide(CFG, IDLE, queued(measure=32), [], NOW, r).starts), 6)
+        self.assertEqual(len(rs.decide(NO_LANE, IDLE, queued(measure=32), [], NOW, r).starts), 6)
 
     # 13:30Z, the owner's "now 4 tasks are running but only half the cpu is used": bitcashier 1/12 builders busy,
     # 0/6 deployers; 4 movies runners busy, 5 measurements and 5 light jobs queued; host 92 GiB free, ci.slice 87, the
@@ -146,7 +149,7 @@ class RecordedReadingsTest(unittest.TestCase):
                 inst(4, "check", busy=True)]
         r = readings(available=92, ci_free=87, class_free={"measure": 55}, cpu_busy=10, cores=CORES,
                      busy_builders=[busy_builder_gib])
-        return rs.decide(CFG, rs.Bitcashier(1, 0), queued(measure=5, light=5), ours, NOW, r)
+        return rs.decide(NO_LANE, rs.Bitcashier(1, 0), queued(measure=5, light=5), ours, NOW, r)
 
     def test_1330_a_quiet_bitcashier_leaves_movies_the_idle_cpu(self):
         # memory: 87 - (4 x 5 + 6 x 1) - 6 = 55 -> 5; the CPU: (27.2 - 10) // 4 = 4; the measure slice (55 - 6) // 11 = 4
@@ -170,7 +173,7 @@ class RecordedReadingsTest(unittest.TestCase):
         settling = [rs.Instance(s, "measure", True, NOW, NOW - 200, mem_gib=3.3, cpu_cores=2.6, cpu_seconds=520)
                     for s in (1, 2, 3)]
         r = rs.Readings(95, 88, {"measure": measure_slice_gib - 24}, 13, CORES, (), 300)
-        return rs.decide(CFG, rs.Bitcashier(0, 0), queued(measure=15), settled + settling, NOW, r)
+        return rs.decide(NO_LANE, rs.Bitcashier(0, 0), queued(measure=15), settled + settling, NOW, r)
 
     def test_1546_a_job_is_charged_the_cores_jobs_use_and_a_settling_one_only_what_it_has_not_shown(self):
         d = self.at_1546(measure_slice_gib=80)
@@ -230,6 +233,79 @@ class RecordedReadingsTest(unittest.TestCase):
         self.assertEqual(rs.decide(CFG, rs.Bitcashier(2, 0), queued(measure=30), six, NOW, r).starts, ())
 
 
+def settled(r, starts, cpu_each=1.7):
+    """The host a tick after `starts`: each new job settled at its class's expected size and `cpu_each` cores, out of
+    the host's and ci.slice's free memory and into the busy cores."""
+    gib = sum(CFG.job_expected_gib[c] for _, c in starts)
+    return rs.Readings(r.mem_available_gib - gib, r.ci_free_gib - gib, dict(r.class_free_gib),
+                       r.cpu_busy_cores + cpu_each * len(starts), r.cpu_cores, r.busy_builder_gib, r.cpu_span_seconds)
+
+
+class CheckLaneTest(unittest.TestCase):
+    """2026-11-08 05:45-05:50Z (ci-runner's journal): bitcashier 1/12 builders, 0/6 deployers. Measurements that ended
+    were replaced at once while no landing check was queued (05:47:37: 'memory': 0, nine measurement runners); the check
+    queued at 05:50 found 'room 0' -- memory 0 -- and waited for a measurement to end. agentctl's remote check gives up
+    at 80 min: land entry ws3b bounced checking -> queued for ~2.5 h and WS4's first entry expired. Priority alone
+    reserves nothing; the check lane holds `check_lane_jobs` checks' memory, cores and slots that a measurement never
+    takes."""
+
+    def before_the_refill(self):
+        # 05:4x: four measurements and one landing check running (settled), seven measurements queued, no check
+        ours = [rs.Instance(s, "measure", True, NOW, NOW - 900, mem_gib=6, cpu_cores=1.7, cpu_seconds=1500)
+                for s in (1, 3, 8, 10)] + [rs.Instance(4, "check", True, NOW, NOW - 900, mem_gib=5, cpu_cores=1.7,
+                                                       cpu_seconds=1500)]
+        r = rs.Readings(91, 87, {"measure": 75}, 18, CORES, (5,), 300)
+        return ours, r
+
+    def test_a_check_queued_after_the_measurements_refilled_starts_at_once(self):
+        ours, r = self.before_the_refill()
+        bc = rs.Bitcashier(1, 0)
+        refill = rs.decide(CFG, bc, queued(measure=7), ours, NOW, r)
+        self.assertTrue(refill.starts and all(c == "measure" for _, c in refill.starts))
+        # the next ticks: the refill settled, the running check ended, a new landing check queued
+        running = [i for i in ours if i.cls == "measure"] + [
+            rs.Instance(s, c, True, NOW, NOW - 900, mem_gib=CFG.job_expected_gib[c], cpu_cores=1.7, cpu_seconds=1500)
+            for s, c in refill.starts]
+        after = rs.decide(CFG, bc, queued(check=1, measure=3), running, NOW, settled(r, refill.starts))
+        self.assertEqual(after.room, 0)  # no room for a measurement ...
+        self.assertEqual([c for _, c in after.starts], ["check"])  # ... and the check starts anyway
+
+    def test_measurements_never_start_into_the_check_reservation(self):
+        # free memory past every reserve is the lane's two checks and one measurement less a GiB: no measurement
+        lane = CFG.check_lane_jobs * CFG.job_expected_gib["check"]
+        free = 4 * 4 + 6 + CFG.memory_margin_gib + lane + CFG.job_expected_gib["measure"] - 1
+        r = readings(available=free, ci_free=free, cpu_busy=0, cores=CORES)
+        d = rs.decide(CFG, IDLE, queued(measure=20), [], NOW, r)
+        self.assertEqual((d.starts, d.room), ((), 0))
+        self.assertIn("check_lane", d.limits)
+        # one GiB more holds one
+        r = readings(available=free + 1, ci_free=free + 1, cpu_busy=0, cores=CORES)
+        self.assertEqual(rs.decide(CFG, IDLE, queued(measure=20), [], NOW, r).starts, ((1, "measure"),))
+
+    def test_measurements_leave_the_lanes_slots_and_cores(self):
+        # slots: eight measurements running, two slots left -- the lane's
+        eight = [inst(s, "measure", busy=True) for s in range(1, 9)]
+        self.assertEqual(rs.decide(CFG, IDLE, queued(measure=5), eight, NOW, ROOMY).starts, ())
+        self.assertEqual(rs.decide(CFG, IDLE, queued(check=3), eight, NOW, ROOMY).starts,
+                         ((9, "check"), (10, "check")))
+        # cores: 27.2 - 15 = 12.2 spare; the lane's two checks at 4 leave 4.2, one 4-core measurement
+        d = rs.decide(CFG, IDLE, queued(measure=5), [], NOW, readings(cpu_busy=15, cores=CORES))
+        self.assertEqual(len(d.starts), 1)
+
+    def test_a_running_check_fills_its_share_of_the_lane(self):
+        # one check running: the lane holds back one more check, not two
+        lane_one = 4 * 4 + 6 + CFG.memory_margin_gib + CFG.job_expected_gib["check"] + CFG.job_expected_gib["measure"]
+        check = rs.Instance(1, "check", True, NOW, NOW - 900, mem_gib=5, cpu_cores=2, cpu_seconds=600)
+        r = readings(available=lane_one, ci_free=lane_one, cpu_busy=2, cores=CORES)
+        self.assertEqual(rs.decide(CFG, IDLE, queued(measure=5), [check], NOW, r).starts, ((2, "measure"),))
+
+    def test_saturated_bitcashier_still_starts_nothing_heavy(self):
+        r = readings(available=92, ci_free=87, class_free={"measure": 55}, cpu_busy=10, cores=CORES,
+                     busy_builders=[5] * 12)
+        d = rs.decide(CFG, rs.Bitcashier(12, 0), queued(check=2, measure=5), [], NOW, r)
+        self.assertEqual((d.room, d.starts), (0, ()))
+
+
 class SaturatedTest(unittest.TestCase):
     def test_every_builder_or_every_deployer_busy_is_saturated(self):
         self.assertFalse(rs.saturated(CFG, rs.Bitcashier(11, 5)))
@@ -251,7 +327,8 @@ class DecideTest(unittest.TestCase):
     def test_landing_checks_then_measurements_and_light_jobs_in_their_own_lane(self):
         small = rs.Config(max_slots=3)
         d = rs.decide(small, IDLE, queued(light=2, measure=3, check=1), [], NOW, ROOMY)
-        self.assertEqual(d.starts, ((1, "check"), (2, "measure"), (3, "measure"), (4, "light"), (5, "light")))
+        # slot 3 is the check lane's second check's: no measurement takes it
+        self.assertEqual(d.starts, ((1, "check"), (2, "measure"), (4, "light"), (5, "light")))
 
     def test_a_waiting_runner_of_the_class_counts_against_its_queue(self):
         d = rs.decide(CFG, IDLE, queued(check=2), [inst(1, "check")], NOW, ROOMY)
@@ -282,7 +359,7 @@ class DecideTest(unittest.TestCase):
     def test_the_light_lane_holds_its_own_slots_only(self):
         d = rs.decide(CFG, IDLE, queued(light=10), [], NOW, ROOMY)
         self.assertEqual(d.starts, ((11, "light"), (12, "light"), (13, "light")))
-        self.assertEqual(d.room, CFG.max_slots)  # the heavy slots are untouched
+        self.assertEqual(d.room, CFG.max_slots - CFG.check_lane_jobs)  # the heavy slots are untouched
 
     def test_the_light_lane_never_starts_on_a_full_cpu(self):
         # 95 % of 32 = 30.4 cores: 30 busy leaves under one

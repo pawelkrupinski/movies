@@ -15,8 +15,8 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
       - MEMORY: the tighter of the host's MemAvailable and ci.slice's headroom (memory.max less its working set:
         memory.current without inactive page cache, which the kernel takes back first), less a reserve for the
         bitcashier jobs that may start before the next reading counts them, less `memory_margin_gib`, must hold the
-        new job's class's `job_expected_gib` (a check or measurement 11 GiB, the container's --memory=16g bounding the
-        worst one; a light job 1).
+        new job's class's `job_expected_gib` (a measurement 11 GiB, a landing check 10, the container's --memory=16g
+        bounding the worst one; a light job 1).
         The builder reserve is `builder_burst` idle builders (or fewer, when fewer are idle), each at what a BUSY
         builder holds now: the median working set of the builder units running a job, at least
         `per_idle_builder_gib` (none busy: that floor) and at most `per_busy_builder_cap_gib`. Not every idle builder
@@ -48,6 +48,11 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
   * PRIORITY between movies' own jobs: landing checks (`movies-check`), then measurements (`movies-measure`), in the
     `max_slots` slots. A runner is started for a QUEUED job of a class only (ephemeral, one job, the label of that
     class alone), the highest class first, so a free slot goes to a waiting landing check before a measurement.
+  * THE CHECK LANE (2026-11-08 05:50Z: a landing check queued behind nine measurements, 'memory': 0; agentctl's remote
+    check gives up at 80 min, and land entry ws3b bounced checking -> queued for ~2.5 h). Priority alone reserved
+    nothing: measurements took every GiB the moment no check was queued, so the next check waited for one to END.
+    Measurement admission now leaves `check_lane_jobs` checks' slots, memory and cores free, less the checks running:
+    a queued check starts on the next tick whenever bitcashier is not saturated. Checks past the lane compete as before.
   * THE LIGHT LANE (the owner, 2026-11-07: "why was it waiting so long, can you fix that?"): the light jobs (`movies`:
     timings reports, prunes, dispatches -- seconds, under 1 GiB) have `light_slots` slots of their own past
     `max_slots`, admitted at their own size whatever the heavy queue or bitcashier's saturation. Charged a
@@ -91,12 +96,17 @@ class Config:
     repo: str = "pawelkrupinski/movies"
     max_slots: int = 10
     # ADMISSION -- every number of the rule in the module docstring, here and nowhere else
-    # Each class's expected working set and cores: a check or a measurement holds 10-11 GiB (2026-11-07: 31 GiB for 3,
-    # peaks 13) on the JVM's 4 cores; a light job (a timings report, a prune, a dispatch) runs seconds in under 1 GiB.
-    job_expected_gib: dict = dataclasses.field(default_factory=lambda: {"check": 11, "measure": 11, "light": 1})
+    # Each class's expected working set and cores: a measurement holds 10-11 GiB (2026-11-07: 31 GiB for 3, peaks 13);
+    # a landing check 4 GiB at its median and at most 9 (ci-runner's journal, 2026-11-05..08: 2361 busy readings, p99 8),
+    # so 10; both on the JVM's 4 cores. A light job (a timings report, a prune, a dispatch) runs seconds in under 1 GiB.
+    job_expected_gib: dict = dataclasses.field(default_factory=lambda: {"check": 10, "measure": 11, "light": 1})
     job_cpus: dict = dataclasses.field(default_factory=lambda: {"check": 4, "measure": 4, "light": 1})
     job_cpus_floor: float = 1  # a class's measured cores per job never read below this (job_cpus is its ceiling)
     light_slots: int = 3  # the light lane: slots past max_slots, for light jobs only
+    # THE CHECK LANE: this many landing checks' slots, memory (job_expected_gib) and cores (job_cpus) that
+    # measurement admission never takes, less the checks already running. Two: a landing check run has a plan job, then
+    # the rest, the old refs and identity's shards beside it, and 2-4 check jobs ran at once on most busy ticks.
+    check_lane_jobs: int = 2
     light_cpu_start_below: float = 0.95  # the light lane's CPU ceiling: a light job starts on a busy host, not a full one
     memory_margin_gib: float = 6  # left free beyond every reserve, for the running jobs' growth
     # A builder's reserve: the median working set of the busy builder units, within [per_idle_builder_gib,
@@ -175,7 +185,7 @@ class Readings:
 
 @dataclasses.dataclass(frozen=True)
 class Decision:
-    room: int  # how many heavy (check, measure) runners memory, CPU and slots held this tick; 0 when saturated
+    room: int  # how many measurements memory, CPU and slots held this tick, past the check lane; 0 when saturated
     saturated: bool
     starts: tuple  # ((slot, cls), ...)
     stops: tuple  # (slot, ...)
@@ -296,18 +306,32 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             for cls in CLASSES}
     heavy_slots = [s for s in range(1, cfg.max_slots + 1) if s not in used]
     size = cfg.job_expected_gib["measure"]
-    limits = {"memory": _whole_jobs(memory, size),
-              "slice": None if held["measure"] is None else _whole_jobs(held["measure"], size),
-              "cpu": _whole_jobs(cpu["heavy"], per_job["measure"]), "slots": len(heavy_slots),
-              "settling": f"{len(pending)} owe {sum(memory_charge(cfg, i) for i in pending):.0f} GiB "
-                          f"{pending_cpus:.1f} cores", "measure_cores": round(per_job["measure"], 1)}
     starts = []
+
+    def lane() -> tuple:
+        """(slots, GiB, cores) the check lane still holds: check_lane_jobs less the checks running or starting, each at
+        what a new check is charged (none settled: job_cpus, so measured cores would leave a fresh one short)."""
+        free = max(0, cfg.check_lane_jobs - sum(1 for i in alive if i.cls == "check")
+                   - sum(1 for _, c in starts if c == "check"))
+        return free, free * cfg.job_expected_gib["check"], free * cfg.job_cpus["check"]
+
+    lane_slots, lane_gib, lane_cpus = lane()
+    limits = {"memory": _whole_jobs(memory - lane_gib, size),
+              "slice": None if held["measure"] is None else _whole_jobs(held["measure"], size),
+              "cpu": _whole_jobs(cpu["heavy"] - lane_cpus, per_job["measure"]),
+              "slots": max(0, len(heavy_slots) - lane_slots),
+              "settling": f"{len(pending)} owe {sum(memory_charge(cfg, i) for i in pending):.0f} GiB "
+                          f"{pending_cpus:.1f} cores", "measure_cores": round(per_job["measure"], 1),
+              "check_lane": f"{lane_slots} x {cfg.job_expected_gib['check']} GiB {cfg.job_cpus['check']} cores"}
 
     def admit(cls: str, slots: list, gate: str) -> None:
         nonlocal memory
         need = max(0, demand.get(cls, 0) - sum(1 for i in alive if i.cls == cls and not i.busy))
         size, cores = cfg.job_expected_gib[cls], per_job[cls]
-        while need and slots and memory >= size and cpu[gate] >= cores and (held[cls] is None or held[cls] >= size):
+        # a measurement never takes the check lane (a check, or a light job in its own slots, is not held by it)
+        keep_slots, keep_gib, keep_cpus = lane() if cls == "measure" else (0, 0, 0)
+        while (need and len(slots) > keep_slots and memory - keep_gib >= size and cpu[gate] - keep_cpus >= cores
+               and (held[cls] is None or held[cls] >= size)):
             starts.append((slots.pop(0), cls))
             need -= 1
             memory -= size
@@ -320,8 +344,8 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
             admit(cls, heavy_slots, "heavy")
     # THE LIGHT LANE: its own slots, admitted at a light job's size whatever the heavy queue or bitcashier's runners.
     admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used], "light")
-    room = 0 if full else min(v for k, v in limits.items()
-                              if k in ("memory", "slice", "cpu", "slots") and v is not None)
+    room = 0 if full else max(0, min(v for k, v in limits.items()
+                                     if k in ("memory", "slice", "cpu", "slots") and v is not None))
     return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits)
 
 
