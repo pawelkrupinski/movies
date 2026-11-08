@@ -7,7 +7,8 @@ description: >-
   GitHub's release CDN, whose 504s failed Main #2306 (2026-11-08), and
   scripts/ci/fetch-verified.sh re-verifies the checksum on a hit and
   downloads a miss (or a failed restore) with a retry budget of minutes;
-  setup-java's `jdkfile` then installs it offline. A runner whose
+  setup-java's `jdkfile` then installs it offline. A download GitHub still
+  fails after that takes the same release's Zulu build from cdn.azul.com. A runner whose
   tool-cache already holds a Temurin 27 (ubuntu-26.04: 27.0.0+35), and
   anything unpinned, goes
   through plain actions/setup-java, retried up to 3 times (ECONNRESET while
@@ -95,15 +96,27 @@ runs:
         path: ${{ runner.temp }}/jdk-archive
         key: ${{ steps.pin.outputs.key }}
     - name: Fetch the pinned JDK (verified)
+      id: fetch
       if: steps.pin.outputs.key != ''
+      continue-on-error: true
       shell: bash
       env:
         FILE: ${{ runner.temp }}/jdk-archive/${{ steps.pin.outputs.file }}
         URL: ${{ steps.pin.outputs.url }}
         SHA256: ${{ steps.pin.outputs.sha256 }}
       run: '"$GITHUB_WORKSPACE/scripts/ci/fetch-verified.sh" "$FILE" "$URL" "$SHA256"'
+    # GitHub's release CDN failing for minutes on end (2026-11-08): the same release's Zulu build from cdn.azul.com,
+    # checksum-pinned the same way and never cached.
+    - name: Fetch the pinned JDK's fallback from Azul (verified)
+      if: steps.pin.outputs.key != '' && steps.fetch.outcome == 'failure'
+      shell: bash
+      env:
+        FILE: ${{ runner.temp }}/jdk-fallback/${{ steps.pin.outputs.fallback_file }}
+        URL: ${{ steps.pin.outputs.fallback_url }}
+        SHA256: ${{ steps.pin.outputs.fallback_sha256 }}
+      run: '"$GITHUB_WORKSPACE/scripts/ci/fetch-verified.sh" "$FILE" "$URL" "$SHA256"'
     - name: Save the pinned JDK (main only)
-      if: steps.pin.outputs.key != '' && github.ref == 'refs/heads/main' && steps.jdk-restore.outputs.cache-hit != 'true'
+      if: steps.pin.outputs.key != '' && github.ref == 'refs/heads/main' && steps.jdk-restore.outputs.cache-hit != 'true' && steps.fetch.outcome == 'success'
       uses: actions/cache/save@v5
       continue-on-error: true
       with:
@@ -114,7 +127,7 @@ runs:
       uses: actions/setup-java@v5
       with:
         distribution: jdkfile
-        jdkFile: ${{ runner.temp }}/jdk-archive/${{ steps.pin.outputs.file }}
+        jdkFile: ${{ steps.fetch.outcome == 'success' && format('{0}/jdk-archive/{1}', runner.temp, steps.pin.outputs.file) || format('{0}/jdk-fallback/{1}', runner.temp, steps.pin.outputs.fallback_file) }}
         java-version: ${{ steps.pin.outputs.version }}
         cache: ${{ inputs.cache != 'sbt' && inputs.cache || '' }}
 

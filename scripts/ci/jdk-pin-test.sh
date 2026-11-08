@@ -25,6 +25,12 @@ check "...and checksum" "c2619cb73ff1d296edd0644d92ae8ed94039bc1bdd43282398835b7
 check "Linux arm64 is pinned" "OpenJDK27U-jdk_aarch64_linux_hotspot_27.0.1.0.2_1.tar.gz" "$(pin Linux ARM64 27 | field file)"
 check "...the three platforms' keys differ" "3" \
   "$( { pin Linux X64 27; pin Linux ARM64 27; pin macOS ARM64 27; } | field key | sort -u | wc -l | tr -d ' ')"
+check "the fallback is the same release's Zulu build, off cdn.azul.com, not GitHub" \
+  "https://cdn.azul.com/zulu/bin/zulu27.30.109-ca-jdk27.0.1.0.3-linux_x64.tar.gz" "$(pin Linux X64 27 | field fallback_url)"
+check "...checksum-pinned too" "c128817926e4eebb30868b6ba082028f493afa716e459e34049bde0ab49a9829" \
+  "$(pin Linux X64 27 | field fallback_sha256)"
+check "...per platform" "zulu27.30.109-ca-jdk27.0.1.0.3-macosx_aarch64.tar.gz zulu27.30.109-ca-jdk27.0.1.0.3-linux_aarch64.tar.gz" \
+  "$(pin macOS ARM64 27 | field fallback_file) $(pin Linux ARM64 27 | field fallback_file)"
 check "an unpinned version prints nothing (plain setup-java)" "" "$(pin Linux X64 17)"
 check "an unpinned platform prints nothing" "" "$(pin Windows X64 27)"
 mkdir -p "$tool_cache/preinstalled/Java_Temurin-Hotspot_jdk/27.0.0-35/x64"
@@ -56,9 +62,13 @@ check "...and is not left for the cache to save" "absent" "$( [ -e "$work/jdk/$p
 
 printf '\033[36m▸\033[0m setup-jdk installs the pin from its cache\n'
 action="$REPO_ROOT/.github/actions/setup-jdk/action.yml"
-check "the pinned path restores and saves one cache path, fetches it verified and installs it with jdkfile" "2 1 1" \
+check "the pinned path restores and saves one cache path, fetches it (or its fallback) verified and installs it with jdkfile" "2 2 1" \
   "$(grep -c 'path: ${{ runner.temp }}/jdk-archive$' "$action") $(grep -c 'run: .*scripts/ci/fetch-verified.sh' "$action") $(grep -c 'distribution: jdkfile' "$action")"
-check "...the save runs on main only" "1" \
-  "$(grep -c "if: steps.pin.outputs.key != '' && github.ref == 'refs/heads/main'" "$action")"
+check "...the save runs on main only, and only for the verified Temurin download, never the fallback" "1" \
+  "$(grep -c "if: steps.pin.outputs.key != '' && github.ref == 'refs/heads/main' && .*steps.fetch.outcome == 'success'" "$action")"
+check "...the Zulu fallback is fetched (verified) only when the Temurin fetch failed" "1" \
+  "$(grep -c "if: steps.pin.outputs.key != '' && steps.fetch.outcome == 'failure'" "$action")"
+check "...the Temurin fetch may fail without failing the job" "1" \
+  "$(grep -A3 'id: fetch$' "$action" | grep -c 'continue-on-error: true')"
 
 spec_summary

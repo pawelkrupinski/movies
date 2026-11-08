@@ -4,7 +4,9 @@ description: >-
     tarball is one actions/cache entry keyed by version and checksum, saved only from main (every other ref restores
     it), so a warm cache needs no download from GitHub's release CDN, whose 504s failed three lands' `check (rest)` on
     2026-11-08 (run 42466721258). scripts/ci/fetch-verified.sh checks the checksum on a hit too, and a miss or a failed
-    restore downloads with a retry budget of minutes. Needs the repository checked out.
+    restore downloads with a retry budget of minutes; a CDN that fails even that leaves install-actionlint.sh to build
+    the same version through proxy.golang.org or nixpkgs, version-checked and never cached. Needs the repository
+    checked out.
 
 inputs:
     version:
@@ -23,14 +25,15 @@ runs:
           with:
               path: ${{ runner.temp }}/actionlint
               key: actionlint-${{ runner.os }}-${{ inputs.version }}-${{ inputs.sha256 }}
-        - shell: bash
+        - id: install
+          shell: bash
           env:
               ACTIONLINT_VERSION: ${{ inputs.version }}
               ACTIONLINT_SHA256: ${{ inputs.sha256 }}
           run: |
               scripts/ci/install-actionlint.sh "$RUNNER_TEMP/actionlint"
               echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
-        - if: github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'
+        - if: github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true' && steps.install.outputs.source == 'release'
           uses: actions/cache/save@v5
           continue-on-error: true
           with:
