@@ -127,12 +127,6 @@ object AlamoDrafthouseClient {
    *  venue map. */
   def scheduleUrl(venueSlug: String): String = s"$BaseUrl/s/mother/v2/schedule/venue/$venueSlug"
 
-  /** The chain's market roster — every market with its `cinemas[]`. Read only
-   *  when regenerating `docs/venue-maps/ALAMO-DRAFTHOUSE-VENUE-MAP.tsv`, never
-   *  at scrape time: the slug↔`Cinema` pairing is wired statically in
-   *  `CinemaScraperCatalog`. */
-  def marketScheduleUrl(marketSlug: String): String = s"$BaseUrl/s/mother/v2/schedule/market/$marketSlug"
-
   /** One show's detail — what `drafthouse.com/show/<slug>` displays once its
    *  JavaScript loads (the page itself is a 4.5 KB shell). The site also asks it
    *  market-scoped (`presentation/<market>/<slug>`); the show's facts are the same

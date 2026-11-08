@@ -92,6 +92,4 @@ object ReviewClusterId {
       .digest(members.map(_.identity).distinct.sorted.mkString("\u0001").getBytes(StandardCharsets.UTF_8))
     digest.take(8).map(b => f"${b & 0xff}%02x").mkString
   }
-
-  def ofKeys(keys: Seq[ListingKey]): String = of(keys.map(ReviewMember.of))
 }

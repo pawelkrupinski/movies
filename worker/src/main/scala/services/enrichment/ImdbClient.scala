@@ -196,12 +196,6 @@ class ImdbClient(http: HttpFetch) {
     if (title.trim.isEmpty) Nil
     else suggestions(title).toSeq.flatMap(js => ImdbClient.suggested(movieSuggestions(js)))
 
-  /** The ids among IMDb's suggestions for `title` that IMDb lists under `title` itself in some language — its
-   *  title, its original or one of its AKAs ([[ImdbClient.titled]]): "Camino dla opornych" is tt39814688's Polish
-   *  title. A suggestion displayed under another title is asked for its titles; a failed read throws. */
-  def titledIds(title: String): Seq[String] =
-    if (title.trim.isEmpty) Nil else ImdbClient.titled(title, suggestedMovies(title), id => Some(titlesOf(id))).getOrElse(Nil)
-
   /** IMDb's movie suggestions for `title`, as read: empty for a blank title; a failed read throws. */
   private[services] def suggestedMovies(title: String): Seq[Suggestion] = suggestionsFor(title).movies
 
