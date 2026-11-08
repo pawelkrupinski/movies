@@ -103,8 +103,6 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     summary.line should (include("peak 2 of 2") and include("1 still Pending at the end"))
   }
 
-  // DE seed 8 (drift 42003442640): the head no longer searching "Halloween" for Babylon's "Halloween II [OV]" filed a
-  // different half of every later question, and Geister at four venues flipped under an arrangement the base never met
   /** A gate holding every question, drawn as `draw` draws (the worker's: the share's own keyed draw). */
   private def gateOf(draw: IdentityDrift.Share => IdentityDrift.FillDraw = identity): IdentityDrift.Gate = {
     val share = new IdentityDrift.Share(8, 100)
