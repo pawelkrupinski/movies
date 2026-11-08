@@ -11,7 +11,7 @@ class IdentityRefitWorkflowSpec extends AnyFlatSpec with Matchers {
 
   // keyed by the branch, never the run
   "the refit" should "give each branch's dispatches a lane of their own, and the schedule one shared lane" in {
-    concurrency should include("group: identity-refit${{ github.event_name != 'schedule' && format('-{0}', github.ref_name) || '' }}")
+    concurrency should include("group: identity-refit${{ (github.event_name != 'schedule' && github.event_name != 'repository_dispatch') && format('-{0}', github.ref_name) || '' }}")
     concurrency should include("cancel-in-progress: false")
   }
 

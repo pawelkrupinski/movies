@@ -45,7 +45,7 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
   private val LaneLess = Set("discover-cinemas", "country-fixture-artifact", "filmweb-diff", "order-independence",
     "renovate", "roster-audit", "security-headers", "scala-steward", "decodo-probe")
 
-  private val Key = """(-\$\{\{ github\.ref \}\}|-\$\{\{ inputs\.[a-z-]+ \}\}|\$\{\{ github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.ref_name\) \|\| '' \}\}|\$\{\{ github\.event_name != 'schedule' && format\('-\{0\}', github\.ref_name\) \|\| '' \}\})?"""
+  private val Key = """(-\$\{\{ github\.ref \}\}|-\$\{\{ inputs\.[a-z-]+ \}\}|\$\{\{ github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.ref_name\) \|\| '' \}\}|\$\{\{ \(github\.event_name != 'schedule' && github\.event_name != 'repository_dispatch'\) && format\('-\{0\}', github\.ref_name\) \|\| '' \}\})?"""
 
   private lazy val workflows: Seq[(String, String)] =
     RepoFile.workflows().map(f => f.getName.replaceAll("""\.ya?ml$""", "") -> RepoFile.read(f.getPath))
