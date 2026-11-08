@@ -99,6 +99,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/actions/changed-paths/action.yml
 .github/actions/deployed-base/action.yml
 .github/actions/download-artifacts/action.yml
+.github/actions/install-actionlint/action.yml
 .github/actions/job-telemetry/action.yml
 .github/actions/mark-grafana-deploy/action.yml
 .github/actions/run-page-test/action.yml
@@ -143,6 +144,7 @@ scripts/ci/identity-takes-check.sh
 scripts/ci/identity_judgements_lint.py
 scripts/ci/identity_takes.py
 scripts/ci/identity_takes_diff.py
+scripts/ci/install-actionlint.sh
 scripts/ci/install-playwright.sh
 scripts/ci/jfr-every-jvm.sh
 scripts/ci/job_metrics.py

@@ -1,0 +1,30 @@
+name: Install actionlint
+description: >-
+    The pinned actionlint, verified by its sha256, on PATH -- the one install of it every workflow uses. Its release
+    tarball is kept in actions/cache under its version and checksum, so a warm cache needs no download from GitHub's
+    release CDN, whose 504s failed three lands' `check (rest)` on 2026-11-08 (run 42466721258); a miss downloads it with
+    a real retry budget. Either way scripts/ci/install-actionlint.sh checks the checksum before use. Needs the
+    repository checked out.
+
+inputs:
+    version:
+        description: The actionlint release.
+        default: 1.7.12
+    sha256:
+        description: The sha256 of that release's actionlint_<version>_linux_amd64.tar.gz.
+        default: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+
+runs:
+    using: composite
+    steps:
+        - uses: actions/cache@v5
+          with:
+              path: ${{ runner.temp }}/actionlint
+              key: actionlint-${{ runner.os }}-${{ inputs.version }}-${{ inputs.sha256 }}
+        - shell: bash
+          env:
+              ACTIONLINT_VERSION: ${{ inputs.version }}
+              ACTIONLINT_SHA256: ${{ inputs.sha256 }}
+          run: |
+              scripts/ci/install-actionlint.sh "$RUNNER_TEMP/actionlint"
+              echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"

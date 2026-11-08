@@ -1,0 +1,13 @@
+name: The pre-push hook's tools
+description: >-
+    The tools the pre-push hook's checks need that the job image lacks -- actionlint (.github/actions/install-actionlint),
+    timezonefinder, shellcheck and jq. A missing one blocks the check, as on the laptop. Needs the repository checked out.
+
+runs:
+    using: composite
+    steps:
+        - uses: ./.github/actions/install-actionlint
+        - shell: bash
+          run: |
+              python3 -m pip install --quiet timezonefinder || python3 -m pip install --quiet --break-system-packages timezonefinder
+              for tool in shellcheck jq; do command -v "$tool" > /dev/null || scripts/ci/install-apt-package.sh "$tool"; done
