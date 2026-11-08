@@ -92,8 +92,14 @@ title, facts, venue, links and timestamps. `updatedAt` is written on every inser
 - **Disk.** Unique keys departing a day, measured on the mirror's `identity_history` from 10-29 to 11-06: DE ~410, UK ~530,
   US ~1,730, ES ~180 (PL keeps no history). Only ~1% of keys depart twice in that week, so unique rows grow at roughly
   the departure rate, ~2.9k a day across countries. At 310-900 B a row (the mirror's average object size per country)
-  that is about 0.5-1 GB a year. Mongo has no per-collection size metric (the exporter deliberately leaves collstats off);
-  the volume's `filesystem-capacity` alert covers it.
+  that is about 0.5-1 GB a year. The mongodb-exporter's collstats collector runs for the `identity_retained` collections
+  alone (`roles/mongodb-exporter.nix`), and `IdentityRetainedArchiveLarge` (`mongodb.rules`) fires past 2 GB of data and
+  indexes, `IdentityRetainedSizeAbsent` when those series go.
+- **Twins.** A departed row whose own listing its venue bills again under another key
+  (`ListingRetention.returnedUnderAnotherKey`) is a duplicate, not a departure: the store DELETES it (the owner,
+  2026-11-07, "delete the duplicates"), at a take-up or at the drain its twin arrives in, and only a row it holds as
+  live. A listing that leaves in the same drain its twin arrives in is never written, and its key's expired row, if any,
+  stays. Counted as `kinowo_worker_identity_model_retained_twins_deleted_total{country,at}`.
 
 ## Metrics
 

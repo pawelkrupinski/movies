@@ -25,9 +25,10 @@ trait RetainedListingStore {
   /** The departed listings, as last written; None when nothing was ever written (the take-up reads them from the
    *  history). One written before departures were dated reads [[ListingRetention.Unknown]] as its departure. */
   def read(): Option[Seq[ListingRetention.Departed]]
-  /** `departed` written, each over what was held under its key; `released` (billed again, or aged out) removed. */
+  /** `departed` written, each over what was held under its key; `released` (billed again, or aged out) no input
+   *  again: never read back (the Mongo store keeps their rows, expired). */
   def update(departed: Seq[ListingRetention.Departed], released: Iterable[ListingKey]): Unit
-  /** Exactly `departed`, nothing else. */
+  /** Exactly `departed` read back, nothing else (the Mongo store expires every other row). */
   def replace(departed: Seq[ListingRetention.Departed]): Unit
   /** `keys` removed for good, not expired: departed rows whose own listing is billed again under another key
    *  ([[ListingRetention.returnedUnderAnotherKey]]) -- duplicates, never a departure to keep a record of. */
