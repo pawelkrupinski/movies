@@ -349,7 +349,7 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
 }
 
 // Momentary screen-name pill (Filmy / Kina), flashed centre-screen on arrival.
-// The iOS counterpart is `TabLabelOverlay` in FiltersBar.swift.
+// The iOS counterpart is `DayLabelOverlay` in ListingOverlays.swift.
 @Composable
 private fun TabLabelOverlay(text: String, modifier: Modifier = Modifier) {
     Surface(modifier = modifier, shape = CircleShape, color = Color.Black.copy(alpha = 0.55f)) {
@@ -390,7 +390,7 @@ private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
 }
 
 // Floating search pill, pinned bottom-centre and overlaid on the grid —
-// the Android counterpart to the iOS `SearchBar` (FiltersBar.swift). A
+// the Android counterpart to the iOS `SearchBar` (SearchBar.swift). A
 // translucent capsule with a leading magnifier, an inline text field, and
 // a trailing clear glyph that appears once there's a query. `imePadding`
 // (applied by the caller) lifts it above the soft keyboard on focus; the
@@ -737,7 +737,7 @@ internal fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bot
 internal const val LoadingSpinnerTag = "loading-spinner"
 
 // Centred spinner + label shown on the first load of a city, before any films
-// arrive (mirrors the iOS `loadingState`). On later launches cached films render
+// arrive (mirrors the iOS `ListingLoadingView`). On later launches cached films render
 // immediately, so this only surfaces when there's nothing to show yet.
 @Composable
 internal fun LoadingState(text: String) {

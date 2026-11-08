@@ -274,7 +274,7 @@ private fun FiltersList(
 
             // Miasto — a single entry point back to the first-launch picker,
             // replacing the inline Kraj/Miasto dropdowns. Last filter, right
-            // above the account section, mirroring iOS FiltersBar. Usable
+            // above the account section, mirroring iOS FiltersSheet. Usable
             // before login (it's just a city switch).
             item(key = "sec_city") { CitySection(viewModel, onClose) }
 
@@ -291,7 +291,7 @@ private fun FiltersList(
 }
 
 /**
- * Konto / Zaloguj się — the Android twin of iOS FiltersBar's Account section.
+ * Konto / Zaloguj się — the Android twin of iOS FiltersSheet's `AccountSection`.
  * Signed in: show who, plus Wyloguj / Usuń konto. Signed out: the two web
  * OAuth buttons. Hiding/disabling sync to the server while signed in (see
  * [pl.kinowo.auth.StateSyncService]).
@@ -405,7 +405,7 @@ private fun CollapsibleSection(
  * master; a **split** city (e.g. London) renders the same universe grouped into
  * collapsible areas, each with its own tri-state checkbox. Both shapes and all
  * the toggle arithmetic come from [CinemaFilterSection] — this composable only
- * draws it. Mirrors the web's Filtry cinema panel and iOS FiltersBar's "Kina".
+ * draws it. Mirrors the web's Filtry cinema panel and iOS FiltersSheet's "Kina".
  *
  * Cinema universe: the city catalog when it has loaded (it includes venues with
  * no showings today, so the list doesn't flicker as the day changes), otherwise
@@ -529,7 +529,7 @@ private fun CinemaAreaGroup(
  * switch — so [pl.kinowo.ui.KinowoApp] re-gates to the chooser once the sheet
  * closes ([onClose]). Always shown (independent of
  * [pl.kinowo.model.isSwitchable]) since it now covers picking a different city
- * within the same country too, mirroring iOS FiltersBar.
+ * within the same country too, mirroring iOS FiltersSheet.
  */
 @Composable
 private fun CitySection(viewModel: KinowoViewModel, onClose: () -> Unit) {
@@ -539,7 +539,7 @@ private fun CitySection(viewModel: KinowoViewModel, onClose: () -> Unit) {
     // ModalBottomSheet finishes dismissing, flashing the country's DEFAULT
     // city in for a frame where the actually-selected one belongs. Nothing
     // else in this sheet can change the selection while it's open, so one
-    // snapshot is enough — mirrors iOS FiltersBar's `currentCityLabel`.
+    // snapshot is enough — mirrors iOS FiltersSheet's `currentCityLabel`.
     val (currentCityName, currentCountryCode) = remember {
         val catalog = viewModel.countryCatalog.value
         val countryCode = Country.normalizeCode(viewModel.selectedCountryCode.value) ?: Country.default.code

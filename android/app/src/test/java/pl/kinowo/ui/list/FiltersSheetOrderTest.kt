@@ -30,7 +30,7 @@ import pl.kinowo.ui.KinowoViewModel
  * Off-device (Robolectric) Compose test pinning the Filtry section order:
  * "Miasto" (the city switch) is the last filter, sitting below every content
  * filter and right above the sign-in / sign-out account section — matching
- * iOS FiltersBar. Fails if the city picker drifts back to the top of the
+ * iOS FiltersSheet. Fails if the city picker drifts back to the top of the
  * sheet.
  */
 @RunWith(RobolectricTestRunner::class)
