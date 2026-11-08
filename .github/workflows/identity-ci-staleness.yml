@@ -1,6 +1,6 @@
 # IS THE IDENTITY CI STILL TELLING US ANYTHING? Every three hours, scripts/ci/identity-ci-staleness.sh
-# asks GitHub whether `Identity model convergence` has been red on main for over 6 hours, whether the
-# newest pipeline commit has gone 3 hours with no convergence run covering it, and whether
+# asks GitHub whether `Identity model convergence` or `Identity takes` has been red on main for over
+# 6 hours, whether the newest pipeline commit has gone 3 hours with no run of either covering it, and whether
 # `Record scrape fixtures` has gone 36 hours without a success. Any of them is work OVERDUE, not a
 # regression: the run stays green (the owner, 2026-10-27: CI red means only a regression) and the
 # `report` job turns it into the owner-assigned issue, closed by the next run with nothing overdue.

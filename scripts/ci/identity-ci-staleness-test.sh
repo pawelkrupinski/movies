@@ -99,6 +99,18 @@ check "a history that cannot be read is stale, not 'no commit touches the paths'
        CONVERGENCE_PATHS_FILE="$work/paths.txt" bash "$REPO_ROOT/scripts/ci/identity-ci-staleness.sh" 2>/dev/null) \
      | grep -E '^(::error::|ok  )convergence-unrun:' | sed -e 's/^::error::.*/stale/' -e 's/^ok  .*/ok/')"
 
+echo "takes-red and takes-unrun: Identity takes, watched as convergence is"
+runs identity-model-convergence.yml "$(run_json "$docs" completed success 1 0)"
+runs identity-takes.yml "$(run_json "$docs" completed failure 1 0)" \
+  "$(run_json "$pipeline" completed failure 8 7)" "$(run_json "$base" completed success 9 8)"
+check "a takes streak red since 7h ago is stale, though convergence is green" stale "$(check_out takes-red)"
+check "...and convergence-red stays its own verdict" ok "$(check_out convergence-red)"
+check "a takes run at a descendant covers the pipeline commit" ok "$(check_out takes-unrun)"
+runs identity-takes.yml "$(run_json "$base" completed success 9 8)"
+check "a green takes run is fresh" ok "$(check_out takes-red)"
+check "a takes run only at the pipeline commit's parent leaves it unrun" stale "$(check_out takes-unrun)"
+runs identity-takes.yml "$(run_json "$docs" completed success 1 0)"
+
 echo "recording-stale"
 runs identity-model-convergence.yml "$(run_json "$docs" completed success 1 0)"
 check "a success 10h ago is fresh" ok "$(check_out recording-stale)"

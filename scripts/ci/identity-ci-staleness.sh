@@ -23,6 +23,9 @@
 #   convergence-unrun   the newest first-parent commit touching `.github/convergence-paths.txt`
 #                       landed over CONVERGENCE_UNRUN_HOURS ago and no convergence run that is
 #                       queued, running or decided (not cancelled) is at it or a descendant of it;
+#   takes-red, takes-unrun
+#                       the same two of `Identity takes` (the takes rows, split from convergence
+#                       into a gating workflow of their own, dispatched by convergence's preflight);
 #   recording-stale     no `Record scrape fixtures` run on main has succeeded in
 #                       RECORDING_STALE_HOURS (36: one missed nightly plus slack).
 #
@@ -45,6 +48,7 @@ unrun_hours="${CONVERGENCE_UNRUN_HOURS:-3}"
 recording_hours="${RECORDING_STALE_HOURS:-36}"
 paths_file="${CONVERGENCE_PATHS_FILE:-$here/../../.github/convergence-paths.txt}"
 convergence_workflow="${CONVERGENCE_WORKFLOW:-identity-model-convergence.yml}"
+takes_workflow="${TAKES_WORKFLOW:-identity-takes.yml}"
 recording_workflow="${RECORDING_WORKFLOW:-record-scrape-fixtures.yml}"
 
 stale=0 broken=0
@@ -61,33 +65,11 @@ runs() {  # runs <workflow file> -> JSON array, newest first
 }
 
 # A failed read is not "nothing is wrong": it is reported as stale, so the check cannot go quiet.
-if ! convergence_runs="$(runs "$convergence_workflow")"; then
-  unjudged convergence "could not list $convergence_workflow runs"
-  convergence_runs='[]'
-fi
 if ! recording_runs="$(runs "$recording_workflow")"; then
   unjudged recording-stale "could not list $recording_workflow runs"
   recording_runs='[]'
 fi
 
-# ── convergence-red ──────────────────────────────────────────────────────────────────────────────
-# The streak: decided runs, newest first, up to the newest success. Its start is the oldest one's
-# completion -- when CI first said red -- not the newest's.
-red="$(jq -r --argjson now "$now" --argjson hours "$red_hours" '
-  [ sort_by(.createdAt) | reverse | .[]
-    | select((.updatedAt | fromdateiso8601) <= $now)
-    | select(.status == "completed" and (.conclusion == "success" or .conclusion == "failure")) ]
-  | (map(.conclusion == "failure") | index(false) // length) as $n
-  | .[0:$n] as $streak
-  | if ($streak | length) == 0 then "fresh newest decided run is green (or there is none)"
-    else ($streak | last | .updatedAt) as $since
-      | (($now - ($since | fromdateiso8601)) / 3600 | floor) as $age
-      | (if $age >= $hours then "stale" else "fresh" end)
-        + " red since \($since) (\($age)h, \($streak | length) failed run(s)); newest \($streak[0].url)"
-    end' <<<"$convergence_runs")" || red="unjudged could not judge the $convergence_workflow runs (jq failed on them)"
-if [ "${red%% *}" = unjudged ]; then unjudged convergence-red "${red#* }"; else verdict convergence-red "${red%% *}" "${red#* }"; fi
-
-# ── convergence-unrun ────────────────────────────────────────────────────────────────────────────
 # `dir/**` is git's `dir/`; any other entry is an exact path (.github/actions/changed-paths/matches.sh).
 pathspecs=()
 while IFS= read -r pattern; do
@@ -95,26 +77,61 @@ while IFS= read -r pattern; do
 done < <(sed -e 's/[[:space:]]*#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$paths_file" | grep -v '^$' | grep -v '^!')
 
 # A history that cannot be read (no checkout, a broken one) is not "no commit touches the paths".
-pipeline_sha="" pipeline_time=""
+pipeline_sha="" pipeline_time="" history_read=1
 if ! newest=$(git log -1 --first-parent --format='%H %ct' HEAD -- "${pathspecs[@]}"); then
-  unjudged convergence-unrun "could not read this checkout's history"
-elif read -r pipeline_sha pipeline_time <<< "$newest" && [ -z "${pipeline_sha:-}" ]; then
-  verdict convergence-unrun fresh "no commit touches the convergence paths"
+  history_read=0
 else
-  covered=""
-  # Queued, running or decided runs only: a cancelled one was replaced, or never ran.
-  for sha in $(jq -r '.[] | select(.conclusion != "cancelled" and .conclusion != "skipped") | .headSha' <<<"$convergence_runs"); do
-    if git merge-base --is-ancestor "$pipeline_sha" "$sha" 2>/dev/null; then covered="$sha"; break; fi
-  done
-  age=$(( (now - pipeline_time) / 3600 ))
-  if [ -n "$covered" ]; then
-    verdict convergence-unrun fresh "pipeline commit ${pipeline_sha:0:9} is covered by a run at ${covered:0:9}"
-  elif [ "$age" -ge "$unrun_hours" ]; then
-    verdict convergence-unrun stale "pipeline commit ${pipeline_sha:0:9} landed ${age}h ago and no convergence run covers it"
-  else
-    verdict convergence-unrun fresh "pipeline commit ${pipeline_sha:0:9} is ${age}h old, not yet due a run"
-  fi
+  read -r pipeline_sha pipeline_time <<< "$newest"
 fi
+
+gating_workflow() {  # gating_workflow <label> <workflow file>: <label>-red and <label>-unrun
+  local label="$1" workflow="$2" workflow_runs red covered sha age
+  if ! workflow_runs="$(runs "$workflow")"; then
+    unjudged "$label" "could not list $workflow runs"
+    workflow_runs='[]'
+  fi
+
+  # ── <label>-red ──
+  # The streak: decided runs, newest first, up to the newest success. Its start is the oldest one's
+  # completion -- when CI first said red -- not the newest's.
+  red="$(jq -r --argjson now "$now" --argjson hours "$red_hours" '
+    [ sort_by(.createdAt) | reverse | .[]
+      | select((.updatedAt | fromdateiso8601) <= $now)
+      | select(.status == "completed" and (.conclusion == "success" or .conclusion == "failure")) ]
+    | (map(.conclusion == "failure") | index(false) // length) as $n
+    | .[0:$n] as $streak
+    | if ($streak | length) == 0 then "fresh newest decided run is green (or there is none)"
+      else ($streak | last | .updatedAt) as $since
+        | (($now - ($since | fromdateiso8601)) / 3600 | floor) as $age
+        | (if $age >= $hours then "stale" else "fresh" end)
+          + " red since \($since) (\($age)h, \($streak | length) failed run(s)); newest \($streak[0].url)"
+      end' <<<"$workflow_runs")" || red="unjudged could not judge the $workflow runs (jq failed on them)"
+  if [ "${red%% *}" = unjudged ]; then unjudged "$label-red" "${red#* }"; else verdict "$label-red" "${red%% *}" "${red#* }"; fi
+
+  # ── <label>-unrun ──
+  if [ "$history_read" = 0 ]; then
+    unjudged "$label-unrun" "could not read this checkout's history"
+  elif [ -z "${pipeline_sha:-}" ]; then
+    verdict "$label-unrun" fresh "no commit touches the convergence paths"
+  else
+    covered=""
+    # Queued, running or decided runs only: a cancelled one was replaced, or never ran.
+    for sha in $(jq -r '.[] | select(.conclusion != "cancelled" and .conclusion != "skipped") | .headSha' <<<"$workflow_runs"); do
+      if git merge-base --is-ancestor "$pipeline_sha" "$sha" 2>/dev/null; then covered="$sha"; break; fi
+    done
+    age=$(( (now - pipeline_time) / 3600 ))
+    if [ -n "$covered" ]; then
+      verdict "$label-unrun" fresh "pipeline commit ${pipeline_sha:0:9} is covered by a $workflow run at ${covered:0:9}"
+    elif [ "$age" -ge "$unrun_hours" ]; then
+      verdict "$label-unrun" stale "pipeline commit ${pipeline_sha:0:9} landed ${age}h ago and no $workflow run covers it"
+    else
+      verdict "$label-unrun" fresh "pipeline commit ${pipeline_sha:0:9} is ${age}h old, not yet due a run"
+    fi
+  fi
+}
+
+gating_workflow convergence "$convergence_workflow"
+gating_workflow takes "$takes_workflow"
 
 # ── recording-stale ──────────────────────────────────────────────────────────────────────────────
 recording="$(jq -r --argjson now "$now" --argjson hours "$recording_hours" '

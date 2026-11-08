@@ -30,7 +30,7 @@ class IdentityCiStalenessWorkflowSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "ask about workflows that exist" in {
-    Seq("CONVERGENCE_WORKFLOW:-", "RECORDING_WORKFLOW:-").foreach { variable =>
+    Seq("CONVERGENCE_WORKFLOW:-", "TAKES_WORKFLOW:-", "RECORDING_WORKFLOW:-").foreach { variable =>
       val file = (java.util.regex.Pattern.quote(variable) + """([\w.-]+\.yml)""").r.findFirstMatchIn(checker)
         .getOrElse(fail(s"the checker names no default for $variable")).group(1)
       withClue(s"$variable defaults to $file: ")(RepoFile.exists(s".github/workflows/$file") shouldBe true)
