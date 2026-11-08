@@ -73,6 +73,8 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     override def bounded(heldSeconds: Seq[Double]): Unit = bounds :+= heldSeconds
     var retention = Seq.empty[(Int, Int, Int)]
     override def retention(present: Int, kept: Int, departed: Int): Unit = retention :+= ((present, kept, departed))
+    var twinsDeleted = Seq.empty[(Int, Boolean)]
+    override def twinsDeleted(count: Int, atBoot: Boolean): Unit = twinsDeleted :+= (count -> atBoot)
   }
 
   /** `world`, its services' woken drains run nowhere: the spec drains by hand alone, so no drain on a thread of its own races
@@ -367,6 +369,37 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     val bareKey = ListingKey.of(Helios, bare(Helios, "Lalka"))
     service.peek(10.seconds).get.listings.map(_.key) should not contain bareKey
     world.retained.read().getOrElse(Nil).map(_.listing.key) should not contain bareKey
+  }
+
+  // The store's delete is for a stored twin alone: a listing that leaves as its twin arrives was never written as departed,
+  // so nothing of it is deleted -- not the archive's expired row of an earlier departure (identity_retained keeps every
+  // listing) -- and the twins-deleted count counts only rows the store held.
+  it should "delete from the store, and count, only the twins it holds: none for a listing leaving as its twin arrives" in {
+    val world   = new World
+    val deleted = scala.collection.mutable.ArrayBuffer.empty[ListingKey]
+    val held    = new RetainedListingStore.InMemory()
+    world.retained = new RetainedListingStore {
+      def read() = held.read()
+      def update(departed: Seq[ListingRetention.Departed], released: Iterable[ListingKey]): Unit = held.update(departed, released)
+      def replace(departed: Seq[ListingRetention.Departed]): Unit = held.replace(departed)
+      def delete(keys: Iterable[ListingKey]): Unit = { deleted ++= keys; held.delete(keys) }
+    }
+    world.scrapes = Map(Helios -> Seq(bare(Helios, "Lalka"), movie(Helios, "Matilda")), Multikino -> Seq(movie(Multikino, "Lalka", Some(2025))))
+    val service = world.service()
+    service.takeUp()
+    world.scrape(service, Helios, Seq(movie(Helios, "Lalka", Some(2026)), movie(Helios, "Matilda")))  // re-keyed in one scrape
+    service.drain()
+    deleted shouldBe empty
+    world.gate.twinsDeleted shouldBe empty
+
+    world.scrape(service, Helios, Seq(movie(Helios, "Matilda")))                                      // the lent one departs
+    service.drain()
+    val lentKey = ListingKey.of(Helios, movie(Helios, "Lalka", Some(2026)))
+    held.read().get.map(_.listing.key) should contain(lentKey)
+    world.scrape(service, Helios, Seq(bare(Helios, "Lalka"), movie(Helios, "Matilda")))               // back bare: the stored twin goes
+    service.drain()
+    deleted.toSeq shouldBe Seq(lentKey)
+    world.gate.twinsDeleted shouldBe Seq(1 -> false)
   }
 
   it should "resume no recorded kept listing whose title no venue bills" in {

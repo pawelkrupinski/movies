@@ -314,13 +314,15 @@ final class IdentityModelService(
     val leftAll  = leaving.iterator.filterNot(k => retained.contains(k) || seenKeys(k)).flatMap(k => engine.held(k).map(k -> _))
       .map { case (k, listing) => k -> ListingRetention.Departed(listing, now) }.toMap
     // a departed listing its own venue bills again under another key (a lent page and year, another case) is back, not
-    // departed: one that leaves as its twin arrives is never written, one already stored is deleted
+    // departed: one that leaves as its twin arrives is never written, one already stored is deleted -- that one alone, so
+    // the delete never reaches the archive's expired row of an earlier departure under a key leaving now
     val twins    = if (seen.isEmpty || (departed.isEmpty && leftAll.isEmpty)) Set.empty[services.movies.ListingKey]
                    else ListingRetention.returnedUnderAnotherKey((departed.values.asScala ++ leftAll.values).map(_.listing).toSeq, seen)
                      .iterator.map(_.key).toSet
     val left     = leftAll -- twins
-    twins.foreach(departed.remove)
-    if (twins.nonEmpty) deleteTwins(twins, atBoot = false)
+    val stored   = twins.filter(departed.containsKey)
+    stored.foreach(departed.remove)
+    if (stored.nonEmpty) deleteTwins(stored, atBoot = false)
     left.foreach { case (k, d) => departed.put(k, d) }
     val aged     = departed.asScala.collect { case (k, d) if !ListingRetention.live(d, now, retentionWindow) => k }.toSeq
     aged.foreach(departed.remove)
