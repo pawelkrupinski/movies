@@ -156,7 +156,9 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
    --hook` (the squash guard) runs first, when `~/bin/agentctl` exists.
 3. **The red gate** (push to main only; bypass name `redgate`). For each gating workflow — exactly Main (`main.yml`)
    and Identity model convergence (`identity-model-convergence.yml`), the owner's gate (2026-10-27) — it reads the newest *decided* run on main (success or failure; cancelled,
-   skipped and unfinished runs say nothing), one bounded read each (`PREPUSH_GH_SECONDS`, 15 s). A Forgejo remote
+   skipped and unfinished runs say nothing; nor does an INCOMPLETE run, red only in aggregates of
+   `.github/gating-checks.tsv` such as convergence's `verdict complete` -- the drift explorer's drift-only dispatch is one
+   -- which agentctl reads as NO VERDICT: the complete run before it decides, the owner 2026-11-08), one bounded read each (`PREPUSH_GH_SECONDS`, 15 s). A Forgejo remote
    reads Forgejo's runs API with `$FORGEJO_API_TOKEN` or the `movies` vault's token if already unlocked; no token →
    the gate is skipped with one warning. An API that does not answer is warned about and skipped for that workflow,
    never a block. If any is red, every pushed commit touching a **production path** (`*/src/main/`, `conf/`,

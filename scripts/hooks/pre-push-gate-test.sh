@@ -130,6 +130,22 @@ check "a Main red only in an unproven check and its aggregate holds no push, sai
   "$(STUB_JOBS="$unproven" GH_MAIN="[$red]" push "$gbase..$plain") $(grep -c 'red only in checks no green run has proven yet' "$gate/err")"
 check "...a red in a proven check refuses it as ever" "1" "$(STUB_JOBS="$proven" GH_MAIN="[$red]" push "$gbase..$plain")"
 check "...and so does a run whose jobs cannot be read" "1" "$(STUB_JOBS="not json" GH_MAIN="[$red]" push "$gbase..$plain")"
+# AN INCOMPLETE RUN IS NO VERDICT (the owner, 2026-11-08: the hook reads main's verdict as agentctl does). Identity model
+# convergence #1063, the nightly drift explorer's drift-only dispatch on main, failed only its `verdict complete`
+# aggregate, by design: agentctl read it NO VERDICT and the gate green from #1062, the hook read it red and refused every
+# production push. A run red only in aggregates is passed over and the complete run before it decides; a complete red
+# behind it still refuses; a run whose jobs gh cannot say stays red.
+printf 'kind\tworkflow\tname\tproven\tnote\njob\tidentity-model-convergence.yml\tverdict complete\taggregate\njob\tidentity-model-convergence.yml\ttakes (pl)\t5\n' > "$grepo/.github/gating-checks.tsv"
+incomplete="$(run_json 38520439555 completed failure 38520439555 1063)"
+jobs_of 38520439555 "verdict complete"
+check "a convergence run red only in its verdict-complete aggregate is no verdict: the green run before it lets the push land" "0 1" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$green]" GH_IMC="[$incomplete,$green]" push "$gbase..$plain") $(grep -c 'run 38520439555 is NO VERDICT' "$gate/err")"
+jobs_of 38520439037 "takes (pl)" "verdict complete"
+check "...a complete red run before it still refuses" "1 1" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$green]" GH_IMC="[$incomplete,$red,$green]" push "$gbase..$plain") $(grep -c 'Identity model convergence is RED on main: run 38520439037' "$gate/err")"
+rm "$jobsdir/38520439555.json"
+check "...and one whose jobs gh cannot read is red, as ever" "1" \
+  "$(STUB_JOBS_DIR="$jobsdir" GH_MAIN="[$green]" GH_IMC="[$incomplete,$green]" push "$gbase..$plain")"
 rm -rf "$grepo/scripts/ci/gating_checks.py" "$grepo/.github/gating-checks.tsv"
 # THE GATE FAILS CLOSED (2026-10-27 08:05Z: a gate skipped for want of a token let agentctl's waiting processor push onto
 # a red Main): unread -- an API error, no answer -- refuses a production push; a tools-only one still lands.
