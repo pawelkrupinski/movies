@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, HealthController, LandingController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
+import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, HealthController, LandingController, LegacyRedirectController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
 import modules.Wiring
 
 /** ── The public site ───────────────────────────────────────────────────────
@@ -57,6 +57,8 @@ trait ControllersWiring { self: Wiring =>
   // robots.txt and the sitemaps, cut from the live schedules and each city's own stamp.
   lazy val crawlerController = new CrawlerController(controllerComponents, cityRequests,
     CrawlerFiles.live(country, movieControllerService, webReadModel))
+  // The addresses no longer minted but still answered, each redirected onto its current one.
+  lazy val legacyRedirectController = new LegacyRedirectController(controllerComponents, cityRequests)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

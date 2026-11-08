@@ -16,7 +16,7 @@ import play.api.mvc.{RequestHeader, Result, Results}
  *  stranded on an empty listing for a city that has a full one. That is how a
  *  cross-country deep link came up as "no screenings" in the iOS app.
  *
- *  Same scope `MovieController.sitemap` applies, for the same reason — a `KINOWO_COUNTRY=pl`
+ *  Same scope `CrawlerController.sitemap` applies, for the same reason — a `KINOWO_COUNTRY=pl`
  *  host owns Poland's cities and nothing else. Note this is a COUNTRY scope,
  *  not a data one: a Polish city with no films today still renders (and still
  *  answers `[]`), because "we don't serve this city" and "this city is quiet

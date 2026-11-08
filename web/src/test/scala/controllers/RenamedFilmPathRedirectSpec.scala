@@ -19,9 +19,9 @@ import play.api.test.Helpers._
  *  that shares the brand domain (a redirect off its own site). */
 class RenamedFilmPathRedirectSpec extends AnyFlatSpec with Matchers {
 
-  private def controller(country: models.Country = models.Country.default): MovieController = {
+  private def controller(country: models.Country = models.Country.default): LegacyRedirectController = {
     TestCityControllers.build(Seq(TestCityControllers.showing("Incepcja", Some(2010), imdbId = Some("tt1375666"),
-      posterUrl = Some("https://cinema.example/poster.jpg"))), servingCountry = country).movie
+      posterUrl = Some("https://cinema.example/poster.jpg"))), servingCountry = country).legacy
   }
 
   private def locationOf(result: scala.concurrent.Future[play.api.mvc.Result]): String =

@@ -33,15 +33,15 @@ final class CityRoutesDeployment(country: Country,
   private def route(rh: RequestHeader): Future[Result] = {
     val rest = rh.path.stripPrefix(mount + "/")
     val action: EssentialAction = rest.split("/", -1).toSeq match {
-      case Seq(city)                      => wired.movie.indexNoTrailingSlash(city)
+      case Seq(city)                      => wired.legacy.indexNoTrailingSlash(city)
       case Seq(city, "")                  => wired.movie.index(city)
       case Seq(city, "api", "repertoire") => wired.api.apiRepertoire(city)
       case Seq(city, "api", "details")    => wired.api.apiDetails(city)
       case Seq(city, "api", "cinemas")    => wired.api.apiCinemas(city)
       case Seq(city, "movie")             => wired.movie.film(city, rh.getQueryString("title").getOrElse(""))
       case Seq(city, "movie", slug)       => wired.movie.filmBySlug(city, slug)
-      case Seq(city, "film")              => wired.movie.filmLegacy(city)
-      case city +: "film" +: rest         => wired.movie.filmSubPathLegacy(city, rest.mkString("/"))
+      case Seq(city, "film")              => wired.legacy.filmLegacy(city)
+      case city +: "film" +: rest         => wired.legacy.filmSubPathLegacy(city, rest.mkString("/"))
       case _                              => EssentialAction(_ => play.api.libs.streams.Accumulator.done(Results.NotFound))
     }
     action(rh).run()

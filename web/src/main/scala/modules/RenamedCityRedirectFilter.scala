@@ -24,7 +24,7 @@ import scala.concurrent.Future
  * so `/uk/york/` is a UK page whatever the US calls York, and one country's
  * retired slug never moves another's live page.
  *
- * A FILTER rather than a branch in `MovieController.withCity` because the slug
+ * A FILTER rather than a branch in `CityRequests.withCity` because the slug
  * appears in thirteen routes — the index, the film pages, three `/api/…`
  * endpoints the mobile apps call — and `withCity` is
  * handed only the slug, never the path it has to rewrite.

@@ -53,7 +53,7 @@ is that the local toolchain is missing (e.g. no full Xcode for
   and `/api/cinemas` JSON through the app's own `Codable` models with the
   stores' bare `JSONDecoder()` — the same line `RepertoireStore` /
   `DetailsStore` run. (The app has no HTML path any more; a Twirl
-  template change cannot break it, a `MovieController` JSON change can.)
+  template change cannot break it, a `MovieApiController` JSON change can.)
 - **`swift test --package-path ios`** — iOS unit / integration suites
   without the live server. Quicker; required for any change to iOS
   model / parser logic regardless of whether you also need LocalServer.

@@ -28,9 +28,9 @@ GET     /:city/movies               controllers.MovieController.browse(city: Str
 # link minted before the rename carries them, including the film URLs already in
 # search indexes, anything shared, and the share / copy-link buttons of every
 # app build already installed.
-GET     /:city/film                 controllers.MovieController.filmLegacy(city: String)
-GET     /:city/film/*rest           controllers.MovieController.filmSubPathLegacy(city: String, rest: String)
-GET     /:city/filmy                controllers.MovieController.browseLegacy(city: String)
+GET     /:city/film                 controllers.LegacyRedirectController.filmLegacy(city: String)
+GET     /:city/film/*rest           controllers.LegacyRedirectController.filmSubPathLegacy(city: String, rest: String)
+GET     /:city/filmy                controllers.LegacyRedirectController.browseLegacy(city: String)
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────
 GET     /:city/api/repertoire       controllers.MovieApiController.apiRepertoire(city: String, days: Option[Int])
@@ -276,9 +276,9 @@ GET     /sitemap-root.xml           controllers.CrawlerController.sitemapRoot
 # Its OLD address, the committed asset `og-<slug>.jpg`, is cached by link previews: 301'd to the
 # new one. Above the assets route, and never a home card (`og-home.jpg`, `og-home-<cc>.jpg`),
 # which are still assets.
-GET     /assets/img/$file<og-(?!home(-[a-z]{2})?\.jpg$)[a-z0-9-]+\.jpg>   controllers.MovieController.legacyCityCard(file: String)
+GET     /assets/img/$file<og-(?!home(-[a-z]{2})?\.jpg$)[a-z0-9-]+\.jpg>   controllers.LegacyRedirectController.legacyCityCard(file: String)
 # Where Caddy sends a request for a city card the worker has not drawn yet: the country's home card.
-GET     /share-card-fallback/:country controllers.MovieController.cityCardFallback(country: String)
+GET     /share-card-fallback/:country controllers.LegacyRedirectController.cityCardFallback(country: String)
 
 # ── Static assets ─────────────────────────────────────────────────────────────
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
@@ -290,4 +290,4 @@ GET     /assets/*file               controllers.Assets.versioned(path="/public",
 # stays below them. Everything else that reaches it is either a city — 301'd
 # onto the canonical `/{city}/` the sitemap and the canonical tag advertise — or
 # an unknown slug, which 404s rather than being bounced one hop first.
-GET     /:city                      controllers.MovieController.indexNoTrailingSlash(city: String)
+GET     /:city                      controllers.LegacyRedirectController.indexNoTrailingSlash(city: String)

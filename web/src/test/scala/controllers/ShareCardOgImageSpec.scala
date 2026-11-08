@@ -21,12 +21,12 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   private val records = Seq(film("Diuna"), film("Belle"))
 
   /** The controller over a read model where Diuna has a share card and Belle has none. */
-  private def controller(): MovieController = {
+  private def controller(): TestCityControllers = {
     val store = TestReadModel.store(records)
     store.findAllMovies().filter(_.title == "Diuna").foreach(m => store.upsertMovie(m.copy(shareCard = Some(card))))
     val readModel = new WebReadModel(store, clock = _root_.tools.SpecClock.Pinned)
     readModel.reload()
-    TestCityControllers.build(records, readModel = Some(readModel)).movie
+    TestCityControllers.build(records, readModel = Some(readModel))
   }
 
   private val request = FakeRequest().withHeaders("Host" -> "kinowo.net", "X-Forwarded-Proto" -> "https")
@@ -34,7 +34,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
 
   private def ogImage(slug: String): Option[String] =
     """<meta property="og:image"\s+content="([^"]+)">""".r
-      .findFirstMatchIn(contentAsString(controller().filmBySlug("poznan", slug).apply(request))).map(_.group(1))
+      .findFirstMatchIn(contentAsString(controller().movie.filmBySlug("poznan", slug).apply(request))).map(_.group(1))
 
   "A film page" should "point og:image at its share card on its country's host" in {
     ogImage("diuna") shouldBe Some(s"https://kinowo.net/share-cards/pl/$card")
@@ -44,7 +44,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   // kinowo.net and the showtimes.cc front door) and, off the proxy, whatever a client sent.
   // A preview card's address is the country's, like the city card it falls back to.
   it should "name its share card on the country's host whatever host the request arrived on" in {
-    val html = contentAsString(controller().filmBySlug("poznan", "diuna").apply(
+    val html = contentAsString(controller().movie.filmBySlug("poznan", "diuna").apply(
       request.withHeaders("X-Forwarded-Host" -> "attacker.example")))
     """<meta property="og:image"\s+content="([^"]+)">""".r.findFirstMatchIn(html).map(_.group(1)) shouldBe
       Some(s"https://kinowo.net/share-cards/pl/$card")
@@ -55,7 +55,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "always declare the image's type and size, so a first share renders without fetching it" in {
-    val html = contentAsString(controller().filmBySlug("poznan", "belle").apply(request))
+    val html = contentAsString(controller().movie.filmBySlug("poznan", "belle").apply(request))
     html should include ("""<meta property="og:image:type"   content="image/jpeg">""")
     html should include ("""<meta property="og:image:width"  content="1200">""")
     html should include ("""<meta property="og:image:height" content="630">""")
@@ -73,7 +73,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   }
 
   "The committed-asset city card URL" should "redirect permanently to the worker's card" in {
-    val result = controller().legacyCityCard("og-poznan.jpg").apply(request)
+    val result = controller().legacy.legacyCityCard("og-poznan.jpg").apply(request)
     status(result) shouldBe MOVED_PERMANENTLY
     redirectLocation(result) shouldBe Some(cityCard)
   }
@@ -82,7 +82,7 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   // top-down), taking every old city card and never a home card, which is still an asset.
   it should "be routed ahead of the assets, and never take a home card" in {
     val lines   = scala.io.Source.fromResource("routes").getLines().map(_.trim).filterNot(l => l.isEmpty || l.startsWith("#")).toVector
-    val legacy  = lines.indexWhere(_.contains("MovieController.legacyCityCard"))
+    val legacy  = lines.indexWhere(_.contains("LegacyRedirectController.legacyCityCard"))
     val assets  = lines.indexWhere(_.contains("controllers.Assets.versioned"))
     legacy should (be >= 0 and be < assets)
     val pattern = "\\$file<(.+)>".r.findFirstMatchIn(lines(legacy)).get.group(1)
@@ -91,14 +91,14 @@ class ShareCardOgImageSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "send a slug no city answers to any more to the home card" in {
-    val result = controller().legacyCityCard("og-atlantis.jpg").apply(request)
+    val result = controller().legacy.legacyCityCard("og-atlantis.jpg").apply(request)
     status(result) shouldBe FOUND
     redirectLocation(result) shouldBe Some("https://kinowo.net/assets/img/og-home.jpg")
   }
 
   "A city card the worker has not drawn yet" should "fall back to its country's home card, never a 404" in {
-    redirectLocation(controller().cityCardFallback("uk").apply(request)) shouldBe Some("https://showtimes.cc/uk/assets/img/og-home-uk.jpg")
-    redirectLocation(controller().cityCardFallback("pl").apply(request)) shouldBe Some("https://kinowo.net/assets/img/og-home.jpg")
-    redirectLocation(controller().cityCardFallback("zz").apply(request)) shouldBe Some("https://kinowo.net/assets/img/og-home.jpg")
+    redirectLocation(controller().legacy.cityCardFallback("uk").apply(request)) shouldBe Some("https://showtimes.cc/uk/assets/img/og-home-uk.jpg")
+    redirectLocation(controller().legacy.cityCardFallback("pl").apply(request)) shouldBe Some("https://kinowo.net/assets/img/og-home.jpg")
+    redirectLocation(controller().legacy.cityCardFallback("zz").apply(request)) shouldBe Some("https://kinowo.net/assets/img/og-home.jpg")
   }
 }

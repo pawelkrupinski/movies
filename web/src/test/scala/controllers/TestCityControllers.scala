@@ -5,10 +5,12 @@ import play.api.test.Helpers
 import services.readmodel.{TestReadModel, WebReadModel}
 
 /** The city-route controllers one deployment wires — the HTML pages ([[movie]])
- *  the JSON API ([[api]]) and robots.txt + the sitemaps ([[crawler]]) — over ONE [[CityRequests]] and ONE read model, as
+ *  the JSON API ([[api]]), robots.txt + the sitemaps ([[crawler]]) and
+ *  the legacy-address redirects ([[legacy]]) — over ONE [[CityRequests]] and ONE read model, as
  *  the composition root wires them, plus that [[WebReadModel]] so a test can
  *  `reload()` to bump the mtime. */
-final case class TestCityControllers(movie: MovieController, api: MovieApiController, crawler: CrawlerController, readModel: WebReadModel)
+final case class TestCityControllers(movie: MovieController, api: MovieApiController, crawler: CrawlerController,
+                                    legacy: LegacyRedirectController, readModel: WebReadModel)
 
 /** Shared builder for fully-wired [[TestCityControllers]] backed by an in-memory
  *  read model and no live HTTP — the seam every controller spec needs. Pass the
@@ -97,6 +99,7 @@ object TestCityControllers {
       filmCards              = filmCards,
     )
     TestCityControllers(movie, new MovieApiController(cc, cityRequests, service),
-      new CrawlerController(cc, cityRequests, CrawlerFiles.live(servingCountry, service, readModel_)), readModel_)
+      new CrawlerController(cc, cityRequests, CrawlerFiles.live(servingCountry, service, readModel_)),
+      new LegacyRedirectController(cc, cityRequests), readModel_)
   }
 }

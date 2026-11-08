@@ -17,8 +17,8 @@ import play.api.test.Helpers._
  *  top-level path into a 301 onto a URL that 404s one hop later. */
 class CityTrailingSlashRedirectSpec extends AnyFlatSpec with Matchers {
 
-  private def controller(country: models.Country = models.Country.default): MovieController =
-    TestCityControllers.build(Nil, servingCountry = country).movie
+  private def controller(country: models.Country = models.Country.default): LegacyRedirectController =
+    TestCityControllers.build(Nil, servingCountry = country).legacy
 
   private def locationOf(result: scala.concurrent.Future[play.api.mvc.Result]): String =
     header(LOCATION, result).getOrElse(fail("no Location header"))

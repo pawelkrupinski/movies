@@ -8,7 +8,7 @@ import models.City
  *  the landing, each city listing (plus each metro listing, for a city whose
  *  `/{slug}/` is a chooser), and every film deep-link the city
  *  is currently showing. Pure (no I/O) so it unit-tests against a fixed corpus;
- *  [[MovieController.sitemap]] feeds it the warm read-model schedules.
+ *  [[CrawlerController.sitemap]] feeds it the warm read-model schedules.
  *
  *  Deliberately omits the `/{city}/movies?...` browse-facet pages: they're thin
  *  filtered slices of the same corpus and would multiply the URL count without
@@ -48,7 +48,7 @@ object SitemapBuilder {
    *                 unstamped: it's a static city list no per-city projection
    *                 touches.
    *  @param includeLanding whether to emit the country's landing URL. `false`
-   *                 for a per-city sub-sitemap (see [[MovieController.citySitemap]]):
+   *                 for a per-city sub-sitemap (see [[CrawlerController.citySitemap]]):
    *                 the landing already has its own address once the flat file
    *                 is partitioned, and repeating it in every sub-file would
    *                 advertise the same `<loc>` from several sitemaps at once. */
@@ -83,7 +83,7 @@ object SitemapBuilder {
   }
 
   /** How many `<url>` elements [[build]] would emit for `entries`, landing URL
-   *  included — [[MovieController.sitemap]]'s threshold check for whether a
+   *  included — [[CrawlerController.sitemap]]'s threshold check for whether a
    *  country's flat file needs partitioning into [[cityIndex]] instead. Kept in
    *  lock-step with `build`'s own de-duplication so the count it decides on is
    *  the count that would actually be written. */
@@ -91,7 +91,7 @@ object SitemapBuilder {
     1 + entries.map { case (_, films) => 1 + films.map(f => (f.slug, f.movie.title)).distinct.size }.sum
 
   /** A country's URL budget above which its flat `sitemap.xml` is partitioned
-   *  into a per-city [[cityIndex]] instead (see [[MovieController.sitemap]]).
+   *  into a per-city [[cityIndex]] instead (see [[CrawlerController.sitemap]]).
    *  Comfortably under the sitemap protocol's hard cap of 50,000 URLs / 50MB
    *  per file — chosen so a country crosses it well before that limit becomes
    *  a real risk, not right at the edge of it. Not a per-country constant: the
@@ -100,12 +100,12 @@ object SitemapBuilder {
   val CityPartitionThreshold: Int = 10000
 
   /** A per-country sitemap INDEX, one `<sitemap>` per city plus one for the
-   *  landing page — used by [[MovieController.sitemap]] instead of [[build]]'s
+   *  landing page — used by [[CrawlerController.sitemap]] instead of [[build]]'s
    *  flat file once [[urlCount]] passes [[CityPartitionThreshold]]. Each city's
-   *  `<loc>` is `/{city}/sitemap.xml` ([[MovieController.citySitemap]]), a full
+   *  `<loc>` is `/{city}/sitemap.xml` ([[CrawlerController.citySitemap]]), a full
    *  flat file scoped to that one city — small enough it never needs
    *  partitioning again on its own. The landing page gets its own address
-   *  ([[MovieController.sitemapRoot]]) rather than riding along in one city's
+   *  ([[CrawlerController.sitemapRoot]]) rather than riding along in one city's
    *  file, where it would look like that city's page to a crawler. */
   def cityIndex(origin: String, country: models.Country): String = {
     val sb = new StringBuilder
