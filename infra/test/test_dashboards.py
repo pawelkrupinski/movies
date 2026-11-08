@@ -371,10 +371,29 @@ class CiTimingsDashboard(unittest.TestCase):
 
     def test_it_shows_convergence_per_country_and_every_build(self):
         document = dict(dashboards())["apps/ci-builds.json"]
-        self.assertEqual({"workflow", "ref", "country"}, {v["name"] for v in document["templating"]["list"]})
+        self.assertEqual({"workflow", "ref", "runner", "country"}, {v["name"] for v in document["templating"]["list"]})
         self.assertEqual(["apps/ci-builds.json"], self.boards_querying("kinowo_ci_phase_seconds"))
         rows = [p for p in document["panels"] if p["type"] == "row"]
         self.assertEqual([None, None, "workflow"], [r.get("repeat") for r in rows])
+
+    def test_every_ci_panel_is_split_by_runner_and_ref(self):
+        # The owner (2026-11-08): build stats split by where it ran (hosted / ci-runner) and main vs branch. Every panel
+        # reading a timing family filters on the Runner variable and names the runner and the ref in its legend, save the
+        # two that are main-only by design (Main's runner wait, the main run index).
+        document = dict(dashboards())["apps/ci-builds.json"]
+        main_only = {18, 19}
+        for panel in query_panels(document):
+            if panel.get("id") in main_only:
+                continue
+            for target in panel.get("targets", []):
+                if "kinowo_ci_" not in (target.get("expr") or ""):
+                    continue
+                where = "%s: %s" % (panel.get("title"), target["expr"])
+                self.assertIn('runner=~"$runner"', target["expr"], where)
+                self.assertIn("{{runner}}", target["legendFormat"], where)
+                self.assertIn("{{ref}}", target["legendFormat"], where)
+        self.assertTrue(any("kinowo_ci_job_queue_seconds" in t["expr"] and "$workflow" in t["expr"]
+                            for p in query_panels(document) for t in p.get("targets", [])), "no queue-time panel per build")
 
     def test_it_shows_whether_a_build_grew_over_the_90_days_prometheus_keeps(self):
         # "whether the build duration sustainably grew over time" (user, 2026-10-14): a rolling median of successful

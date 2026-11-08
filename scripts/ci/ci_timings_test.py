@@ -118,6 +118,30 @@ class RunnerKindTest(unittest.TestCase):
         self.assertEqual(by_name["kinowo_ci_job_queue_seconds"], {("hosted", 10.0), ("ci-runner", 40.0)})
         self.assertEqual({runner for runner, _ in by_name["kinowo_ci_step_seconds"]}, {"hosted", "ci-runner"})
 
+    def test_run_level_series_carry_the_runner_of_the_whole_run(self):
+        def runner_of(*kinds):
+            built = [dict(job(20 + n, "j%d" % n, "2026-10-14T08:02:00Z", "2026-10-14T08:07:00Z", []), **kind)
+                     for n, kind in enumerate(kinds)]
+            payload = timings.otlp_payload(dict(RUN, run_number=5), timings.collect(built, lambda _: "", ()))
+            metrics = {m["name"]: m for m in payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]}
+            return {name: {a["value"]["stringValue"] for p in metrics[name]["gauge"]["dataPoints"]
+                           for a in p["attributes"] if a["key"] == "runner"}
+                    for name in ("kinowo_ci_run_seconds", "kinowo_ci_run_number")}
+        self.assertEqual(runner_of(HOSTED, HOSTED), {"kinowo_ci_run_seconds": {"hosted"}, "kinowo_ci_run_number": {"hosted"}})
+        self.assertEqual(runner_of(SELF_HOSTED)["kinowo_ci_run_seconds"], {"ci-runner"})
+        self.assertEqual(runner_of(HOSTED, SELF_HOSTED)["kinowo_ci_run_seconds"], {"mixed"})
+        self.assertEqual(runner_of(HOSTED, {})["kinowo_ci_run_seconds"], {"hosted"})
+        self.assertEqual(runner_of({})["kinowo_ci_run_seconds"], {"unknown"})
+
+    def test_ref_is_main_or_branch_for_every_trigger(self):
+        main, branch = "main", "branch"
+        for event, head, expected in [("push", "main", main), ("workflow_dispatch", "main", main), ("schedule", "main", main),
+                                      ("workflow_run", "main", main), ("push", "measure/x/1", branch),
+                                      ("push", "land/abc", branch), ("workflow_dispatch", "feature", branch),
+                                      ("pull_request", "chore/bot", branch), ("pull_request", "main", branch),
+                                      ("push", None, branch), ("push", "refs/heads/main", branch)]:
+            self.assertEqual(timings.ref_of({"event": event, "head_branch": head}), expected, (event, head))
+
     def test_a_job_without_created_at_has_no_queue_sample_and_unknown_runner(self):
         [bare] = timings.collect([job(13, "bare", "2026-10-14T08:02:00Z", "2026-10-14T08:03:00Z", [])], lambda _: "")
         self.assertEqual((bare.runner, bare.queued), ("unknown", None))
@@ -170,7 +194,7 @@ class PayloadTest(unittest.TestCase):
         self.assertEqual(json.dumps(timings.otlp_payload(RUN, jobs())), json.dumps(timings.otlp_payload(RUN, jobs())))
 
     def test_run_measures_carry_workflow_and_conclusion(self):
-        self.assertIn(({"workflow": "Identity model convergence", "ref": "main", "measure": "wall", "conclusion": "failure"}, 780.0, STAMP),
+        self.assertIn(({"workflow": "Identity model convergence", "ref": "main", "measure": "wall", "conclusion": "failure", "runner": "unknown"}, 780.0, STAMP),
                       self.series("kinowo_ci_run_seconds"))
 
     def test_jobs_carry_workflow_name_and_conclusion(self):

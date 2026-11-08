@@ -351,3 +351,24 @@ tests:
                 Run #1693 waited 16m 40s from when it could start to its first job starting, against a target of under 2
                 minutes. Check the `main-lane` runners on ci-runner (infra forgejo.nix `ciTiers`): one down, or a job
                 from another workflow holding the label.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────
+  # LIKE WITH LIKE: one job on both runner kinds. ci-runner's legs are steadily twice GitHub's (40 against 20 minutes);
+  # judged together the self-hosted ones would be a regression, judged by their own runner kind neither is. When the
+  # ci-runner series itself jumps, only it fires, and its description names its own baseline, not the hosted one's.
+  # ────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 6h
+    name: a job is judged against its own runner kind and ref, never the other's
+    input_series:
+      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Record scrape fixtures",ref="main",runner="mixed"}'
+        values: '1000+1x72'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Record scrape fixtures",ref="main",runner="hosted",ci_job="convergence (germany)",conclusion="success"}'
+        values: '1200x72'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Record scrape fixtures",ref="main",runner="ci-runner",ci_job="convergence (germany)",conclusion="success"}'
+        values: '2400x72'
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Record scrape fixtures",ref="branch",runner="ci-runner",ci_job="convergence (germany)",conclusion="success"}'
+        values: '9000x72'
+    alert_rule_test:
+      - eval_time: 432h
+        alertname: CiJobDurationRegressed
+        exp_alerts: []

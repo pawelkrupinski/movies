@@ -92,14 +92,14 @@
      "type": "prometheus",
      "uid": "local-prometheus"
     },
-    "definition": "label_values(kinowo_ci_job_seconds, ref)",
+    "definition": "label_values(kinowo_ci_run_seconds, ref)",
     "query": {
-     "query": "label_values(kinowo_ci_job_seconds, ref)",
+     "query": "label_values(kinowo_ci_run_seconds, ref)",
      "refId": "ref"
     },
     "current": {
-     "text": "main",
-     "value": "main",
+     "text": "All",
+     "value": "$__all",
      "selected": true
     },
     "includeAll": true,
@@ -107,6 +107,50 @@
     "multi": true,
     "refresh": 2,
     "sort": 1,
+    "hide": 0,
+    "description": "main (the branch named main: push, dispatch, schedule) or branch (everything else: measure/*, land/*, bot PRs)."
+   },
+   {
+    "name": "runner",
+    "label": "Runner",
+    "type": "custom",
+    "description": "Where it ran: hosted (GitHub-hosted), ci-runner (self-hosted), mixed (a run with jobs on both; run-level series only), unknown (no job got a runner). Samples before 2026-11-06 carry none and show under All only.",
+    "query": "hosted,ci-runner,mixed,unknown",
+    "current": {
+     "text": "All",
+     "value": "$__all",
+     "selected": true
+    },
+    "options": [
+     {
+      "text": "All",
+      "value": "$__all",
+      "selected": true
+     },
+     {
+      "text": "hosted",
+      "value": "hosted",
+      "selected": false
+     },
+     {
+      "text": "ci-runner",
+      "value": "ci-runner",
+      "selected": false
+     },
+     {
+      "text": "mixed",
+      "value": "mixed",
+      "selected": false
+     },
+     {
+      "text": "unknown",
+      "value": "unknown",
+      "selected": false
+     }
+    ],
+    "includeAll": true,
+    "allValue": ".*",
+    "multi": true,
     "hide": 0
    },
    {
@@ -217,8 +261,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "quantile_over_time(0.5, kinowo_ci_run_seconds{measure=\"wall\",ref=~\"$ref\",conclusion=\"success\"}[7d])",
-     "legendFormat": "{{workflow}}",
+     "expr": "quantile_over_time(0.5, kinowo_ci_run_seconds{measure=\"wall\",ref=~\"$ref\",runner=~\"$runner\",conclusion=\"success\"}[7d])",
+     "legendFormat": "{{workflow}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -293,8 +337,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max by (country) (label_replace(quantile_over_time(0.5, kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ref=~\"$ref\",conclusion=\"success\"}[7d]), \"country\", \"$1$2\", \"ci_job\", \"(?:([a-z-]+) / .*|.* [(]([a-z-]+)[)])\"))",
-     "legendFormat": "{{country}}",
+     "expr": "max by (country, runner, ref) (label_replace(quantile_over_time(0.5, kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ref=~\"$ref\",runner=~\"$runner\",conclusion=\"success\"}[7d]), \"country\", \"$1$2\", \"ci_job\", \"(?:([a-z-]+) / .*|.* [(]([a-z-]+)[)])\"))",
+     "legendFormat": "{{country}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -356,8 +400,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max without (conclusion) (last_over_time(kinowo_ci_job_seconds{ref=~\"$ref\"}[1d])) / last_over_time(kinowo_ci_job_timeout_seconds{ref=~\"$ref\"}[1d]) > 0.5",
-     "legendFormat": "{{workflow}} / {{ci_job}} ({{ref}})",
+     "expr": "max without (conclusion) (last_over_time(kinowo_ci_job_seconds{ref=~\"$ref\",runner=~\"$runner\"}[1d])) / last_over_time(kinowo_ci_job_timeout_seconds{ref=~\"$ref\",runner=~\"$runner\"}[1d]) > 0.5",
+     "legendFormat": "{{workflow}} / {{ci_job}} {{runner}} {{ref}}",
      "instant": true,
      "datasource": {
       "type": "prometheus",
@@ -424,7 +468,7 @@
     {
      "refId": "A",
      "expr": "max_over_time(kinowo_ci_run_seconds{workflow=\"Main\",ref=\"main\",measure=\"runner_wait\"}[$__interval])",
-     "legendFormat": "{{conclusion}}",
+     "legendFormat": "{{conclusion}} {{runner}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -475,7 +519,7 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "last_over_time(kinowo_ci_run_number{ref=\"main\",workflow=~\"$workflow\"}[7d])",
+     "expr": "max by (workflow) (last_over_time(kinowo_ci_run_number{ref=\"main\",workflow=~\"$workflow\"}[7d]))",
      "legendFormat": "{{workflow}}",
      "instant": true,
      "datasource": {
@@ -565,8 +609,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_run_seconds{workflow=\"Identity model convergence\",ref=~\"$ref\"}[$__interval])",
-     "legendFormat": "{{measure}}",
+     "expr": "max_over_time(kinowo_ci_run_seconds{workflow=\"Identity model convergence\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
+     "legendFormat": "{{measure}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -641,8 +685,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[$__interval])",
-     "legendFormat": "{{ci_job}} {{runner}}",
+     "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
+     "legendFormat": "{{ci_job}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -713,8 +757,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "quantile by (runner) (0.5, max_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",conclusion=\"success\"}[$__interval]))",
-     "legendFormat": "{{runner}}",
+     "expr": "quantile by (runner, ref) (0.5, max_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",runner=~\"$runner\",conclusion=\"success\"}[$__interval]))",
+     "legendFormat": "{{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -785,8 +829,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "quantile by (runner) (0.5, max_over_time(kinowo_ci_job_queue_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",conclusion=\"success\"}[$__interval]))",
-     "legendFormat": "{{runner}}",
+     "expr": "quantile by (runner, ref) (0.5, max_over_time(kinowo_ci_job_queue_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",runner=~\"$runner\",conclusion=\"success\"}[$__interval]))",
+     "legendFormat": "{{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -861,8 +905,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",step=~\"Run the (.* )?(suite|sample.*)\"}[$__interval])",
-     "legendFormat": "{{ci_job}} {{runner}}",
+     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",runner=~\"$runner\",step=~\"Run the (.* )?(suite|sample.*)\"}[$__interval])",
+     "legendFormat": "{{ci_job}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -921,8 +965,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",step!~\"Run the (.* )?(suite|sample.*)\"}[$__interval]) > 5",
-     "legendFormat": "{{ci_job}} · {{step}} {{runner}}",
+     "expr": "max_over_time(kinowo_ci_step_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",runner=~\"$runner\",step!~\"Run the (.* )?(suite|sample.*)\"}[$__interval]) > 5",
+     "legendFormat": "{{ci_job}} · {{step}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -981,8 +1025,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_phase_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[$__interval]) > 5",
-     "legendFormat": "{{ci_job}} · {{phase}} {{runner}}",
+     "expr": "max_over_time(kinowo_ci_phase_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval]) > 5",
+     "legendFormat": "{{ci_job}} · {{phase}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -1043,8 +1087,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "last_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\"}[7d])",
-     "legendFormat": "{{ci_job}} {{runner}}",
+     "expr": "last_over_time(kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ci_job=~\"($country) / .*|.* [(]($country)[)]\",ref=~\"$ref\",runner=~\"$runner\"}[7d])",
+     "legendFormat": "{{ci_job}} {{runner}} {{ref}}",
      "instant": true,
      "datasource": {
       "type": "prometheus",
@@ -1118,8 +1162,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_run_seconds{workflow=\"$workflow\",ref=~\"$ref\"}[$__interval])",
-     "legendFormat": "{{measure}} · {{conclusion}}",
+     "expr": "max_over_time(kinowo_ci_run_seconds{workflow=\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
+     "legendFormat": "{{measure}} · {{conclusion}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -1127,8 +1171,8 @@
     },
     {
      "refId": "B",
-     "expr": "quantile_over_time(0.5, kinowo_ci_run_seconds{workflow=\"$workflow\",ref=~\"$ref\",measure=\"wall\",conclusion=\"success\"}[7d])",
-     "legendFormat": "wall · 7-day median (successful)",
+     "expr": "quantile_over_time(0.5, kinowo_ci_run_seconds{workflow=\"$workflow\",ref=~\"$ref\",runner=~\"$runner\",measure=\"wall\",conclusion=\"success\"}[7d])",
+     "legendFormat": "wall · 7-day median (successful) {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"
@@ -1187,8 +1231,68 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"$workflow\",ref=~\"$ref\"}[$__interval])",
-     "legendFormat": "{{ci_job}} {{runner}}",
+     "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
+     "legendFormat": "{{ci_job}} {{runner}} {{ref}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "title": "$workflow — job queue time",
+   "description": "Created to started, per job: how long it waited for a runner. Split by runner (hosted vs ci-runner) and ref (main vs branch) in the legend; narrow with the Runner and Ref variables.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 81
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max_over_time(kinowo_ci_job_queue_seconds{workflow=\"$workflow\",ref=~\"$ref\",runner=~\"$runner\"}[$__interval])",
+     "legendFormat": "{{ci_job}} {{runner}} {{ref}}",
      "datasource": {
       "type": "prometheus",
       "uid": "local-prometheus"

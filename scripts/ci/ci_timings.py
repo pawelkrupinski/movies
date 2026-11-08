@@ -36,8 +36,9 @@ dashboard is a reading aid, not a gate.
     # TYPE kinowo_ci_job_timeout_seconds gauge
     # TYPE kinowo_ci_run_number gauge
 
-The job, step, phase, queue and timeout series carry a `runner` label (`ci-runner` self-hosted, `hosted` GitHub's, else
-`unknown`), read off the jobs API's `labels` / `runner_name`; `kinowo_ci_job_queue_seconds` is the job's `created_at` to
+Every series carries `workflow`, `ref` (`main` | `branch`, see ref_of) and `runner`. The job, step, phase, queue and timeout
+series carry the job's (`ci-runner` self-hosted, `hosted` GitHub's, else `unknown`); the run-level ones (run_seconds,
+run_number) the whole run's: `hosted`, `ci-runner`, `mixed` or `unknown`. Read off the jobs API's `labels` / `runner_name`; `kinowo_ci_job_queue_seconds` is the job's `created_at` to
 `started_at`, so the two kinds compare. A job's name is the `ci_job` label: Prometheus's own `job` is OTLP's `service.name`, kinowo-ci.
 (The `# TYPE` lines are what GrafanaMetricCoverageSpec reads to know these families exist.)
 
@@ -277,7 +278,16 @@ def conclusion_of(run, jobs):
 
 
 def ref_of(run):
-    return "main" if run.get("head_branch") == "main" else "branch"
+    """`main` or `branch`, nothing else: a run of the branch literally named `main` (push, workflow_dispatch, schedule --
+    GitHub runs a schedule on the default branch -- or a workflow_run of one of those); every other run -- a measure/* or
+    land/* branch, a bot's pull_request (even one from a fork whose head branch is also called `main`) -- is `branch`."""
+    return "main" if run.get("head_branch") == "main" and run.get("event") != "pull_request" else "branch"
+
+
+def run_runner(jobs):
+    """Where the whole run ran: `hosted`, `ci-runner`, `mixed` (jobs on both), or `unknown` (no job got a runner)."""
+    kinds = {job.runner for job in jobs} - {"unknown"}
+    return "mixed" if len(kinds) > 1 else next(iter(kinds), "unknown")
 
 
 def minutes(secs):
@@ -322,7 +332,7 @@ def otlp_payload(run, jobs, ready=None):
     if not jobs:
         return None
     stamp = str(int(parse_instant(run_start(run)).timestamp()) * 1000000000)
-    workflow, ref = run["name"], ref_of(run)
+    workflow, ref, run_wide = run["name"], ref_of(run), run_runner(jobs)
 
     def point(value, **labels):
         return {"asDouble": float(value), "timeUnixNano": stamp,
@@ -334,7 +344,7 @@ def otlp_payload(run, jobs, ready=None):
 
     metrics = [
         gauge("kinowo_ci_run_seconds",
-              [point(value, measure=measure, conclusion=conclusion_of(run, jobs))
+              [point(value, measure=measure, conclusion=conclusion_of(run, jobs), runner=run_wide)
                for measure, value in sorted(run_measures(run, jobs, ready).items())]),
         gauge("kinowo_ci_job_seconds",
               [point(job.seconds, ci_job=job.name, conclusion=job.conclusion, runner=job.runner) for job in jobs]),
@@ -347,7 +357,7 @@ def otlp_payload(run, jobs, ready=None):
               [point(took, ci_job=job.name, phase=label, runner=job.runner) for job in jobs for label, took in sorted(job.phases.items())]),
         gauge("kinowo_ci_job_timeout_seconds",
               [point(job.ceiling, ci_job=job.name, runner=job.runner) for job in jobs if job.ceiling]),
-        gauge("kinowo_ci_run_number", [point(run["run_number"])] if run.get("run_number") else []),
+        gauge("kinowo_ci_run_number", [point(run["run_number"], runner=run_wide)] if run.get("run_number") else []),
     ]
     return {"resourceMetrics": [{
         "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": SERVICE_NAME}}]},
