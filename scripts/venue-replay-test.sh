@@ -43,7 +43,7 @@ echo corpus > "$cache/recordings/777/pair/test/resources/fixtures/corpus/cinema-
 # sbt prints a classpath, as `export` does; java records its arguments and writes the listings the base and head refs read
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
-echo "$PWD/worker/target/scala-3.9.0/test-classes:/lib/a.jar"
+echo "$PWD/worker/target/scala-3.10.0/test-classes:/lib/a.jar"
 STUB
 cat > "$work/bin/java" <<STUB
 #!/usr/bin/env bash

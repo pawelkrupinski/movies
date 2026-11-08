@@ -40,7 +40,7 @@ import Dependencies._
 
 ThisBuild / organization := "com.example"
 ThisBuild / version      := "1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.9.0"
+ThisBuild / scalaVersion := "3.10.0"
 
 // Compiler options shared by every module. Play's sbt plugin adds -unchecked on top
 // of these for the web project (and -deprecation a second time, harmlessly).
@@ -60,7 +60,7 @@ ThisBuild / scalacOptions ++= Seq(
   // Warnings are errors: a warning must be fixed (or explicitly silenced via a
   // `-Wconf` rule below), never merged. Keeps the build warning-clean over time.
   "-Werror",
-  // Scala 3.9.0 caps `-java-output-version` at 21 (higher values are rejected).
+  // Scala 3.9.0 capped `-java-output-version` at 21 (higher values were rejected); kept at 21 on 3.10.0.
   // JRE 27 loads Java 21 class files unchanged: build on JDK 27, emit 21, run 27.
   "-java-output-version", "21",
   // Twirl-generated warnings come out without a parseable category — filter by
@@ -77,7 +77,12 @@ ThisBuild / scalacOptions ++= Seq(
   // a statement — a `def f(): Unit = repo.scan(...)`, a lambda handed to `foreach` or `boot.step`.
   "-Wnonunit-statement",
   "-Wvalue-discard",
-  "-Wconf:msg=(?s)^(?!.*\\b(ScanOutcome|ReadOutcome|GuardedWrite)\\b).*(unused value|[dD]iscarded non-Unit value).*:silent"
+  "-Wconf:msg=(?s)^(?!.*\\b(ScanOutcome|ReadOutcome|GuardedWrite)\\b).*(unused value|[dD]iscarded non-Unit value).*:silent",
+  // Scala 3.10.0 deprecates `Predef.ArrowAssoc` (a source `a -> b` now resolves to an extension method, unflagged), but
+  // a library macro compiled before 3.10 still splices the old conversion into our code: play-json 3.0.6's
+  // `Json.format` (JsMacroImpl.scala:713, `nme -> writes`), reported at the `Json.format[...]` call site. No source of
+  // ours names `ArrowAssoc`; drop this rule once play-json ships a build compiled with 3.10.
+  "-Wconf:cat=deprecation&msg=ArrowAssoc:silent"
 )
 ThisBuild / javacOptions ++= Seq("--release", "21")
 

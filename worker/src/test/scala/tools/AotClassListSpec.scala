@@ -57,7 +57,7 @@ class AotClassListSpec extends AnyFlatSpec with Matchers {
     val missing   = classes.filterNot(listedSet).sorted
     withClue(s"${missing.size} scraper class(es) the AOT class list lacks (${missing.take(5).mkString(", ")}) — refresh it: " +
       "scripts/aot-class-list.py --keep worker/src/main/resources/aot-classes.txt --package " +
-      "scrapers/target/scala-3.9.0/scrapers_3-1.0-SNAPSHOT.jar:services.cinemas. > /tmp/aot-classes.txt && mv /tmp/aot-classes.txt worker/src/main/resources/aot-classes.txt: ") {
+      "scrapers/target/scala-3.10.0/scrapers_3-1.0-SNAPSHOT.jar:services.cinemas. > /tmp/aot-classes.txt && mv /tmp/aot-classes.txt worker/src/main/resources/aot-classes.txt: ") {
       missing shouldBe empty
     }
   }

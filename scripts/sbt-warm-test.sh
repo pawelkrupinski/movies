@@ -66,8 +66,8 @@ scratch_git "$repo" remote add origin "$origin"
 echo b >> "$repo/a"; scratch_git "$repo" commit -qam two
 scratch_git "$repo" push -q origin HEAD:main; scratch_git "$repo" fetch -q origin
 # built: an older main commit (worktree), the newest main commit (an identity ref tree), a branch ahead of main
-build() { mkdir -p "$1/worker/target/scala-3.9.0/test-classes" "$1/worker/target/scala-3.9.0/zinc" "$1/project/target"
-  echo "$2" > "$1/worker/target/scala-3.9.0/zinc/from"
+build() { mkdir -p "$1/worker/target/scala-3.10.0/test-classes" "$1/worker/target/scala-3.10.0/zinc" "$1/project/target"
+  echo "$2" > "$1/worker/target/scala-3.10.0/zinc/from"
   echo "{\"uri\":\"local://$1/sock\"}" > "$1/project/target/active.json"; }  # its server's socket, as sbt leaves it
 scratch_git "$repo" worktree add -q --detach "$scratch/old" HEAD~1; build "$scratch/old" old
 mkdir -p "$KINOWO_IDENTITY_CACHE/refs"; build "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)" newest
@@ -77,7 +77,7 @@ scratch_git "$repo" worktree add -q -b fresh "$scratch/fresh" origin/main
 
 (cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" "worker/testOnly X" "web/compile" >/dev/null 2>&1)
 check "a fresh checkout is seeded from the newest build of a main commit" "newest" \
-  "$(cat "$scratch/fresh/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+  "$(cat "$scratch/fresh/worker/target/scala-3.10.0/zinc/from" 2>/dev/null)"
 check "...its project build too" "yes" "$([ -d "$scratch/fresh/project/target" ] && echo yes || echo no)"
 check "the commands go to this checkout's server, as one command line" "$scratch/fresh|--client worker/testOnly X; web/compile" \
   "$(tail -1 "$scratch/sbt-calls")"
@@ -91,17 +91,17 @@ check "a seeded checkout's commands run in its own server, against its own edite
 out=$(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" "worker/test" 2>&1 >/dev/null)
 check "each call names the checkout and server it uses" "yes" \
   "$(grep -q "checkout $scratch/fresh, server " <<<"$out" && echo yes || echo "no: $out")"
-echo stale > "$scratch/fresh/worker/target/scala-3.9.0/zinc/from"
+echo stale > "$scratch/fresh/worker/target/scala-3.10.0/zinc/from"
 (cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
-check "a checkout with compiled output is never seeded over" "stale" "$(cat "$scratch/fresh/worker/target/scala-3.9.0/zinc/from")"
+check "a checkout with compiled output is never seeded over" "stale" "$(cat "$scratch/fresh/worker/target/scala-3.10.0/zinc/from")"
 # 2026-10-19: e2e has test sources only, so its Zinc state is test-zinc alone, never zinc: counted unbuilt, every call
 # deleted and re-cloned its target from an older build — 12-16 s a call, under a live server's feet
-mkdir -p "$scratch/fresh/e2e/src" "$scratch/fresh/e2e/target/scala-3.9.0/test-zinc"
-echo mine > "$scratch/fresh/e2e/target/scala-3.9.0/test-zinc/from"
-mkdir -p "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/e2e/target/scala-3.9.0/test-zinc"
+mkdir -p "$scratch/fresh/e2e/src" "$scratch/fresh/e2e/target/scala-3.10.0/test-zinc"
+echo mine > "$scratch/fresh/e2e/target/scala-3.10.0/test-zinc/from"
+mkdir -p "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/e2e/target/scala-3.10.0/test-zinc"
 (cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a test-only module with Zinc state is never seeded over" "mine" \
-  "$(cat "$scratch/fresh/e2e/target/scala-3.9.0/test-zinc/from" 2>/dev/null)"
+  "$(cat "$scratch/fresh/e2e/target/scala-3.10.0/test-zinc/from" 2>/dev/null)"
 
 scratch_git "$repo" worktree add -q -b other "$scratch/other" origin/main
 (cd "$scratch/other" && KINOWO_SBT_WARM_SEED="$scratch/old" "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
@@ -111,65 +111,65 @@ scratch_git "$repo" worktree add -q -b past "$scratch/past" ahead
 echo d >> "$scratch/past/a"; scratch_git "$scratch/past" commit -qam four
 (cd "$scratch/past" && "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
 check "a checkout ahead of origin/main is seeded from the nearest build its HEAD contains" "branch" \
-  "$(cat "$scratch/past/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
-check "KINOWO_SBT_WARM_SEED names the source instead" "old" "$(cat "$scratch/other/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+  "$(cat "$scratch/past/worker/target/scala-3.10.0/zinc/from" 2>/dev/null)"
+check "KINOWO_SBT_WARM_SEED names the source instead" "old" "$(cat "$scratch/other/worker/target/scala-3.10.0/zinc/from" 2>/dev/null)"
 # 2026-10-19: IntelliJ's JPS build wrote ~400 fixtures classes into the root's worker classes/, no Zinc analysis listing
 # them; every checkout seeded from it carried them, and one shadowed fixtures-classes' current class (NoClassDefFoundError
 # on a class renamed away). A seed keeps only the products its source's analysis lists.
 mkdir -p "$scratch/polluted"; scratch_zinc_build "$scratch/polluted" worker tools/Kept.class
-echo orphan > "$scratch/polluted/worker/target/scala-3.9.0/classes/tools/Orphan.class"
-echo orphan > "$scratch/polluted/worker/target/scala-3.9.0/classes/tools/Orphan.tasty"
-echo resource > "$scratch/polluted/worker/target/scala-3.9.0/classes/logback.xml"
+echo orphan > "$scratch/polluted/worker/target/scala-3.10.0/classes/tools/Orphan.class"
+echo orphan > "$scratch/polluted/worker/target/scala-3.10.0/classes/tools/Orphan.tasty"
+echo resource > "$scratch/polluted/worker/target/scala-3.10.0/classes/logback.xml"
 scratch_git "$repo" worktree add -q -b clean "$scratch/clean" origin/main
 (cd "$scratch/clean" && KINOWO_SBT_WARM_SEED="$scratch/polluted" "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
 check "a seed drops the class files its source's analysis never produced, and keeps its products and resources" \
   "Kept.class Kept.tasty logback.xml" \
-  "$(cd "$scratch/clean/worker/target/scala-3.9.0/classes" 2>/dev/null && echo tools/* logback.xml | sed 's#tools/##g')"
+  "$(cd "$scratch/clean/worker/target/scala-3.10.0/classes" 2>/dev/null && echo tools/* logback.xml | sed 's#tools/##g')"
 
 # a module new since the checkout was seeded (identity/, 2026-10-14) is seeded on its own; the modules built stay
-mkdir -p "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.9.0/zinc"
-echo newest > "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.9.0/zinc/from"
+mkdir -p "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.10.0/zinc"
+echo newest > "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.10.0/zinc/from"
 mkdir -p "$scratch/other/identity/src"
 (cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a module the checkout has not built yet is seeded, the built ones kept" "newest old" \
-  "$(cat "$scratch/other/identity/target/scala-3.9.0/zinc/from" 2>/dev/null) $(cat "$scratch/other/worker/target/scala-3.9.0/zinc/from")"
+  "$(cat "$scratch/other/identity/target/scala-3.10.0/zinc/from" 2>/dev/null) $(cat "$scratch/other/worker/target/scala-3.10.0/zinc/from")"
 
 # THE SHARED BUILD CACHE: a passing call in a clean checkout of a main commit publishes its build; a seed prefers it
 export KINOWO_SBT_CACHE_PUBLISH=1
 scratch_git "$repo" worktree add -q -b pub "$scratch/pub" origin/main
-build "$scratch/pub" pub; mkdir -p "$scratch/pub/web/target/scala-3.9.0/zinc"
+build "$scratch/pub" pub; mkdir -p "$scratch/pub/web/target/scala-3.10.0/zinc"
 head_sha=$(scratch_git "$repo" rev-parse origin/main)
 (cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a passing call in a clean checkout of a main commit publishes its build, its server socket left out" "pub 2 no" \
-  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null) $(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null) $([ -e "$KINOWO_SBT_CACHE/$head_sha/project/target/active.json" ] && echo yes || echo no)"
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.10.0/zinc/from" 2>/dev/null) $(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null) $([ -e "$KINOWO_SBT_CACHE/$head_sha/project/target/active.json" ] && echo yes || echo no)"
 check "...and no partial copy is left" "" "$(find "$KINOWO_SBT_CACHE" -mindepth 1 -maxdepth 1 -name '*.*')"
-echo pubbed > "$scratch/pub/worker/target/scala-3.9.0/zinc/from"
+echo pubbed > "$scratch/pub/worker/target/scala-3.10.0/zinc/from"
 (cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "an entry is not replaced by a build of no more configurations" "pub" \
-  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
-mkdir -p "$scratch/pub/identity/target/scala-3.9.0/zinc"
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.10.0/zinc/from" 2>/dev/null)"
+mkdir -p "$scratch/pub/identity/target/scala-3.10.0/zinc"
 echo edit >> "$scratch/pub/a"
 (cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a checkout with a changed tracked file publishes nothing" "pub" \
-  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.10.0/zinc/from" 2>/dev/null)"
 scratch_git "$scratch/pub" checkout -q -- a
 (cd "$scratch/pub" && STUB_FAIL=1 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a call whose sbt command failed exits non-zero (a failed test fails the call, the hook's and testUnit's path)" 1 "$?"
 check "a call whose command failed publishes nothing" "2" "$(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null)"
 (cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a fuller build replaces the entry; the replaced one is retired, not deleted under a seed" "pubbed 3 1" \
-  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null) $(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null) $(find "$KINOWO_SBT_CACHE" -mindepth 1 -maxdepth 1 -name '*.retired-*' | wc -l | tr -d ' ')"
+  "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.10.0/zinc/from" 2>/dev/null) $(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null) $(find "$KINOWO_SBT_CACHE" -mindepth 1 -maxdepth 1 -name '*.retired-*' | wc -l | tr -d ' ')"
 (cd "$scratch/ahead" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a branch's build (its HEAD on no main) is never published" "no" \
   "$([ -d "$KINOWO_SBT_CACHE/$(scratch_git "$scratch/ahead" rev-parse HEAD)" ] && echo yes || echo no)"
 scratch_git "$repo" worktree add -q -b fromcache "$scratch/fromcache" origin/main
 (cd "$scratch/fromcache" && "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
 check "a seed takes the cache entry over another build of the same commit" "pubbed" \
-  "$(cat "$scratch/fromcache/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+  "$(cat "$scratch/fromcache/worker/target/scala-3.10.0/zinc/from" 2>/dev/null)"
 exec 9>> "$KINOWO_SBT_WARM_STATE/$(printf '%s' "$scratch/fromcache" | shasum | cut -c1-12).busy"
 python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
-mkdir -p "$scratch/fromcache/scrapers/target/scala-3.9.0/zinc" "$scratch/fromcache/geodata/target/scala-3.9.0/zinc" \
-  "$scratch/fromcache/common/target/scala-3.9.0/zinc"
+mkdir -p "$scratch/fromcache/scrapers/target/scala-3.10.0/zinc" "$scratch/fromcache/geodata/target/scala-3.10.0/zinc" \
+  "$scratch/fromcache/common/target/scala-3.10.0/zinc"
 out=$(cd "$scratch/fromcache" && "$REPO_ROOT/scripts/sbt-warm" --publish 2>&1)
 check "--publish while a command runs in the server publishes nothing" "3 yes" \
   "$(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs") $(grep -q 'nothing published' <<<"$out" && echo yes || echo "no: $out")"

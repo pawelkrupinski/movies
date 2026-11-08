@@ -30,7 +30,7 @@ STUB
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
 echo "sbt $*" >> "$STUB/calls"
-echo "$PWD/worker/target/scala-3.9.0/test-classes:/lib/a.jar"
+echo "$PWD/worker/target/scala-3.10.0/test-classes:/lib/a.jar"
 STUB
 chmod +x "$work/bin/gh" "$work/bin/sbt"
 
@@ -72,9 +72,9 @@ check "a ref that is none fails" "2" "$(tools identity_capture no-such-ref pl > 
 tree="$work/tree"
 mkdir -p "$tree/common/src" "$tree/identity/src" "$tree/worker/src" "$tree/testkit/src"
 echo 'object A' > "$tree/worker/src/A.scala"
-check "a tree's classpath is compiled and exported" "$tree/worker/target/scala-3.9.0/test-classes:/lib/a.jar" "$(tools identity_classpath "$tree")"
+check "a tree's classpath is compiled and exported" "$tree/worker/target/scala-3.10.0/test-classes:/lib/a.jar" "$(tools identity_classpath "$tree")"
 rm -f "$work/calls"
-check "...then read from the cache" "$tree/worker/target/scala-3.9.0/test-classes:/lib/a.jar" "$(tools identity_classpath "$tree")"
+check "...then read from the cache" "$tree/worker/target/scala-3.10.0/test-classes:/lib/a.jar" "$(tools identity_classpath "$tree")"
 check "...sbt not run while no source is newer" "0" "$(grep -c '^sbt' "$work/calls" 2>/dev/null || echo 0)"
 touch -t 209901010000 "$tree/worker/src/A.scala"
 tools identity_classpath "$tree" > /dev/null

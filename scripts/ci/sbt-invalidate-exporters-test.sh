@@ -22,9 +22,9 @@ printf 'package controllers\n\nclass ReviewSpec {\n  new Object {\n      export 
 printf 'package a\n\nobject Named {\n  export other.{one, two}\n}\n' > "$r/web/src/main/scala/a/Named.scala"
 scratch_git "$r" add -A
 
-classes="$r/identity/target/scala-3.9.0/classes/services/identity"
-tests="$r/web/target/scala-3.9.0/test-classes/controllers"
-named="$r/web/target/scala-3.9.0/classes/a"
+classes="$r/identity/target/scala-3.10.0/classes/services/identity"
+tests="$r/web/target/scala-3.10.0/test-classes/controllers"
+named="$r/web/target/scala-3.10.0/classes/a"
 mkdir -p "$classes" "$tests" "$named"
 touch "$classes/Measures.class" "$classes/Measures\$.class" "$classes/Measures.tasty" "$classes/Slots.class" \
   "$classes/Shape.class" "$classes/Shape\$.class" "$classes/MeasuresSpec.class" \

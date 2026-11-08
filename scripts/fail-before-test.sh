@@ -38,7 +38,7 @@ scratch_git "$repo" add -A
 scratch_git "$repo" commit -qm "a test reading the seed"
 out="$(cd "$repo" && EXPECTED_SEED='' "$tool" --files 'seed-test.sh' -- bash seed-test.sh 2>&1)"
 check "an unbuilt caller names no seed" "yes" "$(printf '%s\n' "$out" | sed -n 's/^PASS-AFTER: //p')"
-mkdir -p "$repo/worker/target/scala-3.9.0/zinc"
+mkdir -p "$repo/worker/target/scala-3.10.0/zinc"
 out="$(cd "$repo" && EXPECTED_SEED="$(cd "$repo" && pwd -P)" "$tool" --files 'seed-test.sh' -- bash seed-test.sh 2>&1)"
 check "a built caller at the commit seeds both trees" "yes" "$(printf '%s\n' "$out" | sed -n 's/^PASS-AFTER: //p')"
 rm -rf "$repo/worker"

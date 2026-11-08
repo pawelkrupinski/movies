@@ -29,7 +29,7 @@ base=$(scratch_git "$repo" rev-parse HEAD~1)
 
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
-echo "$PWD/worker/target/scala-3.9.0/test-classes:/lib/a.jar"
+echo "$PWD/worker/target/scala-3.10.0/test-classes:/lib/a.jar"
 STUB
 # java prints a trace whose search step is the tree's build.sbt: the code a ref holds
 cat > "$work/bin/java" <<STUB

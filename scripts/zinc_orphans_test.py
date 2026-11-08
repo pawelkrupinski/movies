@@ -11,7 +11,7 @@ import unittest
 import zipfile
 
 SCRIPT = pathlib.Path(__file__).with_name("zinc_orphans.py")
-TARGET = "worker/target/scala-3.9.0"
+TARGET = "worker/target/scala-3.10.0"
 
 
 def string(s: str) -> bytes:

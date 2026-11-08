@@ -71,7 +71,7 @@ echo '{"recordedAt":"2026-10-14T05:00:00Z"}' > "$cache/recordings/777/pair/test/
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
 echo "sbt $PWD" >> "$STUB/calls"
-echo "$PWD/worker/target/scala-3.9.0/test-classes:/lib/a.jar"
+echo "$PWD/worker/target/scala-3.10.0/test-classes:/lib/a.jar"
 STUB
 cat > "$work/bin/java" <<STUB
 #!/usr/bin/env bash
@@ -227,19 +227,19 @@ again=$(scratch_git "$repo" rev-parse HEAD)
 # ...never with the class files no build of the seed's produced (IntelliJ's JPS wrote fixtures classes into worker's main
 # classes/ on 2026-10-18: a measure's ratchet died on NoClassDefFoundError naming a class renamed away the day before)
 scratch_zinc_build "$cache/refs/$docs" worker tools/Kept.class
-echo orphan > "$cache/refs/$docs/worker/target/scala-3.9.0/classes/tools/Orphan.class"
+echo orphan > "$cache/refs/$docs/worker/target/scala-3.10.0/classes/tools/Orphan.class"
 # ...every module's build: the classpath it keeps names scrapers' and geodata's classes too (2026-10-19: they were not
 # seeded, so a kept classpath pointed at class directories the new tree lacked)
-for module in scrapers geodata; do mkdir -p "$cache/refs/$docs/$module/target/scala-3.9.0/classes"; done
+for module in scrapers geodata; do mkdir -p "$cache/refs/$docs/$module/target/scala-3.10.0/classes"; done
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$again" > /dev/null
 check "a new ref is seeded with every module's build" "scrapers geodata" \
-  "$(for module in scrapers geodata; do [ -d "$cache/refs/$again/$module/target/scala-3.9.0/classes" ] && printf '%s ' "$module"; done | sed 's/ $//')"
+  "$(for module in scrapers geodata; do [ -d "$cache/refs/$again/$module/target/scala-3.10.0/classes" ] && printf '%s ' "$module"; done | sed 's/ $//')"
 check "a new ref's seed carries only the class files its analysis lists" "Kept.class Kept.tasty" \
-  "$(cd "$cache/refs/$again/worker/target/scala-3.9.0/classes/tools" 2>/dev/null && echo *)"
+  "$(cd "$cache/refs/$again/worker/target/scala-3.10.0/classes/tools" 2>/dev/null && echo *)"
 check "a new ref is seeded from the nearest compiled ref" "1" "$(grep -c "seeding its compile from $cache/refs/$docs (0 source file(s) apart)" "$work/err")"
 check "...and, its sources the seed's, compiles nothing" "0" "$(grep -c "^sbt $cache/refs/$again" "$work/calls")"
 check "...its classpath the seed's, pointed at its own tree" "1" \
-  "$(grep -c -- "-cp $cache/refs/$again/worker/target/scala-3.9.0/test-classes:/lib/a.jar" "$work/calls")"
+  "$(grep -c -- "-cp $cache/refs/$again/worker/target/scala-3.10.0/test-classes:/lib/a.jar" "$work/calls")"
 echo "docs a third time" >> "$repo/README.md"; scratch_git "$repo" commit -qam "no code, a third"
 third=$(scratch_git "$repo" rev-parse HEAD)
 echo "// this checkout's own tool" >> "$repo/worker/src/test/scala/services/identity/IdentitySlicing.scala"
