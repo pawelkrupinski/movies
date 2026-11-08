@@ -24,7 +24,7 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
   private var chrome: Option[Chrome] = None
 
-  override def beforeAll(): Unit = chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+  override def beforeAll(): Unit = chrome = Chrome.tryStart(harness.cdpBrowserBinary)
   override def afterAll(): Unit  = chrome.foreach(_.close())
 
   // A real 1×1 PNG — decodes to naturalWidth 1, so it satisfies the

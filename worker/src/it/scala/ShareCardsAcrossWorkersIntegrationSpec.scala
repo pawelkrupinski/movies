@@ -41,7 +41,7 @@ class ShareCardsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
         val queue   = new MongoTaskQueue(Some(instance.database))
         (new ShareCardService(Country.default, store, posters, queue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0)), queue)
       }
-      rounds(4, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+      rounds(4, tools.ConcurrentInstances.baseSeed(harness)) { round =>
         val id     = f"frolling${round.number}%02d"
         val older  = film(id = id)
         val newer  = film(id = id, ratings = ratings.copy(imdb = Some(8.4)))

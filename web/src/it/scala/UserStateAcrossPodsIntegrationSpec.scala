@@ -61,7 +61,7 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
     ConcurrentInstances.withInstances(mongoTarget, "userstate-two-pods") { instances =>
       val users = new InMemoryUserRepository
       val pods  = instances.map(instance => new UserStatePod(instance.database, users, clock))
-      try rounds(12, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+      try rounds(12, tools.ConcurrentInstances.baseSeed(harness)) { round =>
         // A user with NO row yet: the first writes from both pods are the ones that each upsert.
         val userId = UserStatePod.signIn(users, s"two-pods-${round.number}")
         val writes = Seq(Hide(0, "A1"), Hide(1, "B1"), Unhide(0, "B1"), Hide(1, "A2"), Language(0, "en"), Language(1, "de"))
@@ -140,7 +140,7 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
       try await(instances.head.database.getCollection[Document](UserStateRepository.Collection)
         .createIndex(Indexes.ascending("userId"), IndexOptions().unique(true)).toFuture())
       finally held.close()
-      rounds(3, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+      rounds(3, tools.ConcurrentInstances.baseSeed(harness)) { round =>
         val (reported, drops) = bootTogether(instances, round)
         reported shouldBe Seq(List(true), List(true))
         withClue(s"indexes dropped per pod: $drops — ") { drops shouldBe Seq(0, 0) }
@@ -158,7 +158,7 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
   "two web pods booting at once over a plain userId index" should "both convert it in place, and neither drop it" in
     ConcurrentInstances.withInstances(mongoTarget, "userstate-two-pods-legacy") { instances =>
       val coll = instances.head.database.getCollection[Document](UserStateRepository.Collection)
-      rounds(4, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+      rounds(4, tools.ConcurrentInstances.baseSeed(harness)) { round =>
         await(coll.drop().toFuture())
         await(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture())
         val (reported, drops) = bootTogether(instances, round)
@@ -173,7 +173,7 @@ class UserStateAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers with 
   "two web pods booting at once over a plain userId index with duplicate rows" should "both report it, and keep the plain index" in
     ConcurrentInstances.withInstances(mongoTarget, "userstate-two-pods-duplicates") { instances =>
       val coll = instances.head.database.getCollection[Document](UserStateRepository.Collection)
-      rounds(2, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+      rounds(2, tools.ConcurrentInstances.baseSeed(harness)) { round =>
         await(coll.drop().toFuture())
         await(coll.insertMany(Seq(Document("userId" -> "twice"), Document("userId" -> "twice"))).toFuture())
         await(coll.createIndex(Indexes.ascending("userId"), IndexOptions()).toFuture())

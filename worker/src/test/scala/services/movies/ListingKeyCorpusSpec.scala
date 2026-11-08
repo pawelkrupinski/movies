@@ -60,7 +60,7 @@ class ListingKeyCorpusSpec extends AnyFlatSpec with Matchers with tools.SuiteCon
     finally stream.close()
   }
 
-  private val full: Seq[Corpus] = configuration.identityCorpusDirectory.toSeq.flatMap { dir =>
+  private val full: Seq[Corpus] = harness.identityCorpusDirectory.toSeq.flatMap { dir =>
     Country.all.map(c => dir.value.resolve(s"cinema-scrapes-${c.code}.json.gz")).filter(Files.exists(_))
       .map(p => Corpus(s"full ${p.getFileName}", countryOf(p.getFileName.toString), p))
   }

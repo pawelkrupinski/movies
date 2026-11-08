@@ -62,9 +62,10 @@ object UnmatchedClustersFill {
 
   private def fill(configuration: settings.ProcessConfiguration, country: models.Country, path: java.nio.file.Path, agreementCache: java.nio.file.Path,
                    posterCache: Option[java.nio.file.Path], recording: Option[java.nio.file.Path], listingWords: Boolean): Unit = {
+    val harness = new settings.HarnessConfiguration(configuration.env)
     var capture  = UnmatchedClusters.read(path)
     // what the capture's replay already left unanswered: only a live fill answers those, and only it is held to
-    val unansweredBefore = if (configuration.identityLiveGaps.isDefined) Set.empty[String] else UnmatchedClusters.replay(capture).unanswered
+    val unansweredBefore = if (harness.identityLiveGaps.isDefined) Set.empty[String] else UnmatchedClusters.replay(capture).unanswered
     val recorded = recording.map(dir => RecordedCorpus.open(country, dir.resolve("corpus").resolve(s"cinema-scrapes-${country.code}.json.gz"),
       settings.FixtureRoot(dir)))
     if (listingWords) recorded.foreach { opened =>
@@ -97,7 +98,7 @@ object UnmatchedClustersFill {
     val cache    = new ExperimentCacheFetch(agreementCache)
     val families = UnmatchedClusters.familiesOf(country)
     val sources  = LiveFamilySources.of(cache, country, families)
-    val tmdb  = configuration.identityLiveGaps.map(key => new clients.TmdbClient(new RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
+    val tmdb  = harness.identityLiveGaps.map(key => new clients.TmdbClient(new RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
       language = country.language))
     val finds = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]](capture.finds.asJava)
     val tmdbOf: String => Answer[Option[Int]] = imdb => Option(finds.get(imdb)).map(Answer.Known(_)).getOrElse {
@@ -105,7 +106,7 @@ object UnmatchedClustersFill {
         .fold[Answer[Option[Int]]](Answer.Unknown) { found => finds.put(imdb, found); Answer.Known(found) }
     }
     val posterStore = new PosterAnswerStore(store, clock)
-    val posters     = CachedPosters.of(configuration, country, posterCache)
+    val posters     = CachedPosters.of(harness, country, posterCache)
     // TMDB's own answers to what the stage's resolves ask beyond the capture (a fill rule's resolve of a cluster alone)
     val live        = tmdb.map(client => new TmdbIdentityLookups(client, new services.enrichment.ImdbClient(new RealHttpFetch()), Nil))
     var lookups     = new UnmatchedClusters.Replay(capture)

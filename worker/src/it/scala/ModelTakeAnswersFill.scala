@@ -48,10 +48,11 @@ object ModelTakeAnswersFill {
     val only = arguments.path("only").map(f => Files.readAllLines(f).asScala.filter(_.nonEmpty).toSet)
     val sample = arguments.int("sample")
     val configuration = settings.ProcessConfiguration.resolve()
-    val cache    = configuration.identityAgreementCache.getOrElse(sys.error("KINOWO_IDENTITY_AGREEMENT_CACHE")).value
+    val harness       = new settings.HarnessConfiguration(configuration.env)
+    val cache    = harness.identityAgreementCache.getOrElse(sys.error("KINOWO_IDENTITY_AGREEMENT_CACHE")).value
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]
     Files.createDirectories(out)
-    try new DecorationCorpora(configuration, storages).loaded.foreach(l => country(l, configuration, cache, out, rounds, threads, askPosters, askFamilies, only, sample))
+    try new DecorationCorpora(configuration, storages).loaded.foreach(l => country(l, harness, cache, out, rounds, threads, askPosters, askFamilies, only, sample))
     finally storages.foreach(s => Try(s.close()))
   }
 
@@ -74,7 +75,7 @@ object ModelTakeAnswersFill {
     override def fresh(question: String): Boolean = inner.fresh(question)
   }
 
-  private def country(l: DecorationCorpora.Loaded, configuration: settings.ProcessConfiguration, cache: Path, out: Path, rounds: Int,
+  private def country(l: DecorationCorpora.Loaded, harness: settings.HarnessConfiguration, cache: Path, out: Path, rounds: Int,
                       threads: Int, askPosters: Boolean, askFamilies: Boolean, only: Option[Set[String]], sample: Option[Int]): Unit = {
     val c       = l.c
     val code    = c.country.code
@@ -91,7 +92,7 @@ object ModelTakeAnswersFill {
     Files.writeString(out.resolve(s"asked-$code.tsv"), asking.map(ls => s"$code\t${name(ls)}").sorted.mkString("", "\n", "\n"))
 
     val docs = new InMemoryTmdbDocuments
-    configuration.identityFamilySeed.map(_.value.resolve(seedName(code))).foreach(f => docs.put(TmdbKind.Family, readSeed(f)))
+    harness.identityFamilySeed.map(_.value.resolve(seedName(code))).foreach(f => docs.put(TmdbKind.Family, readSeed(f)))
     Some(UnmatchedClusters.fixturePath(c.country)).filter(Files.exists(_)).map(UnmatchedClusters.read).foreach(cap => docs.put(TmdbKind.Family, cap.families.toSeq))
     docs.put(TmdbKind.Family, readSeed(out.resolve(seedName(code))))
     val store    = new FamilyAnswerStore(docs, tools.SpecClock.Pinned)
@@ -143,7 +144,7 @@ object ModelTakeAnswersFill {
     println(s"[$code] families: ${asking.size} of ${clusters.size} model takes, $asked question(s) asked in $round round(s), ${open.size} still open")
 
     // the IMDb ids a family took, on TMDB — what the dataset maps a pick by
-    val tmdb = configuration.identityLiveGaps.map(key => new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
+    val tmdb = harness.identityLiveGaps.map(key => new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
       language = c.country.language))
     val findsFile = out.resolve(s"finds-$code.tsv")
     val finds = new java.util.concurrent.ConcurrentHashMap[String, String]()
@@ -173,7 +174,7 @@ object ModelTakeAnswersFill {
         }
       }.distinct
       val posterStart = tools.Stopwatch.start()
-      CachedPosters.of(configuration, c.country).file(new PosterAnswerStore(store, tools.SpecClock.Pinned), questions)
+      CachedPosters.of(harness, c.country).file(new PosterAnswerStore(store, tools.SpecClock.Pinned), questions)
       val seconds = posterStart.seconds
       save()
       println(f"[$code] posters: ${questions.size} question(s) in $seconds%.0fs (${questions.size / math.max(seconds, 0.001)}%.1f/s)")

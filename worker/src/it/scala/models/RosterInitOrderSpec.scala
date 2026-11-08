@@ -22,10 +22,10 @@ import org.scalatest.matchers.should.Matchers
  */
 class RosterInitOrderSpec extends AnyFlatSpec with Matchers {
 
-  private lazy val configuration = settings.ProcessConfiguration.resolve()
+  private lazy val harness = settings.HarnessConfiguration.resolve()
 
   /** Run `entryPoint`'s main in a new JVM on this run's classpath, returning its output. */
-  private def inFreshJvm(entryPoint: String): (Int, String) = tools.ChildJvm(configuration).run(entryPoint)
+  private def inFreshJvm(entryPoint: String): (Int, String) = tools.ChildJvm(harness).run(entryPoint)
 
   "The German roster" should "initialise when it is the first thing a JVM touches" in {
     val (exit, output) = inFreshJvm("models.TouchGermanRosterFirst")

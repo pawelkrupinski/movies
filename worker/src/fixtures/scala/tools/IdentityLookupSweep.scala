@@ -26,7 +26,7 @@ object IdentityLookupSweep {
         s"($queriesUnanswered unanswered), $films film record(s) ($filmsUnanswered unanswered)"
   }
 
-  def enabledIn(configuration: settings.ProcessConfiguration): Boolean = configuration.identityLookupSweep.value
+  def enabledIn(harness: settings.HarnessConfiguration): Boolean = harness.identityLookupSweep.value
 
   /** The sweep over a booted replay wiring: its archived listings, its venues' detail enrichers,
    *  its TMDB client and an IMDb suggestion client over the TMDB client's fetch, all fetching

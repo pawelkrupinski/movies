@@ -83,7 +83,7 @@ class ReviewDesignParitySpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+    chrome = Chrome.tryStart(harness.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer({ case "/reference" => reference }, dynamicRoute = local)
   }
 

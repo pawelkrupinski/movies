@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 class IdentityFocusSettingSpec extends AnyFlatSpec with Matchers {
 
   private def focus(vars: (String, String)*): Option[IdentityFocus] =
-    new ProcessConfiguration(tools.Env.of(vars*)).identityFocus
+    new HarnessConfiguration(tools.Env.of(vars*)).identityFocus
 
   "KINOWO_IDENTITY_FOCUS" should "name comma-separated title phrases a focused measurement resolves" in {
     val tokens = (s: String) => services.movies.TitleContainment.tokens(s).toSet

@@ -63,10 +63,11 @@ object IdentityUnifiedDataset {
     val out       = arguments.requiredPath("out")
     val threads   = arguments.requiredInt("threads")
     val configuration = settings.ProcessConfiguration.resolve()
+    val harness       = new settings.HarnessConfiguration(configuration.env)
     val labels    = tools.IdentityJudgements.labels()
     val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
     try {
-      val rows    = new DecorationCorpora(configuration, storages).loaded.flatMap(l => country(l, configuration, labels, threads))
+      val rows    = new DecorationCorpora(configuration, storages).loaded.flatMap(l => country(l, harness, labels, threads))
       val written = write(out, rows)
       println(s"wrote $written: ${rows.size} rows")
     } finally storages.foreach(s => scala.util.Try(s.close()))
@@ -110,7 +111,7 @@ object IdentityUnifiedDataset {
     }, !fromFixture && taken.nonEmpty && !weakOk)
   }
 
-  private def country(l: DecorationCorpora.Loaded, configuration: settings.ProcessConfiguration, labels: Seq[UnmatchedClusters.Label],
+  private def country(l: DecorationCorpora.Loaded, harness: settings.HarnessConfiguration, labels: Seq[UnmatchedClusters.Label],
                       threads: Int): Seq[Row] = {
     val c        = l.c
     val code     = c.country.code
@@ -123,7 +124,7 @@ object IdentityUnifiedDataset {
 
     // the families' answers: prod's filed ones, the fixture's beside them
     val docs = new InMemoryTmdbDocuments
-    configuration.identityFamilySeed.map(_.value.resolve(s"${if (code == "pl") "kinowo" else s"kinowo_$code"}.jsonl")).filter(Files.exists(_)).foreach { file =>
+    harness.identityFamilySeed.map(_.value.resolve(s"${if (code == "pl") "kinowo" else s"kinowo_$code"}.jsonl")).filter(Files.exists(_)).foreach { file =>
       docs.put(TmdbKind.Family, Files.readAllLines(file).asScala.toSeq.filter(_.nonEmpty).map { line =>
         val d = org.bson.BsonDocument.parse(line)
         d.remove("_id").asString.getValue -> d
@@ -133,9 +134,9 @@ object IdentityUnifiedDataset {
     val store   = new FamilyAnswerStore(docs, tools.SpecClock.Pinned)
     val answers: Seq[(VoterFamily, FamilyAnswers)] = UnmatchedClusters.familiesOf(c.country).map(f => f -> store.answers(f))
     val posterStore = new PosterAnswerStore(store, tools.SpecClock.Pinned)
-    val posters = configuration.identityPosterCache.map(cache => new CachedPosters(cache.value, live = None, c.country.language.getLanguage, offline = true))
+    val posters = harness.identityPosterCache.map(cache => new CachedPosters(cache.value, live = None, c.country.language.getLanguage, offline = true))
     // the IMDb ids a family took, on TMDB: the capture's, and those `ModelTakeAnswersFill` found for the model's takes
-    val seedFinds = configuration.identityFamilySeed.map(_.value.resolve(s"finds-$code.tsv")).filter(Files.exists(_)).toSeq
+    val seedFinds = harness.identityFamilySeed.map(_.value.resolve(s"finds-$code.tsv")).filter(Files.exists(_)).toSeq
       .flatMap(f => Files.readAllLines(f).asScala.filter(_.nonEmpty).map(_.split('\t')).map(a => a(0) -> a.lift(1).flatMap(_.toIntOption)))
     val finds   = seedFinds.toMap ++ capture.fold(Map.empty[String, Option[Int]])(_.finds)
     val thisYear = java.time.LocalDate.ofInstant(tools.SpecClock.Pinned.instant(), java.time.ZoneOffset.UTC).getYear

@@ -32,7 +32,7 @@ class CdpLaunchSpec extends AnyFlatSpec with Matchers with SuiteConfiguration wi
   }
 
   private def withChrome(body: Chrome => Unit): Unit =
-    Chrome.tryStart(configuration.cdpBrowserBinary) match {
+    Chrome.tryStart(harness.cdpBrowserBinary) match {
       case None         => cancel("Chrome not installed")
       case Some(chrome) => try body(chrome) finally chrome.close()
     }

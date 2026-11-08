@@ -23,7 +23,7 @@ class CdpUserAgentSpec extends AnyFlatSpec with Matchers with SuiteConfiguration
   private def withServerAndChrome(spoof: Boolean)(body: (Chrome, TestHttpServer) => Unit): Unit = {
     val server = new TestHttpServer(routes = PartialFunction.empty)
     try
-      Chrome.tryStart(configuration.cdpBrowserBinary, spoofHeadlessUserAgent = spoof) match {
+      Chrome.tryStart(harness.cdpBrowserBinary, spoofHeadlessUserAgent = spoof) match {
         case None => cancel("Chrome not installed — skipping CDP user-agent spec")
         case Some(chrome) =>
           try body(chrome, server) finally chrome.close()

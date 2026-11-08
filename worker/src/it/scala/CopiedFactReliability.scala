@@ -54,10 +54,11 @@ object CopiedFactReliability {
     val corpusDir = arguments.requiredPath("corpus-dir")
     val judged    = judgements(arguments.path("judgements").getOrElse(Path.of("test/resources/fixtures/identity-judgements.tsv")))
     val configuration = settings.ProcessConfiguration.resolve()
-    val root      = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(configuration.fixtureRoot)
+    val harness       = new settings.HarnessConfiguration(configuration.env)
+    val root      = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(harness.fixtureRoot)
     val target    = IntegrationMongoTarget.from(configuration).getOrElse(arguments.fail("MONGODB_URI names no throwaway Mongo"))
     target.requireThrowaway()
-    val corpora   = IdentityShadow.full(countries.toSet, corpusDir, root, configuration.identityLiveGaps)
+    val corpora   = IdentityShadow.full(countries.toSet, corpusDir, root, harness.identityLiveGaps)
     val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
     val failed    = try corpora.filterNot { c =>
       Try(dump(configuration, target, root, c, out, storages, judged.filter(_.country == c.country.code))).fold({ e =>

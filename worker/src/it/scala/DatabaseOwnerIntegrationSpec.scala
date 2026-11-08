@@ -30,7 +30,7 @@ class DatabaseOwnerIntegrationSpec extends AnyFlatSpec with Matchers with tools.
   // both stamp it, the last write winning while the first worker kept running.
   it should "let exactly one of two countries claiming it at once win" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "database-owner-race") { db =>
-      tools.ConcurrentInstances.rounds(20, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+      tools.ConcurrentInstances.rounds(20, tools.ConcurrentInstances.baseSeed(harness)) { round =>
         new DatabaseOwner(db).owner().foreach(_ => db.getCollection(DatabaseOwner.Collection)
           .drop().toFuture().pipe(scala.concurrent.Await.result(_, tools.SpecTimeouts.Io)))
         val claims = tools.ConcurrentInstances.race(Seq(Country.Poland, Country.Germany)

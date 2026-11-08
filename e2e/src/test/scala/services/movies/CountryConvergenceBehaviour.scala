@@ -123,13 +123,13 @@ abstract class CountryConvergenceBehaviour(
    * (`Record scrape fixtures`) run without it, and they are what writes the tree.
    */
   private lazy val missingFixtures: Option[MissingFixtures] =
-    Option.when(ArchiveReplayWiring.hermeticIn(configuration))(new MissingFixtures)
+    Option.when(ArchiveReplayWiring.hermeticIn(harness))(new MissingFixtures)
 
   /** Which corpus this leg replays against its last green one's, read BESIDE the boot: the diff
    *  parses the green leg's whole corpus, ~7 s of the US recording's critical path before its first
    *  scrape (run 37111868620), for a verdict nothing reads until the boot is done or a claim fails. */
   private def readCorpusProvenance(rows: Seq[services.scrapes.ArchivedScrape]): Unit =
-    corpusProvenance = Some(Alongside.start(s"corpus-provenance-$corpusKey")(CorpusProvenance.of(corpusKey, rows, configuration)))
+    corpusProvenance = Some(Alongside.start(s"corpus-provenance-$corpusKey")(CorpusProvenance.of(corpusKey, rows, harness)))
 
   /** Reported ONCE, by whichever of the shared boot and the order-independence replays gets there first. */
   private val provenanceReported = new java.util.concurrent.atomic.AtomicBoolean(false)
@@ -137,7 +137,7 @@ abstract class CountryConvergenceBehaviour(
   private def reportCorpusProvenance(): Unit =
     corpusProvenance.filter(_ => provenanceReported.compareAndSet(false, true)).map(_.join()).foreach { provenance =>
       info(s"${country.displayName}: ${provenance.verdict}")
-      configuration.stepSummaryFile.foreach { summary =>
+      harness.stepSummaryFile.foreach { summary =>
         Try(java.nio.file.Files.writeString(summary.value,
           provenance.markdown(corpusKey) + "\n\n",
           java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND))
@@ -159,13 +159,13 @@ abstract class CountryConvergenceBehaviour(
       val report = s"${country.displayName} (identity model): enrichment the pipeline's tree does not hold, " +
         s"so these films went unrated here —\n${m.report(fixtureDirectory)}"
       println(report)
-      configuration.stepSummaryFile.foreach(summary => Try(java.nio.file.Files.writeString(summary.value,
+      harness.stepSummaryFile.foreach(summary => Try(java.nio.file.Files.writeString(summary.value,
         s"```\n$report\n```\n\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)))
     }
     // What this leg asked each external service, for the job summary and Prometheus (scripts/ci/ci_http_calls.py).
     Try(tools.CiHttpCalls.write())
     // A comparison job opened no store (it replays nothing, and holds no TMDB key to open the enrichment one with).
-    if (configuration.orderPassIn.isEmpty) {
+    if (harness.orderPassIn.isEmpty) {
       enrichmentCacheStore.close()
       passStorages.synchronized(passStorages.foreach(p => Try(p.close())))
       storage.close()
@@ -246,11 +246,11 @@ abstract class CountryConvergenceBehaviour(
    *  never asked again — on a HERMETIC leg, and on a GAP-FILL one (`KINOWO_CONVERGENCE_FILL_ONLY`),
    *  which differs only in fetching live, and recording, what the tree lacks instead of refusing it.
    *  Only a recording leg re-asks and ages the tree. */
-  private lazy val replaysRecording: Boolean = missingFixtures.isDefined || configuration.gapFill.value
+  private lazy val replaysRecording: Boolean = missingFixtures.isDefined || harness.gapFill.value
 
   /** On a gap-fill leg, every pass's live fetches answered once between them: passes run side by
    *  side and would otherwise each ask the live web, which need not answer twice alike. */
-  private lazy val sharedLive: Option[tools.SharedLiveAnswers] = Option.when(configuration.gapFill.value)(new tools.SharedLiveAnswers)
+  private lazy val sharedLive: Option[tools.SharedLiveAnswers] = Option.when(harness.gapFill.value)(new tools.SharedLiveAnswers)
 
   /** The order passes' TMDB bodies, each parsed once between them ([[tools.SharedJsonBodies]]): they
    *  read the same tree in lockstep, and each parsed every film record it asked for itself. */
@@ -259,11 +259,11 @@ abstract class CountryConvergenceBehaviour(
   /** The same tree [[ArchiveReplayWiring]] replays and records into, asked the same way,
    *  so the cache lands BESIDE the corpus it belongs to rather than beside whichever
    *  directory this file happened to name. */
-  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country, configuration)
+  private lazy val fixtureDirectory: String = ArchiveReplayWiring.fixtureDirectory(country, harness)
 
   /** Where that tree lives — the repository's own unless KINOWO_FIXTURE_ROOT names another;
    *  resolved here, the suite being the run's root, and handed to everything that reads it. */
-  private lazy val fixtureRoot: settings.FixtureRoot = configuration.fixtureRoot
+  private lazy val fixtureRoot: settings.FixtureRoot = harness.fixtureRoot
 
   /** Age the recorded responses out before anything reads them, so a rating captured
    *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
@@ -333,8 +333,8 @@ abstract class CountryConvergenceBehaviour(
    *  ONE PASS PER ROW (`KINOWO_CONVERGENCE_ORDER_PASS_OUT`): a row replays its one pass and writes the corpus out, and
    *  the comparison job (`KINOWO_CONVERGENCE_ORDER_PASS_IN`) reads the two passes its row names and compares them here,
    *  as the row that replayed both did. */
-  private lazy val passes: Seq[Int] = configuration.orderPasses.fold(0 until Passes: Seq[Int]) { chosen =>
-    val least = if (configuration.orderPassOut.isDefined) 1 else 2
+  private lazy val passes: Seq[Int] = harness.orderPasses.fold(0 until Passes: Seq[Int]) { chosen =>
+    val least = if (harness.orderPassOut.isDefined) 1 else 2
     require(chosen.indices.distinct.sizeIs >= least && chosen.indices.forall(i => i >= 0 && i < Passes),
       s"KINOWO_CONVERGENCE_ORDER_PASSES names ${chosen.indices.mkString(",")}: a row needs $least distinct pass(es) of 0..${Passes - 1}")
     chosen.indices.distinct
@@ -447,7 +447,7 @@ abstract class CountryConvergenceBehaviour(
     // never a row the boot writes, so nothing it does waits on the boot or moves it — and after the
     // boot it was 35 s of the US recording's critical path (run 37111868620), on the cores the
     // boot's Mongo-bound drains leave idle. Joined before the boot is declared complete.
-    val sweep = Option.when(IdentityLookupSweep.enabledIn(configuration)) {
+    val sweep = Option.when(IdentityLookupSweep.enabledIn(harness)) {
       // Timed like every other phase: in a recording leg it is minutes of live lookups.
       Alongside.start(s"identity-sweep-${country.code}")(
         step("identityLookupSweep")(IdentityLookupSweep.over(w, threads = IdentityLookupSweep.LookupThreads)))
@@ -721,11 +721,11 @@ abstract class CountryConvergenceBehaviour(
    * source is never written to, so a live mirror can safely be the source.
    */
   private lazy val realScrapeSource: Option[ScrapeArchiveRepository] =
-    configuration.convergenceScrapesUri.map { uri =>
+    harness.convergenceScrapesUri.map { uri =>
       // Tuned for the tunnel — see TunnelTunedUri. Without it a proxy restart costs
       // 30s of server selection per attempt and the corpus read stalls at 0% CPU.
       val database = MongoClient(tools.TunnelTunedUri(uri.value)).getDatabase(
-        configuration.convergenceScrapesDatabase.fold(country.mongoDb)(_.value))
+        harness.convergenceScrapesDatabase.fold(country.mongoDb)(_.value))
       new MongoScrapeArchiveRepository(Some(database))
     }
 
@@ -1125,7 +1125,7 @@ abstract class CountryConvergenceBehaviour(
       val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt)).map(ids.row)
       val corpus = ReplayCorpus(records, screenings, rows)
       // A one-pass row: the comparison job compares this pass with its partner (ReplayCorpusFile proves the copy equal).
-      configuration.orderPassOut.foreach(out =>
+      harness.orderPassOut.foreach(out =>
         PhaseTimer.timed(scope, "replayWriteCorpus")(ReplayCorpusFile.writeVerified(corpus, ReplayCorpusFile.of(out.value, (seed - OrderSeed).toInt))))
       corpus
     }
@@ -1160,7 +1160,7 @@ abstract class CountryConvergenceBehaviour(
 
   private def startOrderReplays(): Alongside.Started[CorpusComparison] = synchronized {
     orderReplays.getOrElse {
-      val started = configuration.orderPassIn.fold(replayOrderPasses()) { in =>
+      val started = harness.orderPassIn.fold(replayOrderPasses()) { in =>
         // The comparison job: the passes were replayed in rows of their own; fold their corpora in, in pass order.
         Alongside.start(s"order-compare-${country.code}") {
           val comparison = new CorpusComparison
@@ -1649,7 +1649,7 @@ abstract class CountryConvergenceBehaviour(
         val report = s"${country.displayName}: ${enforced.reported.size} served-output finding(s) over the recorded corpus — fix the " +
           s"stage that produced the value, or allowlist the card in ServedOutputAllowlist with why:\n${enforced.reported.mkString("\n")}"
         info(report)
-        configuration.stepSummaryFile.foreach(summary => Try(java.nio.file.Files.writeString(summary.value,
+        harness.stepSummaryFile.foreach(summary => Try(java.nio.file.Files.writeString(summary.value,
           s"```\n$report\n```\n\n", java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)))
       }
       enforced.failures shouldBe empty

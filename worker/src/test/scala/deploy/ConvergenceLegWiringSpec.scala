@@ -837,7 +837,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  lane never asks; the recordings, which keep the tree complete, do. */
   it should "run the identity lookup sweep only when asked for, never because the tree is marked" in {
     RepoFile.read("e2e/src/test/scala/services/movies/CountryConvergenceBehaviour.scala") should include(
-      "Option.when(IdentityLookupSweep.enabledIn(configuration))")
+      "Option.when(IdentityLookupSweep.enabledIn(harness))")
     RepoFile.read(".github/workflows/identity-model-convergence.yml") should not include "identity-lookups:"
     RepoFile.read("worker/src/fixtures/scala/tools/IdentityLookupSweep.scala") should not include "def runsIn"
   }

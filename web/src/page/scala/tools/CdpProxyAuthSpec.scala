@@ -35,7 +35,7 @@ class CdpProxyAuthSpec extends AnyFlatSpec with Matchers with SuiteConfiguration
     val server = new TestHttpServer(routes = { case "/" => "<html><body>proxied ok</body></html>" })
     val proxy  = new TestProxyServer(user = "proxyuser", pass = "proxypass")
     try
-      Chrome.tryStart(configuration.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
+      Chrome.tryStart(harness.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
         case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
         case Some(chrome) =>
           try chrome.openPage(server.baseUrl + "/") { page =>
@@ -70,7 +70,7 @@ class CdpProxyAuthSpec extends AnyFlatSpec with Matchers with SuiteConfiguration
   it should "authenticate an HTTPS (CONNECT-tunneled) request through it, not just plain HTTP" in {
     val proxy = new TestProxyServer(user = "proxyuser", pass = "proxypass")
     try
-      Chrome.tryStart(configuration.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
+      Chrome.tryStart(harness.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
         case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
         case Some(chrome) =>
           try {
@@ -107,7 +107,7 @@ class CdpProxyAuthSpec extends AnyFlatSpec with Matchers with SuiteConfiguration
     val server = new TestHttpServer(routes = routes)
     val proxy  = new TestProxyServer(user = "proxyuser", pass = "proxypass")
     try
-      Chrome.tryStart(configuration.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
+      Chrome.tryStart(harness.cdpBrowserBinary, proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
         case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
         case Some(chrome) =>
           try noException should be thrownBy chrome.openPage(server.baseUrl + "/") { page =>

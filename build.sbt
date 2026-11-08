@@ -322,7 +322,7 @@ lazy val common = (project in file("common"))
 // never meet.
 lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/ManualScheduler", "tools/Eventually", "tools/SpecClock",
   "tools/SpecTimeouts", "tools/Answered", "tools/costs/CpuMeter", "tools/RecordingTickRecorder", "services/movies/SingleCountryNormalizer", "services/IdentityPropertySpec",
-  "services/movies/SplitBookingUrlShapes", "services/movies/StoredRowsRepository").map { name =>
+  "services/movies/SplitBookingUrlShapes", "services/movies/StoredRowsRepository", "settings/HarnessConfiguration", "settings/HarnessValues").map { name =>
   (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / s"$name.scala"
 })
 

@@ -61,11 +61,12 @@ object UnmatchedClustersCapture {
     val corpusDir     = arguments.requiredPath("corpus-dir")
     val cache         = arguments.requiredPath("agreement-cache")
     val configuration = settings.ProcessConfiguration.resolve()
-    val root          = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(configuration.fixtureRoot)
+    val harness       = new settings.HarnessConfiguration(configuration.env)
+    val root          = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(harness.fixtureRoot)
     val target        = IntegrationMongoTarget.from(configuration).getOrElse(arguments.fail("MONGODB_URI names no throwaway Mongo to seed the corpus into"))
     target.requireThrowaway()
     val storages      = mutable.ListBuffer.empty[ConvergenceStorage]
-    val done = try IdentityShadow.full(Set(country), corpusDir, root, configuration.identityLiveGaps).headOption match {
+    val done = try IdentityShadow.full(Set(country), corpusDir, root, harness.identityLiveGaps).headOption match {
       case None    => System.err.println(s"[UnmatchedClustersCapture] no cinema-scrapes-${country.code}.json.gz in $corpusDir"); false
       case Some(c) => Try(capture(configuration, target, root, c, out, cache, arguments.path("family-seed"), arguments.path("poster-cache"), storages))
         .fold({ e => System.err.println(s"[${c.label}] FAILED: ${e.getMessage}"); if (!e.isInstanceOf[Refused]) e.printStackTrace(); false }, _ => true)
@@ -76,6 +77,7 @@ object UnmatchedClustersCapture {
   private def capture(configuration: settings.ProcessConfiguration, target: IntegrationMongoTarget, root: settings.FixtureRoot, c: Corpus,
                       out: Path, agreementCache: Path, familySeed: Option[Path], posterCache: Option[Path],
                       storages: mutable.ListBuffer[ConvergenceStorage]): Unit = {
+    val harness = new settings.HarnessConfiguration(configuration.env)
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
     val source   = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
@@ -107,7 +109,7 @@ object UnmatchedClustersCapture {
       .fold[Answer[Option[Int]]](Answer.Unknown) { found => finds.put(imdb, found); Answer.Known(found) })(Answer.Known(_))
     val answers: Map[VoterFamily, FamilyAnswers] = families.map(f => f -> store.answers(f)).toMap
     val posterStore = new PosterAnswerStore(store, new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
-    val posters     = CachedPosters.of(configuration, c.country, posterCache)
+    val posters     = CachedPosters.of(harness, c.country, posterCache)
     val catalogue   = new CatalogueFill(store, new MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")), cache)
 
     // the records of the films the model leaned to and weighed best: what a take names, and what pooled facts read
@@ -168,7 +170,7 @@ object UnmatchedClustersCapture {
     val unreadDetail = (l: Listing) => lookups.hasDetail(l) && lookups.unreadDetail(l)
     val ahead = reads(LiveGapLeaf.readAhead(whole.decisions, unmatched, listings, unreadDetail))
     println(s"[${c.label}] unread venue pages: ${ahead.size} read(s) ahead; every unread page of the corpus ${reads(listings.filter(unreadDetail)).size}")
-    if (ahead.nonEmpty && configuration.identityLiveGaps.isDefined) {
+    if (ahead.nonEmpty && harness.identityLiveGaps.isDefined) {
       val read = LiveGapLeaf.readPages(ahead)
       println(s"[${c.label}] read $read of ${ahead.size} venue page(s) the tree lacks live" + (if (read > 0) " — capture again to read them" else ""))
     }

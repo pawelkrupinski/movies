@@ -120,7 +120,7 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
   register(ListingCorpora.FixtureBootLabel, () => boot)
 
   Country.all.foreach { country =>
-    lazy val recorded = ListingCorpora.recordedPath(country, configuration.identityCorpusDirectory.map(_.value), configuration.identityCache.map(_.value))
+    lazy val recorded = ListingCorpora.recordedPath(country, harness.identityCorpusDirectory.map(_.value), harness.identityCache.map(_.value))
       .map(path => new Checked(ListingCorpora.recorded(country, path)))
     register(ListingCorpora.recordedLabel(country), () => recorded.getOrElse(cancel(ListingCorpora.absent(country))))
   }

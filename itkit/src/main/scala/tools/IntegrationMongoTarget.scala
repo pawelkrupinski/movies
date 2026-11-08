@@ -1,6 +1,6 @@
 package tools
 
-import settings.{MongoDatabaseName, MongoUri, ProcessConfiguration, RemoteIntegrationAllowed}
+import settings.{HarnessConfiguration, MongoDatabaseName, MongoUri, ProcessConfiguration, RemoteIntegrationAllowed}
 
 /**
  * The Mongo an integration run writes to: the throwaway cluster (`uri`), the database name
@@ -27,6 +27,6 @@ object IntegrationMongoTarget {
   def from(configuration: ProcessConfiguration): Option[IntegrationMongoTarget] = {
     val address = configuration.mongoAddress
     address.uri.map(uri => IntegrationMongoTarget(uri, address.database.getOrElse(MongoDatabaseName("kinowo")),
-      configuration.remoteIntegrationAllowed))
+      new HarnessConfiguration(configuration.env).remoteIntegrationAllowed))
   }
 }

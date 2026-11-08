@@ -9,7 +9,7 @@ import scala.sys.process.Process
 /**
  * The flags a tier's JVM actually runs with, read back from a real JVM.
  *
- * This spec starts a JVM (the one running the tests -- ProcessConfiguration's java.home, which CI
+ * This spec starts a JVM (the one running the tests -- HarnessConfiguration.s java.home, which CI
  * pins to the image's JDK) with a tier's production JAVA_OPTS followed by its launcher options
  * ([[LauncherOptions]]), exactly as the start script combines the overlay with
  * conf/application.ini, and reads back each flag's final value and origin. A later JDK that renames
@@ -33,7 +33,7 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
 
   private lazy val tmp = tempDirectory("launcher-jvm-flags")
 
-  private lazy val configuration = settings.ProcessConfiguration.resolve()
+  private lazy val harness = settings.HarnessConfiguration.resolve()
 
   /** The JVM's stdout and stderr, each on its own: -XX:+PrintFlagsFinal writes to stdout, -XshowSettings to stderr, and
    *  the worker's own -XX:+PrintNMTStatistics its exit-time Native Memory Tracking report to stdout. Each stream is read
@@ -44,7 +44,7 @@ class LauncherJvmFlagsSpec extends AnyFlatSpec with Matchers with ScratchDirecto
   private def run(args: Seq[String]): Output = {
     val (out, err) = (new StringBuilder, new StringBuilder)
     def into(buffer: StringBuilder) = (l: String) => buffer.synchronized { buffer.append(l).append('\n'); () }
-    val exit = Process(configuration.javaHome.binary("java").toString +: args)
+    val exit = Process(harness.javaHome.binary("java").toString +: args)
       .!(scala.sys.process.ProcessLogger(into(out), into(err)))
     withClue(s"java ${args.mkString(" ")}:\n$out$err") { exit.shouldBe(0) }
     Output(out.toString, err.toString)

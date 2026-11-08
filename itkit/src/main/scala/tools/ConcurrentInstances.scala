@@ -95,8 +95,8 @@ object ConcurrentInstances {
 
   /** The seed round 1 is drawn from — fixed, so a run is reproducible, and overridable to replay
    *  (or to explore) other interleavings. */
-  def baseSeed(configuration: settings.ProcessConfiguration): Long =
-    configuration.raceSeed(settings.RaceSeed(20260924L)).value
+  def baseSeed(harness: settings.HarnessConfiguration): Long =
+    harness.raceSeed(settings.RaceSeed(20260924L)).value
 
   /** Run `body` for `count` rounds, each with its own seed (from [[baseSeed]], which the spec
    *  resolves); a failure names the round and seed. */

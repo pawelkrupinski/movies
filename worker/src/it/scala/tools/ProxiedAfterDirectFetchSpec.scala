@@ -38,7 +38,7 @@ import scala.util.{Try, Using}
  */
 class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with ScratchDirectories {
 
-  private lazy val configuration = settings.ProcessConfiguration.resolve()
+  private lazy val harness = settings.HarnessConfiguration.resolve()
 
   import ProxiedAfterDirectFetchSpec._
 
@@ -88,7 +88,7 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers with BeforeA
   private def stores: (Path, Path, Path) = synchronized {
     minted.getOrElse {
       val dir = tempDirectory("proxied-after-direct")
-      val (keyStore, trustStore) = selfSignedStores(new Keytool(configuration.javaHome), dir)
+      val (keyStore, trustStore) = selfSignedStores(new Keytool(harness.javaHome), dir)
       minted = Some((dir, keyStore, trustStore))
       (dir, keyStore, trustStore)
     }
@@ -112,7 +112,7 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers with BeforeA
     Seq(direct, origin).foreach(_.start())
 
     try {
-      val (exit, output) = ChildJvm(configuration).run(
+      val (exit, output) = ChildJvm(harness).run(
         ProbeMain,
         jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=$trustStore", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
         args = Seq(applied.fold(NoPolicy)(_.toString), s"http://127.0.0.1:${direct.getAddress.getPort}/", proxy.port.toString,

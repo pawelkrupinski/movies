@@ -13,7 +13,7 @@ import org.scalatest.matchers.should.Matchers
 class CdpSocketLossSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   "a page whose DevTools connection Chrome closed" should "fail its next call saying Chrome closed it" in {
-    Chrome.tryStart(configuration.cdpBrowserBinary) match {
+    Chrome.tryStart(harness.cdpBrowserBinary) match {
       case None => cancel("Chrome not installed")
       case Some(chrome) =>
         try chrome.openPage("about:blank") { page =>

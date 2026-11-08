@@ -1,6 +1,6 @@
 package tools
 
-import settings.ProcessConfiguration
+import settings.HarnessConfiguration
 
 import scala.concurrent.duration.*
 
@@ -30,7 +30,7 @@ import scala.concurrent.duration.*
 object SpecTimeouts {
 
   /** The resolved multiplier, from the one configuration resolver. */
-  val Scale: Int = ProcessConfiguration.resolve().specTimeScale.value
+  val Scale: Int = HarnessConfiguration.resolve().specTimeScale.value
 
   /** One operation completing: a Mongo/driver round trip, a future, a latch a worker thread
    *  counts down, a thread finishing its run. Past the suite's [[SuiteDeadline]], [[PastDeadline]]. */

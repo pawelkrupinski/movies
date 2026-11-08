@@ -28,11 +28,12 @@ object CorpusArgs {
     val out           = arguments.requiredPath("out")
     val corpusDir     = arguments.requiredPath("corpus-dir")
     val configuration = settings.ProcessConfiguration.resolve()
-    val root          = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(configuration.fixtureRoot)
+    val harness       = new settings.HarnessConfiguration(configuration.env)
+    val root          = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(harness.fixtureRoot)
     val target        = IntegrationMongoTarget.from(configuration).getOrElse(arguments.fail("MONGODB_URI names no throwaway Mongo to seed the corpora into"))
     target.requireThrowaway()
     val read = CorpusArgs(countries, out, corpusDir, configuration, root, target,
-      IdentityShadow.full(countries.toSet, corpusDir, root, configuration.identityLiveGaps))
+      IdentityShadow.full(countries.toSet, corpusDir, root, harness.identityLiveGaps))
     read.missing.foreach(c => System.err.println(s"[$tool] no cinema-scrapes-${c.code}.json.gz in $corpusDir"))
     read
   }

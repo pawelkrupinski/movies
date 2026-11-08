@@ -38,11 +38,11 @@ class IdentitySeedingIntegrationSpec extends AnyFlatSpec with Matchers with Befo
 
   private val storages = mutable.ListBuffer.empty[ConvergenceStorage]
 
-  private val out = configuration.identityShadowOutput.value
+  private val out = harness.identityShadowOutput.value
   private val seeded: Seq[(Corpus, java.nio.file.Path)] = for {
-    films  <- configuration.identitySeedFilms.toSeq
-    dir    <- configuration.identityCorpusDirectory.toSeq
-    corpus <- IdentityShadow.full(configuration.identityFullCorpora.value, dir.value, configuration.fixtureRoot)
+    films  <- harness.identitySeedFilms.toSeq
+    dir    <- harness.identityCorpusDirectory.toSeq
+    corpus <- IdentityShadow.full(harness.identityFullCorpora.value, dir.value, harness.fixtureRoot)
     file    = films.value.resolve(s"films-${corpus.country.code}.json") if Files.exists(file)
   } yield corpus -> file
 
@@ -62,7 +62,7 @@ class IdentitySeedingIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   seeded.foreach { case (c, file) =>
     "ID seeding" should s"review today's films against the resolver's clusters on ${c.label}" in {
       val films = filmsFrom(file)
-      val w = wiring(mongoTarget, c, storages, configuration.fixtureRoot, configuration.env)
+      val w = wiring(mongoTarget, c, storages, harness.fixtureRoot, configuration.env)
       val listings = listingsOf(w, c.normalizer)
       val source = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
         language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, new CountedGaps(c.misses))

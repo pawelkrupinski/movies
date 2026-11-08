@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 class CommandLineIntegrationSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   "parseOrExit" should "exit 2 with the usage on stderr for a bad command line, and 0 on --help" in {
-    val jvm = ChildJvm(configuration)
+    val jvm = ChildJvm(harness)
     val (refused, refusal) = jvm.run("tools.CommandLineProbe", Seq("--bogus"))
     refused shouldBe 2
     refusal should include("unknown option --bogus")

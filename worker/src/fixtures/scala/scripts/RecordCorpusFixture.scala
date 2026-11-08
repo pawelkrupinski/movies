@@ -37,12 +37,13 @@ object RecordCorpusFixture {
   def main(args: Array[String]): Unit = {
     val arguments     = commandLine.parseOrExit(args)
     val configuration = _root_.settings.ProcessConfiguration.resolve()
+    val harness       = new _root_.settings.HarnessConfiguration(configuration.env)
     val country       = arguments.country("country").getOrElse(configuration.country)
-    val uri = configuration.convergenceScrapesUri.map(_.value).orElse(configuration.mongoAddress.uri.map(_.value)).getOrElse {
+    val uri = harness.convergenceScrapesUri.map(_.value).orElse(configuration.mongoAddress.uri.map(_.value)).getOrElse {
       System.err.println("[corpus] set KINOWO_CONVERGENCE_SCRAPES_URI (or MONGODB_URI) to the archive source")
       sys.exit(1)
     }
-    val databaseName = configuration.convergenceScrapesDatabase.map(_.value).getOrElse(country.mongoDb)
+    val databaseName = harness.convergenceScrapesDatabase.map(_.value).getOrElse(country.mongoDb)
 
     // Tunnel-tuned: this runs across a `flyctl proxy` in CI, where the default 30s
     // server selection turns a two-second proxy restart into minutes of blocking.

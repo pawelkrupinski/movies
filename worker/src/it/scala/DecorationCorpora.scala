@@ -15,13 +15,15 @@ import scala.collection.mutable
 final class DecorationCorpora(configuration: settings.ProcessConfiguration, storages: mutable.ListBuffer[ConvergenceStorage]) {
   import DecorationCorpora._
 
+  private val harness = new settings.HarnessConfiguration(configuration.env)
+
   private val target = IntegrationMongoTarget.from(configuration).getOrElse(sys.error("MONGODB_URI names no throwaway Mongo"))
   target.requireThrowaway()
-  private val corpusDir = configuration.identityCorpusDirectory.getOrElse(sys.error("KINOWO_IDENTITY_CORPUS_DIR")).value
+  private val corpusDir = harness.identityCorpusDirectory.getOrElse(sys.error("KINOWO_IDENTITY_CORPUS_DIR")).value
 
-  val loaded: Seq[Loaded] = IdentityShadow.full(configuration.identityFullCorpora.value, corpusDir, configuration.fixtureRoot, configuration.identityLiveGaps)
+  val loaded: Seq[Loaded] = IdentityShadow.full(harness.identityFullCorpora.value, corpusDir, harness.fixtureRoot, harness.identityLiveGaps)
     .map { c =>
-      val w = IdentityShadow.wiring(target, c, storages, configuration.fixtureRoot, configuration.env)
+      val w = IdentityShadow.wiring(target, c, storages, harness.fixtureRoot, configuration.env)
       val lookups = new IdentityShadow.Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(IdentityShadow.StubTmdbKey)),
         language = c.country.language), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps))
       Loaded(c, IdentityShadow.listingsOf(w, c.normalizer), lookups)
@@ -29,7 +31,7 @@ final class DecorationCorpora(configuration: settings.ProcessConfiguration, stor
 
   /** Each country's recorded TMDB answers (the recording alone: nothing is asked live). */
   lazy val answers: Map[String, TmdbAnswers] = loaded.map { l =>
-    l.c.country.code -> new TmdbAnswers(Seq(Paths.get(configuration.fixtureRoot.of(s"enrichment-${l.c.country.code}"))).filter(Files.isDirectory(_)),
+    l.c.country.code -> new TmdbAnswers(Seq(Paths.get(harness.fixtureRoot.of(s"enrichment-${l.c.country.code}"))).filter(Files.isDirectory(_)),
       Map.empty, languageOf(l.c.country))
   }.toMap
 

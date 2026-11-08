@@ -38,7 +38,7 @@ class CdpWaitForSpec extends AnyFlatSpec with Matchers with SuiteConfiguration {
 
   private def withPage(body: (Chrome, CdpPage) => Unit): Unit = {
     val server = new TestHttpServer(routes = { case _ => "<!doctype html><html><body>page</body></html>" })
-    try Chrome.tryStart(configuration.cdpBrowserBinary) match {
+    try Chrome.tryStart(harness.cdpBrowserBinary) match {
       case None         => cancel("Chrome not installed")
       case Some(chrome) =>
         try chrome.openPage(s"${server.baseUrl}/") { page => body(chrome, page) }

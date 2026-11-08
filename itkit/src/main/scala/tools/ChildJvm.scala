@@ -1,6 +1,6 @@
 package tools
 
-import settings.{JavaClassPath, JavaHome, ProcessConfiguration}
+import settings.{HarnessConfiguration, JavaClassPath, JavaHome}
 
 import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets.UTF_8
@@ -51,5 +51,5 @@ final class ChildJvm(javaHome: JavaHome, classPath: JavaClassPath) {
 
 object ChildJvm {
   /** A child JVM of the JDK `configuration` names, on its class path. */
-  def apply(configuration: ProcessConfiguration): ChildJvm = new ChildJvm(configuration.javaHome, configuration.javaClassPath)
+  def apply(harness: HarnessConfiguration): ChildJvm = new ChildJvm(harness.javaHome, harness.javaClassPath)
 }

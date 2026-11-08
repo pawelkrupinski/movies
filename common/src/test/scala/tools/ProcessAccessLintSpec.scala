@@ -11,7 +11,8 @@ import scala.jdk.CollectionConverters.*
  * Production code reads this process's configuration in ONE place. `Env` binds its sources
  * to the real process (`Env.fromProcess`: environment variables, then system properties),
  * and `settings.ProcessConfiguration` is the one resolver that reads a key
- * through it and turns it into a type of its own — the country, the Mongo address, every
+ * through it (testkit's `settings.HarnessConfiguration` is its twin for what only a test harness
+ * reads) and turns it into a type of its own — the country, the Mongo address, every
  * credential, every tuning knob. Everything else is HANDED those typed values through its
  * constructor or parameters, so a spec builds them directly and no code deep in the object
  * graph can quietly pick a different answer than its root did, or a String meant for one
@@ -42,6 +43,8 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
       "Env's process binding: environment variables, then system properties",
     "common/src/main/scala/settings/ProcessConfiguration.scala" ->
       "the ONE resolver: binds Env to the process and yields the typed values roots pass down",
+    "testkit/src/main/scala/settings/HarnessConfiguration.scala" ->
+      "the test harness's resolver: binds Env to the process for what only a suite, replay or measuring tool reads",
     "http/src/main/scala/tools/ProxyTunnelAuthentication.scala" ->
       "writes a policy the JDK itself reads (jdk.http.auth.tunneling.disabledSchemes); applied once by each main",
     "http/src/main/scala/tools/IssuerCertificateFetching.scala" ->
@@ -56,6 +59,8 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
       "Env itself: the lookup every read goes through",
     "common/src/main/scala/settings/ProcessConfiguration.scala" ->
       "the ONE resolver: every configuration key is read here, into a type of its own",
+    "testkit/src/main/scala/settings/HarnessConfiguration.scala" ->
+      "the test harness's resolver: every key only a suite, replay or measuring tool reads, into a type of its own",
     "common/src/main/scala/services/config/EnvConfigService.scala" ->
       "the /admin/config page: lists every REGISTERED knob's current value by the key the registry holds — keys as data, not one setting read",
   )

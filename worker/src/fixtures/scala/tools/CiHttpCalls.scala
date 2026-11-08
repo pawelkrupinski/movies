@@ -26,7 +26,7 @@ object CiHttpCalls {
 
   private val tracked = new ConcurrentLinkedQueue[WorkerHttpMetrics]()
   private val flushing = new AtomicBoolean(false)
-  private lazy val inCi: Boolean = settings.ProcessConfiguration.resolve().stepSummaryFile.isDefined
+  private lazy val inCi: Boolean = settings.HarnessConfiguration.resolve().stepSummaryFile.isDefined
 
   /** Counts `metrics` toward this process's report. */
   def track(metrics: WorkerHttpMetrics): Unit = {

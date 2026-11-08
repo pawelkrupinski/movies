@@ -46,41 +46,6 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("KINOWO_COUNTRIES" -> "xx").workerCountries shouldBe WorkerCountries(Seq(Country.default))
   }
 
-  it should "resolve a convergence leg's replay: hermetic, or filling only the gaps, each off unless asked" in {
-    resolvedFrom().hermeticReplay shouldBe HermeticReplay(false)
-    resolvedFrom().gapFill shouldBe GapFill(false)
-    resolvedFrom("KINOWO_CONVERGENCE_HERMETIC" -> "true").hermeticReplay shouldBe HermeticReplay(true)
-    resolvedFrom("KINOWO_CONVERGENCE_FILL_ONLY" -> "true").gapFill shouldBe GapFill(true)
-    resolvedFrom("KINOWO_CONVERGENCE_FILL_ONLY" -> "no").gapFill shouldBe GapFill(false)
-  }
-
-  it should "resolve which order-independence passes a split row replays, every pass when unset" in {
-    resolvedFrom().orderPasses shouldBe None
-    resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASSES" -> "0,1").orderPasses shouldBe Some(OrderPasses(Seq(0, 1)))
-    resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASSES" -> " 1, 2 ").orderPasses shouldBe Some(OrderPasses(Seq(1, 2)))
-  }
-
-  it should "resolve where a one-pass order row writes its corpus and where a comparison reads them" in {
-    resolvedFrom().orderPassOut shouldBe None
-    resolvedFrom().orderPassIn shouldBe None
-    resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASS_OUT" -> "/tmp/out").orderPassOut shouldBe Some(OrderPassOut(Path.of("/tmp/out")))
-    resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASS_IN" -> "/tmp/in").orderPassIn shouldBe Some(OrderPassIn(Path.of("/tmp/in")))
-  }
-
-  it should "refuse an order-pass list it cannot read, rather than replay passes nobody asked for" in {
-    an[IllegalArgumentException] should be thrownBy resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASSES" -> "0,x").orderPasses
-  }
-
-  // Every boolean harness switch reads through the one `Env.flag` rule (`1` or `true`), not a
-  // spelling of its own: they took "true" alone, one of them any value at all.
-  it should "read every boolean harness switch as one flag, `1` and `true` alike" in {
-    val on = resolvedFrom("KINOWO_CONVERGENCE_HERMETIC" -> "1", "KINOWO_CONVERGENCE_FILL_ONLY" -> "1", "KINOWO_IDENTITY_LOOKUPS" -> "1",
-      "KINOWO_HARD_CLUSTERS_DUMP" -> "true")
-    (on.hermeticReplay, on.gapFill, on.identityLookupSweep, on.hardClusterDump) shouldBe
-      (HermeticReplay(true), GapFill(true), IdentityLookupSweepEnabled(true), HardClusterDump(true))
-    resolvedFrom("KINOWO_HARD_CLUSTERS_DUMP" -> "no").hardClusterDump shouldBe HardClusterDump(false)
-  }
-
   it should "resolve the commit and the port, with their defaults" in {
     resolvedFrom("COMMIT_SHA" -> "abc123").commit shouldBe CommitSha("abc123")
     resolvedFrom("PORT" -> "9123").healthPort(HealthPort(9000)) shouldBe HealthPort(9123)
@@ -123,11 +88,6 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
       .telegramRoute(AlertRoute.FilmwebFallback) shouldBe Right(TelegramRoute(TelegramBotToken("bot"), TelegramChatId(-100L), Some(TelegramTopicId(7L))))
     resolvedFrom("KINOWO_FILMWEB_DROP_TG_CHAT_ID" -> "chat").telegramRoute(AlertRoute.FilmwebDrop) shouldBe
       Left(Seq(MissingSetting("TELEGRAM_BOT_TOKEN"), MissingSetting("KINOWO_FILMWEB_DROP_TG_CHAT_ID (not a number)")))
-  }
-
-  it should "give a capture's live reads four at a time per host, unless the parallel runs split it" in {
-    resolvedFrom().identityLivePerHost shouldBe IdentityLivePerHost(4)
-    resolvedFrom("KINOWO_IDENTITY_LIVE_PER_HOST" -> "2").identityLivePerHost shouldBe IdentityLivePerHost(2)
   }
 
   it should "read a tuning knob, falling back to the caller's default for an unusable value" in {
@@ -177,13 +137,19 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
    * declared as a bare String, number, Boolean, duration, URI or Path — alone or inside an
    * Option / Seq / Set / Either.
    */
-  "Every ProcessConfiguration accessor" should "return a dedicated type, never a bare String, number, duration, URI or Path" in {
-    val source    = Files.readString(RepoRoot.dir.toPath.resolve("common/src/main/scala/settings/ProcessConfiguration.scala"))
-    val body      = source.substring(source.indexOf("final class ProcessConfiguration"), source.indexOf("object ProcessConfiguration"))
-    val accessors = """(?m)^  def (\w+)(?:\([^)]*\))?\s*:\s*([^=]+?)\s*=""".r.findAllMatchIn(body).map(m => m.group(1) -> m.group(2).trim).toSeq
-    val Bare      = """\b(String|Int|Long|Double|Float|Boolean|Duration|FiniteDuration|URI|Path)\b""".r
-    withClue("accessors seen: " + accessors.map(_._1).mkString(", ") + "\n")(accessors.size should be > 60)
-    val untyped   = accessors.collect { case (name, declared) if Bare.findFirstIn(declared).isDefined => s"$name: $declared" }
-    withClue("give each its own `final case class X(value: …) extends AnyVal` in `configuration`: ")(untyped shouldBe empty)
+  "Every ProcessConfiguration and HarnessConfiguration accessor" should "return a dedicated type, never a bare String, number, duration, URI or Path" in {
+    // The harness's resolver lives in testkit (no deployed process reads it); the rule is the same one.
+    val Bare = """\b(String|Int|Long|Double|Float|Boolean|Duration|FiniteDuration|URI|Path)\b""".r
+    def accessors(file: String, name: String): Seq[(String, String)] = {
+      val source = Files.readString(RepoRoot.dir.toPath.resolve(file))
+      val body   = source.substring(source.indexOf(s"final class $name"), source.indexOf(s"object $name"))
+      """(?m)^  def (\w+)(?:\([^)]*\))?\s*:\s*([^=]+?)\s*=""".r.findAllMatchIn(body).map(m => m.group(1) -> m.group(2).trim).toSeq
+    }
+    val process = accessors("common/src/main/scala/settings/ProcessConfiguration.scala", "ProcessConfiguration")
+    val harness = accessors("testkit/src/main/scala/settings/HarnessConfiguration.scala", "HarnessConfiguration")
+    withClue("process accessors seen: " + process.map(_._1).mkString(", ") + "\n")(process.size should be > 60)
+    withClue("harness accessors seen: " + harness.map(_._1).mkString(", ") + "\n")(harness.size should be > 40)
+    val untyped = (process ++ harness).collect { case (name, declared) if Bare.findFirstIn(declared).isDefined => s"$name: $declared" }
+    withClue("give each its own `final case class X(value: …) extends AnyVal` in `ConfigurationValues` / `HarnessValues`: ")(untyped shouldBe empty)
   }
 }

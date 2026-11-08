@@ -2,7 +2,7 @@ package tools
 
 import models.Country
 import play.api.libs.json.Json
-import settings.{CdpBrowserBinary, ProcessConfiguration}
+import settings.{CdpBrowserBinary, HarnessConfiguration, ProcessConfiguration}
 
 import java.awt.{Color, RenderingHints}
 import java.awt.image.BufferedImage
@@ -77,8 +77,8 @@ object OgCardGenerator {
   /** A residential (not M247 datacenter) Decodo port — see
    *  `worker/src/main/resources/residential-proxy.properties` — unless
    *  `KINOWO_OG_PROXY_PORT` names another. */
-  private def proxyPort(configuration: ProcessConfiguration): Int =
-    configuration.ogCardProxyPort.fold(10002)(_.value)
+  private def proxyPort(harness: HarnessConfiguration): Int =
+    harness.ogCardProxyPort.fold(10002)(_.value)
 
   /** The proxy for `port`, or `None` to use this machine's own egress. Needs
    *  BOTH credentials NON-BLANK, not merely present: GitHub Actions renders an
@@ -90,7 +90,7 @@ object OgCardGenerator {
       user <- configuration.proxyUser
       pass <- configuration.proxyPassword
     } yield Chrome.ProxyConfig(
-      host = configuration.ogCardProxyHost.value,
+      host = new HarnessConfiguration(configuration.env).ogCardProxyHost.value,
       port = port,
       user = user.value,
       pass = pass.value
@@ -104,15 +104,16 @@ object OgCardGenerator {
 
   def main(args: Array[String]): Unit = {
     val configuration = ProcessConfiguration.resolve()
+    val harness       = new HarnessConfiguration(configuration.env)
     val country = configuration.country
-    val baseUrl = configuration.ogCardBaseUrl.fold(country.ogOrigin)(_.value).stripSuffix("/")
-    val outDir  = configuration.ogCardOutputDirectory.value
+    val baseUrl = harness.ogCardBaseUrl.fold(country.ogOrigin)(_.value).stripSuffix("/")
+    val outDir  = harness.ogCardOutputDirectory.value
     Files.createDirectories(outDir)
 
-    val city = configuration.ogCardHomeCity.flatMap(slug => country.bySlug.get(slug.value))
+    val city = harness.ogCardHomeCity.flatMap(slug => country.bySlug.get(slug.value))
       .orElse(country.cities.headOption)
       .getOrElse { System.err.println(s"Country ${country.code} has no cities to screenshot for the home card."); sys.exit(1) }
-    val chrome = startChromeOrExit(configuration.cdpBrowserBinary, proxyConfigFor(proxyPort(configuration), configuration))
+    val chrome = startChromeOrExit(harness.cdpBrowserBinary, proxyConfigFor(proxyPort(harness), configuration))
     val written =
       try writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")
       finally chrome.close()

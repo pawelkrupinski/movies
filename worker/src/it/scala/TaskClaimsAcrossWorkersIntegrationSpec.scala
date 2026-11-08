@@ -28,7 +28,7 @@ class TaskClaimsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
   "two workers draining one queue while a reaper sweeps" should "run every task exactly once, never two at once" in
     ConcurrentInstances.withInstances(mongoTarget, "task-claims-two-workers") { instances =>
       val queues = instances.map(instance => new MongoTaskQueue(Some(instance.database)))
-      rounds(4, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+      rounds(4, tools.ConcurrentInstances.baseSeed(harness)) { round =>
         val keys = (1 to 30).map(i => s"scrape|round-${round.number}-$i")
         keys.foreach(key => queues(round.random.nextInt(2)).enqueue(TaskType.ScrapeCinema, key, submittedAt = Now))
 
@@ -80,7 +80,7 @@ class TaskClaimsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
   "two workers claiming the same scheduled occurrences at once" should "each run a disjoint half, together all of them" in
     ConcurrentInstances.withInstances(mongoTarget, "scheduled-runs-two-workers") { instances =>
       val stores = instances.map(instance => new MongoScheduledRunStore(instance.database.getCollection("scheduledRuns"), clock = _root_.tools.MongoTtlSpecClock.Pinned))
-      rounds(4, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
+      rounds(4, tools.ConcurrentInstances.baseSeed(harness)) { round =>
         val occurrences = (1 to 25).map(i => s"sweep|round-${round.number}|$i")
         val claimed = successes(race(stores.map(store => () => occurrences.filter(store.claim)), Some(round)))
         claimed.flatten.sorted shouldBe occurrences.sorted

@@ -44,7 +44,7 @@ class CadenceFilterSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+    chrome = Chrome.tryStart(harness.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer({ case "/debug/cadence" => cadenceHtml })
   }
 

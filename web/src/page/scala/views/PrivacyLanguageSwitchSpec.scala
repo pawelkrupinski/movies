@@ -29,7 +29,7 @@ class PrivacyLanguageSwitchSpec extends AnyFlatSpec with Matchers with BeforeAnd
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+    chrome = Chrome.tryStart(harness.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer({
       case Path                                    => render(None)
       case p if p.startsWith(Path + "?lang=")      => render(Some(p.stripPrefix(Path + "?lang=")))

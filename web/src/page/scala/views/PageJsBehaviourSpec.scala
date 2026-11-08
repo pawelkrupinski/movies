@@ -101,7 +101,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     // `[[project_client_side_language_switch]]`) — it only ever applies an
     // explicit stored pick — so the served pages stay in Polish regardless of
     // this runner's own Chrome locale, with no pinning needed here.
-    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+    chrome = Chrome.tryStart(harness.cdpBrowserBinary)
     if (chrome.nonEmpty) {
       val wiring = new FixtureTestWiring("08-06-2026")
       // Load the read-model snapshot instead of the ~110s corpus boot (this spec

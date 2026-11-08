@@ -151,7 +151,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+    chrome = Chrome.tryStart(harness.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer(
       {
         case "/debug/review?country=pl" => contentAsString(controller.queue(Some("pl"), ReviewController.DefaultLimit, false)(FakeRequest()))

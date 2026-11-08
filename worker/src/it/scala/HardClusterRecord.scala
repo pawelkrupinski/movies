@@ -33,7 +33,8 @@ object HardClusterRecord {
     val only = Option.when(arguments.positionals.nonEmpty)(arguments.positionals.map(code =>
       Country.byCode(code).getOrElse(arguments.fail(s"no country $code (one of ${Country.all.map(_.code).mkString(", ")})"))).toSet)
     val configuration = settings.ProcessConfiguration.resolve()
-    val root   = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(configuration.fixtureRoot)
+    val harness       = new settings.HarnessConfiguration(configuration.env)
+    val root   = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(harness.fixtureRoot)
     val target = IntegrationMongoTarget.from(configuration).getOrElse(arguments.fail("MONGODB_URI names no throwaway Mongo to run the passes in"))
     target.requireThrowaway()
     val countries = HardClusterPasses.countries(only)

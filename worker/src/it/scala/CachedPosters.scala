@@ -71,8 +71,8 @@ final class CachedPosters(dir: Path, live: Option[TmdbClient], language: String,
 object CachedPosters {
   /** The posters `dir` keeps — else `KINOWO_IDENTITY_POSTER_CACHE`'s, else `target/identity-posters`'s — the rest fetched
    *  live, TMDB's lists with `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY`. */
-  def of(configuration: settings.ProcessConfiguration, country: models.Country, dir: Option[Path] = None): CachedPosters =
-    new CachedPosters(dir.orElse(configuration.identityPosterCache.map(_.value)).getOrElse(Path.of("target", "identity-posters")),
-      configuration.identityLiveGaps.map(key => new TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
+  def of(harness: settings.HarnessConfiguration, country: models.Country, dir: Option[Path] = None): CachedPosters =
+    new CachedPosters(dir.orElse(harness.identityPosterCache.map(_.value)).getOrElse(Path.of("target", "identity-posters")),
+      harness.identityLiveGaps.map(key => new TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
         language = country.language)), country.language.getLanguage)
 }

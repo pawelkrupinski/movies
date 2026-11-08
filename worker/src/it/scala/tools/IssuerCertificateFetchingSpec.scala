@@ -30,7 +30,7 @@ import scala.util.{Try, Using}
  */
 class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
-  private lazy val configuration = settings.ProcessConfiguration.resolve()
+  private lazy val harness = settings.HarnessConfiguration.resolve()
 
   import IssuerCertificateFetchingSpec._
 
@@ -70,7 +70,7 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers with Befor
   private def serving: Serving = synchronized { started.getOrElse { val s = startServers(); started = Some(s); s } }
 
   private def startServers(): Serving = {
-    val process = ChildJvm(configuration).start(ServersMain)
+    val process = ChildJvm(harness).start(ServersMain)
     val lines   = new BufferedReader(new InputStreamReader(process.getInputStream, UTF_8))
     val seen    = new StringBuffer
     val ready   = Future(Iterator.continually(lines.readLine()).takeWhile(_ != null)
@@ -94,7 +94,7 @@ class IssuerCertificateFetchingSpec extends AnyFlatSpec with Matchers with Befor
   }) finally super.afterAll()
 
   private def handshake(applied: Option[IssuerCertificateFetching], jvmOptions: Seq[String] = Nil): (Int, String) =
-    ChildJvm(configuration).run(ProbeMain,
+    ChildJvm(harness).run(ProbeMain,
       jvmArgs = Seq(s"-Djavax.net.ssl.trustStore=${serving.rootTrustStore}", s"-Djavax.net.ssl.trustStorePassword=$StorePassword") ++ jvmOptions,
       args = Seq(applied.fold(NoPolicy)(_.toString), s"https://127.0.0.1:${serving.originPort}/"))
 }
@@ -191,7 +191,7 @@ object IssuerCertificateFetchingSpec {
 /** The servers' JVM: mints the chain, serves until its stdin closes, then deletes what it minted. */
 object IssuerCertificateFetchingServers {
   def main(args: Array[String]): Unit = {
-    val servers = new IssuerCertificateFetchingSpec.Servers(new Keytool(settings.ProcessConfiguration.resolve().javaHome))
+    val servers = new IssuerCertificateFetchingSpec.Servers(new Keytool(settings.HarnessConfiguration.resolve().javaHome))
     try {
       println(s"${IssuerCertificateFetchingSpec.Ready} ${servers.origin.getAddress.getPort} ${servers.chain.rootTrustStore}")
       System.out.flush()

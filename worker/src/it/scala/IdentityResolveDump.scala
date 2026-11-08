@@ -65,6 +65,7 @@ object IdentityResolveDump {
   /** Every listing of `c` resolved and its decision written to `<out>/decisions-<cc>.jsonl` (and the rest, above). */
   private def dump(configuration: settings.ProcessConfiguration, target: IntegrationMongoTarget, root: settings.FixtureRoot, c: Corpus, dir: Path,
                    storages: mutable.ListBuffer[ConvergenceStorage], population: Option[(Int, Double)]): Unit = {
+    val harness = new settings.HarnessConfiguration(configuration.env)
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
     val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
@@ -103,7 +104,7 @@ object IdentityResolveDump {
           JsString(s"${r.rule}: ${r.why}${r.film.fold("")(id => s" [tmdb $id]")}${if (r.detail.nonEmpty) s" — ${r.detail}" else ""}"))))))
     }
     Files.writeString(dir.resolve(s"decisions-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
-    configuration.identityFocus.foreach { f =>
+    harness.identityFocus.foreach { f =>
       val tokens  = (l: Listing) => services.movies.TitleContainment.tokens(l.rawTitle).toSet ++ services.movies.TitleContainment.tokens(l.cleanTitle).toSet
       val focused = listings.filter(l => f.covers(tokens(l))).map(_.key).toSet
       val trace   = mutable.ListBuffer.empty[String]
@@ -115,7 +116,7 @@ object IdentityResolveDump {
       }
       Files.writeString(dir.resolve(s"focus-${c.country.code}.txt"), trace.mkString("", "\n", "\n"))
     }
-    configuration.identityAgreementCache.foreach(cache => agreed(configuration, c, lookups, listings, resolution, cache, dir))
+    harness.identityAgreementCache.foreach(cache => agreed(configuration, c, lookups, listings, resolution, cache, dir))
     population.foreach { case (chains, budget) => populationReport(c, listings, lookups, resolved, chains, budget, dir) }
     println(f"[${c.label}] ${listings.size} listings → ${resolution.decisions.size} clusters " +
       f"(${resolution.decisions.count(_.film.isDefined)} with a film) in $seconds%.1fs; unanswered queries ${resolution.unknownQueries}")
@@ -153,6 +154,7 @@ object IdentityResolveDump {
    *  to `agreed-<cc>.jsonl`. */
   private def agreed(configuration: settings.ProcessConfiguration, c: Corpus, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
                      cache: settings.IdentityAgreementCache, dir: java.nio.file.Path): Unit = {
+    val harness = new settings.HarnessConfiguration(configuration.env)
     import services.identity.agreement.{AgreementStage, VoterFamily}
     val fetch    = new ExperimentCacheFetch(cache.value)
     val answered = new InMemoryTmdbDocuments
@@ -163,7 +165,7 @@ object IdentityResolveDump {
     val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language)
     // the venue and TMDB posters' hashes, of the images KINOWO_IDENTITY_POSTER_CACHE keeps, else downloaded
     val posterStore = new PosterAnswerStore(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
-    val posters     = CachedPosters.of(configuration, c.country)
+    val posters     = CachedPosters.of(harness, c.country)
     val catalogue   = new CatalogueFill(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")), fetch)
     val stage = services.identity.agreement.AgreementStageComposition(services.identity.agreement.AgreementStageComposition.Sources(
       families.map(family => family -> store.answers(family)).toMap, venuePages = lookups, tmdb = lookups,

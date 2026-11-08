@@ -54,7 +54,7 @@ class HiddenFilmsSyncModelSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
   private var chrome: Option[Chrome] = None
 
-  override def beforeAll(): Unit = chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+  override def beforeAll(): Unit = chrome = Chrome.tryStart(harness.cdpBrowserBinary)
   override def afterAll(): Unit = chrome.foreach(_.close())
 
   private def withChrome(body: Chrome => Unit): Unit =

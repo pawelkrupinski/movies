@@ -10,7 +10,7 @@ class SharedUsersMigrationIntegrationSpec extends AnyFlatSpec with Matchers with
     SharedUsersMigration.commandLine.parse(Nil).toOption.get.flag("write") shouldBe false
     SharedUsersMigration.commandLine.parse(Seq("--write")).toOption.get.flag("write") shouldBe true
     // args.contains("--write") read a mistyped --wirte as no flag: the operator's write ran as a silent dry run
-    val (code, output) = ChildJvm(configuration).run("tools.SharedUsersMigration", Seq("--wirte"))
+    val (code, output) = ChildJvm(harness).run("tools.SharedUsersMigration", Seq("--wirte"))
     code shouldBe 2
     output should include("unknown option --wirte")
   }

@@ -9,7 +9,7 @@ import java.nio.file.{Files, Path}
  *  host ([[tools.HostPacing]]: halved on a 429 or 503, retried after a back-off). For the resolver-only replay's
  *  agreement measure and the unmatched-cluster capture only. */
 final class ExperimentCacheFetch(cache: Path,
-                                 perHost: settings.IdentityLivePerHost = settings.ProcessConfiguration.resolve().identityLivePerHost) extends HttpFetch {
+                                 perHost: settings.IdentityLivePerHost = settings.HarnessConfiguration.resolve().identityLivePerHost) extends HttpFetch {
   private val real   = new RealHttpFetch()
   private val pacing = new tools.HostPacing(perHost.value, retries = 5)
   private val Live   = java.nio.file.Paths.get("target", "agreement-live")

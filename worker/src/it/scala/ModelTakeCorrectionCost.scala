@@ -30,6 +30,7 @@ object ModelTakeCorrectionCost {
   def main(args: Array[String]): Unit = {
     val answers  = commandLine.parseOrExit(args).requiredPath("answers")
     val configuration = settings.ProcessConfiguration.resolve()
+    val harness       = new settings.HarnessConfiguration(configuration.env)
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]
     try {
       val loaded = new DecorationCorpora(configuration, storages).loaded
@@ -46,7 +47,7 @@ object ModelTakeCorrectionCost {
           if (d.film.isDefined && (d.basis == ResolverDecision.Basis.OwnMatch || d.basis == ResolverDecision.Basis.PooledMatch))
             d.copy(basis = ResolverDecision.Basis.Pinned)(d.trace) else d))
         val finds = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
-        val tmdb  = configuration.identityLiveGaps.map(key => new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
+        val tmdb  = harness.identityLiveGaps.map(key => new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(settings.TmdbApiKey(key.tmdbKey)),
           language = l.c.country.language))
         val tmdbOf: String => Answer[Option[Int]] = imdb => Answer.Known(finds.computeIfAbsent(imdb, id =>
           tmdb.flatMap(client => scala.util.Try(client.findByImdbId(id).map(_.id)).toOption.flatten)))

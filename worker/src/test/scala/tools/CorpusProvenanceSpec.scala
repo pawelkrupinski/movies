@@ -56,7 +56,7 @@ class CorpusProvenanceSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     CorpusDiff.of(today, today).identical shouldBe true
   }
 
-  private def env(pairs: (String, String)*): settings.ProcessConfiguration = new settings.ProcessConfiguration(Env.of(pairs*))
+  private def env(pairs: (String, String)*): settings.HarnessConfiguration = new settings.HarnessConfiguration(Env.of(pairs*))
 
   "the provenance verdict" should "say CHANGED, with the diff, when the green leg replayed another corpus" in {
     val dir = tempDirectory("green-corpus")

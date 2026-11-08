@@ -36,8 +36,8 @@ import tools._
  */
 class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with tools.IntegrationMongoSuite {
 
-  private val passes = new HardClusterPasses(mongoTarget, configuration.fixtureRoot, configuration.env,
-    HardClusterPasses.countries(configuration.hardClusterCountries.map(_.value)), recording = false)
+  private val passes = new HardClusterPasses(mongoTarget, harness.fixtureRoot, configuration.env,
+    HardClusterPasses.countries(harness.hardClusterCountries.map(_.value)), recording = false)
 
   override def afterAll(): Unit = {
     passes.close()
@@ -54,7 +54,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
            s"${refFilms.count(_.tmdbId.isDefined)} resolved, ${refFilms.count(_.address.isDefined)} projected; " +
            s"${passes.responses(country).size} recorded responses, ${passes.responses(country).misses} unrecorded request(s)")
       refFilms should not be empty
-      if (configuration.hardClusterDump.value)
+      if (harness.hardClusterDump.value)
         all.foreach { case (p, fs) => println(s"[${country.code}] ${p.label}:\n  ${fs.mkString("\n  ")}") }
       val (divergences, fixed) = passes.divergences(country)
       withClue(s"$name: ${divergences.size} pass(es) diverged:\n${divergences.mkString("\n")}\n") {

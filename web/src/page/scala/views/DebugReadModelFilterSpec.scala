@@ -39,7 +39,7 @@ class DebugReadModelFilterSpec extends AnyFlatSpec with Matchers with BeforeAndA
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+    chrome = Chrome.tryStart(harness.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer({ case "/debug/readmodel" => readModelHtml })
   }
 

@@ -139,12 +139,12 @@ object CorpusProvenance {
    *  differs from the replayed one and could still be downloaded. */
   val GreenDirEnv        = "KINOWO_CONVERGENCE_GREEN_CORPUS_DIR"
 
-  def of(corpusKey: String, replayedRows: Seq[ArchivedScrape], configuration: settings.ProcessConfiguration): CorpusProvenance = {
-    val replayed  = configuration.corpusRunId.map(run =>
-      CorpusRecording(run.value, configuration.corpusRecordedAt.fold("?")(_.value)))
-    val lastGreen = configuration.greenCorpusRunId.map(run =>
-      CorpusRecording(run.value, configuration.greenCorpusRecordedAt.fold("?")(_.value)))
-    val greenFile: Option[Path] = configuration.greenCorpusDirectory
+  def of(corpusKey: String, replayedRows: Seq[ArchivedScrape], harness: settings.HarnessConfiguration): CorpusProvenance = {
+    val replayed  = harness.corpusRunId.map(run =>
+      CorpusRecording(run.value, harness.corpusRecordedAt.fold("?")(_.value)))
+    val lastGreen = harness.greenCorpusRunId.map(run =>
+      CorpusRecording(run.value, harness.greenCorpusRecordedAt.fold("?")(_.value)))
+    val greenFile: Option[Path] = harness.greenCorpusDirectory
       .map(_.value.resolve(CorpusFixture.pathFor(corpusKey).getFileName))
       .filter(Files.exists(_))
     CorpusProvenance(replayed, lastGreen, greenFile.map(f => CorpusDiff.of(CorpusFixture.readFrom(f), replayedRows)))

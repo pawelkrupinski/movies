@@ -342,7 +342,7 @@ object ArchiveReplayWiring {
   val HermeticVar = "KINOWO_CONVERGENCE_HERMETIC"
 
   /** Whether the run's configuration asks for a hermetic leg ([[HermeticVar]]). */
-  def hermeticIn(configuration: settings.ProcessConfiguration): Boolean = configuration.hermeticReplay.value
+  def hermeticIn(harness: settings.HarnessConfiguration): Boolean = harness.hermeticReplay.value
 
   /**
    * The fixture tree a country's replay reads and records: `enrichment-pl`,
@@ -356,11 +356,11 @@ object ArchiveReplayWiring {
    * a corpus with no metadata in it, reported as a pass. A directory that does not exist
    * yet is simply an empty one; the first run fills it and every later run replays it.
    *
-   * Resolved from the configuration a suite hands in — its own composition root — and passed to
+   * Resolved from the harness configuration a suite hands in — its own composition root — and passed to
    * the wiring as a value.
    */
-  def fixtureDirectory(country: Country, configuration: settings.ProcessConfiguration): String =
-    configuration.enrichmentFixtureTree.fold(s"enrichment-${country.code}")(_.value)
+  def fixtureDirectory(country: Country, harness: settings.HarnessConfiguration): String =
+    harness.enrichmentFixtureTree.fold(s"enrichment-${country.code}")(_.value)
 
   /**
    * The chain BOTH phases replay through: the recorded tree first, then — behind a recorder that

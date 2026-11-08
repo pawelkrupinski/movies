@@ -180,19 +180,19 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   }
 
   "the archive replay directory" should "be named after the country when nothing points it elsewhere" in {
-    ArchiveReplayWiring.fixtureDirectory(Country.Poland, new settings.ProcessConfiguration(Env.of()))  shouldBe "enrichment-pl"
-    ArchiveReplayWiring.fixtureDirectory(Country.Germany, new settings.ProcessConfiguration(Env.of())) shouldBe "enrichment-de"
+    ArchiveReplayWiring.fixtureDirectory(Country.Poland, new settings.HarnessConfiguration(Env.of()))  shouldBe "enrichment-pl"
+    ArchiveReplayWiring.fixtureDirectory(Country.Germany, new settings.HarnessConfiguration(Env.of())) shouldBe "enrichment-de"
   }
 
   it should "be whatever a run points it at" in {
-    ArchiveReplayWiring.fixtureDirectory(Country.Poland, new settings.ProcessConfiguration(Env.of(ArchiveReplayWiring.FixturesVar -> "enrichment-scratch"))) shouldBe
+    ArchiveReplayWiring.fixtureDirectory(Country.Poland, new settings.HarnessConfiguration(Env.of(ArchiveReplayWiring.FixturesVar -> "enrichment-scratch"))) shouldBe
       "enrichment-scratch"
   }
 
   "the hermetic switch" should "be on only when a run asks for it" in {
-    ArchiveReplayWiring.hermeticIn(new settings.ProcessConfiguration(Env.of(ArchiveReplayWiring.HermeticVar -> "true"))) shouldBe true
-    ArchiveReplayWiring.hermeticIn(new settings.ProcessConfiguration(Env.of(ArchiveReplayWiring.HermeticVar -> "false"))) shouldBe false
-    ArchiveReplayWiring.hermeticIn(new settings.ProcessConfiguration(Env.of())) shouldBe false
+    ArchiveReplayWiring.hermeticIn(new settings.HarnessConfiguration(Env.of(ArchiveReplayWiring.HermeticVar -> "true"))) shouldBe true
+    ArchiveReplayWiring.hermeticIn(new settings.HarnessConfiguration(Env.of(ArchiveReplayWiring.HermeticVar -> "false"))) shouldBe false
+    ArchiveReplayWiring.hermeticIn(new settings.HarnessConfiguration(Env.of())) shouldBe false
   }
 
   // The scrape side is per-film DETAIL — 25 Polish cinema clients implement `DetailEnricher`

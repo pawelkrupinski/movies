@@ -32,8 +32,8 @@ import scala.util.Try
  */
 class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with IntegrationMongoSuite {
 
-  private val fixtureRoot = configuration.fixtureRoot
-  private val strict      = configuration.identityGateStrict.value
+  private val fixtureRoot = harness.fixtureRoot
+  private val strict      = harness.identityGateStrict.value
   private val storages = mutable.ListBuffer.empty[ConvergenceStorage]
 
   override def afterAll(): Unit = {
@@ -53,8 +53,8 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
     }
 
   private val full: Seq[Corpus] = {
-    val wanted = configuration.identityFullCorpora.value
-    val dir    = configuration.identityCorpusDirectory.map(_.value)
+    val wanted = harness.identityFullCorpora.value
+    val dir    = harness.identityCorpusDirectory.map(_.value)
     Country.all.filter(wanted).flatMap { c =>
       dir.map(_.resolve(s"cinema-scrapes-${c.code}.json.gz")).filter(Files.exists(_)).map { path =>
         Corpus(s"full-${c.code}", c, CorpusFixture.readFrom(path), () => {
@@ -120,7 +120,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
    * copy (`cp -Rc` clones a tree for free on APFS).
    */
   "a recording pass" should "ask the service every request the recording lacks and none it holds, after which the gate is met" in {
-    val check = configuration.identityRecordCheck
+    val check = harness.identityRecordCheck
     assume(check.isDefined, "KINOWO_IDENTITY_RECORD_CHECK not set")
     val corpus = full.find(_.country == check.get.value).getOrElse(fail(s"no full corpus for ${check.get.value.code} (KINOWO_IDENTITY_FULL)"))
     val before = measure(corpus, "-before")

@@ -59,6 +59,7 @@ object FillMissingFixtures {
     tools.ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     val tree          = s"enrichment-${country.code}"
     val configuration = settings.ProcessConfiguration.resolve()
+    val harness       = new settings.HarnessConfiguration(configuration.env)
     val listed = if (Files.isRegularFile(list))
       Files.readAllLines(list).asScala.toSeq.flatMap(MissingFixtures.Refetch.parse)
     else Nil
@@ -93,7 +94,7 @@ object FillMissingFixtures {
       println(s"[fill] $refused refused gap(s) the next fills skip for a while")
     }
     // What the legs after this one replay beyond the pinned tree, where the run's page shows it.
-    configuration.stepSummaryFile.foreach(summary => scala.util.Try(Files.writeString(summary.value, s"**fill** — $line\n\n",
+    harness.stepSummaryFile.foreach(summary => scala.util.Try(Files.writeString(summary.value, s"**fill** — $line\n\n",
       java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)))
     scala.util.Try(tools.CiHttpCalls.write())
     sys.exit(0)

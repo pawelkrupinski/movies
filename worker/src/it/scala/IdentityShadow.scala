@@ -85,7 +85,7 @@ object IdentityShadow {
    *  read that FAILED is kept nowhere — the gap again for the rest of this run, asked live again by the next. Every TMDB
    *  and IMDb answer it gives is also kept in `answered`, for the capture to hold ([[UnmatchedClusters.Capture.live]]). */
   final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: RecordedCorpus.GapLeaf,
-                          perHost: settings.IdentityLivePerHost = settings.ProcessConfiguration.resolve().identityLivePerHost,
+                          perHost: settings.IdentityLivePerHost = settings.HarnessConfiguration.resolve().identityLivePerHost,
                           real: HttpFetch = new RealHttpFetch()) extends HttpFetch {
     import LiveGapLeaf._
     private val pacing = new tools.HostPacing(perHost.value, Retries, BackOff.toMillis)
@@ -149,7 +149,7 @@ object IdentityShadow {
      *  the capture (`pacing`: this run's share of `KINOWO_IDENTITY_LIVE_PER_HOST`, a 429 or 503 retried). How many it
      *  read; a page that fails stays a gap. */
     def readPages(pages: Seq[String],
-                  pacing: tools.HostPacing = new tools.HostPacing(settings.ProcessConfiguration.resolve().identityLivePerHost.value, Retries, BackOff.toMillis),
+                  pacing: tools.HostPacing = new tools.HostPacing(settings.HarnessConfiguration.resolve().identityLivePerHost.value, Retries, BackOff.toMillis),
                   real: HttpFetch = new RealHttpFetch()): Int = {
       val fresh = pages.distinct.filterNot(url => Files.exists(fileOf(s"GET $url")))
       val read  = new java.util.concurrent.atomic.AtomicInteger()

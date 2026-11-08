@@ -55,7 +55,7 @@ class IdentityStagingPageSpec extends AnyFlatSpec with Matchers with BeforeAndAf
   private var server: TestHttpServer = _
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart(configuration.cdpBrowserBinary)
+    chrome = Chrome.tryStart(harness.cdpBrowserBinary)
     if (chrome.nonEmpty) server = new TestHttpServer(
       { case "/debug/identity/staging" => contentAsString(controller.index(admin("/debug/identity/staging"))) },
       dynamicRoute = data)
