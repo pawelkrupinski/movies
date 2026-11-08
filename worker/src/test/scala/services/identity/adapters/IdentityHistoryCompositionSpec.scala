@@ -18,7 +18,7 @@ class IdentityHistoryCompositionSpec extends AnyFlatSpec with Matchers {
 
   "the convergence legs' wiring" should "name Unwritten, and production's wiring no override" in {
     Files.readString(Paths.get("worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala")) should include ("IdentityHistory.Override.Unwritten")
-    Files.readString(Paths.get("worker/src/main/scala/modules/WorkerWiring.scala")) should include (
+    Files.readString(Paths.get("worker/src/main/scala/modules/wiring/IdentityModelWiring.scala")) should include (
       "protected def identityHistoryOverrides: Set[services.identity.adapters.IdentityHistory.Override] = Set.empty")
   }
 }

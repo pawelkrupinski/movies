@@ -34,10 +34,10 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
   private val IdentityRoots = Seq("identity/src/main", "worker/src/main/scala/services/identity")
   private val Wiring        = "worker/src/main/scala/modules"
 
-  /** The wiring that builds the identity path: all of the identity projection's, and the worker's definitions that build
-   *  the model and its lookups. */
+  /** The wiring that builds the identity path: all of the identity projection's, and the identity model wiring's
+   *  definitions that build the model and its lookups. */
   private val IdentityWiring     = Paths.get(s"$Wiring/wiring/IdentityProjectionWiring.scala")
-  private val WorkerWiring       = Paths.get(s"$Wiring/WorkerWiring.scala")
+  private val ModelWiring        = Paths.get(s"$Wiring/wiring/IdentityModelWiring.scala")
   private val WorkerIdentityDefs = Seq("identityModel", "storedLookups", "cutoverLookups", "venueDetailLookups", "identityQuestionMemory",
     "identityTmdbLayer", "venuePageIndex", "newVenuePageStore")
 
@@ -61,9 +61,9 @@ class IdentityRuntimeInputsSpec extends AnyFlatSpec with Matchers {
 
   /** The text of the identity path's code: its sources, and the wiring's identity definitions with the stores they name. */
   private lazy val identityCode: Seq[String] = {
-    val worker = definitions(codeOf(WorkerWiring)).toMap
+    val worker = definitions(codeOf(ModelWiring)).toMap
     val missing = WorkerIdentityDefs.filterNot(worker.contains)
-    require(missing.isEmpty, s"WorkerWiring defines none of ${missing.mkString(", ")}: name the definitions that build the identity path")
+    require(missing.isEmpty, s"IdentityModelWiring defines none of ${missing.mkString(", ")}: name the definitions that build the identity path")
     val wiring = codeOf(IdentityWiring) +: WorkerIdentityDefs.map(worker)
     val named  = wiring.flatMap(text => """\b([a-z]\w*)\b""".r.findAllMatchIn(text).map(_.group(1))).distinct
     scalaFiles(IdentityRoots).map(codeOf) ++ wiring ++ named.flatMap(wiredStores.getOrElse(_, Nil))

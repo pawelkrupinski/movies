@@ -96,4 +96,13 @@ trait CorpusWiring { self: WorkerWiring =>
     afterSweeps = () => retiredVenueCensus.sample(),
     strandedDue = StrandedSideRowsCleanup.weekly(scheduledRunStore, clock),
     ticks = ticks))
+
+  /** Rating stamps, last attempts and cadence of films gone from the corpus (`OrphanFilmStateSweep`). */
+  lazy val orphanFilmStateSweep: services.movies.OrphanFilmStateSweep = new services.movies.OrphanFilmStateSweep(
+    Seq("freshness" -> freshnessStore.retention, "enrichment_attempts" -> enrichmentAttemptStore.retention,
+      "rating_cadence" -> ratingCadenceStore.retention),
+    services.movies.OrphanFilmStateSweep.liveTmdbIds(movieRepository), clock)
+  lazy val orphanFilmStateSweepSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
+    new services.tasks.ClaimedPeriodicTask("orphan-film-state-sweep", () => tools.TickRun.completedWhen(orphanFilmStateSweep.sweep().isDefined),
+      services.movies.OrphanFilmStateSweep.Interval, WorkerWiring.OrphanSweepInitialDelay, scheduledRunStore, clock, ticks))
 }
