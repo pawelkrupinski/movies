@@ -164,8 +164,10 @@ final class RefreshingSnapshot[A](
       val now = current.get()
       // A read that landed after the caller looked has answered its staleness already: another now read
       // twice for one stale snapshot (Order independence #46, RefreshingSnapshotSpec). `now` is never
-      // None once `seen` was not: a snapshot is only ever replaced.
-      if (now ne seen) { inFlight.compareAndSet(marker, None); Future.successful(now.get) }
+      // None once `seen` was not: a snapshot is only ever replaced. The marker was published by the CAS,
+      // so an ask that lost it may have joined it already: completed before it is cleared, or that ask
+      // waited on it for good.
+      if (now ne seen) { promise.success(now.get); inFlight.compareAndSet(marker, None); promise.future }
       else {
         promise.completeWith(Future {
           // Over before the future completes, on the read's own thread: a callback queued after
