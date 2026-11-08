@@ -27,9 +27,9 @@ name: Identity capture
 # skips the capture, re-runs the ratchet on the judged branch, commits any re-baselined
 # expected-matches.tsv onto it, and opens the PR only if the ratchet is green.
 #
-# Monday 07:00 UTC: after the Sunday-night recording (23:31 UTC; its longest leg is capped at six
-# hours, so it is done by ~05:30) and clear of Monday's 05:00 roster audit and 06:00 cinema
-# discovery, so the branch has Monday to Wednesday for judging before Thursday's 05:00 identity refit
+# Monday 08:00 UTC: after the Sunday-night recording (23:31 UTC; its longest leg is capped at six
+# hours, so it is done by ~05:30), in an hour of its own (07:xx is the daily findings report's), and
+# ahead of Monday's 13:00 roster audit and 14:00 cinema discovery, so the branch has Monday to Wednesday for judging before Thursday's 05:00 identity refit
 # re-tunes on the fixture.
 #
 # Secrets (all existing repo secrets): MONGO_CI_SSH_KEY + MONGO_CI_SSH_HOST_KEY (the tunnel, as
@@ -46,9 +46,9 @@ on:
                 type: boolean
                 default: false
 
-    # Monday 07:00 UTC — see above.
+    # Monday 08:00 UTC — see above.
     schedule:
-        - cron: '0 7 * * 1'
+        - cron: '0 8 * * 1'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:

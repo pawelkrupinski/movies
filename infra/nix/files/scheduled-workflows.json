@@ -17,65 +17,65 @@
     },
     "country-fixture-artifact": {
       "crons": [
-        "1 23 * * 0"
+        "1 0 * * 1"
       ],
       "file": "country-fixture-artifact.yml",
       "onCalendar": [
-        "Sun *-*-* 23:01:00 UTC"
+        "Mon *-*-* 00:01:00 UTC"
       ]
     },
     "decoration-discovery": {
       "crons": [
-        "0 5 * * 2"
+        "0 10 * * 2"
       ],
       "file": "decoration-discovery.yml",
       "onCalendar": [
-        "Tue *-*-* 05:00:00 UTC"
+        "Tue *-*-* 10:00:00 UTC"
       ]
     },
     "discover-cinemas": {
       "crons": [
-        "0 6 * * 1"
+        "0 14 * * 1"
       ],
       "file": "discover-cinemas.yml",
       "onCalendar": [
-        "Mon *-*-* 06:00:00 UTC"
+        "Mon *-*-* 14:00:00 UTC"
       ]
     },
     "filmweb-diff": {
       "crons": [
-        "0 1 * * 1"
+        "0 22 * * 1"
       ],
       "file": "filmweb-diff.yml",
       "onCalendar": [
-        "Mon *-*-* 01:00:00 UTC"
+        "Mon *-*-* 22:00:00 UTC"
       ]
     },
     "identity-capture": {
       "crons": [
-        "0 7 * * 1"
+        "0 8 * * 1"
       ],
       "file": "identity-capture.yml",
       "onCalendar": [
-        "Mon *-*-* 07:00:00 UTC"
+        "Mon *-*-* 08:00:00 UTC"
       ]
     },
     "identity-drift-explorer": {
       "crons": [
-        "41 0 * * *"
+        "41 20 * * *"
       ],
       "file": "identity-drift-explorer.yml",
       "onCalendar": [
-        "*-*-* 00:41:00 UTC"
+        "*-*-* 20:41:00 UTC"
       ]
     },
     "identity-family-explorer": {
       "crons": [
-        "7 2 * * 0"
+        "7 19 * * 0"
       ],
       "file": "identity-family-explorer.yml",
       "onCalendar": [
-        "Sun *-*-* 02:07:00 UTC"
+        "Sun *-*-* 19:07:00 UTC"
       ]
     },
     "identity-findings-report": {
@@ -107,11 +107,11 @@
     },
     "nix-update": {
       "crons": [
-        "17 4 * * 1"
+        "17 9 * * 1"
       ],
       "file": "nix-update.yml",
       "onCalendar": [
-        "Mon *-*-* 04:17:00 UTC"
+        "Mon *-*-* 09:17:00 UTC"
       ]
     },
     "order-independence": {
@@ -143,20 +143,20 @@
     },
     "renovate": {
       "crons": [
-        "0 6 * * 1"
+        "0 15 * * 1"
       ],
       "file": "renovate.yml",
       "onCalendar": [
-        "Mon *-*-* 06:00:00 UTC"
+        "Mon *-*-* 15:00:00 UTC"
       ]
     },
     "roster-audit": {
       "crons": [
-        "0 5 * * 1"
+        "0 13 * * 1"
       ],
       "file": "roster-audit.yml",
       "onCalendar": [
-        "Mon *-*-* 05:00:00 UTC"
+        "Mon *-*-* 13:00:00 UTC"
       ]
     },
     "scala-steward": {

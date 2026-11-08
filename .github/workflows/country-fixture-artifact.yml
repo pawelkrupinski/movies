@@ -11,11 +11,12 @@ name: Daily country fixture artifact
 # All that matters is the run lands after midnight Warsaw so it captures the new
 # day. GitHub cron is UTC-only and DST-unaware, and Warsaw is UTC+1 in winter
 # (CET) / UTC+2 in summer (CEST), so a single fixed UTC time maps to two
-# different local times across the year. 23:01 UTC is the latest-firing instant
-# that is still 00:0x Warsaw in winter:
+# different local times across the year. Monday 00:01 UTC is after midnight in both
+# (its own hour since 2026-11-08: no two daily or weekly jobs start in one clock hour,
+# and 23:xx UTC is the nightly scrape recording's):
 #
-#   • winter (CET, UTC+1): 00:01 Warsaw
-#   • summer (CEST, UTC+2): 01:01 Warsaw
+#   • winter (CET, UTC+1): 01:01 Warsaw
+#   • summer (CEST, UTC+2): 02:01 Warsaw
 #
 # Both are after midnight, so one plain cron covers the whole year — no DST gate,
 # no second cron. (An earlier version registered two crons + a wall-clock-hour
@@ -47,7 +48,7 @@ on:
         # stack and RecorderChainCaptureSpec — and that changes far more slowly than
         # nightly. Nightly also spent ~90 minutes a day of live-upstream budget, and
         # collided at 23:01 with the scrape recorder.
-        - cron: '1 23 * * 0'   # Sundays, 00:01 Warsaw (CET) / 01:01 (CEST)
+        - cron: '1 0 * * 1'   # Mondays, 01:01 Warsaw (CET) / 02:01 (CEST)
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:

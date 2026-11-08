@@ -49,7 +49,7 @@ on:
                 required: false
                 default: true
 
-    # Thursday 05:00 UTC — its own slot, clear of Tuesday's decoration discovery.
+    # Thursday 05:00 UTC — its own hour on every day of the week (a heavy measure), clear of Tuesday's decoration discovery.
     schedule:
         - cron: '0 5 * * 4'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own

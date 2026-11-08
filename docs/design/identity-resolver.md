@@ -3011,7 +3011,7 @@ the stage, cannot be graded until the fixture is re-captured (below).
    otherwise. `--capture` / `--fill` override it.
 
    `--dry-run` prints the plan (downloads, exports, each JVM's command and variables) and touches neither prod nor the
-   network. Weekly, `.github/workflows/identity-capture.yml` runs the same command (Monday 07:00 UTC, after the Sunday
+   network. Weekly, `.github/workflows/identity-capture.yml` runs the same command (Monday 08:00 UTC, after the Sunday
    night recording, so it is judged before Thursday's refit), one runner per country, prod read over the
    read-only CI tunnel, and pushes the refreshed fixture with the re-baselined `expected-matches.tsv` as ONE branch,
    `chore/identity-capture`; the ratchet's unjudged and wrong takes go to the run's summary and its `identity-ratchet`

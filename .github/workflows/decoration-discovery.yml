@@ -25,9 +25,10 @@ name: Decoration discovery
 on:
     workflow_dispatch:
 
-    # Tuesday 05:00 UTC — its own slot, clear of Monday's cinema discovery and Friday's OG cards.
+    # Tuesday 10:00 UTC — its own slot, clear of Monday's cinema discovery and Friday's OG cards (05:xx is the
+    # Thursday refit's own hour).
     schedule:
-        - cron: '0 5 * * 2'
+        - cron: '0 10 * * 2'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:

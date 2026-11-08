@@ -24,7 +24,9 @@ name: Identity family explorer
 # summary). It files NO backlog row: Actions cannot push main, and these flips are explored, not owed.
 on:
     schedule:
-        - cron: '7 2 * * 0'
+        # Sunday 19:07 UTC: its own hour (a heavy walk; 02:xx is the nightly order-independence run's), and one of
+        # the runners' quietest.
+        - cron: '7 19 * * 0'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:

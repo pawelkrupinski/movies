@@ -70,6 +70,10 @@ DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 SCHEDULE_EQ = "github.event_name == 'schedule'"
 SCHEDULE_NE = "github.event_name != 'schedule'"
 DISPATCH_EQ = "(github.event_name == 'schedule' || github.event_name == 'repository_dispatch')"
+# The heavy measure-class jobs (the owner, 2026-11-08): each in a clock hour no other daily or weekly job starts in, on
+# any day of the week.
+HEAVY = ("record-scrape-fixtures", "identity-drift-explorer", "nightly-stress", "order-independence",
+         "convergence-daily", "identity-family-explorer", "identity-capture", "identity-refit")
 DISPATCH_NE = "(github.event_name != 'schedule' && github.event_name != 'repository_dispatch')"
 
 
@@ -257,6 +261,34 @@ def render(document):
     return json.dumps(document, indent=2, sort_keys=True) + "\n"
 
 
+def start_hours(cron):
+    """{(day of week, hour)} the cron starts a run in. A restricted day of month can fall on any day of the week."""
+    _, hours, days, _, weekdays = parse_cron(cron)
+    if weekdays is None or days is not None:
+        weekdays = set(range(7))
+    return {(d, h) for d in weekdays for h in (range(24) if hours is None else hours)}
+
+
+def staggering(covered):
+    """The owner, 2026-11-08: "stagger the daily and weekly jobs hour-wise". No two covered (daily or weekly) workflows
+    start in the same clock hour on any day, and a HEAVY one's hour is its own on every day."""
+    found = []
+    slots = {name: set().union(*(start_hours(c) for c in w["crons"])) for name, w in covered.items()}
+    names = sorted(slots)
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            shared = slots[a] & slots[b]
+            if shared:
+                day, hour = min(shared)
+                found.append(f"{a} and {b} both start in hour {hour:02d} UTC ({DAYS[day]}): one daily or weekly job an hour")
+            elif a in HEAVY or b in HEAVY:
+                hours = {h for _, h in slots[a]} & {h for _, h in slots[b]}
+                if hours:
+                    found.append(f"{a} and {b} share hour {min(hours):02d} UTC on different days: "
+                                 f"{a if a in HEAVY else b} is a heavy measure job, its hour its own every day")
+    return found
+
+
 def problems(root):
     """Everything that has drifted: the generated file, and each workflow's dispatch wiring and conditions."""
     workflows = read_workflows(root)
@@ -270,6 +302,7 @@ def problems(root):
     if current != render(document):
         found.append(f"{JSON_PATH} is not what the workflows' crons generate: "
                      "run `python3 infra/nix/files/scheduled_dispatch.py generate`")
+    found += staggering(document["workflows"])
     covered = {w["file"] for w in document["workflows"].values()}
     for name, text in sorted(workflows.items()):
         types = dispatch_types(text)

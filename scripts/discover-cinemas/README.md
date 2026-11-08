@@ -3,7 +3,7 @@
 Weekly job that finds **new** UK cinemas on [flicks.co.uk](https://www.flicks.co.uk)
 and opens a PR wiring them into the catalog. Run by
 [`.github/workflows/discover-cinemas.yml`](../../.github/workflows/discover-cinemas.yml)
-every Monday 06:00 UTC (and on `workflow_dispatch`).
+every Monday 14:00 UTC (and on `workflow_dispatch`).
 
 ## How it works
 

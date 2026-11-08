@@ -18,8 +18,8 @@ name: Nix update
 # expects from it.
 on:
   schedule:
-    # Monday morning UTC, so the PR is waiting at the start of the week.
-    - cron: '17 4 * * 1'
+    # Monday morning UTC, so the PR is waiting at the start of the week (09:17: 04:xx is the daily cache prune's).
+    - cron: '17 9 * * 1'
   # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
   # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
   repository_dispatch:

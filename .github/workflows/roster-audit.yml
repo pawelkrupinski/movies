@@ -26,9 +26,9 @@ name: Cinema roster audit
 # secrets the lists are fetched directly and an unread one is only noted. The
 # findings land in the run's job summary.
 on:
-    # Monday 05:00 UTC — before discover-cinemas' 06:00 slot.
+    # Monday 13:00 UTC — before discover-cinemas' 14:00 slot, after the 08:00 identity capture starts.
     schedule:
-        - cron: '0 5 * * 1'
+        - cron: '0 13 * * 1'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:

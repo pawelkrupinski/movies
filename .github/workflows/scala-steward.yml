@@ -14,11 +14,11 @@ on:
     # produces nothing; this just shortens the lag between a release and its PR.
     schedule:
         - cron: '0 6 * * *'
-    # Manual kick from the Actions tab when you want an upgrade pass now.
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:
         types: [scheduled-scala-steward]
+    # Manual kick from the Actions tab when you want an upgrade pass now.
     workflow_dispatch:
 
 # Steward pushes its update branches and opens PRs as the "Kinowo Sync Bot"

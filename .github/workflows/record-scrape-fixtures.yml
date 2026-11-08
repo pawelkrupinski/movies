@@ -47,7 +47,7 @@ on:
     # are after midnight, so one plain cron covers the year with no DST gate — the
     # same reasoning `country-fixture-artifact.yml` documents.
     schedule:
-        # 23:31, not 23:01: `country-fixture-artifact.yml` already fires at 23:01,
+        # 23:31, not 23:01: `country-fixture-artifact.yml` once fired at 23:01 (now Monday 00:01),
         # and both are multi-job live-recording workflows — running them in the same
         # minute put four heavyweight jobs on the pool at once, competing for the
         # same prod tunnel that is documented to wedge under load.

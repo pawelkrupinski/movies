@@ -35,9 +35,9 @@ name: Discover UK cinemas
 on:
     workflow_dispatch:
 
-    # Monday 06:00 UTC — off on its own slot.
+    # Monday 14:00 UTC — off on its own slot (06:xx is the daily Scala Steward's), after the 13:00 roster audit.
     schedule:
-        - cron: '0 6 * * 1'
+        - cron: '0 14 * * 1'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:

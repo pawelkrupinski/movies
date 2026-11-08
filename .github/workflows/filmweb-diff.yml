@@ -7,17 +7,16 @@ name: Filmweb diff
 # per-cinema network errors don't fail the job (the tool Try-wraps every fetch
 # and always exits 0).
 on:
-    # Mondays 01:00 UTC = 02:00 Europe/Warsaw in winter (CET, UTC+1); 03:00 in
-    # summer (CEST, UTC+2). Cron is UTC-only and has no DST awareness, so the
-    # local wall-clock time drifts by an hour across the DST boundary — fine for
-    # a once-a-week diagnostic.
+    # Mondays 22:00 UTC, an hour no other daily or weekly job starts in: 23:00 Europe/Warsaw in winter
+    # (CET, UTC+1), 00:00 Tuesday in summer (CEST, UTC+2). Cron is UTC-only and has no DST awareness, so the
+    # local wall-clock time drifts by an hour across the DST boundary — fine for a once-a-week diagnostic.
     schedule:
-        - cron: '0 1 * * 1'
-    # Manual trigger for an on-demand run.
+        - cron: '0 22 * * 1'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
     # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
     repository_dispatch:
         types: [scheduled-filmweb-diff]
+    # Manual trigger for an on-demand run.
     workflow_dispatch:
 
 # Least privilege by default: every job that needs more than reading the

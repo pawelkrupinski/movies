@@ -176,6 +176,37 @@ class Workflows(unittest.TestCase):
         self.assertEqual(sd.problems(ROOT), [])
 
 
+def covered(**crons):
+    return {name: {"crons": [cron]} for name, cron in crons.items()}
+
+
+class Staggering(unittest.TestCase):
+    def test_a_weekly_job_in_a_daily_jobs_hour_is_refused(self):
+        # 2026-11-08's schedule: renovate Monday 06:00 beside the daily Scala Steward at 06:00.
+        found = sd.staggering(covered(renovate="0 6 * * 1", **{"scala-steward": "0 6 * * *"}))
+        self.assertEqual(found, ["renovate and scala-steward both start in hour 06 UTC (Mon): "
+                                 "one daily or weekly job an hour"])
+
+    def test_two_weeklies_share_an_hour_only_on_different_days(self):
+        self.assertEqual(sd.staggering(covered(a="0 10 * * 1", b="30 10 * * 2")), [])
+        self.assertEqual(len(sd.staggering(covered(a="0 10 * * 1", b="59 10 * * 1"))), 1)
+
+    def test_a_heavy_jobs_hour_is_its_own_every_day(self):
+        found = sd.staggering(covered(**{"identity-refit": "0 5 * * 4", "roster-audit": "0 5 * * 1"}))
+        self.assertEqual(len(found), 1)
+        self.assertIn("identity-refit is a heavy measure job", found[0])
+
+    def test_a_day_of_month_can_fall_on_any_weekday(self):
+        self.assertEqual(len(sd.staggering(covered(a="0 3 1 * *", b="0 3 * * 2"))), 1)
+
+    def test_the_schedule_before_the_stagger_is_refused(self):
+        # The crons as they stood on 2026-11-08, before the stagger.
+        before = covered(**{"record-scrape-fixtures": "31 23 * * *", "country-fixture-artifact": "1 23 * * 0",
+                            "nightly-stress": "30 1 * * *", "filmweb-diff": "0 1 * * 1",
+                            "identity-family-explorer": "7 2 * * 0", "order-independence": "40 2 * * *"})
+        self.assertEqual(len(sd.staggering(before)), 3)
+
+
 class Decision(unittest.TestCase):
     def test_already_ran_no_dispatch(self):
         # The drift explorer's 2026-11-07 00:41 slot: GitHub's schedule run, created 06:36. Checked at 07:00.
