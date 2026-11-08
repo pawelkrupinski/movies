@@ -73,6 +73,8 @@ struct TopBar: View {
             // VoiceOver users in production.
             .accessibilityLabel("filtersheet.title")
             .accessibilityIdentifier(A11y.TopBar.filtryButton)
+            // The lit state, for VoiceOver ("selected") and the UI tests.
+            .accessibilityAddTraits(filtersActive ? .isSelected : [])
         }
         .padding(.horizontal, 10 * scale)
         // Tiny top padding so the pills hug the status bar; the

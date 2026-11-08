@@ -6,10 +6,10 @@ import XCTest
 final class ListingFiltersTests: XCTestCase {
 
     private func film(_ title: String, slug: String? = nil, countries: [String] = [], genres: [String] = [],
-                      directors: [String] = [], cast: [String] = []) -> Film {
+                      directors: [String] = [], cast: [String] = [], showings: [DayShowings] = []) -> Film {
         var film = Film(title: title, posterURL: nil, fallbackPosterURLs: [],
                         runtimeMinutes: 100, releaseYear: nil, genres: genres, ratings: .empty, countries: countries,
-                        directors: directors, cast: cast, showings: [])
+                        directors: directors, cast: cast, showings: showings)
         film.slug = slug
         return film
     }
@@ -46,20 +46,72 @@ final class ListingFiltersTests: XCTestCase {
 
     // MARK: ListingFilters
 
+    private func playing(_ title: String, at cinemas: String...) -> Film {
+        film(title, showings: [DayShowings(date: "2026-11-08", label: "", cinemas: cinemas.map {
+            CinemaShowings(cinema: $0, cinemaURL: nil, showtimes: [Showtime(time: "18:00", format: "", room: nil, bookingURL: nil)])
+        })])
+    }
+
+    /// The Filtry button's rule over one city's listing, with nothing hidden
+    /// and no cinema unticked unless a case says so.
+    private func active(_ filters: ListingFilters, disabledCinemas: Set<String> = [], hidden: Set<String> = []) -> Bool {
+        let films = [playing("A", at: "Muza")]
+        return filters.isActive(over: films, cityCinemas: films.allCinemas(),
+                                disabledCinemas: disabledCinemas, hidden: hidden)
+    }
+
+    func testNothingSetIsNotActive() {
+        XCTAssertFalse(active(.empty))
+    }
+
     /// Sort orders rather than narrows: it never lights the Filtry button.
-    func testOnlyTheNarrowingAxesMakeTheFiltersActive() {
+    func testSortAloneIsNotActive() {
         var filters = ListingFilters.empty
         filters.sort = .rating
-        XCTAssertFalse(filters.isActive(over: []))
-        filters.excludedGenres = ["Horror"]
-        XCTAssertTrue(filters.isActive(over: []))
+        XCTAssertFalse(active(filters))
+    }
+
+    func testEveryFormatAxisMakesTheFiltersActive() {
+        for format in [FormatFilter(dimension: "3D"), FormatFilter(language: "NAP"), FormatFilter(fromHour: 18)] {
+            var filters = ListingFilters.empty
+            filters.format = format
+            XCTAssertTrue(active(filters), "\(format)")
+        }
+    }
+
+    func testEveryExcludedNameSetMakesTheFiltersActive() {
+        let axes: [WritableKeyPath<ListingFilters, Set<String>>] =
+            [\.excludedCountries, \.excludedGenres, \.excludedDirectors, \.excludedCast]
+        for axis in axes {
+            var filters = ListingFilters.empty
+            filters[keyPath: axis] = ["X"]
+            XCTAssertTrue(active(filters), "\(axis)")
+        }
+    }
+
+    /// A cinema unticked in this city narrows the listing, so it lights the
+    /// button — as on Android (`FilterFacets.filtersActive`) and the web.
+    func testACinemaUntickedInThisCityMakesTheFiltersActive() {
+        XCTAssertTrue(active(.empty, disabledCinemas: ["Muza"]))
+    }
+
+    /// The excluded-cinema set is global across cities: one unticked elsewhere
+    /// narrows nothing here and must not light the button.
+    func testACinemaUntickedInAnotherCityIsNotActive() {
+        XCTAssertFalse(active(.empty, disabledCinemas: ["Elsewhere"]))
+    }
+
+    /// A hidden film narrows the listing too, so it lights the button — as on
+    /// Android.
+    func testAHiddenFilmMakesTheFiltersActive() {
+        XCTAssertTrue(active(.empty, hidden: ["Hidden"]))
     }
 
     /// An IMAX pick no loaded film can satisfy is dropped, so it lights nothing.
     func testAnUnsatisfiableImaxPickIsNotActive() {
         var filters = ListingFilters.empty
         filters.format.imax = true
-        XCTAssertFalse(filters.isActive(over: [film("A")]))
+        XCTAssertFalse(active(filters))
     }
 
     func testALinksScalarsSetSortAndFormatAndLeaveAbsentAxesAlone() {

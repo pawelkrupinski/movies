@@ -88,9 +88,10 @@ struct FiltersSheet: View {
 
                 Section {
                     Button(role: .destructive) {
-                        // Reset only the actual filters — cinema selection and
-                        // hidden films persist (they're not "filtering"; see
-                        // ActiveFilters) — then close the sheet.
+                        // Reset the session axes (`ListingFilters`), then close
+                        // the sheet. Cinema picks and hidden films are persistent
+                        // preferences and stay, though they light the button too
+                        // (`ListingFilters.isActive`).
                         filters = .empty
                         dismiss()
                     } label: {

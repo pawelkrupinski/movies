@@ -55,4 +55,32 @@ class FilterFacetsTest {
         assertTrue(FilterFacets.filtersActive(films, FilterAxes(excludedCast = setOf("X")), listOf("Muza"), emptySet(), emptySet()))
         assertTrue(FilterFacets.filtersActive(films, FilterAxes(), listOf("Muza"), emptySet(), setOf("Hidden")))
     }
+
+    /**
+     * The Filtry icon's rule, case for case the same as iOS `ListingFiltersTests` (`ListingFilters.isActive`), so the
+     * two apps cannot drift: every narrowing counts (a satisfiable format axis, a name exclusion, a cinema unticked in
+     * this city, a hidden film); sort, search, another city's cinema and an unsatisfiable IMAX pick do not.
+     */
+    @Test
+    fun theFiltersActiveRuleMatchesIos() {
+        val films = listOf(Film(title = "A", showings = playing("Muza")))
+        val cityCinemas = FilterFacets.allCinemas(films)
+        fun active(axes: FilterAxes = FilterAxes(), disabled: Set<String> = emptySet(), hidden: Set<String> = emptySet()) =
+            FilterFacets.filtersActive(films, axes, cityCinemas, disabled, hidden)
+
+        assertFalse("nothing set", active())
+        assertFalse("sort alone", active(FilterAxes(sort = SortOption.RATING)))
+        assertFalse("search alone", active(FilterAxes(query = "A")))
+        assertFalse("unsatisfiable IMAX", active(FilterAxes(format = FormatFilter(imax = true))))
+        assertFalse("another city's cinema", active(disabled = setOf("Elsewhere")))
+        for (format in listOf(FormatFilter(dimension = "3D"), FormatFilter(language = "NAP"), FormatFilter(fromHour = 18))) {
+            assertTrue("$format", active(FilterAxes(format = format)))
+        }
+        assertTrue("country", active(FilterAxes(excludedCountries = setOf("X"))))
+        assertTrue("genre", active(FilterAxes(excludedGenres = setOf("X"))))
+        assertTrue("director", active(FilterAxes(excludedDirectors = setOf("X"))))
+        assertTrue("cast", active(FilterAxes(excludedCast = setOf("X"))))
+        assertTrue("this city's cinema", active(disabled = setOf("Muza")))
+        assertTrue("hidden film", active(hidden = setOf("Hidden")))
+    }
 }

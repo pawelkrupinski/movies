@@ -59,17 +59,21 @@ struct ListingFilters: Equatable {
     /// `FormatFilter.applicable(to:)`.
     func applicableFormat(to films: [Film]) -> FormatFilter { format.applicable(to: films) }
 
-    /// Whether any axis Wyczyść clears narrows the listing — lights the Filtry
-    /// button (see `ActiveFilters`). Sort orders rather than narrows, so it
-    /// doesn't count.
-    func isActive(over films: [Film]) -> Bool {
-        ActiveFilters.any(
-            format: applicableFormat(to: films),
-            excludedCountries: excludedCountries,
-            excludedGenres: excludedGenres,
-            excludedDirectors: excludedDirectors,
-            excludedCast: excludedCast
-        )
+    /// Whether any filter narrows the listing — lights the Filtry button. The
+    /// same rule as Android's `FilterFacets.filtersActive`: a format axis
+    /// `films` can satisfy, any name exclusion, a cinema unticked in this city
+    /// (`cityCinemas`: the excluded set is global, so a cinema unticked in
+    /// another city lingers in it and narrows nothing here) or any hidden film.
+    /// Sort orders rather than narrows, and search is shown in its own field,
+    /// so neither counts.
+    func isActive(over films: [Film], cityCinemas: [String], disabledCinemas: Set<String>, hidden: Set<String>) -> Bool {
+        !applicableFormat(to: films).isEmpty
+            || cityCinemas.contains(where: disabledCinemas.contains)
+            || !hidden.isEmpty
+            || !excludedCountries.isEmpty
+            || !excludedGenres.isEmpty
+            || !excludedDirectors.isEmpty
+            || !excludedCast.isEmpty
     }
 
     /// The filtered, sorted listing of one day page — every `TabView` page

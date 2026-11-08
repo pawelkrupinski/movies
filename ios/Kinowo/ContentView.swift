@@ -445,7 +445,10 @@ struct ContentView: View {
     /// deep link's inclusion lists invert against.
     private var facets: FilterFacets { FilterFacets(films: store.films) }
 
-    private var filtersActive: Bool { filters.isActive(over: store.films) }
+    private var filtersActive: Bool {
+        filters.isActive(over: store.films, cityCinemas: allCinemas,
+                         disabledCinemas: prefs.disabledCinemas, hidden: prefs.hiddenFilms)
+    }
 
     /// The listing of one `TabView` page (one per `DateFilter` preset).
     private func films(for date: DateFilter) -> [Film] {

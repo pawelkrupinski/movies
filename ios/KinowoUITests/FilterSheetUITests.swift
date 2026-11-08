@@ -80,6 +80,33 @@ final class FilterSheetUITests: XCTestCase {
                        "Filtry sheet opened on a launch that never asked for it")
     }
 
+    /// The Filtry button lights (and reads "selected" to VoiceOver) for every
+    /// narrowing the user applied, a hidden film included — the rule both apps
+    /// share (`ListingFilters.isActive`, Android's `FilterFacets.filtersActive`).
+    /// The hidden set is seeded in `UserDefaults`' argument domain.
+    func testAHiddenFilmLightsTheFiltryButton() throws {
+        app.launchArguments += ["-hiddenFilms_pl", "(\"Film 1\")"]
+        launchIntoGrid()
+
+        XCTAssertTrue(filtryElement(app).waitForExistence(timeout: 10))
+        XCTAssertTrue(filtryElement(app).isSelected, "a hidden film narrows the listing, so the Filtry button must light")
+    }
+
+    func testTheFiltryButtonStaysUnlitWithNothingNarrowed() throws {
+        app.launchArguments += ["-hiddenFilms_pl", "()", "-disabledCinemas", "()"]
+        launchIntoGrid()
+
+        XCTAssertTrue(filtryElement(app).waitForExistence(timeout: 10))
+        XCTAssertFalse(filtryElement(app).isSelected, "nothing narrows the listing, yet the Filtry button lit")
+    }
+
+    /// Found by identifier at any element type: the custom button style
+    /// collapses its tree (see `testOpeningFiltrySheet`), but the identifier
+    /// and its traits survive.
+    private func filtryElement(_ app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: A11y.TopBar.filtryButton).firstMatch
+    }
+
     private func filtryButton(_ app: XCUIApplication) -> XCUIElement {
         app.buttons[A11y.TopBar.filtryButton]
     }
