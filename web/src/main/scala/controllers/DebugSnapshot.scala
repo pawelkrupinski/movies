@@ -112,7 +112,7 @@ final class RefreshingSnapshot[A](
 )(using ec: ExecutionContext) extends Logging {
 
   private val current  = new AtomicReference[Option[DebugSnapshot[A]]](None)
-  private val inFlight = new AtomicReference[Option[Future[DebugSnapshot[A]]]](None)
+  private val inFlight = new InFlightRead[DebugSnapshot[A]]
   private val restored = new AtomicBoolean(false)
 
   def get(): DebugSnapshot[A] = {
@@ -157,19 +157,15 @@ final class RefreshingSnapshot[A](
   }
 
   /** Re-read for a caller that judged `seen` (what [[current]] held when it looked) stale. */
-  private def refresh(seen: Option[DebugSnapshot[A]]): Future[DebugSnapshot[A]] = {
-    val promise = Promise[DebugSnapshot[A]]()
-    val marker  = Some(promise.future)
-    if (inFlight.compareAndSet(None, marker)) {
+  private def refresh(seen: Option[DebugSnapshot[A]]): Future[DebugSnapshot[A]] =
+    inFlight.joinOrClaim { release =>
       val now = current.get()
       // A read that landed after the caller looked has answered its staleness already: another now read
       // twice for one stale snapshot (Order independence #46, RefreshingSnapshotSpec). `now` is never
-      // None once `seen` was not: a snapshot is only ever replaced. The marker was published by the CAS,
-      // so an ask that lost it may have joined it already: completed before it is cleared, or that ask
-      // waited on it for good.
-      if (now ne seen) { promise.success(now.get); inFlight.compareAndSet(marker, None); promise.future }
+      // None once `seen` was not: a snapshot is only ever replaced.
+      if (now ne seen) { release(); Future.successful(now.get) }
       else {
-        promise.completeWith(Future {
+        val reread = Future {
           // Over before the future completes, on the read's own thread: a callback queued after
           // completion left a window in which a stale ask joined the FINISHED read and started none.
           try {
@@ -182,20 +178,42 @@ final class RefreshingSnapshot[A](
             current.set(Some(snapshot))
             logger.info(s"$label: read in ${JDuration.between(started, clock.instant()).toMillis} ms")
             snapshot
-          } finally inFlight.set(None)
-        })
-        // A read the executor refused never ran the body that clears the marker: cleared here too, or
-        // every later ask joined that failed read and none was ever started again.
-        promise.future.onComplete(_ => { inFlight.compareAndSet(marker, None); () })(using ExecutionContext.parasitic)
-        promise.future.onComplete {
+          } finally release()
+        }
+        reread.onComplete {
           // Stored after the waiting caller is released, not on its time.
           case Success(snapshot)  => saveIfNewest(snapshot)
           case Failure(exception) =>
             logger.warn(s"$label: re-read failed, keeping the previous snapshot: " +
               s"${exception.getClass.getSimpleName}: ${exception.getMessage}")
         }
-        promise.future
+        reread
       }
-    } else inFlight.get().getOrElse(refresh(seen))
+    }
+}
+
+/**
+ * The one re-read a [[RefreshingSnapshot]] has in flight. An ask joins it, or claims the slot and
+ * answers with what `claimed` gives; the claim is published the moment it is won, so an ask that
+ * lost it may have joined already, and it completes with `claimed`'s answer whatever that is (a
+ * claim answered by a read that landed meanwhile once orphaned its joiners for good: a cold get
+ * waited its 70 s, the Dev warm-up ticker's Await timed out and every later tick with it).
+ *
+ * `claimed` gets `release`, which frees the slot: called before its answer completes, so an ask
+ * woken by that answer can claim the next read. The slot is freed on completion too, for an answer
+ * that never ran the code calling `release` (a read the executor refused).
+ */
+private[controllers] final class InFlightRead[A] {
+  private val slot = new AtomicReference[Option[Future[A]]](None)
+
+  def joinOrClaim(claimed: (() => Unit) => Future[A]): Future[A] = {
+    val promise = Promise[A]()
+    val marker  = Some(promise.future)
+    if (slot.compareAndSet(None, marker)) {
+      val release = () => { slot.compareAndSet(marker, None); () }
+      promise.completeWith(Try(claimed(release)).fold(Future.failed, identity))
+      promise.future.onComplete(_ => release())(using ExecutionContext.parasitic)
+      promise.future
+    } else slot.get().getOrElse(joinOrClaim(claimed))
   }
 }

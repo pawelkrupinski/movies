@@ -247,3 +247,33 @@ class RefreshingSnapshotSpec extends AnyFlatSpec with Matchers {
     eventually(read.reads.get() == 2)
   }
 }
+
+class InFlightReadSpec extends AnyFlatSpec with Matchers {
+
+  private given ExecutionContext = tools.DedicatedThreads
+
+  // A claim answered by a read that landed meanwhile (RefreshingSnapshot's skip) was published before it
+  // was answered: an ask that lost the claim in that window joined it, and once waited for good.
+  "InFlightRead" should "complete an ask that joined a claim answered without a read" in {
+    val inFlight  = new InFlightRead[Int]
+    val claimHeld = new CountDownLatch(1)
+    val joined    = new CountDownLatch(1)
+    val claimer   = scala.concurrent.Future(inFlight.joinOrClaim { release =>
+      claimHeld.countDown()                                          // the claim is won and published...
+      joined.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)  // ...held until an ask has joined it
+      release()
+      scala.concurrent.Future.successful(7)
+    }).flatten
+    claimHeld.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
+    val joiner = inFlight.joinOrClaim(_ => scala.concurrent.Future.successful(-1))   // a claim of its own would answer -1
+    joined.countDown()
+    scala.concurrent.Await.result(joiner, SpecTimeouts.Io) shouldBe 7
+    scala.concurrent.Await.result(claimer, SpecTimeouts.Io) shouldBe 7
+  }
+
+  it should "let the next ask claim once the answer is in" in {
+    val inFlight = new InFlightRead[Int]
+    scala.concurrent.Await.result(inFlight.joinOrClaim { release => release(); scala.concurrent.Future.successful(1) }, SpecTimeouts.Io) shouldBe 1
+    scala.concurrent.Await.result(inFlight.joinOrClaim(_ => scala.concurrent.Future.successful(2)), SpecTimeouts.Io) shouldBe 2
+  }
+}
