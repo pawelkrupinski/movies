@@ -30,9 +30,9 @@ check "sbt-warm by absolute path, with an env assignment, through |&" 2 \
 check "sbt-warm in a subshell piped out" 2 "$(verdict '(cd /x && scripts/sbt-warm compile) | tail -3')"
 check "sbt-warm in a brace group piped out" 2 "$(verdict '{ scripts/sbt-warm compile; } 2>&1 | tail -3')"
 check "the script tests piped into grep" 2 "$(verdict 'scripts/run-script-tests scripts/ci | grep -v ok')"
-check "it-local.sh piped into tee" 2 "$(verdict 'scripts/it-local.sh itAll | tee /tmp/it.log')"
+check "it-local.sh piped into tee" 2 "$(verdict 'scripts/it-local.sh itAll | tee "$log"')"
 check "a runner on a later line of a multi-line command" 2 "$(verdict $'cd /x\nscripts/sbt-warm compile 2>&1 | tail -2')"
-check "a runner after a heredoc" 2 "$(verdict $'cat > /tmp/a <<\'EOF\'\nhello | world\nEOF\nscripts/sbt-warm compile | tail')"
+check "a runner after a heredoc" 2 "$(verdict $'cat > "$out" <<\'EOF\'\nhello | world\nEOF\nscripts/sbt-warm compile | tail')"
 check "the denial says why and what to do instead" 1 \
   "$(python3 -c 'import json; print(json.dumps({"tool_input": {"command": "scripts/sbt-warm compile | tail"}}))' |
     python3 "$guard" 2>&1 | grep -c 'LAST command.*log')"
@@ -43,12 +43,12 @@ check "a run written to a log, its status echoed, the log grepped" 0 \
 check "a pipe under set -o pipefail" 0 "$(verdict 'set -o pipefail; scripts/sbt-warm compile 2>&1 | tail -3')"
 check "a pipe whose status is read from PIPESTATUS" 0 "$(verdict 'scripts/sbt-warm compile | tail -3; echo "${PIPESTATUS[0]}"')"
 check "a runner whose group ends in another command, piped out" 0 "$(verdict '(scripts/sbt-warm compile; echo done) | tail -1')"
-check "a runner checked with || before an unrelated pipe" 0 "$(verdict 'scripts/sbt-warm compile || exit 1; git log | head')"
+check "a runner checked with || before an unrelated pipe" 0 "$(verdict 'scripts/sbt-warm compile || exit 1; ls -l | head')"
 check "a runner whose output is the LAST stage" 0 "$(verdict 'echo compile | scripts/sbt-warm compile')"
 check "a filter of a file that merely mentions sbt" 0 "$(verdict 'grep -n sbt-warm scripts/hooks/pre-push | head')"
 check "sbt named as an argument, not run" 0 "$(verdict 'which sbt | head -1')"
 check "a runner inside a heredoc body is not run by the shell reading it" 0 \
-  "$(verdict $'cat > /tmp/x.sh <<\'EOF\'\nscripts/sbt-warm compile | tail\nEOF')"
+  "$(verdict $'cat > "$out" <<\'EOF\'\nscripts/sbt-warm compile | tail\nEOF')"
 check "input that is not JSON never blocks" 0 "$(echo 'not json' | python3 "$guard" 2>/dev/null; echo $?)"
 check "a command shlex cannot read never blocks" 0 "$(verdict 'echo "unterminated | scripts/sbt-warm x | tail')"
 
