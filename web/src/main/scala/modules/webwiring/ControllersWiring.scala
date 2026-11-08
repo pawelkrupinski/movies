@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CatalogController, CityRequests, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
+import controllers.{CatalogController, CityRequests, ClientSupportController, CrawlerController, CrawlerFiles, EncodedResponseCache, HealthController, LandingController, LegalController, MovieApiController, MovieController, PickerController, PickerFragments, SupportController, WellKnownController}
 import modules.Wiring
 
 /** ── The public site ───────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ trait ControllersWiring { self: Wiring =>
   // deployment's language and the conditional GET over the shared gzip cache.
   lazy val cityRequests = new CityRequests(controllerComponents.messagesApi, country, webReadModel, encodedResponseCache,
     now = () => movieControllerService.now(), build = processConfiguration.commit)
-  lazy val movieController  = new MovieController(controllerComponents, cityRequests, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode,
+  lazy val movieController  = new MovieController(controllerComponents, cityRequests, movieControllerService, oauthProviders.keySet, environmentMode,
     minifier = minifier,
     // Read per render, so an `/admin/config` change reaches the page.
     pageTags = () => controllers.PageTags.from(processConfiguration),
@@ -54,6 +54,9 @@ trait ControllersWiring { self: Wiring =>
     filmPageServed = (userAgent, url) => facebookFetchRecorder.foreach(_.served(userAgent, url)))
   // The per-city JSON the mobile apps read (`/{city}/api/*`).
   lazy val movieApiController = new MovieApiController(controllerComponents, cityRequests, movieControllerService)
+  // robots.txt and the sitemaps, cut from the live schedules and each city's own stamp.
+  lazy val crawlerController = new CrawlerController(controllerComponents, cityRequests,
+    CrawlerFiles.live(country, movieControllerService, webReadModel))
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

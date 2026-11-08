@@ -173,9 +173,9 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
         "film"         -> body(country, s"/${city.slug}/movie/$slug", mc.filmBySlug(city.slug, slug)),
         "browse"       -> body(country, s"/${city.slug}/movies", mc.browse(city.slug, None, None, None, None, None, None, None, None)),
         "support"      -> body(country, "/support", wiring.supportController.support(None)),
-        "robots.txt"   -> body(country, "/robots.txt", mc.robotsTxt),
-        "sitemap.xml"  -> body(country, "/sitemap.xml", mc.sitemap),
-        "city sitemap" -> body(country, s"/${city.slug}/sitemap.xml", mc.citySitemap(city.slug)),
+        "robots.txt"   -> body(country, "/robots.txt", wiring.crawlerController.robotsTxt),
+        "sitemap.xml"  -> body(country, "/sitemap.xml", wiring.crawlerController.sitemap),
+        "city sitemap" -> body(country, s"/${city.slug}/sitemap.xml", wiring.crawlerController.citySitemap(city.slug)),
       )
       // Positive control: the fixture film really is on this country's pages.
       pages.toMap.apply("film") should include (Title)

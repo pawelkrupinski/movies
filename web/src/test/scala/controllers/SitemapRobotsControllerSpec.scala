@@ -13,8 +13,8 @@ import java.time.Instant
  *  Facebook's scraper), and sitemap.xml enumerates the live corpus. */
 class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def controller(): MovieController =
-    TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1")))).movie
+  private def controller(): CrawlerController =
+    TestCityControllers.build(Seq(TestCityControllers.showing("Testowy Film", Some(2024), imdbId = Some("tt1")))).crawler
 
   // X-Forwarded-* mirror the Fly edge so PageMeta.origin yields the prod host.
   private def req(path: String) = EdgeRequest(path)
@@ -79,7 +79,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
    *  address, so naming `/texas/` would sitemap a 404 while the towns people
    *  search for went unadvertised. */
   it should "advertise every US page, and no state" in {
-    val us   = TestCityControllers.build(Seq.empty, servingCountry = models.Country.UnitedStates).movie
+    val us   = TestCityControllers.build(Seq.empty, servingCountry = models.Country.UnitedStates).crawler
     val body = contentAsString(us.sitemap(req("/sitemap.xml")))
     body should include("<loc>https://kinowo.net/us/los-angeles/</loc>")
     body should include("<loc>https://kinowo.net/us/san-francisco/</loc>")
@@ -97,7 +97,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
    *  deployment reachable at `/uk/canterbury/` is a file of 404s, and it is the one
    *  file a crawler trusts to enumerate the site. */
   it should "hang every URL off the mount point on a country sharing the brand domain" in {
-    val uk = TestCityControllers.build(Seq.empty, servingCountry = models.Country.UnitedKingdom).movie
+    val uk = TestCityControllers.build(Seq.empty, servingCountry = models.Country.UnitedKingdom).crawler
     val body = contentAsString(uk.sitemap(
       EdgeRequest("/sitemap.xml", host = "showtimes.cc")))
     body should include("<loc>https://showtimes.cc/uk/</loc>")
@@ -169,7 +169,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
   private val PoznanStamp  = Instant.parse("2026-01-01T00:00:00Z")
   private val WroclawStamp = Instant.parse("2026-06-15T00:00:00Z")
 
-  private def twoCityController(): MovieController = {
+  private def twoCityController(): CrawlerController = {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(resolvedMovie("belle|2026", "Belle"))
     repository.upsertMovie(resolvedMovie("diuna|2026", "Diuna"))
@@ -177,7 +177,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     repository.upsertScreening(cityScreening("s-wroclaw", "diuna|2026", "wroclaw", MultikinoPasazGrunwaldzki))
     val readModel = new StubReadModel(repository, Map("poznan" -> PoznanStamp, "wroclaw" -> WroclawStamp))
     readModel.reload()
-    TestCityControllers.build(Nil, readModel = Some(readModel)).movie
+    TestCityControllers.build(Nil, readModel = Some(readModel)).crawler
   }
 
   private def lastmodOf(xml: String, locSuffix: String): String = {
@@ -216,7 +216,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
   // grows past it next gets partitioned — pinned here by crossing it with a
   // synthetic Polish corpus rather than depending on the real US roster.
 
-  private def manyFilmsController(filmCount: Int): MovieController = {
+  private def manyFilmsController(filmCount: Int): CrawlerController = {
     val repository = new InMemoryReadModelRepository
     val now = TestCityControllers.now.plusDays(1)
     (1 to filmCount).foreach { i =>
@@ -227,7 +227,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     }
     val readModel = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
     readModel.reload()
-    TestCityControllers.build(Nil, readModel = Some(readModel)).movie
+    TestCityControllers.build(Nil, readModel = Some(readModel)).crawler
   }
 
   "sitemap.xml" should "stay a flat file below the partition threshold" in {

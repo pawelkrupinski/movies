@@ -93,7 +93,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
     new controllers.ReverseMovieController("/uk/").index("canterbury").url shouldBe "/uk/canterbury/"
     new controllers.ReverseMovieController("/uk/").filmBySlug("canterbury", "dune").url shouldBe
       "/uk/canterbury/movie/dune"
-    new controllers.ReverseMovieController("/uk/").sitemap.url shouldBe "/uk/sitemap.xml"
+    new controllers.ReverseCrawlerController("/uk/").sitemap.url shouldBe "/uk/sitemap.xml"
     new controllers.ReverseAssets("/uk/").versioned(controllers.Assets.Asset("js/shared.js")).url shouldBe
       "/uk/assets/js/shared.js"
   }

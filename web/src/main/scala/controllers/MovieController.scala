@@ -3,7 +3,6 @@ package controllers
 import models._
 import play.api.mvc._
 import play.api.Mode
-import services.readmodel.WebReadModel
 
 
 class MovieController( cc: ControllerComponents,
@@ -12,7 +11,6 @@ class MovieController( cc: ControllerComponents,
                        // city-route controller (`CityRequests`).
                        cityRequests: CityRequests,
                        movieControllerService: MovieControllerService,
-                       readModel: WebReadModel,
                        // NO `UserRepository` — deliberately, and it is the strongest
                        // form of the promise `CachePolicy` needs. This
                        // controller renders every page it serves without the means to
@@ -53,9 +51,6 @@ class MovieController( cc: ControllerComponents,
   // render, and it changes only when the city's films do.
   private val cityStructuredData: com.github.benmanes.caffeine.cache.Cache[StructuredData.CityPageKey, String] =
     tools.BoundedCache.ofSize(512).build[StructuredData.CityPageKey, String]()
-
-  // robots.txt and the sitemaps, cut from the live schedules and each city's own stamp.
-  private val crawlerFiles = new CrawlerFiles(servingCountry, movieControllerService.toSchedules(_), city => readModel.lastModifiedFor(city.slug))
 
   /** How many listings' JSON-LD this controller is holding — for the spec. */
   private[controllers] def structuredDataHeld: Long = { cityStructuredData.cleanUp(); cityStructuredData.estimatedSize() }
@@ -282,34 +277,6 @@ class MovieController( cc: ControllerComponents,
       }
     } }
   }
-
-  // robots.txt — see `CrawlerFiles.robots` for which shape a request wants. The share-card
-  // images (`/share-cards/…`) are deliberately NOT disallowed — Facebook honours robots.txt when
-  // fetching `og:image`, so blocking them would break every share preview.
-  def robotsTxt: Action[AnyContent] = Action { request =>
-    Ok(crawlerFiles.robots(PageMeta.host(request), PageMeta.origin(request))).as("text/plain; charset=utf-8")
-  }
-
-  /** `sitemap.xml` — the full crawl map, or an index of per-city ones for a large
-   *  corpus; see [[CrawlerFiles.sitemap]]. Cached for an hour at the edge/browser;
-   *  the corpus changes on the order of scrape cadence, not per request. */
-  def sitemap: Action[AnyContent] = Action { request =>
-    okSitemap(crawlerFiles.sitemap(PageMeta.host(request), PageMeta.origin(request)))
-  }
-
-  /** `/sitemap-root.xml` — the landing-only sitemap a partitioned country's index points at. */
-  def sitemapRoot: Action[AnyContent] = Action { request =>
-    okSitemap(crawlerFiles.sitemapRoot(PageMeta.origin(request)))
-  }
-
-  /** `/{city}/sitemap.xml` — one city's slice of the full crawl map, served
-   *  only once a country's flat `sitemap.xml` has been partitioned. */
-  def citySitemap(city: String): Action[AnyContent] = Action { request =>
-    withCity(city, request)(c => okSitemap(crawlerFiles.citySitemap(PageMeta.origin(request), c)))
-  }
-
-  private def okSitemap(body: String): Result =
-    Ok(body).as("application/xml; charset=utf-8").withHeaders("Cache-Control" -> "public, max-age=3600")
 
   /** `/{city}/film…` and `/{city}/filmy` — the pre-rename Polish spellings of
    *  the detail page and the browse facets, 301'd onto `/{city}/movie…` and

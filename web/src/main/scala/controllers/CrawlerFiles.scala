@@ -80,3 +80,10 @@ final class CrawlerFiles(servingCountry: Country,
   private def cityLastmod(city: City): Option[String] =
     Some(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE.format(cityStamp(city).atOffset(java.time.ZoneOffset.UTC)))
 }
+
+object CrawlerFiles {
+
+  /** The crawler files of the live corpus: the warm read model's schedules, each city's own stamp. */
+  def live(servingCountry: Country, schedules: MovieControllerService, readModel: services.readmodel.WebReadModel): CrawlerFiles =
+    new CrawlerFiles(servingCountry, schedules.toSchedules(_), city => readModel.lastModifiedFor(city.slug))
+}
