@@ -251,6 +251,22 @@ class LegMatrixTest(unittest.TestCase):
         m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({"INPUT_TAKES_COUNTRIES": "pl"}))
         self.assertEqual(len(m["country"]), 3)
 
+    def test_the_takes_preflight_reads_convergences_rows_typed_as_yaml_types_them(self):
+        # Identity takes #1 (run 42515079814): the rows as strings ("55", "true") made GitHub drop the `leg` call whole
+        out = os.path.join(tempfile.mkdtemp(), "legs.json")
+        with open(out, "w") as f:
+            json.dump(reuse.leg_inputs({}), f)
+        env = {k: v for k, v in os.environ.items() if k != "LEG_ROWS"}
+        res = subprocess.run([sys.executable, os.path.join(ROOT, "scripts/ci/convergence_reuse.py"), "legs"], cwd=tempfile.gettempdir(),
+                             env=dict(env, CONVERGENCE_SUITE="takes", LEG_INPUTS_FILE=out, GITHUB_STEP_SUMMARY=""),
+                             capture_output=True, text=True, check=True)
+        matrix = json.loads(next(l for l in res.stdout.splitlines() if l.startswith("leg-matrix="))[len("leg-matrix="):])
+        self.assertEqual(len(matrix["include"]), 5)
+        for row in matrix["include"]:
+            self.assertIsInstance(row["job"], int)
+            self.assertIsInstance(row["order-split"], bool)
+            self.assertTrue(all(p.startswith("takes") for p in json.loads(row["phases"])))
+
     def test_the_workflows_own_rows_all_parse_with_the_keys_the_legs_read(self):
         import pathlib
         text = (pathlib.Path(__file__).resolve().parents[2] / ".github/workflows/identity-model-convergence.yml").read_text()

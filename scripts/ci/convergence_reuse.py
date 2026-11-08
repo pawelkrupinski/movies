@@ -690,6 +690,15 @@ def cmd_inputs(_):
     return 0
 
 
+def leg_rows_text(workflow_text):
+    """The convergence preflight's LEG_ROWS block, as written: the takes preflight's rows. parse_rows types its values as
+    YAML would (a number a number, `true` a boolean) -- matrix_rows' strings, handed to the leg's number and boolean
+    inputs, made GitHub drop the call (Identity takes #1: no `leg` job at all)."""
+    if "LEG_ROWS: |" not in workflow_text:
+        raise ValueError("no LEG_ROWS block in the convergence workflow")
+    return workflow_text.split("LEG_ROWS: |", 1)[1].split("run:", 1)[0]
+
+
 def suite_of(opts=None):
     """The suite a command judges: --suite, else $CONVERGENCE_SUITE, else convergence."""
     suite = (opts or {}).get("suite") or os.environ.get("CONVERGENCE_SUITE") or "convergence"
@@ -703,7 +712,7 @@ def cmd_legs(opts):
     unset: the convergence workflow's own, as the takes preflight reads them) and the dispatch's inputs; for
     verify-scrape-recording.yml, LEG_CODES (the recording's complete countries, comma-separated) narrows it instead."""
     suite = suite_of(opts)
-    rows = parse_rows(os.environ["LEG_ROWS"]) if os.environ.get("LEG_ROWS") else matrix_rows(open(os.path.join(ROOT, WORKFLOW)).read())
+    rows = parse_rows(os.environ.get("LEG_ROWS") or leg_rows_text(open(os.path.join(ROOT, WORKFLOW)).read()))
     codes = os.environ.get("LEG_CODES")
     if codes is not None:
         inputs = {"takes-only": "true", "takes-countries": codes}
