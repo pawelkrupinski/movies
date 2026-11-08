@@ -89,6 +89,10 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
   convergence #2527's UK "Rose (2023)" flip: a search's hit weighed before its record is filed ("Rose Parade 2023",
   which only its record denies). Which held answer decides it, why production meets the state, the first fix (a film
   weighed once its record is filed) and why it gave way to the owner's AGREE OR NONE.
+- [investigations/2026-11-08-cluster-vote-withdrawn-members.md](investigations/2026-11-08-cluster-vote-withdrawn-members.md) —
+  the design note and full measure, written after the fact, for d71b2d61a9: in a group vote, a cluster's members that a
+  sibling withdrew from a film bring it no vote, and the rest win it only on their own pooled evidence (UK "Notre-Dame
+  de Paris"). 0 takes moved in any country; DE's final half was not replayed.
 - [investigations/2026-10-22-footprint-measure.md](investigations/2026-10-22-footprint-measure.md) — the footprint
   measure (`identity-measure --footprint`): why a title-rule change can be proved to move no take by replaying the base's
   title readings, the ideas rejected as unsound, and its validation against eight full measures.
