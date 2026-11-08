@@ -15,9 +15,16 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 . scripts/ci/dispatch.sh
 
+# `--ref main` runs main's head AT THE DISPATCH, which is not GITHUB_SHA once main moved while this job queued (Explorer
+# #5, run 42455836290: queued on 4d8307317e, main at c903f3384d by the dispatch, "no run appeared"). So the run is
+# matched on any of this job's commit and main's head just before and just after the dispatch.
+main_head() { _dispatch_gh api "repos/$GH_REPO/commits/main" --jq .sha 2> /dev/null || true; }
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+before=$(main_head)
 dispatch_workflow identity-model-convergence.yml main -f drift-only=true -f drift-explore=auto
-find_dispatched_run identity-model-convergence.yml "$since" ".headSha == \"$GITHUB_SHA\"" --branch main
+after=$(main_head)
+find_dispatched_run identity-model-convergence.yml "$since" \
+  "(.headSha == \"$GITHUB_SHA\" or .headSha == \"$before\" or .headSha == \"$after\")" --branch main
 run=$DISPATCHED_RUN
 echo "explorer run: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$run"
 # the drift rows' 85-minute ceiling, behind main's queued convergence runs in the lane (the job's 300-minute bound)

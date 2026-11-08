@@ -25,6 +25,7 @@ for ((i = 1; i <= $#; i++)); do
 done
 case "$1 $2" in
   "workflow run") exit 0 ;;
+  "api repos/o/r/commits/main") echo "${MAIN_SHA:-}" ;;
   "run list") jq -r "$jqexpr" <<< "$RUNS" ;;
   "run view") echo "$VIEW" ;;
   "run download")
@@ -63,6 +64,12 @@ check "a green run publishes the same way, into the release already there" "0 1 
 VIEW=$(view failure)
 check "a run with no explore-<cc>.tsv fails, said, and publishes nothing" "1 1 0" \
   "$(EXPLORE='' publish) $(grep -c 'wrote no explore-<cc>.tsv' "$work/out") $(uploads)"
+# Explorer #5 (run 42455836290): the explorer's job ran on 4d8307317e, main had moved to c903f3384d by the dispatch, and
+# `--ref main` ran the drift rows there -- a run matched by GITHUB_SHA alone was "no run appeared in 120s".
+check "the run is found when main moved past the explorer's commit before the dispatch" "0 1" \
+  "$(MAIN_SHA=bbbb DISPATCH_FIND_SECONDS=0 RUNS='[{"databaseId":77,"headSha":"bbbb","createdAt":"2099-01-01T00:00:00Z","displayTitle":"t"}]' RELEASE_EXISTS=1 publish) $(uploads)"
+check "...and a run on some other commit is still never taken for it" "1 1" \
+  "$(MAIN_SHA=bbbb DISPATCH_FIND_SECONDS=0 RUNS='[{"databaseId":77,"headSha":"cccc","createdAt":"2099-01-01T00:00:00Z","displayTitle":"t"}]' RELEASE_EXISTS=1 publish) $(grep -c 'no run of it appeared' "$work/out")"
 asset() { printf '{"name":"new-flips-2026-10-%02d-%s.tsv","createdAt":"2026-10-%02dT00:41:00Z"}' "$1" "$1" "$1"; }
 ASSETS="{\"assets\":[{\"name\":\"new-flips.tsv\",\"createdAt\":\"2026-11-05T00:00:00Z\"}$(for d in $(seq 1 32); do printf ',%s' "$(asset "$d")"; done)]}"
 check "the dated copies beyond the newest 30 go, the oldest first" "0 2 1 1" \
