@@ -43,7 +43,7 @@ trait IdentityModelWiring { self: WorkerWiring =>
   /** Every listing that left, with its facts and departure, persisted (`identity_retained`): the input ListingRetention keeps from. */
   lazy val identityRetainedStore: services.identity.adapters.RetainedListingStore =
     mongoConnection.database.fold[services.identity.adapters.RetainedListingStore](new services.identity.adapters.RetainedListingStore.InMemory())(
-      new services.identity.adapters.MongoRetainedListingStore(_, clock))
+      services.identity.adapters.MongoRetainedListingStore.indexed(_, clock))
   /** The listings the identity history last saw the model hold: what the kept set starts from before it was ever
    *  persisted (`RetainedListingStore.fromHistory`). */
   protected def identityHeldBefore(): Seq[services.identity.Listing] =

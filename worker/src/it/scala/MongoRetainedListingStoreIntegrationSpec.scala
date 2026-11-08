@@ -62,10 +62,20 @@ class MongoRetainedListingStoreIntegrationSpec extends AnyFlatSpec with Matchers
     }
   }
 
+  it should "hold its index from boot, before any write: a fresh worker's first take-up read scans nothing" in {
+    IsolatedMongoDatabase.withDatabase(mongoTarget, "identity-retained-boot-index") { db =>
+      val store = MongoRetainedListingStore.indexed(db, new MutableClock(t0))
+      val keys  = Await.result(db.getCollection[Document](MongoRetainedListingStore.Collection).listIndexes().toFuture(), SpecTimeouts.Io)
+        .map(_.toBsonDocument.getDocument("key"))
+      keys should contain(MongoRetainedListingStore.WipeIndex.toBsonDocument)
+      store.read() shouldBe None                                                // nothing written, yet the index is there
+    }
+  }
+
   it should "read only the live rows, and wipe by age, through its index, however many rows have expired" in {
     IsolatedMongoDatabase.withDatabase(mongoTarget, "identity-retained-index") { db =>
       val clock = new MutableClock(t0)
-      val store = new MongoRetainedListingStore(db, clock)
+      val store = MongoRetainedListingStore.indexed(db, clock)
       // ten expired rows for every live one: the archive's growth against what the worker reads
       val live    = (1 to 50).map(i => ListingRetention.Departed(listing(s"Live $i"), t0.toEpochMilli))
       val expired = (1 to 500).map(i => ListingRetention.Departed(listing(s"Gone $i"), t0.toEpochMilli))

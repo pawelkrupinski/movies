@@ -75,13 +75,13 @@ final class MongoRetainedListingStore(db: MongoDatabase, clock: java.time.Clock)
   import MongoRetainedListingStore.{Expired, Live, Updated, WipeIndex, Written}
   private val coll: MongoCollection[Document] = db.getCollection[Document](MongoRetainedListingStore.Collection)
   private val Timeout = 30.seconds
-  /** The collection with its index made, once: what every write goes through. A reader alone (the nightly recording's
-   *  capture, a tool over the local mirror) makes none; the worker writes at its first take-up or drain. */
-  private lazy val indexed: MongoCollection[Document] = {
+
+  /** [[WipeIndex]] made (idempotent): the worker's store does it at boot ([[MongoRetainedListingStore.indexed]]), before its
+   *  first take-up reads the live rows, so no read scans the collection. A reader alone (the nightly recording's capture, a
+   *  tool over the local mirror) makes none: it writes nothing. One that fails is logged; the reads still answer, unindexed. */
+  def ensureIndex(): Unit =
     scala.util.Try(Await.result(coll.createIndex(WipeIndex).toFuture(), Timeout))
       .failed.foreach(e => logger.warn(s"identity_retained: index ${WipeIndex.toBsonDocument} not made: $e"))
-    coll
-  }
 
   def read(): Option[Seq[ListingRetention.Departed]] = {
     val docs = Await.result(coll.find(Live).batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
@@ -104,13 +104,13 @@ final class MongoRetainedListingStore(db: MongoDatabase, clock: java.time.Clock)
    *  owner's "never deleted, marked expired" (2026-11-07) does not hold them: the owner, 2026-11-07, "delete the duplicates". */
   def delete(keys: Iterable[ListingKey]): Unit = {
     val ids = keys.map(ListingKey.serialised).toSeq
-    if (ids.nonEmpty) { Await.result(indexed.deleteMany(Filters.in("_id", ids*)).toFuture(), Timeout); () }
+    if (ids.nonEmpty) { Await.result(coll.deleteMany(Filters.in("_id", ids*)).toFuture(), Timeout); () }
   }
 
   /** The live rows `which` names expired: kept, no input, their screening days stripped. */
   private def expire(which: org.bson.conversions.Bson): Unit = {
     val now = clock.millis()
-    Await.result(indexed.updateMany(Filters.and(which, Live), Updates.combine(Updates.set(Expired, now), Updates.set(Updated, now),
+    Await.result(coll.updateMany(Filters.and(which, Live), Updates.combine(Updates.set(Expired, now), Updates.set(Updated, now),
       Updates.unset("listing.screenings"))).toFuture(), Timeout); ()
   }
 
@@ -119,12 +119,18 @@ final class MongoRetainedListingStore(db: MongoDatabase, clock: java.time.Clock)
     val writes = departed.map(d => ReplaceOneModel(Filters.eq("_id", ListingKey.serialised(d.listing.key)), MongoRetainedListingStore.docOf(d, now),
       ReplaceOptions().upsert(true))) :+
       ReplaceOneModel(Filters.eq("_id", Written), Document("_id" -> Written), ReplaceOptions().upsert(true))
-    Await.result(indexed.bulkWrite(writes).toFuture(), Timeout); ()
+    Await.result(coll.bulkWrite(writes).toFuture(), Timeout); ()
   }
 }
 
 object MongoRetainedListingStore {
   val Collection = "identity_retained"
+  /** The worker's store: [[MongoRetainedListingStore.ensureIndex]] run as it is made, at boot. */
+  def indexed(db: MongoDatabase, clock: java.time.Clock): MongoRetainedListingStore = {
+    val store = new MongoRetainedListingStore(db, clock)
+    store.ensureIndex()
+    store
+  }
   /** The marker's `_id`: no serialised key is a bare word. */
   val Written = "written"
   /** When a row stopped being an input (epoch millis): absent on a live one. */
