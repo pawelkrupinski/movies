@@ -5,7 +5,8 @@ Each registered spec's source is scanned for string literals naming an existing 
 reading tools/devpanel/scripts/devpanel.py with a row that never selected on tools/ turned Main red, 2026-11-06). A
 push carrying that path is put to the hook itself (`pre-push --lint-plan`, the GitOps manifests in place), so `*`,
 `@repo`, `@gitops` and globs are judged by the one implementation. A directory is probed by one file of each extension
-under it (a spec scanning it reads the kinds it scans): one selecting probe is enough.
+under it (a spec scanning it reads the kinds it scans): one selecting probe is enough. A path git ignores is never
+probed: no push carries it.
 Prints `<spec>TAB<literal path>` for each miss; nothing when every row covers what its spec reads. Run from the root.
 Usage: lint_registry_reads.py [registry]
 """
@@ -35,6 +36,17 @@ def probes(literal):
     return list(found.values())
 
 
+def pushable(paths):
+    """`paths` less those git ignores: a push never carries an ignored path -- the GitOps manifests that
+    infra/bin/fetch-gitops lays under infra/kubernetes/ are movies-gitops' files, and probing them failed this check on
+    every clone that had fetched them (the landing checks' among them, Tool self-tests #158) and on none without."""
+    if not paths:
+        return []
+    run = subprocess.run(["git", "check-ignore", "--stdin"], input="\n".join(paths) + "\n", capture_output=True, text=True)
+    ignored = set(run.stdout.split("\n"))
+    return [p for p in paths if p not in ignored]
+
+
 def selected_specs(path):
     run = subprocess.run([HOOK, "--lint-plan"], input=path + "\n", capture_output=True, text=True,
                          env={**os.environ, "PREPUSH_GITOPS": "1"})
@@ -54,7 +66,7 @@ def main():
             continue
         with open(source) as text:
             for literal in sorted(set(LITERAL.findall(text.read()))):
-                found = [p for p in probes(literal) if not p.startswith(("target/", ".git/"))]
+                found = pushable([p for p in probes(literal) if not p.startswith(("target/", ".git/"))])
                 if found:
                     wanted.setdefault(spec, {})[literal] = found
     unique = sorted({p for per in wanted.values() for found in per.values() for p in found})
