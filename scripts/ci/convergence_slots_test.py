@@ -88,6 +88,18 @@ class MainsRunTest(unittest.TestCase):
         compares = {"order-independence-p01", "order-independence-p12"}
         self.assertEqual(sorted(rows), sorted(r for r in reuse.expected_rows(WORKFLOW) if r.split(" (")[0] not in compares))
 
+    def test_spain_splits_its_order_rows_like_the_other_countries(self):
+        # owner 2026-11-08: Spain's order passes ran inside its boot, so its `order-compare` job was created and skipped,
+        # a skipped matrix job rendering its `name:` template raw (`${{ matrix.phase }}`)
+        matrix = self.matrix(reuse.leg_inputs({}))
+        es = next(r for r in matrix["include"] if r["code"] == "es")
+        self.assertIn(es["order-split"], (True, "true"))
+        self.assertEqual(es["cmd"], "convergenceSpainWithoutOrder")
+        self.assertEqual(es["order"], "convergenceSpainOrder")
+        self.assertLessEqual({"order-independence-p01-pass0", "order-independence-p01-pass1",
+                              "order-independence-p12-pass1", "order-independence-p12-pass2"}, set(json.loads(es["phases"])))
+        self.assertLessEqual(sum(r["max-parallel"] for r in matrix["include"]), slots.RUNNERS)
+
     def test_one_order_phase_hands_only_the_p01_passes(self):
         matrix = self.matrix(reuse.leg_inputs({}), order_phases="one")
         de = next(r for r in matrix["include"] if r["code"] == "de")
@@ -103,7 +115,7 @@ class MainsRunTest(unittest.TestCase):
         self.assertEqual(slots.cost("xx", "takes-drift-aa-pass1", {("xx", "takes-drift-1"): 10.0}), 10.0)
 
     def test_the_a_a_comparison_after_the_rows_is_every_a_a_countrys_tail(self):
-        # Spain splits no order row: the A/A comparison is its only tail
+        # every country splits its order rows now, Spain included: the order comparison (COMPARE_PHASES) and the A/A comparison tail
         plan = reuse.leg_plan(reuse.matrix_rows(WORKFLOW), reuse.leg_inputs({}), harness_aa=True)
         bare = reuse.leg_plan(reuse.matrix_rows(WORKFLOW), reuse.leg_inputs({}))
         costs = slots.read_costs()

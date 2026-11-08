@@ -16,6 +16,12 @@ de	takes-drift-1	19.0	3
 de	takes-drift-3	10.0	0
 de	takes-drift-2	9.8	12
 es	convergence	3.7	12
+es	order-independence-p01	1.3	0
+es	order-independence-p01-pass0	3.0	0
+es	order-independence-p01-pass1	3.0	0
+es	order-independence-p12	1.4	0
+es	order-independence-p12-pass1	3.0	0
+es	order-independence-p12-pass2	3.0	0
 es	takes	4.5	12
 es	takes-base	1.1	12
 es	takes-drift-1	3.7	12

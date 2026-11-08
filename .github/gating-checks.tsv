@@ -66,6 +66,12 @@ job	identity-model-convergence.yml	takes-drift-aa-pass1 (poland)	1010
 job	identity-model-convergence.yml	takes-aa (poland)	1010
 job	identity-model-convergence.yml	leg (spain)	aggregate
 job	identity-model-convergence.yml	convergence (spain)	aggregate
+job	identity-model-convergence.yml	order-independence-p01 (spain)	unproven	Spain's order rows (owner 2026-11-08), unproven until first green
+job	identity-model-convergence.yml	order-independence-p12 (spain)	unproven	Spain's order rows (owner 2026-11-08), unproven until first green
+job	identity-model-convergence.yml	order-independence-p01-pass0 (spain)	unproven	Spain's order rows (owner 2026-11-08), unproven until first green
+job	identity-model-convergence.yml	order-independence-p01-pass1 (spain)	unproven	Spain's order rows (owner 2026-11-08), unproven until first green
+job	identity-model-convergence.yml	order-independence-p12-pass1 (spain)	unproven	Spain's order rows (owner 2026-11-08), unproven until first green
+job	identity-model-convergence.yml	order-independence-p12-pass2 (spain)	unproven	Spain's order rows (owner 2026-11-08), unproven until first green
 job	identity-model-convergence.yml	takes (spain)	2691
 job	identity-model-convergence.yml	takes-base (spain)	1010
 job	identity-model-convergence.yml	takes-drift-1 (spain)	2691

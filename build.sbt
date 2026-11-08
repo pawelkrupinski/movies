@@ -783,4 +783,7 @@ addCommandAlias("convergenceGermanyOrder",        "e2e/Test/testOnly services.mo
 addCommandAlias("convergencePolandWithoutOrder", "e2e/Test/testOnly services.movies.PolandConvergenceSpec -- -l services.movies.OrderIndependence")
 addCommandAlias("convergencePolandOrder",        "e2e/Test/testOnly services.movies.PolandConvergenceSpec -- -n services.movies.OrderIndependence")
 addCommandAlias("convergenceSpain",    "e2e/Test/testOnly services.movies.SpainConvergenceSpec")
+// And Spain (owner, 2026-11-08: "make it the same as the rest"): the same two rows of the order passes.
+addCommandAlias("convergenceSpainWithoutOrder", "e2e/Test/testOnly services.movies.SpainConvergenceSpec -- -l services.movies.OrderIndependence")
+addCommandAlias("convergenceSpainOrder",        "e2e/Test/testOnly services.movies.SpainConvergenceSpec -- -n services.movies.OrderIndependence")
 

@@ -448,7 +448,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    * extra; the United States expands to two.
    */
   // Since 2026-11-02 the comparison of a split country's one-pass rows is a job after them (`order-compare`), skipped
-  // for the one country that does not split (Spain): the price of rows under 8 minutes. No third job.
+  // for no country now that Spain splits too (2026-11-08): the price of rows under 8 minutes. No third job.
   "the order-independence split" should "render nothing for a country that folds it into the standard run" in {
     withClue("a third job would be rendered, skipped, for every country that doesn't split: ") {
       legJobs shouldBe Seq("convergence", "order-compare")
@@ -576,7 +576,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  in turn, 35-69 minutes for Germany -- the run's critical path whenever a push changed the harness. Each replay is a
    *  row of its own now (`takes-drift-aa-pass0`, `-pass1`, side by side, the head against itself, storing nothing), and
    *  `order-compare` compares their TSVs under the row's old name (`takes-drift-aa (<country>)`), red only when the two
-   *  differ: the harness's own fault (harness_aa.py judge). Spain, with no order split, runs that job for it alone. */
+   *  differ: the harness's own fault (harness_aa.py judge). A push that changed the harness adds it to every country's order comparison. */
   it should "replay the drift harness's A/A passes in rows of their own and compare them after them" in {
     val compare = RepoFile.block(leg, "order-compare")
     compare should include("(inputs.order-command != '' && inputs.order-split || inputs.harness-aa && inputs.mode == 'hermetic' && inputs.takes-row)")
@@ -609,10 +609,13 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
 
   // Poland too since 2026-11-02: its three replays beside the boot kept the row on all four cores, 8.7-10.6 minutes on
   // hosted runners, past the 8-minute row target (docs/investigations/2026-11-01-twenty-runners.md section 9).
-  it should "split only the countries whose order replay ran past their row's target" in {
+  // And Spain since 2026-11-08 (owner: "make it the same as the rest"): a country folding its order replay into its boot
+  // created `order-compare` skipped, its `name:` template rendered raw (`${{ matrix.phase }}`) in the run graph.
+  it should "split every country's order replay" in {
     val convergence = RepoFile.read(".github/workflows/identity-model-convergence.yml")
     val split = RepoFile.matrixRows(convergence).filter(_.get("order-split").contains("true")).flatMap(_.get("code")).toSet
-    split shouldBe Set("pl", "de", "uk", "us")
+    split shouldBe Set("pl", "de", "uk", "es", "us")
+    RepoFile.matrixRows(convergence).filter(_.get("code").contains("es")).flatMap(_.get("order")) shouldBe Seq("convergenceSpainOrder")
     convergence should include("order-split:                   ${{ matrix.order-split == true }}")
   }
 
