@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /**
  * Listing model — decoded straight off `GET /api/repertoire`, whose JSON
- * is emitted by the server's `MovieController.apiRepertoire`. Field names
+ * is emitted by the server's `MovieApiController.apiRepertoire`. Field names
  * match the wire shape 1:1 (the iOS `Film` Codable decodes the same bytes),
  * so no `@SerialName` remaps are needed.
  *

@@ -23,7 +23,7 @@ import pl.kinowo.net.TEST_USER_AGENT
  * Why a live server instead of the recorded fixtures in [pl.kinowo.JsonDecodingTest]:
  * those snapshots only catch *client* drift; they go stale silently when the
  * server's JSON changes. Running against the live render closes that loop — a
- * `MovieController.apiRepertoire` shape change that breaks the Android decoder
+ * `MovieApiController.apiRepertoire` shape change that breaks the Android decoder
  * fails CI on the same PR that introduced it (the `mobile-local-server` job in
  * ci.yml boots the server and exports [KINOWO_LOCAL_URL]).
  *

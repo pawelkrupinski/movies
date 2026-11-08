@@ -29,7 +29,7 @@ class RepertoireRepositoryTest {
     private fun cache() = JsonListCache(tmp.newFolder(), "repertoire", Film.serializer())
 
     /** A backend whose `Last-Modified` is a single global value, exactly like the
-     *  real server (`MovieController.conditionalJson` reads one `movieCache.lastModified`
+     *  real server (`MovieApiController.conditionalJson` reads one `movieCache.lastModified`
      *  regardless of city): any `If-Modified-Since` equal to it 304s, whatever city. */
     private class GlobalLastModifiedApi(
         private val byCity: Map<String, List<Film>>,

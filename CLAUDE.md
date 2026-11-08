@@ -19,7 +19,7 @@ CI is the safety net, not the test plan: land once the layers are green locally,
 | `sbt itAll` (`*/src/it/scala/`, fakes + real cache/repository) | enrichment pipelines, cache layering, the read-model projection, anything crossing the `MovieService` ↔ `MovieRepository` ↔ `MovieCache` seam |
 | `sbt web/PageTest/test` (real Chrome over CDP, Twirl fixtures) | `web/src/main/assets/js/`, the inline `<script>` blocks in the repertoire templates, the rendered HTML shape those blocks read |
 | Playwright (`page-tests-playwright`; mobile + desktop × Chromium / Chrome / WebKit in CI, Firefox local-only) | visible UX changes — card-tap, pill rows, gestures, the empty / loading states |
-| iOS LocalServer (iOS decoders `[Film]`, `[FilmDetails]`, `CinemaCatalog` against a live fixture-server `/{city}/api/*`) | either side of that contract: the `MovieController` JSON shape or the iOS `Codable` models |
+| iOS LocalServer (iOS decoders `[Film]`, `[FilmDetails]`, `CinemaCatalog` against a live fixture-server `/{city}/api/*`) | either side of that contract: the `MovieApiController` JSON shape or the iOS `Codable` models |
 | `swift test --package-path ios` | any iOS model / parser logic, whether or not LocalServer is also needed |
 | `scripts/run-script-tests` (every `<tool>-test.sh` / `<tool>_test.py`, found by name — a new self-test needs no wiring) | any change under `scripts/`, `.github/scripts/`, `.github/actions/` or the mobile `*/scripts/`; `--changed <base>` narrows, `--linux` runs CI's ubuntu container |
 
