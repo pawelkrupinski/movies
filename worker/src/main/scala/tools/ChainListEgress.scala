@@ -1,6 +1,5 @@
 package tools
 
-import modules.wiring.EgressWiring
 import services.cinemas.roster.ChainDirectory
 import services.cinemas.roster.RosterFinding.DirectoryNotRead
 
@@ -39,6 +38,6 @@ final class ChainListEgress(direct: HttpFetch, proxyShards: Option[IndexedSeq[Ht
 object ChainListEgress {
   def fromConfiguration(direct: HttpFetch, configuration: settings.ProcessConfiguration, clock: java.time.Clock,
                         stopwatch: Stopwatch): ChainListEgress =
-    new ChainListEgress(direct, EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), TlsTrust.newContext()),
+    new ChainListEgress(direct, ResidentialShards.fromConfiguration(configuration, TlsTrust.newContext()),
       clock, stopwatch)
 }

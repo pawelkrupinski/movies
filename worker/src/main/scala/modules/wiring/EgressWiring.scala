@@ -5,7 +5,7 @@ import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
 import services.cinemas.uk.OdeonAuthHarvester
 import services.metrics.PaidEgressMetrics
-import tools.{HttpFetch, HttpOutcomeRecorder, ProxyChain, ProxyProbe, RealHttpFetch, ResidentialProxy, ResidentialProxyProbe, StickyShardHttpFetch}
+import tools.{HttpFetch, HttpOutcomeRecorder, ProxyChain, ProxyProbe, ResidentialProxy, ResidentialProxyProbe, ResidentialShards, StickyShardHttpFetch}
 
 /** Cinema-site egress routes: the residential-proxy chains the Cloudflare-blocked
  *  venues scrape through (plus the one Zyte route for a venue the proxy cannot
@@ -29,7 +29,7 @@ trait EgressWiring { self: WorkerWiring =>
   /** Where [[proxyShards]] comes from — a seam so the test wirings can refuse the proxy
    *  whatever environment they are handed: `TestWiring` answers None. */
   protected def residentialProxyShards: Option[IndexedSeq[HttpFetch]] =
-    EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
+    ResidentialShards.fromConfiguration(configuration, tlsContext)
 
   /** The residential proxy's health check — a CONNECT through each pool port — that a venue failing on the proxy is
    *  parked on and released by (`ProxyParking`); None where the proxy isn't configured. A seam like
@@ -162,10 +162,4 @@ trait EgressWiring { self: WorkerWiring =>
 object EgressWiring {
   /** The /uptime row the residential-proxy leg is metered under. */
   private val ResidentialProxyService = "Residential proxy"
-
-  /** One [[RealHttpFetch]] per Decodo pool IP, each pinned with its own cookie
-   *  jar — or None when the proxy isn't configured. */
-  def residentialShards(config: Option[RealHttpFetch.ProxyConfig],
-                        tls: javax.net.ssl.SSLContext): Option[IndexedSeq[RealHttpFetch]] =
-    config.map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg), tls)).toIndexedSeq)
 }

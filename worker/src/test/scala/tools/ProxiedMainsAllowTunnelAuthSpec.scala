@@ -19,7 +19,7 @@ class ProxiedMainsAllowTunnelAuthSpec extends AnyFlatSpec with Matchers {
   "every main that builds the residential proxy" should "allow Basic auth on its tunnels first" in {
     val proxied = sources.filter { path =>
       val text = Files.readString(path)
-      text.contains("def main(") && (text.contains("residentialShards(") || text.contains("ResidentialProxy.from"))
+      text.contains("def main(") && (text.contains("ResidentialShards.") || text.contains("residentialShards(") || text.contains("ResidentialProxy.from"))
     }
     proxied should not be empty
     withClue("these build the proxy without ProxyTunnelAuthentication.BasicAllowed.applyToJvm(): ") {

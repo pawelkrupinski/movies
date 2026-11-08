@@ -184,7 +184,7 @@ object FilmwebDiff {
     val titles  = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
     // Multikino, biletyna and ck105 refuse a datacenter runner: through the residential
     // proxy, as the worker reaches Multikino and biletyna, when the Decodo credentials are set.
-    val shards  = modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(process), TlsTrust.newContext())
+    val shards  = ResidentialShards.fromConfiguration(process, TlsTrust.newContext())
     val catalog = new CinemaScraperCatalog(http, venueClock = models.VenueClock.fixedOn(now.toLocalDate), clock = clock,
       titles = titles, proxyShards = shards)
     Run(options, clock, now, http, titles, catalog, process.githubCommit.value, new Report)
