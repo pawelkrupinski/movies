@@ -79,6 +79,14 @@ esac
 
 # ── lints: the registry's selection for the pushed paths, in the checkout's kept sbt server ──
 t=$SECONDS
+# The specs reading the GitOps manifests (`@gitops` rows) run only over manifests infra/bin/fetch-gitops put in THIS
+# checkout, as the hook does: an inherited PREPUSH_GITOPS=1 over a checkout without them failed every such spec and
+# refused a sound change (2026-11-08). A fetch that fails leaves them to the hook, which fetches and blocks itself.
+unset PREPUSH_GITOPS
+if [ -x infra/bin/fetch-gitops ] && KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" \
+        bounded "${PRECHECK_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops" 2>&1; then
+    export PREPUSH_GITOPS=1
+fi
 lints="$(git diff --name-only --no-renames "$base_sha...$head_sha" | scripts/hooks/pre-push --lint-plan)"
 if [ -z "$lints" ]; then
     report lints SKIP $t

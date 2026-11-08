@@ -21,7 +21,8 @@ cp "$REPO_ROOT/scripts/land-precheck" "$REPO_ROOT/scripts/tool-conventions.sh" "
 cat > "$repo/scripts/hooks/pre-push" <<STUB
 #!/usr/bin/env bash
 case "\$1" in
-    --lint-plan) grep -q '\.scala\$' && printf 'worker:tools.ALintSpec\ncommon:tools.BLintSpec\n'; exit 0 ;;
+    --lint-plan) grep -q '\.scala\$' && printf 'worker:tools.ALintSpec\ncommon:tools.BLintSpec\n'
+                 [ "\${PREPUSH_GITOPS:-}" = 1 ] && printf 'worker:deploy.AGitopsSpec\n'; exit 0 ;;
 esac
 echo "hook \$* only=\$PREPUSH_ONLY reuse=\${PREPUSH_NO_REUSE:-}" >> "$log"
 [ -z "\${HOOK_FAIL:-}" ] || { echo "driftguards: abc123: Drift-Slice missing" >&2; exit 1; }
@@ -37,7 +38,15 @@ cat > "$repo/scripts/run-script-tests" <<STUB
 echo "run-script-tests \$*" >> "$log"
 [ -z "\${SCRIPTTESTS_FAIL:-}" ] || { echo "FAIL 3s scripts/x-test.sh"; exit 1; }
 STUB
-chmod +x "$repo/scripts/hooks/pre-push" "$repo/scripts/sbt-warm" "$repo/scripts/land-precheck" "$repo/scripts/run-script-tests"
+# A stub infra/bin/fetch-gitops: records the call and where it puts the manifests, fails on $GITOPS_FAIL.
+mkdir -p "$repo/infra/bin"
+cat > "$repo/infra/bin/fetch-gitops" <<STUB
+#!/usr/bin/env bash
+echo "fetch-gitops dest=\${KINOWO_GITOPS_DEST:-}" >> "$log"
+[ -z "\${GITOPS_FAIL:-}" ] || { echo "could not reach github.com" >&2; exit 1; }
+STUB
+chmod +x "$repo/scripts/hooks/pre-push" "$repo/scripts/sbt-warm" "$repo/scripts/land-precheck" "$repo/scripts/run-script-tests" \
+  "$repo/infra/bin/fetch-gitops"
 printf 'one\n' > "$repo/notes.md"
 scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
 scratch_git "$repo" remote add origin "$origin"; scratch_git "$repo" push -q origin HEAD:main
@@ -55,7 +64,8 @@ check "each step reports PASS, the script self-tests skipped: no script changed"
   "$(grep -cE '^precheck (rebase|rules|lints) PASS \([0-9]+ s\)' "$testroot/out") $(grep -c '^precheck scripttests SKIP' "$testroot/out") $(grep -c '^run-script-tests' "$log")"
 check "the hook runs once, alone on the commit-rule and linter checks, over origin/main..HEAD, never reusing a pass" \
   "1 yes yes" "$(grep -c '^hook' "$log") $(grep -q -- '--checks-only [0-9a-f]*\.\.[0-9a-f]* only=allowlists driftguards newchecks judgements shellcheck actionlint oldrefs reuse=1' "$log" && echo yes || echo no) $(grep -q 'trailers\|redgate' "$log" && echo no || echo yes)"
-check "the selected lints run in one sbt-warm call, a testOnly per module" "sbt-warm common/Test/testOnly tools.BLintSpec; worker/Test/testOnly tools.ALintSpec" \
+check "the selected lints run in one sbt-warm call, a testOnly per module, the GitOps-reading specs among them once fetched" \
+  "sbt-warm common/Test/testOnly tools.BLintSpec; worker/Test/testOnly tools.ALintSpec deploy.AGitopsSpec" \
   "$(grep '^sbt-warm' "$log")"
 
 printf '\033[36m▸\033[0m a refusal\n'
@@ -96,4 +106,17 @@ check "a conflict with origin/main: exit 1, the file named" "1 1" "$(precheck) $
 check "...and the branch is left as it was" "$before $(scratch_git "$repo" rev-parse --abbrev-ref HEAD)" \
   "$(scratch_git "$repo" rev-parse HEAD) $(scratch_git "$repo" rev-parse --abbrev-ref HEAD)"
 check "...with nothing to do on the tree" "" "$(scratch_git "$repo" status --porcelain)"
+printf '\033[36m▸\033[0m the GitOps manifests: fetched before the lints, as the hook does, or their specs left to it\n'
+: > "$log"; precheck > /dev/null
+check "infra/bin/fetch-gitops runs once, into the checkout's infra/kubernetes" "1 yes" \
+  "$(grep -c '^fetch-gitops' "$log") $(grep -q "^fetch-gitops dest=.*/infra/kubernetes\$" "$log" && echo yes || echo no)"
+: > "$log"
+check "a fetch that fails: the GitOps-reading specs are left out (the hook runs them), the rest still run and pass" \
+  "1 sbt-warm common/Test/testOnly tools.BLintSpec; worker/Test/testOnly tools.ALintSpec" \
+  "$(GITOPS_FAIL=1 precheck > /dev/null; grep -c '^precheck lints PASS' "$testroot/out") $(grep '^sbt-warm' "$log")"
+: > "$log"
+check "an inherited PREPUSH_GITOPS=1 selects nothing when the fetch fails: no spec over missing manifests" \
+  "sbt-warm common/Test/testOnly tools.BLintSpec; worker/Test/testOnly tools.ALintSpec" \
+  "$(PREPUSH_GITOPS=1 GITOPS_FAIL=1 precheck > /dev/null; grep '^sbt-warm' "$log")"
+
 spec_summary
