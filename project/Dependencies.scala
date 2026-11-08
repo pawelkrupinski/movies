@@ -55,7 +55,7 @@ object Dependencies {
   val scalatestPlay    = ("org.scalatestplus.play"        %% "scalatestplus-play" % scalatestPlayVersion)
     .excludeAll(ExclusionRule("org.seleniumhq.selenium"), ExclusionRule("org.htmlunit"), ExclusionRule("net.sourceforge.htmlunit"))
   // (web's specs need them back for Play's own test kit: see web's UnitClasspathGuard.allowing in build.sbt)
-  val scalatestScalaCheck = "org.scalatestplus"          %% "scalacheck-1-19"    % scalatestScalaCheckVersion
+  val scalatestScalaCheck = "org.scalatestplus"          %% "scalacheck-1-20"    % scalatestScalaCheckVersion
   val prometheusCore   = "io.prometheus"                  %  "prometheus-metrics-core"               % prometheusVersion
   val prometheusText   = "io.prometheus"                  %  "prometheus-metrics-exposition-formats" % prometheusVersion
   val prometheusJvm    = "io.prometheus"                  %  "prometheus-metrics-instrumentation-jvm" % prometheusVersion
