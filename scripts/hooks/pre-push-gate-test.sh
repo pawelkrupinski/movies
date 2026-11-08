@@ -19,6 +19,10 @@ check "a red Main refuses it too" "1" "$(GH_MAIN="[$red]" push "$gbase..$plain")
 check "a red Identity takes refuses it too" "1" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_IT="[$red]" push "$gbase..$plain")"
 check "...naming the red run" "1" "$(grep -c 'Identity takes is RED on main: run 38520439037' "$gate/err")"
 check "...and a Fixes-Red: naming it lands" "0" "$(GH_IT="[$red,$green]" push "$gbase..$fixing")"
+# ...and before identity-takes.yml is on main (the push that adds it): gh finds no such workflow, which is no run, never
+# an unread gate (agentctl's 404 of 2026-11-08 held every landing for 1.5 h)
+check "a gate workflow not on main yet is no verdict, not an unread gate: a production push lands" "0 0" \
+  "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_ABSENT="Identity takes" push "$gbase..$plain") $(grep -c 'verdict unread' "$gate/err")"
 # THE GATE is Main, Identity model convergence and Identity takes only (the owner, 2026-10-27, 2026-11-08): the recording's verify no longer gates
 check "a red verify of the nightly recording no longer refuses it" "0" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$red]" push "$gbase..$plain")"
 check "a commit naming the red run in Fixes-Red: lands" "0" "$(GH_IMC="[$red,$green]" push "$gbase..$fixing")"

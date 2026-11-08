@@ -610,16 +610,25 @@ GateRetrySeconds="${PREPUSH_GATE_RETRY_SECONDS:-2}"
 # <episode>: its RED EPISODE, the decided runs since the workflow's last green on main (newest first, the newest itself
 # included; none when it is green), each `<run id>/<run number>` -- what a `Fixes-Red:` may name (A FIX MATCHES THE RED).
 newest_verdict() { # <workflow name> [<run id passed over>...]
-    local workflow=$1 skip
+    local workflow=$1 skip err rc=0
     shift
     skip="$(printf '"%s",' "$@")"
+    # A GATE WORKFLOW NOT YET ON MAIN HAS NO RUN THERE (Identity takes, 2026-11-08: added to the gate in the push that
+    # adds it): gh's "could not find any workflows named" is no verdict -- like no run -- never an unread gate. Any
+    # other error stays an error (THE GATE FAILS CLOSED).
+    err="$(mktemp)"
     bounded "$GhSeconds" \
         gh run list --workflow "$workflow" --branch main --limit 30 --json databaseId,number,status,conclusion,url \
         --jq '[.[] | select(.status == "completed" and (.conclusion | IN("cancelled", "skipped", "neutral", "") | not))
                    | select((.databaseId | tostring) | IN('"${skip%,}"') | not)] as $d
               | ($d[0] // empty) as $n
               | ([first(range($d | length) as $i | select($d[$i].conclusion == "success") | $i)] | .[0] // ($d | length)) as $g
-              | "\($n.conclusion) \($n.databaseId) \($n.url) \([$d[:$g][] | "\(.databaseId)/\(.number // "")"] | join(" "))"'
+              | "\($n.conclusion) \($n.databaseId) \($n.url) \([$d[:$g][] | "\(.databaseId)/\(.number // "")"] | join(" "))"' \
+        2> "$err" || rc=$?
+    if [ "$rc" != 0 ] && grep -qi 'could not find any workflows named' "$err"; then rc=0; fi
+    [ "$rc" = 0 ] || cat "$err" >&2
+    rm -f "$err"
+    return "$rc"
 }
 
 # A FIX MATCHES THE RED IT FIXES, NOT ONE RUN NUMBER (2026-11-05). Every push landing while main is red (tools-only commits

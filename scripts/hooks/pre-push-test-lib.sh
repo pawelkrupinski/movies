@@ -40,6 +40,8 @@ ghstub="$testroot/gh"; mkdir -p "$ghstub"
 cat > "$ghstub/gh" <<'STUB'
 #!/usr/bin/env bash
 [ -n "${GH_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+# a gate workflow not on the default branch yet (gh's own words for it)
+case " $* " in *" --workflow ${GH_ABSENT:-<none>} "*) echo "could not find any workflows named ${GH_ABSENT}" >&2; exit 1 ;; esac
 # a gh that never answers: it records its pid in $GH_HANGS and blocks until something kills it
 [ -n "${GH_HANGS:-}" ] && { echo $$ >> "$GH_HANGS"; exec sleep 86400; }
 # a gh that answers but says something on stderr first (a deprecation, an update notice)
