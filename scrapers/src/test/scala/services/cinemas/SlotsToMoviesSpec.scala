@@ -3,7 +3,7 @@ package services.cinemas
 import org.scalatest.matchers.should.Matchers
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.common.SlotsToMovies
+import services.cinemas.common.{ScrapedSlot, SlotsToMovies}
 
 import java.time.LocalDateTime
 
@@ -150,5 +150,37 @@ class SlotsToMoviesSpec extends AnyFlatSpec with Matchers {
     out.map(_.movie.title) shouldBe Seq("Dune")
     out.head.posterUrl shouldBe Some("p1")
     out.head.showtimes.map(_.dateTime) shouldBe Seq(dt(16), dt(18), dt(20))
+  }
+
+  // The plain-listing clients (Nowa Fala, Kijów, Amok, ...) moved onto `basic` from their own folds: each took a film's
+  // poster and page as the FIRST its slots carry (a slot without one does not hide a later slot's), and each slot's
+  // hall and format onto its showtime. A different pick would silently swap posters across those venues.
+  "basic" should "take a film's poster and page as the first its slots carry, and each slot's room and format" in {
+    val out = SlotsToMovies.basic(Seq(
+      ScrapedSlot("Dune", dt(18), bookingUrl = Some("b1")),
+      ScrapedSlot("Dune", dt(20), bookingUrl = Some("b2"), filmUrl = Some("f2"), posterUrl = Some("p2"), room = Some("Sala 2"), format = List("3D")),
+      ScrapedSlot("Dune", dt(21), filmUrl = Some("f3"), posterUrl = Some("p3")),
+      ScrapedSlot("Wicked", dt(19))
+    ), cinema)
+    out.map(_.movie.title) shouldBe Seq("Dune", "Wicked")
+    val dune = out.head
+    dune.posterUrl shouldBe Some("p2")
+    dune.filmUrl shouldBe Some("f2")
+    dune.cinema shouldBe cinema
+    dune.showtimes.map(s => (s.dateTime, s.bookingUrl, s.room, s.format)) shouldBe Seq(
+      (dt(18), Some("b1"), None, Nil), (dt(20), Some("b2"), Some("Sala 2"), List("3D")), (dt(21), None, None, Nil))
+    out(1).posterUrl shouldBe None
+    out(1).filmUrl shouldBe None
+  }
+
+  it should "dedup by time and booking link unless the client names its own key" in {
+    val slots = Seq(
+      ScrapedSlot("Dune", dt(20), bookingUrl = Some("b1"), room = Some("Sala 1")),
+      ScrapedSlot("Dune", dt(20), bookingUrl = Some("b2"), room = Some("Sala 1")),
+      ScrapedSlot("Dune", dt(20), bookingUrl = Some("b1"), room = Some("Sala 2")))
+    SlotsToMovies.basic(slots, cinema).head.showtimes.map(s => (s.bookingUrl, s.room)) shouldBe
+      Seq((Some("b1"), Some("Sala 1")), (Some("b2"), Some("Sala 1")))
+    SlotsToMovies.basic(slots, cinema, distinctBy = SlotsToMovies.byTimeAndRoom).head.showtimes.map(s => (s.bookingUrl, s.room)) shouldBe
+      Seq((Some("b1"), Some("Sala 1")), (Some("b1"), Some("Sala 2")))
   }
 }
