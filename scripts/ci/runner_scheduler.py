@@ -75,6 +75,7 @@ Tested by runner_scheduler_test.py.
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import glob
 import json
 import os
@@ -128,6 +129,9 @@ class Config:
     builder_cgroups: str = "/sys/fs/cgroup/ci.slice/ci-check.slice/github-runner-bitcashier-gh-builder-*.service"
     deployer_cgroups: str = "/sys/fs/cgroup/ci.slice/ci-deploy.slice/github-runner-bitcashier-gh-deployer-*.service"
     idle_stop_seconds: int = 180
+    # a class whose oldest queued job waited this long with none of it starting is said as STARVED, with the limit that
+    # holds it (Scala Steward #145, 2026-11-08: an hour queued on movies-measure, its stuck red naming no cause)
+    starve_report_seconds: int = 900
     tick_seconds: int = 30
     state_dir: str = "/run/movies-runner"
     unit: str = "movies-runner"
@@ -359,6 +363,34 @@ def demand_of(jobs: list) -> dict:
         if classes:
             out[min(classes, key=CLASSES.index)] += 1
     return out
+
+
+def iso_seconds(stamp: str) -> float:
+    """A GitHub timestamp (`2026-11-08T12:23:21Z`) as epoch seconds."""
+    return datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+
+
+def oldest_waits(jobs: list, now: float) -> dict:
+    """{class: seconds its oldest queued job has waited}, from jobs-API job dicts (`created_at`), for classes with one."""
+    out = {}
+    for job in jobs:
+        classes = [CLASS_OF[l] for l in job.get("labels", []) if l in CLASS_OF]
+        if job.get("status") != "queued" or not classes or not job.get("created_at"):
+            continue
+        cls = min(classes, key=CLASSES.index)
+        out[cls] = max(out.get(cls, 0), int(now - iso_seconds(job["created_at"])))
+    return out
+
+
+def starved(cfg: Config, d: Decision, demand: dict, waits: dict) -> list:
+    """A line per class queued past `starve_report_seconds` with none of it starting this tick: how many, how long the
+    oldest waited, and what holds it -- bitcashier saturated, or each admission limit at zero (memory, slice, cpu,
+    slots)."""
+    holding = ["bitcashier saturated"] if d.saturated else \
+        [k for k in ("memory", "slice", "cpu", "slots") if d.limits.get(k) is not None and d.limits[k] <= 0]
+    started = {cls for _, cls in d.starts}
+    return [f"STARVED {cls}: {demand[cls]} queued, the oldest {waits[cls] // 60} min, held by {', '.join(holding) or 'nothing named'}"
+            for cls in CLASSES if demand.get(cls) and cls not in started and waits.get(cls, 0) >= cfg.starve_report_seconds]
 
 
 # ── the host: bitcashier's runners, ours, GitHub ───────────────────────────────────────────────────────────────────
@@ -609,7 +641,8 @@ class GitHub:
 def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeter, dry_run: bool = False) -> Decision:
     now = time.time()
     bc = Bitcashier(busy_runners(cfg.builder_cgroups), busy_runners(cfg.deployer_cgroups))
-    demand = demand_of(reader.queued_jobs())
+    jobs = reader.queued_jobs()
+    demand = demand_of(jobs)
     r = read_readings(cfg, cpu, now)
     instances = host.instances(now)
     d = decide(cfg, bc, demand, instances, now, r)
@@ -624,6 +657,8 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeter, dry_run: bool =
           f"{gib(r.cpu_busy_cores)}/{r.cpu_cores}; queued {demand}; "
           f"ours {ours}; "
           f"start {list(d.starts)} stop {list(d.stops)}", flush=True)
+    for line in starved(cfg, d, demand, oldest_waits(jobs, now)):
+        print(line, flush=True)
     if dry_run:
         return d
     for slot in d.stops:

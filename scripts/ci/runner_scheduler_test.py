@@ -415,6 +415,39 @@ class DemandTest(unittest.TestCase):
         self.assertEqual(rs.decide(CFG, IDLE, demand, [], NOW, ROOMY).starts, ())
 
 
+class StarvedTest(unittest.TestCase):
+    """A class whose oldest queued job has waited past `starve_report_seconds` while nothing of it starts is said, with
+    the limit that holds it -- Scala Steward #145 (2026-11-08) sat queued for an hour on movies-measure while every tick
+    read `room 0` and only the full `held by` dict said why, so its stuck red named no cause."""
+
+    def jobs(self, *specs):
+        return [{"status": "queued", "labels": [label], "created_at": created} for label, created in specs]
+
+    def test_the_oldest_queued_job_of_each_class_says_how_long_it_has_waited(self):
+        now = rs.iso_seconds("2026-11-08T13:28:21Z")
+        waits = rs.oldest_waits(self.jobs(("movies-measure", "2026-11-08T12:23:21Z"), ("movies-measure", "2026-11-08T13:00:00Z"),
+                                          ("movies-check", "2026-11-08T13:27:21Z"), ("ubuntu-26.04", "2026-11-08T10:00:00Z")), now)
+        self.assertEqual(waits, {"measure": 3900, "check": 60})
+
+    def test_a_measurement_held_by_the_cpu_for_an_hour_is_said_with_its_cause(self):
+        busy = readings(cpu_busy=31, cores=CORES)
+        d = rs.decide(CFG, rs.Bitcashier(10, 0), queued(measure=4), [], NOW, busy)
+        self.assertEqual(d.starts, ())
+        self.assertEqual(rs.starved(CFG, d, queued(measure=4), {"measure": 3900}),
+                         ["STARVED measure: 4 queued, the oldest 65 min, held by cpu"])
+
+    def test_a_class_that_starts_or_has_not_waited_long_is_not_starved(self):
+        d = rs.decide(CFG, IDLE, queued(measure=1), [], NOW, ROOMY)
+        self.assertEqual(rs.starved(CFG, d, queued(measure=1), {"measure": 3900}), [])
+        busy = rs.decide(CFG, rs.Bitcashier(10, 0), queued(measure=4), [], NOW, readings(cpu_busy=31, cores=CORES))
+        self.assertEqual(rs.starved(CFG, busy, queued(measure=4), {"measure": 600}), [])
+
+    def test_bitcashier_saturated_is_the_cause_it_names(self):
+        d = rs.decide(CFG, rs.Bitcashier(CFG.builders, CFG.deployers), queued(measure=2), [], NOW, ROOMY)
+        self.assertEqual(rs.starved(CFG, d, queued(measure=2), {"measure": 1800}),
+                         ["STARVED measure: 2 queued, the oldest 30 min, held by bitcashier saturated"])
+
+
 class ConfigTest(unittest.TestCase):
     def test_every_class_needs_a_size(self):
         with self.assertRaises(ValueError):
