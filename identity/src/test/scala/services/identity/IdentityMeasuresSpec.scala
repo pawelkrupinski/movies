@@ -1221,6 +1221,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     PinnedGateMeasures.directorRelation(Seq("Edmund Goulding", "Sam Wood"), Seq("Sam Wood")) shouldBe Category("same_person")
   }
 
+  "a listing's countries" should "read through one JDK table, each measure under its own key" in {
+    // The live and the pinned measures share the table of country spellings; only the key a
+    // spelling is looked up by differs. The live key drops a possessive "'s", the pinned one,
+    // frozen with its artefact, does not: the shared table must not make a pinned lookup live.
+    Seq("Polska", "Deutschland", "United Kingdom", "GBR", "pl").foreach { name =>
+      withClue(name)(PinnedGateMeasures.countryCode(name) shouldBe IdentityMeasures.countryCode(name))
+    }
+    PinnedGateMeasures.countryCode("Poland's") shouldBe None
+    IdentityMeasures.countryCode("Poland's") shouldBe Some("PL")
+    PinnedGateMeasures.countryRelation(Seq("Francja"), Some(Seq("FR"))) shouldBe Category("match")
+    PinnedGateMeasures.countryRelation(Seq("Atlantis"), Some(Seq("FR"))) shouldBe Missing("unmapped")
+  }
+
   "a director credited in another script" should "be compared in Latin letters, not read as incomparable" in {
     // TMDB credits a film's director in the deployment language's name for them, which is often
     // the native one ("毕赣", "Яков Протазанов"); the venue prints the Latin spelling.

@@ -100,37 +100,16 @@ object PinnedGateMeasures {
         }
     }
 
-  /** ISO 3166-1 alpha-2 code of a country as a venue spells it, read from the JDK's own
-   *  country names in the deployment languages and its alpha-2/alpha-3 codes. No curated table:
-   *  a spelling the JDK does not know is unmapped. */
-  private lazy val isoByName: Map[String, String] = {
-    val languages = Seq("pl", "en", "de", "es", "fr", "it").map(Locale.forLanguageTag)
-    Locale.getISOCountries.iterator.flatMap { iso =>
-      val l = Locale.of("", iso)
-      // A country with no alpha-3 code throws; it simply has no such spelling.
-      (languages.map(l.getDisplayCountry) ++ Seq(iso) ++ scala.util.Try(l.getISO3Country).toOption)
-        .map(key).filter(_.nonEmpty).map(_ -> iso)
-    }.toMap
-  }
+  /** ISO 3166-1 alpha-2 code of a country as a venue spells it: the JDK-derived table the live
+   *  measures read ([[YearRuntimeMeasures]]), looked up under THIS object's frozen [[key]]. The
+   *  table's own keys are identical under either key function (no JDK country name carries the
+   *  possessive the live key drops); a spelling's key need not be, so the lookup stays pinned. */
+  def countryCode(name: String): Option[String] = YearRuntimeMeasures.isoCountryOfKey(key(name))
 
-  def countryCode(name: String): Option[String] = isoByName.get(key(name))
+  def countryRelation(listing: Seq[String], film: Option[Seq[String]]): Measure =
+    YearRuntimeMeasures.countryRelation(listing, film, countryCode)
 
-  def countryRelation(listing: Seq[String], film: Option[Seq[String]]): Measure = {
-    val own = listing.flatMap(countryCode).toSet
-    if (listing.isEmpty) MissingListing
-    else if (own.isEmpty) Missing("unmapped")
-    else film.map(_.toSet) match {
-      case None                => MissingFilm
-      case Some(fc) if fc.isEmpty => MissingFilm
-      case Some(fc)            => Category(if ((own intersect fc).nonEmpty) "match" else "mismatch")
-    }
-  }
-
-  private def delta(a: Option[Int], b: Option[Int]): Measure = (a, b) match {
-    case (None, _)          => MissingListing
-    case (_, None)          => MissingFilm
-    case (Some(x), Some(y)) => Number((x - y).toDouble)
-  }
+  private def delta(a: Option[Int], b: Option[Int]): Measure = YearRuntimeMeasures.delta(a, b)
 
   private def absDelta(a: Option[Int], b: Option[Int]): Measure = delta(a, b) match {
     case Number(d) => Number(math.abs(d))

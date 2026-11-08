@@ -23,10 +23,15 @@ private[identity] object YearRuntimeMeasures {
     }.toMap
   }
 
-  def countryCode(name: String): Option[String] = isoByName.get(key(name))
+  def countryCode(name: String): Option[String] = isoCountryOfKey(key(name))
 
-  def countryRelation(listing: Seq[String], film: Option[Seq[String]]): Measure = {
-    val own = listing.flatMap(countryCode).toSet
+  /** The ISO code of a country spelling already turned into a comparison key — what a frozen
+   *  measure (`PinnedGateMeasures`) looks a spelling up by under its own key function. */
+  private[identity] def isoCountryOfKey(spellingKey: String): Option[String] = isoByName.get(spellingKey)
+
+  /** How a listing's countries relate to the film's, the listing's read through `code`. */
+  def countryRelation(listing: Seq[String], film: Option[Seq[String]], code: String => Option[String] = countryCode): Measure = {
+    val own = listing.flatMap(code).toSet
     if (listing.isEmpty) MissingListing
     else if (own.isEmpty) Missing("unmapped")
     else film.map(_.toSet) match {
