@@ -49,7 +49,9 @@ ios/
 │   │   ├── FilmCardView.swift      Poster + title + actions
 │   │   ├── ShowingsView.swift      Per-day / per-cinema / per-time layout
 │   │   ├── RatingBadgesView.swift  IMDb / Metacritic / RT / Filmweb pills
-│   │   ├── FiltersBar.swift        Search field + date pills
+│   │   ├── TopBar.swift            Brand mark + date pills + Filtry button
+│   │   ├── SearchBar.swift         Search field (bottom pill / inline on the bar)
+│   │   ├── FiltersSheet.swift      The Filtry sheet
 │   │   └── FlowLayout.swift        Wrapping-row `Layout` (flex-wrap)
 │   └── Assets.xcassets/
 ├── Package.swift                  SPM manifest — KinowoCore library + tests

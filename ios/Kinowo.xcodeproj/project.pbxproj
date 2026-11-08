@@ -44,7 +44,13 @@
 		DD0000000000000000000C /* FilmCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000C /* FilmCardView.swift */; };
 		DD0000000000000000000D /* ShowingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000D /* ShowingsView.swift */; };
 		DD0000000000000000000E /* RatingBadgesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000E /* RatingBadgesView.swift */; };
-		DD0000000000000000000F /* FiltersBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000F /* FiltersBar.swift */; };
+		DD0000000000000000B801 /* LocalizedCaptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000B801 /* LocalizedCaptions.swift */; };
+		DD0000000000000000B802 /* TopBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000B802 /* TopBar.swift */; };
+		DD0000000000000000B803 /* SearchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000B803 /* SearchBar.swift */; };
+		DD0000000000000000B804 /* ListingOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000B804 /* ListingOverlays.swift */; };
+		DD0000000000000000B805 /* FiltersSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000B805 /* FiltersSheet.swift */; };
+		DD0000000000000000B806 /* HiddenFilmsList.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000B806 /* HiddenFilmsList.swift */; };
+		DD0000000000000000B807 /* NameFilterList.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000B807 /* NameFilterList.swift */; };
 		DD00000000000000000011 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000011 /* FlowLayout.swift */; };
 		DD00000000000000000099 /* ShowtimePillMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000099 /* ShowtimePillMetrics.swift */; };
 		DD00000000000000000098 /* RatingBadgeMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000098 /* RatingBadgeMetrics.swift */; };
@@ -168,7 +174,13 @@
 		CC0000000000000000000C /* FilmCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmCardView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000D /* ShowingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowingsView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000E /* RatingBadgesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgesView.swift; sourceTree = "<group>"; };
-		CC0000000000000000000F /* FiltersBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiltersBar.swift; sourceTree = "<group>"; };
+		CC0000000000000000B801 /* LocalizedCaptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizedCaptions.swift; sourceTree = "<group>"; };
+		CC0000000000000000B802 /* TopBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopBar.swift; sourceTree = "<group>"; };
+		CC0000000000000000B803 /* SearchBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBar.swift; sourceTree = "<group>"; };
+		CC0000000000000000B804 /* ListingOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListingOverlays.swift; sourceTree = "<group>"; };
+		CC0000000000000000B805 /* FiltersSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiltersSheet.swift; sourceTree = "<group>"; };
+		CC0000000000000000B806 /* HiddenFilmsList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFilmsList.swift; sourceTree = "<group>"; };
+		CC0000000000000000B807 /* NameFilterList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameFilterList.swift; sourceTree = "<group>"; };
 		CC00000000000000000011 /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		CC00000000000000000099 /* ShowtimePillMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimePillMetrics.swift; sourceTree = "<group>"; };
 		CC00000000000000000098 /* RatingBadgeMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingBadgeMetrics.swift; sourceTree = "<group>"; };
@@ -389,7 +401,13 @@
 				CC00000000000000000018 /* FilmDetailView.swift */,
 				CC0000000000000000000D /* ShowingsView.swift */,
 				CC0000000000000000000E /* RatingBadgesView.swift */,
-				CC0000000000000000000F /* FiltersBar.swift */,
+				CC0000000000000000B801 /* LocalizedCaptions.swift */,
+				CC0000000000000000B802 /* TopBar.swift */,
+				CC0000000000000000B803 /* SearchBar.swift */,
+				CC0000000000000000B804 /* ListingOverlays.swift */,
+				CC0000000000000000B805 /* FiltersSheet.swift */,
+				CC0000000000000000B806 /* HiddenFilmsList.swift */,
+				CC0000000000000000B807 /* NameFilterList.swift */,
 				CC00000000000000000011 /* FlowLayout.swift */,
 				CC00000000000000000099 /* ShowtimePillMetrics.swift */,
 				CC00000000000000000098 /* RatingBadgeMetrics.swift */,
@@ -574,7 +592,13 @@
 				DD0000000000000000000C /* FilmCardView.swift in Sources */,
 				DD0000000000000000000D /* ShowingsView.swift in Sources */,
 				DD0000000000000000000E /* RatingBadgesView.swift in Sources */,
-				DD0000000000000000000F /* FiltersBar.swift in Sources */,
+				DD0000000000000000B801 /* LocalizedCaptions.swift in Sources */,
+				DD0000000000000000B802 /* TopBar.swift in Sources */,
+				DD0000000000000000B803 /* SearchBar.swift in Sources */,
+				DD0000000000000000B804 /* ListingOverlays.swift in Sources */,
+				DD0000000000000000B805 /* FiltersSheet.swift in Sources */,
+				DD0000000000000000B806 /* HiddenFilmsList.swift in Sources */,
+				DD0000000000000000B807 /* NameFilterList.swift in Sources */,
 				DD00000000000000000011 /* FlowLayout.swift in Sources */,
 				DD00000000000000000099 /* ShowtimePillMetrics.swift in Sources */,
 				DD00000000000000000098 /* RatingBadgeMetrics.swift in Sources */,

@@ -765,7 +765,7 @@ is `None` for both. It is the single lever the whole product hangs off:
 | --- | --- |
 | `_navbar.scala.html` country `<select>` | not rendered (guarded on `sizeIs > 1`) |
 | `models.Catalog.json` → `/api/catalog` | country + its cities absent from the payload |
-| iOS `CityGate` / `FiltersBar`, Android `CountryPicker` / filters sheet | pickers hidden — they read the catalog |
+| iOS `CityGate` / `FiltersSheet`, Android `CountryPicker` / filters sheet | pickers hidden — they read the catalog |
 | `Country.ogOrigin` | falls back to the deployed host, so share links resolve |
 | `CountryConvergenceBehaviour.productionIsLive` | the ±5% production band is cancelled for that country |
 | `_countrySwitch` / `_debugNavbar` (admin, debug) | render the country's name instead of a switcher |

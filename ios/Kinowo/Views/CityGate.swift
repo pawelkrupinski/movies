@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A country's own name, in the resolved UI language — what the country
 /// picker's pill (`CityChoiceView.countryPicker`, below) and the Filtry
-/// sheet's current-selection label (`FiltersBar.computeCurrentCityLabel`)
+/// sheet's current-selection label (`FiltersSheet.computeCurrentCityLabel`)
 /// render in place of the old fixed `Country.displayName` (see that field's
 /// doc comment for the full history).
 ///
@@ -20,7 +20,7 @@ import SwiftUI
 /// Lives here rather than as a `Country` extension in `Models/Country.swift`:
 /// that file compiles into the Foundation-only `KinowoAuth` SPM target,
 /// which ships no localized bundle (see `DateFilter.label`'s header comment
-/// in `FiltersBar.swift` for the identical reasoning), so `String(localized:)`
+/// in `LocalizedCaptions.swift` for the identical reasoning), so `String(localized:)`
 /// there would resolve to the bare key under `swift test`.
 enum CountryDisplayName {
     static func localized(_ code: String, locale: Locale) -> String {
