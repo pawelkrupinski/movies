@@ -43,6 +43,39 @@ class AsyncIdentityHistorySpec extends AnyFlatSpec with Matchers {
     store.written.all.map(_.id) shouldBe (1 to 11).map(i => s"u$i")
   }
 
+  "a backlog of one listing's changes" should "hold only its latest, from what the first one replaced, and drop none" in {
+    // A re-resolve after a model bump with Mongo down moves one listing several times: every intermediate change took a
+    // slot of the queue, and the queue's overflow dropped the newest -- the listings' latest values, the ones that matter.
+    val store   = new Blocked
+    val dropped = new AtomicLong
+    val history = new AsyncIdentityHistory(store, n => { dropped.addAndGet(n); () }, capacity = 10)
+    def doc(v: Int) = new org.bson.BsonDocument("v", new org.bson.BsonInt32(v))
+    def change(listing: Int, step: Int) =
+      HistoryEntry(HistoryEntry.Listing, s"L$listing", 100L * step + listing, Some(doc(step)), Some(doc(step + 1)), "b1")
+    history.append(Seq(change(0, 0)))   // the writer holds this one while the store waits
+    store.entered.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) shouldBe true
+    for (step <- 1 to 30; listing <- 1 to 5) history.append(Seq(change(listing, step)))   // 150 entries, 5 listings
+    history.queued shouldBe 5
+    dropped.get shouldBe 0L
+    store.open.countDown()
+    history.stopWithin(10.seconds)
+    (1 to 5).foreach { listing =>
+      val written = store.written.of(HistoryEntry.Listing, Seq(s"L$listing"))
+      written.map(e => (e.at, e.before, e.after)) shouldBe Seq((3000L + listing, Some(doc(1)), Some(doc(31))))
+    }
+  }
+
+  "a backlog of one listing's takes" should "keep every one of them: each take change is a moment its flips are read from" in {
+    val writerOpen = new CountDownLatch(1)
+    val store   = new CallerInserts(writerOpen)
+    val history = new AsyncIdentityHistory(store, _ => ())
+    store.down = true
+    (1 to 4).foreach(i => history.append(Seq(takeEntry(1).copy(at = 1000L + i))))   // the first fails, the rest queue
+    writerOpen.countDown()
+    history.stopWithin(10.seconds)
+    store.written.of(HistoryEntry.Take, Seq("N|Kino|page|Film 1")).map(_.at) shouldBe (1001L to 1004L)
+  }
+
   "a take change" should "be in the store when append returns, so a worker killed with a backlog queued loses no take" in {
     // The store stalls the writer's backlog (a batch of listing moves, Mongo slow), then the worker dies — an OOM or a
     // SIGKILL, no shutdown hook, so no stop() writes the queue out. A take queued behind that backlog would be lost, and

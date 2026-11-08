@@ -22,8 +22,9 @@ trait IdentityModelWiring { self: WorkerWiring =>
   /** The identity system's history (`identity_history`, a month of it): every answer, venue page and listing the model
    *  read as it moved, every read that failed, and every take the projection moved with what decided it — what
    *  `scripts/identity-replay` resolves a past moment from and `scripts/identity-why` explains a take change by. */
-  // Written on a thread of its own (AsyncIdentityHistory): no caller waits on it, a full queue drops and counts --
-  // except the take entries, written with the projection (a killed worker loses no take).
+  // Written on a thread of its own (AsyncIdentityHistory): no caller waits on it, a document's queued changes coalesce
+  // into its latest, a full queue drops and counts -- except the take entries, written with the projection (a killed
+  // worker loses no take).
   lazy val identityHistory: services.identity.adapters.IdentityHistory =
     services.identity.adapters.IdentityHistory.composed(
       mongoConnection.database.fold[services.identity.adapters.IdentityHistory](services.identity.adapters.IdentityHistory.Discard)(db =>
