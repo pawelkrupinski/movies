@@ -240,12 +240,12 @@
     if (search) search.blur();
   }, true);
 
-  // True when any filter the Filtry panel exposes is narrowed away from its
-  // default — i.e. exactly the axes "Wyczyść" (`resetFormatFilter`) puts back.
-  // Drives the funnel icon's active state, the web counterpart of the iOS
-  // `filtersActive` flag (FiltersBar) and Android `vm.filtersActive`. Sort
-  // order is deliberately excluded: it reorders, it doesn't filter anything
-  // out, so the funnel staying neutral when you only re-sort is the honest cue.
+  // True when anything narrows the listing — i.e. exactly what "Wyczyść"
+  // (`resetFormatFilter`) puts back. Drives the funnel icon's active state; the
+  // same rule as iOS `ListingFilters.isActive` and Android
+  // `FilterFacets.filtersActive`. Sort order is deliberately excluded: it
+  // reorders, it doesn't filter anything out, so the funnel staying neutral when
+  // you only re-sort is the honest cue (search has its own field).
   function filtersActive() {
     if (getFormatFilter().length > 0) return true;     // Wymiar / Wersja / IMAX
     if (getFromMinutes() !== null)    return true;      // Od godziny
@@ -256,6 +256,7 @@
     if (getSubmenuFilter('room')     !== null) return true;
     // Cinema picker (absent on pages without the Filtry UI): any cinema in THIS city switched off.
     if (document.getElementById('cinema-list') && disabledCinemasInCity().length > 0) return true;
+    if (getHidden().length > 0) return true;
     return false;
   }
 
@@ -346,10 +347,15 @@
       }
       updateSubmenuCount(key);
     });
-    // Re-enable every cinema in this city — the picker lives in the same panel
-    // and counts as a filter (the funnel icon lights for it), so "Wyczyść"
-    // clears it too, matching the iOS/Android Wyczyść which resets disabledCinemas.
+    // Re-enable every cinema in this city and un-hide every hidden film: both
+    // narrow the listing, so the funnel lights for them and "Wyczyść" clears
+    // them, as the iOS and Android Wyczyść do.
     if (document.getElementById('cinema-list')) toggleAllCinemas(true);
+    if (getHidden().length > 0) {
+      setHidden([]);
+      clearHiddenFilmsOnServer();
+      updateNavbar();
+    }
     setPanelOpen(document.getElementById('format-panel'), false);
     onFormatChange();
   }
@@ -939,7 +945,10 @@
   // `Wyczyść` clears the whole set and closes the modal. `×`, a
   // backdrop click and Escape close without changing the set.
 
+  // The hidden-films row and the funnel: every hide / restore / un-hide-all
+  // lands here, and a hidden film lights the funnel (`filtersActive`).
   function updateNavbar() {
+    updateFormatBtn();
     const hidden = getHidden();
     const row     = document.getElementById('hidden-row');
     const divider = document.getElementById('hidden-row-divider');
@@ -2833,6 +2842,7 @@
       try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
 
       applyFilters();
+      updateFormatBtn();   // the merged hidden set may light or clear the funnel
     } catch (e) { /* network blew up — localStorage is still usable */ }
   }
 

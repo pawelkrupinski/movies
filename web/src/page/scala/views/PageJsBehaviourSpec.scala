@@ -3187,6 +3187,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Every narrowing lights the funnel, a hidden film included (the rule iOS's
+  // `ListingFilters.isActive` and Android's `FilterFacets.filtersActive` share),
+  // and Wyczyść clears exactly what lights it — so it un-hides, and the funnel
+  // goes back to neutral.
+  it should "light the Filtry funnel for a hidden film, and un-hide it on Wyczyść" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      pinDateFilterAnytime(page)
+      val lit = "document.getElementById('format-filter-btn').classList.contains('filters-active')"
+      page.evalBool(lit) shouldBe false
+      page.eval("document.querySelector('.hide-btn').click()")
+      page.evalInt("getHidden().length") shouldBe 1
+      page.evalBool(lit) shouldBe true
+      page.eval("resetFormatFilter()")
+      page.evalInt("getHidden().length") shouldBe 0
+      page.evalBool(lit) shouldBe false
+    }
+  }
+
   // Clicking outside the open panel must do exactly ONE thing — dismiss it.
   // Regression: the same outside-click also bubbled to the card-tap handler
   // (or followed the link under the cursor) and navigated to /movie, so closing
