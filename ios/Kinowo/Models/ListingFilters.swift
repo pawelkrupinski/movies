@@ -41,10 +41,10 @@ struct FilterFacets: Equatable {
     }
 }
 
-/// The Filtry sheet's session axes — sort, format and the four name exclusions:
-/// exactly what its Wyczyść button resets. Ephemeral, owned by `ContentView`;
-/// the cinema picks and hidden films are persistent preferences and live in
-/// `UserPreferences` instead.
+/// The Filtry sheet's session axes — sort, format and the four name exclusions.
+/// Ephemeral, owned by `ContentView`; the cinema picks and hidden films persist
+/// in `UserPreferences`, but they narrow the listing all the same, so they light
+/// the button (`isActive`) and Wyczyść clears them too (`Cleared`).
 struct ListingFilters: Equatable {
     var sort: SortOption = .earliest
     var format: FormatFilter = .empty
@@ -74,6 +74,22 @@ struct ListingFilters: Equatable {
             || !excludedGenres.isEmpty
             || !excludedDirectors.isEmpty
             || !excludedCast.isEmpty
+    }
+
+    /// What Wyczyść leaves: every input `isActive` reads back at rest, so the
+    /// button is unlit once it closes. The session axes go back to `.empty`, the
+    /// hidden films are un-hidden, and this city's cinemas are ticked again; a
+    /// cinema unticked in another city stays unticked (it narrows nothing here).
+    /// The same reset as Android's `clearFilters` and the web's
+    /// `resetFormatFilter`.
+    struct Cleared: Equatable {
+        let filters = ListingFilters.empty
+        let disabledCinemas: Set<String>
+        let hidden: Set<String> = []
+
+        init(disabledCinemas: Set<String>, cityCinemas: [String]) {
+            self.disabledCinemas = disabledCinemas.subtracting(cityCinemas)
+        }
     }
 
     /// The filtered, sorted listing of one day page — every `TabView` page

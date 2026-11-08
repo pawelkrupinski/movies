@@ -114,6 +114,25 @@ final class ListingFiltersTests: XCTestCase {
         XCTAssertFalse(active(filters))
     }
 
+    /// Wyczyść resets exactly what lights the button: from every narrowing set
+    /// at once, what it leaves lights nothing. Another city's cinema pick
+    /// survives — it narrows nothing here.
+    func testWyczyscLeavesNothingThatLightsTheButton() {
+        let films = [playing("A", at: "Muza")]
+        var filters = ListingFilters.empty
+        filters.format.dimension = "3D"
+        filters.excludedCast = ["X"]
+        XCTAssertTrue(filters.isActive(over: films, cityCinemas: films.allCinemas(),
+                                       disabledCinemas: ["Muza", "Elsewhere"], hidden: ["Hidden"]))
+
+        let cleared = ListingFilters.Cleared(disabledCinemas: ["Muza", "Elsewhere"], cityCinemas: films.allCinemas())
+
+        XCTAssertEqual(cleared.disabledCinemas, ["Elsewhere"])
+        XCTAssertEqual(cleared.hidden, [])
+        XCTAssertFalse(cleared.filters.isActive(over: films, cityCinemas: films.allCinemas(),
+                                                disabledCinemas: cleared.disabledCinemas, hidden: cleared.hidden))
+    }
+
     func testALinksScalarsSetSortAndFormatAndLeaveAbsentAxesAlone() {
         var filters = ListingFilters.empty
         filters.format.language = "NAP"

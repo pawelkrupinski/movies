@@ -4,6 +4,7 @@ import SwiftUI
 // an IMAX-only toggle, and a from-hour lower bound (plus sort, hidden films,
 // cinemas, name filters, city, account). Format/from-hour are ephemeral session
 // state owned by ContentView; the cinema picks persist in `UserPreferences`.
+// Wyczyść resets all of them, hidden films included (`ListingFilters.Cleared`).
 struct FiltersSheet: View {
     @Binding var filters: ListingFilters
     var prefs: UserPreferences
@@ -88,11 +89,13 @@ struct FiltersSheet: View {
 
                 Section {
                     Button(role: .destructive) {
-                        // Reset the session axes (`ListingFilters`), then close
-                        // the sheet. Cinema picks and hidden films are persistent
-                        // preferences and stay, though they light the button too
-                        // (`ListingFilters.isActive`).
-                        filters = .empty
+                        // Reset everything that lights the Filtry button
+                        // (`ListingFilters.Cleared`), then close the sheet.
+                        let cleared = ListingFilters.Cleared(disabledCinemas: prefs.disabledCinemas,
+                                                             cityCinemas: store.films.allCinemas())
+                        filters = cleared.filters
+                        prefs.setDisabledCinemas(cleared.disabledCinemas)
+                        if !prefs.hiddenFilms.isEmpty { prefs.unhideAll() }
                         dismiss()
                     } label: {
                         Text("filtersheet.clear")

@@ -100,6 +100,22 @@ final class FilterSheetUITests: XCTestCase {
         XCTAssertFalse(filtryElement(app).isSelected, "nothing narrows the listing, yet the Filtry button lit")
     }
 
+    /// Wyczyść resets everything that lights the button — a hidden film and a
+    /// cinema unticked here included — so the button is unlit once it closes.
+    func testWyczyscLeavesTheFiltryButtonUnlit() throws {
+        app.launchArguments += ["-hiddenFilms_pl", "(\"Film 1\")", "-disabledCinemas", "(\"Multikino Alfa\")"]
+        // Three fixture cinemas, so unticking one still leaves the grid its cards.
+        launchIntoGrid(["KINOWO_UITEST_OPEN_FILTERS": "1", "KINOWO_UITEST_SHARED_CINEMA_URL": "1"])
+        XCTAssertTrue(sheetMarker(app).waitForExistence(timeout: 10), "Filtry sheet did not open from the launch hook")
+
+        let clear = app.buttons[A11y.FiltersSheet.clearButton]
+        for _ in 0..<8 where !clear.isHittable { app.swipeUp() }
+        clear.tap()
+
+        XCTAssertTrue(filtryElement(app).waitForExistence(timeout: 10))
+        XCTAssertFalse(filtryElement(app).isSelected, "the Filtry button stayed lit after Wyczyść")
+    }
+
     /// Found by identifier at any element type: the custom button style
     /// collapses its tree (see `testOpeningFiltrySheet`), but the identifier
     /// and its traits survive.
