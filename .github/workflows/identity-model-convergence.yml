@@ -12,8 +12,9 @@
 #
 # A VERDICT ALREADY PROVEN IS NOT RUN AGAIN: when a landing check (scripts/identity-landing-check --full) already ran this
 # suite over the same tree, Main's kick names that run (`reuse-run`); the preflight checks it -- tree key, pairs, the legs'
-# inputs, every row green, the takes bases (scripts/ci/convergence_reuse.py) -- and, only when all hold, every leg skips
-# and the run is green, its summary naming the source. Otherwise the whole suite runs. (ConvergenceReuseSpec)
+# inputs, every row of this suite green (scripts/ci/convergence_reuse.py --suite convergence) -- and, only when all hold,
+# every leg skips and the run is green, its summary naming the source. Otherwise the whole suite runs. The takes run is
+# handed the same `reuse-run` and judges the takes run that source dispatched, takes bases included. (ConvergenceReuseSpec)
 #
 # `mode: hermetic`: every leg replays the pair `Record scrape fixtures` pinned for its country
 # (`hermetic-<code>.txt`) and touches no network, so a red leg means the code changed — and is
