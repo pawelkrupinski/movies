@@ -54,6 +54,10 @@ is that the local toolchain is missing (e.g. no full Xcode for
   stores' bare `JSONDecoder()` — the same line `RepertoireStore` /
   `DetailsStore` run. (The app has no HTML path any more; a Twirl
   template change cannot break it, a `MovieApiController` JSON change can.)
+- **Any `xcodebuild test` / `simctl boot`** boots a Simulator and leaves it booted (three, for days, put the laptop in
+  swap on 2026-11-07): run it as `scripts/ios-simulators run -- xcodebuild test ...`, which shuts down what the command
+  booted on any exit. `scripts/ios-simulators sweep` shuts down agents' Simulators (name `agent-`/`red<N>-`/`fixer<N>-`,
+  or booted through `run`) up over 2 h; the owner's hand-booted one is never touched.
 - **`swift test --package-path ios`** — iOS unit / integration suites
   without the live server. Quicker; required for any change to iOS
   model / parser logic regardless of whether you also need LocalServer.

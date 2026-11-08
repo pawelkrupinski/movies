@@ -81,6 +81,8 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 
 - **Never `pkill -f` / `killall` by pattern** — other agents' processes match it. `scripts/agent-procs kill --mine`
   (SIGTERM what runs under the current worktree; `--worktree P`, `--dry-run`, `--force`).
+- A call to `scripts/sbt-warm` whose server vanished mid-call ends within ~30 s (server liveness, exit 75 `STALLED ...
+  its server vanished` after one retry in a fresh server), and its client is KILLed if it ignores TERM.
 - `scripts/agent-procs` audits every worktree (dirty, unmerged vs main, lock owner, its processes);
   `scripts/agent-procs prune [--yes]` removes the removable ones and their merged branches.
 - `scripts/agent-time [--longest N] [--agent <id> --top N]` shows where a session's subagents spent their hours

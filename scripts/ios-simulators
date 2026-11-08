@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""Shut down the iOS Simulators agents boot, so none stays booted for days.
+
+WHY (2026-11-07): three Simulators booted for days (~22 GB; one named red33-iPhone17) pushed the laptop to load 368 with
+21 of 22 GB of swap. `xcodebuild test -destination ...` and a hand-run `xcrun simctl boot` boot a Simulator and leave it
+booted; nothing shut it down.
+
+  scripts/ios-simulators run -- <command...>   runs <command>, then shuts down every Simulator that was booted by it (the
+                                               set booted afterwards less the set booted before), on any exit, TERM and
+                                               INT too. A Simulator the owner had open is in the "before" set: never shut.
+                                               Each one it saw boot is also written to the ledger (below) while it runs.
+  scripts/ios-simulators sweep [--idle-hours H] [--dry-run]
+                                               shuts down booted Simulators booted by agents and up for more than H hours
+                                               (default 2), no xcodebuild / xctest process naming them. Run by hand, from
+                                               a maintenance pass, or a launchd job.
+
+WHOSE IS A SIMULATOR (sweep touches only agents' ones; the owner's hand-booted "iPhone 17" is never one):
+  - its name starts with an agent prefix: `agent-`, `red<N>-`, `fixer<N>-` (e.g. red33-iPhone17), or
+  - `run` booted it (the ledger, $KINOWO_IOS_SIM_LEDGER, default ~/.cache/movies-ios-simulators: a file per udid).
+A Simulator's age is its launchd_sim process's elapsed time (ps), the clock that starts at boot.
+
+Test seams (scripts/ios-simulators-test.sh): XCRUN names the xcrun to call; IOS_SIM_PS_COMMAND prints `pid etime args` per
+process.
+"""
+import argparse
+import json
+import os
+import re
+import signal
+import subprocess
+import sys
+
+AGENT_NAME = re.compile(r"^(agent|red\d+|fixer\d*)-", re.IGNORECASE)
+
+
+def xcrun(*args):
+    return subprocess.run([os.environ.get("XCRUN", "xcrun"), *args], capture_output=True, text=True, timeout=60)
+
+
+def booted():
+    """{udid: name} of the booted Simulators."""
+    result = xcrun("simctl", "list", "devices", "-j")
+    if result.returncode != 0:
+        return {}
+    found = {}
+    for devices in json.loads(result.stdout or "{}").get("devices", {}).values():
+        for device in devices:
+            if device.get("state") == "Booted":
+                found[device["udid"]] = device.get("name", "")
+    return found
+
+
+def ledger_dir():
+    return os.environ.get("KINOWO_IOS_SIM_LEDGER", os.path.expanduser("~/.cache/movies-ios-simulators"))
+
+
+def processes():
+    command = os.environ.get("IOS_SIM_PS_COMMAND", "ps -axo pid=,etime=,args=")
+    return subprocess.run(command, shell=True, capture_output=True, text=True).stdout.splitlines()
+
+
+def seconds(etime):
+    """ps etime ([[dd-]hh:]mm:ss) in seconds."""
+    days, _, clock = etime.rpartition("-")
+    parts = [int(p) for p in clock.split(":")]
+    total = 0
+    for p in parts:
+        total = total * 60 + p
+    return total + (int(days) * 86400 if days else 0)
+
+
+def age_and_users(udid, lines):
+    """(seconds up, whether a test process names it) for a Simulator."""
+    age, used = None, False
+    for line in lines:
+        pid, etime, args = (line.split(None, 2) + ["", ""])[:3]
+        if udid not in args:
+            continue
+        if "launchd_sim" in args:
+            age = seconds(etime)
+        elif re.search(r"xcodebuild|xctest|XCTRunner", args):
+            used = True
+    return age, used
+
+
+def shutdown(udid, why):
+    print(f"ios-simulators: shutting down {udid} ({why})", flush=True)
+    xcrun("simctl", "shutdown", udid)
+    try:
+        os.remove(os.path.join(ledger_dir(), udid))
+    except OSError:
+        pass
+
+
+def run(command):
+    before = set(booted())
+    child = subprocess.Popen(command)
+
+    def forward(signum, _frame):
+        child.send_signal(signum)
+
+    signal.signal(signal.SIGTERM, forward)
+    signal.signal(signal.SIGINT, forward)
+    try:
+        status = child.wait()
+    finally:
+        os.makedirs(ledger_dir(), exist_ok=True)
+        for udid, name in booted().items():
+            if udid not in before:
+                shutdown(udid, f"{name} was booted by `{command[0]}`")
+    return status if status >= 0 else 128 - status
+
+
+def sweep(idle_hours, dry_run):
+    lines = processes()
+    ledger = set(os.listdir(ledger_dir())) if os.path.isdir(ledger_dir()) else set()
+    swept = 0
+    for udid, name in booted().items():
+        if not (AGENT_NAME.match(name) or udid in ledger):
+            continue
+        age, used = age_and_users(udid, lines)
+        if age is None or age < idle_hours * 3600 or used:
+            continue
+        if dry_run:
+            print(f"ios-simulators: would shut down {name} {udid} (up {age // 3600} h)")
+        else:
+            shutdown(udid, f"{name} up {age // 3600} h, an agent's")
+        swept += 1
+    print(f"ios-simulators: {swept} agent Simulator(s) {'to shut down' if dry_run else 'shut down'}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = parser.add_subparsers(dest="command")
+    runner = sub.add_parser("run")
+    runner.add_argument("rest", nargs=argparse.REMAINDER)
+    sweeper = sub.add_parser("sweep")
+    sweeper.add_argument("--idle-hours", type=float, default=2)
+    sweeper.add_argument("--dry-run", action="store_true")
+    args = parser.parse_args()
+    if args.command == "run":
+        rest = args.rest[1:] if args.rest[:1] == ["--"] else args.rest
+        if not rest:
+            parser.error("run needs a command")
+        sys.exit(run(rest))
+    if args.command == "sweep":
+        sweep(args.idle_hours, args.dry_run)
+        return
+    parser.print_help()
+    sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()
