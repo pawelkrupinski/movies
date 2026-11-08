@@ -12,9 +12,10 @@ import org.scalatest.matchers.should.Matchers
  * `ECONNRESET` while `setup-java` was "Trying to resolve the latest version
  * from remote", as in run 36327812746) otherwise fails a job for a reason
  * that has nothing to do with the code under test. `setup-jdk` wraps
- * `actions/setup-java` with retries so that blip doesn't fail the build; a
- * direct `actions/setup-java` call bypasses the retry this repo settled on,
- * so there should be exactly one such call left -- inside `setup-jdk` itself.
+ * `actions/setup-java` with retries so that blip doesn't fail the build, and
+ * installs a pinned JDK (scripts/ci/jdk-pin.sh) from a main-saved cache entry
+ * with no download at all; a direct `actions/setup-java` call bypasses both,
+ * so the only such calls left are inside `setup-jdk` itself.
  */
 class SharedJdkSetupSpec extends AnyFlatSpec with Matchers {
   private val SetupJavaUse = """uses:\s*actions/setup-java@""".r
@@ -53,8 +54,8 @@ class SharedJdkSetupSpec extends AnyFlatSpec with Matchers {
   "the shared setup-jdk action" should "exist and still be the one composite action calling actions/setup-java" in {
     RepoFile.compositeActions() should contain(sharedAction)
     val hits = SetupJavaUse.findAllIn(RepoFile.read(sharedAction)).length
-    withClue("setup-jdk retries three times, so it should call actions/setup-java exactly three times: ") {
-      hits shouldBe 3
+    withClue("setup-jdk installs a pinned JDK once (jdkfile) and retries an unpinned one three times: ") {
+      hits shouldBe 4
     }
   }
 
