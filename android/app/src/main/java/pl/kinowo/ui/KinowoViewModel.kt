@@ -234,12 +234,13 @@ class KinowoViewModel(
         return countryCatalog.value.cities.zoneFor(selectedCity.value, country.code, country.zoneId)
     }
 
-    /** Wyczyść: resets everything [filtersActive] reads — the session axes, the unticked cinemas and the hidden
-     *  films (un-hidden through the sync, as "show all" does) — so the icon is neutral once the sheet closes. */
-    fun clearFilters(): Job {
+    /** Wyczyść: resets everything [filtersActive] reads — the session axes, [cityCinemas]' unticked cinemas and
+     *  the hidden films (un-hidden through the sync, as "show all" does) — so the icon is neutral once the sheet
+     *  closes. A cinema unticked in another city stays unticked, as on iOS and the web: it narrows nothing here. */
+    fun clearFilters(cityCinemas: List<String>): Job {
         filters.clear()
         return viewModelScope.launch {
-            prefs.setDisabledCinemas(emptySet())
+            prefs.setDisabledCinemas(prefs.disabledCinemas.first() - cityCinemas.toSet())
             sync.clear(prefs.unhideAll())
         }
     }

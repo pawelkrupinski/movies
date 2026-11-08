@@ -71,23 +71,24 @@ class ViewModelDrivesStateSyncTest {
     }
 
     /** Wyczyść resets everything that lights the Filtry icon: a hidden film un-hides (through the sync, like
-     *  "show all") and the unticked cinemas come back, so the icon is neutral once the sheet closes. iOS
+     *  "show all") and this city's unticked cinemas come back, so the icon is neutral once the sheet closes. A
+     *  cinema unticked in another city stays unticked: it narrows nothing here, so it never lit the icon. iOS
      *  `ListingFilters.Cleared`, the web's `resetFormatFilter`. */
     @Test
-    fun wyczyscUnhidesAndRetickesEverythingThatLightsTheIcon() {
+    fun wyczyscUnhidesAndReticksThisCitysCinemasOnly() {
         val prefs = UserPreferences(harness.context)
         runBlocking {
             prefs.setCountryCode("pl")
             prefs.hide("Dune")
-            prefs.setDisabledCinemas(setOf("Muza"))
+            prefs.setDisabledCinemas(setOf("Muza", "Elsewhere"))
         }
         val sync = RecordingStateSync()
         val vm = harness.viewModel(prefs = prefs, sync = sync)
 
-        harness.settle(vm.clearFilters())
+        harness.settle(vm.clearFilters(cityCinemas = listOf("Muza", "Apollo")))
 
         assertEquals(listOf("start", "clear pl"), sync.calls)
         assertEquals(emptySet<String>(), runBlocking { prefs.hiddenFilms.first() })
-        assertEquals(emptySet<String>(), runBlocking { prefs.disabledCinemas.first() })
+        assertEquals(setOf("Elsewhere"), runBlocking { prefs.disabledCinemas.first() })
     }
 }

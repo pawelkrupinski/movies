@@ -195,7 +195,7 @@ private fun FiltersList(
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.filters), fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { viewModel.clearFilters(); onClose() }) { Text(stringResource(R.string.clear)) }
+                    TextButton(onClick = { viewModel.clearFilters(FilterFacets.allCinemas(films)); onClose() }) { Text(stringResource(R.string.clear)) }
                 }
             }
 
