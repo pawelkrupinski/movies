@@ -57,7 +57,7 @@ check "a drift-only run ending failure (its verdict complete, by design) still p
 check "...into a release it creates when there is none" "1" "$(grep -c '^release create identity-flip-explorer --prerelease' "$work/calls")"
 check "...the flip in the step summary" "1" "$(grep -c 'Kino Stub Testowe' "$work/summary")"
 check "...dispatched drift-only, exploring, on main" "1" \
-  "$(grep -c '^workflow run identity-model-convergence.yml --ref main -f drift-only=true -f drift-explore=auto$' "$work/calls")"
+  "$(grep -c '^workflow run identity-takes.yml --ref main -f drift-only=true -f drift-explore=auto$' "$work/calls")"
 VIEW=$(view success)
 check "a green run publishes the same way, into the release already there" "0 1 0" \
   "$(RELEASE_EXISTS=1 publish) $(uploads) $(grep -c '^release create' "$work/calls")"

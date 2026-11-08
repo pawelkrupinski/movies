@@ -88,11 +88,11 @@ jobs:
         # a cancelled run is charted nowhere, as when this was its `!cancelled()` last job
         if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled'
         # Where the run it reports ran (a `workflow_run`'s run, else the caller's: `github.workflow` is the CALLER's name in a
-        # call). THE GATE's workflows on main -- Main and Identity model convergence -- stay on GitHub's hosted runners
+        # call). THE GATE's workflows on main -- Main, Identity model convergence and Identity takes -- stay on GitHub's hosted runners
         # (the owner, 2026-11-06); with MOVIES_CI_RUNNERS=self-hosted every other run -- a landing check, a measurement, a
         # nightly explorer, a bot -- is reported from any free slot of ci-runner's (`movies`): after the run, holding up
         # nothing while it queues.
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && !(github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.name == 'Main' || github.ref == 'refs/heads/main' && (github.workflow == 'Main' || github.workflow == 'Identity model convergence')) && 'movies' || 'ubuntu-26.04' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && !(github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.name == 'Main' || github.ref == 'refs/heads/main' && (github.workflow == 'Main' || github.workflow == 'Identity model convergence' || github.workflow == 'Identity takes')) && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         steps:
             # The workflows too: each job's `timeout-minutes` goes out beside its time (ci_timings.py `workflow_ceilings`).

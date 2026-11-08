@@ -4,7 +4,8 @@
 WHY. 22 red runs and ~35 red hours in the five days to 2026-10-30 came from checks that landed red: the convergence flip
 gate (33 h, E9), agentctl's CI enabled with Linux-only failures, a lint born against a test it already failed, and 24
 `measure` runs wasted on a workflow's own lints. Convergence adopted "a new check lands green" on 10-29 (5e848677b, the
-drift gate's commit rules); this generalises it to every check THE GATE (Main and Identity model convergence on main)
+drift gate's commit rules); this generalises it to every check THE GATE (Main, Identity model convergence and, since
+2026-11-08, Identity takes on main)
 reads: a gate workflow, and a job in one (a reusable workflow's included: they run under the caller's run).
 
 .github/gating-checks.tsv lists them, one row each, with the run that PROVED it green:
@@ -13,7 +14,7 @@ reads: a gate workflow, and a job in one (a reusable workflow's included: they r
     workflow  main.yml                        -                         2701     the gate itself
     job       main.yml                        test (heavy1)             2690
     job       main.yml                        ci                        aggregate   fails only when a job it runs does
-    job       identity-model-convergence.yml  takes (germany)           unproven  born 2026-10-30, owner: ...
+    job       identity-takes.yml              takes (germany)           unproven  born 2026-11-08, owner: ...
 
   - `proven` is the run NUMBER (the #n of its URL) of a green run on main in which the check ran and passed; `aggregate`
     marks a job that fails only because one it waits on did (a reusable call's wrapper, timings, a verdict job);
@@ -22,7 +23,8 @@ reads: a gate workflow, and a job in one (a reusable workflow's included: they r
     them) is no red for the push gate (scripts/hooks/pre-push's red gate asks `report-only`). Its red is still listed --
     and still somebody's -- but no push waits on it.
   - `lint` holds the registry to the workflows: every job a gate workflow (or a workflow it calls) defines has a row,
-    every row names a job that exists, and every gate workflow the hook reads is a proven `workflow` row. A new job or
+    every row names a job that exists, and every gate workflow the hook reads has a `workflow` row -- proven, or
+    `unproven` with its owner until its first green run (its jobs' rows unproven too, so its red reports). A new job or
     gate workflow therefore lands
     WITH its row, as `unproven`; RegistryCoverage runs it in the unit rows and the hook's `newchecks` check.
   - `sync` makes the job rows follow the workflows: a job with no row gets one, `unproven` (its owner: --owner, else
@@ -50,7 +52,7 @@ import sys
 
 REGISTRY = ".github/gating-checks.tsv"
 HEADER = "kind\tworkflow\tname\tproven\tnote"
-GATE_WORKFLOWS = ("main.yml", "identity-model-convergence.yml")
+GATE_WORKFLOWS = ("main.yml", "identity-model-convergence.yml", "identity-takes.yml")
 HOOK = "scripts/hooks/pre-push"
 EXPR = re.compile(r"\$\{\{.*?\}\}")
 CALL = re.compile(r"^\s+uses:\s*\./\.github/workflows/(\S+\.ya?ml)\s*$", re.M)
@@ -157,8 +159,10 @@ def lint(root: str) -> list[str]:
     keys = [(r["kind"], r["workflow"], r["name"]) for r in rows]
     problems += [f"twice: {k}" for k in sorted({k for k in keys if keys.count(k) > 1})]
     for file in hook_gate_files(root):
-        if not any(r["kind"] == "workflow" and r["workflow"] == file and is_proven(r) for r in rows):
-            problems.append(f"{file} gates pushes (the hook's GatingWorkflowFiles) but has no proven `workflow` row")
+        # a gate workflow lands with its row `unproven` (owner and why) and reports until its first green run proves it
+        if not any(r["kind"] == "workflow" and r["workflow"] == file and r["proven"] != "aggregate" for r in rows):
+            problems.append(f"{file} gates pushes (the hook's GatingWorkflowFiles) but has no `workflow` row (proven, or "
+                            "`unproven` with its owner until its first green run)")
     for file in GATE_WORKFLOWS:
         try:
             globs = workflow_globs(root, file)

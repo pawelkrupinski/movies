@@ -40,7 +40,13 @@ jobs:
     preflight:
         runs-on: gate-lane
 """
-HOOK = 'GatingWorkflows=("Main" "Identity model convergence")\nGatingWorkflowFiles=("main.yml" "identity-model-convergence.yml")\n'
+TAKES = """name: Identity takes
+jobs:
+    preflight:
+        runs-on: gate-lane
+"""
+HOOK = ('GatingWorkflows=("Main" "Identity model convergence" "Identity takes")\n'
+        'GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml" "identity-takes.yml")\n')
 REGISTRY = """# the registry
 kind\tworkflow\tname\tproven\tnote
 workflow\tmain.yml\t-\t2722\tthe gate
@@ -50,6 +56,8 @@ job\tmain.yml\ttimings\taggregate
 job\tmain.yml\ttest (heavy1)\t2722
 job\tmain.yml\tcommit rules\tunproven\tborn today; owner: ci
 job\tidentity-model-convergence.yml\tpreflight\t2691
+workflow\tidentity-takes.yml\t-\tunproven\tborn 2026-11-08 (split from convergence); owner: convergence
+job\tidentity-takes.yml\tpreflight\tunproven\tborn 2026-11-08; owner: convergence
 """
 # a called workflow's jobs, named as the registry names them (github.com shows them under the caller's job)
 CALLED = ('job\tidentity-model-convergence.yml\ttakes (germany)\t2691\n'
@@ -71,6 +79,7 @@ class Lint(unittest.TestCase):
         self.write(".github/workflows/main.yml", MAIN)
         self.write(".github/workflows/ci.yml", CI)
         self.write(".github/workflows/identity-model-convergence.yml", CONV)
+        self.write(".github/workflows/identity-takes.yml", TAKES)
         self.write("scripts/hooks/pre-push", HOOK)
         self.write(".github/gating-checks.tsv", REGISTRY)
 
@@ -110,9 +119,15 @@ class Lint(unittest.TestCase):
         self.write(".github/gating-checks.tsv", REGISTRY + "job\tmain.yml\tscript self-tests\t2700\n")
         self.assertIn("'script self-tests' names no job", " ".join(g.lint(self.root)))
 
-    def test_a_new_gate_workflow_needs_a_proven_row(self):
-        self.write("scripts/hooks/pre-push", HOOK.replace('"identity-model-convergence.yml")', '"identity-model-convergence.yml" "recording.yml")'))
+    def test_a_new_gate_workflow_needs_a_row(self):
+        self.write("scripts/hooks/pre-push", HOOK.replace('"identity-takes.yml")', '"identity-takes.yml" "recording.yml")'))
         self.assertIn("recording.yml gates pushes", " ".join(g.lint(self.root)))
+
+    def test_a_new_gate_workflow_lands_unproven_with_its_owner_and_reports(self):
+        # Identity takes (2026-11-08): its row and its jobs' rows unproven until its first green run on main
+        self.assertEqual(g.lint(self.root), [])
+        self.write(".github/gating-checks.tsv", REGISTRY.replace("workflow\tidentity-takes.yml\t-\tunproven", "#"))
+        self.assertIn("identity-takes.yml gates pushes", " ".join(g.lint(self.root)))
 
     def test_a_malformed_proven_is_refused(self):
         self.write(".github/gating-checks.tsv", REGISTRY.replace("\t2722\n", "\tyesterday\n", 1))
@@ -185,7 +200,8 @@ class Sync(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
         for path, text in ((".github/workflows/main.yml", MAIN), (".github/workflows/ci.yml", CI),
-                           (".github/workflows/identity-model-convergence.yml", CONV), ("scripts/hooks/pre-push", HOOK),
+                           (".github/workflows/identity-model-convergence.yml", CONV),
+                           (".github/workflows/identity-takes.yml", TAKES), ("scripts/hooks/pre-push", HOOK),
                            (".github/gating-checks.tsv", REGISTRY)):
             full = os.path.join(self.root, path)
             os.makedirs(os.path.dirname(full), exist_ok=True)

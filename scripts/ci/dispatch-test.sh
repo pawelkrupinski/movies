@@ -116,4 +116,17 @@ check "...asking for the workflow's newest 30" "run list --workflow w.yml --limi
 check "no decided run of the prefix: no ETA" "1 " "$(eta "[$(eta_run completed success main 10:20)]")"
 check "an unreadable list: no ETA, and said" "1 " "$(RUNS_FAIL=1 eta '[]')"
 
+# THE TAKES RUN A CONVERGENCE RUN STARTS (scripts/ci/dispatch-takes.sh titles it): found by its parent's id
+reset; answer 2 "5151"
+DISPATCH_TAKES_FIND_SECONDS=60 find_takes_run 4242 2> /dev/null
+check "a convergence run's Identity takes run is polled for until it is listed" "0 5151" "$? $TAKES_RUN"
+check "...by its title naming the convergence run" "true" \
+  "$(grep -q 'run list --workflow identity-takes.yml .*Identity takes (convergence run 4242)' "$work/calls" && echo true || echo false)"
+reset
+DISPATCH_TAKES_FIND_SECONDS=0 find_takes_run 4242 2> /dev/null
+check "...and none listed by the deadline fails" "1 " "$? $TAKES_RUN"
+reset; DEFAULT="fail HTTP 502"
+DISPATCH_TAKES_FIND_SECONDS=60 find_takes_run 4242 2> /dev/null
+check "...as does a failed listing, never 'not listed yet'" "1 1" "$? $(calls)"
+
 spec_summary

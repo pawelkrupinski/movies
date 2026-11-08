@@ -37,9 +37,10 @@ jq) BLOCKS the push with the fix, never a skip: for sbt, `. "$HOME/.sdkman/bin/s
 warns and passes: Docker not running. The GitOps manifests
 (`infra/bin/fetch-gitops`, from GitHub) failing to fetch BLOCKS too: the checkout left behind is stale.
 
-**Red builds gate every push to main.** While the newest COMPLETED run on main of Main or Identity model convergence
--- exactly those two, the owner's gate (2026-10-27) -- is red (running, queued and cancelled runs say nothing, nor an incomplete run red only in aggregates like
-`verdict complete`: the drift explorer's drift-only dispatch, agentctl's NO VERDICT), a push lands only as a fix for it: every pushed
+**Red builds gate every push to main.** While the newest COMPLETED run on main of Main, Identity model convergence or
+Identity takes -- exactly those three, the owner's gate (2026-10-27; the takes rows split into Identity takes,
+2026-11-08, which every convergence run's preflight dispatches) -- is red (running, queued and cancelled runs say nothing, nor an incomplete run red only in aggregates like
+Identity takes' `verdict complete`: the drift explorer's drift-only dispatch, agentctl's NO VERDICT), a push lands only as a fix for it: every pushed
 commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`, `project/`, `infra/nix/`, `Dockerfile`)
 carries a `Fixes-Red: <run>` trailer naming any red run of the current episode (failed since the last green, failing the same way). Tools-only commits (scripts, docs, `.claude/` skills,
 `*/src/test|it|fixtures/`, `test/resources/`, `.github/`) land while red without one. The hook enforces it;

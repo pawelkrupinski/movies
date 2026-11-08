@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The nightly drift explorer's one step (.github/workflows/identity-drift-explorer.yml): dispatch main's takes-drift rows
-# drift-only on random seeds off the gate (`drift-explore: auto`), wait for that run, merge its rows' explore-<cc>.tsv
+# (Identity takes', identity-takes.yml, since the owner split them off convergence on 2026-11-08) drift-only on random seeds off the gate (`drift-explore: auto`), wait for that run, merge its rows' explore-<cc>.tsv
 # (scripts/ci/drift_explorer.py merge) and publish them as `new-flips.tsv` (and a dated copy, the newest 30 kept) on the
 # release `identity-flip-explorer`, for agentctl to file.
 #
@@ -21,9 +21,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 main_head() { _dispatch_gh api "repos/$GH_REPO/commits/main" --jq .sha 2> /dev/null || true; }
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 before=$(main_head)
-dispatch_workflow identity-model-convergence.yml main -f drift-only=true -f drift-explore=auto
+dispatch_workflow identity-takes.yml main -f drift-only=true -f drift-explore=auto
 after=$(main_head)
-find_dispatched_run identity-model-convergence.yml "$since" \
+find_dispatched_run identity-takes.yml "$since" \
   "(.headSha == \"$GITHUB_SHA\" or .headSha == \"$before\" or .headSha == \"$after\")" --branch main
 run=$DISPATCHED_RUN
 echo "explorer run: $GITHUB_SERVER_URL/$GH_REPO/actions/runs/$run"

@@ -19,6 +19,7 @@ scratch_repo "$repo" -b main
 scratch_git "$repo" remote add origin "$origin"
 mkdir -p "$repo/.github/workflows" "$repo/scripts/ci"
 echo "drift-only: true" > "$repo/.github/workflows/country-convergence-leg.yml"
+echo "name: Identity takes" > "$repo/.github/workflows/identity-takes.yml"
 scratch_git "$repo" add -A && scratch_git "$repo" commit -qm main
 scratch_git "$repo" push -q origin main
 tip=$(scratch_git "$repo" rev-parse HEAD)

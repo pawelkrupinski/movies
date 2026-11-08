@@ -20,7 +20,11 @@ import convergence_reuse as reuse  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 with open(os.path.join(ROOT, reuse.WORKFLOW)) as f:
     WORKFLOW = f.read()
-ROWS = reuse.expected_rows(WORKFLOW)
+# the two suites' rows (the owner, 2026-11-08: Identity takes runs the takes rows, Identity model convergence the rest);
+# ROWS, both, is what a green pair of runs shows
+CONV_ROWS = reuse.expected_rows(WORKFLOW, "convergence")
+TAKES_ROWS = reuse.expected_rows(WORKFLOW, "takes")
+ROWS = CONV_ROWS + TAKES_ROWS
 MAIN_INPUTS = reuse.leg_inputs({})
 PAIRS = {"pl": "573 2026-10-04 enrichment-pl-573.tar.zst fill-pl-573-2783-1-convergence.tar.zst"}
 
@@ -31,8 +35,8 @@ def green_jobs(rows=ROWS):
             for n in ["preflight", "timings"] + list(rows) + sorted(callers)]
 
 
-def source(**over):
-    run = {"id": 2821, "run_number": 1763, "path": ".github/workflows/identity-model-convergence.yml",
+def source(suite="takes", **over):
+    run = {"id": 2821, "run_number": 1763, "path": f".github/workflows/{reuse.SUITE_FILES[suite]}",
            "status": "completed", "conclusion": "success", "head_sha": "a" * 40}
     run.update(over)
     return run
@@ -45,9 +49,10 @@ def facts(**over):
     return out
 
 
-def mine(**over):
-    out = {"key": "k" * 64, "pairs": dict(PAIRS), "inputs": dict(MAIN_INPUTS), "order_phases": "both",
-           "expected_rows": ROWS, "takes_bases": {"pl": ("b" * 40, "b" * 40, True)}}
+def mine(suite="takes", **over):
+    out = {"key": "k" * 64, "pairs": dict(PAIRS), "inputs": dict(MAIN_INPUTS), "order_phases": "both", "suite": suite,
+           "expected_rows": TAKES_ROWS if suite == "takes" else CONV_ROWS,
+           "takes_bases": {"pl": ("b" * 40, "b" * 40, True)} if suite == "takes" else {}}
     out.update(over)
     return out
 
@@ -61,6 +66,16 @@ class JudgeTest(unittest.TestCase):
 
     def test_a_green_full_run_over_the_same_tree_pairs_inputs_and_bases_is_reused(self):
         self.assertReused(reuse.judge(source(), green_jobs(), facts(), mine()))
+        self.assertReused(reuse.judge(source("convergence"), green_jobs(), facts(), mine("convergence")))
+
+    def test_each_suite_reuses_only_its_own_workflows_run(self):
+        self.assertNotReused(reuse.judge(source("convergence"), green_jobs(), facts(), mine()), "no identity-takes.yml run")
+        self.assertNotReused(reuse.judge(source(), green_jobs(), facts(), mine("convergence")),
+                             "no identity-model-convergence.yml run")
+
+    def test_a_convergence_reuse_needs_its_own_rows_and_not_the_takes_ones(self):
+        self.assertReused(reuse.judge(source("convergence"), green_jobs(CONV_ROWS), facts(), mine("convergence")))
+        self.assertNotReused(reuse.judge(source(), green_jobs(CONV_ROWS), facts(), mine()), "`takes (poland)` did not run there")
 
     def test_a_different_tree_is_not(self):
         self.assertNotReused(reuse.judge(source(), green_jobs(), facts(key="x" * 64), mine()), "the tree differs")
@@ -71,7 +86,7 @@ class JudgeTest(unittest.TestCase):
 
     def test_a_p01_only_source_is_not_by_its_rows_either(self):
         rows = [r for r in ROWS if not r.startswith("order-independence-p12")]
-        self.assertNotReused(reuse.judge(source(), green_jobs(rows), facts(), mine()),
+        self.assertNotReused(reuse.judge(source("convergence"), green_jobs(rows), facts(), mine("convergence")),
                              "`order-independence-p12 (germany)` did not run there")
 
     def test_a_red_source_is_not(self):
@@ -90,14 +105,14 @@ class JudgeTest(unittest.TestCase):
     def test_a_skipped_row_is_no_verdict(self):
         jobs = green_jobs()
         next(j for j in jobs if j["name"] == "convergence (poland)")["conclusion"] = "skipped"
-        self.assertNotReused(reuse.judge(source(), jobs, facts(), mine()), "`convergence (poland)` ended")
+        self.assertNotReused(reuse.judge(source("convergence"), jobs, facts(), mine("convergence")), "`convergence (poland)` ended")
 
     def test_a_partial_source_is_not_takes_only(self):
-        rows = [r for r in ROWS if r.startswith("takes")]
+        rows = [r for r in ROWS if r.startswith(("takes ", "takes-base "))]
         inputs = dict(MAIN_INPUTS, **{"takes-only": "true"})
         why = reuse.judge(source(), green_jobs(rows), facts(inputs=inputs), mine())
         self.assertNotReused(why, "takes-only")
-        self.assertNotReused(why, "`convergence (poland)` did not run there")
+        self.assertNotReused(why, "`takes-drift-1 (poland)` did not run there")
 
     def test_a_drift_only_source_is_never_mains_verdict(self):
         # scripts/identity-drift-ci's pre-land run: the takes-drift rows alone, even when every one of them passed
@@ -158,7 +173,7 @@ class JudgeTest(unittest.TestCase):
 
     def test_another_workflow_is_not(self):
         self.assertNotReused(reuse.judge(source(path=".github/workflows/identity-run.yml"), green_jobs(), facts(), mine()),
-                             "no identity-model-convergence.yml run")
+                             "no identity-takes.yml run")
 
     def test_this_run_asking_for_less_than_mains_suite_reuses_nothing(self):
         inputs = dict(MAIN_INPUTS, **{"takes-only": "true"})
@@ -171,6 +186,9 @@ class RowsTest(unittest.TestCase):
         # two comparisons keeping the two-pass rows' names; 51 since 2026-11-06, Germany's third drift row (seed 581 a row
         # of its own: drift_seeds.rows_of); 57 since 2026-11-08, Spain splitting its order rows like the rest (+6)
         self.assertEqual(len(ROWS), 57)
+        self.assertEqual((len(CONV_ROWS), len(TAKES_ROWS)), (36, 21))
+        self.assertEqual([r for r in CONV_ROWS if r.startswith("takes")], [])
+        self.assertTrue(all(r.startswith("takes") for r in TAKES_ROWS))
         self.assertIn("takes-drift-3 (germany)", ROWS)
         for p in ("p01-pass0", "p01-pass1", "p12-pass1", "p12-pass2"):
             for country in ("poland", "germany", "united-kingdom", "spain", "united-states"):
@@ -218,9 +236,16 @@ class LegMatrixTest(unittest.TestCase):
 
     def test_a_narrowed_takes_or_drift_run_starts_only_its_countries(self):
         for flag in ("INPUT_TAKES_ONLY", "INPUT_DRIFT_ONLY"):
-            m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({flag: "true", "INPUT_TAKES_COUNTRIES": "pl, us"}))
+            m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({flag: "true", "INPUT_TAKES_COUNTRIES": "pl, us"}),
+                                 "takes")
             self.assertEqual(m["country"], ["poland", "united-states"])
             self.assertEqual([r["code"] for r in m["include"]], ["pl", "us"])
+
+    def test_a_convergence_run_asked_for_takes_rows_alone_starts_no_leg(self):
+        # those rows are the takes run's; convergence's preflight dispatches it with the same inputs
+        for flag in ("INPUT_TAKES_ONLY", "INPUT_DRIFT_ONLY"):
+            m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({flag: "true"}), "convergence")
+            self.assertEqual(m, {"country": [], "include": []})
 
     def test_takes_countries_means_nothing_to_a_run_that_is_neither(self):
         m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({"INPUT_TAKES_COUNTRIES": "pl"}))
@@ -398,37 +423,37 @@ class NoFalseGreen(unittest.TestCase):
     """G7: a run whose takes or takes-drift rows did not all decide is no green, unless a proven reuse names its source."""
 
     def test_every_row_decided_is_complete(self):
-        self.assertEqual(reuse.incomplete(green_jobs(), ROWS), [])
+        self.assertEqual(reuse.incomplete(green_jobs(), TAKES_ROWS), [])
 
     def test_a_red_takes_row_is_decided(self):
         jobs = [dict(j, conclusion="failure") if j["name"] == "takes-drift-2 (germany)" else j for j in green_jobs()]
-        self.assertEqual(reuse.incomplete(jobs, ROWS), [])
+        self.assertEqual(reuse.incomplete(jobs, TAKES_ROWS), [])
 
     def test_a_skipped_takes_row_is_no_verdict(self):
         jobs = [dict(j, conclusion="skipped") if j["name"] == "takes (united-kingdom)" else j for j in green_jobs()]
-        self.assertEqual(len(reuse.incomplete(jobs, ROWS)), 1)
+        self.assertEqual(len(reuse.incomplete(jobs, TAKES_ROWS)), 1)
 
     def test_an_extra_drift_row_is_judged_like_the_first_two(self):
         jobs = [j for j in green_jobs() if j["name"] != "takes-drift-3 (germany)"]
-        self.assertEqual(reuse.incomplete(jobs, ROWS), ["`takes-drift-3 (germany)` did not run"])
+        self.assertEqual(reuse.incomplete(jobs, TAKES_ROWS), ["`takes-drift-3 (germany)` did not run"])
         self.assertIn("takes-drift-3 (germany)\tcompleted\tsuccess", reuse.drift_rows(green_jobs()))
 
     def test_a_missing_or_cancelled_drift_row_is_no_verdict(self):
         jobs = [j for j in green_jobs() if j["name"] != "takes-drift-1 (poland)"]
         jobs = [dict(j, conclusion="cancelled") if j["name"] == "takes-drift-2 (spain)" else j for j in jobs]
-        self.assertEqual(len(reuse.incomplete(jobs, ROWS)), 2)
+        self.assertEqual(len(reuse.incomplete(jobs, TAKES_ROWS)), 2)
 
     def test_other_rows_skipped_are_not_this_checks(self):
         jobs = [dict(j, conclusion="skipped") if j["name"].startswith("next-day") else j for j in green_jobs()]
-        self.assertEqual(reuse.incomplete(jobs, ROWS), [])
+        self.assertEqual(reuse.incomplete(jobs, TAKES_ROWS), [])
 
     def test_github_com_names_a_called_row_after_its_caller(self):
         # github.com: `leg (poland) / takes (poland)`, and no caller job (run 41215027020's verdict read every row absent)
-        jobs = [dict(j, name=f"leg {j['name'][j['name'].index('('):]} / {j['name']}") if j["name"] in ROWS else j
+        jobs = [dict(j, name=f"leg {j['name'][j['name'].index('('):]} / {j['name']}") if j["name"] in TAKES_ROWS else j
                 for j in green_jobs() if not j["name"].startswith("leg ")]
-        self.assertEqual(reuse.incomplete(jobs, ROWS), [])
+        self.assertEqual(reuse.incomplete(jobs, TAKES_ROWS), [])
         jobs = [dict(j, conclusion="skipped") if j["name"].endswith("/ takes (united-kingdom)") else j for j in jobs]
-        self.assertEqual(len(reuse.incomplete(jobs, ROWS)), 1)
+        self.assertEqual(len(reuse.incomplete(jobs, TAKES_ROWS)), 1)
 
     def test_github_com_callers_take_their_worst_row(self):
         jobs = [{"name": "leg (poland) / takes (poland)", "status": "completed", "conclusion": "success"},
@@ -446,14 +471,14 @@ class NoFalseGreen(unittest.TestCase):
 
     def test_a_proven_reuse_is_complete_with_every_row_skipped(self):
         jobs = [dict(j, conclusion="skipped") for j in green_jobs()]
-        self.assertEqual(reuse.incomplete(jobs, ROWS, reused_from="2821"), [])
-        self.assertNotEqual(reuse.incomplete(jobs, ROWS), [])
+        self.assertEqual(reuse.incomplete(jobs, TAKES_ROWS, reused_from="2821"), [])
+        self.assertNotEqual(reuse.incomplete(jobs, TAKES_ROWS), [])
 
     def test_legs_handed_less_than_mains_suite_are_no_verdict(self):
-        self.assertNotEqual(reuse.incomplete(green_jobs(), ROWS, inputs=dict(MAIN_INPUTS, **{"takes-only": "true"})), [])
-        self.assertEqual(reuse.incomplete(green_jobs(), ROWS, inputs=dict(MAIN_INPUTS)), [])
+        self.assertNotEqual(reuse.incomplete(green_jobs(), TAKES_ROWS, inputs=dict(MAIN_INPUTS, **{"takes-only": "true"})), [])
+        self.assertEqual(reuse.incomplete(green_jobs(), TAKES_ROWS, inputs=dict(MAIN_INPUTS)), [])
         # the skip gate enforced still runs every takes row: its proof stands, the run decides
-        self.assertEqual(reuse.incomplete(green_jobs(), ROWS, inputs=dict(MAIN_INPUTS, **{"takes-skip": "enforce"})), [])
+        self.assertEqual(reuse.incomplete(green_jobs(), TAKES_ROWS, inputs=dict(MAIN_INPUTS, **{"takes-skip": "enforce"})), [])
 
 
 class DriftTwice(unittest.TestCase):

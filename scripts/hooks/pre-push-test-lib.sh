@@ -79,7 +79,8 @@ done
   *) printf '%s' "${STUB_RUN:-{\}}" | jq -r "$jqexpr"; exit ;;
 esac
 case "$workflow" in
-  Main) runs="${GH_MAIN:-[]}" ;; "Identity model convergence") runs="${GH_IMC:-[]}" ;; "Verify scrape recording") runs="${GH_REC:-[]}" ;;
+  Main) runs="${GH_MAIN:-[]}" ;; "Identity model convergence") runs="${GH_IMC:-[]}" ;; "Identity takes") runs="${GH_IT:-[]}" ;;
+  "Verify scrape recording") runs="${GH_REC:-[]}" ;;
   *) echo "unknown workflow $workflow" >&2; exit 1 ;;
 esac
 printf '%s' "$runs" | jq -r "$jqexpr"

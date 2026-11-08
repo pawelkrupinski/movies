@@ -146,8 +146,8 @@
 # origin does not tell. Best effort: an unreachable origin or gh is said and skipped, never a failed measurement.
 # Unexercised against the real origin so far (GitHub was suspended when it was written): the self-test stubs gh and git.
 #
-# THE LANE. A run from any branch but main has a convergence lane of its own (identity-model-convergence.yml's
-# concurrency): it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
+# THE LANE. A run from any branch but main has a lane of its own (identity-takes.yml's concurrency, and identity-model-
+# convergence.yml's for --full): it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
 # (by hand) is dispatched again until the deadline.
 #
 # Exit: 0 LANDABLE, 1 NOT LANDABLE, 2 the measurement could not be made, 3 --footprint-only could not answer, OR the run is
@@ -157,7 +157,12 @@ set -uo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/identity-tools.sh
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
-workflow=identity-model-convergence.yml
+# THE TAKES ROWS ARE IDENTITY TAKES' (identity-takes.yml; the owner, 2026-11-08): a takes-only measurement dispatches it
+# alone. --full dispatches Identity model convergence, whose preflight dispatches the takes run beside it (dispatch-takes.sh):
+# the takes run is measured, and the convergence run's conclusion joins the verdict.
+workflow=identity-takes.yml
+convergence_workflow=identity-model-convergence.yml
+convergence_run="" convergence_done=""
 ref="" base="" recording="" no_what_if="" keep="" nowait="" wait_eta="" full="" fresh="" json="" run="" timeout_min=120 timeout_set="" cancel_on_timeout="" take_paths="" sweep=""
 all_countries="" recordings=auto plan="" no_store="" footprint_measure="" footprint_traces="" no_cache=""
 while [ "$#" -gt 0 ]; do
@@ -231,6 +236,11 @@ cleanup() {
   if [ -n "$measured_run" ] && [ -z "$finished" ]; then
     say "cancelling run $measured_run"
     identity_gh "$DISPATCH_GH_TIMEOUT" run cancel "$measured_run" > /dev/null || say "could not cancel run $measured_run -- cancel it by hand"
+  fi
+  # --full: its convergence run too, until its conclusion is read
+  if [ -n "$convergence_run" ] && [ -z "$convergence_done" ] && [ -z "$keep" ]; then
+    say "cancelling convergence run $convergence_run"
+    identity_gh "$DISPATCH_GH_TIMEOUT" run cancel "$convergence_run" > /dev/null || say "could not cancel run $convergence_run -- cancel it by hand"
   fi
   if [ -n "$branch" ] && [ -z "$keep" ]; then
     delete_branch
@@ -346,6 +356,7 @@ tooling_hash() { # the blobs of the measure's own tooling, in this checkout: a c
   local root=$here/.. f
   for f in scripts/identity-measure scripts/identity_measure.py scripts/identity-tools.sh scripts/tool-conventions.sh \
            scripts/ci/dispatch.sh scripts/ci/identity-takes-check.sh scripts/ci/identity_takes.py scripts/ci/identity_takes_diff.py \
+           scripts/ci/dispatch-takes.sh .github/workflows/identity-takes.yml \
            .github/workflows/identity-model-convergence.yml .github/workflows/country-convergence-leg.yml; do
     [ -f "$root/$f" ] && printf '%s %s\n' "$f" "$(git hash-object "$root/$f")"
   done | sha256 | cut -c1-16
@@ -870,7 +881,9 @@ push=$commit
 leg=$(git show "$commit:.github/workflows/country-convergence-leg.yml") || leg=""
 # (takes-countries: the leg that also knows --countries and --recording, 2026-10-21)
 # (takes-no-store: the leg that can resolve without the store, 2026-10-22, for --no-store)
-if [[ "$leg" != *takes-countries* ]] || { [ -n "$no_store" ] && [[ "$leg" != *takes-no-store* ]]; }; then
+# (identity-takes.yml: the takes rows' own workflow, 2026-11-08)
+if [[ "$leg" != *takes-countries* ]] || { [ -n "$no_store" ] && [[ "$leg" != *takes-no-store* ]]; } \
+  || ! git cat-file -e "$commit:.github/workflows/$workflow" 2> /dev/null; then
   push=$(identity_main_ci_over "$remote" "$commit" measure) || die "could not lay main's CI over $commit"
   say "$commit predates the takes-only dispatch: measuring it under $remote/main's .github/ and scripts/ci/ ($push)"
 fi
@@ -893,9 +906,19 @@ dispatch() { # → measured_run
   [ -z "$no_store" ] || only+=(-f takes-no-store=true)
   say "dispatching (attempt $attempts)"
   dispatched_at=$(date +%s)
-  identity_dispatch_measure "$workflow" "$branch" "$push" "identity-measure ${commit:0:9} against ${base:0:9}" \
-    -f takes-base="$base" ${only[@]+"${only[@]}"} || die "$IDENTITY_DISPATCH_ERROR"
-  measured_run=$DISPATCHED_RUN
+  if [ -n "$full" ]; then
+    identity_dispatch_measure "$convergence_workflow" "$branch" "$push" "identity-measure --full ${commit:0:9} against ${base:0:9}" \
+      -f takes-base="$base" ${only[@]+"${only[@]}"} || die "$IDENTITY_DISPATCH_ERROR"
+    convergence_run=$DISPATCHED_RUN
+    say "convergence run $convergence_run: waiting for the Identity takes run its preflight dispatches"
+    find_takes_run "$convergence_run" || die "convergence run $convergence_run started no Identity takes run"
+    measured_run=$TAKES_RUN
+    identity_record_dispatch "$workflow" "$branch" "$measured_run" "identity-measure --full ${commit:0:9} (takes)"
+  else
+    identity_dispatch_measure "$workflow" "$branch" "$push" "identity-measure ${commit:0:9} against ${base:0:9}" \
+      -f takes-base="$base" ${only[@]+"${only[@]}"} || die "$IDENTITY_DISPATCH_ERROR"
+    measured_run=$DISPATCHED_RUN
+  fi
   say "run $(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$measured_run" --json url --jq .url || echo "$measured_run")"
   say_eta "$measured_run"
 }
@@ -931,6 +954,13 @@ if [ "$conclusion" = takes-done ]; then say "run $measured_run: every takes row 
 else say "run $measured_run: $conclusion"; fi
 collect "$measured_run" "$commit"
 verdict=$?
+# --full: the whole suite is both runs -- the convergence run's rows decide too (its tail still reads the branch)
+if [ -n "$convergence_run" ] && [ "$verdict" -le 1 ]; then
+  wait_for_run "$convergence_run" $((deadline - SECONDS > 0 ? deadline - SECONDS : 0)) || timed_out "$convergence_run"
+  convergence_done=1
+  say "convergence run $convergence_run: $RUN_CONCLUSION"
+  [ "$RUN_CONCLUSION" = success ] || { verdict=1; say "--full: convergence run $convergence_run is $RUN_CONCLUSION -- NOT LANDABLE"; }
+fi
 [ "$verdict" -gt 1 ] || [ -n "$full$recording$no_store" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run" "$dispatched_at"
 [ "$conclusion" = cancelled ] || result_store "$measure_mode" "$verdict" "$measured_run" "$collected_table" "$KINOWO_IDENTITY_CACHE/measure/$measured_run/moved"
 then_cross_country "$verdict" "$measured_run"

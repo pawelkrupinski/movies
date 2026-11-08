@@ -154,10 +154,12 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
 2. **What is pushed.** git's stdin, one line per ref. Deleting a ref checks nothing. A push of only
    `refs/heads/measure/*` checks nothing (a measurement's run ref). For a push to `main`, `agentctl prepush-check
    --hook` (the squash guard) runs first, when `~/bin/agentctl` exists.
-3. **The red gate** (push to main only; bypass name `redgate`). For each gating workflow — exactly Main (`main.yml`)
-   and Identity model convergence (`identity-model-convergence.yml`), the owner's gate (2026-10-27) — it reads the newest *decided* run on main (success or failure; cancelled,
+3. **The red gate** (push to main only; bypass name `redgate`). For each gating workflow — exactly Main (`main.yml`),
+   Identity model convergence (`identity-model-convergence.yml`), the owner's gate (2026-10-27), and Identity takes
+   (`identity-takes.yml`: the takes rows, split off on 2026-11-08, dispatched by every convergence run's preflight;
+   unproven in the registry, so reporting, until its first green run on main) — it reads the newest *decided* run on main (success or failure; cancelled,
    skipped and unfinished runs say nothing; nor does an INCOMPLETE run, red only in aggregates of
-   `.github/gating-checks.tsv` such as convergence's `verdict complete` -- the drift explorer's drift-only dispatch is one
+   `.github/gating-checks.tsv` such as Identity takes' `verdict complete` -- the drift explorer's drift-only dispatch is one
    -- which agentctl reads as NO VERDICT: the complete run before it decides, the owner 2026-11-08), one bounded read each (`PREPUSH_GH_SECONDS`, 15 s). A Forgejo remote
    reads Forgejo's runs API with `$FORGEJO_API_TOKEN` or the `movies` vault's token if already unlocked; no token →
    the gate is skipped with one warning. An API that does not answer is warned about and skipped for that workflow,
@@ -242,7 +244,9 @@ already released) and watches it for the landed sha (`watch_landed`):
   the sha — its own kick, a later push's, or the daily run (a cancelled one, replaced on the lane, passes to the next).
   None within 60 min (kick-convergence skips pushes outside `.github/convergence-paths.txt`):
   `convergence: none started within 60 min`, not waited for.
-- **Verdict**: `WATCH OK: Main #n green, convergence #m green`; `WATCH RED: <workflow> #n <failed jobs>` plus the
+- **Takes**: the `identity-takes.yml` run picked the same way (convergence's preflight dispatches it beside each
+  convergence run).
+- **Verdict**: `WATCH OK: Main #n green, convergence #m green, takes #k green`; `WATCH RED: <workflow> #n <failed jobs>` plus the
   `ci-why` summary, the moment either is red; `WATCH UNKNOWN` after 3 h undecided or 10 failed reads.
 
 Outside the watch and the gate: **Tool self-tests** (`tool-self-tests.yml`: every script self-test and

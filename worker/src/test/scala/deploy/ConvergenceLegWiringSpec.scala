@@ -508,9 +508,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  holds the gate's answer against it -- until takes-skip-shadow-report.sh says it may be enforced; and one full run of
    *  main a day whatever the mode (convergence-daily.yml). */
   "the takes skip gate" should "be in shadow by default, reach the takes step, and run main in full daily" in {
-    val suite = RepoFile.read(".github/workflows/identity-model-convergence.yml")
+    // the takes rows are Identity takes' (2026-11-08); convergence takes the input only to hand it on (dispatch-takes.sh)
+    val suite = RepoFile.read(".github/workflows/identity-takes.yml")
     RepoFile.block(leg, "takes-skip") should include("default: shadow")
     RepoFile.block(suite, "takes-skip") should include("default: shadow")
+    RepoFile.block(RepoFile.read(".github/workflows/identity-model-convergence.yml"), "takes-skip") should include("default: shadow")
+    RepoFile.read("scripts/ci/dispatch-takes.sh") should include("takes-skip")
     suite should include("takes-skip:                    ${{ needs.preflight.outputs.takes-skip }}")
     suite should include("takes-skip: ${{ steps.legs.outputs.takes-skip }}")
     RepoFile.read("scripts/ci/convergence_reuse.py") should include(""""takes-skip": ("INPUT_TAKES_SKIP", "shadow"),""")
@@ -524,7 +527,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  its `takes-base` row, and the takes row uploads the check's own output -- both sides' takes and the verdict -- for the
    *  tool to classify. */
   "a takes-only dispatch" should "run only the takes rows, the takes row uploading the check's output" in {
-    RepoFile.read(".github/workflows/identity-model-convergence.yml") should include(
+    RepoFile.read(".github/workflows/identity-takes.yml") should include(
       "takes-only:                    ${{ needs.preflight.outputs.takes-only == 'true' }}")
     RepoFile.block(leg, "takes-only") should include("default: false")
     val suite = RepoFile.block(leg, "convergence")

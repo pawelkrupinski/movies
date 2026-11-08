@@ -120,6 +120,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/workflows/ci.yml
 .github/workflows/country-convergence-leg.yml
 .github/workflows/identity-model-convergence.yml
+.github/workflows/identity-takes.yml
 .github/workflows/main.yml
 scripts/ci/build-image.sh
 scripts/ci/cache-marker.sh
@@ -131,6 +132,7 @@ scripts/ci/commit-rules-ci.sh
 scripts/ci/convergence-row-minutes.tsv
 scripts/ci/convergence_slots.py
 scripts/ci/corpus_shape_diff.py
+scripts/ci/dispatch-takes.sh
 scripts/ci/dispatch.sh
 scripts/ci/drift-replays-compare.sh
 scripts/ci/drift_diff.py

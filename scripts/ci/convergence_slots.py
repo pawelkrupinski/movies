@@ -90,22 +90,39 @@ def makespan(minutes, slots):
 def plan(phases_by_code, costs, total=RUNNERS, tails=None, drift_twice=False):
     """{code: {"phases": [...longest first], "max-parallel": n, "minutes": predicted end}} -- the shares summing to at most
     `total` (one each at least), each next slot to the country that ends last."""
-    tails = tails or {}
-    order = {c: longest_first(c, ps, costs, drift_twice) for c, ps in phases_by_code.items()}
-    minutes = {c: [cost(c, p, costs, drift_twice) for p in ps] for c, ps in order.items()}
+    return plan_suites({"": phases_by_code}, costs, total, {"": tails or {}}, drift_twice)[""]
 
-    def ends(code, n):
-        return round(makespan(minutes[code], n) + tails.get(code, 0.0), 1)
 
-    share = {c: 1 for c in order}
+def plan_suites(phases_by_suite, costs, total=RUNNERS, tails_by_suite=None, drift_twice=False):
+    """plan() over the legs of suites that run side by side (Identity model convergence and Identity takes, the owner
+    2026-11-08: one account's 20 runners for both): {suite: {code: {...}}}, every (suite, country) leg one slot at least,
+    each next slot to the leg that ends last, of all of them. A fixed split of the 20 between the suites ends later (10
+    and 10: ~26 min against ~20 for one pool), as each suite's slowest country then waits on its own suite's slots."""
+    tails_by_suite = tails_by_suite or {}
+    legs = [(suite, c) for suite, by_code in phases_by_suite.items() for c in by_code]
+    order = {(suite, c): longest_first(c, phases_by_suite[suite][c], costs, drift_twice) for suite, c in legs}
+    minutes = {(suite, c): [cost(c, p, costs, drift_twice) for p in ps] for (suite, c), ps in order.items()}
+
+    def ends(leg, n):
+        return round(makespan(minutes[leg], n) + (tails_by_suite.get(leg[0]) or {}).get(leg[1], 0.0), 1)
+
+    share = {leg: 1 for leg in legs}
     while sum(share.values()) < total:
-        # a country can still end sooner with more slots (perhaps only with more than one: 4 rows of 10 end at 20 on 2 or 3)
-        growable = [c for c in order if share[c] < len(order[c]) and ends(c, len(order[c])) < ends(c, share[c])]
+        # a leg can still end sooner with more slots (perhaps only with more than one: 4 rows of 10 end at 20 on 2 or 3)
+        growable = [leg for leg in legs if share[leg] < len(order[leg]) and ends(leg, len(order[leg])) < ends(leg, share[leg])]
         if not growable:
             break
-        # a slot that cannot shorten the run still gives a country room for a row slower than its median
-        share[max(growable, key=lambda c: (ends(c, share[c]), -list(order).index(c)))] += 1
-    return {c: {"phases": order[c], "max-parallel": share[c], "minutes": ends(c, share[c])} for c in order}
+        # a slot that cannot shorten the run still gives a leg room for a row slower than its median
+        share[max(growable, key=lambda leg: (ends(leg, share[leg]), -legs.index(leg)))] += 1
+    out = {suite: {} for suite in phases_by_suite}
+    for suite, c in legs:
+        out[suite][c] = {"phases": order[(suite, c)], "max-parallel": share[(suite, c)], "minutes": ends((suite, c), share[(suite, c)])}
+    return out
+
+
+def ends_at(shares):
+    """When a plan's last country ends."""
+    return max((s["minutes"] for s in shares.values()), default=0.0)
 
 
 # ── the measured costs ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -172,19 +189,23 @@ def cmd_plan(drift_twice):
     import convergence_reuse as reuse  # noqa: E402
     with open(os.path.join(ROOT, reuse.WORKFLOW)) as f:
         rows = reuse.matrix_rows(f.read())
-    print("\n".join(describe(reuse.leg_plan(rows, reuse.leg_inputs({"INPUT_DRIFT_TWICE": "true" if drift_twice else ""}),
-                                             "both"))))
+    inputs = reuse.leg_inputs({"INPUT_DRIFT_TWICE": "true" if drift_twice else ""})
+    plans = reuse.main_plan(rows, inputs)
+    for suite, shares in plans.items():
+        print(f"{suite}:")
+        print("\n".join(f"  {line}" for line in describe(shares)))
+    print(f"{sum(s['max-parallel'] for shares in plans.values() for s in shares.values())} of {RUNNERS} runners for both")
     return 0
 
 
 def describe(shares):
     """The plan as lines: each country's share, predicted end and row order, then the total."""
     if not shares:
-        return ["no cap: not main's suite (a takes-only or drift-only run), every row at once"]
+        return ["no cap: not main's suite (a takes-only run), every row at once"]
     lines = [f"{c}: max-parallel {s['max-parallel']}, ends ~{s['minutes']} min: {', '.join(s['phases'])}"
              for c, s in shares.items()]
-    return lines + [f"{sum(s['max-parallel'] for s in shares.values())} of {RUNNERS} runners; the rows end "
-                    f"~{max(s['minutes'] for s in shares.values())} min after they start"]
+    return lines + [f"{sum(s['max-parallel'] for s in shares.values())} runners; the rows end "
+                    f"~{ends_at(shares)} min after they start"]
 
 
 def main(argv):

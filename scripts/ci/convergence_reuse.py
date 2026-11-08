@@ -32,19 +32,26 @@
 #     `verify` prints them (`drift-seeds-judged=S1,S2`) and says them in the summary, and this run's facts name no seed
 #     of its own (it judged none: `drift_seeds_from` names the source).
 #
+# TWO SUITES (the owner, 2026-11-08): Identity model convergence (convergence, the order rows, next-day) and Identity takes
+# (takes, takes-base, the takes-drift rows) each judge a reuse of their own rows (--suite, else $CONVERGENCE_SUITE, else
+# convergence). Main's kick names a CONVERGENCE run; the takes run's preflight judges the takes run that one dispatched
+# (takes_child, by its title `Identity takes (convergence run <id>)`). Only a takes run judges takes bases, and only it
+# has the NO FALSE GREEN check (`complete`). Both suites' rows are planned in ONE pool of 20 runners (main_plan).
+#
 # usage:
 #   convergence_reuse.py key [REV]                      the key of REV (default HEAD)
 #   convergence_reuse.py inputs                         the legs' inputs from the dispatch's (env INPUT_*): `name=value`
 #                                                       lines for $GITHUB_OUTPUT, and the JSON to $LEG_INPUTS_FILE
 #   convergence_reuse.py facts --sha SHA --inputs F [--order-phases P] [--reused-from RUN]
 #                                                       this run's facts (the artifact `convergence-reuse-facts`)
-#   convergence_reuse.py verify --source RUN --sha SHA --inputs F [--order-phases P]
+#   convergence_reuse.py verify --source RUN --sha SHA --inputs F [--order-phases P] [--suite S]
 #                                                       prints `reused-from=RUN` when RUN's verdict holds, nothing when not
 #                                                       (each reason on stderr and in $GITHUB_STEP_SUMMARY); copies the
 #                                                       source's statuses onto SHA when it is another commit
 #   convergence_reuse.py find --sha SHA                 the newest source run whose facts name SHA's key, or nothing (the
 #                                                       kick's hint: verify decides)
-#   convergence_reuse.py expected-rows [REV]            the rows main's matrix runs, `<phase> (<country>)` a line
+#   convergence_reuse.py expected-rows [REV] [--suite S]  the rows main's matrix runs, `<phase> (<country>)` a line
+#   convergence_reuse.py takes-run --parent RUN         the Identity takes run convergence run RUN dispatched (exit 1: none)
 #   convergence_reuse.py complete --run RUN --sha SHA [--reused-from RUN] [--inputs F] [--order-phases P]
 #                                                       NO FALSE GREEN (below): exit 1, each reason on stderr, when a takes
 #                                                       or takes-drift row of RUN was skipped, cancelled or never ran and
@@ -81,6 +88,16 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 PATHS_FILE = ".github/convergence-paths.txt"
 WORKFLOW = ".github/workflows/identity-model-convergence.yml"
 WORKFLOW_FILE = "identity-model-convergence.yml"
+# TWO SUITES, TWO WORKFLOWS (the owner, 2026-11-08): `Identity takes` runs every leg's takes rows (takes, takes-base, the
+# takes-drift rows, the harnesses' A/A rows), `Identity model convergence` the rest (convergence, the order passes and their
+# comparisons, next-day). Both gate. The countries' rows (LEG_ROWS) are written once, in the convergence workflow, and the
+# takes preflight reads them there. Convergence's preflight dispatches the takes run of every run it makes, titled
+# TAKES_TITLE: a takes run's parent is the convergence run it was dispatched for (takes_child).
+TAKES_WORKFLOW = ".github/workflows/identity-takes.yml"
+TAKES_WORKFLOW_FILE = "identity-takes.yml"
+SUITES = ("convergence", "takes")
+SUITE_FILES = {"convergence": WORKFLOW_FILE, "takes": TAKES_WORKFLOW_FILE}
+TAKES_TITLE = "Identity takes (convergence run {})"
 FACTS_ARTIFACT = "convergence-reuse-facts"
 FACTS_NAME = "facts.json"
 # The leg's own expansion of a country into rows (country-convergence-leg.yml's `phase:` matrix), unless main's plan hands
@@ -107,7 +124,8 @@ FIND_RUNS = 30
 FIND_HOURS = 24
 
 
-USAGE = "usage: convergence_reuse.py key|inputs|facts|verify|find|complete|legs|drift-rows|expected-rows|judge ... (see the header)"
+USAGE = ("usage: convergence_reuse.py key|inputs|facts|verify|find|complete|legs|drift-rows|expected-rows|takes-run|judge ... "
+         "(see the header)")
 
 
 class Unproven(Exception):
@@ -171,15 +189,16 @@ def matrix_rows(workflow_text):
     return rows
 
 
-def expected_rows(workflow_text):
-    """`<phase> (<country>)` of every row main's run expands to: PHASES_EXPRESSION with takes-only false, hermetic, the
-    takes rows on (the check's and a drift seed's each) and both order phases (main's order-phases.sh answer). Not the
-    harnesses' A/A rows (`takes-drift-aa` and its two passes, `takes-aa`, harness_aa.py): only a push that changed the harness runs it, and no verdict
-    reused from a landing check is one -- a reused run skips it with every other row."""
+def expected_rows(workflow_text, suite="convergence"):
+    """`<phase> (<country>)` of every row main's run of `suite` expands to: PHASES_EXPRESSION with takes-only false,
+    hermetic and both order phases (main's order-phases.sh answer) -- for convergence its convergence, order and next-day
+    rows and the order comparisons, for takes the takes check's and every drift seed's rows. Not the harnesses' A/A rows
+    (`takes-drift-aa` and its two passes, `takes-aa`, harness_aa.py): only a push that changed the harness runs it, and no
+    verdict reused from a landing check is one -- a reused run skips it with every other row."""
     out = []
     for row in matrix_rows(workflow_text):
-        phases = matrix_phases(row)
-        if row.get("order", "") and _true(row.get("order-split", "false")):
+        phases = matrix_phases(row, suite=suite)
+        if suite == "convergence" and row.get("order", "") and _true(row.get("order-split", "false")):
             # a split country's passes are compared by the leg's `order-compare` job, a row per pair named as the
             # two-pass row was
             phases += [p for p in ORDER_SPLIT_ROWS if "-pass" not in p]
@@ -257,14 +276,17 @@ def parse_rows(text):
     return rows
 
 
-def leg_matrix(rows, inputs):
-    """The `leg` job's matrix as JSON-able data (identity-model-convergence.yml): a `country` vector the rows extend, so a
-    row is named `leg (<country>)` by default, holding only the countries this run starts -- a takes-only or drift-only run
-    with `takes-countries` keeps those. A country left out is no row at all: a matrix job skipped for it would show its
+def leg_matrix(rows, inputs, suite="convergence"):
+    """The `leg` job's matrix as JSON-able data (identity-model-convergence.yml, identity-takes.yml): a `country` vector the
+    rows extend, so a row is named `leg (<country>)` by default, holding only the countries this run starts -- a takes-only
+    or drift-only takes run with `takes-countries` keeps those, and a convergence run asked for takes rows alone (the
+    rows are the takes run's) none. A country left out is no row at all: a matrix job skipped for it would show its
     `name:` template raw in the run graph (`${{ matrix.phase }} (...)`)."""
+    partial = inputs.get("takes-only") == "true" or inputs.get("drift-only") == "true"
+    if suite == "convergence" and partial:
+        return {"country": [], "include": []}
     wanted = {c.strip() for c in inputs.get("takes-countries", "").split(",") if c.strip()}
-    narrowed = (inputs.get("takes-only") == "true" or inputs.get("drift-only") == "true") and wanted
-    kept = [r for r in rows if not narrowed or r["code"] in wanted]
+    kept = [r for r in rows if not (partial and wanted) or r["code"] in wanted]
     return {"country": [r["country"] for r in kept], "include": kept}
 
 
@@ -272,10 +294,14 @@ def _true(value):
     return str(value).lower() == "true"
 
 
-def matrix_phases(row, order_phases="both", harness_aa=False):
-    """The `convergence` matrix rows main's leg for `row` expands to (PHASES_EXPRESSION, hermetic, takes rows on, neither
-    takes-only nor drift-only; the A/A rows when the preflight decided them), in the workflow's order; the `order-compare`
-    rows after them (the order comparisons and the A/A passes' `takes-drift-aa`) are not among them."""
+def matrix_phases(row, order_phases="both", harness_aa=False, suite="convergence"):
+    """The `convergence` matrix rows main's leg for `row` expands to in `suite` (PHASES_EXPRESSION, hermetic, neither
+    takes-only nor drift-only; the A/A rows when the preflight decided them), in the workflow's order: convergence's
+    convergence, order passes and next-day, takes' takes, takes-base and drift rows. The `order-compare` rows after them
+    (the order comparisons, the A/A passes' `takes-drift-aa`) are not among them."""
+    if suite == "takes":
+        return (["takes", "takes-base"] + drift_phases(row["code"])
+                + (["takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"] if harness_aa else []))
     phases = ["convergence"]
     if row.get("order", ""):
         if _true(row.get("order-split", "false")):
@@ -284,8 +310,7 @@ def matrix_phases(row, order_phases="both", harness_aa=False):
             phases.append("order-independence")
     if row.get("next-day", ""):
         phases.append("next-day")
-    return (phases + ["takes", "takes-base"] + drift_phases(row["code"])
-            + (["takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"] if harness_aa else []))
+    return phases
 
 
 def drift_phases(code, pins=""):
@@ -294,31 +319,48 @@ def drift_phases(code, pins=""):
     return [f"takes-drift-{r}" for r in drift_seeds.rows_of(code, pins=pins)]
 
 
-def leg_plan(rows, inputs, order_phases="both", harness_aa=False):
-    """Main's suite in 20 runners (convergence_slots.plan): each country's rows longest first and its share of the
-    runners. A drift-only run plans its takes-drift rows alike (every row a country has, or the pinned ones); a
-    takes-only run gets {} (two rows a country: the leg's own expression, no cap)."""
-    if inputs.get("takes-only") == "true":
-        return {}
-    costs = convergence_slots.read_costs()
-    if inputs.get("drift-only") == "true":
-        pins = ",".join(inputs.get(k, "") for k in SEED_KEYS)
-        return convergence_slots.plan({r["code"]: drift_phases(r["code"], pins) for r in rows}, costs,
-                                      drift_twice=inputs.get("drift-twice") == "true")
-    twice = inputs.get("drift-twice") == "true"
-    split = {r["code"] for r in rows if r.get("order", "") and _true(r.get("order-split", "false"))}
+def suite_tails(rows, suite, order_phases="both", harness_aa=False, costs=None):
+    """What follows a country's rows in `suite`'s `order-compare` job: convergence's order comparisons (a split country),
+    takes' A/A comparison (when the preflight decided the A/A rows)."""
+    costs = convergence_slots.read_costs() if costs is None else costs
+    if suite == "takes":
+        return {r["code"]: convergence_slots.AA_COMPARE_MINUTES for r in rows} if harness_aa else {}
     compares = convergence_slots.COMPARE_PHASES[:1] if order_phases == "one" else convergence_slots.COMPARE_PHASES
-    tails = {c: max(convergence_slots.cost(c, p, costs) for p in compares) for c in split}
-    if harness_aa:  # the A/A passes' comparison, in the same job after the rows (order-compare)
-        tails = {r["code"]: max(tails.get(r["code"], 0.0), convergence_slots.AA_COMPARE_MINUTES) for r in rows}
-    return convergence_slots.plan({r["code"]: matrix_phases(r, order_phases, harness_aa) for r in rows}, costs, tails=tails,
-                                  drift_twice=twice)
+    return {r["code"]: max(convergence_slots.cost(r["code"], p, costs) for p in compares)
+            for r in rows if r.get("order", "") and _true(r.get("order-split", "false"))}
 
 
-def planned_matrix(rows, inputs, order_phases="both", harness_aa=False):
+def main_plan(rows, inputs, order_phases="both", harness_aa=False):
+    """{suite: {code: share}}: both of main's suites in the account's 20 runners at once (convergence_slots.plan_suites).
+    Convergence's preflight dispatches the takes run as it starts, so the two run side by side; each preflight plans both
+    from the same rows and costs and keeps its own suite's part. The other suite is planned as main runs it (both order
+    phases, no A/A row) whatever this run's own order phases or A/A decision: what it does not know it plans as main's."""
+    costs = convergence_slots.read_costs()
+    twice = inputs.get("drift-twice") == "true"
+    phases = {"convergence": {r["code"]: matrix_phases(r, order_phases, suite="convergence") for r in rows},
+              "takes": {r["code"]: matrix_phases(r, harness_aa=harness_aa, suite="takes") for r in rows}}
+    tails = {"convergence": suite_tails(rows, "convergence", order_phases, costs=costs),
+             "takes": suite_tails(rows, "takes", harness_aa=harness_aa, costs=costs)}
+    return convergence_slots.plan_suites(phases, costs, tails_by_suite=tails, drift_twice=twice)
+
+
+def leg_plan(rows, inputs, order_phases="both", harness_aa=False, suite="convergence"):
+    """Main's `suite` in its part of the 20 runners (main_plan): each country's rows longest first and its share. A
+    drift-only takes run plans its takes-drift rows alike (every row a country has, or the pinned ones) in all 20 (no
+    convergence run beside it); a takes-only run gets {} (two rows a country: the leg's own expression, no cap)."""
+    if suite == "takes" and inputs.get("takes-only") == "true":
+        return {}
+    if suite == "takes" and inputs.get("drift-only") == "true":
+        pins = ",".join(inputs.get(k, "") for k in SEED_KEYS)
+        return convergence_slots.plan({r["code"]: drift_phases(r["code"], pins) for r in rows},
+                                      convergence_slots.read_costs(), drift_twice=inputs.get("drift-twice") == "true")
+    return main_plan(rows, inputs, order_phases, harness_aa)[suite]
+
+
+def planned_matrix(rows, inputs, order_phases="both", harness_aa=False, suite="convergence"):
     """leg_matrix with each row's `phases` (JSON, longest first; empty: the leg's own expression) and `max-parallel`."""
-    matrix = leg_matrix(rows, inputs)
-    shares = leg_plan(matrix["include"], inputs, order_phases, harness_aa)
+    matrix = leg_matrix(rows, inputs, suite)
+    shares = leg_plan(matrix["include"], inputs, order_phases, harness_aa, suite) if matrix["include"] else {}
     matrix["include"] = [dict(r, **({"phases": json.dumps(shares[r["code"]]["phases"], separators=(",", ":")),
                                      "max-parallel": shares[r["code"]]["max-parallel"]} if shares else
                                     {"phases": "", "max-parallel": convergence_slots.UNCAPPED}))
@@ -405,10 +447,11 @@ def judge(source_run, jobs, facts, mine):
     jobs:       its jobs ({name, status, conclusion})
     facts:      its facts artifact (facts()), None when it has none
     mine:       {"key", "pairs", "inputs", "order_phases", "expected_rows", "takes_bases": {code: (source base, main
-                base, same key)}} -- what this run computed"""
+                base, same key)}, "suite"} -- what this run computed (a convergence run judges no takes base: {})"""
     why = []
-    if not str(source_run.get("path", "")).endswith(WORKFLOW_FILE):
-        why.append(f"run {source_run.get('id')} is no {WORKFLOW_FILE} run")
+    file = SUITE_FILES[mine.get("suite") or "convergence"]
+    if not str(source_run.get("path", "")).endswith(file):
+        why.append(f"run {source_run.get('id')} is no {file} run")
     if source_run.get("status") != "completed" or source_run.get("conclusion") != "success":
         why.append(f"run {source_run.get('id')} is {source_run.get('status')}/{source_run.get('conclusion')}, not a green "
                    "completed run")
@@ -476,7 +519,7 @@ def incomplete(jobs, rows, reused_from="", inputs=None, order_phases="both"):
 
 def cmd_complete(opts):
     try:
-        why = incomplete(run_jobs(opts["run"]), expected_rows(workflow_at(opts["sha"])), opts.get("reused-from", ""),
+        why = incomplete(run_jobs(opts["run"]), expected_rows(workflow_at(opts["sha"]), "takes"), opts.get("reused-from", ""),
                          read_json(opts["inputs"]) if opts.get("inputs") else None, opts.get("order-phases", "both"))
     except (Unproven, subprocess.CalledProcessError, OSError, ValueError, KeyError) as e:
         why = [f"could not read the run's rows: {e}"]
@@ -647,10 +690,20 @@ def cmd_inputs(_):
     return 0
 
 
-def cmd_legs(_):
-    """The `leg` matrix (leg_matrix), from LEG_ROWS (the rows as written in the workflow) and the dispatch's inputs; for
+def suite_of(opts=None):
+    """The suite a command judges: --suite, else $CONVERGENCE_SUITE, else convergence."""
+    suite = (opts or {}).get("suite") or os.environ.get("CONVERGENCE_SUITE") or "convergence"
+    if suite not in SUITES:
+        raise ValueError(f"suite {suite!r}: one of {', '.join(SUITES)}")
+    return suite
+
+
+def cmd_legs(opts):
+    """The `leg` matrix (leg_matrix) of the suite ($CONVERGENCE_SUITE), from LEG_ROWS (the rows as written in the workflow;
+    unset: the convergence workflow's own, as the takes preflight reads them) and the dispatch's inputs; for
     verify-scrape-recording.yml, LEG_CODES (the recording's complete countries, comma-separated) narrows it instead."""
-    rows = parse_rows(os.environ.get("LEG_ROWS", ""))
+    suite = suite_of(opts)
+    rows = parse_rows(os.environ["LEG_ROWS"]) if os.environ.get("LEG_ROWS") else matrix_rows(open(os.path.join(ROOT, WORKFLOW)).read())
     codes = os.environ.get("LEG_CODES")
     if codes is not None:
         inputs = {"takes-only": "true", "takes-countries": codes}
@@ -658,11 +711,11 @@ def cmd_legs(_):
         inputs = read_json(os.environ["LEG_INPUTS_FILE"])  # the file `inputs` wrote
     order_phases = os.environ.get("ORDER_PHASES") or "both"
     harness_aa = os.environ.get("HARNESS_AA") == "true"
-    matrix = planned_matrix(rows, inputs, order_phases, harness_aa)
-    if codes is None:
-        summary(["Rows longest first, each country's share of the runners (scripts/ci/convergence_slots.py):", ""]
+    matrix = planned_matrix(rows, inputs, order_phases, harness_aa, suite)
+    if codes is None and matrix["include"]:
+        summary([f"Rows longest first, each country's share of the runners ({suite}; scripts/ci/convergence_slots.py):", ""]
                 + [f"- {line}" for line in
-                   convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa))])
+                   convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa, suite))])
     print(f"leg-matrix={json.dumps(matrix, separators=(',', ':'))}")
     print(f"any-leg={'true' if matrix['country'] else 'false'}")
     return 0
@@ -671,7 +724,7 @@ def cmd_legs(_):
 def cmd_facts(opts):
     workflow = workflow_at(opts["sha"])
     inputs = read_json(opts["inputs"])
-    facts = {"version": 1, "run_id": os.environ.get("GITHUB_RUN_ID", ""), "sha": opts["sha"], "key": key(opts["sha"]),
+    facts = {"version": 1, "suite": suite_of(opts), "run_id": os.environ.get("GITHUB_RUN_ID", ""), "sha": opts["sha"], "key": key(opts["sha"]),
              "inputs": inputs, "order_phases": opts.get("order-phases", "both"),
              "reused_from": opts.get("reused-from", "")}
     if facts["reused_from"]:
@@ -710,20 +763,42 @@ def copy_statuses(run, sha):
            f"target_url={s.get('target_url', '')}", parse=False)
 
 
+def takes_child(run_id):
+    """The Identity takes run convergence's run `run_id` dispatched (its title, TAKES_TITLE), or None when none is listed."""
+    title = TAKES_TITLE.format(run_id)
+    for page in range(1, STATUS_PAGES + 1):
+        runs = (gh("api", f"repos/{repo()}/actions/workflows/{TAKES_WORKFLOW_FILE}/runs?per_page=100&page={page}") or {}
+                ).get("workflow_runs") or []
+        for run in runs:
+            if run.get("display_title") == title:
+                return str(run["id"])
+        if len(runs) < 100:
+            break
+    return None
+
+
 def cmd_verify(opts):
+    suite = suite_of(opts)
     run_id, sha = opts["source"], opts["sha"]
     try:
+        if suite == "takes":
+            # the reuse source names a convergence run (main's kick finds those): its verdict on the takes rows is the
+            # takes run it dispatched
+            child = run_id if str(run_json(run_id).get("path", "")).endswith(TAKES_WORKFLOW_FILE) else takes_child(run_id)
+            if not child:
+                raise Unproven(f"convergence run {run_id} dispatched no Identity takes run that is listed")
+            run_id = child
         run = run_json(run_id)
         workflow = workflow_at(sha)
         cache = {}
         bases = {}
-        for _, code in countries(workflow):
+        for _, code in countries(workflow) if suite == "takes" else []:
             theirs = source_base(code, run.get("head_sha", ""), run, cache)
             main = main_base(code, sha, cache)
             bases[code] = (theirs, main, same_tree(theirs, main))
         mine = {"key": key(sha), "pairs": pairs(workflow), "inputs": read_json(opts["inputs"]),
-                "order_phases": opts.get("order-phases", "both"), "expected_rows": expected_rows(workflow),
-                "takes_bases": bases}
+                "order_phases": opts.get("order-phases", "both"), "expected_rows": expected_rows(workflow, suite),
+                "takes_bases": bases, "suite": suite}
         source_facts = run_facts(run_id)
         why = judge(run, run_jobs(run_id), source_facts, mine)
     except (Unproven, subprocess.CalledProcessError, OSError, ValueError, KeyError) as e:
@@ -795,8 +870,17 @@ def main(argv):
         print(key(rest[0] if rest else "HEAD"))
         return 0
     if command == "expected-rows":
-        print("\n".join(expected_rows(workflow_at(rest[0] if rest else "HEAD"))))
+        print("\n".join(expected_rows(workflow_at(rest[0] if rest else "HEAD"), suite_of(opts))))
         return 0
+    if command == "takes-run":  # the Identity takes run a convergence run dispatched
+        try:
+            child = takes_child(opts["parent"])
+        except Unproven as e:
+            print(f"convergence-reuse: {e}", file=sys.stderr)
+            return 2
+        if child:
+            print(child)
+        return 0 if child else 1
     if command == "judge":
         facts = read_json(opts["facts"]) if opts.get("facts") else None
         mine = read_json(opts["mine"])

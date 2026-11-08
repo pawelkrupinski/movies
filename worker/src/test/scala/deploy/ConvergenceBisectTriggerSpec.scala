@@ -25,16 +25,24 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
    *  bisect — found by what they call, not listed. A recording leg (`mode: record`) has nothing to
    *  bisect. Nor does `Verify scrape recording`: it judges main's head, which Identity model convergence has already
    *  judged commit by commit, against one night's recording -- a red there is code meeting new data, answered by a
-   *  fix and a re-dispatch on the same recording, not by a range of commits. */
+   *  fix and a re-dispatch on the same recording, not by a range of commits. Nor Identity takes (below). */
   private val convergenceWorkflows =
     RepoFile.workflows().map(_.getPath).filter { p =>
       val yml = RepoFile.read(p)
       yml.contains("uses: ./.github/workflows/country-convergence-leg.yml") && """mode:\s+record""".r.findFirstIn(yml).isEmpty &&
-      !p.endsWith("verify-scrape-recording.yml")
+      !p.endsWith("verify-scrape-recording.yml") && !p.endsWith("identity-takes.yml")
     }
 
   private def nameOf(yml: String) =
     yml.linesIterator.collectFirst { case s"name: $n" => n.trim }.getOrElse(fail("no name"))
+
+  /** Identity takes (2026-11-08) runs only the takes rows, and a red takes row names its own range (base..head): no row of
+   *  it leaves a bisect request (country-convergence-leg.yml: `!startsWith(matrix.phase, 'takes')`), so it dispatches none. */
+  "Identity takes" should "dispatch no bisect: its rows name their own range" in {
+    val takes = RepoFile.read(".github/workflows/identity-takes.yml")
+    takes should not include "gh workflow run convergence-bisect.yml"
+    RepoFile.read(".github/workflows/country-convergence-leg.yml") should include("!startsWith(matrix.phase, 'takes')")
+  }
 
   "the convergence workflows" should "be found" in {
     convergenceWorkflows.map(p => nameOf(RepoFile.read(p))).toSet shouldBe Set("Identity model convergence")

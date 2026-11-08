@@ -61,7 +61,8 @@ TOOL_NAME=identity-drift-ci
 . "$here/ci/dispatch.sh"
 export DISPATCH_GH_TIMEOUT=${IDENTITY_DRIFT_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_DRIFT_POLL:-30}
 export DISPATCH_GH=$KINOWO_GH
-workflow=identity-model-convergence.yml
+# the takes rows are Identity takes' (the owner, 2026-11-08): a drift-only request starts no convergence row
+workflow=identity-takes.yml
 say() { echo "identity-drift-ci: $*" >&2; }
 progress() { [ -z "${KINOWO_PROGRESS_FILE:-}" ] || date +%s >> "$KINOWO_PROGRESS_FILE" 2> /dev/null || true; }
 
@@ -217,9 +218,10 @@ if [ -z "$run" ]; then
   [ "$ref" != HEAD ] || [ -z "$(git status --porcelain --untracked-files=no 2> /dev/null)" ] \
     || say "WARNING: uncommitted changes are not checked -- only ${commit:0:9}"
   push=$commit
-  # The commit's own workflows must know drift-only; an older one gets main's CI laid over it (identity-measure's way).
+  # The commit's own workflows must know drift-only and hold identity-takes.yml (2026-11-08); an older one gets main's CI
+  # laid over it (identity-measure's way).
   leg=$(git show "$commit:.github/workflows/country-convergence-leg.yml" 2> /dev/null) || leg=""
-  if [[ "$leg" != *drift-only* ]]; then
+  if [[ "$leg" != *drift-only* ]] || ! git cat-file -e "$commit:.github/workflows/$workflow" 2> /dev/null; then
     bounded 120 git fetch -q "$remote" main || die "could not fetch $remote main"
     push=$(identity_main_ci_over "$remote" "$commit" drift) || die "could not lay main's CI over $commit"
     say "${commit:0:9} predates the drift-only dispatch: checking it under $remote/main's .github/ and scripts/ci/ (${push:0:9})"

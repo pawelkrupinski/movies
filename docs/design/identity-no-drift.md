@@ -113,7 +113,8 @@ hours. The capture-replay case above proves one case; the A/A run proves the who
   one replay of the row-1 seeds (the step's once ceiling, 75 min), and five comparisons of two TSVs. A preflight that proves a reuse skips every row,
   this one included.
 - **Gating:** the rows are `unproven` in `.github/gating-checks.tsv`; after the first green run on main,
-  `scripts/ci/gating_checks.py prove --workflow-file identity-model-convergence.yml --run <id> --number <#n>`.
+  `scripts/ci/gating_checks.py prove --workflow-file identity-takes.yml --run <id> --number <#n>` (the A/A rows are Identity
+  takes', since the takes rows split from convergence on 2026-11-08).
 - **The takes harness too** (2026-11-06): the same push adds a `takes-aa (<country>)` row per leg -- the takes check
   (the harness of the takes rows and of `scripts/identity-measure`, which dispatches them) with `TAKES_AA=true`: the
   base is the head, no skip gate, nothing fetched from or kept on the store, and both sides resolved and their final

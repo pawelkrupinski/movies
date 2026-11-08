@@ -112,7 +112,7 @@
 # checkout (e.g. the DevPanel's `sbt web/run`): two compilers over one classes dir race.
 #
 # RED BUILDS GATE EVERY PUSH TO MAIN. Before any path check: when the newest COMPLETED run on main of a
-# gating workflow (Main and Identity model convergence, the owner's gate of 2026-10-27; a cancelled run says nothing
+# gating workflow (Main, Identity model convergence and Identity takes, the owner's gate of 2026-10-27 and 2026-11-08; a cancelled run says nothing
 # and is passed over) is red, the push lands only as a fix for it — every pushed commit carries a
 # `Fixes-Red: <run>` trailer naming a run of the current red episode (A FIX MATCHES THE RED, below) — except a commit touching no production path
 # (*/src/main/, conf/, build.sbt, project/, infra/nix/, infra/kubernetes/, Dockerfile): tools — scripts, docs,
@@ -592,12 +592,14 @@ need_jvm() { # <check>
 # watched by its own issue and identity-ci-staleness's recording-stale; Verify scrape recording replays what it captured,
 # hermetically, and goes red when the code does not hold on it.
 # THE GATE (the owner, 2026-10-27: "if the latest main and convergence runs are green, just push then, remember that";
-# "if the latest completed run(s) is green, just check in"): exactly the newest COMPLETED Main run and the newest
-# COMPLETED Identity model convergence run on main -- running, queued and cancelled runs say nothing. Verify scrape
+# "if the latest completed run(s) is green, just check in"): exactly the newest COMPLETED run on main of Main, of
+# Identity model convergence and -- since its takes rows split off (the owner, 2026-11-08) -- of Identity takes; running,
+# queued and cancelled runs say nothing. A gate workflow new to the registry (.github/gating-checks.tsv, `unproven`)
+# reports until its first green run proves it. Verify scrape
 # recording no longer gates (`agentctl ci-why` lists its red, and any other, as information only).
-GatingWorkflows=("Main" "Identity model convergence")
+GatingWorkflows=("Main" "Identity model convergence" "Identity takes")
 # The same workflows by file (gating_checks.py's registry keys on it).
-GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml")
+GatingWorkflowFiles=("main.yml" "identity-model-convergence.yml" "identity-takes.yml")
 GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 # Each workflow's verdict is asked this many times, $PREPUSH_GATE_RETRY_SECONDS apart, before it counts as unread.
 GateAttempts="${PREPUSH_GATE_ATTEMPTS:-3}"

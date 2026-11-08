@@ -72,7 +72,8 @@ SEEDS = "test/resources/fixtures/drift-gate-seeds.tsv"
 # the old known-flips baseline (merged into the backlog 2026-11-04) stays for `known`'s history reads
 BASELINES = ("test/resources/fixtures/identity-flips-baseline.tsv", BACKLOG)
 GATE_PATHS = ".github/identity-drift-gate-paths.txt"
-WORKFLOW_ROWS = (".github/workflows/country-convergence-leg.yml", ".github/workflows/identity-model-convergence.yml")
+WORKFLOW_ROWS = (".github/workflows/country-convergence-leg.yml", ".github/workflows/identity-model-convergence.yml",
+                 ".github/workflows/identity-takes.yml")
 SLICES = "test/resources/fixtures/drift-slices/"
 TEMPORARY = re.compile(r"^TEMPORARY\b.*\bowner:\s*\S+.*\bremove when\b\s*\S+", re.I)
 

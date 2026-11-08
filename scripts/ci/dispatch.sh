@@ -16,6 +16,10 @@
 #       Sets DISPATCHED_RUN to the newest run created at or after <since> matching the predicate (fields:
 #       databaseId, headSha, createdAt, displayTitle), polled for DISPATCH_FIND_SECONDS (120): a dispatch's
 #       run appears in the list seconds after it.
+#   find_takes_run <convergence run id>
+#       Sets TAKES_RUN to the Identity takes run that convergence run's preflight dispatched (scripts/ci/dispatch-takes.sh;
+#       its title `Identity takes (convergence run <id>)`), polled for DISPATCH_TAKES_FIND_SECONDS (1800: the convergence
+#       run's preflight may queue for a runner first).
 #   run_in_flight <workflow> <ref> <sha>
 #       Sets IN_FLIGHT_RUN to a run of <workflow> on <ref> for <sha> that is still queued or running (none: empty) --
 #       the run a second dispatch of the same commit would only wait behind (run 3656, 2026-10-29: 54 min queued
@@ -39,7 +43,7 @@
 #
 # DISPATCH_GH_TIMEOUT (60 s) bounds each gh call; DISPATCH_POLL_SECONDS (30) spaces the waits' polls.
 # Tested by scripts/ci/dispatch-test.sh against a stub `gh`.
-# shellcheck disable=SC2034  # DISPATCHED_RUN and RUN_CONCLUSION are the sourcing caller's.
+# shellcheck disable=SC2034  # DISPATCHED_RUN, TAKES_RUN and RUN_CONCLUSION are the sourcing caller's.
 
 _dispatch_say() { echo "dispatch: $*" >&2; }
 # shellcheck source=scripts/tool-conventions.sh
@@ -99,6 +103,22 @@ find_dispatched_run() {
     sleep 5
   done
   _dispatch_say "dispatched $workflow, but no run of it appeared in ${DISPATCH_FIND_SECONDS:-120}s"
+  return 1
+}
+
+find_takes_run() {
+  local parent=$1 found deadline
+  TAKES_RUN=""
+  deadline=$((SECONDS + ${DISPATCH_TAKES_FIND_SECONDS:-1800}))
+  while :; do
+    found=$(_dispatch_gh run list --workflow identity-takes.yml --event workflow_dispatch --limit 50 --json databaseId,displayTitle \
+      --jq "[.[] | select(.displayTitle == \"Identity takes (convergence run $parent)\")] | first | .databaseId // empty") \
+      || { _dispatch_say "could not list identity-takes.yml's runs"; return 1; }
+    [ -n "$found" ] && { TAKES_RUN=$found; return 0; }
+    [ "$SECONDS" -lt "$deadline" ] || break
+    sleep "${DISPATCH_POLL_SECONDS:-30}"
+  done
+  _dispatch_say "convergence run $parent dispatched no Identity takes run in ${DISPATCH_TAKES_FIND_SECONDS:-1800}s"
   return 1
 }
 

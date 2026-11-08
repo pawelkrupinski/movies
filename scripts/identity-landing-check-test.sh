@@ -60,7 +60,7 @@ echo "$*" > "$LOGS/drift-args"
 case "${DRIFT:-0}" in
   0) echo "DRIFT CLEAN" ;;
   1) echo "DRIFT RED: takes-drift-2 (germany)" ;;
-  *) echo "identity-drift-ci: could not dispatch identity-model-convergence.yml" >&2 ;;
+  *) echo "identity-drift-ci: could not dispatch identity-takes.yml" >&2 ;;
 esac
 exit "${DRIFT:-0}"
 STUB
@@ -160,7 +160,7 @@ check "...its verdict a line of the check's" "true" "$(has '  drift       DRIFT 
 check "a red drift row is BLOCKED, naming it" "1 true" \
   "$(DRIFT=1 landing --head "$code" --base "$base") $(has '- drift: DRIFT RED: takes-drift-2 (germany)')"
 check "a drift run that could not be made is no verdict, saying why" "2 true" \
-  "$(DRIFT=2 landing --head "$code" --base "$base") $(has 'drift       could not check: could not dispatch identity-model-convergence.yml')"
+  "$(DRIFT=2 landing --head "$code" --base "$base") $(has 'drift       could not check: could not dispatch identity-takes.yml')"
 rm -f "$work/logs/drift-args"
 check "a judgements-only change touches no drift path: no drift group" "0 false" \
   "$(landing --head "$judged" --base "$code") $([ -f "$work/logs/drift-args" ] && echo true || echo false)"

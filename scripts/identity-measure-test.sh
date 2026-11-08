@@ -32,7 +32,8 @@ old=$(scratch_git "$repo" rev-parse HEAD)
 { echo "takes-only: {} takes-countries: {}"; for _ in $(seq 1 4000); do echo "# a line of the leg workflow, padding it past a pipe buffer"; done; } \
   > "$repo/.github/workflows/country-convergence-leg.yml"
 echo "new" > "$repo/scripts/ci/identity-takes-check.sh"
-scratch_git "$repo" commit -qam "main learns takes-only"
+echo "name: Identity takes" > "$repo/.github/workflows/identity-takes.yml"
+scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "main learns takes-only (and the takes rows' own workflow)"
 parent=$(scratch_git "$repo" rev-parse HEAD)
 echo "rule" > "$repo/rule.txt" && scratch_git "$repo" add rule.txt && scratch_git "$repo" commit -qm "a resolver change"
 tip=$(scratch_git "$repo" rev-parse HEAD)
@@ -165,7 +166,7 @@ check "...pushed as itself on a measure/<user>/<short sha>-<random> branch" \
   "$tip" "$(cat "$work/stub/pushed")"
 check "...named after the commit" "true" "$([[ "$(cat "$work/stub/branch")" == "$(id -un)/${tip:0:9}-"* ]] && echo true || echo false)"
 check "...dispatching only the takes rows against the commit's parent (it is on main already)" \
-  "workflow run identity-model-convergence.yml --ref measure/$(cat "$work/stub/branch") -f takes-base=$parent -f takes-only=true -f takes-countries=pl" \
+  "workflow run identity-takes.yml --ref measure/$(cat "$work/stub/branch") -f takes-base=$parent -f takes-only=true -f takes-countries=pl" \
   "$(cat "$work/stub/dispatch")"
 check "...and the branch is deleted afterwards" "0" "$(measure_branches)"
 check "...printing the verdict" "true" "$(grep -q '^LANDABLE' "$work/out" && echo true || echo false)"

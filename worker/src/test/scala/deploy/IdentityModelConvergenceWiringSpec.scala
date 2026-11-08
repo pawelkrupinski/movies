@@ -121,67 +121,19 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
 
   /** A red hermetic leg on main asks the bisect which commit did it — a replay that does not move. */
   it should "request a bisect for a red hermetic leg, and carry no scheduled-failure report (it has no schedule)" in {
-    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "verdict-complete", "timings")
+    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "timings")
     val requests = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("convergence-bisect-request") => cond }.toSeq
     requests should not be empty
     requests.foreach(_ should include("inputs.mode == 'hermetic'"))
   }
 
-  // NO FALSE GREEN (convergence-failures-2026-10-29 G7): run 1747 went green with its takes rows skipped. On main, after
-  // the legs, a job reads the run's own rows and fails it when a takes or takes-drift row did not decide -- unless the
-  // preflight proved a reuse, handed on as its `reused-from`.
-  it should "fail a main run whose takes or takes-drift rows did not all decide, a proven reuse aside" in {
-    val job = RepoFile.jobs(workflow)("verdict-complete")
-    job should include("needs: [ preflight, leg ]")
-    job should include("if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' }}")
-    job should include("REUSED_FROM: ${{ needs.preflight.outputs.reused-from }}")
-    job should include("convergence_reuse.py complete --run \"$RUN_ID\" --sha \"$GITHUB_SHA\" --reused-from \"$REUSED_FROM\"")
-  }
-
-  // THE DETERMINISM CHECK (convergence-failures-2026-10-29 G10): the daily full run replays each drift seed twice and
-  // diffs the TSVs (identity-drift-check.sh's DRIFT_TWICE) -- handed on as takes-only is, an output of the preflight.
-  it should "replay each drift seed twice on the daily run, handed on to the drift step" in {
-    RepoFile.block(workflow, "on") should include("drift-twice:")
-    RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs") should include("drift-twice: ${{ steps.legs.outputs.drift-twice }}")
-    RepoFile.jobs(workflow)("preflight") should include("INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}")
-    RepoFile.jobs(workflow)("leg") should include("drift-twice:                   ${{ needs.preflight.outputs.drift-twice == 'true' }}")
-    leg should include("DRIFT_TWICE: ${{ inputs.drift-twice }}")
-    RepoFile.read(".github/workflows/convergence-daily.yml") should include("-f drift-twice=true")
-  }
-
-  // THE DRIFT HARNESS'S A/A ROW (review 2026-11-06 P5, scripts/ci/harness_aa.py): decided once, in the preflight, for
-  // main's full suite alone, and handed on as drift-twice is -- a preflight output compared with 'true' in the call.
-  it should "add the harness's A/A row only on a push to main that changed the harness, decided in the preflight" in {
-    val preflight = RepoFile.jobs(workflow)("preflight")
-    RepoFile.block(preflight, "outputs") should include("harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}")
-    val decide = RepoFile.step(preflight, "Did this push change the drift harness (its A/A row)?")
-    decide should include("github.ref == 'refs/heads/main'")
-    decide should include("inputs.drift-only != true")
-    decide should include("python3 scripts/ci/harness_aa.py decide --head \"$GITHUB_SHA\" --since \"$since\"")
-    RepoFile.jobs(workflow)("leg") should include("harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}")
-    leg should include("inputs.harness-aa && ',\"takes-drift-aa-pass0\",\"takes-drift-aa-pass1\",\"takes-aa\"'")
-  }
-
-  // scripts/identity-drift-ci's pre-land check (convergence-failures-2026-10-29 §7.2): the takes-drift rows alone. The
-  // matrix re-parse hands the leg's `with:` the preflight's outputs and nothing else, and a dispatch's booleans may be
-  // strings, so the input travels as takes-only does: an output of the preflight, compared with 'true' in the call.
-  it should "run only the takes-drift rows on a drift-only dispatch, handed on as takes-only is" in {
-    RepoFile.block(workflow, "on") should include("drift-only:")
-    RepoFile.block(workflow, "on") should include("drift-seeds:")
-    val outputs = RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs")
-    outputs should include("drift-only: ${{ steps.legs.outputs.drift-only }}")
-    outputs should include("drift-seeds: ${{ steps.legs.outputs.drift-seeds }}")
-    RepoFile.jobs(workflow)("preflight") should include("INPUT_DRIFT_ONLY: ${{ inputs.drift-only }}")
-    val call = RepoFile.jobs(workflow)("leg")
-    call should include("drift-only:                    ${{ needs.preflight.outputs.drift-only == 'true' }}")
-    // ROTATING SEEDS (scripts/ci/drift_seeds.py): each row's seed, the run's rotation or the dispatch's pins
-    outputs should include("drift-seed-1: ${{ steps.legs.outputs.drift-seed-1 }}")
-    outputs should include("drift-seed-2: ${{ steps.legs.outputs.drift-seed-2 }}")
-    call should include("drift-seed-1:                  ${{ needs.preflight.outputs.drift-seed-1 }}")
-    call should include("drift-seed-2:                  ${{ needs.preflight.outputs.drift-seed-2 }}")
-    val rows = RepoFile.block(leg, "convergence")
-    rows should include("""fromJson(inputs.phases || inputs.drift-only && (inputs.drift-seed-1 == '' && inputs.drift-seed-2 != '' && '["takes-drift-2"]'""")
-    rows should include("(!(inputs.takes-only || inputs.drift-only) || inputs.takes-countries == ''")
+  /** THE TAKES ROWS ARE IDENTITY TAKES' (the owner, 2026-11-08): no leg of this run runs one -- with them went the
+   *  takes-only, drift-only and explorer inputs, the A/A decision and `verdict complete` (IdentityTakesWiringSpec). */
+  it should "run no takes row: the leg is handed none, and no takes-only or drift-only input is left" in {
+    RepoFile.jobs(workflow)("leg") should include regex """takes-row:\s+false"""
+    RepoFile.jobs(workflow)("leg") should not include "harness-aa:"
+    Seq("takes-only:", "drift-only:", "drift-seeds:", "takes-countries:", "drift-explore:").foreach(
+      RepoFile.block(workflow, "on") should not include _)
   }
 
   "the convergence leg" should "set no identity switch: its films are the identity model's, as production's are" in {

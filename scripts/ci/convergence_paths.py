@@ -18,7 +18,8 @@ import re
 import sys
 
 PATHS = ".github/convergence-paths.txt"
-ROOTS = (".github/workflows/identity-model-convergence.yml", ".github/workflows/country-convergence-leg.yml")
+ROOTS = (".github/workflows/identity-model-convergence.yml", ".github/workflows/identity-takes.yml",
+         ".github/workflows/country-convergence-leg.yml")
 # What the workflows run only after the verdict is in: never part of it.
 AFTER_THE_VERDICT = {
     ".github/actions/convergence-bisect-request/action.yml",  # asks for a bisect of a red run

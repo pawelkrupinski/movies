@@ -1,0 +1,448 @@
+#
+# THE IDENTITY TAKES SUITE -- every country's takes as the identity model decides them, judged base against head, and the
+# incremental = whole drift gate: per country the `takes` row (the identity takes check, scripts/ci/identity-takes-check.sh)
+# with its `takes-base` row, the fixed-seed `takes-drift-<n>` rows (scripts/ci/identity-drift-check.sh,
+# drift-gate-seeds.tsv), and, on a push that changed a harness, the harnesses' A/A rows and their comparison
+# (`takes-drift-aa`). THE GATE reads it, beside Main and Identity model convergence (the owner, 2026-11-08: "split the
+# takes rows of Identity model convergence into a separate workflow that gates on main").
+#
+# THE SAME LEG: every row is a row of country-convergence-leg.yml's `convergence` job, as it was inside convergence, so
+# every check keeps its name (`leg (<country>) / takes (<country>)`); this workflow hands the leg the takes rows only
+# (`phases`, no order or next-day command). The countries' rows are convergence's (its LEG_ROWS, read by
+# convergence_reuse.py legs), written once.
+#
+# WHO STARTS IT: Identity model convergence's preflight, for EVERY run it makes (scripts/ci/dispatch-takes.sh: the same ref,
+# its inputs, `parent-run` -- the title below), so whatever kicks off convergence kicks off this; and the takes-only and
+# drift-only requests that ask for no convergence row: scripts/identity-measure (takes-only), scripts/identity-drift-ci and
+# the drift explorer (drift-only). Nothing else dispatches it, and it has no other trigger (IdentityTakesWiringSpec).
+#
+# A VERDICT ALREADY PROVEN IS NOT RUN AGAIN: Main's kick hands convergence a landing check's convergence run (`reuse-run`),
+# and convergence hands it here; this preflight judges the takes run THAT run dispatched (convergence_reuse.py verify
+# --suite takes, takes_child) -- tree key, pairs, inputs, every takes row green, the takes bases -- and only when all hold
+# skips every leg.
+#
+# NO FALSE GREEN: `verdict complete` fails a run on main whose takes or takes-drift rows did not all decide (G7).
+#
+# ONE LANE OF ITS OWN: the run in flight is never cancelled, at most one newer run waits behind it, each newer dispatch
+# replaces the waiting one -- convergence's newest-commit batching, in a group of its own, so neither suite waits on the
+# other's lane. A re-run of convergence dispatches another run here (harmless: it judges the ref's newest commit).
+# (IdentityTakesWiringSpec, WorkflowConcurrencyConventionSpec)
+#
+name: Identity takes
+run-name: ${{ inputs.parent-run != '' && format('Identity takes (convergence run {0})', inputs.parent-run) || 'Identity takes' }}
+
+on:
+    workflow_dispatch:
+        inputs:
+            # The Identity model convergence run whose preflight dispatched this one (scripts/ci/dispatch-takes.sh); empty
+            # for a takes-only or drift-only request made here directly. It names the run (`run-name`), nothing else.
+            parent-run:
+                description: The Identity model convergence run that dispatched this one (its preflight); empty for a direct takes-only or drift-only dispatch.
+                required: false
+                type: string
+                default: ''
+            profile:
+                description: Record a JFR CPU profile of every suite step and upload it (country-convergence-leg.yml).
+                required: false
+                type: boolean
+                default: false
+            jvm-options:
+                description: Extra JVM options, each prefixed -J, for every leg's sbt runs (country-convergence-leg.yml).
+                required: false
+                type: string
+                default: ''
+            runner:
+                description: The runner label every leg runs on (country-convergence-leg.yml), e.g. ubuntu-24.04-arm. Empty for ubuntu-22.04.
+                required: false
+                type: string
+                default: ''
+            takes-base:
+                description: The identity takes check's base commit, overriding the newest green one (re-judge a range a check passed unjudged).
+                required: false
+                type: string
+                default: ''
+            takes-only:
+                description: Run only each leg's identity takes row -- a whole-corpus measurement of a commit's moved takes, as the identity-measure script dispatches it.
+                required: false
+                type: boolean
+                default: false
+            # What scripts/identity-drift-ci dispatches for its pre-land drift check (a laptop tool, never run here).
+            drift-only:
+                description: >-
+                    Run only each leg's takes-drift rows (the incremental = whole replay, scripts/ci/identity-drift-check.sh)
+                    -- the pre-land drift check. takes-countries narrows the countries, drift-seeds pins the seeds. Never a
+                    reuse source for main's full verdict.
+                required: false
+                type: boolean
+                default: false
+            drift-seeds:
+                description: >-
+                    Pin the takes-drift rows' seeds -- `S1,S2`, or `S1,` / `,S2` for one row of a drift-only run (a bare `S`
+                    is `S,`). Empty -- each row's fixed seeds (drift-gate-seeds.tsv, scripts/ci/drift_seeds.py). Never main's suite.
+                required: false
+                type: string
+                default: ''
+            recording:
+                description: The `Record scrape fixtures` run every leg replays -- its own corpus and tree, no fills -- in place of the pinned pair (the identity-measure script's --recording).
+                required: false
+                type: string
+                default: ''
+            takes-countries:
+                description: The countries (pl,de,uk,us,es) whose rows a takes-only or drift-only run runs; empty runs every leg's.
+                required: false
+                type: string
+                default: ''
+            takes-no-store:
+                description: The takes check reuses and stores no resolve (identity-measure --no-store, proving the store changes no verdict).
+                required: false
+                type: boolean
+                default: false
+            takes-skip:
+                description: The takes skip gate (scripts/ci/takes-skip-gate.sh) -- off, shadow or enforce. The daily full run passes shadow.
+                required: false
+                type: string
+                default: shadow
+            drift-twice:
+                description: Each takes-drift row replays its seed twice and fails when the two runs' TSVs differ (the daily full run's determinism check).
+                required: false
+                type: boolean
+                default: false
+            # THE EXPLORER (identity-drift-explorer.yml): each takes-drift row replays main alone on seeds the gate does not
+            # hold -- `auto` (each country's count, scripts/ci/drift_explorer.py) or N a row -- never red; drift-only.
+            drift-explore:
+                description: Explore -- each takes-drift row replays N (or `auto`) random seeds off the gate, head alone, never red.
+                required: false
+                type: string
+                default: ''
+            reuse-run:
+                description: >-
+                    An earlier Identity model convergence run (or a run of this workflow) whose takes verdict this commit may
+                    reuse -- Main's kick names a landing check's convergence run over the same tree, and convergence hands it
+                    here: the preflight judges the takes run it dispatched (scripts/ci/convergence_reuse.py) and, only when
+                    every check holds, skips every leg. Empty, or anything it cannot prove, runs every takes row.
+                required: false
+                type: string
+                default: ''
+
+# Main's runs hold ONE lane, as convergence's do (a run in flight finishes, one newer waits, a newer dispatch replaces that
+# one), in a group of this workflow's own; every other branch -- a measurement's measure/* -- a lane of its own, keyed by
+# the branch. Never by github.run_id. (WorkflowConcurrencyConventionSpec)
+concurrency:
+    group: identity-takes${{ github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '' }}
+    cancel-in-progress: false
+
+# Least privilege by default: every job that needs more than reading the
+# repository grants it at job level.
+permissions:
+    contents: read
+
+
+env:
+    # ci-runner's job image (catthehacker's hosted-Ubuntu copy) sets no locale, where a hosted VM sets C.UTF-8: the JVM
+    # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
+    # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
+    LANG: C.UTF-8
+
+jobs:
+    # Seconds, first, and the ONLY job in front of the legs (identity-model-convergence.yml's preflight, which this mirrors):
+    # the secret is set, every leg's pair exists, the plan, the reuse. THE PLAN (WorkflowPlanSpec): every later job reads
+    # its decisions from these outputs.
+    preflight:
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+            # a reused verdict's statuses, copied onto this commit when the source ran another (convergence_reuse.py)
+            statuses: write
+        outputs:
+            reused-from: ${{ steps.reuse.outputs.reused-from || '' }}
+            # EVERY INPUT THE LEGS READ, evaluated HERE and handed on as outputs: the matrix re-parse hands the legs' `with:`
+            # this job's outputs and nothing else (identity-model-convergence.yml's preflight says why).
+            profile: ${{ steps.legs.outputs.profile }}
+            jvm-options: ${{ steps.legs.outputs.jvm-options }}
+            takes-base: ${{ steps.legs.outputs.takes-base }}
+            takes-only: ${{ steps.legs.outputs.takes-only }}
+            drift-only: ${{ steps.legs.outputs.drift-only }}
+            drift-seeds: ${{ steps.legs.outputs.drift-seeds }}
+            # FIXED SEEDS (scripts/ci/drift_seeds.py): each takes-drift row's pin -- empty: the row replays its fixed set.
+            drift-seed-1: ${{ steps.legs.outputs.drift-seed-1 }}
+            drift-seed-2: ${{ steps.legs.outputs.drift-seed-2 }}
+            recording: ${{ steps.legs.outputs.recording }}
+            takes-countries: ${{ steps.legs.outputs.takes-countries }}
+            leg-matrix: ${{ steps.plan.outputs.leg-matrix || '{"country":[],"include":[]}' }}
+            pinned-pairs: ${{ steps.pins.outputs.pinned-pairs || '{}' }}
+            any-leg: ${{ steps.plan.outputs.any-leg || 'false' }}
+            takes-no-store: ${{ steps.legs.outputs.takes-no-store }}
+            takes-skip: ${{ steps.legs.outputs.takes-skip }}
+            drift-twice: ${{ steps.legs.outputs.drift-twice }}
+            drift-explore: ${{ steps.legs.outputs.drift-explore }}
+            # THE HARNESSES' A/A SELF-TEST (scripts/ci/harness_aa.py): `true` on a full run on main whose push changed a
+            # path of .github/harness-aa-paths.txt -- each leg then adds the A/A rows and order-compare `takes-drift-aa`.
+            harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}
+            # Main's rows on GitHub's hosted runners, every run off main (a measurement) on ci-runner's `movies-measure`
+            # (the owner, 2026-11-06; identity-model-convergence.yml's `runner` says the rest).
+            runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}
+            light-runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
+            on-main: ${{ github.ref == 'refs/heads/main' }}
+        steps:
+            # Blobless history: the reuse check keys commits by their trees and walks back to main's takes base.
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 300
+                  filter: blob:none
+                  # .github for its *-paths.txt, the two workflows (the leg rows are convergence's) and the setup scripts.
+                  sparse-checkout: |
+                      scripts/ci
+                      .github
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+            - name: What every leg is handed
+              id: legs
+              env:
+                  INPUT_PROFILE: ${{ inputs.profile }}
+                  INPUT_JVM_OPTIONS: ${{ inputs.jvm-options }}
+                  INPUT_RUNNER: ${{ inputs.runner }}
+                  INPUT_TAKES_BASE: ${{ inputs.takes-base }}
+                  INPUT_TAKES_ONLY: ${{ inputs.takes-only }}
+                  INPUT_DRIFT_ONLY: ${{ inputs.drift-only }}
+                  INPUT_DRIFT_SEEDS: ${{ inputs.drift-seeds }}
+                  INPUT_RECORDING: ${{ inputs.recording }}
+                  INPUT_TAKES_COUNTRIES: ${{ inputs.takes-countries }}
+                  INPUT_TAKES_NO_STORE: ${{ inputs.takes-no-store }}
+                  INPUT_TAKES_SKIP: ${{ inputs.takes-skip }}
+                  INPUT_DRIFT_TWICE: ${{ inputs.drift-twice }}
+                  INPUT_DRIFT_EXPLORE: ${{ inputs.drift-explore }}
+              run: LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs >> "$GITHUB_OUTPUT"
+            # THE A/A ROWS (scripts/ci/harness_aa.py): only main's full suite, never a takes-only or drift-only dispatch, and
+            # only when the range since the previous run of this workflow on main that ran (else the parent) changed a harness
+            # path. An unreadable run list judges the parent alone; this step failing runs no A/A row (the output's fallback).
+            - name: Did this push change the drift harness (its A/A row)?
+              id: aa
+              if: ${{ github.ref == 'refs/heads/main' && inputs.takes-only != true && inputs.takes-only != 'true' && inputs.drift-only != true && inputs.drift-only != 'true' && inputs.drift-explore == '' }}
+              continue-on-error: true
+              timeout-minutes: 2
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  . scripts/ci/bounded-step.sh
+                  # The previous run that RAN (harness_aa.py since): a queued run a newer push replaced shows cancelled, and its
+                  # head as `since` would leave that push's harness change out of every run's range.
+                  # allow-silenced: an unreadable run list judges the parent alone (harness_aa.py), never skips the decision
+                  since=$(timeout 60 gh run list --workflow identity-takes.yml --branch main --limit 30 \
+                      --json databaseId,headSha,conclusion 2> /dev/null | python3 scripts/ci/harness_aa.py since --run-id "$GITHUB_RUN_ID" 2> /dev/null || true)
+                  python3 scripts/ci/harness_aa.py decide --head "$GITHUB_SHA" --since "$since" >> "$GITHUB_OUTPUT"
+            - if: ${{ always() }}
+              run: scripts/ci/bounded-step.sh --reap
+            - name: Secrets present
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: scripts/ci/preflight.sh TMDB_API_KEY
+            # THE LEG ROWS (convergence_reuse.py legs, CONVERGENCE_SUITE=takes): convergence's countries (its LEG_ROWS),
+            # each handed its takes rows longest first (`phases`) and its share of the 20 runners this run shares with the
+            # convergence run beside it (convergence_slots.py plan_suites); a drift-only run's drift rows in all 20, a
+            # takes-only run's two rows uncapped. Narrowed to `takes-countries` for a takes-only or drift-only run.
+            - name: Which legs does this run start?
+              id: plan
+              env:
+                  CONVERGENCE_SUITE: takes
+                  LEG_INPUTS_FILE: ${{ runner.temp }}/leg-inputs.json
+                  HARNESS_AA: ${{ steps.aa.outputs.harness-aa || 'false' }}
+              run: python3 scripts/ci/convergence_reuse.py legs >> "$GITHUB_OUTPUT"
+            - name: Every leg's recorded pair is there
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  # The legs this run starts: a takes-only measurement's or a drift-only check's countries, else all five.
+                  CODES: ${{ (inputs.takes-only == true || inputs.takes-only == 'true' || inputs.drift-only == true || inputs.drift-only == 'true') && inputs.takes-countries || 'pl,de,uk,es,us' }}
+                  RECORDING: ${{ inputs.recording || '' }}
+              run: scripts/ci/convergence-preflight.sh "$CODES" "$RECORDING"
+            # THE RUN'S PAIRS, ONCE (convergence-setup.sh `pins`): what each leg's rows replay, by name.
+            - name: Pin every leg's pair for the run
+              id: pins
+              if: ${{ inputs.recording == '' }}
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  CODES: ${{ (inputs.takes-only == true || inputs.takes-only == 'true' || inputs.drift-only == true || inputs.drift-only == 'true') && inputs.takes-countries || 'pl,de,uk,es,us' }}
+              run: echo "pinned-pairs=$(.github/scripts/convergence-setup.sh pins "$CODES")" >> "$GITHUB_OUTPUT"
+            # REUSE ONLY WHAT IS PROVEN (scripts/ci/convergence_reuse.py verify --suite takes): the takes run the named
+            # convergence run dispatched covered every takes row this one would, over the same tree, pairs, inputs and takes
+            # bases, and every row passed. Anything else -- this step failing included -- names no run, and every row runs.
+            - name: Does the named run's takes verdict hold for this commit?
+              id: reuse
+              if: ${{ inputs.reuse-run != '' }}
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  REUSE_RUN: ${{ inputs.reuse-run }}
+              run: |
+                  python3 scripts/ci/convergence_reuse.py verify --suite takes --source "$REUSE_RUN" --sha "$GITHUB_SHA" \
+                      --inputs "$RUNNER_TEMP/leg-inputs.json" --order-phases both >> "$GITHUB_OUTPUT"
+            # What a later run of this commit's tree needs to reuse this one's verdict: its key, pairs and legs' inputs.
+            - name: This run's reuse facts
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  FIXTURE_RELEASE_TAG: convergence-fixtures
+                  REUSED_FROM: ${{ steps.reuse.outputs.reused-from || '' }}
+              run: |
+                  mkdir -p "$RUNNER_TEMP/reuse-facts"
+                  python3 scripts/ci/convergence_reuse.py facts --suite takes --sha "$GITHUB_SHA" --inputs "$RUNNER_TEMP/leg-inputs.json" \
+                      --order-phases both --reused-from "$REUSED_FROM" > "$RUNNER_TEMP/reuse-facts/facts.json"
+            - uses: actions/upload-artifact@v6
+              if: ${{ !cancelled() }}
+              continue-on-error: true
+              with:
+                  overwrite: true
+                  name: convergence-reuse-facts
+                  path: ${{ runner.temp }}/reuse-facts/
+                  if-no-files-found: ignore
+                  retention-days: 7
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+
+    # One row per country, the leg convergence calls (country-convergence-leg.yml) handed only its takes rows: no order or
+    # next-day command, so its order-compare job runs only the A/A comparison (`takes-drift-aa`) when the plan holds the
+    # A/A rows. `fail-fast: false`: every country reports on its own. A proven reuse skips the job whole, and so does a
+    # plan with no country left (an empty matrix is an error).
+    leg:
+        needs: [ preflight ]
+        if: ${{ needs.preflight.outputs.reused-from == '' && needs.preflight.outputs.any-leg == 'true' }}
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJson(needs.preflight.outputs.leg-matrix) }}
+        uses: ./.github/workflows/country-convergence-leg.yml
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+            statuses: write
+        with:
+            country:        ${{ matrix.country }}
+            code:           ${{ matrix.code }}
+            sample-command: ${{ matrix.sample }}
+            shape-command:  ${{ matrix.shape || '' }}
+            command:        ${{ matrix.cmd }}
+            job-timeout-minutes:           ${{ matrix.job }}
+            suite-timeout-minutes:         ${{ matrix.suite }}
+            sample-suite-timeout-minutes:  ${{ matrix.sample-suite }}
+            phases:                        ${{ matrix.phases || '' }}
+            max-parallel:                  ${{ matrix.max-parallel || 256 }}
+            # NO ORDER OR NEXT-DAY ROW HERE: they are convergence's.
+            order-command:                 ''
+            next-day-command:              ''
+            heap:                          ${{ matrix.heap }}
+            # github.com's hosted runners are 16 GB VMs: the United States' 10g heap keeps Mongo's data on disk there.
+            mongo-tmpfs:                   ${{ matrix.code != 'us' && matrix.mongo-tmpfs || '' }}
+            mongo-cache-gb:                ${{ matrix.mongo-cache-gb || '2' }}
+            # Replay the pinned pair and nothing else.
+            mode:                          hermetic
+            # `== 'true'`: the preflight's outputs are STRINGS ("true"), and "true" == true is false in an expression.
+            profile:                       ${{ needs.preflight.outputs.profile == 'true' }}
+            jvm-options:                   ${{ needs.preflight.outputs.jvm-options }}
+            runner:                        ${{ needs.preflight.outputs.runner }}
+            takes-base:                    ${{ needs.preflight.outputs.takes-base }}
+            takes-only:                    ${{ needs.preflight.outputs.takes-only == 'true' }}
+            takes-countries:               ${{ needs.preflight.outputs.takes-countries }}
+            # Only the takes-drift rows (scripts/identity-drift-ci, the drift explorer): the incremental = whole replay.
+            drift-only:                    ${{ needs.preflight.outputs.drift-only == 'true' }}
+            drift-seed-1:                  ${{ needs.preflight.outputs.drift-seed-1 }}
+            drift-seed-2:                  ${{ needs.preflight.outputs.drift-seed-2 }}
+            takes-no-store:                ${{ needs.preflight.outputs.takes-no-store == 'true' }}
+            # The skip gate's mode (a push's run: shadow; the daily full run always shadow).
+            takes-skip:                    ${{ needs.preflight.outputs.takes-skip }}
+            # The daily full run's determinism check (convergence-daily.yml): each drift seed replayed twice, the TSVs diffed.
+            drift-twice:                   ${{ needs.preflight.outputs.drift-twice == 'true' }}
+            # The nightly explorer's (identity-drift-explorer.yml): random seeds off the gate, head alone, never red.
+            drift-explore:                 ${{ needs.preflight.outputs.drift-explore }}
+            # The harnesses' A/A rows (scripts/ci/harness_aa.py): a push that changed a harness.
+            harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}
+            # A named recording's bare pair in place of the pinned one (convergence-setup.sh's `pair`).
+            corpus-run:                    ${{ needs.preflight.outputs.recording }}
+            reused-from:                   ${{ needs.preflight.outputs.reused-from }}
+            pinned-pairs:                  ${{ needs.preflight.outputs.pinned-pairs }}
+        # TMDB_API_KEY, the proxy's credentials and the GITHUB_TOKEN the setup and publish actions read.
+        secrets: inherit
+
+    # NO FALSE GREEN (scripts/ci/convergence_reuse.py `complete`; convergence-failures 2026-10-29, G7): a run on main is
+    # green for THE GATE only when every `takes` and `takes-drift-<n>` row of every country ran to a verdict, or the
+    # preflight proved a reuse (`reused-from`). Run 1747 went green with its takes rows skipped and split one 18-hour red
+    # episode in two. A row skipped, cancelled or missing fails this job -- and with it the run: no verdict is no green.
+    verdict-complete:
+        name: verdict complete
+        needs: [ preflight, leg ]
+        if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' }}
+        runs-on: ${{ needs.preflight.outputs.light-runner }}
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  fetch-depth: 1
+                  # cone mode (WorkflowScriptsRunnableSpec): convergence_reuse.py, and .github for the workflow it reads
+                  sparse-checkout: |
+                      scripts/ci
+                      .github
+            # The job's measurements (machine, resources, GC, tests) for ci-timings and VictoriaLogs; never fails it.
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+            - name: Did every takes and takes-drift row decide?
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  RUN_ID: ${{ github.run_id }}
+                  REUSED_FROM: ${{ needs.preflight.outputs.reused-from }}
+                  # only what can leave a takes row out (convergence_reuse.incomplete reads no other input)
+                  INPUT_TAKES_ONLY: ${{ needs.preflight.outputs.takes-only }}
+                  INPUT_DRIFT_ONLY: ${{ needs.preflight.outputs.drift-only }}
+                  INPUT_RECORDING: ${{ needs.preflight.outputs.recording }}
+                  INPUT_TAKES_COUNTRIES: ${{ needs.preflight.outputs.takes-countries }}
+              run: |
+                  LEG_INPUTS_FILE="$RUNNER_TEMP/leg-inputs.json" python3 scripts/ci/convergence_reuse.py inputs > /dev/null
+                  python3 scripts/ci/convergence_reuse.py complete --run "$RUN_ID" --sha "$GITHUB_SHA" --reused-from "$REUSED_FROM" \
+                      --inputs "$RUNNER_TEMP/leg-inputs.json"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml), DISPATCHED as a run of its own that waits for this
+    # one to end: this run's end is THE GATE's verdict (RunTimingsWiringSpec).
+    timings:
+        needs: [ preflight, leg, verdict-complete ]
+        if: ${{ !cancelled() }}
+        runs-on: ${{ needs.preflight.outputs.light-runner }}
+        timeout-minutes: 5
+        permissions:
+            actions: write
+        steps:
+            - name: Report this run's timings once it has ended
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              # never fails the run: a chart is not a gate
+              run: |
+                  gh workflow run report-timings.yml --ref "$GITHUB_REF_NAME" -f run-id="$GITHUB_RUN_ID" \
+                      || echo "::warning::the timings report was not dispatched: this run is charted nowhere"

@@ -40,9 +40,10 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     jobs.flatMap((name, job) => RunsOn.findFirstMatchIn(job).map(m => name -> RunnerLabel(planned(m.group(1).trim), at)))
   }
 
-  private def legRunner(at: RunnerLabel.Context): String = {
+  /** The legs' runner of a suite: Identity model convergence's, or (since 2026-11-08) Identity takes', the same rule. */
+  private def legRunner(at: RunnerLabel.Context, suite: String = "identity-model-convergence.yml"): String = {
     val line = """(?m)^\s+runner: (\$\{\{ inputs\.runner .*}})\s*$""".r
-    RunnerLabel(line.findFirstMatchIn(yml("identity-model-convergence.yml")).get.group(1), at)
+    RunnerLabel(line.findFirstMatchIn(yml(suite)).get.group(1), at)
   }
 
   "a landing check" should "run every job on ci-runner's movies-check slots" in {
@@ -54,7 +55,9 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   "a measurement" should "run its convergence legs on movies-measure and the rest on ci-runner" in {
     val measure = ctx("refs/heads/measure/agent/abc-123")
     legRunner(measure) shouldBe "movies-measure"
+    legRunner(measure, "identity-takes.yml") shouldBe "movies-measure"
     all(labels("identity-model-convergence.yml", measure).values) should (be("movies") or be("movies-measure"))
+    all(labels("identity-takes.yml", measure).values) should (be("movies") or be("movies-measure"))
     all(labels("convergence-bisect.yml", ctx(RunnerLabel.Main)).values) should (be("movies") or be("movies-measure"))
     all(labels("report-timings.yml", measure).values) shouldBe "movies"
   }
@@ -65,7 +68,7 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     val both    = SelfHosted + ("MOVIES_MEASURE_RUNNERS" -> "hosted")
     legRunner(ctx("refs/heads/measure/agent/abc-123", both)) shouldBe "movies-measure"
     all(labels("convergence-bisect.yml", ctx(RunnerLabel.Main, both)).values) should (be("movies") or be("movies-measure"))
-    Seq("identity-model-convergence.yml", "convergence-bisect.yml", "country-convergence-leg.yml")
+    Seq("identity-model-convergence.yml", "identity-takes.yml", "convergence-bisect.yml", "country-convergence-leg.yml")
       .foreach(f => withClue(s"$f: ")(yml(f) should not include ("MOVIES_MEASURE_RUNNERS")))
     // a hand-dispatched runner still wins
     legRunner(ctx("refs/heads/measure/y", both).copy(inputs = Map("runner" -> "ubuntu-24.04-arm"))) shouldBe "ubuntu-24.04-arm"
@@ -74,12 +77,13 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
   "Main and convergence on main" should "stay on GitHub's hosted runners even when ci-runner is switched on" in {
     val onMain = ctx(RunnerLabel.Main).copy(workflow = "Main")
     legRunner(onMain) shouldBe "ubuntu-22.04"
+    legRunner(onMain, "identity-takes.yml") shouldBe "ubuntu-22.04"
     // every row of a leg on the leg's one runner: no per-row label (2026-11-06's `row-runners`, retired the same day)
     val leg = yml("country-convergence-leg.yml")
     leg should not include ("row-runners")
     leg should not include ("movies-main")
     yml("identity-model-convergence.yml") should not include ("runner_scheduler.py")
-    val main = Seq("main.yml", "ci.yml", "identity-model-convergence.yml", "report-timings.yml")
+    val main = Seq("main.yml", "ci.yml", "identity-model-convergence.yml", "identity-takes.yml", "report-timings.yml")
       .flatMap(f => labels(f, onMain).map((job, label) => s"$f: $job" -> label))
     main should not be empty
     withClue("a job of Main's on a self-hosted label: ")(main.filterNot((_, l) => Hosted(l)) shouldBe empty)
@@ -87,7 +91,7 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
 
   /** THE GATE's workflows and what they call, the landing check, and Branch CI (it is ci.yml, Main's own suite): they
    *  keep their own rules above. */
-  private val GateSide = Set("main.yml", "ci.yml", "identity-model-convergence.yml", "country-convergence-leg.yml",
+  private val GateSide = Set("main.yml", "ci.yml", "identity-model-convergence.yml", "identity-takes.yml", "country-convergence-leg.yml",
     "report-timings.yml", "precommit-check.yml", "branch-ci.yml")
   /** What ci-runner's job container cannot give: macOS, and an Android emulator (no /dev/kvm proven in it). */
   private val NeedsHosted = Set("ios.yml: ui-tests", "android.yml: instrumented", "order-independence.yml: swift",

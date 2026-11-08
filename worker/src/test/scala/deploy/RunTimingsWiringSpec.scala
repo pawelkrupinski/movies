@@ -26,7 +26,7 @@ class RunTimingsWiringSpec extends AnyFlatSpec with Matchers {
   private val Call     = s"uses: ./$Reusable"
   private val Dispatch = """gh workflow run report-timings.yml --ref "$GITHUB_REF_NAME" -f run-id="$GITHUB_RUN_ID""""
   // started only by a GITHUB_TOKEN dispatch, so no `workflow_run` reports them: their timings job reports from inside
-  private val Dispatched = Set(".github/workflows/identity-model-convergence.yml")
+  private val Dispatched = Set(".github/workflows/identity-model-convergence.yml", ".github/workflows/identity-takes.yml")
   private val Called     = Set(".github/workflows/verify-scrape-recording.yml", ".github/workflows/convergence-bisect.yml")
 
   private def triggers(yml: String): Set[String] = {

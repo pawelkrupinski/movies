@@ -15,7 +15,11 @@ check "a red Identity model convergence refuses an undeclared commit" "1" "$(GH_
 check "...naming the red run" "1" "$(grep -c 'Identity model convergence is RED on main: run 38520439037' "$gate/err")"
 check "...and the commit without the trailer" "1" "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err")"
 check "a red Main refuses it too" "1" "$(GH_MAIN="[$red]" push "$gbase..$plain")"
-# THE GATE is Main and Identity model convergence only (the owner, 2026-10-27): the recording's verify no longer gates
+# the takes rows split off convergence (the owner, 2026-11-08): Identity takes is THE GATE's third workflow
+check "a red Identity takes refuses it too" "1" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_IT="[$red]" push "$gbase..$plain")"
+check "...naming the red run" "1" "$(grep -c 'Identity takes is RED on main: run 38520439037' "$gate/err")"
+check "...and a Fixes-Red: naming it lands" "0" "$(GH_IT="[$red,$green]" push "$gbase..$fixing")"
+# THE GATE is Main, Identity model convergence and Identity takes only (the owner, 2026-10-27, 2026-11-08): the recording's verify no longer gates
 check "a red verify of the nightly recording no longer refuses it" "0" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$red]" push "$gbase..$plain")"
 check "a commit naming the red run in Fixes-Red: lands" "0" "$(GH_IMC="[$red,$green]" push "$gbase..$fixing")"
 check "every pushed commit must name it, not just one" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
@@ -107,7 +111,7 @@ check "...while --range over the same commits is refused" "1" \
   "$(cd "$grepo" && GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>&1; echo $?)"
 check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
   "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
-check "gh failing is said for each workflow, and refuses a production push (THE GATE FAILS CLOSED)" "1 2" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
+check "gh failing is said for each workflow, and refuses a production push (THE GATE FAILS CLOSED)" "1 3" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
 # gh hanging: the stub never ends on its own, so the hook gets past it only by its own bound cutting gh off. That
 # mechanism is the proof -- each workflow's gh cut off (bounded's 124) and said so, no stub left running -- never
 # elapsed wall time, which counts every process the hook starts: a "within 10 s" assertion failed whenever the machine
@@ -117,7 +121,7 @@ check "gh failing is said for each workflow, and refuses a production push (THE 
 hung="$gate/gh-hung"; : > "$hung"
 code="$(cd "$grepo" && GH_HANGS="$hung" PREPUSH_GH_SECONDS=1 PREPUSH_SKIP="$pathchecks" \
          spec_bounded bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?)"
-check "gh hanging is cut off by its bound for each workflow, said out loud, and refuses a production push" "1 2 0" \
+check "gh hanging is cut off by its bound for each workflow, said out loud, and refuses a production push" "1 3 0" \
   "$code $(grep -c "gh did not answer .* within 1s (3 attempts): cut off" "$gate/err") $(spec_still_running "$hung")"
 # A CHECK GATES ONLY ONCE IT HAS BEEN GREEN: a red run whose failed jobs are all unproven in .github/gating-checks.tsv
 # (scripts/ci/gating_checks.py, its jobs read through `gh run view`, stubbed here) reports and holds no push
