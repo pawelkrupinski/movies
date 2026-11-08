@@ -5,7 +5,7 @@ import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.HttpFetch
-import services.cinemas.common.{AggregatorUrls, CinemaScraper, FallbackEligibility, ListingSource, RetryingCinemaScraper, WebediaMarket, WebediaShowtimesClient}
+import services.cinemas.common.{AggregatorUrls, CinemaScraper, DelegatingCinemaScraper, FallbackEligibility, RetryingCinemaScraper, WebediaMarket, WebediaShowtimesClient}
 import services.cinemas.pl.{CinemaCityClient, CinemaCityScraper, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -32,7 +32,7 @@ class FallbackEligibilitySpec extends AnyFlatSpec with Matchers {
 
   it should "exclude a Filmweb-fed primary seen through a decorator (its listing source is forwarded, not its class)" in {
     val decorated = new RetryingCinemaScraper(new FilmwebShowtimesClient(noHttp, cinemaId = 1, cinema = Multikino))
-    decorated.listingSource shouldBe ListingSource.Filmweb
+    decorated.readsFilmwebListing shouldBe true
     FallbackEligibility.eligible(decorated) shouldBe false
   }
 
@@ -41,11 +41,15 @@ class FallbackEligibilitySpec extends AnyFlatSpec with Matchers {
     FallbackEligibility.eligible(ordinary) shouldBe true
   }
 
-  "CinemaScraper.scrapedInChunks" should "be true exactly for a chunked scraper, also through a decorator" in {
+  // The chunk routing once matched the concrete type while the timeout decision asked the decorator, so a decorated
+  // chunked venue was told it was chunked yet never routed to the chunk fan-out: one fetch(), and no timeout either.
+  "CinemaScraper.chunkedScraper" should "be the chunked scraper itself, and through any decorator its delegate's" in {
     val chunked = new WebediaShowtimesClient(noHttp, WebediaMarket.Spain, "E0001", Multikino, today = _root_.tools.SpecClock.PinnedDay)
-    chunked.scrapedInChunks                             shouldBe true
-    new RetryingCinemaScraper(chunked).scrapedInChunks  shouldBe true
-    ScriptedCinemaScraper(List(Right(Seq.empty))).scrapedInChunks shouldBe false
+    val decorated: DelegatingCinemaScraper = new DelegatingCinemaScraper(chunked) { def fetch() = chunked.fetch() }
+    chunked.chunkedScraper                                  shouldBe Some(chunked)
+    decorated.chunkedScraper                                shouldBe Some(chunked)
+    new RetryingCinemaScraper(decorated).chunkedScraper     shouldBe Some(chunked)
+    ScriptedCinemaScraper(List(Right(Seq.empty))).chunkedScraper shouldBe None
   }
 
   "AggregatorUrls.isFilmwebFilmUrl" should "recognise the film pages the Filmweb client builds and nothing else" in {

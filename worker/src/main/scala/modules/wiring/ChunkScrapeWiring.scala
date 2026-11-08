@@ -16,13 +16,14 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
 
   lazy val chunkScrapeStore: ChunkScrapeStore = new MongoChunkScrapeStore(mongoConnection.database)
 
-  /** Raw chunked clients keyed by displayName — the plan/fetchChunk/reduce
-   *  functions the chunk tasks call. Empty until a client opts in. */
+  /** The chunked clients keyed by displayName — the plan/fetchChunk/reduce
+   *  functions the chunk tasks call: each catalogued scraper's `chunkedScraper`, the
+   *  same answer `cinemaScrapers` skips the per-scrape timeout by. */
   lazy val chunkScrapers: Map[String, ChunkedCinemaScraper] =
     country.cities
       .filter(c => scrapeCities(c.slug))
       .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c, Nil))
-      .collect { case cs: ChunkedCinemaScraper => ScrapeCinemaHandler.scraperKey(cs.cinema) -> cs }
+      .flatMap(_.chunkedScraper.map(cs => ScrapeCinemaHandler.scraperKey(cs.cinema) -> cs))
       .toMap
 
   /** Publish a (pre-scraped) listing through the SAME recorder + runner a live

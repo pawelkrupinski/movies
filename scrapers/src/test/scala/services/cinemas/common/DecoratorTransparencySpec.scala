@@ -54,7 +54,6 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
     case (_: Set[?], name)          => Set(s"$name.sentinel.test")
     case (_: String, name)          => s"sentinel-$name"
     case (_: Cinema, _)             => Multikino
-    case (_: ListingSource, name)   => ListingSource.Aggregator(s"sentinel-$name")
     case (other, name) =>
       fail(s"CinemaScraper.$name answers a ${other.getClass.getName}; teach unlikeTheDefault a value of that type")
   }
@@ -78,7 +77,7 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
     classOf[PreScrapedCinemaScraper] -> ((d: CinemaScraper) => PreScrapedCinemaScraper.of(d, () => Seq.empty), Set("listingIsComplete", "noScheduleListed")),
     // A composite rather than a decorator, but over ONE listing it is that listing — except
     // that it fetches its listings in one `fetch()`, never through the chunk fan-out.
-    classOf[MultiListingScraper] -> ((d: CinemaScraper) => new MultiListingScraper(d.cinema, Seq(d)), Set("scrapedInChunks")),
+    classOf[MultiListingScraper] -> ((d: CinemaScraper) => new MultiListingScraper(d.cinema, Seq(d)), Set("chunkedScraper")),
     // A German venue's fallback chain; a chain of one is that one source.
     classOf[FirstAnsweringScraper] -> ((d: CinemaScraper) => new FirstAnsweringScraper(Seq(d)), Set.empty[String]),
     // A listing with its second feed's facts lent: it reaches both feeds' hosts, and is its primary otherwise.
@@ -87,7 +86,7 @@ class DecoratorTransparencySpec extends AnyFlatSpec with Matchers {
 
   "The CinemaScraper members under test" should "include every member a decorator has to carry" in {
     members.map(_.getName) should contain allOf ("cinema", "scrapeHosts", "chain", "listingIsComplete",
-      "maxFetchAttempts", "sourceUrl", "sourceKey", "chainVenueId", "listingSource", "scrapedInChunks")
+      "maxFetchAttempts", "sourceUrl", "sourceKey", "chainVenueId", "readsFilmwebListing", "chunkedScraper")
     members.foreach(m => withClue(s"${m.getName}: ")(m.invoke(delegate) should not equal m.invoke(bare)))
   }
 

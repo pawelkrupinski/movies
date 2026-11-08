@@ -57,14 +57,16 @@ trait CinemaScraper {
    *  single-venue scraper is fallback-eligible. */
   def chain: Boolean = false
 
-  /** Who publishes the listing this scraper reads — the venue itself, or an aggregator
-   *  such as Filmweb. Defaults to the venue's own; an aggregator's client overrides it. */
-  def listingSource: ListingSource = ListingSource.OwnSite
+  /** Whether the listing this scraper reads is Filmweb's (the venue's own site, ticketing system or chain API
+   *  otherwise): a Filmweb-fed venue gets no Filmweb fallback (`FallbackEligibility`), and one fed only by Filmweb is a
+   *  migration candidate (`ScrapeWiring.filmwebOnlyCinemas`). */
+  def readsFilmwebListing: Boolean = false
 
-  /** Whether this venue is scraped through the chunk fan-out (`ChunkScrapePlanner`), each
-   *  chunk its own bounded task, rather than in one `fetch()`. True exactly for a
-   *  [[ChunkedCinemaScraper]]. */
-  def scrapedInChunks: Boolean = false
+  /** The [[ChunkedCinemaScraper]] this venue is scraped through, if it is scraped in chunks (`ChunkScrapePlanner`'s
+   *  fan-out, each chunk its own bounded task) rather than in one `fetch()`: a chunked scraper itself, and through a
+   *  decorator its delegate's. The ONE answer both the chunk routing (`ChunkScrapeWiring.chunkScrapers`) and the
+   *  per-scrape timeout (`ScrapeWiring.cinemaScrapers`) read, so the two can never disagree about a venue. */
+  def chunkedScraper: Option[ChunkedCinemaScraper] = None
 
   /** Whether `fetch()` returned the venue's WHOLE listing as far as the scraper's own
    *  structure knows — false for a chunked scrape reduced from some of its date-chunks. Only

@@ -27,8 +27,8 @@ abstract class DelegatingCinemaScraper(delegate: CinemaScraper) extends CinemaSc
   def scrapeHosts: Set[String]            = delegate.scrapeHosts
   override def maxFetchAttempts: Int      = delegate.maxFetchAttempts
   override def chain: Boolean             = delegate.chain
-  override def listingSource: ListingSource = delegate.listingSource
-  override def scrapedInChunks: Boolean   = delegate.scrapedInChunks
+  override def readsFilmwebListing: Boolean = delegate.readsFilmwebListing
+  override def chunkedScraper: Option[ChunkedCinemaScraper] = delegate.chunkedScraper
   override def listingIsComplete: Boolean = delegate.listingIsComplete
   override def noScheduleListed: Boolean  = delegate.noScheduleListed
   override def sourceUrl: Option[String]  = delegate.sourceUrl

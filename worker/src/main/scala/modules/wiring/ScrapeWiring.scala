@@ -7,7 +7,7 @@ import modules.WorkerWiring
 import services.MongoCachingDetailFetch
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.cinemas.de.GermanFeed
-import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, ListingSource, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
+import services.cinemas.common.{AdaptiveTimeoutScraper, CinemaClientMarkers, CinemaScrapeRunner, CinemaScraper, FallbackAfter, FallbackEligibility, FirstAnsweringScraper, FlicksClient, RetryingCinemaScraper, SourceFallbackScraper, UptimeRecordingScraper}
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import services.alerts.{FallbackAlert, GoneVenueAlertingArchive}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
@@ -144,7 +144,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // going empty means migrate it to an own-site scraper).
   lazy val filmwebOnlyCinemas: Set[String] =
     countryScrapers.groupBy(_.cinema)
-      .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.listingSource == ListingSource.Filmweb) =>
+      .collect { case (c, scrapers) if scrapers.nonEmpty && scrapers.forall(_.readsFilmwebListing) =>
         c.displayName }
       .toSet
 
@@ -161,7 +161,7 @@ trait ScrapeWiring { self: WorkerWiring =>
         // scrape (retries included) to an adaptive per-host-and-venue budget, OUTSIDE retry
         // but INSIDE the uptime recorder so a cut surfaces as a normal failure.
         val inner: CinemaScraper =
-          if (raw.scrapedInChunks) retried
+          if (raw.chunkedScraper.isDefined) retried
           else new AdaptiveTimeoutScraper(retried, hostScrapeStats, adaptiveTimeoutExecutor)
         recordingScraper(inner, FallbackEligibility.eligible(raw))
       }

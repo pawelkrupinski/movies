@@ -6,7 +6,7 @@ import services.cinemas.common.SlotsToMovies
 import models._
 import tools.{DaemonExecutors, HttpFetch, HttpRead, ParallelDetailFetch}
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, ListingPages, ListingSource, ScraperParse}
+import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -64,7 +64,7 @@ class FilmwebShowtimesClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(ApiBase)
 
-  override def listingSource: ListingSource = ListingSource.Filmweb
+  override def readsFilmwebListing: Boolean = true
 
   // The browser-renderable public page is the canonical
   // `/showtimes/<City>/<Name>-<id>`, resolved at boot from `/info` by

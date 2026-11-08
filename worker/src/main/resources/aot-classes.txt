@@ -8754,11 +8754,6 @@ services.cinemas.common.ListingPages
 services.cinemas.common.ListingPages$
 services.cinemas.common.ListingReads
 services.cinemas.common.ListingReads$
-services.cinemas.common.ListingSource
-services.cinemas.common.ListingSource$
-services.cinemas.common.ListingSource$$anon$1
-services.cinemas.common.ListingSource$Aggregator
-services.cinemas.common.ListingSource$Aggregator$
 services.cinemas.common.MultiListingScraper
 services.cinemas.common.NearTermProgramme
 services.cinemas.common.NearTermProgramme$

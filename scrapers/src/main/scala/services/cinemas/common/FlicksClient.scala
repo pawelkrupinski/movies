@@ -75,8 +75,6 @@ class FlicksClient(
   private val programmeUrl = s"$baseUrl/cinema/$cinemaSlug/"
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
-
-  override def listingSource: ListingSource = ListingSource.Flicks
   override def sourceUrl: Option[String] = Some(programmeUrl)
 
   // Each populated day is one chunk, run as its own `ScrapeChunk` task (see

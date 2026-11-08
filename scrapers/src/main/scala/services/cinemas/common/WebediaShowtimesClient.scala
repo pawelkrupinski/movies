@@ -58,8 +58,6 @@ class WebediaShowtimesClient(
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(s"https://${market.host}")
 
-  override def listingSource: ListingSource = ListingSource.Webedia
-
   // The public, browser-renderable venue page. This ONE path is localized per
   // market (`/kinoprogramm/kino/` in Germany, `/cines/cine-` in Spain); the JSON
   // endpoint above is uniform across the family, so it is the only piece of the
