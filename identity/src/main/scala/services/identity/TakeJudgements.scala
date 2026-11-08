@@ -81,9 +81,11 @@ object TakeJudgements {
       }
   }
 
-  /** `resolution` with every listing taken as a TMDB film a judgement calls wrong for it WITHDRAWN: taken out of its
-   *  decision into one of its own, no film, [[ResolverDecision.Basis.Withdrawn]] — the judged listing's take and nothing
-   *  else, as a pin acts on its own listings: no other listing of its decision, family or title moves, and nothing is
+  /** `resolution` with every listing taken as a TMDB film a judgement calls wrong for it WITHDRAWN: the judged listings of
+   *  a decision taken out of it TOGETHER into one of their own, no film, [[ResolverDecision.Basis.Withdrawn]] (one decision
+   *  a listing split one Paris Opera ballet into sixteen films at sixteen Multikinos, Verify scrape recording #17: a
+   *  regrouping no judgement says) — the judged listings' take and nothing else, as a pin acts on its own listings: no
+   *  other listing of its decision, family or title moves, and nothing is
    *  decided again (2026-10-28: read as the resolver's evidence instead, a denial moved the film other venues of the
    *  title pooled to — Münster's "Transit", Ilkley's "Fallen Angels"). A pure function of the resolution and the
    *  judgements, applied whole to every projection: no stickiness. */
@@ -98,9 +100,9 @@ object TakeJudgements {
           else {
             moved = true
             val line = s"withdrawn: a hand judgement calls tmdb:$film wrong for this billing (identity-judgements.tsv)"
-            Option.when(kept.nonEmpty)(d.copy(members = kept)(d.trace)).toSeq ++
-              judged.map(k => d.copy(members = Seq(k), film = None, basis = ResolverDecision.Basis.Withdrawn, explanation = d.explanation :+ line,
-                fallback = None, agreed = Map.empty)(d.trace.copy(stage = Some(WithdrawnRule))))
+            Option.when(kept.nonEmpty)(d.copy(members = kept)(d.trace)).toSeq :+
+              d.copy(members = judged, film = None, basis = ResolverDecision.Basis.Withdrawn, explanation = d.explanation :+ line,
+                fallback = None, agreed = Map.empty)(d.trace.copy(stage = Some(WithdrawnRule)))
           }
         }
       }

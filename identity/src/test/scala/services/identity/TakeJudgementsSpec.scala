@@ -44,6 +44,19 @@ class TakeJudgementsSpec extends AnyFlatSpec with Matchers {
     TakeJudgements.withdraw(resolution, TakeJudgements.Index.Empty) shouldBe theSameInstanceAs(resolution)
   }
 
+  it should "keep the judged listings of one decision together, one withdrawn decision, never one a listing" in {
+    // Verify scrape recording #17 (run 42442828541): sixteen Multikinos' "Balet z Opery Paryskiej 2026-2027: Jezioro
+    // łabędzie", one decision taking a film judged wrong for the billing at every venue, came out as SIXTEEN films where
+    // production served one -- the withdrawal had regrouped them, which no judgement says.
+    def key(venue: String) = services.movies.ListingKey.Published(venue, "Jezioro łabędzie", None, Nil)
+    val (a, b, c) = (key("Multikino Arkadia"), key("Multikino Złote Tarasy"), key("Multikino Ursynów"))
+    val taken      = ResolverDecision(Seq(a, b, c), Some(1702782), 0.4, ResolverDecision.Basis.OwnMatch, Nil)()
+    val resolution = Resolution(Seq(taken), 1, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val index = new TakeJudgements.Index(Seq(Judgement("pl", "*", "Jezioro łabędzie", "tmdb:1702782", right = false)))
+    TakeJudgements.withdraw(resolution, index).decisions.map(d => (d.members, d.film, d.basis)) shouldBe
+      Seq((Seq(a, b, c), None, ResolverDecision.Basis.Withdrawn))
+  }
+
   "a billing" should "be normalised as the judgements key it, a no-break space and a run of spaces one space" in {
     TakeJudgements.normalise("Lalka") shouldBe "Lalka"
     TakeJudgements.normalise(" Lalka\u00a0 1968 ") shouldBe "Lalka 1968"
