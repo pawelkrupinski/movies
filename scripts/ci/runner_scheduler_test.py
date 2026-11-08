@@ -299,6 +299,61 @@ class CpusetAdmissionTest(unittest.TestCase):
                                        readings(cpu_busy=15, cores=CORES)).starts), 1)
 
 
+class AfterTheCpusetDeployTest(unittest.TestCase):
+    """2026-11-08 18:55-18:57Z, ci-runner's journal, an hour after the cpuset deploy: 60 measurements queued (the oldest
+    252 min) and 4-5 landing checks (57 min), one to three runners of ours up, the measure CPUs 9-14 of 20 busy and the
+    check CPUs 5-8 of 12 -- and both classes STARVED "held by cpu". With no settled runner of a class (the one settled
+    measurement had just ended) a job was charged job_cpus, the 4-core ceiling, though measurements were using 1.5-3.2
+    (the median 2.7 a tick before); and a landing check inside its lane was held by the CPU like any other job."""
+
+    def at(self, check_busy, measure_busy, ours, lane_free):
+        r = rs.Readings(111, 108, {"measure": 94}, check_busy + measure_busy, CORES, (4,) * 9, 300,
+                        on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
+        d = rs.decide(CFG, rs.Bitcashier(9, 1), queued(check=4, measure=60), ours, NOW, r,
+                      remembered_cpus={"measure": 2.7})
+        self.assertEqual(d.limits["check_lane"], f"{lane_free} x 10 GiB 4 cores")
+        return d
+
+    def test_1856_a_lane_check_and_a_measurement_both_start(self):
+        # slot 1: a measurement 90 s into its job at 1.1 cores; slot 2: a check that took its job 30 s ago
+        ours = [rs.Instance(1, "measure", True, NOW, NOW - 90, mem_gib=2, cpu_cores=1.1, cpu_seconds=99),
+                rs.Instance(2, "check", True, NOW, NOW - 30, mem_gib=0)]
+        d = self.at(check_busy=5, measure_busy=10, ours=ours, lane_free=1)
+        # was: 0 and 0 -- the measurement charged 4 - 0.33 owed and 4 per new one (17 - 10 - 3.67 < 4); the check 10.2 - 5
+        # - 4 owed < 4. Now: 17 - 10 - (2.7 - 0.33) = 4.63 holds one at 2.7, and the lane's free check starts
+        self.assertEqual(sorted(c for _, c in d.starts), ["check", "measure"])
+
+    def test_1857_a_lane_check_and_a_measurement_both_start(self):
+        # slot 3 took a measurement 30 s ago as well: 17 - 10 - (2.7 - 0.8) - 2.7 = 2.4 -- no third measurement at 2.7
+        # beside two still owing, but the lane's check is never held by the CPU
+        ours = [rs.Instance(1, "measure", True, NOW, NOW - 150, mem_gib=4, cpu_cores=1.6, cpu_seconds=240),
+                rs.Instance(2, "check", True, NOW, NOW - 60, mem_gib=1, cpu_cores=0.6, cpu_seconds=36),
+                rs.Instance(3, "measure", True, NOW, NOW - 30, mem_gib=0)]
+        d = self.at(check_busy=5, measure_busy=10, ours=ours, lane_free=1)
+        self.assertEqual([c for _, c in d.starts], ["check"])
+
+    def test_a_check_past_the_lane_is_still_held_by_its_cpus(self):
+        two = [rs.Instance(s, "check", True, NOW, NOW - 900, mem_gib=5, cpu_cores=4, cpu_seconds=3600) for s in (1, 2)]
+        d = self.at(check_busy=10, measure_busy=0, ours=two, lane_free=0)
+        self.assertNotIn("check", [c for _, c in d.starts])
+
+    def test_the_cores_charged_outlive_a_scheduler_restart(self):
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root)
+        host = rs.Host(rs.Config(state_dir=os.path.join(root, "state")))
+        self.assertEqual(host.remembered_cpus(), {})  # none yet: the ceiling
+        host.remember_cpus({"check": 4, "measure": 2.7, "light": 1})
+        self.assertEqual(rs.Host(rs.Config(state_dir=os.path.join(root, "state"))).remembered_cpus()["measure"], 2.7)
+        with open(os.path.join(root, "state", "per-job-cores.json"), "w") as f:
+            f.write("not json")
+        self.assertEqual(host.remembered_cpus(), {})
+
+    def test_a_class_with_no_settled_runner_is_charged_what_its_jobs_used_last(self):
+        fresh = [rs.Instance(1, "measure", True, NOW, NOW - 10)]
+        self.assertEqual(rs.measured_cpus(CFG, fresh, "measure", NOW, {"measure": 2.7}), 2.7)
+        self.assertEqual(rs.measured_cpus(CFG, fresh, "measure", NOW, {}), 4)  # never measured: the ceiling
+
+
 class SliceCapsTest(unittest.TestCase):
     """The owner's "cap = charge" (2026-11-08): a measurement is charged in its slice what its container may take
     (container_gib, its --memory), so admitted measurements never sum past the slice's memory.max, however little

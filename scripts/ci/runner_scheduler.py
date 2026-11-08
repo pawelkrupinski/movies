@@ -226,6 +226,7 @@ class Decision:
     # what held a measurement this tick, before the starts: ADMISSION_LIMITS in whole jobs, plus the
     # charge of our settling runners and a measurement's measured cores (the log line names the binding term)
     limits: dict = dataclasses.field(default_factory=dict)
+    per_job: dict = dataclasses.field(default_factory=dict)  # the cores each class's job was charged: the next remembered
 
 
 # ── the decision, pure ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -294,14 +295,18 @@ def settling(cfg: Config, inst: Instance, now: float) -> bool:
     return not inst.busy or now - inst.started < cfg.settle_seconds
 
 
-def measured_cpus(cfg: Config, instances: list, cls: str, now: float) -> float:
+def measured_cpus(cfg: Config, instances: list, cls: str, now: float, remembered: dict | None = None) -> float:
     """The cores a `cls` job takes: the median of what its settled busy runners used over the CPU window, within
-    [job_cpus_floor, job_cpus] (2026-11-07 15:46Z: five measurements on 13 cores, ~2.6 each, were charged 4); none
-    measured: job_cpus, the JVM's ActiveProcessorCount."""
+    [job_cpus_floor, job_cpus] (2026-11-07 15:46Z: five measurements on 13 cores, ~2.6 each, were charged 4). None
+    settled now: what its jobs used when last measured (`remembered`, the previous ticks' per_job; 2026-11-08 18:55Z:
+    the one settled measurement ended and every new one was charged 4 against the 2.7 used a tick before, starving 60
+    queued); never measured: job_cpus, the JVM's ActiveProcessorCount."""
     used = [i.cpu_cores for i in instances
             if i.cls == cls and i.cpu_cores is not None and not settling(cfg, i, now)]
     ceiling = cfg.job_cpus[cls]
-    return ceiling if not used else min(ceiling, max(min(cfg.job_cpus_floor, ceiling), statistics.median(used)))
+    if not used:
+        return (remembered or {}).get(cls, ceiling)
+    return min(ceiling, max(min(cfg.job_cpus_floor, ceiling), statistics.median(used)))
 
 
 def memory_charge(cfg: Config, inst: Instance) -> float:
@@ -337,14 +342,15 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
                     and now - i.idle_since >= cfg.idle_stop_seconds]
 
 
-def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings) -> Decision:
+def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings,
+           remembered_cpus: dict | None = None) -> Decision:
     """The runners to start ((slot, class), highest class first, then the light lane) and the idle ones to stop, for
     `demand` (queued jobs per class), the `instances` that exist and the host's live readings `r`."""
     full = saturated(cfg, bc)
     stops = _idle_to_stop(cfg, bc, demand, instances, now, r)
     alive = [i for i in instances if i.slot not in stops]
     used = {i.slot for i in instances}  # a stopping slot is not reused in the same tick
-    per_job = {cls: measured_cpus(cfg, alive, cls, now) for cls in CLASSES}
+    per_job = {cls: measured_cpus(cfg, alive, cls, now, remembered_cpus) for cls in CLASSES}
     pending = [i for i in alive if settling(cfg, i, now)]
     pending_cpus = sum(cpu_charge(r, i, per_job[i.cls]) for i in pending)
     memory = memory_free_gib(cfg, bc, r, sum(memory_charge(cfg, i) for i in pending))
@@ -387,7 +393,13 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
         # a measurement never takes the check lane (a check, or a light job in its own slots, is not held by it)
         keep_slots, keep_gib, keep_cpus = lane() if cls == "measure" else (0, 0, 0)
         keep_cpus = keep_cpus if lane_shares_cpus else 0
-        while (need and len(slots) > keep_slots and memory - keep_gib >= size and cpu[cls] - keep_cpus >= cores
+        def cpu_holds() -> bool:
+            """The CPUs hold the job -- or it is a check inside the lane, which the CPU never holds: a lane check waits
+            for nothing (2026-11-08 18:55-18:57Z: lane checks queued 57 min "held by cpu" on 5-8 of 12 busy cores; a
+            busy core slows it, under its slice's weight, but never queues it)."""
+            return cpu[cls] - keep_cpus >= cores or (cls == "check" and lane()[0] > 0)
+
+        while (need and len(slots) > keep_slots and memory - keep_gib >= size and cpu_holds()
                and (held[cls] is None or held[cls] >= size) and caps.get(cls, 1) >= 1):
             starts.append((slots.pop(0), cls))
             need -= 1
@@ -405,7 +417,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     # THE LIGHT LANE: its own slots, admitted at a light job's size whatever the heavy queue or bitcashier's runners.
     admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used])
     room = 0 if full else max(0, min(v for k, v in limits.items() if k in ADMISSION_LIMITS and v is not None))
-    return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits)
+    return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits, per_job)
 
 
 def demand_of(jobs: list) -> dict:
@@ -669,6 +681,22 @@ class Host:
             f.write(f"RUNNER_CLASS={cls}\nRUNNER_LABELS={LABELS[cls]}\nRUNNER_SLICE=ci-movies-{cls}.slice\n")
         _run(["systemctl", "start", "--no-block", self.unit(slot)])
 
+    def remembered_cpus(self) -> dict:
+        """The cores each class's job was last charged (per-job-cores.json in the state dir, which outlives a scheduler
+        restart); none yet or unreadable: empty, so a class with no settled runner is charged its ceiling."""
+        try:
+            return {c: float(v) for c, v in json.loads(_read(self.cores_path()) or "{}").items() if c in CLASSES}
+        except (ValueError, AttributeError):
+            return {}
+
+    def remember_cpus(self, per_job: dict) -> None:
+        os.makedirs(self.cfg.state_dir, mode=0o700, exist_ok=True)
+        with open(self.cores_path(), "w") as f:
+            json.dump(per_job, f)
+
+    def cores_path(self) -> str:
+        return os.path.join(self.cfg.state_dir, "per-job-cores.json")
+
     def runs_job(self, slot: int) -> bool:
         """A Runner.Worker in the slot's container -- and True when the probe cannot tell: a runner is never stopped on
         doubt. `docker top` keeps the container's rows by ps's PID column, so the options must name `pid` (`-eo comm`
@@ -752,7 +780,7 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool 
     demand = demand_of(jobs)
     r = read_readings(cfg, cpu, now)
     instances = host.instances(now)
-    d = decide(cfg, bc, demand, instances, now, r)
+    d = decide(cfg, bc, demand, instances, now, r, host.remembered_cpus())
     gib = lambda v: "-" if v is None else f"{v:.0f}"  # noqa: E731
     cores = lambda v: "-" if v is None else f"{v:.1f}"  # noqa: E731
     ours = [(i.slot, i.cls, "busy" if i.busy else "idle", gib(i.mem_gib), cores(i.cpu_cores)) for i in instances]
@@ -769,6 +797,7 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool 
         print(line, flush=True)
     if dry_run:
         return d
+    host.remember_cpus(d.per_job)
     for slot in d.stops:
         host.stop(slot)
     for slot, cls in d.starts:
