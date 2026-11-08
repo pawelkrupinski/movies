@@ -137,6 +137,7 @@ scripts/ci/drift_diff.py
 scripts/ci/drift_explorer.py
 scripts/ci/drift_scenario.py
 scripts/ci/drift_seeds.py
+scripts/ci/fetch-verified.sh
 scripts/ci/generated-artefacts-drift.sh
 scripts/ci/harness_aa.py
 scripts/ci/identity-drift-check.sh
@@ -146,6 +147,7 @@ scripts/ci/identity_takes.py
 scripts/ci/identity_takes_diff.py
 scripts/ci/install-actionlint.sh
 scripts/ci/install-playwright.sh
+scripts/ci/jdk-pin.sh
 scripts/ci/jfr-every-jvm.sh
 scripts/ci/job_metrics.py
 scripts/ci/job_metrics_test.py

@@ -1,10 +1,10 @@
 name: Install actionlint
 description: >-
     The pinned actionlint, verified by its sha256, on PATH -- the one install of it every workflow uses. Its release
-    tarball is kept in actions/cache under its version and checksum, so a warm cache needs no download from GitHub's
-    release CDN, whose 504s failed three lands' `check (rest)` on 2026-11-08 (run 42466721258); a miss downloads it with
-    a real retry budget. Either way scripts/ci/install-actionlint.sh checks the checksum before use. Needs the
-    repository checked out.
+    tarball is one actions/cache entry keyed by version and checksum, saved only from main (every other ref restores
+    it), so a warm cache needs no download from GitHub's release CDN, whose 504s failed three lands' `check (rest)` on
+    2026-11-08 (run 42466721258). scripts/ci/fetch-verified.sh checks the checksum on a hit too, and a miss or a failed
+    restore downloads with a retry budget of minutes. Needs the repository checked out.
 
 inputs:
     version:
@@ -17,7 +17,9 @@ inputs:
 runs:
     using: composite
     steps:
-        - uses: actions/cache@v5
+        - id: restore
+          uses: actions/cache/restore@v5
+          continue-on-error: true
           with:
               path: ${{ runner.temp }}/actionlint
               key: actionlint-${{ runner.os }}-${{ inputs.version }}-${{ inputs.sha256 }}
@@ -28,3 +30,9 @@ runs:
           run: |
               scripts/ci/install-actionlint.sh "$RUNNER_TEMP/actionlint"
               echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
+        - if: github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'
+          uses: actions/cache/save@v5
+          continue-on-error: true
+          with:
+              path: ${{ runner.temp }}/actionlint
+              key: actionlint-${{ runner.os }}-${{ inputs.version }}-${{ inputs.sha256 }}
