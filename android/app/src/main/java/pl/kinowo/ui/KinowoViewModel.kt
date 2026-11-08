@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.content.Context
@@ -233,9 +234,14 @@ class KinowoViewModel(
         return countryCatalog.value.cities.zoneFor(selectedCity.value, country.code, country.zoneId)
     }
 
-    fun clearFilters() {
+    /** Wyczyść: resets everything [filtersActive] reads — the session axes, the unticked cinemas and the hidden
+     *  films (un-hidden through the sync, as "show all" does) — so the icon is neutral once the sheet closes. */
+    fun clearFilters(): Job {
         filters.clear()
-        viewModelScope.launch { prefs.setDisabledCinemas(emptySet()) }
+        return viewModelScope.launch {
+            prefs.setDisabledCinemas(emptySet())
+            sync.clear(prefs.unhideAll())
+        }
     }
 
     // ── lifecycle / data ──────────────────────────────────────────────────
