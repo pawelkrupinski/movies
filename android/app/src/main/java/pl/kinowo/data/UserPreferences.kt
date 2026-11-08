@@ -186,7 +186,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
      *  the city is then never adopted and the "which city did you mean" dialog
      *  vanishes with the teardown. [pendingDeepLink], when given, rides the
      *  same write for the recreated ViewModel to apply. See
-     *  [pl.kinowo.ui.KinowoViewModel.adoptDetectedCity]. */
+     *  [pl.kinowo.ui.CitySelection.adoptDetectedCity]. */
     suspend fun setCityInCountry(slug: String, code: String, pendingDeepLink: String? = null) =
         context.dataStore.edit { prefs ->
             prefs.settleLegacyHiddenFilms()

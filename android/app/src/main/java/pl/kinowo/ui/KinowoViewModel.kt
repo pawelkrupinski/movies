@@ -1,9 +1,6 @@
 package pl.kinowo.ui
 
 import pl.kinowo.runCatchingCancellable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -25,7 +22,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import android.content.Context
 import coil3.imageLoader
 import coil3.memory.MemoryCache
@@ -41,43 +37,33 @@ import pl.kinowo.data.ClientSupportGate
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
-import pl.kinowo.deeplink.DeepLink
-import pl.kinowo.deeplink.DeepLinkFilters
 import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.City
 import pl.kinowo.net.CinemaCatalogApi
-import pl.kinowo.deeplink.DeepLinkTitle
 import pl.kinowo.location.GrantedLocationSource
-import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.zoneFor
 import pl.kinowo.model.currentSlugByFormer
 import pl.kinowo.model.city
-import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
 import pl.kinowo.model.LanguageDefault
 import pl.kinowo.ui.city.CityGateStart
 import pl.kinowo.model.selected
 import pl.kinowo.model.FilmDetails
-import pl.kinowo.filter.CinemaFilterSection
-import pl.kinowo.filter.CinemaSection
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.SearchDay
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
-import pl.kinowo.filter.filteredFor
-import pl.kinowo.filter.sortedFor
 import pl.kinowo.model.Film
-
-/** A name with how many films carry it — drives the country/director/cast lists. */
-data class NameCount(val name: String, val count: Int)
+import pl.kinowo.filter.FilterFacets
 
 /**
  * Single screen-state holder — the Android counterpart of iOS `ContentView`'s
  * `@State`. The repertoire payload + prefs arrive as flows from the
- * repository / DataStore; the per-screen filter axes live as Compose state
- * here so the UI recomposes on change. Derived lists (filtered films, cinema
- * sections, filter option lists) are computed on demand by the screens.
+ * repository / DataStore; the per-screen filter axes live as Compose state in
+ * [ListingFilterState]. Which city is shown is [CitySelection]'s, landing a
+ * link [DeepLinkRouter]'s, and the derived lists (filtered films, filter option
+ * lists) [FilterFacets]'; this class wires them over one scope and delegates.
  */
 class KinowoViewModel(
     private val repository: RepertoireRepository,
@@ -114,11 +100,6 @@ class KinowoViewModel(
 
     /** The signed-in user, or null when anonymous. Drives the Filtry → Konto UI. */
     val user: StateFlow<UserProfile?> = authRepository.user
-
-    // Skips the one nearer-city check that the post-OAuth resume would otherwise
-    // fire — armed when a web sign-in starts (see [signInWithGoogle]) or a city
-    // is re-picked with no detected nearest (see [chooseCityAtGate]).
-    private val citySwitchSuppressor = CitySwitchSuppressor()
 
     init {
         sync.start()
@@ -161,57 +142,17 @@ class KinowoViewModel(
      *  language watcher for why that recreate() does NOT also clear the ViewModel. */
     fun setLanguage(tag: String) = viewModelScope.launch { prefs.setLanguageTag(tag) }
 
-    /** What the first-launch gate should do — which country, and whether it may
-     *  offer a located city (see [CityGateStart]).
-     *
-     *  Null means "the stored choices have not been read yet" and NOTHING else —
-     *  unlike [selectedCountryCode], whose null conflates that with "never
-     *  chosen". The gate must wait for a non-null value instead of filling the
-     *  gap itself: the DataStore reads are asynchronous, so on the first
-     *  composition after a country switch nothing has landed, and defaulting
-     *  there scopes the nearest-city search to Poland and greets a Berlin user
-     *  with "You're near Poznan". */
-    val gateStart: StateFlow<CityGateStart?> =
-        combine(prefs.selectedCountryCode, prefs.awaitingExplicitCityPick) { code, explicit ->
-            CityGateStart(
-                countryCode = Country.normalizeCode(code) ?: Country.default.code,
-                locate = !explicit,
-            )
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** Which city is shown and how it changes — the gate, a country switch,
+     *  the nearer-city prompt. */
+    private val citySelection = CitySelection(
+        prefs, location, countryCatalog, selectedCity, selectedCountryCode, viewModelScope,
+    )
 
-    /** Persist the chosen country. The activity observes [selectedCountryCode] and
-     *  recreates itself so the new base URL + locale take effect.
-     *
-     *  Each country is its own deployment serving a DISJOINT set of cities, so the
-     *  switch also drops the current city: keeping the old
-     *  country's slug would request it against the new country's host, and re-arming
-     *  the city gate lets the user pick a city that actually exists there. Clearing
-     *  the city before persisting the code means the gate is already re-armed by the
-     *  time MainActivity recreates. Harmless at the first-launch gate, where the
-     *  city is null anyway. */
-    fun setCountry(code: String) = viewModelScope.launch {
-        reArmCityGate()
-        prefs.setCountryCode(code)
-    }
+    /** See [CitySelection.gateStart]. */
+    val gateStart: StateFlow<CityGateStart?> = citySelection.gateStart
 
-    /** Drop the current city and arm the gate for an explicit pick, without
-     *  touching the country. Backs the Filtry sheet's "Pick another city"
-     *  button — the sole replacement for the old inline Kraj/Miasto pickers —
-     *  which re-gates to [pl.kinowo.ui.city.CityChoiceScreen] the same way
-     *  [setCountry] already did for a country switch. */
-    fun pickAnotherCity() = viewModelScope.launch { reArmCityGate() }
-
-    /** Clear the persisted city and ask the gate for an explicit pick rather
-     *  than a located offer — shared by [setCountry] (a new country's
-     *  deployment may not serve the old city) and [pickAnotherCity] (the user
-     *  asked to switch city or country from within the app). */
-    private suspend fun reArmCityGate() {
-        prefs.clearCity()
-        // The user just asked to pick, so let them: the re-armed gate offers
-        // an explicit choice rather than whatever city the device happens to
-        // sit near.
-        prefs.awaitExplicitCityPick()
-    }
+    fun setCountry(code: String) = citySelection.setCountry(code)
+    fun pickAnotherCity() = citySelection.pickAnotherCity()
 
     val hiddenFilms: StateFlow<Set<String>> =
         prefs.hiddenFilms.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
@@ -233,74 +174,40 @@ class KinowoViewModel(
     val areaPickerSeenCities: StateFlow<Set<String>> =
         prefs.areaPickerSeenCities.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
-    // Per-screen filter axes (Compose state).
-    /** A pending "you're nearer another city — switch?" prompt, or null. Set by
-     *  [checkCitySwitch] when a granted-only location lands nearer a different
-     *  supported city; cleared on accept ([setCity]) or decline
-     *  ([dismissCitySwitch]). */
-    var citySwitchSuggestion by mutableStateOf<CitySwitchSuggestion?>(null)
-        private set
+    /** See [CitySelection.citySwitchSuggestion]. */
+    val citySwitchSuggestion: CitySwitchSuggestion? get() = citySelection.citySwitchSuggestion
 
-    private var shownDay by mutableStateOf<DateFilter>(DateFilter.Today)
-
-    /** The listing's day. Set from outside (a pill tap, a swipe, a deep link) it is a pick, which
-     *  outlasts a running search ([SearchDay]); the search's own moves go through [shownDay]. */
-    var dateFilter: DateFilter
-        get() = shownDay
-        set(value) {
-            if (value != shownDay) searchDay = searchDay.dayPicked()
-            shownDay = value
-        }
-    var sortBy by mutableStateOf(SortOption.DEFAULT)
-    var formatFilter by mutableStateOf(FormatFilter.EMPTY)
-    private var searchText by mutableStateOf("")
-
-    /** The search box. A search looks through every day ([SearchDay]): the first letter moves the
-     *  listing to "All", and clearing it goes back to the day it began on, unless one was picked. */
-    var search: String
-        get() = searchText
-        set(value) {
-            searchText = value
-            val change = searchDay.queryChanged(value, showing = shownDay)
-            searchDay = change.next
-            change.moveTo?.let { shownDay = it }
-        }
-
-    /** The search's day: what clearing the search goes back to, and which days it brought in. */
-    var searchDay by mutableStateOf(SearchDay())
-        private set
+    // Per-screen filter axes (Compose state), read and written by the screens.
+    private val filters = ListingFilterState()
+    var dateFilter: DateFilter by filters::dateFilter
+    var sortBy: SortOption by filters::sortBy
+    var formatFilter: FormatFilter by filters::formatFilter
+    var search: String by filters::search
+    val searchDay: SearchDay get() = filters.searchDay
+    var excludedCountries: Set<String> by filters::excludedCountries
+    var excludedGenres: Set<String> by filters::excludedGenres
+    var excludedDirectors: Set<String> by filters::excludedDirectors
+    var excludedCast: Set<String> by filters::excludedCast
 
     /** On the page for [page], the days the search brought in, drawn lighter; null when none is. */
     fun outsideDays(page: DateFilter): ((String) -> Boolean)? =
         // `now` as `filmsFor`'s: the filter's own default, read as the page is drawn.
         searchDay.outsideDays(page, zone = currentZone())
-    var excludedCountries by mutableStateOf<Set<String>>(emptySet())
-    var excludedGenres by mutableStateOf<Set<String>>(emptySet())
-    var excludedDirectors by mutableStateOf<Set<String>>(emptySet())
-    var excludedCast by mutableStateOf<Set<String>>(emptySet())
 
-    /** A film title a deep link asked to open, once it's confirmed present in the
-     *  loaded repertoire. [Repertoire] navigates to it then calls
-     *  [clearPendingFilmNav]. Null when there's nothing pending. */
-    var pendingFilmNav by mutableStateOf<String?>(null)
-        private set
+    /** Lands inbound links; see [DeepLinkRouter]. */
+    internal val deepLinks = DeepLinkRouter(
+        prefs, countryCatalog, repository.loadedCity, films, disabledCinemas, filters, citySelection, viewModelScope,
+    )
 
-    fun clearPendingFilmNav() { pendingFilmNav = null }
+    /** See [DeepLinkRouter.pendingFilmNav]. */
+    val pendingFilmNav: String? get() = deepLinks.pendingFilmNav
 
-    // The cinema pill row shows the current selection directly, so cinema
-    // choice no longer feeds the Filtry icon — only the sheet's own axes do.
-    // [cityCinemas] scopes the cinema clause to the current city — the excluded
-    // set is global, so a cinema unticked in another city lingers in it and must
-    // not light up the Filtry icon here (see CinemaFilterSection.enabledCount).
-    fun filtersActive(cityCinemas: List<String>): Boolean =
-        !formatFilter.applicable(films.value).isEmpty ||
-            CinemaFilterSection(CinemaCatalog(cityCinemas, emptyList()), disabledCinemas.value)
-                .let { it.enabledCount < it.cityCinemas.size } ||
-            hiddenFilms.value.isNotEmpty() ||
-            excludedCountries.isNotEmpty() ||
-            excludedGenres.isNotEmpty() ||
-            excludedDirectors.isNotEmpty() ||
-            excludedCast.isNotEmpty()
+    fun clearPendingFilmNav() = deepLinks.clearPendingFilmNav()
+
+    /** Whether any filter narrows the listing — see [FilterFacets.filtersActive]. */
+    fun filtersActive(cityCinemas: List<String>): Boolean = FilterFacets.filtersActive(
+        films.value, filters.axes, cityCinemas, disabledCinemas.value, hiddenFilms.value,
+    )
 
     // `hidden`/`disabledCinemas` are passed in (not read off the StateFlow here)
     // so the caller composable observes them via collectAsState — reading them at
@@ -314,19 +221,7 @@ class KinowoViewModel(
         all: List<Film>,
         hidden: Set<String>,
         disabledCinemas: Set<String> = emptySet(),
-    ): List<Film> =
-        all.filteredFor(
-            date = date,
-            format = formatFilter.applicable(all),
-            query = search,
-            hidden = hidden,
-            disabledCinemas = disabledCinemas,
-            excludedCountries = excludedCountries,
-            excludedGenres = excludedGenres,
-            excludedDirectors = excludedDirectors,
-            excludedCast = excludedCast,
-            zone = currentZone(),
-        ).sortedFor(sortBy)
+    ): List<Film> = FilterFacets.filmsFor(all, date, filters.axes, hidden, disabledCinemas, currentZone())
 
     /** The selected CITY's local zone — its own where the catalog gave it one,
      *  else its country's (live catalog entry when present, else the compile-time
@@ -338,32 +233,8 @@ class KinowoViewModel(
         return countryCatalog.value.cities.zoneFor(selectedCity.value, country.code, country.zoneId)
     }
 
-    /** Distinct cinema names anywhere in the payload, sorted by pill name. */
-    fun allCinemas(all: List<Film>): List<String> {
-        val seen = LinkedHashSet<String>()
-        for (film in all) for (day in film.showings) for (c in day.cinemas) seen.add(c.cinema)
-        return seen.sortedBy { CinemaSection.pillName(it) }
-    }
-
-    fun allCountries(all: List<Film>): List<NameCount> = countBy(all) { it.countries }
-    fun allGenres(all: List<Film>): List<NameCount> = countBy(all) { it.genres }
-    fun allDirectors(all: List<Film>): List<NameCount> = countBy(all) { it.directors }
-    fun allCast(all: List<Film>): List<NameCount> = countBy(all) { it.cast }
-
-    private fun countBy(all: List<Film>, select: (Film) -> List<String>): List<NameCount> {
-        val counts = HashMap<String, Int>()
-        for (film in all) for (name in select(film)) counts[name] = (counts[name] ?: 0) + 1
-        return counts.entries
-            .map { NameCount(it.key, it.value) }
-            .sortedWith(compareByDescending<NameCount> { it.count }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.name })
-    }
-
     fun clearFilters() {
-        formatFilter = FormatFilter.EMPTY
-        excludedCountries = emptySet()
-        excludedGenres = emptySet()
-        excludedDirectors = emptySet()
-        excludedCast = emptySet()
+        filters.clear()
         viewModelScope.launch { prefs.setDisabledCinemas(emptySet()) }
     }
 
@@ -411,7 +282,7 @@ class KinowoViewModel(
                 .collectLatest { slug -> fetchAll(slug) }
         }
         // A cross-country deep link the previous ViewModel handed over (see
-        // [handleDeepLink]) — its country and city are already stored.
+        // [DeepLinkRouter.handleDeepLink]) — its country and city are already stored.
         viewModelScope.launch { prefs.takePendingDeepLink()?.let { handleDeepLink(it) } }
     }
 
@@ -500,168 +371,15 @@ class KinowoViewModel(
     fun markSwipeHintShown(date: String) = viewModelScope.launch { prefs.markSwipeHintShown(date) }
 
     // ── deep links ────────────────────────────────────────────────────────
-    /**
-     * Apply an inbound App Link / kinowo:// link. Switches the city eagerly (so
-     * a cold launch from a link lands on the linked city), applies the scalar
-     * filters immediately, and defers the film push + multi-value (exclusion /
-     * cinema) filters until the repertoire loads — both need the loaded films
-     * (the value universe to invert the link's inclusion lists, and the title to
-     * confirm before navigating). A link into another country is handed over
-     * to the ViewModel the country switch recreates. Mirrors iOS
-     * `ContentView.consumeDeepLink`.
-     */
-    fun handleDeepLink(rawUrl: String) = viewModelScope.launch {
-        // Parse against the LIVE catalog's slugs (like iOS `catalog.allSlugs`), so
-        // a city that ships only via `/api/catalog` — every German city — is
-        // recognised, not just the compile-time `Cities.all` roster.
-        val catalog = countryCatalog.value
-        val link = DeepLink.parse(rawUrl, cities = catalog.cities, bareSlugOwners = catalog.bareSlugOwners,
-                                  versionTokensOfCountry = catalog::versionTokensOfCountry,
-                                  genreSpellings = catalog.genreSpellings) ?: return@launch
-        // The STORED choices, not this ViewModel's `stateIn` mirrors, which
-        // still read null until DataStore's first emission lands.
-        val (storedCountry, storedCity) = prefs.countryAndCity.first()
-        val current = Country.byCode(storedCountry).code
-        val target = link.countryCode
-        citySwitchSuggestion = null
-        if (target != current) {
-            // Another country's deployment: switch country and city in ONE
-            // write (see [adoptDetectedCity]) and hand the link itself over in that
-            // same write. MainActivity clears this ViewModel and recreates the
-            // instant the country changes, so nothing here survives; the fresh
-            // ViewModel applies the pending link from [start].
-            prefs.setCityInCountry(link.citySlug, target, pendingDeepLink = rawUrl)
-            return@launch
-        }
-        if (link.citySlug != storedCity) prefs.setCity(link.citySlug)
-        applyScalarFilters(link.filters)
-        // Wait for the TARGET city's repertoire to be the loaded one — NOT
-        // merely for `films` to be non-empty. On a warm app (or a cached
-        // cold start) `films` still holds the PREVIOUS city's list, so
-        // matching the deep-linked film against it misses and the film page
-        // never opens — the bug MIUI hits every time, since it keeps the app
-        // warm. Bounded so a film that genuinely left the repertoire, or a
-        // city whose load fails, falls through to a no-op instead of hanging.
-        withTimeoutOrNull(10_000) { repository.loadedCity.first { it == link.citySlug } }
-        applyRepertoireDependent(link, films.value)
-    }
+    /** Apply an inbound App Link / kinowo:// link — see [DeepLinkRouter.handleDeepLink]. */
+    fun handleDeepLink(rawUrl: String) = deepLinks.handleDeepLink(rawUrl)
 
-    @androidx.annotation.VisibleForTesting
-    internal fun applyScalarFilters(filters: DeepLinkFilters) {
-        filters.date?.let { dateFilter = it }
-        formatFilter = filters.formatFilter(formatFilter)
-        filters.query?.let { search = it }
-        filters.sort?.let { sortBy = it }
-    }
-
-    @androidx.annotation.VisibleForTesting
-    internal fun applyRepertoireDependent(link: DeepLink, loaded: List<Film>) {
-        val f = link.filters
-        if (f.includedCountries.isNotEmpty()) excludedCountries = f.excluded(f.includedCountries, allCountries(loaded).map { it.name }.toSet())
-        if (f.includedGenres.isNotEmpty()) excludedGenres = f.excluded(f.includedGenres, allGenres(loaded).map { it.name }.toSet())
-        if (f.includedDirectors.isNotEmpty()) excludedDirectors = f.excluded(f.includedDirectors, allDirectors(loaded).map { it.name }.toSet())
-        if (f.includedCast.isNotEmpty()) excludedCast = f.excluded(f.includedCast, allCast(loaded).map { it.name }.toSet())
-        // Cinemas are a single global set across cities; re-derive only the ones
-        // in THIS city, preserving deselections elsewhere (CinemaCityFilter).
-        val cityCinemas = allCinemas(loaded)
-        f.disabledCinemas(cityCinemas.toSet())?.let { disabledHere ->
-            setDisabledCinemas((disabledCinemas.value - cityCinemas.toSet()) + disabledHere)
-        }
-        // A slug link resolves exactly — the server minted both sides from the
-        // same fold. A legacy `?title=` link matches the way the web's
-        // MovieController.film does: by normalized title (Arabic→Roman fold),
-        // NOT byte-for-byte, so a link to a numbered sequel ("…Prady 2") finds
-        // the stored "…Prady II". Either way we navigate with the FOUND film's
-        // real title, since the detail route looks films up by exact title. A
-        // film that left the listing just no-ops, like iOS.
-        val target = link.filmSlug?.let { slug -> loaded.firstOrNull { it.slug == slug } }
-            ?: link.filmTitle?.let { title -> loaded.firstOrNull { DeepLinkTitle.matches(it.title, title) } }
-        target?.let { pendingFilmNav = it.title }
-    }
-
-    /** Persist the chosen city. `start()`'s `selectedCity` collector picks up
-     *  the change and re-fetches that city's repertoire — no explicit reload.
-     *  Also clears any pending switch prompt, since accepting one lands here. */
-    fun setCity(slug: String) = viewModelScope.launch {
-        citySwitchSuggestion = null
-        // The excluded-cinema set is global and scoped per city at read time, so
-        // a new city needs no reset — its own cinemas simply start unticked-free.
-        prefs.setCity(slug)
-    }
-
-    /** Adopt a location-detected [city] at the gate's confirm screen — the
-     *  first-launch hit, or a manual "use my location" hit from the picker.
-     *  The manual button now searches EVERY country, so [city] may sit in a
-     *  country other than the one currently open; when it does, switch the
-     *  country and set the city in ONE atomic write via `prefs.setCityInCountry`
-     *  rather than [setCountry], which clears the city — as [handleDeepLink]
-     *  does for a cross-country link: we're about to set this exact city, not
-     *  re-arm the gate for a fresh pick. */
-    fun adoptDetectedCity(city: City) = viewModelScope.launch {
-        citySwitchSuggestion = null
-        // Never two writes: MainActivity recreates the activity (cancelling
-        // this coroutine) the instant the country pref changes, so a
-        // `setCountryCode` followed by a `setCity` exposes the new country with
-        // the old city and can lose the city to that teardown.
-        if (city.country != selectedCountryCode.value) prefs.setCityInCountry(city.slug, city.country)
-        else prefs.setCity(city.slug)
-    }
-
-    /** Adopt a city the user deliberately picked at the gate. When it differs
-     *  from the location-detected [nearestSlug], pre-record that pair so
-     *  [checkCitySwitch] doesn't fire the "you're nearer …" prompt the moment
-     *  the repertoire appears — the pick was intentional. Seeds the key before
-     *  persisting the city so the prompt check sees it.
-     *
-     *  [nearestSlug] is only ever non-null on the first-launch flow, which
-     *  resolved a location fix before landing here. Reached any other way —
-     *  Filtry's "Pick another city", or a country switch — there's no detected
-     *  nearest to build a precise key from, so fall back to skipping the ONE
-     *  check [checkCitySwitch] fires right after this pick (the same one-shot
-     *  suppressor a web sign-in's Custom Tab resume uses): the pick was still
-     *  deliberate, and a genuine later foreground still re-arms the check
-     *  normally. */
-    fun chooseCityAtGate(slug: String, nearestSlug: String?) = viewModelScope.launch {
-        val key = Cities.initialChoiceSuppressKey(slug, nearestSlug)
-        if (key != null) {
-            prefs.setCitySwitchPromptKey(key)
-        } else if (nearestSlug == null) {
-            citySwitchSuppressor.suppressNextCheck()
-        }
-        citySwitchSuggestion = null
-        prefs.setCity(slug)
-    }
-
-    /**
-     * Offer to switch to a nearer supported city when the device — with location
-     * already granted — is closer to a different city than the chosen one. Reads
-     * a fix only if `ACCESS_COARSE_LOCATION` is granted (never prompts), then
-     * defers to [Cities.switchSuggestion] for the once-per-pair decision. On a
-     * hit, persists the pair key immediately so the prompt shows at most once per
-     * pair regardless of accept/decline, and surfaces it as [citySwitchSuggestion]
-     * for [KinowoApp] to render.
-     */
-    fun checkCitySwitch() = viewModelScope.launch {
-        // A web sign-in just returned via a Custom Tab resume — skip the one
-        // check that would re-surface the prompt the user already answered.
-        if (citySwitchSuppressor.consumeShouldSkip()) return@launch
-        if (citySwitchSuggestion != null) return@launch
-        val chosen = selectedCity.value ?: return@launch
-        val fix = location.resolveIfGranted() ?: return@launch
-        val suggestion = countryCatalog.value.cities.switchSuggestion(
-            chosenSlug = chosen,
-            lat = fix.first,
-            lon = fix.second,
-            lastPromptKey = prefs.citySwitchPromptKey.first(),
-            countryCode = selectedCountryCode.value ?: Country.default.code,
-        ) ?: return@launch
-        prefs.setCitySwitchPromptKey(suggestion.key)
-        citySwitchSuggestion = suggestion
-    }
-
-    /** Decline the nearer-city prompt — just clears the dialog; the pair key was
-     *  already persisted in [checkCitySwitch], so we won't re-ask for it. */
-    fun dismissCitySwitch() { citySwitchSuggestion = null }
+    // ── city ──────────────────────────────────────────────────────────────
+    fun setCity(slug: String) = citySelection.setCity(slug)
+    fun adoptDetectedCity(city: City) = citySelection.adoptDetectedCity(city)
+    fun chooseCityAtGate(slug: String, nearestSlug: String?) = citySelection.chooseCityAtGate(slug, nearestSlug)
+    fun checkCitySwitch() = citySelection.checkCitySwitch()
+    fun dismissCitySwitch() = citySelection.dismissCitySwitch()
 
     fun hide(title: String) = viewModelScope.launch { sync.hide(prefs.hide(title), title) }
     fun unhide(title: String) = viewModelScope.launch { sync.unhide(prefs.unhide(title), title) }
@@ -690,12 +408,12 @@ class KinowoViewModel(
     // Arm the suppressor before launching the Custom Tab: the resume when it
     // returns must not re-fire the nearer-city prompt the user just dealt with.
     fun signInWithGoogle(context: Context) {
-        citySwitchSuppressor.suppressNextCheck()
+        citySelection.suppressNextCheck()
         authRepository.startWebSignIn(context, "google")
     }
 
     fun signInWithFacebook(context: Context) {
-        citySwitchSuppressor.suppressNextCheck()
+        citySelection.suppressNextCheck()
         authRepository.startWebSignIn(context, "facebook")
     }
 

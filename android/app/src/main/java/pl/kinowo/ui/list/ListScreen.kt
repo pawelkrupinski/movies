@@ -81,6 +81,7 @@ import android.content.res.Configuration
 import java.time.LocalDate
 import pl.kinowo.R
 import pl.kinowo.filter.CinemaSection
+import pl.kinowo.filter.FilterFacets
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
@@ -119,7 +120,7 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     val areaPickerSeen by viewModel.areaPickerSeenCities.collectAsState()
     // Scopes the Filtry icon's "any filter on?" check to this city — the
     // excluded set is global across cities.
-    val cityCinemas = remember(films) { viewModel.allCinemas(films) }
+    val cityCinemas = remember(films) { FilterFacets.allCinemas(films) }
 
     // Wide viewports (tablets, and phones rotated to landscape) host search
     // inline on the top bar; narrow ones (portrait phones) keep it as the

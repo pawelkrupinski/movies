@@ -89,7 +89,8 @@ import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
 import pl.kinowo.filter.hasImaxShowtime
 import pl.kinowo.ui.KinowoViewModel
-import pl.kinowo.ui.NameCount
+import pl.kinowo.filter.NameCount
+import pl.kinowo.filter.FilterFacets
 import pl.kinowo.ui.countryNameRes
 import pl.kinowo.ui.common.labelText
 import pl.kinowo.ui.theme.TextSecondary
@@ -158,10 +159,10 @@ private fun FiltersList(
     val catalogCountries = viewModel.countryCatalog.collectAsState().value.countries
     val selectedCountryCode by viewModel.selectedCountryCode.collectAsState()
     val selectedCountry = catalogCountries.selected(selectedCountryCode)
-    val allCountries = remember(films) { viewModel.allCountries(films) }
-    val allGenres = remember(films) { viewModel.allGenres(films) }
-    val allDirectors = remember(films) { viewModel.allDirectors(films) }
-    val allCast = remember(films) { viewModel.allCast(films) }
+    val allCountries = remember(films) { FilterFacets.allCountries(films) }
+    val allGenres = remember(films) { FilterFacets.allGenres(films) }
+    val allDirectors = remember(films) { FilterFacets.allDirectors(films) }
+    val allCast = remember(films) { FilterFacets.allCast(films) }
     val countryTitle = stringResource(R.string.filter_country)
     val genreTitle = stringResource(R.string.filter_genre)
     val directorTitle = stringResource(R.string.meta_director)
@@ -415,7 +416,7 @@ private fun CollapsibleSection(
 private fun CinemasSection(viewModel: KinowoViewModel, films: List<Film>) {
     val catalog by viewModel.catalog.collectAsState()
     val disabled by viewModel.disabledCinemas.collectAsState()
-    val fromFilms = remember(films) { viewModel.allCinemas(films) }
+    val fromFilms = remember(films) { FilterFacets.allCinemas(films) }
     val effective = remember(catalog, fromFilms) {
         if (catalog.cinemas.isNotEmpty()) catalog else CinemaCatalog(fromFilms, emptyList())
     }
