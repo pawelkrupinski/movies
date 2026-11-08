@@ -1080,3 +1080,43 @@ got its own row took 21.9 and 23.8 min wall and 269-296 runner-min.
 
 **What is left:** the critical path is the Germany seed-8 drift replay itself, ~18 min of one JVM. Making it cheaper is
 the drift harness's work, measured separately.
+
+## 15. The takes rows in a workflow of their own, both in one pool of 20 (2026-11-08)
+
+The owner: "split the TAKES rows of Identity model convergence into a separate workflow that gates on main", and "make
+whatever kicks off convergence kick off both".
+
+**The split.** `identity-takes.yml` (Identity takes) runs every leg's `takes`, `takes-base`, `takes-drift-<n>` and, on a
+harness push, the A/A rows and their `takes-drift-aa` comparison, through the same `country-convergence-leg.yml` (so every
+check keeps its name, `leg (<country>) / takes (<country>)`), with `verdict complete` (G7). `identity-model-convergence.yml`
+keeps `convergence`, the order passes and their comparisons, and `next-day`. Convergence's preflight dispatches the takes
+run first (`scripts/ci/dispatch-takes.sh`: same ref, its inputs, `parent-run`; the takes run is titled
+`Identity takes (convergence run <id>)`), so Main's kick, the daily run, `identity-measure --full` and a hand dispatch all
+start both. Takes-only and drift-only requests (identity-measure, identity-drift-ci, the drift explorer) dispatch Identity
+takes alone: they ask for no convergence row. Each workflow holds a lane of its own (newest-commit batching, as before).
+
+**The 20 runners.** GitHub's hosted concurrency is the account's, and the two runs overlap almost whole, so the caps of
+both runs' legs must sum to 20. A fixed split of the 20 between the workflows ends later: each suite's slowest country then
+waits on its own suite's slots (`convergence_slots.py`, from `convergence-row-minutes.tsv`):
+
+| split (convergence / takes) | convergence rows end | takes rows end |
+|---|---|---|
+| 9 / 11 | 26.1 min | 19.0 min |
+| 10 / 10 | 26.0 min | 19.7 min |
+| 11 / 9 | 20.1 min | 27.8 min |
+| one pool, 20 legs (`plan_suites`) | 26.0 min | 19.7 min |
+| before: one workflow, 5 legs | 20.6 min (both) | |
+
+So both preflights plan both suites' ten legs in ONE pool (`plan_suites`: each leg one slot, each next slot to the leg
+that ends last) and keep their own part. With 20 legs instead of 5 the minimum of one slot a leg costs: under 20 runners
+the best any split reaches is ~26 min for convergence's rows (Germany's on 2 slots), against ~20.6 when one workflow held
+all of a country's rows. The takes verdict comes ~1 min sooner than before (19.7 min), convergence's ~5 min later.
+Runner-minutes are unchanged (the same rows), plus one preflight, `verdict complete` and `timings` job (~2 min).
+
+**Gating.** THE GATE reads Main, Identity model convergence and Identity takes. Identity takes' rows in
+`.github/gating-checks.tsv` land `unproven` (its workflow row too: gating_checks.py lint now accepts an unproven gate
+workflow with its owner), so until its first green run on main its red reports only; then
+`gating_checks.py prove --workflow-file identity-takes.yml --run <id> --number <#n>`. Its reds belong to the
+`convergence` red family (agentctl's red-families.json).
+
+**Measured after:** (below, from the first main runs of both).
