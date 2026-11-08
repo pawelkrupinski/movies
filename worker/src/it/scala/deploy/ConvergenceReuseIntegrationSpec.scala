@@ -16,7 +16,9 @@ class ConvergenceReuseIntegrationSpec extends AnyFlatSpec with Matchers with Scr
   private val Script = "scripts/ci/convergence_reuse.py"
   private def leg    = RepoFile.read(".github/workflows/country-convergence-leg.yml")
 
-  private lazy val rows: Seq[String] = Seq("python3", Script, "expected-rows").!!.linesIterator.toSeq
+  // the two suites' rows (the owner, 2026-11-08: Identity takes runs the takes rows, Identity model convergence the rest)
+  private lazy val rows: Seq[String]      = Seq("python3", Script, "expected-rows").!!.linesIterator.toSeq
+  private lazy val takesRows: Seq[String] = Seq("python3", Script, "expected-rows", "--suite", "takes").!!.linesIterator.toSeq
   private val mainInputs =
     """{"profile": "false", "jvm-options": "", "runner": "", "takes-base": "", "takes-only": "false", "recording": "",
       |"takes-countries": "", "takes-no-store": "false", "takes-skip": "shadow"}""".stripMargin
@@ -36,13 +38,15 @@ class ConvergenceReuseIntegrationSpec extends AnyFlatSpec with Matchers with Scr
 
   /** Why the source does not hold; empty when it does. */
   private def judge(conclusion: String = "success", sourceKey: String = "k1", orderPhases: String = "both",
-                    takesOnly: String = "false", ran: Seq[String] = rows, failed: String = ""): Seq[String] = {
-    val run   = s"""{"id": 2821, "path": ".github/workflows/identity-model-convergence.yml", "status": "completed",
+                    takesOnly: String = "false", ran: Seq[String] = rows ++ takesRows, failed: String = "",
+                    suite: String = "convergence"): Seq[String] = {
+    val file  = if (suite == "takes") "identity-takes.yml" else "identity-model-convergence.yml"
+    val run   = s"""{"id": 2821, "path": ".github/workflows/$file", "status": "completed",
                    |"conclusion": "$conclusion", "head_sha": "${"a" * 40}"}""".stripMargin
     val facts = s"""{"key": "$sourceKey", "pairs": {"pl": "573 x tree"}, "order_phases": "$orderPhases", "reused_from": "",
                    |"inputs": ${mainInputs.replace("\"takes-only\": \"false\"", s"\"takes-only\": \"$takesOnly\"")}}""".stripMargin
     val mine  = s"""{"key": "k1", "pairs": {"pl": "573 x tree"}, "order_phases": "both", "inputs": $mainInputs,
-                   |"expected_rows": [${rows.map(r => s"\"$r\"").mkString(",")}],
+                   |"suite": "$suite", "expected_rows": [${(if (suite == "takes") takesRows else rows).map(r => s"\"$r\"").mkString(",")}],
                    |"takes_bases": {"pl": ["${"b" * 40}", "${"b" * 40}", true]}}""".stripMargin
     Seq("python3", Script, "judge", "--run", json(run).toString, "--jobs", json(jobs(ran, failed)).toString,
       "--facts", json(facts).toString, "--mine", json(mine).toString).!!.linesIterator.filter(_.nonEmpty).toSeq
@@ -65,24 +69,28 @@ class ConvergenceReuseIntegrationSpec extends AnyFlatSpec with Matchers with Scr
 
   it should "not be reused when it is red, or any row of it is" in {
     judge(conclusion = "failure").mkString should include("not a green completed run")
-    judge(failed = "takes (spain)").mkString should include("`takes (spain)` ended completed/failure there")
+    judge(failed = "convergence (spain)").mkString should include("`convergence (spain)` ended completed/failure there")
+    judge(failed = "takes (spain)", suite = "takes").mkString should include("`takes (spain)` ended completed/failure there")
   }
 
   it should "not be reused when it ran part of the suite" in {
-    val partial = judge(takesOnly = "true", ran = rows.filter(_.startsWith("takes")))
+    val partial = judge(takesOnly = "true", ran = takesRows.filter(r => r.startsWith("takes (") || r.startsWith("takes-base")),
+      suite = "takes")
     partial.mkString should include("takes-only: only the takes rows ran")
-    partial.mkString should include("`convergence (poland)` did not run there")
+    partial.mkString should include("`takes-drift-1 (poland)` did not run there")
   }
 
   "the rows main expects" should "be the leg's own expansion of main's matrix" in {
     // The judgement models the leg's `phase:` expression; a change to it must change the model with it.
     RepoFile.block(leg, "matrix") should include("phase: " + Seq("python3", Script, "phases-expression").!!.trim)
     // 51 since 2026-11-06: Germany's seed 581 on a third drift row (drift_seeds.py rows_of)
-    // 57 since 2026-11-08: Spain's four order pass rows and two comparisons
-    rows should have size 57
-    rows should contain allOf ("takes-drift-3 (germany)", "order-independence-p01 (germany)", "order-independence-p12 (germany)",
+    // 57 since 2026-11-08: Spain's four order pass rows and two comparisons; split the same day, 36 convergence's, 21 takes'
+    (rows ++ takesRows) should have size 57
+    rows should have size 36
+    rows should contain allOf ("order-independence-p01 (germany)", "order-independence-p12 (germany)",
       "order-independence-p01-pass0 (germany)", "order-independence-p12-pass2 (united-states)",
-      "order-independence-p01 (poland)", "next-day (united-states)", "takes (poland)", "takes-base (poland)",
-      "takes-drift-2 (poland)", "convergence (spain)", "order-independence-p01-pass0 (spain)", "order-independence-p12 (spain)")
+      "order-independence-p01 (poland)", "next-day (united-states)",
+      "convergence (spain)", "order-independence-p01-pass0 (spain)", "order-independence-p12 (spain)")
+    takesRows should contain allOf ("takes-drift-3 (germany)", "takes (poland)", "takes-base (poland)", "takes-drift-2 (poland)")
   }
 }
