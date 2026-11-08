@@ -7,7 +7,8 @@
 # turns the run red.
 #
 # THE BASE COMES FROM GIT (simplification-2026-10-31 item 5): refs/verified/commit-rules, the commit the rules last held
-# on, which a run on main ADVANCES when they hold (a fast-forward push of the ref: a slower, older run never moves it
+# on (recorded in a marker commit the ref points at, see `recorded`), which a run on main ADVANCES when they hold (a
+# leased push of a new marker: a slower, older run never moves it
 # back). It used to be "the newest green Main run on this forge", which broke three ways in a week: 1,392 commits back
 # after the forge move (a floor file patched that), a measurement run taken for main's, and a red Main holding the
 # range open for every other check.
@@ -30,13 +31,29 @@ while [ "$#" -gt 0 ]; do
 done
 zero=0000000000000000000000000000000000000000
 Verified=refs/verified/commit-rules
+# THE REF HOLDS A MARKER, NOT MAIN'S COMMIT (Main #2301): GitHub refuses github.token, an App without the `workflows`
+# permission, any ref update whose new commits (old..new) change a workflow file, on refs/verified/* as on a branch, so
+# pointing the ref at main's own commit failed on every range that touched .github/workflows/. The ref points at a
+# parentless commit whose one file, `verified`, names the commit the rules held on: it adds no workflow change.
+# recorded <ref oid>: the commit the ref records -- a marker's `verified` file, or the ref's first form, the commit itself
+recorded() {
+    if git cat-file -e "$1:verified" 2>/dev/null; then git cat-file blob "$1:verified" | tr -d '[:space:]'
+    else printf '%s' "$1"; fi
+}
+# marker <commit>: a parentless commit recording <commit> as the base the rules held on
+marker() {
+    local blob tree
+    blob=$(printf '%s\n' "$1" | git hash-object -w --stdin) || return 1
+    tree=$(printf '100644 blob %s\tverified\n' "$blob" | git mktree) || return 1
+    git -c user.name="commit rules" -c user.email="commit-rules@ci.invalid" commit-tree "$tree" -m "commit rules held on main at $1"
+}
 if [ -z "$base" ]; then
     # ls-remote first: 2 is "no such ref yet" (the ref's first run), anything else non-zero a failed read -- exit 2
     timeout 60 git ls-remote --exit-code origin "$Verified" > /dev/null; ls=$?
     case $ls in
         0) timeout 120 git fetch --quiet --no-tags origin "+$Verified:$Verified" \
                || { echo "::error title=commit rules::could not fetch $Verified"; exit 2; }
-           base=$(git rev-parse "$Verified") ;;
+           base=$(recorded "$(git rev-parse "$Verified")") ;;
         2) [ "${BEFORE:-$zero}" != "$zero" ] && base=$BEFORE ;;
         *) echo "::error title=commit rules::could not read $Verified (git ls-remote exit $ls)"; exit 2 ;;
     esac
@@ -71,10 +88,22 @@ if [ -f .github/gating-checks.tsv ]; then
     else echo "::error title=commit rules (gating checks)::.github/gating-checks.tsv is out of step with the gate's workflows -- see the step log"; rc=1
     fi
 fi
-# The rules held on main: the verified ref moves to HEAD (fast-forward only).
+# The rules held on main: the verified ref moves to a marker of HEAD -- only forward, never past a newer run's: the push
+# leases the ref's current value, and goes only when the commit it records is HEAD's ancestor.
 if [ "$rc" = 0 ] && [ "${GITHUB_REF:-}" = refs/heads/main ] && [ "${GITHUB_EVENT_NAME:-}" = push ]; then
-    if timeout 120 git push --quiet origin "HEAD:$Verified"; then echo "  $Verified -> $(git rev-parse --short=9 HEAD)"
-    elif git fetch --quiet --no-tags origin "+$Verified:$Verified" && git merge-base --is-ancestor HEAD "$Verified"; then
+    head=$(git rev-parse HEAD)
+    current=$(timeout 60 git ls-remote origin "$Verified" | cut -f1)
+    if [ -n "$current" ]; then
+        timeout 120 git fetch --quiet --no-tags origin "+$Verified:$Verified" || current="unreadable"
+    fi
+    if [ -n "$current" ] && [ "$current" != unreadable ] && ! git merge-base --is-ancestor "$(recorded "$current")" "$head" 2>/dev/null \
+       && git merge-base --is-ancestor "$head" "$(recorded "$current")" 2>/dev/null; then
+        echo "  $Verified is past $(git rev-parse --short=9 HEAD) already (a newer run advanced it)"
+    elif [ "$current" != unreadable ] && next=$(marker "$head") \
+       && timeout 120 git push --quiet --force-with-lease="$Verified:$current" origin "$next:$Verified"; then
+        echo "  $Verified -> $(git rev-parse --short=9 HEAD)"
+    elif git fetch --quiet --no-tags origin "+$Verified:$Verified" \
+       && git merge-base --is-ancestor "$head" "$(recorded "$(git rev-parse "$Verified")")" 2>/dev/null; then
         echo "  $Verified is past $(git rev-parse --short=9 HEAD) already (a newer run advanced it)"
     else
         echo "::error title=commit rules::could not advance $Verified to $(git rev-parse --short=9 HEAD): the next run would judge from a stale base"

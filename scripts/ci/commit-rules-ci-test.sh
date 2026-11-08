@@ -33,7 +33,12 @@ scratch_repo "$origin" --bare -b main
 scratch_git "$repo" remote add origin "$origin"
 scratch_git "$repo" push -q origin main
 verify() { scratch_git "$repo" push -q -f origin "$1:refs/verified/commit-rules"; }   # <commit>
-verified() { scratch_git "$origin" rev-parse -q --verify refs/verified/commit-rules || echo none; }
+# verified: the commit the ref records -- a marker commit's `verified` file, or (the ref's first form) the commit it is
+verified() {
+  local oid; oid=$(scratch_git "$origin" rev-parse -q --verify refs/verified/commit-rules) || { echo none; return; }
+  if scratch_git "$origin" cat-file -e "$oid:verified" 2>/dev/null; then scratch_git "$origin" cat-file blob "$oid:verified"
+  else echo "$oid"; fi
+}
 ungit() { local v; for v in $(compgen -e | grep '^GIT_'); do unset "$v"; done; }
 ci() { (cd "$repo" && ungit; bash scripts/ci/commit-rules-ci.sh "$@" > "$work/out" 2>&1; echo $?); }
 
@@ -66,6 +71,33 @@ printf 'kind\tworkflow\tname\tproven\tnote\njob\tmain.yml\tnew\tunproven\n' > "$
 check "a gating-checks registry out of step fails, though no hook ran" "1 1" \
     "$(ci) $(grep -c 'commit rules (gating checks)' "$work/out")"
 rm "$repo/.github/gating-checks.tsv"
+
+# Main #2301: GitHub refuses github.token -- a GitHub App with no `workflows` permission -- any ref update whose new
+# commits (old..new) change a workflow file, on refs/verified/* as on a branch. Pointing the ref at main's own commits
+# then failed on every range that touched .github/workflows/. The origin here refuses the same way
+# (scripts/ci/github-workflow-refusal.pre-receive).
+mkdir -p "$work/origin-hooks"
+cp "$REPO_ROOT/scripts/ci/github-workflow-refusal.pre-receive" "$work/origin-hooks/pre-receive"
+scratch_git "$origin" config core.hooksPath "$work/origin-hooks"
+scratch_git "$repo" reset -q --hard "$base"; verify "$base"
+scratch_git "$origin" update-ref refs/heads/main "$base"
+commit .github/workflows/daily.yml "on: push" "a workflow's schedule"
+workflow_head=$(scratch_git "$repo" rev-parse HEAD)
+scratch_git "$origin" config core.hooksPath /dev/null; scratch_git "$repo" push -q -f origin main
+scratch_git "$origin" config core.hooksPath "$work/origin-hooks"
+check "a push to main whose range changed a workflow advances the ref though the token may not move it over one" \
+  "0 $workflow_head" "$(GITHUB_REF=refs/heads/main GITHUB_EVENT_NAME=push ci) $(verified)"
+commit docs/y.md "a doc" "docs after the workflow"
+check "...and the next run judges from the commit it recorded" "0 1" \
+  "$(ci) $(grep -c "over ${workflow_head:0:9}\.\." "$work/out")"
+scratch_git "$repo" push -q origin main
+newest=$(scratch_git "$repo" rev-parse HEAD)
+check "...and advances again, from a marker to a marker" "0 $newest" \
+  "$(GITHUB_REF=refs/heads/main GITHUB_EVENT_NAME=push ci) $(verified)"
+scratch_git "$repo" reset -q --hard "$workflow_head"
+check "...but a slower run of an older commit never moves it back" "0 $newest" \
+  "$(GITHUB_REF=refs/heads/main GITHUB_EVENT_NAME=push ci) $(verified)"
+scratch_git "$origin" config core.hooksPath /dev/null
 
 scratch_git "$origin" update-ref -d refs/verified/commit-rules
 check "nothing to judge from (a dispatch, no verified ref): passes, said" "0 1" \

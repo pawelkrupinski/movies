@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# A pre-receive hook that refuses a ref update as GitHub refuses github.token, a GitHub App without the `workflows`
+# permission: any update whose new commits (old..new) change a file under .github/workflows/, on any ref, branch or not
+# ("refusing to allow a GitHub App to create or update workflow ... without `workflows` permission"; Main #2301).
+# commit-rules-ci-test.sh installs it on its scratch bare origin. It runs inside that origin's receive-pack, so its git
+# must keep receive-pack's environment (GIT_DIR and the quarantine that holds the pushed objects), which scratch_git
+# would drop: it reads the scratch origin only, never a shared repository.
+zero=0000000000000000000000000000000000000000
+while read -r old new ref; do
+  [ "$new" = "$zero" ] && continue
+  range=$new; [ "$old" != "$zero" ] && range="$old..$new"
+  if git log --format= --name-only "$range" -- .github/workflows | grep -q .; then
+    echo "refusing to allow a GitHub App to create or update workflow without \`workflows\` permission ($ref)" >&2
+    exit 1
+  fi
+done
