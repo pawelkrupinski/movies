@@ -68,4 +68,4 @@ incidents that produced them, so the rules can stay short. Append here when a ne
   `timeout 1500 scripts/sbt-warm "worker/testOnly deploy.*" 2>&1 | grep -E ... | head -30`: a pipeline exits with its
   last command's status (head's 0), and `head` cut sbt's failure summary off. Hence
   `scripts/claude-hooks/masked-exit-guard`, which denies a test runner piped into another command unless the
-  command keeps its status (`set -o pipefail`, `PIPESTATUS`); write the run to a log and read the log.
+  command keeps its status (`set -o pipefail`, `PIPESTATUS`, zsh's `pipestatus`); write the run to a log and read the log.

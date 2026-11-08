@@ -11,7 +11,9 @@ failed test; the pipe threw it away.
 PreToolUse on Bash (.claude/settings.json): DENIES (exit 2, the reason on stderr) a command in which a test runner --
 scripts/sbt-warm, sbt, sbtn, scripts/it-local.sh, scripts/run-script-tests, scripts/fail-before,
 scripts/convergence-local.sh, scripts/page-tests-local -- runs in a pipeline stage other than the last, unless the
-command keeps the runner's status (`set -o pipefail`, or reads `PIPESTATUS`). Write the run to a log and read the log:
+command keeps the runner's status (`set -o pipefail`, or reads bash's `PIPESTATUS` or zsh's `pipestatus` -- the Bash
+tool's shell is zsh). A `bash -c` / `sh -c` / `zsh -c` script is read the same way, and a prefix's options
+(`timeout -s KILL 900`, `nice -n 5`, `env -u X`, `time -p`) leave the runner after them in command position. Write the run to a log and read the log:
 `scripts/sbt-warm "<cmd>" > "$log" 2>&1; echo "exit=$?"; grep -E '...' "$log"`.
 
 It reads the command, not the shell: heredoc bodies are dropped first, and a command it cannot tokenize is allowed. A
@@ -28,9 +30,13 @@ WATCHED = {
     "page-tests-local",
 }
 # Words that leave the next word in command position: `timeout 900 scripts/sbt-warm ...` runs sbt-warm.
-PREFIXES = {"env", "time", "nice", "exec", "command", "nohup", "caffeinate", "then", "do", "else", "elif", "if",
-            "while", "until", "!", "builtin"}
-TIMEOUTS = {"timeout", "gtimeout"}
+KEYWORDS = {"then", "do", "else", "elif", "if", "while", "until", "!"}
+# Commands that run the command after their options; each one's options that take a value (`nice -n 5`).
+PREFIXES = {"env": {"-u", "-C", "-S"}, "time": set(), "nice": {"-n"}, "exec": {"-a"}, "command": set(),
+            "nohup": set(), "caffeinate": {"-t", "-w"}, "builtin": set(), "timeout": {"-s", "-k"},
+            "gtimeout": {"-s", "-k"}}
+TIMEOUTS = {"timeout", "gtimeout"}  # ... and a duration before the command
+SHELLS = {"bash", "sh", "zsh"}  # `bash -c '<script>'`: the script is read as a command of its own
 ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 
@@ -83,7 +89,7 @@ def is_punctuation(token):
 
 def masked_runner(command):
     """The test runner whose exit status a pipe in `command` discards, or None."""
-    if "pipefail" in command or "PIPESTATUS" in command:
+    if "pipefail" in command or "pipestatus" in command.lower():
         return None
     try:
         words = tokens(without_heredoc_bodies(command))
@@ -93,7 +99,9 @@ def masked_runner(command):
     # ends with, and whether a separator (; && || & newline) has ended the stage's last command -- the next command
     # word then starts a new one. A group's runner is its last command's, so `{ scripts/sbt-warm x; } | tail` counts.
     stages, separated = [None], [False]
-    command_position, skip_target, timeout_args = True, False, False
+    command_position, skip_target = True, False
+    prefix, skip_value = None, False  # the prefix whose options are being read, and an option's value next
+    shell_options, script_next = False, False  # a shell's options being read, and its -c script next
 
     def open_group():
         stages.append(None); separated.append(False)
@@ -107,6 +115,7 @@ def masked_runner(command):
 
     for word in words:
         if is_punctuation(word):
+            prefix, skip_value, shell_options, script_next = None, False, False, False
             if word == "(":
                 open_group(); command_position = True
             elif word == ")":
@@ -123,6 +132,18 @@ def masked_runner(command):
         if skip_target:
             skip_target = False
             continue
+        if script_next:
+            shell_options = script_next = False
+            inner = masked_runner(word)
+            if inner:
+                return inner
+            continue
+        if shell_options:
+            if re.fullmatch(r"-[A-Za-z]+", word):
+                script_next = "c" in word
+                continue
+            shell_options = False  # a script file or `-o name`: not read
+            continue
         if word == "{" and command_position:
             open_group()
             continue
@@ -131,19 +152,29 @@ def masked_runner(command):
             continue
         if not command_position:
             continue
-        if timeout_args:
-            if word.startswith("-") or re.fullmatch(r"[0-9.]+[smhd]?", word):
-                continue
-            timeout_args = False
-        if ASSIGNMENT.match(word) or word in PREFIXES:
+        if skip_value:
+            skip_value = False
             continue
-        if word in TIMEOUTS:
-            timeout_args = True
+        if prefix:
+            if prefix == "command" and word in ("-v", "-V"):  # a lookup: `command -v sbt` runs nothing
+                prefix, command_position = None, False
+                continue
+            if word.startswith("-"):
+                skip_value = word in PREFIXES[prefix]
+                continue
+            if prefix in TIMEOUTS and re.fullmatch(r"[0-9.]+[smhd]?", word):
+                continue
+            prefix = None
+        if ASSIGNMENT.match(word) or word in KEYWORDS:
+            continue
+        if word in PREFIXES:
+            prefix = word
             continue
         if separated[-1]:
             stages[-1], separated[-1] = None, False
         if os.path.basename(word) in WATCHED:
             stages[-1] = os.path.basename(word)
+        shell_options = os.path.basename(word) in SHELLS
         command_position = False
     return None
 
