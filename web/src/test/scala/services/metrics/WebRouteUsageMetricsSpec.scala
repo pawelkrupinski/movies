@@ -25,7 +25,7 @@ class WebRouteUsageMetricsSpec extends AnyFlatSpec with Matchers {
   private val RepertoirePath = "/$city<[^/]+>/api/repertoire"
 
   private def routed(path: String, routePattern: String, userAgent: Option[String]): RequestHeader = {
-    val handler = HandlerDef(getClass.getClassLoader, "router", "controllers.MovieController", "apiRepertoire",
+    val handler = HandlerDef(getClass.getClassLoader, "router", "controllers.MovieApiController", "apiRepertoire",
                              Nil, "GET", routePattern)
     val base = FakeRequest("GET", path).addAttr(Router.Attrs.HandlerDef, handler)
     userAgent.fold(base)(agent => base.withHeaders(play.api.mvc.Headers("User-Agent" -> agent)))

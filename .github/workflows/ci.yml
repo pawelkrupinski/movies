@@ -655,7 +655,7 @@ jobs:
     # /{city}/api/repertoire + /api/details (+ /api/cinemas on iOS) JSON through
     # their production models — KinowoCore's `Codable` types with the stores'
     # bare `JSONDecoder()`, Android's KinowoApi + kotlinx models. The
-    # cross-cutting gate: a MovieController JSON drift that would break either
+    # cross-cutting gate: a MovieApiController JSON drift that would break either
     # mobile client fails CI here, on the PR that introduces it.
     #
     # Was two separate jobs, each paying the SAME ~4-min FixtureServerMain boot to

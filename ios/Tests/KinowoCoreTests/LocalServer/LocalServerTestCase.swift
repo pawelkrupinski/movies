@@ -15,7 +15,7 @@ import FoundationNetworking
 // Why a real server instead of bundled JSON fixtures: the bundled
 // snapshots only catch client-side decoder drift; they don't catch a
 // server-side JSON shape change until the snapshot is regenerated.
-// Running against a live render closes that loop — a `MovieController`
+// Running against a live render closes that loop — a `MovieApiController`
 // change that breaks `JSONDecoder().decode([Film].self, …)` fails CI on
 // the same PR that introduced it.
 //

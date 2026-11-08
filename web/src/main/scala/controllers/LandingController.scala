@@ -59,7 +59,7 @@ class LandingController(cc: ControllerComponents, country: Country, picker: Pick
   // this feature's language picker applies to. Always `country`'s language:
   // every visitor gets the same, edge-cacheable HTML; an explicit pick swaps
   // the visible copy client-side (`shared.js`'s `applyLanguage`) rather than
-  // by re-rendering here (mirrors `MovieController.deploymentDefaultLang`,
+  // by re-rendering here (mirrors `CityRequests.deploymentDefaultLang`,
   // bare code and all — see its comment for why it can't be region-qualified).
   private lazy val cityScreenMessages: play.api.i18n.Messages =
     cc.messagesApi.preferred(Seq(Lang(country.language.getLanguage)))
