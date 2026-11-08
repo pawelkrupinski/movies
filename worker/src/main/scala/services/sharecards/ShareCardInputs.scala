@@ -141,7 +141,9 @@ object ShareCardInputs {
    *  city-independent synopsis (a card is per film, not per city) without its markdown emphasis,
    *  and the director line with its label in the deployment's language. */
   def of(movie: ResolvedMovie, country: Country): ShareCardInputs = {
-    val lang = ShareCardText.language(country)
+    // The deployment's own language: the in-page switch swaps copy client-side, and a crawler fetching
+    // `og:image` sees the page in the deployment's language, so there is one card per film.
+    val lang = country.language.getLanguage
     ShareCardInputs(
       filmId         = movie._id,
       lang           = lang,

@@ -17,7 +17,7 @@ class ShareCardTextSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "cover every language a country renders its pages in" in {
-    models.Country.all.map(ShareCardText.language).toSet shouldBe Set("pl", "en", "de", "es")
+  it should "cover every language a country renders its pages (and so its cards) in" in {
+    models.Country.all.map(_.language.getLanguage).toSet shouldBe Set("pl", "en", "de", "es")
   }
 }

@@ -11,9 +11,4 @@ object ShareCardText {
     case "de" => "Regie"
     case _    => "Director"
   }
-
-  /** The language a country's share cards are drawn in: the deployment's own. The in-page
-   *  language switch swaps copy client-side, and a crawler fetching `og:image` sees the page in the
-   *  deployment's language, so there is one card per film. */
-  def language(country: models.Country): String = country.language.getLanguage
 }
