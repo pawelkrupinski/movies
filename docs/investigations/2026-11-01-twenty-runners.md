@@ -1119,4 +1119,16 @@ workflow with its owner), so until its first green run on main its red reports o
 `gating_checks.py prove --workflow-file identity-takes.yml --run <id> --number <#n>`. Its reds belong to the
 `convergence` red family (agentctl's red-families.json).
 
-**Measured after:** (below, from the first main runs of both).
+**Measured after** (the first green pair on main, 8ed9b703c9, jobs API, first step start to last step end, timings job
+left out): convergence #1076 (42520182228) 25.5 min wall, 38 jobs, 184 runner-min; Identity takes #3 (42520192909) 35.9 min
+wall, 28 jobs, 204 runner-min, its last takes row ending 35.7 min in -- the takes verdict. Together ~388 runner-min against
+the old single run's ~351 (median), and the gate's wall is the later of the two, 35.9 min against the old median ~32. The
+takes run started 9 s after convergence's (its preflight's dispatch). This pair ran right after the Scala 3.10 bump
+(8f3d4ac7ac): the takes rows took 12.7-14.4 min against their 7.6-8.0 in the costs file, and the drift rows ~1.5x theirs
+(cold build caches), so each leg's later rows queued behind its first two (`takes (united-kingdom)` 22.7 min queued under
+its leg's cap of 2). The convergence-only pair before it (#1074, pre-bump: 25.6 min) matches. Refresh
+`convergence-row-minutes.tsv` (`convergence_slots.py costs`) over ten warm pairs before judging the plan; the first Identity
+takes runs on main (#1, #2) had no `leg` job (the rows handed to the leg as strings: fixed in 8ed9b703c9).
+
+Heads-up: a takes run whose plan has no A/A row shows the leg's skipped `order-compare` job with its raw name
+(`${{ matrix.phase }} (${{ inputs.country }})`), as Spain's convergence leg did before it split its order rows.
