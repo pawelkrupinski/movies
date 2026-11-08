@@ -91,7 +91,10 @@ class SelfHostedRunnersSpec extends AnyFlatSpec with Matchers {
     "report-timings.yml", "precommit-check.yml", "branch-ci.yml")
   /** What ci-runner's job container cannot give: macOS, and an Android emulator (no /dev/kvm proven in it). */
   private val NeedsHosted = Set("ios.yml: ui-tests", "android.yml: instrumented", "order-independence.yml: swift",
-    "order-independence.yml: ios", "order-independence.yml: android-instrumented")
+    "order-independence.yml: ios", "order-independence.yml: android-instrumented",
+    // browser timing stress needs steady CPU (the owner, 2026-11-08): on movies-measure's shared host, Nightly stress #29's
+    // WebKit phones timed out when a co-tenant starved every worker at once
+    "nightly-stress.yml: races", "nightly-stress.yml: webkit-phones", "nightly-stress.yml: report")
 
   "every other workflow" should "run on ci-runner, bitcashier first, whatever its ref (the owner, 2026-11-06)" in {
     // "distribute other workflows as well": the nightly explorers, the recording, the bots, Stage NixOS closures ...

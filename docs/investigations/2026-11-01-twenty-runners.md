@@ -978,7 +978,8 @@ The owner extended the decision above: "distribute other workflows as well". The
 - **(b) ci-runner.** Measurements and every other Linux workflow off main's critical path. They use the scheduler's
   labels, `movies` for light jobs and `movies-measure` for heavy ones (sbt, mongod, nix builds, browsers), with
   bitcashier first.
-- **(c) hosted.** What the movies-runner container cannot give.
+- **(c) hosted.** What the movies-runner container cannot give, and since 2026-11-08 (the owner) Nightly stress:
+  browser timing stress needs steady CPU, which the shared host's containers do not guarantee (Nightly stress #29).
 
 A (b) job's `runs-on` is `vars.MOVIES_CI_RUNNERS == 'self-hosted' && '<label>' || '<its old hosted label>'`. So the one
 repository switch still sends everything hosted while ci-runner is down (`ubuntu-22.04` stays the fallback of a mongod
@@ -1006,7 +1007,7 @@ The minutes are hosted runner-minutes over the 14 days to 2026-11-06, from the j
 | identity-family-explorer.yml | weekly | b | movies-measure, movies | 1,038 | nightly explorer |
 | order-independence.yml: seed, scala, android, report | nightly | b | movies-measure, movies | 1,283 | nightly |
 | order-independence.yml: swift, ios (macOS), android-instrumented (emulator) | nightly | c | -- | 1,167 | macOS; KVM not proven in the container |
-| nightly-stress.yml | nightly | b | movies-measure, movies | 805 | nightly |
+| nightly-stress.yml | nightly | c (2026-11-08) | -- | 805 | browser timing stress needs steady CPU: on movies-measure a co-tenant starved every Playwright worker at once (Nightly stress #29) |
 | precheck-build-cache.yml | after Main | b | movies-measure | 647 | warms the landing checks' cache, gates nothing |
 | tool-self-tests.yml | push main | b | movies, movies-measure | 580 | not read by THE GATE |
 | nix-stage-closures.yml | push main | b | movies-measure | 174 | stages closures, activates nothing; hosts' port 22 is public |
