@@ -13,6 +13,10 @@
       {
         "matcher": "Bash",
         "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/root-checkout-guard\" bash-pre", "timeout": 30 }]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/masked-exit-guard\"", "timeout": 10 }]
       }
     ],
     "PostToolUse": [

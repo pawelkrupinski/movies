@@ -1,0 +1,166 @@
+#!/usr/bin/env python3
+"""Refuse a Bash command that pipes a test run into a filter: the pipe hides the run's exit status.
+
+A shell pipeline's status is its LAST command's. `scripts/sbt-warm "worker/testOnly deploy.*" 2>&1 | grep FAIL | head -30`
+exits 0 whatever sbt said -- grep or head decides -- and `head` cuts the summary (`Tests: ... failed 61`,
+`[error] (worker / Test / testOnly) sbt.TestsFailedException`) off the end, so what is left reads as a list of FAILED
+lines under a green exit. On 2026-11-08 agents took exactly that as "sbt printed *** FAILED *** yet reported success"
+(the deploy specs in a worktree without infra/bin/fetch-gitops). sbt-warm, sbt and the testUnit alias all exit 1 on a
+failed test; the pipe threw it away.
+
+PreToolUse on Bash (.claude/settings.json): DENIES (exit 2, the reason on stderr) a command in which a test runner --
+scripts/sbt-warm, sbt, sbtn, scripts/it-local.sh, scripts/run-script-tests, scripts/fail-before,
+scripts/convergence-local.sh, scripts/page-tests-local -- runs in a pipeline stage other than the last, unless the
+command keeps the runner's status (`set -o pipefail`, or reads `PIPESTATUS`). Write the run to a log and read the log:
+`scripts/sbt-warm "<cmd>" > "$log" 2>&1; echo "exit=$?"; grep -E '...' "$log"`.
+
+It reads the command, not the shell: heredoc bodies are dropped first, and a command it cannot tokenize is allowed. A
+broken guard never blocks (exit 0).
+"""
+import json
+import os
+import re
+import shlex
+import sys
+
+WATCHED = {
+    "sbt-warm", "sbt", "sbtn", "it-local.sh", "run-script-tests", "fail-before", "convergence-local.sh",
+    "page-tests-local",
+}
+# Words that leave the next word in command position: `timeout 900 scripts/sbt-warm ...` runs sbt-warm.
+PREFIXES = {"env", "time", "nice", "exec", "command", "nohup", "caffeinate", "then", "do", "else", "elif", "if",
+            "while", "until", "!", "builtin"}
+TIMEOUTS = {"timeout", "gtimeout"}
+ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+
+ADVICE = (
+    "A pipeline exits with its LAST command's status, so a failed test run piped into grep/tail/head reads as exit 0 "
+    "(and `head` cuts sbt's failure summary off). Write the run to a log and read the log instead: "
+    "`scripts/sbt-warm \"<cmd>\" > \"$log\" 2>&1; echo \"exit=$?\"; grep -E 'FAILED|Tests:|error\\]' \"$log\"` -- "
+    "or start the command with `set -o pipefail;`."
+)
+
+
+def without_heredoc_bodies(command):
+    """The command with every heredoc's body removed (its lines up to the delimiter line)."""
+    lines, out, closing = command.split("\n"), [], []
+    for line in lines:
+        if closing:
+            if line.strip() == closing[0]:
+                closing.pop(0)
+            continue
+        out.append(line)
+        closing.extend(m.group(2) for m in HEREDOC.finditer(line))
+    return "\n".join(out)
+
+
+OPERATORS = sorted(["&&", "||", ";;", "|&", "&>>", "&>", ">>", ">&", "<&", "<<<", "<<", "<>", ">|",
+                    "(", ")", ";", "&", "|", "<", ">", "\n"], key=len, reverse=True)
+
+
+def tokens(command):
+    """Words and shell operators; shlex runs adjacent operators together (`)|`, `&&\\n`), split them apart here."""
+    lexer = shlex.shlex(command, posix=True, punctuation_chars="();<>|&\n")
+    lexer.whitespace = " \t\r"
+    lexer.whitespace_split = True
+    lexer.commenters = "#"
+    out = []
+    for token in lexer:
+        if not is_punctuation(token):
+            out.append(token)
+            continue
+        while token:
+            operator = next(o for o in OPERATORS if token.startswith(o))
+            out.append(operator)
+            token = token[len(operator):]
+    return out
+
+
+def is_punctuation(token):
+    return token != "" and all(c in "();<>|&\n" for c in token)
+
+
+def masked_runner(command):
+    """The test runner whose exit status a pipe in `command` discards, or None."""
+    if "pipefail" in command or "PIPESTATUS" in command:
+        return None
+    try:
+        words = tokens(without_heredoc_bodies(command))
+    except ValueError:
+        return None
+    # Per nesting depth (a `( )` or `{ }` group opens one): the watched runner whose status the current pipeline stage
+    # ends with, and whether a separator (; && || & newline) has ended the stage's last command -- the next command
+    # word then starts a new one. A group's runner is its last command's, so `{ scripts/sbt-warm x; } | tail` counts.
+    stages, separated = [None], [False]
+    command_position, skip_target, timeout_args = True, False, False
+
+    def open_group():
+        stages.append(None); separated.append(False)
+
+    def close_group():
+        if len(stages) > 1:
+            inner = stages.pop(); separated.pop()
+            if separated[-1]:
+                stages[-1], separated[-1] = None, False
+            stages[-1] = inner or stages[-1]
+
+    for word in words:
+        if is_punctuation(word):
+            if word == "(":
+                open_group(); command_position = True
+            elif word == ")":
+                close_group(); command_position = False
+            elif word in ("|", "|&"):
+                if stages[-1]:
+                    return stages[-1]
+                command_position = True
+            elif word in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|"):
+                skip_target = True
+            else:  # ; && || & ;; and a newline
+                separated[-1] = True; command_position = True
+            continue
+        if skip_target:
+            skip_target = False
+            continue
+        if word == "{" and command_position:
+            open_group()
+            continue
+        if word == "}":
+            close_group(); command_position = False
+            continue
+        if not command_position:
+            continue
+        if timeout_args:
+            if word.startswith("-") or re.fullmatch(r"[0-9.]+[smhd]?", word):
+                continue
+            timeout_args = False
+        if ASSIGNMENT.match(word) or word in PREFIXES:
+            continue
+        if word in TIMEOUTS:
+            timeout_args = True
+            continue
+        if separated[-1]:
+            stages[-1], separated[-1] = None, False
+        if os.path.basename(word) in WATCHED:
+            stages[-1] = os.path.basename(word)
+        command_position = False
+    return None
+
+
+def main():
+    try:
+        event = json.load(sys.stdin)
+        command = event.get("tool_input", {}).get("command", "")
+        runner = masked_runner(command) if isinstance(command, str) else None
+    except Exception:  # a broken guard must not wedge every session
+        return 0
+    if runner:
+        print(f"masked-exit-guard: `{runner}` is piped into another command, which hides whether it failed. {ADVICE}",
+              file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

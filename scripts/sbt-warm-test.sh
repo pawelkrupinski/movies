@@ -154,6 +154,7 @@ check "a checkout with a changed tracked file publishes nothing" "pub" \
   "$(cat "$KINOWO_SBT_CACHE/$head_sha/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
 scratch_git "$scratch/pub" checkout -q -- a
 (cd "$scratch/pub" && STUB_FAIL=1 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a call whose sbt command failed exits non-zero (a failed test fails the call, the hook's and testUnit's path)" 1 "$?"
 check "a call whose command failed publishes nothing" "2" "$(cat "$KINOWO_SBT_CACHE/$head_sha/.zincs" 2>/dev/null)"
 (cd "$scratch/pub" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a fuller build replaces the entry; the replaced one is retired, not deleted under a seed" "pubbed 3 1" \

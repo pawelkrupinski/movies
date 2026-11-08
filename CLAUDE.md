@@ -99,6 +99,9 @@ before the change and passes after. No such test, not committable. `scripts/fail
 A red test or tool error is investigated to its root cause; a flaky test is fixed, never rerun until it passes — a
 test that passes on a second run is not healthy, it is flaky, and a rerun is never a fix.
 
+- **Read a run's exit status, not a filtered tail of its output.** A test runner piped into `grep`/`tail`/`head` exits
+  with the filter's status, and `head` cuts the failure summary off: write the run to a log and read the log
+  (`scripts/claude-hooks/masked-exit-guard` denies the pipe).
 - First classify it. A real assertion failure names an expectation, value or location ("expected X, got Y at line
   N"). An environment-shaped error says the runner could not start, the loader tripped on something fine a minute
   ago, or the filesystem disagrees with what was just written (`No tests found`, `EBUSY`, `ENOENT` on a file you just

@@ -59,3 +59,13 @@ incidents that produced them, so the rules can stay short. Append here when a ne
 
 - 2026-10-19 (user): "remove all test rerunning on red, always investigate and fix flakes." A red is investigated to
   its root cause; a flaky test is fixed, never rerun to green. CI's rerun mechanisms are being removed accordingly.
+
+## A test run piped into a filter
+
+- 2026-11-08: agents in fresh worktrees (no `infra/bin/fetch-gitops`) reported "`sbt testUnit` printed `*** FAILED ***`
+  for the deploy specs, yet sbt reported success". sbt did not: `scripts/sbt-warm "worker/testOnly deploy.*"` and
+  `scripts/sbt-warm testUnit` both exit 1 there (61/62 failed, reproduced). The command was
+  `timeout 1500 scripts/sbt-warm "worker/testOnly deploy.*" 2>&1 | grep -E ... | head -30`: a pipeline exits with its
+  last command's status (head's 0), and `head` cut sbt's failure summary off. Hence
+  `scripts/claude-hooks/masked-exit-guard`, which denies a test runner piped into another command unless the
+  command keeps its status (`set -o pipefail`, `PIPESTATUS`); write the run to a log and read the log.
