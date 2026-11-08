@@ -5,6 +5,7 @@ before measurements -- and main's jobs are never served here (the owner, 2026-11
 
     python3 scripts/ci/runner_scheduler_test.py
 """
+import dataclasses
 import io
 import json
 import os
@@ -35,8 +36,23 @@ def inst(slot, cls, busy=False, idle_for=0, started_ago=3600):
     return rs.Instance(slot, cls, busy, NOW - idle_for, NOW - started_ago)
 
 
-def readings(available=500, ci_free=500, class_free=None, cpu_busy=0.0, cores=1000, busy_builders=()):
-    return rs.Readings(available, ci_free, dict(class_free or {}), cpu_busy, cores, tuple(busy_builders))
+def readings(available=500, ci_free=500, class_free=None, cpu_busy=0.0, cores=1000, busy_builders=(), class_cpu=None):
+    return rs.Readings(available, ci_free, dict(class_free or {}), cpu_busy, cores, tuple(busy_builders),
+                       class_cpu=dict(class_cpu or {}))
+
+
+def cpus(text):
+    return rs.parse_cpu_list(text)
+
+
+# ci-runner's slices (bitcashier infra, movies-runners.nix): checks on CCD0 less two cores, measurements and light jobs
+# on CCD1 plus those two cores (6-7 and their hyperthreads 22-23)
+CHECK_CPUS, MEASURE_CPUS = cpus("0-5,16-21"), cpus("6-15,22-31")
+
+
+def on_cpusets(check_busy, measure_busy):
+    return {"check": rs.ClassCpu(CHECK_CPUS, check_busy), "measure": rs.ClassCpu(MEASURE_CPUS, measure_busy),
+            "light": rs.ClassCpu(MEASURE_CPUS, measure_busy)}
 
 
 def memory_room(cfg, bc, r, pending_gib):
@@ -231,6 +247,81 @@ class RecordedReadingsTest(unittest.TestCase):
         six = [inst(s, "measure", busy=True) for s in (1, 3, 4, 5, 6, 7)]
         r = readings(available=60, ci_free=60, class_free={"measure": 48 - 42}, cpu_busy=10, cores=CORES)
         self.assertEqual(rs.decide(CFG, rs.Bitcashier(2, 0), queued(measure=30), six, NOW, r).starts, ())
+
+
+class CpusetAdmissionTest(unittest.TestCase):
+    """Each class is admitted on the CPUs its slice may run on (cpuset.cpus.effective), not the host's. On ci-runner the
+    measure slice holds CCD1 (plus two CCD0 cores) and the check slice the rest of CCD0, so a host-wide reading both
+    over-admits measurements onto a full CCD1 beside an idle CCD0 (2026-11-08 04:36-06:00Z: nine and ten measurement
+    runners on CCD1's 16 threads, ~1.8 cores each, Germany's drift rows 36-51 min against 14-15 with three) and holds
+    them back for load on CPUs they cannot use: bitcashier's builders and the check lane's cores on CCD0 (15:20Z:
+    host 22 of 32 busy, CCD1 10.2 of 16, 20 measurements queued and none started)."""
+
+    def settled_measurements(self, n, cores_each):
+        return [rs.Instance(s, "measure", True, NOW, NOW - 900, mem_gib=7, cpu_cores=cores_each, cpu_seconds=1500)
+                for s in range(1, n + 1)]
+
+    def test_measurements_start_on_their_own_idle_cpus_while_the_host_is_busy_elsewhere(self):
+        # host 22 of 32 busy (bitcashier on both CCDs), the measure CPUs 8 of 20: 0.85 x 20 - 8 = 9 -> two 4-core jobs;
+        # the host-wide reading said 27.2 - 22 - the lane's 8 < 0
+        r = readings(cpu_busy=22, cores=CORES, class_cpu=on_cpusets(check_busy=12, measure_busy=8))
+        d = rs.decide(CFG, IDLE, queued(measure=20), [], NOW, r)
+        self.assertEqual([c for _, c in d.starts], ["measure", "measure"])
+        self.assertEqual(d.limits["cpu"], 2)
+
+    def test_a_full_measure_cpuset_starts_no_measurement_beside_an_idle_check_ccd(self):
+        # six measurements at 2.6 cores fill their 20 threads (16 busy of 17 allowed); the host reads 16 of 32
+        six = self.settled_measurements(6, cores_each=2.6)
+        r = readings(cpu_busy=16, cores=CORES, class_cpu=on_cpusets(check_busy=0, measure_busy=16))
+        d = rs.decide(CFG, IDLE, queued(measure=20), six, NOW, r)
+        self.assertEqual((d.starts, d.limits["cpu"]), ((), 0))
+
+    def test_the_check_lane_never_waits_on_measurements_that_fill_their_cpuset(self):
+        # measurements fill theirs (19 of 20 busy) and bitcashier holds 5 of the check CPUs: host 24 of 32, so the
+        # host-wide 27.2 - 24 left a check none of its 4 cores; its own CPUs hold it (10.2 - 5)
+        eight = self.settled_measurements(8, cores_each=2.4)
+        r = readings(cpu_busy=24, cores=CORES, class_cpu=on_cpusets(check_busy=5, measure_busy=19))
+        d = rs.decide(CFG, IDLE, queued(check=1, measure=12), eight, NOW, r)
+        self.assertEqual(d.starts, ((9, "check"),))
+
+    def test_a_measurement_started_beside_a_check_takes_none_of_its_cores(self):
+        # each class's cores are spent only on its own CPUs: 10.2 - 2 holds two checks, 17 - 4 three measurements
+        r = readings(cpu_busy=6, cores=CORES, class_cpu=on_cpusets(check_busy=2, measure_busy=4))
+        d = rs.decide(NO_LANE, IDLE, queued(check=2, measure=5), [], NOW, r)
+        self.assertEqual([c for _, c in d.starts], ["check", "check", "measure", "measure", "measure"])
+
+    def test_classes_on_shared_or_unknown_cpus_still_share_their_cores(self):
+        self.assertTrue(rs.share_cpus(readings(class_cpu=on_cpusets(0, 0)), "measure", "light"))
+        self.assertFalse(rs.share_cpus(readings(class_cpu=on_cpusets(0, 0)), "measure", "check"))
+        self.assertTrue(rs.share_cpus(readings(), "measure", "check"))  # no cpuset read: the host's, shared
+        # and with no cpusets the check lane's cores are kept from measurements as before
+        self.assertEqual(len(rs.decide(CFG, IDLE, queued(measure=5), [], NOW,
+                                       readings(cpu_busy=15, cores=CORES)).starts), 1)
+
+
+class SliceCapsTest(unittest.TestCase):
+    """The owner's "cap = charge" (2026-11-08): a measurement is charged in its slice what its container may take
+    (container_gib, its --memory), so admitted measurements never sum past the slice's memory.max, however little
+    the running ones hold now."""
+
+    def test_settled_measurements_holding_little_admit_no_more_than_the_slice_holds_caps(self):
+        # 96 GiB slice, five measurements settled at 7 GiB: the working set leaves 61 - 6 = 55 GiB (five more of 11),
+        # but six caps of 16 is the slice: one more
+        five = [rs.Instance(s, "measure", True, NOW, NOW - 900, mem_gib=7, cpu_cores=2, cpu_seconds=1500)
+                for s in range(1, 6)]
+        r = readings(class_free={"measure": 96 - 35}, cpu_busy=0, cores=CORES)
+        r = dataclasses.replace(r, class_max_gib={"measure": 96})
+        d = rs.decide(NO_LANE, IDLE, queued(measure=20), five, NOW, r)
+        self.assertEqual((len(d.starts), d.limits["caps"]), (1, 1))
+        # six alive: none, and the log names the caps
+        six = five + [rs.Instance(6, "measure", False, NOW, NOW - 30)]
+        d = rs.decide(NO_LANE, IDLE, queued(measure=20), six, NOW, r)
+        self.assertEqual((d.starts, d.room, d.limits["caps"]), ((), 0, 0))
+
+    def test_a_slice_with_no_limit_has_no_caps(self):
+        d = rs.decide(NO_LANE, IDLE, queued(check=3), [], NOW, readings(cpu_busy=0, cores=CORES))
+        self.assertEqual(len(d.starts), 3)
+        self.assertIsNone(d.limits["caps"])
 
 
 def settled(r, starts, cpu_each=1.7):
@@ -632,11 +723,12 @@ class ReadingsTest(unittest.TestCase):
             d = self.cgroup(f"ci.slice/ci-check.slice/builder-{n}.service", 0, current * GIB, 1 * GIB)
             self.process(d, 100 + n, comm)
         self.proc(58 * 2**20, user=0, idle=0)
-        cpu = rs.CpuMeter(window_seconds=300)
+        cpu = rs.CpuMeters(window_seconds=300)
         r = rs.read_readings(self.cfg(), cpu, NOW)
         self.assertEqual(r.mem_available_gib, 58)
         self.assertEqual(r.ci_free_gib, 76)
         self.assertEqual(r.class_free_gib, {"measure": 55})
+        self.assertEqual(r.class_max_gib, {"measure": 80})  # the check slice's "max" is no limit
         self.assertEqual(sorted(r.busy_builder_gib), [2, 4])  # the busy units' own working sets; the idle one's not
         self.assertIsNone(r.cpu_busy_cores)  # one sample is no rate yet
 
@@ -652,6 +744,42 @@ class ReadingsTest(unittest.TestCase):
 
     def test_proc_stat_busy_is_everything_but_idle_and_iowait(self):
         self.assertEqual(rs.cpu_times("cpu  10 1 2 100 5 3 4 7 0 0\n"), (27, 132))
+
+    def test_a_cpu_list_reads_as_its_set(self):
+        self.assertEqual(rs.parse_cpu_list("6-15,22-31\n"), frozenset(list(range(6, 16)) + list(range(22, 32))))
+        self.assertEqual(rs.parse_cpu_list("3\n"), frozenset({3}))
+        self.assertEqual(rs.parse_cpu_list(""), frozenset())
+
+    def test_each_class_reads_the_busy_cores_of_its_own_cpuset(self):
+        # four CPUs: the check slice on 0-1, measure and light on 2-3; over the window CPU 0 is idle, 1 half busy,
+        # 2 and 3 fully busy -- the measure CPUs 2 of 2, the check CPUs 0.5 of 2, the host 2.5 of 4
+        slices = "ci.slice/ci-movies.slice/ci-movies-{}.slice"
+        for cls, text in (("check", "0-1"), ("measure", "2-3"), ("light", "2-3")):
+            d = self.cgroup(slices.format(cls), 0, 0, 0)
+            with open(os.path.join(d, "cpuset.cpus.effective"), "w") as f:
+                f.write(text + "\n")
+        self.cgroup("ci.slice", 115 * GIB, 0, 0)
+        stat = os.path.join(self.root, "proc", "stat")
+
+        def write_stat(per_cpu):
+            self.proc(58 * 2**20, user=0, idle=0)
+            total = [sum(x) for x in zip(*per_cpu)]
+            with open(stat, "w") as f:
+                f.write(f"cpu  {total[0]} 0 0 {total[1]} 0 0 0 0 0 0\n")
+                for n, (busy, idle) in enumerate(per_cpu):
+                    f.write(f"cpu{n} {busy} 0 0 {idle} 0 0 0 0 0 0\n")
+
+        cpu = rs.CpuMeters(window_seconds=300)
+        write_stat([(0, 0)] * 4)
+        first = rs.read_readings(self.cfg(), cpu, NOW - 30)
+        self.assertIsNone(first.class_cpu["measure"].busy_cores)  # one sample: no rate yet
+        write_stat([(0, 100), (50, 50), (100, 0), (100, 0)])
+        r = rs.read_readings(self.cfg(), cpu, NOW)
+        self.assertEqual(r.class_cpu["measure"].cpus, frozenset({2, 3}))
+        self.assertAlmostEqual(r.class_cpu["measure"].busy_cores, 2.0)
+        self.assertAlmostEqual(r.class_cpu["check"].busy_cores, 0.5)
+        self.assertAlmostEqual(r.cpu_busy_cores, 2.5)
+        self.assertEqual(len(cpu.sets), 2)  # measure and light share one meter
 
 
 if __name__ == "__main__":

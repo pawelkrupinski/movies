@@ -31,12 +31,24 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
       - THE CLASS'S SLICE likewise: its memory.max less its working set must hold the margin and the new job. Verify
         scrape recording #14 ran nine measurements in a 48 GiB slice, and on 2026-11-07 07:40-08:22Z six-then-nine did:
         its OOM killer took 18 processes (exit 137).
-      - CPU: the host's busy cores over `cpu_window_seconds` (/proc/stat), up to `cpu_start_below` of the cores
-        (`light_cpu_start_below` for a light job), must hold a job of the class at the cores its jobs USE: the median,
+      - THE SLICE'S CAPS (the owner, 2026-11-08: "cap = charge"): a limited slice never holds more of its class's
+        runners than its memory.max fits containers at their --memory (`container_gib`, 16 GiB: every movies job's peak
+        fits it -- the United States' convergence rows 13-14 GiB, every other country's rows at most 11, a landing check
+        9, over ci-runner's journal 2026-11-07..08 -- and so does the largest heap on the label, identity-live-drift's
+        11g). The working set alone let settled measurements at 7 GiB admit more than the slice holds at their peaks;
+        with what a job may take charged, the slice's OOM killer cannot fire on movies' own growth.
+      - CPU: the busy cores over `cpu_window_seconds` (/proc/stat) OF THE CPUS THE CLASS'S SLICE RUNS ON (its
+        cpuset.cpus.effective; unread, the host's), up to `cpu_start_below` of them (`light_cpu_start_below` for a
+        light job), must hold a job of the class at the cores its jobs USE: the median,
         over the window, of its settled busy runners' own containers (cpu.stat), within [`job_cpus_floor`,
         `job_cpus`]; none settled, `job_cpus` (the JVM's ActiveProcessorCount for a check or measurement; 1 for a
         light job). At 15:46Z five measurements used 13 cores, ~2.6 each, and every new one was charged 4. On a
-        saturated host another job only slows every job, bitcashier's included, for no throughput.
+        saturated host another job only slows every job, bitcashier's included, for no throughput. Per cpuset, not
+        per host (the owner, 2026-11-08): measurements run on CCD1 and two CCD0 cores, checks on the rest of CCD0
+        (bitcashier infra), and the host-wide reading both packed nine and ten measurements onto CCD1's 16 threads
+        beside an idle CCD0 (2026-11-08 04:36-06:00Z, ~1.8 cores each: Germany's drift rows 36-51 min, 14-15 with
+        three) and held them back for bitcashier's load on CPUs they cannot use. Classes on disjoint CPUs never
+        spend each other's cores, so the check lane's cores are kept from measurements only where they share CPUs.
     A runner of ours that has not fully shown its memory and CPU yet -- one waiting for its job, or started within
     `settle_seconds` -- is charged what it has NOT shown yet: its class's expected size less its container's working
     set, and a job's cores less its share of the CPU window's average. So a queue never starts a burst into memory
@@ -90,6 +102,8 @@ import urllib.request
 CLASSES = ("check", "measure", "light")
 LABELS = {"check": "movies-check", "measure": "movies-measure", "light": "movies"}
 CLASS_OF = {label: cls for cls, label in LABELS.items()}
+# The limits that hold a measurement, in whole jobs (Decision.limits; the other entries there only explain them).
+ADMISSION_LIMITS = ("memory", "slice", "caps", "cpu", "slots")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -103,6 +117,11 @@ class Config:
     job_expected_gib: dict = dataclasses.field(default_factory=lambda: {"check": 10, "measure": 11, "light": 1})
     job_cpus: dict = dataclasses.field(default_factory=lambda: {"check": 4, "measure": 4, "light": 1})
     job_cpus_floor: float = 1  # a class's measured cores per job never read below this (job_cpus is its ceiling)
+    # Every movies runner container's --memory (bitcashier infra passes this same number to the unit). A class whose
+    # slice has a memory.max never holds more runners than that many caps fit: what admission charges a job in its
+    # slice is what its container may take, so the slice's own OOM killer never fires (2026-11-07 07:40-08:22Z: nine
+    # measurements, each capped at 16, in a 48 GiB slice -- 18 processes killed, exit 137).
+    container_gib: float = 16
     light_slots: int = 3  # the light lane: slots past max_slots, for light jobs only
     # THE CHECK LANE: this many landing checks' slots, memory (job_expected_gib) and cores (job_cpus) that
     # measurement admission never takes, less the checks already running. Two: a landing check run has a plan job, then
@@ -175,9 +194,18 @@ class Instance:
 
 
 @dataclasses.dataclass(frozen=True)
+class ClassCpu:
+    """The CPUs a class's slice may run on (its cpuset.cpus.effective) and how many of them were busy over the window
+    (None: one sample, no rate yet)."""
+    cpus: frozenset
+    busy_cores: float | None
+
+
+@dataclasses.dataclass(frozen=True)
 class Readings:
     """The host as it is now, in GiB and cores. A class without a slice limit has no class_free_gib entry; no CPU rate
-    yet (one sample) is cpu_busy_cores None."""
+    yet (one sample) is cpu_busy_cores None. A class whose slice's cpuset was read has a class_cpu entry, and is
+    admitted on those CPUs alone; without one, on the host's."""
     mem_available_gib: float
     ci_free_gib: float | None
     class_free_gib: dict
@@ -185,6 +213,8 @@ class Readings:
     cpu_cores: int
     busy_builder_gib: tuple = ()  # the working set of each builder unit running a job
     cpu_span_seconds: float | None = None  # the span cpu_busy_cores averages over
+    class_cpu: dict = dataclasses.field(default_factory=dict)  # class -> ClassCpu
+    class_max_gib: dict = dataclasses.field(default_factory=dict)  # class -> its slice's memory.max (limited ones only)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -193,7 +223,7 @@ class Decision:
     saturated: bool
     starts: tuple  # ((slot, cls), ...)
     stops: tuple  # (slot, ...)
-    # what held a measurement this tick, before the starts: memory, slice, cpu and slots in whole jobs, plus the
+    # what held a measurement this tick, before the starts: ADMISSION_LIMITS in whole jobs, plus the
     # charge of our settling runners and a measurement's measured cores (the log line names the binding term)
     limits: dict = dataclasses.field(default_factory=dict)
 
@@ -237,12 +267,26 @@ def class_free_gib(cfg: Config, r: Readings, cls: str, pending_gib: float) -> fl
     return None if free is None else free - cfg.memory_margin_gib - pending_gib
 
 
-def cpu_spare(cfg: Config, r: Readings, pending_cpus: float, start_below: float) -> float:
-    """The cores free for more jobs: busy cores up to `start_below` of them, less `pending_cpus` of our runners that have
-    not shown their CPU yet. No rate yet (one sample): none."""
-    if r.cpu_busy_cores is None:
+def cpu_of(r: Readings, cls: str | None) -> tuple:
+    """(busy cores, cores) of the CPUs `cls` runs on: its slice's cpuset when read, else (or for None) the host's."""
+    own = r.class_cpu.get(cls)
+    return (r.cpu_busy_cores, r.cpu_cores) if own is None else (own.busy_cores, len(own.cpus))
+
+
+def share_cpus(r: Readings, a: str, b: str) -> bool:
+    """Whether jobs of classes `a` and `b` can run on the same CPUs: their cpusets meet, or either is unknown (the
+    host's). Disjoint classes never take each other's cores: a measurement is not held by the check lane's cores."""
+    ca, cb = r.class_cpu.get(a), r.class_cpu.get(b)
+    return ca is None or cb is None or bool(ca.cpus & cb.cpus)
+
+
+def cpu_spare(cfg: Config, r: Readings, pending_cpus: float, start_below: float, cls: str | None = None) -> float:
+    """The cores free for more `cls` jobs on the CPUs it runs on (cpu_of): busy cores up to `start_below` of them, less
+    `pending_cpus` of our runners on those CPUs that have not shown their CPU yet. No rate yet (one sample): none."""
+    busy, cores = cpu_of(r, cls)
+    if busy is None:
         return 0.0
-    return start_below * r.cpu_cores - r.cpu_busy_cores - pending_cpus
+    return start_below * cores - busy - pending_cpus
 
 
 def settling(cfg: Config, inst: Instance, now: float) -> bool:
@@ -304,10 +348,17 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     pending = [i for i in alive if settling(cfg, i, now)]
     pending_cpus = sum(cpu_charge(r, i, per_job[i.cls]) for i in pending)
     memory = memory_free_gib(cfg, bc, r, sum(memory_charge(cfg, i) for i in pending))
-    cpu = {"heavy": cpu_spare(cfg, r, pending_cpus, cfg.cpu_start_below),
-           "light": cpu_spare(cfg, r, pending_cpus, cfg.light_cpu_start_below)}
+    # each class's spare cores on its own CPUs, less what our settling runners there still owe
+    cpu = {cls: cpu_spare(cfg, r, sum(cpu_charge(r, i, per_job[i.cls]) for i in pending if share_cpus(r, cls, i.cls)),
+                          cfg.light_cpu_start_below if cls == "light" else cfg.cpu_start_below, cls)
+           for cls in CLASSES}
+    # the check lane's cores are kept from measurements only where checks could run on them
+    lane_shares_cpus = share_cpus(r, "measure", "check")
     held = {cls: class_free_gib(cfg, r, cls, sum(memory_charge(cfg, i) for i in pending if i.cls == cls))
             for cls in CLASSES}
+    # each limited slice's room in whole container caps, less the runners of its class alive (busy or waiting)
+    caps = {cls: _whole_jobs(r.class_max_gib[cls], cfg.container_gib) - sum(1 for i in alive if i.cls == cls)
+            for cls in CLASSES if cls in r.class_max_gib}
     heavy_slots = [s for s in range(1, cfg.max_slots + 1) if s not in used]
     size = cfg.job_expected_gib["measure"]
     starts = []
@@ -322,34 +373,38 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     lane_slots, lane_gib, lane_cpus = lane()
     limits = {"memory": _whole_jobs(memory - lane_gib, size),
               "slice": None if held["measure"] is None else _whole_jobs(held["measure"], size),
-              "cpu": _whole_jobs(cpu["heavy"] - lane_cpus, per_job["measure"]),
+              "caps": caps.get("measure"),
+              "cpu": _whole_jobs(cpu["measure"] - (lane_cpus if lane_shares_cpus else 0), per_job["measure"]),
               "slots": max(0, len(heavy_slots) - lane_slots),
               "settling": f"{len(pending)} owe {sum(memory_charge(cfg, i) for i in pending):.0f} GiB "
                           f"{pending_cpus:.1f} cores", "measure_cores": round(per_job["measure"], 1),
               "check_lane": f"{lane_slots} x {cfg.job_expected_gib['check']} GiB {cfg.job_cpus['check']} cores"}
 
-    def admit(cls: str, slots: list, gate: str) -> None:
+    def admit(cls: str, slots: list) -> None:
         nonlocal memory
         need = max(0, demand.get(cls, 0) - sum(1 for i in alive if i.cls == cls and not i.busy))
         size, cores = cfg.job_expected_gib[cls], per_job[cls]
         # a measurement never takes the check lane (a check, or a light job in its own slots, is not held by it)
         keep_slots, keep_gib, keep_cpus = lane() if cls == "measure" else (0, 0, 0)
-        while (need and len(slots) > keep_slots and memory - keep_gib >= size and cpu[gate] - keep_cpus >= cores
-               and (held[cls] is None or held[cls] >= size)):
+        keep_cpus = keep_cpus if lane_shares_cpus else 0
+        while (need and len(slots) > keep_slots and memory - keep_gib >= size and cpu[cls] - keep_cpus >= cores
+               and (held[cls] is None or held[cls] >= size) and caps.get(cls, 1) >= 1):
             starts.append((slots.pop(0), cls))
             need -= 1
+            if cls in caps:
+                caps[cls] -= 1
             memory -= size
             held[cls] = None if held[cls] is None else held[cls] - size
-            for g in cpu:
-                cpu[g] -= cores
+            for other in cpu:
+                if share_cpus(r, other, cls):
+                    cpu[other] -= cores
 
     if not full:
         for cls in CLASSES[:-1]:
-            admit(cls, heavy_slots, "heavy")
+            admit(cls, heavy_slots)
     # THE LIGHT LANE: its own slots, admitted at a light job's size whatever the heavy queue or bitcashier's runners.
-    admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used], "light")
-    room = 0 if full else max(0, min(v for k, v in limits.items()
-                                     if k in ("memory", "slice", "cpu", "slots") and v is not None))
+    admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used])
+    room = 0 if full else max(0, min(v for k, v in limits.items() if k in ADMISSION_LIMITS and v is not None))
     return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits)
 
 
@@ -384,10 +439,9 @@ def oldest_waits(jobs: list, now: float) -> dict:
 
 def starved(cfg: Config, d: Decision, demand: dict, waits: dict) -> list:
     """A line per class queued past `starve_report_seconds` with none of it starting this tick: how many, how long the
-    oldest waited, and what holds it -- bitcashier saturated, or each admission limit at zero (memory, slice, cpu,
-    slots)."""
+    oldest waited, and what holds it -- bitcashier saturated, or each admission limit at zero (ADMISSION_LIMITS)."""
     holding = ["bitcashier saturated"] if d.saturated else \
-        [k for k in ("memory", "slice", "cpu", "slots") if d.limits.get(k) is not None and d.limits[k] <= 0]
+        [k for k in ADMISSION_LIMITS if d.limits.get(k) is not None and d.limits[k] <= 0]
     started = {cls for _, cls in d.starts}
     return [f"STARVED {cls}: {demand[cls]} queued, the oldest {waits[cls] // 60} min, held by {', '.join(holding) or 'nothing named'}"
             for cls in CLASSES if demand.get(cls) and cls not in started and waits.get(cls, 0) >= cfg.starve_report_seconds]
@@ -427,6 +481,12 @@ def working_set_bytes(cgroup_dir: str) -> int | None:
     return int(current) - inactive
 
 
+def memory_max_gib(cgroup_dir: str) -> float | None:
+    """memory.max in GiB; None for no limit ("max") or an unreadable cgroup."""
+    limit = (_read(os.path.join(cgroup_dir, "memory.max")) or "").strip()
+    return int(limit) / 2**30 if limit.isdigit() else None
+
+
 def headroom_gib(cgroup_dir: str) -> float | None:
     """memory.max less the working set; None for no limit ("max") or an unreadable cgroup."""
     limit = (_read(os.path.join(cgroup_dir, "memory.max")) or "").strip()
@@ -436,11 +496,30 @@ def headroom_gib(cgroup_dir: str) -> float | None:
     return (int(limit) - used) / 2**30
 
 
-def cpu_times(stat: str) -> tuple:
-    """(busy, total) jiffies off /proc/stat's `cpu` line: busy is all but idle and iowait (guest is inside user)."""
-    v = [int(x) for x in stat.splitlines()[0].split()[1:]]
-    total = sum(v[:8])
-    return total - v[3] - v[4], total
+def cpu_times(stat: str, cpus: frozenset | None = None) -> tuple:
+    """(busy, total) jiffies off /proc/stat: the `cpu` line, or the sum of the `cpuN` lines of `cpus`. Busy is all but
+    idle and iowait (guest is inside user)."""
+    if cpus is None:
+        lines = stat.splitlines()[:1]
+    else:
+        lines = [l for l in stat.splitlines() if l.startswith("cpu") and l[3:4].isdigit() and int(l.split()[0][3:]) in cpus]
+    busy = total = 0
+    for line in lines:
+        v = [int(x) for x in line.split()[1:]]
+        busy, total = busy + sum(v[:8]) - v[3] - v[4], total + sum(v[:8])
+    return busy, total
+
+
+def parse_cpu_list(text: str) -> frozenset:
+    """A cpuset list ("6-15,22-31") as the set of CPU numbers; empty or unreadable text is the empty set."""
+    cpus = set()
+    for part in text.strip().split(","):
+        if "-" in part:
+            low, high = part.split("-")
+            cpus.update(range(int(low), int(high) + 1))
+        elif part:
+            cpus.add(int(part))
+    return frozenset(cpus)
 
 
 class CpuMeter:
@@ -463,18 +542,46 @@ class CpuMeter:
         return cores * (b1 - b0) / (t1 - t0)
 
 
-def read_readings(cfg: Config, cpu: CpuMeter, now: float) -> Readings:
+class CpuMeters:
+    """A CpuMeter for the host's busy cores and one for each cpuset a class's slice runs on (keyed by the set, so two
+    classes on the same CPUs share one, and a changed cpuset starts afresh)."""
+
+    def __init__(self, window_seconds: int):
+        self.window = window_seconds
+        self.host = CpuMeter(window_seconds)
+        self.sets: dict = {}
+
+    def of(self, cpus: frozenset) -> CpuMeter:
+        return self.sets.setdefault(cpus, CpuMeter(self.window))
+
+
+def class_cpusets(cfg: Config) -> dict:
+    """Each class's slice's cpuset.cpus.effective (the CPUs its jobs may run on); a class whose file is unreadable or
+    empty has none (admitted on the host's CPUs)."""
+    sets = {cls: parse_cpu_list(_read(os.path.join(cfg.class_cgroup.format(cls=cls), "cpuset.cpus.effective")) or "")
+            for cls in CLASSES}
+    return {cls: cpus for cls, cpus in sets.items() if cpus}
+
+
+def read_readings(cfg: Config, cpu: CpuMeters, now: float) -> Readings:
     meminfo = _read(os.path.join(cfg.proc, "meminfo")) or ""
     available_kb = next((int(l.split()[1]) for l in meminfo.splitlines() if l.startswith("MemAvailable:")), 0)
     stat = _read(os.path.join(cfg.proc, "stat"))
+    sets = class_cpusets(cfg)
     if stat:
-        cpu.add(now, *cpu_times(stat))
+        cpu.host.add(now, *cpu_times(stat))
+        for cpus in set(sets.values()):
+            cpu.of(cpus).add(now, *cpu_times(stat, cpus))
+    cpu.sets = {cpus: meter for cpus, meter in cpu.sets.items() if cpus in sets.values()}
     cores = sum(1 for l in (stat or "").splitlines() if l.startswith("cpu") and l[3:4].isdigit()) or os.cpu_count() or 1
     classes = {cls: headroom_gib(cfg.class_cgroup.format(cls=cls)) for cls in CLASSES}
+    limits = {cls: memory_max_gib(cfg.class_cgroup.format(cls=cls)) for cls in CLASSES}
     busy = [working_set_bytes(d) for d in busy_units(cfg.builder_cgroups, cfg.proc)]
     return Readings(available_kb / 2**20, headroom_gib(cfg.ci_cgroup),
-                    {c: v for c, v in classes.items() if v is not None}, cpu.busy_cores(cores), cores,
-                    tuple(b / 2**30 for b in busy if b is not None), cpu.span_seconds())
+                    {c: v for c, v in classes.items() if v is not None}, cpu.host.busy_cores(cores), cores,
+                    tuple(b / 2**30 for b in busy if b is not None), cpu.host.span_seconds(),
+                    {cls: ClassCpu(cpus, cpu.of(cpus).busy_cores(len(cpus))) for cls, cpus in sets.items()},
+                    {c: v for c, v in limits.items() if v is not None})
 
 
 def cpu_usage_seconds(cgroup_dir: str) -> float | None:
@@ -638,7 +745,7 @@ class GitHub:
 
 
 # ── the loop ────────────────────────────────────────────────────────────────────────────────────────────────────────
-def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeter, dry_run: bool = False) -> Decision:
+def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool = False) -> Decision:
     now = time.time()
     bc = Bitcashier(busy_runners(cfg.builder_cgroups), busy_runners(cfg.deployer_cgroups))
     jobs = reader.queued_jobs()
@@ -654,7 +761,8 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeter, dry_run: bool =
           f"x {builder_reserve_gib(cfg, r):.1f} GiB; held by {d.limits}; "
           f"free GiB host {gib(r.mem_available_gib)} "
           f"ci {gib(r.ci_free_gib)} {({c: round(v) for c, v in r.class_free_gib.items()})}; cpu busy "
-          f"{gib(r.cpu_busy_cores)}/{r.cpu_cores}; queued {demand}; "
+          f"{gib(r.cpu_busy_cores)}/{r.cpu_cores} "
+          f"{({c: f'{gib(v.busy_cores)}/{len(v.cpus)}' for c, v in r.class_cpu.items()})}; queued {demand}; "
           f"ours {ours}; "
           f"start {list(d.starts)} stop {list(d.stops)}", flush=True)
     for line in starved(cfg, d, demand, oldest_waits(jobs, now)):
@@ -671,7 +779,7 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeter, dry_run: bool =
 def cmd_run(cfg: Config, dry_run: bool, once: bool) -> int:
     host = Host(cfg)
     reader = GitHub(cfg, cfg.reader_app_id, cfg.reader_key)
-    cpu = CpuMeter(cfg.cpu_window_seconds)
+    cpu = CpuMeters(cfg.cpu_window_seconds)
     while True:
         started = time.time()
         try:
