@@ -118,3 +118,32 @@ final class InMemorySlotRows[A](clock: Clock, stored: (String, String, A) => A) 
   private def ringIf(filmId: String, changed: Boolean): Unit =
     if (changed) listeners.asScala.foreach(_(filmId))
 }
+
+/**
+ * [[SlotKeyedRows]] over an [[InMemorySlotRows]] store — what both in-memory side-collection
+ * fakes answer alike, whatever their row type: the deletes, the sweep's id reads and the
+ * synchronous change ring.
+ */
+trait InMemorySlotKeyedRows[A] extends SlotKeyedRows {
+  protected def rows: InMemorySlotRows[A]
+
+  // An in-memory store cannot fail, so every write is `Written` and every read answers.
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = { rows.delete(filmId, slotKey); WriteOutcome.Written }
+
+  def deleteFilm(filmId: String): WriteOutcome = { rows.deleteFilm(filmId); WriteOutcome.Written }
+
+  def filmIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.all().keySet)
+
+  def rowIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.writtenAt().keySet)
+
+  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, Instant]] = tools.ReadOutcome.Answered(rows.writtenAt())
+
+  def deleteRows(ids: Set[String]): Long = rows.deleteRows(ids)
+
+  def deleteFilms(filmIds: Set[String]): Long = rows.deleteFilms(filmIds)
+
+  // Rings listeners synchronously, so there is no queue and nothing for `demand` to
+  // bound — it is accepted only to honour the trait's contract.
+  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    Some(rows.watch(filmId => onChange(filmId, () => ())))
+}

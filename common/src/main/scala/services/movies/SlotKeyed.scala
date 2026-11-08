@@ -10,10 +10,10 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 /**
- * The film-level questions every slot-keyed side collection answers — the seam
- * [[StrandedSideRows]] sweeps through. Both [[ScreeningsRepository]] and
- * [[SlotsRepository]] extend it, so a sweep asks the same two questions of each store
- * and the rule deciding what is stranded lives once, above both.
+ * What every slot-keyed side collection answers and does whatever its row type — the seam
+ * [[StrandedSideRows]] sweeps through, the deletes, the change ring. Both
+ * [[ScreeningsRepository]] and [[SlotsRepository]] extend it, so a sweep asks the same
+ * questions of each store and the rule deciding what is stranded lives once, above both.
  */
 trait SlotKeyedRows {
   /** The DISTINCT `filmId`s with at least one row here — failed when the read did not succeed,
@@ -42,6 +42,63 @@ trait SlotKeyedRows {
 
   /** Drop the rows with exactly these `_id`s in one write; returns the rows removed. */
   def deleteRows(ids: Set[String]): Long
+
+  /** Drop one slot's row (the slot left the film's listings). */
+  def deleteSlot(filmId: String, slotKey: String): WriteOutcome
+
+  /** Drop all of a film's rows (the film was deleted, or merged away). */
+  def deleteFilm(filmId: String): WriteOutcome
+
+  /** Push: ring `onChange(filmId)` whenever a film's rows actually change, so the
+   *  change-stream fanout can re-read (re-stitch) and re-dispatch that film. A no-op write
+   *  (an identical slot, unchanged showtimes) does NOT ring — mirroring the `movies` no-op
+   *  guard. Returns a handle to stop watching, or None when this impl can't push.
+   *
+   *  `movie_slots` deliberately had no cursor once, on the reasoning that every slot write
+   *  rides a `movies` write and a second stream would fan one logical change out twice.
+   *  Prod disproved the premise (2026-09-07): `MovieRepository.upsert` skips the `movies`
+   *  write when the document is unchanged — and under the split the document carries
+   *  neither slots nor showtimes, so it usually IS unchanged — while the side collection
+   *  still takes the row. A slot that landed after the film's last projection therefore had
+   *  no event at all: 63 (film, venue) pairs in the UK and 33 in PL whose venue never
+   *  reached the site. The double fan-out the old comment feared is what
+   *  `MovieChangeStream` coalesces: events on one film share one queued re-read.
+   *
+   *  `onChange(filmId, applied)`: call `applied()` once the change is APPLIED, not merely
+   *  queued — it is what moves the cursor's persisted resume position (see
+   *  [[SideCollectionWatch]]).
+   *
+   *  `demand` bounds how far the cursor may run ahead of the caller's apply — the caller
+   *  owns it, because the caller is what decides when an event is APPLIED (it hands the
+   *  work to a queue rather than doing it in `onChange`). Impls that ring listeners
+   *  synchronously have no backlog and can ignore it. */
+  def watchApplied(onChange: (String, () => Unit) => Unit,
+                   demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
+
+  /** [[watchApplied]] naming the changed ROW — its composite `_id` ([[SlotKeyed.idOf]]) — where
+   *  the store knows it, so a caller can tell which of a film's rows moved; else the film id, as
+   *  [[watchApplied]] does ([[SlotKeyed.filmIdOf]] reads both). */
+  def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    watchApplied(onChange, demand)
+
+  def close(): Unit = ()
+}
+
+/**
+ * [[SlotKeyedRows]] over a Mongo side collection's change cursor: both Mongo stores watch through
+ * one [[SideCollectionWatch]] under their own persisted resume token, which `close` saves.
+ */
+trait WatchedSlotKeyedRows extends SlotKeyedRows {
+  protected def changes: Option[SideCollectionWatch[?]]
+  protected def resumeToken: ChangeStreamResumeToken
+
+  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    changes.map(_.watch((rowId, applied) => onChange(SlotKeyed.filmIdOf(rowId), applied), demand))
+
+  override def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    changes.map(_.watch(onChange, demand))
+
+  override def close(): Unit = resumeToken.save(force = true)
 }
 
 /**

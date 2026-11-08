@@ -93,36 +93,6 @@ trait ScreeningsRepository extends SlotKeyedRows {
    *  [[ScreeningsSplit.writesFor]]). Idempotent, and a no-op when the row does not exist:
    *  a restamp never creates a row. */
   def restampSlot(filmId: String, slotKey: String, listingKey: ListingKey): WriteOutcome
-
-  /** Drop one slot's screenings (the slot left the film's listings). */
-  def deleteSlot(filmId: String, slotKey: String): WriteOutcome
-
-  /** Drop all of a film's screenings (the film was deleted, or merged away). */
-  def deleteFilm(filmId: String): WriteOutcome
-
-  /** Push: ring `onChange(filmId)` whenever a film's screenings actually change, so
-   *  the change-stream fanout can re-stitch + re-dispatch that film. A no-op write
-   *  (unchanged showtimes) does NOT ring — mirroring the `movies` no-op guard.
-   *  Returns a handle to stop watching, or None when this impl can't push.
-   *
-   *  `onChange(filmId, applied)`: call `applied()` once the change is APPLIED, not merely
-   *  queued — it is what moves the cursor's persisted resume position (see
-   *  [[SideCollectionWatch]]).
-   *
-   *  `demand` bounds how far the cursor may run ahead of the caller's apply — the
-   *  caller owns it, because the caller is what decides when an event is APPLIED (it
-   *  hands the work to a queue rather than doing it in `onChange`). Impls that ring
-   *  listeners synchronously have no backlog and can ignore it. */
-  def watchApplied(onChange: (String, () => Unit) => Unit,
-                   demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
-
-  /** [[watchApplied]] naming the changed ROW — its composite `_id` ([[SlotKeyed.idOf]]) — where
-   *  the store knows it, so a caller can tell which of a film's rows moved; else the film id, as
-   *  [[watchApplied]] does ([[SlotKeyed.filmIdOf]] reads both). */
-  def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    watchApplied(onChange, demand)
-
-  def close(): Unit = ()
 }
 
 /**
@@ -132,9 +102,9 @@ trait ScreeningsRepository extends SlotKeyedRows {
  * [[InMemorySlotRows]], the store its `movie_slots` twin is built on too.
  */
 class InMemoryScreeningsRepository(clock: java.time.Clock,
-                                   roster: VenueRoster = VenueRoster.Unrestricted) extends ScreeningsRepository {
+                                   roster: VenueRoster = VenueRoster.Unrestricted) extends ScreeningsRepository with InMemorySlotKeyedRows[ListedShowtimes] {
 
-  private val rows = new InMemorySlotRows[ListedShowtimes](clock, (filmId, slotKey, row) =>
+  protected val rows = new InMemorySlotRows[ListedShowtimes](clock, (filmId, slotKey, row) =>
     services.BsonRoundTrip.throughCodec(MovieCodecs.registry.get(classOf[StoredScreeningsDto]))(
       StoredScreeningsDto.of(filmId, slotKey, row, clock.instant())).listed)
 
@@ -159,26 +129,6 @@ class InMemoryScreeningsRepository(clock: java.time.Clock,
     rows.updateIfPresent(filmId, slotKey)(_.copy(listingKey = Some(listingKey)))
     WriteOutcome.Written
   }
-
-  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = { rows.delete(filmId, slotKey); WriteOutcome.Written }
-
-  def deleteFilm(filmId: String): WriteOutcome = { rows.deleteFilm(filmId); WriteOutcome.Written }
-
-  def filmIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.all().keySet)
-
-  def rowIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.writtenAt().keySet)
-
-  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] = tools.ReadOutcome.Answered(rows.writtenAt())
-
-  def deleteRows(ids: Set[String]): Long = rows.deleteRows(ids)
-
-
-  def deleteFilms(filmIds: Set[String]): Long = rows.deleteFilms(filmIds)
-
-  // Rings listeners synchronously, so there is no queue and nothing for `demand` to
-  // bound — it is accepted only to honour the trait's contract.
-  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    Some(rows.watch(filmId => onChange(filmId, () => ())))
 }
 
 object ScreeningsRepository {
@@ -294,7 +244,7 @@ class MongoScreeningsRepository(
   writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
   // Where a row this store's change stream could not decode is counted — see [[ChangeEventDecoder]].
   decodeFailures:       services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
-) extends ScreeningsRepository with Logging {
+) extends ScreeningsRepository with WatchedSlotKeyedRows with Logging {
   import ScreeningsRepository.IdSep
 
   private lazy val coll: Option[MongoCollection[StoredScreeningsDto]] = sharedDb.map { db =>
@@ -304,7 +254,7 @@ class MongoScreeningsRepository(
     c
   }
 
-  private val resumeToken = new ChangeStreamResumeToken(ScreeningsRepository.Collection, sharedDb, persistResumeToken, stopwatch)
+  protected val resumeToken: ChangeStreamResumeToken = new ChangeStreamResumeToken(ScreeningsRepository.Collection, sharedDb, persistResumeToken, stopwatch)
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
@@ -528,14 +478,6 @@ class MongoScreeningsRepository(
    *  caller re-reads + stitches the film. The cursor itself — resume token, demand,
    *  reopen, metrics, the delete's `_id` parse — is [[SideCollectionWatch]], shared with
    *  `movie_slots`. */
-  private lazy val changes: Option[SideCollectionWatch[StoredScreeningsDto]] =
+  protected lazy val changes: Option[SideCollectionWatch[StoredScreeningsDto]] =
     coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures, stopwatch))
-
-  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    changes.map(_.watch((rowId, applied) => onChange(SlotKeyed.filmIdOf(rowId), applied), demand))
-
-  override def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    changes.map(_.watch(onChange, demand))
-
-  override def close(): Unit = resumeToken.save(force = true)
 }

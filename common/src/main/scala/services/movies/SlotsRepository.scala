@@ -104,45 +104,6 @@ trait SlotsRepository extends SlotKeyedRows {
    *  that pays a round trip per write does all of them in one read and one write (`MongoSlotsRepository`). */
   def upsertSlots(filmId: String, slots: Map[String, SourceData]): WriteOutcome =
     WriteOutcome.all(slots.toSeq.map { case (slotKey, slot) => upsertSlot(filmId, slotKey, slot) })
-
-  /** Drop one slot (it left the film's listings). */
-  def deleteSlot(filmId: String, slotKey: String): WriteOutcome
-
-  /** Drop all of a film's slots (the film was deleted, or merged away). */
-  def deleteFilm(filmId: String): WriteOutcome
-
-  /** Push: ring `onChange(filmId)` whenever a film's slots actually change, so the
-   *  change-stream fanout can re-read + re-dispatch that film. A no-op write (an
-   *  identical slot) does NOT ring — the same contract as `ScreeningsRepository.watch`.
-   *  Returns a handle to stop watching, or None when this impl can't push.
-   *
-   *  This collection deliberately had no cursor once, on the reasoning that every slot
-   *  write rides a `movies` write and a second stream would fan one logical change out
-   *  twice. Prod disproved the premise (2026-09-07): `MovieRepository.upsert` skips the
-   *  `movies` write when the document is unchanged — and under the split the document
-   *  carries neither slots nor showtimes, so it usually IS unchanged — while `movie_slots`
-   *  still takes the row. A slot that lands after the film's last projection therefore had
-   *  no event at all: 63 (film, venue) pairs in the UK and 33 in PL whose venue never
-   *  reached the site. The double fan-out the old comment feared is what
-   *  `MovieChangeStream` coalesces: events on one film share one queued re-read.
-   *
-   *  `onChange(filmId, applied)`: call `applied()` once the change is APPLIED, not merely
-   *  queued — it is what moves the cursor's persisted resume position (see
-   *  [[SideCollectionWatch]]).
-   *
-   *  `demand` bounds how far the cursor may run ahead of the caller's apply — the caller
-   *  owns it, because the caller is what decides when an event is APPLIED. Impls that ring
-   *  listeners synchronously have no backlog and can ignore it. */
-  def watchApplied(onChange: (String, () => Unit) => Unit,
-                   demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
-
-  /** [[watchApplied]] naming the changed ROW — its composite `_id` ([[SlotKeyed.idOf]]) — where
-   *  the store knows it, so a caller can tell which of a film's rows moved; else the film id, as
-   *  [[watchApplied]] does ([[SlotKeyed.filmIdOf]] reads both). */
-  def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    watchApplied(onChange, demand)
-
-  def close(): Unit = ()
 }
 
 /**
@@ -153,9 +114,9 @@ trait SlotsRepository extends SlotKeyedRows {
  * both just store — so neither can drift from the other's understanding of the rules.
  */
 class InMemorySlotsRepository(clock: java.time.Clock,
-                              roster: VenueRoster = VenueRoster.Unrestricted) extends SlotsRepository {
+                              roster: VenueRoster = VenueRoster.Unrestricted) extends SlotsRepository with InMemorySlotKeyedRows[SourceData] {
 
-  private val rows = new InMemorySlotRows[SourceData](clock, (filmId, slotKey, slot) =>
+  protected val rows = new InMemorySlotRows[SourceData](clock, (filmId, slotKey, slot) =>
     services.BsonRoundTrip.throughCodec(MovieCodecs.registry.get(classOf[StoredSlotDto]))(
       StoredSlotDto.of(filmId, slotKey, slot, clock.instant())).slot)
 
@@ -176,26 +137,6 @@ class InMemorySlotsRepository(clock: java.time.Clock,
     if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, slot.persisted)
     WriteOutcome.Written
   }
-
-  def deleteSlot(filmId: String, slotKey: String): WriteOutcome = { rows.delete(filmId, slotKey); WriteOutcome.Written }
-
-  def deleteFilm(filmId: String): WriteOutcome = { rows.deleteFilm(filmId); WriteOutcome.Written }
-
-  def filmIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.all().keySet)
-
-  def rowIdsChecked(): tools.ReadOutcome[Set[String]] = tools.ReadOutcome.Answered(rows.writtenAt().keySet)
-
-  def rowWrittenAtChecked(): tools.ReadOutcome[Map[String, java.time.Instant]] = tools.ReadOutcome.Answered(rows.writtenAt())
-
-  def deleteRows(ids: Set[String]): Long = rows.deleteRows(ids)
-
-  def deleteFilms(filmIds: Set[String]): Long = rows.deleteFilms(filmIds)
-
-
-  // Rings listeners synchronously, so there is no queue and nothing for `demand` to
-  // bound — it is accepted only to honour the trait's contract.
-  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    Some(rows.watch(filmId => onChange(filmId, () => ())))
 }
 
 object SlotsRepository {
@@ -353,7 +294,7 @@ class MongoSlotsRepository(
   writeMetrics:         RepositoryWriteMetrics = RepositoryWriteMetrics.noop,
   // Where a row this store's change stream could not decode is counted — see [[ChangeEventDecoder]].
   decodeFailures:       services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop
-) extends SlotsRepository with Logging {
+) extends SlotsRepository with WatchedSlotKeyedRows with Logging {
   import SlotKeyed.idOf
 
   private lazy val coll: Option[MongoCollection[StoredSlotDto]] = sharedDb.map { db =>
@@ -363,7 +304,7 @@ class MongoSlotsRepository(
     c
   }
 
-  private val resumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, sharedDb, persistResumeToken, stopwatch)
+  protected val resumeToken: ChangeStreamResumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, sharedDb, persistResumeToken, stopwatch)
 
  /** A FAILED read is answered as one rather than passing an empty map off as "this film has
    *  no cinemas" — see the trait doc for what believing that emptiness costs. Logged too:
@@ -545,14 +486,6 @@ class MongoSlotsRepository(
   /** Watch `movie_slots`; ring `onChange(filmId)` for every change. The cursor itself is
    *  [[SideCollectionWatch]], shared with `screenings`, under this collection's own
    *  persisted resume token. */
-  private lazy val changes: Option[SideCollectionWatch[StoredSlotDto]] =
+  protected lazy val changes: Option[SideCollectionWatch[StoredSlotDto]] =
     coll.map(c => new SideCollectionWatch(SlotsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures, stopwatch))
-
-  override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    changes.map(_.watch((rowId, applied) => onChange(SlotKeyed.filmIdOf(rowId), applied), demand))
-
-  override def watchRowsApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-    changes.map(_.watch(onChange, demand))
-
-  override def close(): Unit = resumeToken.save(force = true)
 }
