@@ -30,6 +30,7 @@ in
     ../../modules/roles/victoria-logs.nix
     ../../modules/roles/identity-regressions.nix
     ../../modules/roles/mongodb-offbox-backup.nix
+    ../../modules/roles/scheduled-dispatch.nix
 
     # THE SHIPPER, IMPORTED PER HOST -- WHICH IS THE WRONG PLACE FOR IT, AND IS SAID OUT LOUD HERE
     # RATHER THAN LEFT TO BE DISCOVERED. It lives under modules/fleet/ because it is true of every
@@ -452,6 +453,13 @@ in
   fleet.firewall.k3sServer = true;
 
   sops.defaultSopsFile = ../../secrets/monitoring-1.yaml;
+
+  # THE EXTERNAL SCHEDULER of the daily and weekly workflows (roles/scheduled-dispatch.nix). OFF until
+  # its credential is in this host's sops file: sops-nix refuses a closure that names a secret the file
+  # lacks. Turning it on: add `scheduled-dispatch/github-app-key` (the kinowo-lander App's private key,
+  # the same key ci-runner holds as agentctl/lander-app-key) to ../../secrets/monitoring-1.yaml, then
+  # set this to true and deploy.
+  fleet.scheduledDispatch.enable = false;
 
   system.stateVersion = "26.05";
 

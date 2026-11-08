@@ -52,6 +52,10 @@ on:
         # minute put four heavyweight jobs on the pool at once, competing for the
         # same prod tunnel that is documented to wedge under load.
         - cron: '31 23 * * *'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
+    # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
+    repository_dispatch:
+        types: [scheduled-record-scrape-fixtures]
     workflow_dispatch:
         inputs:
             identity-lookups:
@@ -102,7 +106,7 @@ jobs:
         outputs:
             # Every scheduled run records the resolver's query set too (a schedule has no inputs, so it cannot read
             # the dispatch default): the gate is kept met, not met once.
-            identity-lookups: ${{ github.event_name == 'schedule' || inputs.identity-lookups == true }}
+            identity-lookups: ${{ (github.event_name == 'schedule' || github.event_name == 'repository_dispatch') || inputs.identity-lookups == true }}
             # Off on the cron (a schedule has no inputs): nightlies become prod-latest, not the hermetic pair.
             pin-hermetic: ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}
             # The capture's legs on ci-runner's measurement slots (the owner, 2026-11-06: off main's critical path, so
@@ -252,7 +256,7 @@ jobs:
     report:
         name: report (scheduled run)
         needs: [ preflight, enrichment, verify ]
-        if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
+        if: ${{ always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch') }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:

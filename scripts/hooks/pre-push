@@ -77,6 +77,10 @@
 #                 job, runner label and gate workflow THE GATE reads is registered, a new one `unproven` (with its owner)
 #                 until a green run proves it (`prove`). The red gate below holds no push for a run red only in unproven
 #                 checks: A NEW CHECK GATES ONLY ONCE IT HAS BEEN GREEN (ci-failures-2026-10-30, recommendation 5)
+#   `schedules`   infra/nix/files/scheduled_dispatch.py check, on a change to a workflow or the external scheduler's
+#                 generated schedule: monitoring-1's dispatch timers are generated from the workflows' own crons
+#                 (scheduled-workflows.json), and every covered workflow treats the scheduler's repository_dispatch as
+#                 its schedule (under a second)
 #   `allowlists`  scripts/ci/commit_rules.py allowlists over the pushed commits, on a change to a registered allow-list
 #                 (.github/allow-lists.txt) or the ratchet itself: a row lands only with its check's birth (`New-Check:`,
 #                 the row TEMPORARY with an owner and when it goes); otherwise a list only shrinks
@@ -328,7 +332,7 @@ is_page_path() { # <path>
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
-    local identity=0 page=0 allowlists=0 driftguards=0 newchecks=0
+    local identity=0 page=0 allowlists=0 driftguards=0 newchecks=0 schedules=0
     local tools
     tools=" $(tool_files | tr '\n' ' ') "
     local all_paths=""
@@ -381,6 +385,7 @@ plan() {
         is_drift_path "$path" && driftguards=1
         is_page_path "$path" && page=1
         case "$path" in .github/workflows/*|.github/gating-checks.tsv|scripts/ci/gating_checks*|scripts/hooks/pre-push) newchecks=1 ;; esac
+        case "$path" in .github/workflows/*|infra/nix/files/scheduled-workflows.json|infra/nix/files/scheduled_dispatch.py) schedules=1 ;; esac
     done
     # an area runs only when local-tests.txt (beside this hook) names tests for it
     has_local_tests identity || identity=0
@@ -390,6 +395,7 @@ plan() {
     [ $judgements = 1 ] && echo judgements
     [ $allowlists = 1 ] && echo allowlists
     [ $newchecks = 1 ] && echo newchecks
+    [ $schedules = 1 ] && echo schedules
     [ $driftguards = 1 ] && echo driftguards
     [ $eslint = 1 ] && echo eslint
     [ $drift = 1 ] && echo drift
@@ -1332,6 +1338,13 @@ check_allowlists() { commit_rules allowlists; }
 check_newchecks() {
     need newchecks python3 "install Python 3 (brew install python)" || return 1
     python3 scripts/ci/gating_checks.py lint
+}
+# THE EXTERNAL SCHEDULER'S SCHEDULE IS THE WORKFLOWS' OWN CRONS (the header's `schedules`): a cron edited without
+# regenerating infra/nix/files/scheduled-workflows.json, or a covered workflow's `== 'schedule'` condition missing the
+# scheduler's repository_dispatch, refuses the push with the fix
+check_schedules() {
+    need schedules python3 "install Python 3 (brew install python)" || return 1
+    python3 infra/nix/files/scheduled_dispatch.py check
 }
 # THE IDENTITY DRIFT CHECK: each claimed red's failed takes-drift rows, on CI (scripts/identity-drift-ci --for-red). 1 blocks; 2
 # (the run could not be made: CI unreachable, no token) warns and passes -- a fix is not held hostage to an outage, and

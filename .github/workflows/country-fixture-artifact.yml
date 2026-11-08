@@ -48,6 +48,10 @@ on:
         # nightly. Nightly also spent ~90 minutes a day of live-upstream budget, and
         # collided at 23:01 with the scrape recorder.
         - cron: '1 23 * * 0'   # Sundays, 00:01 Warsaw (CET) / 01:01 (CEST)
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
+    # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
+    repository_dispatch:
+        types: [scheduled-country-fixture-artifact]
     workflow_dispatch:
         inputs:
             country:
@@ -155,7 +159,7 @@ jobs:
     report:
         name: report (scheduled run)
         needs: [record-country-fixture]
-        if: always() && !cancelled() && github.event_name == 'schedule'
+        if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:

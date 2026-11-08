@@ -1,0 +1,172 @@
+{
+  "excluded": {
+    "decodo-probe.yml": "fires more than once a day: its next slot recovers a dropped one",
+    "identity-ci-staleness.yml": "fires more than once a day: its next slot recovers a dropped one",
+    "security-headers.yml": "fires more than once a day: its next slot recovers a dropped one"
+  },
+  "generatedBy": "infra/nix/files/scheduled_dispatch.py generate (do not edit by hand)",
+  "workflows": {
+    "convergence-daily": {
+      "crons": [
+        "23 3 * * *"
+      ],
+      "file": "convergence-daily.yml",
+      "onCalendar": [
+        "*-*-* 03:23:00 UTC"
+      ]
+    },
+    "country-fixture-artifact": {
+      "crons": [
+        "1 23 * * 0"
+      ],
+      "file": "country-fixture-artifact.yml",
+      "onCalendar": [
+        "Sun *-*-* 23:01:00 UTC"
+      ]
+    },
+    "decoration-discovery": {
+      "crons": [
+        "0 5 * * 2"
+      ],
+      "file": "decoration-discovery.yml",
+      "onCalendar": [
+        "Tue *-*-* 05:00:00 UTC"
+      ]
+    },
+    "discover-cinemas": {
+      "crons": [
+        "0 6 * * 1"
+      ],
+      "file": "discover-cinemas.yml",
+      "onCalendar": [
+        "Mon *-*-* 06:00:00 UTC"
+      ]
+    },
+    "filmweb-diff": {
+      "crons": [
+        "0 1 * * 1"
+      ],
+      "file": "filmweb-diff.yml",
+      "onCalendar": [
+        "Mon *-*-* 01:00:00 UTC"
+      ]
+    },
+    "identity-capture": {
+      "crons": [
+        "0 7 * * 1"
+      ],
+      "file": "identity-capture.yml",
+      "onCalendar": [
+        "Mon *-*-* 07:00:00 UTC"
+      ]
+    },
+    "identity-drift-explorer": {
+      "crons": [
+        "41 0 * * *"
+      ],
+      "file": "identity-drift-explorer.yml",
+      "onCalendar": [
+        "*-*-* 00:41:00 UTC"
+      ]
+    },
+    "identity-family-explorer": {
+      "crons": [
+        "7 2 * * 0"
+      ],
+      "file": "identity-family-explorer.yml",
+      "onCalendar": [
+        "Sun *-*-* 02:07:00 UTC"
+      ]
+    },
+    "identity-findings-report": {
+      "crons": [
+        "41 7 * * *"
+      ],
+      "file": "identity-findings-report.yml",
+      "onCalendar": [
+        "*-*-* 07:41:00 UTC"
+      ]
+    },
+    "identity-refit": {
+      "crons": [
+        "0 5 * * 4"
+      ],
+      "file": "identity-refit.yml",
+      "onCalendar": [
+        "Thu *-*-* 05:00:00 UTC"
+      ]
+    },
+    "nightly-stress": {
+      "crons": [
+        "30 1 * * *"
+      ],
+      "file": "nightly-stress.yml",
+      "onCalendar": [
+        "*-*-* 01:30:00 UTC"
+      ]
+    },
+    "nix-update": {
+      "crons": [
+        "17 4 * * 1"
+      ],
+      "file": "nix-update.yml",
+      "onCalendar": [
+        "Mon *-*-* 04:17:00 UTC"
+      ]
+    },
+    "order-independence": {
+      "crons": [
+        "40 2 * * *"
+      ],
+      "file": "order-independence.yml",
+      "onCalendar": [
+        "*-*-* 02:40:00 UTC"
+      ]
+    },
+    "prune-actions-caches": {
+      "crons": [
+        "17 4 * * *"
+      ],
+      "file": "prune-actions-caches.yml",
+      "onCalendar": [
+        "*-*-* 04:17:00 UTC"
+      ]
+    },
+    "record-scrape-fixtures": {
+      "crons": [
+        "31 23 * * *"
+      ],
+      "file": "record-scrape-fixtures.yml",
+      "onCalendar": [
+        "*-*-* 23:31:00 UTC"
+      ]
+    },
+    "renovate": {
+      "crons": [
+        "0 6 * * 1"
+      ],
+      "file": "renovate.yml",
+      "onCalendar": [
+        "Mon *-*-* 06:00:00 UTC"
+      ]
+    },
+    "roster-audit": {
+      "crons": [
+        "0 5 * * 1"
+      ],
+      "file": "roster-audit.yml",
+      "onCalendar": [
+        "Mon *-*-* 05:00:00 UTC"
+      ]
+    },
+    "scala-steward": {
+      "crons": [
+        "0 6 * * *"
+      ],
+      "file": "scala-steward.yml",
+      "onCalendar": [
+        "*-*-* 06:00:00 UTC"
+      ]
+    }
+  }
+}

@@ -23,7 +23,8 @@ check "a recorded fixture runs the snapshot stamp check" "snapshot" \
 check "any Scala source runs the sbt lints" "sbt" "$(plan worker/src/test/scala/tools/FooSpec.scala)"
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
-check "a workflow runs the gating-checks registry lint, actionlint, and the silenced-read lint" "newchecks actionlint sbt" "$(plan .github/workflows/ci.yml)"
+check "a workflow runs the gating-checks registry lint, the schedules check, actionlint, and the silenced-read lint" "newchecks schedules actionlint sbt" "$(plan .github/workflows/ci.yml)"
+check "the external scheduler's generated schedule runs the schedules check" "schedules" "$(plan infra/nix/files/scheduled-workflows.json)"
 check "a composite action runs actionlint (its run blocks' shellcheck), the self-tests, and the lint specs" "scripttests actionlint sbt" \
   "$(plan .github/actions/convergence-setup/action.yml)"
 check "the local-tests list selects shellcheck by its directory (which skips it) and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/hooks/local-tests.txt)"
@@ -50,7 +51,7 @@ check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scr
   "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
 check "a roster generator runs the drift check and its self-tests" "drift scripttests" "$(plan data/uk/scripts/build_pages.py)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
-check "checks come out once each, in run order" "newchecks driftguards eslint snapshot scripttests actionlint shellcheck sbt page" \
+check "checks come out once each, in run order" "newchecks schedules driftguards eslint snapshot scripttests actionlint shellcheck sbt page" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
 check "a judgements change runs the judgements lint, and the identity area's tests" "judgements driftguards sbt identity" "$(plan test/resources/fixtures/identity-judgements.tsv)"

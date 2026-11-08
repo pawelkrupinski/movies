@@ -52,13 +52,17 @@ on:
     # Thursday 05:00 UTC — its own slot, clear of Tuesday's decoration discovery.
     schedule:
         - cron: '0 5 * * 4'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
+    # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
+    repository_dispatch:
+        types: [scheduled-identity-refit]
 
 # The weekly run is one lane: never two scheduled refits at once. A branch's dispatches are a lane of their own (keyed
 # by the branch), so measurements (threads,
 # relearn) from distinct branches run side by side rather than queueing ~30 minutes each behind one another (2026-10-15: four
 # thread-count runs, 15:19 to 17:30, one after another).
 concurrency:
-    group: identity-refit${{ github.event_name != 'schedule' && format('-{0}', github.ref_name) || '' }}
+    group: identity-refit${{ (github.event_name != 'schedule' && github.event_name != 'repository_dispatch') && format('-{0}', github.ref_name) || '' }}
     cancel-in-progress: false
 
 permissions:
@@ -81,7 +85,7 @@ jobs:
     # on Thursday 05:00 UTC, well inside the 20-runner budget (CiRunnerBudgetSpec). At the triggering commit: the refit
     # job merges them only if main has not moved what they measured (below).
     measure:
-        if: (github.event_name == 'schedule' || inputs.sharded)
+        if: ((github.event_name == 'schedule' || github.event_name == 'repository_dispatch') || inputs.sharded)
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }} # no Mongo here: the kernel is no matter
         timeout-minutes: 60
         strategy:
@@ -251,7 +255,7 @@ jobs:
     report:
         name: report (scheduled run)
         needs: [ measure, refit ]
-        if: ${{ always() && !cancelled() && github.event_name == 'schedule' }}
+        if: ${{ always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch') }}
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:

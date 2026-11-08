@@ -38,6 +38,10 @@ on:
     # Monday 06:00 UTC — off on its own slot.
     schedule:
         - cron: '0 6 * * 1'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
+    # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
+    repository_dispatch:
+        types: [scheduled-discover-cinemas]
 
 permissions:
     contents: write
@@ -184,7 +188,7 @@ jobs:
     report:
         name: report (scheduled run)
         needs: [discover-cinemas]
-        if: always() && !cancelled() && github.event_name == 'schedule'
+        if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:

@@ -25,6 +25,10 @@ name: Identity family explorer
 on:
     schedule:
         - cron: '7 2 * * 0'
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
+    # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
+    repository_dispatch:
+        types: [scheduled-identity-family-explorer]
     workflow_dispatch:
         inputs:
             countries:
@@ -151,7 +155,7 @@ jobs:
     report:
         name: report (scheduled run)
         needs: [plan, walk, publish]
-        if: always() && !cancelled() && github.event_name == 'schedule'
+        if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:

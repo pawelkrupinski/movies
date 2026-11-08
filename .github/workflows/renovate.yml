@@ -16,6 +16,10 @@ on:
     schedule:
         - cron: '0 6 * * 1'
     # Manual kick from the Actions tab for an upgrade pass now.
+    # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
+    # runs come hours late, or not at all): treated as the schedule wherever this workflow branches on it.
+    repository_dispatch:
+        types: [scheduled-renovate]
     workflow_dispatch:
 
 # Renovate pushes its update branches and opens PRs as the "Kinowo Sync Bot"
@@ -66,7 +70,7 @@ jobs:
     report:
         name: report (scheduled run)
         needs: [renovate]
-        if: always() && !cancelled() && github.event_name == 'schedule' && needs.renovate.result != 'skipped'
+        if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch') && needs.renovate.result != 'skipped'
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5
         permissions:
