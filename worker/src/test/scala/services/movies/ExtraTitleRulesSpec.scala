@@ -1467,6 +1467,16 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     withClue("the Q&A tail stops at the next film billed: ")(listingQuery(titles, models.KinoCentrum3D, bill).toLowerCase(java.util.Locale.ROOT) should include("wicker man"))
   }
 
+  it should "drop a stray ')' only where the brackets before it balance, never a nested note's own close" in {
+    val titles = new TitleNormalizer(withExtras)
+    listingQuery(titles, models.KinoCentrum3D, "Rocky (1976) (4K Restoration))") shouldBe "Rocky (1976)"
+    // closed once for each bracket it opened: no ')' is stray, and dropping one cut the query to "Rocky (Anniversary Night"
+    Seq("Rocky (Anniversary Night (Q&A))", "Arrietty (Showing (4K Restoration))").foreach { t =>
+      val query = listingQuery(titles, models.KinoCentrum3D, t)
+      withClue(s"searchQuery of '$t' -> '$query': ")(query.count(_ == '(') shouldBe query.count(_ == ')'))
+    }
+  }
+
   it should "leave a film whose title merely holds the words, and a format tag after a pipe, alone" in {
     val titles = new TitleNormalizer(withExtras)
     Seq("Silver Screen", "Plus One", "The Parent Trap", "Relaxed", "M*A*S*H", "Ocean's Eleven", "Jaws 3-D",
