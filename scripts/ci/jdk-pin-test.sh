@@ -7,7 +7,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 printf '\033[36m▸\033[0m jdk-pin.sh\n'
 
-pin() { RUNNER_OS="$1" RUNNER_ARCH="$2" bash "$REPO_ROOT/scripts/ci/jdk-pin.sh" "$3"; }
+tool_cache="$(mktemp -d)"
+pin() { RUNNER_OS="$1" RUNNER_ARCH="$2" RUNNER_TOOL_CACHE="${PIN_TOOL_CACHE:-$tool_cache}" bash "$REPO_ROOT/scripts/ci/jdk-pin.sh" "$3" 2> /dev/null; }
 field() { sed -n "s/^$1=//p"; }
 
 check "Linux x64's 27 is the pinned Temurin tarball" \
@@ -26,10 +27,16 @@ check "...the three platforms' keys differ" "3" \
   "$( { pin Linux X64 27; pin Linux ARM64 27; pin macOS ARM64 27; } | field key | sort -u | wc -l | tr -d ' ')"
 check "an unpinned version prints nothing (plain setup-java)" "" "$(pin Linux X64 17)"
 check "an unpinned platform prints nothing" "" "$(pin Windows X64 27)"
+mkdir -p "$tool_cache/preinstalled/Java_Temurin-Hotspot_jdk/27.0.0-35/x64"
+check "a runner whose tool-cache holds a Temurin 27 prints nothing (setup-java takes it, no network)" "" \
+  "$(PIN_TOOL_CACHE="$tool_cache/preinstalled" pin Linux X64 27)"
+mkdir -p "$tool_cache/other/Java_Temurin-Hotspot_jdk/21.0.9-10/x64"
+check "...but another major's does not count" "OpenJDK27U-jdk_x64_linux_hotspot_27.0.1.0.2_1.tar.gz" \
+  "$(PIN_TOOL_CACHE="$tool_cache/other" pin Linux X64 27 | field file)"
 
 printf '\033[36m▸\033[0m the pinned JDK through fetch-verified.sh\n'
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+trap 'rm -rf "$work" "$tool_cache"' EXIT
 mkdir -p "$work/bin"
 cat > "$work/bin/curl" <<'STUB'
 #!/usr/bin/env bash

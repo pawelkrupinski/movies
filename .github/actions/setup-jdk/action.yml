@@ -1,13 +1,15 @@
 name: Set up JDK (cached, retrying)
 description: >-
-  Hosted runners don't preinstall JDK 27 (only 21/17 come baked into some
-  images). A pinned JDK (scripts/ci/jdk-pin.sh: 27 on Linux x64/arm64 and
+  Most hosted runner images do not preinstall JDK 27 (ubuntu-26.04 does:
+  see below). A pinned JDK (scripts/ci/jdk-pin.sh: 27 on Linux x64/arm64 and
   macOS arm64) is ONE actions/cache entry per platform, keyed by release and
   checksum and saved only from main: a warm cache downloads nothing from
   GitHub's release CDN, whose 504s failed Main #2306 (2026-11-08), and
   scripts/ci/fetch-verified.sh re-verifies the checksum on a hit and
   downloads a miss (or a failed restore) with a retry budget of minutes;
-  setup-java's `jdkfile` then installs it offline. Anything unpinned goes
+  setup-java's `jdkfile` then installs it offline. A runner whose
+  tool-cache already holds a Temurin 27 (ubuntu-26.04: 27.0.0+35), and
+  anything unpinned, goes
   through plain actions/setup-java, retried up to 3 times (ECONNRESET while
   resolving the latest version, run 36327812746).
 

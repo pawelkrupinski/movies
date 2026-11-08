@@ -5,7 +5,11 @@
 # leaves to plain setup-java. setup-java's own resolution downloads the latest build from GitHub's release CDN on
 # every run, and its 504s (2026-11-08 08:54-10:00 UTC) failed Main #2306's integration-test (identity) and
 # page-tests-safari; setup-java's `cache` input caches build-tool dependencies, never the JDK.
-# Usage: scripts/ci/jdk-pin.sh <java-version>   (env RUNNER_OS, RUNNER_ARCH as GitHub sets them)
+# Usage: scripts/ci/jdk-pin.sh <java-version>   (env RUNNER_OS, RUNNER_ARCH, RUNNER_TOOL_CACHE as GitHub sets them)
+#
+# A runner image whose tool-cache already holds a Temurin <java-version> (github.com's ubuntu-26.04 carries 27.0.0+35)
+# prints nothing too: plain setup-java resolves that from the tool-cache with no network at all, where the pin would
+# be a download (precommit run 42469475456's 504s, on runners that had a JDK 27 the whole time).
 #
 # A bump: the new release name and each platform's checksum from
 #   curl -s "https://api.adoptium.net/v3/assets/latest/27/hotspot?os=linux&architecture=x64&image_type=jdk"
@@ -15,6 +19,12 @@ set -euo pipefail
 
 java_version="${1:?usage: jdk-pin.sh <java-version>}"
 [ "$java_version" = 27 ] || exit 0
+for preinstalled in "${RUNNER_TOOL_CACHE:-/nonexistent}/Java_Temurin-Hotspot_jdk/$java_version".*; do
+  if [ -d "$preinstalled" ]; then
+    echo "jdk-pin: the runner's tool-cache holds $(basename "$preinstalled") -- setup-java takes it, no download" >&2
+    exit 0
+  fi
+done
 
 release=jdk-27.0.1.0.2+1
 build=27.0.1.0.2_1
