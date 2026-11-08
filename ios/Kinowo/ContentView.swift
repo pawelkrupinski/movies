@@ -37,18 +37,14 @@ struct ContentView: View {
     @State private var navPath: [Film] = []
 
     @State private var dateFilter: DateFilter = .today
-    @State private var formatFilter: FormatFilter = .empty
-    @State private var excludedCountries: Set<String> = []
-    @State private var excludedGenres: Set<String> = []
-    @State private var excludedDirectors: Set<String> = []
-    @State private var excludedCast: Set<String> = []
+    /// The Filtry sheet's axes — what its Wyczyść resets (`ListingFilters`).
+    @State private var filters = ListingFilters()
     @State private var search: String = ""
     /// The search's day (`SearchDay`): what clearing the search goes back to, and which days it
     /// brought in.
     @State private var searchDay = SearchDay()
     /// Set while the search itself moves `dateFilter`, so that move is not taken for a pick.
     @State private var dayMovedBySearch = false
-    @State private var sortOption: SortOption = .earliest
     @State private var showFilters: Bool = false
     /// First-visit area picker for a split city (presented once — see below).
     @State private var showAreaPicker: Bool = false
@@ -85,9 +81,9 @@ struct ContentView: View {
     @State private var swipeHintEvaluated = false
     @State private var swipeHintTask: Task<Void, Never>?
 
-    /// "You're nearer another city — switch?" prompt. Populated by the
-    /// authorized-only location check on open / foreground; presenting the
-    /// alert when non-nil.
+    /// "You're nearer another city — switch?" prompt (`CitySwitchAlert`).
+    /// Populated by the authorized-only location check on open / foreground;
+    /// presenting the alert when non-nil.
     @State private var citySwitchSuggestion: City.CitySwitchSuggestion?
     /// The app's one resolver, built in `KinowoApp`.
     @EnvironmentObject private var locationResolver: LocationCityResolver
@@ -169,19 +165,7 @@ struct ContentView: View {
                 // and resize. Fires with the initial width too — no layout effect.
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { viewportWidth = $0 }
                 .sheet(isPresented: $showFilters) {
-                    FiltersSheet(
-                        sortOption: $sortOption,
-                        formatFilter: $formatFilter,
-                        excludedCountries: $excludedCountries,
-                        excludedGenres: $excludedGenres,
-                        excludedDirectors: $excludedDirectors,
-                        excludedCast: $excludedCast,
-                        prefs: prefs,
-                        allCountries: allCountries,
-                        allGenres: allGenres,
-                        allDirectors: allDirectors,
-                        allCast: allCast
-                    )
+                    FiltersSheet(filters: $filters, prefs: prefs, facets: facets)
                 }
                 // First visit to a split city (London): ask which areas to show.
                 // Fires when the catalog resolves as split and this city hasn't
@@ -246,28 +230,7 @@ struct ContentView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
-        // "Jesteś bliżej miasta X" — offer to switch the repertoire to the
-        // nearer supported city. `citySwitchSuggestion` is set (and the
-        // prompt-key remembered) only by the authorized-only location check,
-        // so it never fires without an existing location grant.
-        .alert(
-            citySwitchSuggestion.map { String(format: localizedString("switch.nearer_title", locale: locale), $0.target.name) } ?? "",
-            isPresented: Binding(
-                get: { citySwitchSuggestion != nil },
-                set: { if !$0 { citySwitchSuggestion = nil } }
-            ),
-            presenting: citySwitchSuggestion
-        ) { suggestion in
-            Button("switch.confirm") {
-                prefs.setCity(suggestion.target.slug)
-                store.use(citySlug: suggestion.target.slug,
-                          timeZone: suggestion.target.zone(fallback: prefs.selectedCountry.timeZone))
-                details.use(citySlug: suggestion.target.slug)
-            }
-            Button("switch.not_now", role: .cancel) {}
-        } message: { suggestion in
-            Text(String(format: localizedString("switch.question", locale: locale), suggestion.target.name))
-        }
+        .modifier(CitySwitchAlert(suggestion: $citySwitchSuggestion))
         .task {
             // Revalidate the country/city catalog on cold open (conditional GET;
             // a 304 costs only headers). Non-blocking — the UI already renders
@@ -373,10 +336,6 @@ struct ContentView: View {
 
     // MARK: Deep link application
 
-    /// Apply an inbound deep link. The city was already switched by
-    /// `KinowoApp.onOpenURL`; here we land its filters and film. Scalar filters
-    /// apply immediately; the film push and multi-value (country/genre/…/cinema)
-    /// filters need the TARGET city's loaded repertoire, so they park in
     /// Open the Filtry sheet on launch when `KINOWO_UITEST_OPEN_FILTERS` is set,
     /// so the store-screenshot driver can capture it. Every other screen it
     /// shoots is reached by deep link, but the sheet has no link route — it is
@@ -393,6 +352,10 @@ struct ContentView: View {
         #endif
     }
 
+    /// Apply an inbound deep link. The city was already switched by
+    /// `KinowoApp.onOpenURL`; here we land its filters and film. Scalar filters
+    /// apply immediately; the film push and multi-value (country/genre/…/cinema)
+    /// filters need the TARGET city's loaded repertoire, so they park in
     /// `pendingDeepLink` until `store.loadedCitySlug` matches.
     private func consumeDeepLink(_ link: DeepLink) {
         deepLink.pending = nil
@@ -414,11 +377,10 @@ struct ContentView: View {
     /// Filters that map straight onto state with no dependency on the loaded
     /// repertoire. Absent axes are left untouched (a `?dim=2D` link doesn't wipe
     /// the user's date or search).
-    private func applyScalarFilters(_ filters: DeepLinkFilters) {
-        if let date = filters.date { dateFilter = date }
-        formatFilter = filters.formatFilter(base: formatFilter)
-        if let query = filters.query { search = query }
-        if let sort = filters.sort { sortOption = sort }
+    private func applyScalarFilters(_ linked: DeepLinkFilters) {
+        if let date = linked.date { dateFilter = date }
+        filters.applyScalars(of: linked)
+        if let query = linked.query { search = query }
     }
 
     /// The film push + the multi-value exclusion filters, which both need the
@@ -426,42 +388,19 @@ struct ContentView: View {
     /// link's inclusion lists into the app's exclusion sets.
     private func applyRepertoireDependent(_ link: DeepLink) {
         pendingDeepLink = nil
-        let filters = link.filters
-        if !filters.includedCountries.isEmpty {
-            excludedCountries = filters.excluded(filters.includedCountries, universe: Set(allCountries.map(\.name)))
-        }
-        if !filters.includedGenres.isEmpty {
-            excludedGenres = filters.excluded(filters.includedGenres, universe: Set(allGenres.map(\.name)))
-        }
-        if !filters.includedDirectors.isEmpty {
-            excludedDirectors = filters.excluded(filters.includedDirectors, universe: Set(allDirectors.map(\.name)))
-        }
-        if !filters.includedCast.isEmpty {
-            excludedCast = filters.excluded(filters.includedCast, universe: Set(allCast.map(\.name)))
-        }
+        filters.applyInclusions(of: link.filters, facets: facets)
         // `?cinema=` deep links write the `disabledCinemas` set (one global set
         // across cities), preserving any disabled in other cities. That set is
         // also what drives the listing, so the link narrows the grid as well as
         // the account state that syncs back to the web.
         let cityCinemas = Set(allCinemas)
-        if let disabledHere = filters.disabledCinemas(allCinemas: cityCinemas) {
+        if let disabledHere = link.filters.disabledCinemas(allCinemas: cityCinemas) {
             let others = prefs.disabledCinemas.subtracting(cityCinemas)
             prefs.setDisabledCinemas(others.union(disabledHere))
         }
         // Push the film onto a fresh stack so the detail screen is what the user
-        // sees. Match the way the web's film lookup does — by normalized title
-        // (Arabic→Roman fold) so a link to "…Prady 2" finds the stored
-        // "…Prady II" — not byte-for-byte. A title not in the repertoire (left
-        // the listing) just no-ops.
-        // A slug link resolves exactly (the server minted both sides from the
-        // same fold); a legacy `?title=` link still falls back to the normalized
-        // title match.
-        let target = link.filmSlug.flatMap { slug in
-            store.films.first(where: { $0.slug == slug })
-        } ?? link.filmTitle.flatMap { title in
-            store.films.first(where: { DeepLinkTitle.matches($0.title, title) })
-        }
-        if let film = target {
+        // sees. A film no longer in the listing just no-ops.
+        if let film = store.films.deepLinkTarget(link) {
             navPath = [film]
         }
     }
@@ -469,58 +408,18 @@ struct ContentView: View {
     @ViewBuilder
     private var content: some View {
         if store.isLoading && store.films.isEmpty {
-            loadingState
+            ListingLoadingView()
         } else if let error = store.error, store.films.isEmpty {
-            errorState(error)
+            ListingErrorView(error: error) { Task { await store.reload() } }
         } else {
-            // One native paged `TabView` page per day preset (Dziś / Jutro /
-            // 7 dni / Wszystkie); a horizontal swipe pages between them. This
-            // restores the hardware-smooth `UIPageViewController` swipe the app
-            // had with the old Filmy / Kina tabs. The hand-rolled carousel that
-            // briefly replaced it re-filtered the whole repertoire and rebuilt
-            // three grids on every drag frame (`@GestureState` invalidates the
-            // body per touch-move), which dropped frames and felt choppy. The
-            // trade-off of going back to the native pager is no wrap-around and
-            // no mid-drag day-pill preview (the carousel's extras).
-            //
-            // Every page's `scrollResetToken` is keyed on the *selected* day, so
-            // changing day (swipe or pill tap) snaps each grid back to row one —
-            // preserving the "land at the top of the new day" behaviour the
-            // single grid had (guarded by DayChangeScrollResetUITests), rather
-            // than stranding the user mid-scroll on the day they swiped to.
-            TabView(selection: $dateFilter) {
-                ForEach(DateFilter.presets, id: \.self) { preset in
-                    // The per-card cinema label is always shown on the main
-                    // listing (FilmGridView defaults `showCinemaHeaders` true);
-                    // only the grouped-by-cinema section view suppresses it.
-                    FilmGridView(films: films(for: preset),
-                                 scrollResetToken: AnyHashable(dateFilter))
-                        // While a search shows every day, the days it brought in are drawn lighter.
-                        .environment(\.outsideDays, preset == .anytime ? searchDay.outsideDays(now: Date(), zone: cityZone) : nil)
-                        .refreshable { await store.reload() }
-                        .tag(preset)
-                }
-            }
-            // `.page(indexDisplayMode: .never)` gives the horizontal swipe with
-            // no dot indicator — the date-pill row is the "which day" affordance.
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            // Ignore only bottom (and symmetric horizontal insets, see
-            // `ignoredEdges`) — NOT the top: the TabView sits below
-            // the bar in the VStack, so its paged scroll view (and pan gesture)
-            // starts at the bar's bottom edge and never reaches up under the pill
-            // row to steal the day-pill taps. See ContentView's VStack comment.
-            .ignoresSafeArea(edges: listingSafeArea.ignoredEdges)
-            // Resolve NavigationLink(value: Film) from the grids to the per-film
-            // detail screen — the container owns the destination so the push
-            // survives a page change.
-            //
-            // The grids hand us a `filteredFor` copy whose showings were pruned
-            // to the tapped day-page; the detail screen is a full-schedule view,
-            // so re-resolve the complete, all-days film by title from the
-            // unfiltered `store.films` (matching the deep-link push and Android).
-            .navigationDestination(for: Film.self) { film in
-                FilmDetailView(film: store.films.fullFilm(for: film))
-            }
+            DayPager(
+                dateFilter: $dateFilter,
+                films: films(for:),
+                outsideDays: { preset in
+                    preset == .anytime ? searchDay.outsideDays(now: Date(), zone: cityZone) : nil
+                },
+                ignoredEdges: listingSafeArea.ignoredEdges
+            )
             // Flash the day name and retire the swipe hint whenever the day
             // changes — by a swipe OR a date-pill tap (both move this selection).
             .onChange(of: dateFilter) {
@@ -537,94 +436,21 @@ struct ContentView: View {
         }
     }
 
-    private var loadingState: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("content.loading").font(.callout).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(A11y.EmptyState.loading)
-    }
-
-    private func errorState(_ error: Error) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle").font(.largeTitle).foregroundStyle(.orange)
-            Text("content.error")
-            Text(error.localizedDescription)
-                .font(.caption).foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            Button("content.retry") {
-                Task { await store.reload() }
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(A11y.EmptyState.error)
-    }
-
     // Sorted, de-duplicated cinema names that appear at least once somewhere in
     // `store.films`, ordered by their short pill label. Drives the cinema pill
     // bar and scopes the `?cinema=` deep-link's web-compat write.
     private var allCinemas: [String] { store.films.allCinemas() }
 
-    /// Count how often each value (country / genre / director / actor)
-    /// appears across the loaded films, sorted by descending frequency then
-    /// name — the shape every Filtry name-list expects. Shared by the four
-    /// `all*` accessors so a tweak to the ordering rule lands in one place.
-    private func nameCounts(_ values: (Film) -> [String]) -> [(name: String, count: Int)] {
-        var counts: [String: Int] = [:]
-        for film in store.films {
-            for v in values(film) {
-                counts[v, default: 0] += 1
-            }
-        }
-        return counts.map { (name: $0.key, count: $0.value) }
-            .sorted {
-                if $0.count != $1.count { return $0.count > $1.count }
-                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
-            }
-    }
+    /// The loaded repertoire's name universes — the Filtry lists, and what a
+    /// deep link's inclusion lists invert against.
+    private var facets: FilterFacets { FilterFacets(films: store.films) }
 
-    private var allCountries: [(name: String, count: Int)] { nameCounts { $0.countries } }
-    private var allGenres:    [(name: String, count: Int)] { nameCounts { $0.genres } }
-    private var allDirectors: [(name: String, count: Int)] { nameCounts { $0.directors } }
-    private var allCast:      [(name: String, count: Int)] { nameCounts { $0.cast } }
+    private var filtersActive: Bool { filters.isActive(over: store.films) }
 
-    /// `formatFilter` minus an IMAX pick this city's films can't satisfy —
-    /// see `FormatFilter.applicable(to:)`.
-    private var applicableFormatFilter: FormatFilter { formatFilter.applicable(to: store.films) }
-
-    private var filtersActive: Bool {
-        // Only the filters Wyczyść clears light the bar — NOT cinema selection
-        // or hidden films, which persist and aren't part of the reset.
-        ActiveFilters.any(
-            format: applicableFormatFilter,
-            excludedCountries: excludedCountries,
-            excludedGenres: excludedGenres,
-            excludedDirectors: excludedDirectors,
-            excludedCast: excludedCast
-        )
-    }
-
-    /// The filtered, sorted film list for a given day filter — one call per
-    /// `TabView` page (one per `DateFilter` preset), all from the same rule.
+    /// The listing of one `TabView` page (one per `DateFilter` preset).
     private func films(for date: DateFilter) -> [Film] {
-        store.films.filteredFor(
-            date: date,
-            format: applicableFormatFilter,
-            query: search,
-            hidden: prefs.hiddenFilms,
-            disabledCinemas: prefs.disabledCinemas,
-            excludedCountries: excludedCountries,
-            excludedGenres: excludedGenres,
-            excludedDirectors: excludedDirectors,
-            excludedCast: excludedCast,
-            zone: cityZone
-        )
-        .sorted(by: sortOption)
+        filters.films(from: store.films, date: date, query: search, hidden: prefs.hiddenFilms,
+                      disabledCinemas: prefs.disabledCinemas, zone: cityZone)
     }
 
     /// The selected city's zone: what "today" means for its listings.

@@ -89,4 +89,13 @@ final class TopBarLayoutTests: XCTestCase {
         XCTAssertEqual(TopBarLayout.inlineSearchWidth(
             rowWidth: 380, fixedWidths: 75, pillsWidth: 327.8, gaps: 21.6, cap: 288), 0)
     }
+
+    /// The bar scales linearly off the iPhone 17's 393 pt, clamped at both ends
+    /// so neither a split-view sliver nor the unfolded iPhone Duo distorts it.
+    func testViewportScaleTracksTheWidthWithinItsClamp() {
+        XCTAssertEqual(TopBarLayout.viewportScale(width: 393), 1, accuracy: 0.0001)
+        XCTAssertEqual(TopBarLayout.viewportScale(width: 430), 430.0 / 393, accuracy: 0.0001)
+        XCTAssertEqual(TopBarLayout.viewportScale(width: 200), 0.85)
+        XCTAssertEqual(TopBarLayout.viewportScale(width: 669), 1.2)
+    }
 }

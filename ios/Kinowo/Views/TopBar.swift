@@ -13,7 +13,7 @@ import UIKit
 // sprawl across a wide screen; the date pills always spread to fill the
 // leftover row width.
 //
-// Every numeric size below is multiplied by `scale = viewportWidth / 393`
+// Every numeric size below is multiplied by `scale` (`TopBarLayout.viewportScale`, viewportWidth / 393)
 // (iPhone 17 reference width). Smaller phones get a proportionally
 // smaller row, larger phones get a taller / fontier one — the whole
 // bar tracks the device's viewport rather than rendering one fixed
@@ -28,7 +28,7 @@ struct TopBar: View {
     @Environment(\.listingViewportWidth) private var viewportWidth
 
     var body: some View {
-        let scale = TopBar.viewportScale(width: viewportWidth)
+        let scale = TopBarLayout.viewportScale(width: viewportWidth)
         // `spacing: 6 * scale` matches the inter-pill gap inside
         // `DatePillsRow`, so every gap on the bar — 🎬 → pills,
         // pills → search/Filtry — reads as the same width as the
@@ -95,16 +95,6 @@ struct TopBar: View {
                 .accessibilityIdentifier(A11y.TopBar.bottomEdge)
         }
     }
-
-    /// Linear scale relative to the iPhone 17 viewport (393pt wide).
-    /// iPhone 13 mini → 0.95, iPhone 17 → 1.00, iPhone 17 Pro Max →
-    /// 1.09. Clamped so iPad split-view / odd window widths — and the
-    /// unfolded iPhone Duo — can't produce a comically scaled bar. Takes
-    /// the live viewport width so the bar rescales on fold / unfold.
-    static func viewportScale(width: CGFloat) -> CGFloat {
-        max(0.85, min(1.2, width / 393))
-    }
-
 }
 
 /// The top bar's row: 🎬, the date pills, the inline search field when there

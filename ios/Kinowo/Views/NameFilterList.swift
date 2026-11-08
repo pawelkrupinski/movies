@@ -6,7 +6,7 @@ import SwiftUI
 /// to filter, so the four call sites stay declarative one-liners.
 struct NameFilterSection: View {
     let title: LocalizedStringKey
-    let allEntries: [(name: String, count: Int)]
+    let allEntries: [NameCount]
     @Binding var excluded: Set<String>
 
     var body: some View {
@@ -31,7 +31,7 @@ struct NameFilterSection: View {
 
 struct NameFilterList: View {
     let title: LocalizedStringKey
-    let allEntries: [(name: String, count: Int)]
+    let allEntries: [NameCount]
     @Binding var excluded: Set<String>
 
     private var allNames: Set<String> { Set(allEntries.map(\.name)) }

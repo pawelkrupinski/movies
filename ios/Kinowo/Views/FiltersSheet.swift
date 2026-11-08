@@ -5,17 +5,9 @@ import SwiftUI
 // cinemas, name filters, city, account). Format/from-hour are ephemeral session
 // state owned by ContentView; the cinema picks persist in `UserPreferences`.
 struct FiltersSheet: View {
-    @Binding var sortOption: SortOption
-    @Binding var formatFilter: FormatFilter
-    @Binding var excludedCountries: Set<String>
-    @Binding var excludedGenres: Set<String>
-    @Binding var excludedDirectors: Set<String>
-    @Binding var excludedCast: Set<String>
+    @Binding var filters: ListingFilters
     var prefs: UserPreferences
-    let allCountries: [(name: String, count: Int)]
-    let allGenres: [(name: String, count: Int)]
-    let allDirectors: [(name: String, count: Int)]
-    let allCast: [(name: String, count: Int)]
+    let facets: FilterFacets
     @Environment(AuthService.self) var authService
     @Environment(CatalogStore.self) var catalog
     @Environment(RepertoireStore.self) var store
@@ -25,9 +17,6 @@ struct FiltersSheet: View {
     // ScrollViewReader anchor for the account section (Konto / Zaloguj się) —
     // shared across both branches so a sign-in can scroll it into view.
     private let accountAnchor = "account"
-
-    // Gate the actual sign-out behind a yes/no confirmation.
-    @State private var showSignOutConfirm = false
 
     /// "‹city›, ‹country›" for the current selection, FROZEN at the value it
     /// held when the sheet appeared — captured once (`.onAppear`) rather than
@@ -58,7 +47,7 @@ struct FiltersSheet: View {
                 // Android). Mirrors the web's `#sort-by` dropdown: earliest
                 // showtime (default) or weighted rating.
                 Section("filtersheet.sort_section") {
-                    Picker("filtersheet.sort_picker", selection: $sortOption) {
+                    Picker("filtersheet.sort_picker", selection: $filters.sort) {
                         ForEach(SortOption.allCases, id: \.self) { option in
                             Text(option.label(locale: locale)).tag(option)
                         }
@@ -90,73 +79,19 @@ struct FiltersSheet: View {
                 // (Web's "Sale" room picker has no iOS equivalent.)
                 CinemaFilterSectionView(catalog: store.catalog, prefs: prefs)
 
-                NameFilterSection(title: "filtersheet.country_of_production", allEntries: allCountries, excluded: $excludedCountries)
-                NameFilterSection(title: "filtersheet.genre",                allEntries: allGenres,    excluded: $excludedGenres)
-                NameFilterSection(title: "filtersheet.director",             allEntries: allDirectors, excluded: $excludedDirectors)
-                NameFilterSection(title: "filtersheet.cast",                 allEntries: allCast,      excluded: $excludedCast)
+                NameFilterSection(title: "filtersheet.country_of_production", allEntries: facets.countries, excluded: $filters.excludedCountries)
+                NameFilterSection(title: "filtersheet.genre",                allEntries: facets.genres,    excluded: $filters.excludedGenres)
+                NameFilterSection(title: "filtersheet.director",             allEntries: facets.directors, excluded: $filters.excludedDirectors)
+                NameFilterSection(title: "filtersheet.cast",                 allEntries: facets.cast,      excluded: $filters.excludedCast)
 
-                Section(header: Text("filtersheet.dimension")
-                    .accessibilityIdentifier(A11y.FiltersSheet.dimensionSection)) {
-                    Picker("filtersheet.dimension", selection: $formatFilter.dimension) {
-                        Text("filtersheet.all").tag("")
-                        Text(verbatim: "2D").tag("2D")
-                        Text(verbatim: "3D").tag("3D")
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                // The two choices filter on a LITERAL format token, so they carry
-                // the selected country's own pair from the catalog (`OmU`/`DF` in
-                // Germany, `VOSE`/`DOB` in Spain) — Poland's, hardcoded here
-                // before, matched nothing anywhere else.
-                let versionTokens = catalog.country(code: prefs.selectedCountry.code).versionTokens
-                Section(header: Text("filtersheet.version")
-                    .accessibilityIdentifier(A11y.FiltersSheet.versionSection)) {
-                    Picker("filtersheet.version", selection: $formatFilter.language) {
-                        Text("filtersheet.all").tag("")
-                        Text("filtersheet.subtitles").tag(versionTokens.subtitled)
-                        Text("filtersheet.dubbing").tag(versionTokens.dubbed)
-                    }
-                    .pickerStyle(.segmented)
-                }
-
-                // Only where some loaded showtime is IMAX — elsewhere the
-                // toggle could only blank the list (the web hides it too).
-                if store.films.hasImaxShowtime {
-                    Section {
-                        Toggle("filtersheet.imax_only", isOn: $formatFilter.imax)
-                            .accessibilityIdentifier(A11y.FiltersSheet.imaxToggle)
-                    }
-                }
-
-                Section(header: Text("filtersheet.from_hour")
-                    .accessibilityIdentifier(A11y.FiltersSheet.fromHourSection)) {
-                    Picker("filtersheet.hour", selection: $formatFilter.fromHour) {
-                        Text("filtersheet.any_hour").tag(-1)
-                        ForEach(0..<24, id: \.self) { h in
-                            Text(String(format: "%02d", h)).tag(h)
-                        }
-                    }
-                    if formatFilter.fromHour >= 0 {
-                        Picker("filtersheet.minute", selection: $formatFilter.fromMinute) {
-                            ForEach([0, 15, 30, 45], id: \.self) { m in
-                                Text(String(format: "%02d", m)).tag(m)
-                            }
-                        }
-                    }
-                }
+                FormatFilterSections(format: $filters.format, prefs: prefs)
 
                 Section {
                     Button(role: .destructive) {
                         // Reset only the actual filters — cinema selection and
                         // hidden films persist (they're not "filtering"; see
                         // ActiveFilters) — then close the sheet.
-                        sortOption = .earliest
-                        formatFilter = .empty
-                        excludedCountries = []
-                        excludedGenres = []
-                        excludedDirectors = []
-                        excludedCast = []
+                        filters = .empty
                         dismiss()
                     } label: {
                         Text("filtersheet.clear")
@@ -207,45 +142,8 @@ struct FiltersSheet: View {
                 }
 
                 // ── Account ──────────────────────────────────────
-                if let user = authService.user {
-                    Section("filtersheet.account") {
-                        HStack {
-                            Image(systemName: providerIcon(user.provider))
-                            Text(user.displayName ?? user.email ?? user.provider)
-                        }
-                        Button("filtersheet.sign_out") {
-                            showSignOutConfirm = true
-                        }
-                        .confirmationDialog(
-                            "filtersheet.sign_out_confirm",
-                            isPresented: $showSignOutConfirm,
-                            titleVisibility: .visible
-                        ) {
-                            Button("filtersheet.sign_out", role: .destructive) {
-                                Task { await authService.signOut() }
-                            }
-                            Button("filtersheet.cancel", role: .cancel) {}
-                        }
-                        Button("filtersheet.delete_account", role: .destructive) {
-                            Task {
-                                await authService.deleteAccount()
-                                prefs.clearAllHiddenFilms()
-                                prefs.setDisabledCinemas([])
-                            }
-                        }
-                    }
+                AccountSection(prefs: prefs)
                     .id(accountAnchor)
-                } else {
-                    Section("filtersheet.sign_in") {
-                        Button { Task { await authService.signInWithGoogle() } } label: {
-                            Label("filtersheet.sign_in_google", systemImage: "g.circle.fill")
-                        }
-                        Button { Task { await authService.signInWithFacebook() } } label: {
-                            Label("filtersheet.sign_in_facebook", systemImage: "f.circle.fill")
-                        }
-                    }
-                    .id(accountAnchor)
-                }
             }
             // After a successful sign-in (user goes nil → set), scroll the sheet
             // down to the freshly-revealed Konto section so the result of logging
@@ -267,6 +165,117 @@ struct FiltersSheet: View {
             .onAppear {
                 if currentCityLabel == nil { currentCityLabel = computeCurrentCityLabel() }
             }
+            }
+        }
+    }
+}
+
+/// The Filtry sheet's format axes — dimension, version, IMAX and the from-hour
+/// lower bound — over one `FormatFilter`.
+struct FormatFilterSections: View {
+    @Binding var format: FormatFilter
+    var prefs: UserPreferences
+    @Environment(CatalogStore.self) private var catalog
+    @Environment(RepertoireStore.self) private var store
+
+    var body: some View {
+        Section(header: Text("filtersheet.dimension")
+            .accessibilityIdentifier(A11y.FiltersSheet.dimensionSection)) {
+            Picker("filtersheet.dimension", selection: $format.dimension) {
+                Text("filtersheet.all").tag("")
+                Text(verbatim: "2D").tag("2D")
+                Text(verbatim: "3D").tag("3D")
+            }
+            .pickerStyle(.segmented)
+        }
+
+        // The two choices filter on a LITERAL format token, so they carry
+        // the selected country's own pair from the catalog (`OmU`/`DF` in
+        // Germany, `VOSE`/`DOB` in Spain) — Poland's, hardcoded here
+        // before, matched nothing anywhere else.
+        let versionTokens = catalog.country(code: prefs.selectedCountry.code).versionTokens
+        Section(header: Text("filtersheet.version")
+            .accessibilityIdentifier(A11y.FiltersSheet.versionSection)) {
+            Picker("filtersheet.version", selection: $format.language) {
+                Text("filtersheet.all").tag("")
+                Text("filtersheet.subtitles").tag(versionTokens.subtitled)
+                Text("filtersheet.dubbing").tag(versionTokens.dubbed)
+            }
+            .pickerStyle(.segmented)
+        }
+
+        // Only where some loaded showtime is IMAX — elsewhere the
+        // toggle could only blank the list (the web hides it too).
+        if store.films.hasImaxShowtime {
+            Section {
+                Toggle("filtersheet.imax_only", isOn: $format.imax)
+                    .accessibilityIdentifier(A11y.FiltersSheet.imaxToggle)
+            }
+        }
+
+        Section(header: Text("filtersheet.from_hour")
+            .accessibilityIdentifier(A11y.FiltersSheet.fromHourSection)) {
+            Picker("filtersheet.hour", selection: $format.fromHour) {
+                Text("filtersheet.any_hour").tag(-1)
+                ForEach(0..<24, id: \.self) { h in
+                    Text(String(format: "%02d", h)).tag(h)
+                }
+            }
+            if format.fromHour >= 0 {
+                Picker("filtersheet.minute", selection: $format.fromMinute) {
+                    ForEach([0, 15, 30, 45], id: \.self) { m in
+                        Text(String(format: "%02d", m)).tag(m)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The Filtry sheet's account section: who is signed in (sign out, delete the
+/// account) or the sign-in buttons.
+struct AccountSection: View {
+    var prefs: UserPreferences
+    @Environment(AuthService.self) private var authService
+    // Gate the actual sign-out behind a yes/no confirmation.
+    @State private var showSignOutConfirm = false
+
+    var body: some View {
+        if let user = authService.user {
+            Section("filtersheet.account") {
+                HStack {
+                    Image(systemName: providerIcon(user.provider))
+                    Text(user.displayName ?? user.email ?? user.provider)
+                }
+                Button("filtersheet.sign_out") {
+                    showSignOutConfirm = true
+                }
+                .confirmationDialog(
+                    "filtersheet.sign_out_confirm",
+                    isPresented: $showSignOutConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("filtersheet.sign_out", role: .destructive) {
+                        Task { await authService.signOut() }
+                    }
+                    Button("filtersheet.cancel", role: .cancel) {}
+                }
+                Button("filtersheet.delete_account", role: .destructive) {
+                    Task {
+                        await authService.deleteAccount()
+                        prefs.clearAllHiddenFilms()
+                        prefs.setDisabledCinemas([])
+                    }
+                }
+            }
+        } else {
+            Section("filtersheet.sign_in") {
+                Button { Task { await authService.signInWithGoogle() } } label: {
+                    Label("filtersheet.sign_in_google", systemImage: "g.circle.fill")
+                }
+                Button { Task { await authService.signInWithFacebook() } } label: {
+                    Label("filtersheet.sign_in_facebook", systemImage: "f.circle.fill")
+                }
             }
         }
     }

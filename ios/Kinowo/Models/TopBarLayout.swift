@@ -22,6 +22,15 @@ enum TopBarLayout {
 
     static func searchInline(width: CGFloat) -> Bool { width >= wideThreshold }
 
+    /// The top bar's linear scale relative to the iPhone 17 viewport (393pt
+    /// wide): iPhone 13 mini → 0.95, iPhone 17 → 1.00, iPhone 17 Pro Max →
+    /// 1.09. Clamped so iPad split-view / odd window widths — and the
+    /// unfolded iPhone Duo — can't produce a comically scaled bar. Takes the
+    /// live viewport width so the bar rescales on fold / unfold.
+    static func viewportScale(width: CGFloat) -> CGFloat {
+        max(0.85, min(1.2, width / 393))
+    }
+
     /// Width of the inline search field on a bar `rowWidth` wide: what is left
     /// once the fixed items (🎬, Filtry), the gaps and the date pills at their
     /// text-fitting width are placed, capped at `cap`. The pills keep their
