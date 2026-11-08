@@ -53,6 +53,12 @@ check() {
 # watchdog, whose kill the shell announces as "Terminated" over the spec's own
 # output.
 SpecCapSeconds=120
+# Whether <pid> is a live process: it answers kill -0 and is not a zombie (exited, its status not yet collected).
+process_runs() {
+  kill -0 "$1" 2>/dev/null || return 1
+  case "$(ps -o stat= -p "$1" 2>/dev/null)" in Z*) return 1 ;; esac
+}
+
 await_child() {
   local child="$1" deadline=$((SECONDS + ${2:-$SpecCapSeconds}))
   while kill -0 "$child" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.1; done
@@ -306,7 +312,10 @@ check "a supervisor stopped by the parent stops its tailer too" \
 # take the tailer down and exit BY ITSELF (the cap kills it only on a failure).
 supervisor_stops_when_its_parent_dies() {
   local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
-  printf '#!/bin/sh\necho $$ > "%s/tailer.pid"\nexec sleep 86400\n' "$work" > "$work/tailer"; chmod +x "$work/tailer"
+  # A tailer that takes a moment to go on TERM, as mongosh does: the check below must wait for it to be gone, not read
+  # it the instant the supervisor exits (Tool self-tests #163: a starved runner read the dying tailer as orphaned).
+  printf '#!/bin/sh\necho $$ > "%s/tailer.pid"\ntrap "sleep 1; exit 143" TERM\nsleep 86400 & wait $!\n' "$work" > "$work/tailer"
+  chmod +x "$work/tailer"
   command sleep 86400 & local parent=$!
   (
     # shellcheck source=/dev/null
@@ -328,7 +337,11 @@ supervisor_stops_when_its_parent_dies() {
   local exited=no orphaned=no
   kill -0 "$supervisor" 2>/dev/null || exited=yes
   await_child "$supervisor" 1
-  [ -n "$tailer" ] && kill -0 "$tailer" 2>/dev/null && { orphaned=yes; kill "$tailer" 2>/dev/null; }
+  # TERMed by the supervisor on its way out, the tailer may still be dying, or a zombie no reaper has collected yet (a
+  # container's PID 1): either answers kill -0. It is orphaned only if it still RUNS once it has had its moment.
+  if [ -n "$tailer" ] && ! wait_until "the supervisor's TERMed tailer is gone" "! process_runs $tailer"; then
+    orphaned=yes; kill -9 "$tailer" 2>/dev/null
+  fi
   rm -rf "$work"
   [ -n "$tailer" ] && [ "$exited" = yes ] && [ "$orphaned" = no ]
 }
