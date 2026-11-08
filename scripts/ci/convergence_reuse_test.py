@@ -267,6 +267,53 @@ class LegMatrixTest(unittest.TestCase):
             self.assertIsInstance(row["order-split"], bool)
             self.assertTrue(all(p.startswith("takes") for p in json.loads(row["phases"])))
 
+    def _verify_legs(self, codes):
+        env = {k: v for k, v in os.environ.items() if k not in ("LEG_ROWS", "CONVERGENCE_SUITE", "LEG_INPUTS_FILE")}
+        return subprocess.run([sys.executable, os.path.join(ROOT, "scripts/ci/convergence_reuse.py"), "legs"],
+                              cwd=tempfile.gettempdir(), env=dict(env, LEG_CODES=codes, GITHUB_STEP_SUMMARY=""),
+                              capture_output=True, text=True)
+
+    def test_a_verify_run_starts_the_recorded_countries_convergence_legs(self):
+        # Verify scrape recording run 42524021121: LEG_CODES narrowed as a takes-only run, which the convergence suite
+        # answers with no row -- an empty matrix, and GitHub dropped the `leg` call without a word
+        res = self._verify_legs("pl,uk")
+        self.assertEqual(res.returncode, 0, res.stderr)
+        matrix = json.loads(next(l for l in res.stdout.splitlines() if l.startswith("leg-matrix="))[len("leg-matrix="):])
+        self.assertEqual(matrix["country"], ["poland", "united-kingdom"])
+        self.assertEqual([r["code"] for r in matrix["include"]], ["pl", "uk"])
+        for row in matrix["include"]:
+            self.assertIsInstance(row["job"], int)
+            self.assertIsInstance(row["order-split"], bool)
+        self.assertIn("any-leg=true", res.stdout)
+
+    def test_a_verify_run_with_no_leg_fails_rather_than_starting_nothing(self):
+        res = self._verify_legs("xx")
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("no leg", res.stderr)
+
+    def test_every_legs_caller_gets_rows_typed_as_the_leg_declares_its_inputs(self):
+        # GitHub drops a reusable call over an empty matrix, or a "55" / "true" handed to a number / boolean input,
+        # without a word (Identity takes #1, run 42515079814; Verify scrape recording, run 42524021121)
+        import reusable_workflow_inputs as calls
+        workflows = os.path.join(ROOT, ".github/workflows")
+        declared = calls.declared_inputs(calls.read(os.path.join(workflows, "country-convergence-leg.yml")))
+        out = os.path.join(tempfile.mkdtemp(), "legs.json")
+        with open(out, "w") as f:
+            json.dump(reuse.leg_inputs({}), f)
+        env = {k: v for k, v in os.environ.items() if k not in ("LEG_ROWS", "LEG_CODES", "CONVERGENCE_SUITE")}
+        for caller, extra in (("identity-model-convergence.yml", {"LEG_INPUTS_FILE": out}),
+                              ("identity-takes.yml", {"LEG_INPUTS_FILE": out, "CONVERGENCE_SUITE": "takes"}),
+                              ("verify-scrape-recording.yml", {"LEG_CODES": "pl,de,uk,es,us"})):
+            with self.subTest(caller=caller):
+                res = subprocess.run([sys.executable, os.path.join(ROOT, "scripts/ci/convergence_reuse.py"), "legs"],
+                                     cwd=tempfile.gettempdir(), env=dict(env, GITHUB_STEP_SUMMARY="", **extra),
+                                     capture_output=True, text=True, check=True)
+                matrix = json.loads(next(l for l in res.stdout.splitlines() if l.startswith("leg-matrix="))[len("leg-matrix="):])
+                self.assertEqual(len(matrix["include"]), 5)
+                given = next(g for job, callee, g in calls.calls(calls.read(os.path.join(workflows, caller)))
+                             if callee == "country-convergence-leg.yml")
+                self.assertEqual(calls.matrix_problems(given, declared, matrix["include"]), [])
+
     def test_the_workflows_own_rows_all_parse_with_the_keys_the_legs_read(self):
         import pathlib
         text = (pathlib.Path(__file__).resolve().parents[2] / ".github/workflows/identity-model-convergence.yml").read_text()

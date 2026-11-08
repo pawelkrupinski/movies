@@ -81,7 +81,9 @@ jobs:
         steps:
             - uses: actions/checkout@v5
               with:
-                  sparse-checkout: scripts/ci
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/workflows
             - name: Which countries the recording captured complete
               id: countries
               env:
@@ -99,21 +101,13 @@ jobs:
                   fi
                   echo "verifying recording $RECORDING for: $countries"
                   echo "countries=$countries" >> "$GITHUB_OUTPUT"
-            # THE LEG ROWS (the identity lane's: aliases, splits, heaps, Mongo), narrowed to the captured countries
-            # (convergence_reuse.py legs). EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has
-            # no value.
+            # THE LEG ROWS: Identity model convergence's own (its LEG_ROWS, read by convergence_reuse.py legs -- aliases,
+            # splits, heaps, Mongo, typed as YAML types them), each recorded country's full convergence leg. Written once:
+            # a copy here drifted, and a narrowing that matched none started no leg without a word (run 42524021121).
             - name: Which legs does this run start?
               id: plan
               env:
                   LEG_CODES: ${{ steps.countries.outputs.countries }}
-                  LEG_ROWS: |
-                      matrix:
-                          include:
-                              - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 55, suite: 30, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-split: false, next-day: '' }
-                              - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, job: 55, suite: 30, heap: 4g, mongo-tmpfs: 6g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceGermanyOrder, order-split: true, next-day: '' }
-                              - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, job: 55, suite: 30, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: convergenceUkOrder, order-split: true, next-day: '' }
-                              - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 55, suite: 30, heap: 7g, mongo-tmpfs: 3g, mongo-cache-gb: 2, mongo-tmpfs-order: 'true', order: '', order-split: false, next-day: '' }
-                              - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, sample: convergenceUsSample, job: 55, suite: 30, heap: 10g, mongo-tmpfs: 3g, mongo-cache-gb: 0.5, mongo-tmpfs-order: 'false', order: convergenceUsOrder, order-split: true, next-day: convergenceUsNextDay }
               run: python3 scripts/ci/convergence_reuse.py legs >> "$GITHUB_OUTPUT"
             - name: Every leg's recording is there
               env:
@@ -143,9 +137,10 @@ jobs:
             command:                       ${{ matrix.cmd }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
+            sample-suite-timeout-minutes:  ${{ matrix.sample-suite }}
             order-command:                 ${{ matrix.order }}
-            order-job-timeout-minutes:     ${{ matrix.job }}
-            order-suite-timeout-minutes:   ${{ matrix.suite }}
+            order-job-timeout-minutes:     ${{ matrix.order-job || 55 }}
+            order-suite-timeout-minutes:   ${{ matrix.order-suite || 30 }}
             order-split:                   ${{ matrix.order-split == true }}
             next-day-command:              ${{ matrix.next-day || '' }}
             heap:                          ${{ matrix.heap }}

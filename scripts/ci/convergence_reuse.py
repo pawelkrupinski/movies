@@ -707,24 +707,38 @@ def suite_of(opts=None):
     return suite
 
 
+def recorded_matrix(rows, codes):
+    """verify-scrape-recording.yml's `leg` matrix: the full convergence leg of each recorded country (`codes`,
+    comma-separated), in the rows' order, each on the leg's own phases expression and uncapped. Not a takes-only
+    narrowing: the convergence suite answers that with no row (Verify scrape recording run 42524021121 started no leg)."""
+    wanted = {c.strip() for c in codes.split(",") if c.strip()}
+    kept = [dict(r, phases="", **{"max-parallel": convergence_slots.UNCAPPED}) for r in rows if r["code"] in wanted]
+    return {"country": [r["country"] for r in kept], "include": kept}
+
+
 def cmd_legs(opts):
     """The `leg` matrix (leg_matrix) of the suite ($CONVERGENCE_SUITE), from LEG_ROWS (the rows as written in the workflow;
-    unset: the convergence workflow's own, as the takes preflight reads them) and the dispatch's inputs; for
-    verify-scrape-recording.yml, LEG_CODES (the recording's complete countries, comma-separated) narrows it instead."""
+    unset: the convergence workflow's own, which the takes and verify preflights read) and the dispatch's inputs; for
+    verify-scrape-recording.yml, LEG_CODES (the recording's complete countries, comma-separated) instead (recorded_matrix),
+    and no row is an error: GitHub drops a reusable call over an empty matrix without a word."""
     suite = suite_of(opts)
     rows = parse_rows(os.environ.get("LEG_ROWS") or leg_rows_text(open(os.path.join(ROOT, WORKFLOW)).read()))
     codes = os.environ.get("LEG_CODES")
     if codes is not None:
-        inputs = {"takes-only": "true", "takes-countries": codes}
+        matrix = recorded_matrix(rows, codes)
+        if not matrix["include"]:
+            print(f"::error::no leg row for the recorded countries {codes!r} (rows: "
+                  f"{','.join(r['code'] for r in rows)})", file=sys.stderr)
+            return 1
     else:
         inputs = read_json(os.environ["LEG_INPUTS_FILE"])  # the file `inputs` wrote
-    order_phases = os.environ.get("ORDER_PHASES") or "both"
-    harness_aa = os.environ.get("HARNESS_AA") == "true"
-    matrix = planned_matrix(rows, inputs, order_phases, harness_aa, suite)
-    if codes is None and matrix["include"]:
-        summary([f"Rows longest first, each country's share of the runners ({suite}; scripts/ci/convergence_slots.py):", ""]
-                + [f"- {line}" for line in
-                   convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa, suite))])
+        order_phases = os.environ.get("ORDER_PHASES") or "both"
+        harness_aa = os.environ.get("HARNESS_AA") == "true"
+        matrix = planned_matrix(rows, inputs, order_phases, harness_aa, suite)
+        if matrix["include"]:
+            summary([f"Rows longest first, each country's share of the runners ({suite}; scripts/ci/convergence_slots.py):", ""]
+                    + [f"- {line}" for line in
+                       convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa, suite))])
     print(f"leg-matrix={json.dumps(matrix, separators=(',', ':'))}")
     print(f"any-leg={'true' if matrix['country'] else 'false'}")
     return 0
