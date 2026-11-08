@@ -30,7 +30,8 @@ second; a repository_dispatch run has no inputs either, so it takes the schedule
 THE GUARD. GitHub's scheduler stays on, as the backstop for this host being down -- so when it then
 starts the slot's run hours late, that run is a duplicate: for --guard-hours after the slot (never
 past the next one) the service polls every two minutes and cancels a not-yet-completed `schedule`
-run of the slot, only while a run of ours exists. A cancelled run says nothing to the red gate and
+run of the slot, only while a run of ours exists that was not cancelled (GitHub's late run, on
+arriving in the workflow's concurrency group, cancels ours if ours is still pending there). A cancelled run says nothing to the red gate and
 skips report-scheduled-run (`!cancelled()`). The cost: a late run may have done a minute or two of
 its plan job before it is cancelled.
 
@@ -438,12 +439,15 @@ class Slot:
 
     def guard(self, until):
         """Until `until`, cancel every schedule run of the slot that GitHub starts after ours (it starts them hours
-        late: 3-10 h in 2026-11), so the slot runs once. Only while a run of ours exists: never the slot's only run."""
+        late: 3-10 h in 2026-11), so the slot runs once. Only while a run of ours exists that was not cancelled: never
+        the slot's only run. Ours waiting in its concurrency group is cancelled by GitHub's late run of the same group
+        arriving (a pending run is superseded; prune-actions-caches cancels in progress too), and GitHub's is then the
+        slot's run."""
         cancelled = set()
         while self.clock() < until:
             try:
                 runs = self._runs()
-                if any(r["event"] == "repository_dispatch" for r in runs):
+                if any(r["event"] == "repository_dispatch" and r.get("conclusion") != "cancelled" for r in runs):
                     for r in runs:
                         if r["event"] == "schedule" and r.get("status") != "completed" and r["id"] not in cancelled:
                             self.github.cancel(r["id"])

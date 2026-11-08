@@ -48,9 +48,11 @@ class FakeGitHub:
     """The GitHub seam: `answers` is a function of the clock -> the runs list GitHub would answer then (or an
     ApiError to raise); dispatches and cancels are recorded and, once made, show in later answers."""
 
-    def __init__(self, clock, answers, dispatch_errors=0):
+    def __init__(self, clock, answers, dispatch_errors=0, ours_superseded_at=None):
         self.clock, self.answers, self.dispatch_errors = clock, answers, dispatch_errors
         self.dispatched, self.cancelled, self.queries = [], [], 0
+        # from then on our dispatched runs read cancelled: a newer run of their concurrency group superseded them
+        self.ours_superseded_at = ours_superseded_at
 
     def runs_since(self, workflow_file, since):
         self.queries += 1
@@ -60,9 +62,10 @@ class FakeGitHub:
         runs = [r for r in copy.deepcopy(answer) if sd._created(r) >= since]
         runs += [{"id": 9000 + i, "event": "repository_dispatch", "status": "in_progress",
                   "created_at": sd.iso(when)} for i, (_, _, when) in enumerate(self.dispatched)]
+        superseded = self.ours_superseded_at is not None and self.clock() >= self.ours_superseded_at
         for r in runs:
-            if r["id"] in self.cancelled:
-                r["status"] = "completed"
+            if r["id"] in self.cancelled or (superseded and r["event"] == "repository_dispatch"):
+                r.update(status="completed", conclusion="cancelled")
         return runs
 
     def dispatch(self, event_type, payload):
@@ -245,6 +248,20 @@ class Decision(unittest.TestCase):
         self.assertTrue(any("outcome=late-duplicate-cancelled run=42347764855 late_minutes=355" in line
                             for line in lines), lines)
         self.assertLessEqual(clock.now, at("2026-11-08T14:45"))  # the guard ends 14 h after the slot
+
+    def test_github_late_run_is_kept_once_it_superseded_ours(self):
+        # Ours waited in the workflow's concurrency group (cancel-in-progress: false, a person's run ahead of it, or
+        # prune-actions-caches' cancel-in-progress: true): GitHub's late schedule run of the same group cancelled it on
+        # arrival. Cancelling GitHub's too would leave the slot with no run at all.
+        late = recorded("drift-explorer-runs-since-2026-11-07T0041.json")[0]
+        late.update(created_at="2026-11-08T06:36:27Z", status="queued", conclusion=None)
+        clock = Clock(at("2026-11-08T00:41"))
+        github = FakeGitHub(clock, lambda now: [late] if now >= at("2026-11-08T06:36") else [],
+                            ours_superseded_at=at("2026-11-08T06:36"))
+        status, lines = settle(github, clock, "identity-drift-explorer.yml", ["41 0 * * *"])
+        self.assertEqual(status, 0)
+        self.assertEqual(len(github.dispatched), 1)
+        self.assertEqual(github.cancelled, [], lines)
 
     def test_github_on_time_run_is_never_cancelled(self):
         on_time = recorded("drift-explorer-runs-since-2026-11-07T0041.json")[0]
