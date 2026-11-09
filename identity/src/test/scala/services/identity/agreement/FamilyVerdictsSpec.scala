@@ -101,7 +101,7 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
     final class Meeting(inner: FamilyAnswers) extends FamilyAnswers {
       val family: VoterFamily = inner.family
       private val met = ThreadLocal.withInitial[java.lang.Boolean](() => false)
-      private def meet(): Unit = if (!met.get) { met.set(true); val _ = meeting.await(10, java.util.concurrent.TimeUnit.SECONDS) }
+      private def meet(): Unit = if (!met.get) { met.set(true); val _ = meeting.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS) }
       def titled(text: String): Answer[Seq[SourceHit]]     = { meet(); inner.titled(text) }
       def directedBy(name: String): Answer[Seq[SourceHit]] = { meet(); inner.directedBy(name) }
       def record(id: String): Answer[Option[SourceRecord]] = { meet(); inner.record(id) }
@@ -109,7 +109,7 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
     }
     val answers = new Meeting(held)
     val pool    = java.util.concurrent.Executors.newFixedThreadPool(clusters.size)
-    try clusters.map(listings => pool.submit(() => through(kept, listings, answers))).map(_.get(30, java.util.concurrent.TimeUnit.SECONDS))
+    try clusters.map(listings => pool.submit(() => through(kept, listings, answers))).map(_.get(tools.SpecTimeouts.Run.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS))
     finally { val _ = pool.shutdownNow() }
   }
 
