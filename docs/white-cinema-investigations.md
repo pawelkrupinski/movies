@@ -409,7 +409,24 @@ ENTER→RECOVERED since 11-06:
 The biletyna client is healthy: **67 of its 76 catalog venues were green** in the last 6 h. None of the 9 whites is a
 parse failure; biletyna's Cloudflare blocks plain curl, so the place pages themselves were not re-read.
 
-**`thin`:** 92 PL, against 84 on Monday 11-03, the same weekday shape. Not probed this run; the mirror repair took the time.
+**`thin`: 87 PL at 16:00 local, every one probed (follow-up the same afternoon). 0 parser bugs.** That is 92 at the
+sweep, against 84 on Monday 11-03; the same weekday shape. Most venues (~60) next screen in 3.0–4.1 days, Thursday or
+Friday, which is a small venue's weekend programme. Each source was read for a FILM screening between now and Thursday
+16:00:
+- **Biletyna (32 venues).** The place pages served their JSON-LD to plain curl this time, so Cloudflare's block is not
+  absolute. 698 events in all, and **0 `ScreeningEvent`s in the window**. The only in-window events were CKiS Pruszków's
+  Don Vasyl concert (`MusicEvent`) and *Kogut w rosole* (`TheaterEvent`), and Kino w Kadrze's Madera travellers' talk
+  (`Event`).
+- **bilety24, MSI, systembiletowy, ekobilet and the bespoke clients (50 venues).** Nothing in the window, except
+  **Kino Diana**'s Thursday 16:00 show, which is exactly its 3.0-day "next" and is already in our scrape.
+- **Kino Frajda**'s 17:00 "Pies na medal" today is filed "Imprezy ChCK", at **Kino Grajfka**. So the `Imprezy SDK` film
+  filter is right to leave it out, and Kino Grajfka's own scrape has it (green, not thin).
+- **DKF Rumcajs and Dom Kultury w Łapach read green+thin while every screening they return is PAST.** The parsers
+  read what the sites hold: rumcajs.czest.pl's newest post is the June 2026 programme, and dklapy.pl/kino/ shows only
+  its 7 November premieres. **intentionally-dormant.** Note, though: an all-past scrape classifies green+thin, not
+  white, so a dormant venue like this hides from the white sweep.
+- **MCK Tkacz:** monthly DKF dates through 2027-05, plausible. **CK Przeźmierowo:** one 2027-10-17 date among its
+  November and December ones; not verified, since biletyna sells what the venue files.
 
 ### UK / DE / ES / US: 76 candidates, 0 parser bugs
 
@@ -433,7 +450,7 @@ The DE kinoprogramm.com fallback count is **24** (25 on 11-06).
   `wait_until` use the same `command sleep` that bash 3.2 execs inside a backgrounded function. They are harmless where
   they run now (foreground, bash 5), but they are the same trap.
 - **Kozienice nightly flaps:** four nights out of five, all covered. Consider quieting the fallback alert for it.
-- **PL `thin` (92):** still unprobed, two runs running.
+- **PL `thin`:** probed 11-09, clean. Is an all-past scrape (Rumcajs, Łapy) worth classifying white instead of green+thin?
 - **Carried over:** the own-site re-check for Krobia, Harmonia and Książka; Kino Sokół Strzyżów; Kino Tatry after 2027-04-01.
 
 ---
