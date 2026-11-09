@@ -15,7 +15,7 @@ import org.scalatest.matchers.should.Matchers
 class CacheSavePolicySpec extends AnyFlatSpec with Matchers {
   private val LargePaths =
     Seq("*/target/scala-*", "~/.ivy2/cache", "~/.cache/coursier", "${{ runner.temp }}/jdk-archive",
-      "${{ runner.temp }}/actionlint")
+      "${{ runner.temp }}/actionlint", "${{ runner.temp }}/coursier-launcher")
   private val Saving     = Seq("uses: actions/cache@", "uses: actions/cache/save@")
   private val MainOnly   = "github.ref == 'refs/heads/main'"
 

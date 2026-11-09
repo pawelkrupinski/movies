@@ -46,9 +46,16 @@ jobs:
                   app-id: ${{ secrets.SYNC_PR_APP_ID }}
                   private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
 
+            # coursier from the Actions cache, not GitHub's CDN on every run (Scala Steward #146: two 504s and the
+            # action's "Unable to install coursier"): .github/actions/coursier-launcher
+            - uses: actions/checkout@v5
+            - id: coursier
+              uses: ./.github/actions/coursier-launcher
+
             - name: Scala Steward
               uses: scala-steward-org/scala-steward-action@v2
               with:
+                  coursier-cli-url: ${{ steps.coursier.outputs.url }}
                   github-token: ${{ steps.app-token.outputs.token }}
                   author-name: Paweł Krupiński
                   author-email: pawel.krupinski@gmail.com

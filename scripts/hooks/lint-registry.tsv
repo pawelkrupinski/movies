@@ -56,6 +56,7 @@ worker:deploy.ConvergenceLegWiringSpec	@repo *.scala infra/nix/modules/roles/mon
 worker:deploy.ConvergencePublishMainOnlySpec	@repo
 worker:deploy.ConvergenceReuseSpec	@repo
 worker:deploy.ConvergenceRunnerMemorySpec	@repo
+worker:deploy.CoursierLauncherSpec	@repo
 worker:deploy.DebugMirrorListSpec	@repo
 worker:deploy.DeployImageReuseSpec	@repo
 worker:deploy.DevServerHeapCanarySpec	@repo tools/devpanel/*

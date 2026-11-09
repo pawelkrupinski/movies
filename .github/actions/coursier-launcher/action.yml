@@ -1,0 +1,49 @@
+name: Coursier launcher
+description: >-
+    The pinned coursier native launcher (cs-x86_64-pc-linux.gz), verified by its sha256 and served on 127.0.0.1, for
+    scala-steward-action's `coursier-cli-url`: that action downloads coursier from GitHub on every run, and GitHub's CDN
+    answering 504 failed Scala Steward #146 (2026-11-09, run 42571891138). The launcher is one actions/cache entry keyed
+    by version and checksum, saved only from main (every other ref restores it), so a warm cache needs no download;
+    scripts/ci/fetch-verified.sh checks the checksum on a hit too, and a miss downloads the pinned release with a retry
+    budget of minutes. Needs the repository checked out.
+
+inputs:
+    version:
+        description: The coursier release.
+        default: v2.1.26
+    sha256:
+        description: The sha256 of that release's cs-x86_64-pc-linux.gz (the release API's asset digest).
+        default: 348e37bc2a8c706640e6b032c4551a0e055a7f1537485b4a91540e9d3598ec6d
+
+outputs:
+    url:
+        description: The launcher's 127.0.0.1 URL, for scala-steward-action's `coursier-cli-url`.
+        value: ${{ steps.serve.outputs.url }}
+
+runs:
+    using: composite
+    steps:
+        - id: restore
+          uses: actions/cache/restore@v5
+          continue-on-error: true
+          with:
+              path: ${{ runner.temp }}/coursier-launcher
+              key: coursier-launcher-${{ runner.os }}-${{ inputs.version }}-${{ inputs.sha256 }}
+        - id: fetch
+          shell: bash
+          env:
+              COURSIER_VERSION: ${{ inputs.version }}
+              COURSIER_SHA256: ${{ inputs.sha256 }}
+          run: |
+              scripts/ci/fetch-verified.sh "$RUNNER_TEMP/coursier-launcher/cs-x86_64-pc-linux.gz" \
+                  "https://github.com/coursier/coursier/releases/download/$COURSIER_VERSION/cs-x86_64-pc-linux.gz" \
+                  "$COURSIER_SHA256"
+        - if: github.ref == 'refs/heads/main' && steps.restore.outputs.cache-hit != 'true'
+          uses: actions/cache/save@v5
+          continue-on-error: true
+          with:
+              path: ${{ runner.temp }}/coursier-launcher
+              key: coursier-launcher-${{ runner.os }}-${{ inputs.version }}-${{ inputs.sha256 }}
+        - id: serve
+          shell: bash
+          run: echo "url=$(scripts/ci/serve-file.sh "$RUNNER_TEMP/coursier-launcher" cs-x86_64-pc-linux.gz)" >> "$GITHUB_OUTPUT"
