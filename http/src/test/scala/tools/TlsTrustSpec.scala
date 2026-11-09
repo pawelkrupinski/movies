@@ -36,6 +36,7 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
   private val PinnedExpiredLeafSha256 = Seq(
     "kinoroma.zabrze.pl" -> "E004E5D26B31632D71D4A19E9C9F8691584B82F565E4D74C53D615262EB2F565",  // notAfter 2026-09-14
     "miastoilawa.pl"     -> "EB80A76A953F52665E3F38900ECBBA75AB148466F0428DE0F3F2E2C2E12FDCA8",  // notAfter 2026-09-26
+    "bilety.kinoszczytno.pl" -> "FBD6D23C934A9531BED8A6C104E33116F0142C23220D508B412F72DDBC859741",  // notAfter 2026-11-05
   )
 
   private def pinnedLeafFor(host: String) =

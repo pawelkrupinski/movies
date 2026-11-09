@@ -64,6 +64,8 @@ import scala.util.{Try, Using}
  *      won't match this pin and normal PKIX validation takes back over.
  *      `biletyick.miastoilawa.pl` (Kinoteatr Pasja, Iława) is the second such
  *      leaf: expired 2026-09-26, and that host doesn't answer plain http at all.
+ *      `bilety.kinoszczytno.pl` (Cinema Lumiere, Szczytno) is the third: a RapidSSL
+ *      leaf expired 2026-11-05, and its plain http 302s straight back to https.
  *
  * The extra roots are ADDED to the defaults, never a replacement: well-behaved
  * APIs (TMDB, IMDb, Filmweb, …) keep validating against the standard store. The
@@ -99,6 +101,7 @@ object TlsTrust extends Logging {
   val PinnedExpiredLeafResources: Seq[String] = Seq(
     "/certs/expired-leaf-kinoroma-zabrze-pl.pem",
     "/certs/expired-leaf-biletyick-miastoilawa-pl.pem",
+    "/certs/expired-leaf-bilety-kinoszczytno-pl.pem",
   )
 
   /** The pinned expired leaves, parsed. Empty if a resource is missing (logged). */
