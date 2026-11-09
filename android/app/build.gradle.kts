@@ -294,7 +294,7 @@ kotlin {
     }
 }
 
-val robolectricAndroidAll: Configuration by configurations.creating { isTransitive = false }
+val robolectricAndroidAll: Configuration = configurations.create("robolectricAndroidAll") { isTransitive = false }
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
@@ -914,7 +914,7 @@ tasks.register("runOnDevice") {
 // it instead, from its dependency cache (kept by setup-gradle, with Gradle's own retries),
 // and the tests run Robolectric offline over that copy: a missing jar fails, never fetches.
 val robolectricAndroidAllDir = layout.buildDirectory.dir("robolectric-android-all")
-val syncRobolectricAndroidAll by tasks.registering(Sync::class) {
+val syncRobolectricAndroidAll = tasks.register<Sync>("syncRobolectricAndroidAll") {
     from(robolectricAndroidAll)
     into(robolectricAndroidAllDir)
 }

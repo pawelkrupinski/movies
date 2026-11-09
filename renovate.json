@@ -14,7 +14,7 @@
   "rangeStrategy": "pin",
   "packageRules": [
     {
-      "description": "The Compose compiler plugin and the kotlinx-serialization plugin are version-locked to the Kotlin release (the Compose plugin in particular MUST equal the Kotlin version, currently 2.4.10). Bump them in one PR so they never drift apart. (AGP 9 bundles the Kotlin Gradle plugin, so there is no standalone org.jetbrains.kotlin.android entry to include.)",
+      "description": "The Compose compiler plugin and the kotlinx-serialization plugin are version-locked to the Kotlin release (the Compose plugin in particular MUST equal the Kotlin version, currently 2.4.21). Bump them in one PR so they never drift apart. (AGP 9 bundles the Kotlin Gradle plugin, so there is no standalone org.jetbrains.kotlin.android entry to include.)",
       "matchManagers": ["gradle"],
       "matchDepTypes": ["plugin"],
       "matchPackageNames": [
