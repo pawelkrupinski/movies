@@ -54,6 +54,19 @@ class DriftExplorerTest(unittest.TestCase):
         self.assertEqual([["CinemaxX Regensburg", "Titans", "de", "77", "2026-11-05", "run:9/identity-drift-de-takes-drift-1",
                            "none -> a -> none"]], rows)
 
+    def test_a_struck_listing_is_never_filed_again(self):
+        self.write("identity-flips-struck.tsv", "# struck\ncountry\tvenue\trawTitle\tdecision\n"
+                   "de\tFilmwelt Grünstadt\tTitans\tOWNER-APPROVED 2026-11-09: a phantom\n")
+        self.write("backlog.tsv", "\t".join(explorer.BACKLOG_COLUMNS) + "\n")
+        flips = self.write("flips.tsv", FLIPS + "de\t20\tFilmwelt Grünstadt\tTitans\tf\tr\tt\nde\t20\tKino A\tX\tf\tr\tt\n")
+        rows = explorer.new_flips(self.backlog, "2026-11-09", "r", [flips])
+        self.assertEqual(["Kino A"], [r[0] for r in rows])
+        asset = self.write("asset.tsv", "\t".join(explorer.NEW_HEADER) + "\n"
+                           "Filmwelt Grünstadt\tTitans\tde\t20\t2026-11-09\tr\tt\n")
+        self.assertEqual([], explorer.file(asset, self.backlog, self.seeds, "fixer"))
+        self.assertEqual([], explorer.merge(self.backlog, [self.write("explore.tsv", "\t".join(explorer.NEW_HEADER) + "\n"
+                                                                       "Filmwelt Grünstadt\tTitans\tde\t20\t2026-11-09\tr\tt\n")]))
+
     def test_a_file_that_is_no_flips_tsv_is_refused(self):
         with self.assertRaises(ValueError):
             explorer.new_flips(self.backlog, "2026-11-05", "", [self.write("x.tsv", "a\tb\n")])

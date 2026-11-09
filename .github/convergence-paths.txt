@@ -91,6 +91,7 @@ worker/src/test/scala/scripts/IdentityDrift.scala
 test/resources/fixtures/identity-drift-allow.tsv
 test/resources/fixtures/identity-flips-allow.tsv
 test/resources/fixtures/identity-flip-backlog.tsv
+test/resources/fixtures/identity-flips-struck.tsv
 test/resources/fixtures/drift-gate-seeds.tsv
 test/resources/fixtures/identity-unmatched/**
 test/resources/fixtures/identity-judgements.tsv

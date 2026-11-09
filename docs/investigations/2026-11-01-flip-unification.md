@@ -866,6 +866,11 @@ admits a baseline row only from a commit carrying `Owner-Approved: <date> <why>`
 `OWNER-APPROVED <date>: <why>`. The rows go when that rule lands. Seed 31 of the same slice flips Regensburg the same
 way, and it is NOT baselined.
 
+**Struck, 2026-11-09.** The rival was a phantom: Filmwelt Grünstadt's "Titans" was Luxor Heidelberg's show under a
+kinoheld feed carrying Luxor's programme (`docs/identity-experiments/2026-11-07-titans-phantom-rival.md`; roster fix
+e7fb123c0f). The owner struck every Titans row from the backlog as an input artefact. The listings are on
+`identity-flips-struck.tsv`, and the slices stay as the bare-borrow class's witness.
+
 ### 7.10 Retention as a pure function (G1 of the flip audit; no take moved)
 
 **The violation.** `ListingRetention.leave` decided, at the moment a listing left, whether a present listing related

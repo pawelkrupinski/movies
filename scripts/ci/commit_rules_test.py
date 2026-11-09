@@ -208,6 +208,23 @@ class RatchetTest(unittest.TestCase):
             self.assertEqual(0 if ok else 1, rc, f"{message}: {err}")
             self.scratch("scratch_git", "reset", "-q", "--hard", reg)
 
+    def test_a_flip_is_struck_only_by_the_owners_named_decision(self):
+        # the owner, 2026-11-09: the DE "Titans" flips are an input artefact (a phantom feed), struck from the backlog
+        struck = "test/resources/fixtures/identity-flips-struck.tsv"
+        head_ = "# struck\ncountry\tvenue\trawTitle\tdecision\n"
+        row = "de\tCinemaxX Dammtor\tTitans\tOWNER-APPROVED 2026-11-09: a phantom rival\n"
+        approved = "Owner-Approved: 2026-11-09 strike the Titans rows as an input artefact"
+        reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{struck}\n"}, "register")
+        for message, files, ok in ((f"strike\n\n{approved}", {struck: head_ + row}, True),
+                                   ("strike", {struck: head_ + row}, False),
+                                   ("gate\n\nNew-Check: flips", {struck: head_ + row, PREDICATE: "a check\n"}, False),
+                                   (f"strike\n\n{approved}", {struck: head_ + row.replace("2026-11-09:", "2026-11-08:")}, False),
+                                   ("strike", {struck: head_}, True)):
+            head = self.commit(files, message)
+            rc, err = self.ratchet(f"{reg}..{head}")
+            self.assertEqual(0 if ok else 1, rc, f"{message}: {err}")
+            self.scratch("scratch_git", "reset", "-q", "--hard", reg)
+
     def test_a_tightened_checks_birth_baselines_what_it_finds(self):
         # the owner, 2026-10-30: a229501a7's precise `none` revealed flips the blind predicate hid -- baselined at its birth
         reg = self.commit({".github/allow-lists.txt": f"# the registry\n{LIST}\n{BASELINE}\n", BASELINE: BHEAD + BROW}, "born")

@@ -68,6 +68,15 @@ class DiffTest(unittest.TestCase):
         self.assertIn("allow-listed (identity-flips-allow.tsv): B | y [seed 8]", out)
         self.assertIn("backlog: owner owner, first seen 2026-11-02", out)
 
+    def test_a_struck_listing_is_said_struck_not_awaiting_the_explorer(self):
+        backlog = tsv([], "kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\n")
+        with open(os.path.join(os.path.dirname(backlog), "identity-flips-struck.tsv"), "w") as f:
+            f.write("# struck\ncountry\tvenue\trawTitle\tdecision\nde\tA\tx\tOWNER-APPROVED 2026-11-09: a phantom\n")
+        code, out = self.run_diff("--head", tsv([flip("A", "x")]), "--same-code", "--backlog", backlog)
+        self.assertEqual(code, 0)
+        self.assertIn("pre-existing (backlog): A | x [seed 8] -- in the base too, not failed; struck "
+                      "(identity-flips-struck.tsv): OWNER-APPROVED 2026-11-09: a phantom", out)
+
     def test_unreadable_is_2(self):
         self.assertEqual(self.run_diff("--head", "/nonexistent", "--same-code")[0], 2)
 

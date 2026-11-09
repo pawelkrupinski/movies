@@ -28,6 +28,9 @@ abstract class IdentityDriftSlicesShard(shard: Int) extends AnyFlatSpec with Mat
    *  stands -- the corpus gate's own rule -- and is held strictly once the fix removes it. A tightened check's birth
    *  baselines what it newly sees (a229501a7's precise none: CinemaxX "Titans" goes to no film and back). */
   private val baselined = IdentityDrift.flipBaseline(fixtures.resolve("identity-flip-backlog.tsv"))
+  /** The struck flips (identity-flips-struck.tsv): an input artefact the owner struck from the backlog; the slices that
+   *  hold it stay as its witness and may flip it, on any seed, open backlog no longer. */
+  private val struck   = IdentityDrift.struck(fixtures.resolve("identity-flips-struck.tsv"))
   private val parts    = shards(AllSlices, costs(CostsFile))(shard)
 
   /** This shard's parts' findings, side by side: each replays its own answers and shares nothing with another. */
@@ -53,7 +56,7 @@ abstract class IdentityDriftSlicesShard(shard: Int) extends AnyFlatSpec with Mat
       def again(seed: Long) = s"reproduce: ${reproducer(outcome.country, fixtures.relativize(dir), seed)}"
       withClue("divergences from the whole resolve: ")(open.divergences.map(d => s"${d.key.venue} | ${d.key.rawTitle}: whole ${d.whole.film}, " +
         s"incremental ${d.incremental.film} [${d.checkpoint}, seed ${d.seed}; ${again(d.seed)}]").distinct shouldBe empty)
-      withClue("flips: ")(open.flips.filterNot { case (_, f) => baselined.exists(_.covers(outcome.country, f)) }
+      withClue("flips: ")(open.flips.filterNot { case (_, f) => baselined.exists(_.covers(outcome.country, f)) || struck.exists(_.covers(outcome.country, f)) }
         .map { case (seed, f) => s"${f.line} [seed $seed; ${again(seed.toLong)}]" }.distinct shouldBe empty)
     }
   }

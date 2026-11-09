@@ -25,7 +25,9 @@ import scala.util.Try
  *
  * Today's A -> B -> A shapes are KNOWN (the `population` rows of `identity-flip-backlog.tsv`), as the flips baseline was on 10-29: a known
  * row passes, a new flip fails, and a known row whose listing no longer flips fails too until its row is removed -- the
- * list only shrinks. Stage 5 of the design (a contested family gives a bare listing no film) is what empties it.
+ * list only shrinks. Stage 5 of the design (a contested family gives a bare listing no film) is what empties it. A flip
+ * the owner struck as an input artefact (`identity-flips-struck.tsv`, [[scripts.IdentityDrift.Struck]]) passes in any
+ * slice, which stays as its witness, and is no known row to cure.
  *
  * THE RULE CONTRACT ([[RuleContract]], structural step 4) is held over the same walk, at no resolve of its own: every rule
  * that decides a take declares its kind, a population-independent rule decides a listing one way, the populations kind
@@ -59,6 +61,9 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
     super.withFixture(test)
   }
   private val known  = Known.read(KnownFile)
+  // the struck flips (identity-flips-struck.tsv): an input artefact the owner struck from the backlog, its slices kept
+  // as the witness -- their rows of a struck listing pass, neither new nor a known row to cure
+  private val struck = IdentityDrift.struck(StruckFile)
 
   // the two flipping slices the walk on several threads compares (of every part's slices), and this part's of them
   private val flipping = known.map(_.slice).distinct.flatMap(name => sliceDirs.find(dir => relative(dir) == name)).take(2)
@@ -99,7 +104,8 @@ abstract class PopulationMonotonicitySpec(part: Int) extends AnyFlatSpec with Ma
 
   slices.foreach { dir =>
     "A real family" should s"take no listing back to a value it left as its listings arrive: ${relative(dir)}" in {
-      val rows  = found(dir).get.rows
+      val (witnessed, rows) = found(dir).get.rows.partition(row => struck.exists(_.covers(countryOf(dir), row.venue, row.rawTitle)))
+      if (witnessed.nonEmpty) info(s"${witnessed.size} row(s) of struck listings, the slice their witness (identity-flips-struck.tsv)")
       val name  = relative(dir)
       val fresh = rows.filterNot(row => known.exists(_.covers(name, row)))
       val fixed = known.filter(k => k.slice == name && !rows.exists(k.covers(name, _)))
@@ -133,6 +139,7 @@ object PopulationMonotonicitySpec {
 
   private val Fixtures = Path.of("test", "resources", "fixtures")
   val KnownFile: Path  = Fixtures.resolve("identity-flip-backlog.tsv")
+  val StruckFile: Path = Fixtures.resolve("identity-flips-struck.tsv")
 
   /** How many arrival chains each slice's families walk, and at most how many steps each. */
   val Chains = 8

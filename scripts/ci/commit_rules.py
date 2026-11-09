@@ -28,6 +28,9 @@
 #   owner, 2026-11-02: CinemaxX Dammtor/Raschplatz "Titans", a flip inherent to which listings are present): a commit
 #   carrying `Owner-Approved: <YYYY-MM-DD> <decision and why>`, each row it adds noted `OWNER-APPROVED <that date>:
 #   <why>` (owner_approved). Any other added row is refused: no override.
+#   THE STRUCK FLIPS (test/resources/fixtures/identity-flips-struck.tsv; the owner, 2026-11-09, DE "Titans"): a listing
+#   whose flips are an input artefact, struck from the backlog, its slices kept as the witness. A row lands ONLY by the
+#   owner's named decision (`Owner-Approved:`, owner_approved), never by a birth or a filing; its creation is no exception.
 #   A registered list is a TSV whose last column is the row's reason; `#` lines and the header (its first other line)
 #   are not rows. Every allow-list file in the repository is registered (AllowListRatchetSpec).
 #
@@ -68,6 +71,8 @@ from typing import Callable
 REGISTRY = ".github/allow-lists.txt"
 DRIFT_LISTS = ("test/resources/fixtures/identity-flips-allow.tsv", "test/resources/fixtures/identity-drift-allow.tsv")
 BACKLOG = "test/resources/fixtures/identity-flip-backlog.tsv"
+# the flips the owner struck from the backlog as an input artefact (scripts.IdentityDrift.struck): rows by his decision only
+STRUCK = "test/resources/fixtures/identity-flips-struck.tsv"
 SEEDS = "test/resources/fixtures/drift-gate-seeds.tsv"
 # the old known-flips baseline (merged into the backlog 2026-11-04) stays for `known`'s history reads
 BASELINES = ("test/resources/fixtures/identity-flips-baseline.tsv", BACKLOG)
@@ -299,6 +304,14 @@ def allow_lists(c: Commit, opts: dict) -> list[str]:
             continue
         before = set(rows(at(c.parent, path)))
         added = [r for r in rows(at(c.sha, path)) if r not in before]
+        if path == STRUCK:
+            if added and c.has("Owner-Approved"):
+                refused += [f"{path}: {why}" for why in owner_approved(added, c.trailers["owner-approved"])]
+            elif added:
+                refused += [f"{path}: {r!r}: a flip is struck only by the owner's named decision -- `Owner-Approved: "
+                            "<YYYY-MM-DD> <decision and why>`, the row's decision `OWNER-APPROVED <that date>: <why>` "
+                            "(no override)" for r in added]
+            continue
         if path in BASELINES:
             born = not before and not at(c.parent, path) and not existed_before(c.sha, path)
             if not added or born or (path == BACKLOG and explorer_filing(c, added)):

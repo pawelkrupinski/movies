@@ -234,6 +234,27 @@ object IdentityDrift {
     lines.drop(1).map(l => header.zipAll(l.split("\t", -1).toSeq, "", "").toMap).filter(_.getOrElse("kind", "") == kind)
   }
 
+  /** A STRUCK flip (`test/resources/fixtures/identity-flips-struck.tsv`; the owner, 2026-11-09, DE "Titans"): a listing
+   *  whose flips are an INPUT ARTEFACT -- a recorded input production no longer receives (a feed carrying another venue's
+   *  programme) -- struck from the backlog by the owner's named decision. Its committed slices stay as the witness of the
+   *  mechanism they show, and their flips of it pass (IdentityDriftSlicesSpec, PopulationMonotonicitySpec) without being
+   *  open backlog: no owner, no cure owed. The explorer files no row for it (scripts/ci/drift_explorer.py). Rows arrive
+   *  only with `Owner-Approved:`, each `OWNER-APPROVED <date>: <why>` (scripts/ci/commit_rules.py). */
+  val StruckFile: Path = Path.of("test", "resources", "fixtures", "identity-flips-struck.tsv")
+  final case class Struck(country: String, venue: String, rawTitle: String, decision: String) {
+    def covers(country: String, venue: String, rawTitle: String): Boolean =
+      this.country == country && this.venue == venue && this.rawTitle == rawTitle
+    def covers(country: String, f: TakeFlips.Flip): Boolean = covers(country, f.key.venue, f.key.rawTitle)
+  }
+  private val StruckDecision = """^OWNER-APPROVED \d{4}-\d{2}-\d{2}: \S.*""".r
+  def struck(path: Path): Seq[Struck] = if (!Files.exists(path)) Nil else
+    Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.filter(l => l.nonEmpty && !l.startsWith("#")).drop(1).map(_.split("\t", -1)).map {
+      case Array(cc, venue, title, decision) if Seq(cc, venue, title).forall(_.trim.nonEmpty) && StruckDecision.matches(decision.trim) =>
+        Struck(cc, venue, title, decision.trim)
+      case row => sys.error("identity-flips-struck: every row names cc, venue, raw title and the owner's decision, " +
+                            s"`OWNER-APPROVED <YYYY-MM-DD>: <why>`: ${row.mkString("|")}")
+    }
+
   /** A KNOWN flip (a `drift` row of the backlog): the listing flipped on main. It covers its listing's flips in any seed;
    *  it is FIXED when a run replayed its seed and the listing flipped in none of that run's seeds. */
   final case class BaselineFlip(country: String, seed: Int, venue: String, rawTitle: String, takes: String, firstSeen: String, owner: String,

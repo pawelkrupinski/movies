@@ -63,6 +63,14 @@ whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-red
   (a seed found it) or `population` (`PopulationMonotonicitySpec`'s arrival walk did) -- with its owner. It decides
   no drift verdict: it is the work list. A fix removes its row. Rows arrive only by the explorer's filing (below), a
   tightened check's birth (`New-Check:`), or the owner's named decision (`Owner-Approved:`) -- `scripts/ci/commit_rules.py`.
+- **Struck flips.** `test/resources/fixtures/identity-flips-struck.tsv` lists listings whose flips are an INPUT
+  ARTEFACT, which production no longer receives, so no owner has anything to cure. They are struck from the backlog by the
+  owner's named decision (`Owner-Approved:` only; the first, 2026-11-09, is DE "Titans", whose rival was a phantom feed:
+  `docs/identity-experiments/2026-11-07-titans-phantom-rival.md`). The committed slices that hold them stay as the
+  witness of the mechanism, and their flips of a struck listing pass in `IdentityDriftSlicesSpec` and
+  `PopulationMonotonicitySpec` as neither new nor owed. The explorer files no row for one, and a drift row that replays
+  one says `struck` with its decision (`drift_explorer.py`, `drift_diff.py`). A row goes when no slice or pinned
+  recording holds its artefact any more.
 - **The explorer.** `.github/workflows/identity-drift-explorer.yml` dispatches main's drift rows nightly on random seeds
   off the gate (`drift-explore: auto`: DE 4, UK 6, US 6, PL 8, ES 24 seeds a night), the head alone, never red, and
   publishes the flips no backlog row names as `new-flips.tsv` on the release `identity-flip-explorer`. Actions cannot

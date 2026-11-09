@@ -1,0 +1,16 @@
+# STRUCK FLIPS: listings whose flips are an INPUT ARTEFACT, struck from the flip backlog (identity-flip-backlog.tsv) by
+# the owner's named decision. An artefact is a recorded input production no longer receives, so there is nothing for an
+# owner to cure. The committed slices that hold it stay as the WITNESS of the mechanism they show, and their flips of a
+# struck listing pass: IdentityDriftSlicesSpec (any seed) and PopulationMonotonicitySpec (any slice; neither a new flip
+# nor a known row to cure). The drift explorer files no backlog row for one (scripts/ci/drift_explorer.py), and the
+# drift gate says it struck, not "not in the backlog yet" (scripts/ci/drift_diff.py). Read by
+# scripts.IdentityDrift.struck. ROWS ARRIVE ONLY BY THE OWNER'S DECISION (scripts/ci/commit_rules.py): a commit carrying
+# `Owner-Approved: <YYYY-MM-DD> <decision and why>`, each row's decision `OWNER-APPROVED <that date>: <why>`. A row goes
+# when no committed slice or pinned recording holds its artefact any more.
+# Columns: country, venue, rawTitle, decision.
+country	venue	rawTitle	decision
+de	CinemaxX Dammtor	Titans	OWNER-APPROVED 2026-11-09: struck, an input artefact: every Titans flip needs Filmwelt Grünstadt's phantom "Titans", Luxor Heidelberg's show fed under Grünstadt by kinoheld (695; roster fix e7fb123c0f); slices drift-slices/de/{dammtor-titans-0bd19a4c,cinemaxx-titans-inherent-08f3a19c,cinemaxx-regensburg-titans-4d5c957f} kept as witness (docs/identity-experiments/2026-11-07-titans-phantom-rival.md)
+de	CinemaxX Raschplatz	Titans	OWNER-APPROVED 2026-11-09: struck, an input artefact: as CinemaxX Dammtor's (the phantom Grünstadt rival; docs/identity-experiments/2026-11-07-titans-phantom-rival.md)
+de	CinemaxX Regensburg	Titans	OWNER-APPROVED 2026-11-09: struck, an input artefact: as CinemaxX Dammtor's (the phantom Grünstadt rival; docs/identity-experiments/2026-11-07-titans-phantom-rival.md)
+de	Luxor Filmpalast Heidelberg	Titans, Malayalam/english	OWNER-APPROVED 2026-11-09: struck, an input artefact: as CinemaxX Dammtor's (the phantom Grünstadt rival; docs/identity-experiments/2026-11-07-titans-phantom-rival.md)
+de	Filmwelt Grünstadt	Titans	OWNER-APPROVED 2026-11-09: struck, the artefact itself: Luxor Heidelberg's two Titans shows under kinoheld's Grünstadt feed (393 of 397 booking URLs Luxor's), no Grünstadt screening (docs/identity-experiments/2026-11-07-titans-phantom-rival.md)

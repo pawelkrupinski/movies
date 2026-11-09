@@ -7,7 +7,8 @@
 # Actions cannot push main (the ruleset's bypass is the owner and agentctl's lander app), so AGENTCTL ADOPTS the asset:
 # its tick reads it and, for each flip no backlog row names, files ONE item and lands a commit made by `file` below --
 # the backlog row (kind drift) and the seed onto the gate (drift-gate-seeds.tsv, drift_seeds.py add), so every later
-# change is judged on that seed too. commit_rules.py lets exactly that commit add a drift row (explorer_filing).
+# change is judged on that seed too. A listing the owner struck as an input artefact (identity-flips-struck.tsv, beside
+# the backlog) is never filed. commit_rules.py lets exactly that commit add a drift row (explorer_filing).
 #
 # usage:
 #   drift_explorer.py pick --cc CC --count N|auto --salt S [--file SEEDS_TSV]
@@ -56,8 +57,16 @@ def read_tsv(path: str) -> list[dict]:
     return [dict(zip(header, cols + [""] * (len(header) - len(cols)))) for cols in reader]
 
 
+def struck_beside(backlog: str) -> str:
+    """The struck flips beside a backlog (identity-flips-struck.tsv; scripts.IdentityDrift.struck): listings whose flips
+    the owner struck as an input artefact, never filed as backlog rows again."""
+    return os.path.join(os.path.dirname(os.path.abspath(backlog)), "identity-flips-struck.tsv")
+
+
 def known(backlog: str) -> set[tuple[str, str, str]]:
-    return {(r.get("country", ""), r.get("venue", ""), r.get("rawTitle", "")) for r in read_tsv(backlog)}
+    """The listings no row is filed for: the backlog's, and the struck ones beside it."""
+    return {(r.get("country", ""), r.get("venue", ""), r.get("rawTitle", ""))
+            for r in read_tsv(backlog) + read_tsv(struck_beside(backlog))}
 
 
 # `auto`: a row's seeds by the country's replay cost (one seed: ES ~2 min, PL ~6, the US/UK ~8-12, DE ~16), each row

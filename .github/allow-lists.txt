@@ -6,3 +6,4 @@
 test/resources/fixtures/identity-drift-allow.tsv
 test/resources/fixtures/identity-flips-allow.tsv
 test/resources/fixtures/identity-flip-backlog.tsv
+test/resources/fixtures/identity-flips-struck.tsv

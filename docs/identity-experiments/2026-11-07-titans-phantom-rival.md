@@ -1,4 +1,4 @@
-# 2026-11-07 — DE "Titans": the rival is a phantom listing, no identity rule built — PARKED, owner decision (base `362196b15a`)
+# 2026-11-07 — DE "Titans": the rival is a phantom listing, no identity rule built — STRUCK as an input artefact, owner decision 2026-11-09 (base `362196b15a`)
 
 - **What was asked:** cure the 15 Titans rows of `identity-flip-backlog.tsv` (CinemaxX Dammtor / Raschplatz /
   Regensburg, Luxor Heidelberg "Titans, Malayalam/english", Filmwelt Grünstadt; slices
@@ -68,5 +68,18 @@ copied page facts make it a rival.
 2. Then either strike the 15 rows as an input artefact (`Owner-Approved:`, the slices kept as the class's witness) or
    keep them as the held-take line's test cases.
 3. Or decide the held-take proposal, which is the only design that covers a genuine rival as well.
+
+**Decided, 2026-11-09: option 2, "strike it".** The owner checked showtimes.cc/de after the roster fix
+(e7fb123c0f, `data/germany/feed-mirrors.json`). `/gruenstadt/api/repertoire` had 89 booking links, all to
+`kinotickets.express/filmwelt-gruenstadt` and none to Luxor. Luxor's 225 links were only under `/heidelberg`, and
+Grünstadt billed no Titans. All 17 DE Titans rows of `identity-flip-backlog.tsv` were removed: the 2 `drift` rows
+(seed 8: CinemaxX Dammtor, CinemaxX Regensburg) and the 15 `population` rows. The five listings (CinemaxX Dammtor,
+Raschplatz and Regensburg "Titans", Luxor "Titans, Malayalam/english", Filmwelt Grünstadt "Titans") are on the new
+`test/resources/fixtures/identity-flips-struck.tsv`, each `OWNER-APPROVED 2026-11-09`.
+
+The three slices stay committed, frozen from pre-fix recordings with the phantom in them, as the witness of the
+bare-borrow class. `IdentityDriftSlicesSpec` and `PopulationMonotonicitySpec` pass their flips of a struck listing.
+The drift explorer files no row for them, which matters because the pinned DE recording (573, 2026-10-20) still holds
+the phantom, and the drift gate's seed 8 says `struck`. Seed 8 stays on the gate.
 
 - **Code:** none.

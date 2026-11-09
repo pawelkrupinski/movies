@@ -271,6 +271,24 @@ class IdentityDriftSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     noException should be thrownBy IdentityDrift.flipBaseline(path)
   }
 
+  // THE STRUCK FLIPS (the owner, 2026-11-09, DE "Titans": a phantom feed's rival): a listing struck as an input artefact
+  // covers its flips in its own country, and every row names the owner's decision
+  "the struck flips" should "cover a struck listing's flips in its country alone, read off the checked-in list" in {
+    val struck = IdentityDrift.struck(IdentityDrift.StruckFile)
+    struck.map(s => s.venue -> s.rawTitle) should contain(("Filmwelt Grünstadt", "Titans"))
+    struck.exists(_.covers("de", flip("CinemaxX Dammtor", "Titans"))) shouldBe true
+    struck.exists(_.covers("pl", flip("CinemaxX Dammtor", "Titans"))) shouldBe false
+    struck.exists(_.covers("de", flip("Werkstattkino e.V.", "CAMOUFLAGE"))) shouldBe false
+  }
+
+  they should "refuse a row without the owner's decision" in {
+    val file = tools.TempDirectories.create("struck").resolve("identity-flips-struck.tsv")
+    java.nio.file.Files.writeString(file, "# struck\ncountry\tvenue\trawTitle\tdecision\nde\tKino\tX\tlooks like an artefact\n")
+    an[RuntimeException] should be thrownBy IdentityDrift.struck(file)
+    java.nio.file.Files.writeString(file, "country\tvenue\trawTitle\tdecision\nde\tKino\tX\tOWNER-APPROVED 2026-11-09: a phantom\n")
+    IdentityDrift.struck(file) shouldBe Seq(IdentityDrift.Struck("de", "Kino", "X", "OWNER-APPROVED 2026-11-09: a phantom"))
+  }
+
   /** `inner`'s answers but those `held` names (`q:<sortKey>`, `f:<film>`, as [[IdentityDrift.Gate]] names them): what the
    *  fill has not filed yet. */
   private final class Withheld(inner: IdentityLookups) extends ForwardingIdentityLookups(inner) {
