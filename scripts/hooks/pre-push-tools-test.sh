@@ -87,6 +87,19 @@ mkdir -p "$gate/nojava"; printf '#!/bin/sh\necho "Unable to locate a Java Runtim
 chmod +x "$gate/nojava/java"
 check "sbt there but no java that runs (macOS's /usr/bin/java stub): BLOCKED, with the fix" "1 1" \
   "$(tool_push src/X.scala sbt PATH="$gate/nojava:$gate/sbt:$PATH" JAVA_HOME=) $(grep -c 'java.*sdkman/candidates/java/current/bin' "$gate/err")"
+# ── A NEW REPO-READING SPEC NEEDS ITS LINT-REGISTRY ROW, BEFORE IT LANDS ───────────────────────────────────────────
+# deploy.IdentityTakesWiringSpec (Tool self-tests #158) and deploy.OrderCompareWiringSpec (#166) landed without a row:
+# lint-registry-test.sh, the one check that saw it, runs only when a script changes, so each surfaced on main after the
+# push. The sbt check, which every push of a spec runs, now refuses an unregistered one first (lint-registry-missing).
+printf '\033[36m▸\033[0m pre-push: a new repo-reading spec needs its lint-registry row\n'
+mkdir -p "$grepo/scripts/hooks"
+printf 'worker:deploy.OtherWiringSpec\t@repo\n' > "$grepo/scripts/hooks/lint-registry.tsv"
+check "a push adding a deploy spec with no lint-registry row: the sbt check BLOCKS, naming it" "1 1" \
+  "$(tool_push worker/src/test/scala/deploy/NewWiringSpec.scala sbt PATH="$gate/sbt:$PATH") $(grep -c 'worker:deploy.NewWiringSpec has no lint-registry row' "$gate/err")"
+printf 'worker:deploy.NewWiringSpec\t@repo\n' >> "$grepo/scripts/hooks/lint-registry.tsv"
+check "...its row in place, nothing said of it" "0" \
+  "$(tool_push worker/src/test/scala/deploy/NewWiringSpec.scala sbt PATH="$gate/sbt:$PATH" >/dev/null; grep -c 'has no lint-registry row' "$gate/err")"
+rm -rf "$grepo/scripts"
 check "the old-ref compile with no sbt: BLOCKED" "1 1" \
   "$(tool_push tools/A.scala oldrefs PATH="$nosbt") $(grep -c 'oldrefs FAILED' "$gate/err")"
 check "shellcheck missing: the shellcheck check BLOCKS, with the fix" "1 1" \

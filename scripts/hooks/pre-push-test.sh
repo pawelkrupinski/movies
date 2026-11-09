@@ -169,7 +169,7 @@ if command -v shellcheck >/dev/null; then
   repo="$scratch/repo"
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
-  cp "$REPO_ROOT/scripts/hooks/pre-push" "$REPO_ROOT/scripts/hooks/lint-registry.tsv" "$repo/scripts/hooks/"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
+  cp "$REPO_ROOT/scripts/hooks/pre-push" "$REPO_ROOT/scripts/hooks/lint-registry.tsv" "$REPO_ROOT/scripts/hooks/lint-registry-missing" "$repo/scripts/hooks/"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
   for f in sbt-warm jvm-gate.sh zinc_orphans.py; do cp "$REPO_ROOT/scripts/$f" "$repo/scripts/$f"; done
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
   scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
@@ -378,7 +378,7 @@ printf '\033[36m▸\033[0m pre-push basic and area tests\n'
 area="$testroot/area"; areabin="$testroot/areabin"; mkdir -p "$area/scripts/hooks" "$areabin"
 scratch_repo "$area"
 mkdir -p "$area/scripts/ci"
-for f in hooks/pre-push hooks-path.sh tool-conventions.sh ci/commit_rules.py; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
+for f in hooks/pre-push hooks/lint-registry-missing hooks-path.sh tool-conventions.sh ci/commit_rules.py; do cp "$REPO_ROOT/scripts/$f" "$area/scripts/$f"; done
 cp "$REPO_ROOT/scripts/ci/identity_impact.py" "$REPO_ROOT/scripts/ci/shard_tests.py" "$area/scripts/ci/"
 cat > "$area/scripts/hooks/local-tests.txt" <<'TESTS'
 # a comment

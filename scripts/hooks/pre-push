@@ -1202,6 +1202,16 @@ check_shellcheck() {
 }
 
 check_sbt() {
+    # A NEW REPO-READING SPEC NEEDS ITS LINT-REGISTRY ROW (Tool self-tests #158, #166: two deploy specs landed rowless,
+    # so no push ever ran them, and lint-registry-test.sh -- run only when a script changes -- saw it on main after).
+    local unregistered spec
+    unregistered="$("$(dirname "${BASH_SOURCE[0]}")/lint-registry-missing")" || return 1
+    if [ -n "$unregistered" ]; then
+        for spec in $unregistered; do
+            warn "$spec has no lint-registry row: add one to scripts/hooks/lint-registry.tsv (its header has the format)"
+        done
+        return 1
+    fi
     need_jvm sbt || return 1
     local compiles
     # shellcheck disable=SC2207 # task names carry no spaces

@@ -12,17 +12,9 @@ registry=scripts/hooks/lint-registry.tsv
 
 printf '\033[36m▸\033[0m the registry names every repo-reading spec, and only specs that exist\n'
 rows() { [ -f "$registry" ] && grep -v '^#' "$registry" | grep -v '^$' | cut -f1; }
-# A repo-reading spec: a tools/ No*/*Lint* spec, any deploy/ spec, or a spec using a source-scan helper.
-candidates() {
-    find ./*/src/test/scala -name '*Spec.scala' -type f | sed 's|^\./||' | while IFS= read -r f; do
-        rel="${f#*/src/test/scala/}"
-        case "$rel" in tools/No*|tools/*Lint*|deploy/*) ;; *)
-            grep -qE '\b(ScalaSourceScan|ModuleSources|RepoRoot|WorkflowText)\b' "$f" || continue ;;
-        esac
-        printf '%s:%s\n' "${f%%/*}" "$(printf '%s' "${rel%.scala}" | tr / .)"
-    done
-}
-missing="$(comm -23 <(candidates | LC_ALL=C sort -u) <(rows | LC_ALL=C sort -u) | tr '\n' ' ' | sed 's/ $//')"
+# A repo-reading spec: a tools/ No*/*Lint* spec, any deploy/ spec, or a spec using a source-scan helper (the one
+# reading, scripts/hooks/lint-registry-missing, is also pre-push's sbt check's).
+missing="$(scripts/hooks/lint-registry-missing | tr '\n' ' ' | sed 's/ $//')"
 check "every repo-reading spec has a row (missing: add one)" "" "$missing"
 gone=""
 for spec in $(rows); do
