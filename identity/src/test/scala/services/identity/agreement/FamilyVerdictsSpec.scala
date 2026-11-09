@@ -80,10 +80,24 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
   // The input gate reads many listings' questions, each a verdict resolve: the replay reads them side by side
   // (scripts.IdentityDrift's Worker), which one lock held across every resolve made one at a time.
   it should "resolve verdicts over other listings at once, each as a fresh resolve reads it" in {
-    val kept    = verdicts
-    val other   = Seq(listing(KinoMuza, "Nosferatu", year = Some(1922)))
-    // each resolve's first answer read waits for the other's: both inside a resolve at the same moment, or neither returns
-    val meeting = new java.util.concurrent.CyclicBarrier(2)
+    val kept  = verdicts
+    val other = Seq(listing(KinoMuza, "Nosferatu", year = Some(1922)))
+    atOnce(kept, Seq(bare, other)) shouldBe Seq(afresh(bare, held), afresh(other, held))
+    kept.resolved shouldBe 2L
+  }
+
+  it should "check kept verdicts over other listings at once, each handed back as a fresh resolve reads it" in {
+    val kept  = verdicts
+    val other = Seq(listing(KinoMuza, "Nosferatu", year = Some(1922)))
+    Seq(bare, other).foreach(through(kept, _, held))
+    atOnce(kept, Seq(bare, other)) shouldBe Seq(afresh(bare, held), afresh(other, held))
+    (kept.resolved, kept.handedBack) shouldBe ((2L, 2L))
+  }
+
+  /** `kept`'s verdicts over each of `clusters`, each on a thread of its own whose first answer read -- a resolve's or a
+   *  kept verdict's check -- waits for the others': all read at the same moment, or none returns. */
+  private def atOnce(kept: FamilyVerdicts, clusters: Seq[Seq[Listing]]) = {
+    val meeting = new java.util.concurrent.CyclicBarrier(clusters.size)
     final class Meeting(inner: FamilyAnswers) extends FamilyAnswers {
       val family: VoterFamily = inner.family
       private val met = ThreadLocal.withInitial[java.lang.Boolean](() => false)
@@ -94,12 +108,9 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
       override def fresh(question: String): Boolean        = inner.fresh(question)
     }
     val answers = new Meeting(held)
-    val pool    = java.util.concurrent.Executors.newFixedThreadPool(2)
-    try {
-      val both = Seq(bare, other).map(listings => pool.submit(() => through(kept, listings, answers)))
-      both.map(_.get(30, java.util.concurrent.TimeUnit.SECONDS)) shouldBe Seq(afresh(bare, held), afresh(other, held))
-    } finally { val _ = pool.shutdownNow() }
-    kept.resolved shouldBe 2L
+    val pool    = java.util.concurrent.Executors.newFixedThreadPool(clusters.size)
+    try clusters.map(listings => pool.submit(() => through(kept, listings, answers))).map(_.get(30, java.util.concurrent.TimeUnit.SECONDS))
+    finally { val _ = pool.shutdownNow() }
   }
 
   it should "be dropped once no apply used it for a while" in {

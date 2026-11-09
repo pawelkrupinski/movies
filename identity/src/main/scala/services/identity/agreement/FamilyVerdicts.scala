@@ -26,21 +26,20 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
   private[agreement] var resolved, handedBack = 0L
 
   /** `answers`' family's verdict over `listings`, noting what it read in `asked` and `reads` as a [[AgreementStage.Recording]] does.
-   *  A verdict not kept is resolved OUTSIDE the lock, so verdicts over other listings resolve side by side (the model's input
-   *  gate reading many listings' questions at once: `scripts.IdentityDrift`'s replay): the lock guards what is kept, never a
-   *  resolve, which reads nothing kept. Two callers resolving one verdict at once both keep it, alike: a function of its reads. */
+   *  A verdict not kept is resolved, and a kept one checked against what it read, OUTSIDE the lock, so verdicts over other
+   *  listings are read side by side (the model's input gate reading many listings' questions at once: `scripts.IdentityDrift`'s
+   *  replay): the lock guards what is kept, never a resolve nor a check, which read the answers and a kept verdict's own
+   *  immutable tape alone. Two callers resolving one verdict at once both keep it, alike: a function of its reads. */
   def verdict(listings: Seq[Listing], answers: FamilyAnswers, asked: mutable.Set[services.identity.Question],
               reads: mutable.Map[services.identity.Dependency, Long]): Answer[FamilyVerdict] = {
     val key    = (answers.family, listings.map(_.key))
-    val handed = synchronized {
-      kept.get(key).filter(k => k.listings == listings && k.read.forall(_.stands(answers, venues))).map { k =>
-        k.usedAt = applies
-        handedBack += 1
-        k
-      }
-    }
+    val handed = synchronized(kept.get(key)).filter(k => k.listings == listings && k.read.forall(_.stands(answers, venues)))
     handed match {
       case Some(k) =>
+        synchronized {
+          k.usedAt = applies
+          handedBack += 1
+        }
         k.read.foreach(_.note(answers, asked, reads))
         k.verdict
       case None =>
