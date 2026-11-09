@@ -10,7 +10,7 @@
 #
 # usage: scripts/identity-drift-ci [<commit> | --head REF] [--countries pl,de,uk,us,es] [--seeds S1,S2|S1|,S2|both]
 #                                  [--for-red <run> | --against <run>|main] [--timeout <minutes>]
-#                                  [--out DIR] [--no-wait]
+#                                  [--out DIR] [--no-wait] [--profile]
 #        scripts/identity-drift-ci --run <run id> [--out DIR]
 #   <commit>     default HEAD (committed only; a commit whose workflows predate drift-only gets main's .github/ and
 #                scripts/ci/ laid over it, as identity-measure does)
@@ -36,6 +36,8 @@
 #                waiting: the run is never cancelled; it says `--run <id>` and exits 3 (STILL RUNNING, no verdict)
 #   --no-wait    dispatch, print the run id, exit 0; collect with --run
 #   --run        collect an existing drift-only run
+#   --profile    a JFR CPU profile of every JVM each row starts (the workflow's `profile`, scripts/ci/jfr-every-jvm.sh),
+#                uploaded as the row's convergence-profile-* artifact; the head is replayed, never read from the store
 #   --out        where each row's artifact goes (default target/identity-drift-ci/<run>)
 #
 # It pushes the commit as `measure/<user>/<short sha>-drift-<random>` (the pre-push hook checks nothing on a measure/
@@ -66,7 +68,7 @@ workflow=identity-takes.yml
 say() { echo "identity-drift-ci: $*" >&2; }
 progress() { [ -z "${KINOWO_PROGRESS_FILE:-}" ] || date +%s >> "$KINOWO_PROGRESS_FILE" 2> /dev/null || true; }
 
-ref=HEAD seeds=both for_red="" against="" timeout_min=75 timeout_set="" out="" nowait="" run=""
+ref=HEAD seeds=both for_red="" against="" timeout_min=75 timeout_set="" out="" nowait="" run="" profile=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --head) flag_value "$@"; ref=$2; shift ;;
@@ -77,6 +79,7 @@ while [ "$#" -gt 0 ]; do
     --timeout) flag_value "$@"; timeout_min=$2; timeout_set=1; shift ;;
     --out) flag_value "$@"; out=$2; shift ;;
     --no-wait) nowait=1 ;;
+    --profile) profile=1 ;;
     --run) flag_value "$@"; run=$2; shift ;;
     -h|--help) usage_from_header; exit 0 ;;
     -*) usage_error "unknown option $1" ;;
@@ -232,6 +235,7 @@ if [ -z "$run" ]; then
   only=(-f drift-only=true)
   [ -z "$countries" ] || only+=(-f takes-countries="$(tr ' ' ',' <<< "$countries")")
   [ -z "$pins" ] || only+=(-f drift-seeds="$pins")
+  [ -z "$profile" ] || only+=(-f profile=true)
   dispatched_at=$SECONDS
   identity_dispatch_measure "$workflow" "$branch" "$push" \
     "identity-drift-ci ${for_red:+--for-red $for_red }${against:+--against $against }${commit:0:9}" "${only[@]}" \

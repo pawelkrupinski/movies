@@ -147,6 +147,11 @@ jobs 900 "takes-drift-1 (germany):completed:success" "takes-drift-2 (germany):co
 drift notworse --against main --countries de,uk
 check "...red only where main is, and no worse there: DRIFT NOT WORSE, exit 0" \
   "0 DRIFT NOT WORSE than run 3726: takes-drift-2 (germany): 2 -> 2 open" "$(cat "$work/notworse.rc") $(tail -1 "$work/notworse.out")"
+# --profile: a JFR profile of every row's JVMs, the workflow's `profile` input (scripts/ci/jfr-every-jvm.sh)
+rm -f "$work/state/dispatches"
+drift profiled --profile --seeds 1,2 --countries de,uk
+check "--profile: dispatched with the workflow's profile input" "true" \
+  "$(grep -q -- '-f drift-seeds=1,2 -f profile=true$' "$work/state/dispatches" && echo true || echo false)"
 jobs 900 "takes-drift-2 (germany):completed:failure"
 drift short --against main --countries de,uk
 check "...a requested row that never ran is no verdict, exit 2" "2" "$(cat "$work/short.rc")"
