@@ -5,6 +5,7 @@
     bin/deploy <host>             # preview only: nothing on the host changes
     bin/deploy <host> --apply     # preview, then switch, then verify
     bin/deploy <host> --build     # the closure is not on the host yet: build it THERE first
+    bin/deploy <host> --apply --allow-runner-stop  # switch even though it stops active CI runners
     bin/deploy --list             # the hosts this flake declares
 
 WHY THIS EXISTS (2026-10-23). Every deploy needed a hand-made command, and each kind went wrong:
@@ -200,6 +201,7 @@ echo "running_rev=$(rev /run/current-system)"
 pin=$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null || true)
 [ -n "$pin" ] && echo "pinned_rev=$(rev "$pin")"
 echo "failed=$(systemctl list-units --state=failed --no-legend --plain --no-pager 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
+echo "runners=$(systemctl list-units --state=active --no-legend --plain --no-pager 'github-runner-*' 'movies-runner@*' 'gitea-runner-*' 'forgejo-runner-*' 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
 if [ -n "$cand" ] && [ -x "$cand/bin/switch-to-configuration" ]; then
   echo "candidate_present=1"
   echo "candidate_rev=$(rev "$cand")"
@@ -309,7 +311,35 @@ NOISE = (
     re.compile(r"^would activate the configuration\.\.\.$"),
     re.compile(r"^sops-install-secrets: Imported "),
 )
-DRAINING = ("gitea-runner-*", "forgejo-runner-*")
+# CI runner units: changed but not restarted, they drain (finish their jobs, then restart on the new unit).
+DRAINING = ("github-runner-*", "movies-runner@*", "gitea-runner-*", "forgejo-runner-*")
+# Restarted when a switch changes the sysinit units (a nixpkgs bump): every unit that Requires sysinit.target -- every
+# runner unit -- is stopped with it, X-RestartIfChanged=false or not (2026-11-09 22:58Z: Android #443's build, Tool
+# self-tests #181, Landing check build cache #248 lost their runners mid-job).
+SYSINIT_REACTIVATION = "sysinit-reactivation.target"
+
+
+def is_runner(unit: str) -> bool:
+    return any(fnmatch.fnmatchcase(unit, d) for d in DRAINING)
+
+
+def runners_stopped(preview: "Preview", facts: dict) -> list:
+    """The CI runner units the switch STOPS, cutting off whatever job each runs: those it stops or restarts by name,
+    and -- when it reactivates the sysinit units -- every runner unit active on the host (`runners` in the probe)."""
+    named = {u for u in preview.stop + preview.restart if is_runner(u)}
+    if SYSINIT_REACTIVATION in preview.start + preview.restart:
+        named |= set(facts.get("runners", "").split())
+    return sorted(named)
+
+
+def runner_stop_refusal(preview: "Preview", facts: dict, allowed: bool) -> str | None:
+    """Why --apply must not switch now, or None: a runner it would stop is active (an ephemeral movies runner is one
+    job; a bitcashier runner may be mid-job). --allow-runner-stop takes that cost."""
+    busy = [u for u in runners_stopped(preview, facts) if u in facts.get("runners", "").split()]
+    if not busy or allowed:
+        return None
+    return (f"the switch would STOP {len(busy)} active CI runner unit(s), cutting off their jobs: {', '.join(busy)}. "
+            "Switch when they are idle (the preview again shows none), or pass --allow-runner-stop to take the cost.")
 
 
 class Preview(typing.NamedTuple):
@@ -339,7 +369,7 @@ def parse_dry_activate(text: str) -> Preview:
             p.user.extend(f"{'skip' if negated else kind} {u}" for u in names)
         elif negated:
             p.skipped.extend(names)
-            p.drains.extend(u for u in names if any(fnmatch.fnmatchcase(u, d) for d in DRAINING))
+            p.drains.extend(u for u in names if is_runner(u))
         else:
             getattr(p, kind).extend(names)
     return p
@@ -406,6 +436,10 @@ def render_preview(host: str, target: str, facts: dict, preview: Preview | None,
         f"   runner drains           {names(preview.drains)}"
         + ("  (each finishes its running jobs, then restarts on the new unit)" if preview.drains else ""),
     ]
+    stopped = runners_stopped(preview, facts)
+    if stopped:
+        out.append(f"   runners STOPPED          {names(stopped)}  (their running jobs are cut off; --apply refuses "
+                   "while one is active)")
     acted = set(preview.start + preview.stop + preview.restart + preview.reload + preview.skipped)
     idle = [f for f in facts.get("unitfiles", []) if f not in acted and not f.endswith(
         (".wants", ".requires", ".upholds", ".d"))]
@@ -557,6 +591,9 @@ def deploy(args) -> int:
     if not args.apply:
         print(f"\npreview only. To switch: bin/deploy {host} --apply")
         return 0
+    refusal = runner_stop_refusal(preview, facts, args.allow_runner_stop) if preview else None
+    if refusal:
+        raise Refused(refusal)
 
     print(f"\n== applying to {host}")
     failed_before = set(facts.get("failed", "").split())
@@ -603,6 +640,8 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("host", nargs="?")
     parser.add_argument("--apply", action="store_true", help="switch after the preview")
+    parser.add_argument("--allow-runner-stop", action="store_true",
+                        help="switch even though it stops active CI runner units (their jobs are cut off)")
     parser.add_argument("--build", action="store_true",
                         help="build the closure on the host when CI has not staged it")
     parser.add_argument("--bootstrap", action="store_true",

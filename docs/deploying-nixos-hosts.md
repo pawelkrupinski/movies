@@ -20,7 +20,12 @@ and runs in `bin/check` and nix-stage-closures.yml.
    refused, and every reply must end with a marker.
 4. **Preview**: `switch-to-configuration dry-activate` sorted into units started / stopped /
    restarted / reloaded / changed-but-not-restarted, plus boot-chain components (kernel, initrd,
-   kernel-modules, systemd) that differ from `/run/booted-system` -- a reboot is owed.
+   kernel-modules, systemd) that differ from `/run/booted-system` -- a reboot is owed. CI runner units
+   (`github-runner-*`, `movies-runner@*`) changed but not restarted DRAIN; the ones the switch STOPS --
+   restarted by name, or every active one when it reactivates the sysinit units (a nixpkgs bump: each
+   runner Requires sysinit.target) -- are listed as `runners STOPPED`, and `--apply` refuses while one of
+   them is active (2026-11-09 22:58Z: Android #443, Tool self-tests #181 and Landing check build cache #248
+   lost their runners mid-job). Switch when they are idle, or `--allow-runner-stop` to take that cost.
 5. **`--apply`**: re-points `/var/lib/nixdeploy/staged-system` at the candidate first (otherwise
    nixos-auto-apply could switch back to an older pin), then `nix-env --profile
    /nix/var/nix/profiles/system --set` + `switch-to-configuration switch` -- the order the applier

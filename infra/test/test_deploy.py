@@ -164,6 +164,55 @@ class Probe(unittest.TestCase):
             deploy.run = original
 
 
+class RunnersAJobCanLose(unittest.TestCase):
+    """A switch that STOPS CI runner units cuts off the jobs they run: 2026-11-09 22:58Z, a nixpkgs bump on ci-runner
+    reactivated the sysinit units, and every runner unit -- each Requires sysinit.target, the movies ones docker too --
+    stopped mid-job, X-RestartIfChanged=false or not (Android #443, Tool self-tests #181, Landing check build cache
+    #248: "The self-hosted runner lost communication with the server"). The preview names them, and --apply refuses
+    while one is busy."""
+
+    SYSINIT = """would NOT restart the following changed units: movies-runner@3.service, github-runner-bitcashier-gh-builder-1.service
+would restart the following units: sysinit-reactivation.target, vswitch-watchdog.timer"""
+
+    def facts(self, runners):
+        return {"states": {}, "runners": runners}
+
+    def test_ci_runners_changed_but_not_restarted_drain(self):
+        p = deploy.parse_dry_activate(self.SYSINIT)
+        self.assertEqual(p.drains, ["movies-runner@3.service", "github-runner-bitcashier-gh-builder-1.service"])
+
+    def test_a_sysinit_reactivation_stops_every_active_runner(self):
+        p = deploy.parse_dry_activate(self.SYSINIT)
+        stopped = deploy.runners_stopped(p, self.facts("movies-runner@3.service github-runner-bitcashier-gh-builder-1.service"))
+        self.assertEqual(stopped, ["github-runner-bitcashier-gh-builder-1.service", "movies-runner@3.service"])
+
+    def test_a_runner_the_switch_restarts_is_stopped_too(self):
+        p = deploy.parse_dry_activate("would restart the following units: movies-runner@5.service")
+        self.assertEqual(deploy.runners_stopped(p, self.facts("")), ["movies-runner@5.service"])
+
+    def test_a_switch_that_leaves_the_runners_alone_stops_none(self):
+        p = deploy.parse_dry_activate("would restart the following units: vswitch-watchdog.timer")
+        self.assertEqual(deploy.runners_stopped(p, self.facts("movies-runner@3.service")), [])
+
+    def test_apply_refuses_while_a_runner_it_would_stop_is_busy_and_says_which(self):
+        p = deploy.parse_dry_activate(self.SYSINIT)
+        why = deploy.runner_stop_refusal(p, self.facts("movies-runner@3.service"), allowed=False)
+        self.assertIn("movies-runner@3.service", why)
+        self.assertIn("--allow-runner-stop", why)
+        self.assertIsNone(deploy.runner_stop_refusal(p, self.facts("movies-runner@3.service"), allowed=True))
+        self.assertIsNone(deploy.runner_stop_refusal(p, self.facts(""), allowed=False))
+
+    def test_the_preview_names_the_runners_it_would_stop(self):
+        facts = dict(deploy.parse_probe(PROBE_OUT), runners="movies-runner@3.service")
+        text = deploy.render_preview("ci-runner", "pawel@10.1.0.3", facts, deploy.parse_dry_activate(self.SYSINIT),
+                                     "/nix/store/ddd", "def", "checkout: at origin main", "bootstrap")
+        self.assertIn("runners STOPPED          movies-runner@3.service", text)
+
+    def test_the_probe_reads_the_active_runners(self):
+        self.assertEqual(deploy.parse_probe("runners=movies-runner@3.service \n@@ END\n")["runners"], "movies-runner@3.service ")
+        self.assertIn("runners=", deploy.PROBE)
+
+
 class Rendering(unittest.TestCase):
     def test_the_preview_names_drains_and_the_reboot(self):
         facts = deploy.parse_probe(PROBE_OUT)
