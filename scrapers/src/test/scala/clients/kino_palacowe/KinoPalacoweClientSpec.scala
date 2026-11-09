@@ -221,4 +221,26 @@ class KinoPalacoweClientSpec extends AnyFlatSpec with Matchers {
   it should "leave an undecorated title untouched" in {
     KinoPalacoweClient.cleanTitle("Osiem i pół", titleNormalizer) shouldBe "Osiem i pół"
   }
+
+  // ── "Akademia Polskiego Filmu" lecture screenings ─────────────────────────
+  // The calendar API page of 2026-11-09 (https://kinopalacowe.pl/public/api/calendar/?widgetHash=widget_17943&page=1,
+  // `next` set false so the replay stops at it). After the pipe Pałacowe bills either decoration of the film before it
+  // ("Przez ścianę | Przedpremiera", "Po życiu (AD + CC + PJM) | Festiwal Pięć Smaków") or, under the lecture series'
+  // banner, the FILM itself: "Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat | Znachor".
+  private val akademia = new KinoPalacoweClient(new FakeHttpFetch("kino-palacowe-akademia"), titles = titleNormalizer).fetch()
+
+  "KinoPalacoweClient.fetch of an Akademia Polskiego Filmu screening" should "keep the film billed after the pipe in its title" in {
+    akademia.map(_.movie.title) should contain allOf (
+      "Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat | Znachor",
+      "Akademia Polskiego Filmu: Gatunki międzywojnia: Film patriotyczny | Kościuszko pod Racławicami + Ołowiane żołnierzyki",
+      "Akademia Polskiego Filmu: Artystyczne poszukiwania kina niemego | Mocny człowiek + Europa",
+    )
+    akademia.map(_.movie.title) should not contain "Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat"
+  }
+
+  it should "still drop the decoration another title bills after its pipe" in {
+    akademia.map(_.movie.title) should contain ("Dzień Kina Polskiego: Przez ścianę")
+    akademia.map(_.movie.title).filter(_.contains(" | ")).forall(_.startsWith("Akademia Polskiego Filmu: ")) shouldBe true
+  }
+
 }

@@ -230,11 +230,8 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
 
     if (filmUrl.isEmpty || ticketType != 2) None
     else {
-      // what follows the pipe is a cycle ("Słodkie życie | Federico Fellini: ciao a tutti!") or, under a lecture series'
-      // banner, the FILM ("Akademia Polskiego Filmu: Gatunki międzywojnia: Melodramat | Znachor"): the card keeps the
-      // head, the raw title all of it, for the resolver to read
       val rawTitle  = (entry \ "title").asOpt[String].getOrElse("").trim
-      val baseTitle = rawTitle.split(" \\| ").head.trim
+      val baseTitle = KinoPalacoweClient.billedTitle(rawTitle)
       val title     = KinoPalacoweClient.cleanTitle(baseTitle, titles)
       val startDate = (entry \ "start_date").asOpt[String]
       val startTime = (entry \ "start_time").asOpt[String]
@@ -271,6 +268,17 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
 }
 
 object KinoPalacoweClient {
+
+  private val LectureSeriesBanner = "Akademia Polskiego Filmu: "
+
+  /** The card's title of a billed one. What follows the pipe decorates the film before it — a cycle ("Słodkie życie |
+   *  Federico Fellini: ciao a tutti!"), an event ("Przez ścianę | Przedpremiera"), a festival — and is dropped; under the
+   *  Akademia Polskiego Filmu lecture banner it is the FILM, the head only the lecture's topic ("Akademia Polskiego
+   *  Filmu: Gatunki międzywojnia: Melodramat | Znachor"), so the card keeps all of it. The raw title always keeps all of
+   *  it, for the resolver to read. */
+  def billedTitle(rawTitle: String): String =
+    if (rawTitle.startsWith(LectureSeriesBanner)) rawTitle
+    else rawTitle.split(" \\| ").head.trim
 
   /** Strip cycle decoration so a decorated screening collapses onto the same
    *  canonical row — and enriches off the same clean title — as the regular
