@@ -165,9 +165,9 @@ class HarnessAaTest(unittest.TestCase):
         self.assertIn("harness_aa.py since --run-id \"$GITHUB_RUN_ID\"", conv)
         self.assertIn("harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}", conv)
         self.assertIn("harness-aa:                    ${{ needs.preflight.outputs.harness-aa == 'true' }}", conv)
-        self.assertIn("scripts/ci/harness_aa.py judge", leg)
+        self.assertIn("scripts/ci/harness_aa.py judge", conv)  # the comparison is Identity takes' own `takes-drift-aa` job
+        self.assertNotIn("takes-drift-aa\"'", leg.replace("takes-drift-aa-pass", ""))
         self.assertIn("inputs.harness-aa && ',\"takes-drift-aa-pass0\",\"takes-drift-aa-pass1\",\"takes-aa\"'", leg)
-        self.assertIn("inputs.harness-aa && ',\"takes-drift-aa\"'", leg)
         self.assertIn("TAKES_AA: ${{ matrix.phase == 'takes-aa' }}", leg)
         rows = open(os.path.join(ROOT, ".github/gating-checks.tsv")).read()
         for country in ("poland", "germany", "united-kingdom", "spain", "united-states"):
