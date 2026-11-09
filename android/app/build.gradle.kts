@@ -297,11 +297,11 @@ kotlin {
 val robolectricAndroidAll: Configuration = configurations.create("robolectricAndroidAll") { isTransitive = false }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.09.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
-    implementation("androidx.core:core-ktx:1.19.0")
+    implementation("androidx.core:core-ktx:1.19.1")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
@@ -313,7 +313,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
 
-    implementation("androidx.navigation:navigation-compose:2.10.0")
+    implementation("androidx.navigation:navigation-compose:2.10.2")
 
     // Custom Tabs for the web OAuth sign-in flow (the Android analog of iOS's
     // ASWebAuthenticationSession): an in-app browser tab that shares no cookies
@@ -334,7 +334,7 @@ dependencies {
     // honest: we ask for a floor without pretending the app depends on it.
     // `verifyBundledSdkFloors` below is what stops this drifting back.
     constraints {
-        implementation("androidx.fragment:fragment:1.9.0") {
+        implementation("androidx.fragment:fragment:1.9.1") {
             because("play-services-basement pulls fragment 1.1.0, which Google Play flags as an outdated SDK")
         }
     }
@@ -349,15 +349,16 @@ dependencies {
 
     // Backdrop blur for the floating search pill — real frosted-glass that
     // distorts the grid scrolling under it (RenderEffect on API 32+, graceful
-    // tint-only fallback below). 1.7.x tracks the Compose 1.9/1.10 line that
-    // Compose BOM 2026.08.00 pulls in.
+    // tint-only fallback below). Held on 1.7.x: Haze 2.0 removed this
+    // `hazeEffect` + `HazeStyle`/`HazeTint` surface for the typed `hazeBlur`
+    // (separate haze-blur artifact), a migration of its own.
     implementation("dev.chrisbanes.haze:haze:1.7.3")
 
-    implementation("com.squareup.okhttp3:okhttp:5.5.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
+    implementation("com.squareup.okhttp3:okhttp:5.5.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
-    implementation("androidx.datastore:datastore-preferences:1.2.1")
+    implementation("androidx.datastore:datastore-preferences:1.3.0")
     // Installs the bundled Baseline Profile on sideloaded / non-Play installs
     // (Play does it itself) and lets Macrobenchmark install it for measuring.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
@@ -366,7 +367,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     // Records the request path KinowoApi builds, so the city-slug prefix is
     // asserted without a live server.
-    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.1")
 
     // JVM (off-device) Compose UI tests via Robolectric — renders the real
     // composables and measures layout bounds without an emulator, so the
@@ -374,9 +375,9 @@ dependencies {
     // (already a debugImplementation) supplies the ComponentActivity that
     // createComposeRule launches.
     testImplementation(composeBom)
-    testImplementation("org.robolectric:robolectric:4.16.1")
+    testImplementation("org.robolectric:robolectric:4.17")
     // The SDK 34 runtime every Robolectric test loads (@Config(sdk = [34])), at the
-    // instrumentation level robolectric 4.16.1 expects: bump the two together.
+    // instrumentation level robolectric 4.17 expects: bump the two together.
     robolectricAndroidAll("org.robolectric:android-all-instrumented:14-robolectric-10818077-i7")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     // ApplicationProvider for the DataStore round-trip test (off-device).
