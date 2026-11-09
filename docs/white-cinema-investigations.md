@@ -1,13 +1,13 @@
 # White-cinema investigations
 
-> **Summary.** An append-only log, newest run first (32 runs, 2026-06-25 → 2026-11-06). Before
+> **Summary.** An append-only log, newest run first (33 runs, 2026-06-25 → 2026-11-09). Before
 > investigating a white (parsed-but-empty) or red venue, search this file for the venue's name: its last verdict
 > (`fixed` / `unfixable` / `intentionally-dormant` / `needs-human` / `recovered` / `transient`) is in the newest run
 > that names it. The [methodology](#how-to-find-the-white-list-methodology) section is current; run entries are
 > dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists, and those
 > before 2026-10-23 read prod Mongo directly, which is user-only now (runs read the local prod mirror).
 >
-> **Runs:** [2026-11-06](#2026-11-06) · [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
+> **Runs:** [2026-11-09](#2026-11-09) · [2026-11-06](#2026-11-06) · [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
 
 Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
@@ -33,6 +33,11 @@ OAuth + `ADMIN_ALLOWLIST` (`web/.../controllers/AdminAction.scala`); an anonymou
    rows say how old the newest document is). Prod Mongo itself (`:27017`,
    `prod-tunnel.sh`, `with-prod-mongo.sh`) is user-only since 2026-10-19; runs
    before that read it directly, which is what their entries describe.
+   **A stale mirror is fixed before anything is swept** (2026-11-09: 71 h stale). Read
+   `~/Library/Logs/kinowo-local-mirror.log`. A repeating `database supervisor <pid> is gone`
+   is a restart loop. A log silent while `mirror.sh` still runs is a wedge. The supervisor
+   now logs its own death (`<db>: supervisor ended (exit N)`); the 11-09 entry lists the
+   four causes found so far.
 2. **Sweep ALL FIVE countries.** Each country's mirror is its own database —
    `kinowo_prod_mirror` (PL), `kinowo_uk_prod_mirror`, `kinowo_de_prod_mirror`,
    `kinowo_us_prod_mirror`, `kinowo_es_prod_mirror` (prod's `kinowo`, `kinowo_uk`, …
@@ -333,6 +338,103 @@ print(JSON.stringify(out));
 A venue with a `filmwebFallback` doc reading `UNCOVERED` and `fallbackRef: null`
 has NO Filmweb cover. Before 2026-09-29 that was every venue outside the five
 big cities (see that entry). It is now only venues Filmweb itself doesn't list.
+
+---
+
+## 2026-11-09
+
+**Seventeenth all-five-country sweep**, read from the local prod mirror at 14:38 UTC on a **Monday afternoon**. The sweep is
+the checked-in script, unchanged.
+
+**The mirror was 71 h stale at the start: every country's newest bucket was 11-06 14:00 UTC.** Fixing that took most of
+the run. Four bugs were stacked in the local mirror. Each is fixed with a fail-before test and is on `main`:
+
+| Commit | Bug | Effect |
+|---|---|---|
+| `f0432fc122` | **The root cause.** `bounded` (59fc99ca9c, 11-06) polled with `command sleep 0.2`. macOS `/bin/bash` 3.2, which is what launchd runs, **execs** `command <external>` inside a backgrounded function instead of forking it. | Every database supervisor *became* `sleep 0.2` at its first staleness check and exited. The parent restarted the whole mirror every ~25 s, and nothing synced from about 11-06 14:10 UTC (the moment the root checkout picked 59fc99ca9c up). The spec runs under bash 5, which forks, so it never saw this; the new case runs under `/bin/bash`. |
+| `bc14781570` | `~/.ssh/config`'s `Host *` sets `ControlMaster auto` + `ControlPersist 1h` (since 11-02). prod-tunnel.sh's `ssh -N -L` handed its forward to a backgrounded master (ppid 1, same argv). | The 11-04 orphan sweep read that master as a stranded forward and killed the **live** tunnel at every start. The tunnel now passes `-o ControlMaster=no -o ControlPath=none`. |
+| `caa6b734a0` | mirror.sh's `trap '…' EXIT INT TERM` ran the cleanup on TERM and then **resumed**. | On 11-07 12:26 a TERM landed mid-sweep. The parent killed every child and then sat in its final `wait` on the rotator: a live pid with nothing under it, so launchd never restarted it and the restart loop froze into a wedge for two days. `exit_on_signal` now makes TERM/INT exit, and the EXIT trap cleans up. |
+| `6999c9d2ee` | A dying supervisor left no line. | It now logs its database, the failing command and the status. That cannot catch the bash 3.2 exec, which runs no trap; that one was found by snapshotting the process tree every 0.1 s, where all six supervisor pids showed `sleep 0.2` just before they vanished. |
+
+All five mirrors were fresh at 14:38 UTC, and there was no restart after 15:31 local.
+
+**Methodology, first step of every run:** `scripts/local-mirror/freshness`. If it is stale, read
+`~/Library/Logs/kinowo-local-mirror.log` for `database supervisor <pid> is gone` repeating, and for a log that has gone
+silent while `mirror.sh` is still alive. Fix the mirror before sweeping; a stale sweep is worthless.
+
+**DNS (11-06's `needs-human: deploy eef9233`): deployed.** monitoring-1, k3s-worker-1 and mongo-1 all show
+`Global: 1.1.1.1 9.9.9.9 8.8.8.8`, and the cyberfolks hosts resolve. All 40 outage venues are back. The 5 that were
+UNCOVERED (Stopiak, Kino 1410, Bieszczadzki DK, Frajda, Kadr Staszów) are no longer red. **`recovered`.**
+
+| DB | services | white | white % | red | green→white | seasonal | `thin` | fallback venues | probed |
+|---|---|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 545 | **14** | 2.6% | **0** | 1 | 0 | 92 | 2 (Filmweb), 4 active | all 14 + 4 active on the fallback |
+| `kinowo_uk` | 850 | **52** | 6.1% | 0 | 2 | 2 | 26 | 0 | 17 (all `noScheduleListed`) |
+| `kinowo_de` | 1,544 | **288** | 18.7% | 0 | 0 | 115 | 25 | 24 (kinoprogramm.com) | 18 (14 `noScheduleListed`, 4 probed at source) |
+| `kinowo_us` | 5,012 | **1,001** | 20.0% | 0 | 16 | 274 | 0 | 0 | 25 (all `noScheduleListed`) |
+| `kinowo_es` | 607 | **166** | 27.3% | 0 | 2 | 25 | 19 | 0 | 16 (14 `noScheduleListed`, 2 probed) |
+
+Against Monday 11-03: UK 49 → 52, DE 294 → 288, US 1,135 → 1,001, ES 192 → 166. No client clusters. **No red venue in
+any country**, for the first time since 10-30.
+
+### Filmweb-fallback sweep (PL only): 4 active, 1 fixed
+
+| Venue | Since | Last reason | Verdict |
+|---|---|---|---|
+| **Cinema Lumiere (Szczytno, MSI `bilety.kinoszczytno.pl`)** | 11-06 06:26 | `SSLHandshakeException … PKIX path building failed`. The RapidSSL leaf `CN=bilety.kinoszczytno.pl` **expired 2026-11-05 23:59 UTC**, and plain http 302s to `https://…:5553/`. | **`fixed` @8097c629ba**: the leaf is pinned in `TlsTrust.PinnedExpiredLeafResources` (case 5, as Kino Roma and Iława are; SHA-256 `FBD6D23C…859741`). Its portal still sells the November programme (`event_id=29305…`). Filmweb 2357 covered it meanwhile, 24/24 buckets `fallback: true`. This also explains 11-06's "connects, then no HTTP answer". A renewed leaf no longer matches the pin, and normal validation takes over. **Next run: confirm it is green off the primary.** |
+| Wybrzeże (Kołobrzeg) | 10-23 14:57 | primary returned no screenings | **intentionally-dormant (closed; Filmweb covers DKF)**, the standing decision |
+| Kino Warszawa (Przeworsk) | 11-01 01:18 | primary returned no screenings | **intentionally-dormant** (as 11-03, 11-06) |
+| Kino Tatry (Łódź) | 11-01 05:01 | primary returned no screenings | **intentionally-dormant**, closed until 2027-04-01 |
+
+ENTER→RECOVERED since 11-06:
+- **Every DNS-outage venue** recovered on 11-06 between 10:59 and 12:22 UTC: Kika, Spektrum, Awangarda 2, Centrum 3D,
+  Kuźnica, Wilga, Cinema N 3D, Muza Myślenice, JDK, Gryf, CKiF, Słońce and Kino Kultura.
+- **Kozienicki DK** flapped again: 11-07 07:05 → 09:05 and 11-08 06:04 → 07:04 UTC, both `CircuitOpenException` on
+  bilety.dkkozienice.pl, with Filmweb 1913 covering. That is four nights out of five. **transient (recurring, covered).**
+  It is green now.
+- **MCSW Elektrownia** did not flap after 11-06.
+- **Kino Kultura Bełchatów:** ENTER 11-09 05:51 ("no screenings"), RECOVERED 11-09 11:40. **transient**, covered by Filmweb 1330.
+- **Teatr im. Andreasa Gryphiusa:** UNCOVERED 11-06 23:34, a biletyna 8 s timeout. It is dormant anyway (below).
+
+### Poland: 14 white, 0 red
+
+| Venue | Source | Verdict |
+|---|---|---|
+| **MDK Opoczno** | biletyna | **intentionally-dormant** (new, green→white). Its only screening was 11-08 18:00 UTC, and it has been barren since 17:58. |
+| **Bielański Ośrodek Kultury** | biletyna | **intentionally-dormant** (new). Its only screening was 11-06 18:00 UTC. As noted on 09-26, its next film is usually weeks away. |
+| Wybrzeże, Kino Warszawa, Kino Tatry | see the fallback table | **intentionally-dormant** |
+| Teatr Gryphiusa, OK Jastrowie, Nowotomyski OK, GOK Lipka, MGOK Recz, Drawieński OK, Choszczeński DK, Kino na Szekspirowskim | biletyna | **intentionally-dormant** (as 11-06). Archives are 7–58 days old with 1 film each. |
+| Kino Wisła Brzeszcze | bilety24 1539 | **intentionally-dormant** (never an archive) |
+
+The biletyna client is healthy: **67 of its 76 catalog venues were green** in the last 6 h. None of the 9 whites is a
+parse failure; biletyna's Cloudflare blocks plain curl, so the place pages themselves were not re-read.
+
+**`thin`:** 92 PL, against 84 on Monday 11-03, the same weekday shape. Not probed this run; the mirror repair took the time.
+
+### UK / DE / ES / US: 76 candidates, 0 parser bugs
+
+Cut: as on 11-06. UK/DE/ES take non-seasonal whites with an archive of 10 days or less, plus every green→white
+(17 / 18 / 16). US takes an archive of 3 days or less **and at least 3 films**, plus green→white (25). **70 of the 76 carry
+`lastBarren.noScheduleListed: true`** (all UK and US, 14 DE, 14 ES): empty or lag, not hand-probed. The 6 without it:
+- **DE, empty at source:** Cineamo 1386 (Rerik) and 909 (Werkstattkino) return `_page_count` 0; the control, 1232,
+  returns 10. kinoheld `programShows` for 3609 (Stattkino) and 1928 (Schloss Dankern) returns 0; the control, 807,
+  returns 89. **intentionally-dormant**, the same 4 as 11-06.
+- **ES Cine Juventud (E0800): aggregator gap.** `data-showtimes-dates` lists 11-09 and 11-10, but each day's
+  `/_/showtimes/theater-E0800/d-…/p-1/` holds one result with **`"movie": null`**. These are SensaCine's placeholder slots,
+  the same as Multicines Cáceres on 11-03, and `parseResult` correctly drops them.
+- **ES Cinema Ribes (E0907): LAG.** It lists only 11-22.
+
+The DE kinoprogramm.com fallback count is **24** (25 on 11-06).
+
+### Left for next run
+- **Cinema Lumiere:** is it green off its own MSI portal (no `fallback: true` buckets, and the `filmwebFallback` doc RECOVERED)?
+- **The mirror:** any `database supervisor … is gone` since 11-09 15:31? The new death report names the database if one dies again.
+- **Heads-up, not fixed:** `scripts/store-screenshots-common.sh` (`naps() { command sleep "$1"; }`) and `shell-spec.sh`'s
+  `wait_until` use the same `command sleep` that bash 3.2 execs inside a backgrounded function. They are harmless where
+  they run now (foreground, bash 5), but they are the same trap.
+- **Kozienice nightly flaps:** four nights out of five, all covered. Consider quieting the fallback alert for it.
+- **PL `thin` (92):** still unprobed, two runs running.
+- **Carried over:** the own-site re-check for Krobia, Harmonia and Książka; Kino Sokół Strzyżów; Kino Tatry after 2027-04-01.
 
 ---
 
