@@ -99,6 +99,12 @@ check "a push adding a deploy spec with no lint-registry row: the sbt check BLOC
 printf 'worker:deploy.NewWiringSpec\t@repo\n' >> "$grepo/scripts/hooks/lint-registry.tsv"
 check "...its row in place, nothing said of it" "0" \
   "$(tool_push worker/src/test/scala/deploy/NewWiringSpec.scala sbt PATH="$gate/sbt:$PATH" >/dev/null; grep -c 'has no lint-registry row' "$gate/err")"
+# ...in any locale: both lists are sorted in C order, so `comm` must compare in it too. Under en_NZ.UTF-8 (the laptop's)
+# a registry whose C order differs from the locale's made comm miss a row in place, and every push of a spec BLOCKED
+# (pre-push-test.sh's scratch NodeCpuBudgetSpec, 2026-11-09).
+printf 'Worker:zSpec\t@repo\nworker:deploy.NewWiringSpec\t@repo\n' > "$grepo/scripts/hooks/lint-registry.tsv"
+check "...its row in place under a locale whose order is not C's, nothing said of it" "0" \
+  "$(tool_push worker/src/test/scala/deploy/NewWiringSpec.scala sbt PATH="$gate/sbt:$PATH" LC_ALL=en_US.UTF-8 >/dev/null; grep -c 'has no lint-registry row' "$gate/err")"
 rm -rf "$grepo/scripts"
 check "the old-ref compile with no sbt: BLOCKED" "1 1" \
   "$(tool_push tools/A.scala oldrefs PATH="$nosbt") $(grep -c 'oldrefs FAILED' "$gate/err")"

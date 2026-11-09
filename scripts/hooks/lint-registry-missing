@@ -4,7 +4,8 @@
 # a tools/ No*/*Lint* spec, any deploy/ spec, or one using a source-scan helper (ScalaSourceScan, ModuleSources,
 # RepoRoot, WorkflowText): the hook's sbt check selects lint specs from the registry alone, so one without a row never
 # runs before a push. The one reading of it: lint-registry-test.sh's check and pre-push's sbt check (Tool self-tests
-# #158 and #166: two new deploy specs landed rowless, seen only on main).
+# #158 and #166: two new deploy specs landed rowless, seen only on main). Both lists are sorted in C order, and comm
+# compares in C order too: under the laptop's en_NZ.UTF-8 it missed a row in place (2026-11-09).
 set -euo pipefail
 registry=scripts/hooks/lint-registry.tsv
 [ -f "$registry" ] || exit 0
@@ -22,4 +23,4 @@ candidates() {
         done
     done
 }
-comm -23 <(candidates | LC_ALL=C sort -u) <(rows | LC_ALL=C sort -u)
+LC_ALL=C comm -23 <(candidates | LC_ALL=C sort -u) <(rows | LC_ALL=C sort -u)
