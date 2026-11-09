@@ -1171,6 +1171,8 @@ jobs:
                   # THE DIFFERENTIAL'S STORE (identity-drift-check.sh): each green head's flips on main, a base's anywhere
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   DRIFT_STORE: ${{ inputs.takes-no-store != true && inputs.takes-no-store != 'true' && 'identity-drift' || '' }}
+                  # A profiled dispatch profiles a replay, never the head's stored replay of the same inputs.
+                  DRIFT_FRESH: ${{ inputs.profile }}
               run: |
                   . scripts/ci/bounded-step.sh
                   if [ -n "$DRIFT_EXPLORE" ]; then

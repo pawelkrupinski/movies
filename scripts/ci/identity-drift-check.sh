@@ -27,6 +27,13 @@
 # THE STORE (DRIFT_STORE, a release; empty: nothing stored or read): each green head on main stores each seed's flips
 # as `drift-green-<cc>-<seed>-<key>.tsv.gz`, and a base resolved here as `drift-calc-...` (any ref: the key names the
 # code, the recording and the seed, never the ref); the walk above reads only the green ones.
+# THE HEAD'S REPLAY IS A FUNCTION OF ITS INPUTS (DRIFT_TWICE proves it daily): stored as `drift-head-<cc>-<seeds>-<key>`,
+# its key everything the replay can read -- the tree of every module on worker/Test's classpath (all of each module's
+# src/, not code_of's src/main), the build, test/ (the recording's pins, the allow-lists, the judgements, the backlog),
+# this check and its helpers, the recording, the JDK and the heap -- a head whose inputs a run already replayed reads
+# that replay instead of running it again (8 of 10 of main's runs, 2026-11-08..09: commits outside the identity code;
+# a UK row 13 of its 16 minutes). Any input moved replays. Never read: DRIFT_TWICE (it exists to replay), the
+# explorer, DRIFT_FRESH=true (a profiled run), and no DRIFT_STORE (the A/A passes): those always replay.
 #
 # THE SCENARIO GUARD: each replay writes what its harness DREW per seed (`scenario-<cc>.tsv`: the venue arrangement and
 # every fill draw, scripts.IdentityDrift.Scenario), and the base's is kept beside its flips (`drift-greenscenario-...`,
@@ -91,7 +98,57 @@ replay() {
 }
 head_options=(--allow "$fixtures/identity-drift-allow.tsv" --flips-allow "$fixtures/identity-flips-allow.tsv" --labels "$fixtures/identity-judgements.tsv")
 
-replay "$here" "$out" "$seed_list" "${head_options[@]}"
+# ---- THE STORE (see the header) ----
+code_paths=(geodata/src/main base/src/main http/src/main common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/it/scala
+            testkit/src/main build.sbt project worker/src/test/scala/scripts)
+code_of() { git -C "$here" ls-tree -r "$1" -- "${code_paths[@]}" | sha256sum | cut -c1-24; } # <sha>
+recording_key=$( { printf '%s\n' "$cc" "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" "${KINOWO_CONVERGENCE_TREE_ASSET:-}" "${KINOWO_CONVERGENCE_FILL_ASSETS:-}"
+                   cat "$fixtures/corpus/cinema-scrapes-$cc.json.gz" "$fixtures/identity-unmatched/$cc.json.gz" "$fixtures/identity-unmatched/$cc.inputs" 2> /dev/null
+                   ( cd "$fixtures" && find "enrichment-$cc" -type f -printf '%P %s\n' 2> /dev/null | LC_ALL=C sort ); } | sha256sum | cut -c1-24)
+asset() { printf 'drift-%s-%s-%s-%s.tsv.gz' "$1" "$cc" "$3" "$(printf '%s\n' "$2" "$recording_key" "$3" | sha256sum | cut -c1-24)"; } # <green|calc> <code> <seed>
+store=${DRIFT_STORE:-}
+assets="$out/base/assets.txt"; : > "$assets"
+if [ -n "$store" ]; then
+  # allow-silenced: no store (or an unreadable one) is an empty one: every base is then replayed, never trusted
+  timeout 120 gh release view "$store" --json assets --jq '.assets[].name' > "$assets" 2> /dev/null || : > "$assets"
+fi
+stored() { grep -qxF "$1" "$assets"; } # <asset>
+fetch() { # <asset> <file>
+  [ -n "$store" ] && stored "$1" || return 1
+  timeout 300 gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ]
+}
+keep() { # <file> <asset>: store a result, never failing the check
+  [ -n "$store" ] && [ -s "$1" ] && ! stored "$2" || return 0
+  timeout 120 gh release view "$store" > /dev/null 2>&1 \
+    || "$here/scripts/ci/gh-release.sh" create "$store" --prerelease --title "Identity drift store (rolling)" \
+         --notes "The drift gate's flips per seed, keyed by identity code, recording and seed (scripts/ci/identity-drift-check.sh). A cache, not a version of anything." > /dev/null 2>&1 || true
+  gzip -c "$1" > "${RUNNER_TEMP:-/tmp}/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "${RUNNER_TEMP:-/tmp}/$2" --clobber > /dev/null 2>&1 \
+    || echo "identity drift ($cc): could not store $2 -- a later run resolves that base again"
+  # only the newest are ever a base again: 48 a kind and country (best effort)
+  local kind=${2#drift-}; kind=${kind%%-*}
+  # allow-silenced: pruning old results is best effort; a missed prune only leaves the store larger
+  timeout 120 gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"drift-$kind-$cc-\"))) | sort_by(.createdAt) | reverse | .[48:][] | .name" 2> /dev/null \
+    | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null 2>&1 || true; done
+}
+
+# ---- THE HEAD'S REPLAY, or the stored replay of the same inputs (see the header) ----
+replay_inputs=(geodata/src base/src http/src common/src identity/src scrapers/src testkit/src itkit/src worker/src build.sbt identity-impact.sbt
+               project .jvmopts test scripts/ci/identity-drift-check.sh scripts/ci/drift-replays-compare.sh)
+head_asset=drift-head-$cc-${seed_list//,/_}-$( { printf '%s\n' "$seed_list" "$recording_key" "${JAVA_HOME:-}" "$heap"
+                                                 git -C "$here" ls-tree -r HEAD -- "${replay_inputs[@]}"; } | sha256sum | cut -c1-24).tar.gz
+memo=false
+[ -n "$store" ] && [ "${DRIFT_TWICE:-false}" != true ] && [ -z "${DRIFT_EXPLORE:-}" ] && [ "${DRIFT_FRESH:-false}" != true ] && memo=true
+if [ "$memo" = true ] && fetch "$head_asset" "$out/head-replay.tar" && tar -xf "$out/head-replay.tar" -C "$out"; then
+  rm -f "$out/head-replay.tar"
+  echo "identity drift ($cc): the head's replay of seed(s) $seed_said is stored under the same inputs ($head_asset): read, not replayed"
+else
+  rm -f "$out/head-replay.tar"
+  replay "$here" "$out" "$seed_list" "${head_options[@]}"
+  if [ "$memo" = true ] && [ -f "$out/drift-$cc.tsv" ] && [ -f "$out/flips-$cc.tsv" ] && grep -qE '^## [a-z]+: ' "$out/sbt.log" && grep -qE '^## [a-z]+ flips: ' "$out/sbt.log"; then
+    # what the replay wrote, nothing the check adds after it
+    ( cd "$out" && tar -cf "${RUNNER_TEMP:-/tmp}/head-replay-$cc.tar" sbt.log ./*-"$cc".tsv ) && keep "${RUNNER_TEMP:-/tmp}/head-replay-$cc.tar" "$head_asset"
+  fi
+fi
 grep -E '^## |^  [0-9]+ listing|^      ' "$out/sbt.log" > "$out/report.txt"
 [ -f "$out/drift-$cc.tsv" ] && [ -f "$out/flips-$cc.tsv" ] || { tail -40 "$out/sbt.log" >&2; echo "identity drift ($cc): the replay wrote nothing" >&2; exit 2; }
 summary=$(grep -m1 -E '^## [a-z]+: ' "$out/report.txt")
@@ -118,40 +175,9 @@ if [ -n "${DRIFT_EXPLORE:-}" ]; then
 fi
 
 # ---- THE BASE (see the header) ----
-code_paths=(geodata/src/main base/src/main http/src/main common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/it/scala
-            testkit/src/main build.sbt project worker/src/test/scala/scripts)
-code_of() { git -C "$here" ls-tree -r "$1" -- "${code_paths[@]}" | sha256sum | cut -c1-24; } # <sha>
-recording_key=$( { printf '%s\n' "$cc" "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" "${KINOWO_CONVERGENCE_TREE_ASSET:-}" "${KINOWO_CONVERGENCE_FILL_ASSETS:-}"
-                   cat "$fixtures/corpus/cinema-scrapes-$cc.json.gz" "$fixtures/identity-unmatched/$cc.json.gz" "$fixtures/identity-unmatched/$cc.inputs" 2> /dev/null
-                   ( cd "$fixtures" && find "enrichment-$cc" -type f -printf '%P %s\n' 2> /dev/null | LC_ALL=C sort ); } | sha256sum | cut -c1-24)
-asset() { printf 'drift-%s-%s-%s-%s.tsv.gz' "$1" "$cc" "$3" "$(printf '%s\n' "$2" "$recording_key" "$3" | sha256sum | cut -c1-24)"; } # <green|calc> <code> <seed>
-store=${DRIFT_STORE:-}
 depth=${DRIFT_BASE_DEPTH:-60}
 head_sha=$(git -C "$here" rev-parse HEAD)
 head_code=$(code_of HEAD)
-assets="$out/base/assets.txt"; : > "$assets"
-if [ -n "$store" ]; then
-  # allow-silenced: no store (or an unreadable one) is an empty one: every base is then replayed, never trusted
-  timeout 120 gh release view "$store" --json assets --jq '.assets[].name' > "$assets" 2> /dev/null || : > "$assets"
-fi
-stored() { grep -qxF "$1" "$assets"; } # <asset>
-fetch() { # <asset> <file>
-  [ -n "$store" ] && stored "$1" || return 1
-  timeout 300 gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ]
-}
-keep() { # <file> <asset>: store a result, never failing the check
-  [ -n "$store" ] && [ -s "$1" ] && ! stored "$2" || return 0
-  timeout 120 gh release view "$store" > /dev/null 2>&1 \
-    || "$here/scripts/ci/gh-release.sh" create "$store" --prerelease --title "Identity drift store (rolling)" \
-         --notes "The drift gate's flips per seed, keyed by identity code, recording and seed (scripts/ci/identity-drift-check.sh). A cache, not a version of anything." > /dev/null 2>&1 || true
-  gzip -c "$1" > "${RUNNER_TEMP:-/tmp}/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "${RUNNER_TEMP:-/tmp}/$2" --clobber > /dev/null 2>&1 \
-    || echo "identity drift ($cc): could not store $2 -- a later run resolves that base again"
-  # only the newest are ever a base again: 48 a kind and country (best effort)
-  local kind=${2#drift-}; kind=${kind%%-*}
-  # allow-silenced: pruning old results is best effort; a missed prune only leaves the store larger
-  timeout 120 gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"drift-$kind-$cc-\"))) | sort_by(.createdAt) | reverse | .[48:][] | .name" 2> /dev/null \
-    | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null 2>&1 || true; done
-}
 
 # the history the walk reads (trees only), and main's tip for a branch's merge-base
 # allow-silenced: a fetch that fails leaves the history the checkout has; the walk then finds fewer stored bases

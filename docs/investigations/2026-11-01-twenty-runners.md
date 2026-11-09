@@ -1136,3 +1136,18 @@ Heads-up: a takes run whose plan has no A/A row shows the leg's skipped `order-c
 Resolved 2026-11-09 (the owner): `order-compare` left the shared leg. Identity model convergence and Verify scrape recording run
 `order-independence-p01|p12 (<country>)` as jobs of their own (`.github/actions/order-compare`, the preflight's `order-matrix`), Identity
 takes holds `takes-drift-aa` alone, and the leg holds the rows only.
+
+## 16. The drift rows replay a head only once (2026-11-09)
+
+**Where a drift row's time went** (Identity takes, main, runs 42520192909..42567066545, jobs API and each row's `sbt.log`):
+a UK row of 16 min is ~2 min setup, ~0.5 min sbt start and compile, and the head's replay, 423-814 s for the same seed
+and code; a PL row the same shape at 195-416 s. The replay's settle stages end in 10-14 rounds (the seed-8 "60 rounds on
+an open catalogue question" waste is gone since 2e5786211b: a failed catalogue ask is attempted, then given up). The
+spread is the runner: AMD EPYC 7763 runners replay UK seed 11 in 741-814 s, EPYC 9V45 in 423-431 s, 9V74 568-600 s,
+Xeon 8573C 657-678 s (PL: 7763 ~400 s, 9V45 ~205 s). UK's p90 of 30-34 min is the daily `DRIFT_TWICE` run (the second
+replay, +13 min) and an EPYC 7763; neither is a slow seed. One seed a row already, so nothing to rebalance.
+
+**The waste:** 8 of the 10 runs changed no identity code (`the same identity code: nothing replayed twice`): every row
+still replayed a head whose inputs its parent's run had replayed. The head's replay is now stored under the key of
+everything it reads (identity-drift-check.sh, "THE HEAD'S REPLAY IS A FUNCTION OF ITS INPUTS") and read back: such a
+row is its setup alone. Any input moved, `DRIFT_TWICE`, the explorer, a profiled run and the A/A passes replay.

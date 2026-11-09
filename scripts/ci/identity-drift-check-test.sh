@@ -13,6 +13,9 @@
 #   - THE SCENARIO GUARD: head and base that drew differently for a question both ask (a coupled harness: the old shared
 #     rng) is a HARNESS ERROR (2), never flips; a question only the head asks is its own; a base with no scenario (from
 #     before the guard) is not compared.
+#   - THE HEAD'S MEMO: a head whose replay inputs a run already replayed reads that replay (the same verdict, nothing
+#     replayed); another seed list, heap, a replay input code_of does not see or an allow-list replays; DRIFT_TWICE,
+#     DRIFT_FRESH and the explorer always replay; a replay with no verdict is never stored.
 # Run: bash scripts/ci/identity-drift-check-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -164,5 +167,47 @@ check "the daily double run: two replays alike pass" "0" "$(DRIFT_TWICE=true run
 check "...having replayed twice" "1" "$(grep -c 'deterministic -- a second replay' "$work/stdout")"
 check "two replays that differ fail" "1" "$(DRIFT_TWICE=true FAKE_VARY=1 FAKE_BASE_FLIPS='Run|1;Run|2;Run|3;Run|4' run)"
 check "...and the verdict says so" "1" "$(grep -c '^not deterministic' "$work/out/verdict.txt")"
+
+# THE HEAD'S MEMO (DRIFT_STORE): a head whose inputs a run already replayed reads that replay, never runs it again; any
+# input the replay reads moved -- even one code_of does not see -- replays. A stand-in `gh` keeps the store in a directory.
+export FAKE_STORE="$work/store"; mkdir -p "$FAKE_STORE"
+cp "$REPO_ROOT/scripts/ci/gh-release.sh" "$repo/scripts/ci/"
+cat > "$work/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = release ] || exit 1
+case $2 in
+  view) case "$*" in *sort_by*) ;; *--json*) ls "$FAKE_STORE" ;; esac ;;
+  create) ;;
+  upload) cp "$4" "$FAKE_STORE/" ;;
+  delete-asset) rm -f "$FAKE_STORE/$4" ;;
+  download) name=$(grep -oE -- '-p [^ ]+' <<< "$*" | cut -d' ' -f2); to=$(grep -oE -- '-O [^ ]+' <<< "$*" | cut -d' ' -f2)
+            cp "$FAKE_STORE/$name" "$to" ;;
+  *) exit 1 ;;
+esac
+EOF
+chmod +x "$work/bin/gh"
+red_run() { FAKE_HEAD_FLIPS='Riverside|The Stranger;Kino Muza|New Film' FAKE_BASE_FLIPS='Riverside|The Stranger' DRIFT_STORE=s run; }
+check "a head replayed on a store is red as without one" "1" "$(red_run)"
+check "...replaying the head and the base" "head 1,2 base 1 base 2" "$(paste -sd' ' "$FAKE_LOG")"
+check "...storing the head's replay" "1" "$(find "$FAKE_STORE" -name 'drift-head-pl-1_2-*.tar.gz' | wc -l | tr -d ' ')"
+first=$(cat "$work/out/verdict.txt") first_diff=$(sed 's/(resolved)/(stored)/' "$work/out/diff.txt")
+check "the same inputs again: the same red" "1" "$(red_run)"
+check "...replaying nothing (the base's flips stored too)" "" "$(paste -sd' ' "$FAKE_LOG")"
+check "...saying it read the stored replay" "1" "$(grep -c "^identity drift (pl): the head's replay of seed(s) 1 2 is stored under the same inputs (drift-head-pl-1_2-.*): read, not replayed$" "$work/stdout")"
+check "...the verdict and the differential the replay's (its base now stored too)" "$first|$first_diff" "$(cat "$work/out/verdict.txt")|$(cat "$work/out/diff.txt")"
+check "...the stored replay judged, not what the stand-in would write now" "1" "$(FAKE_HEAD_FLIPS='' DRIFT_STORE=s run)"
+check "another seed list replays" "head 1" "$(DRIFT_SEED=1 DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+check "DRIFT_TWICE replays both times" "head 1,2 head 1,2" "$(DRIFT_TWICE=true DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+check "DRIFT_FRESH (a profiled run) replays" "head 1,2" "$(DRIFT_FRESH=true DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+check "the explorer replays" "head 1,2" "$(DRIFT_EXPLORE=1 DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+check "another heap replays" "head 1,2" "$(HEAP=9g DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+mkdir -p "$repo/worker/src/fixtures"; echo harness > "$repo/worker/src/fixtures/Fill.scala"
+scratch_git "$repo" add worker/src/fixtures/Fill.scala && scratch_git "$repo" commit -qm "a replay input code_of does not see"
+check "a replay input outside the identity code replays the head" "0 head 1,2" "$(DRIFT_STORE=s run) $(paste -sd' ' "$FAKE_LOG")"
+echo more >> "$fx/identity-drift-allow.tsv"; scratch_git "$repo" add test && scratch_git "$repo" commit -qm "an allow-list row"
+check "...as does an allow-list" "head 1,2" "$(DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+echo x > "$repo/test/x"; scratch_git "$repo" add test && scratch_git "$repo" commit -qm x
+heads=$(find "$FAKE_STORE" -name "drift-head-*" | wc -l | tr -d " ")
+check "a replay that wrote no verdict is never stored" "2 $heads" "$(FAKE_FLIPS=none DRIFT_STORE=s run) $(find "$FAKE_STORE" -name "drift-head-*" | wc -l | tr -d " ")"
 
 spec_summary
