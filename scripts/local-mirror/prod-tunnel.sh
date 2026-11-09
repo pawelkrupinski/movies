@@ -192,9 +192,17 @@ ensure_prod_tunnel() {
   # ServerAlive*: a laptop that sleeps or changes network leaves a half-open TCP
   # session that neither errors nor carries data — the ~45s probe window turns
   # that into a clean exit the supervisor can restart.
+  # ControlMaster=no / ControlPath=none: the forward is THIS process's own
+  # connection. Under `ControlMaster auto` + `ControlPersist` (a `Host *` default
+  # in ~/.ssh/config) ssh hands it to a backgrounded master instead — ppid 1, the
+  # same argv — so PROD_TUNNEL_PID is a client whose kill leaves the port open for
+  # an hour, and mirror.sh's orphan sweep, which reads a ppid-1 forward as
+  # stranded, killed the live tunnel on every start (a restart every ~50 s,
+  # 2026-11-06 → 11-09, every mirror frozen).
   ssh -N -L "$PROD_TUNNEL_PORT:127.0.0.1:27017" \
       -o ExitOnForwardFailure=yes -o BatchMode=yes -o ConnectTimeout=10 \
       -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+      -o ControlMaster=no -o ControlPath=none \
       "$target" >/dev/null 2>&1 &
   PROD_TUNNEL_PID=$!
 

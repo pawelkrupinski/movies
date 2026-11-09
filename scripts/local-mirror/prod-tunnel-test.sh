@@ -18,6 +18,7 @@ for a; do port=\$a; done
 STUB
 cat > "$scratch/bin/ssh" <<STUB
 #!/bin/sh
+echo "\$*" >> "$scratch/ssh-args"
 while [ "\$1" != -L ]; do shift; done
 echo "\$2" >> "$scratch/ssh-forwards"
 touch "$scratch/open/\${2%%:*}"
@@ -68,6 +69,12 @@ two_callers
 check "each caller's ssh forwards its own port to prod's 27017" "2" "$(grep -c ':127.0.0.1:27017$' "$scratch/ssh-forwards")"
 check "the two callers use different ports" "2" "$(cut -d: -f1 "$scratch/ssh-forwards" | sort -u | wc -l | tr -d ' ')"
 check "one caller closing its tunnel leaves the other's up" "a-alive" "$(grep a-alive "$scratch/a")"
+# The forward must be THIS ssh's own connection, whatever ~/.ssh/config says. Under `ControlMaster auto` +
+# `ControlPersist` (the laptop's `Host *` since 2026-11-02) ssh hands the forward to a backgrounded master (ppid 1, the
+# same argv): close_prod_tunnel then kills only the client, the master keeps the port for an hour, and mirror.sh's
+# orphan sweep, seeing a ppid-1 forward, kills the LIVE tunnel. The mirror restarted every ~50 s, 2026-11-06 → 11-09.
+check "every tunnel ssh opts out of connection sharing" "2 2" \
+  "$(grep -c -- '-o ControlMaster=no' "$scratch/ssh-args") $(grep -c -- '-o ControlPath=none' "$scratch/ssh-args")"
 check "ensure_prod_tunnel exports the port it took" "yes" "$(bash -c '. "'"$HERE"'/prod-tunnel.sh"; ensure_prod_tunnel >/dev/null; bash -c "[ -n \"\$PROD_TUNNEL_PORT\" ]" && echo yes; close_prod_tunnel')"
 # An ssh that exits at once (refused login, unreachable host) is reported as an ssh exit with its code, at once —
 # not as "did not answer within 30s", which sent the reader looking for a slow prod (2026-11-04).
