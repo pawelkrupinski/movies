@@ -53,5 +53,18 @@ class RenovateLockstepGroups(unittest.TestCase):
                                  f"{package} has no literal coordinate in build.gradle.kts for Renovate to read")
 
 
+class RenovateRunsWhenItsWorkflowDoes(unittest.TestCase):
+    """renovate.yml's cron (and the external scheduler's dispatch of it) IS the schedule. A `schedule` in renovate.json
+    is a second window Renovate checks at run time: "before 6am on monday" against a 15:00 UTC run made every weekly
+    run do nothing (2026-10-12 .. 11-09: green runs, no PR ever opened)."""
+
+    def test_renovate_json_sets_no_schedule_of_its_own(self):
+        with open(RENOVATE) as f:
+            config = json.load(f)
+        self.assertNotIn("schedule", config, "renovate.json's schedule gates every run of renovate.yml; drop it")
+        for rule in config.get("packageRules", []):
+            self.assertNotIn("schedule", rule, f"packageRule {rule.get('groupName')!r} carries its own schedule")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -9,7 +9,6 @@
   "enabledManagers": ["gradle", "gradle-wrapper"],
   "ignorePaths": ["**/build/**", "**/target/**", "**/node_modules/**"],
   "labels": ["dependencies", "android"],
-  "schedule": ["before 6am on monday"],
   "prConcurrentLimit": 5,
   "rangeStrategy": "pin",
   "packageRules": [

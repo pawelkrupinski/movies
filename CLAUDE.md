@@ -123,9 +123,10 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
   orchestration/inspection only and must end every session clean. Worktrees may be sibling dirs or
   `.claude/worktrees/`. Enforced by `scripts/claude-hooks/root-checkout-guard` and `scripts/hooks/pre-commit`.
 - **No PRs, and never push a feature branch** — the only ref that reaches origin is `main`. The sole exceptions
-  are seven bot PRs: decoration-discovery, identity-refit, identity-capture (a PR only when its ratchet is
-  clean), discover-cinemas, retire-venues, nix-update (weekly, one PR on `nix-update/all`) and, from the same
-  workflow, movies-gitops' image-pin bumps (weekly, one PR there on `image-pins/all`); an agent may push judged verdicts to that bot's `chore/identity-capture`
+  are eight bot PRs: decoration-discovery, identity-refit, identity-capture (a PR only when its ratchet is
+  clean), discover-cinemas, retire-venues, Renovate's Android Gradle bumps (weekly, `renovate.yml`), nix-update
+  (weekly, one PR on `nix-update/all`) and, from the same workflow, movies-gitops' image-pin bumps (weekly, one PR
+  there on `image-pins/all`); an agent may push judged verdicts to that bot's `chore/identity-capture`
   branch (`identity-investigation` skill); and `scripts/mobile-ship.sh` pushes only the release commit it cut in its
   own detached worktree.
 - **Landing:** all relevant layers green → `~/bin/agentctl land` from your own worktree (it rebases; the hook runs

@@ -11,8 +11,9 @@ name: Renovate
 #
 # It needs the Sync Bot App and opens PRs.
 on:
-    # Weekly sweep — Monday 15:00 UTC (06:xx is the daily Scala Steward's). Renovate batches and dedups against open
-    # PRs, so a quiet week produces nothing.
+    # Weekly sweep — Monday 15:00 UTC (06:xx is the daily Scala Steward's). This cron is the ONLY schedule:
+    # renovate.json sets none (a window there is checked at run time, and "before 6am on monday" made every 15:00 run
+    # a no-op; renovate_config_test.py). Renovate batches and dedups against open PRs, so a quiet week produces nothing.
     schedule:
         - cron: '0 15 * * 1'
     # The external scheduler's run of a cron slot (infra/nix/files/scheduled_dispatch.py; GitHub's own
