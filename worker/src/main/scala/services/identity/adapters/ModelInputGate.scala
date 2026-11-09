@@ -39,6 +39,8 @@ final class ModelInputGate(
    *  and a restart took the unready version in. */
   private val unwritten = mutable.Set.empty[ListingKey]
 
+  /** Every held listing's newest version: what the gate's next pass reads the readiness of. */
+  def heldVersions: Seq[Listing] = pending.values.asScala.iterator.map(_.newest).toSeq
   /** The held listings new to the model (no version of theirs taken in), by key. */
   def heldNew: Seq[Held] = pending.values.asScala.filter(_.ready.isEmpty).toSeq.sortBy(h => ListingKey.serialised(h.newest.key))
   /** Each held listing's stand-in (its version under the key its venue billed it by before): kept until it is taken in. */

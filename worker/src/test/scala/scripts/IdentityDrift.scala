@@ -495,8 +495,10 @@ object IdentityDrift {
     private val inputs   = inputsOf(reads)
     // an update's regions resolved on every core: the replay is the model's work event after event, one thread's while
     // they were resolved in turn (a drift row busy on 2 of its 4 cores; docs/investigations/2026-11-01-twenty-runners.md)
+    // and a take-up's (the boot, each deploy) as the worker's own take-up resolves them side by side
+    // (WorkerWiring.IdentityTakeUpThreads; the same decisions however many, IncrementalResolverSpec)
     private def newModel() = inputs.incremental(gate, reads.normalizer, families, code = rules, IdentityTraceSink.Discard,
-      regionThreads = RegionThreads)
+      regionThreads = RegionThreads, takeUpThreads = RegionThreads)
     var model: IncrementalResolver = newModel()
     /** A stage wired to the answer feed as the worker wires the live one (IdentityProjectionWiring.agreementStage): the
      *  TMDB finds and records it waits on, and the records and searches it read, move its answers' version when filed. */
@@ -521,6 +523,15 @@ object IdentityDrift {
      *  the replay's answers, its held listings persisted as the worker's `identity_pending` is -- resumed at a deploy. */
     val inputGate = new ModelInputGate(gating(new AgreementReadiness(listing => stage.questionsOf(listing), attempted, gateAsked ++= _)),
       new PendingListingStore.InMemory(), clock)
+    /** The gate's readiness of `listings` read ahead, side by side on every core, before the gate's pass reads it one listing
+     *  at a time as the worker's gate does: each listing's questions are its family verdicts' gaps
+     *  ([[AgreementStage.questionsOf]]), a resolve per family, which the pass then finds kept ([[agreement.FamilyVerdicts]]).
+     *  The same questions either way -- a function of the listing and the answers filed, and the pass files none -- so this
+     *  moves no take, only the time: the gate's reads were a quarter of a UK replay's model thread (2026-11-09 profile). */
+    private def readAhead(listings: Seq[Listing]): Unit = {
+      val reading = stage
+      tools.ConcurrentAsks.each(listings, atOnce = RegionThreads)(listing => { val _ = reading.questionsOf(listing) })
+    }
     /** The gate's asks answered, then every held listing they made ready promoted -- again while the answers led to more
      *  asks, as each filing wakes the worker's drain within seconds: what the next step's batch takes in. */
     private def promoted(): Seq[Listing] = {
@@ -528,6 +539,7 @@ object IdentityDrift {
       var rounds = 0
       while ({
         if (gateAsked.nonEmpty) { val asked = gateAsked.toSet; gateAsked.clear(); answers.fileNow(asked, releaseFamily) }
+        readAhead(inputGate.heldVersions)
         taken ++= inputGate.admit(model, Nil)._2
         rounds += 1
         gateAsked.nonEmpty && rounds < GateAskRounds
@@ -537,7 +549,10 @@ object IdentityDrift {
     /** The venues of `listings` as the worker's drain hands the gate a scrape: each venue's listings billed now. */
     private def gated(venues: Iterable[String]): Seq[Listing] = {
       val billed = held.values.iterator.filterNot(l => retained(l.key)).toSeq.groupBy(_.venue)
-      inputGate.admit(model, venues.toSeq.distinct.sorted.map(v => v -> billed.getOrElse(v, Nil).sorted)) match {
+      val scraped = venues.toSeq.distinct.sorted.map(v => v -> billed.getOrElse(v, Nil).sorted)
+      // the versions the model does not hold, whose readiness the pass reads, and the held ones it reads again
+      readAhead(scraped.flatMap(_._2).filterNot(l => model.held(l.key).contains(l)) ++ inputGate.heldVersions)
+      inputGate.admit(model, scraped) match {
         case (taken, promoted) => taken ++ promoted
       }
     }
