@@ -415,6 +415,17 @@ supervise_db() {
   # OUR background child: left alone it streamed on as an orphan, and the restarted
   # daemon tailed the same database a second time beside it.
   trap '[ -z "$tailpid" ] || kill "$tailpid" 2>/dev/null; exit 143' TERM INT
+  # A supervisor never ends on purpose, so when one does it says which, how and on
+  # what — the parent restarts everything the moment one is gone, and a death that
+  # left no line (2026-11-09: a restart every ~25 s for hours, the log showing only
+  # "database supervisor <pid> is gone") cannot be told from any other. errtrace
+  # carries the ERR report into the functions this calls, where `set -e` would end it.
+  set -o errtrace
+  trap 'echo "[mirror] $srcdb: supervisor failing on \`$BASH_COMMAND\` (exit $?)" >&2' ERR
+  # The name is expanded NOW: bash 3.2 (launchd's) runs an EXIT trap after the
+  # function's locals are gone, where `$srcdb` under `set -u` is itself an error.
+  # shellcheck disable=SC2064
+  trap "echo \"[mirror] $srcdb: supervisor ended (exit \$?)\" >&2" EXIT
   while true; do
     stop_if_orphaned "$srcdb" "$tailpid"
     if ! ensure_local_mongo; then echo "[mirror] $srcdb: local Mongo unavailable — retrying in 5s"; sleep 5; continue; fi

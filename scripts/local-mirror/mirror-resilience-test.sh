@@ -349,6 +349,29 @@ supervisor_stops_when_its_parent_dies() {
 check "a supervisor whose parent died stops its tailer and exits on its own" \
   supervisor_stops_when_its_parent_dies
 
+# ── A supervisor that dies says so ───────────────────────────────────────────
+# The parent restarts the whole mirror the moment one supervisor is gone, so a
+# supervisor ending silently reads in the log as nothing but "database supervisor
+# <pid> is gone" — on 2026-11-09 once every ~25 s for hours, with no way to tell
+# which database or what ended it. A command failing bare under `set -e`, inside a
+# function the loop calls, must leave its database, the command and the status.
+supervisor_death_is_reported() {
+  local out
+  out="$( (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    trap - EXIT INT TERM
+    stop_if_orphaned() { failing_step; }
+    failing_step() { false; }
+    supervise_db kinowo_fleet 0
+  ) 2>&1 )"
+  printf '%s\n' "$out" | grep -q 'kinowo_fleet: supervisor failing on `false` (exit 1)' &&
+    printf '%s\n' "$out" | grep -q 'kinowo_fleet: supervisor ended (exit 1)'
+}
+
+check "a supervisor that dies names its database, the failing command and the status" \
+  supervisor_death_is_reported
+
 # ── Only the tunnel keeper opens the tunnel ──────────────────────────────────
 # Every supervisor used to (re)open the shared forward when its own probe missed,
 # killing the one its siblings were streaming through: 12,042 tunnel opens in the
