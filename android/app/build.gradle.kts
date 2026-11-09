@@ -348,11 +348,11 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-network-cache-control:3.6.3")
 
     // Backdrop blur for the floating search pill — real frosted-glass that
-    // distorts the grid scrolling under it (RenderEffect on API 32+, graceful
-    // tint-only fallback below). Held on 1.7.x: Haze 2.0 removed this
-    // `hazeEffect` + `HazeStyle`/`HazeTint` surface for the typed `hazeBlur`
-    // (separate haze-blur artifact), a migration of its own.
-    implementation("dev.chrisbanes.haze:haze:1.7.3")
+    // distorts the grid scrolling under it (RenderEffect on API 31+, plain
+    // see-through glass below). `haze` holds the source/state; the blur effect
+    // itself (`hazeBlur`) lives in `haze-blur` since Haze 2.0.
+    implementation("dev.chrisbanes.haze:haze:2.1.0")
+    implementation("dev.chrisbanes.haze:haze-blur:2.1.0")
 
     implementation("com.squareup.okhttp3:okhttp:5.5.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")

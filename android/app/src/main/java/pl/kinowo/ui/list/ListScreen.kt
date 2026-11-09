@@ -91,10 +91,11 @@ import pl.kinowo.ui.common.labelText
 import pl.kinowo.ui.common.PosterGridMetrics
 import pl.kinowo.ui.common.PosterPrefetch
 import pl.kinowo.ui.common.viewportWidthDp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazePerformanceMode
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import pl.kinowo.ui.theme.Background
 import pl.kinowo.ui.theme.Brand
@@ -142,7 +143,7 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
     var refreshing by remember { mutableStateOf(false) }
 
     // Backdrop captured by `Modifier.hazeSource` (the grid) and sampled by the
-    // floating search pill's `hazeEffect` to blur whatever scrolls under it.
+    // floating search pill's `hazeBlur` to blur whatever scrolls under it.
     val hazeState = remember { HazeState() }
     var showFilters by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -250,7 +251,7 @@ fun ListScreen(viewModel: KinowoViewModel, onOpenFilm: (String) -> Unit) {
             // The search field floats over the grid as a bottom capsule
             // (mirrors the iOS `SearchBar`) rather than taking its own row.
             // The grid is the haze source; the pill samples it through
-            // `hazeEffect`, so the cards blur and shift as they scroll under it.
+            // `hazeBlur`, so the cards blur and shift as they scroll under it.
             // Bottom content padding keeps the last row clear of the pill.
             Box(Modifier.fillMaxSize()) {
                 // No floating pill on wide screens (search is inline up top), so the
@@ -395,8 +396,22 @@ private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
 // a trailing clear glyph that appears once there's a query. `imePadding`
 // (applied by the caller) lifts it above the soft keyboard on focus; the
 // grids reserve `SearchBarBottomInset` so their last row clears the pill.
+// The pill's clear-glass blur. Enough blur to visibly distort the cards
+// underneath, but no tint and no noise grain — so it reads as clear,
+// see-through glass (like the iOS `.ultraThinMaterial`) rather than a frosty
+// pane. The blur composites over the opaque app background. Below API 31
+// (no RenderEffect) Haze skips the blur and, with no tint to fall back on, the
+// pill is plain see-through glass. Hoisted: a HazeBlurStyle compares by identity.
+private val SearchPillGlass = HazeBlurStyle {
+    backgroundColor(Background)
+    blurRadius(1.dp)
+    noiseFactor(0f)
+}
+
+// Internal (not private) so FloatingSearchBarBlurTest can render it over a
+// known backdrop and pixel-sample the blur.
 @Composable
-private fun FloatingSearchBar(
+internal fun FloatingSearchBar(
     value: String,
     onValueChange: (String) -> Unit,
     hazeState: HazeState,
@@ -407,24 +422,17 @@ private fun FloatingSearchBar(
         modifier
             .padding(horizontal = 24.dp, vertical = 14.dp)
             .fillMaxWidth()
+            .testTag(FloatingSearchBarTag)
             .clip(shape)
-            // Real frosted glass: blur the grid captured by `hazeSource` and lay a
-            // whisper-thin light tint over it, so the pill reads as clear glass
-            // (like the iOS `.ultraThinMaterial`) rather than a solid fill. The
-            // hairline white border catches the edge against busy posters.
-            .hazeEffect(
-                state = hazeState,
-                style = HazeStyle(
-                    // The opaque base Haze composites the blur over (the app
-                    // background) — required, else it throws at draw time.
-                    backgroundColor = Background,
-                    // Keep enough blur to visibly distort the cards underneath,
-                    // but barely any tint and no noise grain — so it reads as
-                    // clear, see-through glass rather than a frosty pane.
-                    blurRadius = 1.dp,
-                    tint = HazeTint(Color.White.copy(alpha = 0.0f)),
-                    noiseFactor = 0f,
-                ),
+            // Real frosted glass: blur the grid captured by `hazeSource`
+            // (SearchPillGlass). The hairline white border catches the edge
+            // against busy posters.
+            .hazeBlur(
+                input = HazeInput.Sources(hazeState),
+                style = SearchPillGlass,
+                // Full-resolution input: at a 1dp radius any downscaling of the
+                // backdrop shows as pixelation (Haze 2's default samples at ~0.8×).
+                performanceMode = HazePerformanceMode.Quality,
             )
             .border(1.dp, Color.White.copy(alpha = 0.22f), shape)
             .padding(horizontal = 18.dp, vertical = 13.dp),
@@ -735,6 +743,7 @@ internal fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bot
 
 /** Test tag on the initial-load spinner so Robolectric can assert it renders. */
 internal const val LoadingSpinnerTag = "loading-spinner"
+internal const val FloatingSearchBarTag = "floating-search-bar"
 
 // Centred spinner + label shown on the first load of a city, before any films
 // arrive (mirrors the iOS `ListingLoadingView`). On later launches cached films render
