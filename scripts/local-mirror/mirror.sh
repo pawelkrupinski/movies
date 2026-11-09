@@ -163,7 +163,23 @@ sweep_orphans() {
 TUNNEL_TAG="mirror"
 tunnel_ready() { prod_tunnel_answers; }
 cleanup() { close_prod_tunnel; }
-trap cleanup EXIT INT TERM
+
+# Runs <handler> on the way out, and makes TERM and INT END the script. A trap
+# that only cleans up (`trap cleanup EXIT INT TERM`) runs the handler and then
+# RESUMES: bash defers a caught signal until the foreground command finishes, so
+# a TERM landing mid-command (the startup sweep, a staleness check) killed every
+# child and carried on into the final `wait`, which then waited forever on the
+# rotator — a live parent with no tailer, no tunnel and no supervisor, so launchd
+# never restarted it. That sat unnoticed 2026-11-07 → 11-09 with every mirror 71 h
+# stale. `exit` from the signal trap runs the EXIT trap, so the handler still runs
+# exactly once.
+exit_on_signal() {
+  # shellcheck disable=SC2064 # the handler is expanded now, on purpose
+  trap "$1" EXIT
+  trap 'exit 143' TERM
+  trap 'exit 130' INT
+}
+exit_on_signal cleanup
 
 # How often the keeper probes, how many probes in a row may miss before a forward
 # whose ssh is still ALIVE counts as dead (a miss under load is not a dead
@@ -518,6 +534,11 @@ await_supervisor_exit() {
   done
 }
 
+# The parent's way out: TERM every child it started (the tunnel keeper closes the
+# forward it holds on that TERM), drop the digest file, close any tunnel.
+cleanup_children() { for pid in "${CHILDREN[@]:-}"; do kill "$pid" 2>/dev/null || true; done; }
+stop_parent() { cleanup_children; rm -f "${TARGETS_FP_FILE:-}"; cleanup; }
+
 # ── Fan out: one supervised tailer per database ──────────────────────────────
 # Everything below runs only when this file is EXECUTED. Sourced (by
 # mirror-resilience-test.sh, which drives `supervise_db` against stubs) it must
@@ -543,8 +564,7 @@ MIRROR_PARENT_PID=$$
 # closes the forward it holds on that TERM — so Ctrl-C or a restart strands no
 # background mongosh or ssh.
 CHILDREN=()
-cleanup_children() { for pid in "${CHILDREN[@]:-}"; do kill "$pid" 2>/dev/null || true; done; }
-trap 'cleanup_children; rm -f "${TARGETS_FP_FILE:-}"; cleanup' EXIT INT TERM
+exit_on_signal stop_parent
 
 # The tunnel has to be up before we can list databases, so its keeper starts
 # first; from here on it is the only thing that opens or closes the forward.

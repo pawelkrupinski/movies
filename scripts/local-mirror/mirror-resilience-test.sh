@@ -536,6 +536,46 @@ exits_when_a_supervisor_dies() {
 check "the parent stops watching the moment a database supervisor dies" \
   exits_when_a_supervisor_dies
 
+# …and when it is TERMed it has to END, not just clean up. A trap that ran the
+# cleanup and resumed (`trap … EXIT INT TERM`) let a TERM that landed while the
+# parent was mid-command (the startup sweep) kill every child, after which the
+# parent went on into its final `wait` — on a rotator that ends only with the
+# parent. A live pid with nothing under it: every mirror 71 h stale, 2026-11-07 →
+# 11-09. The parent here is the real `exit_on_signal stop_parent`; the foreground
+# loop stands for the sweep, the background sleep for the rotator.
+term_mid_command_ends_the_parent() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-term.XXXXXX")"
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    close_prod_tunnel() { :; }
+    CHILDREN=()
+    command sleep 86400 & CHILDREN+=($!); echo "$!" > "$work/child"
+    exit_on_signal stop_parent
+    touch "$work/armed"
+    wait_until "the case sent its TERM" "[ -f '$work/termed' ]" || true
+    command sleep 86400 & CHILDREN+=($!); echo "$!" > "$work/rotator"
+    wait
+  ) >/dev/null 2>&1 &
+  local parent=$!
+  wait_until "the parent armed its traps" "[ -f '$work/armed' ] || ! process_runs $parent"
+  kill -TERM "$parent" 2>/dev/null || true
+  touch "$work/termed"
+  local ended=yes child_stopped=yes pid
+  wait_until "the TERMed parent is gone" "! process_runs $parent" || ended=no
+  pid="$(cat "$work/child" 2>/dev/null)"; [ -n "$pid" ] && process_runs "$pid" && child_stopped=no
+  # Stragglers, whichever way the case went.
+  for pid in "$parent" "$(cat "$work/child" 2>/dev/null)" "$(cat "$work/rotator" 2>/dev/null)"; do
+    [ -n "$pid" ] && kill "$pid" 2>/dev/null
+  done
+  wait "$parent" 2>/dev/null
+  rm -rf "$work"
+  [ "$ended" = yes ] && [ "$child_stopped" = yes ]
+}
+
+check "a TERM that lands mid-command ends the parent and stops its children" \
+  term_mid_command_ends_the_parent
+
 # ── Sourcing must be side-effect free ────────────────────────────────────────
 # The spec above depends on it, and so does anything else that wants these
 # functions: asking the vault for a secret or opening a tunnel at load time would
