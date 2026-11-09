@@ -89,6 +89,7 @@ worker:deploy.IdentityModelConvergenceWiringSpec	@repo
 worker:deploy.IdentityRefitWorkflowSpec	@repo
 worker:deploy.IdentitySliceOldRefGateSpec	@repo
 worker:deploy.IdentityTakesWiringSpec	@repo
+worker:deploy.OrderCompareWiringSpec	@repo
 worker:deploy.JdkVersionParitySpec	@repo
 worker:deploy.JunitReportNoCheckRunSpec	@repo
 worker:deploy.K8sDeployKubeconfigAccessSpec	@repo infra/nix/modules/roles/k3s-server.nix infra/nix/modules/roles/k8s-deploy.nix
