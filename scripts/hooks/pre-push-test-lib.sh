@@ -20,6 +20,10 @@ unset PREPUSH_REUSE_DIR
 # run by the hook's scripttests check, it inherits the hook's stall marks (stall-watch.sh): its own stalls are no stall of
 # that check
 unset KINOWO_STALL_FILE KINOWO_PROGRESS_FILE
+# ...and the landing precheck's GitOps mark (scripts/land-precheck exports PREPUSH_GITOPS=1 once it fetched the
+# manifests, then runs the script tests): inherited, every scratch push's lint plan took the @gitops specs, and two
+# cases failed the precheck that pass on their own (2026-11-09). The cases that want it set it themselves.
+unset PREPUSH_GITOPS
 unset PREPUSH_GATE_ATTEMPTS
 # The gate's retries come back at once: a failing read is asked 3 times without a pause between.
 export PREPUSH_GATE_RETRY_SECONDS=0
