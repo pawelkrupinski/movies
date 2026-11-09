@@ -16,7 +16,7 @@ import scala.collection.mutable
  *  read in the caller's receipt and gaps exactly as reading it afresh does ([[AgreementStage.noted]]).
  *
  *  Kept for [[FamilyVerdicts.KeptApplies]] applies after its last use: a quiet production tick reads no verdict, so what a
- *  burst of applies (a boot, a settle) shares is dropped once it is over. Used under the stage's apply lock. */
+ *  burst of applies (a boot, a settle) shares is dropped once it is over. Its own lock guards what is kept alone ([[verdict]]). */
 private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalizer: TitleNormalizer, calibrations: Map[VoterFamily, IdentityCalibration]) {
   import FamilyVerdicts.*
 
@@ -25,22 +25,32 @@ private[agreement] final class FamilyVerdicts(venues: IdentityLookups, normalize
   /** How many verdicts were resolved and how many handed back kept, since the stage was made. */
   private[agreement] var resolved, handedBack = 0L
 
-  /** `answers`' family's verdict over `listings`, noting what it read in `asked` and `reads` as a [[AgreementStage.Recording]] does. */
+  /** `answers`' family's verdict over `listings`, noting what it read in `asked` and `reads` as a [[AgreementStage.Recording]] does.
+   *  A verdict not kept is resolved OUTSIDE the lock, so verdicts over other listings resolve side by side (the model's input
+   *  gate reading many listings' questions at once: `scripts.IdentityDrift`'s replay): the lock guards what is kept, never a
+   *  resolve, which reads nothing kept. Two callers resolving one verdict at once both keep it, alike: a function of its reads. */
   def verdict(listings: Seq[Listing], answers: FamilyAnswers, asked: mutable.Set[services.identity.Question],
-              reads: mutable.Map[services.identity.Dependency, Long]): Answer[FamilyVerdict] = synchronized {
-    val key = (answers.family, listings.map(_.key))
-    kept.get(key).filter(k => k.listings == listings && k.read.forall(_.stands(answers, venues))) match {
-      case Some(k) =>
+              reads: mutable.Map[services.identity.Dependency, Long]): Answer[FamilyVerdict] = {
+    val key    = (answers.family, listings.map(_.key))
+    val handed = synchronized {
+      kept.get(key).filter(k => k.listings == listings && k.read.forall(_.stands(answers, venues))).map { k =>
         k.usedAt = applies
         handedBack += 1
+        k
+      }
+    }
+    handed match {
+      case Some(k) =>
         k.read.foreach(_.note(answers, asked, reads))
         k.verdict
       case None =>
         val tape    = mutable.ArrayBuffer.empty[Read]
         val verdict = Agreement.verdict(listings, new AgreementStage.Recording(new Taping(answers, tape), asked, reads),
           new TapingVenues(venues, tape), normalizer, calibrations(answers.family))
-        kept(key) = Kept(listings, tape.distinct.toArray, verdict, applies)
-        resolved += 1
+        synchronized {
+          kept(key) = Kept(listings, tape.distinct.toArray, verdict, applies)
+          resolved += 1
+        }
         verdict
     }
   }

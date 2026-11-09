@@ -77,6 +77,31 @@ class FamilyVerdictsSpec extends AnyFlatSpec with Matchers {
     (kept.resolved, kept.handedBack) shouldBe ((2L, 0L))
   }
 
+  // The input gate reads many listings' questions, each a verdict resolve: the replay reads them side by side
+  // (scripts.IdentityDrift's Worker), which one lock held across every resolve made one at a time.
+  it should "resolve verdicts over other listings at once, each as a fresh resolve reads it" in {
+    val kept    = verdicts
+    val other   = Seq(listing(KinoMuza, "Nosferatu", year = Some(1922)))
+    // each resolve's first answer read waits for the other's: both inside a resolve at the same moment, or neither returns
+    val meeting = new java.util.concurrent.CyclicBarrier(2)
+    final class Meeting(inner: FamilyAnswers) extends FamilyAnswers {
+      val family: VoterFamily = inner.family
+      private val met = ThreadLocal.withInitial[java.lang.Boolean](() => false)
+      private def meet(): Unit = if (!met.get) { met.set(true); val _ = meeting.await(10, java.util.concurrent.TimeUnit.SECONDS) }
+      def titled(text: String): Answer[Seq[SourceHit]]     = { meet(); inner.titled(text) }
+      def directedBy(name: String): Answer[Seq[SourceHit]] = { meet(); inner.directedBy(name) }
+      def record(id: String): Answer[Option[SourceRecord]] = { meet(); inner.record(id) }
+      override def fresh(question: String): Boolean        = inner.fresh(question)
+    }
+    val answers = new Meeting(held)
+    val pool    = java.util.concurrent.Executors.newFixedThreadPool(2)
+    try {
+      val both = Seq(bare, other).map(listings => pool.submit(() => through(kept, listings, answers)))
+      both.map(_.get(30, java.util.concurrent.TimeUnit.SECONDS)) shouldBe Seq(afresh(bare, held), afresh(other, held))
+    } finally { val _ = pool.shutdownNow() }
+    kept.resolved shouldBe 2L
+  }
+
   it should "be dropped once no apply used it for a while" in {
     val kept = verdicts
     through(kept, bare, held)
