@@ -14,7 +14,8 @@
 #     rng) is a HARNESS ERROR (2), never flips; a question only the head asks is its own; a base with no scenario (from
 #     before the guard) is not compared.
 #   - THE HEAD'S MEMO: a head whose replay inputs a run already replayed reads that replay (the same verdict, nothing
-#     replayed); another seed list, heap, a replay input code_of does not see or an allow-list replays; DRIFT_TWICE,
+#     replayed); another seed list, heap or any replay input (worker/src/fixtures, data/, a new module, infra/jvm, an
+#     allow-list, the check) replays, and is not the same identity code; docs, web, CI wiring do not; DRIFT_TWICE,
 #     DRIFT_FRESH and the explorer always replay; a replay with no verdict is never stored.
 # Run: bash scripts/ci/identity-drift-check-test.sh
 set -uo pipefail
@@ -201,11 +202,28 @@ check "DRIFT_TWICE replays both times" "head 1,2 head 1,2" "$(DRIFT_TWICE=true D
 check "DRIFT_FRESH (a profiled run) replays" "head 1,2" "$(DRIFT_FRESH=true DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
 check "the explorer replays" "head 1,2" "$(DRIFT_EXPLORE=1 DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
 check "another heap replays" "head 1,2" "$(HEAP=9g DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+# THE REPLAY'S INPUTS (replay_tree_of): the whole tree but what no worker/Test build reads -- one key for the memo and
+# for same-code. A path no list named (a module's src/fixtures, data/, a new module) is an input; only the named
+# outsiders (docs, web, CI wiring, scripts but the check) are not.
 mkdir -p "$repo/worker/src/fixtures"; echo harness > "$repo/worker/src/fixtures/Fill.scala"
-scratch_git "$repo" add worker/src/fixtures/Fill.scala && scratch_git "$repo" commit -qm "a replay input code_of does not see"
-check "a replay input outside the identity code replays the head" "0 head 1,2" "$(DRIFT_STORE=s run) $(paste -sd' ' "$FAKE_LOG")"
+scratch_git "$repo" add worker/src/fixtures/Fill.scala && scratch_git "$repo" commit -qm "a fixtures-only change"
+check "a change only under worker/src/fixtures misses the memo, and its base is replayed (not the same identity code)" \
+  "head 1,2 base 1 base 2" "$(DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+check "...the same change without a store is not the same identity code either" "1" \
+  "$(FAKE_HEAD_FLIPS='Kino Muza|New Film' run > /dev/null; grep -c '^      Kino Muza | New Film' "$work/stdout" | sed 's/^[1-9][0-9]*$/1/')"
+for input in data/pl/rows.tsv newmodule/src/main/A.scala infra/jvm/worker.opts; do
+  mkdir -p "$repo/$(dirname "$input")"; echo "$input" > "$repo/$input"; scratch_git "$repo" add "$input" && scratch_git "$repo" commit -qm "$input"
+  check "a change only to $input misses the memo" "head 1,2" "$(DRIFT_STORE=s run > /dev/null; grep -o 'head 1,2' "$FAKE_LOG" | head -1)"
+done
+DRIFT_STORE=s run > /dev/null
+for outsider in docs/x.md web/app/A.scala .github/workflows/x.yml scripts/hooks/x.sh README.md; do
+  mkdir -p "$repo/$(dirname "$outsider")"; echo "$outsider" > "$repo/$outsider"; scratch_git "$repo" add "$outsider" && scratch_git "$repo" commit -qm "$outsider"
+  check "a change only to $outsider reads the memo" "" "$(DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+done
 echo more >> "$fx/identity-drift-allow.tsv"; scratch_git "$repo" add test && scratch_git "$repo" commit -qm "an allow-list row"
-check "...as does an allow-list" "head 1,2" "$(DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
+check "an allow-list misses the memo" "head 1,2" "$(DRIFT_STORE=s run > /dev/null; grep -o 'head 1,2' "$FAKE_LOG" | head -1)"
+echo more >> "$repo/scripts/ci/identity-drift-check.sh"; scratch_git "$repo" add scripts && scratch_git "$repo" commit -qm "the check"
+check "...as does the check itself" "head 1,2" "$(DRIFT_STORE=s run > /dev/null; grep -o 'head 1,2' "$FAKE_LOG" | head -1)"
 echo x > "$repo/test/x"; scratch_git "$repo" add test && scratch_git "$repo" commit -qm x
 heads=$(find "$FAKE_STORE" -name "drift-head-*" | wc -l | tr -d " ")
 check "a replay that wrote no verdict is never stored" "2 $heads" "$(FAKE_FLIPS=none DRIFT_STORE=s run) $(find "$FAKE_STORE" -name "drift-head-*" | wc -l | tr -d " ")"

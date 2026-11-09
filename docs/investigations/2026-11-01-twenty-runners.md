@@ -1151,3 +1151,14 @@ replay, +13 min) and an EPYC 7763; neither is a slow seed. One seed a row alread
 still replayed a head whose inputs its parent's run had replayed. The head's replay is now stored under the key of
 everything it reads (identity-drift-check.sh, "THE HEAD'S REPLAY IS A FUNCTION OF ITS INPUTS") and read back: such a
 row is its setup alone. Any input moved, `DRIFT_TWICE`, the explorer, a profiled run and the A/A passes replay.
+
+**The key, 2026-11-09 (second commit):** the memo and the base's same-code check share one key, `replay_tree_of`: the
+whole tree but the named outsiders (docs, web, e2e, the mobile apps, page tests, CI wiring, infra but `infra/jvm/`,
+scripts but the check). The first cut keyed the memo on a list of module `src/` dirs (it missed `data/` and any new
+module), and `code_of` read only `src/main` plus the harness's `scripts/` dir, so a change only under
+`worker/src/fixtures` (CatalogueFill, ReplayOrder) counted as "the same identity code" and its flips as pre-existing.
+An exclusion list fails safe: a forgotten path costs a replay, never a stale reading. 25 of main's last 40 commits leave
+the key unchanged.
+
+**CPU variance: noted, no action.** Hosted runners' CPU type alone moves a drift replay about 2x (above). The rows
+are not pinned to a CPU type.

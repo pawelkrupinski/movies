@@ -37,9 +37,10 @@ whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-red
   `removed:`. Divergences (incremental != whole end state) fail outright, as before.
 - **The head's replay of the same inputs is read, not run** (2026-11-09). The replay is a function of its inputs
   (`DRIFT_TWICE`, the daily full run, proves it), so each head's replay is stored (`drift-head-<cc>-<seeds>-<key>` on
-  `identity-drift`), keyed by everything it can read: the tree of every module on worker/Test's classpath (each
-  module's whole `src/`), the build, `test/` (allow-lists, judgements, backlog), the check and its helpers, the
-  recording, the JDK and the heap. A head whose inputs a run already replayed reads that replay: on 2026-11-08..09
+  `identity-drift`), keyed by everything it can read: `replay_tree_of`, the whole tree but the named outsiders no
+  worker/Test build reads (docs, web, e2e, the mobile apps, page tests, CI wiring, infra but `infra/jvm/`, scripts but
+  the check; a forgotten path costs a replay, never a stale reading), with the recording, the JDK and the heap. The
+  base's "same identity code" is the same key. A head whose inputs a run already replayed reads that replay: on 2026-11-08..09
   8 of 10 main runs changed no identity code, and a UK row spent 13 of its 16 minutes replaying a head its parent had
   replayed. `DRIFT_TWICE`, the explorer, a profiled run (`DRIFT_FRESH`) and the A/A passes always replay.
 - **One seed, one arrangement, whatever the code asks** (2026-11-05). Head and base are comparable only if a seed hands

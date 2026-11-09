@@ -21,16 +21,15 @@
 # THE BASE, per seed: the newest first-parent ancestor (DRIFT_BASE_DEPTH, 60) whose result for that seed main STORED
 # GREEN -- so a flip a red commit added stays the change's until it is fixed, never absorbed by the next commit --
 # else the parent (on main) or the merge-base with main (a branch), resolved here. DRIFT_BASE names one outright.
-# A base whose IDENTITY CODE (the paths that can move a take, and the drift harness: code_of below) is the head's has,
+# A base whose IDENTITY CODE (every input the replay reads: code_of / replay_tree_of below) is the head's has,
 # over the same recording and seed, the head's flips: nothing is replayed twice, every flip is pre-existing -- so a
 # commit touching no identity code can never be red on flips.
 # THE STORE (DRIFT_STORE, a release; empty: nothing stored or read): each green head on main stores each seed's flips
 # as `drift-green-<cc>-<seed>-<key>.tsv.gz`, and a base resolved here as `drift-calc-...` (any ref: the key names the
 # code, the recording and the seed, never the ref); the walk above reads only the green ones.
 # THE HEAD'S REPLAY IS A FUNCTION OF ITS INPUTS (DRIFT_TWICE proves it daily): stored as `drift-head-<cc>-<seeds>-<key>`,
-# its key everything the replay can read -- the tree of every module on worker/Test's classpath (all of each module's
-# src/, not code_of's src/main), the build, test/ (the recording's pins, the allow-lists, the judgements, the backlog),
-# this check and its helpers, the recording, the JDK and the heap -- a head whose inputs a run already replayed reads
+# its key everything the replay can read -- replay_tree_of (the whole tree but what no worker/Test build reads, this
+# check included), the recording, the JDK and the heap -- a head whose inputs a run already replayed reads
 # that replay instead of running it again (8 of 10 of main's runs, 2026-11-08..09: commits outside the identity code;
 # a UK row 13 of its 16 minutes). Any input moved replays. Never read: DRIFT_TWICE (it exists to replay), the
 # explorer, DRIFT_FRESH=true (a profiled run), and no DRIFT_STORE (the A/A passes): those always replay.
@@ -99,9 +98,22 @@ replay() {
 head_options=(--allow "$fixtures/identity-drift-allow.tsv" --flips-allow "$fixtures/identity-flips-allow.tsv" --labels "$fixtures/identity-judgements.tsv")
 
 # ---- THE STORE (see the header) ----
-code_paths=(geodata/src/main base/src/main http/src/main common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/it/scala
-            testkit/src/main build.sbt project worker/src/test/scala/scripts)
-code_of() { git -C "$here" ls-tree -r "$1" -- "${code_paths[@]}" | sha256sum | cut -c1-24; } # <sha>
+# THE REPLAY'S INPUTS at <sha>: the whole tree but what no build of worker/Test reads -- the apps and modules outside its
+# classpath (web, e2e, the mobile apps, the page tests), docs, infra but infra/jvm/ (build.sbt reads it), CI wiring, and
+# scripts but this check. An
+# exclusion list, never an inclusion list: a path added anywhere else (a module's src/fixtures, a resource dir, a seeds
+# file, a new module) is an input until named here, so a forgotten one costs a replay, never a stale reading. The
+# recording, which is not in git, is recording_key's. One key for both the head's memo and the base's same-code.
+replay_tree_of() { # <sha>
+  git -C "$here" -c core.quotePath=false ls-tree -r "$1" | awk -F'\t' '
+    { p = $2; top = p; sub(/\/.*/, "", top) }
+    p == top { if (p ~ /\.sbt$/ || p == ".jvmopts" || p == ".sbtopts") print; next }
+    top ~ /^(docs|\.claude|\.github|web|e2e|ios|android|page-tests-playwright|eslint-rules|tools)$/ { next }
+    top == "infra" { if (p ~ /^infra\/jvm\//) print; next }   # build.sbt reads infra/jvm/
+    top == "scripts" { if (p == "scripts/ci/identity-drift-check.sh") print; next }
+    { print }' | sha256sum | cut -c1-24
+}
+code_of() { replay_tree_of "$1"; } # <sha>
 recording_key=$( { printf '%s\n' "$cc" "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" "${KINOWO_CONVERGENCE_TREE_ASSET:-}" "${KINOWO_CONVERGENCE_FILL_ASSETS:-}"
                    cat "$fixtures/corpus/cinema-scrapes-$cc.json.gz" "$fixtures/identity-unmatched/$cc.json.gz" "$fixtures/identity-unmatched/$cc.inputs" 2> /dev/null
                    ( cd "$fixtures" && find "enrichment-$cc" -type f -printf '%P %s\n' 2> /dev/null | LC_ALL=C sort ); } | sha256sum | cut -c1-24)
@@ -132,10 +144,7 @@ keep() { # <file> <asset>: store a result, never failing the check
 }
 
 # ---- THE HEAD'S REPLAY, or the stored replay of the same inputs (see the header) ----
-replay_inputs=(geodata/src base/src http/src common/src identity/src scrapers/src testkit/src itkit/src worker/src build.sbt identity-impact.sbt
-               project .jvmopts test scripts/ci/identity-drift-check.sh scripts/ci/drift-replays-compare.sh)
-head_asset=drift-head-$cc-${seed_list//,/_}-$( { printf '%s\n' "$seed_list" "$recording_key" "${JAVA_HOME:-}" "$heap"
-                                                 git -C "$here" ls-tree -r HEAD -- "${replay_inputs[@]}"; } | sha256sum | cut -c1-24).tar.gz
+head_asset=drift-head-$cc-${seed_list//,/_}-$(printf '%s\n' "$seed_list" "$recording_key" "${JAVA_HOME:-}" "$heap" "$(code_of HEAD)" | sha256sum | cut -c1-24).tar.gz
 memo=false
 [ -n "$store" ] && [ "${DRIFT_TWICE:-false}" != true ] && [ -z "${DRIFT_EXPLORE:-}" ] && [ "${DRIFT_FRESH:-false}" != true ] && memo=true
 if [ "$memo" = true ] && fetch "$head_asset" "$out/head-replay.tar" && tar -xf "$out/head-replay.tar" -C "$out"; then
