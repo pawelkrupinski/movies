@@ -83,7 +83,11 @@ scratch_repo "$repo" -q -b main
 echo base > "$repo/identity/src/main/Rule.scala"; scratch_git "$repo" add -A && scratch_git "$repo" commit -qm base
 echo docs > "$repo/README.md"; scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "docs only"
 
-run() { : > "$FAKE_LOG"; rm -rf "$work/out"; PATH="$work/bin:$PATH" bash "$repo/scripts/ci/identity-drift-check.sh" pl "$work/out" > "$work/stdout" 2>&1; echo $?; }
+# Every case runs off main, as a landing or measure run does: the job's own GITHUB_REF never leaks in. On main the check
+# also stores each green head's flips (`drift-green`), so a base the cases expect replayed was read from the store
+# instead -- Tool self-tests #172 ran this test on a push to main and failed "its base is replayed".
+run() { : > "$FAKE_LOG"; rm -rf "$work/out"; PATH="$work/bin:$PATH" GITHUB_REF=refs/heads/drift-check-test \
+  bash "$repo/scripts/ci/identity-drift-check.sh" pl "$work/out" > "$work/stdout" 2>&1; echo $?; }
 
 check "no recorded corpus to replay: no verdict" "2" "$(run)"
 touch "$fx/corpus/cinema-scrapes-pl.json.gz"
