@@ -209,6 +209,26 @@ a_hung_staleness_check_is_cut_off() {
 check "a staleness check that never returns is cut off and reads as 'tail anyway'" \
   a_hung_staleness_check_is_cut_off
 
+# Under the shell launchd runs, not just this spec's: macOS /bin/bash 3.2 EXECs a
+# `command <external>` inside a backgrounded function instead of forking it, so a
+# `command sleep` poll in `bounded` turned every supervisor into `sleep 0.2`, gone
+# at its first staleness check (2026-11-06 → 11-09, no sync at all). bash 4+ forks
+# as expected, which is why the rest of this file never saw it. On a host whose
+# /bin/bash is modern this case passes trivially; the Mac is where it matters.
+bounded_returns_inside_a_background_supervisor() {
+  local out
+  # shellcheck disable=SC2016 # expanded by the inner shell
+  out="$("${KINOWO_LAUNCHD_BASH:-/bin/bash}" -c '
+    . "$1"; trap - EXIT INT TERM
+    probe() { command sleep 0.5; }
+    supervisor() { bounded 30 probe; echo "returned $?"; }
+    supervisor & wait "$!"' _ "$HERE/mirror.sh" 2>&1)"
+  [ "$out" = "returned 0" ]
+}
+
+check "bounded returns to a backgrounded caller under launchd's bash" \
+  bounded_returns_inside_a_background_supervisor
+
 # ── The supervisor must notice its OWN code changing ─────────────────────────
 # Tailers re-read the .js files whenever one starts, but the supervisor holds
 # the command lines it was written with for the life of the process. A commit

@@ -368,7 +368,12 @@ bounded() {
       wait "$pid" 2>/dev/null
       return 124
     fi
-    command sleep 0.2
+    # Backgrounded and waited for, never a bare `command sleep`: macOS /bin/bash 3.2
+    # (what launchd runs) EXECs `command <external>` inside a backgrounded function
+    # instead of forking it, so the supervisor calling this BECAME `sleep 0.2` and
+    # was gone at its first poll — every supervisor, every start, a restart every
+    # ~25 s and no sync at all from 2026-11-06 ~14:10 UTC to 11-09.
+    command sleep 0.2 & wait "$!"
   done
   wait "$pid" || code=$?
   return "$code"
