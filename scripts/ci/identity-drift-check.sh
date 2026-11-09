@@ -94,6 +94,25 @@ replay() {
   ( cd "$dir" && sbt -J-Xmx"$heap" 'set worker / Test / run / fork := false' \
       "worker/Test/runMain scripts.IdentityDrift $cc --recording $fixtures --families $fixtures/identity-unmatched/$cc.json.gz $* --seed $list --out $to" ) \
     > "$to/sbt.log" 2>&1 || replay_code=$?
+  [ "$replay_code" = 0 ] || jvm_crash "$dir" "$to"
+}
+# A replay whose JVM died in HotSpot leaves its crash report (hs_err_pid*.log) and compiler-replay data (replay_pid*.log)
+# in the checkout it ran in -- the base's worktree, deleted after it. Kept beside the replay's output (the uploaded
+# identity-drift artifact) and named, so a JVM bug can be told apart and reported (Identity takes #17: SIGSEGV in C2's
+# ciObject::constant_encoding while the base compiled, its hs_err file lost with the worktree).
+jvm_crash() { # <checkout> <replay output>
+  local f kept="" frame task
+  for f in "$1"/hs_err_pid*.log "$1"/replay_pid*.log; do
+    [ -f "$f" ] || continue
+    mv "$f" "$2/" && kept="$kept ${f##*/}"
+  done
+  [ -n "$kept" ] || return 0
+  for f in "$2"/hs_err_pid*.log; do
+    [ -f "$f" ] || continue
+    frame=$(grep -A1 '^# Problematic frame:' "$f" | tail -1 | sed 's/^# *//')
+    task=$(grep -A1 '^Current CompileTask:' "$f" | tail -1)
+    echo "identity drift ($cc): the JVM crashed (exit $replay_code) in ${frame:-an unnamed frame}${task:+; compiling: $task}; kept:$kept in $2" >&2
+  done
 }
 head_options=(--allow "$fixtures/identity-drift-allow.tsv" --flips-allow "$fixtures/identity-flips-allow.tsv" --labels "$fixtures/identity-judgements.tsv")
 

@@ -50,6 +50,13 @@ printf '%s\n' "$@" > "$out.args"
 [ -n "${FAKE_BROKEN_BASE:-}" ] && . "$SCRATCH_GIT_LIB"
 case "${FAKE_BROKEN_BASE:-}" in "") ;; all|"$(scratch_git "$PWD" rev-parse HEAD 2>/dev/null)")
   [ "$side" = base ] && { echo "[error] (worker / Test / compileIncremental) Compilation failed"; exit 1; } ;; esac
+# FAKE_JVM_CRASH=<side>: that side's JVM dies in HotSpot, as Identity takes #17's base did (SIGSEGV in C2): its hs_err and
+# compiler-replay files land in its working directory, and sbt's launcher reports the abort
+if [ "${FAKE_JVM_CRASH:-}" = "$side" ]; then
+  printf '#\n# A fatal error has been detected by the Java Runtime Environment:\n#\n#  SIGSEGV (0xb) at pc=0x00007fb15fad6af0, pid=4242\n# Problematic frame:\n# V  [libjvm.so+0x6d6af0]  ciObject::constant_encoding()+0x0\n#\nCurrent CompileTask:\nC2:  91234 51234       4       dotty.tools.dotc.core.Types$Type::widen (66 bytes)\n' > hs_err_pid4242.log
+  echo "replay data" > replay_pid4242.log
+  echo "sbt: line 36:  4242 Aborted                 (core dumped)"; exit 134
+fi
 mkdir -p "$out"; printf 'country\tseed\n' > "$out/drift-pl.tsv"
 flips=${FAKE_HEAD_FLIPS:-}; [ "$side" = base ] && flips=${FAKE_BASE_FLIPS:-}
 n=$(( $(cat "$out/../runs" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$out/../runs"
@@ -139,6 +146,15 @@ check "...replaying the parent on every seed" "head 1,2 base 1 base 1 base 2" "$
 check "...saying so" "1" "$(grep -c "the base ${broken:0:12} does not compile; judged against its parent ${parent:0:12} instead" "$work/stdout")"
 check "...and judging against the parent" "2" "$(grep -c "head vs base ${parent:0:12} (resolved)" "$work/stdout")"
 check "a base that never compiles is still no verdict" "2" "$(DRIFT_BASE=$broken FAKE_BROKEN_BASE=all DRIFT_BASE_STEPS=1 FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"
+
+# A REPLAY WHOSE JVM CRASHES: still no verdict, but its crash report and compiler-replay data are kept beside its output
+# (the uploaded identity-drift artifact) and its frame and compile task named -- Identity takes #17's base crashed in C2
+# (ciObject::constant_encoding) and the worktree holding its hs_err file was deleted with it
+check "a base whose JVM crashes is no verdict" "2" "$(FAKE_JVM_CRASH=base FAKE_HEAD_FLIPS='Riverside|The Stranger' run)"
+check "...its crash report and replay data kept" "yes yes" \
+  "$([ -f "$work/out/base/seed-1/hs_err_pid4242.log" ] && echo yes || echo no) $([ -f "$work/out/base/seed-1/replay_pid4242.log" ] && echo yes || echo no)"
+check "...the frame and the compile task named" "1 1" \
+  "$(grep -c 'JVM crashed.*ciObject::constant_encoding' "$work/stdout") $(grep -c 'compiling: C2: .*Types\$Type::widen' "$work/stdout")"
 
 # THE SCENARIO GUARD: head and base must have drawn alike for what both ask, before any flip is judged
 check "head and base drawing alike pass" "0" "$(FAKE_HEAD_DRAWS='1:q:a=1,1:q:b=0' FAKE_BASE_DRAWS='1:q:a=1,1:q:b=0' run)"
