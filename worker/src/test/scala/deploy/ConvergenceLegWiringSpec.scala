@@ -244,12 +244,11 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     Seq(1, 2).foreach(i => job.group(i).toInt should be >= step.group(i).toInt + 10)
   }
 
-  // The one edge (2026-11-02): the order comparison reads the one-pass rows' corpora, so it waits for them -- a job
-  // after the rows, never a row waiting on another.
-  it should "hold no sample job, and no `needs:` edge but the order comparison's on the rows" in {
-    legJobs shouldBe Seq("convergence", "order-compare")
-    legDirectives.linesIterator.filter(_.contains("needs:")).map(_.trim).toSeq shouldBe Seq("needs: [ convergence ]")
-    RepoFile.block(leg, "order-compare") should include("needs: [ convergence ]")
+  // Since 2026-11-09 the leg holds the rows alone: the order comparison reads the one-pass rows' corpora from its caller's
+  // jobs (OrderCompareWiringSpec), so no row waits on another and no job of the leg is ever created to be skipped.
+  it should "hold no sample job and no other job, so no `needs:` edge" in {
+    legJobs shouldBe Seq("convergence")
+    legDirectives should not include "needs:"
     legDirectives should not include "needs.sample"
   }
 
@@ -447,11 +446,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    * order-independence into its standard run expands to one row and renders nothing
    * extra; the United States expands to two.
    */
-  // Since 2026-11-02 the comparison of a split country's one-pass rows is a job after them (`order-compare`), skipped
-  // for no country now that Spain splits too (2026-11-08): the price of rows under 8 minutes. No third job.
+  // Since 2026-11-09 the comparison of a split country's one-pass rows is its caller's job, not the leg's (OrderCompareWiringSpec).
   "the order-independence split" should "render nothing for a country that folds it into the standard run" in {
-    withClue("a third job would be rendered, skipped, for every country that doesn't split: ") {
-      legJobs shouldBe Seq("convergence", "order-compare")
+    withClue("a second job would be rendered, skipped, in every caller that has no order rows: ") {
+      legJobs shouldBe Seq("convergence")
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
@@ -464,7 +462,6 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
         """inputs.mode == 'hermetic' && inputs.takes-row && inputs.harness-aa && ',"takes-drift-aa-pass0","takes-drift-aa-pass1","takes-aa"' || '')) }}""")
     // IN 20 RUNNERS (scripts/ci/convergence_slots.py): main's caller hands the rows longest first and the leg's share
     RepoFile.block(leg, "convergence") should include("max-parallel: ${{ inputs.max-parallel }}")
-    RepoFile.block(leg, "order-compare") should include("max-parallel: ${{ inputs.max-parallel }}")
   }
 
   /** THE INCREMENTAL = WHOLE GATE, ONE SEED A ROW (2026-10-26): the takes row ran the takes check and then both drift seeds,
@@ -555,7 +552,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  passes, overlapping on pass 1: a pass is only compared with the others in its comparison, so 0 = 1 and
    *  1 = 2 are what hold all three to one corpus. ONE PASS PER ROW (2026-11-02): each comparison's two passes replay
    *  in rows of their own (pass 1 in both, as when they shared a row), each read off its phase, writing its corpus
-   *  out; `order-compare` reads the two back under the two-pass row's name and passes and runs the order test. */
+   *  out; the callers' `order-independence-p01|p12` jobs read the two back and run the order test. */
   it should "split an over-budget order row into one-pass rows and two overlapping comparisons" in {
     val suite = RepoFile.block(leg, "convergence")
     suite should include("""KINOWO_CONVERGENCE_ORDER_PASSES: ${{ endsWith(matrix.phase, '-pass0') && '0' || """ +
@@ -563,36 +560,17 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     suite should include("""KINOWO_CONVERGENCE_ORDER_PASS_OUT: ${{ contains(matrix.phase, '-pass') && format('{0}/order-pass', runner.temp) || '' }}""")
     RepoFile.step(suite, "Upload the order pass's corpus for the comparison") should include(
       "name: order-pass-${{ inputs.code }}-${{ matrix.phase }}")
-    val compare = RepoFile.block(leg, "order-compare")
-    compare should include("name: ${{ matrix.phase }} (${{ inputs.country }})")
-    compare should include("""phase: ${{ fromJson(inputs.order-command != '' && inputs.order-split && format('[{0}{1}]', inputs.order-one-phase && '"order-independence-p01"' || """ +
-      """'"order-independence-p01","order-independence-p12"', inputs.harness-aa && ',"takes-drift-aa"' || '') || '["takes-drift-aa"]') }}""")
-    compare should include("pattern: order-pass-${{ inputs.code }}-${{ matrix.phase }}-pass*")
-    compare should include("""KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || '1,2' }}""")
-    compare should include("KINOWO_CONVERGENCE_ORDER_PASS_IN: ${{ runner.temp }}/order-pass")
-    compare should include("check_name: ${{ matrix.phase }} (${{ inputs.country }})")
-    compare should include(FindingsAction)
     RepoFile.block(leg, "order-split") should include("default: false")
   }
 
   /** THE DRIFT HARNESS'S A/A, ONE REPLAY A ROW (2026-11-06): the `takes-drift-aa` row replayed the head's row-1 seeds twice
    *  in turn, 35-69 minutes for Germany -- the run's critical path whenever a push changed the harness. Each replay is a
    *  row of its own now (`takes-drift-aa-pass0`, `-pass1`, side by side, the head against itself, storing nothing), and
-   *  `order-compare` compares their TSVs under the row's old name (`takes-drift-aa (<country>)`), red only when the two
-   *  differ: the harness's own fault (harness_aa.py judge). A push that changed the harness adds it to every country's order comparison. */
-  it should "replay the drift harness's A/A passes in rows of their own and compare them after them" in {
-    val compare = RepoFile.block(leg, "order-compare")
-    compare should include("(inputs.order-command != '' && inputs.order-split || inputs.harness-aa && inputs.mode == 'hermetic' && inputs.takes-row)")
-    compare should include("pattern: identity-drift-${{ inputs.code }}-takes-drift-aa-pass*")
-    val step = RepoFile.step(compare, "Compare the drift harness's two A/A passes")
-    step should include("if: ${{ !cancelled() && matrix.phase == 'takes-drift-aa' }}")
-    step should include("scripts/ci/drift-replays-compare.sh")
-    step should include("python3 scripts/ci/harness_aa.py judge")
-    step should include("""> "$RUNNER_TEMP/leg-verdict-why"""")
-    // the order comparison's own steps skip the A/A row: no sbt, no test report it would require
-    Seq("Download the row's two passes", "Compare the ${{ inputs.country }} ${{ matrix.phase }} passes", "Publish convergence test report")
-      .foreach(name => RepoFile.step(compare, name) should include("matrix.phase != 'takes-drift-aa'"))
+   *  Identity takes' `takes-drift-aa` job compares their TSVs under the row's old name (`takes-drift-aa (<country>)`), red
+   *  only when the two differ: the harness's own fault (harness_aa.py judge). */
+  it should "replay the drift harness's A/A passes in rows of their own, compared by Identity takes' own job" in {
     RepoFile.read("scripts/ci/identity-drift-check.sh") should include("scripts/ci/drift-replays-compare.sh")
+    legDirectives should not include "Compare the drift harness's two A/A passes"
   }
 
   /** The United States' convergence row ran 11.4 minutes with no replays in it; its next-day test, which reads only
@@ -928,9 +906,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
     caller should include ("jvm-options:                   ${{ needs.preflight.outputs.jvm-options }}")
     // Every sbt run of the leg: the suite, the pre-suite fill, a recording's corpus capture and its corpus-shape report,
-    // and the order comparison's.
-    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 5
-    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 5
+    // (the order comparison's, in .github/actions/order-compare, reads its own).
+    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 4
+    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 4
     RepoFile.withoutComments(leg).linesIterator.filter(_.trim.startsWith("sbt ")).foreach { line =>
       withClue(s"$line: ")(line should include ("\"${jvm[@]}\""))
     }

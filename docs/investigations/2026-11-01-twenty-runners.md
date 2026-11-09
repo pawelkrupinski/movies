@@ -1132,3 +1132,7 @@ takes runs on main (#1, #2) had no `leg` job (the rows handed to the leg as stri
 
 Heads-up: a takes run whose plan has no A/A row shows the leg's skipped `order-compare` job with its raw name
 (`${{ matrix.phase }} (${{ inputs.country }})`), as Spain's convergence leg did before it split its order rows.
+
+Resolved 2026-11-09 (the owner): `order-compare` left the shared leg. Identity model convergence and Verify scrape recording run
+`order-independence-p01|p12 (<country>)` as jobs of their own (`.github/actions/order-compare`, the preflight's `order-matrix`), Identity
+takes holds `takes-drift-aa` alone, and the leg holds the rows only.

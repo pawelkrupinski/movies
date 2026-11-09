@@ -115,7 +115,7 @@ class MainsRunTest(unittest.TestCase):
             self.assertLessEqual(joint, fixed, f"a fixed split {n}/{slots.RUNNERS - n} ends sooner")
 
     def test_spain_splits_its_order_rows_like_the_other_countries(self):
-        # owner 2026-11-08: Spain's order passes ran inside its boot, so its `order-compare` job was created and skipped,
+        # owner 2026-11-08: Spain's order passes ran inside its boot, so the leg's `order-compare` job was created and skipped,
         # a skipped matrix job rendering its `name:` template raw (`${{ matrix.phase }}`)
         matrix = self.matrix(reuse.leg_inputs({}))
         es = next(r for r in matrix["include"] if r["code"] == "es")
@@ -136,7 +136,7 @@ class MainsRunTest(unittest.TestCase):
         conv = self.matrix(reuse.leg_inputs({}), suite="convergence", harness_aa=True)
         for r in takes["include"]:
             self.assertLessEqual({"takes-drift-aa-pass0", "takes-drift-aa-pass1", "takes-aa"}, set(json.loads(r["phases"])))
-            self.assertNotIn("takes-drift-aa", json.loads(r["phases"]), "the comparison is order-compare's, after the rows")
+            self.assertNotIn("takes-drift-aa", json.loads(r["phases"]), "the comparison is its own job's, after the rows")
         for r in conv["include"]:
             self.assertFalse([p for p in json.loads(r["phases"]) if p.startswith("takes")])
         self.assertLessEqual(self.runners(takes, conv), slots.RUNNERS)

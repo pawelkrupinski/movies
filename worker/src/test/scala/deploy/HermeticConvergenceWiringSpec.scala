@@ -118,11 +118,10 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
 
   private val SuiteStep  = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
 
-  // No row runs the ~100-film sample (2026-10-14): one job, its suite the only sbt verdict in it -- and since 2026-11-02
-  // the order comparison after it, reading the one-pass rows' corpora (no sample there either).
+  // No row runs the ~100-film sample (2026-10-14): one job, its suite the only sbt verdict in it (the order comparison,
+  // since 2026-11-09, is its callers': OrderCompareWiringSpec).
   it should "run each country's suite in one job of rows, and no sample in any" in {
-    RepoFile.jobs(leg).keySet shouldBe Set("convergence", "order-compare")
-    RepoFile.block(leg, "order-compare") should not include "sample-command"
+    RepoFile.jobs(leg).keySet shouldBe Set("convergence")
 
     val convergence = RepoFile.block(leg, "convergence")
     convergence should not include "sample ahead of the suite"

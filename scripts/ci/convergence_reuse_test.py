@@ -241,6 +241,32 @@ class LegMatrixTest(unittest.TestCase):
             self.assertEqual(m["country"], ["poland", "united-states"])
             self.assertEqual([r["code"] for r in m["include"]], ["pl", "us"])
 
+    def test_the_order_matrix_holds_the_countries_that_split_their_order_replay_and_no_other(self):
+        # owner 2026-11-09: the comparison jobs are the caller's, one row a country that has order rows -- a country
+        # without them gets none, and a suite without order rows (Identity takes) an empty plan, so it creates no job
+        m = reuse.leg_matrix(reuse.parse_rows(self.ROWS), reuse.leg_inputs({}))
+        order = reuse.order_matrix(m, "convergence")
+        self.assertEqual(order["country"], ["germany"])
+        self.assertEqual([r["code"] for r in order["include"]], ["de"])
+        self.assertEqual(reuse.order_matrix(m, "takes"), {"country": [], "include": []})
+        self.assertEqual(reuse.order_matrix({"country": [], "include": []}, "convergence"), {"country": [], "include": []})
+
+    def test_the_legs_step_prints_the_order_matrix_and_whether_there_is_one(self):
+        res = self._verify_legs("pl,uk")
+        order = json.loads(next(l for l in res.stdout.splitlines() if l.startswith("order-matrix="))[len("order-matrix="):])
+        self.assertEqual(order["country"], ["poland", "united-kingdom"])
+        self.assertIn("any-order=true", res.stdout)
+        self.assertIn("any-order=false", self._takes_legs().stdout)
+
+    def _takes_legs(self):
+        out = os.path.join(tempfile.mkdtemp(), "legs.json")
+        with open(out, "w") as f:
+            json.dump(reuse.leg_inputs({}), f)
+        env = {k: v for k, v in os.environ.items() if k != "LEG_ROWS"}
+        return subprocess.run([sys.executable, os.path.join(ROOT, "scripts/ci/convergence_reuse.py"), "legs"], cwd=tempfile.gettempdir(),
+                              env=dict(env, CONVERGENCE_SUITE="takes", LEG_INPUTS_FILE=out, GITHUB_STEP_SUMMARY=""),
+                              capture_output=True, text=True, check=True)
+
     def test_a_convergence_run_asked_for_takes_rows_alone_starts_no_leg(self):
         # those rows are the takes run's; convergence's preflight dispatches it with the same inputs
         for flag in ("INPUT_TAKES_ONLY", "INPUT_DRIFT_ONLY"):

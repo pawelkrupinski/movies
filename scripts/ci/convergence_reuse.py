@@ -114,7 +114,7 @@ PHASES_EXPRESSION = (
     "',\"takes\",\"takes-base\",\"takes-drift-1\",\"takes-drift-2\"' || '', inputs.mode == 'hermetic' && "
     "inputs.takes-row && inputs.harness-aa && ',\"takes-drift-aa-pass0\",\"takes-drift-aa-pass1\",\"takes-aa\"' || '')) }}"
 )
-# A split country's order rows on main: each pass in a row of its own, then the two comparisons (`order-compare`).
+# A split country's order rows on main: each pass in a row of its own, then the two comparisons (the callers' `order-independence-p01|p12` jobs).
 ORDER_SPLIT_ROWS = ["order-independence-p01-pass0", "order-independence-p01-pass1", "order-independence-p12-pass1",
                     "order-independence-p12-pass2", "order-independence-p01", "order-independence-p12"]
 GH_SECONDS = 60
@@ -199,7 +199,7 @@ def expected_rows(workflow_text, suite="convergence"):
     for row in matrix_rows(workflow_text):
         phases = matrix_phases(row, suite=suite)
         if suite == "convergence" and row.get("order", "") and _true(row.get("order-split", "false")):
-            # a split country's passes are compared by the leg's `order-compare` job, a row per pair named as the
+            # a split country's passes are compared by the callers' `order-independence-p01|p12` jobs, a row per pair named as the
             # two-pass row was
             phases += [p for p in ORDER_SPLIT_ROWS if "-pass" not in p]
         out += [f"{p} ({row['country']})" for p in phases]
@@ -290,6 +290,15 @@ def leg_matrix(rows, inputs, suite="convergence"):
     return {"country": [r["country"] for r in kept], "include": kept}
 
 
+def order_matrix(matrix, suite="convergence"):
+    """The order-comparison jobs' matrix (`order-independence-p01|p12 (<country>)` in identity-model-convergence.yml and
+    verify-scrape-recording.yml): the `leg` matrix's countries that split their order replay into pass rows. A country with
+    none gets no row, and a suite that hands its legs no order command (Identity takes) none at all -- the jobs are then
+    skipped under their plain names, never a raw `${{ ... }}` one."""
+    kept = [r for r in matrix["include"] if suite == "convergence" and r.get("order", "") and _true(r.get("order-split", "false"))]
+    return {"country": [r["country"] for r in kept], "include": kept}
+
+
 def _true(value):
     return str(value).lower() == "true"
 
@@ -297,7 +306,7 @@ def _true(value):
 def matrix_phases(row, order_phases="both", harness_aa=False, suite="convergence"):
     """The `convergence` matrix rows main's leg for `row` expands to in `suite` (PHASES_EXPRESSION, hermetic, neither
     takes-only nor drift-only; the A/A rows when the preflight decided them), in the workflow's order: convergence's
-    convergence, order passes and next-day, takes' takes, takes-base and drift rows. The `order-compare` rows after them
+    convergence, order passes and next-day, takes' takes, takes-base and drift rows. The comparison jobs after them
     (the order comparisons, the A/A passes' `takes-drift-aa`) are not among them."""
     if suite == "takes":
         return (["takes", "takes-base"] + drift_phases(row["code"])
@@ -320,7 +329,7 @@ def drift_phases(code, pins=""):
 
 
 def suite_tails(rows, suite, order_phases="both", harness_aa=False, costs=None):
-    """What follows a country's rows in `suite`'s `order-compare` job: convergence's order comparisons (a split country),
+    """What follows a country's rows in `suite`'s comparison job: convergence's order comparisons (a split country),
     takes' A/A comparison (when the preflight decided the A/A rows)."""
     costs = convergence_slots.read_costs() if costs is None else costs
     if suite == "takes":
@@ -741,6 +750,9 @@ def cmd_legs(opts):
                        convergence_slots.describe(leg_plan(matrix["include"], inputs, order_phases, harness_aa, suite))])
     print(f"leg-matrix={json.dumps(matrix, separators=(',', ':'))}")
     print(f"any-leg={'true' if matrix['country'] else 'false'}")
+    order = order_matrix(matrix, suite)
+    print(f"order-matrix={json.dumps(order, separators=(',', ':'))}")
+    print(f"any-order={'true' if order['country'] else 'false'}")
     return 0
 
 

@@ -357,8 +357,8 @@ on:
                 type: string
                 default: ''
             # THE DRIFT HARNESS'S A/A SELF-TEST (scripts/ci/harness_aa.py; the preflight's `harness-aa`): two more rows,
-            # `takes-drift-aa-pass0|1`, each replaying the head once against itself on the row-1 seeds, and order-compare's
-            # `takes-drift-aa` after them, red only when the two differ. And
+            # `takes-drift-aa-pass0|1`, each replaying the head once against itself on the row-1 seeds, and Identity takes'
+            # `takes-drift-aa` job after them, red only when the two differ. And
             # `takes-aa`: the takes check against itself (identity-takes-check.sh TAKES_AA), red on any take the two differ in.
             harness-aa:
                 description: Add the takes-drift-aa and takes-aa rows (the drift and takes harnesses against themselves) -- a push that changed a harness.
@@ -435,6 +435,11 @@ jobs:
     # picked off the caller's inputs by it — so they stay declared where every other
     # budget in this file is declared, as named inputs with defaults and descriptions,
     # rather than as fields of a JSON blob a job built at runtime.
+    #
+    # THE LEG HOLDS NO OTHER JOB (owner, 2026-11-09): the comparison of a split country's one-pass rows is its caller's --
+    # `order-independence-p01|p12 (<country>)` in identity-model-convergence.yml and verify-scrape-recording.yml
+    # (.github/actions/order-compare), the A/A passes' `takes-drift-aa` Identity takes' -- so a caller whose legs run no
+    # order rows creates none. A job of this file would be created, skipped, in every caller's run.
     #
     # (A job's `name:` renders as the literal `${{ matrix.phase }}` in the run graph
     # until the job actually STARTS. A convergence row cancelled at creation never gets
@@ -930,7 +935,7 @@ jobs:
                   # A split order row's passes, read off its phase (`order-independence-p01` -> 0,1);
                   # empty, every pass, on any other row.
                   KINOWO_CONVERGENCE_ORDER_PASSES: ${{ endsWith(matrix.phase, '-pass0') && '0' || endsWith(matrix.phase, '-pass1') && '1' || endsWith(matrix.phase, '-pass2') && '2' || '' }}
-                  # ONE PASS PER ROW: the row writes its pass's corpus here, uploaded below for `order-compare`.
+                  # ONE PASS PER ROW: the row writes its pass's corpus here, uploaded below for the caller's `order-independence-p01|p12` job.
                   KINOWO_CONVERGENCE_ORDER_PASS_OUT: ${{ contains(matrix.phase, '-pass') && format('{0}/order-pass', runner.temp) || '' }}
                   # GAP-FILL in a RECORDING's order row: it replays the
                   # working tree it restored (the last recording's) and fetches live only what that
@@ -974,7 +979,7 @@ jobs:
             - name: End what a timed-out step left running
               if: always()
               run: scripts/ci/bounded-step.sh --reap
-            # A one-pass order row's corpus, for the comparison job (`order-compare`); only a pass that ended green wrote
+            # A one-pass order row's corpus, for the caller's comparison job (`order-independence-p01|p12`); only a pass that ended green wrote
             # one, and a missing file fails the comparison, as the pass would have failed the row that compared it.
             - name: Upload the order pass's corpus for the comparison
               if: contains(matrix.phase, '-pass') && steps.suite.outcome == 'success'
@@ -1175,7 +1180,7 @@ jobs:
                   fi
                   # THE A/A PASSES (scripts/ci/harness_aa.py, review 2026-11-06 P5): the head against ITSELF -- base = head, so
                   # nothing is replayed at a base -- storing nothing (the takes-drift-1 row stores the head's flips), each
-                  # pass one replay of the row-1 seeds, side by side; order-compare's `takes-drift-aa` compares the two, red
+                  # pass one replay of the row-1 seeds, side by side; Identity takes' `takes-drift-aa` job compares the two, red
                   # only when they differ: the harness's own fault.
                   case $DRIFT_ROW in takes-drift-aa-pass*) export DRIFT_BASE=$GITHUB_SHA DRIFT_STORE="" ;; esac
                   [ -n "$DRIFT_SEED_LIST" ] \
@@ -1416,138 +1421,6 @@ jobs:
                   label: ${{ inputs.country }}
 
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
-            - uses: ./.github/actions/leg-verdict
-              if: always()
-              with:
-                  leg:    ${{ matrix.phase }} (${{ inputs.country }})
-                  status: ${{ job.status }}
-                  token:  ${{ secrets.GITHUB_TOKEN }}
-
-    # THE ORDER COMPARISON, A JOB OF ITS OWN (2026-11-02, rows under 8 minutes): a split row ran its two passes side by
-    # side on one 4-core runner and compared them, 8-13 minutes; one pass alone took 8-9.3. Each pass now replays in a
-    # row of its own (`order-independence-p01-pass0`, `-p01-pass1`, `-p12-pass1`, `-p12-pass2`: the same passes, seeds
-    # and rows' runs as before, pass 1 in both) and writes its corpus out (ReplayCorpusFile); this job reads the two its
-    # row names and runs the same order test on them, the same CorpusComparison, under the name the row had --
-    # `order-independence-p01 (<country>)` -- so the verdict, its report and its readers are unchanged. No MongoDB, no
-    # corpus: a warm sbt and the two files. And on a push that changed a harness, THE DRIFT HARNESS'S A/A (2026-11-06):
-    # its two passes (`takes-drift-aa-pass0`, `-pass1`, rows side by side where one row replayed twice in turn, 35-69
-    # minutes for Germany) compared under the row's old name, `takes-drift-aa (<country>)` -- two TSVs, no sbt
-    # (scripts/ci/drift-replays-compare.sh, judged by harness_aa.py). Spain, splitting no order row, runs it alone.
-    order-compare:
-        name: ${{ matrix.phase }} (${{ inputs.country }})
-        needs: [ convergence ]
-        if: ${{ !cancelled() && inputs.reused-from == '' && (inputs.order-command != '' && inputs.order-split || inputs.harness-aa && inputs.mode == 'hermetic' && inputs.takes-row) && !inputs.takes-only && !inputs.drift-only && (inputs.countries == '' || contains(format(',{0},', inputs.countries), format(',{0},', inputs.code))) }}
-        strategy:
-            fail-fast: false
-            max-parallel: ${{ inputs.max-parallel }}
-            matrix:
-                phase: ${{ fromJson(inputs.order-command != '' && inputs.order-split && format('[{0}{1}]', inputs.order-one-phase && '"order-independence-p01"' || '"order-independence-p01","order-independence-p12"', inputs.harness-aa && ',"takes-drift-aa"' || '') || '["takes-drift-aa"]') }}
-        runs-on: ${{ inputs.runner }}
-        timeout-minutes: 20
-        permissions:
-            contents: write
-            checks: write
-            actions: read
-            statuses: write
-        steps:
-            - uses: actions/checkout@v5
-            - uses: ./.github/actions/job-telemetry
-              with:
-                  phase: start
-                  token: ${{ github.token }}
-                  label: ${{ inputs.country }}
-            - uses: ./.github/actions/convergence-setup
-              if: matrix.phase != 'takes-drift-aa'
-              with:
-                  code:          ${{ inputs.code }}
-                  token:         ${{ secrets.GITHUB_TOKEN }}
-                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
-                  dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
-                  mode:          ${{ inputs.mode }}
-                  corpus-run:    ${{ inputs.corpus-run }}
-                  replay:        'false'
-            - name: Download the drift harness's two A/A passes
-              if: ${{ !cancelled() && matrix.phase == 'takes-drift-aa' }}
-              uses: ./.github/actions/download-artifacts
-              with:
-                  # each into a directory of its name: the two hold the same file names
-                  pattern: identity-drift-${{ inputs.code }}-takes-drift-aa-pass*
-                  path: ${{ runner.temp }}/drift-aa
-            - name: Compare the drift harness's two A/A passes
-              if: ${{ !cancelled() && matrix.phase == 'takes-drift-aa' }}
-              shell: bash
-              env:
-                  PASSES: ${{ runner.temp }}/drift-aa/identity-drift-${{ inputs.code }}-takes-drift-aa-pass
-              run: |
-                  code=0; scripts/ci/drift-replays-compare.sh "${{ inputs.code }}" "${PASSES}0" "${PASSES}1" "$RUNNER_TEMP/drift-aa-verdict.txt" || code=$?
-                  aa=0; python3 scripts/ci/harness_aa.py judge --cc "${{ inputs.code }}" --code "$code" --verdict "$RUNNER_TEMP/drift-aa-verdict.txt" || aa=$?
-                  [ "$aa" = 0 ] || echo "harness A/A: $(cat "$RUNNER_TEMP/drift-aa-verdict.txt" 2>/dev/null || echo 'the two passes could not be compared')" > "$RUNNER_TEMP/leg-verdict-why"
-                  exit "$aa"
-            - name: Download the row's two passes
-              if: matrix.phase != 'takes-drift-aa'
-              uses: actions/download-artifact@v6
-              with:
-                  pattern: order-pass-${{ inputs.code }}-${{ matrix.phase }}-pass*
-                  path: ${{ runner.temp }}/order-pass
-                  merge-multiple: true
-            # A pass row that died (exit 137, Verify scrape recording #14) uploaded no corpus: named, never a test failure.
-            - name: Check both passes arrived
-              if: matrix.phase != 'takes-drift-aa'
-              shell: bash
-              run: scripts/ci/order-passes-present.sh "${{ runner.temp }}/order-pass" "${{ matrix.phase == 'order-independence-p01' && '0,1' || '1,2' }}" "${{ matrix.phase }}"
-            - name: Compare the ${{ inputs.country }} ${{ matrix.phase }} passes
-              if: matrix.phase != 'takes-drift-aa'
-              id: suite
-              shell: bash
-              timeout-minutes: 15
-              run: |
-                  . scripts/ci/bounded-step.sh
-                  set -o pipefail
-                  ls -l "$KINOWO_CONVERGENCE_ORDER_PASS_IN" || true
-                  rm -rf target/test-reports/unit
-                  scripts/ci/stop-stray-sbt.sh
-                  # As every sbt run of a leg: the runner's whole CPU beside it (cpu-sampler.sh).
-                  scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
-                  read -ra jvm <<< "$JVM_OPTIONS"
-                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" ${{ inputs.order-command }} 2>&1 | tee convergence.log
-              env:
-                  JVM_OPTIONS:      ${{ inputs.jvm-options }}
-                  KINOWO_COUNTRY:   ${{ inputs.code }}
-                  KINOWO_COUNTRIES: ${{ inputs.code }}
-                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
-                  KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || '1,2' }}
-                  KINOWO_CONVERGENCE_ORDER_PASS_IN: ${{ runner.temp }}/order-pass
-            - name: End what a timed-out step left running
-              if: always()
-              run: scripts/ci/bounded-step.sh --reap
-            - name: Publish convergence test report
-              if: always() && matrix.phase != 'takes-drift-aa'
-              uses: mikepenz/action-junit-report@v5
-              with:
-                  annotate_only: true
-                  job_summary: true
-                  detailed_summary: true
-                  report_paths: 'target/test-reports/unit/**/*.xml'
-                  check_name: ${{ matrix.phase }} (${{ inputs.country }})
-                  include_passed: true
-                  require_tests: true
-            - uses: ./.github/actions/convergence-findings
-              if: always() && matrix.phase != 'takes-drift-aa'
-              with:
-                  title: ${{ matrix.phase }} (${{ inputs.country }})
-                  log:   convergence.log
-                  name:  ${{ inputs.code }}-${{ matrix.phase }}
-            - name: End any JVM a timed-out step left running
-              if: always()
-              shell: bash
-              run: scripts/ci/stop-stray-sbt.sh
-            - uses: ./.github/actions/job-telemetry
-              if: ${{ !cancelled() }}
-              with:
-                  phase: finish
-                  token: ${{ github.token }}
-                  job-status: ${{ job.status }}
-                  label: ${{ inputs.country }}
             - uses: ./.github/actions/leg-verdict
               if: always()
               with:

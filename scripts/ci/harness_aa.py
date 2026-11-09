@@ -9,7 +9,7 @@ resolver change could move, so any difference is the harness's own fault, and fa
 WHERE. In main's Identity takes (identity-takes.yml, the takes rows' workflow since 2026-11-08), AFTER landing, never in pre-push or `agentctl land`: the
 preflight runs `decide`, and when the push changed a path of .github/harness-aa-paths.txt each leg adds two rows,
 `takes-drift-aa-pass0|1 (<country>)`, side by side, each running scripts/ci/identity-drift-check.sh once on the row-1
-seeds with DRIFT_BASE=<head> (no base replay: base and head are one commit), then `judge`; its `order-compare` job then
+seeds with DRIFT_BASE=<head> (no base replay: base and head are one commit), then `judge`; Identity takes' `takes-drift-aa` job then
 compares the two passes' TSVs (scripts/ci/drift-replays-compare.sh) as `takes-drift-aa (<country>)` and `judge`s that;
 and one row `takes-aa (<country>)`, the
 takes check's own harness (scripts/ci/identity-takes-check.sh with TAKES_AA=true: the head resolved and its final takes

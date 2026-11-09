@@ -88,8 +88,7 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
     concurrency should include("cancel-in-progress: false")
   }
 
-  /** The same leg as convergence's, handed only the takes rows: no order or next-day command (so its order-compare job runs
-   *  the A/A comparison alone), the takes row on; and convergence's leg the rest, its takes row off. */
+  /** The same leg as convergence's, handed only the takes rows: no order or next-day command (so it creates no order comparison), the takes row on; and convergence's leg the rest, its takes row off. */
   it should "run the convergence leg with its takes rows only, as convergence runs it with every other row" in {
     val call = RepoFile.jobs(workflow)("leg")
     call should include("uses: ./.github/workflows/country-convergence-leg.yml")
@@ -97,7 +96,6 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
     call should include regex """next-day-command:\s+''"""
     call should not include "takes-row:"
     RepoFile.jobs(convergence)("leg") should include regex """takes-row:\s+false"""
-    leg should include("inputs.order-command != '' && inputs.order-split || inputs.harness-aa && inputs.mode == 'hermetic' && inputs.takes-row")
     RepoFile.step(RepoFile.jobs(workflow)("preflight"), "Which legs does this run start?") should include("CONVERGENCE_SUITE: takes")
     RepoFile.step(RepoFile.jobs(convergence)("preflight"), "Which legs does this run start?") should include(
       "CONVERGENCE_SUITE: convergence")

@@ -178,7 +178,7 @@ jobs:
             drift-twice: ${{ steps.legs.outputs.drift-twice }}
             drift-explore: ${{ steps.legs.outputs.drift-explore }}
             # THE HARNESSES' A/A SELF-TEST (scripts/ci/harness_aa.py): `true` on a full run on main whose push changed a
-            # path of .github/harness-aa-paths.txt -- each leg then adds the A/A rows and order-compare `takes-drift-aa`.
+            # path of .github/harness-aa-paths.txt -- each leg then adds the A/A rows and the `takes-drift-aa` job compares them.
             harness-aa: ${{ steps.aa.outputs.harness-aa || 'false' }}
             # Main's rows on GitHub's hosted runners, every run off main (a measurement) on ci-runner's `movies-measure`
             # (the owner, 2026-11-06; identity-model-convergence.yml's `runner` says the rest).
@@ -318,8 +318,7 @@ jobs:
                   job-status: ${{ job.status }}
 
     # One row per country, the leg convergence calls (country-convergence-leg.yml) handed only its takes rows: no order or
-    # next-day command, so its order-compare job runs only the A/A comparison (`takes-drift-aa`) when the plan holds the
-    # A/A rows. `fail-fast: false`: every country reports on its own. A proven reuse skips the job whole, and so does a
+    # next-day command, so no order comparison is created here (owner, 2026-11-09). `fail-fast: false`: every country reports on its own. A proven reuse skips the job whole, and so does a
     # plan with no country left (an empty matrix is an error).
     leg:
         needs: [ preflight ]
@@ -380,6 +379,60 @@ jobs:
         # TMDB_API_KEY, the proxy's credentials and the GITHUB_TOKEN the setup and publish actions read.
         secrets: inherit
 
+    # THE DRIFT HARNESS'S A/A COMPARISON (2026-11-06): the two passes (`takes-drift-aa-pass0`, `-pass1`, rows of the leg, side by
+    # side) compared under the row's old name, `takes-drift-aa (<country>)` -- two TSVs, no sbt (scripts/ci/drift-replays-compare.sh,
+    # judged by harness_aa.py). Only a push that changed a harness plans the A/A rows (the preflight's `harness-aa`); otherwise
+    # the job is skipped under its plain name (no `name:`: a template naming a matrix value renders raw on a skipped job).
+    takes-drift-aa:
+        needs: [ preflight, leg ]
+        if: ${{ !cancelled() && needs.preflight.outputs.reused-from == '' && needs.preflight.outputs.any-leg == 'true' && needs.preflight.outputs.harness-aa == 'true' }}
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJson(needs.preflight.outputs.leg-matrix) }}
+        runs-on: ${{ needs.preflight.outputs.light-runner }}
+        timeout-minutes: 20
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+            statuses: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+                  label: ${{ matrix.country }}
+            - name: Download the drift harness's two A/A passes
+              uses: ./.github/actions/download-artifacts
+              with:
+                  # each into a directory of its name: the two hold the same file names
+                  pattern: identity-drift-${{ matrix.code }}-takes-drift-aa-pass*
+                  path: ${{ runner.temp }}/drift-aa
+            - name: Compare the drift harness's two A/A passes
+              shell: bash
+              env:
+                  CODE: ${{ matrix.code }}
+                  PASSES: ${{ runner.temp }}/drift-aa/identity-drift-${{ matrix.code }}-takes-drift-aa-pass
+              run: |
+                  code=0; scripts/ci/drift-replays-compare.sh "$CODE" "${PASSES}0" "${PASSES}1" "$RUNNER_TEMP/drift-aa-verdict.txt" || code=$?
+                  aa=0; python3 scripts/ci/harness_aa.py judge --cc "$CODE" --code "$code" --verdict "$RUNNER_TEMP/drift-aa-verdict.txt" || aa=$?
+                  [ "$aa" = 0 ] || echo "harness A/A: $(cat "$RUNNER_TEMP/drift-aa-verdict.txt" 2>/dev/null || echo 'the two passes could not be compared')" > "$RUNNER_TEMP/leg-verdict-why"
+                  exit "$aa"
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+                  label: ${{ matrix.country }}
+            - uses: ./.github/actions/leg-verdict
+              if: always()
+              with:
+                  leg:    takes-drift-aa (${{ matrix.country }})
+                  status: ${{ job.status }}
+                  token:  ${{ secrets.GITHUB_TOKEN }}
+
     # NO FALSE GREEN (scripts/ci/convergence_reuse.py `complete`; convergence-failures 2026-10-29, G7): a run on main is
     # green for THE GATE only when every `takes` and `takes-drift-<n>` row of every country ran to a verdict, or the
     # preflight proved a reuse (`reused-from`). Run 1747 went green with its takes rows skipped and split one 18-hour red
@@ -431,7 +484,7 @@ jobs:
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml), DISPATCHED as a run of its own that waits for this
     # one to end: this run's end is THE GATE's verdict (RunTimingsWiringSpec).
     timings:
-        needs: [ preflight, leg, verdict-complete ]
+        needs: [ preflight, leg, takes-drift-aa, verdict-complete ]
         if: ${{ !cancelled() }}
         runs-on: ${{ needs.preflight.outputs.light-runner }}
         timeout-minutes: 5

@@ -54,9 +54,11 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
         val dispatching = RepoFile.jobs(RepoFile.read(path)).values.filter(_.contains("gh workflow run convergence-bisect.yml"))
         dispatching should have size 1
         val job = dispatching.head
-        job should include("needs: [ preflight, leg ]")
+        // The order comparisons are jobs of the caller (2026-11-09), so a red one is a red leg too.
+        job should include("needs: [ preflight, leg, order-independence-p01, order-independence-p12 ]")
         // "On main" is the plan's decision (WorkflowPlanSpec), read here as its output.
-        job should include("if: ${{ !cancelled() && needs.leg.result == 'failure' && needs.preflight.outputs.on-main == 'true' }}")
+        job should include("if: ${{ !cancelled() && (needs.leg.result == 'failure' || needs.order-independence-p01.result == 'failure' || " +
+          "needs.order-independence-p12.result == 'failure') && needs.preflight.outputs.on-main == 'true' }}")
         RepoFile.block(RepoFile.jobs(RepoFile.read(path))("preflight"), "outputs") should include(
           "on-main: ${{ github.ref == 'refs/heads/main' }}")
         job should include("-f run-id=\"$RUN_ID\"")

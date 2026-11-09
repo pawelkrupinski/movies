@@ -82,7 +82,8 @@ class ConvergenceBisectConcurrencySpec extends AnyFlatSpec with Matchers {
       val jobs = RepoFile.jobs(RepoFile.read(path))
       withClue(s"$path: ") {
         jobs("request-bisect") should include(
-          "if: ${{ !cancelled() && needs.leg.result == 'failure' && needs.preflight.outputs.on-main == 'true' }}")
+          "if: ${{ !cancelled() && (needs.leg.result == 'failure' || needs.order-independence-p01.result == 'failure' || " +
+            "needs.order-independence-p12.result == 'failure') && needs.preflight.outputs.on-main == 'true' }}")
         RepoFile.block(jobs("preflight"), "outputs") should include("on-main: ${{ github.ref == 'refs/heads/main' }}")
       }
     }

@@ -4,7 +4,7 @@
 # exit 0. A line apart in either: exit 1, the lines in the log and a `not deterministic` verdict in <verdict file>
 # (harness_aa.py judge reads it: the harness's own fault). A side missing a TSV: exit 2, nothing judged.
 # Its callers: identity-drift-check.sh's DRIFT_TWICE (both replays in one row, the daily full run) and the leg's
-# `takes-drift-aa` comparison of the A/A rows' two passes (country-convergence-leg.yml `order-compare`).
+# `takes-drift-aa` comparison of the A/A rows' two passes (identity-takes.yml `takes-drift-aa`).
 # Tested by drift-replays-compare-test.sh.
 set -uo pipefail
 

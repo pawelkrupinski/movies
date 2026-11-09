@@ -1,0 +1,115 @@
+# THE ORDER COMPARISON of one country's one pair of passes (`order-independence-p01`: passes 0 and 1; `-p12`: 1 and 2),
+# the steps of the jobs of that name in identity-model-convergence.yml and verify-scrape-recording.yml (owner, 2026-11-09:
+# the comparison is the callers' job, not the leg's, so a caller that holds no order rows -- Identity takes -- never
+# creates it). Each pass replayed in a row of the country's leg (country-convergence-leg.yml, `order-independence-p01-pass0`,
+# ...) and uploaded its corpus (ReplayCorpusFile); this reads the two back and runs the same order test on them, the same
+# CorpusComparison. No MongoDB, no corpus: a warm sbt and the two files. The calling job checks out first, starts the
+# job-telemetry and, after this, finishes it and posts the leg-verdict (a composite step cannot end a job's telemetry for it). No per-step
+# timeout (a composite step has none): the calling job's 20 minutes bound it.
+name: Compare the order passes
+description: Download one pair of order passes and run the order-independence comparison on them.
+
+inputs:
+  code:
+    description: The country's two-letter code.
+    required: true
+  country:
+    description: The country's name, as the check names it (`order-independence-p01 (<country>)`).
+    required: true
+  phase:
+    description: "`order-independence-p01` or `order-independence-p12`."
+    required: true
+  command:
+    description: The sbt alias running the country's order-independence replay (the leg's `order-command`).
+    required: true
+  heap:
+    description: The sbt JVM's -Xmx.
+    required: true
+  jvm-options:
+    description: Extra JVM options, space separated.
+    required: false
+    default: ''
+  mode:
+    description: "`hermetic`, as the legs the passes ran in."
+    required: false
+    default: hermetic
+  corpus-run:
+    description: The named recording the legs replayed, else empty.
+    required: false
+    default: ''
+  token:
+    description: A token that can read this repo's runs and releases.
+    required: true
+  dockerhub-username:
+    description: Docker Hub account (the setup's Mongo image pull).
+    required: false
+    default: ''
+  dockerhub-token:
+    description: Docker Hub token.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/convergence-setup
+      with:
+        code:               ${{ inputs.code }}
+        token:              ${{ inputs.token }}
+        dockerhub-username: ${{ inputs.dockerhub-username }}
+        dockerhub-token:    ${{ inputs.dockerhub-token }}
+        mode:               ${{ inputs.mode }}
+        corpus-run:         ${{ inputs.corpus-run }}
+        replay:             'false'
+    - name: Download the row's two passes
+      uses: actions/download-artifact@v6
+      with:
+        pattern: order-pass-${{ inputs.code }}-${{ inputs.phase }}-pass*
+        path: ${{ runner.temp }}/order-pass
+        merge-multiple: true
+    # A pass row that died (exit 137, Verify scrape recording #14) uploaded no corpus: named, never a test failure.
+    - name: Check both passes arrived
+      shell: bash
+      run: scripts/ci/order-passes-present.sh "${{ runner.temp }}/order-pass" "${{ inputs.phase == 'order-independence-p01' && '0,1' || '1,2' }}" "${{ inputs.phase }}"
+    - name: Compare the ${{ inputs.country }} ${{ inputs.phase }} passes
+      id: suite
+      shell: bash
+      env:
+        JVM_OPTIONS:      ${{ inputs.jvm-options }}
+        HEAP:             ${{ inputs.heap }}
+        ORDER_COMMAND:    ${{ inputs.command }}
+        KINOWO_COUNTRY:   ${{ inputs.code }}
+        KINOWO_COUNTRIES: ${{ inputs.code }}
+        KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
+        KINOWO_CONVERGENCE_ORDER_PASSES: ${{ inputs.phase == 'order-independence-p01' && '0,1' || '1,2' }}
+        KINOWO_CONVERGENCE_ORDER_PASS_IN: ${{ runner.temp }}/order-pass
+      run: |
+        set -o pipefail
+        ls -l "$KINOWO_CONVERGENCE_ORDER_PASS_IN" || true
+        rm -rf target/test-reports/unit
+        scripts/ci/stop-stray-sbt.sh
+        # As every sbt run of a leg: the runner's whole CPU beside it (cpu-sampler.sh).
+        scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
+        read -ra jvm <<< "$JVM_OPTIONS"
+        sbt -J-Xmx"$HEAP" "${jvm[@]}" $ORDER_COMMAND 2>&1 | tee convergence.log
+    - name: Publish convergence test report
+      if: always()
+      uses: mikepenz/action-junit-report@v5
+      with:
+        annotate_only: true
+        job_summary: true
+        detailed_summary: true
+        report_paths: 'target/test-reports/unit/**/*.xml'
+        check_name: ${{ inputs.phase }} (${{ inputs.country }})
+        include_passed: true
+        require_tests: true
+    - uses: ./.github/actions/convergence-findings
+      if: always()
+      with:
+        title: ${{ inputs.phase }} (${{ inputs.country }})
+        log:   convergence.log
+        name:  ${{ inputs.code }}-${{ inputs.phase }}
+    - name: End any JVM a timed-out step left running
+      if: always()
+      shell: bash
+      run: scripts/ci/stop-stray-sbt.sh

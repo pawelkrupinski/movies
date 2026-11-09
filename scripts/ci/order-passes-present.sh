@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # order-passes-present.sh <dir> <passes> <row>: are both corpus files the order comparison reads there?
 #
-# `order-compare` (country-convergence-leg.yml) reads pass<N>.bin.gz (ReplayCorpusFile) for each pass of
+# the `order-independence-p01|p12` jobs (.github/actions/order-compare) reads pass<N>.bin.gz (ReplayCorpusFile) for each pass of
 # <passes> ("0,1"), written by the row's pass jobs (`<row>-pass<N>`), which upload theirs only when their suite
 # passed. A pass job that died -- ci-runner's OOM killing it with exit 137, Verify scrape recording #14 -- left
 # its file out, and the comparison then failed as a TEST (NoSuchFileException at ReplayCorpusFile), a red with no

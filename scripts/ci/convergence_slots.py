@@ -8,7 +8,7 @@ So the preflight hands each country's leg (country-convergence-leg.yml) its rows
 `max-parallel` (its SHARE of the 20): GitHub starts a matrix's rows in their listed order and the next one when a running
 one ends, so each country runs a longest-processing-time list schedule on its own slots, and the run never holds more
 than the shares' sum. The shares are chosen greedily: every country starts with one slot and the next slot goes to the
-country whose rows end last (its order comparison, `order-compare`, after them) until the 20 are given out or another
+country whose rows end last (its order comparison, the `order-independence-p01|p12` jobs, after them) until the 20 are given out or another
 slot would shorten no country. The rows, their checks and their names are the leg's own; only their order and how many
 run at once change.
 
@@ -40,7 +40,7 @@ RUNNERS = 20
 UNCAPPED = 256
 # a row the costs file does not name: about a mid-sized row
 UNMEASURED_MINUTES = 8.0
-# the order comparison after a split country's rows (order-compare)
+# the order comparison after a split country's rows (the `order-independence-p01|p12` jobs)
 COMPARE_PHASES = ("order-independence-p01", "order-independence-p12")
 
 
@@ -50,7 +50,7 @@ COMPARE_PHASES = ("order-independence-p01", "order-independence-p12")
 # takes row's head and its takes-base row's base)
 LIKE = {"takes-drift-aa-pass0": ("takes-drift-1", 1.0), "takes-drift-aa-pass1": ("takes-drift-1", 1.0),
         "takes-aa": ("takes", 2.0)}
-# the A/A passes' comparison (`takes-drift-aa`, in the leg's order-compare job): two TSV files and no sbt -- about the
+# the A/A passes' comparison (`takes-drift-aa`, in Identity takes' `takes-drift-aa` job): two TSV files and no sbt -- about the
 # order comparison's setup alone
 AA_COMPARE_MINUTES = 1.5
 

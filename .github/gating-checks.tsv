@@ -34,8 +34,8 @@ job	main.yml	publish-worker	2718
 job	identity-model-convergence.yml	preflight	2691
 job	identity-model-convergence.yml	leg (germany)	aggregate
 job	identity-model-convergence.yml	convergence (germany)	aggregate
-job	identity-model-convergence.yml	order-independence-p01 (germany)	2691
-job	identity-model-convergence.yml	order-independence-p12 (germany)	2691
+job	identity-model-convergence.yml	order-independence-p01 (germany)	unproven	born 2026-11-09: the order comparison moved out of the shared leg into jobs of this workflow (the owner); owner: convergence family
+job	identity-model-convergence.yml	order-independence-p12 (germany)	unproven	born 2026-11-09: the order comparison moved out of the shared leg into jobs of this workflow (the owner); owner: convergence family
 job	identity-model-convergence.yml	order-independence-p01-pass0 (germany)	1010
 job	identity-model-convergence.yml	order-independence-p01-pass1 (germany)	1010
 job	identity-model-convergence.yml	order-independence-p12-pass1 (germany)	1010
@@ -51,8 +51,8 @@ job	identity-takes.yml	takes-drift-aa-pass1 (germany)	unproven	born 2026-11-08: 
 job	identity-takes.yml	takes-aa (germany)	unproven	born 2026-11-08: split from Identity model convergence (the owner); owner: convergence family
 job	identity-model-convergence.yml	leg (poland)	aggregate
 job	identity-model-convergence.yml	convergence (poland)	aggregate
-job	identity-model-convergence.yml	order-independence-p01 (poland)	1010
-job	identity-model-convergence.yml	order-independence-p12 (poland)	1010
+job	identity-model-convergence.yml	order-independence-p01 (poland)	unproven	born 2026-11-09: the order comparison moved out of the shared leg into jobs of this workflow (the owner); owner: convergence family
+job	identity-model-convergence.yml	order-independence-p12 (poland)	unproven	born 2026-11-09: the order comparison moved out of the shared leg into jobs of this workflow (the owner); owner: convergence family
 job	identity-model-convergence.yml	order-independence-p01-pass0 (poland)	1010
 job	identity-model-convergence.yml	order-independence-p01-pass1 (poland)	1010
 job	identity-model-convergence.yml	order-independence-p12-pass1 (poland)	1010
@@ -83,8 +83,8 @@ job	identity-takes.yml	takes-drift-aa-pass1 (spain)	unproven	born 2026-11-08: sp
 job	identity-takes.yml	takes-aa (spain)	unproven	born 2026-11-08: split from Identity model convergence (the owner); owner: convergence family
 job	identity-model-convergence.yml	leg (united-kingdom)	aggregate
 job	identity-model-convergence.yml	convergence (united-kingdom)	aggregate
-job	identity-model-convergence.yml	order-independence-p01 (united-kingdom)	2691
-job	identity-model-convergence.yml	order-independence-p12 (united-kingdom)	2691
+job	identity-model-convergence.yml	order-independence-p01 (united-kingdom)	unproven	born 2026-11-09: the order comparison moved out of the shared leg into jobs of this workflow (the owner); owner: convergence family
+job	identity-model-convergence.yml	order-independence-p12 (united-kingdom)	unproven	born 2026-11-09: the order comparison moved out of the shared leg into jobs of this workflow (the owner); owner: convergence family
 job	identity-model-convergence.yml	order-independence-p01-pass0 (united-kingdom)	1010
 job	identity-model-convergence.yml	order-independence-p01-pass1 (united-kingdom)	1010
 job	identity-model-convergence.yml	order-independence-p12-pass1 (united-kingdom)	1010
@@ -100,8 +100,8 @@ job	identity-takes.yml	takes-aa (united-kingdom)	unproven	born 2026-11-08: split
 job	identity-model-convergence.yml	leg (united-states)	aggregate
 job	identity-model-convergence.yml	convergence (united-states)	aggregate
 job	identity-model-convergence.yml	next-day (united-states)	2691
-job	identity-model-convergence.yml	order-independence-p01 (united-states)	2691
-job	identity-model-convergence.yml	order-independence-p12 (united-states)	2691
+job	identity-model-convergence.yml	order-independence-p01 (united-states)	unproven	born 2026-11-09: the order comparison moved out of the shared leg into jobs of this workflow (the owner); owner: convergence family
+job	identity-model-convergence.yml	order-independence-p12 (united-states)	unproven	born 2026-11-09: the order comparison moved out of the shared leg into jobs of this workflow (the owner); owner: convergence family
 job	identity-model-convergence.yml	order-independence-p01-pass0 (united-states)	1010
 job	identity-model-convergence.yml	order-independence-p01-pass1 (united-states)	1010
 job	identity-model-convergence.yml	order-independence-p12-pass1 (united-states)	1010

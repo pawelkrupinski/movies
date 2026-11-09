@@ -102,6 +102,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/actions/install-actionlint/action.yml
 .github/actions/job-telemetry/action.yml
 .github/actions/mark-grafana-deploy/action.yml
+.github/actions/order-compare/action.yml
 .github/actions/run-page-test/action.yml
 .github/actions/setup-buildx/action.yml
 .github/actions/setup-sbt-build/action.yml

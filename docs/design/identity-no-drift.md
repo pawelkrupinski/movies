@@ -104,7 +104,7 @@ hours. The capture-replay case above proves one case; the A/A run proves the who
   (`scripts/ci/harness_aa.py decide`). Never in pre-push or `agentctl land`: it runs after landing, in CI only.
 - **What:** each leg adds two rows, `takes-drift-aa-pass0|1 (<country>)`, side by side: identity-drift-check.sh on the
   row-1 seeds with `DRIFT_BASE=<head>` (no base replay: base and head are one commit), storing nothing, each one replay
-  of the head. Its `order-compare` job then diffs the two passes' drift and flips TSVs
+  of the head. Identity takes' `takes-drift-aa` job then diffs the two passes' drift and flips TSVs
   (`scripts/ci/drift-replays-compare.sh`) as `takes-drift-aa (<country>)`. Until 2026-11-06 one row replayed twice in
   turn (`DRIFT_TWICE=true`, the daily run's mode, which keeps it): 35-69 minutes for Germany, the run's critical path.
 - **Verdict** (`harness_aa.py judge`): two replays that differ fail as `HARNESS FAULT, not the resolver's`; a

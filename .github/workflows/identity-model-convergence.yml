@@ -144,6 +144,9 @@ jobs:
             # replays exactly these, so the passes a comparison judges were fed alike.
             pinned-pairs: ${{ steps.pins.outputs.pinned-pairs || '{}' }}
             any-leg: ${{ steps.plan.outputs.any-leg || 'false' }}
+            # The order-comparison jobs' rows: the countries of the matrix above that split their order replay (the `order-independence-p01|p12` jobs).
+            order-matrix: ${{ steps.plan.outputs.order-matrix || '{"country":[],"include":[]}' }}
+            any-order: ${{ steps.plan.outputs.any-order || 'false' }}
             # The legs' runner: ubuntu-22.04 unless a dispatch names one -- or, off main with the repository variable
             # MOVIES_CI_RUNNERS=self-hosted, ci-runner's `movies-measure` slots (infra nix/hosts/ci-runner/movies-runners.nix):
             # every run off main is a measurement (measure/*: identity-measure, identity-drift-ci, a landing check's full
@@ -399,6 +402,108 @@ jobs:
         # and publish actions read.
         secrets: inherit
 
+    # THE ORDER COMPARISONS (owner, 2026-11-09: out of the shared leg, which created `order-compare` skipped in every Identity
+    # takes run): a split country's two one-pass rows per pair replay in the leg and upload their corpora; one job per pair,
+    # a row per country that has order rows (the preflight's `order-matrix`, convergence_reuse.py order_matrix), reads the two
+    # back and runs the same order test on them -- `order-independence-p01 (<country>)`, the name the check always had
+    # without the `leg (<country>) /` prefix. After the whole `leg` (a matrix job cannot be waited on per row). Off main
+    # with one order phase, p12 has no pass rows and is skipped (its plain name).
+    order-independence-p01:
+        needs: [ preflight, leg ]
+        # No `name:`: the job id and the matrix's one `country` vector name a row `order-independence-p01 (<country>)`, and the job, when skipped,
+        # plain `order-independence-p01` -- a `name:` naming a matrix value renders raw on a skipped job.
+        if: ${{ !cancelled() && needs.preflight.outputs.reused-from == '' && needs.preflight.outputs.any-order == 'true' }}
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJson(needs.preflight.outputs.order-matrix) }}
+        runs-on: ${{ needs.preflight.outputs.runner }}
+        timeout-minutes: 20
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+            statuses: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+                  label: ${{ matrix.country }}
+            - uses: ./.github/actions/order-compare
+              with:
+                  code:               ${{ matrix.code }}
+                  country:            ${{ matrix.country }}
+                  phase:              order-independence-p01
+                  command:            ${{ matrix.order }}
+                  heap:               ${{ matrix.heap }}
+                  jvm-options:        ${{ needs.preflight.outputs.jvm-options }}
+                  corpus-run:         ${{ needs.preflight.outputs.recording }}
+                  token:              ${{ secrets.GITHUB_TOKEN }}
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+                  label: ${{ matrix.country }}
+            - uses: ./.github/actions/leg-verdict
+              if: always()
+              with:
+                  leg:    order-independence-p01 (${{ matrix.country }})
+                  status: ${{ job.status }}
+                  token:  ${{ secrets.GITHUB_TOKEN }}
+
+    order-independence-p12:
+        needs: [ preflight, leg ]
+        # No `name:`: the job id and the matrix's one `country` vector name a row `order-independence-p12 (<country>)`, and the job, when skipped,
+        # plain `order-independence-p12` -- a `name:` naming a matrix value renders raw on a skipped job.
+        if: ${{ !cancelled() && needs.preflight.outputs.reused-from == '' && needs.preflight.outputs.any-order == 'true' && needs.preflight.outputs.order-phases != 'one' }}
+        strategy:
+            fail-fast: false
+            matrix: ${{ fromJson(needs.preflight.outputs.order-matrix) }}
+        runs-on: ${{ needs.preflight.outputs.runner }}
+        timeout-minutes: 20
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+            statuses: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/job-telemetry
+              with:
+                  phase: start
+                  token: ${{ github.token }}
+                  label: ${{ matrix.country }}
+            - uses: ./.github/actions/order-compare
+              with:
+                  code:               ${{ matrix.code }}
+                  country:            ${{ matrix.country }}
+                  phase:              order-independence-p12
+                  command:            ${{ matrix.order }}
+                  heap:               ${{ matrix.heap }}
+                  jvm-options:        ${{ needs.preflight.outputs.jvm-options }}
+                  corpus-run:         ${{ needs.preflight.outputs.recording }}
+                  token:              ${{ secrets.GITHUB_TOKEN }}
+                  dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+                  dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
+            - uses: ./.github/actions/job-telemetry
+              if: ${{ !cancelled() }}
+              with:
+                  phase: finish
+                  token: ${{ github.token }}
+                  job-status: ${{ job.status }}
+                  label: ${{ matrix.country }}
+            - uses: ./.github/actions/leg-verdict
+              if: always()
+              with:
+                  leg:    order-independence-p12 (${{ matrix.country }})
+                  status: ${{ job.status }}
+                  token:  ${{ secrets.GITHUB_TOKEN }}
+
     # NO fill job: each country's convergence row fetches what the previous run's suite listed, for ~90 s before
     # its own suite, so this run already replays it (country-convergence-leg.yml, docs/design/convergence-fixture-fill.md).
     # A longer fill is a hand-dispatched `Convergence fill` (convergence-fill.yml).
@@ -408,8 +513,8 @@ jobs:
     # A separate run rather than a reusable call, so the bisect holds none of this suite's lane. The leg
     # leaves a request only when it ran hermetic (ConvergenceBisectTriggerSpec).
     request-bisect:
-        needs: [ preflight, leg ]
-        if: ${{ !cancelled() && needs.leg.result == 'failure' && needs.preflight.outputs.on-main == 'true' }}
+        needs: [ preflight, leg, order-independence-p01, order-independence-p12 ]
+        if: ${{ !cancelled() && (needs.leg.result == 'failure' || needs.order-independence-p01.result == 'failure' || needs.order-independence-p12.result == 'failure') && needs.preflight.outputs.on-main == 'true' }}
         runs-on: ${{ needs.preflight.outputs.light-runner }}
         timeout-minutes: 5
         permissions:
@@ -430,7 +535,7 @@ jobs:
     # its own, which waits for this one to end and reports it: this run's end is THE GATE's verdict, and the report run
     # here held it back 40-70 s (2026-11-06, RunTimingsWiringSpec).
     timings:
-        needs: [ preflight, leg, request-bisect ]
+        needs: [ preflight, leg, order-independence-p01, order-independence-p12, request-bisect ]
         if: ${{ !cancelled() }}
         runs-on: ${{ needs.preflight.outputs.light-runner }}
         timeout-minutes: 5
