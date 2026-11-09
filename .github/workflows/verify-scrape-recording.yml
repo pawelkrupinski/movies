@@ -59,6 +59,8 @@ permissions:
 env:
     # ci-runner's job image sets no locale where a hosted VM sets C.UTF-8 (SelfHostedRunnersSpec).
     LANG: C.UTF-8
+    # The fixtures release `convergence-setup` (the order-comparison jobs') reads; a called workflow's own env does not reach here.
+    FIXTURE_RELEASE_TAG: convergence-fixtures
 
 jobs:
     # Seconds, before any leg takes a runner: which countries the recording holds complete, and that each one's

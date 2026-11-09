@@ -36,6 +36,10 @@ class OrderCompareWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  they should "name the fixtures release at workflow level, which convergence-setup reads (run 42560258250 failed every comparison without it)" in {
+    Seq(convergence, verify).foreach(file => RepoFile.block(RepoFile.read(file), "env") should include("FIXTURE_RELEASE_TAG: convergence-fixtures"))
+  }
+
   they should "have the preflight plan the order matrix off the leg matrix" in {
     Seq(convergence, verify).foreach { file =>
       val outputs = RepoFile.block(jobsOf(file)("preflight"), "outputs")

@@ -111,6 +111,8 @@ env:
     # then encodes file names as ASCII and every fixture path with a Polish letter throws InvalidPathException
     # (precommit-check run 41356052566). (SelfHostedRunnersSpec)
     LANG: C.UTF-8
+    # The fixtures release `convergence-setup` (the order-comparison jobs') reads; a called workflow's own env does not reach here.
+    FIXTURE_RELEASE_TAG: convergence-fixtures
 
 jobs:
     # Seconds, first: the secret the legs read is set, and the pair every leg replays exists, so a missing one fails
