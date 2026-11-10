@@ -33,10 +33,14 @@ past the next one) the service polls every two minutes and cancels a not-yet-com
 run of the slot, only while a run of ours exists that was not cancelled (GitHub's late run, on
 arriving in the workflow's concurrency group, cancels ours if ours is still pending there). A cancelled run says nothing to the red gate and
 skips report-scheduled-run (`!cancelled()`). The cost: a late run may have done a minute or two of
-its plan job before it is cancelled.
+its plan job before it is cancelled. The guard ends as soon as it has judged the slot's schedule run
+(GitHub starts one at most): each poll is a request of the App installation's 5,000 an hour.
 
 Bounded retries (an API error is retried, re-checking the runs first, since a dispatch whose
-answer was lost may still have landed). Every decision is one journal line, shipped to
+answer was lost may still have landed). A RATE-LIMITED refusal (403/429 with x-ratelimit-remaining 0,
+retry-after, or a rate-limit message) costs no attempt: it waits for the reset GitHub names, up to the
+guard's end (2026-11-09: the four attempts spent in six minutes of an exhausted quota lost the nightly
+recording), logged as `rate-limited until=<iso> waiting <n> s`. Every decision is one journal line, shipped to
 VictoriaLogs:
     scheduled-dispatch: workflow=<file> slot=<iso> outcome=ran run=<id> event=schedule late_minutes=<n>
     scheduled-dispatch: workflow=<file> slot=<iso> outcome=dispatched-earlier run=<id>
@@ -79,7 +83,18 @@ DISPATCH_NE = "(github.event_name != 'schedule' && github.event_name != 'reposit
 
 
 class ApiError(Exception):
-    pass
+    """A call GitHub would not answer. `retry_at` (a UTC datetime) when it refused for a rate limit: retrying before
+    then is refused again."""
+
+    def __init__(self, message, retry_at=None):
+        super().__init__(message)
+        self.retry_at = retry_at
+
+
+# A rate-limited call is retried this long after the reset GitHub names, and never sooner than a minute after the
+# refusal (GitHub's advice for a secondary limit that names no time).
+RATE_LIMIT_MARGIN_SECONDS = 5
+RATE_LIMIT_MIN_WAIT_SECONDS = 60
 
 
 # ---------------------------------------------------------------- cron
@@ -330,6 +345,28 @@ def _b64url(data):
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
 
+def rate_limit_reset(status, headers, body, now):
+    """When a refused call may be retried (a UTC datetime), or None when the refusal is not a rate limit. A primary
+    limit is a 403/429 with `x-ratelimit-remaining: 0` and the reset epoch in `x-ratelimit-reset`; a secondary one
+    carries `retry-after` seconds, or only its message."""
+    if status not in (403, 429):
+        return None
+    header = {k.lower(): v for k, v in (headers or {}).items()}
+    exhausted = header.get("x-ratelimit-remaining") == "0"
+    if not (exhausted or "retry-after" in header or "rate limit" in (body or "").lower()):
+        return None
+    try:
+        if "retry-after" in header:
+            epoch = now + int(header["retry-after"])
+        elif exhausted and "x-ratelimit-reset" in header:
+            epoch = int(header["x-ratelimit-reset"])
+        else:
+            epoch = now + RATE_LIMIT_MIN_WAIT_SECONDS
+    except ValueError:
+        epoch = now + RATE_LIMIT_MIN_WAIT_SECONDS
+    return datetime.datetime.fromtimestamp(epoch, datetime.timezone.utc)
+
+
 def app_jwt(app_id, key_file, now):
     head = _b64url(json.dumps({"alg": "RS256", "typ": "JWT"}, separators=(",", ":")).encode())
     body = _b64url(json.dumps({"iat": int(now) - 60, "exp": int(now) + 540, "iss": str(app_id)},
@@ -360,7 +397,9 @@ class GitHub:
             with urllib.request.urlopen(request, timeout=30) as response:
                 return json.loads(response.read() or b"null")
         except urllib.error.HTTPError as e:
-            raise ApiError(f"{method} {path}: HTTP {e.code} {e.read()[:200].decode(errors='replace')}") from None
+            body = e.read()[:500].decode(errors="replace")
+            raise ApiError(f"{method} {path}: HTTP {e.code} {body[:200]}",
+                           retry_at=rate_limit_reset(e.code, dict(e.headers or {}), body, time.time())) from None
         except (urllib.error.URLError, OSError, ValueError) as e:
             raise ApiError(f"{method} {path}: {e}") from None
 
@@ -410,13 +449,15 @@ class Slot:
     def _runs(self):
         return [r for r in self.github.runs_since(self.file, self.slot) if r.get("event") in SCHEDULED_EVENTS]
 
-    def ensure(self):
+    def ensure(self, deadline):
         """'ran' (GitHub's schedule started it), 'dispatched-earlier' (an earlier dispatch of ours did),
-        'missed-dispatched' (neither: dispatched now) or 'dispatch-failed' (the API would not say or take it)."""
+        'missed-dispatched' (neither: dispatched now) or 'dispatch-failed' (the API would not say or take it).
+        A rate-limited refusal costs no attempt: it waits for the reset GitHub names, while that is before
+        `deadline` (the guard's end: a dispatch later than that would collide with GitHub's late run or the next
+        slot). 2026-11-09: four fixed attempts spent in 6 minutes of an exhausted quota lost the nightly recording."""
         error = ""
-        for attempt in range(self.attempts):
-            if attempt:
-                self.sleep(self.backoff * attempt)
+        attempt = 0
+        while attempt < self.attempts:
             try:
                 runs = sorted(self._runs(), key=lambda r: r.get("created_at") or "")
                 ours = [r for r in runs if r["event"] == "repository_dispatch"]
@@ -433,7 +474,21 @@ class Slot:
                 return "missed-dispatched"
             except ApiError as e:
                 error = str(e).replace("\n", " ")
-                self.log(f"{self.head} attempt={attempt + 1}/{self.attempts} api-error={error}")
+                if e.retry_at is not None:
+                    wait = max((e.retry_at - self.clock()).total_seconds() + RATE_LIMIT_MARGIN_SECONDS,
+                               RATE_LIMIT_MIN_WAIT_SECONDS)
+                    if self.clock() + datetime.timedelta(seconds=wait) >= deadline:
+                        self.log(f"{self.head} rate-limited until={iso(e.retry_at)} past the guard's end "
+                                 f"{iso(deadline)} api-error={error}")
+                        break
+                    self.log(f"{self.head} rate-limited until={iso(e.retry_at)} waiting {int(wait)} s "
+                             f"api-error={error}")
+                    self.sleep(wait)
+                    continue
+                attempt += 1
+                self.log(f"{self.head} attempt={attempt}/{self.attempts} api-error={error}")
+                if attempt < self.attempts:
+                    self.sleep(self.backoff * attempt)
         self.log(f"{self.head} outcome=dispatch-failed error={error}")
         return "dispatch-failed"
 
@@ -442,9 +497,12 @@ class Slot:
         late: 3-10 h in 2026-11), so the slot runs once. Only while a run of ours exists that was not cancelled: never
         the slot's only run. Ours waiting in its concurrency group is cancelled by GitHub's late run of the same group
         arriving (a pending run is superseded; prune-actions-caches cancels in progress too), and GitHub's is then the
-        slot's run."""
+        slot's run. GitHub starts a slot's schedule run at most once, so the guard ends once it has judged it against
+        ours (cancelled, or kept because ours was superseded): every poll is a request of the App installation's hourly quota. A
+        rate-limited poll waits for the reset rather than polling into it."""
         cancelled = set()
         while self.clock() < until:
+            wait = self.poll
             try:
                 runs = self._runs()
                 if any(r["event"] == "repository_dispatch" and r.get("conclusion") != "cancelled" for r in runs):
@@ -454,9 +512,14 @@ class Slot:
                             cancelled.add(r["id"])
                             self.log(f"{self.head} outcome=late-duplicate-cancelled run={r['id']} "
                                      f"late_minutes={int((_created(r) - self.slot).total_seconds() // 60)}")
+                events = {r["event"] for r in runs}
+                if {"schedule", "repository_dispatch"} <= events:  # ours listed too: the schedule run was judged
+                    break
             except ApiError as e:
                 self.log(f"{self.head} guard api-error={str(e).replace(chr(10), ' ')}")
-            self.sleep(self.poll)
+                if e.retry_at is not None:
+                    wait = max(wait, (e.retry_at - self.clock()).total_seconds() + RATE_LIMIT_MARGIN_SECONDS)
+            self.sleep(wait)
         return sorted(cancelled)
 
 
@@ -467,10 +530,11 @@ def settle(github, workflow_file, crons, now, grace_minutes, guard_hours, log, c
     if wait > 0:
         log(f"scheduled-dispatch: workflow={workflow_file} slot={iso(slot)} waiting {int(wait)} s of grace")
         sleep(wait)
+    guard_end = min(slot + datetime.timedelta(hours=guard_hours), next_slot(crons, slot))
     one = Slot(github, workflow_file, slot, log, clock, sleep)
-    outcome = one.ensure()
+    outcome = one.ensure(guard_end)
     if outcome in ("missed-dispatched", "dispatched-earlier"):
-        one.guard(min(slot + datetime.timedelta(hours=guard_hours), next_slot(crons, slot)))
+        one.guard(guard_end)
     return 1 if outcome == "dispatch-failed" else 0
 
 

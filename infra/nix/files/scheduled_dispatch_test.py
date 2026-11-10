@@ -247,7 +247,9 @@ class Decision(unittest.TestCase):
         self.assertEqual(github.cancelled, [42347764855])
         self.assertTrue(any("outcome=late-duplicate-cancelled run=42347764855 late_minutes=355" in line
                             for line in lines), lines)
-        self.assertLessEqual(clock.now, at("2026-11-08T14:45"))  # the guard ends 14 h after the slot
+        # The slot's one schedule run is settled: the guard stops polling (2026-11-10: it polled on for the rest of the
+        # 14 h, 30 requests an hour of the App installation's 5,000 per guarded workflow, for nothing to cancel).
+        self.assertLessEqual(clock.now, at("2026-11-08T06:40"))
 
     def test_github_late_run_is_kept_once_it_superseded_ours(self):
         # Ours waited in the workflow's concurrency group (cancel-in-progress: false, a person's run ahead of it, or
@@ -262,6 +264,7 @@ class Decision(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(len(github.dispatched), 1)
         self.assertEqual(github.cancelled, [], lines)
+        self.assertLessEqual(clock.now, at("2026-11-08T06:40"))
 
     def test_github_on_time_run_is_never_cancelled(self):
         on_time = recorded("drift-explorer-runs-since-2026-11-07T0041.json")[0]
@@ -295,6 +298,68 @@ class Decision(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(len(github.dispatched), 1)
         self.assertIn("api-error=POST repos/x/dispatches: HTTP 502", " ".join(lines))
+
+
+def rate_limited(name="rate-limited-403-2026-11-09T2346.json"):
+    """The recorded refusal as the GitHub seam turns it into an ApiError (its reset parsed by the real code)."""
+    with open(os.path.join(FIXTURES, name)) as f:
+        captured = json.load(f)
+    reset = sd.rate_limit_reset(captured["status"], captured["headers"], captured["body"],
+                                at("2026-11-09T23:46").timestamp())
+    return sd.ApiError(f"GET runs: HTTP {captured['status']} {captured['body'][:200]}", retry_at=reset)
+
+
+class RateLimit(unittest.TestCase):
+    def test_reads_the_reset_of_a_primary_rate_limit(self):
+        self.assertEqual(rate_limited().retry_at, datetime.datetime(2026, 11, 10, 0, 12, 7, tzinfo=UTC))
+
+    def test_reads_retry_after_of_a_secondary_rate_limit(self):
+        now = at("2026-11-09T23:46").timestamp()
+        self.assertEqual(sd.rate_limit_reset(429, {"Retry-After": "90"}, "{}", now),
+                         at("2026-11-09T23:46") + datetime.timedelta(seconds=90))
+
+    def test_a_secondary_rate_limit_without_headers_waits_a_minute(self):
+        now = at("2026-11-09T23:46").timestamp()
+        body = '{"message":"You have exceeded a secondary rate limit. Please wait a few minutes before you try again."}'
+        self.assertEqual(sd.rate_limit_reset(403, {}, body, now), at("2026-11-09T23:47"))
+
+    def test_another_403_is_not_a_rate_limit(self):
+        body = '{"message":"Resource not accessible by integration"}'
+        self.assertIsNone(sd.rate_limit_reset(403, {"X-RateLimit-Remaining": "4211"}, body, 0))
+        self.assertIsNone(sd.rate_limit_reset(502, {}, "Bad Gateway", 0))
+
+    def test_the_slot_waits_for_the_reset_and_dispatches(self):
+        # record-scrape-fixtures' 2026-11-09 23:31 slot: every call refused until the quota resets at 00:12:07.
+        refusal = rate_limited()
+        clock = Clock(at("2026-11-09T23:31"))
+        github = FakeGitHub(clock, lambda now: refusal if now < refusal.retry_at else [])
+        status, lines = settle(github, clock, "record-scrape-fixtures.yml", ["31 23 * * *"], guard_hours=1)
+        self.assertEqual(status, 0, lines)
+        self.assertEqual(len(github.dispatched), 1)
+        self.assertGreaterEqual(github.dispatched[0][2], refusal.retry_at)
+        self.assertLess(github.dispatched[0][2], at("2026-11-10T00:14"))
+        self.assertTrue(any("rate-limited until=2026-11-10T00:12:07Z" in line for line in lines), lines)
+        self.assertIn(rate_limit_wait := (refusal.retry_at - at("2026-11-09T23:46")).total_seconds() + 5, clock.slept)
+        self.assertGreater(rate_limit_wait, 25 * 60)
+
+    def test_the_guard_waits_out_a_rate_limit_instead_of_polling_into_it(self):
+        refusal = rate_limited()
+        refusal.retry_at = at("2026-11-08T02:00")
+        clock = Clock(at("2026-11-08T00:41"))
+        github = FakeGitHub(clock, lambda now: refusal if at("2026-11-08T01:00") <= now < refusal.retry_at else [])
+        settle(github, clock, "identity-drift-explorer.yml", ["41 0 * * *"], guard_hours=2)
+        # ensure (00:56), the polls of 00:56 and 00:58, the refusal at 01:00, then 02:00:05 .. 02:40:05 every 2 min
+        self.assertEqual(github.queries, 1 + 2 + 1 + 21)
+
+    def test_a_reset_past_the_guard_window_fails_the_unit(self):
+        refusal = rate_limited()
+        refusal.retry_at = at("2026-11-10T02:00")
+        clock = Clock(at("2026-11-09T23:31"))
+        github = FakeGitHub(clock, lambda now: refusal)
+        status, lines = settle(github, clock, "record-scrape-fixtures.yml", ["31 23 * * *"], guard_hours=1)
+        self.assertEqual(status, 1)
+        self.assertLessEqual(clock.now, at("2026-11-10T00:31"))
+        self.assertIn("outcome=dispatch-failed", lines[-1])
 
 
 if __name__ == "__main__":

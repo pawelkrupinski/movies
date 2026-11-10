@@ -1,0 +1,12 @@
+{
+  "_source": "The 2026-11-09 23:46Z refusal of record-scrape-fixtures' 23:31 slot on monitoring-1: status and message as the unit's journal logged them; the headers are the ones GitHub's REST API sends with a primary rate-limit 403 (x-ratelimit-reset = 2026-11-10T00:12:07Z, a plausible reset within the hour).",
+  "status": 403,
+  "headers": {
+    "X-RateLimit-Limit": "5000",
+    "X-RateLimit-Remaining": "0",
+    "X-RateLimit-Reset": "1794269527",
+    "X-RateLimit-Used": "5000",
+    "X-RateLimit-Resource": "core"
+  },
+  "body": "{\"message\":\"API rate limit exceeded for installation ID 177155024. If you reach out to GitHub Support for help, please include the request ID 9C4A:2E1F:1B3D5A:1C2E6B:6911264A and timestamp 2026-11-09 23:46:02 UTC.\",\"documentation_url\":\"https://docs.github.com/rest/overview/rate-limits-for-the-rest-api\",\"status\":\"403\"}"
+}

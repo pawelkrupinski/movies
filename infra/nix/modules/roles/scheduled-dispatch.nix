@@ -11,7 +11,8 @@
 # generated from .github/workflows/*.yml (`python3 infra/nix/files/scheduled_dispatch.py generate`), and
 # scheduled_dispatch_test.py fails when it, or a workflow's wiring, drifts from them.
 #
-# ALERTING: a slot the dispatcher could not dispatch (the API down through its retries) fails the unit,
+# ALERTING: a slot the dispatcher could not dispatch (the API down through its retries, or rate-limited
+# past the guard's end: a rate limit is waited out, not retried) fails the unit,
 # and host-health.rules' SystemdUnitFailed pages. Every decision is a `scheduled-dispatch:` journal line
 # in VictoriaLogs (`outcome=missed-dispatched`, `outcome=late-duplicate-cancelled`, ...).
 #
