@@ -43,7 +43,7 @@ jobs:
             - uses: actions/create-github-app-token@v3
               id: app-token
               with:
-                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  client-id: ${{ secrets.SYNC_PR_APP_ID }}
                   private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
 
             # coursier from the Actions cache, not GitHub's CDN on every run (Scala Steward #146: two 504s and the

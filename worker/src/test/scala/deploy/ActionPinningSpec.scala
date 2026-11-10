@@ -90,4 +90,20 @@ class ActionPinningSpec extends AnyFlatSpec with Matchers {
     keys should have size 2
     all(keys) should include ("steps.browser-slug.outputs.image")
   }
+
+  /** actions/create-github-app-token@v3 deprecates `app-id` ("Use 'client-id' instead"), warning on every run
+   *  (renovate.yml, 2026-11-10). The action reads `client-id || app-id` into the same JWT issuer, which GitHub
+   *  accepts as either the App's numeric id or its client id, so `client-id` takes SYNC_PR_APP_ID unchanged. */
+  "every create-github-app-token step" should "name the App by client-id, not the deprecated app-id" in {
+    val Step = """(?s)uses:\s*actions/create-github-app-token@\S+(.*?)(?=\n\s*-\s|\z)""".r
+    val deprecated = for {
+      path <- RepoFile.ciFiles()
+      step <- Step.findAllMatchIn(RepoFile.withoutComments(RepoFile.read(path)))
+      if """(?m)^\s*app-id:""".r.findFirstIn(step.group(1)).isDefined
+    } yield path
+
+    withClue("create-github-app-token's `app-id` is deprecated, use `client-id`: ") {
+      deprecated shouldBe empty
+    }
+  }
 }
