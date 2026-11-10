@@ -136,7 +136,7 @@ worker:deploy.SharedMachineStateLintSpec	@repo *.scala infra/version-dashboard/t
 worker:deploy.SharedSbtBuildSetupSpec	@repo *.scala
 worker:deploy.SharedUsersDatabaseConfigSpec	@gitops
 worker:deploy.StressAndEmulatorScheduleSpec	@repo *.scala
-worker:deploy.ToolSelfTestsOffGateSpec	@repo
+worker:deploy.ToolSelfTestsOffGateSpec	@repo test/resources/fixtures/identity-judgements.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv
 worker:deploy.UnitTestForkSpec	@repo *.scala
 worker:deploy.UnitTestSplitSpec	@repo *.scala
 worker:deploy.UpstreamRunSpec	@repo
