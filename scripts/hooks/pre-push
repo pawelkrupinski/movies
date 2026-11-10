@@ -1235,6 +1235,19 @@ check_sbt() {
         done
         return 1
     fi
+    # ...AND ITS ROW SELECTS IT FOR EVERY PATH IT READS (Tool self-tests #194: a row missed two test/resources files its
+    # spec reads, seen on main only). A push of a spec, or of the registry, runs the reads check (~15 s) here too.
+    local misses line
+    if printf '%s\n' "$changed" | grep -qE '(/src/test/scala/.*Spec\.scala|^scripts/hooks/lint-registry\.tsv)$' \
+        && [ -f scripts/ci/lint_registry_reads.py ]; then
+        misses="$(python3 scripts/ci/lint_registry_reads.py)" || return 1
+        if [ -n "$misses" ]; then
+            while IFS=$'\t' read -r spec line; do
+                warn "$spec reads $line, which its lint-registry row does not select: add the path's glob to its row"
+            done <<< "$misses"
+            return 1
+        fi
+    fi
     need_jvm sbt || return 1
     local compiles
     # shellcheck disable=SC2207 # task names carry no spaces

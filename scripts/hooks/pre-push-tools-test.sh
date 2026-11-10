@@ -105,6 +105,24 @@ check "...its row in place, nothing said of it" "0" \
 printf 'Worker:zSpec\t@repo\nworker:deploy.NewWiringSpec\t@repo\n' > "$grepo/scripts/hooks/lint-registry.tsv"
 check "...its row in place under a locale whose order is not C's, nothing said of it" "0" \
   "$(tool_push worker/src/test/scala/deploy/NewWiringSpec.scala sbt PATH="$gate/sbt:$PATH" LC_ALL=en_US.UTF-8 >/dev/null; grep -c 'has no lint-registry row' "$gate/err")"
+# ...AND A ROW SELECTS ITS SPEC FOR EVERY PATH THE SPEC READS (Tool self-tests #194: ToolSelfTestsOffGateSpec's `@repo` row
+# missed the two test/resources files it reads; lint-registry-test.sh saw it only on main). A push of a spec runs the
+# reads check, scripts/ci/lint_registry_reads.py, in the sbt check too.
+mkdir -p "$grepo/scripts/ci" "$grepo/data"
+cp "$REPO_ROOT/scripts/hooks/pre-push" "$grepo/scripts/hooks/pre-push"
+cp "$REPO_ROOT/scripts/hooks/lint-registry-missing" "$grepo/scripts/hooks/lint-registry-missing"
+cp "$REPO_ROOT/scripts/ci/lint_registry_reads.py" "$grepo/scripts/ci/lint_registry_reads.py"
+for f in hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scripts/$f" "$grepo/scripts/$f"; done
+echo rows > "$grepo/data/rows.tsv"
+mkdir -p "$grepo/worker/src/test/scala/deploy"
+printf 'class ReadsWiringSpec { val f = "data/rows.tsv" }\n' > "$grepo/worker/src/test/scala/deploy/ReadsWiringSpec.scala"
+printf 'worker:deploy.NewWiringSpec\t@repo\nworker:deploy.ReadsWiringSpec\t@repo\n' > "$grepo/scripts/hooks/lint-registry.tsv"
+check "a push of a spec whose row misses a path it reads: the sbt check BLOCKS, naming the spec and the path" "1 1" \
+  "$(tool_push worker/src/test/scala/deploy/ReadsWiringSpec.scala sbt PATH="$gate/sbt:$PATH") $(grep -c 'worker:deploy.ReadsWiringSpec reads data/rows.tsv' "$gate/err")"
+printf 'worker:deploy.NewWiringSpec\t@repo\nworker:deploy.ReadsWiringSpec\t@repo data/*\n' > "$grepo/scripts/hooks/lint-registry.tsv"
+check "...its row naming the path, nothing said of it" "0" \
+  "$(tool_push worker/src/test/scala/deploy/ReadsWiringSpec.scala sbt PATH="$gate/sbt:$PATH" >/dev/null; grep -c 'ReadsWiringSpec reads' "$gate/err")"
+rm -rf "$grepo/data" "$grepo/worker/src/test/scala/deploy/ReadsWiringSpec.scala"
 rm -rf "$grepo/scripts"
 check "the old-ref compile with no sbt: BLOCKED" "1 1" \
   "$(tool_push tools/A.scala oldrefs PATH="$nosbt") $(grep -c 'oldrefs FAILED' "$gate/err")"
