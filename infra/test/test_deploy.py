@@ -9,6 +9,7 @@ across dropped sessions, and --apply end to end against a fake git, nix and ssh.
 import importlib.machinery
 import importlib.util
 import os
+import shutil
 import unittest
 from unittest import mock
 
@@ -279,6 +280,9 @@ class ApplyScript(unittest.TestCase):
         self.status = os.path.join(work, "switch.status")
         for d in (self.stubs, os.path.join(self.cand, "bin"), os.path.join(self.cand, "sw", "bin")):
             os.makedirs(d)
+        # The candidate's own coreutils: the only mv and sleep a NixOS transient unit can find.
+        for tool in ("mv", "sleep", "cat", "wc"):
+            os.symlink(shutil.which(tool), os.path.join(self.cand, "sw", "bin", tool))
         self.stub(os.path.join(self.stubs, "sudo"), '[ "$1" = -n ] && shift; exec "$@"')
 
     def stub(self, path, body):
@@ -304,7 +308,10 @@ class ApplyScript(unittest.TestCase):
         self.stub(os.path.join(self.cand, "sw", "bin", "nix-env"), 'echo "nix-env $*" >> ' + self.log)
         self.stub(os.path.join(self.cand, "bin", "switch-to-configuration"), 'echo "switch $*" >> ' + self.log)
 
-        out = self.run_script(deploy.SWITCH_UNIT, self.cand, self.status, path="/usr/bin:/bin")
+        # systemd's PATH on NixOS has no coreutils at all (/usr/bin and /bin hold only /bin/sh): an
+        # unqualified `mv` left no status file and a clean switch read as "killed?" (monitoring-1,
+        # 2026-11-10). A PATH with nothing on it is that unit's view.
+        out = self.run_script(deploy.SWITCH_UNIT, self.cand, self.status, path=self.work + "/empty-path")
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
         self.assertEqual(self.switch_status(), "0")
         self.assertEqual(self.logged(), ["nix-env --profile /nix/var/nix/profiles/system --set " + self.cand,
@@ -355,17 +362,19 @@ class ApplyScript(unittest.TestCase):
 
     def lock_held_for(self, failures):
         """A switch-to-configuration that exits 11, "Could not acquire lock", `failures` times."""
-        self.stub(os.path.join(self.stubs, "sleep"), "exit 0")
+        sleep = os.path.join(self.cand, "sw", "bin", "sleep")
+        os.remove(sleep)
+        self.stub(sleep, "exit 0")
         self.stub(os.path.join(self.cand, "sw", "bin", "nix-env"), "exit 0")
         self.stub(os.path.join(self.cand, "bin", "switch-to-configuration"),
-                  'echo switch >> ' + self.log + '; [ "$(wc -l < ' + self.log + ')" -gt ' + str(failures)
+                  'echo switch >> ' + self.log + '; [ "$(' + shutil.which("wc") + ' -l < ' + self.log + ')" -gt ' + str(failures)
                   + ' ] && exit 0; echo "Could not acquire lock" >&2; exit 11')
 
     def test_a_switch_lock_held_by_the_applier_is_waited_out(self):
         # Writing the pin wakes nixos-auto-apply, which holds switch-to-configuration's lock for a
         # second while it judges the pin: the deploy's own switch exited 11, "Could not acquire lock".
         self.lock_held_for(1)
-        out = self.run_script(deploy.SWITCH_UNIT, self.cand, self.status)
+        out = self.run_script(deploy.SWITCH_UNIT, self.cand, self.status, path=self.work + "/empty-path")
         self.assertEqual(self.switch_status(), "0", out.stdout + out.stderr)
         self.assertEqual(self.logged(), ["switch", "switch"])
 
@@ -373,7 +382,7 @@ class ApplyScript(unittest.TestCase):
         # The retry waits out a moment's lock; one held past it is the switch's own exit code, for
         # the verdict to judge, never a success.
         self.lock_held_for(1000)
-        out = self.run_script(deploy.SWITCH_UNIT, self.cand, self.status)
+        out = self.run_script(deploy.SWITCH_UNIT, self.cand, self.status, path=self.work + "/empty-path")
         self.assertEqual(self.switch_status(), "11", out.stdout + out.stderr)
         self.assertEqual(len(self.logged()), 21)
 

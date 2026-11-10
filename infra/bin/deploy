@@ -235,6 +235,9 @@ echo "@@ END"
 # switch-to-configuration's lock while it judges the pin and lets go a second or so later. The switch
 # then exits 11, "Could not acquire lock" (mongo-1, 2026-10-24): wait that out, for a minute at most.
 # The status file is written last (renamed into place whole): its presence means the switch ENDED.
+# EVERY COMMAND BUT THE SHELL'S BUILTINS IS NAMED BY THE CANDIDATE'S PATH, sleep and mv too: that PATH
+# holds no coreutils, so a bare `mv` failed, no status file appeared, and a clean switch read as
+# "ended without an exit status (killed?)" (monitoring-1, 2026-11-10).
 SWITCH_UNIT = r"""set -u
 cand="$1"; status="$2"
 tries=0
@@ -245,9 +248,9 @@ while :; do
   [ "$rc" -eq 11 ] && [ "$tries" -lt 20 ] || break
   tries=$((tries + 1))
   echo "· switch lock held (another activation); retrying in 3 s"
-  sleep 3
+  "$cand/sw/bin/sleep" 3
 done
-echo "$rc" > "$status.tmp" && mv -f "$status.tmp" "$status"
+echo "$rc" > "$status.tmp" && "$cand/sw/bin/mv" -f "$status.tmp" "$status"
 exit "$rc"
 """
 
