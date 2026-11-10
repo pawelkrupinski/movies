@@ -512,9 +512,9 @@ class ApplyEndToEnd(unittest.TestCase):
         if argv[0] == "ssh":
             out, rc = self.ssh(argv, input)
             return done(out, rc)
-        if argv[:2] == ["git", "rev-list"]:
+        if argv[0] == "git" and argv[1:2] == ["rev-list"]:
             return done("0\n")
-        if argv[:2] == ["git", "rev-parse"]:
+        if argv[0] == "git" and argv[1:2] == ["rev-parse"]:
             return done(deploy.REPO + "\n" if "--show-toplevel" in argv else "false\n")
         if argv[0] == "git":
             return done("")
