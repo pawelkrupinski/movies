@@ -512,6 +512,27 @@ reads_repo() {
     done
     return $found
 }
+# Whether a path on stdin is one the GitOps-reading specs read: a repo-read path, or one a `@gitops` row's own patterns
+# name (the alert-rule specs read infra/nix/files/monitoring/rules/* AND the worker overlays). The sbt check fetches the
+# manifests for exactly these: on 2026-11-10 a push of an alert rule and its test (no repo-read path) ran
+# CinemaScrapeStalenessAlertSpec with no fetch, and CI's pre-commit check, which has no infra/kubernetes, failed it.
+reads_gitops() {
+    local paths path word
+    paths="$(cat)"
+    printf '%s\n' "$paths" | reads_repo && return 0
+    [ -f "$LintRegistry" ] || return 1
+    local patterns
+    patterns="$(awk -F'\t' '!/^#/ && (" " $2 " ") ~ / @gitops / { print $2 }' "$LintRegistry" | tr ' ' '\n' | grep -v '^@' || true)"
+    # shellcheck disable=SC2086 # the patterns are words, matched below, never expanded
+    set -f; set -- $patterns; set +f
+    for word in "$@"; do
+        while IFS= read -r path; do
+            # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
+            case "$path" in $word) return 0 ;; esac
+        done <<< "$paths"
+    done
+    return 1
+}
 lint_plan() {
     local paths repo_read=0 spec reads word path selected
     paths="$(cat)"
@@ -519,6 +540,8 @@ lint_plan() {
     [ -f "$LintRegistry" ] || return 0
     while IFS=$'\t' read -r spec reads _; do
         case "$spec" in ''|'#'*) continue ;; esac
+        # a GitOps reader runs only with the manifests in place, whichever of its reads selects it
+        case " $reads " in *" @gitops "*) [ "${PREPUSH_GITOPS:-}" = 1 ] || continue ;; esac
         selected=0
         # shellcheck disable=SC2086 # the reads are words, a pattern among them is matched below, never expanded
         set -f; set -- $reads; set +f
@@ -527,7 +550,7 @@ lint_plan() {
                 '*') selected=1 ;;
                 -) selected=0; break ;;
                 @repo) [ $repo_read = 1 ] && selected=1 ;;
-                @gitops) [ $repo_read = 1 ] && [ "${PREPUSH_GITOPS:-}" = 1 ] && selected=1 ;;
+                @gitops) [ $repo_read = 1 ] && selected=1 ;;
                 *) while IFS= read -r path; do
                        # shellcheck disable=SC2254 # the registry's pattern, matched as a pattern
                        case "$path" in $word) selected=1; break ;; esac
@@ -1221,7 +1244,7 @@ check_sbt() {
     # (from GitHub). The fetch failing BLOCKS the push: the checkout left behind is stale, and the local clone
     # the script once fell back to went stale with GitHub (2026-10-19) -- a spec then failed on a probe movies-gitops
     # 24a5162 had already fixed. The specs needing them stay out of this run; the rest still run, for their verdicts.
-    if printf '%s\n' "$changed" | reads_repo && ! skipped lintspecs && [ -x infra/bin/fetch-gitops ]; then
+    if printf '%s\n' "$changed" | reads_gitops && ! skipped lintspecs && [ -x infra/bin/fetch-gitops ]; then
         if KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" bounded "${PREPUSH_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops.log" 2>&1; then
             export PREPUSH_GITOPS=1
         else

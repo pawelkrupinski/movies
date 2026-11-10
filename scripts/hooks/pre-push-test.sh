@@ -140,6 +140,11 @@ check "...but not a spec that needs the GitOps manifests, nor one that boots a s
 out="$(PREPUSH_GITOPS=1 lints scripts/x.sh)"
 check "...the GitOps manifests in place (PREPUSH_GITOPS=1), the specs reading them too, still none that boots a server" "yes no" \
   "$(has "$out" worker:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
+# A @gitops row naming paths of its own (the alert-rule specs read the rules AND the worker overlays) is still a GitOps
+# reader: without the manifests in place it is left out, never run against a checkout that lacks them (2026-11-10: a
+# rules-only push ran CinemaScrapeStalenessAlertSpec with no infra/kubernetes, red in CI's pre-commit check).
+check "a rules-only push leaves the GitOps-reading alert specs out without the manifests, and runs them with them" "no yes" \
+  "$(has "$(lints infra/nix/files/monitoring/rules/x.rules)" worker:deploy.CinemaScrapeStalenessAlertSpec) $(has "$(PREPUSH_GITOPS=1 lints infra/nix/files/monitoring/rules/x.rules)" worker:deploy.CinemaScrapeStalenessAlertSpec)"
 check "PREPUSH_SKIP=lintspecs drops them, keeping the standing lints" "$Always" \
   "$(PREPUSH_SKIP=lintspecs lints scripts/x.sh)"
 check "an iOS-only push selects no sbt check" "ios" "$(plan ios/Kinowo/Views/A.swift)"
@@ -250,6 +255,18 @@ if command -v shellcheck >/dev/null; then
   # a failed fetch leaves the checkout STALE (movies-gitops 24a5162, 2026-10-21: specs read a probe main no longer had)
   check "unreachable: BLOCKS the push, naming the stale manifests and the fix, never runs the specs on them" "1 0 1 1" \
     "$rc $(grep -c 'deploy.NodeCpuBudgetSpec' "$scratch/sbt-args" 2>/dev/null) $(printf '%s\n' "$out" | grep -c 'GitOps manifests STALE') $(printf '%s\n' "$out" | grep -c 'PREPUSH_SKIP=lintspecs')"
+  # ...and a push touching only what a @gitops row's own paths name (an alert rule and its test) fetches them too: the fetch
+  # follows every spec that reads the manifests, not only the repo-reading ones.
+  printf '#!/usr/bin/env bash\necho "$KINOWO_GITOPS_DEST" > "%s/gitops-dest"\n' "$scratch" > "$repo/infra/bin/fetch-gitops"
+  mkdir -p "$repo/infra/nix/files/monitoring/rules"; echo '---' > "$repo/infra/nix/files/monitoring/rules/x.rules"
+  scratch_git "$repo" add infra; scratch_git "$repo" commit -qm "an alert rule, the manifests reachable again"
+  mkdir -p "$repo/infra/test/alert-rules"; echo '---' >> "$repo/infra/nix/files/monitoring/rules/x.rules"
+  echo 'tests: []' > "$repo/infra/test/alert-rules/x.yml"
+  scratch_git "$repo" add infra; scratch_git "$repo" commit -qm "an alert rule and its promtool test, nothing repo-read"
+  rm -f "$scratch/sbt-args" "$scratch/gitops-dest"
+  (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
+  check "an alert-rule push fetches the GitOps manifests and runs the alert specs reading them" "1 1" \
+    "$([ -s "$scratch/gitops-dest" ] && echo 1 || echo 0) $(grep -c 'deploy.CinemaScrapeStalenessAlertSpec' "$scratch/sbt-args" 2>/dev/null)"
   printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
   mkdir -p "$repo/src"; echo 'object A' > "$repo/src/A.scala"
   scratch_git "$repo" add src/A.scala; scratch_git "$repo" commit -qm "adds a Scala source"
