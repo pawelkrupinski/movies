@@ -155,9 +155,49 @@
         what infra/terraform/firewall.tf already documents as the private-network port.
       '';
     };
+
+    reboot.waitFor = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      example = [ "mongodump.service" ];
+      description = ''
+        Units a reboot must not cut off: while one of them runs, fleetkit's rolling-reboot
+        (infra/bin/rolling-reboot, the /nixos page's "Reboot") WAITS for it -- bounded, saying so --
+        and refuses the host if it is still running at the bound. It reads this list from the flake
+        (fleetkit adapters.InFlightWork), so the role that owns the work names it here and no list
+        in the tool has to know.
+
+        WHY (2026-11-10). A rolling reboot kexec'd mongo-1 at 03:27:36, 7 s after the nightly
+        mongodump (started 03:25:47) finished. Had it still been running, the dump would have been
+        lost, and its timer's `Persistent = true` would not have run it again: the timer DID fire.
+
+        A unit named here must be one this host defines (asserted below), and must not be
+        `RemainAfterExit`: that stays `active` after its work is done, and every reboot would wait
+        for it until the bound. Auto-apply needs no copy of this list: a switch that would restart
+        a running oneshot is already refused (nix/files/nixos-auto-apply.py, ROUTINE UNITS: "a
+        backup mid-flight"), and auto-apply never reboots.
+      '';
+    };
   };
 
   config = {
+
+    assertions = map
+      (unit:
+        let
+          name = lib.removeSuffix ".service" unit;
+          service = config.systemd.services.${name} or null;
+        in
+        {
+          assertion = lib.hasSuffix ".service" unit && service != null
+            && !(service.serviceConfig.RemainAfterExit or false);
+          message = ''
+            fleet.reboot.waitFor names ${unit}, which is not a .service this host defines without
+            RemainAfterExit -- a reboot would wait for nothing (an unknown unit reads as inactive)
+            or for ever (a RemainAfterExit unit stays active). See the option's description.
+          '';
+        })
+      config.fleet.reboot.waitFor;
 
     # ---------------------------------------------------------------------------------------------
     # Boot and platform

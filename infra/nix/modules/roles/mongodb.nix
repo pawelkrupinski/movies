@@ -980,6 +980,11 @@ in
       ];
     };
 
+    # A REBOOT WAITS FOR A RUNNING DUMP (fleet.reboot.waitFor): cut off, last night's copy is lost,
+    # and the timer's `Persistent` does not run it again, because the timer did fire (2026-11-10:
+    # a rolling reboot kexec'd this host 7 s after the dump ended).
+    fleet.reboot.waitFor = lib.mkIf cfg.backup.enable [ "mongodump.service" ];
+
     systemd.services.mongodump = lib.mkIf cfg.backup.enable {
       description = "mongodump of kinowo's database, with rotation";
       # Not `requires`: a dump attempted while mongod is down should FAIL and be seen, not be
