@@ -17,7 +17,7 @@
   "dependencies": {
     "esbuild": "^0.28.2",
     "fastify": "^5.12.5",
-    "fleetkit": "git+ssh://forgejo-git/bitcashier/fleetkit.git#v0.4.1",
+    "fleetkit": "git+ssh://forgejo-git/bitcashier/fleetkit.git#v0.4.2",
     "tsx": "^4.23.15"
   },
   "devDependencies": {
