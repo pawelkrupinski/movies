@@ -17,8 +17,10 @@ WHY THIS EXISTS (2026-10-23). Every deploy needed a hand-made command, and each 
     for an end marker so a forced command's answer is never mistaken for the host's.
   * nixos-auto-apply refused a closure that only added units (`units_would_change`) and somebody
     hand-ran nix-env + switch-to-configuration. That pair is what `--apply` runs, in the same order
-    as the applier (profile FIRST, so the boot menu follows), under systemd-run so an ssh drop
-    cannot kill a half-done switch.
+    as the applier (profile FIRST, so the boot menu follows), as a DETACHED systemd-run unit whose
+    outcome is read back afterwards: the switch may restart sshd and the network under the session
+    (monitoring-1, 2026-11-10: the streamed switch's session died, the tool hung ~22 min and exited 2
+    though the host had switched fully).
 
 WHAT IT ACTIVATES. The closure THIS CHECKOUT evaluates to -- `nix eval` of the host's toplevel, the
 exact path CI stages for the same commit -- never "whatever is pinned". If CI staged it already the
@@ -162,24 +164,18 @@ def ssh_g_hostname(host: str) -> str:
     return ""
 
 
-def remote(target: str, script: str, args=(), timeout=3600, stream=False) -> str:
+# A dead session is noticed in about a minute (4 unanswered keepalives 15 s apart), never the ~22 min
+# a silently dropped TCP connection took to time out (monitoring-1, 2026-11-10: the switch restarted
+# sshd and systemd-networkd under the session that was streaming it).
+SSH_OPTS = ("-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
+            "-o", "ServerAliveInterval=15", "-o", "ServerAliveCountMax=4")
+
+
+def remote(target: str, script: str, args=(), timeout=3600) -> str:
     """Run a bash script on the host. The reply must END with the marker, or it was not the host's
     shell that answered (a forced command, a banner, a dropped connection)."""
-    argv = ["ssh", "-o", "BatchMode=yes", target, "bash -s -- " + " ".join(shlex.quote(a) for a in args)]
-    if stream:
-        proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, text=True)
-        proc.stdin.write(script)
-        proc.stdin.close()
-        lines = []
-        for line in proc.stdout:
-            lines.append(line)
-            if not line.startswith("@@"):
-                print("    " + line, end="")
-        proc.wait(timeout=timeout)
-        out = "".join(lines)
-    else:
-        out = run(argv, stdin=script, check=False, timeout=timeout).stdout
+    argv = ["ssh", *SSH_OPTS, target, "bash -s -- " + " ".join(shlex.quote(a) for a in args)]
+    out = run(argv, stdin=script, check=False, timeout=timeout).stdout
     if END not in out:
         raise Unmeasured(f"{target} did not answer as a shell (no end marker); is this the "
                          f"restricted bare-IP key? Got: {out.strip()[:300]!r}")
@@ -230,36 +226,69 @@ fi
 echo "@@ END"
 """
 
-APPLY = r"""
-set -u
-cand="$1"
-SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
-[ -x "$cand/bin/switch-to-configuration" ] || { echo "!! $cand is not on this host"; echo "@@ END"; exit 5; }
-# THE PIN FIRST: nixos-auto-apply activates the pin whenever it is not running and is inert, so an
-# OLDER pin left behind would switch this host back. Writing it also wakes the applier, which may
-# hold the switch lock for a moment (the retry below) and then finds the closure already running.
-if [ "$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null)" != "$cand" ] && [ -d /var/lib/nixdeploy ]; then
-  $SUDO ln -sfn "$cand" /var/lib/nixdeploy/staged-system && echo "· pinned $cand"
-fi
-# PROFILE BEFORE SWITCH, the order nixos-auto-apply and nixos-rebuild use: the bootloader menu is
-# built from the profile, so the other order boots the old generation at the next reboot.
-# systemd-run so an ssh drop (or an sshd restart) cannot kill a half-done switch. Its transient unit
+# The switch, as its own transient unit's script: $1 the candidate, $2 the file its exit status goes
+# to. PROFILE BEFORE SWITCH, the order nixos-auto-apply and nixos-rebuild use: the bootloader menu is
+# built from the profile, so the other order boots the old generation at the next reboot. The unit
 # gets systemd's PATH, not the login shell's /run/current-system/sw/bin, so nix-env is named by the
 # candidate's own path: a bare `nix-env` exited 127 and switched nothing (mongo-1, 2026-10-24).
-# THE APPLIER MAY HOLD THE LOCK: the pin written above wakes nixos-auto-apply, which takes
+# THE APPLIER MAY HOLD THE LOCK: the pin LAUNCH writes wakes nixos-auto-apply, which takes
 # switch-to-configuration's lock while it judges the pin and lets go a second or so later. The switch
 # then exits 11, "Could not acquire lock" (mongo-1, 2026-10-24): wait that out, for a minute at most.
+# The status file is written last (renamed into place whole): its presence means the switch ENDED.
+SWITCH_UNIT = r"""set -u
+cand="$1"; status="$2"
 tries=0
 while :; do
-  $SUDO systemd-run --quiet --collect --wait --pipe --unit "bin-deploy-$(date +%s)-$tries" -- \
-    /bin/sh -c "'$cand/sw/bin/nix-env' --profile /nix/var/nix/profiles/system --set '$cand' && '$cand/bin/switch-to-configuration' switch"
+  "$cand/sw/bin/nix-env" --profile /nix/var/nix/profiles/system --set "$cand" \
+    && "$cand/bin/switch-to-configuration" switch
   rc=$?
   [ "$rc" -eq 11 ] && [ "$tries" -lt 20 ] || break
   tries=$((tries + 1))
   echo "· switch lock held (another activation); retrying in 3 s"
   sleep 3
 done
-echo "@@ SWITCH rc=$rc now=$(readlink -f /run/current-system)"
+echo "$rc" > "$status.tmp" && mv -f "$status.tmp" "$status"
+exit "$rc"
+"""
+
+# Starts the switch DETACHED and returns at once: $1 the candidate, $2 the transient unit's name.
+# Nothing of the switch rides on this ssh session -- no --wait, no --pipe -- because the switch may
+# restart sshd, systemd-networkd and the rest under it: on monitoring-1 (2026-11-10) the session
+# streaming a `--wait --pipe` switch died mid "starting the following units: ...", the tool hung ~22
+# minutes and exited 2, while the host had switched fully. follow_switch reads the outcome afterwards.
+LAUNCH = r"""
+set -u
+# BIN_DEPLOY_DIR is the tests' override (ssh forwards no environment).
+cand="$1"; unit="$2"; dir="${BIN_DEPLOY_DIR:-/run/bin-deploy}"
+SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
+[ -x "$cand/bin/switch-to-configuration" ] || { echo "!! $cand is not on this host"; echo "@@ END"; exit 5; }
+# THE PIN FIRST: nixos-auto-apply activates the pin whenever it is not running and is inert, so an
+# OLDER pin left behind would switch this host back. Writing it also wakes the applier, which may
+# hold the switch lock for a moment (SWITCH_UNIT's retry) and then finds the closure already running.
+if [ "$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null)" != "$cand" ] && [ -d /var/lib/nixdeploy ]; then
+  $SUDO ln -sfn "$cand" /var/lib/nixdeploy/staged-system && echo "· pinned $cand"
+fi
+$SUDO mkdir -p "$dir"
+$SUDO tee "$dir/$unit.sh" >/dev/null <<'SWITCH_UNIT_EOF'
+""" + SWITCH_UNIT + r"""SWITCH_UNIT_EOF
+$SUDO systemd-run --quiet --collect --unit "$unit" --description "bin/deploy switch to $cand" \
+  -- /bin/sh "$dir/$unit.sh" "$cand" "$dir/$unit.status"
+echo "@@ LAUNCHED rc=$?"
+echo "@@ END"
+"""
+
+# Where the detached switch is: $1 the transient unit. Its status file once it ended, the unit's
+# state while it runs, the running closure, and the unit's whole journal (follow_switch prints the
+# lines it has not printed yet).
+SWITCH_STATUS = r"""
+set -u
+unit="$1"; dir="${BIN_DEPLOY_DIR:-/run/bin-deploy}"
+SUDO=""; [ "$(id -u)" -eq 0 ] || SUDO="sudo -n"
+echo "state=$(systemctl show -p ActiveState --value "$unit" 2>/dev/null)"
+[ -f "$dir/$unit.status" ] && echo "status=$(cat "$dir/$unit.status")"
+echo "now=$(readlink -f /run/current-system)"
+echo "@@ JOURNAL"
+$SUDO journalctl -q -u "$unit" -o cat --no-pager 2>/dev/null
 echo "@@ END"
 """
 
@@ -490,6 +519,88 @@ def verify_verdict(candidate: str, now: str, expected_rev: str, running_rev: str
 
 
 # -------------------------------------------------------------------------------------------------
+# Switching, detached from the session
+# -------------------------------------------------------------------------------------------------
+
+def parse_switch_status(out: str) -> dict:
+    """SWITCH_STATUS's reply: `state`, `now`, `status` (an int, absent while the switch runs) and
+    `journal` (its lines)."""
+    facts: dict = {"journal": []}
+    in_journal = False
+    for line in out.splitlines():
+        if line == "@@ JOURNAL":
+            in_journal = True
+        elif line.startswith("@@"):
+            in_journal = False
+        elif in_journal:
+            facts["journal"].append(line)
+        elif "=" in line:
+            key, value = line.split("=", 1)
+            facts[key] = value
+    if re.fullmatch(r"-?\d+", facts.get("status", "")):
+        facts["status"] = int(facts["status"])
+    else:
+        facts.pop("status", None)
+    return facts
+
+
+class SwitchOutcome(typing.NamedTuple):
+    status: int | None   # switch-to-configuration's exit status; None: the unit ended without one
+    journal: list
+
+
+def follow_switch(target: str, unit: str, *, deadline=3600, unreachable=900, every=5,
+                  clock=None, sleep=None) -> SwitchOutcome:
+    """Poll the detached switch until it has ended, printing its new journal lines and its state on
+    every pass. The host may be unreachable for a while (the switch restarting sshd or the network):
+    each failed ssh is said and retried, for `unreachable` seconds in a row at most; the switch as a
+    whole gets `deadline` seconds. Either bound running out is Unmeasured, never a verdict."""
+    clock, sleep = clock or time.monotonic, sleep or time.sleep
+    start = clock()
+    last_reached, printed = start, 0
+    while True:
+        elapsed = clock() - start
+        if elapsed > deadline:
+            raise Unmeasured(f"{unit} on {target} had not ended after {deadline}s; "
+                             f"see `journalctl -u {unit}` there")
+        try:
+            facts = parse_switch_status(remote(target, SWITCH_STATUS, [unit], timeout=90))
+        except Unmeasured as exc:
+            if clock() - last_reached > unreachable:
+                raise Unmeasured(f"{target} unreachable for over {unreachable}s while {unit} ran "
+                                 f"(last: {exc})") from exc
+            print(f"   · [{elapsed:5.0f}s] {target} not answering ({str(exc)[:120]}); retrying in {every}s")
+            sleep(every)
+            continue
+        last_reached = clock()
+        journal = facts["journal"]
+        for line in journal[printed:]:
+            print("    " + line)
+        printed = max(printed, len(journal))
+        if "status" in facts:
+            return SwitchOutcome(facts["status"], journal)
+        state = facts.get("state", "")
+        if state in ("inactive", "failed"):
+            # The status file is written before the unit exits: gone without one is a killed switch.
+            return SwitchOutcome(None, journal)
+        print(f"   · [{elapsed:5.0f}s] {unit} {state or 'state unknown'}; running {facts.get('now', '?')}")
+        sleep(every)
+
+
+def switch_problem(unit: str, outcome: SwitchOutcome) -> str | None:
+    """What the switch's own result says is wrong; None when it exited 0."""
+    if outcome.status == 0:
+        return None
+    what = (f"exited {outcome.status}" if outcome.status is not None
+            else "ended without an exit status (killed?)")
+    return f"switch-to-configuration in {unit} {what}"
+
+
+def switch_unit_name(now: float) -> str:
+    return "deploy-switch-" + time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(now))
+
+
+# -------------------------------------------------------------------------------------------------
 # The two paths
 # -------------------------------------------------------------------------------------------------
 
@@ -505,7 +616,7 @@ def ci_runner_candidate(target: str) -> str:
     print(f"   building ci-runner's closure on the host ({where}) -- no switch")
     run(["rsync", "-a", "--delete", "--exclude", ".git", REPO + "/", f"{target}:{where}"],
         capture=False, timeout=1800)
-    out = run(["ssh", "-o", "BatchMode=yes", target,
+    out = run(["ssh", *SSH_OPTS, target,
                f"cd {where} && nix --extra-experimental-features 'nix-command flakes' build --no-link --print-out-paths "
                ".#nixosConfigurations.ci-runner.config.system.build.toplevel"], timeout=7200).stdout
     paths = [line for line in out.split() if line.startswith("/nix/store/")]
@@ -520,7 +631,7 @@ def build_on_host(flake: str, host: str, target: str) -> None:
     drv = nix_eval(flake, f"{host}.config.system.build.toplevel.drvPath")
     print(f"   copying {drv} to {target} and building it there")
     run(["nix", "copy", "--derivation", "--to", f"ssh-ng://{target}", drv], capture=False, timeout=3600)
-    run(["ssh", "-o", "BatchMode=yes", target, f"nix-store --realise {shlex.quote(drv)} >/dev/null"],
+    run(["ssh", *SSH_OPTS, target, f"nix-store --realise {shlex.quote(drv)} >/dev/null"],
         capture=False, timeout=7200)
 
 
@@ -597,6 +708,7 @@ def deploy(args) -> int:
 
     print(f"\n== applying to {host}")
     failed_before = set(facts.get("failed", "").split())
+    problem = None
     if use_bootstrap:
         env = dict(os.environ, FORGEJO_BOOTSTRAP_DEPLOY_ONLY="1", FORGEJO_BOOTSTRAP_SKIP_SECRETS="1")
         if args.allow_stale:
@@ -607,10 +719,26 @@ def deploy(args) -> int:
         # The CI pin is now older than what runs; point it here, or auto-apply switches back to it.
         remote(target, f'[ -d /var/lib/nixdeploy ] && sudo -n ln -sfn "{candidate}" {PIN}; echo "{END}"')
     else:
-        out = remote(target, APPLY, [candidate], timeout=3600, stream=True)
-        m = re.search(r"@@ SWITCH rc=(\d+)", out)
-        if m and m.group(1) != "0":
-            print(f"   switch-to-configuration exited {m.group(1)} (judged by what is running, below)")
+        unit = switch_unit_name(time.time())
+        try:
+            launched = remote(target, LAUNCH, [candidate, unit], timeout=300)
+        except Unmeasured as exc:
+            # The switch may already be restarting sshd under this session: the unit says.
+            print(f"   the launch session ended early ({str(exc)[:120]}); reading {unit} itself")
+        else:
+            for line in launched.splitlines():
+                if not line.startswith("@@"):
+                    print("    " + line)
+            m = re.search(r"@@ LAUNCHED rc=(\d+)", launched)
+            if not m or m.group(1) != "0":
+                raise Refused(f"systemd-run did not start {unit} on {host} "
+                              f"({m.group(0) if m else 'no launch line'}); nothing was switched")
+            print(f"   switching in {unit} (detached: an ssh drop cannot stop it)")
+        outcome = follow_switch(target, unit)
+        problem = switch_problem(unit, outcome)
+        if problem:
+            print(f"   {problem}; its journal ends:\n      "
+                  + ("\n      ".join(outcome.journal[-30:]) or "(empty)"))
 
     time.sleep(5)  # a unit that fails on activation does so within seconds
     after = parse_probe(remote(target, PROBE, [""], timeout=300))
@@ -625,6 +753,8 @@ def deploy(args) -> int:
     problems = verify_verdict(candidate, after.get("running", ""), expected_rev,
                               after.get("running_rev", ""), failed_before,
                               set(after.get("failed", "").split()), fields)
+    if problem:
+        problems.insert(0, problem)
     if problems:
         print("VERIFY FAILED:\n  " + "\n  ".join(problems))
         return 1

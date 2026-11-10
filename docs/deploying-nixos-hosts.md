@@ -29,7 +29,17 @@ and runs in `bin/check` and nix-stage-closures.yml.
 5. **`--apply`**: re-points `/var/lib/nixdeploy/staged-system` at the candidate first (otherwise
    nixos-auto-apply could switch back to an older pin), then `nix-env --profile
    /nix/var/nix/profiles/system --set` + `switch-to-configuration switch` -- the order the applier
-   and the fleet dashboard's switch.sh use -- under `systemd-run`, so an ssh drop cannot kill it.
+   and the fleet dashboard's switch.sh use -- as a DETACHED transient unit
+   (`systemd-run --collect --unit deploy-switch-<UTC stamp>`, no `--wait`/`--pipe`), and returns at
+   once. It then polls the unit over fresh ssh sessions (every 5 s, printing its new journal lines and
+   state; a host not answering is said and retried for 15 min, the switch bounded at 1 h) until the
+   unit's status file, `/run/bin-deploy/<unit>.status`, holds switch-to-configuration's exit status.
+   Non-zero (or a unit gone without one) prints the unit's journal tail and fails the deploy. Every
+   ssh sets `ServerAliveInterval=15`/`ServerAliveCountMax=4`, so a dead session shows in ~1 min.
+   Why (2026-11-10 ~07:00Z, monitoring-1): the switch used to stream through `--wait --pipe`; it
+   restarted sshd and systemd-networkd, the session died silently mid "starting the following units:
+   ...", ssh (no keepalives) waited ~22 min for TCP to give up, and with no end marker the tool exited
+   2 -- while the host had switched fully. By hand: `journalctl -u deploy-switch-<stamp>` on the host.
 6. **Verify**: `/run/current-system` is the candidate, its `configurationRevision` is the expected
    commit, no unit newly failed, every started/restarted unit is active (or a oneshot that
    succeeded). Exit 0 ok, 1 refused or verify failed, 2 could not measure.
