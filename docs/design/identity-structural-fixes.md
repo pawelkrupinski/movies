@@ -196,6 +196,13 @@ the stage's settle rule), never for its give-up; a hard bound, `ModelInputGate.M
 past which a held listing is taken in and counted (`promoted_total{at="bound"}`); a listing re-keyed at its venue keeps
 its old version as its stand-in; and a new listing hidden while held (`NewWhilePending.Default = Hidden`).
 
+**The listing's own venue poster is in the gate** (2026-11-10): while it is not hashed, it is one of the listing's
+questions (`AgreementStage.questionsOf`; `PosterEvidence.urls` of the listing alone, a function of the listing). Without it
+a new listing joined a cluster its posters had voted for, the vote waited on the newcomer's poster, and the model's "no
+film" stood until the poster's filing restored the vote 2-8 s later: after the gate went live the poster:vote reversals
+were the largest class left in prod (11-08..11-10: UK "Hadoota" x14, ES "DUNE" x9 drops, each a new listing's own
+poster asked inline).
+
 **Not in the gate** (cluster-level, the stage's waits as before): the posters of a cluster's candidates, the find of an
 agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) STAY (1c
 dropped, below): they ask what a reshaped cluster leads to, which no listing's own questions name.

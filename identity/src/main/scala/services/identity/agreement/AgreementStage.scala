@@ -842,16 +842,24 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
   private[agreement] def verdictsOf(listings: Seq[Listing], gaps: mutable.Set[Question], reads: mutable.Map[Dependency, Long]): Seq[Answer[FamilyVerdict]] =
     familiesInOrder.map { case (_, answers) => familyVerdicts.verdict(listings, answers, gaps, reads) }
 
-  /** The questions `listing`'s OWN facts lead the families to ask -- its titles' and directors' searches and the records
-   *  their hits name -- as the stage asks them of any cluster holding it: the family verdicts over the listing alone,
-   *  every gap they meet. None for an event no film database holds ([[NonFilmEvents]]), whose families are never asked.
-   *  What the model's input gate waits on before a listing's version is taken in (docs/design/identity-structural-fixes.md,
-   *  fix 1: asking apart from deciding): a population-independent set, a function of the listing and the answers filed. */
+  /** The questions `listing`'s OWN facts lead the stage to ask -- its titles' and directors' searches and the records
+   *  their hits name, as the stage asks them of any cluster holding it (the family verdicts over the listing alone, every
+   *  gap they meet), and its venue poster while it is not hashed ([[PosterEvidence.urls]]: one the poster vote and veto
+   *  read). None for an event no film database holds ([[NonFilmEvents]]), whose families are never asked nor its poster
+   *  hashed. What the model's input gate waits on before a listing's version is taken in
+   *  (docs/design/identity-structural-fixes.md, fix 1: asking apart from deciding): a population-independent set, a
+   *  function of the listing and the answers filed. Without the poster, a new listing joined a cluster its posters had
+   *  voted for with its own poster unhashed, the vote waited on it, and the model's "no film" stood until the poster was
+   *  filed seconds later (prod 11-07..11-10: UK "Hadoota" x14, ES "DUNE" x6). */
   def questionsOf(listing: Listing): Set[Question] =
     if (NonFilmEvents.of(Seq(listing)).isDefined) Set.empty
     else {
       val gaps = mutable.Set.empty[Question]
       verdictsOf(Seq(listing), gaps, mutable.Map.empty)
+      // read as posterDistances reads them: only where TMDB's candidates are there to compare against
+      if (tmdb.isDefined) PosterEvidence.urls(Seq(listing)).foreach { url =>
+        if (posters.venue(url) == Answer.Unknown) gaps += Question.Poster(AgreementStage.PosterQuestion.Venue(url))
+      }
       gaps.toSet
     }
 

@@ -154,6 +154,21 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     handed.flatten.collect { case Question.Poster(q) => q }.toSet shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster), AgreementStage.PosterQuestion.Film(1002))
   }
 
+  // The model's input gate (fix 1) waits on a listing's own questions; its venue poster is one, a function of the listing
+  // alone. Without it a new member joined its voted cluster with its poster unhashed, the vote waited on it and the model's
+  // "no film" was served until the poster's filing restored the vote seconds later: prod's poster:vote flips of 11-07..11-10
+  // (UK Cineworld Cardiff's "Hadoota" x14, ES Artesiete's "DUNE" x6, each a new listing's own poster asked inline)
+  "a listing's own questions" should "name its venue poster while it is not hashed, and none once it is or it speaks for no film" in {
+    def postersAsked(posters: PosterAnswers, listing: Listing) = stage(posters).questionsOf(listing).collect { case Question.Poster(q) => q }
+    postersAsked(new HeldPosters(Map.empty, Map.empty), lalka()) shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster))
+    postersAsked(new HeldPosters(Map(venuePoster -> Some(shown)), Map.empty), lalka()) shouldBe empty
+    postersAsked(new HeldPosters(Map(venuePoster -> None), Map.empty), lalka()) shouldBe empty   // read, nothing there
+    postersAsked(new HeldPosters(Map.empty, Map.empty), lalka(poster = None)) shouldBe empty
+    // a stage relay's poster speaks for no film (PosterEvidence.shows): never read, so never waited on
+    val relay = FilmTable.listing(KinoMuza, "The Royal Ballet: The Nutcracker").copy(poster = Some(venuePoster))
+    postersAsked(new HeldPosters(Map.empty, Map.empty), relay) shouldBe empty
+  }
+
   "a film the families agree on" should "not be taken when the venue's poster matches another candidate and not it" in {
     val listing = lalka()
     // the families take Has's 1968 film; the venue's poster is the 2026 film's
