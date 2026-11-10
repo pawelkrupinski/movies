@@ -144,6 +144,15 @@ BOOT_CHAIN = ("kernel", "initrd", "kernel-modules", "systemd")
 
 # What `nixos-rebuild` sets and what the bootloader installer reads to build the boot menu.
 SYSTEM_PROFILE = "/nix/var/nix/profiles/system"
+CURRENT_SYSTEM = "/run/current-system"
+
+# Where switch-to-configuration-ng keeps what a switch still owes (`start-list`, `restart-list`,
+# `reload-list`): written before it stops anything, removed only once that phase completes, never
+# written by dry-activate. A non-empty one is a switch that stopped midway; the next switch (and
+# every dry-activate) picks it up.
+SWITCH_STATE_DIRECTORY = "/run/nixos"
+SWITCH_LEFTOVER_LISTS = (("start-list", "start"), ("restart-list", "restart"),
+                         ("reload-list", "reload"))
 
 # Every line switch-to-configuration-ng can print that does NOT describe a unit being disturbed.
 # Anchored whole-line matches: a substring match would let "would restart the following units: x"
@@ -420,6 +429,12 @@ class NeverStaged(Undetermined):
     than through CI. Reporting that as a generic error would leave every such host amber for a
     reason nobody could act on.
     """
+
+
+class SwitchFailed(Exception):
+    """`switch-to-configuration switch` exited non-zero AFTER it started activating, so the host is
+    part-way onto the candidate. A verdict (`blocked`, `switch_failed`), never `could_not_measure`:
+    what is wrong is known, and it needs a person (or the next switch) to finish the job."""
 
 
 class Blocked(Exception):
@@ -851,6 +866,46 @@ SYSTEM_SCOPE_FAILURES = re.compile(
     r"|Failed to (start|stop|restart|reload) (?!user unit )\S)")
 
 
+# THE LOGIND RACE, 2026-11-10 08:29Z on monitoring-1 (exit 1, not 4). switch-to-configuration-ng
+# lists logind's users, then reads each one's GID over D-Bus with `?`: a user whose manager logind
+# removes between those two calls -- root's ssh sessions open and close every 10-15 s -- aborts the
+# WHOLE switch before its start phase, after /run/current-system already moved. Re-running the
+# same switch is exactly what finishes it: the leftover lists above carry what it still owes.
+LOGIND_USER_VANISHED = re.compile(r"^\s*Unknown object '/org/freedesktop/login1/user/_\d+'\.?$")
+ACTIVATION_STARTED = "activating the configuration..."
+LOGIND_RACE_RETRY_DELAY_SECONDS = 15  # past logind's UserStopDelaySec (10 s) for the leaving user
+
+
+def interrupted_switch() -> list[str]:
+    """What an earlier switch left undone, as `start x.target` lines; empty when nothing is owed.
+
+    The lists also exist WHILE a switch runs (an `infra/bin/deploy --apply` beside this pass), so a
+    held switch lock is LockContended -- the next pass decides -- never a stopped switch."""
+    lock = pathlib.Path(SWITCH_STATE_DIRECTORY) / "switch-to-configuration.lock"
+    if lock.exists():
+        with open(lock) as handle:
+            try:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise LockContended("a switch-to-configuration is running right now") from exc
+            fcntl.flock(handle, fcntl.LOCK_UN)
+    owed = []
+    for name, verb in SWITCH_LEFTOVER_LISTS:
+        try:
+            text = (pathlib.Path(SWITCH_STATE_DIRECTORY) / name).read_text()
+        except FileNotFoundError:
+            continue
+        owed += [f"{verb} {unit}" for unit in sorted(set(text.split()))]
+    return owed
+
+
+def host_is_on(candidate: pathlib.Path) -> bool:
+    """Both halves of the switch agree: the running system AND the boot profile name the candidate."""
+    target = os.path.realpath(candidate)
+    return (os.path.realpath(CURRENT_SYSTEM) == target
+            and os.path.realpath(SYSTEM_PROFILE) == target)
+
+
 def only_user_activation_failed(output: str) -> bool:
     """True when exit 4 is explained by per-user activation alone, so the system switch completed."""
     lines = [line.strip() for line in output.splitlines()]
@@ -886,6 +941,18 @@ def activate(candidate: pathlib.Path, rollback_on_failure: bool) -> str:
     switch = [str(candidate / "bin" / "switch-to-configuration"), "switch"]
     switched = run(switch, check=False, timeout=3600)
     output = (switched.stderr or "") + (switched.stdout or "")
+    if (switched.returncode != 0 and host_is_on(candidate)
+            and any(LOGIND_USER_VANISHED.match(line) for line in output.splitlines())):
+        # ONE retry, bounded by the switch's own timeout: the race is a window of milliseconds,
+        # and a second failure is reported below like any other.
+        print("nixos-auto-apply: the switch stopped midway because a logind user vanished under "
+              "it; retrying once: "
+              + " | ".join(line.strip() for line in output.splitlines()
+                           if "Error:" in line or "Unknown object" in line),
+              file=sys.stderr)
+        time.sleep(LOGIND_RACE_RETRY_DELAY_SECONDS)
+        switched = run(switch, check=False, timeout=3600)
+        output = (switched.stderr or "") + (switched.stdout or "")
     if switched.returncode == 4 and only_user_activation_failed(output):
         print("nixos-auto-apply: the system switch completed; only a per-user activation failed "
               "(a user manager stopping mid-switch): "
@@ -895,8 +962,10 @@ def activate(candidate: pathlib.Path, rollback_on_failure: bool) -> str:
         # THE TAIL, NOT THE HEAD: switch-to-configuration names what failed at the END of its
         # output, and the first 400 characters are the preamble -- which is all the journal kept
         # of both exit-4 incidents above.
-        raise Undetermined(f"{' '.join(switch)} exited {switched.returncode}: "
-                           f"...{output.strip()[-600:]}")
+        failure = f"{' '.join(switch)} exited {switched.returncode}: ...{output.strip()[-600:]}"
+        if ACTIVATION_STARTED in output or host_is_on(candidate):
+            raise SwitchFailed(failure)
+        raise Undetermined(failure)  # refused before activating: nothing on the host changed
 
     time.sleep(5)  # systemd settles; a unit that fails on activation does so within seconds
     newly_failed = failed_units() - before
@@ -990,11 +1059,23 @@ def refusal(units, chain: BootChain, dry: DryActivate, reloadable=(), never=()) 
 
 
 def classify_and_apply(args, metrics: Metrics) -> Verdict:
-    running = pathlib.Path("/run/current-system").resolve()
+    running = pathlib.Path(CURRENT_SYSTEM).resolve()
     booted = pathlib.Path("/run/booted-system").resolve()
 
     candidate = staged_system(pathlib.Path(args.staged_system))
     revision = configuration_revision(candidate)
+
+    # BEFORE ANY CLASSIFYING. A switch that stopped midway leaves its owed units in the leftover
+    # lists, and every later dry-activate prints them ("start local-fs.target") -- which read as a
+    # classifier_disagreement against a candidate, or not at all once the candidate is what runs.
+    owed = interrupted_switch()
+    if owed:
+        return Verdict(
+            "blocked", "switch_failed",
+            f"a switch to {running.name} stopped midway and still owes: {', '.join(owed[:8])}"
+            f"{f' and {len(owed) - 8} more' if len(owed) > 8 else ''}. Finish it with "
+            "`infra/bin/deploy <host> --apply`.",
+            revision, str(candidate), False, False)
 
     if candidate == running:
         return Verdict("up_to_date", "", "", revision, str(candidate), False, False)
@@ -1084,7 +1165,11 @@ def classify_and_apply(args, metrics: Metrics) -> Verdict:
                           + ", ".join(forgiven[:8]) if forgiven else ""),
                        revision, str(candidate), bool(reboot), activation_changed, reboot, forgiven)
 
-    failure = activate(candidate, args.rollback_on_failure)
+    try:
+        failure = activate(candidate, args.rollback_on_failure)
+    except SwitchFailed as exc:
+        return Verdict("blocked", "switch_failed", str(exc), revision, str(candidate),
+                       bool(reboot), activation_changed, reboot, forgiven)
     if failure:
         return Verdict("blocked", "verification_failed", failure, revision, str(candidate),
                        bool(reboot), activation_changed, reboot, forgiven)
@@ -1247,7 +1332,7 @@ def publish(metrics: Metrics, verdict: Verdict, started: int, deployment_written
                   labels={"state": verdict.state, "reason": verdict.reason or "none",
                           "revision": verdict.revision or "unknown",
                           "candidate": verdict.candidate or "unknown",
-                          "running": os.path.realpath("/run/current-system"),
+                          "running": os.path.realpath(CURRENT_SYSTEM),
                           "detail": verdict.detail[:200] or "none"},
                   help_text="What this host is running, what main would give it, and why that "
                             "difference has not been applied.")

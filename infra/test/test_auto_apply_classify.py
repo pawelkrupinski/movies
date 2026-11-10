@@ -193,7 +193,7 @@ class SwitchExitingFour(unittest.TestCase):
     def test_a_system_unit_failing_still_stops_the_pass_and_says_which(self):
         output = (self.HEAD_2026_09_25 + self.USER_ACTIVATION_RACE
                   + "warning: the following units failed: prometheus.service\n")
-        with self.assertRaises(applier.Undetermined) as raised:
+        with self.assertRaises(applier.SwitchFailed) as raised:
             self.switch(output)
         self.assertIn("warning: the following units failed: prometheus.service",
                       str(raised.exception),
@@ -201,13 +201,14 @@ class SwitchExitingFour(unittest.TestCase):
                       "is what hid the cause of both incidents")
 
     def test_a_system_start_failure_is_not_mistaken_for_a_user_one(self):
-        output = ("warning: user activation for nixdeploy failed\n"
+        output = ("activating the configuration...\n"
+                  "warning: user activation for nixdeploy failed\n"
                   "Failed to start grafana.service: Unit grafana.service is masked.\n")
-        with self.assertRaises(applier.Undetermined):
+        with self.assertRaises(applier.SwitchFailed):
             self.switch(output)
 
     def test_exit_four_with_no_user_activation_failure_is_not_tolerated(self):
-        with self.assertRaises(applier.Undetermined):
+        with self.assertRaises(applier.SwitchFailed):
             self.switch(self.HEAD_2026_09_25)
 
     def test_a_system_unit_that_failed_afterwards_is_still_caught_by_verification(self):
@@ -216,6 +217,152 @@ class SwitchExitingFour(unittest.TestCase):
         failure = self.switch(self.HEAD_2026_09_25 + self.USER_ACTIVATION_RACE,
                                  failed_after={"prometheus.service"})
         self.assertIn("prometheus.service", failure)
+
+
+class SwitchFailedMidway(unittest.TestCase):
+    """A switch that exits non-zero once it has started activating is a FAILED SWITCH, never
+    `could_not_measure`: the host is half on the new closure.
+
+    THE CASE THAT FORCED IT. monitoring-1, 2026-11-10 08:29:09Z, closure 2kicckppx0vq (rev
+    cc8ad36eed). switch-to-configuration-ng lists logind's users and then reads each one's GID
+    over D-Bus with `?` -- so a user whose manager logind tears down between the two calls (root,
+    whose forced-command ssh sessions come and go every 10-15 s) aborts the WHOLE switch with exit
+    1 before its start phase. /run/current-system already pointed at the new closure;
+    local-fs.target and remote-fs.target stayed stopped (left in /run/nixos/start-list), and this
+    script called it `undetermined (could_not_measure)`. The output below is VERBATIM from that
+    pass's journal (stderr, then stdout, as `activate` joins them).
+    """
+
+    LOGIND_USER_VANISHED_2026_11_10 = (
+        "Checking switch inhibitors... done\n"
+        "updating GRUB 2 menu...\n"
+        "activating the configuration...\n"
+        "sops-install-secrets: Imported /etc/ssh/ssh_host_ed25519_key as age key with fingerprint "
+        "age1gzk07n7anpg2nxdlfm5waledsu6xvhmg0s93tcr3474mlcx5jufsuxjpg8\n"
+        "reloading user units for nixdeploy...\n"
+        "restarting the following user units: nixos-activation.service\n"
+        "Error: Failed to get GID for root\n"
+        "\n"
+        "Caused by:\n"
+        "    Unknown object '/org/freedesktop/login1/user/_0'.\n"
+        "setting up /etc...\n"
+        "sops-install-secrets: Imported /etc/ssh/ssh_host_rsa_key as GPG key with fingerprint "
+        "256c8924c924bcab5fa0eb54508d65cc59591fb2\n")
+    BEFORE_ACTIVATING = (
+        "Checking switch inhibitors... done\n"
+        "Error: There are changes to critical components of the system: dbus\n")
+
+    def setUp(self):
+        self.root = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.root)
+        self.candidate = self.root / "candidate"
+        self.candidate.mkdir()
+        (self.root / "previous").mkdir()
+        self.current = self.root / "current-system"
+        self.profile = self.root / "profile"
+        self.profile.symlink_to(self.candidate)
+        saved = (applier.subprocess.run, applier.failed_units, applier.time.sleep,
+                 applier.CURRENT_SYSTEM, applier.SYSTEM_PROFILE, applier.SWITCH_STATE_DIRECTORY)
+        def restore():
+            (applier.subprocess.run, applier.failed_units, applier.time.sleep,
+             applier.CURRENT_SYSTEM, applier.SYSTEM_PROFILE, applier.SWITCH_STATE_DIRECTORY) = saved
+        self.addCleanup(restore)
+        applier.CURRENT_SYSTEM = str(self.current)
+        applier.SYSTEM_PROFILE = str(self.profile)
+        applier.SWITCH_STATE_DIRECTORY = str(self.root / "run-nixos")
+        applier.failed_units = lambda: set()
+        applier.time.sleep = lambda _s: None
+
+    def switch(self, *results, current_is_candidate=True):
+        """Drive the real `activate`; each `switch` call takes the next (exit code, output)."""
+        self.current.symlink_to(self.candidate if current_is_candidate else self.root / "previous")
+        outcomes = iter(results)
+        self.switches = 0
+        def fake_subprocess_run(argv, **_kwargs):
+            if argv[-1] != "switch":
+                return applier.subprocess.CompletedProcess(argv, 0, "", "")
+            self.switches += 1
+            code, output = next(outcomes)
+            return applier.subprocess.CompletedProcess(argv, code, "", output)
+        applier.subprocess.run = fake_subprocess_run
+        self.journal = io.StringIO()
+        with contextlib.redirect_stderr(self.journal):
+            return applier.activate(self.candidate, rollback_on_failure=False)
+
+    def test_the_logind_race_is_retried_once_and_a_clean_retry_lands(self):
+        failure = self.switch((1, self.LOGIND_USER_VANISHED_2026_11_10), (0, ""))
+        self.assertEqual(failure, "")
+        self.assertEqual(self.switches, 2, "the half-applied host completes its own switch")
+        self.assertIn("Unknown object '/org/freedesktop/login1/user/_0'", self.journal.getvalue(),
+                      "the retried race is still named in the journal")
+
+    def test_a_retry_that_fails_again_is_a_failed_switch_with_its_tail(self):
+        with self.assertRaises(applier.SwitchFailed) as raised:
+            self.switch((1, self.LOGIND_USER_VANISHED_2026_11_10),
+                        (1, self.LOGIND_USER_VANISHED_2026_11_10))
+        self.assertEqual(self.switches, 2, "ONE retry, never a loop")
+        self.assertIn("Failed to get GID for root", str(raised.exception))
+        self.assertNotIsInstance(raised.exception, applier.Undetermined,
+                                 "a half-applied host is a verdict, not could_not_measure")
+
+    def test_no_retry_unless_the_host_is_on_the_candidate(self):
+        with self.assertRaises(applier.SwitchFailed):
+            self.switch((1, self.LOGIND_USER_VANISHED_2026_11_10), (0, ""),
+                        current_is_candidate=False)
+        self.assertEqual(self.switches, 1,
+                         "/run/current-system and the profile must both name the candidate")
+
+    def test_another_failure_after_activating_is_a_failed_switch_and_not_retried(self):
+        output = ("activating the configuration...\n"
+                  "Error: Failed to open dbus connection\n")
+        with self.assertRaises(applier.SwitchFailed):
+            self.switch((1, output), (0, ""))
+        self.assertEqual(self.switches, 1)
+
+    def test_a_switch_refused_before_activating_changed_nothing(self):
+        with self.assertRaises(applier.Undetermined) as raised:
+            self.switch((1, self.BEFORE_ACTIVATING), current_is_candidate=False)
+        self.assertNotIsInstance(raised.exception, applier.SwitchFailed)
+
+    def test_an_interrupted_switch_is_named_from_its_leftover_lists(self):
+        state = pathlib.Path(applier.SWITCH_STATE_DIRECTORY)
+        self.assertEqual(applier.interrupted_switch(), [], "no directory, no leftovers")
+        state.mkdir()
+        (state / "start-list").write_text("local-fs.target\nremote-fs.target\n")
+        (state / "restart-list").write_text("")
+        self.assertEqual(applier.interrupted_switch(),
+                         ["start local-fs.target", "start remote-fs.target"])
+
+    def test_leftover_lists_of_a_switch_still_running_are_not_a_stopped_switch(self):
+        import fcntl
+        state = pathlib.Path(applier.SWITCH_STATE_DIRECTORY)
+        state.mkdir()
+        (state / "start-list").write_text("local-fs.target\n")
+        with open(state / "switch-to-configuration.lock", "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            with self.assertRaises(applier.LockContended):
+                applier.interrupted_switch()
+        self.assertEqual(applier.interrupted_switch(), ["start local-fs.target"],
+                         "a released lock leaves the lists as a stopped switch's")
+
+    def test_a_pass_on_a_half_applied_host_reports_switch_failed(self):
+        # The NEXT pass after 2026-11-10's: candidate == /run/current-system, so it used to say
+        # up_to_date (or, once a newer closure was staged, classifier_disagreement) while the
+        # host still owed local-fs.target and remote-fs.target.
+        self.current.symlink_to(self.candidate)
+        state = pathlib.Path(applier.SWITCH_STATE_DIRECTORY)
+        state.mkdir()
+        (state / "start-list").write_text("local-fs.target\nremote-fs.target\n")
+        saved = applier.staged_system, applier.configuration_revision
+        applier.staged_system = lambda _pin: self.candidate
+        applier.configuration_revision = lambda _system: "cc8ad36eed"
+        try:
+            verdict = applier.classify_and_apply(
+                type("Args", (), {"staged_system": "/unused"})(), metrics=None)
+        finally:
+            applier.staged_system, applier.configuration_revision = saved
+        self.assertEqual((verdict.state, verdict.reason), ("blocked", "switch_failed"))
+        self.assertIn("start local-fs.target", verdict.detail)
 
 
 class SystemdReexecAfterStoreOptimise(unittest.TestCase):

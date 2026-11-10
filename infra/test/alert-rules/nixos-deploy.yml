@@ -63,6 +63,9 @@ tests:
         alertname: AutoApplyRefusingChange
         exp_alerts: []
       - eval_time: 20m
+        alertname: AutoApplySwitchFailed
+        exp_alerts: []
+      - eval_time: 20m
         alertname: StagedClosureNotLive
         exp_alerts: []
       - eval_time: 20m
@@ -352,6 +355,37 @@ tests:
                 `fleet.autoApply.restartableUnits`. `AutoApplyBlocked` repeats this at a day.
       - eval_time: 3h
         alertname: StagedClosureNotLive
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A SWITCH THAT STOPPED MIDWAY (monitoring-1, 2026-11-10). Critical within five minutes, and
+  # NOT also the hour-tier refusal: it is a broken switch, not a change the applier declined.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'nixos_auto_apply_blocked_reason{host="monitoring-1",reason="switch_failed"}'
+        values: '1+0x120'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AutoApplySwitchFailed
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: AutoApplySwitchFailed
+        exp_alerts:
+          - exp_labels:
+              domain: deploy
+              host: monitoring-1
+              reason: switch_failed
+              severity: critical
+            exp_annotations:
+              summary: "DEPLOY HALF-APPLIED: a switch on monitoring-1 stopped midway"
+              description: >-
+                switch-to-configuration exited non-zero after it started activating, so the host runs
+                the new closure with units the switch stopped still down. `journalctl -u
+                nixos-auto-apply -n 50` has its output tail and what it still owes; finish it with
+                `infra/bin/deploy monitoring-1 --apply`.
+      - eval_time: 90m
+        alertname: AutoApplyRefusingChange
         exp_alerts: []
 
   # ────────────────────────────────────────────────────────────────────────────────────────────

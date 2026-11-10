@@ -148,7 +148,8 @@ groups:
       # still at the keyboard. It fires ONCE (warnings re-nag at 12h) and the day tier repeats it,
       # so a block that is a deliberate choice costs two messages, not a stream.
       - alert: AutoApplyRefusingChange
-        expr: nixos_auto_apply_blocked_reason == 1
+        # `switch_failed` is not a refusal; `AutoApplySwitchFailed` below says it within minutes.
+        expr: nixos_auto_apply_blocked_reason{reason!="switch_failed"} == 1
         for: 1h
         labels:
           severity: warning
@@ -160,6 +161,27 @@ groups:
             own, so it is not live -- and every later merge for this host queues behind it.
             `journalctl -u nixos-auto-apply -n 50` names the unit; switch by hand or add it to
             `fleet.autoApply.restartableUnits`. `AutoApplyBlocked` repeats this at a day.
+
+      # A SWITCH THAT STOPPED MIDWAY. Not a decision waiting for a person but a host part-way onto a
+      # closure: /run/current-system names the new one while units the switch stopped are still
+      # down (monitoring-1, 2026-11-10 08:29Z: local-fs.target and remote-fs.target, after logind
+      # removed root mid-switch). The applier retries that race once itself; this fires when the
+      # retry failed too, or any other switch broke after activating, and keeps firing on later
+      # passes while /run/nixos still lists what the switch owes. Five minutes, critical: until a
+      # person finishes the switch, mounts and services it stopped stay stopped.
+      - alert: AutoApplySwitchFailed
+        expr: nixos_auto_apply_blocked_reason{reason="switch_failed"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          domain: deploy
+        annotations:
+          summary: "DEPLOY HALF-APPLIED: a switch on {{ $labels.host }} stopped midway"
+          description: >-
+            switch-to-configuration exited non-zero after it started activating, so the host runs
+            the new closure with units the switch stopped still down. `journalctl -u
+            nixos-auto-apply -n 50` has its output tail and what it still owes; finish it with
+            `infra/bin/deploy {{ $labels.host }} --apply`.
 
       # "CONFIG PUSHED BUT NOT LIVE", FOR EVERY REASON THE APPLIER IS NOT ANNOUNCING ITSELF. The
       # ordinary stage-to-switch gap is seconds, so two hours of `staged_pending` is a merge that
