@@ -12,7 +12,7 @@
 # /etc/passwd and every authorized_keys file are rebuilt from this declaration on each activation,
 # so an account or a key added by hand on the machine is REMOVED by the next deploy instead of
 # quietly surviving it. Without it this file would describe a floor, not the state.
-{ ... }:
+{ lib, ... }:
 
 let
   # The operator. One human, named rather than shared: `root` is reachable too (see below) but
@@ -29,9 +29,28 @@ let
   ];
 in
 {
-  users.mutableUsers = false;
+  # EVERY ACCOUNT THAT CAN SSH IN LINGERS, so logind never tears its user manager down between
+  # sessions. switch-to-configuration-ng lists logind's users, then reads each one's GID over D-Bus
+  # with `?`: a user that logind removes between those two calls aborts the WHOLE switch midway.
+  # monitoring-1, 2026-11-10 08:29Z: the operator Mac's dashboard polls Prometheus as root over a
+  # fresh ssh session every 15 s (dashboards-readonly key, infra/nix/hosts/monitoring-1), each
+  # starting user@0 and stopping it ~10 s after; the switch read root's GID as it went
+  # (`Unknown object '/org/freedesktop/login1/user/_0'`), exited 1 after /run/current-system had
+  # moved, and left local-fs.target and remote-fs.target stopped. The same race, one user over,
+  # failed per-user activation for `nixdeploy` on 2026-09-02 and 2026-09-25. A lingering user stays
+  # in logind for good, so nothing is listed that can vanish. Keyed on the authorized keys rather
+  # than a list of names, so an ssh account added by any role (mongo-ci-read, k8s-deploy, ...)
+  # lingers without anyone remembering to say so; nixpkgs' `linger-users.service` applies it.
+  options.users.users = lib.mkOption {
+    type = lib.types.attrsOf (lib.types.submodule ({ config, ... }: {
+      config.linger = lib.mkIf (config.openssh.authorizedKeys.keys != [ ]
+        || config.openssh.authorizedKeys.keyFiles != [ ]) (lib.mkDefault true);
+    }));
+  };
 
-  users.users.pawel = {
+  config.users.mutableUsers = false;
+
+  config.users.users.pawel = {
     isNormalUser = true;
     description = "Pawel Krupinski";
     extraGroups = [ "wheel" ];
@@ -50,7 +69,7 @@ in
   # produce, so root has NO password at all, and sshd's `PermitRootLogin = "prohibit-password"`
   # (./default.nix) means the only way in is a key listed right here. There is no console
   # login either -- Hetzner's console reaches a login prompt that no password satisfies.
-  users.users.root = {
+  config.users.users.root = {
     hashedPassword = "!";
     openssh.authorizedKeys.keys = operatorKeys;
   };
@@ -63,7 +82,7 @@ in
   #
   # `lib.mkDefault` on neither, deliberately: a host that wanted a password prompt would be a host
   # that could not be recovered, and making that easy to write by accident is not a kindness.
-  security.sudo = {
+  config.security.sudo = {
     enable = true;
     wheelNeedsPassword = false;
   };

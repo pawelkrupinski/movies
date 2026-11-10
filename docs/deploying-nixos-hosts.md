@@ -80,3 +80,23 @@ Two faults kept routine switches with the owner after the nixpkgs c56a87d bump (
   for a family, so EVERY auto-apply series vanished. `Metrics.gauge` describes a family once.
 
 Cases: `RebootAlreadyOwed` and `PublishedMetrics` in `infra/test/test_auto_apply_classify.py`.
+
+## A switch that stops midway is `switch_failed`; ssh accounts linger (2026-11-10)
+
+monitoring-1, 08:29Z: the operator Mac's dashboard polls Prometheus as root (the `dashboards-readonly`
+forced-command key) over a fresh ssh session every 15 s, so logind starts `user@0` and removes it ~10 s
+after each. switch-to-configuration-ng lists logind's users, then reads each GID with `?`; root vanished
+between the two calls (`Failed to get GID for root ... Unknown object '/org/freedesktop/login1/user/_0'`),
+the switch exited 1 after `/run/current-system` had moved, and `local-fs.target`/`remote-fs.target`
+stayed stopped (owed in `/run/nixos/start-list`).
+
+- **Every account with an ssh key lingers** (`fleet/accounts.nix`, keyed on authorized keys, so a new
+  role's account does too): a lingering user never leaves logind, so nothing listed can vanish.
+- **The applier** retries a switch that failed on exactly that race once, when `/run/current-system`
+  and the profile both name the candidate. Any switch exiting non-zero after "activating the
+  configuration..." is `blocked (switch_failed)` with its output tail, never `could_not_measure`; a
+  pass that finds `/run/nixos/{start,restart,reload}-list` left behind (and the switch lock free)
+  reports `switch_failed` naming what is owed, before classifying. `AutoApplySwitchFailed` (critical,
+  5 min) says so; finish it with `infra/bin/deploy <host> --apply`.
+
+Cases: `SwitchFailedMidway` in `infra/test/test_auto_apply_classify.py`.

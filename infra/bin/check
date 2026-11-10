@@ -255,6 +255,21 @@ else
   failed=1
 fi
 
+step "ssh accounts linger"
+# Every account with an ssh key lingers, so logind never removes a user mid-switch (the 2026-11-10
+# monitoring-1 half-applied switch). See test_ssh_accounts_linger.sh.
+if [ -f test/test_ssh_accounts_linger.sh ]; then
+  if out="$(bash test/test_ssh_accounts_linger.sh 2>&1)"; then
+    echo "$out" | tail -1 | sed 's/^/  /'
+  else
+    echo "$out" | sed 's/^/  /'
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_ssh_accounts_linger.sh is missing"
+  failed=1
+fi
+
 step "host memory safety"
 # zram, vm.swappiness and the k3s kubelet's reserves, read back out of each host's evaluated config.
 # The toplevel eval below proves nix/modules/fleet/host-memory.nix evaluates; it cannot notice a host
