@@ -39,10 +39,15 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
         with what a job may take charged, the slice's OOM killer cannot fire on movies' own growth.
       - CPU: the busy cores over `cpu_window_seconds` (/proc/stat) OF THE CPUS THE CLASS'S SLICE RUNS ON (its
         cpuset.cpus.effective; unread, the host's), up to `cpu_start_below` of them (`light_cpu_start_below` for a
-        light job), must hold a job of the class at the cores its jobs USE: the median,
-        over the window, of its settled busy runners' own containers (cpu.stat), within [`job_cpus_floor`,
-        `job_cpus`]; none settled, `job_cpus` (the JVM's ActiveProcessorCount for a check or measurement; 1 for a
-        light job). At 15:46Z five measurements used 13 cores, ~2.6 each, and every new one was charged 4. On a
+        light job), must hold a job of the class at the cores it CAN BURN, `job_cpus` (the JVM's
+        ActiveProcessorCount=4 of a check or measurement container; 1 for a light job) -- and every runner of ours
+        on those CPUs is charged the same cap, of which the busy reading already holds what its container showed
+        (cpu.stat: over the window when settled, its CPU time over the window's span while settling). So a job
+        reading below its cap (a slow phase, or a contended cpuset) still owes the rest: "cap = charge", as for
+        memory. Charging what jobs USED (their median, 2026-11-07..09) fed back on itself: on 11-09 20:32-20:34Z
+        a burst of drift rows was charged the 1.3 cores contended measurements had shown, six started beside
+        ~11 cores of other load on the measure cpuset's 20, the CPUs read 20/20 within six minutes, and a UK drift
+        row took 900 s (527 s on a quiet ci-runner, 375 s hosted). At the cap that burst starts one. On a
         saturated host another job only slows every job, bitcashier's included, for no throughput. Per cpuset, not
         per host (the owner, 2026-11-08): measurements run on CCD1 and two CCD0 cores, checks on the rest of CCD0
         (bitcashier infra), and the host-wide reading both packed nine and ten measurements onto CCD1's 16 threads
@@ -51,7 +56,7 @@ WHAT IT DECIDES, every tick (30 s): how many movies runners may exist now, and w
         spend each other's cores, so the check lane's cores are kept from measurements only where they share CPUs.
     A runner of ours that has not fully shown its memory and CPU yet -- one waiting for its job, or started within
     `settle_seconds` -- is charged what it has NOT shown yet: its class's expected size less its container's working
-    set, and a job's cores less its share of the CPU window's average. So a queue never starts a burst into memory
+    set (and, like every runner of ours, its cores' cap less what it showed). So a queue never starts a burst into memory
     that only looked free, and what a young runner already holds is not counted twice (15:46Z: three runners 3-4 min
     old were charged 11 GiB and 4 cores each beside what the readings already had of them: room 0 on 13 of 32
     cores). The memory margin is each reading's once, never per job. The log line names each term (`held by`).
@@ -116,7 +121,6 @@ class Config:
     # so 10; both on the JVM's 4 cores. A light job (a timings report, a prune, a dispatch) runs seconds in under 1 GiB.
     job_expected_gib: dict = dataclasses.field(default_factory=lambda: {"check": 10, "measure": 11, "light": 1})
     job_cpus: dict = dataclasses.field(default_factory=lambda: {"check": 4, "measure": 4, "light": 1})
-    job_cpus_floor: float = 1  # a class's measured cores per job never read below this (job_cpus is its ceiling)
     # Every movies runner container's --memory (bitcashier infra passes this same number to the unit). A class whose
     # slice has a memory.max never holds more runners than that many caps fit: what admission charges a job in its
     # slice is what its container may take, so the slice's own OOM killer never fires (2026-11-07 07:40-08:22Z: nine
@@ -224,9 +228,8 @@ class Decision:
     starts: tuple  # ((slot, cls), ...)
     stops: tuple  # (slot, ...)
     # what held a measurement this tick, before the starts: ADMISSION_LIMITS in whole jobs, plus the
-    # charge of our settling runners and a measurement's measured cores (the log line names the binding term)
+    # charge of our settling runners (the log line names the binding term)
     limits: dict = dataclasses.field(default_factory=dict)
-    per_job: dict = dataclasses.field(default_factory=dict)  # the cores each class's job was charged: the next remembered
 
 
 # ── the decision, pure ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -295,31 +298,22 @@ def settling(cfg: Config, inst: Instance, now: float) -> bool:
     return not inst.busy or now - inst.started < cfg.settle_seconds
 
 
-def measured_cpus(cfg: Config, instances: list, cls: str, now: float, remembered: dict | None = None) -> float:
-    """The cores a `cls` job takes: the median of what its settled busy runners used over the CPU window, within
-    [job_cpus_floor, job_cpus] (2026-11-07 15:46Z: five measurements on 13 cores, ~2.6 each, were charged 4). None
-    settled now: what its jobs used when last measured (`remembered`, the previous ticks' per_job; 2026-11-08 18:55Z:
-    the one settled measurement ended and every new one was charged 4 against the 2.7 used a tick before, starving 60
-    queued); never measured: job_cpus, the JVM's ActiveProcessorCount."""
-    used = [i.cpu_cores for i in instances
-            if i.cls == cls and i.cpu_cores is not None and not settling(cfg, i, now)]
-    ceiling = cfg.job_cpus[cls]
-    if not used:
-        return (remembered or {}).get(cls, ceiling)
-    return min(ceiling, max(min(cfg.job_cpus_floor, ceiling), statistics.median(used)))
-
-
 def memory_charge(cfg: Config, inst: Instance) -> float:
     """What a settling runner still owes the memory readings: its class's expected size less what its container
     already holds (and so is already out of MemAvailable and the slices' headroom)."""
     return max(0.0, cfg.job_expected_gib[inst.cls] - (inst.mem_gib or 0.0))
 
 
-def cpu_charge(r: Readings, inst: Instance, per_job: float) -> float:
-    """What a settling runner still owes the CPU reading: a job's cores less its share of the window's average (its
-    CPU time over the span the host's busy cores average: all of it fell inside, it started within settle_seconds)."""
-    shown = inst.cpu_seconds / r.cpu_span_seconds if inst.cpu_seconds is not None and r.cpu_span_seconds else 0.0
-    return max(0.0, per_job - shown)
+def cpu_charge(cfg: Config, r: Readings, inst: Instance, now: float) -> float:
+    """What a runner of ours still owes the CPU reading: the cores its job can burn (job_cpus) less what the reading
+    already holds of it -- settled, the cores its container used over the window; settling, its CPU time over the
+    span the busy cores average (all of it fell inside: it started within settle_seconds). Never below 0: a job past
+    its cap is all in the reading."""
+    if settling(cfg, inst, now):
+        shown = inst.cpu_seconds / r.cpu_span_seconds if inst.cpu_seconds is not None and r.cpu_span_seconds else 0.0
+    else:
+        shown = inst.cpu_cores or 0.0
+    return max(0.0, cfg.job_cpus[inst.cls] - shown)
 
 
 def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings) -> list:
@@ -342,20 +336,18 @@ def _idle_to_stop(cfg: Config, bc: Bitcashier, demand: dict, instances: list, no
                     and now - i.idle_since >= cfg.idle_stop_seconds]
 
 
-def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings,
-           remembered_cpus: dict | None = None) -> Decision:
+def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: float, r: Readings) -> Decision:
     """The runners to start ((slot, class), highest class first, then the light lane) and the idle ones to stop, for
     `demand` (queued jobs per class), the `instances` that exist and the host's live readings `r`."""
     full = saturated(cfg, bc)
     stops = _idle_to_stop(cfg, bc, demand, instances, now, r)
     alive = [i for i in instances if i.slot not in stops]
     used = {i.slot for i in instances}  # a stopping slot is not reused in the same tick
-    per_job = {cls: measured_cpus(cfg, alive, cls, now, remembered_cpus) for cls in CLASSES}
     pending = [i for i in alive if settling(cfg, i, now)]
-    pending_cpus = sum(cpu_charge(r, i, per_job[i.cls]) for i in pending)
+    owed_cpus = sum(cpu_charge(cfg, r, i, now) for i in alive)
     memory = memory_free_gib(cfg, bc, r, sum(memory_charge(cfg, i) for i in pending))
-    # each class's spare cores on its own CPUs, less what our settling runners there still owe
-    cpu = {cls: cpu_spare(cfg, r, sum(cpu_charge(r, i, per_job[i.cls]) for i in pending if share_cpus(r, cls, i.cls)),
+    # each class's spare cores on its own CPUs, less what our runners there still owe of their caps
+    cpu = {cls: cpu_spare(cfg, r, sum(cpu_charge(cfg, r, i, now) for i in alive if share_cpus(r, cls, i.cls)),
                           cfg.light_cpu_start_below if cls == "light" else cfg.cpu_start_below, cls)
            for cls in CLASSES}
     # the check lane's cores are kept from measurements only where checks could run on them
@@ -380,16 +372,16 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     limits = {"memory": _whole_jobs(memory - lane_gib, size),
               "slice": None if held["measure"] is None else _whole_jobs(held["measure"], size),
               "caps": caps.get("measure"),
-              "cpu": _whole_jobs(cpu["measure"] - (lane_cpus if lane_shares_cpus else 0), per_job["measure"]),
+              "cpu": _whole_jobs(cpu["measure"] - (lane_cpus if lane_shares_cpus else 0), cfg.job_cpus["measure"]),
               "slots": max(0, len(heavy_slots) - lane_slots),
-              "settling": f"{len(pending)} owe {sum(memory_charge(cfg, i) for i in pending):.0f} GiB "
-                          f"{pending_cpus:.1f} cores", "measure_cores": round(per_job["measure"], 1),
+              "settling": f"{len(pending)} owe {sum(memory_charge(cfg, i) for i in pending):.0f} GiB",
+              "owed_cores": round(owed_cpus, 1),
               "check_lane": f"{lane_slots} x {cfg.job_expected_gib['check']} GiB {cfg.job_cpus['check']} cores"}
 
     def admit(cls: str, slots: list) -> None:
         nonlocal memory
         need = max(0, demand.get(cls, 0) - sum(1 for i in alive if i.cls == cls and not i.busy))
-        size, cores = cfg.job_expected_gib[cls], per_job[cls]
+        size, cores = cfg.job_expected_gib[cls], cfg.job_cpus[cls]
         # a measurement never takes the check lane (a check, or a light job in its own slots, is not held by it)
         keep_slots, keep_gib, keep_cpus = lane() if cls == "measure" else (0, 0, 0)
         keep_cpus = keep_cpus if lane_shares_cpus else 0
@@ -417,7 +409,7 @@ def decide(cfg: Config, bc: Bitcashier, demand: dict, instances: list, now: floa
     # THE LIGHT LANE: its own slots, admitted at a light job's size whatever the heavy queue or bitcashier's runners.
     admit("light", [s for s in range(cfg.max_slots + 1, cfg.max_slots + cfg.light_slots + 1) if s not in used])
     room = 0 if full else max(0, min(v for k, v in limits.items() if k in ADMISSION_LIMITS and v is not None))
-    return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits, per_job)
+    return Decision(room, full, tuple(starts), tuple(sorted(stops)), limits)
 
 
 def demand_of(jobs: list) -> dict:
@@ -681,22 +673,6 @@ class Host:
             f.write(f"RUNNER_CLASS={cls}\nRUNNER_LABELS={LABELS[cls]}\nRUNNER_SLICE=ci-movies-{cls}.slice\n")
         _run(["systemctl", "start", "--no-block", self.unit(slot)])
 
-    def remembered_cpus(self) -> dict:
-        """The cores each class's job was last charged (per-job-cores.json in the state dir, which outlives a scheduler
-        restart); none yet or unreadable: empty, so a class with no settled runner is charged its ceiling."""
-        try:
-            return {c: float(v) for c, v in json.loads(_read(self.cores_path()) or "{}").items() if c in CLASSES}
-        except (ValueError, AttributeError):
-            return {}
-
-    def remember_cpus(self, per_job: dict) -> None:
-        os.makedirs(self.cfg.state_dir, mode=0o700, exist_ok=True)
-        with open(self.cores_path(), "w") as f:
-            json.dump(per_job, f)
-
-    def cores_path(self) -> str:
-        return os.path.join(self.cfg.state_dir, "per-job-cores.json")
-
     def runs_job(self, slot: int) -> bool:
         """A Runner.Worker in the slot's container -- and True when the probe cannot tell: a runner is never stopped on
         doubt. `docker top` keeps the container's rows by ps's PID column, so the options must name `pid` (`-eo comm`
@@ -780,7 +756,7 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool 
     demand = demand_of(jobs)
     r = read_readings(cfg, cpu, now)
     instances = host.instances(now)
-    d = decide(cfg, bc, demand, instances, now, r, host.remembered_cpus())
+    d = decide(cfg, bc, demand, instances, now, r)
     gib = lambda v: "-" if v is None else f"{v:.0f}"  # noqa: E731
     cores = lambda v: "-" if v is None else f"{v:.1f}"  # noqa: E731
     ours = [(i.slot, i.cls, "busy" if i.busy else "idle", gib(i.mem_gib), cores(i.cpu_cores)) for i in instances]
@@ -797,7 +773,6 @@ def tick(cfg: Config, host: Host, reader: GitHub, cpu: CpuMeters, dry_run: bool 
         print(line, flush=True)
     if dry_run:
         return d
-    host.remember_cpus(d.per_job)
     for slot in d.stops:
         host.stop(slot)
     for slot, cls in d.starts:

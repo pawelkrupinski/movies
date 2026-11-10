@@ -32,8 +32,11 @@ def queued(**n):
     return {c: n.get(c, 0) for c in rs.CLASSES}
 
 
-def inst(slot, cls, busy=False, idle_for=0, started_ago=3600):
-    return rs.Instance(slot, cls, busy, NOW - idle_for, NOW - started_ago)
+def inst(slot, cls, busy=False, idle_for=0, started_ago=3600, cpu_cores="cap"):
+    """A runner of ours; settled, its container read at its class's whole CPU cap (job_cpus) unless told otherwise, so
+    it owes the CPU reading nothing beyond what that reading already holds."""
+    cores = CFG.job_cpus[cls] if cpu_cores == "cap" else cpu_cores
+    return rs.Instance(slot, cls, busy, NOW - idle_for, NOW - started_ago, cpu_cores=cores)
 
 
 def readings(available=500, ci_free=500, class_free=None, cpu_busy=0.0, cores=1000, busy_builders=(), class_cpu=None):
@@ -191,26 +194,32 @@ class RecordedReadingsTest(unittest.TestCase):
         r = rs.Readings(95, 88, {"measure": measure_slice_gib - 24}, 13, CORES, (), 300)
         return rs.decide(NO_LANE, rs.Bitcashier(0, 0), queued(measure=15), settled + settling, NOW, r)
 
-    def test_1546_a_job_is_charged_the_cores_jobs_use_and_a_settling_one_only_what_it_has_not_shown(self):
+    def test_1546_every_runner_is_charged_its_cap_less_what_it_has_shown(self):
         d = self.at_1546(measure_slice_gib=80)
-        self.assertEqual(d.limits["measure_cores"], 2.6)  # the settled ones' median, not 4
-        # settling: 3 x (11 - 3.3) GiB and 3 x (2.6 - 520 / 300) cores still owed
-        # host: 88 - 22 reserved - 6 - 23.1 = 36.9 -> 3; CPU: (27.2 - 13 - 2.6) // 2.6 = 4
-        self.assertEqual((d.limits["memory"], d.limits["cpu"]), (3, 4))
-        # and the 80 GiB slice: 56 - 6 - 23.1 = 26.9 -> 2 -- five measurements peak at 12-16 GiB each (measured
-        # 16:50Z), so it holds the eighth back: the slice, not CPU, binds now
-        self.assertEqual((d.limits["slice"], d.room), (2, 2))
+        # settling: 3 x (11 - 3.3) GiB still owed; CPU: each runner its 4-core cap less what the reading holds of it --
+        # the settled 2 x (4 - 2.6), the settling 3 x (4 - 520 / 300): 9.6 owed
+        # host: 88 - 22 reserved - 6 - 23.1 = 36.9 -> 3; CPU: (27.2 - 13 - 9.6) // 4 = 1
+        self.assertEqual(d.limits["owed_cores"], 9.6)
+        self.assertEqual((d.limits["memory"], d.limits["cpu"]), (3, 1))
+        # and the 80 GiB slice: 56 - 6 - 23.1 = 26.9 -> 2; the CPU binds first
+        self.assertEqual((d.limits["slice"], d.room), (2, 1))
 
-    def test_1546_with_a_96_gib_measure_slice_takes_three_more(self):
-        d = self.at_1546(measure_slice_gib=96)  # 72 - 6 - 23.1 = 42.9 -> 3
-        self.assertEqual(d.room, 3)
-        self.assertEqual(d.starts, ((4, "measure"), (6, "measure"), (8, "measure")))
+    def test_1546_with_a_96_gib_measure_slice_takes_what_the_cpu_holds(self):
+        d = self.at_1546(measure_slice_gib=96)  # the slice 72 - 6 - 23.1 = 42.9 -> 3; the CPU 1
+        self.assertEqual(d.room, 1)
+        self.assertEqual(d.starts, ((4, "measure"),))
 
-    def test_a_class_with_no_settled_runner_is_charged_its_ceiling(self):
-        fresh = [rs.Instance(1, "measure", True, NOW, NOW - 10, cpu_cores=1.0)]
-        self.assertEqual(rs.measured_cpus(CFG, fresh, "measure", NOW), 4)
-        idle_ones = [rs.Instance(1, "measure", True, NOW, NOW - 900, cpu_cores=0.2)]
-        self.assertEqual(rs.measured_cpus(CFG, idle_ones, "measure", NOW), CFG.job_cpus_floor)
+    def test_a_runner_owes_its_cap_less_what_the_cpu_reading_holds_of_it(self):
+        r = rs.Readings(100, 100, {}, 0, CORES, (), 300)
+        # settled: its window's cores; settling: its CPU time over the span (90 s / 300 s); never read: the whole cap
+        self.assertAlmostEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "measure", True, NOW, NOW - 900, cpu_cores=1.3),
+                                             NOW), 2.7)
+        self.assertAlmostEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "measure", True, NOW, NOW - 100, cpu_cores=1.0,
+                                                                 cpu_seconds=90), NOW), 3.7)
+        self.assertEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "check", True, NOW, NOW - 900), NOW), 4)
+        # past its cap (GC threads): all of it is in the reading, it owes nothing
+        self.assertEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "measure", True, NOW, NOW - 900, cpu_cores=4.6), NOW), 0)
+        self.assertEqual(rs.cpu_charge(CFG, r, rs.Instance(1, "light", True, NOW, NOW - 900, cpu_cores=0.2), NOW), 0.8)
 
     # 12:32-12:58Z: identity run 42370669779's timings job (label `movies`, 10 s, well under 1 GiB) queued 26 min behind
     # 20 measurements, every job charged a measurement's 11 GiB and 4 cores and light ranked last. Light jobs now
@@ -274,7 +283,8 @@ class CpusetAdmissionTest(unittest.TestCase):
         six = self.settled_measurements(6, cores_each=2.6)
         r = readings(cpu_busy=16, cores=CORES, class_cpu=on_cpusets(check_busy=0, measure_busy=16))
         d = rs.decide(CFG, IDLE, queued(measure=20), six, NOW, r)
-        self.assertEqual((d.starts, d.limits["cpu"]), ((), 0))
+        self.assertEqual(d.starts, ())
+        self.assertLessEqual(d.limits["cpu"], 0)
 
     def test_the_check_lane_never_waits_on_measurements_that_fill_their_cpuset(self):
         # measurements fill theirs (19 of 20 busy) and bitcashier holds 5 of the check CPUs: host 24 of 32, so the
@@ -309,23 +319,20 @@ class AfterTheCpusetDeployTest(unittest.TestCase):
     def at(self, check_busy, measure_busy, ours, lane_free):
         r = rs.Readings(111, 108, {"measure": 94}, check_busy + measure_busy, CORES, (4,) * 9, 300,
                         on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
-        d = rs.decide(CFG, rs.Bitcashier(9, 1), queued(check=4, measure=60), ours, NOW, r,
-                      remembered_cpus={"measure": 2.7})
+        d = rs.decide(CFG, rs.Bitcashier(9, 1), queued(check=4, measure=60), ours, NOW, r)
         self.assertEqual(d.limits["check_lane"], f"{lane_free} x 10 GiB 4 cores")
         return d
 
-    def test_1856_a_lane_check_and_a_measurement_both_start(self):
+    def test_1856_a_lane_check_starts_and_a_measurement_waits_for_its_whole_cap(self):
         # slot 1: a measurement 90 s into its job at 1.1 cores; slot 2: a check that took its job 30 s ago
         ours = [rs.Instance(1, "measure", True, NOW, NOW - 90, mem_gib=2, cpu_cores=1.1, cpu_seconds=99),
                 rs.Instance(2, "check", True, NOW, NOW - 30, mem_gib=0)]
         d = self.at(check_busy=5, measure_busy=10, ours=ours, lane_free=1)
-        # was: 0 and 0 -- the measurement charged 4 - 0.33 owed and 4 per new one (17 - 10 - 3.67 < 4); the check 10.2 - 5
-        # - 4 owed < 4. Now: 17 - 10 - (2.7 - 0.33) = 4.63 holds one at 2.7, and the lane's free check starts
-        self.assertEqual(sorted(c for _, c in d.starts), ["check", "measure"])
+        # 17 - 10 - (4 - 0.33) = 3.33: a measurement's 4 cores do not fit beside the ~9.7 cores of other load (the
+        # 2.7 its jobs showed on a contended cpuset is not what it burns); the lane's check is never held by the CPU
+        self.assertEqual([c for _, c in d.starts], ["check"])
 
-    def test_1857_a_lane_check_and_a_measurement_both_start(self):
-        # slot 3 took a measurement 30 s ago as well: 17 - 10 - (2.7 - 0.8) - 2.7 = 2.4 -- no third measurement at 2.7
-        # beside two still owing, but the lane's check is never held by the CPU
+    def test_1857_a_lane_check_starts_beside_two_measurements_still_owing(self):
         ours = [rs.Instance(1, "measure", True, NOW, NOW - 150, mem_gib=4, cpu_cores=1.6, cpu_seconds=240),
                 rs.Instance(2, "check", True, NOW, NOW - 60, mem_gib=1, cpu_cores=0.6, cpu_seconds=36),
                 rs.Instance(3, "measure", True, NOW, NOW - 30, mem_gib=0)]
@@ -337,21 +344,43 @@ class AfterTheCpusetDeployTest(unittest.TestCase):
         d = self.at(check_busy=10, measure_busy=0, ours=two, lane_free=0)
         self.assertNotIn("check", [c for _, c in d.starts])
 
-    def test_the_cores_charged_outlive_a_scheduler_restart(self):
-        root = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, root)
-        host = rs.Host(rs.Config(state_dir=os.path.join(root, "state")))
-        self.assertEqual(host.remembered_cpus(), {})  # none yet: the ceiling
-        host.remember_cpus({"check": 4, "measure": 2.7, "light": 1})
-        self.assertEqual(rs.Host(rs.Config(state_dir=os.path.join(root, "state"))).remembered_cpus()["measure"], 2.7)
-        with open(os.path.join(root, "state", "per-job-cores.json"), "w") as f:
-            f.write("not json")
-        self.assertEqual(host.remembered_cpus(), {})
 
-    def test_a_class_with_no_settled_runner_is_charged_what_its_jobs_used_last(self):
-        fresh = [rs.Instance(1, "measure", True, NOW, NOW - 10)]
-        self.assertEqual(rs.measured_cpus(CFG, fresh, "measure", NOW, {"measure": 2.7}), 2.7)
-        self.assertEqual(rs.measured_cpus(CFG, fresh, "measure", NOW, {}), 4)  # never measured: the ceiling
+class DriftBurstTest(unittest.TestCase):
+    """2026-11-09 20:32-20:34Z, ci-runner's journal: two dispatches queued 12 identity drift rows for the measure
+    cpuset (20 threads, ~11-12 of them busy with other load). Each row's JVM may burn 4 cores (ActiveProcessorCount=4)
+    but every one was charged the 1.3 its contended predecessors had shown: six started in two minutes, the cpuset read
+    20/20 by 20:40, and a UK drift row took 900 s (527 s on a quiet ci-runner, 375 s hosted). Charged its cap, each
+    runner owes the rest of its 4 cores until the reading shows them."""
+
+    def at(self, bc, available, ci_free, slice_free, check_busy, measure_busy, ours, measure_queued):
+        r = rs.Readings(available, ci_free, {"measure": slice_free}, check_busy + measure_busy, CORES, (4.0,) * bc,
+                        300, on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
+        return rs.decide(CFG, rs.Bitcashier(bc, 0), queued(measure=measure_queued), ours, NOW, r)
+
+    def test_203234_the_first_row_starts(self):
+        # 17 - 12 = 5 holds one 4-core row (was: 3 at 1.3; memory held it to 1)
+        d = self.at(6, 73, 78, 96, check_busy=8, measure_busy=12, ours=[], measure_queued=12)
+        self.assertEqual((d.limits["cpu"], d.starts), (1, ((1, "measure"),)))
+
+    def test_203304_no_second_row_beside_one_still_owing_its_cores(self):
+        # slot 1 took its row 30 s ago and shows none of it yet: 17 - 11 - 4 = 2 (was: 17 - 11 - 1.3 -> 3 more started)
+        ours = [rs.Instance(1, "measure", True, NOW, NOW - 30, mem_gib=0)]
+        d = self.at(4, 100, 98, 95, check_busy=7, measure_busy=11, ours=ours, measure_queued=11)
+        self.assertEqual(d.starts, ())
+
+    def test_203434_five_young_rows_at_half_a_core_hold_a_sixth_back(self):
+        # five rows 1-2 min old showing ~0.5 cores each on 8 of 20 busy: they owe 5 x ~3.5 (was: a sixth started)
+        ours = [rs.Instance(s, "measure", True, NOW, NOW - 60 - 30 * s, mem_gib=1, cpu_cores=0.5, cpu_seconds=15)
+                for s in range(1, 6)]
+        d = self.at(10, 107, 100, 90, check_busy=5, measure_busy=8, ours=ours, measure_queued=7)
+        self.assertEqual(d.starts, ())
+
+    def test_settled_rows_reading_below_their_cap_still_owe_the_rest(self):
+        # three rows past settle_seconds at 1.3 cores each on 10 of 20: 17 - 10 - 3 x 2.7 < 4 (was: (17 - 10) // 1.3 = 5)
+        ours = [rs.Instance(s, "measure", True, NOW, NOW - 900, mem_gib=8, cpu_cores=1.3, cpu_seconds=1200)
+                for s in (1, 2, 3)]
+        d = self.at(4, 100, 98, 60, check_busy=7, measure_busy=10, ours=ours, measure_queued=9)
+        self.assertEqual(d.starts, ())
 
 
 class SliceCapsTest(unittest.TestCase):
@@ -396,11 +425,12 @@ class CheckLaneTest(unittest.TestCase):
     takes."""
 
     def before_the_refill(self):
-        # 05:4x: four measurements and one landing check running (settled), seven measurements queued, no check
-        ours = [rs.Instance(s, "measure", True, NOW, NOW - 900, mem_gib=6, cpu_cores=1.7, cpu_seconds=1500)
-                for s in (1, 3, 8, 10)] + [rs.Instance(4, "check", True, NOW, NOW - 900, mem_gib=5, cpu_cores=1.7,
-                                                       cpu_seconds=1500)]
-        r = rs.Readings(91, 87, {"measure": 75}, 18, CORES, (5,), 300)
+        # 05:4x: three measurements and one landing check running (settled, near their 4-core caps), seven
+        # measurements queued, no check
+        ours = [rs.Instance(s, "measure", True, NOW, NOW - 900, mem_gib=6, cpu_cores=3.6, cpu_seconds=1500)
+                for s in (1, 3, 8)] + [rs.Instance(4, "check", True, NOW, NOW - 900, mem_gib=5, cpu_cores=3.6,
+                                                   cpu_seconds=1500)]
+        r = rs.Readings(91, 87, {"measure": 75}, 14.4, CORES, (5,), 300)
         return ours, r
 
     def test_a_check_queued_after_the_measurements_refilled_starts_at_once(self):
@@ -410,7 +440,7 @@ class CheckLaneTest(unittest.TestCase):
         self.assertTrue(refill.starts and all(c == "measure" for _, c in refill.starts))
         # the next ticks: the refill settled, the running check ended, a new landing check queued
         running = [i for i in ours if i.cls == "measure"] + [
-            rs.Instance(s, c, True, NOW, NOW - 900, mem_gib=CFG.job_expected_gib[c], cpu_cores=1.7, cpu_seconds=1500)
+            rs.Instance(s, c, True, NOW, NOW - 900, mem_gib=CFG.job_expected_gib[c], cpu_cores=4, cpu_seconds=1500)
             for s, c in refill.starts]
         after = rs.decide(CFG, bc, queued(check=1, measure=3), running, NOW, settled(r, refill.starts))
         self.assertEqual(after.room, 0)  # no room for a measurement ...
