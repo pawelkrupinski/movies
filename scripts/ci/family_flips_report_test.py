@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""family_flips_report.py: shards join into a country's file, flips rank by the rules their walk fired, the flips an
+"""family_flips_report.py: shards join into a country's file, flips rank by the deciding (never refusal) rules their walk fired, the flips an
 earlier night's file lacks are the new ones, and a country with a shard missing publishes nothing and keeps its place.
 
     python3 scripts/ci/family_flips_report_test.py
@@ -47,6 +47,18 @@ class ReportTest(unittest.TestCase):
                                   ("2", "accept:y", "1", "A"), ("3", "(no rule recorded)", "1", "C")])
         shape, tier = self.lines("family-flips-ranked.tsv")[0][6:8]
         self.assertEqual((shape, tier), ("final add/remove, model add/remove", "[lattice 2^4]"))
+
+    def test_a_refusal_ranks_no_listing_because_every_none_take_records_every_alone_rules_refusal(self):
+        # Acceptance.refusals records one refused:<rule> per alone rule that did not take a node, so every flip through
+        # `none` carried the same dozen; ranked, they topped the burn-down (dated-title, 37 of 46 flips, 2026-11-08)
+        # while deciding nothing. They stay in the country's file; the ranking reads only the deciding rules.
+        self.shard("de", 1, 1, row("A", "x", "refused:dated-title:why veto:v join:same-title"),
+                   row("B", "y", "refused:dated-title:why join:same-title"), row("C", "z", "refused:dated-title:why refused:sole-work:w"))
+        report.report(self.shards, {"de": 1}, self.previous, self.out)
+        ranked = [(r[0], r[1], r[2], r[4]) for r in self.lines("family-flips-ranked.tsv")]
+        self.assertEqual(ranked, [("1", "join:same-title", "2", "A"), ("1", "join:same-title", "2", "B"),
+                                  ("2", "veto:v", "1", "A"), ("3", "(refusals only)", "1", "C")])
+        self.assertIn("refused:dated-title:why", self.lines("family-flips-de.tsv")[0][9])
 
     def test_the_first_night_is_a_baseline_and_the_next_names_what_is_new(self):
         self.shard("de", 1, 1, row("A", "x", "r"))

@@ -7,7 +7,12 @@ shape, kind `family`, the rules a listing's walk fired in the note). This joins 
   family-flips-<cc>.tsv     one a country, its shards joined, sorted -- published only when EVERY shard of it is here
   family-flips-ranked.tsv   every country's flips by deciding rule, the rule with most listings first: the list structural
                             fix 2 (the rule burn-down) reads. Columns: rank, rule, listings (of this rule), country,
-                            venue, rawTitle, shape (stage kind), tier, witness. A listing is under every rule it fired.
+                            venue, rawTitle, shape (stage kind), tier, witness. A listing is under every DECIDING rule it
+                            fired (accept/pooled/veto/join/apart): never a `refused:*` one -- Acceptance.refusals
+                            records every alone rule that did not take a node, so every flip through `none` carries the
+                            same dozen and they would top the ranking while deciding nothing (dated-title, 37 of 46
+                            flips, 2026-11-08). A listing that fired only refusals is under REFUSALS_ONLY. The
+                            country's file keeps every rule.
   family-flips-new.tsv      the flips last night's file for the country did not hold (the first night has no such file:
                             it is the baseline, nothing is new) -- reported, never filed as a backlog row: production
                             rarely reaches these states
@@ -29,6 +34,8 @@ import sys
 BACKLOG_COLUMNS = ["kind", "country", "seed", "slice", "venue", "rawTitle", "takes", "firstSeen", "owner", "note"]
 RANKED_COLUMNS = ["rank", "rule", "listings", "country", "venue", "rawTitle", "shape", "tier", "witness"]
 NO_RULE = "(no rule recorded)"
+REFUSALS_ONLY = "(refusals only)"
+REFUSAL = "refused:"
 # a note: "<stage kind>, ... [<tier>] <family> rules: <rule> <rule>" (FamilyConvergence.flipsTsv)
 NOTE = re.compile(r"^(?P<shape>.*?) (?P<tier>\[[^\]]*\]) (?P<family>.*?)(?: rules: (?P<rules>.*))?$")
 
@@ -61,15 +68,22 @@ def parse_note(note):
     return m["shape"], m["tier"], (m["rules"] or "").split()
 
 
+def deciding(rules):
+    """The rules a listing ranks under: its non-refusal ones; REFUSALS_ONLY when it fired only refusals."""
+    if not rules:
+        return [NO_RULE]
+    return [rule for rule in rules if not rule.startswith(REFUSAL)] or [REFUSALS_ONLY]
+
+
 def ranked(rows):
-    """The rows of RANKED_COLUMNS: a row a (listing, rule), the rules with most listings first."""
+    """The rows of RANKED_COLUMNS: a row a (listing, deciding rule), the rules with most listings first."""
     by_rule = {}
     for row in rows:
         shape, tier, rules = parse_note(row.get("note", ""))
-        for rule in rules or [NO_RULE]:
+        for rule in deciding(rules):
             by_rule.setdefault(rule, []).append({"country": row["country"], "venue": row["venue"], "rawTitle": row["rawTitle"],
                                                  "shape": shape, "tier": tier, "witness": row.get("takes", "")})
-    order = sorted(by_rule, key=lambda rule: (-len(by_rule[rule]), rule == NO_RULE, rule))
+    order = sorted(by_rule, key=lambda rule: (-len(by_rule[rule]), rule in (NO_RULE, REFUSALS_ONLY), rule))
     out = []
     for rank, rule in enumerate(order, 1):
         for listing in sorted(by_rule[rule], key=lambda r: (r["country"], r["venue"], r["rawTitle"])):
