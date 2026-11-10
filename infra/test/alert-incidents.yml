@@ -356,3 +356,16 @@ incidents:
     end: 2026-10-24T06:12:00Z
     grace: 20m
     expect_firing: [JvmFullGcRateHigh]
+
+  - id: nixos-auto-apply-textfile-rejected-2026-11-09
+    description: >-
+      nixos-auto-apply wrote `# HELP nixos_auto_apply_reboot_component` four times into its .prom,
+      and node_exporter rejected the whole file on all three hosts from 22:22Z: every
+      nixos_auto_apply_* series went absent with nothing naming why. mongo-1 and k3s-worker-1
+      read it again from 23:30Z (the writer fixed in c11d8637ee); monitoring-1 was still rejecting
+      it at 05:00Z on 11-10, its fix not yet deployed. NodeTextfileScrapeError was written for this.
+    source: node_textfile_scrape_error == 1 on all three hosts 2026-11-09T22:22Z..23:30Z, monitoring-1 to 2026-11-10T05:00Z+; journalctl -u prometheus-node-exporter "second HELP line for metric name \"nixos_auto_apply_reboot_component\""
+    start: 2026-11-09T22:22:00Z
+    end: 2026-11-10T05:00:00Z
+    grace: 20m
+    expect_firing: [NodeTextfileScrapeError]

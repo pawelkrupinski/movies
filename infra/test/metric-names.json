@@ -37,6 +37,8 @@
   "kube_pod_container_status_waiting_reason",
   "kube_pod_info",
   "machine",
+  "mongodb_collstats_storageStats_storageSize",
+  "mongodb_collstats_storageStats_totalIndexSize",
   "mongodb_mongod_replset_my_state",
   "mongodb_mongod_replset_oplog_head_timestamp",
   "mongodb_mongod_replset_oplog_tail_timestamp",
@@ -72,6 +74,7 @@
   "node_memory_SwapTotal_bytes",
   "node_pressure_memory_stalled_seconds_total",
   "node_systemd_unit_state",
+  "node_textfile_scrape_error",
   "node_vmstat_oom_kill",
   "node_vmstat_pswpin",
   "node_vmstat_pswpout",
@@ -87,6 +90,6 @@
   "prometheus_tsdb_storage_blocks_bytes",
   "up"
  ],
- "taken": "2026-10-25",
+ "taken": "2026-11-10",
  "window_days": 14
 }

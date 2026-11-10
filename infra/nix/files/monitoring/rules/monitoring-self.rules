@@ -111,6 +111,38 @@ groups:
             alert has to travel the same path it is reporting as broken, so it may well not arrive
             either. The heartbeat above is what covers that case.
 
+      # -------------------------------------------------------------------------------------------
+      # A TEXTFILE NODE_EXPORTER REFUSED. One malformed line in a `.prom` file (a second `# HELP`
+      # for one name, a truncated last line) does not drop that line: node_exporter rejects the
+      # WHOLE FILE, and every series in it goes absent while the publisher's unit keeps succeeding.
+      # On 2026-11-09 nixos-auto-apply.prom wrote `# HELP nixos_auto_apply_reboot_component` four
+      # times and every nixos_auto_apply_* series vanished on all three hosts (c11d8637ee fixed the
+      # writer); nothing named it, because each rule over those series sees absence, not an error.
+      # This watches the mechanism rather than any one publisher, so a new writer is covered the
+      # day it lands. A WARNING, held 15m: the writers rename into place, so a reader never sees a
+      # half-written file and a sustained error is a writer bug -- one that blinds other rules
+      # rather than being an outage itself.
+      #
+      # NO GENERIC STALENESS RULE (node_textfile_mtime_seconds) BESIDE IT, on purpose: the writers'
+      # cadences are not declared in one place, and the ones with a heartbeat already alert on it
+      # (`fleet_auto_apply_state_last_run_timestamp_seconds` in nixos-deploy.rules, the gc and
+      # backup timestamps). A threshold guessed per file would be invented, not known.
+      # -------------------------------------------------------------------------------------------
+      - alert: NodeTextfileScrapeError
+        expr: node_textfile_scrape_error == 1
+        for: 15m
+        labels:
+          severity: warning
+          domain: monitoring
+        annotations:
+          summary: "node_exporter on {{ $labels.host }} is rejecting a textfile in its collector directory"
+          description: >-
+            Every series in the rejected file is absent, so the rules over them cannot fire. On
+            {{ $labels.host }}, `journalctl -u prometheus-node-exporter | grep textfile` names the
+            file and the line ("failed to parse textfile data ... second HELP line"); the files are
+            in /etc/node-exporter/textfile.d (fleet.observability.textfileDirectory). Fix the
+            writer, not the file: it is rewritten on the writer's next run.
+
       # GRAFANA'S OWN ALERT EVALUATION IS NOT ALERTED ON HERE, and that is a gap rather than a
       # decision that it does not matter -- Grafana evaluates all 20 of the ported kinowo rules, so
       # a Grafana that is up and failing to evaluate is a real monitoring outage. It is left out

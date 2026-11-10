@@ -201,3 +201,39 @@ tests:
                 reappears, check whether that was changed. NOTE THE ORDER OF EVENTS: this alert has to
                 travel the same path it is reporting as broken, so it may well not arrive either. The
                 heartbeat above is what covers that case.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A TEXTFILE REJECTED, AND ONE THAT RECOVERED. monitoring-1 rejects its nixos-auto-apply.prom
+  # for the whole run (the 2026-11-09 duplicate-HELP shape) and is named after fifteen minutes;
+  # mongo-1 rejected one for five minutes and then read it again, which is not a writer bug;
+  # k3s-worker-1 reads every file, which is the healthy fleet's 0.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_textfile_scrape_error{job="node",instance="10.20.0.11:9100",host="monitoring-1"}'
+        values: '1+0x120'
+      - series: 'node_textfile_scrape_error{job="node",instance="10.20.0.13:9100",host="mongo-1"}'
+        values: '1 1 1 1 1 0+0x120'
+      - series: 'node_textfile_scrape_error{job="node",instance="10.20.0.12:9100",host="k3s-worker-1"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: NodeTextfileScrapeError
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: NodeTextfileScrapeError
+        exp_alerts:
+          - exp_labels:
+              domain: monitoring
+              job: node
+              instance: 10.20.0.11:9100
+              host: monitoring-1
+              severity: warning
+            exp_annotations:
+              summary: "node_exporter on monitoring-1 is rejecting a textfile in its collector directory"
+              description: >-
+                Every series in the rejected file is absent, so the rules over them cannot fire. On
+                monitoring-1, `journalctl -u prometheus-node-exporter | grep textfile` names the file and the
+                line ("failed to parse textfile data ... second HELP line"); the files are in
+                /etc/node-exporter/textfile.d (fleet.observability.textfileDirectory). Fix the writer, not the
+                file: it is rewritten on the writer's next run.
