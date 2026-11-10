@@ -93,6 +93,10 @@ EVENT_ONLY_VALUES = {
     # ci-runner comparison (scripts/ci/ci_timings.py). Re-snapshot once monitoring-1 holds them, then drop these.
     ("kinowo_ci_job_queue_seconds", "conclusion", "success"),
     ("kinowo_ci_job_queue_seconds", "workflow", "Identity model convergence"),
+    # NOT PUBLISHED YET (2026-11-10): `switch_failed` is new with nixos-auto-apply's half-applied-switch verdict
+    # (AutoApplySwitchFailed), and the snapshot holds no blocked host's `reason` at all. Re-snapshot once a host
+    # has published it, then drop this.
+    ("nixos_auto_apply_blocked_reason", "reason", "switch_failed"),
     # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
     # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).
