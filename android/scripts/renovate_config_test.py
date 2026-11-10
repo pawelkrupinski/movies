@@ -53,6 +53,51 @@ class RenovateLockstepGroups(unittest.TestCase):
                                  f"{package} has no literal coordinate in build.gradle.kts for Renovate to read")
 
 
+TESTS = os.path.join(ROOT, "android", "app", "src", "test")
+ANDROID_ALL = "org.robolectric:android-all-instrumented"
+
+
+def configured_sdks():
+    """Every API level a Robolectric test pins with @Config(sdk = [N])."""
+    found = set()
+    for folder, _, files in os.walk(TESTS):
+        for name in files:
+            if name.endswith((".kt", ".java")):
+                with open(os.path.join(folder, name)) as f:
+                    found |= {int(n) for n in re.findall(r"@Config\(sdk = \[(\d+)\]", f.read())}
+    return found
+
+
+class RobolectricRuntimeIsTheTestsSdk(unittest.TestCase):
+    """android-all-instrumented's version names an Android SDK (`14-robolectric-...` is API 34) as well as an
+    instrumentation level, and Robolectric -- offline, over the jar the build resolves -- loads the one the tests'
+    @Config(sdk = [N]) asks for. Renovate moved it to `17-robolectric-...` (82ddc4baf1, API 37) while every test still
+    pins API 34: Order independence #59 failed 210 tests "Unable to locate dependency ...-14-robolectric-...". The pin
+    and Renovate's allowed versions keep the SDK the tests configure; only the instrumentation suffix moves."""
+
+    def setUp(self):
+        with open(BUILD) as f:
+            self.build = f.read()
+        with open(RENOVATE) as f:
+            self.rules = json.load(f).get("packageRules", [])
+        self.sdks = configured_sdks()
+
+    def prefix(self):
+        self.assertEqual(len(self.sdks), 1, f"the Robolectric tests pin {sorted(self.sdks)}: one runtime is resolved")
+        return f"{next(iter(self.sdks)) - 20}-robolectric-"   # API 34 is Android 14, 35 is 15, ...
+
+    def test_the_pinned_runtime_is_the_sdk_the_tests_configure(self):
+        version = re.search(r'\w+\("' + re.escape(ANDROID_ALL) + r':([^"]+)"\)', self.build).group(1)
+        self.assertTrue(version.startswith(self.prefix()),
+                        f"{ANDROID_ALL}:{version} is not the API the tests pin ({sorted(self.sdks)}): {self.prefix()}*")
+
+    def test_renovate_never_moves_the_runtime_off_that_sdk(self):
+        allowed = [r.get("allowedVersions") for r in self.rules if ANDROID_ALL in r.get("matchPackageNames", [])
+                   and r.get("allowedVersions")]
+        self.assertEqual(allowed, [f"/^{self.prefix()}/"],
+                         f"Renovate may move {ANDROID_ALL} to another SDK than the tests pin")
+
+
 class RenovateRunsWhenItsWorkflowDoes(unittest.TestCase):
     """renovate.yml's cron (and the external scheduler's dispatch of it) IS the schedule. A `schedule` in renovate.json
     is a second window Renovate checks at run time: "before 6am on monday" against a 15:00 UTC run made every weekly

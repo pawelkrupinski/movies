@@ -378,7 +378,7 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.17")
     // The SDK 34 runtime every Robolectric test loads (@Config(sdk = [34])), at the
     // instrumentation level robolectric 4.17 expects: bump the two together.
-    robolectricAndroidAll("org.robolectric:android-all-instrumented:17-robolectric-16653203-i7")
+    robolectricAndroidAll("org.robolectric:android-all-instrumented:14-robolectric-10818077-i7")
     testImplementation("androidx.compose.ui:ui-test-junit4")
     // ApplicationProvider for the DataStore round-trip test (off-device).
     testImplementation("androidx.test:core-ktx:1.7.0")

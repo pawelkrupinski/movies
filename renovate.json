@@ -48,6 +48,12 @@
         "org.robolectric:android-all-instrumented"
       ],
       "groupName": "Robolectric"
+    },
+    {
+      "description": "android-all-instrumented's version names the Android SDK as well as the instrumentation level: `14-robolectric-*` is API 34, the SDK every Robolectric test pins with @Config(sdk = [34]). Only the instrumentation suffix may move; another SDK is a deliberate change of the tests' @Config with it (82ddc4baf1 moved it to API 37 alone and 210 tests could not find their runtime, Order independence #59). Pinned by android/scripts/renovate_config_test.py.",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["org.robolectric:android-all-instrumented"],
+      "allowedVersions": "/^14-robolectric-/"
     }
   ]
 }
