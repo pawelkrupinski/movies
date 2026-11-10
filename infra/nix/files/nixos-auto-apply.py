@@ -38,6 +38,8 @@ WHAT DECIDES. Three tests, and a deployment happens only if all three agree it i
      to do unattended. Measured on this fleet on 2026-08-24: dev-bitcoind and dev-postgres both
      have current != booted while all four components match, which is the ordinary residue of a
      post-boot switch -- a symlink comparison would have called both hosts reboot-pending forever.
+     Only the part of that debt THIS switch introduces (the candidate differs from the running
+     system too) refuses it; a reboot already owed is reported and blocks nothing (`boot_chain`).
 
   3. `switch-to-configuration dry-activate`, as a CROSS-CHECK and never alone. Its own man page
      says "The list of changes is not guaranteed to be complete", so it cannot be the gate; and
@@ -576,6 +578,26 @@ def boot_chain_differences(booted: pathlib.Path, candidate: pathlib.Path) -> lis
     return differences
 
 
+class BootChain(typing.NamedTuple):
+    owed: list         # components the candidate replaces relative to /run/booted-system
+    introduced: list   # components THIS switch changes (candidate differs from /run/current-system)
+
+
+def boot_chain(booted: pathlib.Path, running: pathlib.Path, candidate: pathlib.Path) -> BootChain:
+    """The reboot the candidate leaves owed, and the part of it this switch is responsible for.
+
+    SPLIT ON 2026-11-10. A reboot already owed by the RUNNING system -- a kernel bump switched by
+    hand, pid 1 re-executed, the kernel waiting -- is owed whether or not the next closure is
+    applied, so it is reported (`reboot_owed`, `reboot_component`) and blocks nothing. Only what the
+    switch itself replaces is `reboot_owed` as a refusal. Before the split, every files-only commit
+    after a hand-switched kernel bump was refused on k3s-worker-1 and mongo-1 until a reboot, as
+    `classifier_disagreement`, because dry-activate cannot see a reboot it is not causing.
+    """
+    owed = boot_chain_differences(booted, candidate)
+    changed = set(boot_chain_differences(running, candidate))
+    return BootChain(owed, [component for component in BOOT_CHAIN if component in changed])
+
+
 # -------------------------------------------------------------------------------------------------
 # Test 3 -- dry-activate, as a cross-check
 # -------------------------------------------------------------------------------------------------
@@ -742,10 +764,15 @@ class Metrics:
         self.path = path
         self.host = host
         self.lines: list[str] = []
+        self.described: set[str] = set()
 
     def gauge(self, name: str, value, labels: dict[str, str] | None = None,
               help_text: str | None = None) -> None:
-        if help_text:
+        # ONCE PER FAMILY. A second `# HELP` for a name makes node_exporter refuse the WHOLE file,
+        # so every series here vanishes: a reboot owed for four components (one sample each) did
+        # that to monitoring-1 on 2026-11-10, and the dashboard called the host "not covered".
+        if help_text and name not in self.described:
+            self.described.add(name)
             self.lines.append(f"# HELP {name} {help_text}")
             self.lines.append(f"# TYPE {name} gauge")
         rendered = dict(labels or {})
@@ -936,6 +963,32 @@ def structural_changes(running: pathlib.Path, candidate: pathlib.Path, dry: DryA
                         tuple(never) + taken_back, leniency)
 
 
+def refusal(units, chain: BootChain, dry: DryActivate, reloadable=(), never=()) -> str | None:
+    """Why this pass must refuse, or None when the switch is inert. Pure, so the recorded-output
+    cases in test/test_auto_apply_classify.py drive the decision that ships.
+
+    THE CROSS-CHECK COMPARES ONLY WHAT BOTH HALVES CAN SEE: the unit tree (`units`, what no list
+    forgives) and the one boot-chain component dry-activate reports, a `systemd` this switch
+    replaces ("would restart systemd"). A new kernel, initrd or module tree is invisible to
+    dry-activate, and a reboot the running system already owes is not caused by this switch at
+    all; counting either on the structural side alone made dry-activate "disagree" with a fact it
+    has no way to state (k3s-worker-1 and mongo-1, 2026-11-09/10). Both stay refusals or reports in
+    their own right below, never disagreements.
+    """
+    structural_noop = not units and "systemd" not in chain.introduced
+    dry_noop = not dry.disruptive and not dry.unrecognised and all(
+        unit_forgiven(unit, reloadable, never) for unit in dry.reloads)
+    if dry.unrecognised:
+        return "unrecognised_output"
+    if structural_noop != dry_noop:
+        return "classifier_disagreement"
+    if chain.introduced:
+        return "reboot_owed"
+    if units:
+        return "units_would_change"
+    return None
+
+
 def classify_and_apply(args, metrics: Metrics) -> Verdict:
     running = pathlib.Path("/run/current-system").resolve()
     booted = pathlib.Path("/run/booted-system").resolve()
@@ -952,10 +1005,11 @@ def classify_and_apply(args, metrics: Metrics) -> Verdict:
         os.path.realpath(running / "activate") != os.path.realpath(candidate / "activate")
         if (running / "activate").exists() and (candidate / "activate").exists() else True)
 
-    reboot = boot_chain_differences(booted, candidate)
+    chain = boot_chain(booted, running, candidate)
+    reboot = tuple(chain.owed)  # reported on every verdict; refuses only via chain.introduced
 
     # BOTH TESTS ARE GIVEN THE SAME ALLOW-LIST, and they have to be. They are deliberately
-    # redundant -- `structural_noop != dry_noop` refuses outright -- so an allow-list applied to one
+    # redundant -- `refusal` calls any difference a disagreement -- so an allow-list applied to one
     # and not the other would turn every forgiven change into a `classifier_disagreement` and make
     # the feature look broken rather than strict.
     #
@@ -987,54 +1041,53 @@ def classify_and_apply(args, metrics: Metrics) -> Verdict:
     units = changes.blocked
     forgiven = tuple(sorted(set(changes.forgiven) | set(dry.forgiven)))
 
-    structural_noop = not units and not reboot
-    dry_noop = not dry.disruptive and not dry.unrecognised and all(
-        unit_forgiven(unit, args.reloadable, args.never) for unit in dry.reloads)
+    reason = refusal(units, chain, dry, args.reloadable, args.never)
 
-    if dry.unrecognised:
+    if reason == "unrecognised_output":
         return Verdict(
-            "blocked", "unrecognised_output",
+            "blocked", reason,
             "switch-to-configuration printed lines this classifier has no rule for, so what the "
             "switch would do is unknown: " + " | ".join(dry.unrecognised[:5]),
-            revision, str(candidate), bool(reboot), activation_changed)
+            revision, str(candidate), bool(reboot), activation_changed, reboot)
 
-    if structural_noop != dry_noop:
+    if reason == "classifier_disagreement":
         # The two tests are meant to be redundant. When they are not, the model is wrong, and the
         # convenient half is exactly the one that must not be believed.
         return Verdict(
-            "blocked", "classifier_disagreement",
-            f"the unit tree says this change is inert (changed units: {len(units)}, boot chain: "
-            f"{reboot or 'unchanged'}) but dry-activate says otherwise ({'; '.join(dry.disruptive[:5]) or 'nothing'}"
-            f"{', reloads ' + ', '.join(dry.reloads) if dry.reloads else ''}), or the reverse. "
+            "blocked", reason,
+            f"the unit tree says this change is {'inert' if not units else 'not inert'} (changed "
+            f"units: {len(units)}, systemd replaced: {'systemd' in chain.introduced}) but "
+            f"dry-activate says otherwise ({'; '.join(dry.disruptive[:5]) or 'nothing'}"
+            f"{', reloads ' + ', '.join(dry.reloads) if dry.reloads else ''}). "
             "Refusing until the disagreement is understood.",
-            revision, str(candidate), bool(reboot), activation_changed)
+            revision, str(candidate), bool(reboot), activation_changed, reboot)
 
-    if reboot:
+    if reason == "reboot_owed":
         return Verdict(
-            "blocked", "reboot_owed",
-            f"this change replaces {', '.join(reboot)}, which a switch cannot bring into use. "
-            "Nothing here reboots a host; schedule one.",
-            revision, str(candidate), True, activation_changed, tuple(reboot))
+            "blocked", reason,
+            f"this change replaces {', '.join(chain.introduced)}, which a switch cannot bring into "
+            "use. Nothing here reboots a host; schedule one.",
+            revision, str(candidate), True, activation_changed, reboot)
 
-    if units:
+    if reason == "units_would_change":
         shown = ", ".join(units[:8]) + (f" and {len(units) - 8} more" if len(units) > 8 else "")
         return Verdict(
-            "blocked", "units_would_change",
+            "blocked", reason,
             f"{len(units)} systemd unit(s) differ, so this switch would disturb running services: "
             f"{shown}. Deploy it by hand.",
-            revision, str(candidate), False, activation_changed)
+            revision, str(candidate), bool(reboot), activation_changed, reboot)
 
     if args.dry_run:
         return Verdict("blocked", "dry_run",
                        "this change is inert and would have been applied, but --dry-run was given"
                        + (f", forgiving {len(forgiven)} declared-restartable unit change(s): "
                           + ", ".join(forgiven[:8]) if forgiven else ""),
-                       revision, str(candidate), False, activation_changed, (), forgiven)
+                       revision, str(candidate), bool(reboot), activation_changed, reboot, forgiven)
 
     failure = activate(candidate, args.rollback_on_failure)
     if failure:
         return Verdict("blocked", "verification_failed", failure, revision, str(candidate),
-                       False, activation_changed, (), forgiven)
+                       bool(reboot), activation_changed, reboot, forgiven)
 
     metrics.gauge("nixos_auto_apply_last_deployment_timestamp_seconds", int(time.time()),
                   help_text="When this host last actually switched to a new closure.")
@@ -1045,8 +1098,8 @@ def classify_and_apply(args, metrics: Metrics) -> Verdict:
     detail = ("restarted " + ", ".join(forgiven[:8])
               + (f" and {len(forgiven) - 8} more" if len(forgiven) > 8 else "")
               + " (declared restartable, new or routine on this host)") if forgiven else ""
-    return Verdict("applied", "", detail, revision, str(candidate), False, activation_changed,
-                   (), forgiven)
+    return Verdict("applied", "", detail, revision, str(candidate), bool(reboot),
+                   activation_changed, reboot, forgiven)
 
 
 def main() -> int:

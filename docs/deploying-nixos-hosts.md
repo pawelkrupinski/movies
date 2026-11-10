@@ -50,3 +50,23 @@ Both are fenced by `neverDisturbUnits` and the applier's built-in `STATEFUL_UNIT
 k3s, sshd, prometheus, alertmanager, mounts...), which no option widens. Cases in
 `infra/test/test_auto_apply_classify.py` (`Leniency`). The rollout changes the applier's own unit,
 which the old applier refuses: each host needs one `infra/bin/deploy <host> --apply` to pick it up.
+
+## A reboot already owed blocks nothing; a family is described once (2026-11-10)
+
+Two faults kept routine switches with the owner after the nixpkgs c56a87d bump (kernel 6.18.60):
+
+- **`classifier_disagreement` after a hand-switched kernel.** k3s-worker-1 and mongo-1 ran the new
+  kernel's closure (pid 1 re-executed, kernel waiting for a reboot); the next files-only closure
+  was refused because the boot chain, compared against `/run/booted-system`, still differed and was
+  counted as "not inert" -- while dry-activate, which cannot see a kernel and saw pid 1 already on
+  the candidate's systemd, said only "reload dbus-broker" (forgiven by `reloadableUnits`).
+  `boot_chain` now splits the debt: what the switch INTRODUCES (candidate differs from
+  `/run/current-system` too) is `reboot_owed`; what is already owed is reported
+  (`nixos_auto_apply_reboot_owed`, `_reboot_component`) and blocks nothing. The cross-check
+  (`refusal`) compares only what both halves see: unit changes, and a replaced systemd
+  ("would restart systemd"). A kernel-only bump is now `reboot_owed`, never a disagreement.
+- **monitoring-1 "not covered".** A `reboot_owed` verdict for four components wrote `# HELP
+  nixos_auto_apply_reboot_component` four times; node_exporter refuses a file with a second HELP
+  for a family, so EVERY auto-apply series vanished. `Metrics.gauge` describes a family once.
+
+Cases: `RebootAlreadyOwed` and `PublishedMetrics` in `infra/test/test_auto_apply_classify.py`.

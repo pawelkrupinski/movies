@@ -446,5 +446,106 @@ class Leniency(unittest.TestCase):
             leniency=applier.Leniency(routine=("*.timer",)))
         self.assertTrue(got.disruptive)
 
+class RebootAlreadyOwed(unittest.TestCase):
+    """A reboot the RUNNING system already owes is not this switch's doing, and dry-activate cannot see it.
+
+    2026-11-09/10, k3s-worker-1 and mongo-1: nixpkgs c56a87d (kernel 6.18.60, a rebuilt systemd)
+    was switched by hand at 23:31 -- pid 1 re-executed into the new systemd, the kernel waited for a
+    reboot. The next closure (7ecf116149, same nixpkgs) changed nothing but files, and every pass
+    refused it as `classifier_disagreement`: the boot chain, compared against /run/booted-system,
+    still differed, and was counted as "not inert" -- while dry-activate, which never looks at the
+    kernel and saw pid 1 already on the candidate's systemd, said only "reload dbus-broker". The
+    owner switched both by hand; the switch reloaded dbus-broker and nothing else.
+    """
+
+    # VERBATIM from mongo-1, 2026-11-10: dry-activate of the 23:31 generation from the 02:37 one --
+    # the same two closures as the refused pair, in reverse, so the same dbus-broker reload.
+    MONGO_1 = (
+        "Not checking switch inhibitors (action = dry-activate)\n"
+        "would activate the configuration...\n"
+        "sops-install-secrets: Imported /etc/ssh/ssh_host_rsa_key as GPG key with fingerprint "
+        "cb5023b4e2881e4a5c1902e97414ed99ad9aaf77\n"
+        "sops-install-secrets: Imported /etc/ssh/ssh_host_ed25519_key as age key with fingerprint "
+        "age1cdw35s3ezp0ekt3wf5766flefmelngsr36kx57crwj3xan6xkdnsrwml9w\n"
+        "would reload the following units: dbus-broker.service\n")
+    ALL = list(applier.BOOT_CHAIN)
+    RELOADABLE = ("dbus-broker.service",)
+
+    def setUp(self):
+        self.base = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.base)
+
+    def _system(self, name, **components):
+        system = self.base / name
+        system.mkdir()
+        for component in applier.BOOT_CHAIN:
+            target = self.base / "store" / f"{component}-{components.get(component, 'old')}"
+            target.mkdir(parents=True, exist_ok=True)
+            (system / component).symlink_to(target)
+        return system
+
+    def test_the_boot_chain_splits_what_the_switch_introduces_from_what_is_already_owed(self):
+        new = dict.fromkeys(applier.BOOT_CHAIN, "new")
+        booted = self._system("booted")
+        running = self._system("running", **new)
+        chain = applier.boot_chain(booted, running, self._system("candidate", **new))
+        self.assertEqual((chain.owed, chain.introduced), (self.ALL, []))
+        chain = applier.boot_chain(booted, booted, self._system("bump", kernel="new"))
+        self.assertEqual((chain.owed, chain.introduced), (["kernel"], ["kernel"]))
+        chain = applier.boot_chain(booted, running, booted)
+        self.assertEqual(chain.owed, [], "a switch back to the booted system owes nothing")
+
+    def test_a_files_only_switch_while_a_reboot_is_already_owed_applies(self):
+        dry = applier.classify_output(self.MONGO_1)
+        chain = applier.BootChain(owed=self.ALL, introduced=[])
+        self.assertIsNone(applier.refusal([], chain, dry, self.RELOADABLE),
+                          "the 2026-11-10 pair must apply, not raise classifier_disagreement")
+
+    def test_a_new_kernel_dry_activate_is_silent_about_is_reboot_owed_not_a_disagreement(self):
+        dry = applier.classify_output(self.MONGO_1)
+        chain = applier.BootChain(owed=["kernel"], introduced=["kernel"])
+        self.assertEqual(applier.refusal([], chain, dry, self.RELOADABLE), "reboot_owed")
+
+    def test_a_new_systemd_is_seen_by_both_halves(self):
+        dry = applier.classify_output(self.MONGO_1 + "would restart systemd\n")
+        chain = applier.BootChain(owed=["systemd"], introduced=["systemd"])
+        self.assertEqual(applier.refusal([], chain, dry, self.RELOADABLE), "reboot_owed")
+        silent = applier.classify_output(self.MONGO_1)
+        self.assertEqual(applier.refusal([], chain, silent, self.RELOADABLE),
+                         "classifier_disagreement",
+                         "a new systemd dry-activate does not re-execute is a real disagreement")
+
+    def test_a_changed_unit_dry_activate_is_silent_about_still_disagrees(self):
+        dry = applier.classify_output(self.MONGO_1)
+        chain = applier.BootChain(owed=self.ALL, introduced=[])
+        self.assertEqual(applier.refusal(["caddy.service"], chain, dry, self.RELOADABLE),
+                         "classifier_disagreement")
+        self.assertEqual(applier.refusal([], chain, dry, ()), "classifier_disagreement",
+                         "a reload the host does not permit is still refused by dry-activate")
+
+
+class PublishedMetrics(unittest.TestCase):
+    """The textfile node_exporter reads. ONE malformed line drops EVERY series in it.
+
+    2026-11-10, monitoring-1: a `reboot_owed` verdict for four components wrote `# HELP
+    nixos_auto_apply_reboot_component` four times; node_exporter refused the file ("second HELP
+    line for metric name"), so the host published no auto-apply series at all and the fleet
+    dashboard showed it "not covered" while the applier ran every 30 minutes.
+    """
+
+    def test_every_metric_family_is_described_once(self):
+        directory = pathlib.Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, directory)
+        metrics = applier.Metrics(directory / "nixos-auto-apply.prom", "monitoring-1")
+        verdict = applier.Verdict("blocked", "reboot_owed", "detail", "rev", "/nix/store/c",
+                                  True, True, tuple(applier.BOOT_CHAIN))
+        applier.publish(metrics, verdict, 1, deployment_written=True)
+        lines = (directory / "nixos-auto-apply.prom").read_text().splitlines()
+        described = [line.split()[2] for line in lines if line.startswith("# HELP ")]
+        self.assertEqual(len(described), len(set(described)), described)
+        components = [line for line in lines if line.startswith("nixos_auto_apply_reboot_component{")]
+        self.assertEqual(len(components), len(applier.BOOT_CHAIN))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
