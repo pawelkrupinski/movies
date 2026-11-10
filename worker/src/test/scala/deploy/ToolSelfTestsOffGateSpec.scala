@@ -22,8 +22,9 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
       .map(_.trim).filter(_.startsWith("-")).map(_.stripPrefix("-").trim.stripPrefix("'").stripSuffix("'"))
   }
 
+  /** GitHub's `paths:` glob: `**` crosses directories, `*` does not. */
   private def covers(pattern: String, path: String): Boolean =
-    if (pattern.endsWith("/**")) path.startsWith(pattern.stripSuffix("**")) else pattern == path
+    path.matches(pattern.split("\\*\\*", -1).map(_.split("\\*", -1).map(java.util.regex.Pattern.quote).mkString("[^/]*")).mkString(".*"))
 
   "Main's CI (ci.yml)" should "run neither the script self-tests nor the old-ref compile" in {
     RepoFile.jobs(ci).keySet should not contain "script-tests"
@@ -58,5 +59,15 @@ class ToolSelfTestsOffGateSpec extends AnyFlatSpec with Matchers {
     val hook = RepoFile.read("scripts/hooks/pre-push")
     hook should include("scripts/run-script-tests --changed")
     hook should include("scripts/identity-slice-old-ref-test.sh")
+  }
+
+  it should "run on a change to every checked-in file the judgements lint's self-test reads" in {
+    // identity_judgements_lint_test.py lints the checked-in judgements, expected matches and hard clusters: a commit
+    // touching only those (2a4ac45c47c1's duplicated Lowther rows) ran no self-test, and its fix (4e3cb7b02cf1) ran
+    // none either, so Tool self-tests #74..#76 stayed red on main though the files were mended.
+    val read = Seq("test/resources/fixtures/identity-judgements.tsv", "test/resources/fixtures/identity-unmatched/expected-matches.tsv") ++
+      Seq("pl", "uk", "de", "es", "us").map(cc => s"test/resources/fixtures/corpus/expected-hard-clusters-$cc.txt")
+    read.filterNot(f => java.nio.file.Files.isRegularFile(java.nio.file.Paths.get(f))) shouldBe empty
+    read.filterNot(f => paths.exists(covers(_, f))) shouldBe empty
   }
 }

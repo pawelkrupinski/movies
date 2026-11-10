@@ -36,6 +36,10 @@ on:
             - 'worker/src/fixtures/scala/tools/**'
             - 'worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala'
             - 'common/src/main/scala/tools/TempDirectories.scala'
+            # the checked-in files identity_judgements_lint_test.py lints (ToolSelfTestsOffGateSpec)
+            - 'test/resources/fixtures/identity-judgements.tsv'
+            - 'test/resources/fixtures/identity-unmatched/expected-matches.tsv'
+            - 'test/resources/fixtures/corpus/expected-hard-clusters-*.txt'
     workflow_dispatch:
 
 concurrency:
