@@ -13,7 +13,8 @@
 # descriptor ... not found") and Main #2264 (2026-10-28, BuildKit's pull "unknown blob", then the ubuntu base's
 # 42 MB layer "could not fetch content descriptor ... not found", served again a few minutes later). A build that
 # fails THAT way is built once more from the same digests on Docker Hub, and without the cache import, whose lazily
-# fetched layers can name the same blobs. Any other failure is the build's verdict as it stands.
+# fetched layers can name the same blobs. A build that lost the image registry itself fails naming it (below). Any
+# other failure is the build's verdict as it stands.
 #
 # Tested by scripts/ci/build-image-test.sh against a stub `docker`.
 set -uo pipefail
@@ -36,6 +37,18 @@ build() {
 build --cache-from "type=registry,ref=$repo:latest" 2>&1 | tee "$work/mirror.log"
 status=${PIPESTATUS[0]}
 [ "$status" -eq 0 ] && exit 0
+# THE REGISTRY GONE. A build that lost the image registry itself -- a refused connection, a reset, a transfer cut short
+# -- is no verdict on the build: Main #2361 (2026-11-09 23:33Z) lost registry.kinowo.net mid-pull while a host switch
+# rolled out ("short read ... unexpected EOF", then "connect: connection refused"). Said by name, once, never retried:
+# a retry inside the outage cannot help, and one that passed would hide it.
+registry=${repo%%/*}
+lost=$(grep -F "$registry" "$work/mirror.log" | grep -oE 'connection refused|connection reset by peer|i/o timeout|no such host' | head -n 1)
+[ -z "$lost" ] && grep -q 'short read: expected [0-9]* bytes' "$work/mirror.log" && grep -qF "$registry" "$work/mirror.log" \
+  && lost="a transfer cut short"
+if [ -n "$lost" ]; then
+  echo "::error::the $bin image's build lost $registry: $lost -- the image registry was down or restarting (a host switch, or its daily prune's garbage collect), not the build"
+  exit "$status"
+fi
 grep -qE 'could not fetch content descriptor|unknown blob' "$work/mirror.log" || exit "$status"
 
 echo "::warning::the $bin image's build could not fetch a blob through mirror.gcr.io: building it again from Docker Hub"

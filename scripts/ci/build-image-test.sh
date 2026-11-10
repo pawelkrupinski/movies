@@ -11,7 +11,7 @@ stub_dir="$(mktemp -d)"
 trap 'rm -rf "$stub_dir"' EXIT
 # STUB_BUILD: `ok` builds; `mirror-blob` fails every build whose bases come through mirror.gcr.io the way Main #2264's
 # did; `mirror-buildkit` fails the same way with BuildKit's "unknown blob"; `broken` fails every build on its own
-# Dockerfile. A build's -f Dockerfile (else ./Dockerfile) is copied to $STUB_DOCKERFILE.
+# Dockerfile; `registry-down` fails as the image registry dropping away mid-build did. A build's -f Dockerfile (else ./Dockerfile) is copied to $STUB_DOCKERFILE.
 cat > "$stub_dir/docker" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$STUB_LOG"
@@ -26,6 +26,11 @@ case "$STUB_BUILD" in
     exit 1 ;;
   mirror-buildkit) [ "$from_mirror" -gt 0 ] || exit 0; echo "ERROR: unknown blob"; exit 1 ;;
   broken) echo "ERROR: failed to solve: process \"/bin/sh -c apt-get install nope\" did not complete successfully: exit code: 100"; exit 1 ;;
+  # Main #2361 (2026-11-09 23:33Z): the image registry went away mid-build, a transfer cut short, then refused.
+  registry-down)
+    echo "#13 2.036 error: short read: expected 42139920 bytes but got 13714392: unexpected EOF"
+    echo "ERROR: failed to build: failed to solve: failed to compute cache key: failed to copy: httpReadSeeker: failed open: failed to do request: Get \"https://registry.example/v2/movies-web/blobs/sha256:86bc\": dial tcp 2.28.47.31:443: connect: connection refused"
+    exit 1 ;;
 esac
 STUB
 chmod +x "$stub_dir/docker"
@@ -65,5 +70,14 @@ check "...building twice" "2" "$(grep -c '^buildx build' "$STUB_LOG")"
 check "a build failing on its own Dockerfile fails" "1" "$(build broken)"
 check "...without a second build" "1" "$(grep -c '^buildx build' "$STUB_LOG")"
 check "...its error on the log" "1" "$(grep -c 'did not complete successfully' "$stub_dir/out")"
+
+# A registry that is down is no build verdict: the failure says so by name, once, and is not retried (a retry inside
+# the same outage cannot help, and one that passed would hide it).
+check "a build the image registry dropped out of fails" "1" "$(build registry-down)"
+check "...without a second build" "1" "$(grep -c '^buildx build' "$STUB_LOG")"
+check "...naming the registry as the cause, with what it answered" "1" \
+  "$(grep -c '^::error::the web image.s build lost registry.example: connection refused' "$stub_dir/out")"
+check "...and a build failing on its own Dockerfile names no registry" "0" \
+  "$(build broken >/dev/null; grep -c '^::error::.*lost registry' "$stub_dir/out")"
 
 spec_summary
