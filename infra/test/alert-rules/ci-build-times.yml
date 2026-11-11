@@ -328,7 +328,7 @@ tests:
               summary: 'Main''s first job waited 6m 40s for a runner'
               description: >-
                 Run #1682 waited 6m 40s from when it could start to its first job starting, against a target of under 2
-                minutes. Check the `main-lane` runners on ci-runner (infra forgejo.nix `ciTiers`): one down, or a job
+                minutes. Check the `main-lane` runners on ci-runner (infra nix/hosts/ci-runner/ci-tiers.nix): one down, or a job
                 from another workflow holding the label.
       # Nothing over 5 minutes in the six hours to 12h.
       - eval_time: 12h
@@ -349,7 +349,7 @@ tests:
               summary: 'Main''s first job waited 16m 40s for a runner'
               description: >-
                 Run #1693 waited 16m 40s from when it could start to its first job starting, against a target of under 2
-                minutes. Check the `main-lane` runners on ci-runner (infra forgejo.nix `ciTiers`): one down, or a job
+                minutes. Check the `main-lane` runners on ci-runner (infra nix/hosts/ci-runner/ci-tiers.nix): one down, or a job
                 from another workflow holding the label.
 
   # ────────────────────────────────────────────────────────────────────────────────────────

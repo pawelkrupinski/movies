@@ -207,7 +207,7 @@ class InputsTest(unittest.TestCase):
     def test_a_dispatch_naming_nothing_hands_the_legs_mains_inputs(self):
         self.assertEqual(reuse.inputs_unlike_main(reuse.leg_inputs({}), "both"), [])
 
-    def test_forgejos_string_booleans_and_defaults_are_normalised(self):
+    def test_string_booleans_and_defaults_are_normalised(self):
         legs = reuse.leg_inputs({"INPUT_TAKES_ONLY": "true", "INPUT_PROFILE": "", "INPUT_TAKES_SKIP": "",
                                  "INPUT_DRIFT_ONLY": "true"})
         self.assertEqual((legs["takes-only"], legs["profile"], legs["takes-skip"], legs["drift-only"], legs["drift-seeds"]),
@@ -573,7 +573,7 @@ class NoFalseGreen(unittest.TestCase):
 class DriftTwice(unittest.TestCase):
     """G10: the daily run's determinism double-run is a leg input like the others, a boolean, false on every push's run."""
 
-    def test_it_defaults_false_and_reads_forgejos_string_boolean(self):
+    def test_it_defaults_false_and_reads_a_string_boolean(self):
         self.assertEqual(reuse.leg_inputs({})["drift-twice"], "false")
         self.assertEqual(reuse.leg_inputs({"INPUT_DRIFT_TWICE": "true"})["drift-twice"], "true")
 

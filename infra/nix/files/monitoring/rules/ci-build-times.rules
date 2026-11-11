@@ -225,5 +225,5 @@ groups:
           description: >-
             {{ with query `max without (runner) (last_over_time(kinowo_ci_run_number{workflow="Main",ref="main"}[6h]))` }}Run #{{ . | first | value | printf "%.0f" }}{{ else }}Main's latest run{{ end }}
             waited {{ $value | humanizeDuration }} from when it could start to its first job starting, against a
-            target of under 2 minutes. Check the `main-lane` runners on ci-runner (infra forgejo.nix `ciTiers`): one
+            target of under 2 minutes. Check the `main-lane` runners on ci-runner (infra nix/hosts/ci-runner/ci-tiers.nix): one
             down, or a job from another workflow holding the label.

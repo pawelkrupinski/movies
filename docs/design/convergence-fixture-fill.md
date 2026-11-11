@@ -132,10 +132,10 @@ of them held every production landing. Now each phase owns one question:
 - **Next-day stability is verify's.** The next-day test takes the next day's listings over the booted corpus of the
   same recording (1542's Logemann pair reproduced on recording 2582 hermetically), so it runs, bounded, in verify.
 - **Bounded.** Verify uses the identity lane's ceilings (row 55, suite 30 minutes), sized from green hermetic rows,
-  on the recorder's own runner (`forgejo-recording`), right behind the capture. Any leg whose suite stops at its
+  on the recorder's runner (`movies-measure` on ci-runner, `ubuntu-22.04` while it is off), right behind the capture. Any leg whose suite stops at its
   ceiling says **"timed out under load"** with the runner's load average — infra, rerun it — instead of a plain red.
 - **Clearing a verify red** takes a later green verify on main: tonight's, or one dispatched on the **same**
-  recording once the fix has landed (`forgejo-gh workflow run verify-scrape-recording.yml --ref main -f
+  recording once the fix has landed (`gh workflow run verify-scrape-recording.yml --ref main -f
   recording=<capture run id>`), ~30 minutes rather than another night.
 - **Unchanged:** `prod-latest` and `scripts/identity-repro --recording prod-latest` still read the capture's
   complete recordings; the landing bar (573) still moves only on a `pin-hermetic` dispatch. A verify run is the

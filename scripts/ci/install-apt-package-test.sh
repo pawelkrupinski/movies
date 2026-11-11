@@ -51,7 +51,7 @@ check "...after one failed attempt, leaving no apt-get running" "1 0" "$(failed_
 check "a mirror that never answers gives up after the bounded attempts" "1" "$(install 99)"
 check "...having tried three times, leaving no apt-get running" "3 0" "$(failed_attempts) $(spec_still_running "$STUB_HUNG")"
 check "a failing apt-get fails the install" "1" "$(install 0 broken)"
-check "a package installed already (the Forgejo job image's socat) is not installed again" "0" "$(STUB_INSTALLED=1 install 0 broken)"
+check "a package installed already (the CI job image's socat) is not installed again" "0" "$(STUB_INSTALLED=1 install 0 broken)"
 check "...no apt-get run at all" "0" "$(wc -l < "$STUB_LOG" | tr -d ' ')"
 
 spec_summary

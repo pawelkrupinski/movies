@@ -58,7 +58,7 @@ import image_pins  # beside this script: the container image pins no other bumpe
 REPO = pathlib.Path(__file__).resolve().parents[1]  # infra/, the flake root
 ROOT = REPO.parent  # the git checkout
 USER_AGENT = "kinowo-infra-nix-update"
-# Forgejo rejects a pull request body much past 64 KiB; a nixpkgs bump's diff-closures can be longer.
+# GitHub rejects a pull request body past 65,536 characters; a nixpkgs bump's diff-closures can be longer.
 BODY_LIMIT = 60000
 
 
@@ -141,7 +141,7 @@ def rewrite_mongodb(text, version, hashes):
 
 
 def native_home(version):
-    # The Forgejo job image's own mongod (start-mongo-replset.sh's MONGO_NATIVE_HOME), which the spec holds to the
+    # The CI job image's own mongod (start-mongo-replset.sh's MONGO_NATIVE_HOME), which the spec holds to the
     # same release: `/opt/mongodb/<tag>`.
     return re.compile(r"(/opt/mongodb/)" + re.escape(version) + r"(?![\w.])")
 
@@ -230,8 +230,8 @@ def bump_mongodb():
     found["checked"] = "each tarball matches MongoDB's published sha256; `mongo:` tags in " + \
         ", ".join(f"`{p}`" for p in MONGODB_TAG_FILES) + " moved with it"
     if any(native_home(current).search(t) for t in tag_files.values()):
-        found["notes"].append(f"mongodb {take}: the Forgejo job image bakes its native mongod at `/opt/mongodb/{current}` "
-                              "(bitcashier/infra `nix/files/forgejo-job-image/Dockerfile`); until it bakes "
+        found["notes"].append(f"mongodb {take}: the CI job image bakes its native mongod at `/opt/mongodb/{current}` "
+                              "(bitcashier/infra `nix/files/movies-job-image/Dockerfile`); until it bakes "
                               f"`/opt/mongodb/{take}` too, CI starts the `mongo:{take}` container instead (slower, same release)")
     return found
 

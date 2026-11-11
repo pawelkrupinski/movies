@@ -1,6 +1,6 @@
 # THE IMAGE REGISTRY, registry.kinowo.net -- the replacement for ghcr.io/pawelkrupinski after the
-# GitHub account was suspended (2026-10). CI (Forgejo Actions on bitcashier's ci-runner) pushes here;
-# the cluster and Flux's image-reflector pull from here.
+# GitHub account was suspended (2026-10). CI pushes here; the cluster and Flux's image-reflector
+# pull from here.
 #
 # READS ARE ANONYMOUS, WRITES NEED A PASSWORD -- the same shape ghcr gave us with public packages,
 # so the cluster still holds no pull secret and nothing in movies-gitops changes but the image

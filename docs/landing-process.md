@@ -1,6 +1,6 @@
 # Landing a change on main
 
-How a commit gets from an agent's worktree onto `forgejo/main`, as the code stands on 2026-10-26 (after the owner's
+How a commit gets from an agent's worktree onto `origin/main`, as the code stands on 2026-10-26 (after the owner's
 "drop the landing pipeline" decision). The sources are authoritative; this page cites them and says nothing they do not:
 
 - the pre-push hook, `scripts/hooks/pre-push` (its header lists every check), and its test list
@@ -38,15 +38,15 @@ locally (unless it takes longer than 15 mins) then / otherwise merge to main and
 flowchart TD
     C[commit in your own worktree] --> L["agentctl land<br/>(run_in_background)"]
     L --> K[landing lock: one lander per repo]
-    K --> F[fetch + rebase onto forgejo/main]
+    K --> F[fetch + rebase onto origin/main]
     F --> P[agentctl prepush-check: squash guard]
     P --> G{main red and a production<br/>commit without Fixes-Red?}
     G -- yes --> WB["cherry-pick onto the waiting branch<br/>pre-push --checks-only on the combined tip<br/>WAITING SHA"]
     WB --> WP["processor: main green → rebuild waiting on main,<br/>dry run, ONE push, delete waiting"]
     WP --> V
-    G -- no --> D["scripts/hooks/pre-push --range forgejo/main..SHA<br/>red gate, path checks, basic + area tests"]
+    G -- no --> D["scripts/hooks/pre-push --range origin/main..SHA<br/>red gate, path checks, basic + area tests"]
     D -- fails --> N[NOT LANDED + the tail]
-    D -- passes --> H["git push forgejo SHA:refs/heads/main<br/>→ the hook again: the stored pass is reused"]
+    D -- passes --> H["git push origin SHA:refs/heads/main<br/>→ the hook again: the stored pass is reused"]
     H --> V[LANDED SHA; lock released]
     V --> W["watch: Main run for SHA + first convergence run containing it"]
     W --> R{verdict}
@@ -57,8 +57,8 @@ flowchart TD
 ## Stage 1: commit in your own worktree
 
 ```sh
-git -C ~/projects/movies fetch forgejo
-git -C ~/projects/movies worktree add -b <branch> ~/projects/movies-wt-<name> forgejo/main
+git -C ~/projects/movies fetch origin
+git -C ~/projects/movies worktree add -b <branch> ~/projects/movies-wt-<name> origin/main
 eval "$(~/bin/agentctl env --print)"     # sbt/java on PATH; a locked vault prints the `! secrets unlock` line
 ```
 
@@ -68,7 +68,7 @@ when the root is off `main` or dirty, via `scripts/root-checkout-check`). Instal
 hook resets an absolute `core.hooksPath` that points at this clone, and a hook run for another checkout hands over to
 that checkout's copy.
 
-Before landing: `git diff --stat forgejo/main...HEAD` lists only your files, and the test layers your change touches
+Before landing: `git diff --stat origin/main...HEAD` lists only your files, and the test layers your change touches
 are green locally (CLAUDE.md, "Run the relevant test layers").
 
 ## Stage 2: `agentctl land` — every change, identity included
@@ -83,16 +83,16 @@ are green locally (CLAUDE.md, "Run the relevant test layers").
 2. takes the repository's **landing lock** (an flock per git common dir, `~/.cache/agentctl/land/`), waiting while
    another lander holds it (one line names the holder; 4 h bound). One lander at a time means nobody runs minutes of
    area tests on a base that is about to move, and the laptop runs one landing hook's JVM at a time;
-3. `git fetch forgejo main` (one retry after 15 s);
-4. `git rebase forgejo/main` (a conflict aborts the rebase and names the files);
-5. `prepush-check` (the squash guard): refuses when `forgejo/main...HEAD` returns more than 2 files to an older main
+3. `git fetch origin main` (one retry after 15 s);
+4. `git rebase origin/main` (a conflict aborts the rebase and names the files);
+5. `prepush-check` (the squash guard): refuses when `origin/main...HEAD` returns more than 2 files to an older main
    version — what `git reset --soft` onto a moved main does (`git revert` commits are exempt for their own files);
 6. **main red?** When ci-why's gate is red and a pushed commit touches a production path without a `Fixes-Red:`
    naming a red run, the change goes onto the `waiting` branch instead (stage 2b) and land keeps running until it
    lands. Tools-only and Fixes-Red changes go on, as the hook lets them;
-7. **check first**: `scripts/hooks/pre-push --range forgejo/main..<sha>` — the whole hook (stage 3) over exactly what
+7. **check first**: `scripts/hooks/pre-push --range origin/main..<sha>` — the whole hook (stage 3) over exactly what
    will be pushed, pushing nothing. A failure is `NOT LANDED: the pre-push checks failed` and nothing is pushed;
-8. `git push forgejo <sha>:refs/heads/main` (argv asserted free of `--no-verify` and `--force`): the hook runs again
+8. `git push origin <sha>:refs/heads/main` (argv asserted free of `--no-verify` and `--force`): the hook runs again
    and reuses step 7's stored pass in seconds, so the push's ssh connection is never held open through minutes of
    tests;
 9. on a push race (`non-fast-forward`, `fetch first`, …) refetch, rebase and retry from step 6, up to 3 retries;
@@ -135,12 +135,12 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
 - **One branch, always `waiting`**, local to the main clone, in the worktree `~/projects/movies-wt-waiting`; it
   exists only while changes wait.
 - **Joining it** (inside `land`, under the landing lock): the change's commits are cherry-picked onto `waiting`
-  (created from forgejo/main when missing) and `scripts/hooks/pre-push --checks-only forgejo/main..waiting` runs there
+  (created from origin/main when missing) and `scripts/hooks/pre-push --checks-only origin/main..waiting` runs there
   — every check but the red gate, over the combined tip: the basic tests and every touched area's. A conflict or a
   failure rejects only that change, with the output; the others stay. Otherwise `WAITING <sha> (n changes queued on
   waiting)`, the lock is released, and land waits for its change's verdict.
 - **Landing it**: one processor per repo (detached, locked) polls the gate. Once main is green it rebuilds `waiting` on
-  the current forgejo/main change by change (one that no longer applies is rejected alone), runs the hook's `--range`
+  the current origin/main change by change (one that no longer applies is rejected alone), runs the hook's `--range`
   dry run, pushes the whole branch in ONE push through the hook, and deletes the branch. Each waiting land then prints
   `LANDED <sha>` and goes on to its watch (stage 4). A failing batch is searched prefix by prefix and only the first
   failing change rejected.
@@ -160,10 +160,8 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
    unproven in the registry, so reporting, until its first green run on main) — it reads the newest *decided* run on main (success or failure; cancelled,
    skipped and unfinished runs say nothing; nor does an INCOMPLETE run, red only in aggregates of
    `.github/gating-checks.tsv` such as Identity takes' `verdict complete` -- the drift explorer's drift-only dispatch is one
-   -- which agentctl reads as NO VERDICT: the complete run before it decides, the owner 2026-11-08), one bounded read each (`PREPUSH_GH_SECONDS`, 15 s). A Forgejo remote
-   reads Forgejo's runs API with `$FORGEJO_API_TOKEN` or the `movies` vault's token if already unlocked; no token →
-   the gate is skipped with one warning. An API that does not answer is warned about and skipped for that workflow,
-   never a block. If any is red, every pushed commit touching a **production path** (`*/src/main/`, `conf/`,
+   -- which agentctl reads as NO VERDICT: the complete run before it decides, the owner 2026-11-08), one bounded read each (`PREPUSH_GH_SECONDS`, 15 s). A gate gh
+   cannot read refuses a production push (it fails closed; a tools-only push still lands). If any is red, every pushed commit touching a **production path** (`*/src/main/`, `conf/`,
    `*/conf/`, `build.sbt`, `project/`, `infra/nix/`, `infra/kubernetes/`, `Dockerfile`) must carry a
    `Fixes-Red: <run>` trailer naming any red run of the current episode — its number in the run URL or its API run
    id (see stage 5, "A fix matches the red it fixes"). Commits
@@ -214,7 +212,7 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
 
 A local tool a check needs that is missing (sbt or a working java, shellcheck, actionlint, npm, python3 and
 timezonefinder, gh, curl, jq) **blocks** the push with the fix, never a skip. Only what lies outside the machine's
-install warns and passes: the gate's API unreachable, no Forgejo token, Docker or Xcode not running. GitOps manifests
+install warns and passes: Docker or Xcode not running. GitOps manifests
 that cannot be fetched block (the checkout left behind is stale).
 
 **Checks without the gate.** `--checks-only A..B` is `--range A..B` minus the red gate (said in one line): what the
@@ -231,7 +229,7 @@ its 14 code reds in five days were there. The laptop's own push never selects th
 **Check-only mode.** `scripts/hooks/pre-push --range A..B` runs the whole hook — gate and checks — over the commits in
 `A..B`, judged as a push to main, pushing nothing. A `<remote>/main..HEAD` base reads that remote's runs, so the push
 that follows reuses the pass. Use it before a manual push that may run long: `scripts/hooks/pre-push --range
-forgejo/main..HEAD`. `--plan` and `--compile-plan` read paths on stdin and print the plan only.
+origin/main..HEAD`. `--plan` and `--compile-plan` read paths on stdin and print the plan only.
 
 ## Stage 4: the watch after landing
 
@@ -296,14 +294,14 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
 |---|---|---|
 | `NOT LANDED: PREPUSH_SKIP is set …` | land never skips checks | `unset PREPUSH_SKIP` |
 | `NOT LANDED: the working tree has uncommitted changes` | dirty tree | commit, or `land --stash` |
-| `NOT LANDED: rebase onto forgejo/main conflicts in: …` | your change conflicts with main | resolve by hand (`git rebase forgejo/main`), land again |
+| `NOT LANDED: rebase onto origin/main conflicts in: …` | your change conflicts with main | resolve by hand (`git rebase origin/main`), land again |
 | `NOT LANDED: prepush-check refused: … would be reverted/deleted back to an older main version` | a squash onto a moved main | rebuild your commits on current main by rebase, never `reset --soft` |
 | `<workflow> is RED on main: run …` / `NOT LANDED: the red gate refused the push` | a gating run is red and a production commit lacks `Fixes-Red:` | `agentctl ci-why`; wait (`agentctl wait run <id>` in the background) for the green run, or add `Fixes-Red:` only if your commit fixes that run |
-| `red-build gate UNREAD (…): the push is REFUSED` | the gate could not be read (no Forgejo token, API error, no answer after 3 tries); it fails closed, so a production push is refused (a tools-only push still lands) | no token: `secrets unlock movies` (the user's Touch ID), then land again (agentctl hands the token to its processes); otherwise `agentctl env --check` for the tunnel, and land again |
+| `red-build gate UNREAD (…): the push is REFUSED` | the gate could not be read (gh not logged in, API error, no answer after 3 tries); it fails closed, so a production push is refused (a tools-only push still lands) | not logged in: `gh auth status` (and `gh auth login`); otherwise the network to github.com; land again |
 | `<tool> not found: the <check> check cannot run, so the push is BLOCKED` | a local tool is missing | install it as the message says; `eval "$(~/bin/agentctl env --print)"` for sbt/java |
-| `GitOps manifests STALE … BLOCKED` | `infra/bin/fetch-gitops` could not reach movies-gitops | `launchctl kickstart -k gui/$(id -u)/net.bitcashier.forgejo-tunnel`, land again |
+| `GitOps manifests STALE … BLOCKED` | `infra/bin/fetch-gitops` could not reach movies-gitops | the network to github.com, then land again |
 | `blocked by: <checks>` | a path check failed | read the tail (and the land log), fix forward, commit, land again |
-| push dies after `all clear` ("closed by remote host", "Broken pipe") | the tunnel dropped under a long hook | push/land again: the pass is reused |
+| push dies after `all clear` ("closed by remote host", "Broken pipe") | the connection dropped under a long hook | push/land again: the pass is reused |
 | `NOT LANDED: still racing after 3 retries` | main is busy | land again in a minute |
 | `waiting for the landing lock (…), held by: …` | another agent is landing | nothing: land continues once it is free |
 | `NOT LANDED: timed out waiting for the landing lock` | a lander held it 4 h | `agentctl land` again; if it repeats, report the holder |
@@ -312,11 +310,11 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
 | `blocked by: identity` / `blocked by: page` | the area's local tests failed | as above; the area log's path is in the tail |
 | `blocked by: identity` with `SLICE ANSWERS MISSING` | the change asks requests pinned slices do not hold (named) | `scripts/identity-slice-coverage --repin`, check the takes still hold (`IdentitySliceCasesSpec`), commit the slices' `http.jsonl.gz` with the change |
 | `WATCH RED: <workflow> #n …` (exit 3) | main's CI is red on a run containing your commit | read the ci-why summary; yours → fix forward now with `Fixes-Red: <n>`; not yours → say so in your report |
-| `WATCH UNKNOWN …` (exit 2) | undecided after 3 h, or Forgejo unreadable | `agentctl ci-why` later; report it |
+| `WATCH UNKNOWN …` (exit 2) | undecided after 3 h, or GitHub unreadable | `agentctl ci-why` later; report it |
 | `WAITING <sha> (n changes queued on waiting)` | main is red; your production change waits on `waiting` | nothing: land keeps running and ends LANDED + the watch once main is green |
 | `NOT LANDED: main is red, and the change conflicts with the changes already waiting` | your change and a waiting one touch the same lines | rebase onto `waiting` (`git rebase waiting`) and land again, or wait for them to land |
 | `NOT LANDED: the checks failed on waiting` | the combined tip fails a check | yours: fix forward, land again |
-| `NOT LANDED: main moved while it waited and the change no longer applies` | main conflicts with your waiting change | rebase onto forgejo/main, land again |
+| `NOT LANDED: main moved while it waited and the change no longer applies` | main conflicts with your waiting change | rebase onto origin/main, land again |
 | `agentctl queue …` prints `NOT QUEUED: the merge queue is RETIRED` | an old brief | use `agentctl land` |
 
 ## The rules
@@ -328,7 +326,7 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
 - **`Fixes-Red:` only for a real fix** of the named run. A tools-only commit needs none.
 - **Never rerun to green.** A red is investigated to its cause (CLAUDE.md, "Investigate every red"); a test that
   passes on a second run is flaky and gets fixed.
-- **Rebase onto current `forgejo/main` before any local check** (`land` does); never `reset --soft` onto a moved main.
+- **Rebase onto current `origin/main` before any local check** (`land` does); never `reset --soft` onto a moved main.
 - **Area tests are local and bounded.** A set in `local-tests.txt` joins an area only if it runs in under 15 min on the
   laptop, warm; anything longer is main's CI's. Add a new area by adding its lines and its path test to the hook.
 - **Never edit `identity-drift-allow.tsv` to get green**; performance budgets move only for a deliberate trade.
@@ -343,4 +341,4 @@ reports. Its first green run proves it: `scripts/ci/gating_checks.py prove --wor
   and dashboard that see it in the same commit, or in an EARLIER push named by `Gauges-Shipped: <sha>` (an ancestor
   outside this push); when existing series already see it, `Gauges: none -- <why>`. `driftguards` refuses otherwise.
   After the image rolls, run `scripts/deploy-watch` in the background over those series (below, and its `--help`).
-- Cancel your own superseded CI runs (`forgejo-gh run cancel <run id>`); never another agent's.
+- Cancel your own superseded CI runs (`gh run cancel <run id>`); never another agent's.

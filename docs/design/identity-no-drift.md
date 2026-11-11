@@ -168,7 +168,7 @@ The cases:
 - the shapes production met: US "SEVENTEEN World Tour" (a fill of a current release across a new year), and PL Kino za
   Rogiem's "Lalka" (a model take corrected by its poster and two families).
 
-**Teeth.** On forgejo/main 50dfc4ad4, the harness fails:
+**Teeth.** On main 50dfc4ad4, the harness fails:
 - stepwise and settled fail on the fill case: the verdict filled in December stood into January;
 - restart fails on the correction case: renumbered keys plus a spent budget put the model's take back. This is the run
   1530 class: a correction found by a key that no longer names it.

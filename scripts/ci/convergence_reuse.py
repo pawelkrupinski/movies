@@ -234,8 +234,8 @@ BOOLEANS = {"profile", "takes-only", "drift-only", "takes-no-store", "drift-twic
 
 
 def leg_inputs(env):
-    """The legs' inputs from the dispatch's, normalised: a boolean is `true` or `false` (Forgejo hands a dispatch's as the
-    STRING "true"), an empty value its default."""
+    """The legs' inputs from the dispatch's, normalised: a boolean is `true` or `false` (a dispatch's arrives through the
+    environment as the STRING "true"), an empty value its default."""
     out = {}
     for name, (var, default) in INPUTS.items():
         value = (env.get(var) or "").strip()

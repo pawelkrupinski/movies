@@ -266,7 +266,7 @@ the end. Per-service limits: `external-api-rate-limits` skill.
 
 ## Investigating identity, scraper or CI failures
 
-CI runs on GitHub's hosted runners (Forgejo, the self-hosted CI of 2026-10-19..31, is switched off).
+CI runs on GitHub's hosted runners.
 
 **Writing a workflow (WorkflowPlanSpec):** inputs, refs, run ids and skip decisions are evaluated in ONE plan job (a
 root: `preflight`/`plan`) and every other job reads `needs.<plan>.outputs.<name>`. A step with its own `timeout-minutes` starts `. scripts/ci/bounded-step.sh`

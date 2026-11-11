@@ -6,7 +6,7 @@
 Same tool, same file, as bitcashier's `bin/deploy`; `infra/test/test_deploy.py` covers its pure logic
 and runs in `bin/check` and nix-stage-closures.yml.
 
-1. **Refuses a checkout behind forgejo main** (it fetches first). Ahead or dirty is allowed and said;
+1. **Refuses a checkout behind origin main** (it fetches first). Ahead or dirty is allowed and said;
    `--allow-stale` is the deliberate-rollback override.
 2. **Picks the closure**: this checkout's toplevel (`nix eval`, the path CI stages for the same
    commit; the repo is shallow, so the flake ref is `git+file://...?dir=infra&shallow=1`); else CI's
