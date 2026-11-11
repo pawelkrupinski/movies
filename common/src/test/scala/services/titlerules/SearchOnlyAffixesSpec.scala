@@ -54,6 +54,17 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
     n.preferredDisplay(Seq("Straszny film")) shouldBe Some("Straszny film")
   }
 
+  "A \"(re-release)\" marker" should "come off the title it shows and the key it merges by" in {
+    // https://kinowo.net/poznan/movie/diuna-re-release — Cinema City bills "Diuna (re-release)", Helios, KDK, Nowe
+    // Horyzonty and Cineworld the same marker; a re-issue is the same film, one card and one slug.
+    n.preferredDisplay(Seq("Diuna (re-release)")) shouldBe Some("Diuna")
+    n.preferredDisplay(Seq("Avengers: Endgame (Re-Release)")) shouldBe Some("Avengers: Endgame")
+    n.sanitize("Diuna (re-release)") shouldBe n.sanitize("Diuna")
+    n.sanitize("INNI (re- release)") shouldBe n.sanitize("INNI")
+    // A marker with no film before it is left whole.
+    n.preferredDisplay(Seq("(re-release)")) shouldBe Some("(re-release)")
+  }
+
   "A film titled by the word" should "keep it" in {
     // A title that is only the word is the film's own, however it reads.
     n.apiQuery("Premiera") shouldBe "Premiera"

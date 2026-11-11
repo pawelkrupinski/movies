@@ -909,6 +909,11 @@ xtra-canonical-festival-tag-suffix	key				festival		(?u)^(.*\p{Ll}.*?){{FESTIVAL
 # before it is required — "Straszny film" ends in the word and keeps it.
 # A REWRITE (it keeps the title before the suffix, `$1`), so a card every venue bills alike shows it too.
 xtra-canonical-kropka-film-suffix	key				junk		(?iu)^(.*\S)\.\s*Film(?:\s+\d{4})?\s*$	$1	'<film>. Film [2026]' distributor suffix — CANONICAL rewrite to the film's title	[["ROLLING LOUD. FILM","ROLLING LOUD"],["Rolling Loud. Film","Rolling Loud"]]
+# A '(re-release)' marker (Cinema City "Diuna (re-release)", Helios, KDK, Nowe Horyzonty, Cineworld): a re-issue is
+# the same film, so it folds onto the film's card and slug. A REWRITE (`$1`, the film before the marker), so a card
+# only one venue bills shows the bare title too; the lookup-tier 'xtra-rerelease-paren-suffix' keeps the query bare
+# where a later strip re-exposes the marker. A marker with no film before it stays whole.
+xtra-canonical-rerelease-paren-suffix	key				edition		(?iu)^(.*\S)\s*\(\s*re\s*[-\s]?\s*release\s*\)\s*$	$1	'<film> (re-release)' / '(Re-Release)' / '(re- release)' re-issue marker — CANONICAL rewrite to the film's title (display + merge key)	[["Diuna (re-release)","Diuna"],["Avengers: Endgame (Re-Release)","Avengers: Endgame"]]
 xtra-canonical-gwiezdne-wojny-ci	key				rename		(?iu)^Gwiezdne\s+wojny\s*:\s*		Case-insensitive 'Gwiezdne wojny:' franchise prefix — the seed 'canonical-gwiezdne-wojny' only matches the capitalised 'Gwiezdne Wojny:', so the lower-case spelling (Mandalorian i Grogu) never merged.	[["GWIEZDNE WOJNY: MANDALORIAN i GROGU","MANDALORIAN i GROGU"],["Gwiezdne wojny: Mandalorian i Grogu","Mandalorian i Grogu"]]
 # The seed's 'structural-anniversary-suffix' and the extras'
 # 'xtra-rocznica-premiery-suffix' are both GlobalStructural — they shape the

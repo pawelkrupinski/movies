@@ -1153,7 +1153,7 @@
 {"text":"Asterix erobert Rom: Das Grosse Asterix Kino-Festival"}
 {"text":"Asterix i Obelix: Misja Kleopatra"}
 {"text":"Asterix i Obelix: Misja Kleopatra (dubbing PL)","pl,uk,de,us,es":{"query":"Asterix i Obelix: Misja Kleopatra"}}
-{"text":"Asterix i Obelix: Misja Kleopatra (re-release)","pl,uk,de,us,es":{"query":"Asterix i Obelix: Misja Kleopatra"}}
+{"text":"Asterix i Obelix: Misja Kleopatra (re-release)","pl,uk,de,us,es":{"query":"Asterix i Obelix: Misja Kleopatra","key":"Asterix i Obelix: Misja Kleopatra","display":"Asterix i Obelix: Misja Kleopatra"}}
 {"text":"Asterix und Kleopatra: Das Grosse Asterix Kino - Festival"}
 {"text":"Asterix und das Geheimnis des Zaubertranks"}
 {"text":"Asterix und das Königreich Nubien"}
@@ -1161,7 +1161,7 @@
 {"text":"Asterix und das Königreich Nubien - PREVIEW","pl,uk,de,us,es":{"query":"Asterix und das Königreich Nubien"}}
 {"text":"Asterix und das Königreich Nubien PREVIEW","pl,uk,de,us,es":{"query":"Asterix und das Königreich Nubien"}}
 {"text":"Asteroid City"}
-{"text":"Astra Dzieci: Asterix i Obelix: Misja Kleopatra (re-release)","pl,uk,de,us,es":{"query":"Astra Dzieci: Asterix i Obelix: Misja Kleopatra"}}
+{"text":"Astra Dzieci: Asterix i Obelix: Misja Kleopatra (re-release)","pl,uk,de,us,es":{"query":"Astra Dzieci: Asterix i Obelix: Misja Kleopatra","key":"Astra Dzieci: Asterix i Obelix: Misja Kleopatra","display":"Astra Dzieci: Asterix i Obelix: Misja Kleopatra"}}
 {"text":"Astra Dzieci: Baranek Shaun i kudłata bestia"}
 {"text":"Astra Dzieci: DMUCHAWCE"}
 {"text":"Astra Dzieci: Poranki z muzyką na żywo","pl,uk,de,us,es":{"query":"Astra Dzieci"}}
@@ -1212,7 +1212,7 @@
 {"text":"Austerlitz"}
 {"text":"Auta"}
 {"text":"Auta (20. rocznica)","pl,uk,de,us,es":{"key":"Auta ("}}
-{"text":"Auta (re-release)","pl,uk,de,us,es":{"query":"Auta"}}
+{"text":"Auta (re-release)","pl,uk,de,us,es":{"query":"Auta","key":"Auta","display":"Auta"}}
 {"text":"Auta - 20. Lecie premiery"}
 {"text":"Auta 20. rocznica premiery","pl,uk,de,us,es":{"query":"Auta","key":"Auta"}}
 {"text":"Author Panel - Another Time, Another Place","pl,uk,de,us,es":{"venue":{"kino-kinematograf":"Author Panel - Another Time"}}}
@@ -1261,7 +1261,7 @@
 {"text":"Avengers: Koniec gry – wersja rozszerzona","pl,uk,de,us,es":{"query":"Avengers: Koniec gry"}}
 {"text":"Avengers: Koniec gry – wersja rozszerzona Infinity Vision"}
 {"text":"Avengers: Koniec gry."}
-{"text":"Avengers: Koniec gry. Dogrywka (re-release)","pl,uk,de,us,es":{"query":"Avengers: Koniec gry. Dogrywka"}}
+{"text":"Avengers: Koniec gry. Dogrywka (re-release)","pl,uk,de,us,es":{"query":"Avengers: Koniec gry. Dogrywka","key":"Avengers: Koniec gry. Dogrywka","display":"Avengers: Koniec gry. Dogrywka"}}
 {"text":"Avengers: Koniec gry. Dogrywka (re-release) 3D dubb."}
 {"text":"Avengres: Koniec Gry - Wersja Rozszerzona DUB"}
 {"text":"Awakenings"}
@@ -6463,7 +6463,7 @@
 {"text":"Hallo Betty"}
 {"text":"Hallo Kino! Filmabenteuer für die Kleinsten"}
 {"text":"Halloween"}
-{"text":"Halloween '26: Inni (re- release)","pl,uk,de,us,es":{"query":"Halloween '26: Inni"}}
+{"text":"Halloween '26: Inni (re- release)","pl,uk,de,us,es":{"query":"Halloween '26: Inni","key":"Halloween '26: Inni","display":"Halloween '26: Inni"}}
 {"text":"Halloween '26: Lalka ( Dolly)"}
 {"text":"Halloween '26: Martwe zło 2"}
 {"text":"Halloween '26: Òpi"}
@@ -17577,7 +17577,7 @@
 {"text":"Zikaden"}
 {"text":"Zima pod znakiem Wrony"}
 {"text":"Zimna wojna - przegląd filmów Pawła Pawlikowskiego","pl,uk,de,us,es":{"query":"Zimna wojna"}}
-{"text":"Zindagi Na Milegi Dobara (Re-Release)","pl,uk,de,us,es":{"query":"Zindagi Na Milegi Dobara"}}
+{"text":"Zindagi Na Milegi Dobara (Re-Release)","pl,uk,de,us,es":{"query":"Zindagi Na Milegi Dobara","key":"Zindagi Na Milegi Dobara","display":"Zindagi Na Milegi Dobara"}}
 {"text":"Zirkus Eisenbahn #8 Unterwasser"}
 {"text":"Zirkuskind"}
 {"text":"Zjadacz dyń"}

@@ -76,7 +76,10 @@ object ReadModelDerivation {
     Derivation(DerivationVersion("ac8a94f7a60569ff"), DerivationScope.Cards),
     // A card whose original title is not Latin script searches Metacritic and Rotten Tomatoes by a Latin-script one
     // (`RatingSearchUrls.englishSiteTitle`: TMDB's English title, a romanisation, the shown title).
-    Derivation(DerivationVersion("127928f91657330c"), DerivationScope.Cards))
+    Derivation(DerivationVersion("127928f91657330c"), DerivationScope.Cards),
+    // A '(re-release)' marker folds onto the film's own card and slug (`xtra-canonical-rerelease-paren-suffix`):
+    // "Podziemny krąg (re-release)" is Podziemny krąg, no longer a card of its own.
+    Derivation(DerivationVersion("28fba8b0a9f6dae1"), DerivationScope.Full))
 
   def current: DerivationVersion = History.last.version
 

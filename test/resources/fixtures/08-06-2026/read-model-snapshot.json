@@ -2345,36 +2345,6 @@
     "searchTitles" : [ "Fight Club" ],
     "provisional" : true
   }, {
-    "_id" : "f1d34c02e614a4ec~podziemnykragrerelease",
-    "title" : "Podziemny krąg (re-release)",
-    "originalTitle" : "Fight Club",
-    "posterUrl" : "https://www.kinomalta.pl/wp-content/uploads/2026/04/Podziemny-krag_online_cut-200x288.webp",
-    "fallbackPosterUrls" : [ "https://img.helios.pl/pliki/film/podziemny-krag/podziemny-krag-plakat-52238.jpg", "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8195S2R.jpg", "https://kinopalacowe.pl/media/gallery/lg/fight_club_poster.jpg", "https://image.tmdb.org/t/p/w500/efBb4gjjKneUoBVgfFOUu2OwihS.jpg", "https://m.media-amazon.com/images/M/MV5BOTgyOGQ1NDItNGU3Ny00MjU3LTg2YWEtNmEyYjBiMjI1Y2M5XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 139,
-    "releaseYear" : 1999,
-    "genres" : [ "Dramat", "Thriller" ],
-    "countries" : [ "Niemcy", "USA" ],
-    "directors" : [ "David Fincher" ],
-    "cast" : [ "Edward Norton", "Brad Pitt", "Helena Bonham Carter", "Meat Loaf", "Jared Leto" ],
-    "synopsis" : "Cierpiący na bezsenność mężczyzna poznaje gardzącego konsumpcyjnym stylem życia Tylera Durdena, który jest jego zupełnym przeciwieństwem.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/cw3c4yFe4u8", "https://www.youtube.com/embed/SUXWAEX2jlg", "https://www.youtube.com/embed/qtRKdVHc-cE" ],
-    "ratings" : {
-      "imdb" : 8.8,
-      "imdbUrl" : "https://www.imdb.com/title/tt0137523/",
-      "metascore" : 67,
-      "metacriticUrl" : "https://www.metacritic.com/movie/fight-club",
-      "rottenTomatoes" : 81,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/fight_club",
-      "filmweb" : 8.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Podziemny+kr%C4%85g-1999-837"
-    },
-    "weightedRating" : 7.975,
-    "synopsisByCity" : { },
-    "ageRating" : "18",
-    "shareCardPending" : false,
-    "searchTitles" : [ "Fight Club" ],
-    "provisional" : true
-  }, {
     "_id" : "f1d34c02e614a4ec~podziemnykragzrekonstruowanawersja",
     "title" : "Podziemny krąg - zrekonstruowana wersja",
     "originalTitle" : "Fight Club",
@@ -34231,6 +34201,18 @@
     } ],
     "listingKeys" : [ "N\u0000Helios Bielsko-Biała\u0000https://helios.pl/bielsko-biala/kino-helios/wydarzenie/podziemny-krag-w-helios-replay-2575\u0000Podziemny krąg w Helios RePlay" ]
   }, {
+    "_id" : "f1d34c02e614a4ec|boleslawiec|Forum",
+    "filmId" : "f1d34c02e614a4ec",
+    "city" : "boleslawiec",
+    "cinema" : "Forum",
+    "filmUrl" : "https://www.bilety24.pl/kino/1586-podziemny-krag-re-release-dkf-156902?id=933234",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-15T19:00:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1586-podziemny-krag-re-release-dkf-156902?id=933234",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Forum\u0000https://www.bilety24.pl/kino/1586-podziemny-krag-re-release-dkf-156902?id=933234\u0000Podziemny krąg (re-release)" ]
+  }, {
     "_id" : "f1d34c02e614a4ec|bydgoszcz|Cinema City Bydgoszcz",
     "filmId" : "f1d34c02e614a4ec",
     "city" : "bydgoszcz",
@@ -36719,18 +36701,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kino 60 Krzeseł\u0000https://www.bilety24.pl/kino/776-podziemny-krag-pokaz-w-dkf-megaron--155997?id=935090\u0000Podziemny krąg (pokaz w DKF Megaron)" ]
-  }, {
-    "_id" : "f1d34c02e614a4ec~podziemnykragrerelease|boleslawiec|Forum",
-    "filmId" : "f1d34c02e614a4ec~podziemnykragrerelease",
-    "city" : "boleslawiec",
-    "cinema" : "Forum",
-    "filmUrl" : "https://www.bilety24.pl/kino/1586-podziemny-krag-re-release-dkf-156902?id=933234",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-15T19:00:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1586-podziemny-krag-re-release-dkf-156902?id=933234",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Forum\u0000https://www.bilety24.pl/kino/1586-podziemny-krag-re-release-dkf-156902?id=933234\u0000Podziemny krąg (re-release)" ]
   }, {
     "_id" : "f1d34c02e614a4ec~podziemnykragzrekonstruowanawersja|warszawa|Kino Wisła",
     "filmId" : "f1d34c02e614a4ec~podziemnykragzrekonstruowanawersja",
