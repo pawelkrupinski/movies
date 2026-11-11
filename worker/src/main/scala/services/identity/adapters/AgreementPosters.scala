@@ -18,9 +18,12 @@ import java.time.Clock
  * film's artwork, rarely change — or, a film's, once [[PosterEvidence.FilmPosters]] rose past the cap a document holding
  * that many was filed under. A film's document keeps beside its hashes the TMDB paths they were read from
  * ([[PosterAnswers.Paths]]), for the review pages to show and for a film hashed again to download only the posters TMDB
- * added; the agreement reads only the hashes.
+ * added; the agreement reads only the hashes. A film `released` (its TMDB record's day) within
+ * [[QuestionPolicies.YoungFilmWindow]] of its filing is marked YOUNG and asked again after
+ * [[QuestionPolicies.YoungPosterAge]]: TMDB gets a new film's local artwork around its release.
  */
-final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends PosterAnswers {
+final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock, released: Int => Option[java.time.LocalDate] = _ => None)
+    extends PosterAnswers {
   import PosterAnswerStore._
   import PosterAnswers.idOf
 
@@ -41,6 +44,10 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
       // and the cap they were chosen under: TMDB may keep more than a cap's worth, read once the cap is raised ([[cut]])
       if (question.isInstanceOf[PosterQuestion.Film] && posters.nonEmpty)
         d.append(PosterAnswers.Paths, PosterAnswers.pathsValue(posters.map(_.path))).append(Cap, BsonInt32(PosterEvidence.FilmPosters))
+      question match {
+        case PosterQuestion.Film(tmdbId) if young(tmdbId) => d.append(Young, org.bson.BsonBoolean.TRUE)
+        case _                                            => ()
+      }
       answers.put(idOf(question), d)
   }
 
@@ -65,14 +72,22 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
 
   override def fresh(question: PosterQuestion): Boolean = !wanted(question)
 
-  /** Is the question's answer missing, cut at a lower cap than [[PosterEvidence.FilmPosters]] ([[cut]]), or older than [[QuestionPolicies.PosterAge]] — [[QuestionPolicies.PosterUnreadAge]]
+  /** Is the question's answer missing, cut at a lower cap than [[PosterEvidence.FilmPosters]] ([[cut]]), a young film's
+   *  older than [[QuestionPolicies.YoungPosterAge]], or older than [[QuestionPolicies.PosterAge]] — [[QuestionPolicies.PosterUnreadAge]]
    *  for a venue poster with no hash: one given up on, or one filed so before a failed read was told from data (prod PL
    *  2026-10-06: all 226 biletyna.pl posters, refused by the origin, filed as "no poster" with no unread mark, for a
    *  year)? */
   def wanted(question: PosterQuestion): Boolean = document(idOf(question)).forall { d =>
     val unreadVenue = isUnread(d) || (question.isInstanceOf[PosterQuestion.Venue] && hashesOf(d).isEmpty)
     val age         = if (unreadVenue) QuestionPolicies.PosterUnreadAge else QuestionPolicies.PosterAge
-    TmdbStore.olderThan(d, age, clock) || (question.isInstanceOf[PosterQuestion.Film] && cut(d))
+    TmdbStore.olderThan(d, age, clock) || (question.isInstanceOf[PosterQuestion.Film] && (cut(d) ||
+      (d.getBoolean(Young, org.bson.BsonBoolean.FALSE).getValue && TmdbStore.olderThan(d, QuestionPolicies.YoungPosterAge, clock))))
+  }
+
+  /** Is the film released within [[QuestionPolicies.YoungFilmWindow]] of today, either side? */
+  private def young(tmdbId: Int): Boolean = released(tmdbId).exists { day =>
+    val today = java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC)
+    math.abs(java.time.temporal.ChronoUnit.DAYS.between(day, today)) <= QuestionPolicies.YoungFilmWindow.toDays
   }
 
   private def document(id: String): Option[BsonDocument] = answers.document(id)
@@ -87,6 +102,8 @@ object PosterAnswerStore {
    *  was filed under 8 (to 2026-11-11). */
   private val Cap = "cap"
   private val UnmarkedCap = 8
+  /** A film's document filed within [[QuestionPolicies.YoungFilmWindow]] of its release. */
+  private val Young = "young"
 
   /** Was the film's document filed holding as many posters as a cap lower than today's: TMDB may keep more, hashed once
    *  asked again (those filed reused, [[PosterHashing.film]]). */

@@ -55,6 +55,13 @@ object QuestionPolicies {
   val FamilyShowingAge: FiniteDuration = 20.hours
   /** How long a poster's hash is read before the poster is hashed again. */
   val PosterAge: FiniteDuration = 365.days
+  /** How long a YOUNG film's posters are read before TMDB is asked for them again: one released within
+   *  [[YoungFilmWindow]] of its filing, whose local artwork TMDB often gets only around its release (the poster research
+   *  of 2026-11-11: 3% of the right venue-film pairs matched only TMDB's posters of that day, 15 of 22 films released
+   *  within ~60 days). Only the paths not filed are downloaded ([[PosterHashing.film]]). */
+  val YoungPosterAge: FiniteDuration = 7.days
+  /** How far from a film's release its posters are hashed again every [[YoungPosterAge]]: before and after. */
+  val YoungFilmWindow: FiniteDuration = 60.days
   /** How long a poster not read — given up on, or refused — is read as unread before it is tried again. */
   val PosterUnreadAge: FiniteDuration = 7.days
   /** The failed fetch on which a poster that keeps failing is given up on (Kino Kryterium's posters, 2026-10-06: ten

@@ -141,6 +141,27 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
       org.mongodb.scala.bson.BsonArray.fromIterable(paths.map(org.bson.BsonString(_))))) shouldBe paths
   }
 
+  // the poster research of 2026-11-11: 3% of right venue-film pairs matched only TMDB's posters of the day, most of
+  // them films released within ~60 days -- TMDB gets the local artwork around a release, after the film was filed
+  it should "want a film released within the young window hashed again a week on, an older film only a year on" in {
+    val premiere = java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).plusDays(30)
+    val store    = new PosterAnswerStore(new FamilyAnswerStore(new InMemoryTmdbDocuments, clock), clock,
+      released = Map(1 -> premiere, 2 -> premiere.minusYears(3)).get)
+    Seq(1, 2, 3).foreach(film => store.file(PosterQuestion.Film(film), Seq(HashedPoster(s"/$film.jpg", PosterHash(film.toLong)))))
+    clock.advanceSeconds(QuestionPolicies.YoungPosterAge.toSeconds - 60)
+    Seq(1, 2, 3).map(film => store.wanted(PosterQuestion.Film(film))) shouldBe Seq(false, false, false)
+    clock.advanceSeconds(120)
+    Seq(1, 2, 3).map(film => store.wanted(PosterQuestion.Film(film))) shouldBe Seq(true, false, false)
+    // filed again, still within the window: a week on again; once past it, a year
+    store.file(PosterQuestion.Film(1), Seq(HashedPoster("/1.jpg", PosterHash(1L))))
+    store.wanted(PosterQuestion.Film(1)) shouldBe false
+    clock.advanceSeconds((QuestionPolicies.YoungFilmWindow * 2).toSeconds)   // the premiere 30 days ahead, now 90 days past
+    store.wanted(PosterQuestion.Film(1)) shouldBe true
+    store.file(PosterQuestion.Film(1), Seq(HashedPoster("/1.jpg", PosterHash(1L))))
+    clock.advanceSeconds(QuestionPolicies.YoungPosterAge.toSeconds * 2)
+    store.wanted(PosterQuestion.Film(1)) shouldBe false
+  }
+
   "a poster to hash" should "go on the queue once, however often the stage meets it" in {
     val queue = new InMemoryTaskQueue
     val posters = Set[PosterQuestion](PosterQuestion.Venue(patria), PosterQuestion.Film(95269))

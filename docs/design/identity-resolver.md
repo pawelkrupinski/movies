@@ -2833,6 +2833,12 @@ mirrors' 5.7 MB of film poster documents). A poster asked AGAIN (attempted befor
 retried) waits on nothing, so the stage hands those `CorrectionPostersAtOnce` (64) at a time beside the corrections'
 posters (`AgreementStage.Pass.wanted`): a renewal of thousands drains over applies, never one burst on the queue.
 
+**A young film's posters asked again weekly (2026-11-11).** 3% of the right venue-film pairs matched only TMDB's posters
+of the research's day, not the set filed before TMDB had the local artwork (15 of 22 films released within ~60 days).
+A film filed within `QuestionPolicies.YoungFilmWindow` (60 days) of its release, either side — the day read off its
+stored TMDB record at filing — is marked `young` and asked again after `YoungPosterAge` (7 days) rather than `PosterAge`
+(a year); only the paths TMDB added are downloaded. ~140 `/images` asks a day over the five countries.
+
 **A superseded relay (`Broadcast.superseded`).** US Oriental Theatre Milwaukee's "NT Live: All My Sons" (10–11 October
 2026) is the National Theatre's 2026 van Hove broadcast on Milwaukee Film's own page. Flicks links it to its 2019 Old
 Vic page, so the listing states 2019 and Herrin, and the model took the 2019 record. A relay's take is WITHDRAWN when

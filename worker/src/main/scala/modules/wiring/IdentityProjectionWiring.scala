@@ -197,8 +197,10 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   // worker-us's tenured gen and OOM-killed it at its first nightly check two nights running (2026-10-23/24, 525 -> 768 of
   // 768 MiB in ~75 s). Production's live takes are compared off the worker, on CI after each nightly recording
   // (scripts.IdentityLiveDrift, identity-live-drift.yml).
-  /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
-  lazy val posterAnswerStore: services.identity.adapters.PosterAnswerStore = new services.identity.adapters.PosterAnswerStore(familyAnswerStore, clock)
+  /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers; a film's release day
+   *  read off its stored TMDB record when its posters are filed (a lookup made for the one filing, none kept). */
+  lazy val posterAnswerStore: services.identity.adapters.PosterAnswerStore = new services.identity.adapters.PosterAnswerStore(familyAnswerStore, clock,
+    released = tmdbId => storedLookups().film(tmdbId).answered.flatten.flatMap(_.released))
   /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */
   lazy val catalogueLinkReader: services.identity.adapters.CatalogueLinkReader = new services.identity.adapters.CatalogueLinkReader(Seq(
     services.cinemas.common.FlicksClient.CatalogueLinkPages -> flicksFetch,
