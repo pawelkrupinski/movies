@@ -2706,8 +2706,8 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   miserables (2019)"): nothing in a bare title tells the 1971 film from the musical, which the agreement's
   `screenAdaptation` and the families' takes decide. A name venues bill a work by whole goes in
   `identity-stage-works-extra.tsv` ("Andrew Lloyd Webber's Starlight Express"). What-if 2026-11-11, all five
-  countries, every family: 2 takes moved, DE Apollo Hannover's live "Club Mix-Show" off "Die Truman Show" (judged
-  wrong, cured); 0 right lost, 0 new wrong.
+  countries, every family: 2 takes moved, DE Apollo Hannover's live variety evening "Club Mix-Show" off "Die Truman
+  Show" to none (a wrong take, unjudged); 0 right lost, 0 new wrong.
 - **`family.filmweb.took&!model.unscored`, a second pinned fill** (REMOVED 2026-10-14, §20.19; from the search sweep, branch
   `measure/identity-film-search`): the one guard-passing contender Filmweb takes that the model scored too — Filmweb
   votes in Poland alone. PL "Bohater" (Farhadi's), "BEZ KOŃCA 2D PL LOLO", "NADZIEJA", "Wymarzony" (Herry's *Pupille*,
