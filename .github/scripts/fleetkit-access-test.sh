@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# fleetkit-access.sh against a scratch HOME: the alias it writes resolves where npm ci's
-# git+ssh://forgejo-git/... must go, with the deploy key and the pinned host key, and an empty
-# secret fails loudly instead of leaving npm ci to fail on an unresolvable host.
+# fleetkit-access.sh against a scratch HOME: the github.com host block it writes carries the deploy
+# key and the pinned host key npm ci's git+ssh://git@github.com/bitcashier/fleetkit.git needs, and an
+# empty secret fails loudly instead of leaving npm ci to fail on a refused key.
 # Run: bash .github/scripts/fleetkit-access-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -16,12 +16,12 @@ script="$REPO_ROOT/.github/scripts/fleetkit-access.sh"
 HOME="$work/home" FLEETKIT_DEPLOY_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
 fake
 -----END OPENSSH PRIVATE KEY-----" bash "$script" >/dev/null 2>&1
-check "a key writes the alias" "0" "$?"
+check "a key writes the host block" "0" "$?"
 
-# Read from the `Host forgejo-git` block itself: the script-test container has no ssh client for
+# Read from the `Host github.com` block itself: the script-test container has no ssh client for
 # `ssh -G`, and the CI run's own fetch is what proves the connection.
-field() { awk -v k="$1" '$1 == "Host" { inside = ($2 == "forgejo-git") } inside && $1 == k { print $2; exit }' "$work/home/.ssh/config"; }
-check "the alias reaches github.com" "github.com" "$(field HostName)"
+field() { awk -v k="$1" '$1 == "Host" { inside = ($2 == "github.com") } inside && $1 == k { print $2; exit }' "$work/home/.ssh/config"; }
+check "the block reaches github.com" "github.com" "$(field HostName)"
 check "...on port 22" "22" "$(field Port)"
 check "...as git" "git" "$(field User)"
 check "...with the deploy key" "$work/home/.ssh/fleetkit_deploy" "$(field IdentityFile)"
@@ -36,6 +36,6 @@ check "the key is written whole" "fake" "$(sed -n 2p "$work/home/.ssh/fleetkit_d
 HOME="$work/empty" FLEETKIT_DEPLOY_KEY="" bash "$script" >/dev/null 2>"$work/err"
 check "an empty secret fails" "1" "$?"
 check "and says which secret" "yes" "$(grep -q 'FLEETKIT_DEPLOY_KEY is empty' "$work/err" && echo yes || echo no)"
-check "and writes no alias" "no" "$([ -e "$work/empty/.ssh/config" ] && echo yes || echo no)"
+check "and writes no host block" "no" "$([ -e "$work/empty/.ssh/config" ] && echo yes || echo no)"
 
 spec_summary

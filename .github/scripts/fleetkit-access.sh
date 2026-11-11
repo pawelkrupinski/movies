@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# Gives a CI job the `forgejo-git` ssh alias that infra/version-dashboard's package.json names
-# (`git+ssh://forgejo-git/bitcashier/fleetkit.git`), so its `npm ci` can fetch fleetkit.
-#
-# WHY AN ALIAS AND NOT A REWRITTEN URL. package.json and its lock name `forgejo-git` (fleetkit lived on the
-# self-hosted Forgejo until 2026-10-31); the alias points that name at github.com, so the lock stays as it is.
+# Gives a CI job ssh access to github.com with the fleetkit deploy key, so the `npm ci` of
+# infra/version-dashboard can fetch the dependency its package.json names
+# (`git+ssh://git@github.com/bitcashier/fleetkit.git`).
 #
 # WHY A DEPLOY KEY. fleetkit is private and in the bitcashier org: this repository's job token
 # cannot read it. FLEETKIT_DEPLOY_KEY is the private half of a READ-ONLY deploy key on
 # bitcashier/fleetkit (Settings -> Deploy keys, "movies-ci"), so the secret reads that one
 # repository and nothing else. Rotate: new key pair, replace the deploy key and the secret.
 #
-# The alias is github.com:22 as `git`, pinned to GitHub's published ed25519 host key (api.github.com/meta).
+# The host block is github.com:22 as `git`, pinned to GitHub's published ed25519 host key (api.github.com/meta).
 #
 # Usage: FLEETKIT_DEPLOY_KEY=<private key> fleetkit-access.sh
 # Env: HOME (where ~/.ssh is written).
@@ -36,7 +34,7 @@ printf '%s %s\n' "$host" "$host_key" > "$known"
 
 cat >> "$ssh_dir/config" <<EOF
 
-Host forgejo-git
+Host github.com
     HostName $host
     Port $port
     User $user
@@ -49,4 +47,4 @@ Host forgejo-git
     HostKeyAlgorithms ssh-ed25519
 EOF
 chmod 600 "$ssh_dir/config"
-echo "forgejo-git -> $host:$port with the fleetkit deploy key"
+echo "$host:$port with the fleetkit deploy key"

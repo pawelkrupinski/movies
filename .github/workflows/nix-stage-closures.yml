@@ -278,7 +278,7 @@ jobs:
           node-version-file: infra/version-dashboard/.nvmrc
           cache: 'npm'
           cache-dependency-path: infra/version-dashboard/package-lock.json
-      # package.json fetches fleetkit as git+ssh://forgejo-git/...: give the job that alias, with a
+      # package.json fetches fleetkit as git+ssh://git@github.com/...: give the job's ssh a
       # read-only deploy key on the private bitcashier/fleetkit (the job token cannot read it).
       - name: Reach fleetkit
         env:
