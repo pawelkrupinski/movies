@@ -830,6 +830,10 @@ tasks.register("debugOnEmulator") {
 // (derived from mobile-version.txt) is below Play's (`-d` can't force it —
 // that only works for debuggable builds). Pass a versionCode above the installed one:
 // `KINOWO_VERSION_CODE=<play+1> ../scripts/android-signed ./gradlew runOnDevice`.
+// That install still REPLACES the Play build and CLEARS ITS DATA: Play re-signs what
+// it delivers with Play App Signing's key, so the local upload-key build counts as
+// signed with a different key (the uninstall below). Play then cannot update the
+// phone until the local build is uninstalled and the app reinstalled from Play.
 //
 // We `adb install` the assembled APK ourselves rather than depend on AGP's
 // `installRelease`, so we can (a) install only to the chosen device and (b)
