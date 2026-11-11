@@ -4,15 +4,18 @@
 # stays quiet for ES's backlog that drained. The cost regressions fire for DE's periodic agreement phase going from 30 s
 # and 1.5 GB a projection to 85 s and 6 GB, and stay quiet for the same move in the hour after a worker start.
 # IdentityStagingEventsDropped fires for PL dropping three events and stays quiet for UK, seeded at 0.
-# IdentityInputGateStuck fires for DE's oldest held listing passing an hour and for UK holding 1,500, both across a
-# worker restart, and stays quiet for PL, whose held listings are taken in within minutes, a restart's NaN seed included.
+# IdentityInputGateStuck fires for DE's oldest held listing past the 10-minute bound and for UK holding 1,500, both across
+# a worker restart, and stays quiet for PL, whose held listings are taken in within minutes, a restart's NaN seed
+# included, and for ES, whose oldest is taken in at the bound itself. IdentityInputGateWaitsLong fires for DE taking five
+# listings in at the bound within the hour, across a restart's counter reset, and stays quiet for UK's two.
 rule_files:
   - ../../nix/files/monitoring/rules/identity-agreement.rules
 
 evaluation_interval: 1m
 
 tests:
-  # DE's oldest held listing ages a minute a minute from 50 min; UK holds 1,500 for 40 min; each worker restarts once
+  # DE's oldest held listing ages a minute a minute from 50 min (past the bound from the start: fires 10 min in); UK
+  # holds 1,500 for 40 min; each worker restarts once
   # (the `stale` gap) and its wait goes on. PL holds a few, briefly.
   - interval: 1m
     input_series:
@@ -33,32 +36,66 @@ tests:
           - exp_labels: { domain: identity, severity: warning, country: uk }
             exp_annotations:
               summary: "uk: the identity model's input gate holds listings too long or too many (1500)"
-              description: "Listings whose newest version waits on its own questions are held over an hour, or over a thousand are held. Their questions are AskQuestion tasks claimed at 0 and venue-page reads; the worker diagnostics dashboard's \"Identity input gate\" panel draws the held count, the oldest wait and the promotions. The one switch: IdentityModelService.NewWhilePending."
+              description: "Listings whose newest version waits on its own questions are held past the gate's 10-minute bound (ModelInputGate.MaxHold), or over a thousand are held. Their questions are AskQuestion tasks claimed at 0, venue-page reads and poster hashes; the worker diagnostics dashboard's \"Identity input gate\" panel draws the held count, the oldest wait and the promotions. The one switch: IdentityModelService.NewWhilePending."
+          - exp_labels: { domain: identity, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: the identity model's input gate holds listings too long or too many (4200)"
+              description: "Listings whose newest version waits on its own questions are held past the gate's 10-minute bound (ModelInputGate.MaxHold), or over a thousand are held. Their questions are AskQuestion tasks claimed at 0, venue-page reads and poster hashes; the worker diagnostics dashboard's \"Identity input gate\" panel draws the held count, the oldest wait and the promotions. The one switch: IdentityModelService.NewWhilePending."
+      - eval_time: 9m
+        alertname: IdentityInputGateStuck
+        exp_alerts: []
       - eval_time: 30m
         alertname: IdentityInputGateStuck
         exp_alerts:
           - exp_labels: { domain: identity, severity: warning, country: uk }
             exp_annotations:
               summary: "uk: the identity model's input gate holds listings too long or too many (1500)"
-              description: "Listings whose newest version waits on its own questions are held over an hour, or over a thousand are held. Their questions are AskQuestion tasks claimed at 0 and venue-page reads; the worker diagnostics dashboard's \"Identity input gate\" panel draws the held count, the oldest wait and the promotions. The one switch: IdentityModelService.NewWhilePending."
+              description: "Listings whose newest version waits on its own questions are held past the gate's 10-minute bound (ModelInputGate.MaxHold), or over a thousand are held. Their questions are AskQuestion tasks claimed at 0, venue-page reads and poster hashes; the worker diagnostics dashboard's \"Identity input gate\" panel draws the held count, the oldest wait and the promotions. The one switch: IdentityModelService.NewWhilePending."
           - exp_labels: { domain: identity, severity: warning, country: de }
             exp_annotations:
               summary: "de: the identity model's input gate holds listings too long or too many (4800)"
-              description: "Listings whose newest version waits on its own questions are held over an hour, or over a thousand are held. Their questions are AskQuestion tasks claimed at 0 and venue-page reads; the worker diagnostics dashboard's \"Identity input gate\" panel draws the held count, the oldest wait and the promotions. The one switch: IdentityModelService.NewWhilePending."
+              description: "Listings whose newest version waits on its own questions are held past the gate's 10-minute bound (ModelInputGate.MaxHold), or over a thousand are held. Their questions are AskQuestion tasks claimed at 0, venue-page reads and poster hashes; the worker diagnostics dashboard's \"Identity input gate\" panel draws the held count, the oldest wait and the promotions. The one switch: IdentityModelService.NewWhilePending."
   # PL holds a few for seconds to minutes; its worker restarts at minute 15 and seeds both gauges NaN until the gate
-  # measures them; a scrape's burst of 800 is taken in within ten minutes.
+  # measures them; a scrape's burst of 800 is taken in within ten minutes. ES's oldest is always one taken in at the
+  # bound (599 s): the bound working, not stuck.
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_identity_model_held_listings{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
         values: '4x15 stale _x2 NaN 800x10 4x10'
       - series: 'kinowo_worker_identity_model_held_oldest_seconds{job="kinowo-worker",instance="kinowo-worker-pl",country="pl"}'
         values: '90x15 stale _x2 NaN 300x10 90x10'
+      - series: 'kinowo_worker_identity_model_held_oldest_seconds{job="kinowo-worker",instance="kinowo-worker-es",country="es"}'
+        values: '599x40'
     alert_rule_test:
       - eval_time: 25m
         alertname: IdentityInputGateStuck
         exp_alerts: []
       - eval_time: 40m
         alertname: IdentityInputGateStuck
+        exp_alerts: []
+  # DE takes five listings in at the gate's bound in five minutes, its worker restarting after them (the counter seeded
+  # at 0 again); UK takes two in an hour: quiet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_identity_model_promoted_total{job="kinowo-worker",instance="kinowo-worker-de",country="de",at="bound"}'
+        values: '0x10 1 2 3 4 5x10 stale _x2 0x50'
+      - series: 'kinowo_worker_identity_model_promoted_total{job="kinowo-worker",instance="kinowo-worker-uk",country="uk",at="bound"}'
+        values: '0x10 1x20 2x50'
+      - series: 'kinowo_worker_identity_model_promoted_total{job="kinowo-worker",instance="kinowo-worker-de",country="de",at="drain"}'
+        values: '0+10x80'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: IdentityInputGateWaitsLong
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: IdentityInputGateWaitsLong
+        exp_alerts:
+          - exp_labels: { domain: identity, severity: warning, country: de }
+            exp_annotations:
+              summary: "de: 5 listings waited the input gate's full 10 minutes in the last hour"
+              description: "The identity model's input gate took listings in at its 10-minute bound, their questions unanswered. The worker logs \"held listing(s) taken in past the 10 min bound\" (VictoriaLogs `country:<cc> \"past the\"`); the questions are in identity_family_answers and the AskQuestion tasks. Look for the family, host or poster that stopped answering."
+      - eval_time: 79m
+        alertname: IdentityInputGateWaitsLong
         exp_alerts: []
   # DE never drains its backlog, the worker restarting at minute 120; ES drains its in under two hours.
   - interval: 1m

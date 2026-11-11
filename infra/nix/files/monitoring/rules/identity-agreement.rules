@@ -9,7 +9,8 @@
 #   - `kinowo_worker_identity_staging_dropped_total` -- staging events the publisher let go unwritten.
 #   - `kinowo_worker_identity_model_held_listings` / `..._held_oldest_seconds` -- the identity model's input gate
 #     (docs/design/identity-structural-fixes.md, fix 1): listings whose newest version waits on its own questions,
-#     and how long the oldest has waited. No replay runs the gate, so only these see it stuck.
+#     and how long the oldest has waited; `..._promoted_total{at="bound"}` -- those taken in at its 10-minute bound,
+#     unanswered. No replay runs the gate, so only these see it stuck.
 #   - `kinowo_worker_identity_model_kept_listings` / `..._present_listings` -- the departed listings the model keeps as
 #     inputs beside the billed ones (docs/design/identity-listing-retention.md): the retention window's cost.
 #   - `kinowo_worker_identity_projection_seconds` -- the last identity projection's wall clock.
@@ -42,27 +43,47 @@ groups:
             per-projection progress is in VictoriaLogs `country:<cc> "agreement"`; the worker diagnostics
             dashboard draws the clusters by state.
 
-      # THE MODEL'S INPUT GATE IS STUCK. A held listing waits on its own family questions and venue page, asked ahead of
-      # the agreement's queue: seconds to minutes. One held over an hour, or more than 1,000 held at once (a day's
-      # arrivals in DE), is an ask that never concludes or a queue not served -- listings shown on their old version,
-      # or on their own card Pending, for as long as it lasts. `max_over_time(...[10m])` bridges a restart's gap and skips
-      # the NaN a restart seeds these gauges with until the gate first measures them.
+      # THE MODEL'S INPUT GATE IS STUCK. A held listing waits on its own family questions, venue page and posters, asked
+      # ahead of the agreement's queue: seconds to minutes (11-07..11-11: the oldest under 300 s, the hour's p99 under
+      # 5 min). ModelInputGate.MaxHold takes any listing in at 10 min, so one held past 15 min is the bound itself not
+      # working (11-06, the gate's first day: 3.6 h, before the bound held) -- and more than 1,000 held at once (a day's
+      # arrivals in DE) is a queue not served. Either way listings are shown on their old version, or a new one not at
+      # all, for as long as it lasts. `max_over_time(...[10m])` bridges a restart's gap and skips the NaN a restart seeds
+      # these gauges with until the gate first measures them.
       - alert: IdentityInputGateStuck
         expr: |
-          max by (country) (max_over_time(kinowo_worker_identity_model_held_oldest_seconds[10m])) > 3600
+          max by (country) (max_over_time(kinowo_worker_identity_model_held_oldest_seconds[10m])) > 900
           or
           max by (country) (max_over_time(kinowo_worker_identity_model_held_listings[10m])) > 1000
-        for: 15m
+        for: 10m
         labels:
           severity: warning
           domain: identity
         annotations:
           summary: "{{ $labels.country }}: the identity model's input gate holds listings too long or too many ({{ $value }})"
           description: >-
-            Listings whose newest version waits on its own questions are held over an hour, or over a thousand are
-            held. Their questions are AskQuestion tasks claimed at 0 and venue-page reads; the worker diagnostics
-            dashboard's "Identity input gate" panel draws the held count, the oldest wait and the promotions. The
-            one switch: IdentityModelService.NewWhilePending.
+            Listings whose newest version waits on its own questions are held past the gate's 10-minute bound
+            (ModelInputGate.MaxHold), or over a thousand are held. Their questions are AskQuestion tasks claimed at 0,
+            venue-page reads and poster hashes; the worker diagnostics dashboard's "Identity input gate" panel draws
+            the held count, the oldest wait and the promotions. The one switch: IdentityModelService.NewWhilePending.
+
+      # THE GATE'S WAITS RUN TO ITS BOUND. A listing taken in at ModelInputGate.MaxHold (`promoted_total{at="bound"}`)
+      # waited 10 minutes on a question none of its attempts concluded: a host answering nothing, a poster fetch hanging,
+      # a question kind the queue does not claim ahead. None since 11-06 (the gate's first day); three in an hour is a
+      # pattern, not one slow host -- each such listing is taken in on what it has and its take can move when the
+      # answer comes (the flips the gate is there to stop).
+      - alert: IdentityInputGateWaitsLong
+        expr: sum by (country) (increase(kinowo_worker_identity_model_promoted_total{at="bound"}[1h])) >= 3
+        labels:
+          severity: warning
+          domain: identity
+        annotations:
+          summary: "{{ $labels.country }}: {{ $value | printf \"%.0f\" }} listings waited the input gate's full 10 minutes in the last hour"
+          description: >-
+            The identity model's input gate took listings in at its 10-minute bound, their questions unanswered. The
+            worker logs "held listing(s) taken in past the 10 min bound" (VictoriaLogs `country:<cc> "past the"`);
+            the questions are in identity_family_answers and the AskQuestion tasks. Look for the family, host or
+            poster that stopped answering.
 
       # THE KEPT LISTINGS OUTNUMBER THE BILLED ONES. A departed listing stays an input while a billed one relates to it by
       # title (ListingRetention), up to the retention window: measured 2026-11-07, DE kept 830 more listings per day of
