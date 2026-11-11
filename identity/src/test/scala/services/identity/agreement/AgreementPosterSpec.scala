@@ -223,4 +223,22 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     films = films + (1002 -> Seq(near(2)))                                // hashed at last, as near: no poster speaks for one
     decided(2).film shouldBe None
   }
+  // every take of an apply reads its posters through the apply's memo, as a correction does: a poster's document read and
+  // decoded once an apply, however many clusters compare it (the unmatched path read the raw store, 1-3 times a take)
+  "an apply" should "read each poster of the store once, however many clusters compare it" in {
+    val (muza, multikino) = (FilmTable.listing(KinoMuza, "Lalka").copy(poster = Some(venuePoster)), lalka())
+    val reads = scala.collection.mutable.ListBuffer.empty[String]
+    val held  = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L))))
+    val counting = new PosterAnswers {
+      def venue(url: String) = { reads += s"venue $url"; held.venue(url) }
+      def film(tmdbId: Int)  = { reads += s"film $tmdbId"; held.film(tmdbId) }
+      override def unread(question: AgreementStage.PosterQuestion) = { reads += s"unread $question"; held.unread(question) }
+      override def fresh(question: AgreementStage.PosterQuestion)  = { reads += s"fresh $question"; held.fresh(question) }
+    }
+    val two = Resolution(Seq(muza, multikino).map(l => ResolverDecision(Seq(l.key), None, 0.4, ResolverDecision.Basis.BelowThreshold, Nil)()),
+      1, Map(muza.key -> 0, multikino.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val decided = stage(counting).apply(two, Map(muza.key -> muza, multikino.key -> multikino).get, version = 1).decisions
+    decided.map(_.film) shouldBe Seq(Some(1001), Some(1001))
+    reads.groupBy(identity).collect { case (read, times) if times.size > 1 => read -> times.size } shouldBe empty
+  }
 }
