@@ -143,4 +143,18 @@ class Bilety24OrganizerClientSpec
     urls should contain("https://www.bilety24.pl/kino/477-100-dni-misja-zeus-162003?id=987082")
     urls should contain("https://www.bilety24.pl/kup-bilet-na-477-ksiega-pustyni-161744?id=990819")
   }
+
+  // The organizer page's banner strip carries each film's poster under its "Film: <Title>" anchor.
+  private lazy val kosmosFilms = kosmos.fetch()
+
+  "Bilety24OrganizerClient" should "take a film's poster from the page's banner under the same title" in {
+    kosmosFilms.find(_.movie.title.toLowerCase(java.util.Locale.ROOT).contains("żywot briana")).value.posterUrl.value shouldBe
+      "https://image.bilety24.pl/nf_repertoire_cinema_medium/dealer-default/1501/zywot-briana-plakat.png"
+    kosmosFilms.count(_.posterUrl.isDefined) should be > kosmosFilms.size / 2
+  }
+
+  it should "not take a series graphic the banners give several films as any one's poster" in {
+    kosmosFilms.flatMap(_.posterUrl) should not contain
+      "https://image.bilety24.pl/nf_repertoire_cinema_medium/dealer-default/1501/facebook-instagram-plakat-publikacja.png"
+  }
 }

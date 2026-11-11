@@ -28,6 +28,10 @@ import scala.jdk.CollectionConverters._
  * buttons), keep each slot's `/kino/<slug>` event-page href both as the booking
  * link and as the film's detail `filmUrl`, and group by title.
  *
+ * The page's banner strip (`div.title > a.blur-bg[title="Film: <Title>"] > img.b24-blur-img`)
+ * shows each film's poster under the same title its slots carry, so a slot takes its poster
+ * from there ([[bannerPosters]]).
+ *
  * The listing carries no film identity beyond the title, so we fetch each film's
  * event page ([[fetchFilmDetail]]) via [[DetailEnricher]]. bilety24 has no
  * structured film block: each venue types what it likes into the page's one
@@ -107,11 +111,28 @@ object Bilety24OrganizerClient {
   private def stripProgrammeTag(title: String): String =
     ProgrammeTagSuffix.replaceFirstIn(title, "").trim
 
+  // title="Film: <Title>" on a banner — no date, unlike a slot's.
+  private val BannerTitle = """(?s)^Film:\s*(.+?)\s*$""".r
+
+  /** Each banner's raw title → its image. An image the banners give SEVERAL titles is a series graphic
+    * (Kosmos's one "Wajda" card on every film of the cycle), no film's own poster, so it is left out. */
+  private def bannerPosters(document: Document): Map[String, String] = {
+    val banners = document.select("div.title > a.blur-bg[title]").asScala.toSeq.flatMap { a =>
+      for {
+        title  <- BannerTitle.findFirstMatchIn(a.attr("title")).map(_.group(1))
+        poster <- Option(a.selectFirst("img.b24-blur-img")).flatMap(ScraperParse.imageUrl(_))
+      } yield title -> poster
+    }.distinct
+    val shared = banners.groupBy(_._2).filter(_._2.size > 1).keySet
+    banners.filterNot { case (_, poster) => shared(poster) }.toMap
+  }
+
   // The screening's own id, shared by both links the page gives it — see `parse`.
   private val EventId = """[?&]id=(\d+)""".r
 
   def parse(html: String, cinema: Cinema, titles: TitleNormalizer): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
+    val posters  = bannerPosters(document)
 
     val slots = document.select("a[title]").asScala.toSeq.flatMap { a =>
       SlotPat.findFirstMatchIn(a.attr("title")).flatMap { m =>
@@ -129,7 +150,7 @@ object Bilety24OrganizerClient {
           // The `Film:` anchor's href is the `/kino/<slug>` event page — kept
           // both as the slot's booking link and as the film's detail `filmUrl`.
           val eventUrl = Option(a.attr("abs:href")).filter(_.nonEmpty)
-          ScrapedSlot(clean, dt, bookingUrl = eventUrl, filmUrl = eventUrl, format = format)
+          ScrapedSlot(clean, dt, bookingUrl = eventUrl, filmUrl = eventUrl, posterUrl = posters.get(m.group(1)), format = format)
         }
       }
     }
