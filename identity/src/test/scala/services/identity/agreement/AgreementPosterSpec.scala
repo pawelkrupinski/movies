@@ -161,12 +161,25 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   "a listing's own questions" should "name its venue poster while it is not hashed, and none once it is or it speaks for no film" in {
     def postersAsked(posters: PosterAnswers, listing: Listing) = stage(posters).questionsOf(listing).collect { case Question.Poster(q) => q }
     postersAsked(new HeldPosters(Map.empty, Map.empty), lalka()) shouldBe Set(AgreementStage.PosterQuestion.Venue(venuePoster))
-    postersAsked(new HeldPosters(Map(venuePoster -> Some(shown)), Map.empty), lalka()) shouldBe empty
     postersAsked(new HeldPosters(Map(venuePoster -> None), Map.empty), lalka()) shouldBe empty   // read, nothing there
     postersAsked(new HeldPosters(Map.empty, Map.empty), lalka(poster = None)) shouldBe empty
     // a stage relay's poster speaks for no film (PosterEvidence.shows): never read, so never waited on
     val relay = FilmTable.listing(KinoMuza, "The Royal Ballet: The Nutcracker").copy(poster = Some(venuePoster))
     postersAsked(new HeldPosters(Map.empty, Map.empty), relay) shouldBe empty
+  }
+
+  // ...and, once its venue poster is hashed, the posters of the films its OWN searches find: the vote and veto compare
+  // the venue's poster with each, and those searches are a function of the listing too. Without them the gate let a
+  // listing in with a candidate's poster unhashed, the take waited on it and the model's "no film" was served until its
+  // filing restored the film seconds later (prod 11-08..11-10: US "Parkway Drive: Home" x83, the agreed film's own
+  // poster; UK "Touché" x5 on build 903b634, a rival's). Asked as the gate's other questions are: the filing is the event
+  // the listing is taken in on; a failed hash counts as attempted and is retried on its backoff.
+  it should "name the posters of the films its own searches find once its venue poster is hashed, and none once they are" in {
+    def postersAsked(posters: PosterAnswers) = stage(posters).questionsOf(lalka()).collect { case Question.Poster(q) => q }
+    val hashed = Map(venuePoster -> Some(shown))
+    postersAsked(new HeldPosters(hashed, Map.empty)) shouldBe Set(AgreementStage.PosterQuestion.Film(1001), AgreementStage.PosterQuestion.Film(1002))
+    postersAsked(new HeldPosters(hashed, Map(1001 -> Seq(near(3))))) shouldBe Set(AgreementStage.PosterQuestion.Film(1002))
+    postersAsked(new HeldPosters(hashed, Map(1001 -> Seq(near(3)), 1002 -> Nil))) shouldBe empty
   }
 
   "a film the families agree on" should "not be taken when the venue's poster matches another candidate and not it" in {

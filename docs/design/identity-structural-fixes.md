@@ -203,8 +203,18 @@ film" stood until the poster's filing restored the vote 2-8 s later: after the g
 were the largest class left in prod (11-08..11-10: UK "Hadoota" x14, ES "DUNE" x9 drops, each a new listing's own
 poster asked inline).
 
-**Not in the gate** (cluster-level, the stage's waits as before): the posters of a cluster's candidates, the find of an
-agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) STAY (1c
+**So are the posters of the films the listing's own searches find** (2026-11-11, the owner: "make it event based -- when
+poster ready then calculate, fetch / hash with retry"): once its venue poster is hashed, `questionsOf` reads the posters as
+the vote and veto do, `posterDistances` over the listing alone with its own searched films as the candidates, and each
+unhashed one is a question. The listing is taken in on the filing (the event), a failed hash is attempted and retried on
+its backoff, `MaxHold` bounds the rest. Without them the take waited on a candidate's poster while the model's "no film"
+was served (11-08..11-10: US "Parkway Drive: Home" x83 on the agreed film's own poster, the drop logged `veto:denied`,
+the model's probability cut on facts not yet filed; UK "Touché" x5 on build 903b634, a rival's). The alternative weighed and
+dropped: serving the families' film Pending while the poster is out -- a candidate's poster can pick ANOTHER film (a
+veto falls through to the poster vote), so it would trade the gap for a wrong film.
+
+**Not in the gate** (cluster-level, the stage's waits as before): the posters of candidates only other members' searches
+find, the find of an agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) STAY (1c
 dropped, below): they ask what a reshaped cluster leads to, which no listing's own questions name.
 
 **Measured by:**
