@@ -33,6 +33,17 @@ class PosterEgressSpec extends AnyFlatSpec with Matchers with ScratchDirectories
     egress.asked should have size 1
   }
 
+  it should "fetch a poster on a subdomain of an egress host through that host's egress" in {
+    val egress   = new Egress(_ => poster)
+    val download = PosterDownload.routed(refused, Map("biletyna.pl" -> new EgressPosterDownload(egress)))
+    val file     = download.fetch("https://iframe22.biletyna.pl/file/get/id/349716/w/260")
+    file.map(Files.readAllBytes(_).toSeq) shouldBe Right(poster.toSeq)
+    file.foreach(Files.deleteIfExists)
+    egress.asked.toSeq shouldBe Seq("https://iframe22.biletyna.pl/file/get/id/349716/w/260")
+    download.fetch("https://notbiletyna.pl/x.jpg") shouldBe Left(PosterFailure.Http4xx)
+    download.fetch("https://pl/x.jpg") shouldBe Left(PosterFailure.Http4xx)
+  }
+
   it should "report the egress's failures with the reasons a direct download gives" in {
     def via(answer: String => Array[Byte]) = new EgressPosterDownload(new Egress(answer), maxBytes = 4).fetch("https://www.multikino.pl/x.jpg")
     via(_ => throw new HttpStatusException(403, "GET", "u", None)) shouldBe Left(PosterFailure.Http4xx)

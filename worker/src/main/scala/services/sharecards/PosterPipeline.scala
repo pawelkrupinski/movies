@@ -123,10 +123,15 @@ trait PosterDownload {
 }
 
 object PosterDownload {
-  /** `byHost`'s download for a URL on one of its hosts, `direct` for any other. */
+  /** `byHost`'s download for a URL on one of its hosts or a subdomain of one, `direct` for any other. A site's posters
+   *  sit on hosts its scrapes never read: biletyna.pl's venue iframes (`iframe22.biletyna.pl`, `iframe639.biletyna.pl`)
+   *  serve their posters off their own subdomain, which went direct and was refused like the site's pages. The most
+   *  specific host wins. */
   def routed(direct: PosterDownload, byHost: Map[String, PosterDownload]): PosterDownload = new PosterDownload {
     def fetch(url: String): Either[String, Path] =
-      Try(URI.create(url).getHost).toOption.flatMap(Option(_)).map(_.toLowerCase(Locale.ROOT)).flatMap(byHost.get).getOrElse(direct).fetch(url)
+      Try(URI.create(url).getHost).toOption.flatMap(Option(_)).map(_.toLowerCase(Locale.ROOT))
+        .flatMap(host => Iterator.iterate(host)(_.dropWhile(_ != '.').drop(1)).takeWhile(_.contains('.')).flatMap(byHost.get).nextOption())
+        .getOrElse(direct).fetch(url)
   }
 }
 
