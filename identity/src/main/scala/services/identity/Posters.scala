@@ -154,8 +154,9 @@ object PosterEvidence {
   /** A film whose posters come no nearer than this to a venue poster another candidate matches is vetoed. */
   val VetoBits = 10
   /** How many of a film's TMDB posters are hashed: its own language's, then English, then language-neutral, by votes.
-   *  Raising it asks again every film filed holding as many as the old cap (`PosterAnswerStore`'s cap mark). */
-  val FilmPosters = 8
+   *  16, not 8 (the poster research of 2026-11-11, every venue-film pair of the judged takes at <= 8 bits): recall 52.3% ->
+   *  55.8%, no new false positive; hashing every poster TMDB keeps added one. */
+  val FilmPosters = 16
 
   /** Does `listing`'s poster speak for its film? Not when its source's poster is no evidence ([[SourceReliability]]: a
    *  feed's is the poster of the entry it linked, which votes for that entry whether or not it is the venue's film — DE

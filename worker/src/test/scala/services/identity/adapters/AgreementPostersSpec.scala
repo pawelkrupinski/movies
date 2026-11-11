@@ -50,7 +50,7 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     val venue   = h.venue(patria).toSeq
     val broken  = h.film(1483477).map(_.hash)
     val wajda   = h.film(95269).map(_.hash)
-    (broken.size, wajda.size) shouldBe ((3, PosterEvidence.FilmPosters))
+    (broken.size, wajda.size) shouldBe ((3, 10))   // every poster TMDB keeps of each, under the cap
     PosterEvidence.nearest(venue, broken).get should be <= PosterEvidence.VetoMatchBits
     PosterEvidence.nearest(venue, wajda).get should be > PosterEvidence.VetoBits
     PosterEvidence.veto(Some(95269), Seq(Map(95269 -> PosterEvidence.nearest(venue, wajda), 1483477 -> PosterEvidence.nearest(venue, broken))))
@@ -112,6 +112,23 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     store.wanted(PosterQuestion.Film(1)) shouldBe false
     clock.advanceSeconds(QuestionPolicies.PosterAge.toSeconds + 1)
     store.wanted(PosterQuestion.Film(1)) shouldBe true
+  }
+
+  // the cap rose from 8 to 16: a film filed holding 8 may have more on TMDB, so it is asked again, the posters filed
+  // reused by their path -- only the ones TMDB adds downloaded -- and filed under today's cap
+  "a film filed under the old cap" should "be wanted again, hashing only the paths not filed" in {
+    val families = new FamilyAnswerStore(new InMemoryTmdbDocuments, clock)
+    val store    = new PosterAnswerStore(families, clock)
+    val paths    = PosterHashing.chosen(tmdb.posters(95269, also = Seq("en")), "pl")
+    families.put(PosterAnswers.idOf(PosterQuestion.Film(95269)), new org.bson.BsonDocument("hashes",
+      org.mongodb.scala.bson.BsonArray.fromIterable(paths.take(8).indices.map(i => org.bson.BsonInt64(i.toLong))))
+      .append(PosterAnswers.Paths, org.mongodb.scala.bson.BsonArray.fromIterable(paths.take(8).map(org.bson.BsonString(_)))))
+    store.wanted(PosterQuestion.Film(95269)) shouldBe true
+    val download = new Recorded()
+    asker(store, hashing(download)).handle(filmTask(95269)) shouldBe HandlerOutcome.Done
+    download.fetched.get shouldBe 2
+    store.film(95269).answered.map(_.size) shouldBe Some(10)
+    store.wanted(PosterQuestion.Film(95269)) shouldBe false
   }
 
   // a film asked again (its hashes aged, a young film's week passed) downloads only the posters TMDB added: a TMDB path

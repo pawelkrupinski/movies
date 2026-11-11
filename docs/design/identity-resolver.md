@@ -2824,6 +2824,9 @@ posters go through the residential proxy its scrapes use, and Kino Kryterium's t
 them. Kino Kryterium's 16 posters were hashed through Zyte on 2026-10-06 17:00 UTC, and "Ktoś całkiem obcy" is corrected
 live to *I Was a Stranger* (1193128) by the families and its poster.
 
+**Sixteen posters a film (2026-11-11).** `PosterEvidence.FilmPosters` 8 -> 16: over the research sample's venue-film
+pairs at <= 8 bits recall 52.3% -> 55.8%, no new false positive there; ~8.7k film documents filed at 8 are asked again.
+
 **Posters hashed again, compactly and drained (2026-11-11).** A film's document now records the cap its posters were
 chosen under (`cap`; unmarked = 8): once `PosterEvidence.FilmPosters` rises, one holding as many as a lower cap is asked
 again (`PosterAnswerStore.wanted`). Hashing a film again reuses each filed hash by its TMDB path (`PosterHashing.film`),
