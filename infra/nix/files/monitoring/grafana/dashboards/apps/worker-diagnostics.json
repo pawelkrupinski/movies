@@ -4942,7 +4942,7 @@
     {
       "id": 86,
       "title": "Identity input gate — listings held on their own questions, the oldest wait, promotions per 5 min (drain / boot); p50 / p90 hold",
-      "description": "The identity model's input gate (docs/design/identity-structural-fixes.md, fix 1): a new or changed listing is taken in only once its own family questions and venue page are answered or concluded. `kinowo_worker_identity_model_held_listings` (bars) and `..._held_oldest_seconds` (right axis) should sit near 0 between scrapes; `..._promoted_total{at}` counts the listings taken in, `at=boot` those answered while the worker was down; `..._hold_seconds` how long each waited. IdentityInputGateStuck fires on an hour's wait or 1,000 held.",
+      "description": "The identity model's input gate (docs/design/identity-structural-fixes.md, fix 1): a new or changed listing is taken in only once its own family questions and venue page are answered or concluded. `kinowo_worker_identity_model_held_listings` (bars) and `..._held_oldest_seconds` (right axis) should sit near 0 between scrapes; `..._promoted_total{at}` counts the listings taken in, `at=boot` those answered while the worker was down; `..._hold_seconds` how long each waited. IdentityInputGateStuck fires on a wait past 15 min (the 10-minute bound not holding) or 1,000 held; the waits themselves are charted on the panel below.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -5080,6 +5080,144 @@
       ]
     },
     {
+      "id": 88,
+      "title": "Identity input gate — waits: hold p50 / p99 per hour, the oldest wait, listings taken in at the 10-minute bound; lines at the bound (10 min) and the alert (15 min)",
+      "description": "How long the identity model's input gate holds a new or changed listing on its own questions (family searches, venue page, its venue poster and, since 2026-11-11, the posters of the films its own searches find). Healthy: a hold p99 of seconds to a few minutes, the oldest wait back at 0 between scrapes, no bars. ModelInputGate.MaxHold takes any listing in at 10 min (the orange line): bars are listings taken in there with questions unanswered, and three in an hour fire IdentityInputGateWaitsLong. An oldest wait over the red line (15 min) is the bound itself not holding: IdentityInputGateStuck.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 488
+      },
+      "interval": "2m",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 600
+              },
+              {
+                "color": "red",
+                "value": 900
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* taken in at the bound"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "short"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 60
+              },
+              {
+                "id": "custom.thresholdsStyle",
+                "value": {
+                  "mode": "off"
+                }
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "max",
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (country, le) (increase(kinowo_worker_identity_model_hold_seconds_bucket{country=~\"$country\"}[1h])))",
+          "legendFormat": "{{country}} hold p50 (1h)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (country, le) (increase(kinowo_worker_identity_model_hold_seconds_bucket{country=~\"$country\"}[1h])))",
+          "legendFormat": "{{country}} hold p99 (1h)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (max_over_time(kinowo_worker_identity_model_held_oldest_seconds{country=~\"$country\"}[$__interval]))",
+          "legendFormat": "{{country}} oldest wait"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (increase(kinowo_worker_identity_model_promoted_total{country=~\"$country\",at=\"bound\"}[$__interval]))",
+          "legendFormat": "{{country}} taken in at the bound"
+        }
+      ]
+    },
+    {
       "id": 87,
       "title": "Identity retention — listings billed, kept (departed, still inputs) and departed in the store; projection seconds",
       "description": "ListingRetention keeps a departed listing as an identity input while a billed listing relates to it by title, within the retention window (docs/design/identity-listing-retention.md). `kinowo_worker_identity_model_kept_listings` against `..._present_listings` is the window's cost in population; `kinowo_worker_identity_projection_seconds` (right axis) what it costs in time. IdentityKeptListingsHigh fires when kept outnumbers billed for an hour, IdentityProjectionSlower when the 6h mean projection is 1.25x a week ago.",
@@ -5092,7 +5230,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 488
+        "y": 497
       },
       "fieldConfig": {
         "defaults": {

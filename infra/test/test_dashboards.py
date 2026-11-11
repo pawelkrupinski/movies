@@ -434,6 +434,39 @@ class InProcessRecencyGauges(unittest.TestCase):
                                  "%s is read raw, so every pod restart resets it: %s" % (gauge, expr))
 
 
+class InputGateWaitsCoverage(unittest.TestCase):
+    """The identity model's input gate holds a new or changed listing on its own questions -- since 2026-11-11 the
+    posters of the films its own searches find among them -- and two alerts watch how long: IdentityInputGateStuck (the
+    oldest wait past the bound) and IdentityInputGateWaitsLong (listings taken in at ModelInputGate.MaxHold, 10 min).
+    Worker diagnostics charts both against their lines, read from the rule itself, so a threshold changed in the rule
+    and not on the chart fails here instead of drawing a line nothing pages on."""
+
+    RULES = os.path.join(HERE, "..", "nix", "files", "monitoring", "rules", "identity-agreement.rules")
+    MAX_HOLD_SECONDS = 600
+
+    def setUp(self):
+        document = dict(dashboards())["apps/worker-diagnostics.json"]
+        self.panels = [p for p in query_panels(document)
+                       if any("kinowo_worker_identity_model_promoted_total" in (t.get("expr") or "") and 'at="bound"' in (t.get("expr") or "")
+                              for t in p.get("targets", []))]
+
+    def test_it_charts_the_gates_waits_against_the_bound_and_the_alerts_line(self):
+        self.assertEqual(1, len(self.panels), "no single worker-diagnostics panel draws the listings taken in at the gate's bound")
+        panel = self.panels[0]
+        exprs = [t.get("expr") or "" for t in panel["targets"]]
+        self.assertTrue(any("histogram_quantile(0.99" in e and "kinowo_worker_identity_model_hold_seconds_bucket" in e for e in exprs),
+                        "the gate's waits panel draws no hold p99")
+        self.assertTrue(any("kinowo_worker_identity_model_held_oldest_seconds" in e for e in exprs),
+                        "the gate's waits panel draws no oldest wait")
+        with open(self.RULES, encoding="utf-8") as handle:
+            stuck = re.search(r"held_oldest_seconds\[10m\]\)\)\s*>\s*(\d+)", handle.read())
+        self.assertTrue(stuck, "IdentityInputGateStuck no longer reads held_oldest_seconds as this test expects")
+        lines = {step.get("value") for step in panel["fieldConfig"]["defaults"]["thresholds"]["steps"]}
+        self.assertTrue({self.MAX_HOLD_SECONDS, int(stuck.group(1))} <= lines,
+                        "the gate's waits panel draws %s, not the bound (%ds) and IdentityInputGateStuck's line (%ss)"
+                        % (sorted(v for v in lines if v is not None), self.MAX_HOLD_SECONDS, stuck.group(1)))
+
+
 def bar_targets(panel):
     """The targets a timeseries panel draws as BARS: all of them when the panel's default is
     bars, else those whose legend a `byRegexp` bars override COULD match once Grafana fills in
