@@ -9,6 +9,7 @@ import org.scalatest.matchers.should.Matchers
 import services.identity.adapters.{InMemoryTmdbDocuments, TmdbKind}
 
 import java.nio.file.{Files, Path}
+import scala.jdk.CollectionConverters._
 
 /** Where a what-if's answers come from ([[WhatIfAnswers]]): a question the mirror's store lacks is asked of the real
  *  service once, through the worker's own client and parser, filed into the LOCAL store (never the mirror) keyed as
@@ -70,6 +71,26 @@ class WhatIfAnswersSpec extends AnyFlatSpec with Matchers with tools.ScratchDire
     layered.put(TmdbKind.Query, Seq("q3" -> new BsonDocument()))
     mirror.size(TmdbKind.Query) shouldBe 1
     local.size(TmdbKind.Query) shouldBe 3
+  }
+
+  "a live what-if" should "re-ask a film's posters its own code calls out of date, and read the mirror's where it calls them fresh" in {
+    import services.identity.agreement.AgreementStage.PosterQuestion
+    // filed by prod: film 1 under a cap of 4 (cut: today's cap is higher, TMDB may keep more), film 2 under today's cap
+    def filed(cap: Int, hashes: Int) = new BsonDocument("hashes", new org.bson.BsonArray((1 to hashes).map(h => new org.bson.BsonInt64(h.toLong)).asJava))
+      .append("cap", new org.bson.BsonInt32(cap)).append(adapters.TmdbStore.FetchedAt, new org.bson.BsonInt64(clock.millis()))
+    val mirror = new InMemoryTmdbDocuments
+    mirror.put(TmdbKind.Family, Seq("poster|film|1" -> filed(4, 4), "poster|film|2" -> filed(PosterEvidence.FilmPosters, PosterEvidence.FilmPosters)))
+    val source  = WhatIfAnswers.live(mirror, scratch(), tools.RoutingHttpFetch.dead("tmdb"), settings.TmdbApiKey("replay"), poland, clock)
+    val posters = new adapters.PosterAnswerStore(new adapters.FamilyAnswerStore(source.docs, clock), clock)
+    // film 1: the mirror's cut document is hidden, so the stage asks again, files into the local store and reads that
+    posters.film(1) shouldBe Answer.Unknown
+    posters.fresh(PosterQuestion.Film(1)) shouldBe false
+    posters.file(PosterQuestion.Film(1), (1 to 6).map(h => adapters.HashedPoster(s"/p$h.jpg", PosterHash(h.toLong))))
+    posters.film(1).answered.get should have size 6
+    // film 2: fresh to this code, so the mirror's is read even over another side's re-ask in the shared local store
+    posters.file(PosterQuestion.Film(2), (1 to 16).map(h => adapters.HashedPoster(s"/p$h.jpg", PosterHash(h.toLong))))
+    posters.film(2).answered.get should have size PosterEvidence.FilmPosters.toLong
+    mirror.get(TmdbKind.Family, Seq("poster|film|1"))("poster|film|1").getArray("hashes").size shouldBe 4
   }
 
   "the local store" should "read back what an earlier run filed, the later write of an id winning, and drop a torn last record" in {

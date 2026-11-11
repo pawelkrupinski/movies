@@ -52,7 +52,7 @@ object WhatIfAnswers {
   /** The mirror's store over the local what-if store under `dir` -- what earlier live runs asked -- nothing asked now:
    *  a live run's answers, replayed (`--answers cached`; the tool's fallback when TMDB's key cannot be had). */
   def cached(mirror: TmdbDocuments, dir: Path, country: Country, clock: java.time.Clock): Source =
-    refusing(new Layered(mirror, new DiskTmdbDocuments(dir)), country, clock)
+    refusing(new Layered(new OwnFreshPosters(mirror, clock), new DiskTmdbDocuments(dir)), country, clock)
 
   private def refusing(held: TmdbDocuments, country: Country, clock: java.time.Clock): Source = new Source {
     val docs: TmdbDocuments = held
@@ -66,7 +66,7 @@ object WhatIfAnswers {
   def live(mirror: TmdbDocuments, dir: Path, wire: tools.HttpFetch, tmdbKey: settings.TmdbApiKey, country: Country,
            clock: java.time.Clock): Source = new Source {
     private val local     = new DiskTmdbDocuments(dir)
-    val docs: TmdbDocuments = new Layered(mirror, local)
+    val docs: TmdbDocuments = new Layered(new OwnFreshPosters(mirror, clock), local)
     private val throttled = new Throttled(wire)
     private val bodies    = new tools.JsonBodies
     private val normalizer = new adapters.TmdbNormalizer(new TmdbStore(docs, clock), bodies,
@@ -114,6 +114,24 @@ object WhatIfAnswers {
     private def refused(url: String) = throw new IllegalStateException(s"offline: no request is made ($url)")
     def get(url: String): String                                     = refused(url)
     def post(url: String, body: String, contentType: String): String = refused(url)
+  }
+
+  /** `mirror`, less each film's posters (`poster|film|<tmdbId>`) THIS side's code calls out of date
+   *  ([[adapters.PosterAnswerStore.fresh]]: cut at a lower cap than its own, a young film's past its re-read, too old):
+   *  under [[Layered]] such a film reads the local store's document instead, and with none the stage asks again and files
+   *  it there. So a change that needs answers prod has not filed (a raised poster cap) is measured on them, while a side
+   *  whose code calls the mirror's document fresh (the base) reads the mirror's, never the other side's re-ask. Read only. */
+  final class OwnFreshPosters(mirror: TmdbDocuments, clock: java.time.Clock) extends TmdbDocuments {
+    private val FilmPrefix = "poster|film|"
+    private val own        = new adapters.PosterAnswerStore(new adapters.FamilyAnswerStore(mirror, clock), clock)
+    private def outOfDate(kind: TmdbKind, id: String): Boolean = kind == TmdbKind.Family && id.startsWith(FilmPrefix) &&
+      id.substring(FilmPrefix.length).toIntOption.exists(film => !own.fresh(agreement.AgreementStage.PosterQuestion.Film(film)))
+    def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
+      mirror.get(kind, ids).filterNot { case (id, _) => outOfDate(kind, id) }
+    override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
+      mirror.answers(kind, ids).filterNot { case (id, _) => outOfDate(kind, id) }
+    def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit =
+      throw new UnsupportedOperationException("the mirror is read, never written")
   }
 
   /** `over`'s documents first; a document it lacks read from `under`; every write to `under` alone — the mirror is

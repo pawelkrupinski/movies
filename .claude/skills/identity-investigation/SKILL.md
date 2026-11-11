@@ -145,6 +145,9 @@ take, or the corpus), `--recording RUN --head REF` (a CI recording through CI's 
   answers) leaves the run on the local store's answers alone, said so (`--answers cached`: what earlier live runs asked,
   nothing new). `--offline` keeps the old behaviour: nothing asked, a family waiting on an unheld answer counted as
   "awaiting an answer", read as the base's take. Mirror reads that time out are asked again (a loaded laptop's mongod).
+- **A change that needs answers prod hasn't filed** (e.g. a poster cap): what-if `--answers live` re-asks what the head's
+  own code says is out of date (`WhatIfAnswers.OwnFreshPosters`: a film's posters its `PosterAnswerStore.fresh` rejects
+  are read from, and filed into, the local store); a base whose code calls the mirror's fresh reads the mirror's.
 - **The final take.** Each side's model takes are settled by a fresh, unbudgeted agreement stage to its fixpoint
   (`WhatIfResolve.settled`, `scripts.StageAnswers.settle` — the CI gate's whole resolve, `IdentityDrift.whole`), its family
   questions, posters and catalogue pages answered from the same answer source: the base's every family, the head's
