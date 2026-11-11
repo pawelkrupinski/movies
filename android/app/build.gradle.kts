@@ -232,6 +232,14 @@ android {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 
+    // A call to a platform API newer than minSdk fails the release build: lint-vital
+    // (which every assembleRelease / bundleRelease runs) checks only fatal issues, and
+    // NewApi is not one by default. 2.0.16 shipped LocalDate.ofInstant (API 34) to a
+    // minSdk-26 app and crashed on every phone below Android 14 (Play rejected it).
+    lint {
+        fatal += "NewApi"
+    }
+
     // Only the prod `release` variant may ever reach Play. `tuneRelease` and
     // `releaseFast` share the `net.pawel.kinowo` applicationId, so leaving their
     // Play tasks enabled would let a stray `publishBundle` (all-variants) push a

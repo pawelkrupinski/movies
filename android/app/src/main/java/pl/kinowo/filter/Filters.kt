@@ -5,7 +5,6 @@ import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import pl.kinowo.model.Showtime
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -51,7 +50,7 @@ sealed interface DateFilter {
         ANYTIME;
 
         override fun matches(date: String, now: Instant, zone: ZoneId): Boolean {
-            val todayDate = LocalDate.ofInstant(now, zone)
+            val todayDate = now.atZone(zone).toLocalDate()
             return when (this) {
                 ANYTIME -> true
                 TODAY -> date == todayDate.format(ISO_DATE)
@@ -77,7 +76,7 @@ sealed interface DateFilter {
 
         // Dated options first, catch-all rightmost.
         val presets: List<DateFilter> get() = listOf(Kind.TODAY, Kind.TOMORROW, Kind.WEEK, Kind.ANYTIME)
-        fun iso(now: Instant, zone: ZoneId = WARSAW): String = LocalDate.ofInstant(now, zone).format(ISO_DATE)
+        fun iso(now: Instant, zone: ZoneId = WARSAW): String = now.atZone(zone).toLocalDate().format(ISO_DATE)
     }
 }
 
