@@ -22,8 +22,8 @@ _loader.exec_module(deploy)
 # Shaped like a real switch-to-configuration-ng dry-activate (nixpkgs 26.05) on ci-runner.
 DRY = """Not checking switch inhibitors (action = dry-activate)
 would stop the following units: old-exporter.service
-would NOT restart the following changed units: gitea-runner-ubuntu.service, nixos-auto-apply.service
-would restart the following units: forgejo-runner-drain.service, vswitch-watchdog.timer
+would NOT restart the following changed units: github-runner-ubuntu.service, nixos-auto-apply.service
+would restart the following units: prometheus-node-exporter.service, vswitch-watchdog.timer
 would start the following units: ci-docker-hygiene.timer
 would reload the following units: dbus-broker.service
 would restart the following user units: foo.service
@@ -101,13 +101,13 @@ class DryActivateParsing(unittest.TestCase):
 
     def test_every_kind_lands_in_its_bucket(self):
         self.assertEqual(self.p.stop, ["old-exporter.service"])
-        self.assertEqual(self.p.restart, ["forgejo-runner-drain.service", "vswitch-watchdog.timer"])
+        self.assertEqual(self.p.restart, ["prometheus-node-exporter.service", "vswitch-watchdog.timer"])
         self.assertEqual(self.p.start, ["ci-docker-hygiene.timer"])
         self.assertEqual(self.p.reload, ["dbus-broker.service"])
-        self.assertEqual(self.p.skipped, ["gitea-runner-ubuntu.service", "nixos-auto-apply.service"])
+        self.assertEqual(self.p.skipped, ["github-runner-ubuntu.service", "nixos-auto-apply.service"])
 
     def test_runner_units_changed_but_not_restarted_are_drains(self):
-        self.assertEqual(self.p.drains, ["gitea-runner-ubuntu.service"])
+        self.assertEqual(self.p.drains, ["github-runner-ubuntu.service"])
 
     def test_user_units_are_kept_apart(self):
         self.assertEqual(self.p.user, ["restart foo.service"])
@@ -222,7 +222,7 @@ class Rendering(unittest.TestCase):
         text = deploy.render_preview("ci-runner", "pawel@10.1.0.3", facts,
                                      deploy.parse_dry_activate(DRY), "/nix/store/ddd", "def",
                                      "checkout: at origin main", "bootstrap")
-        self.assertIn("runner drains           gitea-runner-ubuntu.service", text)
+        self.assertIn("runner drains           github-runner-ubuntu.service", text)
         self.assertIn("finishes its running jobs", text)
         self.assertIn("vswitch-watchdog.timer (active)", text)
         self.assertIn("CHANGES initrd -> a REBOOT is needed", text)

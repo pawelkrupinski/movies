@@ -28,12 +28,6 @@ switch needs no build; otherwise `--build` realises it on the host (never on the
 switch the staging pin (/var/lib/nixdeploy/staged-system) is pointed at it too, BEFORE the switch, so
 nixos-auto-apply cannot see an older pin and switch the host back.
 
-ci-runner takes the same staged path when CI staged this tree (a stamped closure, what auto-apply
-would switch to anyway). When it did not -- an unpushed or uncommitted fix being tried, the reason
-the hand path exists -- or with `--bootstrap`, it uses bin/forgejo-bootstrap's deploy step (rsync +
-nixos-rebuild switch, FORGEJO_BOOTSTRAP_DEPLOY_ONLY=1); the preview then builds the same rsynced
-tree on the host (`nix build`, no switch). That closure is UNSTAMPED (no .git in an rsync).
-
 THE PREVIEW is the dry-activate output, sorted: units started / stopped / restarted / reloaded,
 units changed but NOT restarted (CI runners among them DRAIN: they finish their jobs, then restart),
 the boot-chain components that differ from the BOOTED system (a reboot is owed), and the revision.
@@ -58,8 +52,6 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PIN = "/var/lib/nixdeploy/staged-system"
 PROFILE = "/nix/var/nix/profiles/system"
 BOOT_CHAIN = ("kernel", "initrd", "kernel-modules", "systemd")
-BOOTSTRAP = os.path.join(REPO, "bin", "forgejo-bootstrap")
-BOOTSTRAP_HOST = "ci-runner"
 END = "@@ END"
 
 
@@ -120,8 +112,7 @@ def check_checkout(allow_stale: bool) -> str:
 
 
 def flake_ref() -> str:
-    """The flake this checkout is. A SHALLOW repository (movies: the Forgejo copy is shallow before
-    257ad0a) needs `shallow=1`, or nix refuses with "'revCount' is not available"; `self.rev` -- and
+    """The flake this checkout is. A SHALLOW repository (a `--depth` clone) needs `shallow=1`, or nix refuses with "'revCount' is not available"; `self.rev` -- and
     so the closure -- is the same either way."""
     top = run(["git", "rev-parse", "--show-toplevel"]).stdout.strip()
     sub = os.path.relpath(REPO, top)
@@ -197,7 +188,7 @@ echo "running_rev=$(rev /run/current-system)"
 pin=$(readlink -f /var/lib/nixdeploy/staged-system 2>/dev/null || true)
 [ -n "$pin" ] && echo "pinned_rev=$(rev "$pin")"
 echo "failed=$(systemctl list-units --state=failed --no-legend --plain --no-pager 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
-echo "runners=$(systemctl list-units --state=active --no-legend --plain --no-pager 'github-runner-*' 'movies-runner@*' 'gitea-runner-*' 'forgejo-runner-*' 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
+echo "runners=$(systemctl list-units --state=active --no-legend --plain --no-pager 'github-runner-*' 'movies-runner@*' 2>/dev/null | awk '{print $1}' | tr '\n' ' ')"
 if [ -n "$cand" ] && [ -x "$cand/bin/switch-to-configuration" ]; then
   echo "candidate_present=1"
   echo "candidate_rev=$(rev "$cand")"
@@ -344,7 +335,7 @@ NOISE = (
     re.compile(r"^sops-install-secrets: Imported "),
 )
 # CI runner units: changed but not restarted, they drain (finish their jobs, then restart on the new unit).
-DRAINING = ("github-runner-*", "movies-runner@*", "gitea-runner-*", "forgejo-runner-*")
+DRAINING = ("github-runner-*", "movies-runner@*")
 # Restarted when a switch changes the sysinit units (a nixpkgs bump): every unit that Requires sysinit.target -- every
 # runner unit -- is stopped with it, X-RestartIfChanged=false or not (2026-11-09 22:58Z: Android #443's build, Tool
 # self-tests #181, Landing check build cache #248 lost their runners mid-job).
@@ -604,29 +595,8 @@ def switch_unit_name(now: float) -> str:
 
 
 # -------------------------------------------------------------------------------------------------
-# The two paths
+# Getting the closure onto the host
 # -------------------------------------------------------------------------------------------------
-
-def bootstrap_host() -> str:
-    return os.environ.get("FORGEJO_HOST", "pawel@10.1.0.3")
-
-
-def ci_runner_candidate(target: str) -> str:
-    """Build the tree forgejo-bootstrap would rsync, ON ci-runner, without switching. Same rsync
-    flags, so the same content and the same closure the bootstrap's `nixos-rebuild switch` makes."""
-    user = target.split("@", 1)[0] if "@" in target else os.environ.get("USER", "pawel")
-    where = f"/home/{user}/infra-deploy-preview/"
-    print(f"   building ci-runner's closure on the host ({where}) -- no switch")
-    run(["rsync", "-a", "--delete", "--exclude", ".git", REPO + "/", f"{target}:{where}"],
-        capture=False, timeout=1800)
-    out = run(["ssh", *SSH_OPTS, target,
-               f"cd {where} && nix --extra-experimental-features 'nix-command flakes' build --no-link --print-out-paths "
-               ".#nixosConfigurations.ci-runner.config.system.build.toplevel"], timeout=7200).stdout
-    paths = [line for line in out.split() if line.startswith("/nix/store/")]
-    if not paths:
-        raise Unmeasured(f"the build on ci-runner printed no store path: {out[-300:]!r}")
-    return paths[-1]
-
 
 def build_on_host(flake: str, host: str, target: str) -> None:
     """Realise the toplevel ON the host: copy the derivation there and build it with the host's own
@@ -642,56 +612,40 @@ def deploy(args) -> int:
     host = args.host
     checkout = check_checkout(args.allow_stale)
     print(checkout)
-    can_bootstrap = host == BOOTSTRAP_HOST and os.path.exists(BOOTSTRAP)
-    use_bootstrap = can_bootstrap and args.bootstrap
     flake = flake_ref()
-    candidate, expected_rev, facts = "", "", {}
 
-    if not use_bootstrap:
-        address = ""
-        for attr in ("deployAddress", "publicAddress"):
-            try:
-                address = nix_eval(flake, f"{host}.config.fleet.{attr}")
-            except Unmeasured:
-                continue
-            if address:
-                break
-        target = choose_target(host, address, ssh_g_hostname(host), os.environ.get("SSH_USER", ""))
-        via = "staged closure, nix-env --set + switch-to-configuration"
-        candidate = nix_eval(flake, f"{host}.config.system.build.toplevel.outPath")
-        expected_rev = nix_eval(flake, f"{host}.config.system.configurationRevision")
-        facts = parse_probe(remote(target, PROBE, [candidate], timeout=900))
-        if facts.get("candidate_present") != "1":
-            chosen = choose_candidate(candidate, False, facts.get("pinned", ""),
-                                      facts.get("pinned_rev", ""),
-                                      same_flake_tree(facts.get("pinned_rev", "")))
-            if chosen is None and args.build:
-                build_on_host(flake, host, target)
-                chosen = (candidate, "this checkout's closure, built on the host")
-            if chosen is None and can_bootstrap:
-                # ci-runner with nothing staged for this tree (an unpushed or uncommitted fix):
-                # its own hand path, which builds the rsynced tree on the host.
-                use_bootstrap = True
-            elif chosen is None:
-                print(render_preview(host, target, facts, None, candidate, expected_rev, checkout, via))
-                raise Refused(f"{candidate} is not on {host}, and CI's pin is not from an identical "
-                              "tree. Wait for CI staging (nix-stage-closures) to put it there, or "
-                              "pass --build to build it on the host.")
-            else:
-                candidate, why = chosen
-                if candidate == facts.get("pinned"):
-                    expected_rev = facts.get("pinned_rev", "")
-                via += f"; {why}"
-                facts = parse_probe(remote(target, PROBE, [candidate], timeout=900))
+    address = ""
+    for attr in ("deployAddress", "publicAddress"):
+        try:
+            address = nix_eval(flake, f"{host}.config.fleet.{attr}")
+        except Unmeasured:
+            continue
+        if address:
+            break
+    target = choose_target(host, address, ssh_g_hostname(host), os.environ.get("SSH_USER", ""))
+    via = "staged closure, nix-env --set + switch-to-configuration"
+    candidate = nix_eval(flake, f"{host}.config.system.build.toplevel.outPath")
+    expected_rev = nix_eval(flake, f"{host}.config.system.configurationRevision")
+    facts = parse_probe(remote(target, PROBE, [candidate], timeout=900))
+    if facts.get("candidate_present") != "1":
+        chosen = choose_candidate(candidate, False, facts.get("pinned", ""),
+                                  facts.get("pinned_rev", ""),
+                                  same_flake_tree(facts.get("pinned_rev", "")))
+        if chosen is None and args.build:
+            build_on_host(flake, host, target)
+            chosen = (candidate, "this checkout's closure, built on the host")
+        if chosen is None:
+            print(render_preview(host, target, facts, None, candidate, expected_rev, checkout, via))
+            raise Refused(f"{candidate} is not on {host}, and CI's pin is not from an identical "
+                          "tree. Wait for CI staging (nix-stage-closures) to put it there, or "
+                          "pass --build to build it on the host.")
+        else:
+            candidate, why = chosen
+            if candidate == facts.get("pinned"):
+                expected_rev = facts.get("pinned_rev", "")
+            via += f"; {why}"
+            facts = parse_probe(remote(target, PROBE, [candidate], timeout=900))
 
-    if use_bootstrap:
-        # The forgejo-bootstrap path: rsync without .git, so the closure is UNSTAMPED by
-        # construction (nix/README.md) and there is no revision to check afterwards.
-        target = bootstrap_host()
-        via = "bin/forgejo-bootstrap deploy step (rsync + nixos-rebuild switch; unstamped)"
-        expected_rev = ""
-        candidate = ci_runner_candidate(target)
-        facts = parse_probe(remote(target, PROBE, [candidate], timeout=900))
     if facts.get("candidate_present") != "1":
         raise Unmeasured(f"{candidate} is not on {host}")
 
@@ -712,36 +666,26 @@ def deploy(args) -> int:
     print(f"\n== applying to {host}")
     failed_before = set(facts.get("failed", "").split())
     problem = None
-    if use_bootstrap:
-        env = dict(os.environ, FORGEJO_BOOTSTRAP_DEPLOY_ONLY="1", FORGEJO_BOOTSTRAP_SKIP_SECRETS="1")
-        if args.allow_stale:
-            env["FORGEJO_BOOTSTRAP_ALLOW_STALE"] = "1"
-        rc = subprocess.run([BOOTSTRAP], cwd=REPO, env=env).returncode
-        if rc != 0:
-            raise Refused(f"bin/forgejo-bootstrap exited {rc}")
-        # The CI pin is now older than what runs; point it here, or auto-apply switches back to it.
-        remote(target, f'[ -d /var/lib/nixdeploy ] && sudo -n ln -sfn "{candidate}" {PIN}; echo "{END}"')
+    unit = switch_unit_name(time.time())
+    try:
+        launched = remote(target, LAUNCH, [candidate, unit], timeout=300)
+    except Unmeasured as exc:
+        # The switch may already be restarting sshd under this session: the unit says.
+        print(f"   the launch session ended early ({str(exc)[:120]}); reading {unit} itself")
     else:
-        unit = switch_unit_name(time.time())
-        try:
-            launched = remote(target, LAUNCH, [candidate, unit], timeout=300)
-        except Unmeasured as exc:
-            # The switch may already be restarting sshd under this session: the unit says.
-            print(f"   the launch session ended early ({str(exc)[:120]}); reading {unit} itself")
-        else:
-            for line in launched.splitlines():
-                if not line.startswith("@@"):
-                    print("    " + line)
-            m = re.search(r"@@ LAUNCHED rc=(\d+)", launched)
-            if not m or m.group(1) != "0":
-                raise Refused(f"systemd-run did not start {unit} on {host} "
-                              f"({m.group(0) if m else 'no launch line'}); nothing was switched")
-            print(f"   switching in {unit} (detached: an ssh drop cannot stop it)")
-        outcome = follow_switch(target, unit)
-        problem = switch_problem(unit, outcome)
-        if problem:
-            print(f"   {problem}; its journal ends:\n      "
-                  + ("\n      ".join(outcome.journal[-30:]) or "(empty)"))
+        for line in launched.splitlines():
+            if not line.startswith("@@"):
+                print("    " + line)
+        m = re.search(r"@@ LAUNCHED rc=(\d+)", launched)
+        if not m or m.group(1) != "0":
+            raise Refused(f"systemd-run did not start {unit} on {host} "
+                          f"({m.group(0) if m else 'no launch line'}); nothing was switched")
+        print(f"   switching in {unit} (detached: an ssh drop cannot stop it)")
+    outcome = follow_switch(target, unit)
+    problem = switch_problem(unit, outcome)
+    if problem:
+        print(f"   {problem}; its journal ends:\n      "
+              + ("\n      ".join(outcome.journal[-30:]) or "(empty)"))
 
     time.sleep(5)  # a unit that fails on activation does so within seconds
     after = parse_probe(remote(target, PROBE, [""], timeout=300))
@@ -777,9 +721,6 @@ def main(argv=None) -> int:
                         help="switch even though it stops active CI runner units (their jobs are cut off)")
     parser.add_argument("--build", action="store_true",
                         help="build the closure on the host when CI has not staged it")
-    parser.add_argument("--bootstrap", action="store_true",
-                        help="ci-runner: use bin/forgejo-bootstrap's rsync + nixos-rebuild path even "
-                             "when CI staged this tree (it is the fallback when CI has not)")
     parser.add_argument("--allow-stale", action="store_true",
                         help="deploy a checkout behind origin main (a deliberate rollback)")
     parser.add_argument("--list", action="store_true", help="list the hosts this flake declares")
