@@ -125,7 +125,7 @@ runs:
     # including the "nothing recorded yet" case a new country starts in.
     # Before any upload: a release at GitHub's 1000-asset cap refuses them all (run 41351315090).
     - name: Prune the assets nothing reads
-      if: github.ref == 'refs/heads/main' || github.ref == 'main'
+      if: github.ref == 'refs/heads/main'
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -156,7 +156,7 @@ runs:
     # it recorded) but never overwrites the tree every main run restores with a capture
     # made by code main has not run. (ConvergencePublishMainOnlySpec)
     - name: Publish the tree to the rolling release
-      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record'
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'record'
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -211,7 +211,7 @@ runs:
           echo "healthy=$([ "$verdict" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
     - name: Publish this healthy recording's manifest as the next one's baseline
-      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record' && steps.health.outputs.healthy == 'true'
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && steps.health.outputs.healthy == 'true'
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -314,7 +314,7 @@ runs:
     # the last one the pipeline converged on (`CorpusProvenance`). Main only, like the
     # tree: a branch run's green says nothing about main.
     - name: Record the corpus this green leg replayed
-      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.green == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
+      if: github.ref == 'refs/heads/main' && inputs.green == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -344,7 +344,7 @@ runs:
     # decided — boot complete in the log, a packed archive — and named it in
     # KINOWO_PINNED_TREE; this step writes the marker that makes it the pair, and prunes.
     - name: Pin this recording as the pair hermetic legs replay
-      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record' && inputs.complete == 'true' && inputs.pin == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && inputs.complete == 'true' && inputs.pin == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}
@@ -356,7 +356,7 @@ runs:
     # listing can be reproduced on the corpus prod scraped last night rather than on a pair weeks old.
     # `prod-latest-<code>.txt` → `<corpus run> <recorded at> <tree asset>`, the hermetic marker's format.
     - name: Mark this recording as prod-latest
-      if: (github.ref == 'refs/heads/main' || github.ref == 'main') && inputs.mode == 'record' && inputs.complete == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && inputs.complete == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
       shell: bash
       env:
           GH_TOKEN: ${{ inputs.token }}

@@ -558,7 +558,7 @@ if [ -n "$run" ]; then
   # over it). A run whose head this clone lacks is not.
   run_base=$(cat "$KINOWO_IDENTITY_CACHE/measure/$run"/artifacts/identity-takes-*/base.txt 2> /dev/null | head -1)
   if [ "$verdict" -le 1 ] && [ -n "$branch" ] && [ -n "$run_base" ] && git cat-file -e "$run_sha^{commit}" 2> /dev/null; then
-    [[ "$(git log -1 --format=%s "$run_sha")" == "measure: origin/main's CI over "* || "$(git log -1 --format=%s "$run_sha")" == "measure: forgejo/main's CI over "* ]] && run_sha=$(git rev-parse "$run_sha^")
+    [[ "$(git log -1 --format=%s "$run_sha")" == "measure: origin/main's CI over "* ]] && run_sha=$(git rev-parse "$run_sha^")
     created=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json createdAt --jq .createdAt) \
       && created=$(python3 -I -c 'import sys, datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00")).timestamp()))' "$created") \
       && store_measurement "$run_base" "$run_sha" "$run" "$created"

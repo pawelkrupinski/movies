@@ -14,7 +14,6 @@ import org.scalatest.matchers.should.Matchers
  */
 class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
   private val MainOnly = "github.ref == 'refs/heads/main'"
-  private val MainOrForgejoSchedule = "(github.ref == 'refs/heads/main' || github.ref == 'main')"
   private lazy val action = RepoFile.read(".github/actions/convergence-publish/action.yml")
 
   "the convergence publish action" should "upload to the shared release only from main" in {
@@ -39,7 +38,7 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
   // whose suite PASSED may write it, and setup must read back the same name.
   "the green-corpus marker" should "be written only by a passing main full leg, under the name setup reads" in {
     val record = RepoFile.step(action, "Record the corpus this green leg replayed")
-    record should include(MainOrForgejoSchedule)
+    record should include(MainOnly)
     record should include("inputs.green == 'true'")
     record should include("corpus-green-${{ inputs.code }}.txt")
     RepoFile.read(".github/actions/convergence-setup/action.yml") should include("corpus-green-${{ inputs.code }}.txt")
@@ -47,14 +46,14 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
     leg.split("\\n").count(_.contains("green: ${{ steps.suite.outcome == 'success' && steps.suite.outputs.failed != 'true' }}")) shouldBe 1
   }
 
-  "every recording write" should "also run on a Forgejo scheduled run, whose ref is the bare branch name" in {
+  "every recording write" should "run only from main" in {
     Seq(
       "Publish the tree to the rolling release",
       "Publish this healthy recording's manifest as the next one's baseline",
       "Record the corpus this green leg replayed",
       "Pin this recording as the pair hermetic legs replay",
       "Mark this recording as prod-latest").foreach { name =>
-      withClue(s"$name: ") { RepoFile.step(action, name) should include(s"if: $MainOrForgejoSchedule && ") }
+      withClue(s"$name: ") { RepoFile.step(action, name) should include(s"if: $MainOnly && ") }
     }
   }
 
