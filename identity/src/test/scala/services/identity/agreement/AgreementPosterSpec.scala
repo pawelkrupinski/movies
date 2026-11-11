@@ -241,4 +241,16 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
     decided.map(_.film) shouldBe Seq(Some(1001), Some(1001))
     reads.groupBy(identity).collect { case (read, times) if times.size > 1 => read -> times.size } shouldBe empty
   }
+  // a renewal of thousands at once (young films weekly, a cap raised: ~8.7k films over the five countries) leaves posters
+  // to hash again, each read meanwhile and nothing waiting on them: asked a few at a time as the corrections' posters are
+  it should "hand the posters it asks again a few at a time, as the corrections' posters" in {
+    val listing = lalka()
+    val films   = Seq(1001, 1002).map(AgreementStage.PosterQuestion.Film(_))
+    val renewing = new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table), correctionPostersAtOnce = 1,
+      posters = new HeldPosters(Map(venuePoster -> Some(shown)), Map(1001 -> Seq(near(3)), 1002 -> Seq(PosterHash(-1L))), stale = films.toSet),
+      attempted = { case Question.Poster(_) => true; case _ => false })
+    renewing.apply(resolutionOf(listing), Map(listing.key -> listing).get, version = 1).decisions.head.film shouldBe Some(1001)
+    renewing.wanted.collect { case Question.Poster(poster) => poster } shouldBe Set(films.head)
+  }
 }

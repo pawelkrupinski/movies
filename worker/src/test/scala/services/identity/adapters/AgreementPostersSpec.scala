@@ -114,6 +114,33 @@ class AgreementPostersSpec extends AnyFlatSpec with Matchers with ScratchDirecto
     store.wanted(PosterQuestion.Film(1)) shouldBe true
   }
 
+  // a film asked again (its hashes aged, a young film's week passed) downloads only the posters TMDB added: a TMDB path
+  // names one image, so a path filed already is its hash
+  "a film's posters hashed again" should "reuse the hashes filed by their path, downloading only the paths not filed" in {
+    val paths    = PosterHashing.chosen(tmdb.posters(95269, also = Seq("en")), "pl")
+    val filed    = paths.take(3).zipWithIndex.map { case (path, i) => HashedPoster(path, PosterHash(i.toLong)) }
+    val download = new Recorded()
+    val again    = hashing(download).film(95269, filed)
+    download.fetched.get shouldBe paths.size - 3
+    again.map(_.path) shouldBe paths
+    again.take(3) shouldBe filed
+    val families = new FamilyAnswerStore(new InMemoryTmdbDocuments, clock)
+    val store    = new PosterAnswerStore(families, clock)
+    store.file(PosterQuestion.Film(95269), again)
+    store.filed(PosterQuestion.Film(95269)) shouldBe again
+    store.filed(PosterQuestion.Venue(patria)) shouldBe Nil
+  }
+
+  // the paths are filed as one string, not an array of strings: ~9 bytes of BSON framing a path saved
+  it should "file a film's paths compactly, and read back the arrays filed before" in {
+    val paths = Seq("/5HArseDNgLicwmq5V2YmnCWE5eo.jpg", "/odd.png", "/x.jpg")
+    val doc   = new org.bson.BsonDocument(PosterAnswers.Paths, PosterAnswers.pathsValue(paths))
+    doc.getString(PosterAnswers.Paths).getValue shouldBe "5HArseDNgLicwmq5V2YmnCWE5eo /odd.png x"
+    PosterAnswers.pathsOf(doc) shouldBe paths
+    PosterAnswers.pathsOf(new org.bson.BsonDocument(PosterAnswers.Paths,
+      org.mongodb.scala.bson.BsonArray.fromIterable(paths.map(org.bson.BsonString(_))))) shouldBe paths
+  }
+
   "a poster to hash" should "go on the queue once, however often the stage meets it" in {
     val queue = new InMemoryTaskQueue
     val posters = Set[PosterQuestion](PosterQuestion.Venue(patria), PosterQuestion.Film(95269))

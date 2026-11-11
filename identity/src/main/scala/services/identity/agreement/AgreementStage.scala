@@ -1188,11 +1188,16 @@ object AgreementStage {
     def spent: Boolean = freshReads.overdrawn || backfillReads.overdrawn
     /** What the apply met unanswered: the corrections' posters only `postersAtOnce` at a time, the backfill of every
      *  take's posters draining behind every other task — those not `tried` yet first, so posters that keep failing hold
-     *  no slot another poster could use. */
+     *  no slot another poster could use. A poster any take asks AGAIN — `tried` already: its hashes stale, its cap raised
+     *  since, a failure retried — waits on none (the settle rule reads what is filed) and drains with them: a renewal of
+     *  thousands at once (a cap raised, 2026-11-11: ~8.7k films over the five countries) spread over applies, never one
+     *  burst on the queue. */
     def wanted(postersAtOnce: Int, tried: Question => Boolean): Set[Question] = {
-      val capped = if (correctionPosters.sizeIs <= postersAtOnce) correctionPosters
-        else correctionPosters.toSeq.sortBy(poster => (tried(Question.Poster(poster)), PosterAnswers.idOf(poster))).take(postersAtOnce)
-      asked.toSet ++ capped.iterator.map(Question.Poster(_))
+      val (renewed, rest) = asked.partition { case question @ Question.Poster(_) => tried(question); case _ => false }
+      val draining = correctionPosters ++ renewed.iterator.collect { case Question.Poster(poster) => poster }
+      val capped = if (draining.sizeIs <= postersAtOnce) draining
+        else draining.toSeq.sortBy(poster => (tried(Question.Poster(poster)), PosterAnswers.idOf(poster))).take(postersAtOnce)
+      rest.toSet ++ capped.iterator.map(Question.Poster(_))
     }
   }
 
