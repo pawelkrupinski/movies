@@ -654,6 +654,24 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     wiring.posterEgressRoutes.keySet should contain allOf ("biletyna.pl", "bilety.ck105.koszalin.pl", "www.multikino.pl")
   }
 
+  // Odeon's posters sit on its Vista host (vwc.odeon.co.uk/CDN), which Cloudflare refuses the worker's IP as it does
+  // the ocapi data the scrapes read over the residential proxy: the posters go the same way.
+  "Odeon's posters" should "go through the residential proxy its scrapes use" in {
+    val proxied = new java.util.concurrent.ConcurrentLinkedQueue[String]
+    val wiring  = new ProxiedAndZyteKeyedWiring(new CountingLeaf, proxied)
+    val directPosters = new java.util.concurrent.atomic.AtomicInteger
+    val download = services.sharecards.PosterDownload.routed(
+      new services.sharecards.PosterDownload {
+        def fetch(url: String): Either[String, java.nio.file.Path] = { directPosters.incrementAndGet(); Left("direct") }
+      }, wiring.posterEgressRoutes)
+    val poster = services.cinemas.uk.OdeonParser.posterUrl("HO00008216")
+
+    download.fetch(poster)
+
+    withClue("the poster is asked of the residential proxy first: ") { proxied.toArray.toSeq shouldBe Seq(poster) }
+    withClue("never of the plain poster download: ") { directPosters.get shouldBe 0 }
+  }
+
   "a test wiring handed the residential-proxy credentials" should "build no proxy leg" in {
     new PaidKeyedWiring(new CountingLeaf, Seq("DECODO_PROXY_USER" -> "user", "DECODO_PROXY_PASS" -> "pass"))
       .proxyShardsBuilt shouldBe None

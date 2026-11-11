@@ -34,6 +34,17 @@ object OdeonParser {
    *  `docs/venue-maps/ODEON-VENUE-MAP.tsv`), not to build URLs. */
   case class OdeonSite(id: String, name: String)
 
+  /** The film's poster on Vista's own media CDN, by the ocapi film id — the URL the www film list falls back to
+   *  (`initialData.api.vistaCdn` + `/media/entity/get/FilmPosterGraphic/<filmId>`) for a film with no MovieXchange
+   *  release, and which serves the same poster for one that has it (checked 2026-11-11: every film id tried answered
+   *  its poster, an unknown id 404s, so a missing one falls to the card's own fallback). The ocapi film carries no image
+   *  field; the www list's other source, `film-cdn.moviexchange.com`, answers "Invalid client" to a plain GET. No call
+   *  of ours: the id is in every showtimes payload. `width` matches the card's 480-px slot (the master is ~1300 px,
+   *  ~380 KB). Cloudflare refuses the CDN to datacenter IPs as it does ocapi — weserv's included — so the page serves it
+   *  unproxied (`PosterProxy`) and the worker downloads it over Odeon's egress. */
+  def posterUrl(filmId: String): String =
+    s"${OdeonClient.MediaCdn}/media/entity/get/FilmPosterGraphic/$filmId?width=480"
+
   def parseSites(json: String): Seq[OdeonSite] =
     arrayAt(Json.parse(json) \ "sites").flatMap { s =>
       for {
@@ -112,7 +123,7 @@ object OdeonParser {
         genres         = related.filmGenres(film)
       ),
       cinema      = cinema,
-      posterUrl   = None,
+      posterUrl   = Some(posterUrl(head.filmId)),
       filmUrl     = head.filmUrl,
       synopsis    = filmSynopsis(film),
       cast        = related.peopleWithRole(film, "Actor"),

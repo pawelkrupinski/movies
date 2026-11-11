@@ -60,6 +60,14 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     mario.externalIds.get("odeon").value should startWith("HO")
   }
 
+  // The ocapi film has no image field; its poster is on Vista's media CDN by the film id — the URL odeon.co.uk's own
+  // film list shows (captured through the www page 2026-11-11), which answers the poster for every id tried.
+  it should "carry each film's poster on Vista's media CDN, by its Odeon id" in {
+    val mario = movies.find(_.movie.title == "The Super Mario Galaxy Movie").value
+    mario.posterUrl.value shouldBe "https://vwc.odeon.co.uk/CDN/media/entity/get/FilmPosterGraphic/HO00008216?width=480"
+    movies.flatMap(_.posterUrl).size shouldBe movies.size
+  }
+
   it should "map a screening to a local date-time with a seat-picker booking URL, screen and format tag" in {
     val toyStory = movies.find(_.movie.title == "Toy Story 5").value
     val nineFifteen = toyStory.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 9, 15)).value

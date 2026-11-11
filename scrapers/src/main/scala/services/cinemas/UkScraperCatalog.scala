@@ -3,6 +3,7 @@ package services.cinemas
 import models._
 import services.cinemas.common.{CinemaScraper, FlicksClient, GatsbyBoxOfficeClient, VueCinemasPlatformClient}
 import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, OdeonClient, QuadDerbyClient, SavoyClient, SpektrixClient, TheOldCourtClient, TicketsolveClient, UkFeed, UkSourcesData, UkVenueSources}
+import tools.HttpFetch
 
 import java.time.LocalDate
 
@@ -19,6 +20,11 @@ final class UkScraperCatalog(egress: CinemaEgress, venueClock: VenueClock, flick
   private val vueFetch       = egress.vue
   private val odeonFetch     = egress.odeon
   private val odeonAuthToken = egress.odeonAuthToken
+
+  /** The UK hosts read through an egress other than direct, each by that egress — Odeon's Vista host, whose
+   *  posters ([[services.cinemas.uk.OdeonParser.posterUrl]]) Cloudflare refuses the worker's IP as it does the ocapi
+   *  data, so they download over the same proxy. */
+  val egressByHost: Map[String, HttpFetch] = CinemaScraper.hostsOf(OdeonClient.ApiBase).map(_ -> odeonFetch).toMap
 
   /** Today in the UK, asked afresh at every read. */
   private def today: LocalDate = venueClock.today(TimeZones.UnitedKingdom)

@@ -90,12 +90,17 @@ object PosterProxy {
   //   biletyna.pl — 8 of 8 posters probed on 2026-10-07: 404 through weserv,
   //     200 image/jpeg direct from a home connection, with or without a
   //     kinowo.net Referer.
+  //   vwc.odeon.co.uk — Odeon's Vista media CDN (its posters): weserv answers
+  //     "The requested URL returned error: 403" (2026-11-11), the same poster
+  //     200 image/jpeg direct from a home connection. Cloudflare gates the host
+  //     on egress IP, as it does Odeon's ocapi for the worker.
   private val SkipHosts = Set(
     "www.multikino.pl",
     "multikino.pl",
     "m.media-amazon.com",
     "biletyna.pl",
-    "www.biletyna.pl"
+    "www.biletyna.pl",
+    "vwc.odeon.co.uk"
   )
 
   // The mirror image of SkipHosts: domains weserv itself refuses to fetch,

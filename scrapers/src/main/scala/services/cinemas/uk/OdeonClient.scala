@@ -98,9 +98,12 @@ class OdeonClient(
 
 object OdeonClient {
 
-  /** The Vista WebClient base the ocapi endpoints hang off — NOT Cloudflare
-   *  protected, so plain HTTP over the injected `http` reaches it. */
+  /** The Vista WebClient base the ocapi endpoints hang off — no browser challenge,
+   *  but Cloudflare-gated on egress IP, so production reaches it over `odeonFetch`. */
   val ApiBase = "https://vwc.odeon.co.uk/WSVistaWebClient"
+
+  /** Vista's media CDN on the same host — the films' posters ([[OdeonParser.posterUrl]]). */
+  val MediaCdn = "https://vwc.odeon.co.uk/CDN"
 
   /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]].
    *  `film-screening-dates` advertises event/advance dates months out (observed ~4.5),

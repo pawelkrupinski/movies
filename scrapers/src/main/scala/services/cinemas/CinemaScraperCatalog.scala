@@ -333,9 +333,9 @@ class CinemaScraperCatalog(
     // A fallback feed is scraped for a venue too, but by no catalogue scraper.
     germanFallbackFeeds.toSeq.flatMap { case (c, feeds) => feeds.flatMap(germanFeedScraper(_, c).scrapeHosts) }.toSet
 
-  /** The hosts of the ticketing platforms' venue pages read through an egress other than direct, each by that
-   *  egress ([[PolishScraperCatalog.egressByHost]]). */
-  val egressByHost: Map[String, HttpFetch] = poland.egressByHost
+  /** The hosts read through an egress other than direct, each by that egress: the ticketing platforms' venue pages
+   *  ([[PolishScraperCatalog.egressByHost]]) and Odeon's Vista host ([[UkScraperCatalog.egressByHost]]). */
+  val egressByHost: Map[String, HttpFetch] = poland.egressByHost ++ uk.egressByHost
 }
 
 object CinemaScraperCatalog {

@@ -120,6 +120,13 @@ class PosterProxySpec extends AnyFlatSpec with Matchers {
       .foreach(url => PosterProxy.proxy(url) shouldBe url)
   }
 
+  // Odeon's Vista media CDN refuses weserv too (Cloudflare, on weserv's IP): "The requested URL returned error: 403"
+  // through weserv on 2026-11-11, 200 image/jpeg direct from a home connection.
+  it should "pass Odeon's Vista CDN posters through unproxied (Cloudflare blocks weserv)" in {
+    val odeonPoster = "https://vwc.odeon.co.uk/CDN/media/entity/get/FilmPosterGraphic/HO00009570?width=480"
+    PosterProxy.proxy(odeonPoster) shouldBe odeonPoster
+  }
+
   // Guard the suffix match against the classic "endsWith" hole — a
   // lookalike domain that merely ends in the same letters must NOT be
   // treated as acsta.net and must still be proxied.
