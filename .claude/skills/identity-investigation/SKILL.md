@@ -79,6 +79,8 @@ Design and limits: docs/design/identity-slice.md.
 | When and why did prod's take of a listing change, per deploy? Would CI have reproduced it? | `scripts/listing-history uk --title "ties that bind" [--venue X] [--since 7d] [--replay]` (below) |
 | Why did a listing flip (X → Y → X): a late answer, a sibling's arrival, a rule, a deploy? | `scripts/flip-timeline de --venue Abaton --title Geister [--since 7d]` — one timeline of its projections, take changes, asks and late answers, each reversal classified (below) |
 | Which reversals did a whole country have this week, and of what class? | `scripts/flip-timeline de --all [--since 7d] [--summary] [--tsv [FILE]]` — every X → Y → X within 24 h, classified LATE-ANSWER / SIBLING/POPULATION / RULE / DEPLOY/RESTART / UNCLASSIFIED with the reason; a per-class count table (below) |
+| Is a venue poster strong evidence, and would another poster vote / veto (more TMDB posters a film, other bit thresholds) take more right with nothing wrong — on prod's REAL candidate sets? | `scripts/poster-eval [--posters N] [--vote B] [--veto-match B] [--veto B] [--countries pl,uk]` — one table per country, prod's PosterEvidence (8 / 4 / 8 / 10) beside the variant: vote TP / FP / precision (judged), agree / disagree with prod's take (weak), the veto's wrongly and rightly vetoed takes; then every NEW FP and LOST TP. ~2 s warm (below) |
+| Why does a listing have no usable poster comparison (no url, a feed's poster, never asked, unread, no candidate hashed)? Which venues and hosts? | `scripts/poster-eval coverage [--countries pl]` — buckets per country, the top 3 venues and hosts of each, judged listings and right takes in each; ~2 s warm |
 
 ## Fast batches, fast iteration
 
@@ -194,6 +196,37 @@ Motion' uk` named 5622777d in 2 steps, 320 s cold. Wall on the laptop, JVM phase
 resolve, settle, prod) on a quiet machine: PL 29 s, US 31 s, UK 26-40 s, DE 40-75 s, ES ~45 s; a ref compiles once (~1-3 min) and JVM slots are often the
 wait (the tool names who holds them). A head rerun through its kept JVM: UK 24 s (head 14 s). The stage settle was
 254 s on ES until the mirror's family answers were read in one batch (now 5-24 s a country).
+
+## poster-eval
+
+`scripts/poster-eval` measures the venue-poster vote and veto (`PosterEvidence`) on prod's REAL candidate sets: every
+model decision (`identity_model_families.decisions`) whose listings show a poster that counts (no Webedia/Cineamo id, no
+kinoprogramm/kinoheld page: a feed's poster is its entry's), its members' trace candidates (not DENIED) plus its film,
+and prod's take. Never evaluate a poster (or any) signal on a sample where the right film is always a candidate: the
+2026-11-11 research sample said ~99.4% precision, prod's real sets ~92% (`docs/design/poster-evidence-evaluation.md`).
+
+- **Data sources.** The LOCAL prod mirror (read-only) once, into `~/.cache/movies-posters/dataset.npz` (25 s; rebuilt
+  when the mirror synced 6 h past it, or `--refresh`; `freshness` is checked first). Prod's filed poster answers give the
+  hashes; a venue poster or film poster prod never filed is fetched (venue URL; TMDB w185 by `PosterHashing.chosen` over
+  `/movie/{id}/images`, cached in `tmdb-images.json`) and hashed bit for bit as the worker does (`scripts/poster_hash.py`,
+  vips; a PIL resize matches only ~82%), cached by image sha1. A variant needing lists not yet cached needs
+  `secrets run movies TMDB_API_KEY -- scripts/poster-eval ...`.
+- **Labels.** `identity-judgements.tsv` by member listing (its venue's row, else `*`): a vote is TP when its film is judged
+  right, FP when its film is judged wrong, another film is judged right, or a non-TMDB film is judged right. Unjudged
+  decisions with a take are WEAK labels (agree / disagree with prod), reported apart: prod's wrong takes agree by
+  construction.
+- **Speed** (2026-11-11, 4,365 clusters): cold (dataset extract + 7,126 images hashed, 483 fetched) 204 s; warm 1.6 s
+  an evaluation (1.5 s with a 16-poster variant), 2.4 s coverage; the extract alone 25 s; a variant's new images print a progress line every 10 s (~35 hashes/s).
+- **The 2026-11-11 baseline, reproduced.** The prototype (`prodval2-eval.py`) found pHash <= 4 at 142 TP / 13 FP
+  on 371 judged clusters, and 155 / 13 with 16 posters. This tool, counting feed posters as the prototype did, finds 135 / 14
+  on 370 judged clusters, and 150 / 14 with 16 posters (+15 TP, 0 new FP; the one new weak disagreement is the same PL
+  Żuławski "Chocolat"). The difference is the mirror and the judgements moving in the 3 h between the two runs, and every
+  single-candidate cluster now counted where the prototype sampled 600. Prod's vote-vetoed-by-a-poster rule, which the
+  prototype skipped, moved nothing. With feed posters dropped, as `PosterEvidence.shows` drops them (the default), it is
+  82 / 8 on 270 judged clusters and 97 / 8 with 16 posters: DE's judged clusters all show a Cineamo or Webedia poster.
+  Cold, the 16-poster variant fetched 17k TMDB posters in ~23 min (~12/s, no 429).
+- Not modelled: `ListingShape.stagesAWork` / `billsSeveral` (a relay's or a double bill's poster shows no film) and
+  `editionsApart` (another edition's candidate is not compared) — Scala-only rules; their clusters are counted.
 
 ## title-trace
 

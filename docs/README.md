@@ -51,6 +51,9 @@ identity-investigation, record-client-fixtures, writing-fakes, external-api-rate
 - [design/identity-known-wrongs-and-todos.md](design/identity-known-wrongs-and-todos.md) — SUPERSEDED snapshot of
   2026-10-15; current: `identity-judgements.tsv`, `scripts/label-lookup`.
 - `design/identity-seeding/seeding-<cc>.txt` — per-country seeding output kept with the design record.
+- [design/poster-evidence-evaluation.md](design/poster-evidence-evaluation.md) — evaluate a poster (or any identity)
+  signal on prod's REAL candidate sets, never a sample where the right film is always a candidate (2026-11-11: ~99.4%
+  vs ~92%); the tool is `scripts/poster-eval`.
 - [identity-experiments.md](identity-experiments.md) — resolver (and resolver-performance) experiments tried,
   measured and not landed, with their `experiment/<name>` tags; read before a resolver change. One file per entry in
   `identity-experiments/`.
