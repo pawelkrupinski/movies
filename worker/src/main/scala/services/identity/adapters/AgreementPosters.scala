@@ -1,7 +1,7 @@
 package services.identity
 package adapters
 
-import org.bson.{BsonDocument, BsonInt64, BsonNull, BsonString}
+import org.bson.{BsonDocument, BsonInt32, BsonInt64, BsonNull}
 import org.mongodb.scala.bson.BsonArray
 import services.identity.agreement.AgreementStage.PosterQuestion
 import services.sharecards.{PosterDownload, PosterFailure, PosterShrinker}
@@ -15,8 +15,10 @@ import java.time.Clock
  * ([[Answer.Unknown]]) the poster fill asks, never "no poster". Filed among the other families' answers (`answers`:
  * `identity_family_answers`, kept long, and counted in its `version`), under `poster|venue|<url>` and
  * `poster|film|<tmdbId>`, and hashed again only after [[QuestionPolicies.PosterAge]]: an image at one URL, and a released
- * film's artwork, rarely change. A film's document keeps beside its hashes the TMDB paths they were read from
- * ([[PosterAnswers.Paths]]), for the review pages to show; the agreement reads only the hashes.
+ * film's artwork, rarely change — or, a film's, once [[PosterEvidence.FilmPosters]] rose past the cap a document holding
+ * that many was filed under. A film's document keeps beside its hashes the TMDB paths they were read from
+ * ([[PosterAnswers.Paths]]), for the review pages to show and for a film hashed again to download only the posters TMDB
+ * added; the agreement reads only the hashes.
  */
 final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends PosterAnswers {
   import PosterAnswerStore._
@@ -36,9 +38,20 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
     case _ =>
       val d = new BsonDocument("hashes", if (posters.isEmpty) BsonNull() else BsonArray.fromIterable(posters.map(p => BsonInt64(p.hash.bits))))
       // a venue's poster is filed under its URL already
+      // and the cap they were chosen under: TMDB may keep more than a cap's worth, read once the cap is raised ([[cut]])
       if (question.isInstanceOf[PosterQuestion.Film] && posters.nonEmpty)
-        d.append(PosterAnswers.Paths, BsonArray.fromIterable(posters.map(p => BsonString(p.path))))
+        d.append(PosterAnswers.Paths, PosterAnswers.pathsValue(posters.map(_.path))).append(Cap, BsonInt32(PosterEvidence.FilmPosters))
       answers.put(idOf(question), d)
+  }
+
+  /** A film's posters as filed, each with the TMDB path it was read from: what hashing it again reuses ([[PosterHashing.film]]).
+   *  None for a venue's poster, or a film's filed before its paths were. */
+  def filed(question: PosterQuestion): Seq[HashedPoster] = question match {
+    case PosterQuestion.Venue(_) => Nil
+    case PosterQuestion.Film(_) => document(idOf(question)).toSeq.flatMap { d =>
+      val (paths, hashes) = (PosterAnswers.pathsOf(d), hashesOf(d))
+      if (paths.sizeIs == hashes.size) paths.zip(hashes).map(HashedPoster.apply) else Nil
+    }
   }
 
   /** `question`'s poster GIVEN UP on: not read — refused, unreadable, or its fetch failed
@@ -52,14 +65,14 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
 
   override def fresh(question: PosterQuestion): Boolean = !wanted(question)
 
-  /** Is the question's answer missing, or older than [[QuestionPolicies.PosterAge]] — [[QuestionPolicies.PosterUnreadAge]]
+  /** Is the question's answer missing, cut at a lower cap than [[PosterEvidence.FilmPosters]] ([[cut]]), or older than [[QuestionPolicies.PosterAge]] — [[QuestionPolicies.PosterUnreadAge]]
    *  for a venue poster with no hash: one given up on, or one filed so before a failed read was told from data (prod PL
    *  2026-10-06: all 226 biletyna.pl posters, refused by the origin, filed as "no poster" with no unread mark, for a
    *  year)? */
   def wanted(question: PosterQuestion): Boolean = document(idOf(question)).forall { d =>
     val unreadVenue = isUnread(d) || (question.isInstanceOf[PosterQuestion.Venue] && hashesOf(d).isEmpty)
     val age         = if (unreadVenue) QuestionPolicies.PosterUnreadAge else QuestionPolicies.PosterAge
-    TmdbStore.olderThan(d, age, clock)
+    TmdbStore.olderThan(d, age, clock) || (question.isInstanceOf[PosterQuestion.Film] && cut(d))
   }
 
   private def document(id: String): Option[BsonDocument] = answers.document(id)
@@ -69,6 +82,18 @@ object PosterAnswerStore {
   private val Unread = "unread"
 
   private def isUnread(d: BsonDocument): Boolean = d.getBoolean(Unread, org.bson.BsonBoolean.FALSE).getValue
+
+  /** The cap a film's posters were chosen under ([[PosterEvidence.FilmPosters]] at its filing); a document filed unmarked
+   *  was filed under 8 (to 2026-11-11). */
+  private val Cap = "cap"
+  private val UnmarkedCap = 8
+
+  /** Was the film's document filed holding as many posters as a cap lower than today's: TMDB may keep more, hashed once
+   *  asked again (those filed reused, [[PosterHashing.film]]). */
+  private def cut(d: BsonDocument): Boolean = {
+    val cap = d.getInt32(Cap, BsonInt32(UnmarkedCap)).getValue
+    cap < PosterEvidence.FilmPosters && hashesOf(d).sizeIs >= cap
+  }
 
   private def hashesOf(d: BsonDocument): Seq[PosterHash] =
     BsonFields.elementsOf(d, "hashes").map(v => PosterHash(v.asInt64.getValue))
@@ -91,17 +116,20 @@ final case class HashedPoster(path: String, hash: PosterHash)
  */
 final class PosterHashing(download: PosterDownload, shrinker: PosterShrinker, images: Int => Seq[clients.TmdbClient.PosterImage], language: String) {
 
-  /** `question`'s poster hashed, or a film's posters. */
-  def of(question: PosterQuestion): Seq[HashedPoster] = question match {
+  /** `question`'s poster hashed, or a film's posters — those `filed` already reused by their path. */
+  def of(question: PosterQuestion, filed: Seq[HashedPoster] = Nil): Seq[HashedPoster] = question match {
     case PosterQuestion.Venue(url)   => venue(url).map(HashedPoster(url, _)).toSeq
-    case PosterQuestion.Film(tmdbId) => film(tmdbId)
+    case PosterQuestion.Film(tmdbId) => film(tmdbId, filed)
   }
 
   def venue(url: String): Option[PosterHash] = services.movies.SlotFields.url(url).flatMap(hash)
 
-  def film(tmdbId: Int): Seq[HashedPoster] = {
+  /** The film's posters TMDB keeps now, each path hashed once: a path `filed` already is its hash (a TMDB path names one
+   *  image), so asking a film again downloads only the posters TMDB added since. */
+  def film(tmdbId: Int, filed: Seq[HashedPoster] = Nil): Seq[HashedPoster] = {
     val posters = try images(tmdbId) catch { case e: tools.HttpStatusException if tools.HttpStatusException.isDurable(e.code) => Nil }
-    PosterHashing.chosen(posters, language).flatMap(path => hash(s"${PosterAnswers.FilmPosterBase}$path").map(HashedPoster(path, _)))
+    PosterHashing.chosen(posters, language).flatMap(path =>
+      filed.find(_.path == path).orElse(hash(s"${PosterAnswers.FilmPosterBase}$path").map(HashedPoster(path, _))))
   }
 
   private def hash(url: String): Option[PosterHash] = download.fetch(url) match {

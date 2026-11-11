@@ -222,7 +222,7 @@ final class AgreementAsker(families: FamilyAnswerStore, sources: Map[VoterFamily
       answered(question, AgreementQuestionMetrics.TmdbRecord, s"TMDB record $film", filed)(reread(film))
     case Question.Poster(poster) =>
       if (!posters.wanted(poster)) fresh(AgreementQuestionMetrics.Poster)
-      else answered(question, AgreementQuestionMetrics.Poster, s"poster ${PosterAnswers.idOf(poster)}", filed)(posters.file(poster, hashing.of(poster)))
+      else answered(question, AgreementQuestionMetrics.Poster, s"poster ${PosterAnswers.idOf(poster)}", filed)(posters.file(poster, hashing.of(poster, posters.filed(poster))))
     case Question.Catalogue(asked) => askCatalogue(Seq(asked), filed)
     case Question.Candidate(_) | Question.FilmRecord(_) | Question.Person(_) | Question.VenuePage(_) => Skipped
   }

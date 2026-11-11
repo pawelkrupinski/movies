@@ -2824,6 +2824,15 @@ posters go through the residential proxy its scrapes use, and Kino Kryterium's t
 them. Kino Kryterium's 16 posters were hashed through Zyte on 2026-10-06 17:00 UTC, and "Ktoś całkiem obcy" is corrected
 live to *I Was a Stranger* (1193128) by the families and its poster.
 
+**Posters hashed again, compactly and drained (2026-11-11).** A film's document now records the cap its posters were
+chosen under (`cap`; unmarked = 8): once `PosterEvidence.FilmPosters` rises, one holding as many as a lower cap is asked
+again (`PosterAnswerStore.wanted`). Hashing a film again reuses each filed hash by its TMDB path (`PosterHashing.film`),
+downloading only the posters TMDB added. Its paths are filed as one string (`PosterAnswers.pathsValue`; the old arrays
+still read): ~9 bytes of BSON framing a path saved in the answer cache every TMDB answer shares (7.4% of the five
+mirrors' 5.7 MB of film poster documents). A poster asked AGAIN (attempted before: stale, its cap raised, a failure
+retried) waits on nothing, so the stage hands those `CorrectionPostersAtOnce` (64) at a time beside the corrections'
+posters (`AgreementStage.Pass.wanted`): a renewal of thousands drains over applies, never one burst on the queue.
+
 **A superseded relay (`Broadcast.superseded`).** US Oriental Theatre Milwaukee's "NT Live: All My Sons" (10–11 October
 2026) is the National Theatre's 2026 van Hove broadcast on Milwaukee Film's own page. Flicks links it to its 2019 Old
 Vic page, so the listing states 2019 and Herrin, and the model took the 2019 record. A relay's take is WITHDRAWN when

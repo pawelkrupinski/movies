@@ -96,13 +96,23 @@ object PosterAnswers {
    *  review pages, from the paths filed beside the hashes. */
   val FilmPosterBase = "https://image.tmdb.org/t/p/w185"
 
-  /** The field a film's poster document keeps its TMDB poster paths in (`/abc.jpg`), each beside the hash read from it.
-   *  The agreement never reads them: they are for the review pages, which show a candidate's poster. */
+  /** The field a film's poster document keeps its TMDB poster paths in (`/abc.jpg`), each beside the hash read from it:
+   *  for the review pages, which show a candidate's poster, and for hashing a film again, which reads only the paths not
+   *  hashed yet. The agreement never reads them. Written as ONE string ([[pathsValue]]): an array of strings cost each
+   *  path ~9 bytes of BSON framing, more than a quarter of a path, in the answer cache every TMDB answer shares. */
   val Paths = "paths"
 
-  /** The TMDB poster paths filed in a poster document, in its hashes' order; none for a venue's, or one filed before them. */
-  def pathsOf(d: org.bson.BsonDocument): Seq[String] =
-    BsonFields.elementsOf(d, Paths).collect { case v if v.isString => v.asString.getValue }
+  /** `paths` as filed: one string, the paths in order, space-separated, a `/<name>.jpg` written as its `<name>` alone. */
+  def pathsValue(paths: Seq[String]): org.bson.BsonString =
+    new org.bson.BsonString(paths.map(path => JpgPath.unapplySeq(path).flatMap(_.headOption).getOrElse(path)).mkString(" "))
+  private val JpgPath = """/([^/ ]+)\.jpg""".r
+
+  /** The TMDB poster paths filed in a poster document, in its hashes' order; none for a venue's, or one filed before
+   *  them. Read as filed now ([[pathsValue]]), or as an array, as they were filed before 2026-11-11. */
+  def pathsOf(d: org.bson.BsonDocument): Seq[String] = d.get(Paths) match {
+    case s: org.bson.BsonString => s.getValue.split(' ').toSeq.filter(_.nonEmpty).map(token => if (token.startsWith("/")) token else s"/$token.jpg")
+    case _                      => BsonFields.elementsOf(d, Paths).collect { case v if v.isString => v.asString.getValue }
+  }
 
   /** The id a poster's hashes are filed under among the families' answers: `poster|venue|<url>`, `poster|film|<tmdbId>`. */
   def idOf(question: agreement.AgreementStage.PosterQuestion): String = question match {
@@ -143,7 +153,8 @@ object PosterEvidence {
   val VetoMatchBits = 8
   /** A film whose posters come no nearer than this to a venue poster another candidate matches is vetoed. */
   val VetoBits = 10
-  /** How many of a film's TMDB posters are hashed: its own language's, then English, then language-neutral, by votes. */
+  /** How many of a film's TMDB posters are hashed: its own language's, then English, then language-neutral, by votes.
+   *  Raising it asks again every film filed holding as many as the old cap (`PosterAnswerStore`'s cap mark). */
   val FilmPosters = 8
 
   /** Does `listing`'s poster speak for its film? Not when its source's poster is no evidence ([[SourceReliability]]: a
