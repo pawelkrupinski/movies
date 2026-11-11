@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
-# Cut the kinowo cluster's Flux back from the self-hosted Forgejo to github.com (github-return plan,
-# Phase 3, cut-over step C7; done 2026-10-31). Re-running it re-mints the GitHub deploy keys.
+# Point the kinowo cluster's Flux at github.com with fresh deploy keys (the cut-over to GitHub was
+# done with it on 2026-10-31). Re-running it re-mints the GitHub deploy keys.
 #
-# movies-gitops' branch `flux-github` points the GitRepositories `movies` (flux/gotk-sync.yaml,
-# applied by hand) and `movies-write` (image-automation/automation.yaml, reconciled) at
+# movies-gitops' main points the GitRepositories `movies` (flux/gotk-sync.yaml, applied by hand) and
+# `movies-write` (image-automation/automation.yaml, reconciled) at
 # ssh://git@github.com/pawelkrupinski/movies-gitops.git with secretRef flux-git-read / flux-git-write.
-# That commit must be on GITHUB's main before this runs (and never on Forgejo's: Flux reading Forgejo
-# would move movies-write before its keys exist). This script then supplies the keys and applies the
-# change out of band, as the Forgejo cut-over did:
+# This script supplies the keys and applies the change out of band:
 #
-#   0. preflight (read-only): gh is logged in; GitHub's main has every commit of Forgejo's main (the
-#      image automation's tag commits included) and its two manifests name the GitHub URL;
+#   0. preflight (read-only): gh is logged in, and GitHub main's two manifests name the GitHub URL;
 #   1. builds known_hosts with ssh-keyscan of github.com run on k3s-worker-1 (the cluster's own view),
 #      and refuses keys whose fingerprints GitHub's /meta does not publish;
 #   2. generates a read and a write ed25519 deploy key in a temp dir (removed on exit);
@@ -23,15 +20,12 @@
 #   5. applies flux/gotk-sync.yaml from GitHub's main and points `movies-write` there too;
 #   6. requests a reconcile and prints the state.
 #
-# DRY RUN BY DEFAULT: without --apply it runs step 0 (GitHub and local git reads only; nothing on the
+# DRY RUN BY DEFAULT: without --apply it runs step 0 (GitHub reads only; nothing on the
 # cluster) and prints what steps 1-6 would do, including the deploy keys it would remove. --apply
 # does it. Re-running --apply is harmless: fresh keys replace both deploy keys and the Secrets.
 #
-# NO ROLLBACK TO FORGEJO: Forgejo was switched off on 2026-10-31 and infra/bin/flux-cutover-forgejo deleted
-# (git log -- infra/bin/flux-cutover-forgejo, should it ever be wanted).
-#
-# Needs: gh logged in as the owner (repo admin on movies-gitops), ~/projects/movies-gitops with remotes
-# `forgejo` and `origin`, ssh to monitoring-1 and k3s-worker-1 (--apply only), jq, ssh-keygen.
+# Needs: gh logged in as the owner (repo admin on movies-gitops), ssh to monitoring-1 and k3s-worker-1
+# (--apply only), jq, ssh-keygen.
 #
 #   infra/bin/flux-cutover-github            # dry run
 #   infra/bin/flux-cutover-github --apply
@@ -50,12 +44,11 @@ scanner="${KEYSCAN_HOST:-k3s-worker-1}"     # a cluster node: known_hosts as the
 owner=pawelkrupinski
 repo=movies-gitops
 slug="$owner/$repo"
-gitops="${GITOPS_CLONE:-$HOME/projects/movies-gitops}"
 git_url="ssh://git@github.com/${slug}.git"
 read_title="flux-git-read (kinowo k3s)"
 write_title="flux-git-write (kinowo k3s)"
 
-for tool in gh jq ssh ssh-keygen git; do
+for tool in gh jq ssh ssh-keygen; do
   command -v "$tool" >/dev/null || { echo "missing: $tool" >&2; exit 1; }
 done
 
@@ -69,20 +62,11 @@ raw() { gh api -H 'Accept: application/vnd.github.raw' "repos/$slug/contents/$1?
 echo "== 0. preflight ($([ "$apply" = 1 ] && echo APPLY || echo 'dry run: nothing changes'))"
 gh auth status -h github.com >/dev/null 2>&1 || { echo "gh is not logged in to github.com: gh auth login" >&2; exit 1; }
 gh api "repos/$slug" --jq '"  repo \(.full_name) (private: \(.private)), default branch \(.default_branch)"'
-git -C "$gitops" fetch -q forgejo main
-git -C "$gitops" fetch -q origin main
-fj=$(git -C "$gitops" rev-parse forgejo/main)
-gh_main=$(git -C "$gitops" rev-parse origin/main)
-echo "  Forgejo main $fj, GitHub main $gh_main"
-git -C "$gitops" merge-base --is-ancestor "$fj" "$gh_main" || {
-  echo "GitHub's main lacks Forgejo's main $fj (the image automation's commits?): bring it over first --" >&2
-  echo "  git -C $gitops rebase forgejo/main flux-github && git -C $gitops push origin flux-github:main" >&2
-  exit 1; }
 gotk_sync=$(raw flux/gotk-sync.yaml)
 automation=$(raw image-automation/automation.yaml)
 for f in gotk_sync automation; do
   grep -qF "url: $git_url" <<<"${!f}" || {
-    echo "GitHub main's $f manifest does not point at $git_url -- push movies-gitops' flux-github branch to origin main first" >&2
+    echo "GitHub main's $f manifest does not point at $git_url -- fix movies-gitops' main first" >&2
     exit 1; }
 done
 grep -qF "name: flux-git-read" <<<"$gotk_sync" || { echo "GitHub main's flux/gotk-sync.yaml has no secretRef flux-git-read" >&2; exit 1; }
