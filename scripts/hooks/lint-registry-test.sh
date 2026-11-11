@@ -9,6 +9,10 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 cd "$REPO_ROOT" || exit 1
 registry=scripts/hooks/lint-registry.tsv
+# The selection is checked without the GitOps manifests unless a case sets PREPUSH_GITOPS=1 itself: land-precheck
+# (and CI's check) export it for their lints, and this test, run after them, read it and failed the "not a @gitops
+# one without the manifests" case (2026-11-11, a precheck refusing a sound registry row).
+unset PREPUSH_GITOPS
 
 printf '\033[36m▸\033[0m the registry names every repo-reading spec, and only specs that exist\n'
 rows() { [ -f "$registry" ] && grep -v '^#' "$registry" | grep -v '^$' | cut -f1; }
