@@ -123,10 +123,11 @@ trait MovieCache extends MovieCacheReader {
    *  happen inside this block to be serialised against `recordCinemaScrape`,
    *  `rekey`, and other concurrent operations on the same title. */
   private[services] def withTitleLock[A](cleanTitle: String)(body: => A): A
-  /** Re-kick the enrichments whose INPUT fields an enrichment write (not a merge)
+  /** Re-kick the enrichments whose INPUT fields a write at a stable key (not a merge)
    *  changed — e.g. Filmweb writing a director / originalTitle onto its slot
    *  re-attempts the TMDB / IMDb resolution its new hint might now crack, and the
-   *  title-ratings when the row is resolved. Same pure decision + retrigger port as
+   *  title-ratings when the row is resolved; the identity projection's write of a film
+   *  a cinema's director reached re-asks Filmweb. Same pure decision + retrigger port as
    *  the merge path ([[MergeRetrigger.changedEnrichments]]); `before`/`after` are
    *  the row at `key` around the write, so they share the key. No-op when nothing an
    *  enrichment reads changed. */

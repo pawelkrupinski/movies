@@ -477,6 +477,28 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.announced should have size 3 // announced once, not again by a projection that changes nothing
   }
 
+  /** Verify scrape recording #23: a film asked of Filmweb under TMDB's spelling of its director alone missed, and the
+   *  cinema's -- Filmweb's own, "Siergiej Paradżanow" -- reaching it in a later projection asked nothing again, so the
+   *  miss stood until the next day's pass, while a whole resolve, the director there from the start, took the page. A
+   *  projection's write re-asks what its change feeds, as a merge does; one that changes nothing asks nothing. */
+  "A projected film a cinema's director reaches" should "re-ask Filmweb, whose search reads it, and nothing when nothing changed" in {
+    val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.zipWithIndex.map { case (d, i) =>
+        ResolverDecision(d.members, Some(500 + i), 0.9, ResolverDecision.Basis.OwnMatch, Nil)() }))
+    }
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, matched)
+    w.scrape(programme)
+    w.projection.tick()
+    w.projection.tick(whole = true)
+    w.retriggered.clear()
+    w.scrape(Map(KinoApollo -> Seq(film(KinoApollo, "Lalka", Some(2026), 4).copy(director = Seq("Wojciech Has")))))
+    w.projection.tick(whole = true)
+    w.retriggered.filter(_._2.contains(services.movies.RetriggerKind.FilmwebRating)).map(_._1).distinct shouldBe Seq("Lalka")
+    w.retriggered.clear()
+    w.projection.tick(whole = true)
+    w.retriggered shouldBe empty
+  }
+
   // Step 6 (the owner, 2026-10-31): a take Pending -- decided on the inputs as they stand, an answer it reads not filed
   // yet -- is served as decided and marked provisional on the film the site serves; filed, the mark goes.
   "A film whose take is Pending" should "be written with its take, marked provisional, the mark gone once it is decided" in {

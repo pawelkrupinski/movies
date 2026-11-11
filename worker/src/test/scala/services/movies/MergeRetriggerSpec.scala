@@ -109,4 +109,18 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     // the same facts: nothing to search again
     decide(before, k("Volcanoes", None), before, k("Volcanoes", None)) should not contain ResolveImdbId
   }
+
+  it should "re-ask Filmweb when a cinema's director or the original title reaches a resolved row, its search reading both" in {
+    // Verify scrape recording #23: "Cienie zapomnianych przodków" (TMDB 1965, Filmweb 1964) was asked under TMDB's
+    // "Sergei Parajanov" alone and missed; a cinema's "Siergiej Paradżanow", Filmweb's own spelling, came in after, and
+    // only the next day's pass asked again and found the page.
+    val before    = rec(tmdbId = Some(26782), imdbId = Some("tt0058642"), original = Some("Тіні забутих предків"))
+    val credited  = before.copy(data = before.data + (models.Kinoteka -> SourceData(title = Some("Cienie zapomnianych przodków"), director = Seq("Siergiej Paradżanow"))))
+    val kinds     = decide(before, k("Cienie zapomnianych przodków", Some(1965)), credited, k("Cienie zapomnianych przodków", Some(1965)))
+    kinds should contain (FilmwebRating)
+    kinds should not contain ImdbRating   // its id stands
+    decide(before, k("Foo"), rec(tmdbId = Some(26782), imdbId = Some("tt0058642"), original = Some("Shadows")), k("Foo")) should contain (FilmwebRating)
+    // a row no film is resolved for has nothing to rate yet
+    decide(rec(tmdbId = None), k("Foo"), rec(tmdbId = None, original = Some("Shadows")), k("Foo")) should not contain FilmwebRating
+  }
 }

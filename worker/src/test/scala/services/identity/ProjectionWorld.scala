@@ -50,7 +50,10 @@ private[identity] final class ProjectionWorld(
   val suspected  = scala.collection.mutable.ListBuffer.empty[(Int, Int)]
   /** What the last projection reported: its films. */
   var reported: Option[Int] = None
-  val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
+  /** Every enrichment the cache re-asked, by film title, in order: what a write changed that a lookup reads. */
+  val retriggered = scala.collection.mutable.ListBuffer.empty[(String, Set[services.movies.RetriggerKind])]
+  val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned,
+    retrigger = (key, _, kinds) => { retriggered += ((key.cleanTitle, kinds)); () })
   val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
     services.movies.ListingIntakeMetrics.noop)
   val announced  = scala.collection.mutable.ListBuffer.empty[CacheKey]

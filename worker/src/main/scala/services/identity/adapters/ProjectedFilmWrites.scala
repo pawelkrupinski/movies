@@ -23,8 +23,15 @@ private[identity] final class ProjectedFilmWrites(cache: MovieCache, logger: pla
   def apply(films: Seq[ProjectedFilm], retired: Seq[FilmId], independent: Set[FilmId],
             patchable: ProjectedFilm => Option[MovieRecord]): (Set[FilmId], Seq[ProjectedFilm]) = {
     def write(f: ProjectedFilm): Boolean = {
-      val key = CacheKey.stored(f.title, f.key)
-      patchable(f).fold(cache.writeProjected(f.id, key, f.record))(cache.patchProjected(f.id, key, _, f.record, f.touched)) == WriteOutcome.Written
+      val key     = CacheKey.stored(f.title, f.key)
+      val patch   = patchable(f)
+      val before  = patch.orElse(cache.get(key))
+      val written = patch.fold(cache.writeProjected(f.id, key, f.record))(cache.patchProjected(f.id, key, _, f.record, f.touched)) == WriteOutcome.Written
+      // A film the projection rewrote under its key re-asks the enrichments whose inputs the write changed (a cinema's
+      // director, an original title: MergeRetrigger), as a merge does -- or a lookup asked before they came in keeps its
+      // answer while a whole resolve, all of them there from the start, gives another (Verify scrape recording #23).
+      if (written) before.foreach(cache.retriggerAfterEnrichment(key, _, f.record))
+      written
     }
     def attempt(fs: Seq[ProjectedFilm]): Seq[ProjectedFilm] = fs.filterNot(write)
     val (apart, ordered) = films.partition(f => independent(f.id))

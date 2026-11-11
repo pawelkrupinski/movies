@@ -101,6 +101,15 @@ object MergeRetrigger {
     // unresolved row has no firm film to rate yet.
     if (ratingInputChanged && after.tmdbId.isDefined)
       builder ++= RetriggerKind.titleRatings
+    // Filmweb's search reads two inputs more (FilmwebRatings.resolveWithTmdbHints, its link-cache key): the original
+    // title it falls back to and the directors the cinemas credit, which confirm a page whose year is off by one.
+    // A miss is remembered under the key it was asked by, so a film asked before a cinema's director reached it kept
+    // the miss while a whole resolve, all of it there from the start, took the page: Verify scrape recording #23's
+    // "Cienie zapomnianych przodków" (Filmweb 1964, TMDB 1965) and "Plemię", asked under TMDB's spellings alone,
+    // found once Filmweb's own ("Siergiej Paradżanow") had come in.
+    val filmwebInputChanged = before.originalTitle != after.originalTitle || before.evidence.directors != after.evidence.directors
+    if (filmwebInputChanged && after.tmdbId.isDefined)
+      builder += RetriggerKind.FilmwebRating
     builder.result()
   }
 }
