@@ -665,9 +665,9 @@ jobs:
     # Gradle 8.9 / AGP 8.6 run on 21, and Swift needs no JDK. Both junit publishes
     # keep their original `iOS LocalServer` / `Android LocalServer` check-names.
     #
-    # Pinned to 24.04, not `ubuntu-latest`: setup-swift@v2 refuses Ubuntu 26.04 (actions/runner-images#14748).
-    # Swift 6.2 is the newest setup-swift@v2 knows (ios/Package.swift is tools 6.0, Swift 6 mode); keep it
-    # in step with ios.yml's `swift:6.2` container. Locked by ActionPinningSpec.
+    # Swift comes from swift.org's ubuntu22.04 tarball (scripts/ci/install-swift.sh), so the job stays on 22.04 while the
+    # tarball's platform does. Swift 6.2 (ios/Package.swift is tools 6.0, Swift 6 mode): keep it in step with ios.yml's
+    # `swift:6.2` container. No setup-swift (ActionPinningSpec): its keyserver refresh held Main red (#2388, #2390).
     mobile-local-server:
         needs: scope
         # The public pages, booted from the read-model snapshot: inert for identity's code (ci-row-scope.sh browsers).
@@ -707,11 +707,12 @@ jobs:
               run: |
                   nohup bash -c 'sbt web/PageTest/compile > /tmp/compile.log 2>&1; echo $? > /tmp/compile.status' &
 
-            # The exact version, so setup-swift finds it
-            # instead of a 47 s download; '6.2' resolved to this already.
-            - uses: swift-actions/setup-swift@v2
-              with:
-                  swift-version: '6.2.1'
+            # swift.org's tarball checked against a pinned SHA-256, never a keyserver (setup-swift@v2 refreshed the
+            # signing keys from keyserver.ubuntu.com on every download and failed when it did: Main #2388, #2390).
+            # The pin: the SHA-256 of a tarball whose `.sig` verified against swift.org/keys/all-keys.asc (Swift 6.x
+            # Release Signing Key EF80A866B47A981F), 2026-11-11. A new version re-verifies the same way, then re-pins.
+            - name: Install Swift 6.2.1
+              run: scripts/ci/install-swift.sh 6.2.1 ubuntu22.04 5ec23d4004f760fafdbb76c21e380d3bacef1824300427a458dc88c1c0bef381
 
             - uses: actions/cache@v5
               with:

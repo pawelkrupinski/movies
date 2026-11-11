@@ -39,7 +39,7 @@ class FixtureServerBootOverlapSpec extends AnyFlatSpec with Matchers {
   }
 
   "the mobile LocalServer job" should "compile the fixture server while the toolchains download" in {
-    assertOrder(mobile, "Start compiling the fixture server", "swift-actions/setup-swift")
+    assertOrder(mobile, "Start compiling the fixture server", "Install Swift")
     assertOrder(mobile, "Start compiling the fixture server", "Set up Android SDK")
     assertOrder(mobile, "Set up Gradle", "Wait for the fixture-server compile")
   }

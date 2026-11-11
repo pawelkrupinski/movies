@@ -59,25 +59,19 @@ class ActionPinningSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** `swift-actions/setup-swift@v2` refuses any Ubuntu outside its own list
-   *  (`Version "26.04" of Ubuntu is not supported`) — so a job that installs Swift stays on an image setup-swift knows. */
-  private val SetupSwiftUbuntus = Set("20.04", "22.04", "24.04")
+  /** `swift-actions/setup-swift@v2` refreshes swift.org's signing keys from hkp://keyserver.ubuntu.com on every toolchain
+   *  download, with no way to skip it, and aborts the step when that keyserver fails: it held Main red twice on
+   *  2026-11-11 (#2388, #2390). A job installs Swift with scripts/ci/install-swift.sh, which checks the tarball against
+   *  a pinned SHA-256 and asks no keyserver. */
+  "every CI job" should "install Swift without setup-swift's keyserver refresh" in {
+    val viaSetupSwift = for {
+      path <- RepoFile.ciFiles()
+      line <- RepoFile.withoutComments(RepoFile.read(path)).linesIterator
+      if line.contains("swift-actions/setup-swift@")
+    } yield s"$path: ${line.trim}"
 
-  "every job installing Swift via setup-swift" should "run on an Ubuntu setup-swift supports" in {
-    // Every Ubuntu a `runs-on:` names is one setup-swift supports.
-    val RunsOn  = """(?m)^\s*runs-on:(.*)$""".r
-    val Version = """ubuntu-(\d\d\.\d\d)""".r
-    val unsupported = for {
-      file        <- RepoFile.workflows()
-      (name, job) <- RepoFile.jobs(RepoFile.read(file.getPath))
-      code         = RepoFile.withoutComments(job)
-      if code.contains("swift-actions/setup-swift@")
-      versions     = RunsOn.findFirstMatchIn(code).toSeq.flatMap(m => Version.findAllMatchIn(m.group(1).split(" #")(0)).map(_.group(1)))
-      if versions.isEmpty || !versions.forall(SetupSwiftUbuntus)
-    } yield s"${file.getName}: $name"
-
-    withClue(s"setup-swift@v2 runs only on Ubuntu ${SetupSwiftUbuntus.toSeq.sorted.mkString(" / ")}: ") {
-      unsupported shouldBe empty
+    withClue("setup-swift's keyserver refresh fails the step whenever keyserver.ubuntu.com does; use scripts/ci/install-swift.sh: ") {
+      viaSetupSwift shouldBe empty
     }
   }
 

@@ -151,6 +151,7 @@ scripts/ci/identity_takes.py
 scripts/ci/identity_takes_diff.py
 scripts/ci/install-actionlint.sh
 scripts/ci/install-playwright.sh
+scripts/ci/install-swift.sh
 scripts/ci/jdk-pin.sh
 scripts/ci/jfr-every-jvm.sh
 scripts/ci/job_metrics.py

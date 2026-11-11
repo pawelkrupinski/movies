@@ -81,7 +81,7 @@ CATEGORIES = [
     ("publish", r"upload-artifact|junit-report|Publish|publish|imagetools|Record that|Mark deploy|report-timings"
                 r"|Hand the staged|push.*image|image was built|Report |report \(|verdict"),
     ("services", r"[Mm]ongo|docker|buildx|setup-buildx|[Bb]rowser|playwright install|install-playwright|setup-chrome"
-                 r"|FixtureServer|fixture-server|[Bb]oot |APT_CACHE|apt-get|Android SDK|setup-android|setup-swift"
+                 r"|FixtureServer|fixture-server|[Bb]oot |APT_CACHE|apt-get|Android SDK|setup-android|setup-swift|Install Swift"
                  r"|Gradle|cgroup-sampler|cpu-sampler|in-background.sh start"),
     ("fixtures", r"[Ff]ixture|corpus|[Rr]ecording|enrichment|convergence-setup|download-artifact|Fetch the"),
     ("compile", r"compile|[Ss]tage\b|sbt .*stage|web/stage|Key the sbt"),
