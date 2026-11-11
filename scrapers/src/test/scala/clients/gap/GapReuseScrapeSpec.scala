@@ -36,4 +36,12 @@ class GapReuseScrapeSpec extends AnyFlatSpec with Matchers {
 
   check("Bilety24Client (Kino CK Lublin)", KinoCkLublin)(
     new Bilety24Client(new FakeHttpFetch("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin, titles = titleNormalizer).fetch())
+
+  // Each event page prints the venue site's default svg as its first og:image, the event's poster second.
+  "Bilety24Client (Kino CK Lublin)" should "read an event's poster from the og:image after the site's default" in {
+    val posters = new Bilety24Client(new FakeHttpFetch("kino-ck-lublin"), "https://ck-lublin.bilety24.pl", KinoCkLublin,
+      titles = titleNormalizer).fetch().flatMap(_.posterUrl)
+    posters should contain ("https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1214/werdykt-plakat-data.jpg")
+    all(posters) should startWith ("https://image.bilety24.pl/")
+  }
 }

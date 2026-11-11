@@ -305,11 +305,12 @@ private[cinemas] object ScraperParse {
   def namesAFile(url: String): Boolean =
     Try(java.net.URI.create(url).getRawPath).toOption.flatMap(Option(_)).exists(path => path.nonEmpty && !path.endsWith("/"))
 
-  /** The page's `og:image`, unless it has the shape of a SITE-WIDE default rather than this film's
-    * poster ([[tools.SiteDefaultImage]]). */
+  /** The page's first `og:image` without the shape of a SITE-WIDE default rather than this film's
+    * poster ([[tools.SiteDefaultImage]]). A page may carry several: every bilety24 venue site prints
+    * its default svg first and the event's poster after it. */
   def ogImage(document: Document): Option[String] =
-    Option(document.selectFirst("meta[property=og:image]")).map(_.attr("content").trim).filter(_.nonEmpty)
-      .filterNot(tools.SiteDefaultImage(_))
+    document.select("meta[property=og:image]").asScala.iterator.map(_.attr("content").trim)
+      .find(url => url.nonEmpty && !tools.SiteDefaultImage(url))
 
   /**
    * Convert an ALL-CAPS title to sentence case for the MSI scrapers (Cinema1,
