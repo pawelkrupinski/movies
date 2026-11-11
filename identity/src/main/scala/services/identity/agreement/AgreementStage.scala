@@ -584,7 +584,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
           val asking = mutable.Set.empty[Question]
           takeWaits -= id
           // the venue posters' distances to the cluster's candidates and to the film the families agree on
-          def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, asking)
+          // read through the apply's memo, as a correction's are: each poster decoded once an apply, not once a take
+          def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, asking, hashes = pass.reading.posters)
           // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
           verdict.fold(decision) { v =>
             lazy val unagreed = AgreementStage.Unagreed(decision, id, digest, listings, v, distances, asking)
@@ -861,7 +862,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       // none of the films while a search is unanswered: the search is a question already, and the posters its answer
       // leads to are asked once it is (ModelInputGate's askLedTo); the id and digest key only the cluster's cache, unread
       posterDistances("", 0L, Seq(listing), also = None, gaps,
-        candidates = (_, _, alone) => looked.flatMap(searchedFilms(alone, _)).getOrElse(Nil))
+        candidates = (_, _, alone) => looked.flatMap(searchedFilms(alone, _)).getOrElse(Nil), hashes = posters)
       gaps.toSet
     }
 
@@ -1289,15 +1290,17 @@ object AgreementStage {
   val FullValidationBudget = 2000
 
   /** `posters` and `programmes` (the family whose site lists the venues' programmes), each answer decoded once: an
-   *  apply's reads, dropped with it. */
+   *  apply's reads, dropped with it. A poster's hashes, whether it is fresh and whether it was given up on are each read
+   *  of the store once an apply, however many takes and corrections compare it (each a document read and decode). */
   private[agreement] final class Read(hashes: PosterAnswers, family: Option[FamilyAnswers]) {
     private val venues = mutable.HashMap.empty[String, Answer[Option[PosterHash]]]
     private val films  = mutable.HashMap.empty[Int, Answer[Seq[PosterHash]]]
+    private val freshness, givenUp = mutable.HashMap.empty[PosterQuestion, Boolean]
     val posters: PosterAnswers = new PosterAnswers {
       def venue(url: String): Answer[Option[PosterHash]] = venues.getOrElseUpdate(url, hashes.venue(url))
       def film(tmdbId: Int): Answer[Seq[PosterHash]]     = films.getOrElseUpdate(tmdbId, hashes.film(tmdbId))
-      override def unread(question: PosterQuestion): Boolean = hashes.unread(question)
-      override def fresh(question: PosterQuestion): Boolean  = hashes.fresh(question)
+      override def unread(question: PosterQuestion): Boolean = givenUp.getOrElseUpdate(question, hashes.unread(question))
+      override def fresh(question: PosterQuestion): Boolean  = freshness.getOrElseUpdate(question, hashes.fresh(question))
     }
     val programmes: Option[FamilyAnswers] = family.map { answers =>
       val showings = mutable.HashMap.empty[String, Answer[Seq[Showing]]]

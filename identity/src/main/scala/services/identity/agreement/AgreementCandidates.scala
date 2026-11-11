@@ -80,7 +80,7 @@ private[agreement] trait AgreementCandidates { this: AgreementStage =>
   private[agreement] def posterDistances(id: String, digest: Long, listings: Seq[Listing], also: Option[Int],
                               asked: mutable.Set[Question],
                               candidates: (String, Long, Seq[Listing]) => Seq[Int] = candidatesOf,
-                              hashes: PosterAnswers = posters): Answer[Seq[Map[Int, Option[Int]]]] = {
+                              hashes: PosterAnswers): Answer[Seq[Map[Int, Option[Int]]]] = {
     val urls = PosterEvidence.urls(listings)
     if (urls.isEmpty || tmdb.isEmpty) Answer.Known(Nil)
     else {
