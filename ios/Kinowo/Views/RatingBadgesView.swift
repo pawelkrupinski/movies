@@ -28,7 +28,7 @@ struct RatingBadgesView: View {
             if ratings.imdb != nil || ratings.imdbPending {
                 Badge.twoTone(
                     label:    "IMDb",
-                    value:    ratings.imdb.map(Film.Ratings.scoreText) ?? "IMDb",
+                    value:    ratings.imdb.map(Film.Ratings.scoreText),
                     accessibilityLabel: ratings.imdb == nil ? "rating.imdb.pending" : nil,
                     url:      ratings.imdbURL,
                     appURL:   ratings.imdbAppURL,
@@ -65,7 +65,7 @@ struct RatingBadgesView: View {
             if ratings.filmweb != nil || ratings.filmwebPending {
                 Badge.twoTone(
                     label:    "FW",
-                    value:    ratings.filmweb.map(Film.Ratings.scoreText) ?? "FW",
+                    value:    ratings.filmweb.map(Film.Ratings.scoreText),
                     accessibilityLabel: ratings.filmweb == nil ? "rating.filmweb.pending" : nil,
                     url:      ratings.filmwebURL,
                     labelBg:  Color(red: 1.0,   green: 0.424, blue: 0.0),    // #ff6c00
@@ -98,7 +98,7 @@ private enum Badge {
     @ViewBuilder
     static func twoTone(
         label:   String,
-        value:   String,
+        value:   String?,   // nil: a rating-less pill, the label tab alone
         accessibilityLabel: LocalizedStringKey? = nil,
         url:     URL?,
         appURL:  URL? = nil,
@@ -116,13 +116,15 @@ private enum Badge {
                 .padding(.horizontal, style.labelHInset)
                 .padding(.vertical, style.vInset)
                 .background(labelBg)
-            Text(value)
-                .font(.system(size: style.valueFontSize, weight: style.valueWeight))
-                .foregroundColor(valueFg)
-                .lineLimit(1)
-                .padding(.horizontal, style.valueHInset)
-                .padding(.vertical, style.vInset)
-                .background(Color.kinowoPanel)    // #2a2a3e
+            if let value {
+                Text(value)
+                    .font(.system(size: style.valueFontSize, weight: style.valueWeight))
+                    .foregroundColor(valueFg)
+                    .lineLimit(1)
+                    .padding(.horizontal, style.valueHInset)
+                    .padding(.vertical, style.vInset)
+                    .background(Color.kinowoPanel)    // #2a2a3e
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: style.cornerRadius))
         // Pills render at their intrinsic width — never shrink the
@@ -172,7 +174,7 @@ private enum Badge {
     }
 }
 
-/// Replaces a rating-less pill's spoken text ("IMDb —") with "IMDb, no rating yet";
+/// Replaces a rating-less pill's spoken text ("IMDb") with "IMDb, no rating yet";
 /// a rated pill (`label == nil`) keeps SwiftUI's own combined text.
 private struct OptionalAccessibilityLabel: ViewModifier {
     let label: LocalizedStringKey?

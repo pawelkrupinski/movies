@@ -17,8 +17,8 @@
    emit byte-identical markup to before the read-model split.
 
    A source we hold a link for but no rating yet (a new release: Filmweb answers 0.0 until it has
-   votes, which we drop; an IMDb id before its rating is read) still gets its pill, with the
-   source's short name in the score slot and a translated "no rating yet" title and aria-label (`pendingLabel`, the page's messages) — `ResolvedRatings.imdbLinked` /
+   votes, which we drop; an IMDb id before its rating is read) still gets its pill, only its
+   coloured label half (no score slot) and a translated "no rating yet" title and aria-label (`pendingLabel`, the page's messages) — `ResolvedRatings.imdbLinked` /
    `filmwebLinked`. Filmweb's derived search-page fallback is not such a link.
 
    All four are `rel="nofollow noopener"`: four outbound links per card ×
@@ -28,7 +28,7 @@
   <div class="ratings">
     @if(e.imdb.isDefined || e.imdbLinked) {
       <a@for(href <- e.imdbUrl.flatMap(WebHref.of)){ href="@href"} target="_blank" rel="nofollow noopener" class="rating-imdb" @if(e.imdb.isEmpty){title="@pendingLabel(RatingPendingLabel.Imdb)" aria-label="@pendingLabel(RatingPendingLabel.Imdb)" data-i18n-attr="aria-label:@RatingPendingLabel.Imdb;title:@RatingPendingLabel.Imdb"} else {title="IMDb"}>
-        <span class="rating-imdb-label">IMDb</span><span class="rating-imdb-value">@{e.imdb.fold("IMDb")(r => f"$r%.1f")}</span>
+        <span class="rating-imdb-label">IMDb</span>@for(r <- e.imdb){<span class="rating-imdb-value">@{f"$r%.1f"}</span>}
       </a>
     }
     @e.metascore.map { m =>
@@ -41,7 +41,7 @@
     }
     @if(e.filmweb.isDefined || e.filmwebLinked) {
       <a@for(href <- WebHref.of(e.filmwebUrl)){ href="@href"} target="_blank" rel="nofollow noopener" class="rating-fw" @if(e.filmweb.isEmpty){title="@pendingLabel(RatingPendingLabel.Filmweb)" aria-label="@pendingLabel(RatingPendingLabel.Filmweb)" data-i18n-attr="aria-label:@RatingPendingLabel.Filmweb;title:@RatingPendingLabel.Filmweb"} else {title="Filmweb"}>
-        <span class="rating-fw-label">FW</span><span class="rating-fw-value">@{e.filmweb.fold("FW")(r => f"$r%.1f")}</span>
+        <span class="rating-fw-label">FW</span>@for(r <- e.filmweb){<span class="rating-fw-value">@{f"$r%.1f"}</span>}
       </a>
     }
   </div>

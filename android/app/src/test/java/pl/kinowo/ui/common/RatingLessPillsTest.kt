@@ -18,7 +18,7 @@ import pl.kinowo.model.Ratings
 
 /**
  * A source we hold a link for but no score yet (a new release) still gets its IMDb / Filmweb
- * pill, with the source's short name for the score and an accessible "no rating yet" label; a rated pill is
+ * pill, only its coloured label tab (no score tab) and an accessible "no rating yet" label; a rated pill is
  * unchanged. Off-device Compose (Robolectric), like [RatingPillPaddingTest].
  */
 @RunWith(RobolectricTestRunner::class)
@@ -40,9 +40,9 @@ class RatingLessPillsTest {
         }
         compose.onNodeWithContentDescription(imdbLabel).assertIsDisplayed().assertHasClickAction()
         compose.onNodeWithContentDescription(filmwebLabel).assertIsDisplayed().assertHasClickAction()
-        // the visible text is the source's short name in both tabs, whatever the language
-        compose.onAllNodesWithText("IMDb", useUnmergedTree = true).assertCountEquals(2)
-        compose.onAllNodesWithText("FW", useUnmergedTree = true).assertCountEquals(2)
+        // the visible text is the label tab alone, once per pill, whatever the language
+        compose.onAllNodesWithText("IMDb", useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithText("FW", useUnmergedTree = true).assertCountEquals(1)
     }
 
     @Test

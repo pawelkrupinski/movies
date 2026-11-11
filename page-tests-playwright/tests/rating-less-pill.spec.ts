@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
 
 // A source we hold a link for but no rating yet (a new release) still gets its pill: the same
-// anchor and classes as a rated one, the source's short name for the score, the source's own page as its link, and
+// anchor and classes as a rated one, only its coloured label tab (no score tab), the source's own page as its link, and
 // an accessible "no rating yet" label. The fixture corpus carries both kinds (Poznań has Filmweb
 // pages without a rating, and IMDb ids without one).
 test.describe('rating-less rating pills', () => {
@@ -35,7 +35,8 @@ test.describe('rating-less rating pills', () => {
       expect(await pill.getAttribute('href')).toContain(hrefStart);
       expect(await pill.getAttribute('target')).toBe('_blank');
       expect(await pill.getAttribute('rel')).toBe('nofollow noopener');
-      await expect(pill.locator(`.${cls}-value`)).toHaveText(site === 'IMDb' ? 'IMDb' : 'FW');
+      await expect(pill.locator(`.${cls}-value`)).toHaveCount(0);
+      await expect(pill).toHaveText(site === 'IMDb' ? 'IMDb' : 'FW');
     });
   }
 

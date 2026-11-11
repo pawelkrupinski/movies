@@ -1687,12 +1687,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       def count(selector: String) = page.evalInt(s"document.querySelectorAll('$selector').length")
       count("""a.rating-fw[aria-label="Filmweb – brak oceny"][title="Filmweb – brak oceny"]""") should be > 0
       count("""a.rating-imdb[aria-label="IMDb – brak oceny"][title="IMDb – brak oceny"]""") should be > 0
-      // every rating-less pill links its own page (never Filmweb's search page), shows its short name as the score and is a tap target
+      // every rating-less pill links its own page (never Filmweb's search page), shows only its coloured label tab (no score tab) and is a tap target
       page.evalBool(
         """[...document.querySelectorAll('a.rating-fw[aria-label], a.rating-imdb[aria-label]')].every(a =>
           |  /^https:\/\/www\.(filmweb\.pl\/film\/|imdb\.com\/title\/tt)/.test(a.getAttribute('href')) &&
           |  a.target === '_blank' && a.getAttribute('rel') === 'nofollow noopener' &&
-          |  a.querySelector('[class$="-value"]').textContent === (a.classList.contains('rating-fw') ? 'FW' : 'IMDb'))""".stripMargin
+          |  a.querySelector('[class$="-value"]') === null && a.textContent.trim() === (a.classList.contains('rating-fw') ? 'FW' : 'IMDb'))""".stripMargin
       ) shouldBe true
       // the label follows the page language, with the visible text unchanged
       for ((lang, imdb, filmweb) <- Seq(
@@ -1702,7 +1702,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         page.eval(s"applyLanguage('$lang')")
         count(s"""a.rating-imdb[aria-label="$imdb"][title="$imdb"]""") should be > 0
         count(s"""a.rating-fw[aria-label="$filmweb"][title="$filmweb"]""") should be > 0
-        page.evalBool("""[...document.querySelectorAll('a.rating-fw[aria-label]')].every(a => a.querySelector('.rating-fw-value').textContent === 'FW')""") shouldBe true
+        page.evalBool("""[...document.querySelectorAll('a.rating-fw[aria-label]')].every(a => a.textContent.trim() === 'FW')""") shouldBe true
       }
       // rated pills are unchanged: a score, no label
       count("a.rating-imdb:not([aria-label])") should be > 0

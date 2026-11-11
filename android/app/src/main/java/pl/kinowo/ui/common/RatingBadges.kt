@@ -107,7 +107,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
         if (ratings.imdb != null || ratings.imdbPending) {
             LabelValuePill(
                 label = "IMDb", labelBg = ImdbYellow, labelFg = Color.Black,
-                value = ratings.imdb?.let(::oneDecimal) ?: "IMDb", valueFg = ImdbYellow,
+                value = ratings.imdb?.let(::oneDecimal), valueFg = ImdbYellow,
                 spokenLabel = if (ratings.imdb == null) stringResource(R.string.rating_imdb_pending) else null,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 labelWeight = style.labelWeight, valueWeight = style.valueWeight,
@@ -136,7 +136,7 @@ fun RatingBadges(ratings: Ratings, modifier: Modifier = Modifier) {
         if (ratings.filmweb != null || ratings.filmwebPending) {
             LabelValuePill(
                 label = "FW", labelBg = FwOrange, labelFg = Color.White,
-                value = ratings.filmweb?.let(::oneDecimal) ?: "FW", valueFg = FwOrangeLight,
+                value = ratings.filmweb?.let(::oneDecimal), valueFg = FwOrangeLight,
                 spokenLabel = if (ratings.filmweb == null) stringResource(R.string.rating_filmweb_pending) else null,
                 fontSize = fontSize, hPad = hPad, vPad = vPad, corner = corner,
                 labelWeight = style.labelWeight, valueWeight = style.valueWeight,
@@ -174,7 +174,8 @@ internal fun oneDecimal(value: Double): String = String.format(Locale.US, "%.1f"
 @Composable
 private fun LabelValuePill(
     label: String, labelBg: Color, labelFg: Color,
-    value: String, valueFg: Color,
+    /** Null for a rating-less pill: the label tab alone. */
+    value: String?, valueFg: Color,
     fontSize: TextUnit, hPad: Dp, vPad: Dp, corner: Dp,
     labelWeight: FontWeight, valueWeight: FontWeight,
     onClick: () -> Unit,
@@ -187,10 +188,12 @@ private fun LabelValuePill(
             label, color = labelFg, style = pillTextStyle(fontSize, labelWeight),
             modifier = Modifier.background(labelBg).padding(horizontal = hPad, vertical = vPad),
         )
-        Text(
-            value, color = valueFg, style = pillTextStyle(fontSize, valueWeight),
-            modifier = Modifier.background(CardElevated).padding(horizontal = hPad, vertical = vPad),
-        )
+        if (value != null) {
+            Text(
+                value, color = valueFg, style = pillTextStyle(fontSize, valueWeight),
+                modifier = Modifier.background(CardElevated).padding(horizontal = hPad, vertical = vPad),
+            )
+        }
     }
 }
 

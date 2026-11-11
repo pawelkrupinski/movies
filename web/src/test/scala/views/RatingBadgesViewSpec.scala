@@ -42,7 +42,8 @@ class RatingBadgesViewSpec extends AnyFlatSpec with Matchers {
     val rendered = render(MovieRecord(filmwebUrl = Some("https://www.filmweb.pl/film/Przepis+na+swieta-2026-1")))
     rendered should include ("""href="https://www.filmweb.pl/film/Przepis+na+swieta-2026-1"""")
     rendered should include ("""title="Filmweb, no rating yet" aria-label="Filmweb, no rating yet"""")
-    rendered should include ("rating-fw-value\">FW<")
+    rendered should include ("<span class=\"rating-fw-label\">FW</span>")
+    rendered should not include "rating-fw-value"
   }
 
   it should "render no Filmweb pill when only the derived search-page fallback exists" in {
@@ -62,8 +63,8 @@ class RatingBadgesViewSpec extends AnyFlatSpec with Matchers {
       rendered should include (s"""title="$imdb" aria-label="$imdb"""")
       rendered should include (s"""title="$filmweb" aria-label="$filmweb"""")
       rendered should include ("""data-i18n-attr="aria-label:rating.imdb.pending;title:rating.imdb.pending"""")
-      rendered should include ("rating-imdb-value\">IMDb<")
-      rendered should include ("rating-fw-value\">FW<")
+      rendered should not include "rating-imdb-value"
+      rendered should not include "rating-fw-value"
     }
   }
 
@@ -71,7 +72,8 @@ class RatingBadgesViewSpec extends AnyFlatSpec with Matchers {
     val rendered = render(MovieRecord(imdbId = Some("tt1234567")))
     rendered should include ("""href="https://www.imdb.com/title/tt1234567/"""")
     rendered should include ("""title="IMDb, no rating yet" aria-label="IMDb, no rating yet"""")
-    rendered should include ("rating-imdb-value\">IMDb<")
+    rendered should include ("<span class=\"rating-imdb-label\">IMDb</span>")
+    rendered should not include "rating-imdb-value"
   }
 
   it should "leave a rated pill without the no-rating label" in {
