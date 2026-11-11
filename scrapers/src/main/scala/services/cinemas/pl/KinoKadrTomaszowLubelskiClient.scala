@@ -111,7 +111,7 @@ object KinoKadrTomaszowLubelskiClient {
                             .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
       ),
       cinema      = cinema,
-      posterUrl   = Option(article.selectFirst(".movie-poster img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty),
+      posterUrl   = Option(article.selectFirst(".movie-poster img[src]")).flatMap(ScraperParse.imageUrl(_)),
       filmUrl     = None,
       synopsis    = Option(article.selectFirst(".movie-description .filmPlotsSection__plot")).map(_.text.trim).filter(_.nonEmpty),
       cast        = Seq.empty,

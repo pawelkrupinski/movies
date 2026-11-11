@@ -284,7 +284,7 @@ object SavoyClient {
         url         = if (isLink) Some(mark.attr("abs:href")) else None,
         id          = if (isLink) ProgrammeId.findFirstMatchIn(mark.attr("href")).map(_.group(1)) else None,
         certificate = heading.flatMap(h => Certificate.findFirstMatchIn(h.ownText)).map(_.group(1).trim),
-        poster      = block.flatMap(b => Option(b.selectFirst("img[src]"))).map(_.attr("abs:src")).filter(_.nonEmpty),
+        poster      = block.flatMap(b => Option(b.selectFirst("img[src]"))).flatMap(ScraperParse.imageUrl(_)),
         synopsis    = block.flatMap(b => Option(b.selectFirst(".synopsis"))).map(_.text.trim)
           .filter(s => s.nonEmpty && !s.equalsIgnoreCase("tbc"))
       )

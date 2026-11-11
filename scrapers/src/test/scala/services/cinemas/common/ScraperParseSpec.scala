@@ -571,4 +571,25 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
   it should "return None when the page has no og:image" in {
     ScraperParse.ogImage(Jsoup.parse("<head></head>")) shouldBe None
   }
+
+  private def firstImg(html: String) =
+    Jsoup.parse(html, "https://book.ilkleycinema.co.uk/IlkleyCinema.dll/").selectFirst("img")
+
+  "imageUrl" should "resolve a relative image against the page" in {
+    ScraperParse.imageUrl(firstImg("""<img src="/ICI/1.jpeg">""")) shouldBe Some("https://book.ilkleycinema.co.uk/ICI/1.jpeg")
+    ScraperParse.imageUrl(firstImg("""<img data-src="a.png">"""), "data-src") shouldBe
+      Some("https://book.ilkleycinema.co.uk/IlkleyCinema.dll/a.png")
+  }
+
+  it should "read a blank or missing image as no image, not as the page's own URL" in {
+    ScraperParse.imageUrl(firstImg("""<img src="" alt="Sense and Sensibility">""")) shouldBe None
+    ScraperParse.imageUrl(firstImg("""<img src="  ">""")) shouldBe None
+    ScraperParse.imageUrl(firstImg("""<img alt="x">""")) shouldBe None
+  }
+
+  it should "read an image naming a directory, not a file, as no image" in {
+    ScraperParse.imageUrl(firstImg("""<img src="/cmsUploads/tmdbimage/images/">""")) shouldBe None
+    ScraperParse.namesAFile("https://rcks.pl") shouldBe false
+    ScraperParse.namesAFile("https://images.savoysystems.co.uk/RSW/1835364.jpg") shouldBe true
+  }
 }

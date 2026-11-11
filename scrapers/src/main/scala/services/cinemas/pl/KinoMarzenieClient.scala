@@ -155,7 +155,7 @@ object KinoMarzenieClient {
     val title = titleLink.map(_.ownText.trim).filter(_.nonEmpty)
     title.toSeq.flatMap { t =>
       val filmUrl = titleLink.map(_.attr("abs:href")).filter(_.nonEmpty)
-      val poster  = Option(block.selectFirst("img.img-responsive")).map(_.attr("abs:src")).filter(_.nonEmpty)
+      val poster  = Option(block.selectFirst("img.img-responsive")).flatMap(ScraperParse.imageUrl(_))
       val genres  = Option(block.selectFirst("span.d-block.color-3.small")).map(_.text).toSeq
         .flatMap(_.split("\\|").headOption)
         .flatMap(_.split(",").map(_.trim))

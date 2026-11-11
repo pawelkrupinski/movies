@@ -143,7 +143,7 @@ object CinemaPlusClient {
       CinemaMovie(
         movie     = Movie(title = title),
         cinema    = cinema,
-        posterUrl = Option(card.selectFirst("img[src]")).map(_.absUrl("src")).filter(_.nonEmpty),
+        posterUrl = Option(card.selectFirst("img[src]")).flatMap(ScraperParse.imageUrl(_)),
         filmUrl   = Option(card.selectFirst("h3 a")).map(_.absUrl("href")).filter(_.nonEmpty),
         synopsis  = Option(card.selectFirst("div.text-sm > div > div")).map(_.text.trim).filter(_.nonEmpty),
         cast      = credited(card, "Cast:"),

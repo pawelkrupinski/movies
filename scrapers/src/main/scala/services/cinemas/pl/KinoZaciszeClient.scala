@@ -106,7 +106,7 @@ object KinoZaciszeClient {
       }
       val filmUrl = Option(block.selectFirst(".col-md-2 a[href], a.arrow-button"))
         .map(_.attr("abs:href")).filter(_.nonEmpty)
-      val poster = Option(block.selectFirst("img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty)
+      val poster = Option(block.selectFirst("img[src]")).flatMap(ScraperParse.imageUrl(_))
 
       block.select("ul.show-times span.time").asScala.toSeq.flatMap { span =>
         for {

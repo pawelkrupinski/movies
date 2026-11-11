@@ -152,6 +152,13 @@ class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
     film.synopsis shouldBe None
   }
 
+  it should "read a film's image as its poster, and a blank image as no poster rather than the page itself" in {
+    ilkleyBy("Pressure").posterUrl.value shouldBe "https://images.savoysystems.co.uk/ICI/12545316.jpeg"
+    // `<img src="" alt="Sense and Sensibility"/>`: jsoup's abs:src made that the box office's own URL.
+    ilkleyBy("Sense and Sensibility").posterUrl shouldBe None
+    ilkley.flatMap(_.posterUrl).filter(_.startsWith(IlkleyBase)) shouldBe empty
+  }
+
   it should "drop performances before today" in {
     val later = scrape(IlkleyBase, IlkleyCinema, LocalDate.of(2026, 10, 14))
     later.flatMap(_.showtimes).map(_.dateTime.toLocalDate).min shouldBe LocalDate.of(2026, 10, 14)

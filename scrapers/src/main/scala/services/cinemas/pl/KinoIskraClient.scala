@@ -176,7 +176,7 @@ object KinoIskraClient {
       director  = labelled(lines, "Reżyseria").toSeq.flatMap(names),
       cast      = labelled(lines, "Obsada").toSeq.flatMap(names),
       ageRating = labelled(lines, "Od lat").map(_.trim).filter(_.nonEmpty).flatMap(age => AgeRating.normalize(s"$age+")),
-      poster    = Option(document.selectFirst("img.poster-to-zoom")).map(_.attr("abs:src")).filter(_.nonEmpty),
+      poster    = Option(document.selectFirst("img.poster-to-zoom")).flatMap(ScraperParse.imageUrl(_)),
       synopsis  = synopsisOf(document)
     )
   }

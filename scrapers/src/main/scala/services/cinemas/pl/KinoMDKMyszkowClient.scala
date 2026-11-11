@@ -85,7 +85,7 @@ object KinoMDKMyszkowClient {
     } yield CinemaMovie(
       movie     = Movie(title, runtimeMinutes = RuntimePat.findFirstMatchIn(text).map(_.group(1).toInt)),
       cinema    = cinema,
-      posterUrl = block.flatMap(b => Option(b.selectFirst("img[src]"))).map(_.attr("abs:src")).filter(_.nonEmpty),
+      posterUrl = block.flatMap(b => Option(b.selectFirst("img[src]"))).flatMap(ScraperParse.imageUrl(_)),
       filmUrl   = Some(url),
       synopsis  = block.flatMap(synopsisOf),
       cast      = Seq.empty,

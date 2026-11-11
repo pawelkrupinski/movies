@@ -103,7 +103,7 @@ object IksorisRepertoireClient {
     Option(box.selectFirst(".nazwa, .kalendarium-nazwa-wydarzenia")).map(_.ownText.trim.stripSuffix("/").trim).filter(_.nonEmpty).toSeq.flatMap { rawTitle =>
       val (title, format) = FormatTags.extractFormatTags(rawTitle)
       val runtime = Runtime.findFirstMatchIn(box.text).flatMap(_.group(1).toIntOption)
-      val poster  = Option(box.selectFirst("img.termin-img")).map(_.attr("abs:src")).filter(_.nonEmpty)
+      val poster  = Option(box.selectFirst("img.termin-img")).flatMap(ScraperParse.imageUrl(_))
       // "Kup" (buy) when online sale is open; a showing sold as reservation-only
       // carries just "Rezerwuj" — the same seat-picker, so it stands in.
       val buyLink = Seq("a.btn-kup[href]", "a[href*=rezerwacja/]").iterator

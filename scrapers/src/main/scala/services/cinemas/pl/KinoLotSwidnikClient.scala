@@ -64,7 +64,7 @@ object KinoLotSwidnikClient {
         title      = title,
         dateTime   = date.atTime(time),
         bookingUrl = Option(block.selectFirst("a.B-btn.B-btn--accent[href^=\"/event/view/id/\"]")).map(_.attr("abs:href")).filter(_.nonEmpty),
-        posterUrl  = Option(block.selectFirst("img.img-responsive[src^=\"/file/get/id/\"]")).map(_.attr("abs:src")).filter(_.nonEmpty),
+        posterUrl  = Option(block.selectFirst("img.img-responsive[src^=\"/file/get/id/\"]")).flatMap(ScraperParse.imageUrl(_)),
         format     = format
       )
     }

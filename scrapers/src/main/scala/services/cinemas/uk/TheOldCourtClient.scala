@@ -125,7 +125,7 @@ object TheOldCourtClient {
         .flatMap(_.children.asScala.find(_.tagName == "div"))
         .map(_.text.trim).map(cleanTitle).filter(_.nonEmpty)
       val eventUrl  = Option(block.selectFirst("a[href^=/event/]")).map(_.attr("abs:href"))
-      val posterUrl = Option(block.selectFirst("img")).map(_.attr("abs:src")).filter(_.nonEmpty)
+      val posterUrl = Option(block.selectFirst("img")).flatMap(ScraperParse.imageUrl(_))
       for {
         t <- title.toSeq
         u <- eventUrl.toSeq

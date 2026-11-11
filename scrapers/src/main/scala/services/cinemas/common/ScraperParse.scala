@@ -291,6 +291,20 @@ private[cinemas] object ScraperParse {
       .map(_.text.trim)
       .filter(_.nonEmpty)
 
+  /** The absolute URL an image element's `attribute` names, or `None` when the attribute is missing
+    * or blank. jsoup's `abs:` resolves a BLANK value to the page's own URL, so `<img src="">` (every
+    * Savoy box office's placeholder for a film without artwork) read as a "poster" that is the
+    * venue's HTML page: never an image, and the poster download retried it until it gave up. A value
+    * naming a directory rather than a file ([[namesAFile]]) is no image either. */
+  def imageUrl(img: Element, attribute: String = "src"): Option[String] =
+    Option(img.attr(attribute).trim).filter(_.nonEmpty).map(_ => img.absUrl(attribute)).filter(namesAFile)
+
+  /** Whether an absolute URL's path names a file: not empty and not ending in `/`. A CMS that
+    * leaves a film's image name blank prints its upload directory (`…/tmdbimage/images/` on Nova
+    * Cinema), which serves a page or a 404, never artwork. */
+  def namesAFile(url: String): Boolean =
+    Try(java.net.URI.create(url).getRawPath).toOption.flatMap(Option(_)).exists(path => path.nonEmpty && !path.endsWith("/"))
+
   /** The page's `og:image`, unless it has the shape of a SITE-WIDE default rather than this film's
     * poster ([[tools.SiteDefaultImage]]). */
   def ogImage(document: Document): Option[String] =

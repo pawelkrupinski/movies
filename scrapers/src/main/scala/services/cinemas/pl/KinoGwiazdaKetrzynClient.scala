@@ -82,7 +82,7 @@ object KinoGwiazdaKetrzynClient {
       Option(item.selectFirst(FilmHref)).map { link =>
         Card(
           filmUrl   = link.attr("abs:href").takeWhile(_ != '#'),
-          posterUrl = Option(item.selectFirst(s"$FilmHref img")).map(_.attr("abs:src")).filter(_.nonEmpty),
+          posterUrl = Option(item.selectFirst(s"$FilmHref img")).flatMap(ScraperParse.imageUrl(_)),
           ageRating = item.select("span").asScala.map(_.text.trim).collectFirst { case t @ AgeBadge() => t }
             .flatMap(badge => AgeRating.normalizeDroppingNoRestriction(Some(badge)))
         )

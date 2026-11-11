@@ -145,7 +145,7 @@ object KinoPatriaClient {
           .map(a => FormatTags.stripFormatTags(a.text.trim))
           .filter(_.nonEmpty)
         val posterUrl = Option(item.selectFirst("div.amy-movie-item-poster img[src]"))
-          .map(_.attr("abs:src")).filter(_.nonEmpty)
+          .flatMap(ScraperParse.imageUrl(_))
         val filmUrl = Option(item.selectFirst("h3.amy-movie-field-title a[href]"))
           .map(_.attr("abs:href")).filter(_.nonEmpty)
 
@@ -186,7 +186,7 @@ object KinoPatriaClient {
           .map(a => FormatTags.stripFormatTags(a.text.trim))
           .filter(_.nonEmpty)
         val posterUrl = Option(item.selectFirst("div.amy-movie-item-front img[src]"))
-          .map(_.attr("abs:src")).filter(_.nonEmpty)
+          .flatMap(ScraperParse.imageUrl(_))
         val filmUrl = Option(item.selectFirst("h3.amy-movie-field-title a[href]"))
           .map(_.attr("abs:href")).filter(_.nonEmpty)
 

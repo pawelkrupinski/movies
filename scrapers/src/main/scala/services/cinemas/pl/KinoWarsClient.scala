@@ -175,7 +175,7 @@ object KinoWarsClient {
         genres    = meta.toSeq.flatMap(genresOf),
         ageRating = meta.flatMap(AgeRating.polishMinimumAge),
         synopsis  = synopsisOf(paragraphs),
-        poster    = Option(item.selectFirst(".item-image img")).map(_.attr("abs:src")).filter(_.nonEmpty),
+        poster    = Option(item.selectFirst(".item-image img")).flatMap(ScraperParse.imageUrl(_)),
         filmUrl   = Option(item.selectFirst(".item-image a[href], a.readmore[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
         booking   = Option(item.selectFirst("a[href*=bilety.]")).map(_.attr("abs:href")).filter(_.nonEmpty),
         trailer   = item.select("a[href]").asScala.iterator.map(_.attr("abs:href")).flatMap(ScraperParse.canonicalTrailer).nextOption(),

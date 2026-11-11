@@ -74,7 +74,7 @@ object KinoTomiClient {
       val title   = link.ownText.trim
       val format  = Option(link.selectFirst("span")).map(s => FormatTags.formatTokensIn(s.text)).getOrElse(Nil)
       val filmUrl = Option(link.attr("abs:href")).filter(_.nonEmpty)
-      val poster  = Option(row.selectFirst(".movie-name img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty)
+      val poster  = Option(row.selectFirst(".movie-name img[src]")).flatMap(ScraperParse.imageUrl(_))
       if (title.isEmpty) Seq.empty
       else row.select(".movie-schedule a.item[href*='zamowienie/']").asScala.toSeq.flatMap { a =>
         ScraperParse.parseHHmm(a.text).map { time =>
@@ -115,7 +115,7 @@ object KinoTomiClient {
       director       = names(facts.get("reżyser")),
       runtimeMinutes = runtime,
       genres         = doc.select(".details-banner .movie-tags span").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty),
-      posterUrl      = Option(doc.selectFirst(".details-banner-thumb > img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty),
+      posterUrl      = Option(doc.selectFirst(".details-banner-thumb > img[src]")).flatMap(ScraperParse.imageUrl(_)),
       trailerUrl     = trailer,
       ageRating      = AgeRating.normalize(facts.get("ograniczenia"))
     )

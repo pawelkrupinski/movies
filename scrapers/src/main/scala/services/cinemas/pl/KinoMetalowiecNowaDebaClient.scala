@@ -152,7 +152,7 @@ object KinoMetalowiecNowaDebaClient {
       FilmBlock(
         title     = title,
         posterUrl = widgets.filter(_.hasClass("elementor-widget-image"))
-                      .flatMap(w => Option(w.selectFirst("img[src]"))).map(_.attr("abs:src")).find(_.nonEmpty),
+                      .flatMap(w => Option(w.selectFirst("img[src]"))).flatMap(ScraperParse.imageUrl(_)).headOption,
         synopsis  = fields.get(SynopsisLabel).filter(_.nonEmpty),
         genres    = fields.get(GenreLabel).toSeq.flatMap(_.split("/")).map(_.trim).filter(_.nonEmpty),
         runtime   = fields.get(RuntimeLabel).flatMap(Minutes.findFirstMatchIn).map(_.group(1).toInt),

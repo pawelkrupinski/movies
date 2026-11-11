@@ -101,7 +101,7 @@ object NovaCinemaClient {
             .orElse(Minutes.findFirstMatchIn(show.text).map(_.group(1).toInt))
         ),
         cinema      = cinema,
-        posterUrl   = Option(show.selectFirst("figure img[src]")).map(posterOf).filter(_.nonEmpty),
+        posterUrl   = Option(show.selectFirst("figure img[src]")).flatMap(posterOf),
         filmUrl     = link.map(_.attr("abs:href")).filter(_.nonEmpty),
         synopsis    = Option(show.selectFirst("p.d-lg-inline")).map(_.text.trim).filter(_.nonEmpty),
         cast        = Seq.empty,
@@ -114,8 +114,9 @@ object NovaCinemaClient {
   }
 
   /** The full-size image the `srcset` names, else the thumbnail. */
-  private def posterOf(img: Element): String =
+  private def posterOf(img: Element): Option[String] =
     img.attr("srcset").trim.split("\\s+").headOption.filter(_.nonEmpty)
       .flatMap(src => Try(java.net.URI.create(HomeUrl).resolve(src).toString).toOption)
-      .getOrElse(img.attr("abs:src"))
+      .filter(ScraperParse.namesAFile)
+      .orElse(ScraperParse.imageUrl(img))
 }

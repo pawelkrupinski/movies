@@ -6,7 +6,7 @@ import services.movies.FormatTags
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, ListingPageScraper, SlotsToMovies}
+import services.cinemas.common.{AgeRating, ListingPageScraper, ScraperParse, SlotsToMovies}
 import tools.HttpFetch
 
 import java.time.LocalDateTime
@@ -73,7 +73,7 @@ object KinoLukowClient {
           genres         = text("p.kino-film-genres").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
         ),
         cinema    = cinema,
-        posterUrl = Option(film.selectFirst("a.kino-film-poster img")).map(_.attr("abs:src")).filter(_.nonEmpty),
+        posterUrl = Option(film.selectFirst("a.kino-film-poster img")).flatMap(ScraperParse.imageUrl(_)),
         filmUrl   = Option(film.selectFirst("h3.kino-film-title a")).map(_.attr("abs:href")).filter(_.nonEmpty),
         synopsis  = text("p.kino-film-desc").filter(Truncated.findFirstIn(_).isEmpty),
         cast      = Seq.empty,

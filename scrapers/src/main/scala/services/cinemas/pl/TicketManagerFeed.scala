@@ -48,7 +48,7 @@ object TicketManagerFeed {
         billedTitle = title,
         dateTime    = LocalDateTime.of(day, time),
         bookingUrl  = Option(fragment.selectFirst("a.bt[href]")).map(_.attr("abs:href")).filter(_.nonEmpty),
-        posterUrl   = Option(fragment.selectFirst(".poster img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty)
+        posterUrl   = Option(fragment.selectFirst(".poster img[src]")).flatMap(ScraperParse.imageUrl(_))
       )
     }
   }

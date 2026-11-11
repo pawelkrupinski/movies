@@ -81,7 +81,7 @@ object KinoParczewClient {
           genres         = fields.get("gatunek").map(liTextsOf).getOrElse(Seq.empty)
         ),
         cinema    = cinema,
-        posterUrl = Option(document.selectFirst("img[itemprop=image]")).map(_.attr("abs:src")).filter(_.nonEmpty),
+        posterUrl = Option(document.selectFirst("img[itemprop=image]")).flatMap(ScraperParse.imageUrl(_)),
         filmUrl   = Some(url),
         synopsis  = synopsisOf(document),
         cast      = Seq.empty,

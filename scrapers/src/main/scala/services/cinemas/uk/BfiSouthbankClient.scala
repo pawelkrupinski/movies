@@ -136,7 +136,7 @@ object BfiSouthbankClient {
         runtime  = Option(card.selectFirst("time[datetime^=PT]"))
           .flatMap(t => Try(Duration.parse(t.attr("datetime")).toMinutes.toInt).toOption).filter(_ > 0),
         year     = Option(card.selectFirst(".workData")).flatMap(yearOf),
-        image    = Option(card.selectFirst(".showImage img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty).map(original),
+        image    = Option(card.selectFirst(".showImage img[src]")).flatMap(ScraperParse.imageUrl(_)).map(original),
         certificate = card.select(".workData img[src^=data:]").asScala.flatMap(i => BbfcBadge.findFirstMatchIn(i.attr("src"))).headOption
           .map(_.group(1).toUpperCase(java.util.Locale.ROOT))
       )

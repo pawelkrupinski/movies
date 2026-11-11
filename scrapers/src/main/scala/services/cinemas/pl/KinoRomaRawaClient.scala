@@ -83,7 +83,7 @@ object KinoRomaRawaClient {
             genres         = props("genre")
           ),
           cinema     = cinema,
-          posterUrl  = Option(doc.selectFirst(".single__image img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty),
+          posterUrl  = Option(doc.selectFirst(".single__image img[src]")).flatMap(ScraperParse.imageUrl(_)),
           filmUrl    = Some(url),
           synopsis   = Option(doc.selectFirst("div.single__text[itemprop=description]")).map(plot).filter(_.nonEmpty),
           cast       = Seq.empty,

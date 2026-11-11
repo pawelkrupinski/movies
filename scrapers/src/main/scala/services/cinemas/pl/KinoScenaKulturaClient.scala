@@ -92,7 +92,7 @@ object KinoScenaKulturaClient {
     } yield RawSlot(
       title     = title,
       dateTime  = dt,
-      posterUrl = Option(block.selectFirst("div.event-img img")).map(_.attr("abs:src")).filter(_.nonEmpty),
+      posterUrl = Option(block.selectFirst("div.event-img img")).flatMap(ScraperParse.imageUrl(_)),
       synopsis  = Option(block.selectFirst("div.event-desc")).map(ScraperParse.blockText(_).trim).filter(_.length > 20),
       genres    = genresOf(block),
       runtime   = runtimeOf(block)

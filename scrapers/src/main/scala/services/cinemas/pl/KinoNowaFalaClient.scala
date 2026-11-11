@@ -65,6 +65,6 @@ object KinoNowaFalaClient {
       bookingUrl = Option(card.selectFirst("div.wp_theatre_event_tickets a.wp_theatre_event_tickets_url"))
                      .map(_.attr("abs:href")).filter(_.nonEmpty),
       filmUrl    = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
-      posterUrl  = Option(card.selectFirst("figure img[src]")).map(_.attr("abs:src")).filter(_.nonEmpty)
+      posterUrl  = Option(card.selectFirst("figure img[src]")).flatMap(ScraperParse.imageUrl(_))
     )
 }

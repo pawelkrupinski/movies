@@ -66,8 +66,7 @@ object SckStargardClient {
     val title = Option(wrapper.selectFirst(".movie-title")).map(_.text.trim).filter(_.nonEmpty)
     title.toSeq.flatMap { filmTitle =>
       val poster = Option(wrapper.selectFirst(".movie-poster img"))
-        .map(img => Option(img.attr("abs:data-orig-src")).filter(_.nonEmpty).getOrElse(img.attr("abs:src")))
-        .filter(_.nonEmpty)
+        .flatMap(img => ScraperParse.imageUrl(img, "data-orig-src").orElse(ScraperParse.imageUrl(img)))
         .filterNot(_.startsWith("data:")) // skip the lazyload SVG placeholder
 
       val format = wrapper.select(".movie-tags span.movie-tag").asScala.toSeq
