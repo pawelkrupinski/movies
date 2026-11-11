@@ -30,7 +30,7 @@ trap 'rm -rf "$work"' EXIT
 repo="$work/repo" fx="$work/repo/test/resources/fixtures"
 mkdir -p "$repo/scripts/ci" "$fx/corpus" "$repo/identity/src/main" "$work/bin" "$work/tmp"
 cp "$REPO_ROOT/scripts/ci/identity-drift-check.sh" "$REPO_ROOT/scripts/ci/drift-replays-compare.sh" "$REPO_ROOT/scripts/ci/drift_seeds.py" "$REPO_ROOT/scripts/ci/drift_diff.py" "$REPO_ROOT/scripts/ci/drift_explorer.py" \
-  "$REPO_ROOT/scripts/ci/drift_scenario.py" "$repo/scripts/ci/"
+  "$REPO_ROOT/scripts/ci/drift_scenario.py" "$REPO_ROOT/scripts/ci/memory-guard.sh" "$repo/scripts/ci/"
 printf 'country\tvenue\trawTitle\treason\npl\tKino Nowe\tAllowed Film\tTEMPORARY owner: x; remove when y; z\n' > "$fx/identity-flips-allow.tsv"
 printf 'kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\ndrift\tpl\t1\t\tRiverside\tThe Stranger\t\t2026-10-29\tthe red fixer\tx\n' > "$fx/identity-flip-backlog.tsv"
 # sbt as the replay leaves it: the report on stdout, the TSVs under --out, IdentityDrift's exit. The flips are
@@ -46,6 +46,8 @@ side=head; case $PWD in *drift-base-checkout*) side=base ;; esac
 echo "$side $list" >> "$FAKE_LOG"
 printf '%s\n' "$@" > "$out.args"
 [ "${FAKE_REPORT:-}" = none ] && { echo "[error] compilation failed"; exit 1; }
+# FAKE_HANG: the replay runs on (as #40's US replay did, 47 minutes, its runner starving) in a child JVM of its own
+[ -n "${FAKE_HANG:-}" ] && { echo "## pl pending [seed 1]: pending at projection: peak 92944"; sleep 300 & wait; exit 0; }
 # FAKE_BROKEN_BASE: a base checkout at this commit (or `all`) fails to compile, as #950's 053f867ea9 did
 [ -n "${FAKE_BROKEN_BASE:-}" ] && . "$SCRATCH_GIT_LIB"
 case "${FAKE_BROKEN_BASE:-}" in "") ;; all|"$(scratch_git "$PWD" rev-parse HEAD 2>/dev/null)")
@@ -105,6 +107,13 @@ check "...and the report names their class" "1" "$(grep -c 'incremental-only tak
 check "divergences the allow-list names all pass" "0" "$(FAKE_FOUND=3 FAKE_ALLOWED=3 run)"
 check "a replay that never reported is no verdict" "2" "$(FAKE_REPORT=none run)"
 check "a replay that reported no flips line is no verdict" "2" "$(FAKE_FLIPS=none run)"
+# THE MEMORY GUARD: a replay the runner runs out of memory under is ended, its cause named, and no verdict given
+mkdir -p "$work/proc"; printf 'MemTotal: 16000000 kB\nMemAvailable: 500000 kB\nSwapTotal: 0 kB\nSwapFree: 0 kB\n' > "$work/proc/meminfo"
+check "a replay the memory guard ends is no verdict" "2" \
+  "$(FAKE_HANG=1 PROC_ROOT="$work/proc" MEMORY_GUARD_INTERVAL=0.1 MEMORY_GUARD_STRIKES=2 run)"
+check "...its verdict names the guard, the memory and the replay's last line" "1" \
+  "$(grep -c '^identity drift (pl): the replay was ended before the runner ran out of memory, so nothing was judged: the machine had under 1024 MB available for 2 samples (15137 MB in use of 15625, 488 MB available, 0 MB swap used) after 0 min -- last: ## pl pending \[seed 1\]' "$work/out/verdict.txt")"
+check "...and the log says it ended the replay" "1" "$(grep -c '^identity drift (pl) memory guard: ENDING process' "$work/stdout")"
 
 # THE EXPLORER (DRIFT_EXPLORE): the head alone, never red, its flips no backlog row names written for agentctl
 check "the explorer never fails on a flip" "0" "$(DRIFT_EXPLORE=1 DRIFT_EXPLORE_REF=run:9/a FAKE_HEAD_FLIPS='Riverside|The Stranger;Kino Nowy|New Flip' run)"

@@ -91,9 +91,25 @@ replay() {
   shift 3
   mkdir -p "$to"
   replay_code=0
-  ( cd "$dir" && sbt -J-Xmx"$heap" 'set worker / Test / run / fork := false' \
+  ( cd "$dir" && exec sbt -J-Xmx"$heap" 'set worker / Test / run / fork := false' \
       "worker/Test/runMain scripts.IdentityDrift $cc --recording $fixtures --families $fixtures/identity-unmatched/$cc.json.gz $* --seed $list --out $to" ) \
-    > "$to/sbt.log" 2>&1 || replay_code=$?
+    > "$to/sbt.log" 2>&1 &
+  local pid=$! guard
+  # THE MEMORY GUARD (scripts/ci/memory-guard.sh): a heartbeat in the step log every 5 minutes, and the replay ended
+  # with its cause named before the machine runs out of memory -- Identity takes #40's US takes-drift-1 replay instead
+  # starved its hosted runner 47 minutes in, which lost the runner and the job's whole log with it.
+  rm -f "$to/memory-guard.txt"
+  MEMORY_GUARD_LABEL="identity drift ($cc) memory guard" "$here/scripts/ci/memory-guard.sh" "$pid" "$to/memory-guard.txt" "$to/sbt.log" &
+  guard=$!
+  wait "$pid" || replay_code=$?
+  # a guard that is ending the replay finishes (its KILL pass); an idle one stops now, not a sample later
+  [ -s "$to/memory-guard.txt" ] || kill "$guard" 2> /dev/null
+  wait "$guard" 2> /dev/null
+  if [ -s "$to/memory-guard.txt" ]; then
+    tail -40 "$to/sbt.log" >&2
+    echo "identity drift ($cc): the replay was ended before the runner ran out of memory, so nothing was judged: $(cat "$to/memory-guard.txt")" | tee "$out/verdict.txt"
+    exit 2
+  fi
   [ "$replay_code" = 0 ] || jvm_crash "$dir" "$to"
 }
 # A replay whose JVM died in HotSpot leaves its crash report (hs_err_pid*.log) and compiler-replay data (replay_pid*.log)

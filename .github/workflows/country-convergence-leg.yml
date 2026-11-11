@@ -1203,8 +1203,10 @@ jobs:
                       1) verdict=$(cat "$RUNNER_TEMP/identity-drift/verdict.txt" 2>/dev/null || echo 'divergences, or flips the change adds over its base')
                          echo "seed $DRIFT_SEED: $verdict -- reproduce: $repro" > "$RUNNER_TEMP/leg-verdict-why"
                          echo "::error title=identity drift (${{ inputs.code }}, seed $DRIFT_SEED)::$verdict -- each named in the step log; reproduce: $repro" ;;
-                      *) echo "seed $DRIFT_SEED: the drift replay could not run" > "$RUNNER_TEMP/leg-verdict-why"
-                         echo "::error title=identity drift (${{ inputs.code }}, seed $DRIFT_SEED)::the drift replay could not run, so nothing was judged -- see the step log" ;;
+                      # the check's own reason when it gave one (the memory guard's, a base that wrote nothing)
+                      *) why=$(cat "$RUNNER_TEMP/identity-drift/verdict.txt" 2>/dev/null || echo 'the drift replay could not run, so nothing was judged')
+                         echo "seed $DRIFT_SEED: $why" > "$RUNNER_TEMP/leg-verdict-why"
+                         echo "::error title=identity drift (${{ inputs.code }}, seed $DRIFT_SEED)::$why -- see the step log" ;;
                   esac
                   exit "$code"
             # A timed-out step's processes run on: end them before anything after it reads the workspace (bounded-step.sh).
