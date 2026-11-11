@@ -30,6 +30,9 @@
 #   gh workflow run verify-scrape-recording.yml --ref main -f recording=<Record scrape fixtures run id>
 #
 name: Verify scrape recording
+# Its inputs as name=value: GitHub serves no run's inputs, and agentctl re-dispatches a red run's recording from its
+# title to verify a fix (VerifyRecordingRunNameSpec).
+run-name: Verify scrape recording recording=${{ inputs.recording }} countries=${{ inputs.countries }}
 
 on:
     workflow_dispatch:

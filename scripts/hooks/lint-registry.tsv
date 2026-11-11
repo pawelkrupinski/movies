@@ -140,6 +140,7 @@ worker:deploy.ToolSelfTestsOffGateSpec	@repo test/resources/fixtures/identity-ju
 worker:deploy.UnitTestForkSpec	@repo *.scala
 worker:deploy.UnitTestSplitSpec	@repo *.scala
 worker:deploy.UpstreamRunSpec	@repo
+worker:deploy.VerifyRecordingRunNameSpec	@repo
 worker:deploy.WebRolloutAvailabilitySpec	@gitops
 worker:deploy.WorkerDurableDiagnosticsConfigSpec	@repo
 worker:deploy.WorkerMetricsAtBootSpec	@repo infra/test/app-metrics-catalogue/*
