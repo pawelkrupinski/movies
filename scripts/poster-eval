@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# How strong a venue poster is as identity evidence, measured on prod's REAL candidate sets: the pHash vote and veto
+# (PosterEvidence) as prod runs them, and a variant of them, over every model decision whose listings show a venue
+# poster -- with the candidates prod really had, not a sample where the right film is always one of them.
+#
+#   scripts/poster-eval [--posters N] [--vote B] [--veto-match B] [--veto B] [--countries pl,uk] [--refresh]
+#   scripts/poster-eval coverage [--countries pl,uk] [--refresh]
+#
+#   --posters      TMDB posters hashed per candidate film (prod 8; above 8: prod's filed 8 plus PosterHashing.chosen N)
+#   --vote         a venue poster this near ONE candidate votes for it (prod 4 bits)
+#   --veto-match   a venue poster this near another candidate ... (prod 8)
+#   --veto         ... vetoes the taken film when the film stays beyond this (prod 10)
+#   --countries    the countries reported (default all five)
+#   --refresh      re-extract the dataset from the mirror now (otherwise: when the mirror synced 6 h past it)
+#   coverage       per country, why a listing has no usable poster comparison (no url, a feed's poster, never asked,
+#                  asked but unread, no candidates, no candidate film hashed, usable), the top venues and hosts of each
+#                  bucket, and the judged listings and right takes in each
+#
+# Prints ONE table, per country, baseline (prod's 8 / 4 / 8 / 10) and the variant: vote TP / FP / precision on the
+# judged clusters (identity-judgements.tsv), agree / disagree with prod's take on the unjudged ones (weak), and the veto
+# of prod's take (judged right takes wrongly vetoed, judged wrong takes rightly vetoed, weak takes vetoed); then every
+# NEW FP and LOST TP (judged), new wrong veto, and the weak new disagreements and lost agreements (25 of each).
+#
+# Reads the LOCAL prod mirror (:28017, read-only; its freshness checked before an extract) into <cache>/dataset.npz.
+# Images and hashes are cached in <cache> (~/.cache/movies-posters, POSTER_EVAL_CACHE): by image sha1, a hash is never
+# computed twice; production's hash bit for bit (scripts/poster_hash.py: vips as the worker runs it). A variant needing
+# images or TMDB poster lists not yet cached fetches them (8 workers, 429/503 halves them): run it as
+# `secrets run movies TMDB_API_KEY -- scripts/poster-eval ...`. Needs python3 with numpy, vips and mongosh.
+# Warm: ~5 s an evaluation, ~3 s coverage. The lesson behind it: docs/design/poster-evidence-evaluation.md.
+# The logic and its tests: scripts/poster_eval.py, scripts/poster_eval_test.py.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
+# not -I: numpy lives in the user site-packages (pip install --user numpy)
+exec python3 "$(dirname "$0")/poster_eval.py" "$@"
