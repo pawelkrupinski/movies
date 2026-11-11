@@ -28,6 +28,12 @@ describe("planRelease", () => {
     expect(planRelease(input())).toMatchObject({ kind: "nothing" });
   });
 
+  it("with --only, judges that store alone: nothing to do once it carries main's code, whatever the other holds", () => {
+    const iosBehind = { tags: new Map([["mobile-ios-2.0.9", OLD_SHA], ["mobile-android-2.0.9", RELEASED_SHA]]) };
+    expect(planRelease(input({ ...iosBehind, only: "android" }))).toMatchObject({ kind: "nothing" });
+    expect(planRelease(input({ ...iosBehind, only: "ios" }))).toMatchObject({ kind: "ship" });
+  });
+
   it("ships both under the next version once the app code changed", () => {
     const plan = planRelease(input({ appUnchangedSince: () => false }));
     expect(plan).toMatchObject({ kind: "ship", decision: { version: "2.0.10", bump: true } });

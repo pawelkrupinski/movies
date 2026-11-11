@@ -32,6 +32,8 @@ export interface PlanInput {
   readonly requested?: string;
   /** Ship even when nothing in the app paths changed. */
   readonly force?: boolean;
+  /** Release to this store only: whether there is anything to do is judged by it alone. */
+  readonly only?: Platform;
 }
 
 export type Plan =
@@ -59,9 +61,11 @@ function current(input: PlanInput, platform: Platform): string | null {
 
 export function planRelease(input: PlanInput): Plan {
   if (input.requested === undefined && !input.force) {
-    const [ios, android] = PLATFORMS.map((platform) => current(input, platform));
-    if (ios !== null && android !== null) {
-      return { kind: "nothing", reason: `both stores already carry main's app code (iOS ${ios}, Android ${android})` };
+    const judged = input.only ? [input.only] : PLATFORMS;
+    const carried = judged.map((platform) => current(input, platform));
+    if (carried.every((version) => version !== null)) {
+      const which = judged.map((platform, i) => `${platform === "ios" ? "iOS" : "Android"} ${carried[i]}`).join(", ");
+      return { kind: "nothing", reason: `${input.only ? "its store already carries" : "both stores already carry"} main's app code (${which})` };
     }
   }
   const decision = decideVersion({ onMain: input.onMain, released: [...input.ios.released, ...input.android.released] }, input.requested);

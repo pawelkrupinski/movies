@@ -45,7 +45,11 @@ export interface ReleaseOptions {
   readonly force?: boolean;
   readonly notes: Notes;
   readonly overwriteNotes: boolean;
+  /** Release to this store only, leaving the other exactly as it is (a one-store fix while the other is in review). */
+  readonly only?: Platform;
 }
+
+const STORE_NAME: Record<Platform, string> = { ios: "the App Store", android: "Google Play" };
 
 const MINUTE = 60_000;
 
@@ -86,7 +90,7 @@ export interface Inspection {
   readonly plan: Plan;
 }
 
-export async function inspect(deps: ReleaseDeps, options: Pick<ReleaseOptions, "requested" | "force">): Promise<Inspection> {
+export async function inspect(deps: ReleaseDeps, options: Pick<ReleaseOptions, "requested" | "force" | "only">): Promise<Inspection> {
   const git = new Git(deps);
   await git.run(["fetch", "--quiet", RELEASE_REMOTE, "main"]);
   const mainSha = await git.run(["rev-parse", `${RELEASE_REMOTE}/main`]);
@@ -102,7 +106,7 @@ export async function inspect(deps: ReleaseDeps, options: Pick<ReleaseOptions, "
   return { mainSha, onMain, ios, android, tags, plan };
 }
 
-export function describeInspection(inspection: Inspection): string[] {
+export function describeInspection(inspection: Inspection, only?: Platform): string[] {
   const { ios, android, plan } = inspection;
   const lines = [
     `main        ${inspection.mainSha.slice(0, 9)}  mobile-version.txt ${inspection.onMain}`,
@@ -118,8 +122,9 @@ export function describeInspection(inspection: Inspection): string[] {
   } catch (error) {
     iosPlan = `BLOCKED: ${(error as Error).message}`;
   }
-  lines.push(`  iOS      archive + upload → ${iosPlan} → submit for review`);
-  lines.push(`  Android  build + upload to internal → promote to production`);
+  const skipped = (platform: Platform) => only !== undefined && only !== platform;
+  lines.push(skipped("ios") ? `  iOS      left as it is (--only ${only})` : `  iOS      archive + upload → ${iosPlan} → submit for review`);
+  lines.push(skipped("android") ? `  Android  left as it is (--only ${only})` : `  Android  build + upload to internal → promote to production`);
   return lines;
 }
 
@@ -127,11 +132,11 @@ export async function release(given: ReleaseDeps, options: ReleaseOptions): Prom
   const deps = { ...given, asc: retryingReads(given.asc, given.sleep) };
   const { log } = deps;
   const inspection = await inspect(deps, options);
-  describeInspection(inspection).forEach((line) => log(line));
+  describeInspection(inspection, options.only).forEach((line) => log(line));
   const { plan } = inspection;
   if (plan.kind === "nothing" || options.dryRun) return;
   const { version } = plan.decision;
-  planIosVersion(inspection.ios, version); // throws on an approved-but-unreleased record, before any build
+  if (options.only !== "android") planIosVersion(inspection.ios, version); // throws on an approved-but-unreleased record, before any build
 
   const lock = await lockVersion(deps.workDir, version);
   try {
@@ -191,14 +196,17 @@ async function releaseVersion(deps: ReleaseDeps, options: ReleaseOptions, inspec
   // A build already uploaded for this version from this very commit is reused, not rebuilt: that
   // is how a run that stopped before anything went public picks up where it left off.
   const resumable = (platform: Platform) => !plan.decision.bump && inspection.tags.get(tagName(platform, version)) === releaseSha;
+  const included = (platform: Platform) => options.only === undefined || options.only === platform;
   const [ios, android] = await Promise.allSettled([
     (async () => {
+      if (!included("ios")) return null;
       const resumed = resumable("ios") ? await existingBuild(deps.asc, version) : null;
       const buildId = resumed ?? (await buildIos(deps, worktree, logs));
       log(`[ios] ${resumed ? "resuming with already-uploaded" : "uploaded"} build ${buildId}`);
       return buildId;
     })(),
     (async () => {
+      if (!included("android")) return null;
       const resumed = resumable("android") ? internalBuildFor(inspection.android, version) : null;
       const versionCode = resumed ?? (await buildAndroid(deps, worktree, logs, version, releaseSha, nextVersionCode(inspection.android, deps.nowSeconds())));
       log(`[android] ${resumed ? "resuming with internal-track" : "uploaded"} version code ${versionCode}`);
@@ -211,10 +219,10 @@ async function releaseVersion(deps: ReleaseDeps, options: ReleaseOptions, inspec
   }
 
   const pace = { sleep: deps.sleep, log: (line: string) => log(`[ios] ${line}`) };
-  await submitIos(deps.asc, { version, buildId: ios.value, notes: options.notes, overwriteNotes: options.overwriteNotes }, pace);
-  await promoteAndroid(deps.play, { version, versionCode: android.value, notes: options.notes }, (line) => log(`[android] ${line}`));
+  if (ios.value !== null) await submitIos(deps.asc, { version, buildId: ios.value, notes: options.notes, overwriteNotes: options.overwriteNotes }, pace);
+  if (android.value !== null) await promoteAndroid(deps.play, { version, versionCode: android.value, notes: options.notes }, (line) => log(`[android] ${line}`));
   await git.run(["worktree", "remove", "--force", worktree]);
-  log(`released ${version} to both stores from ${releaseSha.slice(0, 9)}`);
+  log(`released ${version} to ${options.only ? STORE_NAME[options.only] : "both stores"} from ${releaseSha.slice(0, 9)}`);
 }
 
 /**

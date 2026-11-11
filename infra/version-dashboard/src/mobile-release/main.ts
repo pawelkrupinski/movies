@@ -10,13 +10,15 @@ import { REPO_DIR } from "../config.js";
 import { runCommand } from "../exec.js";
 import { ascApi, playClient, secretsFromEnvironmentFirst, vaultSecrets } from "../mobile/stores.js";
 import { notesFrom, readNotesDir } from "./notes.js";
+import { PLATFORMS, type Platform } from "./plan.js";
 import { release } from "./release.js";
 
-const USAGE = `usage: scripts/mobile-ship.sh [--dry-run] [--version X.Y.Z] [--force] [--notes-dir DIR]
+const USAGE = `usage: scripts/mobile-ship.sh [--dry-run] [--version X.Y.Z] [--force] [--only ios|android] [--notes-dir DIR]
 
   --dry-run         inspect both stores and print the plan; change nothing
   --version X.Y.Z   ship under this version instead of the one picked automatically
   --force           ship even when ios/, android/ and mobile-version.txt are unchanged
+  --only STORE      release to one store (ios or android) and leave the other exactly as it is
   --notes-dir DIR   "What's new" text: DIR/<locale>.txt or DIR/<language>.txt (pl.txt, en.txt, ...);
                     without it, empty App Store locales and Play get a generic "bug fixes" line`;
 
@@ -25,6 +27,7 @@ const { values } = parseArgs({
     "dry-run": { type: "boolean", default: false },
     version: { type: "string" },
     force: { type: "boolean", default: false },
+    only: { type: "string" },
     "notes-dir": { type: "string" },
     help: { type: "boolean", short: "h", default: false },
   },
@@ -33,6 +36,11 @@ if (values.help) {
   console.log(USAGE);
   process.exit(0);
 }
+if (values.only !== undefined && !(PLATFORMS as readonly string[]).includes(values.only)) {
+  console.error(`✗ --only takes ${PLATFORMS.join(" or ")}, not ${values.only}`);
+  process.exit(2);
+}
+const only = values.only as Platform | undefined;
 
 // The MAIN checkout, even when this runs from a worktree: android/local.properties is gitignored and
 // lives only there. (Every key -- App Store, Play, the upload keystore -- is in the Touch ID vault.)
@@ -59,6 +67,7 @@ try {
       dryRun: values["dry-run"],
       ...(values.version ? { requested: values.version } : {}),
       force: values.force,
+      ...(only ? { only } : {}),
       notes: notesFrom(notesDir ? await readNotesDir(notesDir) : new Map()),
       overwriteNotes: notesDir !== undefined,
     },

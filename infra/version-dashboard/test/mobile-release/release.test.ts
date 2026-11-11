@@ -181,6 +181,21 @@ describe("release", () => {
     expect(d.lines.at(-1)).toBe(`released 2.0.10 to both stores from ${BUMP_SHA.slice(0, 9)}`);
   });
 
+  it("--only android builds and promotes Android and leaves the App Store alone", async () => {
+    // 2026-11-11: Android 2.0.17 needed its crash fix shipped while iOS 2.0.17 was IN_REVIEW; shipping both cancelled
+    // that review, and the run gave up waiting for Apple to let go of it -- Play never got the fixed build.
+    const events: string[] = [];
+    const ran: Ran[] = [];
+    const d = deps(events, ran);
+    await release(d, { ...options, only: "android" });
+    expect(ran.some((r) => r.argv[0]?.endsWith("ios-release.sh"))).toBe(false);
+    expect(d.asc.writes()).toEqual([]);
+    expect(ran.some((r) => r.argv[0] === "./gradlew")).toBe(true);
+    expect(d.play.writes().map((call) => `${call.method} ${call.path}`)).toContain("PUT /edits/edit-2/tracks/production");
+    expect(d.lines.join("\n")).toContain("iOS      left as it is (--only android)");
+    expect(d.lines.at(-1)).toBe(`released 2.0.10 to Google Play from ${BUMP_SHA.slice(0, 9)}`);
+  });
+
   it("submits and promotes nothing when either build fails", async () => {
     const events: string[] = [];
     const ran: Ran[] = [];
