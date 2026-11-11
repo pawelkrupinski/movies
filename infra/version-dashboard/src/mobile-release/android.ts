@@ -7,6 +7,7 @@
  * onto ITSELF and reported BUILD SUCCESSFUL. Either way the proof is the same -- read production
  * back in a fresh edit, never trust the exit status.
  */
+import { HttpError } from "../http.js";
 import type { PlayApi } from "../mobile/stores.js";
 import { PLAY_NOTES_LIMIT, type Notes } from "./notes.js";
 import { isVersion } from "./version.js";
@@ -82,11 +83,30 @@ export interface AndroidPromotion {
   readonly notes: Notes;
 }
 
+/** Play's word for a commit it will not send for review on its own (an earlier update stands rejected, 2026-11-11). */
+const NOT_SENT_FOR_REVIEW = /changesNotSentForReview/;
+
+/**
+ * Commit the edit; true when Play sent it for review. While an earlier update stands rejected Play refuses an automatic
+ * send (HTTP 400 naming changesNotSentForReview): the edit is committed without it, and its review is sent by hand.
+ */
+async function commitEdit(play: PlayApi, editId: string, token: string): Promise<boolean> {
+  try {
+    await play.send("POST", `/edits/${editId}:commit`, token);
+    return true;
+  } catch (error) {
+    if (!(error instanceof HttpError && error.status === 400 && NOT_SENT_FOR_REVIEW.test(error.message))) throw error;
+    await play.send("POST", `/edits/${editId}:commit?changesNotSentForReview=true`, token);
+    return false;
+  }
+}
+
 /** Promote `versionCode` from internal to production, fully rolled out, then prove it landed. */
 export async function promoteAndroid(play: PlayApi, promotion: AndroidPromotion, log: (line: string) => void): Promise<void> {
   const code = String(promotion.versionCode);
   const token = await play.token();
   const edit = (await play.send("POST", "/edits", token)) as { id: string };
+  let sentForReview = true;
   try {
     const internal = (await play.get(`/edits/${edit.id}/tracks/internal`, token)) as PlayTrack;
     if (!(internal.releases ?? []).some((release) => (release.versionCodes ?? []).includes(code))) {
@@ -100,13 +120,17 @@ export async function promoteAndroid(play: PlayApi, promotion: AndroidPromotion,
       track: "production",
       releases: [{ name: promotion.version, versionCodes: [code], status: "completed", releaseNotes }],
     });
-    await play.send("POST", `/edits/${edit.id}:commit`, token);
+    sentForReview = await commitEdit(play, edit.id, token);
   } catch (error) {
     // Uncommitted, the edit changed nothing live; drop it so it does not linger.
     await play.send("DELETE", `/edits/${edit.id}`, token).catch(() => {});
     throw error;
   }
   log(`committed production ${promotion.version} / ${code}`);
+  if (!sentForReview) {
+    log(`NOT SENT FOR REVIEW: Play holds back automatic review while an earlier update stands rejected. Send ${promotion.version} `
+      + "for review by hand: Play Console -> Publishing overview -> Send changes for review.");
+  }
 
   const production = await inEdit(play, async (editId, fresh) => (await play.get(`/edits/${editId}/tracks/production`, fresh)) as PlayTrack);
   const live = (production.releases ?? []).find((release) => release.status === "completed" && (release.versionCodes ?? []).includes(code));

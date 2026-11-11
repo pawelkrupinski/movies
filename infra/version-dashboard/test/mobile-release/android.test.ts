@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { androidStateFrom, internalBuildFor, nextVersionCode, promoteAndroid, type PlayTrack } from "../../src/mobile-release/android.js";
 import { notesFrom } from "../../src/mobile-release/notes.js";
+import { HttpError } from "../../src/http.js";
 import { FakePlay, fixtureJson } from "./fakes.js";
 
 const tracks = () => (fixtureJson("play-tracks.json") as { tracks: PlayTrack[] }).tracks;
@@ -68,6 +69,22 @@ describe("promoteAndroid", () => {
     const play = new FakePlay(routes(null));
     await expect(promoteAndroid(play, { version: "2.0.10", versionCode: 42, notes: notesFrom(new Map()) }, () => {})).rejects.toThrow(/not on the internal track/);
     expect(play.writes().map((call) => `${call.method} ${call.path}`)).toEqual(["POST /edits", "DELETE /edits/edit-1"]);
+  });
+
+  it("commits without sending for review when Play refuses to send it automatically, and says to send it by hand", async () => {
+    // 2026-11-11, 2.0.17: with an update rejected (Broken Functionality), Play answers the commit with HTTP 400 "Changes
+    // cannot be sent for review automatically. Please set the query parameter changesNotSentForReview to true".
+    const refused = new HttpError("https://androidpublisher.googleapis.com/x:commit", 400,
+      '{"error":{"code":400,"message":"Changes cannot be sent for review automatically. Please set the query parameter changesNotSentForReview to true. Once committed, the changes in this edit can be sent for review from the Google Play Console UI.","status":"INVALID_ARGUMENT"}}');
+    const play = new FakePlay({
+      ...routes({ track: "production", releases: [{ name: "2.0.10", status: "completed", versionCodes: [String(CODE)] }] }),
+      "POST /edits/edit-1:commit": () => { throw refused; },
+      "POST /edits/edit-1:commit?changesNotSentForReview=true": { id: "edit-1" },
+    });
+    const log: string[] = [];
+    await promoteAndroid(play, { version: "2.0.10", versionCode: CODE, notes: notesFrom(new Map()) }, (line) => log.push(line));
+    expect(play.writes().map((call) => `${call.method} ${call.path}`)).toContain("POST /edits/edit-1:commit?changesNotSentForReview=true");
+    expect(log.join("\n")).toMatch(/NOT SENT FOR REVIEW.*Play Console/);
   });
 
   it("refuses notes longer than Play allows, before touching production", async () => {
