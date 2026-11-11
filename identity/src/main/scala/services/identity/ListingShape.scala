@@ -69,12 +69,6 @@ object ListingShape {
     ("""\bstummfilm\w*|\bsilent\s+(?:films?|movies?|cinema|classics?)\b|\bfilm\w*\s+niem\w*|\bniem\w*\s+film\w*|\bkin[oa]\s+niem\w*|""" +
       """\bcine\s+mudo\b|\bpeliculas?\s+mudas?\b|\bfilms?\s+muets?\b""").r
 
-  /** Words a billing names a stage house, a relay or a stage show by. */
-  private val HouseWords = {
-    import TitleWords.Concept.*
-    TitleWords.tokens(StageHouse, Stage, Relay, HouseBanner)
-  }
-
   /** Words a billing names a stage show by — a theatre, a musical, a stage ([[TitleWords.Concept.Stage]]). */
   val StageWords: Set[String] = TitleWords.tokens(TitleWords.Concept.Stage, TitleWords.Concept.StageShow)
   /** The words naming a staged show itself ("CBeebies Panto 2026: Treasure Island"): a staging wherever it is billed, the
@@ -85,8 +79,7 @@ object ListingShape {
    *  house's initials as [[StageRelays.billsAStageHouse]] reads them ("Tosca (ROH)", never "Jin-Roh")? */
   def billsAHouse(listing: Listing): Boolean = {
     val titles = spellingsOf(listing)
-    TitleSeason.of(titles, listing.screenings.season).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords)) ||
-      StageRelays.billsAStageHouse(titles)
+    TitleSeason.of(titles, listing.screenings.season).isDefined || StageRelays.namesAHouseOrRelay(titles)
   }
 
   /** A concert FILM, recorded where a cinema relays it from: event cinema TMDB may hold ("Hauser symfonicznie z Royal

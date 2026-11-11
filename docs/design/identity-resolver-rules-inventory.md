@@ -196,8 +196,10 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
 2. **Bill / several works — 7.** `Acceptance.billsSeveralWorks`, `ListingShape.billsSeveral`/`billsSeveralBeside`/
    `billsSeveralBySigns` (zestaw, quoted), `MultiFilmBill.billsTwoWorks`/`billsTwoWholeWorks`, `MultiFilmBill`,
    `DecorationSegments.billsSeveral` (offline), `NonFilmEvents` "marathon" marker, `ConstraintEdges`:40.
-3. **Stage relay / house — 6.** `ListingShape.stagesAWork`, `StageRelays.billsStageWork`/`stageWorks`,
-   `Agreement.billsAHouse` (hard-coded `HouseWords`), `Broadcast.billsAHouse(title)` (stage work + banner),
+3. **Stage relay / house — 6.** `ListingShape.stagesAWork`, `StageRelays.billsStageWork`/`stageWorks` (a piece ENDING
+   in a work's name bills it only beside a house, a relay or a season: `StageRelays.billedIn`'s `housed`),
+   `ListingShape.billsAHouse` (its season, and `StageRelays.namesAHouseOrRelay`'s `HouseWords`, which the ending rule
+   reads too), `Broadcast.billsAHouse(title)` (stage work + banner),
    `ListingShape.relays`, `StageRelays.billsUnderItsHouse` (learned `Houses`), `UnifiedEvidence` `stage.work`.
 4. **Banner spelling — 2.** `Broadcast.Billing.spells` (subset, or ≥2 shared words) vs `StageRelays.spellsItsHouse`
    (≥2 shared words, no subset case) — **finding F2**.

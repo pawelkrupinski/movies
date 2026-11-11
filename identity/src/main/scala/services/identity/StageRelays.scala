@@ -2,7 +2,7 @@ package services.identity
 
 import services.billing.DecorationWords
 import services.identity.IdentityMeasures.*
-import services.movies.{TitleContainment, TitleSeason}
+import services.movies.{TitleContainment, TitleSeason, TitleWords}
 import services.resolution.SearchTitles
 
 /**
@@ -435,8 +435,32 @@ object StageRelays {
    *  composer (DE "Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA") or a house's word run on ("OPERA-MAKBET") —
    *  or, in a title naming its season (`seasonNamed`), opening with one before a venue's tag ("SAMSON I DALILA-
    *  RETRANSMISJA"). Never a work a title only opens with otherwise: "Manon des sources" is no broadcast of "Manon". */
-  def stageWorksBilled(titles: Seq[String], seasonNamed: Boolean): Set[String] =
-    titles.map(billable).flatMap(t => (pieces(t) ++ fragments(t)).distinct :+ t).flatMap(billedIn(_, seasonNamed)).toSet
+  def stageWorksBilled(titles: Seq[String], seasonNamed: Boolean): Set[String] = {
+    val housed = seasonNamed || readsEndingWorks(titles)
+    titles.map(billable).flatMap(t => (pieces(t) ++ fragments(t)).distinct :+ t).flatMap(billedIn(_, seasonNamed, housed)).toSet
+  }
+
+  /** Words a billing names a stage house, a relay or a stage show by. */
+  private val HouseWords = {
+    import TitleWords.Concept
+    TitleWords.tokens(Concept.StageHouse, Concept.Stage, Concept.Relay, Concept.HouseBanner)
+  }
+  /** Do `titles` name a house or a relay ("OPERA-MAKBET - retransmisja", "NT Live: …"), or a house's initials
+   *  ([[billsAStageHouse]]: "Tosca (ROH)", never "Jin-Roh")? A season is the listing's to read, by its screenings
+   *  ([[ListingShape.billsAHouse]]). */
+  def namesAHouseOrRelay(titles: Seq[String]): Boolean =
+    titles.exists(title => TitleContainment.tokens(title).exists(HouseWords)) || billsAStageHouse(titles)
+
+  /** Is a piece ENDING in a stage work's name read as billing it ([[billedIn]])? Beside a house ([[namesAHouseOrRelay]]) or a
+   *  season, its years in full ("Met Opera 2026/27: …") or short (ES "EVENTOS 26-27  EL CASCANUECES"): the words before
+   *  the work are then its composer or its house's. */
+  private def readsEndingWorks(titles: Seq[String]): Boolean =
+    namesAHouseOrRelay(titles) || TitleSeason.of(titles).isDefined || titles.exists(billsAShortSeason)
+
+  /** A season by its years' last two digits, the second the next ("26-27", "26/27"): never "24/7" or "9-5". */
+  private val ShortSeason = """(?<![\p{N}/–—-])(\d{2})\s*[/–—-]\s*(\d{2})(?![\p{N}/–—-])""".r
+  private def billsAShortSeason(title: String): Boolean =
+    ShortSeason.findAllMatchIn(title).exists(m => m.group(2).toInt == m.group(1).toInt + 1)
 
   /** A box office's running time ending a title ("RB&O Romeo & Juliet (12 TBC) 170 mins"), and a bracket it never closes
    *  ("The Metropolitan Opera: Macbeth [New Production"): neither part of the work, both hiding the end it is read off. */
@@ -455,11 +479,18 @@ object StageRelays {
   /** The stage works one title piece bills ([[stageWorksBilled]]) — a broadcast's year shortened behind the work out:
    *  prod UK "RBO: Tosca 27", "RBO: Tosca '27", "The Met: Macbeth 26". Its words as a work's name is keyed, a possessive
    *  off ([[IdentityMeasures.withoutPossessives]]): "Alice’s Adventures in Wonderland" read as "alice", "s", … named no
-   *  work, so UK Cineworld's "Royal Ballet and Opera: Alice’s Adventures in Wonderland" ×126 was no relay of one. */
-  private[identity] def billedIn(piece: String, seasonNamed: Boolean): Set[String] = {
+   *  work, so UK Cineworld's "Royal Ballet and Opera: Alice’s Adventures in Wonderland" ×126 was no relay of one.
+   *  A piece ENDING in a work's name bills it only in a title naming its season (`seasonNamed`: a piece of one, as
+   *  [[seasonProductionQueries]] asks of "Jacques Offenbach LES CONTES D´HOFFMANN") or billing a house (`housed`,
+   *  [[readsEndingWorks]]): its composer
+   *  or the house's word before it ("Opera-makbet", "MET Manon", "Met Opera 2026/27: Camille Saint-Saëns SAMSON ET
+   *  DALILA"). Elsewhere the words before it make another title: "I Play Rocky" (the musical "Rocky"), "Wild Horse
+   *  Nine" ("Nine"), "All About My Mother" ("Mother"), "Dune (1984)" ("1984"), never a relay of the work. */
+  private[identity] def billedIn(piece: String, seasonNamed: Boolean, housed: Boolean = true): Set[String] = {
     val tokens = IdentityMeasures.words(piece).toIndexedSeq
       .reverse.dropWhile(token => token.length == 2 && token.forall(_.isDigit)).reverse
-    val runs   = tokens.indices.map(tokens.drop) ++ (if (seasonNamed) (1 until tokens.size).map(tokens.take) else Nil)
+    val ends   = if (housed) tokens.indices.map(tokens.drop) else Seq(tokens)
+    val runs   = ends ++ (if (seasonNamed) (1 until tokens.size).map(tokens.take) else Nil)
     runs.flatMap(run => StageWorks.resolver.named(run.mkString)).toSet
   }
 

@@ -207,6 +207,25 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     beside("Johnny English Strikes Again", film("Johnny English")) shouldBe None
   }
 
+  "a title ending in a stage work's name" should "bill the work only beside a house, a relay or a season" in {
+    def stages(title: String, original: Option[String] = None) =
+      ListingShape.stagesAWork(listing(KinoMuza, title).copy(originalTitle = original))
+    // prod 2026-11-11: films whose titles END in a stage work's name or alias ("Rocky" of "Rocky the Musical", "Nine",
+    // "Mother", "The Hat" of "The Man Who Mistook His Wife for a Hat", the opera "1984"), read as its relay, their
+    // posters kept out of the evidence
+    Seq("I Play Rocky", "Jestem Rocky", "Senior Screening: I Play Rocky", "Wild Horse Nine", "Wild Horse Nine (15)",
+      "The Cat in the Hat", "Dr. Seuss' The Cat in the Hat", "All About My Mother", "Dune (1984)", "Three Days of the Condor",
+      "The Lord of the Rings: The Return of the King (Extended Edition)").foreach(title => withClue(title)(stages(title) shouldBe false))
+    // a house's relay the work's name ends a piece of: the house's word run on, its initials, its season, its banner
+    Seq("Opera-makbet - retransmisja", "Opera-manon", "MET Manon", "Royal Ballet & Opera- Tosca", "RB&O 26/27: Romeo & Juliet",
+      "Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA", "Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie",
+      "EVENTOS 26-27  EL CASCANUECES", "The Royal Opera: Carmen [Revival]", "La Bayadère (Opéra de Paris)",
+      "Rocky the Musical", "Andrew Lloyd Webber's Starlight Express (PG)").foreach(title => withClue(title)(stages(title) shouldBe true))
+    // a piece of a title naming its season, as the season production's searches read it (DE Cineplex Lörrach's "MET Opera
+    // 2024/25: Jacques Offenbach LES CONTES D´HOFFMANN"): its composer before the work
+    StageRelays.stageWorksBilled(Seq("Jacques Offenbach LES CONTES D´HOFFMANN"), seasonNamed = true) should not be empty
+  }
+
   "a relay" should "be told by its stage work, its house or season, or a concert film's venue" in {
     ListingShape.stagesAWork(listing(KinoMuza, "OPERA-COSI FAN TUTTE")) shouldBe true
     // ES mk2's ballet relay, billed bare: Adam's ballet, which Wikidata files under "ballet" (Q15079786), a class the

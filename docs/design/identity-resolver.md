@@ -2694,6 +2694,20 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   ([[Broadcast]]) still wins over such an agreement: PL Kino Amok bills the Met's "Manon" bare, and Wikidata and Filmweb
   take Clouzot's (the ratchet's one wrong without that). "OPERA-COSI FAN TUTTE" bills a house: never Tinto Brass's.
   Ratchet: +2 listings, 2 films, 0 wrong.
+- **A title ENDING in a stage work's name bills the work only beside a house, a relay or a season**
+  (`StageRelays.billedIn`'s `housed`, read off `namesAHouseOrRelay`, `TitleSeason` and a short season "26-27", or a piece
+  its caller already read off a season title, `seasonNamed`): the words
+  before the work are then its composer's or its house's ("Opera-makbet", "MET Manon", "Met Opera 2026/27: Camille
+  Saint-Saëns SAMSON ET DALILA", ES "EVENTOS 26-27  EL CASCANUECES"). Elsewhere they make another title, and 248 of
+  prod's billings (2026-11-11, all five countries) read as relays: "I Play Rocky" (the musical "Rocky"), "Wild Horse
+  Nine" ("Nine"), "The Cat in the Hat" ("The Hat"), "All About My Mother" ("Mother"), "Dune (1984)" (the opera "1984"),
+  the Lord of the Rings films (the musical) — their posters out of the evidence (`PosterEvidence.shows`) and their
+  searches the stage path's. A title or piece that IS a work's name whole still bills it ("Skrzypek na dachu", "Los
+  miserables (2019)"): nothing in a bare title tells the 1971 film from the musical, which the agreement's
+  `screenAdaptation` and the families' takes decide. A name venues bill a work by whole goes in
+  `identity-stage-works-extra.tsv` ("Andrew Lloyd Webber's Starlight Express"). What-if 2026-11-11, all five
+  countries, every family: 2 takes moved, DE Apollo Hannover's live "Club Mix-Show" off "Die Truman Show" (judged
+  wrong, cured); 0 right lost, 0 new wrong.
 - **`family.filmweb.took&!model.unscored`, a second pinned fill** (REMOVED 2026-10-14, §20.19; from the search sweep, branch
   `measure/identity-film-search`): the one guard-passing contender Filmweb takes that the model scored too — Filmweb
   votes in Poland alone. PL "Bohater" (Farhadi's), "BEZ KOŃCA 2D PL LOLO", "NADZIEJA", "Wymarzony" (Herry's *Pupille*,
