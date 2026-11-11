@@ -284,7 +284,10 @@ object SavoyClient {
         url         = if (isLink) Some(mark.attr("abs:href")) else None,
         id          = if (isLink) ProgrammeId.findFirstMatchIn(mark.attr("href")).map(_.group(1)) else None,
         certificate = heading.flatMap(h => Certificate.findFirstMatchIn(h.ownText)).map(_.group(1).trim),
-        poster      = block.flatMap(b => Option(b.selectFirst("img[src]"))).flatMap(ScraperParse.imageUrl(_)),
+        // The block's artwork, never an image inside a heading: Folkestone's Silver Screen
+        // prints the BBFC certificate badge beside the title, and no artwork at all.
+        poster      = block.flatMap(_.select("img[src]").asScala.find(_.closest("h1, h2, h3, h4") == null))
+          .flatMap(ScraperParse.imageUrl(_)),
         synopsis    = block.flatMap(b => Option(b.selectFirst(".synopsis"))).map(_.text.trim)
           .filter(s => s.nonEmpty && !s.equalsIgnoreCase("tbc"))
       )

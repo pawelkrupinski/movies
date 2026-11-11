@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, PhoenixCinemaEastFinchley, SavoyCinemaCorby, TheatrGwaunFishguard, WetherbyFilmTheatre}
+import models.{IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, PhoenixCinemaEastFinchley, SavoyCinemaCorby, SilverScreenFolkestone, TheatrGwaunFishguard, WetherbyFilmTheatre}
 import services.cinemas.uk.SavoyClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -157,6 +157,14 @@ class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
     // `<img src="" alt="Sense and Sensibility"/>`: jsoup's abs:src made that the box office's own URL.
     ilkleyBy("Sense and Sensibility").posterUrl shouldBe None
     ilkley.flatMap(_.posterUrl).filter(_.startsWith(IlkleyBase)) shouldBe empty
+  }
+
+  // A 2026-11-11 capture of https://silverscreenfolkestone.savoysystems.co.uk/SilverScreenFolkestone.dll/
+  it should "not read the certificate badge beside a film's title as its poster" in {
+    val folkestone = scrape("https://silverscreenfolkestone.savoysystems.co.uk/SilverScreenFolkestone.dll/",
+      SilverScreenFolkestone, LocalDate.of(2026, 11, 11))
+    folkestone.map(_.movie.title) should contain ("Ken Russell's The Devils")
+    folkestone.flatMap(_.posterUrl) shouldBe empty
   }
 
   it should "drop performances before today" in {
