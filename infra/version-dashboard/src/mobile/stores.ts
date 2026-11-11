@@ -106,6 +106,25 @@ export function vaultSecrets(exec: Executor = runCommand, bin: string = SECRETS_
   return { get, unlock };
 }
 
+/**
+ * For a run with a person at the machine (`scripts/android-signed`, from a terminal or the DevPanel):
+ * a locked vault asks for Touch ID once, then reads again. The unlock and every later read come from
+ * this same process, so the grant covers them all, and ends when the process exits.
+ */
+export function unlockingWhenLocked(vault: { readonly get: Secrets; readonly unlock: () => Promise<void> }): Secrets {
+  let unlocking: Promise<void> | undefined;
+  return async (name) => {
+    try {
+      return await vault.get(name);
+    } catch (error) {
+      if (!(error instanceof VaultLockedError)) throw error;
+      unlocking ??= vault.unlock();
+      await unlocking;
+      return vault.get(name);
+    }
+  };
+}
+
 const b64u = (data: string | Buffer): string => Buffer.from(data).toString("base64url");
 
 /**

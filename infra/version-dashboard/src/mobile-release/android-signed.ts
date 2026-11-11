@@ -1,11 +1,12 @@
 /**
  * `scripts/android-signed <command...>` -- run a command (from android/: `./gradlew runOnDevice`) with
  * the release signing env out of the Touch ID vault, the same `androidSigningEnv` the release lane
- * uses. The keystore and Play key live in a fresh temp dir for the length of the command only.
+ * uses. The keystore and Play key live in a fresh temp dir for the length of the command only. A
+ * locked vault asks for Touch ID (once) instead of failing, so the DevPanel's deploy button works too.
  */
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
-import { vaultSecrets } from "../mobile/stores.js";
+import { unlockingWhenLocked, vaultSecrets } from "../mobile/stores.js";
 import { runSigned, type SignedRun } from "./signing.js";
 
 /** Interactive: the child shares this terminal, and runs for as long as it takes (no timeout). */
@@ -23,7 +24,7 @@ process.on("SIGTERM", () => {});
 
 const argv = process.argv.slice(2);
 try {
-  process.exitCode = await runSigned(vaultSecrets().get, argv[0] === "--" ? argv.slice(1) : argv, inheritTerminal, tmpdir());
+  process.exitCode = await runSigned(unlockingWhenLocked(vaultSecrets()), argv[0] === "--" ? argv.slice(1) : argv, inheritTerminal, tmpdir());
 } catch (error) {
   console.error(`✗ ${(error as Error).message}`);
   process.exitCode = 1;

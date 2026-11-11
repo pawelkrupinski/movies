@@ -13,6 +13,7 @@ import {
   VaultLockedError,
   RELEASE_SECRET_NAMES,
   secretsFromEnvironmentFirst,
+  unlockingWhenLocked,
   vaultSecrets,
 } from "../../src/mobile/stores.js";
 import { readdirSync, readFileSync } from "node:fs";
@@ -245,6 +246,46 @@ describe("the Touch ID vault CLI", () => {
     expect(ok.argvs).toEqual(["/bin/secrets unlock movies"]);
     const refused = run({ "unlock movies": { code: 1, stderr: "Error: Touch ID cancelled" } });
     await expect(vaultSecrets(refused.exec, "/bin/secrets").unlock()).rejects.toThrow(/cancelled/);
+  });
+});
+
+describe("an interactive run over a locked vault", () => {
+  const lockedUntilUnlocked = (unlockError?: Error) => {
+    const calls: string[] = [];
+    let unlocked = false;
+    const vault = {
+      get: async (name: string) => {
+        calls.push(`get ${name}`);
+        if (!unlocked) throw new VaultLockedError(name);
+        return `vault:${name}`;
+      },
+      unlock: async () => {
+        calls.push("unlock");
+        if (unlockError) throw unlockError;
+        unlocked = true;
+      },
+    };
+    return { calls, vault };
+  };
+
+  it("asks for Touch ID once, then reads every secret", async () => {
+    const { calls, vault } = lockedUntilUnlocked();
+    const secrets = unlockingWhenLocked(vault);
+    expect(await secrets("KINOWO_RELEASE_KEYSTORE_BASE64")).toBe("vault:KINOWO_RELEASE_KEYSTORE_BASE64");
+    expect(await secrets("KINOWO_RELEASE_KEY_ALIAS")).toBe("vault:KINOWO_RELEASE_KEY_ALIAS");
+    expect(calls).toEqual(["get KINOWO_RELEASE_KEYSTORE_BASE64", "unlock", "get KINOWO_RELEASE_KEYSTORE_BASE64", "get KINOWO_RELEASE_KEY_ALIAS"]);
+  });
+
+  it("a refused prompt fails the read, naming why", async () => {
+    const { vault } = lockedUntilUnlocked(new Error("Touch ID cancelled"));
+    await expect(unlockingWhenLocked(vault)("X")).rejects.toThrow(/cancelled/);
+  });
+
+  it("any other vault failure is not an unlock", async () => {
+    const calls: string[] = [];
+    const vault = { get: async () => { throw new Error("no such key"); }, unlock: async () => { calls.push("unlock"); } };
+    await expect(unlockingWhenLocked(vault)("X")).rejects.toThrow(/no such key/);
+    expect(calls).toEqual([]);
   });
 });
 
