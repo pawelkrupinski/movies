@@ -2,7 +2,7 @@ package clients.msi
 
 import models._
 import org.scalatest.prop.TableDrivenPropertyChecks
-import clients.tools.{FailingHttpFetch, FakeHttpFetch, ScriptedByUrlHttpFetch}
+import clients.tools.{FailingHttpFetch, FakeHttpFetch, RequestLogHttpFetch, ScriptedByUrlHttpFetch}
 import org.scalatest.OptionValues
 import tools.HttpStatusException
 import org.scalatest.matchers.should.Matchers
@@ -465,6 +465,17 @@ class MsiClientSpec
         if (url.endsWith("/Repertoire/GetShortEventsWithFilters")) "<html><body>Repertuar</body></html>" else recorded.get(url))
     new MsiClient(htmlLabels, "https://bilety.goktychowo.pl", KinoGOK, today = LocalDate.of(2026, 10, 13))
       .fetch().map(_.movie.title).sorted shouldBe Seq("Bonobo", "Lalka", "Luna i rozgadana świnka")
+  }
+
+  // The older list-group skin (Max Kino, Kino Słońce) has no filter panel, so no labels
+  // feed: its route 302s to `SessionExpired.aspx`, ASP.NET's error page (checked live
+  // 2026-11-12, cookies or not). A portal whose month page names no feed is not asked
+  // for one — asking cost a request and an INFO line on every scrape, 48 a day.
+  it should "not ask for labels a portal's month page names no feed for" in {
+    val requests = new RequestLogHttpFetch(new FakeHttpFetch("kino-max-swiebodzin"))
+    val movies = new MsiClient(requests, "https://repertuar.maxkino.eu", KinoMaxKino, today = LocalDate.of(2026, 6, 21)).fetch()
+    movies should not be empty
+    requests.gets.filter(_.endsWith("/Repertoire/GetShortEventsWithFilters")) shouldBe empty
   }
 }
 

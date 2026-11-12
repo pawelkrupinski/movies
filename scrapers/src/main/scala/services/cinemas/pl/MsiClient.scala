@@ -53,8 +53,11 @@ import scala.util.Try
  * `<base><mvcPath>/Repertoire/GetShortEventsWithFilters` (the data behind its
  * filter panel), keyed by the booking link's `event_id`. One extra request per
  * scrape; a screening filed under a stage label is dropped
- * ([[MsiClient.isStagedEvent]]). A feed that fails or isn't JSON (Max Kino's
- * older skin) labels nothing, so the scrape degrades to the title filter alone.
+ * ([[MsiClient.isStagedEvent]]). The feed is asked for only when a month page
+ * names it, as the standard skin's filter panel does: the older list-group skin
+ * (Max Kino, Kino Słońce) has no panel and no feed — its route 302s to ASP.NET's
+ * `SessionExpired.aspx` error page (2026-11-12). A feed that fails or isn't JSON
+ * labels nothing, so the scrape degrades to the title filter alone.
  * (The per-event details modal, `ajax.aspx/GetEventDetails`, answers HTTP 500 to
  * any request from outside the page, session cookie or not — 2026-10-13.)
  *
@@ -137,10 +140,12 @@ class MsiClient(
     // why a month that FAILS to fetch counts as blank.
     val attempts = Seq.newBuilder[Try[String]]
     val slots    = Seq.newBuilder[MsiScraper.RawSlot]
+    var namesLabelsFeed = false
 
     ScrapeHorizon.liveMonths(YearMonth.from(today)) { month =>
       val body = Try(HttpRead.page(http, monthUrl(baseUrl, mvcPath, month)))
       attempts += body
+      namesLabelsFeed ||= body.toOption.exists(_.contains(LabelsFeedRoute))
       val monthSlots = body.toOption.filter(_.nonEmpty).toSeq
         .flatMap(MsiScraper.parseMonthWithYear(_, month, baseUrl, titleCleaner))
       slots ++= monthSlots
@@ -160,6 +165,7 @@ class MsiClient(
     // still costs just its month walk.
     val labels: EventLabels =
       if (found.isEmpty) EventLabels.Empty
+      else if (!namesLabelsFeed && otherVenueLocations.isEmpty) EventLabels.Empty // a skin with no feed to ask
       else HttpRead.jsonObject(http, eventLabelsUrl(baseUrl, mvcPath))(feed => ReadOutcome.Answered(parseEventLabels(feed))) match {
         case ReadOutcome.Answered(byEvent) => byEvent
         case unread if otherVenueLocations.nonEmpty =>
@@ -190,7 +196,10 @@ object MsiClient {
 
   /** The portal's event-labels feed: every upcoming event's filter-panel labels. */
   def eventLabelsUrl(baseUrl: String, mvcPath: String): String =
-    s"$baseUrl$mvcPath/Repertoire/GetShortEventsWithFilters"
+    s"$baseUrl$mvcPath$LabelsFeedRoute"
+
+  /** The feed's route under the month page's prefix — what a month page that has the feed names in its script. */
+  private val LabelsFeedRoute = "/Repertoire/GetShortEventsWithFilters"
 
   /** The labels a box office filed each event under — its category and
    *  sub-category names, by event id — read off the event-labels feed
