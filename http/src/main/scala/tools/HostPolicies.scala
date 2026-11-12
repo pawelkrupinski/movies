@@ -129,6 +129,12 @@ object HostPolicies {
     // enrichment is best-effort, retried next cycle, so an occasional cut is free.
     HostPolicy(Set("metacritic.com"), requestTimeout = Duration.ofSeconds(15)),
 
+    // Kino Muza (Poznań). Its pages answer in ~1-3s (homepage and /movie/<slug>/, 2026-11-12),
+    // but from 2026-11-07 a detail page would sometimes hang the full 30s default, three
+    // attempts in a row (~1,250 lines in five days): 90s held per page, and four of them
+    // before the breaker opened. 10s clears the healthy tail threefold and trips it 3x sooner.
+    HostPolicy(Set("kinomuza.pl"), requestTimeout = Duration.ofSeconds(10)),
+
     // Kino Iluzjon (Filmoteka Narodowa). Its TLS handshake is pathologically slow
     // — the TCP connect lands instantly but the handshake itself takes 20-30s (the
     // server's own latency, reproducible with openssl, not our cert path). Under

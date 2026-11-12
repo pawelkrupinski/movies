@@ -200,6 +200,10 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     mc.compareTo(HostPolicies.DefaultRequestTimeout) should be < 0
   }
 
+  it should "give Kino Muza a budget above its ~1-3s pages but well below the 30s hangs" in {
+    HostPolicies.requestTimeoutFor("https://www.kinomuza.pl/movie/tabloid/") shouldBe Duration.ofSeconds(10)
+  }
+
   // ── Per-host identifying headers (IMDb's GraphQL CDN) ─────────────────────
   // On 2026-08-01 IMDb's edge started 403-ing every POST to
   // caching.graphql.imdb.com that arrives without a client-identifying header —
