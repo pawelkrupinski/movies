@@ -112,6 +112,22 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     second.counterAdditions shouldBe empty
   }
 
+  // Prod PL 2026-11-11/12, Kino Luna "Narodzenie Króla. Zero A.D. | spotkanie …": a film retired by overlap and drafted
+  // again under its first key minted the very id it had (a digest of that key), which the map still holds under its old
+  // counter — so the store refused the entry ("identity_film_ids: 1 entr(ies) refused as already mapped", 632 lines in
+  // 14 days, every country) and the film's id was back on a counter the plan never gave it.
+  "A film drafted again after its film was retired" should "get an id the FilmId map has never held, its entry stored" in {
+    val r     = resolution(decision(None, obcy*))
+    val first = plan(obcy, r)
+    val map   = counters(first)
+    // retired: no stored film holds the id any more, the map keeps it for good
+    val again = plan(obcy, r, stored = Nil, counters = map)
+    again.films.map(_.id).filter(id => map.counterOf(id.value).isDefined) shouldBe empty
+    val store = new InMemoryFilmIdCounterStore
+    store.insert(map.entries) shouldBe map.size
+    store.insert(again.counterAdditions) shouldBe again.counterAdditions.size
+  }
+
   // The stored record's map is kept wherever a slot drafted is the very one it holds (the cache keeps the projection's lean
   // slots): drafted anew, a wide film's map of thousands of slots was a copy each projection, kept until the next write —
   // promoted to the old generation and left to die there.

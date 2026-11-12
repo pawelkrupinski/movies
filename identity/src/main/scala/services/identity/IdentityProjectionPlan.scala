@@ -227,7 +227,9 @@ object IdentityProjectionPlan {
     new ProjectionDrafting(index, scope, normalizer, slots, tokens, rowsOf, memo, shapes, changed).draft
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says
-   *  whether an id is live already (a fresh id must not be one). */
+   *  whether an id is live already. A fresh id is neither live nor one the FilmId map holds: the map
+   *  keeps a retired film's id for good, so a film drafted again under its first key — which mints
+   *  the very id it had — would get an entry the store refuses, and its id back on the old counter. */
   def finish(draft: ProjectionDraft, normalizer: TitleNormalizer, taken: FilmId => Boolean)(using LatestTitleYear): ProjectionPlan = {
     val titled = draft.drafts.sortBy(_.counter).map { d =>
       val title = d.record.displayTitle(d.anchor, normalizer)
@@ -241,7 +243,7 @@ object IdentityProjectionPlan {
       val key = if (firstHolder(plainKey(d.counter)) == d.counter) plainKey(d.counter)
                 else s"${normalizer.sanitize(title)}~${d.counter}|${year.fold("")(_.toString)}"
       val id = d.inherited.getOrElse {
-        val fresh = FilmId.fresh(CacheKey.stored(title, key), id => taken(id) || minted(id))
+        val fresh = FilmId.fresh(CacheKey.stored(title, key), id => taken(id) || minted(id) || draft.counters.counterOf(id.value).isDefined)
         minted += fresh
         fresh
       }

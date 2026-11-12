@@ -20,7 +20,9 @@ package services.movies
  * arrivals assigns the same ids; which key a film is first seen under depends on
  * arrival order, so two replays in different orders may id the same film differently
  * — opaque means exactly that nothing may care. A collision with a LIVE id (the same
- * first key, used again after that row was retitled) bumps a nonce.
+ * first key, used again after that row was retitled) bumps a nonce, and so, in the
+ * identity projection, does one with a retired film's id: the FilmId map keeps it for
+ * good, so it is never handed out again (`IdentityProjectionPlan.finish`).
  */
 final case class FilmId(value: String) extends AnyVal {
   override def toString: String = value
