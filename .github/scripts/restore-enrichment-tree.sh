@@ -48,7 +48,8 @@ download_status=$?
 # (RECORDING_ARCHIVE_TAG, default identity-recordings) keeps the landing recordings' trees (528, 573) under the same name.
 if [ "$download_status" -eq 3 ] && [ "$mode" != "record" ]; then
     ARCHIVE_TAG="${RECORDING_ARCHIVE_TAG:-identity-recordings}"
-    gh_download "${RESTORE_TREE_DOWNLOAD_TIMEOUT:-1200}" release download "$ARCHIVE_TAG" --pattern "$ASSET" --dir "$archives" --clobber
+    # The archive release is permanent: its "release not found" is GitHub's hiccup, asked again (run 43317254260).
+    GH_DOWNLOAD_RELEASE_EXISTS=1 gh_download "${RESTORE_TREE_DOWNLOAD_TIMEOUT:-1200}" release download "$ARCHIVE_TAG" --pattern "$ASSET" --dir "$archives" --clobber
     download_status=$?
     [ "$download_status" -ne 0 ] || TAG="$ARCHIVE_TAG"
 fi

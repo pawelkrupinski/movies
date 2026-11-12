@@ -161,7 +161,8 @@ corpus() {
     # recordings' corpora (528, 573) as scrapes-<code>-<run>.tar.*, for when their artifacts are gone -- the same
     # fallback scripts/identity-fetch-recording.sh reads on the laptop.
     if [ "$present" != present ]; then
-      present=$("$gh_optional" release download "${RECORDING_ARCHIVE_TAG:-identity-recordings}" \
+      # The archive release is permanent: its "release not found" is GitHub's hiccup, asked again (run 43317254260).
+      present=$(GH_DOWNLOAD_RELEASE_EXISTS=1 "$gh_optional" release download "${RECORDING_ARCHIVE_TAG:-identity-recordings}" \
                   --pattern "scrapes-$code-$pinned.tar.*" --dir scrape-archive/from-archive --clobber) || {
         echo "::error::could not read release ${RECORDING_ARCHIVE_TAG:-identity-recordings} for recording run $pinned's corpus (gh's error above)"
         exit 1

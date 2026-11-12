@@ -34,6 +34,12 @@ optional() {
 check "a download reads as present, with gh's stdout kept off the verdict" "present|0" "$(optional 0 "")"
 check "no matching release asset reads as absent" "absent|0" "$(optional 1 "no assets match the file pattern")"
 check "a missing release reads as absent" "absent|0" "$(optional 1 "release not found")"
+check "a release that must exist: a passing 'release not found' is asked again, and present once it answers" "present|0|2" \
+  "$(GH_DOWNLOAD_RELEASE_EXISTS=1 STUB_TIMES=1 optional 1 "release not found")|$(cat "$stub_dir/count")"
+check "...and one that lasts every attempt is a FAILED read, never absent" "|1|3" \
+  "$(GH_DOWNLOAD_RELEASE_EXISTS=1 STUB_TIMES=99 optional 1 "release not found")|$(cat "$stub_dir/count")"
+check "...while a missing asset on it still reads as absent" "absent|0" \
+  "$(GH_DOWNLOAD_RELEASE_EXISTS=1 optional 1 "no assets match the file pattern")"
 check "a run without the artifact reads as absent" "absent|0" "$(optional 1 "no artifact matches any of the names or patterns provided")"
 check "an expired artifact reads as absent" "absent|0" "$(optional 1 "no valid artifacts found to download")"
 check "a 404 run reads as absent" "absent|0" "$(optional 1 "HTTP 404: Not Found (https://api.github.com/repos/o/r/actions/runs/1)")"

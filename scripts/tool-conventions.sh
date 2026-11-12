@@ -183,6 +183,10 @@ path_flag() {
 #   jitter keeps a matrix's legs from asking again in step, and past ~15 minutes it is an outage a re-run answers, not
 #   a wait worth a runner. An absent one is an answer, never asked again — and never confused with a failed one,
 #   which a caller treating "absent" as "carry on with less" must not read as it.
+#   A RELEASE THAT MUST EXIST: GH_DOWNLOAD_RELEASE_EXISTS=1 makes gh's "release not found" a failed read, asked again,
+#   not an absent asset -- for a permanent release (the identity-recordings archive), whose tag GitHub's API now and
+#   then answers 404 for a moment: Identity takes run 43317254260's es takes-base read the archive's 573 corpus as
+#   absent at 22:34:06 while its sibling legs downloaded the same asset from the same release around it.
 #   A `run download`'s --dir is emptied before each retry (gh refuses to overwrite what a cut-short attempt left), so
 #   it must be a directory of the download's own. gh's own messages go to stderr.
 #
@@ -220,7 +224,8 @@ gh_download() {
     { err=$(bounded "$seconds" "$KINOWO_GH" "$@" 2>&1 1>&3 3>&-); status=$?; } 3>&1
     [ -z "$err" ] || printf '%s\n' "$err" >&2
     [ "$status" -eq 0 ] && return 0
-    if printf '%s' "$err" | grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404|HTTP 410'; then
+    if printf '%s' "$err" | grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404|HTTP 410' &&
+       ! { [ -n "${GH_DOWNLOAD_RELEASE_EXISTS:-}" ] && printf '%s' "$err" | grep -q 'release not found'; }; then
       return 3
     fi
     attempts=${GH_DOWNLOAD_ATTEMPTS:-3}
