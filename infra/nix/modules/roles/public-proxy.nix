@@ -98,6 +98,23 @@ in
             '';
           };
 
+          upstreamRestartGrace = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+            example = "30s";
+            description = ''
+              How long a request to `upstream` keeps retrying the dial (Caddy's `lb_try_duration`)
+              before it is answered 502. Null: it is answered 502 at once.
+
+              FOR AN UPSTREAM THE SWITCH RESTARTS. grafana.service is restarted by every closure
+              that changes a dashboard or contact point (its provisioning store path is in
+              ExecStart) and takes 12-18 s to listen again; every request in that window was a 502
+              and a Caddy ERROR line (2026-11-02, 11-05, 11-11). A held request answers late
+              instead. Only a REFUSED dial is retried -- a request the upstream accepted is never
+              sent twice.
+            '';
+          };
+
           requireGoogleLogin = lib.mkOption {
             type = lib.types.bool;
             default = false;
@@ -427,10 +444,22 @@ in
             }
           '') v.pathUpstreams);
 
+          # The dial retry that rides over an upstream restart (`upstreamRestartGrace`), inside
+          # every block that proxies to `upstream`.
+          restartGrace = lib.optionalString (v.upstreamRestartGrace != null) ''
+            lb_try_duration ${v.upstreamRestartGrace}
+            lb_try_interval 250ms
+          '';
+
           fallback = if v.redirectTo != null
             then ''redir https://${v.redirectTo}{uri} permanent''
             else if v.upstream != null
-            then ''reverse_proxy ${v.upstream}''
+            then (if v.upstreamRestartGrace == null then ''reverse_proxy ${v.upstream}''
+                  else ''
+                    reverse_proxy ${v.upstream} {
+                      ${restartGrace}
+                    }
+                  '')
             else ''respond 404'';
 
           # GOOGLE, ASKED ON EVERY REQUEST THAT IS NOT THE SIGN-IN ITSELF.
@@ -461,6 +490,7 @@ in
               reverse_proxy ${v.upstream} {
                 header_up -X-Auth-Request-Email
                 header_up -X-Auth-Request-User
+                ${restartGrace}
               }
             }
           '') v.ssoExemptRequests);
@@ -476,6 +506,7 @@ in
             handle @tokenGated${toString i} {
               route {
                 forward_auth ${v.upstream} {
+                  ${restartGrace}
                   uri ${e.authUri}
                   header_up -X-Auth-Request-Email
                   header_up -X-Auth-Request-User

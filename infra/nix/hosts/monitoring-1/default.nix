@@ -268,6 +268,8 @@ in
       # using it and an issuance here could fail for reasons that have nothing to do with this fleet.
       "grafana.kinowo.net" = {
         upstream = "10.20.0.11:3000";
+        # A switch that changes a dashboard restarts Grafana (12-18 s): hold requests, not 502.
+        upstreamRestartGrace = "30s";
         # Grafana authenticates its own users and could stand behind a proxy that only does TLS --
         # but its login is a shared password too, and this one asks WHO rather than WHAT.
         requireGoogleLogin = true;

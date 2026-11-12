@@ -188,6 +188,14 @@ if [ -z "$grafana_vhost" ]; then
   echo "  FAILED could not evaluate the vhost:"; sed 's/^/    /' "$work/eval.err" | tail -5; exit 1
 fi
 grafana_vhost="$(printf '%s\n' "$grafana_vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
+# THE SAME VHOST AGAIN, its Grafana on a port nothing listens on until the request is in flight:
+# a switch restarts grafana.service whenever a dashboard changes (12-18 s to listen again), and
+# before the vhost waited for it every request in that window was a 502 and an ERROR line
+# (2026-11-02 18:04, 11-05 16:59, 11-11 12:41).
+grafana_late_port=8894
+grafana_late_stub_port=4183
+grafana_late_vhost="${grafana_vhost//10.20.0.11:3000/127.0.0.1:$grafana_late_stub_port}"
+grafana_late_vhost="${grafana_late_vhost//10.20.0.11:9090/127.0.0.1:$prometheus_stub_port}"
 grafana_vhost="${grafana_vhost//10.20.0.11:3000/127.0.0.1:$grafana_stub_port}"
 grafana_vhost="${grafana_vhost//10.20.0.11:9090/127.0.0.1:$prometheus_stub_port}"
 
@@ -260,6 +268,7 @@ respond 404
   echo ":$filmowo_port {"; echo "$filmowo_vhost"; echo "}"
   echo ":$grafana_port {"; echo "$grafana_vhost"; echo "}"
   echo ":$grafana_stub_port {"; echo "$grafana_stub_site"; echo "}"
+  echo ":$grafana_late_port {"; echo "$grafana_late_vhost"; echo "}"
   echo ":$prometheus_stub_port {"; echo "$prometheus_stub_site"; echo "}"
   echo ":$stub_port {"; echo "$stub_site"; echo "}"; } > "$work/Caddyfile"
 
@@ -496,6 +505,25 @@ grafana_check "302" POST /api/v1/otlp/v1/metrics "Prometheus's own path is not p
 grafana_check "200 ANNOTATION" POST /api/annotations "the deploy marker's exemption still reaches Grafana"
 grafana_check "200 ANNOTATION" POST /api/annotations "...with a forged sign-in header stripped" \
   -H "X-Auth-Request-Email: pawel@bitcashier.io"
+
+echo "==> grafana.kinowo.net waits out a Grafana restart instead of answering 502"
+# Grafana comes up 3 s AFTER the request is sent: a proxy that waits answers 200, one that does
+# not answers 502 at once.
+( sleep 3; exec python3 -c '
+import http.server, sys
+class H(http.server.BaseHTTPRequestHandler):
+    def answer(self):
+        self.send_response(200); self.send_header("Content-Length", "12"); self.end_headers()
+        self.wfile.write(b"LATE-GRAFANA")
+    do_GET = do_POST = answer
+    def log_message(self, *a): pass
+http.server.HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
+' "$grafana_late_stub_port" ) &
+late_grafana=$!
+got="$(curl -s -m 30 -o "$work/late.body" -w '%{http_code}' -X POST "http://127.0.0.1:$grafana_late_port/api/annotations") $(cat "$work/late.body" 2>/dev/null)"
+kill "$late_grafana" 2>/dev/null; wait "$late_grafana" 2>/dev/null
+if [ "$got" = "200 LATE-GRAFANA" ]; then echo "  ok  a request during a Grafana restart is held until it listens again"
+else echo "  FAILED a request during a Grafana restart answered '$got', wanted '200 LATE-GRAFANA'"; failed=1; fi
 
 [ "$failed" = 0 ] && echo "  ok  public proxy behaves" || { echo; echo "caddy log:"; sed 's/^/    /' "$work/caddy.log" | tail -20; }
 exit "$failed"
