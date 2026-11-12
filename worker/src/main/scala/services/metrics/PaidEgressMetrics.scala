@@ -31,7 +31,7 @@ class PaidEgressMetrics(countryCodes: Seq[String], registry: PrometheusRegistry)
     .name("kinowo_worker_paid_egress")
     .help("Requests the worker sent through a paid egress provider since boot, by country, provider " +
       "(zyte = per-request residential API; decodo = static-ISP residential proxy) and outcome " +
-      "(success / http_401 / http_403 / … / timeout / connection_error / other). A circuit-breaker " +
+      "(success / http_401 / http_403 / … / timeout / connection_error / cancelled / other). A circuit-breaker " +
       "fast-fail sends nothing and is not counted.")
     .labelNames("country", "provider", "outcome")
     .register(registry)

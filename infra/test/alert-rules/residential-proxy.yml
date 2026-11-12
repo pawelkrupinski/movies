@@ -88,6 +88,9 @@ tests:
   #     couple of stray timeouts on a quiet worker is not a provider that is down;
   #   - ES Decodo, answering with 404s -- the origin saying "no such page" through a proxy that
   #     works. Not a paid request wasted on the provider.
+  #   - US Decodo, its calls mostly CANCELLED by our own caller (AdaptiveTimeoutScraper cutting an
+  #     overrun scrape) and the rest succeeding: an abandoned call says nothing about the provider,
+  #     so it is neither a failure nor a request in the ratio.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
@@ -111,6 +114,10 @@ tests:
         values: '0+5x120'
       - series: 'kinowo_worker_paid_egress_total{country="es",provider="decodo",outcome="success",job="kinowo-worker"}'
         values: '0+0x120'
+      - series: 'kinowo_worker_paid_egress_total{country="us",provider="decodo",outcome="cancelled",job="kinowo-worker"}'
+        values: '0+30x120'
+      - series: 'kinowo_worker_paid_egress_total{country="us",provider="decodo",outcome="success",job="kinowo-worker"}'
+        values: '0+1x120'
     alert_rule_test:
       - eval_time: 20m
         alertname: PaidEgressFailing

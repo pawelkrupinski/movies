@@ -94,6 +94,26 @@ class CountingHttpFetchSpec extends AnyFlatSpec with Matchers {
     seen.toList shouldBe List(HttpOutcome.Other)
   }
 
+  // AdaptiveTimeoutScraper interrupts an overrun scrape, and the fetch in flight ends before the host answered
+  // (CallerCancelled). Counted as `other` it read as an unexplained failure of the far side.
+  it should "classify a call its caller interrupted or cancelled as cancelled, sync and async" in {
+    Seq[Throwable](new InterruptedException, new java.util.concurrent.CancellationException).foreach { ex =>
+      val (fetch, seen) = recordingFetch(() => throw ex)
+      a [Throwable] should be thrownBy fetch.get("u")
+      withClue(s"$ex: ") { seen.toList shouldBe List(HttpOutcome.Cancelled) }
+    }
+    val seen = mutable.ListBuffer.empty[String]
+    val cancelled = new java.util.concurrent.CompletableFuture[String]
+    val fetch = new CountingHttpFetch(new AnyMethodByUrlHttpFetch(_ => ok()) {
+      override def getAsync(url: String): java.util.concurrent.CompletableFuture[String] = cancelled
+    }, (o: String) => { seen += o; () })
+    val pending = fetch.getAsync("u")
+    cancelled.cancel(true)
+    a [java.util.concurrent.CompletionException] should be thrownBy pending.join()
+    seen.toList shouldBe List(HttpOutcome.Cancelled)
+    HttpOutcome.all should contain (HttpOutcome.Cancelled)
+  }
+
   it should "count getBytes and post as well, forwarding getBytes to the delegate's bytes" in {
     val (fetch, seen) = recordingFetch(ok)
     new String(fetch.getBytes("u"), "UTF-8") shouldBe "body"

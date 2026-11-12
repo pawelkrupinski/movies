@@ -25,6 +25,7 @@ object HttpOutcome {
   val Http5xx         = "http_5xx"          // server errors
   val Timeout         = "timeout"           // connect or read/request timeout
   val ConnectionError = "connection_error"  // refused / unknown host / reset / TLS
+  val Cancelled       = "cancelled"         // our own caller abandoned the call before the host answered (CallerCancelled)
   val Other           = "other"             // anything unclassified (incl. 3xx that surfaced as an error)
 
   /**
@@ -47,13 +48,15 @@ object HttpOutcome {
   /** Every outcome, for seeding the metric at 0 so no Grafana gap opens before a
    *  category first fires. */
   val all: Seq[String] =
-    Seq(Success, Http400, Http401, Http403, Http404, Http410, Http429, Http4xx, Http5xx, Timeout, ConnectionError, Other)
+    Seq(Success, Http400, Http401, Http403, Http404, Http410, Http429, Http4xx, Http5xx, Timeout, ConnectionError, Cancelled, Other)
 
   /** Classify a thrown failure. Order matters: [[HttpStatusException]] carries a
    *  status; `HttpConnectTimeoutException` is a subtype of `HttpTimeoutException`
    *  (so the timeout case catches both); the connection-layer errors are all
-   *  `IOException` subtypes, checked before the generic `IOException` fallback. */
+   *  `IOException` subtypes, checked before the generic `IOException` fallback. A call its caller abandoned
+   *  ([[CallerCancelled]]) is no outcome of the host's, so it is checked first. */
   def classify(t: Throwable): String = t match {
+    case _ if CallerCancelled(t)                               => Cancelled
     case e: HttpStatusException                                => byStatus(e.code)
     // The provider's own status, for the paid-egress counter — see EgressProviderException.
     case e: EgressProviderException                            => byStatus(e.providerStatus)

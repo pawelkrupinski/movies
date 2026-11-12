@@ -690,7 +690,7 @@
     {
       "id": 14,
       "title": "Cinema-scrape HTTP outcomes — error share, scrape phase (per country)",
-      "description": "A failure-budget view scoped to phase=\"scrape\": ONLY the cinema-site HTTP — every listing scrape, chunk scrape and per-film detail fetch — with the third-party metadata/rating/resolution APIs (phase=\"enrich\") excluded; its companion enrich-phase panel below covers those. Each error band's thickness is that error's share of scrape attempts, stacked at the floor; the empty space above is the clean remainder. This isolates cinema-scrape health from the enrichment APIs' by-design 404 slug-probing and API 429s: here a rising http_403 (a cinema Cloudflare/datacentre-IP block) or http_5xx/timeout stands out instead of hiding under the enrichment 404 noise floor. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all — a completely different problem that an error-share panel alone would hide as 'no data'.",
+      "description": "A failure-budget view scoped to phase=\"scrape\": ONLY the cinema-site HTTP — every listing scrape, chunk scrape and per-film detail fetch — with the third-party metadata/rating/resolution APIs (phase=\"enrich\") excluded; its companion enrich-phase panel below covers those. Each error band's thickness is that error's share of scrape attempts, stacked at the floor; the empty space above is the clean remainder. This isolates cinema-scrape health from the enrichment APIs' by-design 404 slug-probing and API 429s: here a rising http_403 (a cinema Cloudflare/datacentre-IP block) or http_5xx/timeout stands out instead of hiding under the enrichment 404 noise floor. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all — a completely different problem that an error-share panel alone would hide as 'no data'. `cancelled` (our own caller abandoned the call before the host answered: AdaptiveTimeoutScraper cutting an overrun scrape, a worker stopping) is left out: it says nothing about the far side.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -757,7 +757,7 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\",outcome!=\"success\"}[$__rate_interval])) / scalar(sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\"}[$__rate_interval])))",
+          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\",outcome!~\"success|cancelled\"}[$__rate_interval])) / scalar(sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\",outcome!=\"cancelled\"}[$__rate_interval])))",
           "legendFormat": "{{outcome}}"
         },
         {
@@ -774,7 +774,7 @@
     {
       "id": 15,
       "title": "Enrichment HTTP outcomes — error share, enrich phase (per country)",
-      "description": "The scrape panel's companion, scoped to phase=\"enrich\": ONLY the third-party metadata/rating/resolution APIs (TMDB/IMDb/RT/Metacritic/Filmweb/Letterboxd/Wikidata/Cinemeta), with cinema-site scraping (phase=\"scrape\") excluded. Each error band's thickness is that error's share of enrich attempts, stacked at the floor; the empty space above is the clean remainder. Reading this side on its own: a large steady http_404 band is EXPECTED — the RT/Metacritic resolvers probe up to 4 candidate slugs per title and the wrong ones 404 by design — while http_401 (a bad/missing API key) or a rising http_429 (an API rate-limiting us) is the signal to watch. Improbable codes (409/422/451/…) fold into the residual http_4xx; other categories: http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all — a completely different problem that an error-share panel alone would hide as 'no data'.",
+      "description": "The scrape panel's companion, scoped to phase=\"enrich\": ONLY the third-party metadata/rating/resolution APIs (TMDB/IMDb/RT/Metacritic/Filmweb/Letterboxd/Wikidata/Cinemeta), with cinema-site scraping (phase=\"scrape\") excluded. Each error band's thickness is that error's share of enrich attempts, stacked at the floor; the empty space above is the clean remainder. Reading this side on its own: a large steady http_404 band is EXPECTED — the RT/Metacritic resolvers probe up to 4 candidate slugs per title and the wrong ones 404 by design — while http_401 (a bad/missing API key) or a rising http_429 (an API rate-limiting us) is the signal to watch. Improbable codes (409/422/451/…) fold into the residual http_4xx; other categories: http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all — a completely different problem that an error-share panel alone would hide as 'no data'. `cancelled` (our own caller abandoned the call before the host answered: AdaptiveTimeoutScraper cutting an overrun scrape, a worker stopping) is left out: it says nothing about the far side.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -841,7 +841,7 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\",outcome!=\"success\"}[$__rate_interval])) / scalar(sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\"}[$__rate_interval])))",
+          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\",outcome!~\"success|cancelled\"}[$__rate_interval])) / scalar(sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\",outcome!=\"cancelled\"}[$__rate_interval])))",
           "legendFormat": "{{outcome}}"
         },
         {

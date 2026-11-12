@@ -88,7 +88,8 @@ groups:
       # others' successes. `kinowo_worker_paid_egress_total` meters each provider's leg directly.
       #
       # A 404 or 410 is the ORIGIN answering through a working provider, so it is not a failure
-      # here. The 10-request floor keeps a quiet worker's two stray timeouts from reading as a
+      # here. Nor is a `cancelled` call: our own caller abandoned it (AdaptiveTimeoutScraper cutting an
+      # overrun scrape) before the provider answered, so it is left out of both sides. The 10-request floor keeps a quiet worker's two stray timeouts from reading as a
       # provider that is down, and an IDLE provider (seeded at zero, never used -- Zyte, most of
       # the time, outside the countries whose venues use it) divides 0/0 into NaN and stays silent:
       # "while it is being used" is part of the question. A one-hour window because paid egress is
@@ -97,12 +98,12 @@ groups:
       - alert: PaidEgressFailing
         expr: >-
           (
-            sum by (country, provider) (increase(kinowo_worker_paid_egress_total{outcome!~"success|http_404|http_410"}[1h]))
+            sum by (country, provider) (increase(kinowo_worker_paid_egress_total{outcome!~"success|http_404|http_410|cancelled"}[1h]))
             /
-            sum by (country, provider) (increase(kinowo_worker_paid_egress_total[1h]))
+            sum by (country, provider) (increase(kinowo_worker_paid_egress_total{outcome!="cancelled"}[1h]))
           ) > 0.9
           and
-          sum by (country, provider) (increase(kinowo_worker_paid_egress_total[1h])) >= 10
+          sum by (country, provider) (increase(kinowo_worker_paid_egress_total{outcome!="cancelled"}[1h])) >= 10
         for: 30m
         labels:
           severity: warning

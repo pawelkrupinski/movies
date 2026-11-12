@@ -483,7 +483,7 @@
     {
       "type": "timeseries",
       "title": "Outbound failures per second by outcome",
-      "description": "Anything that is not `success`. The outcomes worth reacting to differ: http_429 means we are being rate-limited and should slow down, timeout/connection_error usually means the far side is down, and http_403 on a site that used to work is the shape of a bot block.",
+      "description": "Anything that is not `success`. The outcomes worth reacting to differ: http_429 means we are being rate-limited and should slow down, timeout/connection_error usually means the far side is down, and http_403 on a site that used to work is the shape of a bot block. `cancelled` (our own caller abandoned the call before the host answered: AdaptiveTimeoutScraper cutting an overrun scrape, a worker stopping) is left out: it says nothing about the far side.",
       "id": 10,
       "datasource": {
         "type": "prometheus",
@@ -531,7 +531,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\"}[$__rate_interval])) unless on (outcome) sum by (outcome) (rate(kinowo_worker_http_total{outcome=\"success\"}[$__rate_interval]))",
+          "expr": "sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\"}[$__rate_interval])) unless on (outcome) sum by (outcome) (rate(kinowo_worker_http_total{outcome=~\"success|cancelled\"}[$__rate_interval]))",
           "legendFormat": "{{outcome}}",
           "datasource": {
             "type": "prometheus",
@@ -543,7 +543,7 @@
     {
       "type": "timeseries",
       "title": "Outbound success rate",
-      "description": "Success as a share of all outbound fetches, per country. A window in which the worker made no request at all is a GAP, not 0% \u2014 the denominator is filtered with `> 0` so idle minutes are absent rather than fabricated. They used to be drawn as 0% success, which is what made a low-volume country like uk or us read as a ~45% mean while it was really succeeding on ~93% of the requests it actually made. A sustained dip with http_429 rising on the panel to the left means the pacing is too aggressive for a site, not that the site is broken.",
+      "description": "Success as a share of all outbound fetches, per country. A window in which the worker made no request at all is a GAP, not 0% \u2014 the denominator is filtered with `> 0` so idle minutes are absent rather than fabricated. They used to be drawn as 0% success, which is what made a low-volume country like uk or us read as a ~45% mean while it was really succeeding on ~93% of the requests it actually made. A sustained dip with http_429 rising on the panel to the left means the pacing is too aggressive for a site, not that the site is broken. `cancelled` (our own caller abandoned the call before the host answered: AdaptiveTimeoutScraper cutting an overrun scrape, a worker stopping) is left out: it says nothing about the far side.",
       "id": 11,
       "datasource": {
         "type": "prometheus",
@@ -588,7 +588,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (country) (rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[$__rate_interval])) / (sum by (country) (rate(kinowo_worker_http_total{country=~\"$country\"}[$__rate_interval])) > 0)",
+          "expr": "sum by (country) (rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[$__rate_interval])) / (sum by (country) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!=\"cancelled\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{country}}",
           "datasource": {
             "type": "prometheus",
@@ -721,7 +721,7 @@
     {
       "type": "timeseries",
       "title": "Non-success outcomes per external service",
-      "description": "Every attempt that was not `success`, stacked by service and outcome. Read it by service: a block of http_401/http_403 on one API is a key or quota problem (OMDb answers \"Request limit reached!\" as a 401), sustained http_429 is a pace too fast for that provider, and a steady http_404 on rottentomatoes/metacritic is their slug probing working as designed.",
+      "description": "Every attempt that was not `success`, stacked by service and outcome. Read it by service: a block of http_401/http_403 on one API is a key or quota problem (OMDb answers \"Request limit reached!\" as a 401), sustained http_429 is a pace too fast for that provider, and a steady http_404 on rottentomatoes/metacritic is their slug probing working as designed. `cancelled` (our own caller abandoned the call before the host answered: AdaptiveTimeoutScraper cutting an overrun scrape, a worker stopping) is left out: it says nothing about the far side.",
       "id": 33,
       "datasource": {
         "type": "prometheus",
@@ -769,7 +769,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (service, outcome) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!=\"success\"}[$__rate_interval])) > 0",
+          "expr": "sum by (service, outcome) (rate(kinowo_worker_http_total{country=~\"$country\",outcome!~\"success|cancelled\"}[$__rate_interval])) > 0",
           "legendFormat": "{{service}} {{outcome}}",
           "datasource": {
             "type": "prometheus",
@@ -1109,7 +1109,7 @@
     {
       "type": "timeseries",
       "title": "Paid egress \u2014 failure share by provider (alert: PaidEgressFailing > 90%)",
-      "description": "Share of each provider's paid requests that failed (anything but success/404/410 -- a 404 is the origin answering through a working provider). PaidEgressFailing fires above 90% held 30 min with at least 10 requests in the hour. An idle provider is a GAP, not 0%: it divides by (total > 0).",
+      "description": "Share of each provider's paid requests that failed (anything but success/404/410 -- a 404 is the origin answering through a working provider). PaidEgressFailing fires above 90% held 30 min with at least 10 requests in the hour. An idle provider is a GAP, not 0%: it divides by (total > 0). `cancelled` (our own caller abandoned the call before the host answered: AdaptiveTimeoutScraper cutting an overrun scrape, a worker stopping) is left out: it says nothing about the far side.",
       "id": 18,
       "datasource": {
         "type": "prometheus",
@@ -1154,7 +1154,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (country, provider) (rate(kinowo_worker_paid_egress_total{country=~\"$country\",outcome!~\"success|http_404|http_410\"}[$__rate_interval])) / (sum by (country, provider) (rate(kinowo_worker_paid_egress_total{country=~\"$country\"}[$__rate_interval])) > 0)",
+          "expr": "sum by (country, provider) (rate(kinowo_worker_paid_egress_total{country=~\"$country\",outcome!~\"success|http_404|http_410|cancelled\"}[$__rate_interval])) / (sum by (country, provider) (rate(kinowo_worker_paid_egress_total{country=~\"$country\",outcome!=\"cancelled\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{country}} {{provider}}",
           "datasource": {
             "type": "prometheus",

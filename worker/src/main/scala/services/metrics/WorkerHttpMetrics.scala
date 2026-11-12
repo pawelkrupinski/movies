@@ -7,7 +7,7 @@ import tools.{ExternalService, HttpOutcome, HttpOutcomeRecorder, HttpPath}
 /**
  * `kinowo_worker_http_total` — one counter incremented per OUTBOUND HTTP attempt
  * the worker makes, labelled by `country`, `phase`, `service`, `path` and `outcome` ([[HttpOutcome]]:
- * success / http_429 / http_4xx / http_5xx / timeout / connection_error / other).
+ * success / http_429 / http_4xx / http_5xx / timeout / connection_error / cancelled / other).
  *
  * Fed by [[tools.CountingHttpFetch]] wired innermost in each country's fetch
  * chain, so EVERY attempt counts once — every 429 retry and every scraper-level
@@ -58,7 +58,7 @@ class WorkerHttpMetrics(countryCodes: Seq[String], registry: PrometheusRegistry)
       "on scrape; omdb / tmdb / imdb / rottentomatoes / metacritic / filmweb / letterboxd / wikidata / " +
       "cinemeta / other on enrich), path (who asked: fill / live / agreement / sweep / refresh / venue_page / " +
       "enrich / scrape / other) and outcome (success / http_429 / http_4xx / http_5xx / " +
-      "timeout / connection_error / other). Every retry is a separate attempt.")
+      "timeout / connection_error / cancelled / other). Every retry is a separate attempt.")
     .labelNames("country", "phase", "outcome", "service", "path")
     .register(registry)
 
