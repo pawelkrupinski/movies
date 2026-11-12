@@ -127,9 +127,11 @@ trait EgressWiring { self: WorkerWiring =>
   // from kinowo-worker-uk: the identical GET returns 403 from Fly, 200 from a
   // residential IP; every Decodo pool IP returns 200 too). Flicks is the ONLY UK
   // source (and, via flicksUs, the AMC/Regal/Malco fallback for the US), so the
-  // block took all ~843 UK venues red at once. Residential proxy primary; the direct
-  // fallback is the very block the proxy exists to clear, so a Decodo-side outage
-  // leaves these venues without a working path until it recovers.
+  // block took all ~843 UK venues red at once. Residential proxy primary. The direct
+  // fallback is NOT blocked from the Hetzner k3s egress that replaced Fly: a sessions
+  // page (`/cinema/sessions/dominion-edinburgh/2026-11-22/`) answered 200 with its
+  // listing, no challenge, from k3s-worker-1 on 2026-11-12, so a Decodo-side outage
+  // rolls these venues onto a working direct path.
   lazy val flicksFetch: HttpFetch = proxyPrimary(httpFetch)
 
   // Vue/CinemaxX films API is Cloudflare-403'd from our Fly IP (like flicks) AND
