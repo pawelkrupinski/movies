@@ -369,3 +369,14 @@ incidents:
     end: 2026-11-10T05:00:00Z
     grace: 20m
     expect_firing: [NodeTextfileScrapeError]
+
+  - id: pl-dns-upstream-timeouts-2026-11-05
+    description: >-
+      Hetzner's resolvers (185.12.64.1/.2, CoreDNS's upstream) timed out on the names cyber_folks'
+      nameservers serve, so worker-pl's direct fetches of ~42 Polish cinema hosts failed
+      `ConnectException: null` for 29 hours with up to 37 breakers open at once. Only the per-host
+      third-party digest alert fired. Fixed by eef9233fe3 (public resolvers), applied 11-06 10:57Z.
+    source: count by (country) of kinowo_worker_http_circuit_open == 1 at >= 10 for pl from 11:15Z (85 min run); CoreDNS `read udp ... 185.12.64.1:53 i/o timeout` lines; last ConnectException 11-06 10:59Z
+    start: 2026-11-05T11:15:00Z
+    end: 2026-11-06T11:00:00Z
+    expect_firing: [WorkerHttpManyHostsCircuitOpen]

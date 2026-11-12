@@ -790,3 +790,91 @@ tests:
             exp_annotations:
               summary: "pl: restapi.helios.pl has had its circuit breaker open for over an hour -- cinema listings for that host are being held incomplete (nothing pruned)"
               description: "Every call to restapi.helios.pl (scrape leg) has been fast-failing for an hour: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25 Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then the \"Circuit OPEN for restapi.helios.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."
+
+  # MANY BREAKERS OPEN AT ONCE (the 2026-11-05 DNS outage, 42 pl hosts for 29h). Ten pl hosts open
+  # from t=10m across a worker-restart gap at 40m: pending at 30m, firing once 30m is held, and held
+  # through the gap. Nine uk hosts for 100 minutes stay under the bar; twelve de hosts for 15
+  # minutes (the 11-10 node restart's shape) never hold it.
+  - interval: 1m
+    name: ten hosts' breakers open together for 30m fire across a restart gap; nine, or a short burst, do not
+    input_series:
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h0.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h1.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h2.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h3.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h4.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h5.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h6.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h7.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h8.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="h9.example",job="kinowo-worker"}'
+        values: '_x9 1x30 stale stale stale 1x60'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h0.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h1.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h2.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h3.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h4.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h5.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h6.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h7.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="uk",leg="scrape",host="h8.example",job="kinowo-worker"}'
+        values: '_x9 1x100'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h0.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h1.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h2.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h3.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h4.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h5.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h6.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h7.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h8.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h9.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h10.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+      - series: 'kinowo_worker_http_circuit_open{country="de",leg="scrape",host="h11.example",job="kinowo-worker"}'
+        values: '_x9 1x15 stale _x80'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WorkerHttpManyHostsCircuitOpen
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: WorkerHttpManyHostsCircuitOpen
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning, country: pl }
+            exp_annotations:
+              summary: "pl: 10 hosts' circuit breakers are open at once -- a shared egress failure (DNS, the node's network), not the hosts"
+              description: "10 distinct hosts have had their breaker tripped and unrecovered for 30 minutes in pl's worker. Unrelated cinema sites do not fail together, so look at what they share: DNS first (CoreDNS `i/o timeout` lines to its upstream; the 2026-11-05 outage was Hetzner's resolvers), then the k3s node's network and the direct egress. `kinowo_worker_http_circuit_open` by host lists them; the \"failed:\" WARN lines name the exception (`ConnectException: null` is an unresolved name)."
+      - eval_time: 90m
+        alertname: WorkerHttpManyHostsCircuitOpen
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning, country: pl }
+            exp_annotations:
+              summary: "pl: 10 hosts' circuit breakers are open at once -- a shared egress failure (DNS, the node's network), not the hosts"
+              description: "10 distinct hosts have had their breaker tripped and unrecovered for 30 minutes in pl's worker. Unrelated cinema sites do not fail together, so look at what they share: DNS first (CoreDNS `i/o timeout` lines to its upstream; the 2026-11-05 outage was Hetzner's resolvers), then the k3s node's network and the direct egress. `kinowo_worker_http_circuit_open` by host lists them; the \"failed:\" WARN lines name the exception (`ConnectException: null` is an unresolved name)."

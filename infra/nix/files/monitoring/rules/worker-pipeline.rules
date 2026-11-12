@@ -617,8 +617,9 @@ groups:
       # restart, which would otherwise restart the hold. A host that heals ends the series; 10m later
       # the alert resolves.
       #
-      # `warning`: scraping of the OTHER hosts is fine and listings are held rather than wrong. The
-      # name starts with `Worker`, so alertmanager routes it to telegram-and-email.
+      # `warning`: scraping of the OTHER hosts is fine and listings are held rather than wrong. Its
+      # `domain: third-party` sends it to the daily email digest, not Telegram: one cinema's ticket
+      # host down is that cinema's problem. MANY hosts at once is ours -- WorkerHttpManyHostsCircuitOpen.
       #
       # NOT REPLAYED: the metric is new, so there is no history. A wide proxy outage (`leg=decodo`)
       # can open many hosts at once and fires one alert per host.
@@ -638,3 +639,40 @@ groups:
             Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then
             the "Circuit OPEN for {{ $labels.host }}" WARN lines for the last failure reason; the
             breadth-reject rate on worker-diag panel 25 shows the listings being held.
+
+      # -----------------------------------------------------------------------------------------
+      # MANY HOSTS' BREAKERS OPEN AT ONCE IS AN EGRESS OUTAGE, NOT 40 THIRD-PARTY ONES. 2026-11-05
+      # 05:02Z to 11-06 10:59Z: Hetzner's resolvers (185.12.64.1/.2, which CoreDNS forwarded to) timed
+      # out on every name the cyber_folks nameservers serve, so worker-pl's direct fetches of ~42
+      # Polish cinema hosts on 19 IPs and a dozen hosting companies failed `ConnectException: null`
+      # (the JDK's unresolved name) for 29 hours, up to 37 breakers open together. The only alert
+      # was WorkerHttpHostCircuitOpen, once per host, in the third-party daily digest; the
+      # failure-share and oldest-age cinema alerts stayed under their bars because the hosts
+      # answered intermittently. Fixed by eef9233fe3 (the fleet resolves through public resolvers).
+      #
+      # Unrelated cinema hosts do not fail together: across the 14 days before, a country's open
+      # breakers peaked at 7 (de on the 11-10 node restart; pl 6, uk 5), and pl reached 16 only
+      # for 10 minutes of that restart. Ten or more for 30 minutes is the shared path -- DNS, the
+      # node's network, the direct egress. `last_over_time[10m]` bridges a worker restart as above;
+      # the count wobbled across 10 through the incident (runs of 15 minutes to 6 hours), so
+      # `keep_firing_for` holds it through a dip instead of re-paging. A Decodo outage opens the
+      # decodo-leg hosts together too; ResidentialProxyFailing names that and inhibits this.
+      - alert: WorkerHttpManyHostsCircuitOpen
+        expr: >-
+          count by (country) (
+            max by (country, leg, host) (last_over_time(kinowo_worker_http_circuit_open[10m])) == 1
+          ) >= 10
+        for: 30m
+        keep_firing_for: 30m
+        labels:
+          severity: warning
+          domain: pipeline
+        annotations:
+          summary: "{{ $labels.country }}: {{ $value }} hosts' circuit breakers are open at once -- a shared egress failure (DNS, the node's network), not the hosts"
+          description: >-
+            {{ $value }} distinct hosts have had their breaker tripped and unrecovered for 30
+            minutes in {{ $labels.country }}'s worker. Unrelated cinema sites do not fail together,
+            so look at what they share: DNS first (CoreDNS `i/o timeout` lines to its upstream; the
+            2026-11-05 outage was Hetzner's resolvers), then the k3s node's network and the direct
+            egress. `kinowo_worker_http_circuit_open` by host lists them; the "failed:" WARN lines
+            name the exception (`ConnectException: null` is an unresolved name).

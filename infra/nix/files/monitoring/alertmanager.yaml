@@ -555,7 +555,8 @@ inhibit_rules:
   # proxy/egress outage fired five alertnames in each of pl, uk and us at once:
   # ResidentialProxyFailing and PaidEgressFailing (the cause), then ChainFallbackSaturated,
   # ChainEnrichmentFailing and WorkerQueueHeadOld (scrapes failing over, enrichment failing, the
-  # queue backing up behind the retries) -- and every decodo-leg WorkerHttpHostCircuitOpen. While
+  # queue backing up behind the retries) -- and every decodo-leg WorkerHttpHostCircuitOpen (and the
+  # WorkerHttpManyHostsCircuitOpen they add up to). While
   # the cause fires for a country, its symptoms for THAT country are the same news. `country =~ ".+"`
   # on the source for the empty-join reason the rules above give.
   #
@@ -565,7 +566,7 @@ inhibit_rules:
       - alertname =~ "ResidentialProxyFailing|PaidEgressFailing"
       - country =~ ".+"
     target_matchers:
-      - alertname =~ "ChainFallbackSaturated|ChainEnrichmentFailing|WorkerQueueHeadOld|WorkerHttpHostCircuitOpen"
+      - alertname =~ "ChainFallbackSaturated|ChainEnrichmentFailing|WorkerQueueHeadOld|WorkerHttpHostCircuitOpen|WorkerHttpManyHostsCircuitOpen"
     equal: ["country"]
 
   # ...AND THE RESIDENTIAL PROXY FAILING EXPLAINS PAID EGRESS FAILING: Decodo is the paid egress for
