@@ -692,9 +692,11 @@ jobs:
             # instant, shared by both rows rather than a second tunnel and a second, different read.
             # It waits for that row's upload (~1.5 minutes in, while this row's own setup runs) and
             # restores it as convergence-setup restores a pinned one.
+            # The wait (wait-for-run-artifact.sh): up to 30 minutes while the convergence row still waits for a runner,
+            # then 18 once it runs -- Record scrape fixtures #181's UK order row gave up on it while it was queued.
             - name: Restore the corpus the convergence row records
               if: inputs.mode == 'record' && matrix.phase != 'convergence'
-              timeout-minutes: 20
+              timeout-minutes: 50
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

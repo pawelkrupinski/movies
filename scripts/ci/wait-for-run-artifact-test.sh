@@ -56,6 +56,15 @@ check "times out while the producer is still running" 1 "$(run 0)"
 scenario; : > "$work/artifacts-0"; printf 'stage-worker\n' > "$work/artifacts-1"; : > "$work/jobs-fail"
 check "rides out a failed jobs listing and keeps polling" 0 "$(run 60)"
 
+# Record scrape fixtures #181: the producer still queued for a runner when the waiter's timeout ran out.
+scenario; : > "$work/artifacts-0"; : > "$work/artifacts-1"; printf 'stage-worker\n' > "$work/artifacts-2"; printf 'queued \n' > "$work/jobs"
+check "waits while the producer is still queued, its timeout not begun" 0 "$(run 0)"
+scenario; : > "$work/artifacts-0"; printf 'queued \nwaiting \n' > "$work/jobs"
+check "...but not past the queued bound, naming it" 1 "$(WAIT_QUEUED_SECONDS=0 run 60)"
+check "...which the error says" 1 "$(WAIT_QUEUED_SECONDS=0 bash "$REPO_ROOT/scripts/ci/wait-for-run-artifact.sh" stage-worker "e2e (corpus)" 60 2>&1 | grep -c "still waited for a runner")"
+scenario; : > "$work/artifacts-0"; printf 'queued \nin_progress \n' > "$work/jobs"
+check "a matrix with one producing job running counts its timeout" 1 "$(run 0)"
+
 # A listing far past the pipe buffer, the artifact first: a `gh | grep -q` pipe kills gh with
 # SIGPIPE at the match and pipefail reads the match as a failure.
 scenario; { printf 'stage-worker\n'; for i in $(seq 1 20000); do printf 'other-artifact-%05d\n' "$i"; done; } > "$work/artifacts-0"
