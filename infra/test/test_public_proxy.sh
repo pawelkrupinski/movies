@@ -520,7 +520,9 @@ class H(http.server.BaseHTTPRequestHandler):
 http.server.HTTPServer(("127.0.0.1", int(sys.argv[1])), H).serve_forever()
 ' "$grafana_late_stub_port" ) &
 late_grafana=$!
-got="$(curl -s -m 30 -o "$work/late.body" -w '%{http_code}' -X POST "http://127.0.0.1:$grafana_late_port/api/annotations") $(cat "$work/late.body" 2>/dev/null)"
+: > "$work/late.body"
+got="$(curl -s -m 30 -o "$work/late.body" -w '%{http_code}' -X POST "http://127.0.0.1:$grafana_late_port/api/annotations")"
+got="$got $(cat "$work/late.body")"
 kill "$late_grafana" 2>/dev/null; wait "$late_grafana" 2>/dev/null
 if [ "$got" = "200 LATE-GRAFANA" ]; then echo "  ok  a request during a Grafana restart is held until it listens again"
 else echo "  FAILED a request during a Grafana restart answered '$got', wanted '200 LATE-GRAFANA'"; failed=1; fi
