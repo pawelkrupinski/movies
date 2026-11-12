@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generate SpanishOwnSourcesData.scala -- which Spanish roster venues are scraped off
+"""Generate the tables under geodata/src/main/resources/generated/es-own-sources/
+(taquilla.tsv, artesiete.tsv; read by `services.cinemas.es.SpanishOwnSourcesData`) -- which Spanish roster venues are scraped off
 a source other than SensaCine (and Ocine's own servers, which the roster itself
 carries), keyed by SensaCine theaterId:
 
@@ -16,10 +17,13 @@ import json
 import pathlib
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
+from generated_tables import write_table  # noqa: E402
+
 HERE = pathlib.Path(__file__).resolve().parent
 DATA = HERE.parent
 REPO = DATA.parent.parent
-OUT = REPO / "scrapers/src/main/scala/services/cinemas/es/SpanishOwnSourcesData.scala"
+OUT = REPO / "geodata/src/main/resources/generated/es-own-sources"
 
 
 def problems(roster_ids, ocine_ids, taquilla, artesiete):
@@ -35,34 +39,12 @@ def problems(roster_ids, ocine_ids, taquilla, artesiete):
     return out
 
 
-def scala_string(s):
-    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
-
-
-def render(taquilla, artesiete):
-    lines = [
-        "// GENERATED from data/spain/taquilla.json + data/spain/artesiete.json by",
-        "// data/spain/scripts/generate_own_sources.py -- do NOT edit by hand.",
-        f"// {len(taquilla)} venues off taquilla.com, {len(artesiete)} off Artesiete's own pages; see data/spain/README.md.",
-        "package services.cinemas.es",
-        "",
-        "private[cinemas] object SpanishOwnSourcesData {",
-        "  /** SensaCine theaterId -> the venue on taquilla.com. */",
-        "  val taquilla: Map[String, TaquillaVenue] = Map(",
-    ]
-    lines += [f"    {scala_string(tid)} -> TaquillaVenue({scala_string(v['venueId'])}, {scala_string(v['path'])}),"
-              f"   // {v['name']}"
-              for tid, v in sorted(taquilla.items())]
-    lines += ["  )", "", "  /** SensaCine theaterId -> the venue's page on its own Artesiete subdomain. */",
-              "  val artesiete: Map[String, String] = Map("]
-    lines += [f"    {scala_string(tid)} -> {scala_string(v['page'])},   // {v['name']}"
-              for tid, v in sorted(artesiete.items())]
-    lines += ["  )", "",
-              "  /** Whether the venue is read off a Spanish own source rather than SensaCine. */",
-              "  def ownSourced(theaterId: String): Boolean =",
-              "    taquilla.contains(theaterId) || artesiete.contains(theaterId)",
-              "}", ""]
-    return "\n".join(lines)
+def write(taquilla, artesiete):
+    """Rows sorted by theaterId; the venue's name rides along for the reader of the table."""
+    write_table(OUT / "taquilla.tsv", [[tid, v["venueId"], v["path"], v["name"]]
+                                       for tid, v in sorted(taquilla.items())])
+    write_table(OUT / "artesiete.tsv", [[tid, v["page"], v["name"]]
+                                        for tid, v in sorted(artesiete.items())])
 
 
 def main():
@@ -76,8 +58,8 @@ def main():
         for p in found:
             print(f"ERROR: {p}", file=sys.stderr)
         return 1
-    OUT.write_text(render(taquilla, artesiete))
-    print(f"wrote {OUT.relative_to(REPO)}: {len(taquilla)} Taquilla, {len(artesiete)} Artesiete")
+    write(taquilla, artesiete)
+    print(f"wrote {OUT.relative_to(REPO)}/: {len(taquilla)} Taquilla, {len(artesiete)} Artesiete")
     return 0
 
 
