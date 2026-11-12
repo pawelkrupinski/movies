@@ -233,6 +233,22 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
     sfinks.compareTo(Duration.ofSeconds(2)) should be > 0
   }
 
+  // ── Fast-fail request budget (stalling requests: bilety24.pl) ─────────────
+  // bilety24 answers our egress in about 1 s (p99 3.7 s, max 4.0 s over 214
+  // requests, 2026-11-12). Between 11-02 and 11-09, ~2,000 requests sat out the
+  // 30 s default, and the immediate retry of ~80% of them succeeded. One row covers
+  // the main domain and the venues' own sub-domains.
+
+  it should "give bilety24.pl and its venue sub-domains a budget above the healthy tail and far below the 30s stall" in {
+    val budgets = Seq(
+      "https://www.bilety24.pl/kino/1410-zyc-nie-umierac-169172?id=1013706",
+      "https://www.bilety24.pl/kino/organizator/kino-elektronik-631",
+      "https://ckis-konin.bilety24.pl/wydarzenie/?id=168591",
+    ).map(HostPolicies.requestTimeoutFor)
+    budgets.distinct shouldBe Seq(Duration.ofSeconds(10))
+    HostPolicies.requestTimeoutFor("https://bilety24.pl.example.com/x") shouldBe HostPolicies.DefaultRequestTimeout
+  }
+
   // kinoprogramm.com answers 403 to our default Chrome/124.0.0.0 User-Agent (and to
   // Chrome/131) but 200 to Chrome/126 — a blocklist of UA strings, measured 2026-09-26.
   "headersFor" should "send kinoprogramm.com a User-Agent it accepts, not the default it blocks" in {

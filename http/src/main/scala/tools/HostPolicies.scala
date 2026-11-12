@@ -446,6 +446,14 @@ object HostPolicies {
     // nothing: `EnrichDetailsHandler` reports it `Done` unmarked, so the next
     // scrape re-enqueues it.
     HostPolicy(Set("kinosfinks.okn.edu.pl"), requestTimeout = Duration.ofSeconds(8)),
+    // bilety24.pl: ~40 organiser listings on www, the venues' own `<venue>.bilety24.pl` sub-domains, and every
+    // film's event page behind them (EnrichDetails). From our egress a page answers in about 1 s (p50 1.0 s, p99 3.7 s,
+    // max 4.0 s over 214 requests at 4 concurrent, 2026-11-12), with no 429 or 403 in 14 days of logs: it does not
+    // throttle us. But from 2026-11-02 12:30 to 11-09 10:00 one request in a few hundred never answered, day and
+    // night, starting and ending inside single worker pods (so on their side). That was ~2,000 sitting out the 30 s
+    // default, each pinning a task slot, while the immediate retry of ~80% of them succeeded. 10 s is 2.5x the slowest
+    // healthy answer, so a stall now gives up early, the retry runs, and a stalled host trips the breaker sooner.
+    HostPolicy(Set("bilety24.pl"), requestTimeout = Duration.ofSeconds(10)),
 
     // Wikidata — the identity agreement's Wiki family (searches, film items, their directors' labels), asked by every
     // country's worker from the same egress. Its first hour (2026-10-04) 429'd: five workers each running their four
