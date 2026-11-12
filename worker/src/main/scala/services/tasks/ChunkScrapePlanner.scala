@@ -55,7 +55,10 @@ class ChunkScrapePlanner(
   costs:         ScrapeCostStore = ScrapeCostStore.Discarding,
   // Told of each run this planner starts, so its abandonment deadline is armed then
   // ([[ChunkScrapeReaper.armDeadline]]) rather than found by polling every run.
-  runStarted:    ChunkRun => Unit = _ => ()
+  runStarted:    ChunkRun => Unit = _ => (),
+  // Whether the venue's page has ALREADY stood gone for [[GoneUpstream.MinimumAge]] before this plan
+  // (`knownGoneIn`): its daily quarantine probe finding it gone again is no news, so says so at INFO.
+  pageKnownGone: models.Cinema => Boolean = _ => false
 ) extends Logging {
 
   /** The chunked scraper for `cinema`, when it is scraped in chunks. */
@@ -138,9 +141,14 @@ class ChunkScrapePlanner(
   private def publishFailure(scraper: ChunkedCinemaScraper, e: Exception): Unit = {
     // A seasonal venue whose page is gone OFF its season is the season, not a fault: Filmstarts
     // takes open-air pages down for the winter (all 28 German 404s in 2026-10 were seasonal),
-    // and the closure sweep leaves such a venue alone until its season opens.
-    if (scraper.cinema.opening.offSeasonAt(clock.instant()) && GoneUpstream.saysPageIsGone(e.getMessage))
+    // and the closure sweep leaves such a venue alone until its season opens. And a page the
+    // quarantine already holds gone (GoneUpstream) is its daily re-probe answering as expected:
+    // 50 Filmstarts and 16 SensaCine pages warned once a probe for weeks (2026-10-29..11-12).
+    val gone = GoneUpstream.saysPageIsGone(e.getMessage)
+    if (gone && scraper.cinema.opening.offSeasonAt(clock.instant()))
       logger.info(s"chunked plan for ${scraper.cinema.displayName} found its page gone off-season: ${e.getMessage}")
+    else if (gone && pageKnownGone(scraper.cinema))
+      logger.info(s"chunked plan for ${scraper.cinema.displayName} found its quarantined page still gone: ${e.getMessage}")
     else logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: ${e.getMessage}")
     // The recording wrapper re-raises the failure — unless the venue's fallback
     // served it instead, which is the scrape succeeding, as on the plain path. Kept
@@ -152,6 +160,11 @@ class ChunkScrapePlanner(
 }
 
 object ChunkScrapePlanner {
+
+  /** [[ChunkScrapePlanner.pageKnownGone]] read from the scrape archive: the venue's barren marker
+   *  has said gone for at least [[GoneUpstream.MinimumAge]] ([[GoneUpstream.isGone]]). */
+  def knownGoneIn(archive: services.scrapes.ScrapeArchiveRepository, clock: Clock): models.Cinema => Boolean =
+    cinema => archive.find(cinema).exists(GoneUpstream.isGone(_, clock.instant()))
 
   /** How long a chunked run may go without finishing before it is abandoned and re-planned. */
   final case class RunTimeout(value: FiniteDuration) extends AnyVal

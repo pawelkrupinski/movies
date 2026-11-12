@@ -257,6 +257,31 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     planWarnings(Multikino, "2026-10-19T12:00:00Z") should have size 1
   }
 
+  // 50 Filmstarts and 16 SensaCine venue pages have answered 404 for weeks (2026-10-29..11-12). The
+  // quarantine already re-probes each of them once a day, not once a window, but every probe still
+  // warned "chunked plan ... failed: HTTP 404": ~600 WARN lines in two weeks repeating an answer the
+  // archive had held for days. A probe that finds a known-gone page still gone is the quarantine
+  // working, so it says so at INFO; the FIRST 404 (not yet gone a day) still warns.
+  it should "have the chunked planner log a quarantined venue's still-gone page at INFO, and warn for its first 404" in {
+    val clock = Clock.fixed(GoneNow, ZoneOffset.UTC)
+    def planWarnings(archive: InMemoryScrapeArchiveRepository): Seq[String] = {
+      val scraper = new FakeChunkedScraper(Map.empty, cinema = Multikino) {
+        override def planChunks(): Seq[String] =
+          throw new tools.HttpStatusException(404, "GET", FlicksPage, None)
+      }
+      val planner = new ChunkScrapePlanner(Map(Multikino.displayName -> scraper), new InMemoryChunkScrapeStore,
+        new InMemoryTaskQueue, _ => throw new RuntimeException("no fallback"),
+        new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = clock), clock = clock,
+        pageKnownGone = ChunkScrapePlanner.knownGoneIn(archive, clock))
+      tools.LogCapture.thisThread(classOf[ChunkScrapePlanner].getName) { planner.plan(Multikino.displayName) shouldBe 0 }
+        .filter(_.getLevel == ch.qos.logback.classic.Level.WARN).map(_.getFormattedMessage)
+    }
+
+    planWarnings(goneArchive(Multikino, since = GoneNow.minusSeconds(5 * 86400), lastAttempt = GoneNow.minusSeconds(86400))) shouldBe empty
+    planWarnings(goneArchive(Multikino, since = GoneNow.minusSeconds(3600), lastAttempt = GoneNow.minusSeconds(600))) should have size 1
+    planWarnings(new InMemoryScrapeArchiveRepository) should have size 1
+  }
+
   // A venue that is merely BROKEN keeps its normal cadence: a 503 or a timeout is
   // a page that exists, and the fast retry is what recovers it.
   it should "keep scraping a venue that is failing for any other reason" in {

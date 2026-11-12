@@ -40,7 +40,7 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   def scrapeChunkSpread: ScrapeChunkSpread = configuration.scrapeChunkSpread(ScrapeChunkSpread(ScrapeCadence.ChunkEnqueueSpread))
   lazy val chunkScrapePlanner       = new ChunkScrapePlanner(chunkScrapers, chunkScrapeStore, taskQueue, publishScrape,
     scrapeFreshnessPolicy, chunkSpread = scrapeChunkSpread, costs = scrapeCostStore, clock = clock,
-    runStarted = chunkScrapeReaper.armDeadline)
+    runStarted = chunkScrapeReaper.armDeadline, pageKnownGone = ChunkScrapePlanner.knownGoneIn(scrapeArchive, clock))
   lazy val chunkPageMemo: services.tasks.ChunkPageMemo = new services.tasks.MongoChunkPageMemo(mongoConnection.database, clock = clock)
   lazy val scrapeChunkHandler       = new ScrapeChunkHandler(chunkScrapers, chunkScrapeStore,
     pageMemo = chunkPageMemo, memoMetrics = taskMetrics, clock = clock)
