@@ -39,6 +39,9 @@ import tools.{HttpFetch, HttpRead}
  * `tools.SessionWarmingHttpFetch` is the generic wrapper for exactly this shape,
  * but it warms with a **GET**; the token endpoint 404s on GET and only mints the
  * cookie for a POST (verified live 2026-07-27), so the retry stays in the client.
+ * Through the residential-proxy chain the cold GET's 401 ends the chain unlogged
+ * (`FallbackHttpFetch.SameOnEveryRoute`: the origin's 401 is the same through
+ * every route), so a cold token costs the refresh, not a warning.
  *
  * Parsing lives in the pure [[VueCinemasPlatformParser]] — no I/O, so it is
  * unit-tested straight off a recorded fixture.

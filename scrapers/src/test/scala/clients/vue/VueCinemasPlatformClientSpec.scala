@@ -168,11 +168,49 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
     cold.gets.size shouldBe 2                         // rejected attempt + the retry
   }
 
+  // myvue (2026-10-29..11-12): a cold token sent every venue's films GET down the whole proxy -> direct chain -- the
+  // proxy leg 401 (no token yet), the direct leg refused too -- and the chain warned "All 2 backends failed" once per
+  // venue before the client minted the token and read the venue fine. A 401 is the ORIGIN saying who we are not, the
+  // same through every route, so it ends the chain unlogged and the client's token refresh is a step, not an incident.
+  it should "cost a cold token no warning through the residential-proxy chain" in {
+    val proxy  = new RequestLogHttpFetch(new TokenGated(new FakeHttpFetch("vue")))
+    val direct = new RequestLogHttpFetch(new tools.GetOnlyHttpFetch {
+      def get(url: String): String = throw new tools.HttpStatusException(403, "GET", url, None) // Cloudflare's block
+    })
+    val chain  = tools.ProxyChain.proxyPrimary(IndexedSeq(proxy), direct,
+      new tools.MutableClock(java.time.Instant.parse("2026-11-12T00:00:00Z")), tools.SpecStopwatch.Frozen,
+      keyOf = tools.StickyShardHttpFetch.hostOnly)
+
+    var movies = Seq.empty[models.CinemaMovie]
+    val events = tools.LogCapture.capture(classOf[tools.FallbackHttpFetch].getName) { movies = client(chain).fetch() }
+
+    movies.size shouldBe 37
+    events.filter(e => e.getLevel.isGreaterOrEqual(ch.qos.logback.classic.Level.WARN) &&
+      e.getFormattedMessage.contains(s"cinemas/$IslingtonCinemaId/")).map(_.getFormattedMessage) shouldBe empty
+    proxy.posts shouldBe Seq("https://www.myvue.com/api/microservice/auth/token")
+    direct.calls shouldBe empty // the origin's 401 is no reason to try another route
+  }
+
   it should "declare its scrape host and count as a chain" in {
     val scraper = client(new FakeHttpFetch("vue"))
     scraper.scrapeHosts shouldBe Set("www.myvue.com")
     scraper.chain       shouldBe true
     scraper.cinema      shouldBe VueCinemasIslington
+  }
+
+  /** The live API's token gate: every films GET 401s, as an `HttpStatusException`, until the token POST has been
+   *  sent through this leg (its cookie jar then holds the token). */
+  private class TokenGated(delegate: HttpFetch) extends HttpFetch {
+    @volatile private var minted = false
+
+    def get(url: String): String =
+      if (minted) delegate.get(url) else throw new tools.HttpStatusException(401, "GET", url, None)
+
+    def post(url: String, body: String, contentType: String): String = {
+      val answer = delegate.post(url, body, contentType)
+      minted = true
+      answer
+    }
   }
 
   /** Rejects the first GET the way the live API does without a `microservicesToken`

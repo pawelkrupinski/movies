@@ -35,7 +35,8 @@ class FallbackHttpFetch(
   // so the chain stops there and rethrows it. Off by default: a chain whose legs are
   // different SOURCES (a recorded-fixture layer in front of a live one) must go on
   // past a leg's "not found". A chain whose legs are different ROUTES to one origin
-  // (proxy → direct) passes [[FallbackHttpFetch.OriginAnswered]].
+  // (proxy → direct) passes [[FallbackHttpFetch.OriginAnswered]], or, for the residential
+  // proxy, [[FallbackHttpFetch.SameOnEveryRoute]] (its 401 too).
   endsChain: Throwable => Boolean = FallbackHttpFetch.NeverEnds,
   // How the "all backends failed" warning is deduplicated: a URL failing the same way on
   // every ask is warned once (then periodically), not once per ask — see RepeatedFailureLog.
@@ -240,4 +241,14 @@ object FallbackHttpFetch {
    *  2026-09-21/22). An egress provider's OWN 404 is not an `HttpStatusException`
    *  (see `EgressProviderException`), so it still falls through. */
   val OriginAnswered: Throwable => Boolean = ReadOutcome.isAbsent
+
+  /** For the residential-proxy chain ([[ProxyChain]]): [[OriginAnswered]], and the origin's 401 too -- it saying who
+   *  we are NOT (no token, no session yet), which is the same through every route, unlike a 403, often an egress IP's
+   *  block that the next route exists to clear. Not a "gone": the caller refreshes its token or session and asks
+   *  again. Falling through, Vue's cold-token films GET warned "All 2 backends failed" once per venue
+   *  (2026-10-29..11-12) on its way to the client's token refresh, which then read the venue fine. */
+  val SameOnEveryRoute: Throwable => Boolean = failure => OriginAnswered(failure) || (failure match {
+    case s: HttpStatusException => s.code == 401
+    case _                      => false
+  })
 }

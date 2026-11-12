@@ -26,7 +26,7 @@ object ProxyChain {
     val legs = warmUrl.fold(shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
     val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter, clock, breakerMeter)
     new FallbackHttpFetch(Seq(ProxyLeg -> proxyLeg, "fallback" -> fallback), stopwatch, onOutcome = onOutcome,
-                          endsChain = FallbackHttpFetch.OriginAnswered)
+                          endsChain = FallbackHttpFetch.SameOnEveryRoute)
   }
 
   /** The residential proxy with NOTHING behind it, for an origin that refuses the direct route outright: there a
@@ -39,7 +39,7 @@ object ProxyChain {
                  onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome,
                  breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop): HttpFetch =
     new FallbackHttpFetch(Seq(ProxyLeg -> meteredProxyLeg(new StickyShardHttpFetch(shards, keyOf), meter, clock, breakerMeter)),
-                          stopwatch, onOutcome = onOutcome, endsChain = FallbackHttpFetch.OriginAnswered)
+                          stopwatch, onOutcome = onOutcome, endsChain = FallbackHttpFetch.SameOnEveryRoute)
 
   /** Wrap the sticky-shard proxy leg in a per-host circuit breaker, so a host
    *  whose Decodo tunnel starts failing (a pool-wide 503 spell, an account-level
