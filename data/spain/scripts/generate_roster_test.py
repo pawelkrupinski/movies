@@ -61,9 +61,9 @@ def test_merge_ocine_refuses_a_table_the_harvest_does_not_match():
     assert len(problems) == 3
 
 
-def test_an_unlisted_venue_emits_no_theater_id():
-    assert gr.scala_option(None) == "None"
-    assert gr.scala_option("E0362") == 'Some("E0362")'
+def test_an_unlisted_venue_writes_an_empty_theater_id_cell():
+    assert gr.option_cell(None) == ""
+    assert gr.option_cell("E0362") == "E0362"
 
 
 if __name__ == "__main__":
