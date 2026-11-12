@@ -21,6 +21,15 @@ package services.identity
  *      that hold different films. A
  *      bare "A Star Is Born" beside the 1954 and 2018 films is evidence for neither, and rule 2
  *      alone would hand it to whichever sorts first.
+ *   4. Left alone means joined to neither side, not split from its own kind: ambiguous nodes that are no side of
+ *      their ambiguity (hold no film, are cannot-linked to no component they reach) join EACH OTHER by their
+ *      must-links, while every node of both components is such a node — the bare spellings of one title form one
+ *      component that still takes neither side. Only where asked (`ambiguousTogether`: the resolve's FINAL partition,
+ *      over the films the clusters voted): the partition a family VOTES over leaves each ambiguous node alone, so each
+ *      votes on its own evidence and the grouping moves no take — a group voting on its pooled evidence took a film or
+ *      none by how many of its spellings had arrived (UK "Romeo and Juliet" relays, PopulationMonotonicitySpec). PL "André Rieu. Pada śnieg!" (2026-11-12): three venues took the
+ *      concert's record by its original title, Cinema City's 30 venues denied it, and every bare spelling at ~60 other
+ *      venues reached both — each was left a component, and a web film, of its own.
  *
  * Why the partition is a function of the SET: `solve` reads its input only through sorts under a
  * total order of the elements themselves, so every presentation of one set produces the identical
@@ -38,9 +47,9 @@ object ConstraintSolver {
 
   /** Components as sorted node lists, themselves sorted by their smallest node. `films`: the film
    *  each node already holds, if any — no component ever holds two. */
-  def solve[K](nodes: Seq[K], constraints: Seq[Constraint[K]], films: Map[K, Int] = Map.empty[K, Int])
+  def solve[K](nodes: Seq[K], constraints: Seq[Constraint[K]], films: Map[K, Int] = Map.empty[K, Int], ambiguousTogether: Boolean = false)
               (implicit ord: Ordering[K]): Seq[Seq[K]] =
-    solveAs(nodes, constraints, Presentation.Canonical, films)
+    solveAs(nodes, constraints, Presentation.Canonical, films, ambiguousTogether)
 
   /** Whether roots `ra` and `rb` may not join: a cannot-link between them, or two films. Read without an option per
    *  call — the solver asks it of every candidate union, and `get(..).exists` built a `Some` each time. */
@@ -73,7 +82,7 @@ object ConstraintSolver {
   }
 
   private[identity] def solveAs[K](nodes: Seq[K], constraints: Seq[Constraint[K]], presentation: Presentation,
-                                   films: Map[K, Int] = Map.empty[K, Int])
+                                   films: Map[K, Int] = Map.empty[K, Int], ambiguousTogether: Boolean = false)
                                   (implicit ord: Ordering[K]): Seq[Seq[K]] = {
     val canonical   = presentation == Presentation.Canonical
     val sortedNodes = if (canonical) nodes.distinct.sorted else nodes.distinct
@@ -116,6 +125,7 @@ object ConstraintSolver {
       // Rule 3's ambiguity, kept through the weaker tiers: a node a stronger tier found ambiguous is not settled by
       // weaker evidence.
       val ambiguous = scala.collection.mutable.Set.empty[Int]
+      val sides     = scala.collection.mutable.Set.empty[Int]
       must.distinct.sorted.groupBy(_._1).toSeq.sortBy(_._1).foreach { case (_, tierEdges) =>
         val edges = tierEdges.sorted
         // Rule 3, judged against the components as they stand at the START of the tier.
@@ -124,8 +134,17 @@ object ConstraintSolver {
           reach(a) = reach.getOrElse(a, Set(find(a))) + find(b)
           reach(b) = reach.getOrElse(b, Set(find(b))) + find(a)
         }
-        ambiguous ++= reach.collect { case (node, roots) if ConstraintSolver.anyForbidden(roots, cannot, film) => node }
+        val ambiguousNow = reach.collect { case (node, roots) if ConstraintSolver.anyForbidden(roots, cannot, film) => node -> roots }
+        ambiguous ++= ambiguousNow.keys
+        // A side of its own ambiguity: a node holding a film, or cannot-linked to a component it reaches.
+        sides ++= ambiguousNow.collect { case (node, roots) if film.contains(find(node)) || cannot.get(find(node)).exists(_.exists(roots)) => node }
         edges.foreach { case (_, a, b) => if (!ambiguous(a) && !ambiguous(b)) join(a, b) }
+        // Rule 4: ambiguous nodes that are no side join each other, in components holding no other node.
+        if (ambiguousTogether) {
+          def bare(node: Int) = ambiguous(node) && !sides(node)
+          val mixed = scala.collection.mutable.Set.from(sortedNodes.indices.iterator.filterNot(bare).map(find))
+          edges.foreach { case (_, a, b) => if (bare(a) && bare(b) && !mixed(find(a)) && !mixed(find(b))) join(a, b) }
+        }
       }
     }
 

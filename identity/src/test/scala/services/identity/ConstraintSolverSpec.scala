@@ -83,6 +83,32 @@ class ConstraintSolverSpec extends AnyFlatSpec with Matchers {
     ConstraintSolver.solve(Seq("M", "O", "U"), cs, Map("M" -> 1503762, "O" -> 4584)) shouldBe Seq(Seq("M"), Seq("O"), Seq("U"))
   }
 
+  // PL "André Rieu. Pada śnieg!" (2026-11-12): M took the concert's record by its original title, Cinema City's C denies
+  // it, and every bare spelling (K1..K3) reaches both, so each is ambiguous -- and each was left a component of its own,
+  // one web film per venue. A decorated spelling (D, a title segment) reaching both sides is ambiguous in its tier too.
+  it should "join the ambiguous nodes of one title to each other, never to either side they reach (K ~ M, K ~ C, M ≁ C)" in {
+    val bare = Seq("K1", "K2", "K3")
+    val sameTitle = for { a <- bare ++ Seq("C", "M"); b <- bare if a != b && !(bare.contains(a) && a > b) } yield Constraint(a, b, must = true, 2, "same-title")
+    val cs = sameTitle ++ Seq(Constraint("C", "M", must = true, 2, "same-title"), Constraint("C", "M", must = false, 0, "denies-film")) ++
+      Seq("K1", "C", "M").map(Constraint("D", _, must = true, 4, "title-segment"))
+    val films = Map("M" -> 1707785)
+    ConstraintSolver.solve(Seq("C", "D", "K1", "K2", "K3", "M"), cs, films, ambiguousTogether = true) shouldBe
+      Seq(Seq("C"), Seq("D", "K1", "K2", "K3"), Seq("M"))
+    ConstraintSolver.solve(Seq("M", "K3", "K2", "K1", "D", "C"), cs.reverse, films, ambiguousTogether = true) shouldBe
+      Seq(Seq("C"), Seq("D", "K1", "K2", "K3"), Seq("M"))
+    // The partition a family votes over leaves each alone: each votes on its own evidence.
+    ConstraintSolver.solve(Seq("C", "D", "K1", "K2", "K3", "M"), cs, films) shouldBe Seq("C", "D", "K1", "K2", "K3", "M").map(Seq(_))
+  }
+
+  it should "join no ambiguous node to a component a stronger tier gave a node that is not ambiguous (A ~2 E, B ~3 A, B ~3 X, B ~3 Y)" in {
+    // A joined E in tier 2 (neither ambiguous); in tier 3 A and B are both ambiguous, but A's component holds E.
+    val cs = Seq(Constraint("A", "E", must = true, 2, "same-title"), Constraint("A", "B", must = true, 3, "same-search-form"),
+      Constraint("A", "X", must = true, 3, "same-search-form"), Constraint("A", "Y", must = true, 3, "same-search-form"),
+      Constraint("B", "X", must = true, 3, "same-search-form"), Constraint("B", "Y", must = true, 3, "same-search-form"))
+    ConstraintSolver.solve(Seq("A", "B", "E", "X", "Y"), cs, Map("X" -> 1, "Y" -> 2), ambiguousTogether = true) shouldBe
+      Seq(Seq("A", "E"), Seq("B"), Seq("X"), Seq("Y"))
+  }
+
   it should "never put two films in one component, though no cannot-link joins their nodes" in {
     // The PL festival chain: A holds one film, D another, and must-links run A ~ B, B ~ C, C ~ D
     // across tiers with no cannot-link between A and D — they share no key.

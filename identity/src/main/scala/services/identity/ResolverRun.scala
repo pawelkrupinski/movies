@@ -18,7 +18,8 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
   private val voting    = new ClusterVoting(scoring, families, acceptance)
   private val decisions = new ResolverDecisions(scoring, families, acceptance)
 
-  private def solve(members: Seq[EvidenceNode], edges: Seq[ResolverEdge], filmOf: String => Option[Int]): Seq[Seq[EvidenceNode]] = {
+  private def solve(members: Seq[EvidenceNode], edges: Seq[ResolverEdge], filmOf: String => Option[Int],
+                    ambiguousTogether: Boolean = false): Seq[Seq[EvidenceNode]] = {
     val constraints = edges.map(edge => ConstraintSolver.Constraint(edge.a, edge.b, edge.must, edge.tier, edge.reason))
     val presentation = if (mutation == Mutation.FirstWins) ConstraintSolver.Presentation.AsGiven else ConstraintSolver.Presentation.Canonical
     val presented = if (mutation == Mutation.FirstWins) {
@@ -29,7 +30,8 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       val position = presented.zipWithIndex.map { case (node, index) => node.id -> index }.toMap
       constraints.sortBy(constraint => (math.min(position(constraint.a), position(constraint.b)), math.max(position(constraint.a), position(constraint.b))))
     } else constraints
-    ConstraintSolver.solveAs(presented.map(_.id), orderedConstraints, presentation, members.flatMap(node => filmOf(node.id).map(node.id -> _)).toMap)
+    ConstraintSolver.solveAs(presented.map(_.id), orderedConstraints, presentation, members.flatMap(node => filmOf(node.id).map(node.id -> _)).toMap,
+      ambiguousTogether)
       .map(_.map(nodeById))
   }
 
@@ -103,7 +105,9 @@ private[identity] final class ResolverRun(stages: Stages, mutation: Mutation, pi
       }.toMap
     private val filmOf: String => Option[Int] = id => accepted.get(id).orElse(votes.get(id).map(_.film))
     private val familyEdges = edges.of(members, filmOf)
-    private val clusters    = solve(members, familyEdges, filmOf)
+    // the final partition groups the bare spellings an ambiguity left alone (ConstraintSolver rule 4); round A, which
+    // the votes read, leaves each alone, so each voted on its own evidence
+    private val clusters    = solve(members, familyEdges, filmOf, ambiguousTogether = true)
 
     private val clusterIndex = clusters.zipWithIndex.flatMap { case (cluster, index) => cluster.map(_.id -> index) }.toMap
     private val violations   = familyEdges.count(edge => !edge.must && clusterIndex(edge.a) == clusterIndex(edge.b))

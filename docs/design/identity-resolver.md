@@ -174,8 +174,17 @@ none (PL recording 36321731194: a festival's spellings joined "Kumotry", "Ście�
 Must-links are applied tier by tier,
 and within a tier in the order `(min key, max key)`. A node whose tier edges reach two components
 that are cannot-linked to each other, or hold different films, is **ambiguous** and is left alone for that tier. That is the
-bare "A Star Is Born" beside 1954 and 2018. Because the solver reads its input only through sorts
-under a total order, the partition is a function of the set.
+bare "A Star Is Born" beside 1954 and 2018. Alone means joined to neither side, not split from its
+own kind: ambiguous nodes that are no side of their ambiguity (hold no film, are cannot-linked to no
+component they reach) join each other by their must-links, in components holding no other node, so
+the bare spellings of one title form ONE component that still takes neither side. Only in the FINAL
+partition: the round-A partition the family votes over leaves each ambiguous node alone, so each
+votes on its own evidence and the grouping moves no take (a pooled vote took a film or none by how
+many spellings had arrived: UK "Romeo and Juliet" relays, PopulationMonotonicitySpec). PL "André Rieu. Pada śnieg!" (2026-11-12): three
+venues took the concert's record by its original title, Cinema City's 30 venues denied it, and every
+bare spelling at ~60 other venues reached both; each was left a component of its own, and the
+projection drew each as a web film of its own (20 for one concert). Because the solver reads its
+input only through sorts under a total order, the partition is a function of the set.
 
 **Must-links that are not edges.** Today's bare-listing rule
 (`ListingConstraints.keepsIncumbentHome`) exists only because the incremental pipeline has an
