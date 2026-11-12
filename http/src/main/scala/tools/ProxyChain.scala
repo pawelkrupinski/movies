@@ -29,6 +29,18 @@ object ProxyChain {
                           endsChain = FallbackHttpFetch.OriginAnswered)
   }
 
+  /** The residential proxy with NOTHING behind it, for an origin that refuses the direct route outright: there a
+   *  direct leg can only add a refusal to every proxy failure. Still a one-leg [[FallbackHttpFetch]], so its failures
+   *  name the proxy leg (a venue failing on it is parked on the proxy's health, `ProxyParking`) and are logged
+   *  once per incident like every chain's. */
+  def proxyAlone(shards: IndexedSeq[HttpFetch], clock: java.time.Clock, stopwatch: Stopwatch,
+                 keyOf: String => String = StickyShardHttpFetch.hostAndPath,
+                 meter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop,
+                 onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome,
+                 breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop): HttpFetch =
+    new FallbackHttpFetch(Seq(ProxyLeg -> meteredProxyLeg(new StickyShardHttpFetch(shards, keyOf), meter, clock, breakerMeter)),
+                          stopwatch, onOutcome = onOutcome, endsChain = FallbackHttpFetch.OriginAnswered)
+
   /** Wrap the sticky-shard proxy leg in a per-host circuit breaker, so a host
    *  whose Decodo tunnel starts failing (a pool-wide 503 spell, an account-level
    *  outage) stops paying the full connect/request budget on every call once it

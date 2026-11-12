@@ -149,7 +149,19 @@ trait EgressWiring { self: WorkerWiring =>
   // Per-venue (default host+path) stickiness, not host-only: Odeon carries its auth
   // in a header, not a cookie, so nothing has to share an IP, and the per-date
   // showtimes paths spread the sweep across the pool.
-  lazy val odeonFetch: HttpFetch = proxyPrimary(httpFetch)
+  // The proxy ALONE, no direct leg behind it: k3s-worker-1's own IP is still refused
+  // (403, re-checked 2026-11-12), so the direct leg only ever added a Cloudflare 403 to
+  // each Decodo failure: 459 of the 461 Odeon 403s of 2026-10-29..11-12, every one
+  // behind a proxy-side 503 / tunnel 502 / connect timeout.
+  lazy val odeonFetch: HttpFetch =
+    proxyShards.fold(httpFetch)(ProxyChain.proxyAlone(_, clock, stopwatch, meter = decodoMeter, onOutcome = recordProxyOutcome,
+      breakerMeter = decodoBreakerMeter))
+  // Odeon's POSTERS (vwc.odeon.co.uk/CDN, refused to the worker's IP like the data): the
+  // same proxy-only route, but on a breaker of its own and off the "Residential proxy"
+  // /uptime row, as Multikino's posters are — a poster the CDN fails must not open the
+  // breaker every Odeon scrape goes through, nor read as the proxy failing.
+  lazy val odeonPosterFetch: HttpFetch =
+    proxyShards.fold(httpFetch)(ProxyChain.proxyAlone(_, clock, stopwatch, meter = decodoMeter, breakerMeter = decodoBreakerMeter))
 
   // Harvests Odeon's ~12h Vista JWT via Zyte browserHtml (the estate-wide token
   // lives in the Cloudflare-gated www page; the ocapi DATA host is open). Lazy TTL

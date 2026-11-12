@@ -596,7 +596,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   // Zyte is no longer the residential proxy's fallback (dropped 2026-10-05): a proxied route
   // whose proxy fails goes straight to its direct leg, even with a Zyte key configured.
-  paidRoutes.filterNot(_._1.startsWith("ck105")).foreach { case (route, fetchOf) =>
+  paidRoutes.filterNot(r => r._1.startsWith("ck105") || r._1 == "odeon").foreach { case (route, fetchOf) =>
     "a proxied route whose proxy fails" should s"fall to direct with no Zyte leg behind the proxy ($route)" in {
       val direct = new CountingLeaf
       val wiring = new ProxiedAndZyteKeyedWiring(direct)
@@ -670,6 +670,35 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
     withClue("the poster is asked of the residential proxy first: ") { proxied.toArray.toSeq shouldBe Seq(poster) }
     withClue("never of the plain poster download: ") { directPosters.get shouldBe 0 }
+  }
+
+  // Cloudflare refuses vwc.odeon.co.uk to the worker's own IP (403, re-checked 2026-11-12), so a direct leg behind
+  // the proxy only added a 403 to every Decodo failure: 459 of the 461 Odeon 403s of 2026-10-29..11-12.
+  "Odeon's route" should "send nothing direct when the proxy fails" in {
+    val direct = new CountingLeaf
+    val wiring = new ProxiedAndZyteKeyedWiring(direct)
+
+    an [AllBackendsFailedException] should be thrownBy
+      wiring.odeonFetch.get("https://vwc.odeon.co.uk/WSVistaWebClient/ocapi/v1/showtimes/by-business-date/2026-11-12?siteIds=843")
+
+    direct.calls shouldBe 0
+  }
+
+  // Multikino's posters ride a breaker of their own for this reason: a poster host failing must not open the
+  // breaker every scrape of the chain goes through.
+  "Odeon's posters" should "fail on a breaker of their own, leaving the scrapes' route asking the proxy" in {
+    val proxied  = new java.util.concurrent.ConcurrentLinkedQueue[String]
+    val wiring   = new ProxiedAndZyteKeyedWiring(new CountingLeaf, proxied)
+    val download = services.sharecards.PosterDownload.routed(
+      new services.sharecards.PosterDownload { def fetch(url: String): Either[String, java.nio.file.Path] = Left("direct") },
+      wiring.posterEgressRoutes)
+    (1 to 6).foreach(i => download.fetch(services.cinemas.uk.OdeonParser.posterUrl(s"HO0000000$i")))
+    proxied.clear()
+
+    val showtimes = "https://vwc.odeon.co.uk/WSVistaWebClient/ocapi/v1/showtimes/by-business-date/2026-11-12?siteIds=843"
+    scala.util.Try(wiring.odeonFetch.get(showtimes))
+
+    withClue("the scrape still reached the proxy, its breaker untouched by the posters': ") { proxied.toArray.toSeq shouldBe Seq(showtimes) }
   }
 
   "a test wiring handed the residential-proxy credentials" should "build no proxy leg" in {
