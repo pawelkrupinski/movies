@@ -58,7 +58,10 @@ MAX_BYTES="${HEAPDUMP_MAX_BYTES:-$((4 * 1024 * 1024 * 1024))}"
 TOTAL_MAX_BYTES="${HEAPDUMP_TOTAL_MAX_BYTES:-$((16 * 1024 * 1024 * 1024))}"
 SETTLE_SECONDS=$(( ${HEAPDUMP_SETTLE_MINUTES:-10} * 60 ))
 
-log() { echo "heap-dumps: $*"; }
+# Stamped as the JVM's logback lines are (`HH:MM:SS LEVEL  text`), so the log shipper reads
+# `level=INFO` off it (infra/nix/modules/fleet/logs.nix) instead of filing a level-less row: the
+# pod-start status line was ~40 such rows a day that read as unlevelled noise.
+log() { echo "$(date -u +%H:%M:%S) INFO  heap-dumps: $*"; }
 
 # GNU first (the image and the node), BSD second (a developer's macOS running the tests).
 mtime_of() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1"; }

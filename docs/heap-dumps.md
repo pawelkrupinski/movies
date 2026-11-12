@@ -38,7 +38,7 @@ older worker dumps are still on the PVC at
 Two things enforce the budget:
 
 1. **Every container at start**, before the JVM runs. It prunes only its own directory and
-   logs `heap-dumps: dir=/data/heapdumps files=N bytes=B ...`, which you can find in
+   logs `HH:MM:SS INFO  heap-dumps: dir=/data/heapdumps files=N bytes=B ...`, which you can find in
    VictoriaLogs or `kubectl logs`.
 2. **The `kinowo-heap-dumps.timer` on the node**, every 15 minutes. It compresses settled dumps,
    prunes per directory, then prunes the total across directories.

@@ -82,10 +82,14 @@ echo "prune: empty or missing directory"
 mkdir -p "$tmp/empty"
 out="$(run prune "$tmp/empty")"; rc=$?
 check "an empty directory is fine" "0" "$rc"
-check "...and logs zero files" "heap-dumps: dir=$tmp/empty files=0 bytes=0 keep=3 max_bytes=1000000" "$out"
+# The line leads with the logback-style `HH:MM:SS INFO  ` the log shipper reads its level from.
+check "...and logs zero files, at INFO" "INFO  heap-dumps: dir=$tmp/empty files=0 bytes=0 keep=3 max_bytes=1000000" \
+  "$(sed -E 's/^[0-9]{2}:[0-9]{2}:[0-9]{2} //' <<<"$out")"
+check "...stamped with the time" "yes" "$(grep -qE '^[0-9]{2}:[0-9]{2}:[0-9]{2} INFO  heap-dumps: ' <<<"$out" && echo yes || echo no)"
 out="$(run prune "$tmp/does-not-exist")"; rc=$?
 check "a missing directory is fine too" "0" "$rc"
-check "...and says it is absent" "heap-dumps: dir=$tmp/does-not-exist absent, nothing to prune" "$out"
+check "...and says it is absent" "INFO  heap-dumps: dir=$tmp/does-not-exist absent, nothing to prune" \
+  "$(sed -E 's/^[0-9]{2}:[0-9]{2}:[0-9]{2} //' <<<"$out")"
 out="$(run prune-all "$tmp/no-root")"; rc=$?
 check "prune-all over a missing root exits 0" "0" "$rc"
 mkdir -p "$tmp/empty-root"

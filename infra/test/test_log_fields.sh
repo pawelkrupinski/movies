@@ -285,13 +285,14 @@ fi
 # sink nothing for `_msg`, and VictoriaLogs files the row under the literal text "missing _msg
 # field; see ...": ~440 such rows a day, level-less, matching every search for that phrase and
 # carrying nothing. A blank line has no content to lose, so it is dropped here. The report's own
-# text lines stay, as text, with no level -- they state none.
+# text lines stay, as text, with no level -- they state none. heap-dumps.sh's status line states
+# one, logback-style, and arrives as INFO.
 echo "==> a blank pod line is dropped; a text line around it is kept as text"
 python3 -c "
 import json
 path = '/var/log/pods/kinowo_worker-de-794576c9cf-hftvh_9a2422f2-3e01-4851-b6c7-da3be161d1d1/worker/0.log'
 for line in ['', '   ', 'Native Memory Tracking:',
-             'heap-dumps: dir=/data/heapdumps files=2 bytes=500249666 keep=3 max_bytes=4294967296']:
+             '22:57:33 INFO  heap-dumps: dir=/data/heapdumps files=2 bytes=500249666 keep=3 max_bytes=4294967296']:
     print(json.dumps({'message': '2026-10-13T22:57:33.112075853Z stdout F ' + line, 'file': path}))
 " > "$work/blank-events.jsonl"
 "${vector_cmd[@]}" vrl --print-object --quiet --input "$work/blank-events.jsonl" --program "$work/program.vrl" \
@@ -304,9 +305,9 @@ kept = ['%s/%s' % (e.get('message'), e.get('level', '-'))
         for e in (json.loads(line) for line in open(sys.argv[1]) if line.strip())]
 print('|'.join(['dropped'] * dropped + kept))
 " "$work/blank-out.jsonl" "$work/blank.err")"
-blank_want='dropped|dropped|Native Memory Tracking:/-|heap-dumps: dir=/data/heapdumps files=2 bytes=500249666 keep=3 max_bytes=4294967296/-'
+blank_want='dropped|dropped|Native Memory Tracking:/-|22:57:33 INFO  heap-dumps: dir=/data/heapdumps files=2 bytes=500249666 keep=3 max_bytes=4294967296/INFO'
 if [ "$blank_got" = "$blank_want" ]; then
-  echo "  ok  an empty and a whitespace-only line are dropped; the report's text lines arrive, level-less"
+  echo "  ok  an empty and a whitespace-only line are dropped; the report's text lines arrive, level-less; heap-dumps at INFO"
 else
   printf '  FAILED the blank-line cases came out as\n         %s\n         wanted %s\n' "$blank_got" "$blank_want"; failed=1
   sed 's/^/    /' "$work/blank.err" | tail -5

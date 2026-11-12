@@ -97,7 +97,7 @@ EXPOSE 9000
 #
 #   prune      keep the 3 newest dumps and at most 4 GiB in THIS app-country's directory, oldest
 #              deleted first, never touching a file written in the last 10 minutes (it may be
-#              another pod's dump in progress). It logs `heap-dumps: dir=... files=N bytes=B`.
+#              another pod's dump in progress). It logs `HH:MM:SS INFO  heap-dumps: dir=... files=N bytes=B`.
 #              A failure here must never block a boot, hence the `|| true`.
 #   dump-file  names this start's -XX:HeapDumpPath FILE: <app>-<country>_<pod>_<start UTC>.hprof.
 #              Appended to JAVA_OPTS, so it overrides the ConfigMap's directory-form flag (the
