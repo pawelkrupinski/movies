@@ -73,6 +73,25 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     }
   }
 
+  // A call its CALLER abandoned (AdaptiveTimeoutScraper interrupting an overrun scrape) is no answer from the host
+  // either. Taken as one, it cleared the failures already counted, and an interrupted half-open probe closed the
+  // breaker on a host that had not answered at all.
+  it should "neither trip nor reset on a call its caller interrupted, sync or async" in {
+    val delegate = new RecordingHttpFetch(timeout)
+    val cb = breaker(delegate)
+    (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    delegate.respond = _ => throw new InterruptedException()
+    (1 to 5).foreach(_ => an[InterruptedException] should be thrownBy cb.get(urlA))
+    val cancelled = cb.getAsync(urlA)
+    an[Exception] should be thrownBy cancelled.join()
+    cb.openRemainingMillis(hostA) shouldBe 0L
+    withClue("the interrupts must not have cleared the three real failures: ") {
+      delegate.respond = timeout
+      a[HttpTimeoutException] should be thrownBy cb.get(urlA)
+      cb.openRemainingMillis(hostA) should be > 0L
+    }
+  }
+
   it should "stay closed below the threshold" in {
     val delegate = new RecordingHttpFetch(timeout)
     val cb = breaker(delegate)

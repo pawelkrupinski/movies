@@ -274,8 +274,11 @@ class RealHttpFetch(
   private def decodeBody(bytes: Array[Byte]): String =
     new String(Gunzip.decode(bytes), StandardCharsets.UTF_8)
 
+  /** WARN for a transport failure. A read its caller abandoned ([[CallerCancelled]]) is not one: the caller logs why
+   *  it cut the call (AdaptiveTimeoutScraper's "scrape cut" line), and a WARN here blamed the host for it. */
   private def logFailure(method: String, url: String, exception: Throwable): Unit =
-    logger.warn(failureLine(method, url, exception))
+    if (CallerCancelled(exception)) logger.debug(s"HTTP $method ${RedactedUrl(url)} cancelled by its caller")
+    else logger.warn(failureLine(method, url, exception))
 
   /** The line a transport failure is logged as. A timeout names the budget that ran out: a connect timeout used to
    *  read "timed out after 30s" -- the REQUEST budget -- while the connect budget (5 s by default, bounding TCP and the

@@ -93,6 +93,8 @@ class MonitoringHttpFetch(
           monitor.recordSuccess(service, ms)
           result
         } catch {
+          // Abandoned by its caller before the service answered: neither up nor down, so no sample.
+          case e: Exception if CallerCancelled(e) => throw e
           case e: Exception =>
             if (isFailure(e)) monitor.recordFailure(service, errorDescription(e))
             else monitor.recordSuccess(service, ms)  // reached the server (e.g. 404 not-found) → success
@@ -111,7 +113,8 @@ class MonitoringHttpFetch(
           if (exception == null) monitor.recordSuccess(service, ms)
           else {
             val cause = unwrap(exception)
-            if (isFailure(cause)) monitor.recordFailure(service, errorDescription(cause))
+            if (CallerCancelled(cause)) ()
+            else if (isFailure(cause)) monitor.recordFailure(service, errorDescription(cause))
             else monitor.recordSuccess(service, ms)
           }
         }

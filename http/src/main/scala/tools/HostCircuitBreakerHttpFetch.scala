@@ -173,6 +173,11 @@ class HostCircuitBreakerHttpFetch(
     case _                                      => false
   }
 
+  /** A call that ended before the host could answer -- never sent ([[NeverSent]]) or abandoned by its caller
+   *  ([[CallerCancelled]]): neither a failure nor the host answering, so the breaker records nothing. An interrupted
+   *  half-open probe used to count as an answer and close the breaker on a host that had said nothing. */
+  private def saysNothing(e: Throwable): Boolean = e.isInstanceOf[NeverSent] || CallerCancelled(e)
+
   private def unwrap(e: Throwable): Throwable = e match {
     case ce: CompletionException if ce.getCause != null => ce.getCause
     case other                                          => other
@@ -214,7 +219,7 @@ class HostCircuitBreakerHttpFetch(
       // came back 404 would leave the host blocked for another full `openDuration` on the
       // strength of a reply that proves it recovered.
       catch {
-        case e: (Throwable & NeverSent)      => throw e
+        case e: Throwable if saysNothing(e)  => throw e
         case e: Throwable if isTripWorthy(e) => onFailure(host, e); throw e
         case e: Throwable                    => onSuccess(host); throw e
       }
@@ -232,7 +237,7 @@ class HostCircuitBreakerHttpFetch(
         // closes the breaker rather than leaving a re-armed window in place.
         else {
           unwrap(throwable) match {
-            case _: NeverSent                     => ()
+            case failure if saysNothing(failure)  => ()
             case failure if isTripWorthy(failure) => onFailure(host, failure)
             case _                                => onSuccess(host)
           }

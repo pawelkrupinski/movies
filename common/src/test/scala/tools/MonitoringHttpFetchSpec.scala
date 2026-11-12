@@ -19,6 +19,16 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
     (fetch, delegate, monitor)
   }
 
+  // A call its caller interrupted (an overrun scrape cut by AdaptiveTimeoutScraper) never got an answer, so it is
+  // neither the service working nor failing; it used to count as a success and paint the bar green.
+  "a call its caller interrupted" should "record nothing for the service, sync or async" in {
+    val (fetch, delegate, monitor) = fixture()
+    delegate.respond = _ => throw new InterruptedException()
+    an[InterruptedException] should be thrownBy fetch.get("https://api.themoviedb.org/3/movie/1")
+    an[Exception] should be thrownBy fetch.getAsync("https://api.themoviedb.org/3/movie/2").join()
+    monitor.history("TMDB").map(bucket => bucket.successes + bucket.failures).sum shouldBe 0
+  }
+
   "classify" should "map TMDB domain to TMDB" in {
     val (fetch, _, _) = fixture()
     fetch.classify("https://api.themoviedb.org/3/search/movie?query=test") shouldBe Some("TMDB")

@@ -3,7 +3,7 @@ package services.cinemas
 import tools.SpecTimeouts
 
 import clients.tools.{FakeHttpFetch, WriteCineamo}
-import tools.{DaemonExecutors, HostScrapeStats}
+import tools.{DaemonExecutors, HostScrapeStats, LogCapture, RealHttpFetch}
 import models.{CinemaMovie, GermanCinema, Multikino}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -51,6 +51,38 @@ class AdaptiveTimeoutScraperSpec extends AnyFlatSpec with Matchers {
       thrown.getMessage should include ("slow.pl")
       stats.deadlineFor("slow.pl", Multikino.displayName) shouldBe 120.millis // the cut scrape did NOT feed the baseline
     } finally { release.countDown(); executor.shutdown() }
+  }
+
+  // The cut interrupts the fetch in flight, which ends in InterruptedException inside RealHttpFetch. That was logged
+  // as `HTTP GET … failed: InterruptedException: null`, a host failure that never happened (787 WARN lines in
+  // worker-pl over 14 days), beside this decorator's own "scrape cut" line naming the real cause.
+  it should "cut a scrape stalled in a real fetch without the fetch logging a host failure" in {
+    // Accepts the TCP connect and never answers, so the read ends only by the cut's interrupt.
+    val listener = new java.net.ServerSocket(0, 50, java.net.InetAddress.getLoopbackAddress)
+    val held     = new java.util.concurrent.ConcurrentLinkedQueue[java.net.Socket]
+    val acceptor = new Thread(() => { scala.util.Try(while (true) held.add(listener.accept())); () })
+    acceptor.setDaemon(true)
+    acceptor.start()
+    val executor = DaemonExecutors.virtualThreadEC("test-adaptive-timeout")
+    try {
+      val fetch  = new RealHttpFetch()
+      val stats  = new HostScrapeStats(floor = 1.milli, ceiling = 300.millis)
+      val stalls = s"http://127.0.0.1:${listener.getLocalPort}/repertuar"
+      val unwound = new CountDownLatch(1)
+      val s      = new AdaptiveTimeoutScraper(
+        delegate(Set("127.0.0.1")) { try fetch.get(stalls) finally unwound.countDown(); OneMovie }, stats, executor)
+      val events = LogCapture.capture("tools.RealHttpFetch") {
+        intercept[TimeoutException](s.fetch())
+        held.size shouldBe 1 // the read was on the wire when it was cut
+        // The interrupted read unwinds on the executor's thread, after the cut returned: wait for it to log.
+        unwound.await(SpecTimeouts.Io.toMillis, MILLISECONDS) shouldBe true
+      }
+      events.filter(_.getLevel.isGreaterOrEqual(ch.qos.logback.classic.Level.WARN)).map(_.getFormattedMessage) shouldBe empty
+    } finally {
+      executor.shutdown()
+      listener.close()
+      held.forEach(_.close())
+    }
   }
 
   it should "propagate the delegate's own exception unwrapped (so retry/uptime see the real cause)" in {
