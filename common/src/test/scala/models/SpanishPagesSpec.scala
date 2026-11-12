@@ -94,5 +94,27 @@ class SpanishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     forAll(spanishFormer)(former => Country.Spain.bySlug.get(former) shouldBe None)
   }
 
+  "the Spanish roster data" should "be the generated tables, row for row" in {
+    val pageRows = GeneratedTable.rows("generated/es-roster/pages.tsv")
+    val cinemaRows = GeneratedTable.rows("generated/es-roster/cinemas.tsv")
+    SpanishRosterData.pages.map(_._1) shouldBe pageRows.map(_(0))
+    SpanishRosterData.pages.map(_._10.size).sum shouldBe cinemaRows.size
+    SpanishRosterData.retired.size shouldBe GeneratedTable.rows("generated/es-roster/retired.tsv").size
+    SpanishRosterData.seasonal.size shouldBe GeneratedTable.rows("generated/es-roster/seasonal.tsv").size
+  }
+
+  it should "keep a page's fields, a venue's optional ids and an exact Double" in {
+    SpanishRosterData.pages.size shouldBe 240
+    SpanishRosterData.pages.map(_._10.size).sum shouldBe 598
+    SpanishRosterData.pages.head shouldBe (
+      "madrid", "madrid-comunidad-de-madrid", "Madrid", "Madrid", 40.4165, -3.7026, "Europe/Madrid", false,
+      Seq("Madrid"), SpanishRosterData.pages.head._10)
+    val madrid = SpanishRosterData.pages.head._10
+    madrid.head shouldBe (("Cines Princesa", "Cines Princesa", Some("E0364"), None))
+    madrid.last shouldBe (("Ocine Urban Caleido", "Ocine Urban Caleido", None, Some("tickets.ocineurbancaleido.es")))
+    SpanishRosterData.retired should contain (("alava", "alava-pais-vasco", "vitoria-gasteiz"))
+    SpanishRosterData.seasonal should contain ("Autocine Getxo")
+  }
+
   private def forAll[A](xs: Iterable[A])(f: A => Unit): Unit = org.scalatest.Inspectors.forAll(xs)(f)
 }

@@ -947,7 +947,7 @@ final class UsCinema(venueDisplayName: String, venuePillName: String, override v
   extends RosterCinema(venueDisplayName, venuePillName)
 
 // ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
-// `SpanishRosterData` (generated from data/spain/pages.json + provinces.json + ocine.json)
+// `SpanishRosterData` (read from tables generated from data/spain/pages.json + provinces.json + ocine.json)
 // carries 240 town and cluster pages / 598 cinemas. Same shape as `GermanCinema` and
 // `UsCinema`: each venue is built ONCE in `SpanishRoster` and reused everywhere, so one
 // `Source` instance serves the page, `Cinema.byCity` and the scrape catalog, and

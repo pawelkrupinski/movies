@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Generate geodata/src/main/scala/models/SpanishRosterData.scala from pages.json.
+"""Generate the tables under geodata/src/main/resources/generated/es-roster/ from pages.json.
 
 The JSON -> Scala step of the Spanish roster pipeline, modelled on
 data/us/scripts/generate_roster.py. Reads the PAGES (`pages.json`, built by
 `build_pages.py`: which town or cluster page each venue is on, and where each page
 that stopped existing now redirects), the harvested venues (`provinces.json`) and
-the Ocine chain's own ticketing servers (`ocine.json`), and emits the flat tuple
-data `models.SpanishRoster` materialises into City/Cinema objects.
+the Ocine chain's own ticketing servers (`ocine.json`), and writes the tab-separated
+tables `models.SpanishRosterData` reads (through `models.GeneratedTable`) and
+`models.SpanishRoster` materialises into City/Cinema objects: `pages.tsv`, `cinemas.tsv`
+(keyed by page slug, in page order), `retired.tsv` and `seasonal.tsv`.
 
 `ocine.json` does two things to the harvest: it names the ticketing server of
 each Ocine venue SensaCine lists (`listed`, by theaterId), and it ADDS the
@@ -30,35 +32,19 @@ Usage:  python3 data/spain/scripts/generate_roster.py
 import collections
 import json
 import pathlib
-import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 import retired_venues  # noqa: E402
 import seasonal_venues  # noqa: E402
+from generated_tables import list_cell, option_cell, write_table  # noqa: E402
 from town_pages import placement_problems  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "spain"
 OCINE = DATA / "ocine.json"
 PAGES = DATA / "pages.json"
-OUT = ROOT / "geodata" / "src" / "main" / "scala" / "models" / "SpanishRosterData.scala"
-
-# One `Seq(...)` per 40 pages, so no single generated method approaches the JVM's
-# 64 KB method-size limit as the roster grows.
-CHUNK = 40
-
-
-def scala_string(value: str) -> str:
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
-
-
-def ident(slug: str) -> str:
-    return "p_" + re.sub(r"[^a-z0-9]", "_", slug)
-
-
-def scala_option(value) -> str:
-    return "None" if value is None else f"Some({scala_string(value)})"
+OUT = ROOT / "geodata" / "src" / "main" / "resources" / "generated" / "es-roster"
 
 
 def merge_ocine(provinces: list, ocine: dict) -> list[str]:
@@ -123,56 +109,20 @@ def main() -> int:
             print(f"ERROR: {problem}", file=sys.stderr)
         return 1
 
-    lines = [
-        "// GENERATED from data/spain/pages.json by data/spain/scripts/generate_roster.py",
-        "// — do NOT edit by hand. Full Spanish cinema roster: "
-        f"{len(pages)} pages / {len(venues)} cinemas (SensaCine, plus the Ocine",
-        "// venues it does not list, from data/spain/ocine.json).",
-        "// Regenerate with `python3 data/spain/scripts/generate_roster.py` after re-clustering;",
-        "// see data/spain/README.md.",
-        "package models",
-        "",
-        "private[models] object SpanishRosterData {",
-        "  // (displayName, pillName, SensaCine theaterId, Ocine ticketing server) — a venue",
-        "  // SensaCine does not list has no theaterId and is scraped off its own server",
-        "  type C = (String, String, Option[String], Option[String])",
-        "  // (slug, slug qualified with its autonomous community, name, province, lat, lon,",
-        "  //  zoneId, multiTown, towns, cinemas)",
-        "  type R = (String, String, String, String, Double, Double, String, Boolean, Seq[String], Seq[C])",
-        "",
-    ]
+    page_rows, cinema_rows = [], []
     for page in pages:
-        rows = ",\n".join(
-            "    ({}, {}, {}, {})".format(
-                scala_string(name), scala_string(name),
-                scala_option(venues[name]["theaterId"]), scala_option(venues[name].get("ocineServer")))
-            for name in page["cinemas"])
-        lines.append(
-            "  private def {}: R = ({}, {}, {}, {}, {}, {}, {}, {}, Seq({}), Seq(\n{}\n  ))".format(
-                ident(page["slug"]), scala_string(page["slug"]), scala_string(page["qualifiedSlug"]),
-                scala_string(page["name"]), scala_string(page["province"]), page["lat"], page["lon"],
-                scala_string(page["zoneId"]), "true" if page["kind"] == "cluster" else "false",
-                ", ".join(scala_string(t) for t in page["towns"]), rows))
-
-    lines.append("")
-    names = [ident(p["slug"]) for p in pages]
-    chunks = [names[i:i + CHUNK] for i in range(0, len(names), CHUNK)]
-    for index, chunk in enumerate(chunks):
-        lines.append(f"  private def chunk{index}: Seq[R] = Seq({', '.join(chunk)})")
-    lines.append("  val pages: Seq[R] = " + " ++ ".join(f"chunk{i}" for i in range(len(chunks))))
-    lines.append("")
-    lines.append("  /** Pages that no longer exist — the provinces Spain's pages were until 2026-10")
-    lines.append("   *  among them — and the page now holding most of their venues: (slug, slug")
-    lines.append("   *  qualified with its autonomous community, the page's slug). */")
-    lines.append("  val retired: Seq[(String, String, String)] = Seq(")
-    lines.extend(f"    ({scala_string(slug)}, {scala_string(r['qualifiedSlug'])}, {scala_string(r['page'])}),"
-                 for slug, r in sorted(retired_pages.items()))
-    lines.append("  )")
-    lines.append("")
-    lines.extend(seasonal_venues.render_scala(seasonal_venues.seasonal_names("es", venues), scala_string))
-    lines.append("}")
-
-    OUT.write_text("\n".join(lines) + "\n")
+        page_rows.append([
+            page["slug"], page["qualifiedSlug"], page["name"], page["province"],
+            repr(float(page["lat"])), repr(float(page["lon"])), page["zoneId"],
+            "true" if page["kind"] == "cluster" else "false", list_cell(page["towns"])])
+        for name in page["cinemas"]:
+            cinema_rows.append([page["slug"], name, option_cell(venues[name]["theaterId"]),
+                                option_cell(venues[name].get("ocineServer"))])
+    write_table(OUT / "pages.tsv", page_rows)
+    write_table(OUT / "cinemas.tsv", cinema_rows)
+    write_table(OUT / "retired.tsv", [[slug, r["qualifiedSlug"], r["page"]]
+                                      for slug, r in sorted(retired_pages.items())])
+    write_table(OUT / "seasonal.tsv", [[name] for name in seasonal_venues.seasonal_names("es", venues)])
     print(f"Wrote {OUT.relative_to(ROOT)}: {len(pages)} pages / {len(venues)} cinemas / "
           f"{len(retired_pages)} retired slugs")
     return 0

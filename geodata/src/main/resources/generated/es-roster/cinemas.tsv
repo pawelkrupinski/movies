@@ -1,0 +1,598 @@
+madrid	Cines Princesa	E0364	
+madrid	Cinesa La Gavia	E0731	
+madrid	Cinesa Manoteras	E0646	
+madrid	Cinesa Méndez Álvaro	E0247	
+madrid	Cinesa Príncipe Pío	E0401	
+madrid	Yelmo Cines Ideal	E0621	
+madrid	Yelmo Cines Islazul	E0681	
+madrid	Yelmo Cines La Vaguada	E0459	
+madrid	Yelmo Cines Plenilunio	E0475	
+madrid	mk2 Palacio de Hielo (antiguos Cines Dreams)	E0432	
+madrid	Ocine Urban Caleido		tickets.ocineurbancaleido.es
+barcelona	Arenas Multicines 3D	E0764	
+barcelona	Aribau Multicines	E0091	
+barcelona	Balmes Multicines	E0808	
+barcelona	Bosque Multicines	E0136	
+barcelona	Cinesa Diagonal	E0381	
+barcelona	Cinesa Diagonal Mar	E0382	
+barcelona	Cinesa SOM Multiespai	E0388	
+barcelona	Glòries Multicines	E0442	
+barcelona	Gran Sarrià Multicines	E0447	
+barcelona	Renoir Floridablanca	E0581	
+valencia	Abc El Saler	E0034	
+valencia	Abc Park	E0040	
+valencia	Autocine Star	E0104	
+valencia	Cines Babel	E0119	
+valencia	Cines Lys	E0187	
+valencia	Cinestudio D´or	E0407	
+valencia	Ocine Premium Aqua	E0474	tickets.ocinepremiumaqua.es
+valencia	Teatro Flumen	E0967	
+valencia	Yelmo Cines Campanar	E0248	
+valencia	Yelmo Cines Mercado de Campanar	E0773	
+sevilla	Avenida 5 Cines	E0112	
+sevilla	Los Arcos Multicines	E0222	
+sevilla	Odeon Multicines Plaza de Armas	E0400	
+sevilla	Yelmo Cines Premium Lagoh	E1002	
+sevilla	Zona Este	E0476	
+sevilla	mk2 Nervión Plaza	E0415	
+zaragoza	Artesiete La Torre	E1041	
+zaragoza	Cine Palafox Zaragoza	E0264	
+zaragoza	Cine Sala Cervantes	E0711	
+zaragoza	Cines Aragonia	E0732	
+zaragoza	Cinesa Grancasa	E0387	
+zaragoza	Cinesa Puerto Venecia	E0790	
+malaga	Alameda Multicines Malaga	E0048	
+malaga	Cine Albéniz	E0195	
+malaga	Multicines Rosaleda	E0589	
+malaga	mk2 Malaga Nostrum	E0413	
+murcia	Cinesa Nueva Condomina	E0656	
+murcia	Neocine Centrofama	E0193	
+murcia	Neocine El Tiro	E0774	
+murcia	Neocine Rex	E0690	
+murcia	Neocine Thader	E0547	
+palma-de-mallorca	Artesiete Fan	E0863	
+palma-de-mallorca	CineCiutat	E0365	
+palma-de-mallorca	Cines Ocimax	E0360	
+palma-de-mallorca	Multicines Rivoli	E0533	
+palma-de-mallorca	Sala Augusta	E0593	
+palma-de-mallorca	Ocine Premium Porto Pi		tickets.ocinepremiumportopi.es:8444
+las-palmas-de-gran-canaria	Yelmo Cines Las Arenas	E0754	
+las-palmas-de-gran-canaria	Yelmo Cines Premium Alisios	E0972	
+las-palmas-de-gran-canaria	Ocine Premium 7 Palmas		tickets.ocinepremium7palmas.es
+bilbao	Cinesa Zubiarte	E0425	
+bilbao	Golem Alhóndiga	E0737	
+bilbao	Multicines 7 Bilbao	E0488	
+alicante	Cine Aana Alicante	E0008	
+alicante	Cine Navas	E0545	
+alicante	Cinebox Plaza Mar 2	E0293	
+alicante	Cines Axion Playa de San Juan 	E0884	
+alicante	Cines Costa	E0951	
+alicante	Cines Panoramis	E0397	
+alicante	Kinépolis Alicante	E0819	
+alicante	Yelmo Cines Puerta De Alicante	E0631	
+cordoba	Cine Delicias	E0948	
+cordoba	Guadalquivir Cinemas 10	E0512	
+cordoba	mk2 El Tablero	E0409	
+valladolid	Cine Casablanca	E0243	
+valladolid	Cines Broadway	E0333	
+valladolid	Cines Manhattan	E0357	
+valladolid	Yelmo Cines Premium VallSur	E0297	
+vigo	Cines Tamberlick Plaza Elíptica	E0739	
+vigo	Multicines Norte	E0525	
+vigo	Teatro Salesianos	E0602	
+vigo	Yelmo Cines Premium Vialia Vigo	E2902	
+vigo	Yelmo Cines Travesía Vigo	E0635	
+vigo	Ocine Premium Gran Vía de Vigo		tickets.ocinepremiumgranvia.es
+gijon	Ocine Premium Los Fresnos		tickets.ocinepremiumlosfresnos.es
+l-hospitalet-de-llobregat	Cinesa La Farga	E0391	
+l-hospitalet-de-llobregat	Filmax Gran Via 3D	E0439	
+a-coruna	Cantones Cines	E0437	
+a-coruna	Cines Forum Metropolitano	E0441	
+a-coruna	Cinesa Marineda City	E0770	
+a-coruna	Yelmo Cines Espacio Coruña	E0734	
+vitoria-gasteiz	Cines Florida	E0346	
+vitoria-gasteiz	Cines Guridi	E0763	
+vitoria-gasteiz	Yelmo Cines Boulevard	E0786	
+granada	Cine Madrigal	E0689	
+granada	Megarama Granada	E0301	
+granada	Ocine Serrallo	E0787	tickets.ocineserrallo.es
+granada	Teatro Isabel La Catolica	E0712	
+elche	Abc Elx	E0035	
+elche	Cines Odeón	E0853	
+oviedo	Yelmo Cines Los Prados	E0623	
+badalona	Ocine Màgic	E0713	tickets.ocinemagic.es
+terrassa	Cinema Catalunya	E0304	
+terrassa	Cinesa Parc Vallès	E0374	
+terrassa	Club Catalunya	E0420	
+cartagena	Cine La Manga	E0946	
+cartagena	Cine Sirenas	E0947	
+cartagena	NeoCine Espacio Mediterraneo	E0663	
+cartagena	Neocine Mandarache	E0546	
+cartagena	Nuevos Cines Cabos de Palos 	E0953	
+jerez-de-la-frontera	Multicines Jerez UCC	E1044	
+jerez-de-la-frontera	Yelmo Cines Área Sur	E0669	
+sabadell	Cines Imperial	E0351	
+sabadell	Multicines Eix Macià	E0504	
+santa-cruz-de-tenerife	Cines Price Prime	E0583	
+santa-cruz-de-tenerife	Yelmo Cines Meridiano	E0627	
+mostoles	Cines Dos de Mayo	E0761	
+alcala-de-henares	Multicines Cisneros	E0498	
+alcala-de-henares	Ocine Quadernillos		tickets.ocinequadernillos.es
+pamplona	Golem Baiona	E0444	
+pamplona	Golem Yamaguchi	E0445	
+fuenlabrada	Cinesa Plaza Loranca 2	E0394	
+almeria	Kinépolis Almería Mediterráneo	E0359	
+almeria	Yelmo Cines Torrecárdenas	E0909	
+leganes	Cinesa Parquesur	E0399	
+leganes	Odeon Multicines Sambil Dolby Atmos	E0877	
+san-sebastian	Cine Príncipe	E0570	
+san-sebastian	Cine Trueba	E0603	
+san-sebastian	Cines Antiguo Berri	E0329	
+getafe	Cinesa Nassica	E0246	
+castellon-de-la-plana	Cinesa Salera	E0654	
+castellon-de-la-plana	Neocine Puerto Azahar	E0571	
+castellon-de-la-plana	Ocine Premium Estepark	E0925	tickets.ocinepremiumestepark.es
+burgos	Cines Van Golem Arlanzón	E0370	
+burgos	Odeon Multicines Burgos	E0279	
+santander	Cine Los Ángeles	E0688	
+santander	Cines Embajadores Santander	E0349	
+santander	Cinesa Bahía de Santander	E0123	
+santander	Filmoteca de Cantabria - Santander	E0979	
+santander	Palacios De Festivales	E0560	
+santander	Yelmo Cines Premium Peñacastillo	E0565	
+albacete	Yelmo Cines Imaginalia	E0205	
+alcorcon	Ocine Urban X-Madrid	E1004	tickets.ocineurbanxmadrid.es
+alcorcon	Yelmo Cines TresAguas	E0207	
+san-cristobal-de-la-laguna	Multicines Tenerife	E0284	
+salamanca	Cines Van Dyck	E0606	
+salamanca	Megarama Salamanca	E0299	
+logrono	Cines 7 Infantes	E0804	
+logrono	Cines Moderno	E0358	
+logrono	Yelmo Cines Premium Berceo	E0733	
+adeje	Autocinema Tenerife	E2912	
+adeje	Multicines Zentral Center	E0541	
+adeje	X-Sur Cine	E0700	
+aguilar-de-campoo	Cines Campoo	E0334	
+aguilar-de-campoo	Cines Campoo 3D	E1003	
+aguilas	Cine Albox	E0865	
+aguilas	Cine Tenis	E0975	
+aguilas	Cine Terraza de Verano de Vera	E0911	
+aguilas	Cine Municipal Huércal-Overa	E1012	
+aguilas	Multicines El Hornillo	E0506	
+alcala-de-xivert	Cine Terraza Avenida	E0941	
+alcala-de-xivert	Terraza Neptuno	E0926	
+alcala-la-real	Cine Teatro Martínez Montañés	E1025	
+alcaniz	Cine Arens de Lledó	E0810	
+alcaniz	Cines Alcañiz	E0653	
+alcaniz	Teatro Cine Goya	E0668	
+alcazar-de-san-juan	Cine Teatro Municipal Pedro Muñoz	E1023	
+alcazar-de-san-juan	Multicines Cinemancha	E0496	
+alcazar-de-san-juan	Cine Princesa	E0837	
+alcazar-de-san-juan	Quintanar Cinema	E0870	
+alcobendas	Cinebox 3 C	E0199	
+alcobendas	Odeon Multicines Tres Cantos	E0815	
+alcobendas	Cinesa La Moraleja	E0392	
+alcobendas	Kinépolis Madrid Diversia	E0209	
+alcobendas	Yelmo Cines Plaza Norte 2	E2916	
+alcoy	Cine BIC	E0033	
+alcoy	Multicines El Altet	E0721	
+alcoy	Cineapolis El Teler	E0617	
+algeciras	Odeon Bahía Plaza	E0245	
+algeciras	Yelmo Cines Premium Puerta Europa 	E0910	
+alhaurin-el-grande	Cine Pixel	E0215	
+alhaurin-el-grande	Cine San Francisco	E1005	
+almazan	Cine Calderón - Almazán	E0989	
+almendralejo	Cine La Fábrica	E1022	
+almendralejo	Cines Victoria Almendralejo	E0719	
+almendralejo	Multicines España	E0508	
+alzira	Cine Avenida El Perelló	E2914	
+alzira	Cine Terraza Olimpo	E0928	
+alzira	Cines Axion de Xàtiva	E0664	
+alzira	Cines Victoria Cullera	E0210	
+alzira	Kinepolis Alzira	E0434	
+amposta	Cinemes Amposta	E0076	
+amposta	Ocine Roquetes	E0556	tickets.ocineroquetes.es
+andujar	Europa Pantallas 8	E0436	
+andujar	París Multicines	E0822	
+antequera	Cines La Verónica	E0410	
+aranda-de-duero	Cines Victoria Ribera de Duero	E0777	
+arcos-de-la-frontera	Arcos Cinema	E0905	
+arcos-de-la-frontera	Teatro Municipal Juan Bernabé	E0984	
+arcos-de-la-frontera	Teatro Municipal Las Cabezas de San Juan	E1020	
+arenas-de-san-pedro	Cine Arenas	E0828	
+arenas-de-san-pedro	Cine Candeleda	E0861	
+armilla	Cine Liszt Terraza de verano	E0743	
+armilla	Kinépolis Granada	E0452	
+armilla	Kinépolis Nevada	E0866	
+arrecife	Deiland Multicines	E0785	
+arrecife	Multicine Atlántida	E0484	
+arrecife	Multicines Deiland	E0485	
+arroyo-de-la-encomienda	Ocine Rio Shopping	E0796	tickets.ocinerioshopping.es
+astorga	Cine Velasco	E0274	
+avila	Cines Bulevar	E0344	
+ayamonte	Cine 3D Ayamonte	E0788	
+ayamonte	La Dehesa Ayamonte	E0945	
+ayamonte	Cine Vip 3d Lepe	E0765	
+ayamonte	Multicines La Dehesa - Islantilla	E0516	
+badajoz	Yelmo Cines Premium El Faro	E1038	
+barakaldo	Autocine Getxo	E0880	
+barakaldo	Getxo Zinemak	E0464	
+barakaldo	Cinesa Max Ocio	E0424	
+barakaldo	Yelmo Cines Megapark	E0626	
+barakaldo	Serantes Kultur Aretoa	E0598	
+barakaldo	Yelmo Cines Artea	E0376	
+barbastro	Cine Cortés	E0250	
+barbastro	Cine Teatro Victoria	E0271	
+barbate	Cine de Verano La Muralla	E0999	
+barbate	Teatro San Francisco	E1018	
+baza	Salón Cine Ideal	E0849	
+beasain	Baztartxo Antzokia	E0227	
+beasain	Herri Antzokia 	E0890	
+beasain	Leidor Zinema	E0472	
+beasain	Oñatiko Zinea	E0551	
+beasain	Usurbe Antzokia	E0605	
+bejar	Multicines Béjar	E0492	
+bejar	Cine-Teatro Lagasca	E0991	
+benidorm	Cinema Roma	E0268	
+benidorm	Cines Colci 	E0422	
+benidorm	Cines Colci Rincón	E0423	
+benidorm	Colci Suyma	E0957	
+berga	Multicines Catalunya	E0495	
+binefar	Cine La Paz	E0256	
+binefar	Teatro Municipal Los Titiriteros	E0964	
+blanes	Cinema Sala Mozart	E0314	
+blanes	Ocine Arenys	E0651	tickets.ocinearenys.es
+blanes	Ocine Blanes	E0462	tickets.ocineblanes.es
+boltana	Palacio De Congresos Boltaña	E0667	
+bunol	Cine Montecarlo	E0883	
+bunol	Cine Palacio de la Música de Buñol	E0993	
+burgo-de-osma	Cine Palafox Burgo de Osma	E0265	
+caceres	Cine Arroyo de la Luz	E0772	
+caceres	Multicines Cáceres	E0143	
+cadiz	Al-Andalus Cádiz	E0902	
+cadiz	Multicines el Centro	E0171	
+cadiz	mk2 Bahía de Cádiz	E0332	
+calahorra	Cine Avenida Rincón de Soto	E0829	
+calahorra	Cines Arcca	E0801	
+calatayud	Teatro Capitol	E1007	
+calpe	Cine Calp	E0924	
+calpe	Cine Imf Ondara	E0658	
+camargo	Cine La Vidriera	E0257	
+camargo	Ocine Premium Bahía Real	E1045	tickets.ocinepremiumbahiareal.es
+camargo	Sala Bretón	E0594	
+camargo	Teatro De Los Corrales De Buelna	E0599	
+carballo	Multicines Bergantiños	E0494	
+cee	Cines Xunqueira	E0694	
+ceuta	Marina Cinemas 7	E0478	
+ciudad-real	Parque De Ocio Las Vías	E0562	
+ciudad-rodrigo	Cine Juventud	E0800	
+ciutadella-de-menorca	Cinema Ca-Los	E0229	
+ciutadella-de-menorca	Cinemes Moix Negre	E0782	
+coria	Cine Coria	E0832	
+cornella-de-llobregat	Cinesa Llobregat Centre	E0857	
+cornella-de-llobregat	Kinépolis Barcelona Full Splau	E0756	
+cornella-de-llobregat	Odeon Multicines Llobregat	E0521	
+cortegana	Cortegana Cinema	E2913	
+corvera-de-asturias	Cinebox Parque Astur	E0290	
+corvera-de-asturias	Odeon Multicines Parque Astur	E0814	
+coslada	Cines La Rambla	E0353	
+coslada	Cines Plaza Coslada	E2910	
+coslada	Yelmo Cines Premium Parque Corredor	E0291	
+coslada	Yelmo Cines Rivas H2O	E0671	
+cuenca	Abaco Cuenca	E0020	
+cuenca	Odeon Multicines Cuenca	E0502	
+cuenca	Odeon Multicines Mirador	E0852	
+daimiel	Daimiel Cinema	E0990	
+don-benito	Cines Victoria Don Benito	E0372	
+dos-hermanas	Cineapolis Dos Hermanas 3D	E0191	
+dos-hermanas	Cineapolis WAY	E1040	
+dos-hermanas	Cineapolis Utrera	E1039	
+dos-hermanas	mk2 Alcores	E0411	
+ecija	Artesiete Écija	E0720	
+eibar	Cine Modelo	E0263	
+eibar	Teatro Coliseo	E0769	
+eibar	Ermua Antzokia	E0903	
+el-ejido	Cine Berja	E0965	
+el-ejido	Ocine Copo		tickets.ocinecopo.es
+el-pont-de-suert	Cinema Ribagorza	E0313	
+el-puerto-de-santa-maria	Al-Andalus Sanlucar	E0218	
+el-puerto-de-santa-maria	Cine Alba Chipiona	E0912	
+el-puerto-de-santa-maria	Multicines Bahia Mar	E0491	
+el-vendrell	MCB Calafell	E0479	
+el-vendrell	Ocine El Vendrell		tickets.ocinevendrell.es
+estella-lizarra	Cines Los Llanos Zinemak	E0259	
+estepa	Cine Méliès Estepa	E0996	
+ferrol	Cine Duplex	E0741	
+ferrol	Odeon Multicines Narón	E0789	
+figueres	Cat Cinemes	E0345	
+figueres	Cinemes Roses	E0324	
+fuengirola	Multicines Alfil 3D	E0059	
+fuengirola	mk2 Miramar	E0414	
+galdakao	Cine Torrezabal	E0923	
+galdakao	Cine Zugaza	E0768	
+galdakao	Liceo Antzokia	E0894	
+galdakao	Zalla Zine - Antzokia 	E0874	
+galdakao	Zornotza Aretoa	E0904	
+galdakao	Cine Municipal Llodio	E0821	
+galdakao	Cines Gorbeia Zinemak 	E0885	
+gandia	Abc Gandia	E0036	
+gandia	Cine de Verano Tugar	E0929	
+gandia	Cines Axion Premium Gandía	E1026	
+gandia	Ozone Gandía	E0282	
+girona	Cinema Truffaut	E0316	
+girona	Ocine Girona	E0362	tickets.ocinegirona.es
+girona	Odeon Multicines Girona	E0281	
+golmayo	Cines Lara	E0356	
+granollers	Cine Alhambra	E0827	
+granollers	Cinema Edison	G02RB	
+granollers	Ocine Granollers	E0507	tickets.ocinegranollers.es
+granollers	Cinema Esbarjo	E0889	
+guadalajara	Cultura Azuqueca	E0955	
+guadalajara	Multicines Guadalajara	E0511	
+guardo	Cine Marí	E0901	
+guardo	Cine AMGu	E0998	
+herrera-del-duque	Cine Municipal Herrera del Duque	E1027	
+huarte	Golem La Morea	E0443	
+huarte	Yelmo Cines Itaroa	E0283	
+huelva	Al-Andalus Punta Umbría 3D	E0641	
+huelva	Artesiete Holea	E0805	
+huelva	Cines Aqualón	E0278	
+huelva	Cine Alba Mazagón	E0995	
+huesca	CineMundo Huesca	E0497	
+huetor-tajar	Huétor Cinema	E0981	
+ibiza	Cine Regio	E0839	
+ibiza	Multicines Eivissa	E0503	
+ibiza	Teatro España	E0755	
+iniesta	Cine Iniesta	E1031	
+irun	Cinesa Urbil	E0296	
+irun	Multicines Niessen Zinemak	E0637	
+irun	Ocine Mendibil	E0537	tickets.ocinemendibil.es
+jaraiz-de-la-vera	Cine Avenida Jaraíz	E0867	
+javea	Auto Cine Drive In	E0197	
+javea	Cine Club Xábia	E0249	
+javea	Cine Jayan	E0254	
+la-orotava	Cine Realejos	E0267	
+la-orotava	Multicines Puntalarga	E0532	
+la-orotava	Yelmo Cines La Villa de Orotava	E0622	
+la-palma-del-condado	Condado Cinemas 7	E0429	
+la-seu-d-urgell	Cinemes Guiu	E0319	
+laredo	Casa de Cultura Doctor Velasco 	E0917	
+laredo	Cine Playa Dorada	E0567	
+laredo	Teatro Casino Liceo de Santoña	E0918	
+leiro	NovoCine Leiro 3D	E0847	
+leon	Cines Van Gogh	E0369	
+leon	Odeon Multicines León	E0280	
+linares	Multicines Bowling	E0239	
+linares	Multicines Carolina	E0823	
+linares	Multicines Úbeda	E0538	
+lleida	Cinema El Casal	E0650	
+lleida	Jca Cinemes Alpicat	E0652	
+lleida	Sala d''actes Ajuntament	E0985	
+lleida	Ocine Premium Lleida		tickets.ocinepremiumlleida.es
+lorca	Cines Almenara Lorca	E0751	
+los-llanos-de-aridane	Multicines Millennium	E0940	
+los-llanos-de-aridane	Teatro Chico	E0900	
+lucena	Artesiete Lucena	E0489	
+lucena	Cine Baena	E0915	
+lucena	Cinestudio Municipal Cabra	E0868	
+lugo	Multicines Cristal	E0501	
+lugo	Yelmo Cines As Termas	E0684	
+mairena-del-aljarafe	Centro Cultural de la Villa - Pastora Soler	E1016	
+mairena-del-aljarafe	Al-Andalus Mega Ocio	E0217	
+mairena-del-aljarafe	Cinema Tomares	E0676	
+mairena-del-aljarafe	Cinesa Camas	E0027	
+mairena-del-aljarafe	Metromar Cinemas 12	E0666	
+majadahonda	Cine Los Molinos	E0729	
+majadahonda	Cines Boadilla	E0760	
+majadahonda	Cines Zoco Majadahonda	E0582	
+majadahonda	Cinesa Equinoccio	E0385	
+majadahonda	Cinesa Heron City Las Rozas	E0389	
+majadahonda	Kinépolis Madrid	E0453	
+manacor	Multicines Manacor	E0522	
+manresa	Ateneu Cinema 	E0906	
+manresa	Mont-Àgora Cinemes	E1006	
+manresa	Multicines Bages 3D	E0120	
+mao	Ocimax Multisalas	E0639	
+marbella	Cines Gran Marbella	E0427	
+marbella	Kinépolis La Cañada	E0390	
+marbella	Red Dog Cinemas	E0845	
+marchena	Cine Planelles	E0724	
+marratxi	Cinesa Festival Park	E0386	
+martos	Teatro Maestro Álvarez Alonso	E1017	
+mazarron	Cine Bahía	E0977	
+medina-de-rioseco	Teatro Principal	E0600	
+medina-del-campo	Multicines Coliseo	E0698	
+melilla	Cine Teatro Perelló	E0841	
+mequinenza	Sala Goya	E0595	
+merida	Cines Victoria Mérida	E0383	
+miranda-de-ebro	Cine Novedades Miranda de Ebro	E0647	
+miranda-de-ebro	Cine Avenida Santo Domingo	E0830	
+miranda-de-ebro	Teatro Bretón	E0986	
+molina-de-segura	Cine de Verano Abarán	E0938	
+molina-de-segura	Cine de Verano de Archena	E0962	
+molina-de-segura	Neocine HD Digital Vega Plaza	E0660	
+molina-de-segura	Terraza Centro Joven	E0988	
+mollerussa	Autocine Resquitx - Golmés	E1033	
+mollerussa	Cinema Mollerussa	E0973	
+mollerussa	Cinemes Urgell	E0325	
+monforte-de-lemos	Multicines Hollywood	E0513	
+motril	Cañaveral Cinema	E0960	
+motril	Cine San Cristobal	E0952	
+motril	Motril Cinema	E0869	
+mungia	Cine Torrebillela	E0767	
+mungia	Olalde Aretoa	E1021	
+navalmoral-de-la-mata	Cines Navalmoral	E0886	
+navia	Cine Fantasio Navia	E1037	
+oliva	Cine Terraza Charly	E0927	
+oliva	Terraza de Verano Oliva	E0730	
+olot	Cinema Teatre Comtal	E0315	
+olot	Multicines Olot	E0323	
+orihuela	Cine Navia	E0970	
+orihuela	Cines Axion de Orihuela	E0552	
+orihuela	Terraza Imperial - Cine de Verano	E0950	
+ourense	Cinebox Ourense	E0289	
+ourense	Multicines Ponte Vella	E0813	
+palafrugell	Cinema Casino	E0969	
+palafrugell	Cinema Kyton	E0456	
+palafrugell	Cinema Montgrí	E0896	
+palafrugell	Ocine Platja d'Aro	E0554	tickets.ocineplatjadaro.es
+palafrugell	Teatro Municipal de Palafrugel	E0978	
+palencia	Cines Ortega	E0361	
+palencia	Multicines Avenida	E0331	
+paterna	Abc Gran Turia	E0037	
+paterna	Centre Cultural Almassafes	E0759	
+paterna	Centre Cultural Benetússer El Molí	E0758	
+paterna	Cine La Unió Musical	E0992	
+paterna	Cine Tívoli	E0645	
+paterna	Cine de Verano Serra	E0930	
+paterna	Cines MN4	E0287	
+paterna	Cinesa Bonaire	E0405	
+paterna	Kinépolis Valencia	E0454	
+paterna	Terraza Lumiere	E0931	
+paterna	Terraza de Verano	E0987	
+pedrajas-de-san-esteban	Cine Avenida	E0235	
+penaranda-de-bracamonte	Cine Calderón	E0793	
+penarroya-pueblonuevo	Peñarroya Cinema	E1009	
+petrer	CinesMax 3D Petrer	E0728	
+petrer	Yelmo Cines Vinalopo	E0636	
+pilar-de-la-horadada	Cine Horadada	E0968	
+pilar-de-la-horadada	Cine Las Villas	E0971	
+pilar-de-la-horadada	Cine Imf Torrevieja	E0451	
+pilar-de-la-horadada	Cine Acapulco	E0942	
+plasencia	Multicines Alkázar	E0067	
+ponferrada	La Dehesa Ponferrada	E0458	
+pontevedra	Cine Club Pontevedra	E0875	
+pontevedra	Multicines Cinexpo	E0298	
+pontevedra	Cine Imperial	E0835	
+pontevedra	Cine Seixo	E0899	
+pozoblanco	Cine Pósito	E0859	
+premia-de-mar	Cine la Calandria	E0836	
+premia-de-mar	Cinema Teatre Patronat	E0858	
+premia-de-mar	Espai L'Amistat	E0919	
+premia-de-mar	Kinépolis Mataró Parc	E0396	
+puerto-del-rosario	Odeón Puerto del Rosario	E0898	
+puerto-del-rosario	Yelmo Cines Fuerteventura	E0618	
+puertollano	Multicines Ortega	E0526	
+requena	Cine Teatro Principal Requena	E1029	
+requena	Teatro García Berlanga	E1030	
+reus	Cinema Casal Montblanquí	E0161	
+reus	Cines Axion Reus	E0920	
+reus	JCA Cinemes Tarragona Valls	E0908	
+reus	MCB Altafulla - Les Bruixes	E0320	
+reus	Rambla de L'art	E0811	
+ribadeo	Cine Ribadeo	E0740	
+ronda	Multicines Ronda	E0534	
+roquetas-de-mar	Cine de verano Aguadulce	E0943	
+roquetas-de-mar	Yelmo Cines Roquetas	E0620	
+rota	Cines Victoria Rota	E0766	
+rota	Portalejo Cinemas	E0568	
+sabinanigo	Auditorio La Colina	E0643	
+sagunto	Alucine Sagunto	E0071	
+sagunto	Yelmo Cines VidaNova Parc	E0932	
+san-fernando	Cines Plaza San Fernando	E0212	
+san-fernando	Yelmo Cines Premium Bahía Sur	E1042	
+san-fernando	Multicines Las Salinas	E0520	
+san-javier	Cines IMF Galán	E0956	
+san-javier	Neocine Dos Mares	E0431	
+san-javier	Terraza España	E0949	
+san-martin-de-valdeiglesias	Cine Teatro Municipal	E0419	
+san-martin-de-valdeiglesias	Cine de Verano El Molino	E0674	
+san-martin-de-valdeiglesias	Cines Villa	E0190	
+san-martin-de-valdeiglesias	Cine Blasco	E0980	
+san-martin-de-valdeiglesias	Cine Rueda	E0966	
+san-vicente-del-raspeig	Autocine El Sur	E0783	
+san-vicente-del-raspeig	Cine Aana San Juan	E0009	
+san-vicente-del-raspeig	Cine La Esperanza	E0961	
+san-vicente-del-raspeig	Odeon Multicines Alicante	E0213	
+san-vicente-del-raspeig	Cines Axion de Santa Pola	E0752	
+sant-boi-de-llobregat	Cine Capri	E0230	
+sant-boi-de-llobregat	Cinebaix	E0276	
+sant-boi-de-llobregat	Cinemes Can Castellet	E0748	
+sant-boi-de-llobregat	Cinesa Barnasud	E0661	
+sant-boi-de-llobregat	Multicinemes La Vailet	E0714	
+sant-boi-de-llobregat	Yelmo Cines Abrera	E0735	
+sant-boi-de-llobregat	Yelmo Cines Premium Castelldefels	E0806	
+sant-cugat-del-valles	Cinemes Sant Cugat	E0403	
+sant-cugat-del-valles	Yelmo Cines Premium Sant Cugat	E0633	
+sant-cugat-del-valles	Cines Montcada	E0655	
+sant-cugat-del-valles	Yelmo Cines Baricentro	E0615	
+santa-maria-del-paramo	Cine Paramés	E0854	
+santa-marta-de-tormes	Cines Van Dyck Tormes	E0368	
+santiago-de-compostela	Cinesa As Cancelas	E0795	
+santiago-de-compostela	Multicines Compostela	E0762	
+santiago-de-compostela	Numax	E0848	
+segovia	Artesiete Segovia	E0716	
+segovia	Cines Luz de Castilla	E0285	
+siero	Cinesa Parque Principado	E0398	
+sitges	Cinema Prado	E0311	
+sitges	Cinema Retiro	E0312	
+sitges	Cinema Ribes	E0907	
+sitges	Odeon Multicines Vilanova	E2908	
+solsona	Cinema Paris	E0309	
+talavera-de-la-reina	Artesiete Los Alfares	E0803	
+tarancon	Cine de Verano Tarancón	E0914	
+tarragona	Ocine Gavarres	E0509	tickets.ocinegavarres.es
+tarragona	Yelmo Cines Parc Central	E0807	
+tarragona	Ocine Vila-seca	E0727	tickets.ocinevilaseca.es
+tarrega	Cinema Armengol	E0302	
+tarrega	Cinema Casal Agramunt	E0303	
+tarrega	Cinema Planell	E0310	
+tarrega	Cinemes Majestic	E0799	
+telde	Artesiete Las Terrazas	E0723	
+telde	Yelmo Cines Vecindario	E0634	
+teruel	Cine Maravillas	E0697	
+toledo	Cine Central 3D	E0831	
+toledo	Cines Redux	E0872	
+toledo	Real Cinema De Olías	E0574	
+toledo	mk2 Luz del Tajo	E0412	
+tomelloso	Cine Reina Sofía Socuéllamos	E1024	
+tomelloso	La Dehesa Tomelloso	E0659	
+torrelodones	Casa de Cultura Guadarrama	E0936	
+torrelodones	Centro de Arte y Cine de Verano Soto del Real	E0937	
+torrelodones	Sala Babel	E0818	
+torrelodones	Teatro Fernández-Baldor	E1000	
+torrelodones	Yelmo Cines Planetocio	E0630	
+totana	Cinema Velasco Totana	E0921	
+totana	Terraza Auditorio Parque Municipal	E0922	
+tremp	Cinema La Lira	E0305	
+tudela	Ocine Tudela	E0317	
+ubrique	Teatro Maestro Francisco Fatou	E1019	
+valdemorillo	Cine Giralt Laporta	E0753	
+valdemorillo	Cine de Verano Juan Falco	E0750	
+valdemoro	Cine Aranjuez	E0233	
+valdemoro	Cine de Verano Valdemoro	E0675	
+valdemoro	Restón Cinema	E0584	
+valdemoro	Ocine Plaza Éboli	E2900	tickets.ocineplazaeboli.es
+valdemoro	Spazio Cines	E0935	
+valdepenas	Multicines Valdepeñas	E0701	
+velez-malaga	Centro Cultural Villa de Nerja	E0976	
+velez-malaga	Yelmo Cines Rincón De La Victoria	E0632	
+velez-malaga	mk2 El Ingenio	E0433	
+viana	Cines Las Cañas Viana	E0371	
+vic	Cine Vigatà	E0612	
+vic	Multicines Sucre	E0535	
+vielha	Cinema Era Audiovisuau	E0232	
+vila-real	Cines Sucre	E0366	
+vila-real	Teatre Municipal Carmen Tur - Antic Cine España	E0791	
+vilafranca-del-penedes	Cine Kubrick	E0757	
+vilafranca-del-penedes	Cineclub Vilafranca - Sala Zazie-Casa	E0692	
+vilagarcia-de-arousa	Barbanza Multicines	E0124	
+vilagarcia-de-arousa	Cines Avenida 3D	E0742	
+vilagarcia-de-arousa	Minicines Central 	E0895	
+vilagarcia-de-arousa	Multicines Gran Arousa	E0510	
+villablino	El cine Villablino	E0888	
+villarrobledo	Gran Teatro de Villarrobledo	E0448	
+villaviciosa-de-odon	Cine Colíseo de la Cultura	E0707	
+villaviciosa-de-odon	Cine de verano el castillo	E0672	
+villaviciosa-de-odon	Cinesa Intu Xanadú	E0406	
+villena	Cines Coliseum	E0710	
+villena	Cine Club Villena	E2915	
+villena	Cine Pya	E0838	
+vinaros	Cines Axion Benicarló	E0493	
+vinaros	JJ Cinema 	E0892	
+viveiro	Cines Viveiro 3D	E0846	
+xinzo-de-limia	Cine Gesma	E0834	
+zamora	Multicines Zamora	E0540	
+zuera	Teatro Reina Sofía	E1008	
+zumaia	Aita Mari Zinema	E0214	
+zumaia	Ikusgarri Zinema	E0891	

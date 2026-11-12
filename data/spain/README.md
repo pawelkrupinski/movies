@@ -9,7 +9,7 @@ Webedia/AlloCiné platform's Spanish deployment), mirroring
 Since 2026-10 a Spanish page is not a province but Poland's shape of page
 (`data/pl/README.md`), built by the same rule — `data/scripts/town_pages.py`,
 called by `scripts/build_pages.py` into **`pages.json`** and generated into
-`geodata/.../models/SpanishRosterData.scala`:
+`geodata/src/main/resources/generated/es-roster/` (read by `models.SpanishRosterData`):
 
 1. **A major city** — one of the **43 municipalities of 150,000 people or
    more** (GeoNames municipal population; Badajoz, 149,746, is the first one
@@ -73,7 +73,7 @@ python3 data/spain/scripts/build_venue_towns.py $D/ES.txt $D/zip/ES.txt   # -> t
 python3 data/spain/scripts/build_venue_towns_test.py
 python3 data/spain/scripts/build_pages.py                                 # -> pages.json
 python3 data/spain/scripts/build_pages_test.py
-python3 data/spain/scripts/generate_roster.py                             # -> SpanishRosterData.scala
+python3 data/spain/scripts/generate_roster.py                             # -> generated/es-roster/
 rm -rf $D
 ```
 
@@ -173,10 +173,11 @@ A new page has no share card until it has deployed; list it in
    python3 data/spain/scripts/build_provinces.py
    ```
 5. **Pages** — `build_venue_towns.py` and `build_pages.py`, see "Pages" above.
-6. **Generate the Scala** (`scripts/generate_roster.py`) — turns
-   `pages.json` + `provinces.json` + `ocine.json` into
-   `geodata/src/main/scala/models/SpanishRosterData.scala`, the flat tuple data
-   `models.SpanishRoster` materialises into `City`/`Cinema` objects. It refuses
+6. **Generate the tables** (`scripts/generate_roster.py`) — turns
+   `pages.json` + `provinces.json` + `ocine.json` into the tab-separated
+   tables under `geodata/src/main/resources/generated/es-roster/` (`pages.tsv`,
+   `cinemas.tsv` keyed by page slug, `retired.tsv`, `seasonal.tsv`), which
+   `models.SpanishRosterData` reads and `models.SpanishRoster` materialises into `City`/`Cinema` objects. It refuses
    to emit a duplicate `displayName` across the whole country, or a venue on no
    page or two — both silent downstream, the first as two cinemas sharing one
    wire key, the second as a venue never scraped.
@@ -218,8 +219,8 @@ python3 data/spain/scripts/build_provinces_test.py
 
 ## What consumes this
 
-`scripts/generate_roster.py` → `geodata/src/main/scala/models/SpanishRosterData.scala`
-→ `models.SpanishRoster`, which materialises the `RosterPage` cities and
+`scripts/generate_roster.py` → `geodata/src/main/resources/generated/es-roster/`
+→ `models.SpanishRosterData` → `models.SpanishRoster`, which materialises the `RosterPage` cities and
 `SpanishCinema` venues once and hands them to `City.spanishCities`,
 `Cinema.byCity` and `CinemaScraperCatalog.spanishBaseByCity` (one
 `WebediaShowtimesClient` on `WebediaMarket.Spain` per venue, keyed by its
@@ -254,7 +255,8 @@ venue to `TaquillaClient` only when Taquilla is a SUPERSET of what
 showtimes.cc serves today: it reaches past SensaCine's last day AND carries at
 least 95% of SensaCine's sessions on the near fortnight. Cinesa never qualifies
 — its Taquilla calendar is four days long. `generate_own_sources.py` turns the
-file into `worker/.../es/SpanishOwnSourcesData.scala`; SensaCine stays each
+file into `geodata/src/main/resources/generated/es-own-sources/taquilla.tsv`
+(read by `services.cinemas.es.SpanishOwnSourcesData`); SensaCine stays each
 moved venue's fallback (`ScrapeWiring`, after two failed runs).
 
 ```
