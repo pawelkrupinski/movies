@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Generate GermanSourcesData.scala from venue-sources.json.
+"""Generate geodata/src/main/resources/generated/de-sources/feeds.tsv (read by `services.cinemas.de.GermanSourcesData`)
+from venue-sources.json.
 
 Each ROSTERED venue whose sources differ from the default arrangement
 (Filmstarts, then its kinoprogramm.com page) becomes one entry: its venue key --
@@ -14,6 +15,7 @@ Run: python3 data/germany/scripts/generate_sources.py
 
 import json
 import os
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.dirname(HERE)
@@ -21,31 +23,29 @@ ROOT = os.path.dirname(os.path.dirname(DATA))
 SRC = os.path.join(DATA, "venue-sources.json")
 MIRRORS = os.path.join(DATA, "feed-mirrors.json")
 RETIRED = os.path.join(DATA, "retired.json")
-OUT = os.path.join(ROOT, "scrapers/src/main/scala/services/cinemas/de/GermanSourcesData.scala")
-CHUNK = 250   # entries per method: one literal of them all would outgrow a JVM method
-
-
-def lit(s):
-    return json.dumps(s, ensure_ascii=False)
+OUT = os.path.join(ROOT, "geodata/src/main/resources/generated/de-sources/feeds.tsv")
+sys.path.insert(0, os.path.join(ROOT, "data", "scripts"))
+from generated_tables import list_cell, write_table  # noqa: E402
 
 
 def feed(source, venue):
+    """(kind, args) of the venue's feed in `source`: the kind `GermanSourcesData` parses into a GermanFeed."""
     if source == "filmstarts":
-        return f"f({lit(venue['filmstarts'])})"
+        return source, [venue["filmstarts"]]
     if source == "cineamo":
-        return f"c({lit(venue['cineamo'])})"
+        return source, [venue["cineamo"]]
     if source == "kinoheld":
-        return f"k({lit(venue['kinoheld']['id'])}, {lit(venue['kinoheld']['path'])})"
+        return source, [venue["kinoheld"]["id"], venue["kinoheld"]["path"]]
     if source == "kinoprogramm":
-        return f"p({lit(venue['kinoprogramm'])})"
+        return source, [venue["kinoprogramm"]]
     if source == "ownSite":
         site = venue["ownSite"]
         if site["site"] == "wix-events":
-            return f"GermanFeed.WixEvents({lit(site['page'])}, {lit(site['postcode'])})"
+            return site["site"], [site["page"], site["postcode"]]
         if site["site"] == "rex-schifferstadt":
-            return f"GermanFeed.RexSchifferstadt({lit(site['page'])})"
+            return site["site"], [site["page"]]
         if site["site"] == "arsenal-berlin":
-            return "GermanFeed.ArsenalBerlin"
+            return site["site"], []
         raise ValueError(f"{venue['key']}: no client reads a {site['site']!r} site")
     raise ValueError(source)
 
@@ -75,41 +75,17 @@ def entries(doc, copies=(), retired=()):
 
 
 def render(doc, copies=(), retired=()):
-    rows = entries(doc, copies, retired)
-    chunks = [rows[i:i + CHUNK] for i in range(0, len(rows), CHUNK)]
-    lines = [
-        "// GENERATED from data/germany/venue-sources.json by data/germany/scripts/generate_sources.py",
-        f"// -- do NOT edit by hand. Measured {doc['measuredOn']}: {len(rows)} venues served other than",
-        "// Filmstarts-then-kinoprogramm.com. Regenerate after re-running harvest_sources.py; see data/germany/README.md.",
-        "package services.cinemas.de",
-        "",
-        "import services.cinemas.common.{CineamoClient, KinoheldVenue}",
-        "",
-        "private[de] object GermanSourcesData {",
-        "  private def f(theaterId: String): GermanFeed = GermanFeed.Filmstarts(theaterId)",
-        "  private def c(id: String): GermanFeed = GermanFeed.Cineamo(CineamoClient.CinemaId(id))",
-        "  private def k(id: String, path: String): GermanFeed = GermanFeed.Kinoheld(KinoheldVenue(id, path))",
-        "  private def p(path: String): GermanFeed = GermanFeed.Kinoprogramm(path)",
-        "",
-    ]
-    for i, chunk in enumerate(chunks):
-        lines.append(f"  private def part{i}: Seq[(String, Seq[GermanFeed])] = Seq(")
-        lines += [f"    {lit(tid)} -> Seq({', '.join(feeds)})," for tid, feeds in chunk]
-        lines.append("  )")
-        lines.append("")
-    parts = " ++ ".join(f"part{i}" for i in range(len(chunks))) or "Seq.empty"
-    lines.append(f"  /** Each venue's feeds, primary first, by its venue key. */")
-    lines.append(f"  val byVenueKey: Map[String, Seq[GermanFeed]] = ({parts}).toMap")
-    lines.append("}")
-    return "\n".join(lines) + "\n"
+    """The table's rows: venue key, the feed's place in its order, its kind, its args."""
+    return [[key, str(order), kind, list_cell(args)]
+            for key, feeds in entries(doc, copies, retired)
+            for order, (kind, args) in enumerate(feeds)]
 
 
 def main():
     doc = json.load(open(SRC))
     copies = json.load(open(MIRRORS))["copies"] if os.path.exists(MIRRORS) else []
     retired = set(json.load(open(RETIRED))) if os.path.exists(RETIRED) else set()
-    with open(OUT, "w") as f:
-        f.write(render(doc, copies, retired))
+    write_table(OUT, render(doc, copies, retired))
     print(f"wrote {OUT}: {len(entries(doc, copies, retired))} venues")
 
 

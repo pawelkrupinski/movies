@@ -2,7 +2,7 @@
 
 Harvested + geocoded roster of **all German cinemas** on filmstarts.de, and the
 source the shipped German model is generated FROM. Germany has been live at
-`showtimes.cc/de` for some time: this is the input to `GermanRosterData.scala`
+`showtimes.cc/de` for some time: this is the input to `GermanRosterData` (the `generated/de-roster/` tables)
 (see "Adding venues and regenerating" below).
 
 ## Contents
@@ -50,7 +50,7 @@ source the shipped German model is generated FROM. Germany has been live at
   that chose it (`scripts/harvest_sources.py`, below): every venue's handle in each
   source, its shows there over the next fortnight and its whole horizon, its primary
   and its fallback chain; `summary` holds the country-wide split.
-  `scripts/generate_sources.py` turns it into `GermanSourcesData.scala`.
+  `scripts/generate_sources.py` turns it into `geodata/src/main/resources/generated/de-sources/feeds.tsv` (read by `GermanSourcesData`).
 - **`feed-mirrors.json`** — the feeds that serve ANOTHER venue's programme, which
   `generate_sources.py` leaves out of the venue's chain (`scripts/feed_mirrors.py`, below).
 - `filmstarts-addresses.json` — every rostered venue's address off its Filmstarts
@@ -133,8 +133,8 @@ the town is pinned in `TOWN_COORDS`.
    then run `CatalogSeedSpec` twice (it rewrites the apps' seeds) and the
    `OgCardAssetsSpec`, which lists any new page as awaiting its first share card.
 
-`generate_roster.py` emits `geodata/src/main/scala/models/GermanRosterData.scala` —
-the tuples `models.GermanRoster` materialises into `RosterPage` cities and
+`generate_roster.py` emits the tab-separated tables under `geodata/src/main/resources/generated/de-roster/`
+(pages, cinemas, retired, seasonal; read by `GermanRosterData`) — the rows `models.GermanRoster` materialises into `RosterPage` cities and
 `GermanCinema` venues. It refuses a duplicate `displayName` and a venue on no page
 or two. `scripts/ci/generated-artefacts-drift.sh` re-runs both scripts in CI, so a
 `pages.json` or roster that disagrees with its inputs fails the build.

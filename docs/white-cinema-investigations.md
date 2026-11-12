@@ -747,7 +747,7 @@ Re-check next run.
 The control, CinemaxX Kiel, lists 19 days. The kinoprogramm.com fallback count is **25, flat** against 10-30. Of the 7
 fallback venues sampled, 6 have Filmstarts `[]`, so the fallback is legitimately covering an aggregator gap. Kinobar
 (A1759) lists 11-14 and 11-20 only, which is lag. Onikon, Lindenkino and Kinobar have no kinoprogramm.com row in
-`GermanSourcesData.scala`; their `fallback: true` buckets come from their other feeds.
+the German sources table (`generated/de-sources/feeds.tsv`); their `fallback: true` buckets come from their other feeds.
 
 ### US: 1,135 white, 21 probed, 0 bugs
 
