@@ -174,7 +174,18 @@ class SystemBiletowyClientSpec extends AnyFlatSpec with Matchers with OptionValu
     SystemBiletowyClient.parse(json, KinoMikro, VisualSoftPortal("https://x.example"), titleNormalizer).head.director
   }
 
-  "SystemBiletowyClient.parse" should "read a no-colon director terminated by the next label" in {
+  // An instance's error answer is `{"error":"<message>","code":<n>}` (this one recorded off
+  // kfb.systembiletowy.pl, 2026-09). BCKino Bytom's and Mikro Bronowice's feeds answered that
+  // shape for a scrape on 2026-11-07 and 11-11, and parse read it as a missing `repertoires`
+  // (`JsResultException`), losing the instance's own message.
+  "SystemBiletowyClient.parse" should "read an error answer as the feed failing, with the instance's message" in {
+    val errorAnswer = http.get(SystemBiletowyClient.advancedFeedUrl(VisualSoftPortal("https://kfb.systembiletowy.pl")))
+    val failure = intercept[tools.UnexpectedBodyException](
+      SystemBiletowyClient.parse(errorAnswer, KinoFarys, VisualSoftPortal("https://kfb.systembiletowy.pl"), titleNormalizer))
+    failure.why shouldBe "the feed answered an error (code 200): The template \"listAdvancedSuccess.json.php\" does not exist or is unreadable in \"\"."
+  }
+
+  it should "read a no-colon director terminated by the next label" in {
     directorOf("<div>Reżyseria George Sluizer</div><div>Obsada Bernard-Pierre Donnadieu</div>") shouldBe
       Seq("George Sluizer")
   }

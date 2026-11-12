@@ -5,7 +5,7 @@ import services.movies.FormatTags
 import services.cinemas.common.ScraperParse
 import services.movies.TitleNormalizer
 import models._
-import tools.{HttpFetch, HttpRead}
+import tools.{HttpFetch, HttpRead, UnexpectedBodyException}
 import org.jsoup.Jsoup
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, OnlyMovieEventsFilter, SlotsToMovies}
@@ -125,11 +125,18 @@ object SystemBiletowyClient {
   def parse(json: String, cinema: Cinema, portal: VisualSoftPortal, titles: TitleNormalizer,
             filmGroups: Set[EventCategory] = Set.empty, institution: Option[Institution] = None): Seq[CinemaMovie] = {
     // `repertoires` is an object keyed by screening id, or `[]` when nothing is
-    // on. A body without it — an error object, a proxy's HTML — is a failed read.
-    val records = (Json.parse(json) \ "repertoires").as[JsValue] match {
-      case o: JsObject => o.values.toSeq
-      case a: JsArray  => a.value.toSeq
-      case other       => throw new IllegalStateException(s"${portal.url}: repertoires is neither an object nor an array: $other")
+    // on. A body without it is a failed read: the instance's error answer
+    // (`{"error":"<message>","code":<n>}`) named with its message, anything else as is.
+    val feed = Json.parse(json)
+    val records = (feed \ "repertoires").asOpt[JsValue] match {
+      case Some(o: JsObject) => o.values.toSeq
+      case Some(a: JsArray)  => a.value.toSeq
+      case Some(other)       => throw new IllegalStateException(s"${portal.url}: repertoires is neither an object nor an array: $other")
+      case None              =>
+        val why = (feed \ "error").asOpt[String].fold("no repertoires") { message =>
+          s"the feed answered an error${(feed \ "code").asOpt[Int].fold("")(code => s" (code $code)")}: $message"
+        }
+        throw new UnexpectedBodyException(s"${portal.url}/service.php/repertoire/list.json", why, json)
     }
     def absolute(path: String) = if (path.startsWith("http")) path else portal.url + path
 
