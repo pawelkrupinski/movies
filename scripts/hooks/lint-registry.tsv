@@ -60,7 +60,7 @@ worker:deploy.CoursierLauncherSpec	@repo
 worker:deploy.DebugMirrorListSpec	@repo
 worker:deploy.DeployImageReuseSpec	@repo
 worker:deploy.DevServerHeapCanarySpec	@repo tools/devpanel/*
-worker:deploy.DiscoveryPullRequestArtefactsSpec	@repo *.scala android/app/src/main/* data/uk/* ios/Kinowo/*
+worker:deploy.DiscoveryPullRequestArtefactsSpec	@repo *.scala android/app/src/main/* data/uk/* geodata/src/main/resources/generated/* ios/Kinowo/*
 worker:deploy.E2eShardCoverageSpec	@repo *.scala
 worker:deploy.FixtureServerBootOverlapSpec	-	boots a fixture server: not a file lint
 worker:deploy.FleetDatabaseConfigSpec	@gitops
