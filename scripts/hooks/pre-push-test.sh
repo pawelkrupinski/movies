@@ -17,6 +17,7 @@ check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/stora
 check "a roster source runs the generated-artefact drift check, and the roster generators' self-tests" "drift scripttests" "$(plan data/pl/venues.json)"
 check "a model file runs the drift check AND the sbt lints" "drift sbt" "$(plan common/src/main/scala/models/Cinema.scala)"
 check "a generated geodata table runs the drift check AND the sbt lints" "drift sbt" "$(plan geodata/src/main/scala/models/VenueTowns.scala)"
+check "...and so does a generated table resource" "drift sbt" "$(plan geodata/src/main/resources/generated/venue-towns.tsv)"
 check "the iOS City list runs the drift check and the iOS compile" "drift ios" "$(plan ios/Kinowo/Models/City.swift)"
 check "a recorded fixture runs the snapshot stamp check" "snapshot" \
   "$(plan test/resources/fixtures/08-06-2026/www.bilety24.pl/kino/organizator/x)"

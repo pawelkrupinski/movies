@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate geodata/src/main/scala/models/VenueTowns.scala — the town each venue
+"""Generate geodata/src/main/resources/generated/venue-towns.tsv (read by `models.VenueTowns`) — the town each venue
 in a HAND-WRITTEN roster sits in.
 
 Germany, Spain and the US generate their rosters, so each venue's town rides
@@ -27,22 +27,15 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-OUT = ROOT / "geodata" / "src" / "main" / "scala" / "models" / "VenueTowns.scala"
+OUT = ROOT / "geodata" / "src" / "main" / "resources" / "generated" / "venue-towns.tsv"
+sys.path.insert(0, str(ROOT / "data" / "scripts"))
+from generated_tables import write_table  # noqa: E402
 
 # (country, source file, the floor its sweep must clear).
 SOURCES = [
     ("the UK", ROOT / "data" / "uk" / "venues.json", 700),
     ("Poland", ROOT / "data" / "pl" / "venues.json", 100),
 ]
-
-# One `Seq(...)` per 150 venues, for the reason the other rosters chunk: no
-# single generated method may approach the JVM's 64 KB method-size limit.
-CHUNK = 150
-
-
-def scala_string(value: str) -> str:
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
-
 
 def rows_from(country: str, path: pathlib.Path, floor: int) -> list[tuple[str, str]]:
     venues = json.loads(path.read_text())
@@ -78,40 +71,7 @@ def main() -> int:
         return 1
 
     rows.sort()
-    lines = [
-        "// GENERATED from data/uk/venues.json + data/pl/venues.json by",
-        "// data/scripts/generate_venue_towns.py — do NOT edit by hand.",
-        f"// The town each of {len(rows)} venues sits in ({', '.join(counts)}).",
-        "// Regenerate after rebuilding either country's table; see data/uk/README.md",
-        "// and data/pl/README.md.",
-        "package models",
-        "",
-        "/** The town each venue of a HAND-WRITTEN roster sits in — the roster fact",
-        " *  Germany, Spain and the US carry in their generated rosters, and the UK and",
-        " *  Poland, whose venues are hand-written, have to keep beside them. Read by",
-        " *  `TownRanking.ofVenues` (behind `City.extraPlaces`), so `/london/` names Croydon and `/tarnow/`",
-        " *  names Bochnia rather than each naming only itself. */",
-        "private[models] object VenueTowns {",
-        "",
-    ]
-
-    chunks = [rows[i:i + CHUNK] for i in range(0, len(rows), CHUNK)]
-    for index, chunk in enumerate(chunks):
-        body = ",\n".join(
-            f"    ({scala_string(name)}, {scala_string(town)})" for name, town in chunk)
-        lines.append(f"  private def chunk{index}: Seq[(String, String)] = Seq(\n{body}\n  )")
-        lines.append("")
-
-    lines += [
-        "  /** Venue display name -> its town. Display name because that is the key a",
-        "   *  venue is identified by everywhere else — `Source.byDisplayName`, the",
-        "   *  stored slots, the scrape catalog. */",
-        "  val byDisplayName: Map[String, String] = ("
-        + " ++ ".join(f"chunk{i}" for i in range(len(chunks))) + ").toMap",
-        "}",
-    ]
-
-    OUT.write_text("\n".join(lines) + "\n")
+    write_table(OUT, rows)
     print(f"Wrote {OUT.relative_to(ROOT)}: {len(rows)} venues ({', '.join(counts)}) / "
           f"{len({t for _, t in rows})} towns")
     return 0

@@ -342,13 +342,17 @@ plan() {
             web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json|page-tests-playwright/tests/*.ts|page-tests-playwright/lint-flake-patterns*.mjs) eslint=1 ;;
         esac
         case "$path" in
-            common/src/main/scala/models/*|geodata/src/main/scala/models/*|data/*|android/app/src/main/java/pl/kinowo/model/City.kt|ios/Kinowo/Models/City.swift|scripts/ci/generated-artefacts-drift.sh) drift=1 ;;
+            common/src/main/scala/models/*|geodata/src/main/scala/models/*|geodata/src/main/resources/generated/*|data/*|android/app/src/main/java/pl/kinowo/model/City.kt|ios/Kinowo/Models/City.swift|scripts/ci/generated-artefacts-drift.sh) drift=1 ;;
         esac
         case "$path" in
             test/resources/fixtures/08-06-2026/*|scripts/read-model-snapshot-inputs.sh) snapshot=1 ;;
         esac
         case "$path" in
             *.scala|*.java|build.sbt|project/*|infra/nix/files/monitoring/grafana/dashboards/*) sbt=1 ;;
+        esac
+        # A generated table (models.GeneratedTable) is code's data: the specs reading it decide whether it is right.
+        case "$path" in
+            geodata/src/main/resources/generated/*) sbt=1 ;;
         esac
         # What NoSilencedGhCurlSpec reads: a script that silences a gh/curl read failed Main from a push this check never
         # selected (d00c5edf2).

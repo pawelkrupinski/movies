@@ -215,6 +215,7 @@ jobs:
                   patterns: |
                       common/src/main/scala/models/**
                       geodata/src/main/scala/models/**
+                      geodata/src/main/resources/generated/**
                       data/**
                       android/app/src/main/java/pl/kinowo/model/City.kt
                       ios/Kinowo/Models/City.swift

@@ -62,8 +62,12 @@ def shared():
 def committed():
     data = g.country_data()
     check("the five countries are indexed", set(data) == {"pl", "uk", "de", "us", "es"})
-    source = g.OUT.read_text(encoding="utf-8")
-    check("CitySlugIndexData.scala carries the UK's town aliases (Ilkley)", '"ilkley" -> ' in source)
+    uk = (g.OUT / "aliases-uk.tsv").read_text(encoding="utf-8").splitlines()
+    check("the committed UK table carries its town aliases (Ilkley), one tab-separated row each",
+          any(line.startswith("ilkley\t") and line.count("\t") == 1 for line in uk))
+    shared_rows = (g.OUT / "shared-qualified-slugs.tsv").read_text(encoding="utf-8").splitlines()
+    check("…and the shared pages' qualified slugs, by country (York, Pennsylvania)",
+          "us\tyork\tyork-pennsylvania" in shared_rows)
 
 
 def main():

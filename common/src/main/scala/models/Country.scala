@@ -237,7 +237,7 @@ object Country {
   ) {
     val cities: Seq[City] = City.polishCities
     lazy val renamedSlugs: Map[String, String] = PolishPages.retired
-    lazy val slugAliases: Map[String, String] = CitySlugIndexData.plAliases
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.aliases("pl")
     /** One group per voivodeship — see `CityPickerGroups.polishVoivodeships`. */
     override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.polishVoivodeships
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
@@ -260,7 +260,7 @@ object Country {
   ) {
     val cities: Seq[City] = City.ukCities
     lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.ukSuccession
-    lazy val slugAliases: Map[String, String] = CitySlugIndexData.ukAliases
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.aliases("uk")
     /** The four nations plus the Crown Dependencies, each over the counties and
      *  pages inside it — 264 pages is not an A-to-Z anybody reads. */
     override val cityGroups: Seq[CityGroup] = CityPickerGroups.ukNations
@@ -292,7 +292,7 @@ object Country {
   ) {
     val cities: Seq[City] = City.germanCities
     lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.germanSuccession
-    lazy val slugAliases: Map[String, String] = CitySlugIndexData.deAliases
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.aliases("de")
     /** The 16 Bundesländer, each over the pages inside it — see `CityPickerGroups.germanStates`. */
     override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.germanStates
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
@@ -326,7 +326,7 @@ object Country {
   ) {
     val cities: Seq[City] = City.usCities
     lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.usSuccession
-    lazy val slugAliases: Map[String, String] = CitySlugIndexData.usAliases
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.aliases("us")
     /** The states and territories, each over the pages anchored in it. */
     override val cityGroups: Seq[CityGroup] = CityPickerGroups.usStates
     // Same pair as the UK, and for the same reason — a subtitled print is the
@@ -365,7 +365,7 @@ object Country {
   ) {
     val cities: Seq[City] = City.spanishCities
     lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.spanishSuccession
-    lazy val slugAliases: Map[String, String] = CitySlugIndexData.esAliases
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.aliases("es")
     /** One group per province — see `CityPickerGroups.spanishProvinces`. */
     override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.spanishProvinces
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("VOSE", "DOB"))

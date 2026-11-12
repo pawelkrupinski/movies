@@ -1,8 +1,9 @@
 // ── Multi-module layout ─────────────────────────────────────────────────────
 //
-//   geodata — the GENERATED roster and geography tables (`models.*RosterData`, `CitySlugIndexData`,
-//             `VenueTowns`): plain tuples and strings, written by data/**/generate_*.py and read
-//             only through common's typed rosters. dependsOn nothing.
+//   geodata — the GENERATED roster and geography tables: tab-separated resources under
+//             src/main/resources/generated/ (`models.GeneratedTable`; the slug index, the venue towns) and the
+//             `models.*RosterData` tuples, written by data/**/generate_*.py and read only through common's typed
+//             rosters. dependsOn nothing.
 //   base    — the dependency-free helpers (package `tools`): the text folds (TextNormalization, Slugify,
 //             EditDistance, LatinScript, PersonName, ...), Stopwatch, BoundedCache, HttpPath, Digest. Read by
 //             the resolver and by the HTTP family alike. dependsOn nothing.

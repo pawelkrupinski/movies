@@ -29,7 +29,7 @@ page.
 ```
 python3 data/uk/scripts/harvest_towns.py --sync   # only the venues venues.json lacks
 python3 data/uk/scripts/harvest_towns_test.py
-python3 data/scripts/generate_venue_towns.py      # -> VenueTowns.scala
+python3 data/scripts/generate_venue_towns.py      # -> geodata/src/main/resources/generated/venue-towns.tsv
 curl -sO https://download.geonames.org/export/dump/cities1000.zip && unzip cities1000.zip
 python3 data/uk/scripts/geocode_towns.py cities1000.txt   # -> towns.json
 python3 data/uk/scripts/build_pages.py                    # -> pages.json
