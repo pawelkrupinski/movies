@@ -60,4 +60,26 @@ class PolishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     Country.Poland.renamedSlugs.get("ketrzyn").value shouldBe "gizycko"
     Country.Poland.bySlug.get("ketrzyn") shouldBe None
   }
+
+  "the generated pages tables" should "load every page with its venues, in order, and every major city" in {
+    PolishPages.rows should have size 139
+    PolishPages.rows.head shouldBe PolishPages.Row("augustow", "Augustów", "Augustowie", 53.8432, 22.9798,
+      "Podlaskie", multiTown = false, Seq(KinoIskra))
+    PolishPages.rows.find(_.slug == "bilgoraj").value.lat shouldBe 50.5411
+    PolishPages.rows.find(_.slug == "bilgoraj").value.lon shouldBe 22.722
+    PolishPages.rows.find(_.slug == "bochnia").value.cinemas shouldBe Seq(KinoWazka, KinoPlaneta, KinoRegis, KinoKlaps)
+    PolishPages.rows.find(_.slug == "biala-podlaska").value.nominative shouldBe "Biała Podlaska i okolice"
+    PolishPages.majorCinemas should have size 41
+    PolishPages.majorCinemas("tarnow") shouldBe Seq(MultikinoTarnow, KinoMillenium, KinoMarzenie)
+    PolishPages.majorVoivodeship("konin") shouldBe "Wielkopolskie"
+    PolishPages.retired shouldBe Map("ketrzyn" -> "gizycko", "miedzyrzec-podlaski" -> "biala-podlaska",
+      "starogard-gdanski" -> "tczew")
+  }
+
+  it should "fail loudly on a cinema the code no longer has, rather than drop it from its page" in {
+    PolishPages.cinemaNamed("KinoIskra") shouldBe KinoIskra
+    val failure = the [IllegalStateException] thrownBy PolishPages.cinemaNamed("KinoRenamedAway")
+    failure.getMessage should include ("KinoRenamedAway")
+    an [IllegalStateException] should be thrownBy PolishPages.cinemaNamed("Country")   // an object, but no Cinema
+  }
 }

@@ -201,7 +201,7 @@ jobs:
               run: git clone --quiet --depth 1 --branch main "$GITHUB_SERVER_URL/pawelkrupinski/movies-gitops" infra/kubernetes
 
             # GENERATED ROSTER ARTEFACTS. Cinema.scala's venue annotations, data/**'s venue
-            # lists and the *RosterData/VenueTowns/PolishPages Scala (geodata/, common/) + the apps' City lists
+            # lists and the *RosterData Scala and generated/ tables (geodata/) + the apps' City lists
             # generated from them are all checked in; an edit that skips regenerating the
             # links below it compiles and passes every spec that reads the stale output. So
             # when the chain's sources change, regenerate it and fail on any difference

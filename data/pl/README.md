@@ -3,7 +3,7 @@
 ## Pages
 
 Which page lists which venue is data, built by `scripts/build_pages.py` into
-`pages.json` and generated into `common/.../models/PolishPages.scala`. The
+`pages.json` and generated into the TSV resources `geodata/.../resources/generated/pl-pages/` (read by `common/.../models/PolishPages.scala`). The
 clustering rule itself lives in `data/scripts/town_pages.py`, shared with Spain
 (`data/spain/scripts/build_pages.py`); this script supplies only what is Polish —
 the towns, the majors, the locatives and the voivodeships:
@@ -35,7 +35,7 @@ unzip -o data/pl/geonames/PL.zip -d data/pl/geonames
 python3 data/pl/scripts/build_pages.py            # -> data/pl/pages.json
 python3 data/pl/scripts/build_pages_test.py
 python3 data/pl/scripts/build_venue_towns.py      # -> data/pl/venues.json
-python3 data/pl/scripts/generate_polish_pages.py  # -> PolishPages.scala + the apps' city lists
+python3 data/pl/scripts/generate_polish_pages.py  # -> generated/pl-pages/*.tsv + the apps' city lists
 python3 data/scripts/generate_venue_towns.py      # -> models.VenueTowns
 rm -rf data/pl/geonames
 ```

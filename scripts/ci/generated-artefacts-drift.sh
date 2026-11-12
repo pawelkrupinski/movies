@@ -8,7 +8,7 @@
 #   Cinema.scala's venue annotations ("// Biecz — filmweb 2315")
 #     → data/pl/scripts/build_venue_towns.py  → data/pl/venues.json
 #     → data/pl/scripts/build_pages.py        → data/pl/pages.json
-#     → data/pl/scripts/generate_polish_pages.py → PolishPages.scala + the apps' City lists
+#     → data/pl/scripts/generate_polish_pages.py → generated/pl-pages/*.tsv + the apps' City lists
 #   data/{uk,pl}/venues.json → data/scripts/generate_venue_towns.py → generated/venue-towns.tsv
 #   data/us/venues.json + towns.json → data/us/scripts/build_pages.py → data/us/pages.json
 #   data/uk/venues.json + towns.json → data/uk/scripts/build_pages.py → data/uk/pages.json
