@@ -1,0 +1,447 @@
+berlin	berlin-berlin	Berlin	Berlin	52.5244	13.4105	false	Berlin
+hamburg	hamburg-hamburg	Hamburg	Hamburg	53.5507	9.993	false	Hamburg
+muenchen	muenchen-bayern	München	Bayern	48.1374	11.5755	false	München
+koeln	koeln-nordrhein-westfalen	Köln	Nordrhein-Westfalen	50.9333	6.95	false	Köln
+frankfurt-am-main	frankfurt-am-main-hessen	Frankfurt am Main	Hessen	50.1155	8.6842	false	Frankfurt am Main
+duesseldorf	duesseldorf-nordrhein-westfalen	Düsseldorf	Nordrhein-Westfalen	51.2232	6.7793	false	Düsseldorf
+stuttgart	stuttgart-baden-wuerttemberg	Stuttgart	Baden-Württemberg	48.7823	9.177	false	Stuttgart
+essen	essen-nordrhein-westfalen	Essen	Nordrhein-Westfalen	51.4566	7.0123	false	Essen
+dortmund	dortmund-nordrhein-westfalen	Dortmund	Nordrhein-Westfalen	51.5149	7.466	false	Dortmund
+dresden	dresden-sachsen	Dresden	Sachsen	51.0509	13.7383	false	Dresden
+bremen	bremen-bremen	Bremen	Bremen	53.0758	8.8072	false	Bremen
+nuernberg	nuernberg-bayern	Nürnberg	Bayern	49.4542	11.0775	false	Nürnberg
+hannover	hannover-niedersachsen	Hannover	Niedersachsen	52.3705	9.7332	false	Hannover
+leipzig	leipzig-sachsen	Leipzig	Sachsen	51.3396	12.3713	false	Leipzig
+duisburg	duisburg-nordrhein-westfalen	Duisburg	Nordrhein-Westfalen	51.4325	6.7652	false	Duisburg
+bochum	bochum-nordrhein-westfalen	Bochum	Nordrhein-Westfalen	51.4817	7.2165	false	Bochum
+wuppertal	wuppertal-nordrhein-westfalen	Wuppertal	Nordrhein-Westfalen	51.2563	7.1482	false	Wuppertal
+bielefeld	bielefeld-nordrhein-westfalen	Bielefeld	Nordrhein-Westfalen	52.0333	8.5333	false	Bielefeld
+bonn	bonn-nordrhein-westfalen	Bonn	Nordrhein-Westfalen	50.7344	7.0955	false	Bonn
+muenster	muenster-nordrhein-westfalen	Münster	Nordrhein-Westfalen	51.9624	7.6257	false	Münster
+mannheim	mannheim-baden-wuerttemberg	Mannheim	Baden-Württemberg	49.4891	8.4669	false	Mannheim
+augsburg	augsburg-bayern	Augsburg	Bayern	48.3715	10.8985	false	Augsburg
+wiesbaden	wiesbaden-hessen	Wiesbaden	Hessen	50.086	8.2444	false	Wiesbaden
+karlsruhe	karlsruhe-baden-wuerttemberg	Karlsruhe	Baden-Württemberg	49.0094	8.4044	false	Karlsruhe
+gelsenkirchen	gelsenkirchen-nordrhein-westfalen	Gelsenkirchen	Nordrhein-Westfalen	51.5051	7.0965	false	Gelsenkirchen
+aachen	aachen-nordrhein-westfalen	Aachen	Nordrhein-Westfalen	50.7766	6.0834	false	Aachen
+moenchengladbach	moenchengladbach-nordrhein-westfalen	Mönchengladbach	Nordrhein-Westfalen	51.1854	6.4417	false	Mönchengladbach
+kiel	kiel-schleswig-holstein	Kiel	Schleswig-Holstein	54.3213	10.1349	false	Kiel
+chemnitz	chemnitz-sachsen	Chemnitz	Sachsen	50.8357	12.9292	false	Chemnitz
+braunschweig	braunschweig-niedersachsen	Braunschweig	Niedersachsen	52.2659	10.5267	false	Braunschweig
+magdeburg	magdeburg-sachsen-anhalt	Magdeburg	Sachsen-Anhalt	52.1313	11.6319	false	Magdeburg
+krefeld	krefeld-nordrhein-westfalen	Krefeld	Nordrhein-Westfalen	51.3364	6.5538	false	Krefeld
+halle	halle-sachsen-anhalt	Halle	Sachsen-Anhalt	51.4816	11.9795	false	Halle
+freiburg	freiburg-baden-wuerttemberg	Freiburg	Baden-Württemberg	47.9959	7.8522	false	Freiburg
+mainz	mainz-rheinland-pfalz	Mainz	Rheinland-Pfalz	49.9819	8.2801	false	Mainz
+oberhausen	oberhausen-nordrhein-westfalen	Oberhausen	Nordrhein-Westfalen	51.4781	6.8625	false	Oberhausen
+erfurt	erfurt-thueringen	Erfurt	Thüringen	50.9773	11.0354	false	Erfurt
+luebeck	luebeck-schleswig-holstein	Lübeck	Schleswig-Holstein	53.8689	10.6873	false	Lübeck
+hagen	hagen-nordrhein-westfalen	Hagen	Nordrhein-Westfalen	51.3608	7.4717	false	Hagen
+rostock	rostock-mecklenburg-vorpommern	Rostock	Mecklenburg-Vorpommern	54.0887	12.1405	false	Rostock
+kassel	kassel-hessen	Kassel	Hessen	51.3167	9.5	false	Kassel
+potsdam	potsdam-brandenburg	Potsdam	Brandenburg	52.3989	13.0657	false	Potsdam
+saarbruecken	saarbruecken-saarland	Saarbrücken	Saarland	49.2326	7.0098	false	Saarbrücken
+hamm	hamm-nordrhein-westfalen	Hamm	Nordrhein-Westfalen	51.6803	7.8209	false	Hamm
+muelheim-an-der-ruhr	muelheim-an-der-ruhr-nordrhein-westfalen	Mülheim an der Ruhr	Nordrhein-Westfalen	51.4322	6.8797	false	Mülheim an der Ruhr
+herne	herne-nordrhein-westfalen	Herne	Nordrhein-Westfalen	51.5388	7.2257	false	Herne
+darmstadt	darmstadt-hessen	Darmstadt	Hessen	49.8717	8.6503	false	Darmstadt
+osnabrueck	osnabrueck-niedersachsen	Osnabrück	Niedersachsen	52.2726	8.0498	false	Osnabrück
+solingen	solingen-nordrhein-westfalen	Solingen	Nordrhein-Westfalen	51.1734	7.0845	false	Solingen
+leverkusen	leverkusen-nordrhein-westfalen	Leverkusen	Nordrhein-Westfalen	51.0303	6.9843	false	Leverkusen
+oldenburg	oldenburg-niedersachsen	Oldenburg	Niedersachsen	53.1404	8.2148	false	Oldenburg
+neuss	neuss-nordrhein-westfalen	Neuss	Nordrhein-Westfalen	51.1981	6.685	false	Neuss
+regensburg	regensburg-bayern	Regensburg	Bayern	49.0151	12.1016	false	Regensburg
+heidelberg	heidelberg-baden-wuerttemberg	Heidelberg	Baden-Württemberg	49.4077	8.6908	false	Heidelberg
+paderborn	paderborn-nordrhein-westfalen	Paderborn	Nordrhein-Westfalen	51.7191	8.7544	false	Paderborn
+wuerzburg	wuerzburg-bayern	Würzburg	Bayern	49.7939	9.9512	false	Würzburg
+fuerth	fuerth-bayern	Fürth	Bayern	49.4759	10.9886	false	Fürth
+wolfsburg	wolfsburg-niedersachsen	Wolfsburg	Niedersachsen	52.4245	10.7815	false	Wolfsburg
+recklinghausen	recklinghausen-nordrhein-westfalen	Recklinghausen	Nordrhein-Westfalen	51.6138	7.1974	false	Recklinghausen
+goettingen	goettingen-niedersachsen	Göttingen	Niedersachsen	51.5344	9.9323	false	Göttingen
+heilbronn	heilbronn-baden-wuerttemberg	Heilbronn	Baden-Württemberg	49.1399	9.2205	false	Heilbronn
+ingolstadt	ingolstadt-bayern	Ingolstadt	Bayern	48.7651	11.4237	false	Ingolstadt
+ulm	ulm-baden-wuerttemberg	Ulm	Baden-Württemberg	48.3984	9.9916	false	Ulm
+bottrop	bottrop-nordrhein-westfalen	Bottrop	Nordrhein-Westfalen	51.5239	6.9285	false	Bottrop
+pforzheim	pforzheim-baden-wuerttemberg	Pforzheim	Baden-Württemberg	48.8844	8.6989	false	Pforzheim
+offenbach-am-main	offenbach-am-main-hessen	Offenbach am Main	Hessen	50.1006	8.7665	false	Offenbach am Main
+bremerhaven	bremerhaven-bremen	Bremerhaven	Bremen	53.5536	8.5755	false	Bremerhaven
+remscheid	remscheid-nordrhein-westfalen	Remscheid	Nordrhein-Westfalen	51.1798	7.1925	false	Remscheid
+reutlingen	reutlingen-baden-wuerttemberg	Reutlingen	Baden-Württemberg	48.4914	9.2043	false	Reutlingen
+koblenz	koblenz-rheinland-pfalz	Koblenz	Rheinland-Pfalz	50.3536	7.5788	false	Koblenz
+siegen	siegen-nordrhein-westfalen	Siegen	Nordrhein-Westfalen	50.8748	8.0243	false	Siegen
+bergisch-gladbach	bergisch-gladbach-nordrhein-westfalen	Bergisch Gladbach	Nordrhein-Westfalen	50.9856	7.133	false	Bergisch Gladbach
+salzgitter	salzgitter-niedersachsen	Salzgitter	Niedersachsen	52.157	10.4154	false	Salzgitter
+jena	jena-thueringen	Jena	Thüringen	50.9288	11.5899	false	Jena
+gera	gera-thueringen	Gera	Thüringen	50.8803	12.0819	false	Gera
+moers	moers-nordrhein-westfalen	Moers	Nordrhein-Westfalen	51.4534	6.6326	false	Moers
+hildesheim	hildesheim-niedersachsen	Hildesheim	Niedersachsen	52.1508	9.9511	false	Hildesheim
+erlangen	erlangen-bayern	Erlangen	Bayern	49.591	11.0078	false	Erlangen
+trier	trier-rheinland-pfalz	Trier	Rheinland-Pfalz	49.7557	6.6394	false	Trier
+aalen	aalen-baden-wuerttemberg	Aalen	Baden-Württemberg	48.8378	10.0933	false	Aalen
+achim	achim-niedersachsen	Achim	Niedersachsen	53.0142	9.0263	true	Achim|Verden an der Aller|Rotenburg an der Wümme
+ahaus	ahaus-nordrhein-westfalen	Ahaus	Nordrhein-Westfalen	52.0794	7.0134	false	Ahaus
+ahlen	ahlen-nordrhein-westfalen	Ahlen	Nordrhein-Westfalen	51.7634	7.8887	true	Ahlen|Oelde|Ennigerloh
+aichach	aichach-bayern	Aichach	Bayern	48.4575	11.1341	true	Aichach|Meitingen|Wertingen
+albstadt	albstadt-baden-wuerttemberg	Albstadt	Baden-Württemberg	48.2164	9.026	true	Albstadt|Balingen|Gammertingen
+alfeld	alfeld-niedersachsen	Alfeld	Niedersachsen	51.9838	9.8199	true	Alfeld|Gronau
+alpirsbach	alpirsbach-baden-wuerttemberg	Alpirsbach	Baden-Württemberg	48.3451	8.402	false	Alpirsbach
+alsdorf	alsdorf-nordrhein-westfalen	Alsdorf	Nordrhein-Westfalen	50.8767	6.164	true	Alsdorf|Würselen
+altenburg	altenburg-thueringen	Altenburg	Thüringen	50.9876	12.4368	true	Altenburg|Borna|Geithain
+amberg	amberg-bayern	Amberg	Bayern	49.4429	11.8627	true	Amberg|Burglengenfeld|Nittenau|Wald
+anklam	anklam-mecklenburg-vorpommern	Anklam	Mecklenburg-Vorpommern	53.8564	13.6897	true	Anklam|Zinnowitz|Heringsdorf|Koserow|Zempin
+annaberg-buchholz	annaberg-buchholz-sachsen	Annaberg-Buchholz	Sachsen	50.5795	13.0063	true	Annaberg-Buchholz|Aue|Marienberg|Schwarzenberg/Erzgebirge|Gelenau|Geyer
+ansbach	ansbach-bayern	Ansbach	Bayern	49.3048	10.5931	false	Ansbach
+arnsberg	arnsberg-nordrhein-westfalen	Arnsberg	Nordrhein-Westfalen	51.3833	8.0833	false	Arnsberg
+asbach	asbach-rheinland-pfalz	Asbach	Rheinland-Pfalz	50.6667	7.4167	true	Asbach|Hachenburg|Neitersen
+aschaffenburg	aschaffenburg-bayern	Aschaffenburg	Bayern	49.977	9.1521	false	Aschaffenburg
+auerbach	auerbach-sachsen	Auerbach	Sachsen	50.5115	12.4008	true	Auerbach|Schneeberg|Markneukirchen|Sosa
+aurich	aurich-niedersachsen	Aurich	Niedersachsen	53.4696	7.4824	false	Aurich
+backnang	backnang-baden-wuerttemberg	Backnang	Baden-Württemberg	48.9474	9.4372	true	Backnang|Allmersbach im Tal
+bad-aibling	bad-aibling-bayern	Bad Aibling	Bayern	47.8638	12.0106	true	Bad Aibling|Rosenheim
+bad-belzig	bad-belzig-brandenburg	Bad Belzig	Brandenburg	52.1418	12.5927	false	Bad Belzig
+bad-berleburg	bad-berleburg-nordrhein-westfalen	Bad Berleburg	Nordrhein-Westfalen	51.0522	8.3923	true	Bad Berleburg|Bad Laasphe|Winterberg
+bad-driburg	bad-driburg-nordrhein-westfalen	Bad Driburg	Nordrhein-Westfalen	51.733	9.0197	true	Bad Driburg|Brakel
+bad-fuessing	bad-fuessing-bayern	Bad Füssing	Bayern	48.351	13.312	false	Bad Füssing
+bad-hersfeld	bad-hersfeld-hessen	Bad Hersfeld	Hessen	50.872	9.7089	true	Bad Hersfeld|Bebra
+bad-kissingen	bad-kissingen-bayern	Bad Kissingen	Bayern	50.2023	10.0778	true	Bad Kissingen|Hammelburg|Bad Brückenau|Bad Königshofen im Grabfeld
+bad-kreuznach	bad-kreuznach-rheinland-pfalz	Bad Kreuznach	Rheinland-Pfalz	49.8414	7.8671	true	Bad Kreuznach|Bingen am Rhein|Ingelheim am Rhein|Alzey|Geisenheim|Simmern|Bad Sobernheim
+bad-mergentheim	bad-mergentheim-baden-wuerttemberg	Bad Mergentheim	Baden-Württemberg	49.4925	9.7736	true	Bad Mergentheim|Weikersheim|Boxberg|Creglingen|Dörzbach|Assamstadt
+bad-neuenahr-ahrweiler	bad-neuenahr-ahrweiler-rheinland-pfalz	Bad Neuenahr-Ahrweiler	Rheinland-Pfalz	50.5432	7.1113	true	Bad Neuenahr-Ahrweiler|Wachtberg
+bad-neustadt-an-der-saale	bad-neustadt-an-der-saale-bayern	Bad Neustadt an der Saale	Bayern	50.3217	10.2067	false	Bad Neustadt an der Saale
+bad-oldesloe	bad-oldesloe-schleswig-holstein	Bad Oldesloe	Schleswig-Holstein	53.8117	10.3742	true	Bad Oldesloe|Bad Schwartau|Bad Segeberg|Bargteheide|Schönberg
+bad-reichenhall	bad-reichenhall-bayern	Bad Reichenhall	Bayern	47.7295	12.8782	true	Bad Reichenhall|Berchtesgaden|Schönau am Königssee
+bad-saulgau	bad-saulgau-baden-wuerttemberg	Bad Saulgau	Baden-Württemberg	48.0168	9.5006	false	Bad Saulgau
+bad-schwalbach	bad-schwalbach-hessen	Bad Schwalbach	Hessen	50.142	8.0696	true	Bad Schwalbach|Nastätten
+bad-toelz	bad-toelz-bayern	Bad Tölz	Bayern	47.7611	11.5589	false	Bad Tölz
+bad-urach	bad-urach-baden-wuerttemberg	Bad Urach	Baden-Württemberg	48.4911	9.4001	false	Bad Urach
+bad-vilbel	bad-vilbel-hessen	Bad Vilbel	Hessen	50.1787	8.7376	true	Bad Vilbel|Karben
+bad-wildbad	bad-wildbad-baden-wuerttemberg	Bad Wildbad	Baden-Württemberg	48.7507	8.5504	true	Bad Wildbad|Schömberg
+bad-woerishofen	bad-woerishofen-bayern	Bad Wörishofen	Bayern	48.0067	10.5967	true	Bad Wörishofen|Türkheim
+baden-baden	baden-baden-baden-wuerttemberg	Baden-Baden	Baden-Württemberg	48.7606	8.2398	true	Baden-Baden|Gaggenau|Achern|Gernsbach
+bamberg	bamberg-bayern	Bamberg	Bayern	49.8987	10.9007	false	Bamberg
+baunatal	baunatal-hessen	Baunatal	Hessen	51.2518	9.4075	true	Baunatal|Bad Wildungen|Fritzlar|Melsungen|Wolfhagen
+bautzen	bautzen-sachsen	Bautzen	Sachsen	51.1803	14.4349	false	Bautzen
+bayreuth	bayreuth-bayern	Bayreuth	Bayern	49.9478	11.5789	true	Bayreuth|Kulmbach|Pegnitz|Hollfeld
+bernau	bernau-brandenburg	Bernau	Brandenburg	52.6798	13.5871	false	Bernau
+bernburg	bernburg-sachsen-anhalt	Bernburg	Sachsen-Anhalt	51.7946	11.7401	true	Bernburg|Köthen|Aschersleben
+besigheim	besigheim-baden-wuerttemberg	Besigheim	Baden-Württemberg	48.998	9.1427	true	Besigheim|Lauffen|Löchgau|Kirchheim am Neckar|Walheim|Erligheim
+biberach-an-der-riss	biberach-an-der-riss-baden-wuerttemberg	Biberach an der Riß	Baden-Württemberg	48.0934	9.7905	true	Biberach an der Riß|Ehingen|Bad Waldsee
+bocholt	bocholt-nordrhein-westfalen	Bocholt	Nordrhein-Westfalen	51.8388	6.6153	true	Bocholt|Wesel|Borken
+boeblingen	boeblingen-baden-wuerttemberg	Böblingen	Baden-Württemberg	48.6821	9.0117	false	Böblingen
+bramsche	bramsche-niedersachsen	Bramsche	Niedersachsen	52.4084	7.9833	true	Bramsche|Damme|Ankum
+brandenburg	brandenburg-brandenburg	Brandenburg	Brandenburg	52.4167	12.55	false	Brandenburg
+bruchsal	bruchsal-baden-wuerttemberg	Bruchsal	Baden-Württemberg	49.1243	8.598	true	Bruchsal|Bretten
+brunsbuettel	brunsbuettel-schleswig-holstein	Brunsbüttel	Schleswig-Holstein	53.8962	9.1046	false	Brunsbüttel
+buchholz-in-der-nordheide	buchholz-in-der-nordheide-niedersachsen	Buchholz in der Nordheide	Niedersachsen	53.3304	9.866	true	Buchholz in der Nordheide|Neu Wulmstorf
+buedingen	buedingen-hessen	Büdingen	Hessen	50.2901	9.1114	true	Büdingen|Gelnhausen|Nidda
+buende	buende-nordrhein-westfalen	Bünde	Nordrhein-Westfalen	52.1984	8.5864	false	Bünde
+burg	burg-sachsen-anhalt	Burg	Sachsen-Anhalt	52.2715	11.8549	false	Burg
+burghausen	burghausen-bayern	Burghausen	Bayern	48.1692	12.8314	false	Burghausen
+butzbach	butzbach-hessen	Butzbach	Hessen	50.434	8.6712	true	Butzbach|Bad Nauheim|Lich|Weilmünster
+celle	celle-niedersachsen	Celle	Niedersachsen	52.6226	10.0805	false	Celle
+cham	cham-bayern	Cham	Bayern	49.2257	12.655	false	Cham
+cloppenburg	cloppenburg-niedersachsen	Cloppenburg	Niedersachsen	52.8475	8.0474	true	Cloppenburg|Vechta|Lohne|Diepholz
+coburg	coburg-bayern	Coburg	Bayern	50.2594	10.9638	true	Coburg|Sonneberg|Lichtenfels|Kronach
+cochem	cochem-rheinland-pfalz	Cochem	Rheinland-Pfalz	50.1451	7.1638	true	Cochem|Zell
+cottbus	cottbus-brandenburg	Cottbus	Brandenburg	51.7577	14.3289	false	Cottbus
+crailsheim	crailsheim-baden-wuerttemberg	Crailsheim	Baden-Württemberg	49.1344	10.0719	true	Crailsheim|Feuchtwangen|Ilshofen|Kirchberg an der Jagst
+cuxhaven	cuxhaven-niedersachsen	Cuxhaven	Niedersachsen	53.8683	8.699	false	Cuxhaven
+dahme	dahme-brandenburg	Dahme	Brandenburg	51.8701	13.4274	false	Dahme
+daun	daun-rheinland-pfalz	Daun	Rheinland-Pfalz	50.1972	6.8294	true	Daun|Prüm|Hillesheim
+deggendorf	deggendorf-bayern	Deggendorf	Bayern	48.8409	12.9607	true	Deggendorf|Plattling|Regen|Zwiesel|Viechtach
+delmenhorst	delmenhorst-niedersachsen	Delmenhorst	Niedersachsen	53.0511	8.6309	true	Delmenhorst|Syke|Schwanewede
+demmin	demmin-mecklenburg-vorpommern	Demmin	Mecklenburg-Vorpommern	53.9076	13.0314	false	Demmin
+dessau-rosslau	dessau-rosslau-sachsen-anhalt	Dessau-Roßlau	Sachsen-Anhalt	51.8386	12.2455	false	Dessau-Roßlau
+detmold	detmold-nordrhein-westfalen	Detmold	Nordrhein-Westfalen	51.9385	8.8732	true	Detmold|Lage|Bad Pyrmont
+diessen-am-ammersee	diessen-am-ammersee-bayern	Diessen am Ammersee	Bayern	47.9509	11.1031	false	Diessen am Ammersee
+dillenburg	dillenburg-hessen	Dillenburg	Hessen	50.7411	8.287	false	Dillenburg
+dillingen-an-der-donau	dillingen-an-der-donau-bayern	Dillingen an der Donau	Bayern	48.5815	10.4953	false	Dillingen an der Donau
+dingolfing	dingolfing-bayern	Dingolfing	Bayern	48.6424	12.4928	true	Dingolfing|Landau
+dinslaken	dinslaken-nordrhein-westfalen	Dinslaken	Nordrhein-Westfalen	51.5623	6.7434	true	Dinslaken|Kamp-Lintfort|Geldern
+donaueschingen	donaueschingen-baden-wuerttemberg	Donaueschingen	Baden-Württemberg	47.9551	8.4971	true	Donaueschingen|Titisee-Neustadt|Lenzkirch|Sankt Blasien
+dreieich	dreieich-hessen	Dreieich	Hessen	50.02	8.6961	true	Dreieich|Mörfelden-Walldorf|Langen|Neu-Isenburg
+duderstadt	duderstadt-niedersachsen	Duderstadt	Niedersachsen	51.5131	10.2595	true	Duderstadt|Herzberg am Harz
+duelmen	duelmen-nordrhein-westfalen	Dülmen	Nordrhein-Westfalen	51.8315	7.2808	true	Dülmen|Coesfeld
+dueren	dueren-nordrhein-westfalen	Düren	Nordrhein-Westfalen	50.8043	6.493	true	Düren|Eschweiler
+ebersbach	ebersbach-sachsen	Ebersbach	Sachsen	50.9944	14.6	true	Ebersbach|Neustadt in Sachsen|Mittelherwigsdorf|Großhennersdorf
+eberswalde-finow	eberswalde-finow-brandenburg	Eberswalde-Finow	Brandenburg	52.8349	13.8195	false	Eberswalde-Finow
+eckental	eckental-bayern	Eckental	Bayern	49.5841	11.2175	false	Eckental
+eggenfelden	eggenfelden-bayern	Eggenfelden	Bayern	48.4051	12.7575	false	Eggenfelden
+einbeck	einbeck-niedersachsen	Einbeck	Niedersachsen	51.8202	9.8696	false	Einbeck
+eisenach	eisenach-thueringen	Eisenach	Thüringen	50.9807	10.3152	true	Eisenach|Mühlhausen|Eschwege|Bad Salzungen
+elmshorn	elmshorn-schleswig-holstein	Elmshorn	Schleswig-Holstein	53.7491	9.6618	true	Elmshorn|Wedel|Itzehoe|Uetersen
+emden	emden-niedersachsen	Emden	Niedersachsen	53.3659	7.2085	false	Emden
+emmendingen	emmendingen-baden-wuerttemberg	Emmendingen	Baden-Württemberg	48.121	7.8536	true	Emmendingen|Waldkirch|Breisach am Rhein|Schallstadt
+enkenbach-alsenborn	enkenbach-alsenborn-rheinland-pfalz	Enkenbach Alsenborn	Rheinland-Pfalz	49.4833	7.9	false	Enkenbach Alsenborn
+erbach-im-odenwald	erbach-im-odenwald-hessen	Erbach im Odenwald	Hessen	49.6615	8.994	true	Erbach im Odenwald|Höchst im Odenwald|Erlenbach am Main
+erding	erding-bayern	Erding	Bayern	48.306	11.9069	true	Erding|Neufahrn|Moosburg|Dorfen|Taufkirchen (Vils)
+erdmannhausen	erdmannhausen-baden-wuerttemberg	Erdmannhausen	Baden-Württemberg	48.9426	9.2962	true	Erdmannhausen|Marbach am Neckar|Grossbottwar
+eschborn	eschborn-hessen	Eschborn	Hessen	50.1433	8.5711	true	Eschborn|Kronberg im Taunus
+espelkamp	espelkamp-nordrhein-westfalen	Espelkamp	Nordrhein-Westfalen	52.3814	8.623	true	Espelkamp|Rahden|Lemförde|Quernheim
+esslingen-am-neckar	esslingen-am-neckar-baden-wuerttemberg	Esslingen am Neckar	Baden-Württemberg	48.7396	9.3047	false	Esslingen am Neckar
+fehmarn	fehmarn-schleswig-holstein	Fehmarn	Schleswig-Holstein	54.4378	11.1935	false	Fehmarn
+fellbach	fellbach-baden-wuerttemberg	Fellbach	Baden-Württemberg	48.8091	9.277	true	Fellbach|Kornwestheim|Waiblingen|Weinstadt|Korb
+flensburg	flensburg-schleswig-holstein	Flensburg	Schleswig-Holstein	54.788	9.4372	false	Flensburg
+forchheim	forchheim-bayern	Forchheim	Bayern	49.7175	11.0588	false	Forchheim
+frankenthal	frankenthal-rheinland-pfalz	Frankenthal	Rheinland-Pfalz	49.5341	8.3536	false	Frankenthal
+frankfurt-an-der-oder	frankfurt-an-der-oder-brandenburg	Frankfurt an der Oder	Brandenburg	52.3471	14.5506	false	Frankfurt an der Oder
+freiberg	freiberg-sachsen	Freiberg	Sachsen	50.9109	13.3388	false	Freiberg
+freudenstadt	freudenstadt-baden-wuerttemberg	Freudenstadt	Baden-Württemberg	48.4669	8.4137	false	Freudenstadt
+freyung	freyung-bayern	Freyung	Bayern	48.8095	13.5477	false	Freyung
+friedrichsdorf	friedrichsdorf-hessen	Friedrichsdorf	Hessen	50.2496	8.6428	true	Friedrichsdorf|Bad Homburg vor der Höhe
+friedrichshafen	friedrichshafen-baden-wuerttemberg	Friedrichshafen	Baden-Württemberg	47.6569	9.4755	true	Friedrichshafen|Tettnang|Markdorf|Immenstaad am Bodensee
+fuerstenfeldbruck	fuerstenfeldbruck-bayern	Fürstenfeldbruck	Bayern	48.179	11.2547	false	Fürstenfeldbruck
+fuerstenwalde-an-der-spree	fuerstenwalde-an-der-spree-brandenburg	Fürstenwalde an der Spree	Brandenburg	52.3607	14.0618	true	Fürstenwalde an der Spree|Bad Saarow|Beeskow|Buckow
+fuessen	fuessen-bayern	Füssen	Bayern	47.5714	10.7017	false	Füssen
+fulda	fulda-hessen	Fulda	Hessen	50.5516	9.6752	false	Fulda
+furtwangen-im-schwarzwald	furtwangen-im-schwarzwald-baden-wuerttemberg	Furtwangen im Schwarzwald	Baden-Württemberg	48.0516	8.2072	false	Furtwangen im Schwarzwald
+garbsen	garbsen-niedersachsen	Garbsen	Niedersachsen	52.4196	9.6033	true	Garbsen|Langenhagen|Neustadt am Rübenberge|Bad Nenndorf
+garmisch-partenkirchen	garmisch-partenkirchen-bayern	Garmisch-Partenkirchen	Bayern	47.4921	11.0958	false	Garmisch-Partenkirchen
+genthin	genthin-sachsen-anhalt	Genthin	Sachsen-Anhalt	52.4067	12.1592	false	Genthin
+germering	germering-bayern	Germering	Bayern	48.1339	11.3765	true	Germering|Dachau|Starnberg|Gauting|Gröbenzell|Gilching|Gräfelfing|Seefeld|Weßling|Inning-Stegen
+giessen	giessen-hessen	Gießen	Hessen	50.5873	8.6755	false	Gießen
+gifhorn	gifhorn-niedersachsen	Gifhorn	Niedersachsen	52.4777	10.5511	false	Gifhorn
+ginsheim-gustavsburg	ginsheim-gustavsburg-hessen	Ginsheim-Gustavsburg	Hessen	49.9711	8.3453	false	Ginsheim-Gustavsburg
+goeppingen	goeppingen-baden-wuerttemberg	Göppingen	Baden-Württemberg	48.7035	9.6521	true	Göppingen|Geislingen an der Steige|Plochingen|Donzdorf|Deggingen|Schlat
+goerlitz	goerlitz-sachsen	Görlitz	Sachsen	51.1552	14.9885	false	Görlitz
+goslar	goslar-niedersachsen	Goslar	Niedersachsen	51.9042	10.4277	false	Goslar
+gotha	gotha-thueringen	Gotha	Thüringen	50.9482	10.7019	true	Gotha|Bad Langensalza
+grafing-bei-muenchen	grafing-bei-muenchen-bayern	Grafing bei München	Bayern	48.046	11.968	true	Grafing bei München|Ebersberg
+greifswald	greifswald-mecklenburg-vorpommern	Greifswald	Mecklenburg-Vorpommern	54.0891	13.4024	false	Greifswald
+grevenbroich	grevenbroich-nordrhein-westfalen	Grevenbroich	Nordrhein-Westfalen	51.091	6.5827	true	Grevenbroich|Erkelenz
+grimma	grimma-sachsen	Grimma	Sachsen	51.2337	12.7196	true	Grimma|Döbeln|Mittweida
+gronau-westf	gronau-westf-nordrhein-westfalen	Gronau (Westf.)	Nordrhein-Westfalen	52.211	7.0224	false	Gronau (Westf.)
+gruenberg	gruenberg-hessen	Grünberg	Hessen	50.594	8.9587	false	Grünberg
+gruenstadt	gruenstadt-rheinland-pfalz	Grünstadt	Rheinland-Pfalz	49.563	8.1628	false	Grünstadt
+guestrow	guestrow-mecklenburg-vorpommern	Güstrow	Mecklenburg-Vorpommern	53.7972	12.1734	false	Güstrow
+guetersloh	guetersloh-nordrhein-westfalen	Gütersloh	Nordrhein-Westfalen	51.9069	8.3785	false	Gütersloh
+gummersbach	gummersbach-nordrhein-westfalen	Gummersbach	Nordrhein-Westfalen	51.0261	7.5647	true	Gummersbach|Olpe|Hilchenbach
+halberstadt	halberstadt-sachsen-anhalt	Halberstadt	Sachsen-Anhalt	51.8956	11.0562	true	Halberstadt|Wernigerode|Quedlinburg|Thale
+hameln	hameln-niedersachsen	Hameln	Niedersachsen	52.104	9.3562	false	Hameln
+hanau	hanau-hessen	Hanau	Hessen	50.1342	8.9142	true	Hanau|Nidderau|Alzenau
+hechingen	hechingen-baden-wuerttemberg	Hechingen	Baden-Württemberg	48.3515	8.9632	false	Hechingen
+heide	heide-schleswig-holstein	Heide	Schleswig-Holstein	54.1956	9.0974	true	Heide|Meldorf|Büsum
+heidenheim	heidenheim-baden-wuerttemberg	Heidenheim	Baden-Württemberg	48.678	10.1516	true	Heidenheim|Königsbronn
+heinsberg	heinsberg-nordrhein-westfalen	Heinsberg	Nordrhein-Westfalen	51.0636	6.0998	true	Heinsberg|Hückelhoven
+helgoland	helgoland-schleswig-holstein	Helgoland	Schleswig-Holstein	54.1814	7.8863	false	Helgoland
+helmstedt	helmstedt-niedersachsen	Helmstedt	Niedersachsen	52.2279	11.0099	true	Helmstedt|Königslutter am Elm|Grasleben
+herford	herford-nordrhein-westfalen	Herford	Nordrhein-Westfalen	52.1146	8.6734	true	Herford|Bad Salzuflen|Bad Oeynhausen|Lemgo|Löhne|Oerlinghausen|Kirchlengern|Spenge|Rödinghausen
+herrenberg	herrenberg-baden-wuerttemberg	Herrenberg	Baden-Württemberg	48.5952	8.8665	false	Herrenberg
+hof	hof-bayern	Hof	Bayern	50.313	11.9126	false	Hof
+hofheim-am-taunus	hofheim-am-taunus-hessen	Hofheim am Taunus	Hessen	50.0902	8.4493	true	Hofheim am Taunus|Bad Soden am Taunus|Eppstein|Sulzbach
+holzkirchen	holzkirchen-bayern	Holzkirchen	Bayern	47.8766	11.7018	true	Holzkirchen|Hausham|Rottach-Egern
+holzminden	holzminden-niedersachsen	Holzminden	Niedersachsen	51.828	9.4455	false	Holzminden
+homburg	homburg-saarland	Homburg	Saarland	49.3264	7.3387	true	Homburg|Zweibrücken|Sankt Wendel|Landstuhl
+hoyerswerda	hoyerswerda-sachsen	Hoyerswerda	Sachsen	51.4379	14.2355	false	Hoyerswerda
+huerth	huerth-nordrhein-westfalen	Hürth	Nordrhein-Westfalen	50.8708	6.8676	true	Hürth|Euskirchen|Brühl
+husum	husum-schleswig-holstein	Husum	Schleswig-Holstein	54.4858	9.0524	false	Husum
+ibbenbueren	ibbenbueren-nordrhein-westfalen	Ibbenbüren	Nordrhein-Westfalen	52.2796	7.7146	true	Ibbenbüren|Emsdetten|Steinfurt
+ilmenau	ilmenau-thueringen	Ilmenau	Thüringen	50.6832	10.9186	false	Ilmenau
+iserlohn	iserlohn-nordrhein-westfalen	Iserlohn	Nordrhein-Westfalen	51.3755	7.7028	true	Iserlohn|Unna|Menden|Herdecke
+juelich	juelich-nordrhein-westfalen	Jülich	Nordrhein-Westfalen	50.9215	6.3627	false	Jülich
+kaiserslautern	kaiserslautern-rheinland-pfalz	Kaiserslautern	Rheinland-Pfalz	49.443	7.7716	false	Kaiserslautern
+kaufbeuren	kaufbeuren-bayern	Kaufbeuren	Bayern	47.8824	10.6219	false	Kaufbeuren
+kaufering	kaufering-bayern	Kaufering	Bayern	48.0912	10.8791	true	Kaufering|Penzing
+kehl	kehl-baden-wuerttemberg	Kehl	Baden-Württemberg	48.573	7.8152	true	Kehl|Oberkirch
+kelheim	kelheim-bayern	Kelheim	Bayern	48.9173	11.8862	true	Kelheim|Abensberg
+kelkheim	kelkheim-hessen	Kelkheim	Hessen	50.137	8.4502	false	Kelkheim
+kempten-im-allgaeu	kempten-im-allgaeu-bayern	Kempten im Allgäu	Bayern	47.7267	10.3139	true	Kempten im Allgäu|Marktoberdorf|Immenstadt im Allgäu
+kerpen	kerpen-nordrhein-westfalen	Kerpen	Nordrhein-Westfalen	50.8699	6.6969	true	Kerpen|Frechen
+kirchheim-unter-teck	kirchheim-unter-teck-baden-wuerttemberg	Kirchheim unter Teck	Baden-Württemberg	48.6468	9.4538	false	Kirchheim unter Teck
+kitzingen	kitzingen-bayern	Kitzingen	Bayern	49.7397	10.1507	true	Kitzingen|Ochsenfurt|Dettelbach|Sommerach
+kleve	kleve-nordrhein-westfalen	Kleve	Nordrhein-Westfalen	51.7883	6.1387	true	Kleve|Goch
+kloeden	kloeden-sachsen-anhalt	Klöden	Sachsen-Anhalt	51.7618	12.8317	false	Klöden
+koenigs-wusterhausen	koenigs-wusterhausen-brandenburg	Königs Wusterhausen	Brandenburg	52.3014	13.633	true	Königs Wusterhausen|Erkner|Wildau
+koenigsbrunn	koenigsbrunn-bayern	Königsbrunn	Bayern	48.2751	10.8918	true	Königsbrunn|Gersthofen|Langerringen
+konstanz	konstanz-baden-wuerttemberg	Konstanz	Baden-Württemberg	47.6603	9.1758	false	Konstanz
+kuehlungsborn	kuehlungsborn-mecklenburg-vorpommern	Kühlungsborn	Mecklenburg-Vorpommern	54.1476	11.7432	true	Kühlungsborn|Bad Doberan|Rerik
+lahnstein	lahnstein-rheinland-pfalz	Lahnstein	Rheinland-Pfalz	50.3	7.6167	true	Lahnstein|Boppard
+lahr-am-schwarzwald	lahr-am-schwarzwald-baden-wuerttemberg	Lahr am Schwarzwald	Baden-Württemberg	48.3404	7.8689	true	Lahr am Schwarzwald|Haslach im Kinzigtal|Rust
+landau-in-der-pfalz	landau-in-der-pfalz-rheinland-pfalz	Landau in der Pfalz	Rheinland-Pfalz	49.1984	8.1169	false	Landau in der Pfalz
+landsberg-am-lech	landsberg-am-lech-bayern	Landsberg am Lech	Bayern	48.0482	10.8828	false	Landsberg am Lech
+landshut	landshut-bayern	Landshut	Bayern	48.5296	12.1618	false	Landshut
+langenfeld	langenfeld-nordrhein-westfalen	Langenfeld	Nordrhein-Westfalen	51.1082	6.9483	true	Langenfeld|Hilden|Monheim am Rhein
+lehrte	lehrte-niedersachsen	Lehrte	Niedersachsen	52.3719	9.9792	true	Lehrte|Peine|Burgdorf
+letschin	letschin-brandenburg	Letschin	Brandenburg	52.6438	14.3601	false	Letschin
+leutkirch-im-allgaeu	leutkirch-im-allgaeu-baden-wuerttemberg	Leutkirch im Allgäu	Baden-Württemberg	47.8267	10.0205	false	Leutkirch im Allgäu
+limbach-oberfrohna	limbach-oberfrohna-sachsen	Limbach-Oberfrohna	Sachsen	50.8588	12.7616	true	Limbach-Oberfrohna|Glauchau|Hohenstein-Ernstthal|Lichtenstein
+limburg	limburg-hessen	Limburg	Hessen	50.3836	8.0503	true	Limburg|Weilburg|Montabaur|Hahnstätten
+lindau	lindau-bayern	Lindau	Bayern	47.5461	9.6843	true	Lindau|Kressbronn
+lingen	lingen-niedersachsen	Lingen	Niedersachsen	52.5227	7.3255	false	Lingen
+lippstadt	lippstadt-nordrhein-westfalen	Lippstadt	Nordrhein-Westfalen	51.6737	8.3448	false	Lippstadt
+loeningen	loeningen-niedersachsen	Löningen	Niedersachsen	52.7364	7.7574	true	Löningen|Quakenbrück
+loerrach	loerrach-baden-wuerttemberg	Lörrach	Baden-Württemberg	47.615	7.6646	false	Lörrach
+lohr-am-main	lohr-am-main-bayern	Lohr am Main	Bayern	49.9892	9.5722	true	Lohr am Main|Karlstadt am Main
+luckenwalde	luckenwalde-brandenburg	Luckenwalde	Brandenburg	52.0903	13.1677	false	Luckenwalde
+ludwigsburg	ludwigsburg-baden-wuerttemberg	Ludwigsburg	Baden-Württemberg	48.8973	9.1916	false	Ludwigsburg
+ludwigslust	ludwigslust-mecklenburg-vorpommern	Ludwigslust	Mecklenburg-Vorpommern	53.3245	11.4971	false	Ludwigslust
+luebben	luebben-brandenburg	Lübben	Brandenburg	51.9381	13.8883	false	Lübben
+luedenscheid	luedenscheid-nordrhein-westfalen	Lüdenscheid	Nordrhein-Westfalen	51.2198	7.6273	true	Lüdenscheid|Altena
+lueneburg	lueneburg-niedersachsen	Lüneburg	Niedersachsen	53.2512	10.4155	false	Lüneburg
+luenen	luenen-nordrhein-westfalen	Lünen	Nordrhein-Westfalen	51.6163	7.5287	true	Lünen|Werne|Lüdinghausen
+lutherstadt-wittenberg	lutherstadt-wittenberg-sachsen-anhalt	Lutherstadt Wittenberg	Sachsen-Anhalt	51.8661	12.6497	false	Lutherstadt Wittenberg
+marburg	marburg-hessen	Marburg	Hessen	50.809	8.7707	false	Marburg
+marktredwitz	marktredwitz-bayern	Marktredwitz	Bayern	50.0044	12.0859	true	Marktredwitz|Selb|Tirschenreuth|Mitterteich
+marl	marl-nordrhein-westfalen	Marl	Nordrhein-Westfalen	51.6567	7.0904	true	Marl|Dorsten|Gladbeck
+mayen	mayen-rheinland-pfalz	Mayen	Rheinland-Pfalz	50.328	7.2228	true	Mayen|Nürburg
+meiningen	meiningen-thueringen	Meiningen	Thüringen	50.5679	10.4152	true	Meiningen|Schmalkalden
+meissen	meissen-sachsen	Meissen	Sachsen	51.1616	13.4737	true	Meissen|Weinböhla|Radeburg
+memmingen	memmingen-bayern	Memmingen	Bayern	47.9837	10.1853	false	Memmingen
+meppen	meppen-niedersachsen	Meppen	Niedersachsen	52.6906	7.291	true	Meppen|Haren|Haselünne
+merseburg	merseburg-sachsen-anhalt	Merseburg	Sachsen-Anhalt	51.3548	11.9892	true	Merseburg|Leuna
+merzig	merzig-saarland	Merzig	Saarland	49.4433	6.6387	true	Merzig|Schmelz
+meschede	meschede-nordrhein-westfalen	Meschede	Nordrhein-Westfalen	51.3502	8.2833	true	Meschede|Brilon|Korbach|Willingen
+minden	minden-nordrhein-westfalen	Minden	Nordrhein-Westfalen	52.2895	8.9146	true	Minden|Stadthagen|Bückeburg
+moelln	moelln-schleswig-holstein	Mölln	Schleswig-Holstein	53.6207	10.6875	true	Mölln|Schwarzenbek|Ratzeburg|Boizenburg
+mosbach	mosbach-baden-wuerttemberg	Mosbach	Baden-Württemberg	49.3536	9.1511	true	Mosbach|Hardthausen am Kocher
+muehlacker	muehlacker-baden-wuerttemberg	Mühlacker	Baden-Württemberg	48.9475	8.8368	true	Mühlacker|Oberriexingen
+muellheim	muellheim-baden-wuerttemberg	Müllheim	Baden-Württemberg	47.8082	7.6303	true	Müllheim|Bad Krozingen|Neuenburg am Rhein|Buggingen
+murrhardt	murrhardt-baden-wuerttemberg	Murrhardt	Baden-Württemberg	48.9819	9.5705	true	Murrhardt|Gaildorf
+nagold	nagold-baden-wuerttemberg	Nagold	Baden-Württemberg	48.5498	8.7237	true	Nagold|Altensteig|Haiterbach
+naumburg	naumburg-sachsen-anhalt	Naumburg	Sachsen-Anhalt	51.1499	11.8098	true	Naumburg|Zeitz|Zwenkau|Groitzsch|Bad Klosterlausnitz
+neckarsulm	neckarsulm-baden-wuerttemberg	Neckarsulm	Baden-Württemberg	49.1891	9.2253	false	Neckarsulm
+neresheim	neresheim-baden-wuerttemberg	Neresheim	Baden-Württemberg	48.7551	10.3304	true	Neresheim|Dischingen
+neu-anspach	neu-anspach-hessen	Neu-Anspach	Hessen	50.3167	8.5	false	Neu-Anspach
+neu-ulm	neu-ulm-bayern	Neu-Ulm	Bayern	48.3928	10.0111	true	Neu-Ulm|Günzburg|Krumbach|Sontheim|Offingen
+neubrandenburg	neubrandenburg-mecklenburg-vorpommern	Neubrandenburg	Mecklenburg-Vorpommern	53.5573	13.261	false	Neubrandenburg
+neuburg-an-der-donau	neuburg-an-der-donau-bayern	Neuburg an der Donau	Bayern	48.7322	11.1871	true	Neuburg an der Donau|Schrobenhausen|Eichstätt|Rennertshofen
+neumarkt-in-der-oberpfalz	neumarkt-in-der-oberpfalz-bayern	Neumarkt in der Oberpfalz	Bayern	49.2803	11.4628	false	Neumarkt in der Oberpfalz
+neumuenster	neumuenster-schleswig-holstein	Neumünster	Schleswig-Holstein	54.074	9.9846	false	Neumünster
+neunkirchen	neunkirchen-saarland	Neunkirchen	Saarland	49.3445	7.1805	true	Neunkirchen|Sankt Ingbert
+neuruppin	neuruppin-brandenburg	Neuruppin	Brandenburg	52.9282	12.8031	false	Neuruppin
+neustadt-an-der-aisch	neustadt-an-der-aisch-bayern	Neustadt an der Aisch	Bayern	49.5795	10.6113	true	Neustadt an der Aisch|Bad Windsheim
+neustadt-an-der-weinstrasse	neustadt-an-der-weinstrasse-rheinland-pfalz	Neustadt an der Weinstraße	Rheinland-Pfalz	49.3501	8.1389	false	Neustadt an der Weinstraße
+neustadt-in-holstein	neustadt-in-holstein-schleswig-holstein	Neustadt in Holstein	Schleswig-Holstein	54.1071	10.8145	false	Neustadt in Holstein
+neustrelitz	neustrelitz-mecklenburg-vorpommern	Neustrelitz	Mecklenburg-Vorpommern	53.3602	13.0726	false	Neustrelitz
+neuwied	neuwied-rheinland-pfalz	Neuwied	Rheinland-Pfalz	50.4336	7.4706	false	Neuwied
+niebuell	niebuell-schleswig-holstein	Niebüll	Schleswig-Holstein	54.7866	8.8285	true	Niebüll|Leck|Wyk auf Föhr
+nienburg	nienburg-niedersachsen	Nienburg	Niedersachsen	52.6444	9.2166	true	Nienburg|Sulingen|Hoya
+noerdlingen	noerdlingen-bayern	Nördlingen	Bayern	48.8512	10.4887	false	Nördlingen
+norddorf-auf-amrum	norddorf-auf-amrum-schleswig-holstein	Norddorf auf Amrum	Schleswig-Holstein	54.6795	8.3341	false	Norddorf auf Amrum
+norderney	norderney-niedersachsen	Norderney	Niedersachsen	53.708	7.1572	true	Norderney|Langeoog|Spiekeroog
+nordhausen	nordhausen-thueringen	Nordhausen	Thüringen	51.5018	10.7957	true	Nordhausen|Sondershausen|Bleicherode
+nordhorn	nordhorn-niedersachsen	Nordhorn	Niedersachsen	52.4308	7.0683	false	Nordhorn
+northeim	northeim-niedersachsen	Northeim	Niedersachsen	51.7066	10.0	true	Northeim|Bad Gandersheim
+nuertingen	nuertingen-baden-wuerttemberg	Nürtingen	Baden-Württemberg	48.6257	9.342	true	Nürtingen|Metzingen|Ensingen|Grafenberg
+oberndorf-am-neckar	oberndorf-am-neckar-baden-wuerttemberg	Oberndorf am Neckar	Baden-Württemberg	48.2906	8.5722	false	Oberndorf am Neckar
+oberstdorf	oberstdorf-bayern	Oberstdorf	Bayern	47.4072	10.2794	false	Oberstdorf
+oberviechtach	oberviechtach-bayern	Oberviechtach	Bayern	49.4581	12.4167	false	Oberviechtach
+oehringen	oehringen-baden-wuerttemberg	Öhringen	Baden-Württemberg	49.1988	9.5072	true	Öhringen|Künzelsau|Forchtenberg
+offenburg	offenburg-baden-wuerttemberg	Offenburg	Baden-Württemberg	48.4738	7.945	false	Offenburg
+oldenburg-in-holstein	oldenburg-in-holstein-schleswig-holstein	Oldenburg in Holstein	Schleswig-Holstein	54.295	10.8904	false	Oldenburg in Holstein
+oranienburg	oranienburg-brandenburg	Oranienburg	Brandenburg	52.748	13.2519	true	Oranienburg|Falkensee|Kleinmachnow
+osterholz-scharmbeck	osterholz-scharmbeck-niedersachsen	Osterholz-Scharmbeck	Niedersachsen	53.2266	8.7923	true	Osterholz-Scharmbeck|Brake|Ritterhude|Worpswede
+ottobrunn	ottobrunn-bayern	Ottobrunn	Bayern	48.0649	11.6633	true	Ottobrunn|Haar
+papenburg	papenburg-niedersachsen	Papenburg	Niedersachsen	53.0777	7.4152	true	Papenburg|Leer
+parchim	parchim-mecklenburg-vorpommern	Parchim	Mecklenburg-Vorpommern	53.4263	11.8488	false	Parchim
+passau	passau-bayern	Passau	Bayern	48.5665	13.4312	false	Passau
+pfaffenhofen-an-der-ilm	pfaffenhofen-an-der-ilm-bayern	Pfaffenhofen an der Ilm	Bayern	48.5305	11.505	true	Pfaffenhofen an der Ilm|Wolnzach
+pirmasens	pirmasens-rheinland-pfalz	Pirmasens	Rheinland-Pfalz	49.2015	7.6053	true	Pirmasens|Annweiler am Trifels|Fischbach bei Dahn
+pirna	pirna-sachsen	Pirna	Sachsen	50.9584	13.937	false	Pirna
+plauen	plauen-sachsen	Plauen	Sachsen	50.4973	12.1378	true	Plauen|Greiz|Oelsnitz
+plettenberg	plettenberg-nordrhein-westfalen	Plettenberg	Nordrhein-Westfalen	51.2095	7.8726	true	Plettenberg|Lennestadt|Attendorn
+preetz	preetz-schleswig-holstein	Preetz	Schleswig-Holstein	54.2358	10.2793	true	Preetz|Plön|Bordesholm
+prenzlau	prenzlau-brandenburg	Prenzlau	Brandenburg	53.317	13.864	false	Prenzlau
+prerow	prerow-mecklenburg-vorpommern	Prerow	Mecklenburg-Vorpommern	54.4447	12.5768	false	Prerow
+prien-am-chiemsee	prien-am-chiemsee-bayern	Prien am Chiemsee	Bayern	47.856	12.3462	true	Prien am Chiemsee|Bad Endorf
+quickborn	quickborn-schleswig-holstein	Quickborn	Schleswig-Holstein	53.7282	9.9108	true	Quickborn|Norderstedt
+rastatt	rastatt-baden-wuerttemberg	Rastatt	Baden-Württemberg	48.8585	8.2096	true	Rastatt|Ettlingen|Rheinmünster
+rathenow	rathenow-brandenburg	Rathenow	Brandenburg	52.6066	12.337	false	Rathenow
+ratingen	ratingen-nordrhein-westfalen	Ratingen	Nordrhein-Westfalen	51.2972	6.8493	true	Ratingen|Velbert|Meerbusch - Lank|Kaarst|Mettmann
+ravensburg	ravensburg-baden-wuerttemberg	Ravensburg	Baden-Württemberg	47.782	9.6106	true	Ravensburg|Weingarten
+rendsburg	rendsburg-schleswig-holstein	Rendsburg	Schleswig-Holstein	54.3018	9.6717	true	Rendsburg|Schleswig|Eckernförde|Kappeln
+rheine	rheine-nordrhein-westfalen	Rheine	Nordrhein-Westfalen	52.2851	7.4405	false	Rheine
+rheinfelden	rheinfelden-baden-wuerttemberg	Rheinfelden	Baden-Württemberg	47.5601	7.7871	true	Rheinfelden|Schopfheim|Bad Säckingen|Kandern
+riedlingen	riedlingen-baden-wuerttemberg	Riedlingen	Baden-Württemberg	48.1546	9.4756	true	Riedlingen|Mengen
+riesa	riesa-sachsen	Riesa	Sachsen	51.3078	13.2917	true	Riesa|Grossenhain|Gröditz
+rietschen	rietschen-sachsen	Rietschen	Sachsen	51.4	14.7833	false	Rietschen
+rinteln	rinteln-niedersachsen	Rinteln	Niedersachsen	52.186	9.0792	false	Rinteln
+rodgau	rodgau-hessen	Rodgau	Hessen	50.0263	8.8859	true	Rodgau|Dietzenbach|Seligenstadt|Rödermark
+rothenburg	rothenburg-bayern	Rothenburg	Bayern	49.3788	10.1871	true	Rothenburg|Uffenheim|Schrozberg|Burgbernheim
+rottenburg-am-neckar	rottenburg-am-neckar-baden-wuerttemberg	Rottenburg am Neckar	Baden-Württemberg	48.4763	8.9353	true	Rottenburg am Neckar|Mössingen
+rottweil	rottweil-baden-wuerttemberg	Rottweil	Baden-Württemberg	48.1678	8.6272	true	Rottweil|Schramberg
+rudolstadt	rudolstadt-thueringen	Rudolstadt	Thüringen	50.7204	11.3405	false	Rudolstadt
+saalfeld	saalfeld-thueringen	Saalfeld	Thüringen	50.6483	11.3654	false	Saalfeld
+salzwedel	salzwedel-sachsen-anhalt	Salzwedel	Sachsen-Anhalt	52.853	11.1529	true	Salzwedel|Lüchow|Jameln
+sangerhausen	sangerhausen-sachsen-anhalt	Sangerhausen	Sachsen-Anhalt	51.4722	11.2953	false	Sangerhausen
+schleiz	schleiz-thueringen	Schleiz	Thüringen	50.5787	11.8102	true	Schleiz|Bad Lobenstein|Wurzbach
+schloss-holte-stukenbrock	schloss-holte-stukenbrock-nordrhein-westfalen	Schloss Holte-Stukenbrock	Nordrhein-Westfalen	51.9	8.6167	true	Schloss Holte-Stukenbrock|Bad Lippspringe
+schongau	schongau-bayern	Schongau	Bayern	47.8124	10.8966	true	Schongau|Murnau am Staffelsee|Kochel am See
+schorndorf	schorndorf-baden-wuerttemberg	Schorndorf	Baden-Württemberg	48.8054	9.5272	true	Schorndorf|Rudersberg
+schwabach	schwabach-bayern	Schwabach	Bayern	49.3305	11.0235	true	Schwabach|Freystadt|Grosshabersdorf
+schwaebisch-gmuend	schwaebisch-gmuend-baden-wuerttemberg	Schwäbisch Gmünd	Baden-Württemberg	48.7995	9.7981	false	Schwäbisch Gmünd
+schwaebisch-hall	schwaebisch-hall-baden-wuerttemberg	Schwäbisch Hall	Baden-Württemberg	49.1113	9.7391	false	Schwäbisch Hall
+schwalmstadt	schwalmstadt-hessen	Schwalmstadt	Hessen	50.9333	9.2167	true	Schwalmstadt|Alsfeld|Lauterbach
+schwedt	schwedt-brandenburg	Schwedt	Brandenburg	53.0596	14.2815	false	Schwedt
+schweinfurt	schweinfurt-bayern	Schweinfurt	Bayern	50.0494	10.2218	false	Schweinfurt
+schwerin	schwerin-mecklenburg-vorpommern	Schwerin	Mecklenburg-Vorpommern	53.6294	11.4132	false	Schwerin
+senftenberg	senftenberg-brandenburg	Senftenberg	Brandenburg	51.5252	14.0016	true	Senftenberg|Finsterwalde|Schwarzheide
+siegburg	siegburg-nordrhein-westfalen	Siegburg	Nordrhein-Westfalen	50.8002	7.2077	true	Siegburg|Troisdorf|Sankt Augustin|Hennef
+simbach-am-inn	simbach-am-inn-bayern	Simbach am Inn	Bayern	48.2655	13.0231	false	Simbach am Inn
+sindelfingen	sindelfingen-baden-wuerttemberg	Sindelfingen	Baden-Württemberg	48.7	9.0167	true	Sindelfingen|Leonberg|Waldenbuch
+singen-am-hohentwiel	singen-am-hohentwiel-baden-wuerttemberg	Singen am Hohentwiel	Baden-Württemberg	47.7593	8.8403	true	Singen am Hohentwiel|Radolfzell am Bodensee|Gottmadingen|Reichenau
+sinsheim	sinsheim-baden-wuerttemberg	Sinsheim	Baden-Württemberg	49.2529	8.8787	false	Sinsheim
+soest	soest-nordrhein-westfalen	Soest	Nordrhein-Westfalen	51.5756	8.1062	false	Soest
+speyer	speyer-rheinland-pfalz	Speyer	Rheinland-Pfalz	49.3208	8.4311	true	Speyer|Schifferstadt|Walldorf|Ketsch|Limburgerhof
+spremberg	spremberg-brandenburg	Spremberg	Brandenburg	51.5696	14.3738	false	Spremberg
+stade	stade-niedersachsen	Stade	Niedersachsen	53.5941	9.473	true	Stade|Buxtehude|Harsefeld
+stendal	stendal-sachsen-anhalt	Stendal	Sachsen-Anhalt	52.6058	11.8609	false	Stendal
+stralsund	stralsund-mecklenburg-vorpommern	Stralsund	Mecklenburg-Vorpommern	54.3091	13.0818	true	Stralsund|Bergen auf Rügen|Sassnitz|Göhren|Vitte
+straubing	straubing-bayern	Straubing	Bayern	48.8813	12.5739	true	Straubing|Wörth an der Donau
+suhl	suhl-thueringen	Suhl	Thüringen	50.6091	10.694	true	Suhl|Zella-Mehlis|Masserberg
+tauberbischofsheim	tauberbischofsheim-baden-wuerttemberg	Tauberbischofsheim	Baden-Württemberg	49.6247	9.6628	true	Tauberbischofsheim|Lauda-Königshofen|Walldürn
+taucha	taucha-sachsen	Taucha	Sachsen	51.3833	12.4833	false	Taucha
+templin	templin-brandenburg	Templin	Brandenburg	53.1187	13.5022	true	Templin|Feldberger Seenlandschaft|Lychen
+torgau	torgau-sachsen	Torgau	Sachsen	51.5602	12.9962	false	Torgau
+traunreut	traunreut-bayern	Traunreut	Bayern	47.9627	12.5923	true	Traunreut|Trostberg
+traunstein	traunstein-bayern	Traunstein	Bayern	47.8683	12.6433	false	Traunstein
+tuebingen	tuebingen-baden-wuerttemberg	Tübingen	Baden-Württemberg	48.5227	9.0522	false	Tübingen
+tuttlingen	tuttlingen-baden-wuerttemberg	Tuttlingen	Baden-Württemberg	47.9846	8.8177	true	Tuttlingen|Trossingen|Emmingen-Liptingen|Kolbingen
+ueberlingen	ueberlingen-baden-wuerttemberg	Überlingen	Baden-Württemberg	47.7698	9.1714	false	Überlingen
+ueckermuende	ueckermuende-mecklenburg-vorpommern	Ueckermünde	Mecklenburg-Vorpommern	53.7379	14.0447	false	Ueckermünde
+uelzen	uelzen-niedersachsen	Uelzen	Niedersachsen	52.9645	10.567	false	Uelzen
+unterschleissheim	unterschleissheim-bayern	Unterschleissheim	Bayern	48.2804	11.5768	true	Unterschleissheim|Aschheim
+viersen	viersen-nordrhein-westfalen	Viersen	Nordrhein-Westfalen	51.2544	6.3944	true	Viersen|Willich|Nettetal|Kempen
+villingen-schwenningen	villingen-schwenningen-baden-wuerttemberg	Villingen-Schwenningen	Baden-Württemberg	48.0623	8.4936	false	Villingen-Schwenningen
+vilsbiburg	vilsbiburg-bayern	Vilsbiburg	Bayern	48.453	12.356	true	Vilsbiburg|Gangkofen
+voelklingen	voelklingen-saarland	Völklingen	Saarland	49.2503	6.8592	true	Völklingen|Saarlouis|Lebach|Illingen|Bous|Rehlingen-Siersburg
+wadern	wadern-saarland	Wadern	Saarland	49.5412	6.8877	true	Wadern|Nonnweiler|Hoppstädten-Weiersbach
+waldkraiburg	waldkraiburg-bayern	Waldkraiburg	Bayern	48.2085	12.3989	true	Waldkraiburg|Mühldorf
+waldshut-tiengen	waldshut-tiengen-baden-wuerttemberg	Waldshut-Tiengen	Baden-Württemberg	47.6232	8.2172	false	Waldshut-Tiengen
+walsrode	walsrode-niedersachsen	Walsrode	Niedersachsen	52.861	9.5928	true	Walsrode|Soltau|Schneverdingen
+wangen-im-allgaeu	wangen-im-allgaeu-baden-wuerttemberg	Wangen im Allgäu	Baden-Württemberg	47.6895	9.8325	true	Wangen im Allgäu|Isny im Allgäu|Lindenberg im Allgäu|Argenbühl
+warburg	warburg-nordrhein-westfalen	Warburg	Nordrhein-Westfalen	51.4901	9.1464	true	Warburg|Hofgeismar|Borgentreich
+waren-mueritz	waren-mueritz-mecklenburg-vorpommern	Waren (Müritz)	Mecklenburg-Vorpommern	53.5199	12.6813	true	Waren (Müritz)|Malchin|Malchow
+warendorf	warendorf-nordrhein-westfalen	Warendorf	Nordrhein-Westfalen	51.9511	7.9876	true	Warendorf|Versmold
+wasserburg-am-inn	wasserburg-am-inn-bayern	Wasserburg am Inn	Bayern	48.0525	12.2234	false	Wasserburg am Inn
+weiden-in-der-oberpfalz	weiden-in-der-oberpfalz-bayern	Weiden in der Oberpfalz	Bayern	49.6867	12.1617	false	Weiden in der Oberpfalz
+weil-am-rhein	weil-am-rhein-baden-wuerttemberg	Weil am Rhein	Baden-Württemberg	47.5933	7.6208	false	Weil am Rhein
+weil-der-stadt	weil-der-stadt-baden-wuerttemberg	Weil der Stadt	Baden-Württemberg	48.7495	8.8718	true	Weil der Stadt|Renningen|Althengstett
+weilheim-in-oberbayern	weilheim-in-oberbayern-bayern	Weilheim in Oberbayern	Bayern	47.8415	11.1548	false	Weilheim in Oberbayern
+weimar	weimar-thueringen	Weimar	Thüringen	50.9803	11.329	false	Weimar
+weinheim	weinheim-baden-wuerttemberg	Weinheim	Baden-Württemberg	49.5489	8.667	true	Weinheim|Hemsbach|Hirschberg
+weissenburg	weissenburg-bayern	Weissenburg	Bayern	49.0309	10.9722	true	Weissenburg|Gunzenhausen|Treuchtlingen|Wemding
+weiterstadt	weiterstadt-hessen	Weiterstadt	Hessen	49.9039	8.5887	true	Weiterstadt|Pfungstadt|Gross-Gerau|Seeheim-Jugenheim
+werder	werder-brandenburg	Werder	Brandenburg	52.3787	12.934	true	Werder|Beelitz
+wermelskirchen	wermelskirchen-nordrhein-westfalen	Wermelskirchen	Nordrhein-Westfalen	51.1397	7.2158	true	Wermelskirchen|Radevormwald
+wertheim-am-main	wertheim-am-main-baden-wuerttemberg	Wertheim am Main	Baden-Württemberg	49.759	9.5085	true	Wertheim am Main|Marktheidenfeld|Miltenberg
+wesenberg	wesenberg-mecklenburg-vorpommern	Wesenberg	Mecklenburg-Vorpommern	53.2803	12.9694	false	Wesenberg
+westerland	westerland-schleswig-holstein	Westerland	Schleswig-Holstein	54.9079	8.3033	false	Westerland
+wildeshausen	wildeshausen-niedersachsen	Wildeshausen	Niedersachsen	52.8945	8.4337	true	Wildeshausen|Twistringen
+wilhelmshaven	wilhelmshaven-niedersachsen	Wilhelmshaven	Niedersachsen	53.5476	8.1039	true	Wilhelmshaven|Zetel
+winsen	winsen-niedersachsen	Winsen	Niedersachsen	53.3578	10.2116	true	Winsen|Geesthacht
+wismar	wismar-mecklenburg-vorpommern	Wismar	Mecklenburg-Vorpommern	53.8922	11.4556	false	Wismar
+witten	witten-nordrhein-westfalen	Witten	Nordrhein-Westfalen	51.4436	7.3526	true	Witten|Gevelsberg|Schwelm|Wetter
+wittenberge	wittenberge-brandenburg	Wittenberge	Brandenburg	53.0001	11.7494	true	Wittenberge|Perleberg
+wittingen	wittingen-niedersachsen	Wittingen	Niedersachsen	52.7269	10.7361	false	Wittingen
+wittlich	wittlich-rheinland-pfalz	Wittlich	Rheinland-Pfalz	49.986	6.8931	true	Wittlich|Bernkastel-Kues
+wittstock	wittstock-brandenburg	Wittstock	Brandenburg	53.1612	12.4829	true	Wittstock|Pritzwalk|Zempow
+witzenhausen	witzenhausen-hessen	Witzenhausen	Hessen	51.341	9.8554	false	Witzenhausen
+wolfenbuettel	wolfenbuettel-niedersachsen	Wolfenbüttel	Niedersachsen	52.1644	10.541	false	Wolfenbüttel
+wolfratshausen	wolfratshausen-bayern	Wolfratshausen	Bayern	47.9129	11.4217	true	Wolfratshausen|Penzberg|Tutzing
+worms	worms-rheinland-pfalz	Worms	Rheinland-Pfalz	49.6328	8.3592	true	Worms|Bensheim|Viernheim|Heppenheim|Biblis
+wusterhausen	wusterhausen-brandenburg	Wusterhausen	Brandenburg	52.8912	12.4602	false	Wusterhausen
+zeil-am-main	zeil-am-main-bayern	Zeil am Main	Bayern	50.0099	10.5947	false	Zeil am Main
+zeven	zeven-niedersachsen	Zeven	Niedersachsen	53.2957	9.2756	false	Zeven
+zittau	zittau-sachsen	Zittau	Sachsen	50.8977	14.8076	false	Zittau
+zwickau	zwickau-sachsen	Zwickau	Sachsen	50.7272	12.4884	true	Zwickau|Werdau

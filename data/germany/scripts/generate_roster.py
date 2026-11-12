@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Generate geodata/src/main/scala/models/GermanRosterData.scala from pages.json.
+"""Generate geodata/src/main/resources/generated/de-roster/ (read by `models.GermanRosterData`) from pages.json.
 
 The JSON -> Scala step of the German roster pipeline, the counterpart of
 data/spain/scripts/generate_roster.py. Reads the PAGES (`pages.json`, built by
 `build_pages.py`: which town or cluster page each venue is on, and where each page
 that stopped existing now redirects), the venues (`venues.json` less
 `retired.json`) and each venue's kinoprogramm.com fallback (`kinoprogramm.json`),
-and emits the flat tuple data `models.GermanRoster` materialises into City/Cinema
-objects.
+and emits the tab-separated tables `models.GermanRoster` materialises into City/Cinema
+objects: pages.tsv, cinemas.tsv (by page slug, in page order), retired.tsv, seasonal.tsv.
 
 Things it refuses to do, because each fails SILENTLY downstream:
 
@@ -31,19 +31,9 @@ from town_pages import placement_problems  # noqa: E402
 
 ROOT = build_pages.ROOT
 DATA = build_pages.DATA
-OUT = ROOT / "geodata" / "src" / "main" / "scala" / "models" / "GermanRosterData.scala"
-
-# One `Seq(...)` per 40 pages, so no single generated method approaches the JVM's
-# 64 KB method-size limit as the roster grows.
-CHUNK = 40
-
-
-def scala_string(value: str) -> str:
-    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
-
-
-def ident(slug: str) -> str:
-    return "p_" + re.sub(r"[^a-z0-9]", "_", slug)
+OUT = ROOT / "geodata" / "src" / "main" / "resources" / "generated" / "de-roster"
+sys.path.insert(0, str(ROOT / "data" / "scripts"))
+from generated_tables import list_cell, option_cell, write_table  # noqa: E402
 
 
 def roster_problems(roster: list) -> list[str]:
@@ -55,57 +45,24 @@ def roster_problems(roster: list) -> list[str]:
     return problems
 
 
-def render(roster: list, pages: list, retired: dict, kinoprogramm: dict, town_of) -> str:
+def render(roster: list, pages: list, retired: dict, kinoprogramm: dict, town_of) -> dict:
+    """The tables, file name -> rows: pages (one a page, in order), cinemas (one a venue, keyed by
+    its page's slug, in page order), the retired slugs and the seasonal venues' names."""
     venues = {v["displayName"]: v for v in roster}
-    laender = {p["bundesland"] for p in pages}
-    lines = [
-        "// GENERATED from data/germany/pages.json by data/germany/scripts/generate_roster.py",
-        f"// — do NOT edit by hand. Full German cinema roster: {len(pages)} pages over {len(laender)} Bundesländer /",
-        f"// {len(venues):,} cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;",
-        "// see data/germany/README.md.",
-        "package models",
-        "",
-        "private[models] object GermanRosterData {",
-        "  // (displayName, pillName, venue key -- its Filmstarts theaterId, or the feed that found a venue",
-        "  //  Filmstarts does not list (\"cineamo:997\") --, kinoprogramm.com fallback path, town)",
-        "  type C = (String, String, String, Option[String], String)",
-        "  // (slug, slug qualified with its Bundesland, name, Bundesland, lat, lon, multiTown, towns, cinemas)",
-        "  type R = (String, String, String, String, Double, Double, Boolean, Seq[String], Seq[C])",
-        "",
-    ]
-    for page in pages:
-        rows = ",\n".join(
-            "    ({}, {}, {}, {}, {})".format(
-                scala_string(name), scala_string(name), scala_string(build_pages.venue_key(venues[name])),
-                "Some({})".format(scala_string(kinoprogramm[venues[name]["theaterId"]]))
-                if venues[name].get("theaterId") in kinoprogramm else "None",
-                scala_string(town_of(venues[name]["city"])))
-            for name in page["cinemas"])
-        lines.append(
-            "  private def {}: R = ({}, {}, {}, {}, {}, {}, {}, Seq({}), Seq(\n{}\n  ))".format(
-                ident(page["slug"]), scala_string(page["slug"]), scala_string(page["qualifiedSlug"]),
-                scala_string(page["name"]), scala_string(page["bundesland"]), page["lat"], page["lon"],
-                "true" if page["kind"] == "cluster" else "false",
-                ", ".join(scala_string(t) for t in page["towns"]), rows))
-
-    lines.append("")
-    names = [ident(p["slug"]) for p in pages]
-    chunks = [names[i:i + CHUNK] for i in range(0, len(names), CHUNK)]
-    for index, chunk in enumerate(chunks):
-        lines.append(f"  private def chunk{index}: Seq[R] = Seq({', '.join(chunk)})")
-    lines.append("  val pages: Seq[R] = " + " ++ ".join(f"chunk{i}" for i in range(len(chunks))))
-    lines.append("")
-    lines.append("  /** Pages that no longer exist — the regions Germany's pages were until 2026-10")
-    lines.append("   *  among them — and the page now holding most of their venues: (slug, slug")
-    lines.append("   *  qualified with its Bundesland, the page's slug). */")
-    lines.append("  val retired: Seq[(String, String, String)] = Seq(")
-    lines.extend(f"    ({scala_string(slug)}, {scala_string(r['qualifiedSlug'])}, {scala_string(r['page'])}),"
-                 for slug, r in sorted(retired.items()))
-    lines.append("  )")
-    lines.append("")
-    lines.extend(seasonal_venues.render_scala(seasonal_venues.seasonal_names("de", venues), scala_string))
-    lines.append("}")
-    return "\n".join(lines) + "\n"
+    page_rows = [
+        [page["slug"], page["qualifiedSlug"], page["name"], page["bundesland"], repr(page["lat"]), repr(page["lon"]),
+         "true" if page["kind"] == "cluster" else "false", list_cell(page["towns"])]
+        for page in pages]
+    cinema_rows = [
+        [page["slug"], name, name, build_pages.venue_key(venues[name]),
+         option_cell(kinoprogramm.get(venues[name].get("theaterId"))), town_of(venues[name]["city"])]
+        for page in pages for name in page["cinemas"]]
+    return {
+        "pages.tsv": page_rows,
+        "cinemas.tsv": cinema_rows,
+        "retired.tsv": [[slug, r["qualifiedSlug"], r["page"]] for slug, r in sorted(retired.items())],
+        "seasonal.tsv": [[name] for name in seasonal_venues.seasonal_names("de", venues)],
+    }
 
 
 def main() -> int:
@@ -121,7 +78,8 @@ def main() -> int:
     # simply has none.
     kinoprogramm = json.loads((DATA / "kinoprogramm.json").read_text())
     town_of, _ = build_pages.load_towns(build_pages.load_coords())
-    OUT.write_text(render(roster, data["pages"], data["retired"], kinoprogramm, town_of))
+    for name, rows in render(roster, data["pages"], data["retired"], kinoprogramm, town_of).items():
+        write_table(OUT / name, rows)
     covered = sum(1 for v in roster if v.get("theaterId") in kinoprogramm)
     print(f"Wrote {OUT.relative_to(ROOT)}: {len(data['pages'])} pages / {len(roster):,} cinemas, "
           f"{covered:,} with a kinoprogramm.com fallback / {len(data['retired'])} retired slugs")

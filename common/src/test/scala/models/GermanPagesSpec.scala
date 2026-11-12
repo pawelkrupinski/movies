@@ -157,4 +157,12 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   private def forAll[A](xs: Iterable[A])(f: A => Unit): Unit = org.scalatest.Inspectors.forAll(xs)(f)
+
+  "the generated German roster" should "read every table of generated/de-roster/ and match the digest of the Scala literal it replaced" in {
+    val dump = GermanRosterData.pages.map(page => page.copy(_8 = page._8.toList, _9 = page._9.toList)).mkString("\n") + "\n--\n" + GermanRosterData.retired.mkString("\n") +
+      "\n--\n" + GermanRosterData.seasonal.toSeq.sorted.mkString("\n")
+    val digest = java.security.MessageDigest.getInstance("SHA-256").digest(dump.getBytes("UTF-8")).map("%02x".format(_)).mkString
+    digest shouldBe "ae50cf7051f5280e2c1e575684d3c2c8aa7b0a444178a1f94e21ee2be224332e"
+    GeneratedTable.rows("generated/de-roster/pages.tsv") should have size GermanRosterData.pages.size.toLong
+  }
 }
