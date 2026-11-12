@@ -48,7 +48,8 @@ final class ModelInputGate(
   /** The stand-ins of the listings promoted since the last call, the record of them cleared. */
   def takeReleasedStandIns(): Seq[ListingKey] = { val taken = releasedStandIns.toSeq; releasedStandIns.clear(); taken }
 
-  /** The gate over a drain's scrapes: each listing billed otherwise than the model holds it -- new, or its facts moved -- is
+  /** The gate over a drain's scrapes: each listing billed otherwise than the model holds it -- new, its facts moved, or only
+   *  what the stages after the model read (a poster, names, words, days: [[ModelInputGate.billedAlike]]) -- is
    *  taken in only once its own questions were attempted; until then the model keeps the version it holds and the
    *  questions are asked. A listing billed as the model holds it, or no longer billed, is held no more. Then every held
    *  listing whose answers came is promoted. Returns the scraped listings the model takes in, and the promoted ones. */
@@ -63,7 +64,7 @@ final class ModelInputGate(
     gone.foreach(pending.remove)
     val taken = scraped.flatMap { case (venue, listings) => listings.filter { listing =>
       val prior = engine.held(listing.key).orElse(standInFor(engine, venue, listing, billed))
-      if (prior.contains(listing)) { if (pending.remove(listing.key) != null) released += listing.key; true }
+      if (prior.exists(ModelInputGate.billedAlike(_, listing))) { if (pending.remove(listing.key) != null) released += listing.key; true }
       else {
         val waits = readiness.awaiting(listing)
         if (waits.isEmpty) { if (pending.remove(listing.key) != null) released += listing.key; true }
@@ -71,7 +72,7 @@ final class ModelInputGate(
           val was  = Option(pending.get(listing.key))
           val held = Held(venue, listing, was.flatMap(_.ready).orElse(prior), waits, was.fold(now)(_.since))
           pending.put(listing.key, held)
-          if (was.exists(_.newest == listing)) askLedTo(was.get, waits)
+          if (was.exists(w => ModelInputGate.billedAlike(w.newest, listing))) askLedTo(was.get, waits)
           else {
             readiness.ask(listing, waits)
             logger.info(s"identity model: held ${ModelInputGate.described(listing.key)} on ${waits.size} question(s) of its own " +
@@ -195,6 +196,15 @@ object ModelInputGate {
   /** A listing's key as a log line names it: its venue and raw title, never the serialised key, whose NUL separators
    *  turned the drift replay's log binary to grep (the drift check read no verdict, run 42230476293). */
   def described(key: ListingKey): String = s"${key.venue} | ${key.rawTitle}"
+
+  /** Is `now` billed exactly as the model holds `was`: equal, and alike in what [[Listing]]'s equality leaves out and the
+   *  stages after the model read ([[Listing.movedOutsideEquality]]: its poster, names, words, screening days)? Only then is
+   *  it let through unasked. Equality alone let a listing re-published with a new poster straight in: the agreement read
+   *  the unhashed poster off the model's listing, waited on it, and the cluster was served the model's "no film" until its
+   *  filing restored the take (prod 2026-11-11, image 4061cc3: UK Odeon "Disco" x5 for 3 s, "Touché" x5 for 10 s, as
+   *  Odeon's posters first arrived). Held instead, the version the model holds -- and its take -- stands until the new
+   *  one's questions are answered (the owner: "they should stay the same until all is resolved for the new one"). */
+  def billedAlike(was: Listing, now: Listing): Boolean = was == now && !Listing.movedOutsideEquality(was, now)
 
   /** How long the input gate holds a listing at most: its questions are asked ahead of the queue and wait one attempt each,
    *  so a hold past this is a question the queue does not reach -- taken in, counted, and paged on by the alert's count. */

@@ -58,8 +58,11 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     var ledTo      = Map.empty[String, Set[Question]]
     val asked      = scala.collection.mutable.ArrayBuffer.empty[Question]
     private def question(listing: Listing) = Question.Family(agreement.VoterFamily.Imdb, s"title|${listing.title}")
+    /** The venue posters not hashed yet: a listing showing one waits on it, as the stage's `questionsOf` has it. */
+    var unhashed   = Set.empty[String]
     def awaiting(listing: Listing): Set[Question] =
-      (if (unanswered(listing.title)) Set(question(listing)) else Set.empty) ++ ledTo.getOrElse(listing.title, Set.empty)
+      (if (unanswered(listing.title)) Set(question(listing)) else Set.empty) ++ ledTo.getOrElse(listing.title, Set.empty) ++
+        listing.poster.filter(unhashed).map(url => Question.Poster(agreement.AgreementStage.PosterQuestion.Venue(url)))
     def ask(listing: Listing, questions: Set[Question]): Unit = asked ++= questions
   }
 
@@ -776,6 +779,45 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     world.families.unanswered = Set.empty                                             // the answer filed
     service.drain()
     multikino.loneElement.year shouldBe Some(1968)
+    world.pendingStore.read() shouldBe empty
+  }
+
+  // Prod 2026-11-11 23:44 (image 4061cc3, Odeon's posters new): "Odeon Liverpool Switch Island | Disco" re-published with
+  // its first poster, equal to the version the model held but for it (the poster is outside Listing's equality), so the
+  // gate let it straight in; the agreement read the unhashed poster, waited on it, and its cluster's six listings were served
+  // the model's "no film" until the poster's filing 3 s later restored the fill (UK "Disco" x5, "Touché" x5). The owner:
+  // "they shouldn't disappear, they should stay the same until all is resolved for the new one".
+  it should "keep the version it holds of a listing re-published with only a new poster until that poster is hashed" in {
+    val world   = new World
+    val service = world.service()
+    service.takeUp()
+    val poster  = "https://vwc.odeon.co.uk/CDN/media/entity/get/FilmPosterGraphic/HO00009798?width=480"
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    service.drain()
+    def multikino = service.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName)
+    multikino.loneElement.poster shouldBe None
+    world.families.unhashed = Set(poster)
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)).copy(posterUrl = Some(poster))))
+    service.drain()
+    multikino.loneElement.poster shouldBe None                                   // the version it holds stands
+    world.families.asked.toSet shouldBe Set(Question.Poster(agreement.AgreementStage.PosterQuestion.Venue(poster)))
+    world.pendingStore.read().map(_.key) shouldBe multikino.map(_.key)          // held across a restart too
+    world.families.unhashed = Set.empty                                          // the poster hashed
+    service.drain()
+    multikino.loneElement.poster shouldBe Some(poster)                           // taken in on the filing, no new scrape
+    world.pendingStore.read() shouldBe empty
+  }
+
+  it should "take a listing re-published with only a new poster in at once when that poster is hashed already" in {
+    val world   = new World
+    val service = world.service()
+    service.takeUp()
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    service.drain()
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)).copy(posterUrl = Some("https://example.org/p.jpg"))))
+    service.drain()
+    service.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.poster shouldBe Some("https://example.org/p.jpg")
+    world.families.asked shouldBe empty
     world.pendingStore.read() shouldBe empty
   }
 

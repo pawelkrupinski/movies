@@ -213,6 +213,17 @@ the model's probability cut on facts not yet filed; UK "Touché" x5 on build 903
 dropped: serving the families' film Pending while the poster is out -- a candidate's poster can pick ANOTHER film (a
 veto falls through to the poster vote), so it would trade the gap for a wrong film.
 
+**A listing re-published with only a new poster is held too** (2026-11-12; the owner: "they shouldn't disappear, they
+should stay the same until all is resolved for the new one"). The gate let a listing through unasked when the model held
+one EQUAL to it, and `Listing`'s equality leaves out what only the stages after the model read -- its poster, names,
+words, screening days (`Listing.movedOutsideEquality`). So a listing whose venue first published a poster went straight
+in, the agreement read the unhashed poster off the model's listing, waited on it, and the cluster was served the model's
+"no film" until its filing restored the take (2026-11-11, image 4061cc3, as Odeon's posters arrived: UK "Disco" x5 for
+3 s, "Touché" x5 for 10 s). The gate now lets through unasked only a listing billed alike in those fields too
+(`ModelInputGate.billedAlike`); any other is read for its questions like a changed one, the version the model holds --
+and with it the take -- served until they are attempted, then decided once. A move whose questions are all answered (most
+screening-day moves) is taken in at once, as before.
+
 **Not in the gate** (cluster-level, the stage's waits as before): the posters of candidates only other members' searches
 find, the find of an agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) STAY (1c
 dropped, below): they ask what a reshaped cluster leads to, which no listing's own questions name.
