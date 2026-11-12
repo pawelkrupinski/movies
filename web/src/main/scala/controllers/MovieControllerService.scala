@@ -327,26 +327,32 @@ class MovieControllerService(
     // net for a stale link.
     addressed.fold(toSchedules(city).filter(s => reslugged(s.movie.title)).minByOption(_.movie.title))(id => schedulesFor(city, Set(id)).headOption)
       .orElse {
+        // The one fallback that is a fault, not traffic: the address names a film with
+        // nothing here while a namesake under another id plays in this city — a re-key
+        // or an identity split left the link on the dead row.
+        def namesakeHere(id: String): Option[FilmSchedule] =
+          toSchedules(city).filter(s => s.resolved._id != id && reslugged(s.movie.title)).minByOption(_.movie.title)
         readModelFallback(
           city,
           addressed.fold(readModel.allMovies().filter(m => reslugged(m.title)).minByOption(_.title))(readModel.movie),
-          reference = s"slug='$slug'"
+          reference = s"slug='$slug'",
+          namesake = addressed.flatMap(namesakeHere)
         )
       }
   }
 
   /** Resilience for film deep-links: a title the read model KNOWS but that has no
    *  live schedule in this city right now must not 404 a shared/bookmarked link.
-   *  The common cause is a sub-second window while the worker re-projects or
-   *  re-keys the film — its `web_movies` and `web_screenings` documents arrive
-   *  over two independent change streams, so the `toSchedules` join momentarily
-   *  drops it (see [[services.readmodel.ReadModelProjectionMetrics]] for the
-   *  worker-side `films_pruned` / reprojection signal). Render the movie with an
-   *  empty showings list instead; it self-heals on the next load once both
-   *  documents land. A genuinely-ended run resolves the same way (better than a
-   *  404 for an old link); a title the read model has never seen still returns
-   *  None. Each hit is logged so the rate of "a link would have broken" is
-   *  visible alongside the worker metrics. */
+   *  Render the movie with an empty showings list instead. Almost every hit is an
+   *  ended run: a crawler (OAI-SearchBot, ExaSearchBot, bingbot, Applebot) or an old
+   *  link re-fetching a `/{city}/movie/{slug}` the sitemap or the other-cities modal
+   *  listed while the film still played there — the census of 2026-11-12 found
+   *  ~2,000 a day, 95% of them for films live in other cities and pruned here,
+   *  the rest ended everywhere. That is traffic, logged at INFO. It also covers the
+   *  sub-second window while the worker re-projects a film (`web_movies` and
+   *  `web_screenings` arrive over two change streams), which reads the same and
+   *  self-heals on the next load. A title the read model has never seen still
+   *  returns None. */
   private def knownMovieFallback(city: City, title: String, decoded: Option[String]): Option[FilmSchedule] = {
     // Newest first, per `FilmTitles`: a same-title pair with no live schedule
     // here resolves to the film that holds the bare slug.
@@ -356,13 +362,22 @@ class MovieControllerService(
   }
 
   /** Shared tail of both deep-link resolvers (by title and by slug): render the
-   *  read model's copy of the movie with no showings, and log that a link would
-   *  otherwise have broken. `reference` names whichever key the caller looked up,
-   *  so the log line stays actionable. */
-  private def readModelFallback(city: City, resolved: Option[ResolvedMovie], reference: String): Option[FilmSchedule] =
+   *  read model's copy of the movie with no showings. `reference` names whichever
+   *  key the caller looked up, so the log line stays actionable. An ended run is
+   *  INFO; a `namesake` — another film answering the same address that DOES play in
+   *  this city — is a WARN, because the link landed on a row a re-key or an identity
+   *  split left behind. */
+  private def readModelFallback(city: City, resolved: Option[ResolvedMovie], reference: String,
+                                namesake: Option[FilmSchedule] = None): Option[FilmSchedule] =
     resolved.map { movie =>
-      logger.warn(s"film deep-link served from the read model without a live ${city.slug} schedule " +
-        s"(reprojection/rekey gap or ended run): $reference filmId=${movie._id}")
+      namesake match {
+        case Some(live) =>
+          logger.warn(s"film deep-link resolved to a film with no live ${city.slug} schedule while a namesake plays there " +
+            s"(rekey or identity split): $reference filmId=${movie._id} namesake=${live.resolved._id}")
+        case None =>
+          logger.info(s"film deep-link to a film with no live ${city.slug} schedule (ended run), served without showtimes: " +
+            s"$reference filmId=${movie._id}")
+      }
       filmSchedule(movie, cinemaFilmUrls = Seq.empty, showings = Seq.empty, city, nowIn(city).toLocalDate)
     }
 }
