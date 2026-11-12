@@ -320,6 +320,20 @@ class RatchetTest(unittest.TestCase):
                            "overruled\n\nFixes-Red: 2473\nIdentity-Design: docs/design/feed-links.md")
         self.assertEqual(0, self.guards(f"{self.base}..{head}"))
 
+    def test_a_red_fix_reverting_the_rule_change_that_caused_the_red_passes(self):
+        caused = self.commit({"common/src/main/resources/title-rules.tsv": "row\n"}, "Title rules: a row")
+        self.scratch("scratch_git", "revert", "--no-edit", caused)
+        self.scratch("scratch_git", "commit", "--amend", "-qm",
+                     f"Revert \"Title rules: a row\"\n\nThis reverts commit {caused}.\n\nFixes-Red: 2409")
+        head = self.scratch("scratch_git", "rev-parse", "HEAD")
+        self.assertEqual(0, self.guards(f"{caused}..{head}"))
+
+    def test_a_red_fix_calling_itself_a_revert_but_adding_a_rule_row_fails(self):
+        caused = self.commit({"common/src/main/resources/title-rules.tsv": "row\n"}, "Title rules: a row")
+        head = self.commit({"common/src/main/resources/title-rules.tsv": "another row\n"},
+                           f"Revert \"Title rules: a row\"\n\nThis reverts commit {caused}.\n\nFixes-Red: 2409")
+        self.assertEqual(1, self.guards(f"{caused}..{head}"))
+
     def test_an_identity_design_trailer_naming_no_document_fails(self):
         head = self.commit({self.RULE: "rule\n"}, "overruled\n\nFixes-Red: 2473\nIdentity-Design: measured, trust me")
         rc, err = self.run_rules("driftguards", f"{self.base}..{head}")

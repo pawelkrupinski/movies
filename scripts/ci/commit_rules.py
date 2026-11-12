@@ -44,7 +44,8 @@
 #   - A RED FIX IS NO RESOLVER RULE. A flip or drift is fixed in the incremental state that diverges -- a lag, a budget,
 #     the queue's order, a cache, a restart's key -- never by a new identity resolver rule: a rule is identity design,
 #     measured on the full corpus in every country. A commit naming a red (`Fixes-Red:`) that changes RULE_FILES carries
-#     `Identity-Design: <doc>`, a document that exists in the commit's tree. Mechanism files need none.
+#     `Identity-Design: <doc>`, a document that exists in the commit's tree. Mechanism files need none, nor does a revert
+#     (`This reverts commit <sha>`) that leaves every rule file exactly as it was before <sha>: it adds no rule.
 #   - A CHANGE TO THE DRIFT HARNESS CARRIES ITS SELF-TEST (G6): a commit changing HARNESS_FILES also changes one of
 #     SELF_TEST_FILES -- a third of the week's drift reds were the judge's, not the product's (91cfbe7e8, 7b586af0f,
 #     5df3295bd) -- or says `Drift-Harness-Refactor: <why>`.
@@ -355,9 +356,19 @@ def drift_fix_carries_its_slice(c: Commit, opts: dict) -> list[str]:
             "  commit says it for that one: 'Drift-Slice-For: <sha> none -- <why>'."]
 
 
+REVERTS = re.compile(r"^This reverts commit ([0-9a-f]{40})\b", re.M)
+
+
+def restores_its_reverted_rules(c: Commit, rules: list[str]) -> bool:
+    """A revert (`This reverts commit <sha>`, as `git revert` writes it) whose every rule file is byte for byte the
+    reverted commit's parent's: it takes the red's change back out and adds no rule (agentctl's red reverts, Main #2409)."""
+    reverted = REVERTS.search(c.message)
+    return bool(reverted) and all(at(c.sha, p) == at(f"{reverted.group(1)}^", p) for p in rules)
+
+
 def red_fix_is_no_rule(c: Commit, _opts: dict) -> list[str]:
     rules = sorted(p for p in c.changed if RULE_FILES.match(p))
-    if not c.claims_fix() or not rules:
+    if not c.claims_fix() or not rules or restores_its_reverted_rules(c, rules):
         return []
     docs = c.trailers.get("identity-design", [])
     if docs and all(at(c.sha, d.split()[0]) for d in docs):
