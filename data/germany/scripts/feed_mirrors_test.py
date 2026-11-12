@@ -80,10 +80,10 @@ def test_the_generated_chain_leaves_a_copy_out_and_serves_the_venue_from_its_nex
     doc = {"venues": [venue("A2700", "kinoheld", ["cineamo", "filmstarts"], filmstarts="A2700", cineamo="448",
                             kinoheld={"id": "695", "path": "/kino/gruenstadt/filmwelt-gruenstadt"})]}
     copy = {"venue": "A2700", "source": "kinoheld", "handle": "695"}
-    assert gs.entries(doc) == [("A2700", ['k("695", "/kino/gruenstadt/filmwelt-gruenstadt")', 'c("448")', 'f("A2700")'])]
-    assert gs.entries(doc, [copy]) == [("A2700", ['c("448")', 'f("A2700")'])]
+    assert gs.entries(doc) == [("A2700", [("kinoheld", ["695", "/kino/gruenstadt/filmwelt-gruenstadt"]), ("cineamo", ["448"]), ("filmstarts", ["A2700"])])]
+    assert gs.entries(doc, [copy]) == [("A2700", [("cineamo", ["448"]), ("filmstarts", ["A2700"])])]
     # a handle the harvest re-measured is another entry: the copy names the one it saw
-    assert gs.entries(doc, [{**copy, "handle": "999"}])[0][1][0].startswith("k(")
+    assert gs.entries(doc, [{**copy, "handle": "999"}])[0][1][0][0] == "kinoheld"
 
 
 def test_a_venue_whose_every_feed_is_a_copy_must_be_retired():

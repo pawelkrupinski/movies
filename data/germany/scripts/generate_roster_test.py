@@ -29,21 +29,20 @@ def test_refuses_a_duplicate_display_name():
 
 
 def test_renders_each_venue_with_its_fallback_and_town_and_each_page_with_its_land():
-    out = gr.render(ROSTER, PAGES, {"koeln-alt": {"page": "eschborn", "qualifiedSlug": "koeln-alt-hessen"}},
-                    {"A1": "/kino/frankfurt/lichtburg-1"}, lambda city: {"Frankfurt": "Frankfurt am Main"}.get(city, city))
-    assert '("Lichtburg", "Lichtburg", "A1", Some("/kino/frankfurt/lichtburg-1"), "Frankfurt am Main")' in out
-    assert '("Capitol", "Capitol", "A2", None, "Eschborn")' in out
-    assert ('("eschborn", "eschborn-hessen", "Eschborn", "Hessen", 50.1, 8.5, true, '
-            'Seq("Eschborn", "Kelkheim")') in out
-    assert '"frankfurt-am-main-hessen", "Frankfurt am Main", "Hessen", 50.1, 8.7, false' in out
-    assert '("koeln-alt", "koeln-alt-hessen", "eschborn"),' in out
+    tables = gr.render(ROSTER, PAGES, {"koeln-alt": {"page": "eschborn", "qualifiedSlug": "koeln-alt-hessen"}},
+                       {"A1": "/kino/frankfurt/lichtburg-1"}, lambda city: {"Frankfurt": "Frankfurt am Main"}.get(city, city))
+    assert ["frankfurt-am-main", "Lichtburg", "Lichtburg", "A1", "/kino/frankfurt/lichtburg-1", "Frankfurt am Main"] in tables["cinemas.tsv"]
+    assert ["eschborn", "Capitol", "Capitol", "A2", "", "Eschborn"] in tables["cinemas.tsv"]
+    assert ["eschborn", "eschborn-hessen", "Eschborn", "Hessen", "50.1", "8.5", "true", "Eschborn|Kelkheim"] in tables["pages.tsv"]
+    assert ["frankfurt-am-main", "frankfurt-am-main-hessen", "Frankfurt am Main", "Hessen", "50.1", "8.7", "false",
+            "Frankfurt am Main"] in tables["pages.tsv"]
+    assert tables["retired.tsv"] == [["koeln-alt", "koeln-alt-hessen", "eschborn"]]
 
 
 def test_renders_the_seasonal_venues_by_name():
     roster = ROSTER + [{"theaterId": "A9", "name": "Freiluftkino", "city": "Frankfurt", "displayName": "Freiluftkino Main"}]
     pages = [dict(PAGES[0], cinemas=["Lichtburg", "Freiluftkino Main"]), PAGES[1]]
-    out = gr.render(roster, pages, {}, {}, lambda city: city)
-    assert '  val seasonal: Set[String] = Set(\n    "Freiluftkino Main",\n  )' in out
+    assert gr.render(roster, pages, {}, {}, lambda city: city)["seasonal.tsv"] == [["Freiluftkino Main"]]
 
 
 def main():
