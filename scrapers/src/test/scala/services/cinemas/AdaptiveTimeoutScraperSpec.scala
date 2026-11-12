@@ -60,20 +60,28 @@ class AdaptiveTimeoutScraperSpec extends AnyFlatSpec with Matchers {
     // Accepts the TCP connect and never answers, so the read ends only by the cut's interrupt.
     val listener = new java.net.ServerSocket(0, 50, java.net.InetAddress.getLoopbackAddress)
     val held     = new java.util.concurrent.ConcurrentLinkedQueue[java.net.Socket]
-    val acceptor = new Thread(() => { scala.util.Try(while (true) held.add(listener.accept())); () })
+    // Counted once the accepted socket is held: the cut returns on the test thread while this thread may not yet have
+    // added it (Main #2407: `held.size` read 0 the instant the cut returned).
+    val accepted = new CountDownLatch(1)
+    val acceptor = new Thread(() => {
+      scala.util.Try(while (true) { held.add(listener.accept()); accepted.countDown() }); ()
+    })
     acceptor.setDaemon(true)
     acceptor.start()
     val executor = DaemonExecutors.virtualThreadEC("test-adaptive-timeout")
     try {
       val fetch  = new RealHttpFetch()
-      val stats  = new HostScrapeStats(floor = 1.milli, ceiling = 300.millis)
+      // A new host's budget is the ceiling: long enough that the fetch is surely connected and reading when the cut
+      // falls, however loaded the runner; the cut ends the wait, so this is the test's time, not a bound it asserts.
+      val stats  = new HostScrapeStats(floor = 1.milli, ceiling = 2.seconds)
       val stalls = s"http://127.0.0.1:${listener.getLocalPort}/repertuar"
       val unwound = new CountDownLatch(1)
       val s      = new AdaptiveTimeoutScraper(
         delegate(Set("127.0.0.1")) { try fetch.get(stalls) finally unwound.countDown(); OneMovie }, stats, executor)
       val events = LogCapture.capture("tools.RealHttpFetch") {
         intercept[TimeoutException](s.fetch())
-        held.size shouldBe 1 // the read was on the wire when it was cut
+        accepted.await(SpecTimeouts.Io.toMillis, MILLISECONDS) shouldBe true // the read was on the wire when it was cut
+        held.size shouldBe 1
         // The interrupted read unwinds on the executor's thread, after the cut returned: wait for it to log.
         unwound.await(SpecTimeouts.Io.toMillis, MILLISECONDS) shouldBe true
       }
