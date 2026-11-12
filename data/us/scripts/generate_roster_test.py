@@ -74,10 +74,12 @@ def test_a_venue_across_a_zone_line_from_its_page_carries_its_own_zone():
     pages = [{'slug': 'knoxville', 'qualifiedSlug': 'knoxville-tennessee', 'name': 'Knoxville', 'state': 'Tennessee',
               'kind': 'cluster', 'lat': 35.96, 'lon': -83.92, 'towns': ['Knoxville, Tennessee'],
               'cinemas': ['k1', 'k2', 'c1']}]
-    text, own = gr.render(pages, {}, venues, lambda key: key.split(',')[0])
+    tables, own = gr.render(pages, {}, venues, lambda key: key.split(',')[0])
     assert own == 1, own
-    assert '("AMC Crossville", "America/Chicago"),' in text, text
-    assert '"America/New_York", true, Seq("Knoxville")' in text, text
+    assert tables['venue-zones.tsv'] == [['AMC Crossville', 'America/Chicago']], tables['venue-zones.tsv']
+    page_row = tables['pages.tsv'][0]
+    assert page_row[6:] == ['America/New_York', 'true', 'Knoxville'], page_row
+    assert len(tables['cinemas.tsv']) == 3, tables['cinemas.tsv']
 
 
 def _timezonefinder_available():

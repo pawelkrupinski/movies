@@ -43,7 +43,6 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
   /** file → why it may name a zone id as a string. */
   private val ZoneLiteralAllowlist: Map[String, String] = Map(
     ZoneSource                                                       -> "the zone source itself",
-    "geodata/src/main/scala/models/UsRosterData.scala"               -> RosterData,
     "geodata/src/main/scala/models/SpanishRosterData.scala"          -> RosterData,
     "scrapers/src/main/scala/services/cinemas/us/UsChainVenues.scala" -> RosterData)
 

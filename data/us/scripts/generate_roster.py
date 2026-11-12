@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Generate geodata/src/main/scala/models/UsRosterData.scala from pages.json.
+"""Generate the tab-separated tables under geodata/src/main/resources/generated/us-roster/
+(read by `models.UsRosterData`) from pages.json.
 
 The JSON -> Scala step of the US roster, the counterpart of
 data/germany/scripts/generate_roster.py. Reads the PAGES (`pages.json`, built by
 `build_pages.py`: which town or cluster page each venue is on, and where each page
 that stopped existing now redirects) and the venues (`venues.json` less
-`retired.json`), and emits the flat tuple data `models.UsRoster` materialises into
+`retired.json`), and emits the flat table data `models.UsRoster` materialises into
 City/Cinema objects.
 
 Each page keeps its clock in the zone most of its venues are in, resolved from
@@ -38,14 +39,14 @@ from functools import lru_cache
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 import build_pages  # noqa: E402
 import seasonal_venues  # noqa: E402
 from town_pages import placement_problems  # noqa: E402
+from generated_tables import list_cell, write_table  # noqa: E402
 
 ROOT = build_pages.ROOT
-OUT = ROOT / "geodata" / "src" / "main" / "scala" / "models" / "UsRosterData.scala"
-
-CHUNK = 40
+OUT_DIR = ROOT / "geodata" / "src" / "main" / "resources" / "generated" / "us-roster"
 
 #: The two dates a timezone is compared on. One is not enough: Phoenix and Denver
 #: share an offset in January and differ in July, because Arizona does not keep
@@ -53,17 +54,8 @@ CHUNK = 40
 TZ_PROBE_DATES = (datetime(2026, 1, 15, 12), datetime(2026, 7, 15, 12))
 
 
-def scala_str(s: str) -> str:
-    """A Scala double-quoted literal."""
-    return '"' + s.replace('\\', '\\\\').replace('"', '\\"').replace('$', '$$') + '"'
-
-
 def clean(s):
     return re.sub(r'\s+', ' ', (s or '')).strip()
-
-
-def ident(slug: str) -> str:
-    return "p_" + re.sub(r"[^a-z0-9]", "_", slug)
 
 
 @lru_cache(maxsize=1)
@@ -134,64 +126,31 @@ def display_names(venues):
 
 
 def render(pages, retired, venues, town_names):
+    """The roster as its tables: file name -> rows of str cells (see `models.UsRosterData`
+    for the columns), and the number of venues on their own zone."""
     by_slug = {v['slug']: v for v in venues}
     name_of = display_names(venues)
     point = {v['slug']: {'lat': float(v['lat']), 'lon': float(v['lon'])} for v in venues}
     zones = {p['slug']: zone_for([point[c] for c in p['cinemas']]) for p in pages}
     own_zone = sorted((name_of[c], z) for p in pages for c in p['cinemas']
                       for z in [zone_for([point[c]])] if not same_clock(z, zones[p['slug']]))
-    states = {p['state'] for p in pages}
-    lines = [
-        "// GENERATED from data/us/pages.json by data/us/scripts/generate_roster.py",
-        f"// — do NOT edit by hand. Full US cinema roster: {len(pages):,} pages over {len(states)} states and",
-        f"// territories / {len(venues):,} cinemas (Flicks, www.flicks.us). Regenerate after re-harvesting or",
-        "// re-clustering; see data/us/README.md.",
-        "package models",
-        "",
-        "private[models] object UsRosterData {",
-        "  // (displayName, pillName, flicks cinema slug, the venue's state, the venue's own town)",
-        "  type C = (String, String, String, String, String)",
-        "  // (slug, slug qualified with its state, name, state, lat, lon, zoneId, multiTown, towns, cinemas)",
-        "  type R = (String, String, String, String, Double, Double, String, Boolean, Seq[String], Seq[C])",
-        "",
-    ]
-    for page in pages:
-        rows = ",\n".join(
-            "    ({}, {}, {}, {}, {})".format(
-                scala_str(name_of[c]), scala_str(name_of[c]), scala_str(c), scala_str(by_slug[c]['state']),
-                scala_str(clean(by_slug[c].get('city'))))
-            for c in page['cinemas'])
-        towns = list(dict.fromkeys(town_names(t) for t in page['towns']))
-        lines.append(
-            "  private def {}: R = ({}, {}, {}, {}, {}, {}, {}, {}, Seq({}), Seq(\n{}\n  ))".format(
-                ident(page['slug']), scala_str(page['slug']), scala_str(page['qualifiedSlug']),
-                scala_str(page['name']), scala_str(page['state']), page['lat'], page['lon'],
-                scala_str(zones[page['slug']]), "true" if page['kind'] == 'cluster' else "false",
-                ", ".join(scala_str(t) for t in towns), rows))
-    lines.append("")
-    names = [ident(p['slug']) for p in pages]
-    chunks = [names[i:i + CHUNK] for i in range(0, len(names), CHUNK)]
-    for index, chunk in enumerate(chunks):
-        lines.append(f"  private def chunk{index}: Seq[R] = Seq({', '.join(chunk)})")
-    lines.append("  val pages: Seq[R] = " + " ++ ".join(f"chunk{i}" for i in range(len(chunks))))
-    lines.append("")
-    lines.append("  /** (displayName, zoneId) — the venues whose own clock is not their page's. */")
-    lines.append("  val venueZones: Seq[(String, String)] = Seq(")
-    lines.extend(f"    ({scala_str(n)}, {scala_str(z)})," for n, z in own_zone)
-    lines.append("  )")
-    lines.append("")
-    lines.append("  /** Pages that no longer exist — the metros the US pages were until 2026-10 among")
-    lines.append("   *  them — and the page holding the town each was named after, else most of its")
-    lines.append("   *  venues: (slug, slug qualified with its state, the page's slug). */")
-    lines.append("  val retired: Seq[(String, String, String)] = Seq(")
-    lines.extend(f"    ({scala_str(slug)}, {scala_str(r['qualifiedSlug'])}, {scala_str(r['page'])}),"
-                 for slug, r in sorted(retired.items()))
-    lines.append("  )")
-    lines.append("")
+    page_rows = [
+        [page['slug'], page['qualifiedSlug'], page['name'], page['state'], repr(float(page['lat'])),
+         repr(float(page['lon'])), zones[page['slug']], "true" if page['kind'] == 'cluster' else "false",
+         list_cell(dict.fromkeys(town_names(t) for t in page['towns']))]
+        for page in pages]
+    cinema_rows = [
+        [page['slug'], name_of[c], name_of[c], c, by_slug[c]['state'], clean(by_slug[c].get('city'))]
+        for page in pages for c in page['cinemas']]
     rostered = [name_of[c] for p in pages for c in p['cinemas']]
-    lines.extend(seasonal_venues.render_scala(seasonal_venues.seasonal_names("us", rostered), scala_str))
-    lines.append("}")
-    return "\n".join(lines) + "\n", len(own_zone)
+    tables = {
+        "pages.tsv": page_rows,
+        "cinemas.tsv": cinema_rows,
+        "venue-zones.tsv": [list(row) for row in own_zone],
+        "retired.tsv": [[slug, r['qualifiedSlug'], r['page']] for slug, r in sorted(retired.items())],
+        "seasonal.tsv": [[name] for name in seasonal_venues.seasonal_names("us", rostered)],
+    }
+    return tables, len(own_zone)
 
 
 def main() -> int:
@@ -203,9 +162,10 @@ def main() -> int:
             print(f"ERROR: {problem}", file=sys.stderr)
         return 1
     _, towns = build_pages.load_towns()
-    text, own_zones = render(data['pages'], data['retired'], roster, lambda key: build_pages.display(towns, key))
-    OUT.write_text(text)
-    print(f"Wrote {OUT.relative_to(ROOT)}: {len(data['pages']):,} pages / {len(roster):,} cinemas, "
+    tables, own_zones = render(data['pages'], data['retired'], roster, lambda key: build_pages.display(towns, key))
+    for name, rows in tables.items():
+        write_table(OUT_DIR / name, rows)
+    print(f"Wrote {OUT_DIR.relative_to(ROOT)}/*.tsv: {len(data['pages']):,} pages / {len(roster):,} cinemas, "
           f"{own_zones} on their own zone / {len(data['retired'])} retired slugs")
     return 0
 

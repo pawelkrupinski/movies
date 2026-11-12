@@ -278,4 +278,15 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
       }
     }
   }
+
+  "The generated US roster tables" should "be the resources UsRosterData reads, page for page and cinema for cinema" in {
+    val pageRows = GeneratedTable.rows("generated/us-roster/pages.tsv")
+    val cinemaRows = GeneratedTable.rows("generated/us-roster/cinemas.tsv")
+    UsRosterData.pages.map(_._1) shouldBe pageRows.map(_(0))
+    UsRosterData.pages.flatMap(page => page._10.map(page._1 -> _._3)) shouldBe cinemaRows.map(row => row(0) -> row(3))
+    UsRosterData.pages.map(_._5) shouldBe pageRows.map(_(4).toDouble)
+    UsRosterData.retired should have size GeneratedTable.rows("generated/us-roster/retired.tsv").size.toLong
+    UsRosterData.seasonal should have size GeneratedTable.rows("generated/us-roster/seasonal.tsv").size.toLong
+    UsRosterData.venueZones should have size 4
+  }
 }

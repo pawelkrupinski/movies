@@ -17,7 +17,8 @@
 #   every country's pages.json → data/scripts/generate_slug_index.py → generated/slug-index/
 #   data/germany/venues.json + city-coords.json → data/germany/scripts/build_pages.py → data/germany/pages.json
 #   data/spain/town-coords.json → data/spain/scripts/build_pages.py   → data/spain/pages.json
-#   data/germany, data/spain, data/us → their generate_roster.py     → *RosterData.scala (Germany: generated/de-roster/)
+#   data/germany, data/spain → their generate_roster.py              → *RosterData.scala (Germany: generated/de-roster/)
+#   data/us → data/us/scripts/generate_roster.py                     → generated/us-roster/*.tsv
 #   data/germany/venue-sources.json (less feed-mirrors.json) → data/germany/scripts/generate_sources.py → generated/de-sources/feeds.tsv
 #   data/spain/{taquilla,artesiete}.json → data/spain/scripts/generate_own_sources.py → SpanishOwnSourcesData.scala
 #
