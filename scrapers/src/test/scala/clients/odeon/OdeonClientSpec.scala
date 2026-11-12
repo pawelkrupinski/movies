@@ -1,7 +1,7 @@
 package clients.odeon
 
 import clients.tools.{FakeHttpFetch, FixtureFile}
-import models.OdeonBirminghamNewStreet
+import models.UkRoster
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -19,7 +19,7 @@ import java.time.LocalDateTime
  */
 class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val cinema = OdeonBirminghamNewStreet
+  private val cinema = UkRoster("OdeonBirminghamNewStreet")
   private val siteId = "017"
   private val date   = LocalDate.of(2026, 7, 27)
 

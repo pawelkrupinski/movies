@@ -1,7 +1,7 @@
 package clients.showcase
 
 import clients.tools.{FakeHttpFetch, FixtureFile}
-import models.{CinemaMovie, ShowcaseDeLuxBluewater}
+import models.{CinemaMovie, UkRoster}
 import org.scalatest.{LoneElement, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -37,7 +37,7 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
       new FakeHttpFetch("showcase"),
       GatsbyBoxOfficeClient.ShowcaseBaseUrl,
       Bluewater,
-      ShowcaseDeLuxBluewater,
+      UkRoster("ShowcaseDeLuxBluewater"),
       today = Today
     ).fetch()
 
@@ -59,7 +59,7 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
         }
       }
     }
-    val jurassic = new GatsbyBoxOfficeClient(fetch, GatsbyBoxOfficeClient.ShowcaseBaseUrl, Bluewater, ShowcaseDeLuxBluewater, today = Today)
+    val jurassic = new GatsbyBoxOfficeClient(fetch, GatsbyBoxOfficeClient.ShowcaseBaseUrl, Bluewater, UkRoster("ShowcaseDeLuxBluewater"), today = Today)
       .fetch().find(_.movie.title == "Jurassic Park").value
     jurassic.director shouldBe Seq("Steven Spielberg")
     jurassic.movie.runtimeMinutes shouldBe Some(127)
@@ -67,7 +67,7 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
 
   "fetch" should "join the venue's schedule against the chain catalogue into one row per film" in {
     films.size shouldBe 81
-    films.map(_.cinema).toSet shouldBe Set(ShowcaseDeLuxBluewater)
+    films.map(_.cinema).toSet shouldBe Set(UkRoster("ShowcaseDeLuxBluewater"))
     films.map(_.movie.title) shouldBe films.map(_.movie.title).sorted
     all(films.map(_.showtimes.size)) should be > 0
   }
@@ -188,7 +188,7 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
   private val expired = """{"startsAt":"2026-07-27T09:00:00","tags":[],"isExpired":true,"data":{"ticketing":[{"urls":["https://x/gone"],"provider":"default"}]}}"""
 
   private def parsed(scheduleJson: String, catalogueJson: String = catalogue) =
-    GatsbyBoxOfficeParser.parse(scheduleJson, catalogueJson, Bluewater, ShowcaseDeLuxBluewater,
+    GatsbyBoxOfficeParser.parse(scheduleJson, catalogueJson, Bluewater, UkRoster("ShowcaseDeLuxBluewater"),
       GatsbyBoxOfficeClient.ShowcaseBaseUrl)
 
   "the parser" should "drop expired sessions and keep the live ones" in {
@@ -244,7 +244,7 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
     val catalogue = FixtureFile.read(showcaseFixture("page-data").getPath)
     def rated(certificate: String, ratings: Set[String]) = {
       val details = Map("8488" -> GatsbyBoxOfficeParser.FilmDetails(Nil, None, Nil, None, Some(certificate)))
-      GatsbyBoxOfficeParser.parse(schedule, catalogue, Bluewater, ShowcaseDeLuxBluewater, GatsbyBoxOfficeClient.ShowcaseBaseUrl, details, ratings)
+      GatsbyBoxOfficeParser.parse(schedule, catalogue, Bluewater, UkRoster("ShowcaseDeLuxBluewater"), GatsbyBoxOfficeClient.ShowcaseBaseUrl, details, ratings)
         .find(_.movie.title == "Jurassic Park").value.ageRating
     }
     rated("12A", GatsbyBoxOfficeParser.BbfcCertificates) shouldBe Some("12A")
@@ -257,7 +257,7 @@ class GatsbyBoxOfficeClientSpec extends AnyFlatSpec with Matchers with OptionVal
     val schedule  = FixtureFile.read(showcaseFixture("schedule").getPath)
     val catalogue = FixtureFile.read(showcaseFixture("page-data").getPath)
     val details   = Map("8488" -> GatsbyBoxOfficeParser.FilmDetails(Seq("Steven Spielberg"), Some(127), Seq("Sam Neill"), Some("Dinosaurs.")))
-    val parsed    = GatsbyBoxOfficeParser.parse(schedule, catalogue, Bluewater, ShowcaseDeLuxBluewater, GatsbyBoxOfficeClient.ShowcaseBaseUrl, details)
+    val parsed    = GatsbyBoxOfficeParser.parse(schedule, catalogue, Bluewater, UkRoster("ShowcaseDeLuxBluewater"), GatsbyBoxOfficeClient.ShowcaseBaseUrl, details)
     val jurassic  = parsed.find(_.movie.title == "Jurassic Park").value
     jurassic.director shouldBe Seq("Steven Spielberg")
     jurassic.movie.runtimeMinutes.value shouldBe 127

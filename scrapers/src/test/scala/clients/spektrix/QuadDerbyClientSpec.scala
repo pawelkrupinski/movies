@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.{FakeHttpFetch, ScriptedByUrlHttpFetch}
-import models.QuadDerby
+import models.UkRoster
 import services.cinemas.uk.QuadDerbyClient
 
 import java.io.IOException
@@ -24,7 +24,7 @@ class QuadDerbyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   "QuadDerbyClient.fetch" should "read Derby QUAD's films off its Spektrix box office" in {
-    results.map(_.cinema).toSet shouldBe Set(QuadDerby)
+    results.map(_.cinema).toSet shouldBe Set(UkRoster("QuadDerby"))
     byTitle("Obsession (PG)").movie.runtimeMinutes shouldBe Some(96)
     byTitle("Obsession (PG)").movie.countries shouldBe Seq("UK") // `attribute_FilmCountryOfOrigin`
     byTitle("Obsession (PG)").externalIds shouldBe Map("spektrix" -> "353802AJBRGGJSJJNKSHVVCDLGBHTTDTG")

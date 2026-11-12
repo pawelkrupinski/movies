@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.NovaCinemaWoking
+import models.UkRoster
 import services.cinemas.uk.NovaCinemaClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -16,14 +16,14 @@ import java.time.{LocalDate, LocalDateTime}
 class NovaCinemaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val today   = LocalDate.of(2026, 10, 12)
-  private def scrape(on: LocalDate) = new NovaCinemaClient(new FakeHttpFetch("nova"), NovaCinemaWoking, on).fetch()
+  private def scrape(on: LocalDate) = new NovaCinemaClient(new FakeHttpFetch("nova"), UkRoster("NovaCinemaWoking"), on).fetch()
   private val results = scrape(today)
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   "NovaCinemaClient.fetch" should "read the whole programme Flicks never listed off the home page" in {
     results.size shouldBe 40
     results.flatMap(_.showtimes).size shouldBe 249
-    results.map(_.cinema).toSet shouldBe Set(NovaCinemaWoking)
+    results.map(_.cinema).toSet shouldBe Set(UkRoster("NovaCinemaWoking"))
     results.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2027, 5, 30)
   }
 
@@ -62,6 +62,6 @@ class NovaCinemaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "NovaCinemaClient.parse" should "refuse a page without the films list rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
-      NovaCinemaClient.parse("<html><body>Maintenance</body></html>", NovaCinemaWoking, today)
+      NovaCinemaClient.parse("<html><body>Maintenance</body></html>", UkRoster("NovaCinemaWoking"), today)
   }
 }

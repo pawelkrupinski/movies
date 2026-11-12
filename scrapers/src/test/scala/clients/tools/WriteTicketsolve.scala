@@ -10,20 +10,20 @@ import services.cinemas.uk.TicketsolveClient
  *  Pass client names to run only those. */
 object WriteTicketsolve {
   val Venues: Seq[(String, Cinema)] = Seq(
-    "mwldan"               -> TheatrMwldanCardigan,
-    "nervecentre"          -> NerveCentreLondonderry,
-    "pocklingtonartscentre" -> PocklingtonArtsCentre,
-    "aberystwythartscentre" -> AberystwythArtsCentre,
-    "artscentre"            -> ArtsCentreStamford,
-    "chapter"               -> ChapterCardiff,
-    "gwynhall"              -> GwynHallNeath,
-    "neuadddwyfor"          -> NeuaddDwyforPwllheli,
-    "number8"               -> Number8Pershore,
-    "pontardaweartscentre"  -> PontardaweArtsCentre,
-    "theatrcolwyn"          -> TheatrColwyn,
-    "torchtheatre"          -> TorchTheatreMilfordHaven,
-    "watershed"             -> WatershedBristol,
-    "wyeside"               -> WyesideArtsCentreBuilthWells
+    "mwldan"               -> UkRoster("TheatrMwldanCardigan"),
+    "nervecentre"          -> UkRoster("NerveCentreLondonderry"),
+    "pocklingtonartscentre" -> UkRoster("PocklingtonArtsCentre"),
+    "aberystwythartscentre" -> UkRoster("AberystwythArtsCentre"),
+    "artscentre"            -> UkRoster("ArtsCentreStamford"),
+    "chapter"               -> UkRoster("ChapterCardiff"),
+    "gwynhall"              -> UkRoster("GwynHallNeath"),
+    "neuadddwyfor"          -> UkRoster("NeuaddDwyforPwllheli"),
+    "number8"               -> UkRoster("Number8Pershore"),
+    "pontardaweartscentre"  -> UkRoster("PontardaweArtsCentre"),
+    "theatrcolwyn"          -> UkRoster("TheatrColwyn"),
+    "torchtheatre"          -> UkRoster("TorchTheatreMilfordHaven"),
+    "watershed"             -> UkRoster("WatershedBristol"),
+    "wyeside"               -> UkRoster("WyesideArtsCentreBuilthWells")
   )
 
   /** The feeds TicketsolveClientSpec replays; the rest are fetched to measure only. */

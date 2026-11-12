@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, PhoenixCinemaEastFinchley, SavoyCinemaCorby, SilverScreenFolkestone, TheatrGwaunFishguard, WetherbyFilmTheatre}
+import models.UkRoster
 import services.cinemas.uk.SavoyClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -19,14 +19,14 @@ class SavoyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val Base    = "https://www.phoenixcinema.co.uk/PhoenixCinemaLondon.dll/"
   private val today   = LocalDate.of(2026, 10, 12)
   private def scrape(on: LocalDate) =
-    new SavoyClient(new FakeHttpFetch("savoy"), Base, PhoenixCinemaEastFinchley, on).fetch()
+    new SavoyClient(new FakeHttpFetch("savoy"), Base, UkRoster("PhoenixCinemaEastFinchley"), on).fetch()
   private val results = scrape(today)
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   "SavoyClient.fetch" should "read the whole programme Flicks never listed off the page's Events literal" in {
     results.size shouldBe 38
     results.flatMap(_.showtimes).size shouldBe 52
-    results.map(_.cinema).toSet shouldBe Set(PhoenixCinemaEastFinchley)
+    results.map(_.cinema).toSet shouldBe Set(UkRoster("PhoenixCinemaEastFinchley"))
     results.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2027, 6, 5)
   }
 
@@ -73,14 +73,14 @@ class SavoyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "SavoyClient.parse" should "refuse a page without the Events literal rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
-      SavoyClient.parse("<html><body>Maintenance</body></html>", Base, PhoenixCinemaEastFinchley, today)
+      SavoyClient.parse("<html><body>Maintenance</body></html>", Base, UkRoster("PhoenixCinemaEastFinchley"), today)
   }
 
   // Replays a 2026-10-12 capture of https://savoycorby.co.uk/SavoyCorby.dll/WhatsOn (`WriteSavoy`): the venue types
   // its credits a field over — "Cast":"USA", "Country":"Bette Midler, …", "Year":"Kenny Ortega" — so the recording
   // of run 38251516862 carried "USA" as the cast of Hocus Pocus and three more films.
   private lazy val corby = new SavoyClient(new FakeHttpFetch("savoy"), "https://savoycorby.co.uk/SavoyCorby.dll/",
-    SavoyCinemaCorby, today).fetch().map(cm => cm.movie.title -> cm).toMap
+    UkRoster("SavoyCinemaCorby"), today).fetch().map(cm => cm.movie.title -> cm).toMap
 
   "SavoyClient.fetch (Savoy Corby)" should "read each credit by what it holds when the venue types them a field over" in {
     val hocusPocus = corby("Hocus Pocus")
@@ -100,7 +100,7 @@ class SavoyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   "SavoyClient.parse (Phoenix East Finchley, 2026-10-13)" should "read a bare year typed into a person's field as the film's year" in {
     val page = new String(java.nio.file.Files.readAllBytes(
       java.nio.file.Paths.get("test/resources/fixtures/savoy-captures/phoenixcinema-whatson-2026-10-13.html")), "UTF-8")
-    val films   = SavoyClient.parse(page, Base, PhoenixCinemaEastFinchley, LocalDate.of(2026, 10, 13))
+    val films   = SavoyClient.parse(page, Base, UkRoster("PhoenixCinemaEastFinchley"), LocalDate.of(2026, 10, 13))
     val tenzing = films.find(_.movie.title == "Tenzing").value
     tenzing.cast shouldBe empty
     tenzing.director shouldBe Seq("Jennifer Peedom")
@@ -130,13 +130,13 @@ class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
     new SavoyClient(new FakeHttpFetch("savoy"), dllBase, cinema, on, SavoyClient.BoxOffice).fetch()
 
   private val IlkleyBase = "https://book.ilkleycinema.co.uk/IlkleyCinema.dll/"
-  private val ilkley     = scrape(IlkleyBase, IlkleyCinema)
+  private val ilkley     = scrape(IlkleyBase, UkRoster("IlkleyCinema"))
   private val ilkleyBy   = ilkley.map(cm => cm.movie.title -> cm).toMap
 
   "SavoyClient on a booking-only host" should "read Ilkley's whole programme off the box office's root page" in {
     ilkley.size shouldBe 39
     ilkley.flatMap(_.showtimes).size shouldBe 166
-    ilkley.map(_.cinema).toSet shouldBe Set(IlkleyCinema)
+    ilkley.map(_.cinema).toSet shouldBe Set(UkRoster("IlkleyCinema"))
     ilkley.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2027, 5, 30)
   }
 
@@ -162,18 +162,18 @@ class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
   // A 2026-11-11 capture of https://silverscreenfolkestone.savoysystems.co.uk/SilverScreenFolkestone.dll/
   it should "not read the certificate badge beside a film's title as its poster" in {
     val folkestone = scrape("https://silverscreenfolkestone.savoysystems.co.uk/SilverScreenFolkestone.dll/",
-      SilverScreenFolkestone, LocalDate.of(2026, 11, 11))
+      UkRoster("SilverScreenFolkestone"), LocalDate.of(2026, 11, 11))
     folkestone.map(_.movie.title) should contain ("Ken Russell's The Devils")
     folkestone.flatMap(_.posterUrl) shouldBe empty
   }
 
   it should "drop performances before today" in {
-    val later = scrape(IlkleyBase, IlkleyCinema, LocalDate.of(2026, 10, 14))
+    val later = scrape(IlkleyBase, UkRoster("IlkleyCinema"), LocalDate.of(2026, 10, 14))
     later.flatMap(_.showtimes).map(_.dateTime.toLocalDate).min shouldBe LocalDate.of(2026, 10, 14)
   }
 
   it should "read a time printed before the booking button, the certificate and the subtitled note" in {
-    val leicester = scrape("https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/", PhoenixCinemaAndArtCentreLeicester)
+    val leicester = scrape("https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/", UkRoster("PhoenixCinemaAndArtCentreLeicester"))
     leicester.flatMap(_.showtimes) should have size 175
     val pressure = leicester.find(_.movie.title == "Pressure").value
     pressure.showtimes.take(2).map(s => (s.dateTime, s.format)) shouldBe Seq(
@@ -184,7 +184,7 @@ class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "take the film from the block's title heading where the template links none" in {
-    val wetherby = scrape("https://book.wetherbycinema.com/WetherbyFilmTheatre.dll/", WetherbyFilmTheatre)
+    val wetherby = scrape("https://book.wetherbycinema.com/WetherbyFilmTheatre.dll/", UkRoster("WetherbyFilmTheatre"))
     wetherby.flatMap(_.showtimes) should have size 149
     val film = wetherby.find(_.movie.title == "Sense and Sensibility").value
     film.showtimes.head.dateTime shouldBe LocalDateTime.of(2026, 10, 12, 16, 0)
@@ -198,7 +198,7 @@ class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
   // synopsis opens on a credit line, "Director: James Dawson/UK/2026/88’ Two farmers…", which the recording of run
   // 38326582997 carried as the synopsis.
   it should "read the credit line heading a synopsis into the film's own record" in {
-    val gwaun = scrape("https://theatrgwaun.savoysystems.co.uk/TheatrGwaun.dll/", TheatrGwaunFishguard, LocalDate.of(2026, 10, 13))
+    val gwaun = scrape("https://theatrgwaun.savoysystems.co.uk/TheatrGwaun.dll/", UkRoster("TheatrGwaunFishguard"), LocalDate.of(2026, 10, 13))
     val pressure = gwaun.find(_.movie.title == "Pressure").value
     pressure.director shouldBe Seq("Anthony Maras")
     pressure.movie.releaseYear shouldBe Some(2026)
@@ -210,6 +210,6 @@ class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "SavoyClient.BoxOffice" should "refuse a page that is no Savoy performance list rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
-      SavoyClient.BoxOffice.parse("<html><body>Maintenance</body></html>", IlkleyBase, IlkleyCinema, today)
+      SavoyClient.BoxOffice.parse("<html><body>Maintenance</body></html>", IlkleyBase, UkRoster("IlkleyCinema"), today)
   }
 }

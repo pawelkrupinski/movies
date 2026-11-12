@@ -1,7 +1,7 @@
 package clients.vue
 
 import clients.tools.{FakeHttpFetch, FixtureFile, RequestLogHttpFetch}
-import models.VueCinemasIslington
+import models.UkRoster
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -26,7 +26,7 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
   private def fixture: String =
     FixtureFile.read("test/resources/fixtures/vue/www.myvue.com/api/microservice/showings/cinemas/10032/films.json")
 
-  private val films = VueCinemasPlatformParser.parse(fixture, VueCinemasIslington, MyVue)
+  private val films = VueCinemasPlatformParser.parse(fixture, UkRoster("VueCinemasIslington"), MyVue)
 
   private def showtimes = films.flatMap(_.showtimes)
 
@@ -34,14 +34,14 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
 
   "parse" should "read every film the venue is showing" in {
     films.size shouldBe 37
-    films.map(_.cinema).toSet shouldBe Set(VueCinemasIslington)
+    films.map(_.cinema).toSet shouldBe Set(UkRoster("VueCinemasIslington"))
   }
 
   it should "drop an untitled film rather than fail the venue's whole listing" in {
     // One malformed entry is unshowable; the other 36 films are not.
     val result   = (play.api.libs.json.Json.parse(fixture) \ "result").as[Seq[play.api.libs.json.JsObject]]
     val untitled = play.api.libs.json.Json.obj("result" -> ((result.head - "filmTitle") +: result.tail))
-    VueCinemasPlatformParser.parse(untitled.toString, VueCinemasIslington, MyVue).map(_.movie.title) shouldBe
+    VueCinemasPlatformParser.parse(untitled.toString, UkRoster("VueCinemasIslington"), MyVue).map(_.movie.title) shouldBe
       films.tail.map(_.movie.title)
   }
 
@@ -128,7 +128,7 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
   "the base URL parameter" should "absolutise booking links against the brand being scraped" in {
     // CinemaxX Germany runs the identical backend on a different host; the same
     // parser must hang the same relative booking path off cinemaxx.de.
-    val german = VueCinemasPlatformParser.parse(fixture, VueCinemasIslington,
+    val german = VueCinemasPlatformParser.parse(fixture, UkRoster("VueCinemasIslington"),
       VueCinemasPlatformClient.CinemaxXBaseUrl)
     german.flatMap(_.showtimes).flatMap(_.bookingUrl).head should startWith("https://www.cinemaxx.de/")
   }
@@ -145,7 +145,7 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
   // ── fetch(): token bootstrap + parse ────────────────────────────────────
 
   private def client(http: HttpFetch) =
-    new VueCinemasPlatformClient(http, MyVue, IslingtonCinemaId, VueCinemasIslington)
+    new VueCinemasPlatformClient(http, MyVue, IslingtonCinemaId, UkRoster("VueCinemasIslington"))
 
   "fetch" should "return the venue's films when the session cookie is already warm" in {
     val warm   = new RequestLogHttpFetch(new FakeHttpFetch("vue"))
@@ -195,7 +195,7 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
     val scraper = client(new FakeHttpFetch("vue"))
     scraper.scrapeHosts shouldBe Set("www.myvue.com")
     scraper.chain       shouldBe true
-    scraper.cinema      shouldBe VueCinemasIslington
+    scraper.cinema      shouldBe UkRoster("VueCinemasIslington")
   }
 
   /** The live API's token gate: every films GET 401s, as an `HttpStatusException`, until the token POST has been

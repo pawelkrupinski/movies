@@ -12,10 +12,12 @@ towns.json    the town each venue is in: GeoNames centre, population, county, is
 pages.json    which page lists each venue, and where every retired slug now goes
 ```
 
-and is generated into `models.UkRosterData` (a top-level `val` per venue, named as
-its row's `object`), `services.cinemas.uk.UkSourcesData` (each venue's scraper and
-Flicks fallback), `models.UkPages` (the pages) and `models.VenueTowns` (the town
-each venue's address names).
+and is generated into tab-separated tables under `geodata/src/main/resources/generated/`:
+`uk-roster/venues.tsv` (read by `models.UkRoster`: a venue per row, keyed on its row's
+`object`, so code names a venue as `UkRoster("ActOneActon")`), `uk-sources/sources.tsv`
+(`services.cinemas.uk.UkSourcesData`: each venue's scraper and Flicks fallback),
+`uk-pages/` (`models.UkPages`: the pages) and `venue-towns.tsv` (`models.VenueTowns`: the
+town each venue's address names).
 
 A venue is added, renamed or re-sourced by editing its `roster.json` row — a row
 with no `primary` is scraped off Flicks; `["savoy", "<dll base>"]`,
@@ -33,7 +35,7 @@ python3 data/scripts/generate_venue_towns.py      # -> geodata/src/main/resource
 curl -sO https://download.geonames.org/export/dump/cities1000.zip && unzip cities1000.zip
 python3 data/uk/scripts/geocode_towns.py cities1000.txt   # -> towns.json
 python3 data/uk/scripts/build_pages.py                    # -> pages.json
-python3 data/uk/scripts/generate_roster.py                # -> UkRosterData, UkSourcesData, UkPages + the apps' lists
+python3 data/uk/scripts/generate_roster.py                # -> generated/uk-{roster,sources,pages} + the apps' lists
 python3 data/uk/scripts/geocode_towns_test.py
 python3 data/uk/scripts/build_pages_test.py
 ```

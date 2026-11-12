@@ -11,9 +11,9 @@ object WriteNovaCinema {
   def main(args: Array[String]): Unit = {
     val live = new RealHttpFetch()
     val http = if (args.contains("--record")) new RecordingHttpFetch("nova", live) else live
-    val movies = new NovaCinemaClient(http, NovaCinemaWoking, VenueClock.system.today(TimeZones.UnitedKingdom)).fetch()
+    val movies = new NovaCinemaClient(http, UkRoster("NovaCinemaWoking"), VenueClock.system.today(TimeZones.UnitedKingdom)).fetch()
     val times  = movies.flatMap(_.showtimes)
     movies.foreach(m => println(s"FILM\t${m.movie.title}\t${m.showtimes.size}"))
-    println(s"MEASURE\t${NovaCinemaWoking.displayName}\t${movies.size}\t${times.size}\t${times.map(_.dateTime.toLocalDate).maxOption.getOrElse("")}")
+    println(s"MEASURE\t${UkRoster("NovaCinemaWoking").displayName}\t${movies.size}\t${times.size}\t${times.map(_.dateTime.toLocalDate).maxOption.getOrElse("")}")
   }
 }

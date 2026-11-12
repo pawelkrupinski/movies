@@ -170,7 +170,7 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   // An open-air screen dark since September is not a parser gone quiet: off its season it counts in
   // none of the three gauges. In season it is held to the same week as every other venue.
   "a seasonal venue" should "count in no gauge off its season, and like any venue in it" in {
-    val rooftop = models.RooftopFilmClubStratfordRoofEast           // UK window: May..September
+    val rooftop = models.UkRoster("RooftopFilmClubStratfordRoofEast")           // UK window: May..September
     val stamps  = (at: Instant) => Map(
       producing.displayName -> ContentStamp(Some(at.minusSeconds(3600))),
       rooftop.displayName   -> ContentStamp(Some(at.minusSeconds(60 * 86400))))
@@ -195,7 +195,7 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   // seasonal venue counts only once it has listed this season; from then it is held to the same
   // week as any venue.
   it should "count only once it has listed this season, then like any venue" in {
-    val rooftop  = models.RooftopFilmClubStratfordRoofEast          // UK window: May..September
+    val rooftop  = models.UkRoster("RooftopFilmClubStratfordRoofEast")          // UK window: May..September
     val scrapers = Seq(new StubCinemaScraper(rooftop))
     def readingAt(at: String, lastContent: String) = {
       val clock  = Clock.fixed(Instant.parse(at), ZoneOffset.UTC)
@@ -215,7 +215,7 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   // ones as stale from the halfway point stepped the stale gauge on one day a year (~16 July) and
   // paged `CinemaContentStaleVenuesGrowing` as a parser break. They get a gauge of their own instead.
   it should "count one that has listed nothing by its season's halfway point as not reopened, never as stale" in {
-    val rooftop  = models.RooftopFilmClubStratfordRoofEast          // UK window: May..September, halfway 2027-07-16
+    val rooftop  = models.UkRoster("RooftopFilmClubStratfordRoofEast")          // UK window: May..September, halfway 2027-07-16
     val scrapers = Seq(new StubCinemaScraper(rooftop))
     val stamps   = Map(rooftop.displayName -> ContentStamp(Some(Instant.parse("2026-09-20T18:00:00Z"))))
     def readingAt(at: String) = {
@@ -229,7 +229,7 @@ class CinemaContentCensusSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave a seasonal venue that has never listed anything to the never-content gauge alone" in {
-    val rooftop = models.RooftopFilmClubStratfordRoofEast
+    val rooftop = models.UkRoster("RooftopFilmClubStratfordRoofEast")
     val (c, _, neverContent, _, notReopened) = censusWithAll(
       new StubArchive(Map(rooftop.displayName -> ContentStamp(None))), Seq(new StubCinemaScraper(rooftop)),
       Clock.fixed(Instant.parse("2027-07-20T00:00:00Z"), ZoneOffset.UTC))

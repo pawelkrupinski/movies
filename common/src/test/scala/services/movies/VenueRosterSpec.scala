@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaCityChain, CinemaShowing, CineworldFeltham, Country, KinoEtiuda, Showtime, SourceData, Tmdb}
+import models.{CinemaCityChain, CinemaShowing, Country, KinoEtiuda, Showtime, SourceData, Tmdb, UkRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -19,7 +19,7 @@ class VenueRosterSpec extends AnyFlatSpec with Matchers {
 
   private val roster   = VenueRoster.of(Country.Poland)
   private val polish   = CinemaShowing(KinoEtiuda, "odyseja").displayName
-  private val foreign  = CinemaShowing(CineworldFeltham, "odyseja").displayName
+  private val foreign  = CinemaShowing(UkRoster("CineworldFeltham"), "odyseja").displayName
   private val tomorrow = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(1).atTime(12, 0), bookingUrl = None))
   private val film     = "odyseja|2026"
 
@@ -29,14 +29,14 @@ class VenueRosterSpec extends AnyFlatSpec with Matchers {
     roster.admits(CinemaCityChain.displayName) shouldBe true
     roster.admits(Tmdb.displayName) shouldBe true
     roster.admits(foreign) shouldBe false
-    roster.admits(CineworldFeltham.displayName) shouldBe false
+    roster.admits(UkRoster("CineworldFeltham").displayName) shouldBe false
     VenueRoster.of(Country.UnitedKingdom).admits(foreign) shouldBe true
   }
 
   "A roster-scoped slots store" should "not write a slot under a foreign venue" in {
     val slots = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned, roster = roster)
     slots.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja")), foreign -> SourceData(title = Some("The Odyssey"))))
-    slots.upsertSlot(film, CinemaShowing(CineworldFeltham, "other").displayName, SourceData(title = Some("Other")))
+    slots.upsertSlot(film, CinemaShowing(UkRoster("CineworldFeltham"), "other").displayName, SourceData(title = Some("Other")))
     slots.findForFilm(film).keySet shouldBe Set(polish)
   }
 
@@ -53,7 +53,7 @@ class VenueRosterSpec extends AnyFlatSpec with Matchers {
   "A roster-scoped screenings store" should "not write showtimes under a foreign venue" in {
     val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned, roster = roster)
     screenings.replaceFilm(film, Map(polish -> ListedShowtimes(tomorrow, None), foreign -> ListedShowtimes(tomorrow, None)))
-    screenings.upsertSlot(film, CinemaShowing(CineworldFeltham, "other").displayName, ListedShowtimes(tomorrow, None))
+    screenings.upsertSlot(film, CinemaShowing(UkRoster("CineworldFeltham"), "other").displayName, ListedShowtimes(tomorrow, None))
     screenings.findForFilm(film).keySet shouldBe Set(polish)
   }
 

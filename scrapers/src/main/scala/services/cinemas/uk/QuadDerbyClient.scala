@@ -1,6 +1,6 @@
 package services.cinemas.uk
 
-import models.{CinemaMovie, QuadDerby}
+import models.{CinemaMovie, UkRoster}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import play.api.Logging
@@ -27,7 +27,7 @@ import scala.util.Try
  * for "Geek Bank Presents: The Blob (18)") keeps no page rather than a guessed one.
  */
 class QuadDerbyClient(http: HttpFetch, today: => LocalDate)
-  extends SpektrixClient(http, "derbyquad", QuadDerby, today) with DetailEnricher with Logging {
+  extends SpektrixClient(http, "derbyquad", UkRoster("QuadDerby"), today) with DetailEnricher with Logging {
 
   import QuadDerbyClient._
 

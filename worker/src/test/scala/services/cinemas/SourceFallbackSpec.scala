@@ -2,7 +2,7 @@ package services.cinemas
 
 import services.cinemas.ScriptedCinemaScraper.{NoShowtimes, OneMovie}
 import services.alerts.FallbackAlert
-import models.{Cinema, CinemaMovie, Multikino, RooftopFilmClubStratfordRoofEast}
+import models.{Cinema, CinemaMovie, Multikino, UkRoster}
 import services.fallback.{FallbackEvent, FallbackState, InMemoryFallbackStore}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
@@ -379,7 +379,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
   // A spell that began off its season pages UNCOVERED there, and the alert drops it: nothing serving a
   // rooftop in April is its winter. Taken as "already paged", that spell never paged when its season began.
   it should "page UNCOVERED again once a spell that began off its season runs into the season" in {
-    val h = new Harness(Seq(Left(boom)), filmweb = None, cinema = RooftopFilmClubStratfordRoofEast)  // May..September
+    val h = new Harness(Seq(Left(boom)), filmweb = None, cinema = UkRoster("RooftopFilmClubStratfordRoofEast"))  // May..September
     h.clock = Instant.parse("2027-04-30T08:00:00Z")
     h.tickSwallowing()
     h.advance(6.hours + 1.minute); h.tickSwallowing()   // 04-30 14:01: uncovered, off season

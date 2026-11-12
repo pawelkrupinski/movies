@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Tests for the UK generate_roster.py — roster.json into UkRosterData.scala and
-UkSourcesData.scala, pages.json into UkPages.scala and the apps' fallback lists —
-on synthetic data, and the committed output against it.
+"""Tests for the UK generate_roster.py — roster.json into the uk-roster and uk-sources
+tables, pages.json into the uk-pages tables and the apps' fallback lists — on
+synthetic data, and the committed output against it.
 
     python3 data/uk/scripts/generate_roster_test.py
 """
@@ -43,15 +43,18 @@ RETIRED = {
 
 
 def synthetic():
-    src = g.scala_source(PAGES, RETIRED, TOWN_NAMES)
-    check("London is its own row, not one of the generated pages",
-          '  val london: Row = Row("london"' in src and src.count('Row("london"') == 1)
-    check("a cluster is a multi-town row naming its towns by their display names",
-          'Row("ilkley", "Ilkley", 51.5, -0.1, "England", "West Yorkshire", multiTown = true, '
-          'Seq("Ilkley", "Skipton"), Seq(IlkleyCinema, PlazaSkipton))' in src)
-    check("a retired slug maps to its page", '"west-yorkshire" -> "leeds",' in src)
+    tables = g.pages_tables(PAGES, RETIRED, TOWN_NAMES)
+    pages = tables["pages.tsv"]
+    check("London is the first page, then pages.json's order", [r[0] for r in pages] == ["london", "leeds", "ilkley", "lerwick"])
+    check("a cluster is a multi-town row naming its towns by their display names and its venues by key",
+          pages[2] == ["ilkley", "Ilkley", "51.5", "-0.1", "England", "West Yorkshire", "true", "Ilkley|Skipton",
+                       "IlkleyCinema|PlazaSkipton"])
+    check("a coordinate is written so it reads back exactly", g.page_row(dict(PAGES[0], lat=0.1 + 0.2), TOWN_NAMES)[2]
+          == repr(0.1 + 0.2) and float(repr(0.1 + 0.2)) == 0.1 + 0.2)
+    check("the nations are in the pickers' order", tables["nations.tsv"] == [[n] for n in g.NATIONS])
+    check("a retired slug maps to its page", ["west-yorkshire", "leeds"] in tables["retired.tsv"])
     check("a retired name aliases its page — not the page's own name, nor its county's heading",
-          '"leeds" -> Seq("Yorkshire"),' in src and '"lerwick" -> Seq("Highlands and Islands"),' in src)
+          tables["former-names.tsv"] == [["leeds", "Yorkshire"], ["lerwick", "Highlands and Islands"]])
     rows = {r["slug"]: r for r in g.mobile_rows(PAGES)}
     check("the apps' rows keep pages.json's order, London first", list(rows) == [p["slug"] for p in PAGES])
     check("a cluster's app label is '<town> area'", rows["ilkley"]["label"] == "Ilkley area")
@@ -64,7 +67,7 @@ def synthetic():
           and "old\n" not in spliced
           and '        City("lerwick", "Lerwick", 51.5000, -0.1000, "uk", "Scotland"),' in spliced)
     try:
-        g.scala_source([dict(PAGES[0], nation="Atlantis")], {}, TOWN_NAMES)
+        g.pages_tables([dict(PAGES[0], nation="Atlantis")], {}, TOWN_NAMES)
         refused = False
     except SystemExit:
         refused = True
@@ -91,23 +94,21 @@ ROSTER = [
 
 
 def roster():
-    venues = g.venues_source(ROSTER)
-    check("a venue is a top-level val named as its object, keeping its names and its Scala name",
-          'val CineworldLeeds: UkCinema = new UkCinema("Cineworld Leeds", "Cineworld Leeds", "CineworldLeeds")'
-          in venues)
+    venues = g.venue_rows(ROSTER)
+    check("a venue is keyed on its object, keeping its names, and opens all year",
+          ["CineworldLeeds", "Cineworld Leeds", "Cineworld Leeds", ""] in venues)
     check("a seasonal venue opens with the UK's season",
-          'new UkCinema("BFI London Southbank", "BFI London Southbank", "BfiLondonSouthbank", '
-          'Opening.Seasonal(SeasonWindow.UnitedKingdom))' in venues)
-    sources = g.sources_source(ROSTER)
-    check("a Flicks venue reads its slug as its primary", '    f(IlkleyCinema, "ilkley-cinema"),' in sources)
+          ["BfiLondonSouthbank", "BFI London Southbank", "BFI London Southbank", "seasonal"] in venues)
+    sources = g.source_rows(ROSTER)
+    check("a Flicks venue reads its slug as its primary", ["IlkleyCinema", "flicks", "ilkley-cinema", ""] in sources)
     check("an own-site venue keeps its Flicks slug as the fallback",
-          '    o(CineworldLeeds, UkFeed.Cineworld("x01-leeds"), "cineworld-leeds"),' in sources
-          and '    o(HydeParkPictureHouse, UkFeed.Spektrix("leedsheritagetheatres", Some("Hyde Park Picture House")), '
-              '"hyde-park-picture-house"),' in sources)
-    check("a venue on no Flicks page has no fallback", "    own(TheOldCourtWindsor, UkFeed.TheOldCourt)," in sources)
+          ["CineworldLeeds", "cineworld", "x01-leeds", "cineworld-leeds"] in sources
+          and ["HydeParkPictureHouse", "spektrix", "leedsheritagetheatres|Hyde Park Picture House",
+               "hyde-park-picture-house"] in sources)
+    check("a venue on no Flicks page has no fallback", ["TheOldCourtWindsor", "theOldCourt", "", ""] in sources)
     check("the venues keep the roster's order, group by group",
-          sources.index("HydeParkPictureHouse") < sources.index("IlkleyCinema") < sources.index("BfiLondonSouthbank")
-          and "group0 ++ group1" in sources)
+          [r[0] for r in sources] == ["HydeParkPictureHouse", "CineworldLeeds", "IlkleyCinema", "BfiLondonSouthbank",
+                                      "TheOldCourtWindsor"])
     pages = [page("leeds", "Leeds", "major", "West Yorkshire",
                   ["HydeParkPictureHouse", "CineworldLeeds", "IlkleyCinema", "BfiLondonSouthbank", "TheOldCourtWindsor"],
                   ["Leeds, West Yorkshire"])]
@@ -133,18 +134,20 @@ def roster():
           and json.loads(g.uk_roster.dumps(ROSTER))["groups"] == ROSTER)
 
 
+def table(path):
+    return [line.split("\t") for line in path.read_text(encoding="utf-8").splitlines()]
+
+
 def committed():
     data = json.loads(g.PAGES.read_text(encoding="utf-8"))
     towns = {k: t["name"] for k, t in json.loads(g.TOWNS.read_text(encoding="utf-8"))["towns"].items()}
-    check("UkPages.scala is what the generator makes of pages.json",
-          g.OUT.read_text(encoding="utf-8") == g.scala_source(data["pages"], data["retired"], towns))
+    for name, rows in g.pages_tables(data["pages"], data["retired"], towns).items():
+        check(f"uk-pages/{name} is what the generator makes of pages.json", table(g.PAGES_OUT / name) == rows)
     groups = g.uk_roster.load()
     check("roster.json is sound, and on the pages", g.roster_problems(groups, data["pages"]) == [])
     check("roster.json is in its canonical layout", g.uk_roster.ROSTER.read_text(encoding="utf-8") == g.uk_roster.dumps(groups))
-    check("UkRosterData.scala is what the generator makes of roster.json",
-          g.VENUES_OUT.read_text(encoding="utf-8") == g.venues_source(groups))
-    check("UkSourcesData.scala is what the generator makes of roster.json",
-          g.SOURCES_OUT.read_text(encoding="utf-8") == g.sources_source(groups))
+    check("uk-roster/venues.tsv is what the generator makes of roster.json", table(g.VENUES_OUT) == g.venue_rows(groups))
+    check("uk-sources/sources.tsv is what the generator makes of roster.json", table(g.SOURCES_OUT) == g.source_rows(groups))
 
 
 def main():

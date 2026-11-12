@@ -5,10 +5,10 @@ Every UK venue is declared once, as a row of data/uk/roster.json (see
 data/uk/scripts/uk_roster.py): its Scala name, display and pill names, its
 flicks.co.uk slug and its primary source. A venue Flicks scrapes is a row with
 only a `flicks` slug; data/uk/scripts/generate_roster.py turns the rows into the
-Scala (`UkRosterData`, `UkSourcesData`).
+tables `UkRoster` and `UkSourcesData` read (geodata/src/main/resources/generated/).
 
 Which PAGE lists a venue is not wired by hand either: it is generated from the
-venue's town (data/uk/scripts/build_pages.py → UkPages.scala), after the
+venue's town (data/uk/scripts/build_pages.py → generated/uk-pages/, read by UkPages), after the
 workflow has harvested and geocoded the new venue.
 
 UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) and the

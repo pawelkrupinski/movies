@@ -10,7 +10,7 @@ import tools.{HttpFetch, HttpRead}
  * constructor parameter rather than a second class:
  *
  * {{{
- *   new VueCinemasPlatformClient(http, VueCinemasPlatformClient.MyVueBaseUrl,    "10032", VueCinemasIslington)
+ *   new VueCinemasPlatformClient(http, VueCinemasPlatformClient.MyVueBaseUrl,    "10032", UkRoster("VueCinemasIslington"))
  *   new VueCinemasPlatformClient(http, VueCinemasPlatformClient.CinemaxXBaseUrl, "1107",  someCinemaxxVenue)
  * }}}
  *

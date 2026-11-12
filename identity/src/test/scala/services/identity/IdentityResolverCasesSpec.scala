@@ -2,7 +2,7 @@ package services.identity
 
 import services.billing.BillingParse
 
-import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, PictureHouseUckfield, Rialto, StacjaFalenica, TheForumNorthallerton}
+import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica, UkRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
@@ -1486,8 +1486,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // festival's opening night, an event; the recording pooled it to the 2016 "Opening Night" (38.9%), prod weighed it at
     // 28.9%. The slot names Cassavetes' 1977 film as well: neither is the listing's.
     val films = Seq(F(311764, "Opening Night", 2016, "Isaac Rentz", 85, 12), F(33665, "Opening Night", 1977, "John Cassavetes", 144, 10))
-    val slot  = listing(models.EverymanCinemaIslington, "Unrestricted View Horror Film Festival 2026: Opening Night")
-    val bare  = listing(models.EverymanCinemaIslington, "Opening Night", Some(1977), Some("John Cassavetes"))
+    val slot  = listing(models.UkRoster("EverymanCinemaIslington"), "Unrestricted View Horror Film Festival 2026: Opening Night")
+    val bare  = listing(models.UkRoster("EverymanCinemaIslington"), "Opening Night", Some(1977), Some("John Cassavetes"))
     val table = new FilmTable(films, normalizer)
     def denied(l: Listing) = IdentityResolver.candidatesOf(Seq(l), table, normalizer, IdentityCalibration.resolver)(_ => true)
       .flatMap(_.candidates).filter(_.denied).map(_.tmdbId).toSet
@@ -1728,12 +1728,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // [130′] took The Trial of the Chicago 7 the same way. An English-language film is billed in England by its title.
     val dante = Seq(F(2614, "Innerspace", 1987, "Joe Dante", 120, 20, countries = Seq("US")),
       F(927, "Gremlins", 1984, "Joe Dante", 106, 30, countries = Seq("US")))
-    val gremlins = listing(PictureHouseUckfield, "Gremlins Special Event", director = Some("Joe Dante"), runtime = Some(120))
+    val gremlins = listing(UkRoster("PictureHouseUckfield"), "Gremlins Special Event", director = Some("Joe Dante"), runtime = Some(120))
     val d = shipped(Seq(gremlins), dante).decisionOf(gremlins.key)
     withClue(d.render)(d.film should not be Some(2614))
     val sorkin = Seq(F(556984, "The Trial of the Chicago 7", 2020, "Aaron Sorkin", 130, 20, countries = Seq("US")),
       F(517088, "Being the Ricardos", 2021, "Aaron Sorkin", 125, 15, countries = Seq("US")))
-    val social = listing(PictureHouseUckfield, "Social Reckoning", director = Some("Aaron Sorkin"), runtime = Some(130))
+    val social = listing(UkRoster("PictureHouseUckfield"), "Social Reckoning", director = Some("Aaron Sorkin"), runtime = Some(130))
     val s = shipped(Seq(social), sorkin).decisionOf(social.key)
     withClue(s.render)(s.film shouldBe None)
     // a film of another language is billed by the venue's translation of its title, which TMDB may not carry (PL "Kupiłem
@@ -1755,7 +1755,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // piece beside it names the town, which read as the venue's own wording
     val films = Seq(F(2005, "Sister Act", 1992, "Emile Ardolino", 100, 30, countries = Seq("US")),
       F(6279, "Sister Act 2: Back in the Habit", 1993, "Bill Duke", 107, 20, countries = Seq("US")))
-    val company = listing(TheForumNorthallerton, "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY", runtime = Some(150))
+    val company = listing(UkRoster("TheForumNorthallerton"), "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY", runtime = Some(150))
     val film = Seq(Multikino, Helios, KinoApollo, Rialto, KinoMikro).map(listing(_, "Sister Act", Some(1992), Some("Emile Ardolino"), Some(100)))
     val r = shipped(company +: film, films)
     withClue(r.decisionOf(company.key).render)(r.decisionOf(company.key).film shouldBe None)
@@ -1776,12 +1776,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // reading does reach the billing: the same words billed AFTER the film ("Grease - Musical Monday") are denied
     val grease = Seq(F(621, "Grease", 1978, "Randal Kleiser", 110, 40, countries = Seq("US")),
       F(9037, "Grease 2", 1982, "Patricia Birch", 115, 15, countries = Seq("US")))
-    val monday = listing(TheForumNorthallerton, "Musical Monday: Grease")
+    val monday = listing(UkRoster("TheForumNorthallerton"), "Musical Monday: Grease")
     val plain = Seq(Multikino, Helios, KinoApollo, Rialto, KinoMikro).map(listing(_, "Grease", Some(1978), Some("Randal Kleiser"), Some(110)))
     val g = shipped(monday +: plain, grease).decisionOf(monday.key)
     withClue(g.render)(g.film shouldBe Some(621))
     val wicked = Seq(F(967941, "Wicked: For Good", 2025, "Jon M. Chu", 137, 60, countries = Seq("US")), F(402431, "Wicked", 2024, "Jon M. Chu", 160, 70, countries = Seq("US")))
-    val screen = listing(TheForumNorthallerton, "Stage & Screen: Wicked: For Good")
+    val screen = listing(UkRoster("TheForumNorthallerton"), "Stage & Screen: Wicked: For Good")
     val w = shipped(Seq(screen), wicked).decisionOf(screen.key)
     withClue(w.render)(w.film shouldBe Some(967941))
   }
@@ -1815,7 +1815,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // Berger's 1985 series, took "Once Upon a Time… All About My Mother" (2012), its search's only film, which carries
     // every word of the billing, but its "About Time" the other way round, in "… All About My Mother"
     val films = Seq(F(640160, "Once Upon a Time… All About My Mother", 2012, "Someone", 60, 1))
-    val berger = listing(PictureHouseUckfield, "About Time: Once Upon a Time")
+    val berger = listing(UkRoster("PictureHouseUckfield"), "About Time: Once Upon a Time")
     val d = shipped(Seq(berger), films).decisionOf(berger.key)
     withClue(d.render)(d.film shouldBe None)
     // a billing's words in the film's order still take it ("Dzień Dziecka księdza Kaczkowskiego")
@@ -1824,7 +1824,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     shipped(Seq(ordered), kaczkowski).decisionOf(ordered.key).film shouldBe Some(1395000)
     // a billing of one piece, its banner after the work (UK Hebden Bridge's "GÖTTERDÄMMERUNG Royal Opera"), still does
     val ring = Seq(F(1702769, "Royal Ballet & Opera 2026/27: Götterdämmerung", 2027, "", 0, 0.5))
-    val banner = listing(PictureHouseUckfield, "GÖTTERDÄMMERUNG Royal Opera")
+    val banner = listing(UkRoster("PictureHouseUckfield"), "GÖTTERDÄMMERUNG Royal Opera")
     shipped(Seq(banner), ring).decisionOf(banner.key).film shouldBe Some(1702769)
     // nor a piece whose words one part of the title holds in a translation's order: DE Cinema Wolfhagen's "National Opera
     // Paris: Schwanensee" is TMDB's "Opéra national de Paris 2024: Schwanensee", its search's only film (convergence
@@ -2852,7 +2852,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // Prince Charles (Flicks) bills "Apocalypse Now" in 2019, Coppola, 183 minutes: the 2019 Final Cut. The model denied 28 by
     // "Learned(runtime.delta >= 7 AND year.distance >= 4)" — 2019 read against 1979 alone, 183 against 147.
     val films = Seq(F(28, "Apocalypse Now", 1979, "Francis Ford Coppola", 147, 30.0, releases = Some(apocalypseReleases)))
-    val finalCut = listing(models.PrinceCharlesLondon, "Apocalypse Now", Some(2019), Some("Francis Ford Coppola"), Some(183))
+    val finalCut = listing(models.UkRoster("PrinceCharlesLondon"), "Apocalypse Now", Some(2019), Some("Francis Ford Coppola"), Some(183))
     val r = shipped(Seq(finalCut), films)
     withClue(r.decisionOf(finalCut.key).render)(r.decisionOf(finalCut.key).film shouldBe Some(28))
   }
@@ -2860,7 +2860,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   it should "take its film's record when its title bills the edition and runs longer than every runtime TMDB states" in {
     // TMDB holds no record of "The Return of the King"'s extended edition: 122 states the 201-minute theatrical cut.
     val films = Seq(F(122, "The Lord of the Rings: The Return of the King", 2003, "Peter Jackson", 201, 40.0))
-    val extended = listing(models.PrinceCharlesLondon, "The Lord of the Rings: The Return of the King (Extended Edition)", Some(2003),
+    val extended = listing(models.UkRoster("PrinceCharlesLondon"), "The Lord of the Rings: The Return of the King (Extended Edition)", Some(2003),
       Some("Peter Jackson"), Some(263))
     val r = shipped(Seq(extended), films)
     withClue(r.decisionOf(extended.key).render)(r.decisionOf(extended.key).film shouldBe Some(122))
@@ -2871,9 +2871,9 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films = Seq(
       F(11906, "Suspiria", 1977, "Dario Argento", 98, 20.0, releases = Some("GB1977-GB2018-IT1977-")),
       F(361292, "Suspiria", 2018, "Luca Guadagnino", 152, 25.0, releases = Some("GB2018-IT2018-US2018-")))
-    val remake   = listing(models.PrinceCharlesLondon, "Suspiria", Some(2018), Some("Luca Guadagnino"), Some(152))
-    val undated  = listing(models.PrinceCharlesLondon, "Suspiria", Some(2018), None, Some(152))
-    val original = listing(models.PrinceCharlesLondon, "Suspiria", Some(1977), Some("Dario Argento"), Some(98))
+    val remake   = listing(models.UkRoster("PrinceCharlesLondon"), "Suspiria", Some(2018), Some("Luca Guadagnino"), Some(152))
+    val undated  = listing(models.UkRoster("PrinceCharlesLondon"), "Suspiria", Some(2018), None, Some(152))
+    val original = listing(models.UkRoster("PrinceCharlesLondon"), "Suspiria", Some(1977), Some("Dario Argento"), Some(98))
     val r = shipped(Seq(remake, undated, original), films)
     withClue(Seq(remake, undated, original).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
       r.decisionOf(remake.key).film shouldBe Some(361292)

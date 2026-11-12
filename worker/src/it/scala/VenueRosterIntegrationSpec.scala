@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaShowing, CineworldFeltham, Country, KinoEtiuda, Showtime, SourceData}
+import models.{CinemaShowing, Country, KinoEtiuda, Showtime, SourceData, UkRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -16,8 +16,8 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
   private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1).withNano(0), bookingUrl = None))
   private val film     = "odyseja|2026"
   private val polish   = CinemaShowing(KinoEtiuda, "odyseja").displayName
-  private val foreign  = CinemaShowing(CineworldFeltham, "odyseja").displayName
-  private val other    = CinemaShowing(CineworldFeltham, "other").displayName
+  private val foreign  = CinemaShowing(UkRoster("CineworldFeltham"), "odyseja").displayName
+  private val other    = CinemaShowing(UkRoster("CineworldFeltham"), "other").displayName
 
   "A roster-scoped Mongo side store" should "never write a row under a venue outside the country" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "venue-roster") { db =>

@@ -125,7 +125,7 @@ jobs:
             - name: Check for wiring changes
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/scala/models/UkRosterData.scala scrapers/src/main/scala/services/cinemas/uk/UkSourcesData.scala geodata/src/main/resources/generated data/uk; then
+                  if git diff --quiet -- geodata/src/main/resources/generated data/uk; then
                       echo "wired=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "wired=true" >> "$GITHUB_OUTPUT"
@@ -135,8 +135,9 @@ jobs:
             - uses: ./.github/actions/setup-sbt-build
               if: steps.changed.outputs.wired == 'true'
 
-            # Gate: the generated Scala must compile (common + worker) or the job
-            # fails and no PR is opened.
+            # Gate: the code must compile (common + worker) or the job fails and no PR
+            # is opened. The generated tables themselves load in CatalogSeedSpec below,
+            # which fails on a page naming a venue the roster lacks.
             - name: Compile-gate the generated wiring
               if: steps.changed.outputs.wired == 'true'
               run: sbt "worker/compile"
@@ -158,7 +159,7 @@ jobs:
                   token: ${{ steps.app-token.outputs.token || github.token }}
 
             # Open (or replace) the PR with the newly wired venues. `add-paths` scopes
-            # the commit to the two source files; the report is the body only (not
+            # the commit to the regenerated artefacts; the report is the body only (not
             # committed). No diff ⇒ no PR.
             - name: Open discovery PR
               uses: peter-evans/create-pull-request@v6
@@ -168,10 +169,7 @@ jobs:
                   delete-branch: true
                   add-paths: |
                       data/uk/roster.json
-                      common/src/main/scala/models/UkRosterData.scala
-                      scrapers/src/main/scala/services/cinemas/uk/UkSourcesData.scala
                       geodata/src/main/resources/generated
-                      common/src/main/scala/models/UkPages.scala
                       data/uk/venues.json
                       data/uk/towns.json
                       data/uk/pages.json

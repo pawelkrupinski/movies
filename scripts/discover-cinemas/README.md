@@ -9,11 +9,11 @@ every Monday 14:00 UTC (and on `workflow_dispatch`).
 
 Every UK venue is declared once, as a row of [`data/uk/roster.json`](../../data/uk/roster.json):
 its Scala name, display and pill names, flicks.co.uk slug and primary source (none: Flicks).
-`data/uk/scripts/generate_roster.py` generates the Scala from it — `UkRosterData` (the venues)
-and `UkSourcesData` (their scrapers and Flicks fallbacks).
+`data/uk/scripts/generate_roster.py` generates the tables `UkRoster` (the venues) and
+`UkSourcesData` (their scrapers and Flicks fallbacks) read, under `geodata/src/main/resources/generated/`.
 
 Which page LISTS a venue is not wired by hand: it is generated from the venue's
-town (`data/uk/scripts/build_pages.py` → `UkPages.scala`), which the workflow
+town (`data/uk/scripts/build_pages.py` → `generated/uk-pages/`, read by `UkPages`), which the workflow
 reruns after harvesting and geocoding the new venues.
 
 `discover.py`:

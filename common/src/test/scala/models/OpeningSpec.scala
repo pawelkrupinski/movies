@@ -70,14 +70,14 @@ class OpeningSpec extends AnyFlatSpec with Matchers {
     venue("Freiluftkino Kreuzberg").opening shouldBe Opening.Seasonal(SeasonWindow.Germany)
     venue("Autocine Getxo").opening shouldBe Opening.Seasonal(SeasonWindow.Spain)
     venue("Admiral Twin Drive-in Tulsa").opening shouldBe Opening.Seasonal(SeasonWindow.UnitedStates)
-    RooftopFilmClubStratfordRoofEast.opening shouldBe Opening.Seasonal(SeasonWindow.UnitedKingdom)
+    UkRoster("RooftopFilmClubStratfordRoofEast").opening shouldBe Opening.Seasonal(SeasonWindow.UnitedKingdom)
   }
 
   it should "leave a regular cinema, and a drive-in that screens all year, year-round" in {
     venue("Kino Central Berlin").opening shouldBe Opening.YearRound
     venue("Drive In Autokino Essen").opening shouldBe Opening.YearRound
     venue("West Wind Glendale Drive-In").opening shouldBe Opening.YearRound
-    RooftopFilmClubPeckhamBusseyBuilding.opening shouldBe Opening.YearRound
+    UkRoster("RooftopFilmClubPeckhamBusseyBuilding").opening shouldBe Opening.YearRound
     KinoMuza.opening shouldBe Opening.YearRound
   }
 

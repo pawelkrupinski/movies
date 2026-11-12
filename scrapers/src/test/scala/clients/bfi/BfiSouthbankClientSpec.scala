@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.{FakeHttpFetch, FixtureFile}
-import models.BfiLondonSouthbank
+import models.UkRoster
 import services.cinemas.uk.BfiSouthbankClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -22,14 +22,14 @@ import tools.SpecTimeouts
 class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val today   = LocalDate.of(2026, 10, 12)
-  private def scrape(on: LocalDate) = new BfiSouthbankClient(new FakeHttpFetch("bfi"), BfiLondonSouthbank, on).fetch()
+  private def scrape(on: LocalDate) = new BfiSouthbankClient(new FakeHttpFetch("bfi"), UkRoster("BfiLondonSouthbank"), on).fetch()
   private val results = scrape(today)
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   "BfiSouthbankClient.fetch" should "read the Southbank programme Flicks never listed off the BFI's cinemas site" in {
     results.size shouldBe 118
     results.flatMap(_.showtimes).size shouldBe 350
-    results.map(_.cinema).toSet shouldBe Set(BfiLondonSouthbank)
+    results.map(_.cinema).toSet shouldBe Set(UkRoster("BfiLondonSouthbank"))
     results.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2026, 11, 30)
     results.flatMap(_.showtimes).flatMap(_.room).toSet shouldBe Set("NFT1", "NFT2", "NFT3", "NFT4")
   }
@@ -99,7 +99,7 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
       override def get(url: String): String = read(url, replay.get(url))
       override def get(url: String, headers: Map[String, String]): String = read(url, replay.get(url, headers))
     }
-    new BfiSouthbankClient(gated, BfiLondonSouthbank, today).fetch().size shouldBe 118
+    new BfiSouthbankClient(gated, UkRoster("BfiLondonSouthbank"), today).fetch().size shouldBe 118
     peak.get should be >= 8
   }
 

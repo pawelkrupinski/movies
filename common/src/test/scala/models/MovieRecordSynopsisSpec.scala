@@ -215,7 +215,7 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(
       data = Map[Source, SourceData](
         CineworldChain -> SourceData(synopsis = Some("The Cineworld chain's own, longer synopsis of the film.")),
-        CineworldLeeds -> SourceData(), // the Leeds venue screening this film
+        UkRoster("CineworldLeeds") -> SourceData(), // the Leeds venue screening this film
         Tmdb           -> SourceData(synopsis = Some("TMDB's short one."))
       )
     )
@@ -228,7 +228,7 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
   it should "count as a chain's venue only one of the chain's own country" in {
     CinemaNetworks.detailVenues(CinemaCityChain).map(City.forCinema(_).map(_.country)) shouldBe Set(Some(Country.Poland))
     CinemaNetworks.detailVenues(CineworldChain).map(City.forCinema(_).map(_.country)) shouldBe Set(Some(Country.UnitedKingdom))
-    CinemaNetworks.detailVenues(CineworldChain) should contain (CineworldLeeds)
+    CinemaNetworks.detailVenues(CineworldChain) should contain (UkRoster("CineworldLeeds"))
   }
 
   // The read model asks for every city a film plays in at once (a US wide release: hundreds), so
@@ -379,7 +379,7 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     val record = MovieRecord(
       data = Map[Source, SourceData](
         CineworldChain -> SourceData(synopsis = Some(polish)),
-        CineworldLeeds -> SourceData(), // the Leeds venue screening this film
+        UkRoster("CineworldLeeds") -> SourceData(), // the Leeds venue screening this film
         Tmdb           -> SourceData(synopsis = Some(english), language = Some("en-GB"))
       )
     )

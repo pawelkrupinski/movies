@@ -2,7 +2,7 @@ package services.movies
 
 import tools.SpecClock.given
 
-import models.{CinemaShowing, CurzonCinemaAldgate, Helios, Imdb, Multikino, MovieRecord, Showtime, Source, SourceData, TitleSearch, Tmdb}
+import models.{CinemaShowing, Helios, Imdb, MovieRecord, Multikino, Showtime, Source, SourceData, TitleSearch, Tmdb, UkRoster}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -127,21 +127,21 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       title     = Some("RBO Cinema Season 2026-27: Tosca"),
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 10, 1, 19, 15), None, None, Nil), Showtime(LocalDateTime.of(2026, 10, 4, 14, 0), None, None, Nil))
     )
-    val stripped = ShowtimesDigest.stripForCache(MovieRecord(data = Map[Source, SourceData](CurzonCinemaAldgate -> slot)))
-    stripped.data(CurzonCinemaAldgate).showtimeStartMinutes.map(_.length) shouldBe Some(2)
+    val stripped = ShowtimesDigest.stripForCache(MovieRecord(data = Map[Source, SourceData](UkRoster("CurzonCinemaAldgate") -> slot)))
+    stripped.data(UkRoster("CurzonCinemaAldgate")).showtimeStartMinutes.map(_.length) shouldBe Some(2)
 
     val movieDocument = new BsonDocument()
     codec.encode(new BsonDocumentWriter(movieDocument),
       StoredMovieDto.fromDomain("rbo cinema season 2026 27 tosca|1941", stripped, Instant.EPOCH), EncoderContext.builder().build())
-    val wireSlot = movieDocument.getDocument("sourceData").getDocument(CurzonCinemaAldgate.displayName)
+    val wireSlot = movieDocument.getDocument("sourceData").getDocument(UkRoster("CurzonCinemaAldgate").displayName)
     wireSlot.getString("title").getValue shouldBe "RBO Cinema Season 2026-27: Tosca"
     wireSlot.containsKey("showtimeStartMinutes") shouldBe false
     wireSlot.containsKey("showtimesDigest")      shouldBe false
 
     val slotDocument = new BsonDocument()
     MovieCodecs.registry.get(classOf[StoredSlotDto]).encode(new BsonDocumentWriter(slotDocument),
-      StoredSlotDto("f70ff0063afcb515|curzon", "f70ff0063afcb515", CurzonCinemaAldgate.displayName,
-        stripped.data(CurzonCinemaAldgate), Instant.EPOCH), EncoderContext.builder().build())
+      StoredSlotDto("f70ff0063afcb515|curzon", "f70ff0063afcb515", UkRoster("CurzonCinemaAldgate").displayName,
+        stripped.data(UkRoster("CurzonCinemaAldgate")), Instant.EPOCH), EncoderContext.builder().build())
     slotDocument.getDocument("slot").containsKey("showtimeStartMinutes") shouldBe false
   }
 

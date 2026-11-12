@@ -1,9 +1,6 @@
 package services.cinemas.roster
 
-import models.{BakerStreetCinemaAbergavenny, Cinema, ColiseumCinemaBrecon, FloraCinemaHelston, KinoMikro, MerlinWellesleyWellington,
-  MikroBronowice, OdeonCinemaChelmsford, OdeonCinemaColchester, OdeonCinemaLlanelli, OdeonCinemaNewark, OdeonCinemaSwadlincote,
-  RitzBurnhamOnSea, RoyalStIvesCinema, TheAvenueCinemaMinehead, TivoliTiverton, WTWLighthouseNewquay, WTWWhiteRiverCinema,
-  WestwayCinemaFrome}
+import models.{Cinema, KinoMikro, MikroBronowice, UkRoster}
 import play.api.Logging
 
 /**
@@ -27,24 +24,24 @@ object DistinctVenuePairs extends Logging {
   private val cased: Set[Set[Cinema]] = Set(
     Set(KinoMikro, MikroBronowice),   // Kino Mikro (Juliusza Lea) and its second screen in Bronowice
     // Merlin Cinemas, Helston and St Ives: admit-one merlinhelston vs merlinstives
-    Set(FloraCinemaHelston, RoyalStIvesCinema),
+    Set(UkRoster("FloraCinemaHelston"), UkRoster("RoyalStIvesCinema")),
     // WTW Cinemas, Newquay and St Austell: wtwcinemas.co.uk/newquay vs /st-austell booking
-    Set(WTWLighthouseNewquay, WTWWhiteRiverCinema),
+    Set(UkRoster("WTWLighthouseNewquay"), UkRoster("WTWWhiteRiverCinema")),
     // Odeon's template schedule in two Essex towns: showtime ids 498-* vs 515-*, own screens
-    Set(OdeonCinemaChelmsford, OdeonCinemaColchester),
+    Set(UkRoster("OdeonCinemaChelmsford"), UkRoster("OdeonCinemaColchester")),
     // S&B Cinemas' three Somerset towns: sandbcinemas.co.uk/<venue>/booknow per venue
-    Set(RitzBurnhamOnSea, TheAvenueCinemaMinehead),
-    Set(RitzBurnhamOnSea, WestwayCinemaFrome),
-    Set(TheAvenueCinemaMinehead, WestwayCinemaFrome),
+    Set(UkRoster("RitzBurnhamOnSea"), UkRoster("TheAvenueCinemaMinehead")),
+    Set(UkRoster("RitzBurnhamOnSea"), UkRoster("WestwayCinemaFrome")),
+    Set(UkRoster("TheAvenueCinemaMinehead"), UkRoster("WestwayCinemaFrome")),
 
     // ── Two cities, 95%+ alike (the census's cross-city scope) ──
     // Abergavenny and Brecon: internet-ticketing sites BAKABE vs COLBRE, own perfcodes
-    Set(BakerStreetCinemaAbergavenny, ColiseumCinemaBrecon),
+    Set(UkRoster("BakerStreetCinemaAbergavenny"), UkRoster("ColiseumCinemaBrecon")),
     // Merlin Cinemas, Wellington and Tiverton: admit-one merlinwellington vs merlintiverton
-    Set(MerlinWellesleyWellington, TivoliTiverton),
+    Set(UkRoster("MerlinWellesleyWellington"), UkRoster("TivoliTiverton")),
     // Odeon's template schedule: showtime ids 760-* (Llanelli), 757-* (Newark), 759-* (Swadlincote)
-    Set(OdeonCinemaLlanelli, OdeonCinemaNewark),
-    Set(OdeonCinemaLlanelli, OdeonCinemaSwadlincote),
+    Set(UkRoster("OdeonCinemaLlanelli"), UkRoster("OdeonCinemaNewark")),
+    Set(UkRoster("OdeonCinemaLlanelli"), UkRoster("OdeonCinemaSwadlincote")),
   )
 
   /** Generated-roster pairs (Germany, Spain, the US), by the display name each is stored under. */

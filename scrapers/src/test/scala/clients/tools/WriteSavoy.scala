@@ -13,38 +13,38 @@ import services.cinemas.uk.SavoyClient
 object WriteSavoy {
   /** Full venue sites, the programme in the `WhatsOn` page's literal. */
   private val WhatsOnSites: Seq[(String, Cinema)] = Seq(
-    "https://www.phoenixcinema.co.uk/PhoenixCinemaLondon.dll/" -> PhoenixCinemaEastFinchley,
-    "https://savoycorby.co.uk/SavoyCorby.dll/"                 -> SavoyCinemaCorby
+    "https://www.phoenixcinema.co.uk/PhoenixCinemaLondon.dll/" -> UkRoster("PhoenixCinemaEastFinchley"),
+    "https://savoycorby.co.uk/SavoyCorby.dll/"                 -> UkRoster("SavoyCinemaCorby")
   )
 
   /** Booking-only hosts: the venue's own site is elsewhere, Savoy only sells the tickets. */
   val BoxOffices: Seq[(String, Cinema)] = Seq(
-    "https://book.ilkleycinema.co.uk/IlkleyCinema.dll/"                                      -> IlkleyCinema,
-    "https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/"                              -> PhoenixCinemaAndArtCentreLeicester,
-    "https://book.wetherbycinema.com/WetherbyFilmTheatre.dll/"                                -> WetherbyFilmTheatre,
-    "http://arthousecrouchend.savoysystems.co.uk/ArthouseCrouchEnd.dll/"                      -> ArthouseCrouchEnd,
-    "https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/"                                 -> CineLumiereLondon,
-    "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/"                             -> TheGardenCinema,
-    "https://palacecinemagorleston.savoysystems.co.uk/PalaceCinemaGorleston.dll/"             -> PalaceCinemaGorlestonOnSea,
-    "http://thepoly.savoysystems.co.uk/ThePoly.dll/"                                          -> ThePolyFalmouth,
-    "http://pavilionsteignmouth.savoysystems.co.uk/PavilionsTeignmouth.dll/"                  -> PavilionsTeignmouth,
-    "http://thebeehive.savoysystems.co.uk/TheBeehive.dll/"                                    -> TheBeehiveHoniton,
-    "http://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/"              -> HilltopCinemaShaftesburyArtsCentre,
-    "https://newtonstewartcinema.savoysystems.co.uk/NewtonStewartCinema.dll/"                 -> TheCinemaNewtonStewart,
-    "https://theatrgwaun.savoysystems.co.uk/TheatrGwaun.dll/"                                 -> TheatrGwaunFishguard,
-    "https://bookings.chichestercinema.org/ChichesterCinema.dll/"                             -> ChichesterCinemaAtNewPark,
-    "https://southseacinema.savoysystems.co.uk/SouthseaCinema.dll/"                           -> SouthseaCinemaArtsCentre,
-    "http://therexberkhamsted.savoysystems.co.uk/TheRexBerkhamsted.dll/"                      -> TheRexCinemaBerkhamsted,
-    "https://silverscreenfolkestone.savoysystems.co.uk/SilverScreenFolkestone.dll/"           -> SilverScreenFolkestone,
-    "https://uppoxford.savoysystems.co.uk/UPPOxford.dll/"                                     -> UltimatePicturePalaceOxford,
-    "https://maonacinema.savoysystems.co.uk/MaonaCinema.dll/"                                 -> MaonaCinemaOswestry,
-    "https://cinebowlonline.org/CinebowlUttoxeter.dll/"                                       -> CinebowlUttoxeter,
-    "https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/"                   -> FilmTheatreLeiston,
-    "https://riversidewoodbridge.savoysystems.co.uk/RiversideWoodbridge.dll/"                 -> RiversideTheatreWoodbridge
+    "https://book.ilkleycinema.co.uk/IlkleyCinema.dll/"                                      -> UkRoster("IlkleyCinema"),
+    "https://tickets.phoenix.org.uk/PhoenixCinemaLeicester.dll/"                              -> UkRoster("PhoenixCinemaAndArtCentreLeicester"),
+    "https://book.wetherbycinema.com/WetherbyFilmTheatre.dll/"                                -> UkRoster("WetherbyFilmTheatre"),
+    "http://arthousecrouchend.savoysystems.co.uk/ArthouseCrouchEnd.dll/"                      -> UkRoster("ArthouseCrouchEnd"),
+    "https://cinelumiere.savoysystems.co.uk/CineLumiere.dll/"                                 -> UkRoster("CineLumiereLondon"),
+    "https://bookings.thegardencinema.co.uk/TheGardenCinema.dll/"                             -> UkRoster("TheGardenCinema"),
+    "https://palacecinemagorleston.savoysystems.co.uk/PalaceCinemaGorleston.dll/"             -> UkRoster("PalaceCinemaGorlestonOnSea"),
+    "http://thepoly.savoysystems.co.uk/ThePoly.dll/"                                          -> UkRoster("ThePolyFalmouth"),
+    "http://pavilionsteignmouth.savoysystems.co.uk/PavilionsTeignmouth.dll/"                  -> UkRoster("PavilionsTeignmouth"),
+    "http://thebeehive.savoysystems.co.uk/TheBeehive.dll/"                                    -> UkRoster("TheBeehiveHoniton"),
+    "http://shaftesburyartscentre.savoysystems.co.uk/ShaftesburyArtsCentre.dll/"              -> UkRoster("HilltopCinemaShaftesburyArtsCentre"),
+    "https://newtonstewartcinema.savoysystems.co.uk/NewtonStewartCinema.dll/"                 -> UkRoster("TheCinemaNewtonStewart"),
+    "https://theatrgwaun.savoysystems.co.uk/TheatrGwaun.dll/"                                 -> UkRoster("TheatrGwaunFishguard"),
+    "https://bookings.chichestercinema.org/ChichesterCinema.dll/"                             -> UkRoster("ChichesterCinemaAtNewPark"),
+    "https://southseacinema.savoysystems.co.uk/SouthseaCinema.dll/"                           -> UkRoster("SouthseaCinemaArtsCentre"),
+    "http://therexberkhamsted.savoysystems.co.uk/TheRexBerkhamsted.dll/"                      -> UkRoster("TheRexCinemaBerkhamsted"),
+    "https://silverscreenfolkestone.savoysystems.co.uk/SilverScreenFolkestone.dll/"           -> UkRoster("SilverScreenFolkestone"),
+    "https://uppoxford.savoysystems.co.uk/UPPOxford.dll/"                                     -> UkRoster("UltimatePicturePalaceOxford"),
+    "https://maonacinema.savoysystems.co.uk/MaonaCinema.dll/"                                 -> UkRoster("MaonaCinemaOswestry"),
+    "https://cinebowlonline.org/CinebowlUttoxeter.dll/"                                       -> UkRoster("CinebowlUttoxeter"),
+    "https://leistonfilmtheatre.savoysystems.co.uk/LeistonFilmTheatre.dll/"                   -> UkRoster("FilmTheatreLeiston"),
+    "https://riversidewoodbridge.savoysystems.co.uk/RiversideWoodbridge.dll/"                 -> UkRoster("RiversideTheatreWoodbridge")
   )
 
-  private val Recorded: Set[Cinema] = Set(PhoenixCinemaEastFinchley, SavoyCinemaCorby, IlkleyCinema, PhoenixCinemaAndArtCentreLeicester,
-    WetherbyFilmTheatre, TheatrGwaunFishguard)
+  private val Recorded: Set[Cinema] = Set(UkRoster("PhoenixCinemaEastFinchley"), UkRoster("SavoyCinemaCorby"), UkRoster("IlkleyCinema"), UkRoster("PhoenixCinemaAndArtCentreLeicester"),
+    UkRoster("WetherbyFilmTheatre"), UkRoster("TheatrGwaunFishguard"))
 
   val commandLine: _root_.tools.CommandLine = VenueMeasure.commandLine("WriteSavoy", "Measures the live Savoy Systems venues, by cinema name.")
 

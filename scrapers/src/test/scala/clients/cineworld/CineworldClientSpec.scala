@@ -1,7 +1,7 @@
 package clients.cineworld
 
 import clients.tools.FakeHttpFetch
-import models.CineworldBarnsley
+import models.UkRoster
 import org.scalatest.{LoneElement, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -40,7 +40,7 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues wi
   private val fake    = new FakeHttpFetch("cineworld")
 
   private def client(http: tools.HttpFetch = fake) =
-    new CineworldClient(http, Barnsley, CineworldBarnsley, today = Today)
+    new CineworldClient(http, Barnsley, UkRoster("CineworldBarnsley"), today = Today)
 
   private lazy val films = client().fetch()
   private def film(title: String) = films.find(_.movie.title == title).value
@@ -49,7 +49,7 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues wi
 
   "fetch" should "derive the platform theaterId from the slug and join the venue's schedule against the catalogue" in {
     films.size shouldBe 61
-    films.map(_.cinema).toSet shouldBe Set(CineworldBarnsley)
+    films.map(_.cinema).toSet shouldBe Set(UkRoster("CineworldBarnsley"))
     films.map(_.movie.title) should contain("How to Train Your Dragon")
   }
 

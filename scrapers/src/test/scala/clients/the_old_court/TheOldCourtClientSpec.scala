@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.TheOldCourtWindsor
+import models.UkRoster
 import services.cinemas.uk.TheOldCourtClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -19,13 +19,13 @@ import java.time.{LocalDate, LocalDateTime}
 class TheOldCourtClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val today   = LocalDate.of(2026, 7, 31)
-  private val results = new TheOldCourtClient(new FakeHttpFetch("the-old-court"), TheOldCourtWindsor, today).fetch()
+  private val results = new TheOldCourtClient(new FakeHttpFetch("the-old-court"), UkRoster("TheOldCourtWindsor"), today).fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   "TheOldCourtClient.fetch" should "find the cinema programme the Flicks mapping never could" in {
     results.size shouldBe 12
     results.flatMap(_.showtimes).size shouldBe 15
-    results.map(_.cinema).toSet shouldBe Set(TheOldCourtWindsor)
+    results.map(_.cinema).toSet shouldBe Set(UkRoster("TheOldCourtWindsor"))
   }
 
   it should "keep only events booked under the cinema's own box-office path" in {
@@ -77,7 +77,7 @@ class TheOldCourtClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     // ...but read from December, the same August listing must roll into next year
     // rather than resurrect a date eight months past.
     val fromDecember =
-      new TheOldCourtClient(new FakeHttpFetch("the-old-court"), TheOldCourtWindsor, LocalDate.of(2026, 12, 1)).fetch()
+      new TheOldCourtClient(new FakeHttpFetch("the-old-court"), UkRoster("TheOldCourtWindsor"), LocalDate.of(2026, 12, 1)).fetch()
     fromDecember.find(_.movie.title == "Whilst she was gone").value
       .showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2027, 8, 7, 20, 30))
   }

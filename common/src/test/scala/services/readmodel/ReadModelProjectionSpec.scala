@@ -388,7 +388,7 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     genresOf(Multikino, Map(Tmdb -> SourceData(genres = Seq("Fantasy", "film TV"))))              shouldBe Seq("Fantasy", "Film TV")
     genresOf(Multikino, Map(Filmweb -> SourceData(genres = Seq("Dla dzieci", "Przyrodniczy"))))   shouldBe Seq("Familijny", "Dokumentalny")
     genresOf(german, Map.empty, Seq("Romanze", "Trickfilm", "Laufzeit: k. A."))                  shouldBe Seq("Liebesfilm", "Animation")
-    genresOf(CineworldFeltham, Map(Tmdb -> SourceData(genres = Seq("Unknown"))), Seq("drama")) shouldBe Seq("Drama")
+    genresOf(UkRoster("CineworldFeltham"), Map(Tmdb -> SourceData(genres = Seq("Unknown"))), Seq("drama")) shouldBe Seq("Drama")
   }
 
   it should "leave out a spelling that is the shown title again, and repeats of one" in {

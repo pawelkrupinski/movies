@@ -4,8 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.{FakeHttpFetch, FixtureFile}
-import models.{ChapterCardiff, NeuaddDwyforPwllheli, NerveCentreLondonderry, Number8Pershore, PocklingtonArtsCentre,
-  PontardaweArtsCentre, TheatrColwyn, TheatrMwldanCardigan, WatershedBristol}
+import models.UkRoster
 import services.cinemas.uk.TicketsolveClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -22,13 +21,13 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   private def scrape(client: String, cinema: models.Cinema, on: LocalDate = today) =
     new TicketsolveClient(new FakeHttpFetch("ticketsolve"), client, cinema, on).fetch()
 
-  private val mwldan  = scrape("mwldan", TheatrMwldanCardigan)
+  private val mwldan  = scrape("mwldan", UkRoster("TheatrMwldanCardigan"))
   private val byTitle = mwldan.map(cm => cm.movie.title -> cm).toMap
 
   "TicketsolveClient.fetch" should "read Theatr Mwldan's whole cinema programme off the feed" in {
     mwldan.size shouldBe 46
     mwldan.flatMap(_.showtimes).size shouldBe 238
-    mwldan.map(_.cinema).toSet shouldBe Set(TheatrMwldanCardigan)
+    mwldan.map(_.cinema).toSet shouldBe Set(UkRoster("TheatrMwldanCardigan"))
     mwldan.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2027, 6, 12)
   }
 
@@ -55,7 +54,7 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   // Watershed tails the certificate with a short box-office code: "Fatherland (12A) S",
   // "(12A) PS", "(18) CTBA" — 18 of its shows. Left on, the title searched TMDB as "Fatherland (12A) S".
   it should "lift a certificate that a short box-office code follows" in {
-    val watershed = scrape("watershed", WatershedBristol).map(cm => cm.movie.title -> cm).toMap
+    val watershed = scrape("watershed", UkRoster("WatershedBristol")).map(cm => cm.movie.title -> cm).toMap
     watershed.get("Fatherland").value.ageRating shouldBe Some("12A")
     watershed.get("Golden Boy").value.ageRating shouldBe Some("18")
     watershed.keySet.filter(_.matches(""".*\((U|PG|12A?|15|18)\b.*""")) shouldBe empty
@@ -80,12 +79,12 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   it should "drop screenings before today" in {
-    val later = scrape("mwldan", TheatrMwldanCardigan, LocalDate.of(2026, 10, 17))
+    val later = scrape("mwldan", UkRoster("TheatrMwldanCardigan"), LocalDate.of(2026, 10, 17))
     later.flatMap(_.showtimes).map(_.dateTime.toLocalDate).min shouldBe LocalDate.of(2026, 10, 17)
   }
 
   "A multi-arts Ticketsolve client" should "keep only what it files as film, not its gigs, comedy or film courses" in {
-    val nerve = scrape("nervecentre", NerveCentreLondonderry)
+    val nerve = scrape("nervecentre", UkRoster("NerveCentreLondonderry"))
     nerve.size shouldBe 14
     val titles = nerve.map(_.movie.title)
     titles should contain allOf ("Corpse Bride", "The Shining (Extended Cut)")
@@ -99,34 +98,34 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   private def titles(client: String, cinema: models.Cinema) = scrape(client, cinema).map(_.movie.title).toSet
 
   "Each client's own filing" should "keep its films and relays, and none of its gigs, talks, workshops or seat sponsorships" in {
-    val chapter = titles("chapter", ChapterCardiff)
+    val chapter = titles("chapter", UkRoster("ChapterCardiff"))
     chapter should have size 40
     chapter should contain ("BFI London Film Festival 2026: The Debut")
     chapter should not contain "Drones Comedy Club"                            // "Events"
     chapter should not contain "Tara Clerkin Trio + support from ZIEGENKITZ"   // "Music"
 
-    val pontardawe = titles("pontardaweartscentre", PontardaweArtsCentre)
+    val pontardawe = titles("pontardaweartscentre", UkRoster("PontardaweArtsCentre"))
     pontardawe should have size 20
     pontardawe should contain ("Kendal Mountain Film Festival 27")
     pontardawe should not contain "Lindisfarne"                                                         // "Music"
     pontardawe should not contain "Christmas Wreath Making Class with Master Florist Jonathan Lloyd-Davies" // "Workshops"
 
-    val dwyfor = titles("neuadddwyfor", NeuaddDwyforPwllheli)
+    val dwyfor = titles("neuadddwyfor", UkRoster("NeuaddDwyforPwllheli"))
     dwyfor should have size 18
     dwyfor should contain ("NT Live: The Misanthrope") // "Darllediad Byw / Live Broadcast"
     dwyfor should not contain "TOM MEIGHAN - RAW 26"   // uncategorised, and no certificate
     dwyfor.filter(_.startsWith("Diod a Dylunio")) shouldBe empty // "Gweithdy / Workshop"
 
-    val number8 = titles("number8", Number8Pershore)
+    val number8 = titles("number8", UkRoster("Number8Pershore"))
     number8 should have size 29
     number8 should contain ("Royal Opera: Carmen")                      // "Event Cinema"
     number8 should not contain "King Pleasure and the Biscuit Boys"     // "Live Event"
     number8.filter(_.startsWith("Pop Up Painting")) shouldBe empty      // "Adult Workshops"
     number8.filter(_.startsWith("Number 8 Quiz")) shouldBe empty        // "Foyer Event"
 
-    titles("pocklingtonartscentre", PocklingtonArtsCentre) should not contain "Seat Sponsorship" // uncategorised
+    titles("pocklingtonartscentre", UkRoster("PocklingtonArtsCentre")) should not contain "Seat Sponsorship" // uncategorised
 
-    val watershed = titles("watershed", WatershedBristol)
+    val watershed = titles("watershed", UkRoster("WatershedBristol"))
     watershed.filter(_.startsWith("Golden Boy")) should not be empty           // "Event Cinema"
     watershed.filter(_.startsWith("Seat Sponsorship")) shouldBe empty          // "Seat Sponsorship"
     watershed should not contain "The Knot Makers"                             // "Lunchtime Talk"
@@ -135,12 +134,12 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
 
   it should "keep a relay filed as recorded live" in {
     // Theatr Colwyn files the National Theatre relay as "Recorded Live".
-    titles("theatrcolwyn", TheatrColwyn) should contain ("NT Live: Golden Boy")
+    titles("theatrcolwyn", UkRoster("TheatrColwyn")) should contain ("NT Live: Golden Boy")
   }
 
   it should "not read a stage show as film for a film word used of its genre" in {
     // "Movie musicals": a touring song-and-dance show of film songs, with a live cast.
-    val colwyn = titles("theatrcolwyn", TheatrColwyn)
+    val colwyn = titles("theatrcolwyn", UkRoster("TheatrColwyn"))
     colwyn should not contain "Epic Movie Musicals"
     colwyn should contain ("Grease (Sing-a-long)") // the film itself, filed as "Film"
   }
@@ -148,7 +147,7 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   it should "keep what the box office reports to Comscore as film, whatever its category" in {
     // Theatr Colwyn tags its films and relays "reports_comscorefilm" (Neuadd Dwyfor: "comscore"),
     // the Disney Junior screenings under "Children & Family" and the Paris ballet relays under "Ballet".
-    val colwyn = titles("theatrcolwyn", TheatrColwyn)
+    val colwyn = titles("theatrcolwyn", UkRoster("TheatrColwyn"))
     colwyn should contain allOf ("Disney Junior Cinema Club 2026", "Opéra de Paris Ballet Season - La Bayadère")
     // Negative controls in the same categories, untagged: a live bubble show and a dance school's Nutcracker.
     colwyn should not contain "The Bubble Wizard's Giant Bubble Show"
@@ -158,7 +157,7 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
 
   it should "keep an uncategorised show that carries a film certificate" in {
     // Watershed leaves two previews uncategorised; its other uncategorised shows carry no certificate.
-    val watershed = titles("watershed", WatershedBristol)
+    val watershed = titles("watershed", UkRoster("WatershedBristol"))
     watershed should contain allOf ("Preview: The Debut", "Preview: All Rivers Spill Their Stories to the Sea + director Q&A")
     watershed should not contain "Spooky Family Creative Technology Workshop"
     watershed should not contain "Supporters Evening 2026"
@@ -174,13 +173,13 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
     val show     = recorded.substring(from, recorded.indexOf("</show>", from) + "</show>".length)
       .replaceAll("(?s)<event_category>.*?</event_category>", "<event_category></event_category>")
     val feed     = s"<venues><venue><shows>$show</shows></venue></venues>"
-    TicketsolveClient.parse(feed, TheatrMwldanCardigan, today) shouldBe empty
-    TicketsolveClient.parse(feed.replace("(18+)", "(18)"), TheatrMwldanCardigan, today).map(_.movie.title) shouldBe
+    TicketsolveClient.parse(feed, UkRoster("TheatrMwldanCardigan"), today) shouldBe empty
+    TicketsolveClient.parse(feed.replace("(18+)", "(18)"), UkRoster("TheatrMwldanCardigan"), today).map(_.movie.title) shouldBe
       Seq("Clwb Mwldan: Sonic Sounds")
   }
 
   it should "refuse a page that is no feed rather than call it an empty programme" in {
     an[IllegalArgumentException] should be thrownBy
-      TicketsolveClient.parse("<html><body>Maintenance</body></html>", TheatrMwldanCardigan, today)
+      TicketsolveClient.parse("<html><body>Maintenance</body></html>", UkRoster("TheatrMwldanCardigan"), today)
   }
 }

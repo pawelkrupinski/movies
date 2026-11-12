@@ -900,10 +900,10 @@ case object RegalChain extends Cinema("Regal", "Regal")
 
 
 // ── United Kingdom (Flicks and the venues' own sites) — data-driven ─────────
-// `UkRosterData` (generated from data/uk/roster.json by data/uk/scripts/generate_roster.py)
-// declares every UK venue once, as a top-level `val` named as the `case object` it used to be
-// (`ActOneActon`), so code and tests address a venue by name as before; which page lists it is
-// `UkPages`, and what scrapes it `services.cinemas.uk.UkSourcesData`, both generated alongside.
+// `UkRoster` builds every UK venue once, from the table data/uk/scripts/generate_roster.py writes
+// out of data/uk/roster.json, keyed on the name of the `case object` it used to be: code and tests
+// address a venue as `UkRoster("ActOneActon")`. Which page lists it is `UkPages`, and what scrapes
+// it `services.cinemas.uk.UkSourcesData`, both read from tables generated alongside.
 // `name` is that Scala name, and stands in for the case object's `toString` and `hashCode`:
 // `slug` (title rules, metric labels) is derived from it, and every hash-keyed collection of
 // cinemas iterates as it did.

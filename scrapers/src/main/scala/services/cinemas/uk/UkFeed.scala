@@ -3,7 +3,7 @@ package services.cinemas.uk
 import models.Cinema
 
 /** The source a UK venue's programme is scraped from, with the venue's handle in it — a row's
- *  `primary` in `data/uk/roster.json`, generated into [[UkSourcesData]]. `UkScraperCatalog`
+ *  `primary` in `data/uk/roster.json`, generated into [[UkSourcesData]]'s table. `UkScraperCatalog`
  *  builds each venue's scraper from it. */
 sealed trait UkFeed {
   /** A chain's own site (Cineworld / Vue / Showcase / Everyman / Odeon), rather than an
@@ -32,6 +32,28 @@ object UkFeed {
   case object NovaCinema extends UkFeed
   /** The Old Court, Windsor: on no Flicks page, scraped off its own site. */
   case object TheOldCourt extends UkFeed
+
+  /** The feed a generated row names: its kind, as roster.json spells it (`data/uk/scripts/uk_roster.py`'s
+   *  `PRIMARY_ARGS`, plus `flicks` for a venue scraped off Flicks), and its arguments. An unknown kind, or
+   *  arguments the kind does not take, fails loudly. */
+  def parse(kind: String, args: Seq[String]): UkFeed = (kind, args) match {
+    case ("flicks", Seq(slug))                 => Flicks(slug)
+    case ("cineworld", Seq(slug))              => Cineworld(slug)
+    case ("vue", Seq(id))                      => Vue(id)
+    case ("showcase", Seq(id))                 => Showcase(id)
+    case ("everyman", Seq(id))                 => Everyman(id)
+    case ("odeon", Seq(id))                    => Odeon(id)
+    case ("savoy", Seq(dllBase))               => Savoy(dllBase)
+    case ("savoyBoxOffice", Seq(dllBase))      => SavoyBoxOffice(dllBase)
+    case ("spektrix", Seq(client))             => Spektrix(client, None)
+    case ("spektrix", Seq(client, building))   => Spektrix(client, Some(building))
+    case ("ticketsolve", Seq(client))          => Ticketsolve(client)
+    case ("quadDerby", Seq())                  => QuadDerby
+    case ("bfiSouthbank", Seq())               => BfiSouthbank
+    case ("novaCinema", Seq())                 => NovaCinema
+    case ("theOldCourt", Seq())                => TheOldCourt
+    case _ => throw new IllegalArgumentException(s"no UK feed $kind(${args.mkString(", ")})")
+  }
 }
 
 /** One UK venue's sources: its primary, and — for an own-site primary Flicks also lists — the

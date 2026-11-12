@@ -29,7 +29,7 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     val stored = StoredMovieRecord.synthesised("Troy", Some(2004), MovieRecord(
       tmdbId = Some(652), imdbId = Some("tt0332452"),
       data = Map[Source, SourceData](
-        PrinceCharlesLondon -> SourceData(title = Some("Troy"), runtimeMinutes = Some(163),
+        UkRoster("PrinceCharlesLondon") -> SourceData(title = Some("Troy"), runtimeMinutes = Some(163),
           showtimes = Seq(at("2026-11-14T11:45:00"))))), titleNormalizer)
 
     val rows = ReadModelProjection.screenings(stored)
@@ -49,7 +49,7 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     val stored = StoredMovieRecord.synthesised("2046", Some(2004), MovieRecord(
       tmdbId = Some(844), imdbId = Some("tt0212712"),
       data = Map[Source, SourceData](
-        PrinceCharlesLondon -> SourceData(title = Some("2046"), runtimeMinutes = Some(128),
+        UkRoster("PrinceCharlesLondon") -> SourceData(title = Some("2046"), runtimeMinutes = Some(128),
           showtimes = Seq(at("2026-11-29T14:35:00"))))), titleNormalizer)
 
     val rows = ReadModelProjection.screenings(stored)
@@ -65,7 +65,7 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     val stored = StoredMovieRecord.synthesised("Glastonbury", Some(2006), MovieRecord(
       tmdbId = Some(53871), imdbId = Some("tt0464022"),
       data = Map[Source, SourceData](
-        SouthseaCinemaArtsCentre -> SourceData(title = Some("Glastonbury"), runtimeMinutes = Some(138),
+        UkRoster("SouthseaCinemaArtsCentre") -> SourceData(title = Some("Glastonbury"), runtimeMinutes = Some(138),
           showtimes = Seq(at("2026-09-23T19:00:00"))))), titleNormalizer)
 
     val rows = ReadModelProjection.screenings(stored)

@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{BreweryArtsCentreKendal, BroadwayCinemaNottingham, DundeeContemporaryArtsDCA, GalaCinemaDurham, HydeParkPictureHouse, InstituteOfContemporaryArts, LighthousePoole, OldMarketHallShrewsbury, TauntonBrewhouse, TheDukesLancaster}
+import models.UkRoster
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.uk.SpektrixClient
 
@@ -19,13 +19,13 @@ import java.time.{LocalDate, LocalDateTime}
 class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val today   = LocalDate.of(2026, 10, 12)
-  private val results = new SpektrixClient(new FakeHttpFetch("spektrix"), "ica", InstituteOfContemporaryArts, today).fetch()
+  private val results = new SpektrixClient(new FakeHttpFetch("spektrix"), "ica", UkRoster("InstituteOfContemporaryArts"), today).fetch()
   private val byTitle = results.map(cm => cm.movie.title -> cm).toMap
 
   "SpektrixClient.fetch" should "read the ICA's cinema programme Flicks never listed" in {
     results.size shouldBe 122
     results.flatMap(_.showtimes).size shouldBe 209
-    results.map(_.cinema).toSet shouldBe Set(InstituteOfContemporaryArts)
+    results.map(_.cinema).toSet shouldBe Set(UkRoster("InstituteOfContemporaryArts"))
     results.flatMap(_.showtimes).map(_.dateTime.toLocalDate).max shouldBe LocalDate.of(2026, 12, 17)
   }
 
@@ -54,7 +54,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // 2026-10-12 capture of `galadurham`, which sells the Gala in Durham, the Consett
   // Empire and Bishop Auckland Town Hall through one client.
   private def gala(venue: String) =
-    new SpektrixClient(new FakeHttpFetch("spektrix"), "galadurham", GalaCinemaDurham, today, Some(venue)).fetch()
+    new SpektrixClient(new FakeHttpFetch("spektrix"), "galadurham", UkRoster("GalaCinemaDurham"), today, Some(venue)).fetch()
 
   "A multi-venue Spektrix client" should "list only the building the venue names" in {
     gala("Gala Theatre & Cinema").flatMap(_.showtimes) should have size 33
@@ -73,7 +73,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   "SpektrixClient on Broadway Nottingham" should "read a boolean film filing and the film's credits off its attributes" in {
     // 2026-10-12 capture of `broadwaynottingham`: films carry `attribute_Film: true`, the
     // opera and ballet relays `attribute_EventCinema: true`, and no category text at all.
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "broadwaynottingham", BroadwayCinemaNottingham, today)
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "broadwaynottingham", UkRoster("BroadwayCinemaNottingham"), today)
       .fetch().map(cm => cm.movie.title -> cm).toMap
     films.values.flatMap(_.showtimes) should have size 305
     films.keySet should contain ("Met Opera: Macbeth")
@@ -89,7 +89,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "read the production countries a box office files, one each" in {
     // Broadway files `attribute_CountryOfOrigin: "Poland/Germany"`; Derby QUAD `attribute_FilmCountryOfOrigin`.
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "broadwaynottingham", BroadwayCinemaNottingham, today)
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "broadwaynottingham", UkRoster("BroadwayCinemaNottingham"), today)
       .fetch().map(cm => cm.movie.title -> cm).toMap
     films("Fatherland").movie.countries shouldBe Seq("Poland", "Germany")
     films("Arrietty (Dubbed)").movie.countries shouldBe Seq("Japan")
@@ -97,7 +97,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "SpektrixClient on Old Market Hall" should "drop the ticket products and test events filed among the films" in {
     // 2026-10-12 capture of `theatresevern` (Theatre Severn + Old Market Hall).
-    val titles = new SpektrixClient(new FakeHttpFetch("spektrix"), "theatresevern", OldMarketHallShrewsbury, today, Some("Old Market Hall"))
+    val titles = new SpektrixClient(new FakeHttpFetch("spektrix"), "theatresevern", UkRoster("OldMarketHallShrewsbury"), today, Some("Old Market Hall"))
       .fetch().map(_.movie.title).toSet
     titles should contain ("The Incomer (12A)")
     titles should not contain "WatchWord Glasses"   // captioning-glasses hire, 48 "performances"
@@ -130,7 +130,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   "SpektrixClient.fetch (Leeds Heritage)" should "read the building off its site and venue attributes, not a website's" in {
     // each carries "site" inside another word: read as the building, they put the performance elsewhere and their value
     // came off the title as a building tag
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "leedsheritagetheatres", HydeParkPictureHouse,
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "leedsheritagetheatres", UkRoster("HydeParkPictureHouse"),
       LocalDate.of(2026, 10, 16), Some("Hyde Park Picture House")).fetch().map(cm => cm.movie.title -> cm).toMap
     films.keySet.filter(_.contains("HPPH")) shouldBe empty
     films("Blue Velvet").showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 24, 22, 30))
@@ -140,7 +140,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // festival films open the description with a facts sheet, one "Label: value" line each, which the recording of run
   // 38326582997 carried as The Everest Dream's synopsis.
   "SpektrixClient.fetch (DCA)" should "read a synopsis past the facts sheet heading the description" in {
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "dundeeca", DundeeContemporaryArtsDCA, LocalDate.of(2026, 10, 13))
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "dundeeca", UkRoster("DundeeContemporaryArtsDCA"), LocalDate.of(2026, 10, 13))
       .fetch().map(cm => cm.movie.title -> cm).toMap
     val everest = films("The Everest Dream + Q&A").synopsis.value
     everest should not startWith "Director:"
@@ -152,7 +152,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // brewhousetaunton`): its Royal Ballet & Opera relays list "Cast:" and "Creatives:" first and head the story
   // "Synopsis:", which the recording of run 38326582997 carried whole as five relays' synopsis.
   "SpektrixClient.fetch (Taunton Brewhouse)" should "read a synopsis from its heading on, past the cast and creatives" in {
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "brewhousetaunton", TauntonBrewhouse, LocalDate.of(2026, 10, 13))
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "brewhousetaunton", UkRoster("TauntonBrewhouse"), LocalDate.of(2026, 10, 13))
       .fetch().map(cm => cm.movie.title -> cm).toMap
     val carmen = films("RBO Live - Carmen").synopsis.value
     carmen should startWith ("Under the oppressive heat of the Spanish sun")
@@ -166,7 +166,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // `attribute_RunningTime`) and `dukeslancaster` (`attribute_AgeCertificate`).
   private val november = LocalDate.of(2026, 11, 3)
   private lazy val lighthouse =
-    new SpektrixClient(new FakeHttpFetch("spektrix"), "lighthousepoole", LighthousePoole, november).fetch()
+    new SpektrixClient(new FakeHttpFetch("spektrix"), "lighthousepoole", UkRoster("LighthousePoole"), november).fetch()
   private def lighthouseFilm(prefix: String) = lighthouse.find(_.movie.title.startsWith(prefix)).value
 
   "SpektrixClient.fetch (Lighthouse Poole)" should "read the film's running time off the text the box office states it in" in {
@@ -183,7 +183,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "SpektrixClient.fetch (Broadway)" should "take the film's own duration over the slot it is booked into" in {
     // Broadway's `duration` is the slot, ads and trailers included: Die Hard (132 min) is booked for 152.
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "broadwaynottingham", BroadwayCinemaNottingham, today)
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "broadwaynottingham", UkRoster("BroadwayCinemaNottingham"), today)
       .fetch().map(cm => cm.movie.title -> cm).toMap
     films("Die Hard").movie.runtimeMinutes shouldBe Some(132)
     films("Elf").movie.runtimeMinutes shouldBe Some(97)
@@ -192,7 +192,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   "SpektrixClient.fetch (Leeds Heritage)" should "read the original title a box office files" in {
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "leedsheritagetheatres", HydeParkPictureHouse,
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "leedsheritagetheatres", UkRoster("HydeParkPictureHouse"),
       LocalDate.of(2026, 10, 16), Some("Hyde Park Picture House")).fetch().map(cm => cm.movie.title -> cm).toMap
     films("The Secret World of Arrietty").movie.originalTitle shouldBe Some("Karigurashi no Arietti")
     films("Case 137").movie.originalTitle shouldBe Some("Ddossier 137")
@@ -200,7 +200,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   "SpektrixClient.fetch (The Dukes)" should "read the certificate off `attribute_AgeCertificate`" in {
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "dukeslancaster", TheDukesLancaster, november)
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "dukeslancaster", UkRoster("TheDukesLancaster"), november)
       .fetch().map(cm => cm.movie.title -> cm).toMap
     films("Fjord (15)").ageRating shouldBe Some("15")
     films("Wildwood (12A)").ageRating shouldBe Some("12A")
@@ -209,7 +209,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   "SpektrixClient.fetch (Brewery Arts Centre Kendal)" should "take the certificate from the attribute that holds one, not from `attribute_Classification: Cinema`" in {
     // 2026-11-05 capture of `breweryarts`: every event files `attribute_Classification: "Cinema"` (a category) before
     // `attribute_FilmCertificate: "12A"`.
-    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "breweryarts", BreweryArtsCentreKendal, LocalDate.of(2026, 11, 5))
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "breweryarts", UkRoster("BreweryArtsCentreKendal"), LocalDate.of(2026, 11, 5))
       .fetch().map(cm => cm.movie.title -> cm).toMap
     films("3000 Feet +Live Q&A").ageRating shouldBe Some("12A")
     films("Die Hard").ageRating shouldBe Some("15")
@@ -221,7 +221,7 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val events    = Json.arr(Json.obj("id" -> "1", "name" -> "A Talent For Murder", "duration" -> 121,
       "attribute_Category" -> "Film", "attribute_Country" -> "Switzerland"))
     val instances = Json.arr(Json.obj("start" -> "2026-11-04T18:00:00", "event" -> Json.obj("id" -> "1")))
-    SpektrixClient.parse(events, instances, LighthousePoole, november).map(_.movie.countries) shouldBe Seq(Seq("Switzerland"))
+    SpektrixClient.parse(events, instances, UkRoster("LighthousePoole"), november).map(_.movie.countries) shouldBe Seq(Seq("Switzerland"))
   }
 
   "SpektrixClient.runtimeIn" should "read the minutes a running-time attribute states for the film alone" in {

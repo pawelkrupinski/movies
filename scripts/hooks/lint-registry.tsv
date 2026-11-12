@@ -14,7 +14,7 @@
 # add its row, and a glob for every path outside @repo that it reads (scripts/ci/lint_registry_reads.py finds them
 # from its string literals; the test fails on a miss). scripts/land-precheck runs the same selection before a change is queued.
 common:models.OgCardAssetsSpec	@repo *.scala web/src/main/assets/img/*
-common:models.UkPagesSpec	@repo data/uk/*
+common:models.UkPagesSpec	@repo data/uk/* geodata/src/main/resources/generated/uk-*
 common:services.PersistedCodecsLintSpec	@repo *.scala
 common:services.movies.ListingKeyWritePathLintSpec	@repo *.scala
 common:services.movies.SideCollectionDeleteOwnershipSpec	@repo *.scala

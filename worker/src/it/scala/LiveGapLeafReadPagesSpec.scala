@@ -1,6 +1,6 @@
 package integration
 
-import models.CineworldGreenwich
+import models.UkRoster
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{CatalogueId, Listing, ResolverDecision}
@@ -61,7 +61,7 @@ class LiveGapLeafReadPagesSpec extends AnyFlatSpec with Matchers {
 
   private def listing(page: String, catalogueIds: CatalogueId*) = {
     val title = page.stripSuffix("/").split('/').last
-    Listing(CineworldGreenwich, ListingKey.Published(CineworldGreenwich.displayName, title, None, Nil), title, title, title, None, Nil, None,
+    Listing(UkRoster("CineworldGreenwich"), ListingKey.Published(UkRoster("CineworldGreenwich").displayName, title, None, Nil), title, title, title, None, Nil, None,
       Some(page), None, catalogueIds = catalogueIds)
   }
 

@@ -27,10 +27,10 @@ object WriteBfiSouthbank {
   private def measure(record: Boolean): Unit = {
     val live   = new RealHttpFetch()
     val http   = if (record) new RecordingHttpFetch("bfi", live) else live
-    val movies = new BfiSouthbankClient(http, BfiLondonSouthbank, VenueClock.system.today(TimeZones.UnitedKingdom)).fetch()
+    val movies = new BfiSouthbankClient(http, UkRoster("BfiLondonSouthbank"), VenueClock.system.today(TimeZones.UnitedKingdom)).fetch()
     val times  = movies.flatMap(_.showtimes)
     movies.foreach(m => println(s"FILM\t${m.movie.title}\t${m.showtimes.size}\t${m.showtimes.flatMap(_.room).distinct.mkString(",")}"))
-    println(s"MEASURE\t${BfiLondonSouthbank.displayName}\t${movies.size}\t${times.size}\t${times.map(_.dateTime.toLocalDate).maxOption.getOrElse("")}")
+    println(s"MEASURE\t${UkRoster("BfiLondonSouthbank").displayName}\t${movies.size}\t${times.size}\t${times.map(_.dateTime.toLocalDate).maxOption.getOrElse("")}")
     if (record) trimAll()
   }
 

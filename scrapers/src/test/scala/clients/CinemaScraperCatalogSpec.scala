@@ -361,10 +361,10 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
         else sessions.get(url))
     // Arc Cinema Great Yarmouth is a genuine flicks-primary independent (unlike the
     // chain venues, which moved to own-site clients with flicks only as fallback).
-    val scraper = catalog(flicks = flicks).all.find(_.cinema == ArcCinemaGreatYarmouth).value
+    val scraper = catalog(flicks = flicks).all.find(_.cinema == UkRoster("ArcCinemaGreatYarmouth")).value
     val movies  = scraper.fetch()  // reads the flicks fixture via flicksFetch
     movies should not be empty
-    movies.map(_.cinema).toSet shouldBe Set(ArcCinemaGreatYarmouth)
+    movies.map(_.cinema).toSet shouldBe Set(UkRoster("ArcCinemaGreatYarmouth"))
   }
 
   // UK chain venues (Cineworld / Vue / Showcase / Everyman) are now own-site
@@ -381,14 +381,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // Flicks, so it reads its own site first and keeps Flicks as the fallback.
   it should "wire UK Savoy Systems venues to their own box office with flicks kept as the fallback" in {
     val c = catalog(direct = new FakeHttpFetch("savoy"), today = LocalDate.of(2026, 10, 12))
-    val phoenix = c.all.find(_.cinema == PhoenixCinemaEastFinchley).value
+    val phoenix = c.all.find(_.cinema == UkRoster("PhoenixCinemaEastFinchley")).value
     phoenix shouldBe a [SavoyClient]
     phoenix.fetch().flatMap(_.showtimes) should have size 52
-    c.flicksFallbackSlugs.get(PhoenixCinemaEastFinchley).value shouldBe
+    c.flicksFallbackSlugs.get(UkRoster("PhoenixCinemaEastFinchley")).value shouldBe
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "phoenix-cinema-east-finchley")
     // Ilkley had no Flicks showtime either; Savoy only sells its tickets, so its programme
     // is read off the box office's root page.
-    val ilkley = c.all.find(_.cinema == IlkleyCinema).value
+    val ilkley = c.all.find(_.cinema == UkRoster("IlkleyCinema")).value
     ilkley shouldBe a [SavoyClient]
     ilkley.sourceUrl.value shouldBe "https://book.ilkleycinema.co.uk/IlkleyCinema.dll/"
     ilkley.fetch().flatMap(_.showtimes) should have size 166
@@ -403,17 +403,17 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // films' showtimes on its own box office as the live read model held from Flicks.
   it should "wire UK Spektrix venues to their own box office with flicks kept as the fallback" in {
     val c   = catalog(direct = new FakeHttpFetch("spektrix"), today = LocalDate.of(2026, 10, 12))
-    val ica = c.all.find(_.cinema == InstituteOfContemporaryArts).value
+    val ica = c.all.find(_.cinema == UkRoster("InstituteOfContemporaryArts")).value
     ica shouldBe a [SpektrixClient]
     ica.fetch().flatMap(_.showtimes) should have size 209
-    c.flicksFallbackSlugs.get(InstituteOfContemporaryArts).value shouldBe
+    c.flicksFallbackSlugs.get(UkRoster("InstituteOfContemporaryArts")).value shouldBe
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "institute-of-contemporary-arts")
     // The two buildings one client sells are two venues, each reading only its own.
-    c.all.find(_.cinema == EmpireTheatreConsett).value.fetch().flatMap(_.showtimes) should have size 23
+    c.all.find(_.cinema == UkRoster("EmpireTheatreConsett")).value.fetch().flatMap(_.showtimes) should have size 23
     // The Plough Torrington never had a Flicks time; its Spektrix files films as "Film".
-    c.all.find(_.cinema == PloughArtsCentreTorrington).value.fetch().flatMap(_.showtimes) should have size 19
+    c.all.find(_.cinema == UkRoster("PloughArtsCentreTorrington")).value.fetch().flatMap(_.showtimes) should have size 19
     // Derby QUAD's box office files its films bare; its own pages carry the rest.
-    c.all.find(_.cinema == QuadDerby).value shouldBe a [QuadDerbyClient]
+    c.all.find(_.cinema == UkRoster("QuadDerby")).value shouldBe a [QuadDerbyClient]
     val spektrixVenues = c.all.collect { case s: SpektrixClient => s.cinema }
     spektrixVenues should have size 37
     spektrixVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
@@ -424,12 +424,12 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // least as many showtimes in its feed as the live read model held from Flicks.
   it should "wire UK Ticketsolve venues to their own box office with flicks kept as the fallback" in {
     val c      = catalog(direct = new FakeHttpFetch("ticketsolve"), today = LocalDate.of(2026, 10, 12))
-    val mwldan = c.all.find(_.cinema == TheatrMwldanCardigan).value
+    val mwldan = c.all.find(_.cinema == UkRoster("TheatrMwldanCardigan")).value
     mwldan shouldBe a [TicketsolveClient]
     mwldan.fetch().flatMap(_.showtimes) should have size 238
-    c.flicksFallbackSlugs.get(TheatrMwldanCardigan).value shouldBe
+    c.flicksFallbackSlugs.get(UkRoster("TheatrMwldanCardigan")).value shouldBe
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "theatr-mwldan-cardigan")
-    c.all.find(_.cinema == NerveCentreLondonderry).value.fetch().flatMap(_.showtimes) should have size 14
+    c.all.find(_.cinema == UkRoster("NerveCentreLondonderry")).value.fetch().flatMap(_.showtimes) should have size 14
     val ticketsolveVenues = c.all.collect { case t: TicketsolveClient => t.cinema }
     ticketsolveVenues should have size 9
     ticketsolveVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
@@ -439,10 +439,10 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // lists seven months of them.
   it should "wire Nova Cinema Woking to its own site with flicks kept as the fallback" in {
     val c    = catalog(direct = new FakeHttpFetch("nova"), today = LocalDate.of(2026, 10, 12))
-    val nova = c.all.find(_.cinema == NovaCinemaWoking).value
+    val nova = c.all.find(_.cinema == UkRoster("NovaCinemaWoking")).value
     nova shouldBe a [NovaCinemaClient]
     nova.fetch().flatMap(_.showtimes) should have size 249
-    c.flicksFallbackSlugs.get(NovaCinemaWoking).value shouldBe
+    c.flicksFallbackSlugs.get(UkRoster("NovaCinemaWoking")).value shouldBe
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "nova-cinema-ambassadors-woking")
   }
 
@@ -450,20 +450,20 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // NFT screens seven weeks ahead, while the BFI IMAX it also sells keeps reading Flicks.
   it should "wire BFI Southbank to the BFI's cinemas site with flicks kept as the fallback" in {
     val c   = catalog(direct = new FakeHttpFetch("bfi"), today = LocalDate.of(2026, 10, 12))
-    val bfi = c.all.find(_.cinema == BfiLondonSouthbank).value
+    val bfi = c.all.find(_.cinema == UkRoster("BfiLondonSouthbank")).value
     bfi shouldBe a [BfiSouthbankClient]
     bfi.fetch().flatMap(_.showtimes) should have size 350
-    c.flicksFallbackSlugs.get(BfiLondonSouthbank).value shouldBe
+    c.flicksFallbackSlugs.get(UkRoster("BfiLondonSouthbank")).value shouldBe
       ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "bfi-london-southbank")
-    c.all.find(_.cinema == BfiLondonImax).value shouldBe a [FlicksClient]
+    c.all.find(_.cinema == UkRoster("BfiLondonImax")).value shouldBe a [FlicksClient]
   }
 
   it should "wire UK chain venues to their own-site client with flicks kept as the fallback" in {
     val c = catalog()
-    c.all.find(_.cinema == CineworldSheffield).value shouldBe a [CineworldClient]
-    c.flicksFallbackSlugs.get(CineworldSheffield).value.slug shouldBe "cineworld-sheffield"
+    c.all.find(_.cinema == UkRoster("CineworldSheffield")).value shouldBe a [CineworldClient]
+    c.flicksFallbackSlugs.get(UkRoster("CineworldSheffield")).value.slug shouldBe "cineworld-sheffield"
     // A UK venue's fallback must name the UK market — looking it up on flicks.us 404s.
-    c.flicksFallbackSlugs.get(CineworldSheffield).value.market shouldBe FlicksMarket.UnitedKingdom
+    c.flicksFallbackSlugs.get(UkRoster("CineworldSheffield")).value.market shouldBe FlicksMarket.UnitedKingdom
     // Cineworld 87 + Vue 88 + Showcase 16 + Everyman 50 + Odeon 101 = 342 UK,
     // plus the US chain venues that are reachable without Zyte:
     //   Alamo 39 + Landmark 26 + Showcase US 13 = 78 (Alamo Naples closed 9 Sep 2026).
@@ -879,14 +879,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // it proves which fetch the scraper actually used.
   it should "route Cineworld through the flicks residential seam, not the shared http" in {
     val ex = intercept[Exception] {
-      catalog(flicks = probe("FLICKS")).all.find(_.cinema == CineworldSheffield).value.fetch()
+      catalog(flicks = probe("FLICKS")).all.find(_.cinema == UkRoster("CineworldSheffield")).value.fetch()
     }
     seamChain(ex) should include ("SEAM:FLICKS")
   }
 
   it should "route Vue through the host-sticky vue residential seam, not the shared http" in {
     val ex = intercept[Exception] {
-      catalog(vue = probe("VUE")).all.find(_.cinema == VueCinemasSheffield).value.fetch()
+      catalog(vue = probe("VUE")).all.find(_.cinema == UkRoster("VueCinemasSheffield")).value.fetch()
     }
     seamChain(ex) should include ("SEAM:VUE")
   }
@@ -902,7 +902,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   it should "route Odeon through the odeon residential seam, not the shared http" in {
     val ex = intercept[Exception] {
       catalog(odeon = probe("ODEON"), odeonToken = Some("jwt"))
-        .all.find(_.cinema == OdeonCinemaActon).value.fetch()
+        .all.find(_.cinema == UkRoster("OdeonCinemaActon")).value.fetch()
     }
     seamChain(ex) should include ("SEAM:ODEON")
   }

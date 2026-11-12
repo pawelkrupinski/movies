@@ -187,7 +187,7 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     val titles = TitleNormalizer.forCountry(models.Country.UnitedKingdom)
     Seq("Digger (15)", "Digger - Cert 15", "Digger (15) 129 mins").foreach { raw =>
       withClue(s"slot key of '$raw': ")(
-        ScrapeListing.slotKey(models.LanternhouseCinema, raw, titles) shouldBe ScrapeListing.slotKey(models.LanternhouseCinema, "Digger", titles))
+        ScrapeListing.slotKey(models.UkRoster("LanternhouseCinema"), raw, titles) shouldBe ScrapeListing.slotKey(models.UkRoster("LanternhouseCinema"), "Digger", titles))
     }
   }
 
@@ -219,8 +219,8 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Die Vögel (Wiederaufführung)") shouldBe ("Die Vögel", Nil)
     val titles = TitleNormalizer.forCountry(models.Country.Germany)
     Seq("Tribute von Panem - Catching Fire (Ov) (Wa)", "Tribute von Panem - Catching Fire (WA)", "Tribute von Panem - Catching Fire (WA: 2026)").foreach { raw =>
-      withClue(s"slot key of '$raw': ")(ScrapeListing.slotKey(models.LanternhouseCinema, raw, titles) shouldBe
-        ScrapeListing.slotKey(models.LanternhouseCinema, "Tribute von Panem - Catching Fire", titles))
+      withClue(s"slot key of '$raw': ")(ScrapeListing.slotKey(models.UkRoster("LanternhouseCinema"), raw, titles) shouldBe
+        ScrapeListing.slotKey(models.UkRoster("LanternhouseCinema"), "Tribute von Panem - Catching Fire", titles))
     }
   }
 
@@ -231,8 +231,8 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Perfekte Urlaub, Der (OV) (WA: 2026)") shouldBe ("Der Perfekte Urlaub", List("OV"))
     FormatTags.extractFormatTags("Piano Tuner, The (15)") shouldBe ("The Piano Tuner", Nil)
     val titles = TitleNormalizer.forCountry(models.Country.Germany)
-    ScrapeListing.slotKey(models.LanternhouseCinema, "Rocky Horror Picture Show, The (WA)", titles) shouldBe
-      ScrapeListing.slotKey(models.LanternhouseCinema, "The Rocky Horror Picture Show", titles)
+    ScrapeListing.slotKey(models.UkRoster("LanternhouseCinema"), "Rocky Horror Picture Show, The (WA)", titles) shouldBe
+      ScrapeListing.slotKey(models.UkRoster("LanternhouseCinema"), "The Rocky Horror Picture Show", titles)
   }
 
   it should "leave a title's own 'Wa' alone" in {

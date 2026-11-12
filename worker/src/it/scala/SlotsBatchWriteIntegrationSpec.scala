@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{CinemaShowing, CineworldFeltham, Country, KinoEtiuda, KinoMuza, Multikino, SourceData}
+import models.{CinemaShowing, Country, KinoEtiuda, KinoMuza, Multikino, SourceData, UkRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -14,7 +14,7 @@ class SlotsBatchWriteIntegrationSpec extends AnyFlatSpec with Matchers with tool
   private val etiuda  = CinemaShowing(KinoEtiuda, "odyseja").displayName
   private val muza    = CinemaShowing(KinoMuza, "odyseja").displayName
   private val kino    = CinemaShowing(Multikino, "odyseja").displayName
-  private val foreign = CinemaShowing(CineworldFeltham, "odyseja").displayName
+  private val foreign = CinemaShowing(UkRoster("CineworldFeltham"), "odyseja").displayName
 
   "upsertSlots" should "leave a film's slots exactly where upsertSlot of each does, rewriting only the rows that moved" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "slots-batch") { batchDb =>

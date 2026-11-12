@@ -6,47 +6,51 @@ package models
 private[models] object LondonAreas {
   import CinemaArea.*
 
-  private val venuesOf: Map[CinemaArea, Set[Cinema]] = Map(
+  /** Each area's venues, by their [[UkRoster]] keys. */
+  private val keysOf: Map[CinemaArea, Set[String]] = Map(
     Central -> Set(
-      BfiLondonImax, BfiLondonSouthbank, CineworldLeicesterSquare, CineLumiereLondon, CurzonCinemaBloomsbury,
-      CurzonCinemaCamden, CurzonCinemaSeaContainersMondrian, CurzonCinemaVictoria, CurzonSoho,
-      EverymanCinemaBakerStreet, EverymanCinemaBroadgate, EverymanCinemaChelsea, EverymanCinemaKingSCross,
-      EverymanCinemaIslington, InstituteOfContemporaryArts, OdeonCinemaTottenhamCourtRoad, OdeonCinemaLuxeHaymarket,
-      OdeonLuxeIslington, OdeonCinemaLuxeLeicesterSquare, OdeonLuxeWestEnd, PrinceCharlesLondon,
-      RegentStreetCinemaLondon, ScienceMuseumLondonImax, TheCinemaAtSelfridges, TheGardenCinema, TheNickelLondon,
-      VueCinemasIslington, VueCinemasPiccadillyCircus, VueCinemasWestEnd,
+      "BfiLondonImax", "BfiLondonSouthbank", "CineworldLeicesterSquare", "CineLumiereLondon", "CurzonCinemaBloomsbury",
+      "CurzonCinemaCamden", "CurzonCinemaSeaContainersMondrian", "CurzonCinemaVictoria", "CurzonSoho",
+      "EverymanCinemaBakerStreet", "EverymanCinemaBroadgate", "EverymanCinemaChelsea", "EverymanCinemaKingSCross",
+      "EverymanCinemaIslington", "InstituteOfContemporaryArts", "OdeonCinemaTottenhamCourtRoad", "OdeonCinemaLuxeHaymarket",
+      "OdeonLuxeIslington", "OdeonCinemaLuxeLeicesterSquare", "OdeonLuxeWestEnd", "PrinceCharlesLondon",
+      "RegentStreetCinemaLondon", "ScienceMuseumLondonImax", "TheCinemaAtSelfridges", "TheGardenCinema", "TheNickelLondon",
+      "VueCinemasIslington", "VueCinemasPiccadillyCircus", "VueCinemasWestEnd",
     ),
     North -> Set(
-      ArthouseCrouchEnd, CineworldEnfield, CineworldIlford, CineworldWoodGreen, CrouchEndPicturehouse,
-      EverymanCinemaBarnet, EverymanCinemaBelsizeParkHampstead, EverymanCinemaHampstead, EverymanCinemaMuswellHill,
-      FinsburyParkPicturehouse, Jw3Hampstead, KilnKilburn, LexiKensalRise, LumiereRomford, OdeonCinemaHolloway,
-      OdeonLuxeLeeValley, OdeonLuxeSwissCottage, PhoenixCinemaEastFinchley, VueCinemasDagenham,
-      VueCinemasFinchleyRoadSwissCottage, VueCinemasFinchley, VueCinemasRomford, VueCinemasWoodGreen,
+      "ArthouseCrouchEnd", "CineworldEnfield", "CineworldIlford", "CineworldWoodGreen", "CrouchEndPicturehouse",
+      "EverymanCinemaBarnet", "EverymanCinemaBelsizeParkHampstead", "EverymanCinemaHampstead", "EverymanCinemaMuswellHill",
+      "FinsburyParkPicturehouse", "Jw3Hampstead", "KilnKilburn", "LexiKensalRise", "LumiereRomford", "OdeonCinemaHolloway",
+      "OdeonLuxeLeeValley", "OdeonLuxeSwissCottage", "PhoenixCinemaEastFinchley", "VueCinemasDagenham",
+      "VueCinemasFinchleyRoadSwissCottage", "VueCinemasFinchley", "VueCinemasRomford", "VueCinemasWoodGreen",
     ),
     East -> Set(
-      BarbicanLondonCinema1, CastleCinemaHackney, CineworldWestIndiaQuay, CloseUpFilmCentreShoreditch,
-      CurzonCinemaAldgate, CurzonCinemaHoxton, EverymanCinemaCanaryWharf, EverymanCinemaStratfordInternational,
-      ForestCinemasWalthamstow, GenesisTowerHamlets, OdeonCinemaSouthWoodford, PicturehouseHackney,
-      RichMixBethnalGreen, RioDalston, RooftopFilmClubStratfordRoofEast, VueCinemasStratford,
+      "BarbicanLondonCinema1", "CastleCinemaHackney", "CineworldWestIndiaQuay", "CloseUpFilmCentreShoreditch",
+      "CurzonCinemaAldgate", "CurzonCinemaHoxton", "EverymanCinemaCanaryWharf", "EverymanCinemaStratfordInternational",
+      "ForestCinemasWalthamstow", "GenesisTowerHamlets", "OdeonCinemaSouthWoodford", "PicturehouseHackney",
+      "RichMixBethnalGreen", "RioDalston", "RooftopFilmClubStratfordRoofEast", "VueCinemasStratford",
     ),
     South -> Set(
-      SidcupStoryteller, CineworldGreenwich, CineworldBexleyheath, CineworldFeltham, CineworldLondonHounslow,
-      CineworldWandsworth, CurzonCinemaKingston, CurzonCinemaRichmond, CurzonWimbledon, DavidLeanCinemaCroydon,
-      EverymanCinemaBoroughYards, EverymanCinemaCrystalPalace, OdeonCinemaBeckenham, OdeonCinemaGreenwich,
-      OdeonCinemaKingston, OdeonCinemaOrpington, OdeonCinemaRichmond, OdeonCinemaStreatham, OdeonCinemaWimbledon,
-      OdeonCinemaLuxePutney, OlympicCinemaBarnes, EmpireCinemaSutton, Peckhamplex, PicturehouseClapham,
-      PicturehouseEastDulwich, PicturehouseGreenwich, PicturehouseWestNorwood, RooftopFilmClubPeckhamBusseyBuilding,
-      ArchlightCinemas, TheArzner, TheCinemaInThePowerStation, TheRitzyPicturehouseBrixton, VueCinemasBromley,
-      VueCinemasEltham, VueCinemasFulham, VueCinemasPurleyWayCroydon,
+      "SidcupStoryteller", "CineworldGreenwich", "CineworldBexleyheath", "CineworldFeltham", "CineworldLondonHounslow",
+      "CineworldWandsworth", "CurzonCinemaKingston", "CurzonCinemaRichmond", "CurzonWimbledon", "DavidLeanCinemaCroydon",
+      "EverymanCinemaBoroughYards", "EverymanCinemaCrystalPalace", "OdeonCinemaBeckenham", "OdeonCinemaGreenwich",
+      "OdeonCinemaKingston", "OdeonCinemaOrpington", "OdeonCinemaRichmond", "OdeonCinemaStreatham", "OdeonCinemaWimbledon",
+      "OdeonCinemaLuxePutney", "OlympicCinemaBarnes", "EmpireCinemaSutton", "Peckhamplex", "PicturehouseClapham",
+      "PicturehouseEastDulwich", "PicturehouseGreenwich", "PicturehouseWestNorwood", "RooftopFilmClubPeckhamBusseyBuilding",
+      "ArchlightCinemas", "TheArzner", "TheCinemaInThePowerStation", "TheRitzyPicturehouseBrixton", "VueCinemasBromley",
+      "VueCinemasEltham", "VueCinemasFulham", "VueCinemasPurleyWayCroydon",
     ),
     West -> Set(
-      ActOneActon, ChiswickCinema, CineworldSouthRuislip, CineworldWembley, CurzonCinemaMayfair,
-      ElectricCinemaLondon, ElectricCinemaWhiteCity, EverymanAtTheWhiteleyLondon, EverymanBrentford,
-      EverymanCinemaMaidaVale, OdeonCinemaActon, OdeonCinemaUxbridge, PicturehouseCentralLondon,
-      PicturehouseEalingFilmworks, RiversideStudiosHammersmith, TheGatePicturehouseLondon, VueCinemasHarrow,
-      VueCinemasWestfieldShepherdSBush,
+      "ActOneActon", "ChiswickCinema", "CineworldSouthRuislip", "CineworldWembley", "CurzonCinemaMayfair",
+      "ElectricCinemaLondon", "ElectricCinemaWhiteCity", "EverymanAtTheWhiteleyLondon", "EverymanBrentford",
+      "EverymanCinemaMaidaVale", "OdeonCinemaActon", "OdeonCinemaUxbridge", "PicturehouseCentralLondon",
+      "PicturehouseEalingFilmworks", "RiversideStudiosHammersmith", "TheGatePicturehouseLondon", "VueCinemasHarrow",
+      "VueCinemasWestfieldShepherdSBush",
     ),
   )
+
+  private val venuesOf: Map[CinemaArea, Set[Cinema]] =
+    keysOf.view.mapValues(_.map(key => UkRoster(key): Cinema)).toMap
 
   /** London's venues by compass area, areas in display order, each area's venues in page order. */
   val groups: Seq[CinemaAreaGroup] =

@@ -1,6 +1,6 @@
 package tools
 
-import models.{Country, RegalStowmarket}
+import models.{Country, UkRoster}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.identity.{Listing, ScreeningDays}
@@ -18,7 +18,7 @@ class UnmatchedClustersSeasonSpec extends AnyFlatSpec with Matchers with Scratch
 
   private def listing(title: String, screenings: ScreeningDays): Listing = {
     val page = s"https://regalstowmarket.co.uk/RegalStowmarket.dll/WhatsOn?f=${title.hashCode.abs}"
-    Listing(RegalStowmarket, ListingKey.Native("Regal Stowmarket", page, title), title, title, title, None, Nil, Some(150), Some(page), None,
+    Listing(UkRoster("RegalStowmarket"), ListingKey.Native("Regal Stowmarket", page, title), title, title, title, None, Nil, Some(150), Some(page), None,
       screenings = screenings)
   }
 

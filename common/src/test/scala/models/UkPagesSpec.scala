@@ -37,17 +37,25 @@ class UkPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     // Generated from data/uk/roster.json since 2026-10. The case object's name was its
     // `toString`, its `hashCode` that name's, and its `slug` (the per-cinema title rules'
     // key and a metric label) derived from it — so all three have to read as before.
-    ActOneActon.toString shouldBe "ActOneActon"
-    ActOneActon.hashCode shouldBe "ActOneActon".hashCode
-    ActOneActon.slug shouldBe "act-one-acton"
-    IMAXAtGlasgowScienceCentre.slug shouldBe "imaxat-glasgow-science-centre"
-    venue("Act One Cinema Acton") should be theSameInstanceAs ActOneActon
-    ActOneActon.pillName shouldBe "Act One Acton"
+    UkRoster("ActOneActon").toString shouldBe "ActOneActon"
+    UkRoster("ActOneActon").hashCode shouldBe "ActOneActon".hashCode
+    UkRoster("ActOneActon").slug shouldBe "act-one-acton"
+    UkRoster("IMAXAtGlasgowScienceCentre").slug shouldBe "imaxat-glasgow-science-centre"
+    venue("Act One Cinema Acton") should be theSameInstanceAs UkRoster("ActOneActon")
+    UkRoster("ActOneActon").pillName shouldBe "Act One Acton"
+  }
+
+  it should "be addressed by its key: the instance every page holds, an unknown key refused" in {
+    UkRoster("ActOneActon") should be theSameInstanceAs venue("Act One Cinema Acton")
+    UkRoster.all.map(_.toString).distinct should have size UkRoster.all.size
+    UkRoster.all.toSet shouldBe Country.UnitedKingdom.cities.flatMap(_.cinemas).toSet
+    the[NoSuchElementException] thrownBy UkRoster("NoSuchVenue") should have message
+      "no UK venue 'NoSuchVenue' in generated/uk-roster/venues.tsv"
   }
 
   it should "screen all year unless roster.json marks it seasonal" in {
-    ActOneActon.opening shouldBe Opening.YearRound
-    RooftopFilmClubStratfordRoofEast.opening shouldBe Opening.Seasonal(SeasonWindow.UnitedKingdom)
+    UkRoster("ActOneActon").opening shouldBe Opening.YearRound
+    UkRoster("RooftopFilmClubStratfordRoofEast").opening shouldBe Opening.Seasonal(SeasonWindow.UnitedKingdom)
     Country.UnitedKingdom.cities.flatMap(_.cinemas).distinct.count(_.opening != Opening.YearRound) shouldBe 1
   }
 
@@ -125,6 +133,13 @@ class UkPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     Country.UnitedKingdom.renamedSlugs("highlands-and-islands") shouldBe pageOf("Eden Court Theatre Inverness")
   }
 
+  "The UK's tables" should "read exactly as the generated Scala did: every page, venue, retired slug and former name" in {
+    // UkRosterData.scala and UkPages.scala became tables under generated/ (2026-11-12). This digest
+    // is of the dump below as the generated Scala gave it; it moves only when roster.json or
+    // pages.json do, so regenerate it then (the failure prints the new dump's digest).
+    sha256(UkPagesSpec.dump) shouldBe "ca5fd4e84f93f5831a0d72ca9937bf654efbd9bb97b3cbb19421c39385891aee"
+  }
+
   "The UK picker" should "file every page under its nation and county, nations in their fixed order" in {
     Country.UnitedKingdom.cityGroups.map(_.label) shouldBe UkPages.nations
     Country.UnitedKingdom.cityGroups.flatMap(_.allCities) should contain theSameElementsAs Country.UnitedKingdom.cities
@@ -138,6 +153,23 @@ class UkPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
 }
 
 object UkPagesSpec {
+  /** A venue as one line: its key, names, opening, hash and slug. */
+  def venueLine(cinema: Cinema): String =
+    s"$cinema|${cinema.displayName}|${cinema.pillName}|${cinema.opening}|${cinema.hashCode}|${cinema.slug}"
+
+  /** Everything [[UkPages]] holds, one line a fact, in its order. */
+  def dump: String = {
+    def page(r: UkPages.Row): Seq[String] =
+      s"ROW ${r.slug}|${r.name}|${r.lat}|${r.lon}|${r.nation}|${r.county}|${r.multiTown}|${r.towns.mkString(";")}|${r.nominative}" +:
+        r.cinemas.map("  " + venueLine(_))
+    (Seq("NATIONS " + UkPages.nations.mkString(";")) ++ (UkPages.london +: UkPages.rows).flatMap(page) ++
+      UkPages.retired.toSeq.sorted.map { case (k, v) => s"RETIRED $k -> $v" } ++
+      UkPages.formerNames.toSeq.sortBy(_._1).map { case (k, v) => s"FORMER $k -> ${v.mkString(";")}" }).mkString("\n")
+  }
+
+  def sha256(text: String): String =
+    java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)).map("%02x".format(_)).mkString
+
   /** No venue further than this from the town its page is named after. */
   val MaxReachKm = 40.0
 

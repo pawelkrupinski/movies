@@ -1,6 +1,6 @@
 package tools
 
-import models.{Country, RegalStowmarket}
+import models.{Country, UkRoster}
 import org.bson.{BsonDocument, BsonString}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -21,7 +21,7 @@ class UnmatchedClustersRetiredVenueSpec extends AnyFlatSpec with Matchers with S
 
   private def listing(title: String): Listing = {
     val page = s"https://regalstowmarket.co.uk/RegalStowmarket.dll/WhatsOn?f=${title.hashCode.abs}"
-    Listing(RegalStowmarket, ListingKey.Native("Regal Stowmarket", page, title), title, title, title, None, Nil, Some(150), Some(page), None)
+    Listing(UkRoster("RegalStowmarket"), ListingKey.Native("Regal Stowmarket", page, title), title, title, title, None, Nil, Some(150), Some(page), None)
   }
 
   /** The capture of `titles` written to a file, then its first listing's venue (and key) renamed to `venue`, `key` the

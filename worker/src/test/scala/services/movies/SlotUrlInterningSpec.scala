@@ -47,7 +47,7 @@ class SlotUrlInterningSpec extends AnyFlatSpec with Matchers {
   /** The slots the projection builds for one film at two cinemas. */
   private def slotsForOneFilmAtTwoCinemas(): Seq[SourceData] = {
     val builder = builderOn(new StringPool)
-    Seq(OdeonNorwich, BfiLondonSouthbank).map(c => builder.build(showing(c), "Spider-Man: Brand New Day", None))
+    Seq(UkRoster("OdeonNorwich"), UkRoster("BfiLondonSouthbank")).map(c => builder.build(showing(c), "Spider-Man: Brand New Day", None))
   }
 
   "the cinema slot builder" should "share one poster-URL instance across a film's cinema slots" in {
@@ -73,8 +73,8 @@ class SlotUrlInterningSpec extends AnyFlatSpec with Matchers {
 
   "Two slot builders handed one pool" should "share a URL instance across them, as the worker's countries do" in {
     val pool = new StringPool
-    val urls = Seq(builderOn(pool).build(showing(OdeonNorwich), "Spider-Man: Brand New Day", None),
-                   builderOn(pool).build(showing(BfiLondonSouthbank), "Spider-Man: Brand New Day", None)).flatMap(_.posterUrl)
+    val urls = Seq(builderOn(pool).build(showing(UkRoster("OdeonNorwich")), "Spider-Man: Brand New Day", None),
+                   builderOn(pool).build(showing(UkRoster("BfiLondonSouthbank")), "Spider-Man: Brand New Day", None)).flatMap(_.posterUrl)
     urls should have size 2
     (urls.head eq urls(1)) shouldBe true
     urls.head should be theSameInstanceAs pool.canonical(new String(poster))

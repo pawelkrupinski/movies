@@ -1,12 +1,12 @@
 """data/uk/roster.json: every UK venue, declared once.
 
-Each row is one venue: the Scala name it is addressed by (`object`, a top-level
-`models` val), the display name every per-cinema slot is stored under, the pill
+Each row is one venue: the key it is addressed by (`object`, as in
+`models.UkRoster("ActOneActon")`), the display name every per-cinema slot is stored under, the pill
 name, its flicks.co.uk slug, and its PRIMARY source. A row with no `primary` is
 scraped off Flicks; any other row names its own-site client and keeps the Flicks
 slug (where Flicks lists it) as the aggregator fallback. `generate_roster.py`
-turns it into `models.UkRosterData` (the venues) and
-`services.cinemas.uk.UkSourcesData` (their scrapers and fallbacks).
+turns it into the tables `models.UkRoster` (the venues) and
+`services.cinemas.uk.UkSourcesData` (their scrapers and fallbacks) read.
 
 The rows stand in GROUPS, each named after the town its venues were first wired
 near, in the scrape catalog's order: that order is each page's scrape order, so

@@ -1,7 +1,7 @@
 package clients.flicks
 
 import clients.tools.{FixtureFile, ScriptedByUrlHttpFetch}
-import models.{BarnCinemaDartingtonArtCentre, OdeonNorwich}
+import models.UkRoster
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -67,16 +67,16 @@ class FlicksFilmPageSpec extends AnyFlatSpec with Matchers with OptionValues {
   "A Flicks venue" should "share one detail group with every venue of its market, and only of its market" in {
     def client(cinema: models.Cinema, market: FlicksMarket) =
       new FlicksClient(new ScriptedByUrlHttpFetch(_ => ""), "slug", cinema, market, detailHttp = new ScriptedByUrlHttpFetch(_ => ""), today = today)
-    client(OdeonNorwich, FlicksMarket.UnitedKingdom).detailGroup shouldBe client(BarnCinemaDartingtonArtCentre, FlicksMarket.UnitedKingdom).detailGroup
-    client(OdeonNorwich, FlicksMarket.UnitedKingdom).detailGroup should not be client(OdeonNorwich, FlicksMarket.UnitedStates).detailGroup
-    client(OdeonNorwich, FlicksMarket.UnitedStates).pagesSharedAcrossVenues shouldBe true
+    client(UkRoster("OdeonNorwich"), FlicksMarket.UnitedKingdom).detailGroup shouldBe client(UkRoster("BarnCinemaDartingtonArtCentre"), FlicksMarket.UnitedKingdom).detailGroup
+    client(UkRoster("OdeonNorwich"), FlicksMarket.UnitedKingdom).detailGroup should not be client(UkRoster("OdeonNorwich"), FlicksMarket.UnitedStates).detailGroup
+    client(UkRoster("OdeonNorwich"), FlicksMarket.UnitedStates).pagesSharedAcrossVenues shouldBe true
   }
 
   it should "read a film's page through the detail fetch, not the listing's" in {
     val url    = "https://www.flicks.us/movie/a-night-at-the-opera/"
     val pages  = new ScriptedByUrlHttpFetch(u => if (u == url) page("a-night-at-the-opera") else throw new java.io.IOException(u))
     val client = new FlicksClient(new ScriptedByUrlHttpFetch(u => throw new java.io.IOException(s"listing fetch asked for $u")),
-      "slug", OdeonNorwich, FlicksMarket.UnitedStates, detailHttp = pages, today = today)
+      "slug", UkRoster("OdeonNorwich"), FlicksMarket.UnitedStates, detailHttp = pages, today = today)
     client.fetchDetail(url) match {
       case DetailFetchOutcome.Fetched(detail) => detail.releaseYear.value shouldBe 1935
       case other                              => fail(s"expected the page, got $other")

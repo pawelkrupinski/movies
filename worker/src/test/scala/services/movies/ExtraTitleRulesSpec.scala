@@ -1625,8 +1625,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   /** Listings of the 2026-10-08 UK recording whose TMDB query kept a screening marker: a Showcase
    *  re-release billed with its print and an anniversary note, in either order. Through the whole query path. */
   private val anniversaryReleaseListings: Seq[((models.Cinema, String), String)] = Seq(
-    (models.ShowcaseDeLuxReading, "Donnie Darko 4K (25th Anniversary)")           -> "Donnie Darko",
-    (models.ShowcaseBristolAvonmeads, "SCREAM (30th Anniversary, 4K Restoration)") -> "SCREAM"
+    (models.UkRoster("ShowcaseDeLuxReading"), "Donnie Darko 4K (25th Anniversary)")           -> "Donnie Darko",
+    (models.UkRoster("ShowcaseBristolAvonmeads"), "SCREAM (30th Anniversary, 4K Restoration)") -> "SCREAM"
   )
 
   "An anniversary re-release the 2026-10-08 UK recording billed" should "search the bare film" in {
@@ -1647,7 +1647,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     val titles = new TitleNormalizer(withExtras)
     Seq("Donnie Darko 4K (25th Anniversary)", "SCREAM (30th Anniversary, 4K Restoration)",
       "Jaws (50th Anniversary)", "Alien (1979) (45th Anniversary Re-release)").foreach { raw =>
-      val q = listingQuery(titles, models.ShowcaseDeLuxReading, raw)
+      val q = listingQuery(titles, models.UkRoster("ShowcaseDeLuxReading"), raw)
       withClue(s"searchQuery of '$raw' = '$q': ")(q should not include regex ("""\d{2}(?:st|nd|rd|th)|Anniversary"""))
     }
   }

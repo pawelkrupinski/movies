@@ -60,11 +60,11 @@ class CinemaAreaSpec extends AnyFlatSpec with Matchers {
   it should "place venues in their real compass area" in {
     def areaOf(c: Cinema): CinemaArea =
       London.areas.collectFirst { case g if g.cinemas.contains(c) => g.area }.get
-    areaOf(CurzonSoho) shouldBe CinemaArea.Central
-    areaOf(TheRitzyPicturehouseBrixton) shouldBe CinemaArea.South   // Brixton, south of the Thames
-    areaOf(GenesisTowerHamlets) shouldBe CinemaArea.East            // Whitechapel
-    areaOf(EverymanCinemaHampstead) shouldBe CinemaArea.North
-    areaOf(RiversideStudiosHammersmith) shouldBe CinemaArea.West
+    areaOf(UkRoster("CurzonSoho")) shouldBe CinemaArea.Central
+    areaOf(UkRoster("TheRitzyPicturehouseBrixton")) shouldBe CinemaArea.South   // Brixton, south of the Thames
+    areaOf(UkRoster("GenesisTowerHamlets")) shouldBe CinemaArea.East            // Whitechapel
+    areaOf(UkRoster("EverymanCinemaHampstead")) shouldBe CinemaArea.North
+    areaOf(UkRoster("RiversideStudiosHammersmith")) shouldBe CinemaArea.West
   }
 
   "A flat city" should "have no areas and report isSplit == false" in {
