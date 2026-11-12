@@ -4,7 +4,7 @@ import scala.io.{Codec, Source}
 import scala.util.Using
 
 /** A generated table checked in as a tab-separated classpath resource under `generated/` — what the
- *  `data/**/scripts/generate_*.py` generators write (`data/scripts/generated_tables.py`) instead of Scala
+ *  country generators (`data/<country>/scripts/generate_*.py`) write (`data/scripts/generated_tables.py`) instead of Scala
  *  source, so no table is split into numbered chunks to stay under the JVM's 64 KB method limit or the
  *  compiler's nesting depth. One row a line, cells split on tabs; a list cell joins its items with
  *  [[ListSeparator]], and an absent optional cell is empty. The generators refuse a cell holding a tab,
