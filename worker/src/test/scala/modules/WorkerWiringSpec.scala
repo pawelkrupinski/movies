@@ -642,16 +642,17 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     import services.identity.agreement.VoterFamily
     val host    = "films.example.org"
     @volatile var down = true
-    val leaf: HttpFetch = new AnyMethodByUrlHttpFetch(url =>
-      if (down) throw new tools.HttpStatusException(503, "GET", url, None) else "{}")
+    val leaf: HttpFetch = new AnyMethodByUrlHttpFetch(_ =>
+      if (down) throw new java.net.http.HttpTimeoutException("request timed out") else "{}")
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4)) {
       override protected def realHttpLeaf: HttpFetch = leaf
       override protected lazy val identityHostRecoveryExecutor: java.util.concurrent.ExecutorService = tools.DaemonExecutors.directExecutor()
     }
     val question = Question.Family(VoterFamily.Imdb, "title|Lalka")
-    // one read, asked again on the spot (RetryingHttpFetch): its tries are the host's failures in a row
+    // one read, asked again on the spot (RetryingHttpFetch): its tries are the host's failures in a row (a timeout is
+    // the host's; a server error would count once for the page)
     tools.RetryingHttpFetch.Attempts should be >= services.identity.adapters.QuestionMemory.MinOutageReads
-    a[tools.HttpStatusException] should be thrownBy wiring.enrichmentFetch.get(s"https://$host/lalka")
+    a[java.net.http.HttpTimeoutException] should be thrownBy wiring.enrichmentFetch.get(s"https://$host/lalka")
     wiring.identityQuestionMemory.failed(Seq(question), Some(host))
     wiring.identityQuestionMemory.due(Set[Question](question)) shouldBe empty
     down = false

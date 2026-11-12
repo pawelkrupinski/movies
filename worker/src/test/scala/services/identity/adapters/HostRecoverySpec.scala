@@ -68,7 +68,7 @@ class HostRecoverySpec extends AnyFlatSpec with Matchers {
     val delegate = new Switching
     val breaker  = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = world.clock,
       onTransition = world.recovery.heard)
-    (1 to 4).foreach(_ => a[HttpStatusException] should be thrownBy breaker.get(imdbUrl))
+    (1 to 4).foreach(page => a[HttpStatusException] should be thrownBy breaker.get(s"$imdbUrl?page=$page")) // a server error counts once a page
     world.failedAgainstHosts()
     a[CircuitOpenException] should be thrownBy breaker.get(imdbUrl)
     world.queued shouldBe 0                                                // opening releases nothing
@@ -79,7 +79,7 @@ class HostRecoverySpec extends AnyFlatSpec with Matchers {
 
     val wikiUrl = s"https://$wikiHost/sparql"
     delegate.respond = url => throw new HttpStatusException(503, "GET", url, None)
-    (1 to QuestionMemory.MinOutageReads).foreach(_ => a[HttpStatusException] should be thrownBy breaker.get(wikiUrl))
+    (1 to QuestionMemory.MinOutageReads).foreach(page => a[HttpStatusException] should be thrownBy breaker.get(s"$wikiUrl?page=$page"))
     delegate.respond = _ => "{}"
     breaker.get(wikiUrl) shouldBe "{}"
     world.queued shouldBe 2

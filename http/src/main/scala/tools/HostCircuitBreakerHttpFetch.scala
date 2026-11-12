@@ -54,6 +54,13 @@ trait NeverSent { self: Throwable => }
  * even the short timeout and the slot is freed for hosts that ARE answering.
  * Per-host, so one bad host never blocks the others.
  *
+ * A server error counts once per PAGE until the host answers: a 5xx is the host answering about that one URL, and
+ * the retry layer above asks a failing page three times, each try through here, so one page broken for good (Iluzjon's
+ * film 1757, a 500 on every ask for weeks, 2026-10-29..11-12) made the consecutive failures that opened the whole host
+ * on its own, every scrape, and blocked the healthy pages behind it. The host still opens on server errors from
+ * `failureThreshold` different pages, and on any mix of timeouts, lost connections and 429s, which are the host's
+ * whatever page they hang on.
+ *
  * Other 4xx and non-failure outcomes never trip it — 404 is a real "not found"
  * signal for the MC/RT slug probes, not host trouble; sustained 429 is the one
  * 4xx that does (see `isTripWorthy`). `now` is injectable for tests. Wire it CLOSE
@@ -128,23 +135,31 @@ class HostCircuitBreakerHttpFetch(
     try onTransition(host, transition)
     catch { case scala.util.control.NonFatal(e) => logger.warn(s"breaker listener failed on $transition for $host", e) }
 
-  /** A trip-worthy failure — count it; open (or re-open) at the threshold, and say
-   *  which of the two it was. */
-  private def onFailure(host: String, cause: Throwable): Unit = {
+  /** A trip-worthy failure of a request to `url` — count it; open (or re-open) at the threshold, and say
+   *  which of the two it was. A server error from a page already counted since the host last answered is not
+   *  counted again (see the class doc), unless it is an open host's probe failing. */
+  private def onFailure(host: String, url: String, cause: Throwable): Unit = {
     val opened   = new AtomicBoolean(false)
     val reopened = new AtomicBoolean(false)
     val why      = Some(HostCircuitBreakerHttpFetch.describe(cause))
     val window   = new AtomicLong(openDuration.toMillis)
+    val page     = HostCircuitBreakerHttpFetch.failingPage(url, cause)
     breakers.compute(host, (_, prev) => {
-      val wasOpen  = prev != null && prev.openUntil.isDefined
-      val failures = (if (prev == null) 0 else prev.failures) + 1
-      if (failures >= failureThreshold) {
-        (if (wasOpen) reopened else opened).set(true)
-        // a failed probe doubles the cooldown; the first opening starts at `openDuration`
-        val next = if (wasOpen) math.min(prev.windowMs * 2, maxOpenDuration.toMillis) else openDuration.toMillis
-        window.set(next)
-        Breaker(failures, Some(clock.instant().plusMillis(next)), why, next)
-      } else Breaker(failures, None, why)
+      val wasOpen = prev != null && prev.openUntil.isDefined
+      if (!wasOpen && prev != null && page.exists(prev.failedPages.contains)) prev
+      else {
+        val failures = (if (prev == null) 0 else prev.failures) + 1
+        val known    = if (prev == null) Set.empty[String] else prev.failedPages
+        // at most `failureThreshold` pages: past it the host is open, and a probe's failure re-opens it whatever page
+        val pages    = if (known.size < failureThreshold) known ++ page else known
+        if (failures >= failureThreshold) {
+          (if (wasOpen) reopened else opened).set(true)
+          // a failed probe doubles the cooldown; the first opening starts at `openDuration`
+          val next = if (wasOpen) math.min(prev.windowMs * 2, maxOpenDuration.toMillis) else openDuration.toMillis
+          window.set(next)
+          Breaker(failures, Some(clock.instant().plusMillis(next)), why, next, pages)
+        } else Breaker(failures, None, why, failedPages = pages)
+      }
     })
     if (opened.get()) { meter.opened(); tell(host, Transition.Opened) }
     if (opened.get())
@@ -220,7 +235,7 @@ class HostCircuitBreakerHttpFetch(
       // strength of a reply that proves it recovered.
       catch {
         case e: Throwable if saysNothing(e)  => throw e
-        case e: Throwable if isTripWorthy(e) => onFailure(host, e); throw e
+        case e: Throwable if isTripWorthy(e) => onFailure(host, url, e); throw e
         case e: Throwable                    => onSuccess(host); throw e
       }
   }
@@ -238,7 +253,7 @@ class HostCircuitBreakerHttpFetch(
         else {
           unwrap(throwable) match {
             case failure if saysNothing(failure)  => ()
-            case failure if isTripWorthy(failure) => onFailure(host, failure)
+            case failure if isTripWorthy(failure) => onFailure(host, url, failure)
             case _                                => onSuccess(host)
           }
           throw throwable
@@ -259,7 +274,8 @@ object HostCircuitBreakerHttpFetch {
   }
 
   /** Per-host state: consecutive trip-worthy failures, (once tripped) the instant
-   *  the breaker goes half-open, and WHY it last failed. `openUntil = None` ⇒ closed.
+   *  the breaker goes half-open, WHY it last failed, and the pages whose server error is already counted
+   *  (`failedPages`, see [[failingPage]]). `openUntil = None` ⇒ closed.
    *
    *  `lastFailure` exists because an open breaker otherwise erases the only useful
    *  fact about the outage. Every call to a blocked host reports "circuit open for
@@ -268,7 +284,15 @@ object HostCircuitBreakerHttpFetch {
    *  Wybrzeże's TLS certificate had expired (2026-07-18), which the first failure
    *  had said plainly before the breaker started swallowing it. */
   private[tools] case class Breaker(failures: Int, openUntil: Option[Instant], lastFailure: Option[String] = None,
-                                    windowMs: Long = 0L)
+                                    windowMs: Long = 0L, failedPages: Set[String] = Set.empty)
+
+  /** The page a failure is about, when it is about one: a server error is the host answering for that URL, so it
+   *  counts once per page. Any other trip-worthy failure (a timeout, a lost connection, a 429) is the host's, and
+   *  counts every time. */
+  private def failingPage(url: String, cause: Throwable): Option[String] = cause match {
+    case s: HttpStatusException if s.code >= 500 => Some(url)
+    case _                                       => None
+  }
 
   /** The default ceiling on a host's cooldown between failed probes: past Filmstarts' ~5-minute 429 blocks (one
    *  probe, at most, lands after a block has ended), short enough that a host that comes back is read again

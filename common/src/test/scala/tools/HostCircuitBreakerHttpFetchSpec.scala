@@ -116,8 +116,36 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     notFoundCb.openRemainingMillis(hostA) shouldBe 0L // 8 × 404 never opens
 
     val serverErrCb = breaker(new RecordingHttpFetch(serverError))
-    (1 to 4).foreach(_ => a[HttpStatusException] should be thrownBy serverErrCb.get(urlA))
-    serverErrCb.openRemainingMillis(hostA) should be > 0L // 4 × 503 opens
+    (1 to 4).foreach(page => a[HttpStatusException] should be thrownBy serverErrCb.get(s"$urlA/$page"))
+    serverErrCb.openRemainingMillis(hostA) should be > 0L // 503 on 4 pages opens
+  }
+
+  // Iluzjon (2026-10-29..11-12): one film page, `filmy/info/1757`, answered 500 on every ask while the rest of the
+  // site served. The retry layer asks each failing page three times, each try through this breaker, so that one page
+  // alone made the four consecutive failures that opened the HOST, every six hours, blocking the healthy pages
+  // behind it. A server error is the host ANSWERING about that page: a page counts once until the host answers.
+  it should "count a page's repeating server error once, so one broken page never opens the host" in {
+    val broken   = s"$urlA/1757"
+    val delegate = new RecordingHttpFetch(url => if (url == broken) throw new HttpStatusException(500, "GET", url, None) else "ok")
+    val cb       = breaker(delegate)
+    (1 to 10).foreach(_ => a[HttpStatusException] should be thrownBy cb.get(broken))
+    cb.openRemainingMillis(hostA) shouldBe 0L
+    cb.get(s"$urlA/1758") shouldBe "ok"
+    delegate.calls shouldBe 11 // every ask of the broken page reached the wire: it is the page failing, not the host
+
+    withClue("timeouts are the host's, whichever page they hang on: ") {
+      delegate.respond = timeout
+      (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(broken))
+      cb.openRemainingMillis(hostA) should be > 0L
+    }
+  }
+
+  it should "still open on server errors from as many pages as its threshold, a repeat between them not counted" in {
+    val cb = breaker(new RecordingHttpFetch(serverError))
+    Seq(1, 1, 2, 2, 3, 3).foreach(page => a[HttpStatusException] should be thrownBy cb.get(s"$urlA/$page"))
+    cb.openRemainingMillis(hostA) shouldBe 0L
+    a[HttpStatusException] should be thrownBy cb.get(s"$urlA/4")
+    cb.openRemainingMillis(hostA) should be > 0L
   }
 
   it should "trip on SUSTAINED 429 — a host refusing us, unlike other 4xx" in {

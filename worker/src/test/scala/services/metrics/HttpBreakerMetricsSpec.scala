@@ -24,8 +24,8 @@ class HttpBreakerMetricsSpec extends AnyFlatSpec with Matchers {
     val decodo   = breakerOn(metrics, HttpBreakerMetrics.Leg.Decodo)
     val another  = breakerOn(metrics, HttpBreakerMetrics.Leg.Decodo)   // a second proxied chain, same leg
 
-    (1 to 2).foreach(_ => intercept[Exception](decodo.get("https://a.example/x")))
-    (1 to 2).foreach(_ => intercept[Exception](another.get("https://b.example/x")))
+    (1 to 2).foreach(page => intercept[Exception](decodo.get(s"https://a.example/$page"))) // a server error counts once a page
+    (1 to 2).foreach(page => intercept[Exception](another.get(s"https://b.example/$page")))
 
     val text = PrometheusExposition.render(registry)
     text should include ("""kinowo_worker_http_breaker_open_hosts{country="uk",leg="decodo"} 2""")
@@ -49,7 +49,7 @@ class HttpBreakerMetricsSpec extends AnyFlatSpec with Matchers {
 
     PrometheusExposition.render(registry) should not include "kinowo_worker_http_circuit_open{"
 
-    (1 to 2).foreach(_ => intercept[Exception](breaker.get("https://restapi.helios.pl/x")))
+    (1 to 2).foreach(page => intercept[Exception](breaker.get(s"https://restapi.helios.pl/$page")))
     PrometheusExposition.render(registry) should include (
       """kinowo_worker_http_circuit_open{country="pl",host="restapi.helios.pl",leg="scrape"} 1""")
 
