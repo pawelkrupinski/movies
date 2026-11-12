@@ -152,7 +152,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     a[CircuitOpenException] should be thrownBy cb.get(urlA)
     clock.advanceSeconds(61)
     a[HttpTimeoutException] should be thrownBy cb.get(urlA) // the probe fails: re-opened, not news to the listener
-    clock.advanceSeconds(61)
+    clock.advanceSeconds(121) // for twice the cooldown
     delegate.respond = _ => "ok"
     cb.get(urlA) shouldBe "ok"
     cb.get(urlA) shouldBe "ok"
@@ -230,10 +230,38 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     clock.advanceSeconds(61)
     a[HttpTimeoutException] should be thrownBy cb.get(urlA) // probe fails → re-open
-    clock.advanceSeconds(61)
+    clock.advanceSeconds(121) // for twice the cooldown
     a[HttpTimeoutException] should be thrownBy cb.get(urlA) // probe fails → re-open
 
     said.count(_.contains(hostA)) shouldBe 3
+  }
+
+  // Ocine Gavarres (2026-10-29..11-12): one of its two A records is dead for everyone, so the host failed for hours on
+  // end, and the breaker sent a probe every 60 s — each one three WARN lines (the failure, its retry, "STILL open"),
+  // 2,480 in two weeks. A host whose probes keep failing is probed ever less often, doubling to a ceiling; one
+  // success puts it straight back to the first cooldown.
+  it should "back off its probes while they keep failing, up to a ceiling, and start over once the host answers" in {
+    val delegate = new RecordingHttpFetch(timeout)
+    val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
+    val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
+      maxOpenDuration = 5.minutes, clock = clock)
+    def openFor: Long = (the[CircuitOpenException] thrownBy cb.get(urlA)).openForMs / 1000
+
+    (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    val windows = (1 to 5).map { _ =>
+      val window = openFor
+      clock.advanceSeconds(window + 1)
+      a[HttpTimeoutException] should be thrownBy cb.get(urlA) // the probe fails
+      window
+    }
+    windows shouldBe Seq(60, 120, 240, 300, 300)
+
+    clock.advanceSeconds(301)
+    delegate.respond = _ => "ok"
+    cb.get(urlA) shouldBe "ok"
+    delegate.respond = _ => throw new HttpTimeoutException("request timed out")
+    (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    openFor shouldBe 60
   }
 
   it should "announce the recovery too, so a blackout has an end in the log" in {

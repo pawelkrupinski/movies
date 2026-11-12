@@ -34,7 +34,7 @@ trait NeverSent { self: Throwable => }
  * to that host fails FAST ([[CircuitOpenException]], ~0ms) instead of hitting the
  * wire and waiting out its own per-request timeout. After the cooldown ONE trial
  * call is allowed (half-open); a success closes the breaker, a fresh failure
- * re-opens it. Claiming that trial re-arms the window in the same atomic step
+ * re-opens it for twice the last cooldown, up to `maxOpenDuration`. Claiming that trial re-arms the window in the same atomic step
  * (see `admit`), so the queued fleet doesn't all rush the wire the instant the
  * cooldown elapses — and a trial that never returns can't wedge the host shut,
  * since the next cooldown admits a fresh one.
@@ -64,6 +64,9 @@ class HostCircuitBreakerHttpFetch(
   delegate:         HttpFetch,
   failureThreshold: Int            = 4,
   openDuration:     FiniteDuration = 60.seconds,
+  // The longest a host is skipped between two probes: each probe that fails doubles the cooldown before the next,
+  // from `openDuration` up to this, so a host down for hours is not probed (and logged) every minute.
+  maxOpenDuration:  FiniteDuration = HostCircuitBreakerHttpFetch.MaxOpenDuration,
   clock:              java.time.Clock,
   // Where the open/re-open/close transitions go. Defaults to this class's logger;
   // injected in tests so the transitions can be asserted on as data instead of
@@ -131,12 +134,16 @@ class HostCircuitBreakerHttpFetch(
     val opened   = new AtomicBoolean(false)
     val reopened = new AtomicBoolean(false)
     val why      = Some(HostCircuitBreakerHttpFetch.describe(cause))
+    val window   = new AtomicLong(openDuration.toMillis)
     breakers.compute(host, (_, prev) => {
       val wasOpen  = prev != null && prev.openUntil.isDefined
       val failures = (if (prev == null) 0 else prev.failures) + 1
       if (failures >= failureThreshold) {
         (if (wasOpen) reopened else opened).set(true)
-        Breaker(failures, Some(clock.instant().plusMillis(openDuration.toMillis)), why)
+        // a failed probe doubles the cooldown; the first opening starts at `openDuration`
+        val next = if (wasOpen) math.min(prev.windowMs * 2, maxOpenDuration.toMillis) else openDuration.toMillis
+        window.set(next)
+        Breaker(failures, Some(clock.instant().plusMillis(next)), why, next)
       } else Breaker(failures, None, why)
     })
     if (opened.get()) { meter.opened(); tell(host, Transition.Opened) }
@@ -145,7 +152,7 @@ class HostCircuitBreakerHttpFetch(
         s"(last: ${why.getOrElse("unknown")}) — skipping all calls to it for ${openDuration.toSeconds}s.")
     else if (reopened.get())
       announce(logger.warn(_), s"Circuit for $host STILL open — its half-open probe failed too " +
-        s"(last: ${why.getOrElse("unknown")}); skipping all calls to it for another ${openDuration.toSeconds}s.")
+        s"(last: ${why.getOrElse("unknown")}); skipping all calls to it for another ${window.get() / 1000}s.")
   }
 
   /** Trip-worthy = the host is failing to serve us: a timeout (request OR connect —
@@ -188,7 +195,7 @@ class HostCircuitBreakerHttpFetch(
         case Some(until) =>
           val left = JDuration.between(clock.instant(), until).toMillis
           if (left > 0L) { remaining.set(left); cause.set(prev.lastFailure); prev }
-          else Breaker(prev.failures, Some(clock.instant().plusMillis(openDuration.toMillis)), prev.lastFailure)
+          else prev.copy(openUntil = Some(clock.instant().plusMillis(prev.windowMs)))
       })
     (remaining.get(), cause.get())
   }
@@ -255,7 +262,13 @@ object HostCircuitBreakerHttpFetch {
    *  away has to be rediscovered by hand — a whole investigation to learn that Kino
    *  Wybrzeże's TLS certificate had expired (2026-07-18), which the first failure
    *  had said plainly before the breaker started swallowing it. */
-  private[tools] case class Breaker(failures: Int, openUntil: Option[Instant], lastFailure: Option[String] = None)
+  private[tools] case class Breaker(failures: Int, openUntil: Option[Instant], lastFailure: Option[String] = None,
+                                    windowMs: Long = 0L)
+
+  /** The default ceiling on a host's cooldown between failed probes: past Filmstarts' ~5-minute 429 blocks (one
+   *  probe, at most, lands after a block has ended), short enough that a host that comes back is read again
+   *  within minutes. */
+  val MaxOpenDuration: FiniteDuration = 5.minutes
 
   /** The causing failure as one short line for the breaker to carry — type plus
    *  message, since `SSLHandshakeException` and `HttpTimeoutException` are already
