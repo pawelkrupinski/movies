@@ -66,6 +66,16 @@ allow:
 # whole window is the healthy case, not a dead selector. They are excluded from the dead-alert
 # check and from rollout clipping.
 conditional_metrics:
+  coredns_dns_responses_total:
+    reason: >-
+      CoreDNS's own counters, scraped by the `coredns` job roles/prometheus.nix adds (2026-11-12, through
+      monitoring-1's kube-proxy to 10.43.0.10:9153); absent from the fleet until that role is applied to
+      monitoring-1. CoreDnsUpstreamFailing and CoreDnsMetricsAbsent read it. Strike this entry once a
+      metric-names.json snapshot taken after the apply holds it.
+  coredns_proxy_request_duration_seconds_count:
+    reason: >-
+      As coredns_dns_responses_total: CoreDNS's forwarded-and-answered count, published once the
+      `coredns` scrape is applied to monitoring-1.
   mongodb_collstats_storageStats_storageSize:
     reason: >-
       Published by mongodb-exporter's collstats collector for the identity_retained allow-list

@@ -155,6 +155,21 @@ let
     };
   };
 
+  # THE CLUSTER'S DNS, WHICH EVERY POD'S OUTBOUND CALL STARTS WITH. CoreDNS forwards every name
+  # outside cluster.local to the node's upstream resolvers; on 2026-11-05 Hetzner's timed out on the
+  # names cyber_folks serves and ~42 Polish cinema hosts failed for 29 hours while CoreDNS logged
+  # `i/o timeout` to its upstream and nothing read it. Its own counters say how many of the queries
+  # it forwarded came back as SERVFAIL, which is the question k3s.rules' `coredns` group asks.
+  #
+  # NO `host` LABEL, for kube-state-metrics' reason above: the series describe the cluster's
+  # resolver wherever its pod is scheduled, not the machine that answers the scrape.
+  corednsYaml = builtins.toJSON {
+    scrape_configs = lib.optional (cfg.corednsTargets != [ ]) {
+      job_name = "coredns";
+      static_configs = map (t: { targets = [ t ]; }) cfg.corednsTargets;
+    };
+  };
+
   # A RULE FILE HAS TO BE IN TWO PLACES: this list, which INSTALLS it into /etc, and the
   # `rule_files` list in files/monitoring/prometheus.yaml, which LOADS it. Present in one and
   # absent from the other, it is either a file nothing reads (silent -- the alerts simply never
@@ -615,6 +630,28 @@ in
       '';
     };
 
+    corednsTargets = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "10.43.0.10:9153" ];
+      description = ''
+        `address:port` of CoreDNS's metrics: the `kube-dns` Service's ClusterIP, port 9153.
+
+        A CLUSTER IP, NOT A NodePort, AND IT WORKS ONLY BECAUSE PROMETHEUS SHARES A HOST WITH A k3s
+        NODE. monitoring-1 is the k3s server, so its kube-proxy rules route 10.43.0.10 to the CoreDNS
+        pod on whichever node it runs (k3s-worker-1 today) -- checked 2026-11-12 with a curl from the
+        host. k3s fixes that address (`--cluster-dns`, 10.43.0.10 by default) and ships the Service
+        with the metrics port, so nothing in movies-gitops has to change. Prometheus on a host that
+        is not a k3s node would need a NodePort instead.
+
+        ONE REPLICA, which k3s's bundled CoreDNS is. A second behind the Service would have
+        kube-proxy alternate between two sets of counters -- phantom resets in every rate below
+        (the web tier's replica note in scrape-kinowo-apps.yaml).
+
+        k3s down on monitoring-1 takes the route with it: the target goes down and `TargetDown`
+        names it, which is the truth from here.
+      '';
+    };
+
     fluxTargets = lib.mkOption {
       type = lib.types.listOf (lib.types.submodule {
         options = {
@@ -708,6 +745,7 @@ in
       "prometheus/scrape.d/mongodb-targets.yaml".text = mongodbTargetsYaml;
       "prometheus/scrape.d/kube-state-metrics-targets.yaml".text = kubeStateMetricsYaml;
       "prometheus/scrape.d/flux-targets.yaml".text = fluxYaml;
+      "prometheus/scrape.d/coredns-targets.yaml".text = corednsYaml;
 
       # THE APPLICATION'S OWN METRICS. Every tier of every country, reached by NodePort over the
       # private subnet, needing no credential anyone can revoke. A `scrape-fly.yaml` sat beside
@@ -746,6 +784,7 @@ in
         config.environment.etc."prometheus/scrape.d/mongodb-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/kube-state-metrics-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/flux-targets.yaml".text
+        config.environment.etc."prometheus/scrape.d/coredns-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/kinowo-apps.yaml".source
       ]
       ++ map (n: config.environment.etc."prometheus/rules/${n}.rules".source) ruleNames;

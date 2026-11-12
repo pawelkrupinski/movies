@@ -109,6 +109,13 @@ EVENT_ONLY_VALUES = {
     *{(metric, "collection", "identity_retained")
       for metric in ("mongodb_collstats_storageStats_storageSize", "mongodb_collstats_storageStats_totalIndexSize",
                      "mongodb_collstats_storageStats_count")},
+    # NOT PUBLISHED YET (2026-11-12): CoreDNS is scraped from the `coredns` job roles/prometheus.nix adds, so the
+    # fleet has no `coredns_*` series to snapshot until monitoring-1 runs it (k3s.rules' CoreDns*). The values are
+    # CoreDNS's own (`curl 10.43.0.10:9153/metrics` on monitoring-1). Re-snapshot once it does, then drop these.
+    *{(metric, "job", "coredns")
+      for metric in ("coredns_dns_responses_total", "coredns_proxy_request_duration_seconds_count")},
+    *{(metric, "rcode", "SERVFAIL")
+      for metric in ("coredns_dns_responses_total", "coredns_proxy_request_duration_seconds_count")},
     # COLLECTORS ABSENT FROM THE SNAPSHOT: the GC alerts (jvm-heap.rules) name every HotSpot
     # collector's old-generation bean and pool, so a collector change in infra/jvm/<tier>.options
     # keeps them covering the tier instead of silently matching nothing. The snapshot predates the

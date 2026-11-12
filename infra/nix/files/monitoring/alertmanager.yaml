@@ -234,14 +234,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|Poster.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFailing|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|Poster.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFailing|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers|CoreDnsUpstreamFailing"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|Poster.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFailing|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers"
+        - alertname =~ "Filesystem.*|Worker.*|ShareCard.*|Probe.*|Poster.*|FluxObject.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFailing|ChainFallbackSaturated|PaidEgressFailing|HeapDumpWritten|WebRestartNotOOMKilled|MongodMemoryNearLimit|BootHealLarge|ScrapeWritesSkipped|ScrapeGuardStuckRejecting|CityServingShortOfCorpus|CityDarkInBothTiers|CoreDnsUpstreamFailing"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m

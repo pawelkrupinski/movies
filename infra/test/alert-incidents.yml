@@ -379,4 +379,9 @@ incidents:
     source: count by (country) of kinowo_worker_http_circuit_open == 1 at >= 10 for pl from 11:15Z (85 min run); CoreDNS `read udp ... 185.12.64.1:53 i/o timeout` lines; last ConnectException 11-06 10:59Z
     start: 2026-11-05T11:15:00Z
     end: 2026-11-06T11:00:00Z
+    # CoreDnsUpstreamFailing (k3s.rules) is the same outage at its source, but CoreDNS was not scraped
+    # until 2026-11-12, so Prometheus holds nothing to replay it from and it cannot be listed here. Its
+    # replay is over the CoreDNS `plugin/errors` lines in VictoriaLogs (the rule's comment: firing
+    # 11-05 ~10:30Z to 11-06 ~10:40Z, quiet the rest of the 14 days), and its promtool case
+    # (alert-rules/k3s.yml) pins the incident's shape.
     expect_firing: [WorkerHttpManyHostsCircuitOpen]

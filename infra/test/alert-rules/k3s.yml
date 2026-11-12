@@ -583,3 +583,114 @@ tests:
       - eval_time: 58m
         alertname: WorkerRestartingRepeatedly
         exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # CoreDnsUpstreamFailing -- THE 2026-11-05 SHAPE. Every minute CoreDNS forwards 62 queries that
+  # come back answered (3720 an hour, what the pod counted on 11-10..12) and answers 2 SERVFAIL
+  # (120 an hour; the incident's hours held 62 to 173). One upstream SERVFAIL a minute arrives as
+  # an answer too, and is not counted twice: the share is 2 / (62 + 2) = 3.125%, where counting it
+  # would make 2 / 65. Pending from ~10m (the 20-failure floor), firing once 30m is held, and
+  # still firing across a CoreDNS restart at 60m: every counter resets to zero.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: CoreDNS failing 3% of its forwarded queries fires, and holds across a pod restart
+    input_series:
+      - series: 'coredns_dns_responses_total{job="coredns",plugin="errors",rcode="SERVFAIL",server="dns://:53",view="",zone="."}'
+        values: '0+2x59 stale stale 0+2x40'
+      - series: 'coredns_dns_responses_total{job="coredns",plugin="errors",rcode="NXDOMAIN",server="dns://:53",view="",zone="."}'
+        values: '0+300x59 stale stale 0+300x40'
+      - series: 'coredns_proxy_request_duration_seconds_count{job="coredns",proxy_name="forward",rcode="NOERROR",to="185.12.64.1:53"}'
+        values: '0+62x59 stale stale 0+62x40'
+      - series: 'coredns_proxy_request_duration_seconds_count{job="coredns",proxy_name="forward",rcode="SERVFAIL",to="185.12.64.1:53"}'
+        values: '0+1x59 stale stale 0+1x40'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: CoreDnsUpstreamFailing
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: CoreDnsUpstreamFailing
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning }
+            exp_annotations: &coredns_upstream_failing
+              summary: "CoreDNS: 3.125% of the queries it forwarded failed in the last hour -- its upstream resolvers are not answering"
+              description: >-
+                Over the last hour more than 1% of the names CoreDNS forwarded outside the cluster came
+                back SERVFAIL from every upstream it tried, so pods' outbound calls to those names fail
+                as `ConnectException: null` / UnknownHostException and the hosts' breakers open. On
+                2026-11-05 this was Hetzner's resolvers timing out on cyber_folks-served names for 29
+                hours. `k3s kubectl -n kube-system logs deploy/coredns | grep plugin/errors` names
+                the failing names and the upstream (`read udp ...->IP:53: i/o timeout`); `dig @IP
+                <name>` from the node it runs on, against `dig @1.1.1.1 <name>`, tells a resolver
+                fault from the zone's own nameservers. The upstreams are the node's resolv.conf
+                (modules/fleet/default.nix); CoreDNS reads it only at pod start, so a change needs
+                `kubectl -n kube-system rollout restart deployment/coredns`.
+      - eval_time: 90m
+        alertname: CoreDnsUpstreamFailing
+        exp_alerts:
+          - exp_labels: { domain: pipeline, severity: warning }
+            exp_annotations: *coredns_upstream_failing
+      - eval_time: 90m
+        alertname: CoreDnsMetricsAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE QUIET FORTNIGHT. 13 failures an hour against 3720 forwarded answers -- the worst hour
+  # outside the incident (stray Hetzner timeouts on .uk names), 0.35%. Two hours of it: silent.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    name: CoreDNS at the quiet days' worst hour stays silent
+    input_series:
+      - series: 'coredns_dns_responses_total{job="coredns",plugin="errors",rcode="SERVFAIL",server="dns://:53",view="",zone="."}'
+        values: '0 1 2 3 4 5 6 7 8 9 10 11 13 14 15 16 17 18 19 20 21 22 23 24 26'
+      - series: 'coredns_proxy_request_duration_seconds_count{job="coredns",proxy_name="forward",rcode="NOERROR",to="1.1.1.1:53"}'
+        values: '0+310x24'
+    alert_rule_test:
+      - eval_time: 120m
+        alertname: CoreDnsUpstreamFailing
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A NEAR-IDLE CLUSTER: 12 failures an hour among 60 forwarded is 17%, but under the 20-failure
+  # floor -- a handful, not a share. Silent.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    name: a near-idle CoreDNS's handful of failures is under the floor
+    input_series:
+      - series: 'coredns_dns_responses_total{job="coredns",plugin="errors",rcode="SERVFAIL",server="dns://:53",view="",zone="."}'
+        values: '0+1x24'
+      - series: 'coredns_proxy_request_duration_seconds_count{job="coredns",proxy_name="forward",rcode="NOERROR",to="1.1.1.1:53"}'
+        values: '0+5x24'
+    alert_rule_test:
+      - eval_time: 120m
+        alertname: CoreDnsUpstreamFailing
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # CoreDnsMetricsAbsent: CoreDNS answering without its forward counters (a rename across a k3s
+  # upgrade, as 1.11's coredns_forward_* -> coredns_proxy_*) leaves CoreDnsUpstreamFailing blind.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: CoreDNS's forward counter missing fires the companion after 30m
+    input_series:
+      - series: 'coredns_dns_responses_total{job="coredns",plugin="errors",rcode="NOERROR",server="dns://:53",view="",zone="."}'
+        values: '0+100x60'
+      - series: 'coredns_forward_requests_total{job="coredns",to="1.1.1.1:53"}'
+        values: '0+60x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: CoreDnsMetricsAbsent
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: CoreDnsMetricsAbsent
+        exp_alerts:
+          - exp_labels: { domain: platform, severity: warning, job: coredns }
+            exp_annotations:
+              summary: "CoreDNS's response or forward counters are not being scraped"
+              description: >-
+                CoreDnsUpstreamFailing reads `coredns_dns_responses_total` and
+                `coredns_proxy_request_duration_seconds_count` from job `coredns`, and one of them is
+                missing, so an upstream resolver failure would not page. If TargetDown is firing for
+                job `coredns`, the scrape itself fails (10.43.0.10:9153 is reached through
+                monitoring-1's kube-proxy); if not, CoreDNS is answering without the series -- a k3s
+                upgrade renamed them (`curl -s 10.43.0.10:9153/metrics | grep ^coredns_` on
+                monitoring-1) and the rule above needs the new names.

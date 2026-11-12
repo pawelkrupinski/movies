@@ -187,6 +187,9 @@ route_is telegram-and-email alertname=WorkerTaskTypeUnhandled severity=warning c
 route_is digest-email alertname=WorkerHttpHostCircuitOpen severity=warning domain=third-party country=pl leg=scrape host=restapi.helios.pl
 # MANY hosts' breakers open in one country is OUR egress (the 2026-11-05 DNS outage): production, so Telegram.
 route_is telegram-and-email alertname=WorkerHttpManyHostsCircuitOpen severity=warning domain=pipeline country=pl
+# ...and so are CoreDNS's upstream resolvers failing, the same outage seen at its source: Telegram and email.
+route_is telegram-and-email alertname=CoreDnsUpstreamFailing severity=warning domain=pipeline
+route_is telegram alertname=CoreDnsMetricsAbsent severity=warning domain=platform
 # The in-app Telegram bot failing: the email half is what still reaches someone if Telegram is
 # the thing broken. See worker-pipeline.rules.
 route_is telegram-and-email alertname=WorkerTelegramAlertsFailing severity=warning country=us kind=gone_venue
