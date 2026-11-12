@@ -2,7 +2,7 @@ package services.tasks
 
 import play.api.Logging
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, ListingReads, PagedChunkScraper}
-import tools.{CircuitOpenException, ReadOutcome}
+import tools.{AllBackendsFailedException, CircuitOpenException, ReadOutcome}
 
 import java.time.Clock
 
@@ -30,6 +30,24 @@ class ScrapeChunkHandler(
   pageMemo:      ChunkPageMemo = ChunkPageMemo.none,
   memoMetrics:   ChunkPageMemoMetrics = ChunkPageMemoMetrics.noop
 ) extends TaskHandler with Logging {
+
+  /** Per host, until when its deferrals have been said: the first chunk a block defers says so at INFO, the
+   *  others of the same block at DEBUG — the breaker has announced the outage already, and a block deferring a
+   *  venue's every chunk each minute was 6,243 INFO lines for Ocine Gavarres alone (2026-10-29..11-12). */
+  private val deferralsSaidUntil = new java.util.concurrent.ConcurrentHashMap[String, java.time.Instant]()
+
+  private def sayDeferred(host: String, notBefore: java.time.Instant, line: String): Unit = {
+    val now  = clock.instant()
+    val said = deferralsSaidUntil.get(host)
+    if (said == null || !now.isBefore(said)) { deferralsSaidUntil.put(host, notBefore); logger.info(line) }
+    else logger.debug(line)
+  }
+
+  /** The block to wait out, when the chunk's host is down: its breaker open, bare or behind every egress route. */
+  private def hostDown(e: Exception): Option[CircuitOpenException] = e match {
+    case open: CircuitOpenException => Some(open)
+    case other                      => AllBackendsFailedException.hostDown(other)
+  }
   import HandlerOutcome._
 
   override val taskType: TaskType = TaskType.ScrapeChunk
@@ -66,9 +84,13 @@ class ScrapeChunkHandler(
           // backoff for work that was refused locally — otherwise a host-wide block
           // retries the whole estate out of existence while the host is still down
           // (see HandlerOutcome.Deferred for the 2026-07-28 Odeon numbers).
-          case e: CircuitOpenException =>
-            logger.info(s"chunk '$key' for $cinema run $runId deferred: ${e.getMessage}")
-            Deferred(Some(e.getMessage), Some(clock.instant().plusMillis(e.openForMs)))
+          // A chain of egress routes (proxy -> direct) that failed on every route with one of them circuit-open
+          // is the same host-down, wrapped (`AllBackendsFailedException.hostDown`).
+          case e: Exception if hostDown(e).isDefined =>
+            val open      = hostDown(e).get
+            val notBefore = clock.instant().plusMillis(open.openForMs)
+            sayDeferred(open.host, notBefore, s"chunk '$key' for $cinema run $runId deferred: ${open.getMessage}")
+            Deferred(Some(open.getMessage), Some(notBefore))
           // A failed fetch, or a store that failed to land the slice: retry the chunk.
           case e: Exception =>
             logger.warn(s"chunk '$key' for $cinema run $runId failed: ${e.getMessage}")

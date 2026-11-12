@@ -239,4 +239,30 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     thrown.getMessage should include ("query=heat&api_key=***")
     events.exists(e => e.getLevel == Level.WARN && e.getFormattedMessage.contains("query=heat&api_key=***")) shouldBe true
   }
+
+  // Flicks, 2026-10-29..11-12: a stalling origin opened the direct leg's breaker, and every chunk URL asked
+  // while it stayed open warned its own nine-line "All 2 backends failed ... circuit open for www.flicks.us
+  // (59957ms before half-open)" -- 2,135 of them, one per URL, the detail differing only in the URL and the
+  // countdown. An open circuit is the HOST down, not the URL: one warning for the host's incident, its
+  // repeats counted, and one line when the host answers again.
+  it should "warn once per host while one of its legs is circuit-open, whatever URL is asked, and say when it answers" in {
+    val host  = s"open-circuit-${java.util.UUID.randomUUID()}.test"
+    var open  = true
+    val proxy = new FailingHttpFetch((_, _) => new java.net.http.HttpTimeoutException("request timed out"))
+    var left  = 60000L
+    val direct = new ScriptedByUrlHttpFetch(_ =>
+      if (open) { left -= 7; throw new CircuitOpenException(host, left, Some("HttpTimeoutException: request timed out")) }
+      else "answer")
+    val chain = new FallbackHttpFetch(Seq("proxy" -> proxy, "fallback" -> direct), _root_.tools.SpecStopwatch.Frozen)
+
+    val (_, events) = capture {
+      (1 to 40).foreach(i => an [AllBackendsFailedException] should be thrownBy chain.get(s"https://$host/cinema/sessions/v/day-$i/"))
+      open = false
+      chain.get(s"https://$host/cinema/sessions/v/day-41/") shouldBe "answer"
+    }
+
+    val ours = events.filter(_.getFormattedMessage.contains(host))
+    ours.filter(_.getLevel == Level.WARN) should have size 1
+    ours.filter(_.getLevel == Level.INFO).map(_.getFormattedMessage).mkString should include ("39 unlogged repeat(s)")
+  }
 }

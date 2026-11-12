@@ -45,9 +45,11 @@ final class RepeatedFailureLog(logger: Logger, settings: RepeatedFailureLog.Sett
     }
   }
 
-  /** Records a failure of `key` with `detail`, warning unless it repeats the last one. */
-  def failed(key: String, detail: String): Unit = {
-    val hash = detail.hashCode
+  /** Records a failure of `key` with `detail`, warning unless it repeats the last one. `sameness` is what two
+   *  failures must share to be the same failure — the detail itself unless the caller knows which parts of it
+   *  vary from ask to ask without saying anything new (a URL, a countdown). */
+  def failed(key: String, detail: String, sameness: String = ""): Unit = {
+    val hash = (if (sameness.isEmpty) detail else sameness).hashCode
     val at   = stopwatch.nanoTime()
     val line: Option[String] = entries.synchronized {
       Option(entries.get(key)) match {

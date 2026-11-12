@@ -156,6 +156,55 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers with org.scalatest.O
     }
   }
 
+  // Flicks 2026-10-29..11-12: the chunks read through a proxy -> direct chain, so a host whose direct leg's
+  // breaker was open arrived as the chain's composite failure, not a CircuitOpenException. Each was charged a
+  // retry on a doubling backoff and warned "chunk ... failed" (2,011 lines) while the host was simply down.
+  /** Chunk "a" of a venue read through a two-route egress chain whose routes fail with `proxy` and `fallback`,
+   *  handled once. */
+  private def handledThroughRoutes(proxy: Throwable, fallback: Throwable): HandlerOutcome = {
+    val routes = new tools.FallbackHttpFetch(Seq(
+      "proxy"    -> new clients.tools.FailingHttpFetch((_, _) => proxy),
+      "fallback" -> new clients.tools.FailingHttpFetch((_, _) => fallback)), _root_.tools.SpecStopwatch.Frozen)
+    val routed = new FakeChunkedScraper(Map("a" -> Seq(film("X", 25)))) {
+      override def fetchChunk(k: String): Seq[CinemaMovie] = { routes.get(s"https://${FakeChunkedScraper.Host}/$k"); Nil }
+    }
+    val h = new Harness(routed)
+    val runId = { h.planner.plan(cinemaName); h.store.activeRun(cinemaName).get.runId }
+    h.chunkH.handle(Task("t", TaskType.ScrapeChunk, "d", ChunkScrapeKeys.chunkPayload(cinemaName, runId, "a"), 1))
+  }
+
+  // Flicks 2026-10-29..11-12: the chunks read through a proxy -> direct chain, so a host whose direct leg's
+  // breaker was open arrived as the chain's composite failure, not a CircuitOpenException. Each was charged a
+  // retry on a doubling backoff and warned "chunk ... failed" (2,011 lines) while the host was simply down.
+  it should "DEFER a chunk whose every egress route failed with one of them circuit-open, until that one half-opens" in {
+    handledThroughRoutes(new java.net.http.HttpTimeoutException("request timed out"),
+                         new tools.CircuitOpenException(FakeChunkedScraper.Host, CircuitBlockMs)) match {
+      case Deferred(_, notBefore) => notBefore shouldBe Some(now.plusMillis(CircuitBlockMs))
+      case other                  => fail(s"expected a Deferred, got $other")
+    }
+  }
+
+  // ...but a route that ANSWERED (a 403 is the origin refusing, not a host down) is a failure to retry.
+  it should "still reschedule a chunk one of whose routes answered, though another was circuit-open" in {
+    handledThroughRoutes(new tools.CircuitOpenException(FakeChunkedScraper.Host, CircuitBlockMs),
+                         new tools.HttpStatusException(403, "GET", s"https://${FakeChunkedScraper.Host}/a", None)) shouldBe a [Reschedule]
+  }
+
+  // Ocine Gavarres 2026-10-29..11-12: 6,243 INFO "chunk ... deferred: circuit open" lines, one per chunk per
+  // minute while its breaker kept re-opening. The breaker already announces the outage; the deferrals are
+  // said once per host per block, the rest at DEBUG.
+  it should "say a host's deferrals once per block, not once per chunk" in {
+    val h = new Harness(new FakeChunkedScraper((1 to 30).map(i => s"c$i" -> Seq(film("X", 25))).toMap, circuitOpen = (1 to 30).map(i => s"c$i").toSet))
+    val runId = { h.planner.plan(cinemaName); h.store.activeRun(cinemaName).get.runId }
+
+    val infos = tools.LogCapture.thisThread(classOf[ScrapeChunkHandler].getName) {
+      (1 to 30).foreach(i => h.chunkH.handle(Task(s"t$i", TaskType.ScrapeChunk, s"d$i", ChunkScrapeKeys.chunkPayload(cinemaName, runId, s"c$i"), 1)) shouldBe a [Deferred])
+    }.filter(_.getLevel.isGreaterOrEqual(ch.qos.logback.classic.Level.INFO)).map(_.getFormattedMessage)
+
+    infos should have size 1
+    infos.head should include ("circuit open for fake.pl")
+  }
+
   it should "not burn a chunk's retry budget while its host is circuit-broken" in {
     // The regression the whole change exists for: on 2026-07-28 fast-fails walked
     // the UK Odeon chunks to attempts 5-6 inside nine minutes — pushing them up a

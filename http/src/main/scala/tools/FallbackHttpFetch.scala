@@ -8,7 +8,8 @@ import scala.collection.mutable
  * Tries each backend in order, returning the first successful body.
  * A backend that fails is recorded at DEBUG and the chain falls through
  * to the next one; only when every backend has failed does it warn (once per
- * distinct failure of a URL — see [[RepeatedFailureLog]]), and
+ * distinct failure of a URL, or of its HOST while a leg finds that host's circuit open —
+ * see [[RepeatedFailureLog]] and `hostKey`), and
  * throw a single composite exception naming each failure — unless a leg's
  * failure is one `endsChain` names as the origin's own answer, which is
  * rethrown as-is without trying the rest.
@@ -82,6 +83,9 @@ class FallbackHttpFetch(
     val shown           = RedactedUrl(url)
     def masked(message: String): String = Option(message).fold("null")(_.replace(url, shown))
     val key             = s"$verb $shown"
+    // The key the "all failed" warning is told apart by, once it is known: the URL's, unless a leg found its host's
+    // breaker open (`hostWide`).
+    def incidentKey: String = if (failuresSeen.exists(_.isInstanceOf[CircuitOpenException])) hostKey(verb, url) else key
     while (result.isEmpty && it.hasNext) {
       val (name, backend) = it.next()
       try {
@@ -116,7 +120,10 @@ class FallbackHttpFetch(
           failures += message
       }
     }
-    if (result.isDefined) failureLog.cleared(key, "answered")
+    if (result.isDefined) {
+      failureLog.cleared(key, "answered")
+      failureLog.cleared(hostKey(verb, url), "answered")
+    }
     result.getOrElse {
       val detail = s"All ${backends.size} backends failed for $verb $shown:\n  " + failures.mkString("\n  ")
       // A definitive "not found" from the LAST backend is an ANSWER, and it has to
@@ -145,8 +152,8 @@ class FallbackHttpFetch(
       val limits = failuresSeen.collect { case s: HttpStatusException if HttpStatusException.isRateLimit(s) => s }
       if (limits.nonEmpty) {
         val limit = limits.maxBy(_.retryAfter.fold(0L)(_.toMillis))
-        failureLog.failed(key, s"FallbackHttpFetch $detail")
-        limit.addSuppressed(new AllBackendsFailedException(detail, failedLegs.toList))
+        failureLog.failed(incidentKey, s"FallbackHttpFetch $detail", sameness(detail))
+        limit.addSuppressed(new AllBackendsFailedException(detail, failedLegs.toList, failuresSeen.toList))
         throw limit
       }
       // NOW it is a warning: nothing answered. Logged as well as thrown because
@@ -154,10 +161,20 @@ class FallbackHttpFetch(
       // exception is how a chain fails silently. Once per distinct failure, though: a
       // repeat of the identical failure is held back (RepeatedFailureLog); the exception
       // below still carries the full detail every time.
-      failureLog.failed(key, s"FallbackHttpFetch $detail")
-      throw new AllBackendsFailedException(detail, failedLegs.toList)
+      failureLog.failed(incidentKey, s"FallbackHttpFetch $detail", sameness(detail))
+      throw new AllBackendsFailedException(detail, failedLegs.toList, failuresSeen.toList)
     }
   }
+
+  /** The key a failure is remembered under when a leg found the HOST's breaker open: an open circuit is the host
+   *  down, not the URL, so every URL asked while it stays open is one incident. Flicks' stalls (2026-10-29..11-12)
+   *  warned once per chunk URL instead — 2,135 nine-line warnings, each naming the same open circuit. */
+  private def hostKey(verb: String, url: String): String = s"$verb host ${UrlHost.of(url).getOrElse("?")}"
+
+  /** What a host-wide failure must share to be the same one: the detail less what changes on every ask (the
+   *  URL, and the open circuit's countdown). */
+  private def sameness(detail: String): String =
+    FallbackHttpFetch.UrlInDetail.replaceAllIn(FallbackHttpFetch.Countdown.replaceAllIn(detail, ""), "<url>")
 
   // A metering callback must never break the fetch it's observing.
   private def safeOutcome(name: String, error: Option[String]): Unit =
@@ -167,9 +184,25 @@ class FallbackHttpFetch(
 /** Every leg of a [[FallbackHttpFetch]] failed. Still the `RuntimeException` callers have always caught; typed so a
  *  caller can ask WHICH legs failed — a scrape whose residential-proxy leg failed while the proxy itself is down is
  *  parked on the proxy's health, not on its own failure count (`services.tasks.ProxyParking`). */
-final class AllBackendsFailedException(detail: String, val failedLegs: Seq[String]) extends RuntimeException(detail)
+final class AllBackendsFailedException(detail: String, val failedLegs: Seq[String], val legFailures: Seq[Throwable] = Nil)
+  extends RuntimeException(detail)
 
 object AllBackendsFailedException {
+
+  /** The host is DOWN on every route, as far as asking again later can tell: no leg was answered (each failed on a
+   *  timeout, a lost connection or a server error — [[RetryingHttpFetch.recoverable]]) and at least one found its
+   *  host's breaker open. That leg's block is what the caller can wait out — the soonest to half-open — rather
+   *  than count the failure against the work: it is the composite form of a bare [[CircuitOpenException]]. */
+  def hostDown(error: Throwable): Option[CircuitOpenException] = composite(error).flatMap { all =>
+    val open = all.legFailures.collect { case c: CircuitOpenException => c }
+    if (open.nonEmpty && all.legFailures.forall(f => f.isInstanceOf[CircuitOpenException] || RetryingHttpFetch.recoverable(f)))
+      Some(open.minBy(_.openForMs))
+    else None
+  }
+
+  /** The composite `error` is, or carries as its cause (a client re-raising it with context). */
+  private def composite(error: Throwable): Option[AllBackendsFailedException] =
+    Iterator.iterate(error)(_.getCause).take(8).takeWhile(_ != null).collectFirst { case all: AllBackendsFailedException => all }
 
   /** Did a [[FallbackHttpFetch]] somewhere in `error` — itself, its causes, or what they carry suppressed (a
    *  retrying scraper's earlier attempts, a rate limit's composite) — fail on its leg named `leg`? */
@@ -188,6 +221,10 @@ object FallbackHttpFetch {
   val NoOutcome: (String, Option[String]) => Unit = (_, _) => ()
 
   val NeverEnds: Throwable => Boolean = _ => false
+
+  /** An open circuit's countdown in its message ([[CircuitOpenException]]): different on every fast-fail. */
+  private val Countdown   = """ \(\d+ms before half-open\)""".r
+  private val UrlInDetail = """https?://\S+""".r
 
   // The interstitials are small ASCII pages, so the head of a byte body read as single-byte
   // characters is enough to recognise one without decoding a whole listing.
