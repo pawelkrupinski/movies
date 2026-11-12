@@ -51,7 +51,7 @@ class FallbackHttpFetch(
   // (`get(url, headers) = get(url)`), which silently DROPS them. Odeon
   // authenticates its Vista ocapi with an `Authorization: Bearer`, so inheriting
   // the default sent every proxied Odeon call unauthenticated: the origin answered
-  // 401, the JVM's proxy Authenticator surfaced that as `IOException:
+  // 401, the JVM's proxy Authenticator (since replaced by preemptive credentials) surfaced that as `IOException:
   // WWW-Authenticate header missing`, the chain rolled to the direct leg, and that
   // leg 403'd on the Cloudflare block the proxy existed to clear (2026-08-29). The
   // gap was invisible until then because every other proxied source authenticates

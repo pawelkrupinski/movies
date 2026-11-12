@@ -3,9 +3,10 @@ package tools
 /**
  * Wraps a fetch so a failed GET first warms a session by hitting `warmUrl`, then
  * retries the original GET once. For Multikino through the residential proxy:
- * several locations' films API returns 401 on a cold call (and the JVM's proxy
- * Authenticator surfaces that as `IOException: WWW-Authenticate header missing`),
- * but 200 once the homepage has set a session cookie on that egress IP — verified
+ * several locations' films API returns 401 on a cold call (with no WWW-Authenticate,
+ * which a client carrying a proxy Authenticator used to throw as `IOException:
+ * WWW-Authenticate header missing`; RealHttpFetch now sends the proxy's credentials
+ * up front, so it is an `HttpStatusException` 401), but 200 once the homepage has set a session cookie on that egress IP — verified
  * 2026-06-16. Warming inside the proxy leg lets it serve via the proxy instead of
  * the surrounding FallbackHttpFetch rolling to direct.
  *

@@ -86,6 +86,32 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     pool.perPort.map(selectedPort) shouldBe List(10001, 10002, 10003)
   }
 
+  // ── Proxied: the origin's 401 is a status, not an IOException ─────────────
+  // Multikino's and Vue's films API answer a cold session 401 with no
+  // WWW-Authenticate header. With a proxy Authenticator installed on the client,
+  // java.net.http's AuthenticationFilter throws `IOException: WWW-Authenticate
+  // header missing` for ANY such 401, so the status never reached the caller and
+  // every expected cold call logged a WARN (~1,500 in 14 days, 2026-11-12). The
+  // proxy's credentials now ride every proxied request as a preemptive
+  // `Proxy-Authorization` (the JDK copies proxy-* headers onto the CONNECT and
+  // strips them from the tunnelled request), so there is no Authenticator.
+  "a proxied RealHttpFetch" should "answer an origin's 401 without WWW-Authenticate as HTTP 401, credentials sent up front" in {
+    val proxy = com.sun.net.httpserver.HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+    val seen  = new java.util.concurrent.atomic.AtomicReference[String]("")
+    proxy.createContext("/", { exchange =>
+      seen.set(Option(exchange.getRequestHeaders.getFirst("Proxy-Authorization")).getOrElse("none"))
+      exchange.sendResponseHeaders(401, -1)
+      exchange.close()
+    })
+    proxy.start()
+    try {
+      val config = RealHttpFetch.ProxyConfig("127.0.0.1", Seq(proxy.getAddress.getPort), settings.ProxyUser("u"), settings.ProxyPassword("p"))
+      val failure = intercept[HttpStatusException](new RealHttpFetch(proxy = Some(config)).get("http://kino.invalid/api/films"))
+      failure.code shouldBe 401
+      seen.get shouldBe "Basic " + java.util.Base64.getEncoder.encodeToString("u:p".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+    } finally proxy.stop(0)
+  }
+
   "ProxyConfig" should "reject an empty port list (a misconfigured proxy)" in {
     an[IllegalArgumentException] should be thrownBy
       RealHttpFetch.ProxyConfig("isp.decodo.com", Seq.empty, settings.ProxyUser("u"), settings.ProxyPassword("p"))

@@ -4,7 +4,7 @@ import play.api.Logging
 
 import java.net.URI
 import java.net.http.{HttpClient, HttpConnectTimeoutException, HttpRequest, HttpResponse, HttpTimeoutException}
-import java.net.{Authenticator, CookieManager, CookiePolicy, InetSocketAddress, PasswordAuthentication, ProxySelector}
+import java.net.{CookieManager, CookiePolicy, InetSocketAddress, ProxySelector}
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.{CompletableFuture, CountDownLatch, ExecutionException, TimeUnit, TimeoutException}
@@ -69,10 +69,12 @@ class RealHttpFetch(
     // Route through an authenticated residential proxy when configured (the
     // Decodo static-ISP egress for the cinema sites that Cloudflare-block our
     // datacenter IP). Only the proxied instance carries this; everything else
-    // fetches direct.
-    proxy.foreach { p =>
-      builder.proxy(p.selector).authenticator(p.authenticator)
-    }
+    // fetches direct. No Authenticator: its credentials ride each request as a
+    // preemptive Proxy-Authorization (see `withProxyCredentials`), because a client
+    // carrying one turns an ORIGIN's 401 without WWW-Authenticate (Multikino's and
+    // Vue's cold-session answer) into `IOException: WWW-Authenticate header missing`
+    // instead of the status.
+    proxy.foreach(p => builder.proxy(p.selector))
     builder.build()
   }
 
@@ -208,7 +210,7 @@ class RealHttpFetch(
       .POST(HttpRequest.BodyPublishers.ofString(body))
     // `setHeader` (overwrite), not `header` (append) — same reason as `buildRequest`.
     HostPolicies.headersFor(url).foreach { case (k, v) => builder.setHeader(k, v) }
-    builder.build()
+    withProxyCredentials(builder).build()
   }
 
   // ── Logging hooks ─────────────────────────────────────────────────────────
@@ -329,8 +331,14 @@ class RealHttpFetch(
     HostPolicies.headersFor(url).foreach { case (k, v) => builder.setHeader(k, v) }
     extraHeaders.foreach { case (k, v) => builder.setHeader(k, v) }
 
-    decorateBuilder(builder, url).build()
+    withProxyCredentials(decorateBuilder(builder, url)).build()
   }
+
+  /** The proxy's Basic credentials, sent up front. java.net.http copies a request's
+   *  proxy-* headers onto the HTTPS `CONNECT` (subject to the process's
+   *  [[ProxyTunnelAuthentication]]) and strips them from what goes to the origin. */
+  private def withProxyCredentials(builder: HttpRequest.Builder): HttpRequest.Builder =
+    proxy.fold(builder)(p => builder.setHeader("Proxy-Authorization", p.basicCredentials))
 
   protected def decorateBuilder(builder: HttpRequest.Builder, @unused url: String): HttpRequest.Builder = builder
 }
@@ -380,11 +388,8 @@ object RealHttpFetch {
      *  (see `StickyShardHttpFetch`) fans venues across. */
     def perPort: Seq[ProxyConfig] = ports.map(pinnedTo)
 
-    val authenticator: Authenticator = new Authenticator {
-      override protected def getPasswordAuthentication: PasswordAuthentication =
-        if (getRequestorType == Authenticator.RequestorType.PROXY)
-          new PasswordAuthentication(user.value, password.value.toCharArray)
-        else null // server (non-proxy) auth is none of this proxy's business
-    }
+    /** The `Proxy-Authorization` value every request through this proxy carries. */
+    def basicCredentials: String =
+      "Basic " + java.util.Base64.getEncoder.encodeToString(s"${user.value}:${password.value}".getBytes(StandardCharsets.UTF_8))
   }
 }

@@ -48,9 +48,10 @@ class ProxiedAfterDirectFetchSpec extends AnyFlatSpec with Matchers with BeforeA
       run.exit shouldBe 0
       run.output should include("direct: direct-ok")
       run.output should include("proxied: through-the-tunnel")
-      // The tunnel was refused unauthenticated and then opened WITH credentials —
-      // not reached some other way.
-      run.challenged should be >= 1
+      // The tunnel opened WITH credentials, sent up front on the CONNECT (RealHttpFetch
+      // carries them as a preemptive Proxy-Authorization, not through an Authenticator
+      // answering the 407) — not reached some other way.
+      run.challenged shouldBe 0
       run.authenticated shouldBe 1
     }
   }
