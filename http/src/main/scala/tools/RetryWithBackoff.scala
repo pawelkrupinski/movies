@@ -20,8 +20,15 @@ import scala.util.control.NonFatal
  * an hour can't park the calling thread for one. Tune via the parameters
  * when the caller knows its time budget.
  *
- * Logs every failed attempt at WARN with the label and the exception class
- * + message; the final failure throws the last exception (not a wrapper),
+ * Logs the call's OUTCOME, not each attempt: a call that ran out of attempts,
+ * or failed after at least one retry, warns ONCE with the label, how many
+ * attempts it made and the last failure (`describe`); every attempt, and a
+ * call that recovered on a retry, is logged at DEBUG. Warned per attempt, a
+ * request failing for good wrote a line a try and one that recovered still
+ * wrote one (~600 a quiet day, 2,500 on a bad one, 2026-11-05..12). A failure
+ * its first attempt may not retry is the caller's to log, as before, and one
+ * its caller abandoned ([[CallerCancelled]]) is no failure to warn about.
+ * The final failure throws the last exception (not a wrapper),
  * so the caller's existing try/catch handling continues to see the same
  * exception type. `NonFatal` is the catch filter — OOM / VM errors /
  * interrupts pass through immediately rather than being papered over with
@@ -62,7 +69,9 @@ object RetryWithBackoff extends Logging {
     // The jitter draw, uniform in [0, 1). Injected so a spec pins the waits.
     random:         () => Double = () => java.util.concurrent.ThreadLocalRandom.current().nextDouble(),
     // The longest a server's Retry-After is honoured for.
-    maxRetryAfter:  FiniteDuration = RetryWithBackoff.DefaultMaxRetryAfter
+    maxRetryAfter:  FiniteDuration = RetryWithBackoff.DefaultMaxRetryAfter,
+    // How a failure reads in the log: a caller whose failures repeat a URL that may carry a key masks it.
+    describe:       Throwable => String = RetryWithBackoff.describe
   )(block: => T): T = {
     require(maxAttempts >= 1, s"maxAttempts must be ≥ 1 (got $maxAttempts)")
     var attempt                = 1
@@ -72,6 +81,7 @@ object RetryWithBackoff extends Logging {
       try {
         val result = block
         onAttempt(AttemptOutcome.Success(attempt, started.millis))
+        if (attempt > 1) logger.debug(s"$label succeeded on attempt $attempt/$maxAttempts")
         return result
       } catch {
         case NonFatal(t) =>
@@ -79,13 +89,14 @@ object RetryWithBackoff extends Logging {
           lastFailure = t
           val isFinal = attempt >= maxAttempts || !retryOn(t)
           onAttempt(AttemptOutcome.Failure(attempt, t, isFinal, ms))
-          if (isFinal) throw t   // attempts exhausted, or a non-retryable failure
+          if (isFinal) {   // attempts exhausted, or a non-retryable failure
+            val attempts = if (attempt == 1) "1 attempt" else s"$attempt attempts"
+            val line     = s"$label failed after $attempts: ${describe(t)}"
+            if ((attempt > 1 || retryOn(t)) && !CallerCancelled(t)) logger.warn(line) else logger.debug(line)
+            throw t
+          }
           val wait = waitBefore(attempt, t, initialBackoff, maxRetryAfter, random)
-          logger.warn(
-            s"$label attempt $attempt/$maxAttempts failed: " +
-            s"${t.getClass.getSimpleName}: ${t.getMessage}; " +
-            s"retrying in ${wait.toMillis}ms"
-          )
+          logger.debug(s"$label attempt $attempt/$maxAttempts failed: ${describe(t)}; retrying in ${wait.toMillis}ms")
           sleep(wait.toMillis)
           attempt += 1
       }
@@ -94,6 +105,9 @@ object RetryWithBackoff extends Logging {
   }
 
   val DefaultMaxRetryAfter: FiniteDuration = 30.seconds
+
+  /** A failure as one log line's tail: its type and message. */
+  def describe(failure: Throwable): String = s"${failure.getClass.getSimpleName}: ${failure.getMessage}"
 
   /** The wait after failed attempt `attempt`: the server's Retry-After on a 429/503 (capped), else
    *  full jitter over `initial × 2^(attempt-1)`. */

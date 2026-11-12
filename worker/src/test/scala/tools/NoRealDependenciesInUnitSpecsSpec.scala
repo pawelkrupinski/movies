@@ -161,6 +161,8 @@ object NoRealDependenciesInUnitSpecsSpec {
       "worker/src/test/scala/modules/HealthEndpointSpec.scala"   -> "asks the worker's ops server, started in-process on a free port",
       "worker/src/test/scala/modules/HeapDumpEndpointSpec.scala" -> "asks the worker's ops server, started in-process on a free port",
       "worker/src/test/scala/modules/ProfileEndpointSpec.scala"  -> "asks the worker's ops server, started in-process on a free port",
+      "worker/src/test/scala/tools/RetriedRequestLoggingSpec.scala" ->
+        "asserts what RealHttpFetch logs under the retry layer, against a server the spec starts in-process on a free port",
       "scrapers/src/fixtures/scala/clients/tools/RecordMissingFetch.scala" -> ToolOnly,
       "worker/src/test/scala/scripts/CaptureReplay.scala" -> CaptureReplayLive),
     "Hand the code a testkit HttpFetch fake (FakeHttpFetch, FailingHttpFetch, ScriptedByUrlHttpFetch) fed recorded " +

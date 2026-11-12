@@ -220,11 +220,13 @@ class RealHttpFetch(
   // surfaces in every caller at once. Two failure shapes worth seeing:
   //
   //   - **Network / timeout** — the service didn't respond at all (DNS,
-  //     connection refused, socket timeout, request timeout). Always WARN —
+  //     connection refused, socket timeout, request timeout). WARN —
   //     this is what masks the symptom users hit (e.g. Kino Muza's burst
   //     limiter stalling our detail fetches: no logs, just silently empty
   //     synopses).
   //   - **5xx response** — the service returned an error status. Also WARN.
+  //     Both are DEBUG under the retry layer ([[OutcomeLoggedAbove]]), which
+  //     warns once for the whole call if it still fails, naming its attempts.
   //   - **403 / 429 response** — WARN. A soft-block / rate-limit (a Cloudflare
   //     or datacenter-IP block) is a real outage the enrichment sources hit; at
   //     DEBUG it was INVISIBLE at the prod INFO level, hiding e.g. a Filmweb
@@ -251,13 +253,14 @@ class RealHttpFetch(
       // Logged REDACTED: TMDB/OMDb authenticate in the query string, so the bare
       // url would write their key into the 14-day persistent log (see RedactedUrl).
       val safeUrl = RedactedUrl(url)
-      if (code >= 500)                     logger.warn(s"HTTP $code from $method $safeUrl (server-side)")
-      else if (code == 403 || code == 429) logger.warn(s"HTTP $code from $method $safeUrl (blocked/throttled)")
-      else                                 logger.debug(s"HTTP $code from $method $safeUrl")
       // Typed so a decorator (ThrottledHttpFetch) can react to 429 + Retry-After.
       // Message shape is unchanged, so MonitoringHttpFetch's 5xx classifier and
       // any message-matching caller keep working.
-      throw new HttpStatusException(code, method, url, retryAfterOf(response))
+      val failure = new HttpStatusException(code, method, url, retryAfterOf(response))
+      if (code >= 500)                     warnUnlessLoggedAbove(failure, s"HTTP $code from $method $safeUrl (server-side)")
+      else if (code == 403 || code == 429) logger.warn(s"HTTP $code from $method $safeUrl (blocked/throttled)")
+      else                                 logger.debug(s"HTTP $code from $method $safeUrl")
+      throw failure
     }
   }
 
@@ -280,7 +283,12 @@ class RealHttpFetch(
    *  it cut the call (AdaptiveTimeoutScraper's "scrape cut" line), and a WARN here blamed the host for it. */
   private def logFailure(method: String, url: String, exception: Throwable): Unit =
     if (CallerCancelled(exception)) logger.debug(s"HTTP $method ${RedactedUrl(url)} cancelled by its caller")
-    else logger.warn(failureLine(method, url, exception))
+    else warnUnlessLoggedAbove(exception, failureLine(method, url, exception))
+
+  /** WARN, unless a layer above logs this failure as its call's outcome ([[OutcomeLoggedAbove]]: the retry, which
+   *  asks a recoverable failure again and warns once if the call still fails) -- then DEBUG, one attempt's detail. */
+  private def warnUnlessLoggedAbove(failure: Throwable, line: => String): Unit =
+    if (OutcomeLoggedAbove() && RetryingHttpFetch.recoverable(failure)) logger.debug(line) else logger.warn(line)
 
   /** The line a transport failure is logged as. A timeout names the budget that ran out: a connect timeout used to
    *  read "timed out after 30s" -- the REQUEST budget -- while the connect budget (5 s by default, bounding TCP and the

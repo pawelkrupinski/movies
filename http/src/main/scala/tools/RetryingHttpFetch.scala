@@ -12,12 +12,21 @@ import scala.concurrent.duration._
  * waits the host's `Retry-After` for every caller), and each attempt goes through the breaker, so a host down for good
  * trips it and is asked no more — its [[CircuitOpenException]] is never retried. GETs only: a POST may not be safe to
  * send twice.
+ *
+ * Logs the call's outcome once ([[RetryWithBackoff]]: a call that still fails warns, naming its attempts; one that
+ * recovered says nothing above DEBUG), and tells the wire below so ([[OutcomeLoggedAbove]]), which keeps each
+ * attempt's own line at DEBUG. The line names the URL masked ([[RedactedUrl]]): a URL may carry a key.
  */
 final class RetryingHttpFetch(underlying: HttpFetch, sleep: Long => Unit, attempts: Int = RetryingHttpFetch.Attempts,
                               initialBackoff: FiniteDuration = RetryingHttpFetch.InitialBackoff)
     extends ForwardingHttpFetch {
-  protected def around[T](url: String)(call: HttpFetch => T): T =
-    RetryWithBackoff(s"GET ${RetryingHttpFetch.hostOf(url)}", attempts, initialBackoff, sleep, retryOn = RetryingHttpFetch.recoverable)(call(underlying))
+  protected def around[T](url: String)(call: HttpFetch => T): T = {
+    val shown = RedactedUrl(url)
+    def describe(failure: Throwable): String =
+      s"${failure.getClass.getSimpleName}: ${Option(failure.getMessage).fold("null")(_.replace(url, shown))}"
+    RetryWithBackoff(s"GET $shown", attempts, initialBackoff, sleep, retryOn = RetryingHttpFetch.recoverable,
+      describe = describe)(OutcomeLoggedAbove.within(call(underlying)))
+  }
 
   override def post(url: String, body: String, contentType: String): String = underlying.post(url, body, contentType)
 }
@@ -35,8 +44,4 @@ object RetryingHttpFetch {
     case io: java.io.IOException => !io.isInstanceOf[CircuitOpenException] && !io.isInstanceOf[java.io.FileNotFoundException]
     case _                       => false
   }
-
-  /** The host only: a URL may carry a key. */
-  private def hostOf(url: String): String =
-    scala.util.Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_)).getOrElse("?")
 }
