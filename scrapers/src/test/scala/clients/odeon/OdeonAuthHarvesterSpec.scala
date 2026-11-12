@@ -54,12 +54,38 @@ class OdeonAuthHarvesterSpec extends AnyFlatSpec with Matchers {
     calls shouldBe 2                                   // re-harvested
   }
 
-  it should "return None (and not cache) when the harvest fails" in {
+  // 2026-11-04 17:04-17:20: a harvest that failed was asked again by every Odeon chunk that wanted a token,
+  // 131 paid Zyte browser fetches (and 131 warnings) in 16 minutes. A failure is remembered for a cooldown:
+  // the venues ride their flicks fallback meanwhile, and the next harvest is tried once it has run out.
+  it should "return None when the harvest fails, and not ask Zyte again until the cooldown has run out" in {
     var calls = 0
-    val h = new OdeonAuthHarvester(fetchPage = () => { calls += 1; None }, now = () => 1_000_000_000_000L)
+    var nowMs = 1_000_000_000_000L
+    val h = new OdeonAuthHarvester(fetchPage = () => { calls += 1; None }, now = () => nowMs)
     h.token() shouldBe None
+    (1 to 50).foreach(_ => h.token() shouldBe None)
+    calls shouldBe 1
+
+    nowMs += OdeonAuthHarvester.FailureCooldown.toMillis
     h.token() shouldBe None
-    calls shouldBe 2                                   // no cache of a failure — retried each call
+    calls shouldBe 2
+  }
+
+  // ...and a refresh that fails inside the margin keeps serving the token it already holds while that is unexpired.
+  it should "keep serving a still-valid token when its early refresh fails" in {
+    var nowMs = 1_000_000_000_000L
+    val expMs = nowMs + 12.hours.toMillis
+    var up    = true
+    val h = new OdeonAuthHarvester(
+      fetchPage = () => if (up) Some(s"""x"authToken":"${jwt(expMs / 1000)}"x""") else None,
+      now = () => nowMs, refreshMargin = 2.hours)
+    val first = h.token()
+    first shouldBe defined
+
+    up = false
+    nowMs = expMs - 90.minutes.toMillis
+    h.token() shouldBe first
+    nowMs = expMs
+    h.token() shouldBe None
   }
 
   it should "re-harvest after invalidate() (mid-life 401)" in {

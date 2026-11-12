@@ -30,7 +30,8 @@ import scala.util.matching.Regex
  * Lazy TTL cache: `token()`
  * serves the cached JWT until it is within `refreshMargin` of its own `exp`, then
  * re-harvests once under the lock. So one background scrape ~every 10h pays the
- * ~20s browser fetch; the rest read the cache. A harvest failure yields `None`, and
+ * ~20s browser fetch; the rest read the cache. A harvest failure is not tried again for
+ * `FailureCooldown`, serves the cached token while it is unexpired, and otherwise yields `None`, and
  * `OdeonClient` then throws → the venue rides its flicks fallback rather than
  * showing a false "nothing on". `fetchPage` is injected so the token logic is
  * tested without live Zyte (the fake just returns a captured page).
@@ -48,35 +49,52 @@ class OdeonAuthHarvester(
 
   private val lock = new Object
   private var cached: Option[(String, Long)] = None // (token, exp epoch millis)
+  // Until when a failed harvest is not tried again (epoch millis): every harvest is a paid Zyte call.
+  private var failedUntil: Long = Long.MinValue
 
   /** The current Bearer, harvesting a fresh one when the cache is empty or within
-   *  `refreshMargin` of expiry. `None` when a harvest fails — the client treats
-   *  that as a scrape failure and falls back to flicks. */
+   *  `refreshMargin` of expiry. A failed harvest is not retried for [[FailureCooldown]]; meanwhile a token
+   *  still short of its `exp` is served, and without one the answer is `None` — the client treats that as a
+   *  scrape failure and falls back to flicks. */
   def token(): Option[String] = lock.synchronized {
+    val at    = now()
+    val valid = cached.filter { case (_, exp) => at < exp }.map(_._1)
     cached match {
-      case Some((t, exp)) if now() < exp - refreshMargin.toMillis => Some(t)
-      case _                                                      => harvest()
+      case Some((t, exp)) if at < exp - refreshMargin.toMillis => Some(t)
+      case _ if at < failedUntil                               => valid
+      case _                                                   => harvest(at).orElse(valid)
     }
   }
 
   /** Drop the cached token so the next `token()` re-harvests — for a mid-life 401
    *  (token revoked before its `exp`). */
-  def invalidate(): Unit = lock.synchronized { cached = None }
+  def invalidate(): Unit = lock.synchronized { cached = None; failedUntil = Long.MinValue }
 
-  private def harvest(): Option[String] = {
+  private def harvest(at: Long): Option[String] = {
     val fresh = for {
       html  <- fetchPage()
       token <- extractToken(html)
       exp   <- jwtExpiryMillis(token)
     } yield (token, exp)
     fresh match {
-      case Some((t, exp)) => cached = Some((t, exp)); Some(t)
-      case None           => logger.warn("Odeon JWT harvest failed; venues will ride the flicks fallback."); None
+      case Some((t, exp)) =>
+        cached = Some((t, exp)); failedUntil = Long.MinValue
+        logger.info(s"Odeon JWT harvested; it expires at ${java.time.Instant.ofEpochMilli(exp)}.")
+        Some(t)
+      case None =>
+        failedUntil = at + FailureCooldown.toMillis
+        logger.warn(s"Odeon JWT harvest failed; venues ride the flicks fallback (or the unexpired token) " +
+          s"until the next try in ${FailureCooldown.toMinutes} min.")
+        None
     }
   }
 }
 
 object OdeonAuthHarvester {
+  /** How long a failed harvest waits before the next: each try is a paid Zyte browser fetch, and the failure on
+   *  2026-11-04 was retried by every Odeon chunk that asked for a token — 131 tries in 16 minutes. */
+  val FailureCooldown: FiniteDuration = 10.minutes
+
   /** Any Odeon page carries the estate-wide token; the cinema index is small. */
   val OdeonPageUrl = "https://www.odeon.co.uk/cinemas/"
 
