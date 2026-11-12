@@ -162,7 +162,8 @@ object MuranowClient {
   def parseDetail(html: String): Detail = {
     val document = Jsoup.parse(html)
     Detail(
-      runtimeMinutes = field(document, "field-movie-duration").flatMap(s => """(\d+)""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
+      // "97 min", or a relay's "około 2 godzin i 50 minut, w tym jedna przerwa": its hours count too
+      runtimeMinutes = field(document, "field-movie-duration").flatMap(ScraperParse.hoursMinutesRuntime),
       year           = field(document, "field-movie-production-year").flatMap(s => """(\d{4})""".r.findFirstMatchIn(s).map(_.group(1).toInt)),
       countries      = fields(document, "field-movie-production-country"),
       genres         = field(document, "field-movie-category").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))

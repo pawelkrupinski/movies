@@ -1,7 +1,7 @@
 package clients.muranow
 
 import org.scalatest.matchers.should.Matchers
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import models.{KinoMuranow, Showtime}
 import services.cinemas.common.FilmDetail
@@ -52,6 +52,13 @@ class MuranowClientSpec extends AnyFlatSpec with Matchers {
     d.countries      shouldBe Seq("Niemcy", "Francja", "Węgry")
     d.genres         shouldBe Seq("Dramat")
     d.synopsis.getOrElse("").length should be > 50
+  }
+
+  it should "read a running time spelled in hours and minutes, not its hours alone" in {
+    // "około 2 godzin i 50 minut, w tym jedna przerwa" (André Rieu's 2026 Christmas relay, captured 2026-11-12) was read
+    // as 2 minutes, and that runtime kept the venue's billing apart from every other venue's of the concert.
+    MuranowClient.parseDetail(FixtureFile.read("test/resources/fixtures/kino-muranow/kinomuranow.pl/film/andre-rieu-pada-snieg.html"))
+      .runtimeMinutes shouldBe Some(170)
   }
 
   it should "read cast, original title and the YouTube trailer off the detail page" in {
