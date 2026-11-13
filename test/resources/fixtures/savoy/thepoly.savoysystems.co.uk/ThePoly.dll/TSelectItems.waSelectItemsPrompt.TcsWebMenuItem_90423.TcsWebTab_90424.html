@@ -1,0 +1,3661 @@
+<!DOCTYPE html>
+<html lang="en" id="HTMLBooking">
+<head><title>The Poly</title><link rel="apple-touch-icon" sizes="57x57" href="/ThePoly/favicons/apple-touch-icon-57x57.png">
+<link rel="apple-touch-icon" sizes="60x60" href="/ThePoly/favicons/apple-touch-icon-60x60.png">
+<link rel="apple-touch-icon" sizes="72x72" href="/ThePoly/favicons/apple-touch-icon-72x72.png">
+<link rel="apple-touch-icon" sizes="76x76" href="/ThePoly/favicons/apple-touch-icon-76x76.png">
+<link rel="apple-touch-icon" sizes="114x114" href="/ThePoly/favicons/apple-touch-icon-114x114.png">
+<link rel="apple-touch-icon" sizes="120x120" href="/ThePoly/favicons/apple-touch-icon-120x120.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/ThePoly/favicons/apple-touch-icon-144x144.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/ThePoly/favicons/apple-touch-icon-152x152.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/ThePoly/favicons/apple-touch-icon-180x180.png">
+<link rel="icon" type="image/png" href="/ThePoly/favicons/favicon-32x32.png" sizes="32x32">
+<link rel="icon" type="image/png" href="/ThePoly/favicons/android-chrome-192x192.png" sizes="192x192">
+<link rel="icon" type="image/png" href="/ThePoly/favicons/favicon-96x96.png" sizes="96x96">
+<link rel="icon" type="image/png" href="/ThePoly/favicons/favicon-16x16.png" sizes="16x16">
+<link rel="manifest" href="/ThePoly/favicons/manifest.json">
+<link rel="mask-icon" href="/ThePoly/favicons/safari-pinned-tab.svg" color="#5bbad5">
+<meta name="msapplication-TileColor" content="#da532c">
+<meta name="msapplication-TileImage" content="/ThePoly/favicons/mstile-144x144.png">
+<meta name="theme-color" content="#ffffff">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1"/>
+<script type="text/javascript" src="https://code.jquery.com/jquery-latest.js"></script>
+<script type="text/javascript">
+function responsiveMobileMenu() {
+    $('.menu').each(function() {
+      $(this).children('ul').addClass('menu-main-list');  // mark main menu list
+      var $style = $(this).attr('data-menu-style');  // get menu style
+        if ( typeof $style == 'undefined' ||  $style == false )
+          {
+            $(this).addClass('minimal'); // set minimal style if style is not defined
+          }
+        else {
+            $(this).addClass($style);
+          }
+      /*   width of menu list (non-toggled) */
+      var $width = 0;
+        $(this).find('ul li').each(function() {
+          $width += $(this).outerWidth();
+        });
+      // if modern browser
+      if ($.support.leadingWhitespace) {
+        $(this).css('max-width' , $width*1.05+'px');
+      }
+      //
+      else {
+        $(this).css('width' , $width*1.05+'px');
+      }
+    });
+}
+function getMobileMenu() {
+  $('.menu').each(function() {
+        var menutitle = $(this).attr("data-menu-title");
+        if ( menutitle == "" ) {
+          menutitle = "Menu";
+        }
+        else if ( menutitle == undefined ) {
+          menutitle = "Menu";
+        }
+        var $menulist = $(this).children('.menu-main-list').html();
+        var $menucontrols ="<div class='menu-toggled-controls'><div class='menu-toggled-title'>" + menutitle + "</div><div class='menu-button'><span>&nbsp;</span><span>&nbsp;</span><span>&nbsp;</span></div></div>";
+        $(this).prepend("<div class='menu-toggled menu-closed'>"+$menucontrols+"<ul>"+$menulist+"</ul></div>");
+    });
+}
+function adaptMenu() {
+  $('.menu').each(function() {
+      var $width = $(this).css('max-width');
+      $width = $width.replace('px', '');
+      if ( $(this).parent().width() < $width*1.05 ) {
+        $(this).children('.menu-main-list').hide(0);
+        $(this).children('.menu-toggled').show(0);
+      }
+      else {
+        $(this).children('.menu-main-list').show(0);
+        $(this).children('.menu-toggled').hide(0);
+      }
+    });
+}
+$(function() {
+   responsiveMobileMenu();
+   getMobileMenu();
+   adaptMenu();
+   $('.menu-toggled, .menu-toggled .menu-button').click(function(){
+    if ( $(this).is(".menu-closed")) {
+       $(this).find('ul').stop().show(300);
+       $(this).removeClass("menu-closed");
+    }
+    else {
+      $(this).find('ul').stop().hide(300);
+       $(this).addClass("menu-closed");
+    }
+  });
+});
+$(window).resize(function() {
+  adaptMenu();
+});
+</script>
+<STYLE type="text/css">
+
+@import url(https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,300,400italic,300italic,600italic,700italic);
+
+@font-face {
+  font-family: 'icomoon';
+  src:url('/ThePoly/fonts/icomoon/icomoon.eot?-jueuzf');
+  src:url('/ThePoly/fonts/icomoon/icomoon.eot?#iefix-jueuzf') format('embedded-opentype'),
+    url('/ThePoly/fonts/icomoon/icomoon.woff?-jueuzf') format('woff'),
+    url('/ThePoly/fonts/icomoon/icomoon.ttf?-jueuzf') format('truetype'),
+    url('/ThePoly/fonts/icomoon/icomoon.svg?-jueuzf#icomoon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+    font-family: 'adam-cg-pro';
+    src:url('/ThePoly/fonts/adam-cg-pro/adam-cg-pro.eot?-jueuzf');
+    src:url('/ThePoly/fonts/adam-cg-pro/adam-cg-pro.eot?#iefix-jueuzf') format('embedded-opentype'),
+    url('/ThePoly/fonts/adam-cg-pro/adam-cg-pro.woff?-jueuzf') format('woff'),
+    url('/ThePoly/fonts/adam-cg-pro/adam-cg-pro.ttf?-jueuzf') format('truetype'),
+    url('/ThePoly/fonts/adam-cg-pro/adam-cg-pro.svg?-jueuzf#adam-cg-pro') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+
+[class^="icon-"], [class*=" icon-"] {
+  font-family: 'icomoon';
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-home:before {
+  content: "\e900";
+}
+
+.icon-pencil:before {
+  content: "\e905";
+}
+
+.icon-images:before {
+  content: "\e90e";
+}
+
+.icon-video-camera:before {
+  content: "\e914";
+}
+
+.icon-ticket:before {
+  content: "\e939";
+}
+
+.icon-cart:before {
+  content: "\e93a";
+}
+
+.icon-credit-card:before {
+  content: "\e93f";
+}
+
+.icon-envelop:before {
+  content: "\e945";
+}
+
+.icon-compass:before {
+  content: "\e949";
+}
+
+.icon-stopwatch:before {
+  content: "\e952";
+}
+
+.icon-calendar:before {
+  content: "\e953";
+}
+
+.icon-user:before {
+  content: "\e971";
+}
+
+.icon-users:before {
+  content: "\e972";
+}
+
+.icon-enlarge:before {
+  content: "\e989";
+}
+
+.icon-shrink:before {
+  content: "\e98a";
+}
+
+.icon-key:before {
+  content: "\e98d";
+}
+
+.icon-lock:before {
+  content: "\e98f";
+}
+
+.icon-unlocked:before {
+  content: "\e990";
+}
+
+.icon-cog:before {
+  content: "\e994";
+}
+
+.icon-gift:before {
+  content: "\e99f";
+}
+
+.icon-glass:before {
+  content: "\e9a0";
+}
+
+.icon-bin:before {
+  content: "\e9ac";
+}
+
+.icon-menu:before {
+  content: "\e9bd";
+}
+
+.icon-plus:before {
+  content: "\ea0a";
+}
+
+.icon-minus:before {
+  content: "\ea0b";
+}
+
+.icon-cross:before {
+  content: "\ea0f";
+}
+
+.icon-checkmark:before {
+  content: "\ea10";
+}
+
+.icon-arrow-right:before {
+  content: "\ea34";
+}
+
+.icon-arrow-left:before {
+  content: "\ea38";
+}
+
+.icon-facebook:before {
+  content: "\ea8c";
+}
+
+.icon-facebook2:before {
+  content: "\ea8d";
+}
+
+.icon-facebook3:before {
+  content: "\ea8e";
+}
+
+.icon-twitter:before {
+  content: "\ea91";
+}
+
+.icon-twitter2:before {
+  content: "\ea92";
+}
+
+.icon-twitter3:before {
+  content: "\ea93";
+}
+
+.icon-youtube:before {
+  content: "\ea97";
+}
+
+.icon-youtube2:before {
+  content: "\ea98";
+}
+
+.icon-youtube3:before {
+  content: "\ea99";
+}
+
+.icon-vimeo:before {
+  content: "\ea9c";
+}
+
+.icon-vimeo2:before {
+  content: "\ea9d";
+}
+
+.icon-vimeo3:before {
+  content: "\ea9e";
+}
+
+.icon-dribbble:before {
+  content: "\eaa6";
+}
+
+.icon-dribbble2:before {
+  content: "\eaa7";
+}
+
+.icon-dribbble3:before {
+  content: "\eaa8";
+}
+
+/* ! normalize.css v1.0.0 | MIT License | git.io/normalize */
+
+/* ==========================================================================
+HTML5 display definitions
+========================================================================== */
+
+/* * Corrects `block` display not defined in IE 6/7/8/9 and Firefox 3. */
+
+article, aside, details, figcaption, figure, footer, header, hgroup, nav, section, summary { display: block; }
+/* * Corrects `inline-block` display not defined in IE 6/7/8/9 and Firefox 3. */
+audio, canvas, video { display: inline-block; *display: inline; *zoom: 1; }
+/* * Prevents modern browsers from displaying `audio` without controls.
+* Remove excess height in iOS 5 devices. */
+audio:not([controls]) { display: none; height: 0; }
+/* * Addresses styling for `hidden` attribute not present in IE 7/8/9, Firefox 3, * and Safari 4.
+* Known issue:no IE 6 support. */
+[hidden] { display: none; }
+/* ==========================================================================
+Base
+========================================================================== */
+/* * 1. Corrects text resizing oddly in IE 6/7 when body `font-size` is set using
+*    `em` units.
+* 2. Prevents iOS text size adjust after orientation change, without disabling
+*    user zoom. */
+
+html { font-size: 100%; /* 1 */
+  -webkit-text-size-adjust: 100%; /* 2 */
+-ms-text-size-adjust: 100%; /* 2 */ }
+html, html a { -webkit-font-smoothing: antialiased; text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.004); }
+/* * Addresses `font-family` inconsistency between `textarea` and other form
+* elements. */
+html, button, input, select, textarea { font-family: 'Varela Round', sans-serif; }
+/* * Addresses margins handled incorrectly in IE 6/7. */
+body { margin: 0; font-family: 'Varela Round', sans-serif; background: #FFF; }
+/* ==========================================================================
+Links
+========================================================================== */
+/* * Addresses `outline` inconsistency between Chrome and other browsers. */
+
+a:focus { outline: thin dotted; }
+/* * Improves readability when focused and also mouse hovered in all browsers. */
+a:active, a:hover { outline: 0; }
+/* ==========================================================================
+Typography
+========================================================================== */
+/* * Addresses font sizes and margins set differently in IE 6/7.
+* Addresses font sizes within `section` and `article` in Firefox 4+, Safari 5, * and Chrome. */
+main {background: #FFF;}
+main h1 { font-size: 2em; margin: 0.67em 0; color: #353535; }
+main h2 { font-size: 1.5em; margin: 0.83em 0; }
+main h3 { font-size: 1.17em; margin: 1em 0; }
+main h4 { font-size: 1em; margin: 1.33em 0; }
+main h5 { font-size: 0.83em; margin: 1.67em 0; }
+main h6 { font-size: 0.75em; margin: 2.33em 0; }
+/* * Addresses styling not present in IE 7/8/9, Safari 5, and Chrome. */
+main abbr[title] { border-bottom: 1px dotted; }
+/* * Addresses style set to `bolder` in Firefox 3+, Safari 4/5, and Chrome. */
+main b, strong { font-weight: bold; }
+main blockquote { margin: 1em 40px; }
+/* * Addresses styling not present in Safari 5 and Chrome. */
+main dfn { font-style: italic; }
+/* * Addresses styling not present in IE 6/7/8/9. */
+main mark { background: #ff0; color: #000; }
+/* * Addresses margins set differently in IE 6/7. */
+main p, pre { margin: 1em 0; }
+/* * Corrects font family set oddly in IE 6, Safari 4/5, and Chrome. */
+code, kbd, pre, samp { font-family: monospace, serif; _font-family: 'courier new', monospace; font-size: 1em; }
+/* * Improves readability of pre-formatted text in all browsers. */
+pre { white-space: pre; white-space: pre-wrap; word-wrap: break-word; }
+/* * Addresses CSS quotes not supported in IE 6/7. */
+q { quotes: none; }
+/* * Addresses `quotes` property not supported in Safari 4. */
+q:before, q:after { content: ''; content: none; }
+small { font-size: 75%; }
+/* * Prevents `sub` and `sup` affecting `line-height` in all browsers. */
+sub, sup { font-size: 75%; line-height: 0; position: relative; vertical-align: baseline; }
+sup { top: -0.5em; }
+sub { bottom: -0.25em; }
+/* ==========================================================================
+Lists
+========================================================================== */
+/* * Addresses margins set differently in IE 6/7. */
+
+dl, menu, ol, ul { margin: 1em 0; }
+dd { margin: 0 0 0 40px; }
+/* * Addresses paddings set differently in IE 6/7. */
+menu, ol, ul { padding: 0 0 0 40px; }
+/* * Corrects list images handled incorrectly in IE 7. */
+nav ul, nav ol { list-style: none; list-style-image: none; }
+/* ==========================================================================
+Embedded content
+========================================================================== */
+/* * 1. Removes border when inside `a` element in IE 6/7/8/9 and Firefox 3.
+* 2. Improves image quality when scaled in IE 7. */
+
+img { border: 0; /* 1 */
+-ms-interpolation-mode: bicubic; /* 2 */ }
+/* * Corrects overflow displayed oddly in IE 9. */
+svg:not(:root) { overflow: hidden; }
+/* ==========================================================================
+Figures
+========================================================================== */
+/* * Addresses margin not present in IE 6/7/8/9, Safari 5, and Opera 11. */
+
+figure { margin: 0; }
+/* ==========================================================================
+Forms
+========================================================================== */
+/* * Corrects margin displayed oddly in IE 6/7. */
+
+form { margin: 0; }
+/* * Define consistent border, margin, and padding. */
+fieldset { border: 1px solid #c0c0c0; margin: 0 2px; padding: 0.35em 0.625em 0.75em; }
+/* * 1. Corrects color not being inherited in IE 6/7/8/9.
+* 2. Corrects text not wrapping in Firefox 3.
+* 3. Corrects alignment displayed oddly in IE 6/7. */
+legend { border: 0; /* 1 */
+  padding: 0; white-space: normal; /* 2 */
+*margin-left: -7px; /* 3 */ }
+/* * 1. Corrects font size not being inherited in all browsers.
+* 2. Addresses margins set differently in IE 6/7, Firefox 3+, Safari 5, *    and Chrome.
+* 3. Improves appearance and consistency in all browsers. */
+button, input, select, textarea { font-size: 100%; /* 1 */
+  margin: 0; /* 2 */
+  vertical-align: baseline; /* 3 */
+*vertical-align: middle; /* 3 */ }
+/* * Addresses Firefox 3+ setting `line-height` on `input` using ` !important` in
+* the UA stylesheet. */
+button, input { line-height: normal; }
+/* * 1. Avoid the WebKit bug in Android 4.0.* where (2) destroys native `audio`
+*    and `video` controls.
+* 2. Corrects inability to style clickable `input` types in iOS.
+* 3. Improves usability and consistency of cursor style between image-type
+*    `input` and others.
+* 4. Removes inner spacing in IE 7 without affecting normal text inputs.
+*    Known issue:inner spacing remains in IE 6. */
+button, html input[type="button"], /* 1 */
+input[type="reset"], input[type="submit"] { -webkit-appearance: button; /* 2 */
+  cursor: pointer; /* 3 */
+*overflow: visible; /* 4 */ }
+/* * Re-set default cursor for disabled elements. */
+button[disabled], input[disabled] { cursor: default; }
+/* * 1. Addresses box sizing set to content-box in IE 8/9.
+* 2. Removes excess padding in IE 8/9.
+* 3. Removes excess padding in IE 7.
+*    Known issue:excess padding remains in IE 6. */
+input[type="checkbox"], input[type="radio"] { box-sizing: border-box; /* 1 */
+  padding: 0; /* 2 */
+  *height: 13px; /* 3 */
+*width: 13px; /* 3 */
+margin-right: 5px;}
+/* * 1. Addresses `appearance` set to `searchfield` in Safari 5 and Chrome.
+* 2. Addresses `box-sizing` set to `border-box` in Safari 5 and Chrome
+*    (include `-moz` to future-proof). */
+input[type="search"] { -webkit-appearance: textfield; /* 1 */
+  -moz-box-sizing: content-box; -webkit-box-sizing: content-box; /* 2 */
+box-sizing: content-box; }
+/* * Removes inner padding and search cancel button in Safari 5 and Chrome
+* on OS X. */
+input[type="search"]::-webkit-search-cancel-button, input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; }
+/* * Removes inner padding and border in Firefox 3+. */
+button::-moz-focus-inner, input::-moz-focus-inner { border: 0; padding: 0; }
+/* * 1. Removes default vertical scrollbar in IE 6/7/8/9.
+* 2. Improves readability and alignment in all browsers. */
+textarea { overflow: auto; /* 1 */
+vertical-align: top; /* 2 */ }
+
+*, *:after, *:before { border-box; box-sizing: border-box; }
+.clearfix:before, .clearfix:after { content: ''; display: table; }
+.clearfix:after { clear: both; }
+
+.container {
+padding-left: 20px;
+padding-right: 20px;
+}
+
+.row, #WizardSteps, #Content {
+width: 100%;
+/*max-width: 1000px;*/
+margin: 0 auto;
+padding: 5px;
+/*overflow: hidden;*/
+}
+
+.onecol, .twocol, .threecol, #SideBar, .fourcol, .fivecol, .sixcol, .sevencol, .eightcol, .ninecol, #Detail, .tencol, .elevencol {
+margin-right: 3.8%;
+float: left;
+min-height: 1px;
+}
+
+.onecol {
+width: 4.85%;
+}
+
+.twocol {
+width: 13.45%;
+}
+
+.threecol, #SideBar{
+width: 22.05%;
+}
+
+.fourcol {
+width: 30.75%;
+}
+
+.fivecol {
+width: 39.45%;
+}
+
+.sixcol {
+width: 48%;
+}
+
+.sevencol {
+width: 56.75%;
+}
+
+.eightcol {
+width: 65.4%;
+}
+
+.ninecol, #Detail{
+width: 74.05%;
+}
+
+.tencol {
+width: 82.7%;
+}
+
+.elevencol {
+width: 91.35%;
+}
+
+.twelvecol {
+width: 100%;
+float: left;
+}
+
+.last, #Detail {
+margin-right: 0px;
+}
+
+img, object, embed {
+max-width: 100%;
+}
+
+img {
+height: auto;
+}
+
+
+/* Smaller screens */
+
+@media only screen and (max-width: 1023px) {
+
+body {
+font-size: 0.8em;
+line-height: 1.625;
+}
+
+.row, body, .container, #WizardSteps, #Content  {
+width: 100%;
+min-width: 0;
+margin-left: 0px;
+margin-right: 0px;
+}
+
+}
+
+
+/* Mobile */
+
+@media handheld, only screen and (max-width: 767px) {
+
+body {
+font-size: 16px;
+-webkit-text-size-adjust: none;
+}
+
+.row, body, .container, #WizardSteps, #Content  {
+width: 100%;
+min-width: 0;
+margin-left: 0px;
+margin-right: 0px;
+padding-left: 10px;
+padding-right: 10px;
+}
+
+.onecol, .twocol, .threecol, #SideBar, .fourcol, .fivecol, .sixcol, .sevencol, .eightcol, .ninecol, #Detail, .tencol, .elevencol, .twelvecol {
+width: auto;
+float: none;
+margin-left: 0px;
+margin-right: 0px;
+padding-left: 0px;
+padding-right: 0px;
+}
+
+.hide-for-small{
+  display: none;
+}
+}
+
+html {
+
+}
+
+body{
+  background:#fff;
+  color:#555;
+  font:normal 15px "Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-size: 81.3%;
+  line-height: 1.5;
+}
+
+#Main{
+  padding: 0px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  #Main{
+    padding: 0;
+  }
+}
+
+/* ------------------------------------------------------
+  HEADER
+-------------------------------------------------------*/
+
+#Header{
+  position: relative;
+  padding: 0px;
+  font-size: 1.092rem;
+}
+
+A:link       {color: #42bed5;}
+A:visited    {color: #42bed5;}
+A:hover      {color: #98979a;}
+
+#Logo{
+  width: 207px;
+  height: 241px;
+  box-shadow: 0 0 1.538rem 0.769rem rgba(255,255,255,0.5);
+  position: relative;
+  z-index: 3;
+}
+
+#MobileLogo{
+  display: none;
+}
+
+@media (max-width: 767px) {
+  #Header{
+    padding-bottom: 0;
+    padding-top: 20px;
+  }
+}
+
+.address{
+  font-size: 1.4rem;
+  color: #98979a;
+  text-align: right;
+  text-transform: uppercase;
+  font-family: 'adam-cg-pro',sans-serif;
+  padding: 20px 10px 10px 10px;
+  letter-spacing: 0.1rem;
+}
+
+@media (max-width: 900px) {
+  .address{
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  #Logo{
+  display: none;
+  }
+  
+  #MobileLogo{
+  display: unset;
+  width: 100%;
+  box-shadow: 0 0 1.538rem 0.769rem rgba(255,255,255,0.5);
+  padding-top: 40px;
+  
+  }
+}
+
+/* CUSTOM MENU ----------------------------------------------------------------------------
+  -----------------------------------------------------------------------------------------*/
+
+#menu{
+  position:relative;
+  z-index: 1;
+  clear:both;
+  margin: 0 auto;
+  font-size: 1.08rem;
+  font-family: 'adam-cg-pro', sans-serif;
+}
+
+/*main nav*/
+
+#menu ul{
+  position:relative;
+  list-style-type: none;
+  padding: 0;
+  margin: 0 0 0 14rem;
+}
+
+#menu ul li{
+  float: left;
+  position: relative;
+  margin-left: 1rem;
+}
+  
+#menu ul li a{
+  display:block;
+  text-decoration: none !important;
+  color: #fff;
+  padding: 0.5rem 0 0.7rem 0;
+  text-transform: uppercase;
+  
+}
+    
+#menu ul li.current_page_item a, #menu ul li.current_page_parent a, #menu ul li a:hover{
+  color: #999;
+}
+    
+/*dropdown*/
+  
+#menu ul ul{
+  display:none; 
+  position:absolute;
+  top: 45px; 
+  /*right:auto;
+  max-width: 300px;*/
+  background: #FFF;
+  border: solid 1px #999;
+  border-top: none;
+  padding: 7px 12px 17px; 
+  margin: 0; 
+  border-bottom: 0.769rem solid #42bed5;
+  -webkit-box-shadow: 0 5px 5px 5px rgba(0,0,0,0.25);
+  -webkit-box-shadow: 0 0.385rem 0.385rem 0.385rem rgba(0,0,0,0.25);
+  box-shadow: 0 5px 5px 5px rgba(0,0,0,0.25);
+  box-shadow: 0 0.385rem 0.385rem 0.385rem rgba(0,0,0,0.25);
+}
+
+#menu ul ul li{
+  left:auto;
+  width:100%;
+  padding: 0; 
+  margin: 0;
+  white-space: nowrap;
+}
+    
+#menu ul ul li a{
+  color: #676766;
+  font-size: 13px;
+  padding: 7px 0px;
+  border-bottom: 1px solid #cbc9cb;
+}
+
+#menu ul ul li a:hover{
+  color: #42bed5;
+  margin:0; 
+}
+
+#menu ul ul li .lastitem a{
+  color: #676766;
+  font-size: 13px;
+  padding: 7px 0px;
+  border-bottom: none;
+}
+
+/*the magic*/
+    
+#menu ul li:hover ul, #menu ul li:focus ul{
+  display: block;
+}
+
+@media (max-width: 767px) {
+  #menu{
+    display: none;
+  }
+}  
+
+.menu-top{
+  z-index: 4;
+  position: relative;
+  /*width: 75.385rem;*/
+  max-width: 1000px;
+  margin: 0 auto;
+}  
+  
+.menu-container{
+  background: #42bed5;
+  position: absolute;
+  top: 110px;
+  z-index: 2;
+}
+
+.menu-bar{
+  max-width:1000px;
+  margin:0 auto;
+}    
+
+/* --------------------------------------------------------
+  WIZARD STEPS
+---------------------------------------------------------*/
+#WizardSteps > ul{
+  width: 100%;
+  float: left;
+  display: flex;
+  list-style: outside none none;
+  flex-flow: row wrap;
+  justify-content: center;
+  text-transform: uppercase;
+  padding: 10px 0 5px;
+  clear: both;
+  border-bottom: 5px solid #42bed5;
+  margin: 0 0 20px;
+}
+
+#WizardSteps > ul > li{
+  position: relative;
+  z-index: 1;
+  display: block;
+  text-align: center;
+  flex: 1 1 0%;
+  margin: 0px 2px;
+  color: #CCC;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 2.5;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+#WizardSteps > ul > li.CurrentWizardStep{
+  color: #42bed5;
+}
+
+#WizardSteps > ul > li > span.Order{
+ margin: 0 3px; 
+}
+#WizardSteps > ul > li > span.Number{
+  z-index: 10;
+  display: inline-block;
+  margin: 0px 0.4em 0px 0px;
+  vertical-align: middle;
+  text-transform: none;
+  font-weight: normal;
+  font-variant: normal;
+  font-size: 1.3em;
+  line-height: 1;
+  color: #CCC;
+}
+#WizardSteps > ul > li > span.Number:before{
+  font-family: 'icomoon';
+  margin-right: 5px;
+}
+.UnrequiredWizardStep {
+    display: none !important;
+}
+#WizardSteps > ul > li > span.Order{
+ margin: 0 3px;
+   display: none;
+}
+
+#TSelectItems > span.Number:before{
+  content: "\e939";
+}
+#TDeliveryOptions > span.Number:before{
+  content: "\e945";
+}
+#TGiftAid > span.Number:before{
+  content: "\e971";
+}
+#TNameAndAddress > span.Number:before{
+  content: "\e905";
+}
+#TFurtherDetails > span.Number:before{
+  content: "\e905";
+}
+#TDiscounts > span.Number:before{
+  content: "\e99f";
+}
+#TPayment > span.Number:before{
+  content: "\e93a";
+}
+.FloatingLabel{
+  display: inline;
+}
+@media (max-width: 767px) {
+  #WizardSteps > ul{
+    padding: 10px 0;
+    margin: 0;
+  }
+  #WizardSteps > ul > li {
+    float: left;
+    padding: 0 10px;
+    margin: 0;
+  }
+  #WizardSteps > ul > li {
+    display: none;
+  }
+
+
+  #WizardSteps > ul > li.CurrentWizardStep{
+    display: block;
+    width: 100%;
+  }
+}
+
+
+/* ---------------------------------------------------------
+  CONTENT
+----------------------------------------------------------*/
+
+#Content{
+
+}
+
+.content{
+  margin: 0 auto;
+  max-width: 980px;
+}
+.hidden{
+  display: none !important;
+}
+
+/* ---------------------------------------------------------
+  SIDEBAR
+----------------------------------------------------------*/
+
+#SideBar{
+  margin-bottom: 20px;
+  box-shadow: 0 0 1.538rem 0 rgba(0,0,0,0.5);
+}
+
+#SideBarHeader {
+
+}
+
+.SideBarMenu {
+  padding: 10px;
+}
+
+.SideBarFirstHeading, .SideBarHeading {
+  bottom: 0px;
+  left: 10px;
+  display: block;
+  margin: 0px 0px 0.5em;
+
+  color: #42bed5;
+  text-transform: uppercase;
+  z-index: 2;
+  font-size: 1.4375rem;
+  text-transform: uppercase;
+  border-bottom: 5px solid #CFCFCF;
+  font-family: 'adam-cg-pro', sans-serif;
+}
+
+.SideBarHeading {
+}
+
+.SideBarItem {
+  text-transform: uppercase;
+}
+
+.SideBarFirstHeading, DIV.SideBarHeading{
+
+}
+#SideBarFooter {
+
+}
+
+#SideBarToggleMenu{
+  display: none;
+}
+@media (min-width: 767px) {
+  #SideBar{
+    display: block !important;
+  }
+}
+@media (max-width: 767px) {
+  #SideBar{
+    display: none;
+      position: fixed;
+    top: 40px;
+    width: 100%;
+    left: 0px;
+    z-index: 9;
+    background: #FFF;
+  }
+  .SideBarFirstHeading, .SideBarHeading {
+    display: none;
+  }
+
+  .SideBarItem a{
+    text-indent: 5px;
+    display: block;
+    background: #EFEFEF;
+    text-decoration: none;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    text-align: center;
+    line-height: 2.5em;
+  }
+
+  .SideBarItem a:hover {
+    background: #CCC;
+    color: #060606;
+  }
+
+  .SideBarToggle{
+    display: block;
+    width: 100%;
+    position: relative;
+    margin: 0;
+    cursor: pointer;
+    padding: 10px;
+    background: #000;
+    text-transform: uppercase;
+    color: #EFEFEF;
+  }
+  .SideBarToggle:hover{
+    background: #CCC;
+  }
+  .SideBarToggle span{
+    position: absolute;
+    right: 5px;
+    font-size: 2.5em;
+    line-height: 2em;
+    line-height: 0.6em;
+    color: #666;
+  }
+  #SideBarToggleMenu{
+    display: block;
+    position: fixed;
+    top: 0px;
+    width: 100%;
+    left: 0px;
+    z-index: 9;
+  }
+}
+
+/* ---------------------------------------------------------
+  DETAIL
+----------------------------------------------------------*/
+
+#Detail{
+ min-height: 40em;
+}
+
+#Detail.AccountSummary > table:nth-child(4) > tbody:nth-child(1) > tr:nth-child(7){
+  display: none;
+}
+
+.DetailHeading{
+  display: block;
+  margin: 0px 0px 0.5em;
+  color: #42bed5;
+  font-size: 1.4375rem;
+  text-transform: uppercase;
+  border-bottom: solid #cfcfcf 5px;
+  font-family: 'adam-cg-pro', sans-serif;
+}
+
+.WebTab{
+  position: relative;
+  padding: 5px;
+  z-index: 1;
+  text-align: center;
+  flex: 1 1 0%;
+  margin: 0 5px 0 0;
+  background-color: #F7F7F7;
+  color: #060606;
+  transition: background-color 0.2s ease 0s, color 0.2s ease 0s;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 2.5;
+  text-transform: uppercase;
+}
+
+.WebTab a{
+  text-decoration: none !important;
+}
+
+.SelectedWebTab a{
+  position: relative;
+  padding: 5px;
+  z-index: 1;
+  text-align: center;
+  flex: 1 1 0%;
+  margin: 0 5px 0 0;
+  background-color: #42bed5;
+  color: #FFF;
+  transition: background-color 0.2s ease 0s, color 0.2s ease 0s;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 2.5;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.LoyaltySchemeHeading {
+  font-weight: bold; margin-top: 20px;
+}
+.RegisteredCardHeading {
+  font-weight: bold; margin-top: 20px;
+}
+.RegisteredCardNumber {
+  font-style: italic;
+}
+
+    .DiscountHeading {
+      font-weight: bold; margin-bottom: 2px;
+    }
+    .DiscountSection button {
+      margin-top: 10px; margin-bottom: 5px;
+    }
+    .DiscountSection {
+      margin-top: 20px;
+    }
+    .DiscountSubHeading {
+      font-weight: bold; margin: 10px 0;
+    }
+    .DiscountDetail{
+      color: red;
+    }
+
+
+#MembersInTheGroupHeadingHeading{
+ color: #FFF;
+}
+.MembershipSaleHeading {
+  margin-left: 20px; 
+}
+.TicketMembershipPatron {
+  display: block; margin: 0 10px;
+}
+.TicketForMember {
+  font-weight: bold; margin-top: 10px; margin-left: 20px; margin-bottom: 5px;
+}
+.TicketMembershipPatrons {
+  display: flex; margin: 0; padding-left: 20px;
+}
+.OrGuest {
+  font-size: 8pt;
+}
+/* ---------------------------------------------------------
+  PROGRAMME TEMPLATE
+----------------------------------------------------------*/
+
+.programme{
+  padding-bottom: 10px;
+  margin: 20px;
+  margin: 20px 0;
+}
+
+.programme h2.title{
+  font-weight: normal;
+  color: #42bed5;
+  margin: 0;
+  padding: 0;
+  font-size: 30px;
+  font-size: 2.308rem;
+  line-height: 1;
+  font-family: 'adam-cg-pro', sans-serif;
+}
+
+.programme h2.title a{
+  text-decoration: none;
+  color: #42bed5;
+}
+
+.programme .showtimes{
+}
+
+.programme .PerformanceListDate{
+  font-size: 1.2em;
+  padding-top: 5px;
+}
+
+.programme .PeformanceListTimes{
+  font-size: 1.5em;
+  margin-top: -20px;
+}
+
+.programme .StartTimeAndStatus{
+  line-height: 2em;
+  margin-right: 4px;
+}
+
+.programme .StartTimeAndStatus a, .programme .StartTimeAndStatus b a{
+  display: inline;
+  background: #98979a url('/ThePoly/arrow-right-blackbg.png') right top no-repeat;
+  background-size: contain;
+  font-size: 16px;
+  font-size: 1.231rem;
+  text-decoration: none;
+  padding: 0.25em 40px 0.5em 0.5em;
+  font-family: 'adam-cg-pro';
+  margin: 0 0 0.5em 0;
+  color: #fff !important;
+  border: none;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  
+}
+
+div.programme.twelvecol{
+  box-shadow: 0 0 1.538rem 0 rgba(0,0,0,0.5);
+  padding: 1.154rem;
+}
+
+/* ---------------------------------------------------------
+  FOOTER
+----------------------------------------------------------*/  
+.footer {
+  width: 100%;
+  background: #56565A url('/ThePoly/bg.png') center bottom no-repeat;
+  background-size: cover;
+  display: inline-block;
+  padding: 2em 0;
+  margin-top: 1em;
+  color: #c3c3c3;
+  font-size: 18px;
+  font-size: 1.385rem;
+  text-transform: uppercase;
+}
+
+.footer h4{
+  margin: 0;
+  font-size: 25px;
+  font-size: 1.923rem;
+  color: #00bfd7;
+  font-family: 'adam-cg-pro';
+  font-weight: normal;
+}
+
+.footer ul{
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.footer ul li{
+  margin: 0;
+  padding: 0;
+}
+
+.footer ul li span{
+  color: #00bfd7;
+}
+
+.footer ul.socials li{
+  display: inline;
+}
+
+.footer ul.socials li a{
+  margin-right: 1em;
+}
+
+.row.dotted .content{
+  font-size: 12px;
+  font-size: 0.923rem;
+  color: #98979a;
+}
+
+.row.dotted .content{
+  margin-top: 1em;
+  border-top: dotted #ccc 2px;
+}
+
+.savoy{
+  text-align: right;
+}
+
+@media (max-width: 767px) {
+  .footer{
+    font-size: 0.8rem;
+  }
+  .footer h4{
+    font-size: 1.2em;
+  }
+  .footer ul li img{
+    height: 40px;
+  }
+}
+
+/* ---------------------------------------------------------
+  BUTTONS
+----------------------------------------------------------*/
+.PrevNext{
+  margin: 10px 0;
+  float: left;
+  width: 100%;
+}
+
+.Button{
+  display: block;
+  background: #98979a url('/ThePoly/arrow-right-blackbg.png') right top no-repeat;
+  background-size: contain;
+  font-size: 16px;
+  font-size: 1.231rem;
+  text-decoration: none;
+  padding: 0.25em 0.5em;
+  font-family: 'adam-cg-pro';
+  margin: 0 0 0.5em 0;
+  color: #fff !important;
+  border: none;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.MembershipSection .Button{
+ background: #999;
+}
+
+input[type="submit"]{
+  margin: 10px 0;
+}
+
+.Button:hover{
+  background: black url('/ThePoly/arrow-right-blackbg.png') right top no-repeat;
+}
+
+.Button:active{
+  background: #98979a;
+}
+
+.Button{
+  padding: 5px 35px 5px 10px;
+  overflow: hidden;
+  width: auto;
+}
+
+.Button:before{
+  left: auto;
+  right: 10px;
+  z-index: 2;
+}
+
+.Button:after{
+  width: 30%;
+  height: 200%;
+  background: rgba(255,255,255,0.1);
+  z-index: 1;
+  right: 0;
+  top: 0;
+  margin: -5px 0 0 -5px;
+  -webkit-transform-origin: 0 0;
+  -webkit-transform: rotate(-20deg);
+  -moz-transform-origin: 0 0;
+  -moz-transform: rotate(-20deg);
+  -ms-transform-origin: 0 0;
+  -ms-transform: rotate(-20deg);
+  transform-origin: 0 0;
+  transform: rotate(-20deg);
+}
+
+.OrderDelete a{
+  font-size: 0.8em;
+}
+
+.ContinueButton{
+  float: right;
+}
+.BackButton{
+  float: left;
+  color: #98979a !important;
+  background: #fff !important;
+}
+
+/* Make the edit and delete buttons icons*/
+.Edit.Button, .OrderDelete .Button{
+font-family: 'icomoon' !important;
+speak: none;
+font-style: normal;
+font-weight: normal;
+font-variant: normal;
+text-transform: none;
+line-height: 1;
+font-size: 0;
+background: none;
+background-image: none !important;
+display: inline;
+padding: 5px 3px;
+}
+.Edit.Button::before, .OrderDelete .Button::before {
+font-size: 1rem;
+font-weight: bold;
+background: #000;
+margin-left: 3px;
+padding: 10px; 
+}
+.OrderDelete .Button::before{
+content: "\e9ac";
+}
+.Edit.Button::before {
+content: "\e905";
+}
+
+
+/* ---------------------------------------------------------
+  POPUP MESSAGES
+----------------------------------------------------------*/
+
+#PopupException, .PopupDialogBox {
+    position: fixed;
+  top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  width: 95%;
+    max-width: 500px;
+    margin: auto;
+    z-index: 10000;
+  background: #F0F0F0;
+  padding: 20px 20px 80px 20px;
+  line-height: 1.5em;
+  min-height: 180px;
+}
+
+#PopupException .Button.Close, .PopupDialogBox .Button.Close {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+}
+
+.PopupDialogHeading {
+  font-weight: bold; margin-bottom: 2px;
+}
+
+@media (max-width: 767px) {
+  #PopupException, .PopupDialogBox {
+    
+  }
+}
+
+#PopupException .EmailAddress{
+  font-weight: 600;
+  color: #333;
+  font-size: 1.2em;
+}
+#PopupException .Login, #PopupException .PasswordReset{
+  margin: 10px 0;
+}
+#PopupException .ExceptionMessage{
+  margin: 10px 0;
+  max-height: 10em;
+  overflow: hidden; /* or scroll? */
+  color: #990000;
+}
+
+#Overlay{
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9;
+  background: #333;
+  display: none;
+  /* IE 8 */
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=90)";
+  /* IE 5-7 */
+  filter: alpha(opacity=90);
+  /* Netscape */
+  -moz-opacity: 0.9;
+  /* Safari 1.x */
+  -khtml-opacity: 0.9;
+  /* Good browsers */
+  opacity: 0.9;
+}
+
+/* ---------------------------------------------------------
+  FORM ELEMENTS
+----------------------------------------------------------*/
+
+input[type=text], input[type=password], input[type=email]{
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  margin: 5px 0;
+  width: 100%;
+  vertical-align: top;
+  background: #F0F0F0;
+  border: solid 1px #CCC;;
+  padding: 0.5em;
+}
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus{
+  border: solid 1px #2672EC;
+  background: #EFEFEF;
+}
+select{
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  margin: 5px 0;
+  width: 100%;
+  vertical-align: top;
+  background: #F0F0F0;
+  border: solid 1px #CCC;;
+  padding: 0.5em;
+}
+::-webkit-input-placeholder, input:-moz-placeholder, ::-moz-placeholder, :-ms-input-placeholder {
+  color:#CCC;
+  font-style: italic;
+}
+label.SelectLabel, label.TextLabel {
+  display: block;
+  padding: 0;
+  width: 100%;
+  color: #696969;
+  font-weight: bold;
+  font-size: 70.25%;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+.PersonType select{
+  width: 100%;
+  max-width: 100px;
+}
+.DetailSubHeading, .EditPatronHeading{
+  clear: both;
+  display: block;
+  border-bottom: 1px solid #E9E9E9;
+  padding-bottom: 10px;
+  color: #060606;
+  font-style: normal;
+  line-height: 1.17em;
+  margin: 5px 0px 10px;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  font-weight: 400;
+  margin-top: 20px;
+}
+.EditPatronHeading{
+  margin-top: 40px;
+}
+.InlineValidationMessage{
+  font-size: 0.8em;
+  color: #FFF;
+  background: #990000;
+  width: 100%;
+  position: relative;
+  top: -5px;
+  padding: 3px;
+}
+@media (max-width: 767px) {
+  label.SelectLabel, label.TextLabel {
+    text-align: right;
+    font-size: 1.2em;
+    line-height: 2.5em;
+    margin-right: 10px;
+  }
+#CardMMYY .sixcol{
+  float: left; width: 45%;
+}
+#CardMMYY .sixcol.last{
+  float: right; width: 45%;
+}
+}
+.DateInputLabel {
+  display: inline;
+}
+.PaymentHeading {
+  font-weight: bold; margin-bottom: 2px;
+}
+.PaymentPageSeparator {
+  margin-bottom: 10px; clear: both;
+}
+@media (min-width: 767px) {
+  .ToolTip {
+    visibility:hidden;
+    opacity:0; /* http://www.greywyvern.com/?post=337 */
+    -webkit-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -moz-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -ms-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -o-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    opacity:0;
+    visibility:hidden;
+    position: absolute;
+    background: #333;
+    color: #FFF;
+    font-size: 10px;
+    border-radius: 5px;
+    padding: 5px;
+    width: 160px;
+    margin: 10px 0 0 3px;
+    z-index: 9;
+    line-height: 2em;
+  }
+  .ToolTip:before {
+     border:5px solid transparent;
+     border-right-color:#333;
+     content:"";
+     display:block;
+     width:0;
+     height:0;
+     position:absolute;
+     top:3px;
+     left:-10px;
+     z-index:2;
+  }
+  .ClickPayOnce{
+    visibility:hidden;
+    opacity:0; /* http://www.greywyvern.com/?post=337 */
+    -webkit-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -moz-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -ms-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -o-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    opacity:0;
+    visibility:hidden;
+    position: absolute;
+    background: #333;
+    color: #FFF;
+    font-size: 10px;
+    border-radius: 5px;
+    padding: 5px;
+    width: 200px;
+    margin: 10px 0 0 3px;
+    z-index: 9;
+    line-height: 2em;
+  }
+  .ClickPayOnce:before {
+     border:5px solid transparent;
+     border-right-color:#333;
+     content:"";
+     display:block;
+     width:0;
+     height:0;
+     position:absolute;
+     top:3px;
+     left:-10px;
+     z-index:2;
+  }
+  .ConfirmAndPay{
+    margin-bottom: 20px;
+  }
+  /*
+  input#confirm:hover + .ClickPayOnce, input#confirm:active + .ClickPayOnce, input#confirm:focus + .ClickPayOnce, input:focus + .ToolTip {
+    visibility:visible;
+    opacity:1;
+    -webkit-transition-delay:0s;
+    -moz-transition-delay:0s;
+    -ms-transition-delay:0s;
+    -o-transition-delay:0s;
+    transition-delay:0s;
+  }
+  */
+}
+@media (max-width: 766px) {
+  .ToolTip {
+    position: relative;
+    background: #333;
+    color: #FFF;
+    font-size: 10px;
+    border-radius: 0 0 5px 5px;
+    padding: 5px;
+    width: 100%;
+    margin: -5px 0 10px 0;
+    z-index: 9;
+    line-height: 2em;
+  }
+
+  input:focus + .ToolTip {
+    display: block;
+  }
+
+  .ClickPayOnce{
+    display: block;
+    position: relative;
+    background: #333;
+    color: #FFF;
+    font-size: 10px;
+    border-radius: 5px 5px;
+    padding: 5px;
+    width: 100%;
+    margin: -5px 0 10px 0;
+    z-index: 9;
+    line-height: 2em;
+  }
+}
+
+.MaestroSolo{
+  background: #F0F0F0;
+  padding: 10px;
+}
+.MaestroSolo input{
+
+}
+@media (max-width: 767px) {
+  label.SelectLabel, label.TextLabel {
+    display: none;
+  }
+  .ToolTip {
+    display: none;
+  }
+}
+.PersonType select{
+  max-width: 100px;
+}
+.PersonType .PersonTypeDescription{
+  font-size: 1em;
+  display: inline-block;
+  width: 50%;
+  line-height: 1.2em;
+  margin-left: 10px;
+  line-height: 3em;
+}
+@media (max-width: 767px) {
+  .PersonType select{
+    max-width: 100px;
+  }
+  .PersonType .PersonTypeDescription{
+    font-size: 1em;
+    display: inline-block;
+    width: 50%;
+    line-height: 1.2em;
+  }
+}
+.EditPatronHeading:before, .clearfix:after { content: ''; display: table; }
+.EditPatronHeading:after { clear: both; }
+
+.checkbox:focus, .radio:focus, input[type="checkbox"]:focus, input[type="radio"]:focus { outline:1px dotted #36393b; }
+
+ .RadioGroup{
+    font-size: 0.8em;
+   background: #F0F0F0;
+    margin: 2px;
+
+    padding: 5px;
+    color: #060606;
+}
+#PatronDetails .RadioGroup input{
+    margin-left: 5px;
+  margin-right: 3px;
+}
+
+.FieldAsValue{
+Padding-bottom: 0.8em;
+}
+
+
+DIV.ProgrammeLink{ font-size: 12pt; font-weight: bold; padding-top: 10px; }
+SPAN.Rating{ font-size: 12pt; font-weight: bold; }
+
+SPAN.PerformanceNotesSmall{
+  font-size: 10pt;
+  font-weight: 600;
+  display: inline;
+}
+
+SPAN.PerformanceStatusSmall{
+  font-size: 8pt;
+  white-space: nowrap;
+}
+
+SPAN.ConditionsOfEntry{
+  font-size: 8pt;
+  white-space: nowrap;
+}
+
+DIV.PersonType{ padding-top: 6px; }
+DIV.SeatType{ padding-top: 20px; font-size: 12pt; font-weight: bold; }
+
+DIV.PerformanceDate { padding-top: 5px; font-size: 12pt; font-weight: bold; }
+SPAN.PerformanceEndTime { font-size: 8pt; font-weight: normal; }
+SPAN.PerformanceSection { font-size: 12pt; font-weight: bold; }
+DIV.PerformanceStatus { padding-top: 15px; font-size: 12pt; font-weight: bold; }
+
+DIV.SaleItem{ min-height: 30px; padding: 5px; }
+TD.SaleItemDescription{ width: 150px; }
+TD.SaleItemPromptText{ padding-right: 5px; width: 30px; text-align: right; line-height: 3em;}
+TD.SaleItemInput{ padding-right: 5px; }
+TD.SaleItemPriceText{ line-height: 3em; }
+
+/* ---------------------------------------------------------
+  CALENDAR
+----------------------------------------------------------*/
+
+DIV.CalendarViewDays {
+  padding-left: 110px;
+  padding-top: 5px;
+}
+
+SPAN.CalendarViewDays { padding-right: 20px; }
+  TD.NonDay {
+  background: #E9E9E9;
+  width: 30px;
+  text-align: center;
+  color: #fff;
+}
+
+TD.SelectedDay {
+  text-align: center;
+  width: 30px;
+  background: #42bed5;
+}
+
+TD.Day { background: #C2C2C2; text-align: center; width: 20px; }
+
+TD.OrderItem { width: 90px; }
+TD.OrderDetails { max-width: 450px; }
+TD.OrderPriceToPay { width: 45px; }
+TD.OrderDelete { width: 45px; }
+
+DIV.ConfirmationEmail { padding-top: 10px; }
+TABLE.MaestroSolo { background: #E9E9E9; border: 0; }
+TD.MaestroSolo { background: #E9E9E9; }
+
+DIV.RadioGroup{}
+
+.Exception{
+  color: rgb(255, 0, 0);
+  font-weight: 600;
+  width: 100%;
+  display: block;
+  clear: both;
+  color: #99000;
+  margin-bottom: 10px;
+  line-height: 1.2em;
+  text-transform: uppercase;
+  -webkit-animation: bounce 1.2s ease-out;
+  -moz-animation: bounce 400ms ease-out;
+  -o-animation: bounce 400ms ease-out;
+  animation: bounce 1.2s ease-out;
+}
+
+SPAN.TicketReservationsExpired{ color:#FF0000; font-weight: bold; }
+
+#SynopsisBody { background: #EDE2A6; color: #5f6f79; font-family: Arial, Helvetica, sans-serif; font-style: normal; }
+#Synopsis { background: #EDE2A6; color: #5f6f79; height: 300px; padding: 10px; }
+DIV.SynopsisProgrammeTitle { font-size: 12pt; font-weight: bold; margin-bottom: 10px; }
+DIV.SynopsisRating { font-size: 12pt; font-weight: bold; margin-bottom: 10px; }
+DIV.SynopsisDetail { font-size: 10pt; font-weight: normal; }
+DIV.MembershipHistory { }
+TD.MembershipHistoryDescription { width: 150px; padding-right: 15px; }
+TD.MembershipHistoryValidity { width: 320px; }
+TD.MembershipHistoryRenew { }
+TD.ProgrammeImage img{ width: 136px; height: 184px; overflow: hidden; }
+ TD.ProgrammeImage { width: 136px; height: 184px; overflow: hidden; margin: 5px; background; #CCC;}
+DIV.MembershipAvailableForActivation { font-size: 12pt; font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
+DIV.MembershipActivation { }
+SPAN.MembershipActivationDescription { width: 80px; padding-right: 15px; }
+SPAN.MembershipActivationFromTo { width: 180px; padding-right: 15px; }
+SPAN.MembershipActivationValidationCodePrompt { width: 100px; padding-right: 15px; }
+SPAN.MembershipActivationValidationCode { width: 100px; padding-right: 15px; }
+SPAN.MembershipActivationActivate { }
+DIV.DeliveryOptionsHeader { margin-bottom: 10px; }
+DIV.DeliveryOptionSaleItem{ float: left; width: 250px; font-weight: bold; line-height: 3em; }
+DIV.DeliveryOptionPrompt{ float: left; width: 150px; text-align: right; padding-right: 10px; line-height: 3em; }
+DIV.DeliveryOptionInput{ float: left; width: 155px; }
+DIV.DeliveryOptionInput SELECT { width: 150px; }
+DIV.DeliveryOptionSelected{ float: left; width: 155px; font-weight: bold; }
+DIV.DeliveryOptionSeparator{ clear: both; margin-top: 10px; }
+DIV.DeliveryOptionsFooter{}
+DIV.TransactionViewDeliveryOption{ font-size: 8pt; color: red; }
+DIV.DeliverTo { margin-top: 5px; margin-bottom: 5px; font-weight: normal; }
+DIV.DeliveryNameAndAddress { margin-left: 50px; margin-bottom: 5px; font-weight: bold; }
+DIV.PaymentMethod { margin-top: 5px; margin-bottom: 10px; }
+DIV.PaymentMethodPasswordLabel { float: left; margin-left: 20px; width: 140px; }
+DIV.PaymentMethodPasswordInput { }
+DIV.PaymentMethodSeparator { clear: both; }
+SPAN.DiscountDetail { color: red; }
+
+/* ---------------------------------------------------------
+  SEAT SELECTION
+----------------------------------------------------------*/
+
+.SeatAvailabilityGraph {
+  display: none;
+}
+.SAGSold { }
+.SAGReserved { }
+.SAGAvailable { }
+
+/* Price Table */
+
+.PriceGroup{
+  clear: both;
+  color: rgb(34, 34, 34);
+  font-weight: 300;
+}
+
+.PriceGroupSeatType{
+  float: left;
+  padding: 5px;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+.PriceGroupSeatType tr{
+  border-bottom: 1px solid #E9E9E9;
+}
+
+.PriceGroupSeatTypeHeading{
+  display: block;
+  color: #060606;
+  font-style: normal;
+  line-height: 1.17em;
+  margin: 0px 0px 10px;
+  text-transform: uppercase;
+}
+
+.PriceGroupPersonTypeQuantity{
+  text-align: center;
+  background: #CCC;
+}
+
+.PriceGroupPersonTypeDescription, .PriceGroupPersonTypePrice{
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+/* Seating Plan */
+
+.SelectPersonTypeOverlay {
+  background: white;
+  width: 350px;
+  padding: 10px;
+  border: 2px solid 060606;
+  -webkit-box-shadow: 1px 0px 5px 1px rgba(0,0,0,0.75);
+  -moz-box-shadow: 1px 0px 5px 1px rgba(0,0,0,0.75);
+  box-shadow: 1px 0px 5px 1px rgba(0,0,0,0.75);
+}
+
+.SelectPersonTypeOverlayPrompt {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.SelectPersonTypeOverlaySeatNumber {
+  padding: 5px;
+  border: 2px solid #E9E9E9; 
+  background: #CCC;
+  border-top: none;
+  display: inline;
+  line-height: 2.8em;
+  font-weight: 600;
+}
+
+.SelectPersonTypeOverlaySeatType {
+  display: block;
+  color: #060606;
+  font-style: normal;
+  line-height: 1.17em;
+  margin: 0px 0px 10px;
+  border-bottom: 1px solid #E9E9E9;
+  text-transform: uppercase;
+}
+
+.PersonTypeOverlayPersonTypeAndPrice {
+  line-height: 2em;
+  height: 2em;
+  margin-bottom: 5px;
+}
+
+.PersonTypeOverlayPersonTypeAndPrice a {
+  text-indent: 5px;
+  display: inline-block;
+  padding: 4px 8px;
+  text-decoration: none;
+  font-weight: 600;
+  text-transform: uppercase;
+
+}
+
+.PersonTypeOverlayPersonTypeAndPrice a:hover {
+  background: #CCC;
+  color: #060606;
+}
+
+.PersonTypeOverlayConditionsOfEntry {
+  color: black;
+  font-size: 8pt;
+  margin-left: 10px;
+}
+
+.SelectPersonTypeOverlayCancel {
+  margin-top: 40px;
+}
+
+DIV.SelectPersonTypeOverlayCancel a {
+  color: #FFF;
+  display: block;
+  text-align: center;
+}
+
+DIV.SelectedSeat {
+  background: black;
+  color: white;
+  line-height: 1.2em;
+}
+
+DIV.SelectedSeat SPAN {
+  display: block;
+  margin-left: -1px;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  DIV.SelectPersonTypeOverlay {
+    position: fixed !important;
+    left: 1% !important;
+    top: 20px !important;
+    width: 98% !important;
+    font-size: 1.2em;
+    line-height: 1.5em;
+  }
+  #SeatingPlanDiv{
+    /*width: 100% !important;*/
+  }
+  .SeatingPlanProtector{
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    background: #333;
+    /* IE 8 */
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+    /* IE 5-7 */
+    filter: alpha(opacity=50);
+    /* Netscape */
+    -moz-opacity: 0.5;
+    /* Safari 1.x */
+    -khtml-opacity: 0.5;
+    /* Good browsers */
+    opacity: 0.5;
+  }
+  .PersonTypeOverlayPersonTypeAndPrice a {
+    display: inline-block;
+    padding: 0 10px;
+  }
+
+  .PersonTypeOverlayConditionsOfEntry {
+    margin-left: 2px;
+  }
+}
+
+
+.UnsubscribeFromENewsDescription {font-size: 10pt; font-weight: bold; margin-top: 16px; margin-bottom: 6px;}
+.UnsubscribeFromENewsCheckBox {margin-bottom: 5px;}
+.UnsubscribeFromENewsError {}
+DIV.PatronGiftAidFormRow {font-weight: bold; margin-top: 3px; margin-bottom: 3px; float: left; clear: both;}
+DIV.PatronGiftAidFormDescription {width: 250px; float: left;}
+DIV.PatronGiftAidFormSignedDate {width: 150px; float: left;}
+DIV.PatronGiftAidFormViewHideSign {width: 150px; float: left;}
+DIV.SignedPatronGiftAidForm {width: 90%; border: 2px solid black; padding: 10px; margin-top: 5px; margin-bottom: 25px; clear: both;}
+DIV.PatronGiftAidFormToSign {width: 90%; border: 2px solid black; padding: 10px; margin-top: 5px; margin-bottom: 25px; clear: both;}
+
+
+/*-------------------------
+  Browser Detector
+-------------------------*/
+
+#BrowserBanner{
+  display: none;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  padding: 5px 0px;
+  z-index: 99999999999999;
+  text-align: center;
+  background:#333;
+  color: #FFF;
+  }
+  #BrowserBanner #Message{
+  margin: 5px auto;
+  }
+  #BrowserBanner a{
+  color: #009900;
+  }
+  #BrowserBanner .button{
+  border-radius: 5px;
+  padding: 2px 3px;
+  margin: 3px;
+  color: #FFF;
+  text-decoration: none;
+  display: inline;
+  cursor: pointer;
+  }
+  #BrowserBanner .OK{
+  background: #7daf3b;
+  }
+  #BrowserBanner #ShowPolicy, #BrowserBanner #ClosePolicy{
+  display: inline;
+  color: #FFF;
+  text-decoration: underline;
+  cursor: pointer;
+  }
+  #BrowserBanner #Policy{
+  text-align: left;
+  width: 800px;
+  padding: 2px 15px;
+  border-radius: 10px;
+  margin: 15px auto;
+  background: #990000;
+  display: none;
+  }
+
+  .oldie #BrowserBanner{display: block;}
+
+/*----------------------------------------------------------------------
+APPLY MEMBERSHIP PAGE
+----------------------------------------------------------------------*/
+.MembershipSection{
+margin-bottom: 20px;
+font-size: 0.8em;
+background: #00000048;
+}
+.member{
+margin-bottom: 10px;
+}
+.MembershipSectionHeading{
+display: block;
+padding: 5px;
+font-weight: bold;
+background: #00000099;
+line-height: 2em;
+float: left;
+width: 100%;
+}
+.MembershipSectionHeading span{
+float: left;
+}
+.MembershipSectionHeading .Button{
+float: left;
+}
+.MembershipSection .Button{
+padding: 5px !important;
+margin: 0 !important;
+margin-right: 10px !important;
+line-height: 20px;
+text-align: center;
+display: inline-block;
+min-width: 30px;
+line-height: 1em;
+font-size: 1em;
+}
+.MembershipSectionHeading .minus.Button{
+display: none;
+}
+.MembershipSectionHeading.expanded .plus.Button{
+display: none;
+}
+.MembershipSectionHeading.expanded .minus.Button{
+display: inline-block;
+}
+.MembershipSectionHeading .plus.Button{
+display: inline-block;
+}
+.selectable_benefit_membership_details{
+display: inline-block;
+}
+.selectable_benefit_membership{
+display: inline-block;
+}
+.selectable_benefit_membership_info{
+display: inline-block;
+}
+.MembershipSectionContent{
+padding: 10px;
+}
+.member_name{
+font-weight: bold;
+margin-bottom: 5px;
+}
+.ticket_sale_heading{
+font-weight: bold;
+margin-bottom: 5px;
+}
+.selectable_benefit_heading{
+font-weight: bold;
+margin-bottom: 5px;
+}
+.membership_sale{
+padding: 5px 10px;
+margin: 0 0 10px 0;
+}
+.ticket_sale{
+padding: 5px 10px;
+margin: 0 0 10px 0;
+}
+.selectable_benefit{
+padding: 5px 10px;
+margin: 0 0 10px 0;
+}
+.membership_type{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_description{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_joint_with{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_period{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_renew{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_status{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_info{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_status{font-weight: bold;}
+.membership_status_expired{color: red;}
+.membership_status_cancelled{color: red;}
+.membership_status_active{color: green;}
+.membership_status_expring_soon{color: orange;}
+.membership_status_not_yet_active{color: purple;}
+.info_non_member_has_been_assigned_to_ticket {}
+.info_member_has_been_assigned_to_ticket {color: green; font-weight: bold;}
+.error_member_has_not_been_assigned_to_ticket {color: red; font-weight: bold;}
+.MembershipSectionContent ul{
+list-style: none;
+margin: 0;
+padding: 0;
+}
+@media(max-width: 768px){
+.ticket_sale_heading{
+display: none;
+}
+.selectable_benefit_heading{
+display: none;
+}
+}
+.CreditCardPayment { font-style: italic; }
+.MiscPayment { font-style: italic; }
+.RedeemVoucher { font-style: italic; }
+
+/*----------------------------------------------------------------------
+Order
+----------------------------------------------------------------------*/
+.ViewOrder table, .DiscountsPrompt table, .PaymentPrompt table {
+width: 100%!important;
+border-spacing:0;
+border-collapse:collapse;
+margin-top:10px;
+}
+.ViewOrder table td, .DiscountsPrompt table td, .PaymentPrompt table td {
+vertical-align: top;
+padding:5px 6px;
+}
+.ViewOrder TD.OrderDelete, .DiscountsPrompt TD.OrderDelete, .PaymentPrompt TD.OrderDelete {
+vertical-align: top!important;
+padding-top: 12px;
+}
+.ViewOrder table th, .DiscountsPrompt table th, .PaymentPrompt table th, .DiscountSubHeading {
+padding:5px 6px;
+background-color: #CCC;
+text-transform: uppercase;
+}
+.ViewOrder table b, .DiscountsPrompt table b, .PaymentPrompt table b {
+text-transform: uppercase;
+font-size: 14px;
+}
+
+
+/*----------------------------------------------------------------------
+HPP Iframe and Loader
+----------------------------------------------------------------------*/
+#CardstreamHPPIFRAME{
+border: none;
+width: 100%;
+max-width: 630px;
+height: 798px;
+visibility: hidden;
+overflow-y: hidden;
+display: block;
+margin-top: 10px;
+}
+
+#RealexHPPIFRAME{
+border: none;
+width: 100%;
+max-width: 600px;
+min-height: 550px;
+visibility: hidden;
+overflow-y: hidden;
+display: block;
+margin-top: 10px;
+}
+
+#HPPPaymentError {
+font-size: 1.2em;
+margin-top: 20px;
+font-weight: bold;
+padding: 20px;
+border: 1px solid red;
+}
+
+#HPPPaymentErrorMessage {
+color: red;
+}
+
+#HPPLoader {
+margin: 100px auto 0;
+width: 70px;
+text-align: center;
+}
+
+#HPPLoader > div {
+width: 18px;
+height: 18px;
+background-color: grey;
+border-radius: 100%;
+border: 1px solid white;
+display: inline-block;
+-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+}
+
+#HPPbounce1 {
+-webkit-animation-delay: -0.32s;
+animation-delay: -0.32s;
+}
+
+#HPPbounce2 {
+-webkit-animation-delay: -0.16s;
+animation-delay: -0.16s;
+}
+
+@-webkit-keyframes sk-bouncedelay {
+0%{
+-webkit-transform: scale(0)
+}
+80% {
+-webkit-transform: scale(0)
+}
+100% {
+-webkit-transform: scale(0)
+}
+
+40% {
+-webkit-transform: scale(1.0)
+}
+}
+
+@keyframes sk-bouncedelay {
+0% {
+-webkit-transform: scale(0);
+transform: scale(0);
+}
+
+80% {
+-webkit-transform: scale(0);
+transform: scale(0);
+}
+100% {
+-webkit-transform: scale(0);
+transform: scale(0);
+}
+40% {
+-webkit-transform: scale(1.0);
+transform: scale(1.0);
+}
+}
+
+#HPPEarmarkTimeoutPageOverlay {
+position: fixed;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+display: block;
+background: #333;
+opacity: 0.8;
+}
+#HPPTimeoutErrorMessageContainer {
+position: relative;
+width: 50%;
+height: auto;
+margin: 0 auto;
+display: block;
+margin-top: 50px;
+color: red;
+font-size: 1.2em;
+font-weight: bold;
+line-height: 1.5em;
+text-align: center;
+background: #FFF;
+opacity: 1;
+padding: 20px;
+}
+@media(max-width: 768px){
+#HPPTimeoutErrorMessageContainer {
+width: 80%;
+}
+}
+#HPPReturnToMyOrderButton {
+display: block;
+margin: auto;
+margin-top: 10px;
+}
+/*---------------------*/
+/*---- Month View -----*/
+/*---------------------*/
+
+.week, .days-of-week {
+  display: flex;
+}
+
+.day {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0;
+}
+
+.calendar-nav {
+  margin: 1em;
+  text-align: center;
+  font-size: 2em;
+}
+.calendar-nav > div{
+  display: inline-block;
+}
+#current-month{
+  min-width: 8em;
+}
+.month {
+  margin-top: 0;
+  padding-top: 0;
+  display: none;
+}
+.month.active{
+  display: block;
+}
+.week {
+  min-height: 10em;
+}
+.day {
+  color: black;
+  font-weight: bold;
+  padding: 5px;
+  background-color: #eee;
+  border: solid 1px #000;
+}
+.day span.date {
+  display:block;
+}
+.date-display{
+  opacity: 0.6;
+}
+.day a {
+  font-size: 0.8em;
+  display: block;
+  background: rgba(0, 0, 0, 0.4);
+  margin: 2px;
+  padding: 5px 8px;
+  line-height: 1.2em;
+}
+
+#prev-month, #next-month {
+  cursor: pointer;
+  background: white;
+  line-height: 1.5em;
+  border-radius: 50%;
+  height: 1.5em;
+  width: 1.5em;
+  display: inline-block;
+  visibility: hidden;
+}
+#prev-month.active, #next-month.active {
+  visibility: visible !important;
+}
+.day-in-past {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(0,0,0,0),
+    rgba(0,0,0,0) 10px,
+    rgba(0,0,0,0.15) 10px,
+    rgba(0,0,0,0.15) 20px
+  );
+}
+
+.day-in-past span{
+  color: #aaa;
+}
+
+.day.non-day{
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.today {
+  background: rgba(255, 0, 0, 0.2);
+}
+
+.day .mobile{
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .days-of-week {
+    display: none;
+  }
+
+  .week {
+    display: block;
+    height: auto;
+    min-height: 0px;
+  }
+
+  .day {
+    margin: 0 auto 5px !important;
+    display: block;
+    font-size: 1.3em;
+  }
+
+  .day > span{
+    font-size: 0.8em;
+  }
+
+  .day-in-past {
+    display: none;
+  }
+
+  .month-view-nav {
+    margin-bottom: 10px;
+    font-size: 1.5em;
+  }
+
+  .day .mobile{
+    display: inline;
+  }
+}
+.SocialDistanceSeatInTheirBubble, .SocialDistanceSeatInMyBubble {
+  border-radius: 50%;
+  background-color: rgba(136, 201, 252, 0.8);
+}
+
+.SocialDistanceSeatInMyBubble {
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+DIV.SelectedSeat {
+  z-index: 2;
+}
+
+#dlgTurnOnAutoRenewMembership {
+  max-width: 600px;
+  top: 60px;
+  min-height: 400px;
+}
+
+.TurnOnAutoRenewMembershipVerifyCardIframe {
+  min-height: 300px;
+}
+
+#dlgTurnOnAutoRenewMembership iframe {
+  width: 100%;
+  height: 300px;
+}
+
+/*-----------------------------
+RECURRING MEMBERSHIP STYLES
+-----------------------------*/
+
+.membership .Button.Close {
+  background: none;
+  border: none;
+  padding: 0px;
+}
+
+.membership .Button.Close:hover {
+  color: #333 !important;
+}
+
+.membership .Button.Close:focus {
+  outline: none;
+}
+
+.membership.SaleItem .field {
+  margin: 10px 0;
+}
+
+.AutoRenewMembershipBlurb {
+  margin: 10px 0;
+}
+
+label[for="Membership_AutoRenew"] {
+ line-height: 3em;
+}
+
+input[type="checkbox"]{
+  margin-right: 5px;
+}
+
+input[type="date"]{
+  padding:10px;
+  display: inline-block;
+  width: 100%;
+}
+
+#membershipDialogContent_26141_1966 > div:nth-child(3){
+  padding-bottom: 10px;
+}
+
+#membershipDialogContent_37396_1970 > div:nth-child(3){
+  padding-bottom: 10px;
+}
+
+#Membership_Duration{
+ padding-bottom: 10px;
+ padding-top: 5px;
+}
+
+#PromoCode, #SecureVoucherNumber {
+  background-color: white;
+}
+
+.ContinueButton:hover{
+  background: black !important;
+}
+
+
+#UpsellForm > div.SaleItem.programme.twelvecol > div.ninecol.last > div.twelvecol.showtimes.last > table > tbody > tr > td.SaleItemInput {
+  display: flex;
+}
+
+#UpsellForm > div.SaleItem.programme.twelvecol > div.ninecol.last > div.twelvecol.showtimes.last > table > tbody > tr > td.SaleItemInput > input {
+  margin-bottom: 10px;
+  width: 150px;
+  text-align: center;
+}
+
+#UpsellForm > div.SaleItem.programme.twelvecol > div.ninecol.last > div.twelvecol.showtimes.last > table > tbody > tr > td.SaleItemInput > span.Button.SaleMinus {
+  background: none;
+  background-color: grey;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+#UpsellForm > div.SaleItem.programme.twelvecol > div.ninecol.last > div.twelvecol.showtimes.last > table > tbody > tr > td.SaleItemInput > span.Button.SalePlus {
+  background: none;
+  background-color: grey;
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+#UpsellForm > div.SaleItem.programme.twelvecol > div.ninecol.last > div.twelvecol.showtimes.last > table > tbody > tr > td.SaleItemPriceText {
+  display: block;
+}
+
+ #MyOrderSimpleMenu { display: none; } .LoginToJoinWaitingList.ListNotFull.PatronLoggedIn { display: none; }
+.LoginToJoinWaitingList.ListNotFull.PatronNotLoggedIn { display: block; }
+.LoginToJoinWaitingList.ListFull { display: none; }
+.WaitingListIsFull.ListFull { display: block; }
+.WaitingListIsFull.ListNotFull { display: none; }
+</STYLE>
+<script>
+  function showOverlayAndPopup(aPopupElementID) { 
+    document.getElementById(aPopupElementID).style.display = "block";
+    if (document.getElementById("Overlay"))
+      document.getElementById("Overlay").style.display = "block";
+  }
+  function hideOverlayAndPopup(aPopupElementID) {
+    document.getElementById(aPopupElementID).style.display = "none";
+    if (document.getElementById("Overlay"))
+      document.getElementById("Overlay").style.display = "none";
+  }
+</script>
+<script>
+  function getXMLHttp() { 
+    if (window.XMLHttpRequest) 
+      return(new XMLHttpRequest()) // code for IE7+, Firefox, Chrome, Opera, Safari 
+    else 
+      return(new ActiveXObject("Microsoft.XMLHTTP")); // code for IE6, IE5 
+  }
+</script><script type="text/javascript">
+
+  function ShowSaleItemPrompt(itemid) {
+    var elem = document.getElementById("SaleItem" + itemid + "_Prompt");
+    var spans = elem.querySelectorAll("span");
+    for(var i = 0; i < spans.length; i++) {
+      if (spans[i].classList.contains("activeoption"))
+        spans[i].classList.remove("activeoption");
+      if (spans[i].getAttribute("_def") == "1")
+        spans[i].classList.add("activeoption");
+    }
+    var divs = elem.querySelectorAll("div.ProductComponents");
+    for(var i = 0; i < divs.length; i++) {
+      if (divs[i].getAttribute("_def") == "0")
+        divs[i].style.display = 'none';
+    }
+    var err = elem.querySelectorAll(".Error");
+    if (err.length > 0)
+      err[0].textContent = "";
+    elem.style.display = 'block';
+  }
+  function SaleItemQuantity(itemid, qty) {
+    var q = parseInt(document.getElementById(itemid).value);
+    q += qty;
+    if (q < 0) q = 0;
+    document.getElementById(itemid).value = q;
+  }
+  function PostbackBasketToServer() {
+  }
+
+  function RemoveSaleItem(itemid, inputid, itemnum, itemprice) {
+    var elem = document.getElementById("SaleItem" + itemid + "_" + itemnum);
+    if (elem != null) {
+      elem.parentNode.removeChild(elem);
+      var input = document.getElementById(inputid);
+      if (input)
+        input.parentNode.removeChild(input);
+      var bCounts = document.getElementsByClassName("basket-count");
+      for (i = 0; i < bCounts.length; i++)
+        bCounts[i].textContent = parseInt(bCounts[i].textContent) - 1;
+      var bTotal = document.getElementById("basket-total");
+      if (bTotal)
+        bTotal.textContent = (parseFloat(bTotal.textContent) - itemprice).toFixed(2);
+      PostbackBasketToServer();
+    }
+  }
+
+  function AddSaleItemWithOptions(itemid, name, baseprice, shouldPostback) {
+    var values = "";
+    var options = [];
+    var prices = [];
+    var i = 0;
+    do {
+      var container = document.getElementById("SaleItem" + itemid + "_Option" + i);
+      if (container == null) break;
+      if (container.parentNode.style.display != 'none') {
+        var children = container.getElementsByClassName("option");
+        var selOptions = 0;
+        var minOptions = 0;
+        for (var j = 0; j < children.length; j++) {
+          minOptions = parseInt(children[j].getAttribute("_min"));
+          if (children[j].classList.contains("activeoption")) {
+            values += children[j].getAttribute("_value") + "_";
+            prices.push(parseFloat(children[j].getAttribute("_price")));
+            options.push(children[j].getAttribute("_name"));
+            selOptions++;
+          }
+        }
+        if (selOptions < minOptions) {
+          var errDiv = document.getElementById("SaleItem" + itemid + "_Error");
+          errDiv.textContent = "Error - please select at least " + minOptions + " option(s) before continuing";
+          container.classList.add("is-danger");
+          return;
+        }
+      }
+      i++;
+    } while (true);
+    values = values.substring(0, values.length - 1);
+    AddSaleItem(itemid, name, values, baseprice, prices, options, shouldPostback);
+  }
+
+  function AddSaleItem(itemid, name, optionvalues, baseprice, optionprices, optionnames, shouldPostback) {
+    var TheAddToOrderButton = document.getElementById("SaleItem" + itemid + "_button");
+    TheAddToOrderButton.classList.add("is-loading");
+    var parent = document.getElementById("basket-items");
+    var formParent = document.getElementById("SaleItemAddedItems" + itemid);
+    if (parent == null)
+      parent = formParent;
+
+    var itemCount = 1;
+    while (document.getElementById("SaleItem" + itemid + "_" + itemCount) != null)
+      itemCount++;
+
+    var itemDiv = document.createElement("div");
+    itemDiv.className = "SaleAddedItem";
+    itemDiv.id = "SaleItem" + itemid + "_" + itemCount;
+    var itemInput = document.createElement("input");
+    itemInput.id = "RetailItemPopup" + "_" + itemid + "_" + itemCount;
+    itemInput.name = itemInput.id;
+    itemInput.type = "hidden";
+    if (optionvalues == "")
+      itemInput.value = "_";
+    else
+      itemInput.value = optionvalues;
+    formParent.appendChild(itemInput);
+
+    var nameDiv = document.createElement("div");
+    nameDiv.className = "basketItemName";
+    itemDiv.appendChild(nameDiv);
+    var nameSpan = document.createElement("span");
+    nameSpan.textContent = name;
+    nameDiv.appendChild(nameSpan);
+    nameSpan = document.createElement("span");
+    nameSpan.textContent = String.fromCharCode(163) + baseprice.toFixed(2);
+    nameSpan.className = "itemPrice";
+    nameDiv.appendChild(nameSpan);
+
+    var descDiv = document.createElement("div");
+    descDiv.className = "basketItemOptions";
+    itemDiv.appendChild(descDiv);
+    var optDiv = document.createElement("div");
+    descDiv.appendChild(optDiv);
+    var price = baseprice;
+
+    var lastID = "";
+    var options = optionvalues.split('_');
+    for (var i = 0; i < optionprices.length; i++) {
+      var pID = options[i].split('-')[0];
+      if (lastID != "") {
+        if ((pID != lastID) && (lastID != "")) {
+          var optDiv = document.createElement("div");
+          descDiv.appendChild(optDiv);
+        }
+      }
+      lastID = pID;
+      var optSpan = document.createElement("span");
+      optDiv.appendChild(optSpan);
+      optSpan.textContent = optionnames[i];
+      if (optionprices[i] > 0) {
+        var priceSpan = document.createElement("span");
+        priceSpan.textContent += " (+" + String.fromCharCode(163) + optionprices[i].toFixed(2) + ") ";
+        priceSpan.className = "itemPrice";
+        optSpan.appendChild(priceSpan);
+      }
+      price += optionprices[i];
+    }
+    var optDiv = document.createElement("div");
+    optDiv.classList.add("totalPrice");
+    optDiv.textContent = "Total price "
+    descDiv.appendChild(optDiv);
+    var priceSpan = document.createElement("span");
+    priceSpan.textContent += String.fromCharCode(163) + price.toFixed(2);
+    priceSpan.className = "itemPrice";
+    optDiv.appendChild(priceSpan);
+    var span = document.createElement("span");
+    span.className = "basketItemRemove";
+    span.textContent = "X";
+    span.setAttribute("onclick", "RemoveSaleItem('" + itemid + "', '" + itemInput.id + "', '" + itemCount + "', " + price + ")");
+    span.className = "Button Close";
+    itemDiv.appendChild(span);
+
+    parent.appendChild(itemDiv);
+    setTimeout(function(){
+      TheAddToOrderButton.classList.add("complete");
+      TheAddToOrderButton.classList.remove("is-loading");
+      setTimeout(function(){
+        document.getElementById("SaleItem" + itemid + "_Prompt").style.display = 'none';
+        TheAddToOrderButton.classList.remove("complete");
+      }, 0);
+    }, 0);
+
+    var bCounts = document.getElementsByClassName("basket-count");
+    for (i = 0; i < bCounts.length; i++)
+      bCounts[i].textContent = parseInt(bCounts[i].textContent) + 1;
+
+    var bTotal = document.getElementById("basket-total");
+    if (bTotal)
+        bTotal.textContent = (parseFloat(bTotal.textContent) + price).toFixed(2);
+    if (shouldPostback)
+      PostbackBasketToServer();
+  }
+  function SetActiveTab(num) {
+    var x = document.getElementsByClassName("NewStyleWebTab");
+    for (var i = 0; i < x.length; i++) {
+      document.getElementById("span_tab" + i).classList.remove("SelectedWebTab");
+      document.getElementById("span_tab" + i).classList.remove("WebTab");
+
+      if (x[i].id == "div_tab" + num) {
+        x[i].style.display = "flex";
+        document.getElementById("span_tab" + i).classList.add("SelectedWebTab");
+      } else {
+        x[i].style.display = "none";
+        document.getElementById("span_tab" + i).classList.add("WebTab");
+      }
+    }
+  }
+
+  function SelectSaleItemOptionMulti(itemid, optnumber, optvalue, numoptions) {
+    var container = document.getElementById("SaleItem" + itemid + "_Option" + optnumber);
+    var children = container.getElementsByClassName("option");
+    var selected = 0;
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].classList.contains("activeoption")) {
+        selected++;
+        if (children[i].getAttribute("_value") == optvalue) {
+          //deselect
+          children[i].classList.remove("activeoption");
+          SetDisplay(children[i].getAttribute("_prompt"), false);
+          return;
+        }
+      }
+    }
+    if (selected < numoptions) {
+      for (var i = 0; i < children.length; i++)
+        if (children[i].getAttribute("_value") == optvalue) {
+          children[i].classList.add("activeoption");
+          SetDisplay(children[i].getAttribute("_prompt"), true);
+        }
+    }
+  }
+
+  function SetDisplay(which, isVisible) {
+      var elem = document.getElementById(which);
+      if (elem != null) {
+        if (isVisible)
+          elem.style.display = 'block';
+        else
+          elem.style.display = 'none';
+      }
+  }
+
+  function SelectSaleItemOption(itemid, optnumber, optvalue) {
+    var container = document.getElementById("SaleItem" + itemid + "_Option" + optnumber);
+    container.classList.remove("is-danger");
+    var children = container.getElementsByClassName("option");
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].getAttribute("_value") == optvalue) {
+          children[i].classList.add("activeoption");
+          SetDisplay(children[i].getAttribute("_prompt"), true);
+      } else {
+          children[i].classList.remove("activeoption");
+          SetDisplay(children[i].getAttribute("_prompt"), false);
+      }
+    }
+  }
+  function ShowUpsellPopup() {
+    var theForm = document.getElementById("UpsellForm");
+    var popupContainer = document.getElementById("UpsellPopupFormContainer");
+    if (theForm && popupContainer) {
+      var placeholderDiv = document.createElement("div");
+      placeholderDiv.id = "UpsellFormPlaceholder";
+      theForm.parentElement.insertBefore(placeholderDiv, theForm);
+      popupContainer.appendChild(theForm);
+    }
+
+    showOverlayAndPopup("UpsellPopup");
+  }
+
+  function HideUpsellPopup() {
+    var theForm = document.getElementById("UpsellForm");
+    var placeholderDiv = document.getElementById("UpsellFormPlaceholder");
+    if (theForm && placeholderDiv) {
+      placeholderDiv.parentElement.replaceChild(theForm, placeholderDiv);
+    }
+
+    hideOverlayAndPopup("UpsellPopup");
+  }
+</script>
+<script type="text/javascript">
+
+function ValidateMembershipPatronDetails(aPatronNumberOrEmailAddress, aPatronPostcode, aOnComplete) { 
+  var xmlhttp = getXMLHttp(); 
+  xmlhttp.onreadystatechange = function () {
+      if ((xmlhttp.readyState == 4) && (xmlhttp.status == 200)) {
+        var TheResponse = JSON.parse(xmlhttp.responseText);
+        if (TheResponse.Response == "OK") 
+          aOnComplete(true, TheResponse.PatronFullName, TheResponse.PatronNumber);
+        else
+          aOnComplete(false, "", "");
+      }
+  }
+  xmlhttp.open("POST", "https://thepoly.savoysystems.co.uk/ThePoly.dll/ValidatePatronDetails");
+  xmlhttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded')
+  xmlhttp.send("PatronNumberOrEmailAddress=" + encodeURI(aPatronNumberOrEmailAddress) + "&PatronPostcode=" + encodeURI(aPatronPostcode), true);
+}
+            var membershipItem = {
+                isRenewal: null,
+                autoRenew: null,
+                priceToPay: null,
+                startDate: null,
+                isForMe: null,
+                otherPatronNumber: null,
+                otherPatronPostCode: null,
+                otherPatronFullName: null,
+                validationCode: null,
+                shouldCreatePatron: null
+            }
+
+            function AddMembershipDiv(aParentElement, aId, aClassName, aInnerHTML) {
+                var div = document.createElement('div');
+                div.id = aId;
+                div.className = aClassName
+                div.innerHTML = aInnerHTML;
+
+                aParentElement.appendChild(div);
+
+                return div;
+            }
+
+            function AddMembershipLabelledInput(aParentElement, aInputType, aId, aName, aLabelHTML, aValue) {
+                var div = document.createElement('div');
+                div.classList.add("field");
+
+                var label = document.createElement('label');
+                label.innerHTML = aLabelHTML;
+                label.classList.add("label");
+                label.setAttribute('for', aId);
+
+                var input = document.createElement('input');
+                if ((aInputType !== 'checkbox') && (aInputType !== 'radio')){
+                  input.classList.add("input");
+                  input.setAttribute("placeholder", aLabelHTML);
+                }
+                input.type = aInputType;
+                input.id = aId;
+                input.name = aName;
+                input.value = aValue;
+                var Control = document.createElement("div");
+                Control.classList.add("control");
+                if ((aInputType == 'checkbox') || (aInputType == 'radio')) {
+                    Control.appendChild(label);
+                    label.classList.add("checkbox");
+                    label.prepend(input);
+                }
+                else {
+                    div.appendChild(label);
+                    Control.appendChild(input);
+                }
+                div.appendChild(Control);
+
+                aParentElement.appendChild(div);
+
+                return input;
+            }
+
+            function AddMembershipButton(aParentElement, aCaption, aOnClick) {
+                var button = document.createElement('a');
+                button.innerHTML = aCaption;
+                button.classList.add("Button");
+                button.classList.add("button");
+                button.addEventListener('click', aOnClick);
+
+                var div = document.createElement('div');
+                div.appendChild(button);
+
+                aParentElement.appendChild(div);
+
+                return button;
+            }
+
+            function InitMembershipDialog(aDialogContentId, aHeading) {
+                divContent = document.getElementById(aDialogContentId);
+                divContent.innerHTML = '';
+
+                AddMembershipDiv(divContent, '', 'PopupDialogHeading', aHeading);
+                AddMembershipDiv(divContent, aDialogContentId + 'dialogErrorMessage', 'DialogErrorMessage', '');
+
+                return divContent;
+            }
+
+            function SetMembershipDialogErrorMessage(aDialogContentId, aErrorMessageHTML) {
+                document.getElementById(aDialogContentId + 'dialogErrorMessage').innerHTML = aErrorMessageHTML;
+            }
+
+
+            function ShowMembershipPageOne(aDialogContentId, aMembershipType, aIsRenewal, aStartDate, aIsForMe, aOtherPatronNumber, aOtherPatronPostCode, aOtherPatronFullName) {
+                // Reset everything
+                membershipItem.isRenewal = aIsRenewal;
+                membershipItem.autoRenew = null;
+                membershipItem.priceToPay = null;
+                membershipItem.startDate = aStartDate;
+                membershipItem.isForMe = aIsForMe;
+                membershipItem.otherPatronNumber = aOtherPatronNumber;
+                membershipItem.otherPatronPostCode = aOtherPatronPostCode;
+                membershipItem.otherPatronFullName = aOtherPatronFullName;
+                membershipItem.validationCode = "";
+                membershipItem.shouldCreatePatron = null;
+
+                var divContent = InitMembershipDialog(aDialogContentId, '');
+
+                // Start Date (if editable)
+                if (aMembershipType.allowEditStartDate) {
+                    var inputStartDate = AddMembershipLabelledInput(divContent, 'date', 'Membership_StartDate', '', 'Start Date');
+                    inputStartDate.addEventListener('input', () => UpdateDuration(aMembershipType));
+                    inputStartDate.value = membershipItem.startDate;
+                }
+
+                // Duration
+                AddMembershipDiv(divContent, 'Membership_Duration', 'duration', MembershipDurationFmt(aMembershipType, membershipItem, ''));
+
+                // Auto-Renew (if allowed)
+                if (aMembershipType.allowAutoRenew) {
+
+                    chkAutoRenew = AddMembershipLabelledInput(divContent, 'checkbox', 'Membership_AutoRenew', '',  'Automatically Renew');
+
+                }
+
+                // Overpaymnet (if allowed)
+                if (aMembershipType.allowOverpayment) {
+                    inputPriceToPay = AddMembershipLabelledInput(divContent, 'input', 'Membership_PriceToPay', '',  'Price to Pay', aMembershipType.currentPrice.toFixed(2));
+                }
+
+                // Validation Code (if required)
+                if (aMembershipType.isValidationCodeRequired) {
+                    inputValidationCode = AddMembershipLabelledInput(divContent, 'input', 'Membership_ValidationCode', '',  aMembershipType.validationCodePromptText, '');
+                }
+
+                var shouldSkipPrompts =   !aMembershipType.allowEditStartDate &&   !aMembershipType.allowOverpayment &&   !aMembershipType.isValidationCodeRequired &&   !membershipItem.isRenewal &&   !aMembershipType.isJoint &&   !aMembershipType.allowPurchaseForSomeoneElse &&   !aMembershipType.allowAutoRenew; 
+                // Next button
+                var doNext = () => {
+                    if (aMembershipType.isValidationCodeRequired && (inputValidationCode.value.trim() == '')) {
+                        SetMembershipDialogErrorMessage(aDialogContentId, aMembershipType.validationCodePromptText + ' is required');
+                        return;
+                    }
+                    if (aMembershipType.allowEditStartDate && (inputStartDate.value == '')) {
+                        SetMembershipDialogErrorMessage(aDialogContentId, 'Start Date is required');
+                        return;
+                    }
+                    membershipItem.autoRenew = aMembershipType.allowAutoRenew && chkAutoRenew.checked;
+
+                    if (aMembershipType.allowEditStartDate)
+                        membershipItem.startDate = inputStartDate.value;
+
+                    if (aMembershipType.allowOverpayment) 
+                        membershipItem.priceToPay = parseFloat(inputPriceToPay.value);
+
+                    if (aMembershipType.isValidationCodeRequired) 
+                        membershipItem.validationCode = inputValidationCode.value;
+
+                    if (membershipItem.isRenewal) 
+                        ShowMembershipPage_Summary(aDialogContentId, aMembershipType, false);
+                    else if (!aMembershipType.isJoint && membershipItem.autoRenew) {
+                        membershipItem.isForMe = true;
+                        ShowMembershipPage_Summary(aDialogContentId, aMembershipType, false);
+                    }
+                    else if (aMembershipType.isJoint) {
+                        membershipItem.isForMe = true;
+                        ShowMembershipPage_SelectPatron(aDialogContentId, aMembershipType);
+                    }
+                    else {
+                      if (aMembershipType.allowPurchaseForSomeoneElse)
+                        ShowMembershipPage_SelectForMeOrSomeoneElse(aDialogContentId, aMembershipType);
+                      else {
+                        membershipItem.isForMe = true;
+                        ShowMembershipPage_Summary(aDialogContentId, aMembershipType, shouldSkipPrompts);
+                      }
+                    }
+                };
+                if (shouldSkipPrompts) 
+                  doNext();
+                else 
+                  AddMembershipButton(divContent, 'Next', doNext);
+            }
+
+            function ShowMembershipPage_SelectForMeOrSomeoneElse(aDialogContentId, aMembershipType) {
+                var divContent = InitMembershipDialog(aDialogContentId, 'Who is the Membership for?');
+
+                // Membership is for me
+                rdoForMe = AddMembershipLabelledInput(divContent, 'radio', 'ForMe', 'ForWhom', 'Membership is for me', 'Y');
+                // Membership is for someone else
+                rdoForSomeoneElse = AddMembershipLabelledInput(divContent, 'radio', 'ForSomeoneElse', 'ForWhom', 'Membership is for someone else', 'N');
+
+                // Next button
+                AddMembershipButton(divContent, 'Next', () => {
+                    if (!rdoForMe.checked && !rdoForSomeoneElse.checked) {
+                        SetMembershipDialogErrorMessage(aDialogContentId, 'Please choose who the Membership is for');
+                        return;
+                    }
+
+                    membershipItem.isForMe = rdoForMe.checked;
+
+                    if (rdoForMe.checked)
+                        ShowMembershipPage_Summary(aDialogContentId, aMembershipType, false)
+                    else
+                        ShowMembershipPage_SelectPatron(aDialogContentId, aMembershipType);
+                });
+            }            
+
+            function ShowMembershipPage_SelectPatron(aDialogContentId, aMembershipType) {
+
+                var divContent = InitMembershipDialog(aDialogContentId, aMembershipType.isJoint ? 'Choose Joint Member' : 'Choose Member');
+
+                var blurb = document.createElement('div');
+                blurb.classList.add('SelectOtherPatronBlurb');
+                divContent.appendChild(blurb);
+
+                if (aMembershipType.isJoint)
+                  blurb.innerHTML = 'NB: The Patron with whom you are becoming a joint member must already have an Account on the system';
+                else
+                  blurb.innerHTML = 'NB: The Patron for whom you are purchasing this membership must already have an Account on the system';
+
+                var inputPatronNumberOrEmailAddress = AddMembershipLabelledInput(divContent, 'text', '', '', 'Patron Number / Email Address', '');
+                var inputPostCode = AddMembershipLabelledInput(divContent, 'text', '', '', 'Post Code', '');
+
+                var divProgress = AddMembershipDiv(divContent, '', '', 'Please wait...');
+                divProgress.style.visibility = 'hidden';
+
+                // Next button
+                AddMembershipButton(divContent, 'Check Details', () => {
+                    if (inputPatronNumberOrEmailAddress.value == '') {
+                        SetMembershipDialogErrorMessage(aDialogContentId,
+                            'Please specify the ' + (aMembershipType.isJoint ? 'Joint ' : '') + 'Member\'s Patron Number / Email Address');
+                        return;
+                    }
+
+                    if (inputPostCode.value == '') {
+                        SetMembershipDialogErrorMessage(aDialogContentId,
+                            'Please specify the ' + (aMembershipType.isJoint ? 'Joint ' : '') + 'Member\'s Post Code');
+                        return;
+                    }
+
+                    divProgress.style.visibility = 'visible';
+
+                    ValidateMembershipPatronDetails(inputPatronNumberOrEmailAddress.value, inputPostCode.value,   (aDoesPatronExist, aPatronFullName, aPatronNumber) => {
+                         if (aDoesPatronExist) {
+                            membershipItem.otherPatronNumber = aPatronNumber;
+                            membershipItem.otherPatronPostCode = inputPostCode.value;
+                            membershipItem.otherPatronFullName = aPatronFullName;
+
+                            ShowMembershipPage_Summary(aDialogContentId, aMembershipType, false);
+                        }
+                        else {
+                            ShowMembershipPage_TryAgainSelectPatronOrCreateNew(aDialogContentId, aMembershipType);
+                        }
+                    });
+                });
+            }
+
+            function ShowMembershipPage_TryAgainSelectPatronOrCreateNew(aDialogContentId, aMembershipType) {
+                var divContent = InitMembershipDialog(aDialogContentId, 'Check Failed');
+
+                AddMembershipDiv(divContent, '', '', 'We were unable to find a match in the system');
+
+                AddMembershipButton(divContent, 'Try Again', () => {
+                    ShowMembershipPage_SelectPatron(aDialogContentId, aMembershipType);
+                });
+
+            }
+
+            function ShowMembershipPage_Summary(aDialogContentId, aMembershipType, aAddAndGoToBasketImmediately) {
+                var divContent = InitMembershipDialog(aDialogContentId, 'Summary');
+
+                AddMembershipDiv(divContent, '', '', MembershipItemFmt(aMembershipType, membershipItem, '<br/>'))
+                if (membershipItem.autoRenew){
+                  var blurb = document.createElement('div');
+                  blurb.classList.add('AutoRenewMembershipBlurb');
+                  blurb.classList.add('notification');
+                  divContent.appendChild(blurb);
+                  blurb.innerHTML = 'By selecting Automatically Renew I accept that the Credit/Debit Card I use to complete this purchase will be charged again every time my Membership expires.';
+                }
+
+                // Add to Order button
+                var doAdd = () => {
+                    aMembershipType.doAddMembership(aMembershipType, membershipItem);
+                    hideOverlayAndPopup(aMembershipType.popupId);
+                };
+                if (aAddAndGoToBasketImmediately) 
+                  doAdd();
+                else 
+                  AddMembershipButton(divContent, 'Add to Order', doAdd); 
+            }
+   function ForCommaText(aString) {
+            return (aString == null ? null : '"' + aString.replace('"', '""') + '"');
+        }
+   function DateToStr_(aDate) {
+       var d = new Date(aDate),
+           month = '' + (d.getMonth() + 1),
+           day = '' + d.getDate(),
+           year = d.getFullYear();
+
+       if (month.length < 2)
+           month = '0' + month;
+       if (day.length < 2)
+           day = '0' + day;
+       return [year, month, day].join('-');
+   }
+   function DateFmtDMMMYYYY(aDate) {
+     var ShortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+     return aDate.getDate() + ' ' + ShortMonths[aDate.getMonth()] + ' ' + aDate.getFullYear();
+   }
+   function getAutoRenewPrice(aDate, aMembershipType) {
+     var theDate = new Date(aDate);
+     for (var i = 0; i < aMembershipType.autoRenewPricingRules.length; i++) {
+       var startDate = new Date(aMembershipType.autoRenewPricingRules[i].start);
+       var endDate = new Date(aMembershipType.autoRenewPricingRules[i].end);
+       if ((theDate >= startDate) && (theDate <= endDate))
+         return aMembershipType.autoRenewPricingRules[i].price;
+     }
+     return aMembershipType.autoRenewPricingRules[0].price;
+   }
+   function IntDiv(a,b) {
+     var result = a/b;
+     if(result >= 0)
+       return Math.floor(result);
+     else
+       return Math.ceil(result);
+   }
+   function IsLeapYear(aYear) {
+     return (aYear % 4 == 0) && ((aYear % 100 != 0) || (aYear % 400 == 0));
+   }
+   function IncMonths(aDate, aNumberOfMonths) {
+     var sign = aNumberOfMonths >= 0 ? 1 : -1;
+     var year = aDate.getFullYear() + IntDiv(aNumberOfMonths, 12);
+     var month = aDate.getMonth() + aNumberOfMonths % 12;
+     if (month > 11) {
+       year = year + sign;
+       month = month -12 * sign;
+     }
+    var MonthDays;
+    if (IsLeapYear(year))
+   	   MonthDays = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+     else
+       MonthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+     var day = aDate.getDate();
+     if (day > MonthDays[month])
+       day = MonthDays[month];
+     return new Date(year, month, day);
+   }
+   function getEndDate(aStartDate, aMembershipType) {
+     var result = new Date(aStartDate);
+     if (aMembershipType.validityType == 'DAYS')
+       result.setDate(result.getDate() + aMembershipType.validityNumPeriods);
+     else if (aMembershipType.validityType == 'WEEKS')
+       result.setDate(result.getDate() + 7 * aMembershipType.validityNumPeriods);
+     else if (aMembershipType.validityType == 'MONTHS')
+       result = IncMonths(result, aMembershipType.validityNumPeriods);
+     else if (aMembershipType.validityType == 'YEARS')
+       result = IncMonths(result, aMembershipType.validityNumPeriods * 12);
+     result.setDate(result.getDate() - 1);
+     return result;
+   }
+function MembershipDurationFmt(aMembershipType, aMembershipItem, aDelimiter) {
+    details = aMembershipType.durationIfFixedFmt;
+    if (aMembershipType.allowEditStartDate) {
+        if (aMembershipItem.startDate != '') {
+            var startDate = new Date(aMembershipItem.startDate);
+            details += DateFmtDMMMYYYY(startDate) + ' to ' + DateFmtDMMMYYYY(getEndDate(startDate, aMembershipType));
+        } else {
+            details += '&nbsp;';
+        }
+    }
+    if (details != '') details = aDelimiter + details;
+    return details;
+}
+function UpdateDuration(aMembershipType) {
+    membershipItem.startDate =  document.getElementById('Membership_StartDate').value;
+    document.getElementById('Membership_Duration').innerHTML = MembershipDurationFmt(aMembershipType, membershipItem, '');
+}
+function MembershipItemFmt(aMembershipType, aMembershipItem, aDelimiter) {
+    var details = "Price: \xA3";
+    if (aMembershipType.allowOverpayment)
+        details += aMembershipItem.priceToPay.toFixed(2);
+    else if (aMembershipItem.autoRenew)
+        details += getAutoRenewPrice(aMembershipItem.startDate, aMembershipType).toFixed(2);
+    else
+        details += aMembershipType.currentPrice.toFixed(2);
+    details += aDelimiter + "For ";
+    if (aMembershipItem.isForMe && !aMembershipType.isJoint) details += "me";
+    if (aMembershipItem.isForMe && aMembershipType.isJoint) details += "me and " + aMembershipItem.otherPatronFullName;
+    if (!aMembershipItem.isForMe) details += aMembershipItem.otherPatronFullName;
+    details += MembershipDurationFmt(aMembershipType, aMembershipItem, aDelimiter);
+    if (aMembershipItem.autoRenew) details += " (Auto-renew)";
+    return details;
+}
+function EncodeAddMembershipRenewalParameters(aMembershipType, aMembershipItem) {
+    details = '.';
+    details += (aMembershipItem.autoRenew ? 'Y' : 'N');
+    details += DateToStr_(aMembershipItem.startDate);
+    details += '.';
+    if (aMembershipType.allowOverpayment)
+        details += (aMembershipItem.priceToPay * Math.pow(10, 2)).toFixed(0);
+    else if (aMembershipItem.autoRenew)
+        details += (getAutoRenewPrice(aMembershipItem.startDate, aMembershipType) * Math.pow(10, 2)).toFixed(0);
+    else
+        details += (aMembershipType.currentPrice * Math.pow(10, 2)).toFixed(0);
+    details += '.';
+    details += encodeURI(aMembershipItem.validationCode);
+    return details;
+}
+function AddMembershipItemToPageAndCreateHiddenInput(aMembershipType, aMembershipItem) {
+    const MEMBERSHIP_ITEMS_FOR_MEMBERSHIP_TYPE_ID_PREFIX = 'MembershipItemsForType';
+
+    var parent = document.getElementById(MEMBERSHIP_ITEMS_FOR_MEMBERSHIP_TYPE_ID_PREFIX + aMembershipType.membershipTypeUniqueId);
+
+    var itemIndex = 1;
+    while (document.getElementById(aMembershipType.membershipItemUniqueIDPrefix + itemIndex) != null)
+        itemIndex++;
+
+    var divMembershipItem = document.createElement("div");
+    divMembershipItem.className = "MembershipSaleAddedItem SaleAddedItem";
+    divMembershipItem.id = aMembershipType.membershipItemUniqueIDPrefix + itemIndex;
+
+    var hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.name = aMembershipType.membershipItemUniqueIDPrefix + itemIndex;
+    hiddenInput.value =
+        "AutoRenew=" + (aMembershipItem.autoRenew ? "Y" : "N") +
+        ",IsForMe=" + (aMembershipItem.isForMe ? "Y" : "N") +
+        ",OtherPatronNumber=" + aMembershipItem.otherPatronNumber +
+        ",OtherPatronPostCode=" + ForCommaText(aMembershipItem.otherPatronPostCode) +
+        ",PriceToPay=" + aMembershipItem.priceToPay +
+        ",ValidationCode=" + ForCommaText(aMembershipItem.validationCode) +
+        ",StartDate=" + DateToStr_(aMembershipItem.startDate);
+    divMembershipItem.appendChild(hiddenInput);
+
+    parent.appendChild(divMembershipItem);
+}
+
+</script>
+</head>
+<body  class="loggedout"  onload=""><div id="Header" class="row">
+		<div class="content">
+			<div class="fourcol">
+				<div id="Logo">
+					<a href="http://www.ThePoly.org/"><img src="/ThePoly/logo.png" border="none"/></a>
+				</div>
+				<div id="MobileLogo">
+					<a href="http://www.ThePoly.org/"><img src="/ThePoly/logo-mobile.png" border="none"/></a>
+				</div>
+			</div>
+			<div class="address eightcol last">
+				<div>24 Church St, Falmouth :   <font color='#42bed5'> 01326 319461</font> </div>
+				<div>The Royal Cornwall Polytechnic Society</div> 
+			</div>
+		</div>
+		<div class="twelvecol menu-container">
+			<div class="menu-bar">				
+				<div class="twelvecol">
+					<div id="menu">
+						<ul>
+							<li><a href="https://thepoly.org/whats-on">What's On?</a>
+								<ul>
+									<li><a href="https://thepoly.org/whats-on/film">Film</a></li>					
+									<li><a href="https://thepoly.org/whats-on/comedy">Comedy</a></li>						
+									<li><a href="https://thepoly.org/whats-on/music">Music</a></li>						
+									<li><a href="https://thepoly.org/whats-on/theatre">Theatre</a></li>						
+									<li><a href="https://thepoly.org/whats-on/exhibitions">Exhibitions</a></li>						
+									<li><a href="https://thepoly.org/whats-on/talks">Talks</a></li>						
+									<li><a href="https://thepoly.org/whats-on/family">family</a></li>						
+									<li><a href="https://thepoly.org/whats-on/community-activities">Community</a></li>						
+									<li class="lastitem"><a href="https://thepoly.org/whats-on/workshops">workshops</a></li>	
+					
+								</ul>				
+							</li>
+							<li><a href="https://thepoly.org/venue">The Venue</a>
+								<ul>
+									<li><a href="https://thepoly.org/venue/polypottery">The Poly Pottery</a></li>						
+									<li><a href="https://thepoly.org/venue/the-poly-cafe-bar">The Poly Cafe Bar</a></li>						
+									<li><a href="https://thepoly.org/venue/venue-hire">Venue Hire</a></li>						
+									<li><a href="https://thepoly.org/venue/collections">Archives</a></li>						
+									<li><a href="https://thepoly.org/venue/collections/tuke-collection"> - Tuke Collection</a></li>						
+									<li><a href="https://thepoly.org/venue/collections/rcps-archive"> - RCPS Archive</a></li>						
+									<li><a href="https://thepoly.org/venue/collections/falmouth-history-archive"> - Falmouth History Archive</a></li>						
+									<li><a href="https://thepoly.org/venue/collections/world-war-one"> - World War One</a></li>						
+								</ul>				
+							</li>
+							<li><a href="https://thepolyguild.org/">The Guild Shop</a></li>
+							<li><a href="https://thepoly.org/get-involved">Get Involved</a>
+								<ul>
+									<li><a href="https://thepoly.org/get-involved/membership">Membership</a></li>						
+									<li><a href="https://thepoly.org/get-involved/business-supporters">Business Supporters</a></li>						
+									<li><a href="https://thepoly.org/get-involved/poly-patrons">Poly Patrons</a></li>						
+									<li><a href="https://thepoly.org/get-involved/donate">Donate</a></li>						
+									<li><a href="https://thepoly.org/get-involved/donate/poly200"> - Poly 200</a></li>						
+									<li><a href="https://thepoly.org/get-involved/donate/legacy-donations">Legacy Donations</a></li>						
+									<li><a href="https://thepoly.org/get-involved/gift-vouchers">Gift Vouchers</a></li>						
+									<li><a href="https://thepoly.org/get-involved/volunteer">Volunteer</a></li>						
+									<li><a href="https://thepoly.org/get-involved/vacancies">Vacancies</a></li>						
+								</ul>				
+							</li>
+							<li><a href="https://thepoly.org/about-us">About Us</a>
+								<ul>
+									<li><a href="https://thepoly.org/about-us">The Charity</a></li>						
+									<li><a href="https://thepoly.org/about-us/governance">Governance</a></li>						
+									<li><a href="https://thepoly.org/about-us/events-guide-newsletter">Events Guide & Newsletter</a></li>
+									<li><a href="https://thepoly.org/about-us/projects">Projects</a></li>
+									<li><a href="https://thepoly.org/about-us/projects/polystories">- Poly Stories</a></li>
+									<li><a href="https://thepoly.org/about-us/projects/the-rcps-medal-awards">- The RCPS Medal Awards</a></li>
+									<li><a href="https://thepoly.org/about-us/news">News</a></li>
+									<li><a href="https://thepoly.org/about-us/environmental-sustainability">Environmental Sustainability</a></li>						
+								</ul>				
+							</li>
+							<li><a href="https://thepoly.org/contact">Contact</a>
+								<ul>
+									<li><a href="https://thepoly.org/contact/faq">FAQ</a></li>						
+									<li><a href="https://thepoly.org/contact/privacy-policy">Privacy Policy</a></li>						
+								</ul>				
+							</li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+<div id="Main">
+
+<div  id="WizardSteps"  ><ul><li class="CurrentWizardStep" id="TSelectItems"><span class="Number"></span><span class="Order">1</span><span class="Caption">Select Items</span></li><li class="UnrequiredWizardStep" id="TDeliveryOptions"><span class="Number"></span><span class="Order">2</span><span class="Caption">Delivery Options</span></li><li class="UnrequiredWizardStep" id="TGiftAid"><span class="Number"></span><span class="Order">3</span><span class="Caption">Gift Aid</span></li><li class="RequiredWizardStep" id="TNameAndAddress"><span class="Number"></span><span class="Order">4</span><span class="Caption">Name & Address</span></li><li class="UnrequiredWizardStep" id="TFurtherDetails"><span class="Number"></span><span class="Order">5</span><span class="Caption">Further Details</span></li><li class="UnrequiredWizardStep" id="TDiscounts"><span class="Number"></span><span class="Order">6</span><span class="Caption">Discounts</span></li><li class="RequiredWizardStep" id="TPayment"><span class="Number"></span><span class="Order">7</span><span class="Caption">Payment</span></li></ul></div><div class="clearfix"></div>
+<div id="Content"><div  id="SideBarToggleMenu"  ><div id="opener" class="SideBarToggle"  onclick="return showSideBar('SideBar');">Menu<span class="icon icon-menu"></span></div>
+<div id="closer" class="SideBarToggle" style="display: none;"  onclick="return hideSideBar('SideBar');">Menu<span class="icon icon-menu"></span></div>
+<script type="text/javascript">
+function showSideBar(DivID) {
+  document.getElementById(DivID).style.display='block';
+  document.getElementById('opener').style.display='none';
+  document.getElementById('closer').style.display='block';
+}
+function hideSideBar(DivID) {
+  document.getElementById(DivID).style.display='none';
+  document.getElementById('opener').style.display='block';
+  document.getElementById('closer').style.display='none';
+}
+</script>
+</div><div  id="SideBar"  ><div  id="SideBarHeader"  ></div><div  ID="UserDefinedMenu"  class="SideBarMenu"><div   class="SideBarFirstHeading " >Tickets</div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_918.TcsWebTab_919">All Shows</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90417.TcsWebTab_90418">Film</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90419.TcsWebTab_90420">Theatre</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90421.TcsWebTab_90422">Comedy</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424">Music</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90425.TcsWebTab_90426">Family</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90427.TcsWebTab_90428">Talks</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90429.TcsWebTab_90430">External Events</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_920.TcsWebTab_921">Calendar</a></div></div><div  class="SideBarMenu"><div   class="SideBarHeading " >Support Us</div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_26126.TcsWebTab_26140">Become a Member</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1787422.TcsWebTab_1787423">Buy Vouchers</a></div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1788009.TcsWebTab_1788010">Make a Donation</a></div></div><div  class="SideBarMenu"><div   class="SideBarHeading " >Information</div><div   class="SideBarItem " ><a href="http://www.thepoly.org/" >Home</a></div></div><div  class="SideBarMenu"><div   class="SideBarHeading hidden" >Shop</div><div   class="SideBarItem hidden" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1797675.TcsWebTab_1797676">Pottery Kit</a></div><div   class="SideBarItem hidden" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_2338043.TcsWebTab_2338044">Cocktail Deal</a></div></div><div  ID="MyOrderMenu"  class="SideBarMenu"><div   class="SideBarHeading " >My Order</div><div   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsSummary">Basket is Empty</a></div><div  id="MyOrderSimpleMenu"   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsSummary">Basket (0)</a></div></div><div  ID="MyAccountMenu"  class="SideBarMenu"><div  id="AccountNotLoggedIn"   class="SideBarHeading " >My Account</div><div  id="AccountLogIn"   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waLoginPrompt">Log In</a></div><div  id="AccountPasswordReset"   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waPasswordResetRequestPrompt">Password Reset</a></div><div  id="AccountCreateAnAccount"   class="SideBarItem" ><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waRegisterPrompt">Create an Account</a></div></div><div  ID="PoweredByMenu"  class="SideBarMenu"><div   class="SideBarHeading " >Powered By</div><div   class="SideBarItem" ><a href="http://www.savoysystems.co.uk" target="_blank">Savoy Systems Ltd</a></div></div><div  id="SideBarFooter"  ></div></div> <div  id="Detail"   class="PerformanceList" ><div   class="DetailHeading" >Tickets</div><div   class="DetailSubHeading" ><span class="SelectedWebTab "><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424">Music</a></span></div><div class="programme twelvecol">
+	<h1 class="title"><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsProgramme_3712500">Journeys in Song with baritone Rupert Pardoe</a> </h1>
+        <div class="twelvecol Telephone">Book seats by phone on <b>01326 319461</b> or <b>Book Online</b> below:</div>
+	<div class="twelvecol showtimes">
+		<div>
+			<table cellpadding="0"><tr valign="top"><td><table cellpadding="0"><tr><td class="PeformanceListDate">Saturday 14 Nov 2026</td><td width="10px"></td><td class="PeformanceListTimes"><span class="StartTimeAndStatus"><a class="Button" href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsPerformance_3712501.TcsSection_53089" title="Click to Book">14:00</a></span></td></tr></table></td></tr></table>
+		</div>
+	</div>
+</div>
+<div class="clearfix"></div>
+<div class="programme twelvecol">
+	<h1 class="title"><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsProgramme_2758536">The Poly Presents an Evening with The FORCEFIELDS</a> </h1>
+        <div class="twelvecol Telephone">Book seats by phone on <b>01326 319461</b> or <b>Book Online</b> below:</div>
+	<div class="twelvecol showtimes">
+		<div>
+			<table cellpadding="0"><tr valign="top"><td><table cellpadding="0"><tr><td class="PeformanceListDate">Saturday 28 Nov 2026</td><td width="10px"></td><td class="PeformanceListTimes"><span class="StartTimeAndStatus"><a class="Button" href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsPerformance_3446034.TcsSection_1165" title="Click to Book">19:30</a></span></td></tr></table></td></tr></table>
+		</div>
+	</div>
+</div>
+<div class="clearfix"></div>
+<div class="programme twelvecol">
+	<h1 class="title"><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsProgramme_3239187">Martin Harley</a> </h1>
+        <div class="twelvecol Telephone">Book seats by phone on <b>01326 319461</b> or <b>Book Online</b> below:</div>
+	<div class="twelvecol showtimes">
+		<div>
+			<table cellpadding="0"><tr valign="top"><td><table cellpadding="0"><tr><td class="PeformanceListDate">Saturday 5 Dec 2026</td><td width="10px"></td><td class="PeformanceListTimes"><span class="StartTimeAndStatus"><a class="Button" href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsPerformance_3239233.TcsSection_1165" title="Click to Book">20:00</a></span></td></tr></table></td></tr></table>
+		</div>
+	</div>
+</div>
+<div class="clearfix"></div>
+<div class="programme twelvecol">
+	<h1 class="title"><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsProgramme_3805920">The Steve Buckley – Mike Outram Quartet</a> </h1>
+        <div class="twelvecol Telephone">Book seats by phone on <b>01326 319461</b> or <b>Book Online</b> below:</div>
+	<div class="twelvecol showtimes">
+		<div>
+			<table cellpadding="0"><tr valign="top"><td><table cellpadding="0"><tr><td class="PeformanceListDate">Friday 19 Feb 2027</td><td width="10px"></td><td class="PeformanceListTimes"><span class="StartTimeAndStatus"><a class="Button" href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsPerformance_3805951.TcsSection_1165" title="Click to Book">19:30</a></span></td></tr></table></td></tr></table>
+		</div>
+	</div>
+</div>
+<div class="clearfix"></div>
+<div class="programme twelvecol">
+	<h1 class="title"><a href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsProgramme_3734673">Tamsyn Kelly: Rat's Ass</a> </h1>
+        <div class="twelvecol Telephone">Book seats by phone on <b>01326 319461</b> or <b>Book Online</b> below:</div>
+	<div class="twelvecol showtimes">
+		<div>
+			<table cellpadding="0"><tr valign="top"><td><table cellpadding="0"><tr><td class="PeformanceListDate">Saturday 27 Feb 2027</td><td width="10px"></td><td class="PeformanceListTimes"><span class="StartTimeAndStatus"><a class="Button" href="https://thepoly.savoysystems.co.uk/ThePoly.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_90423.TcsWebTab_90424.TcsPerformance_3734747.TcsSection_1165" title="Click to Book">19:30</a></span></td></tr></table></td></tr></table>
+		</div>
+	</div>
+</div>
+<div class="clearfix"></div>
+</div><div id="PageTrackingStageElementId" style="display:none;">waSelectItemsPrompt</div></div>
+
+</div>
+<div class="footer">
+	<div class="row">
+		<div class="content">
+			<div class="sixcol">
+				<h4>Contact us:</h4>
+				<ul>
+					<li><span>T:</span> 01326 319461</li>
+					<li><span>E:</span> info@thepoly.org</li>
+				</ul>
+				<h4>Address:</h4>
+				<ul>
+					<li>The Poly, 24 Church Street,</li>
+					<li>Falmouth, TR11 3EG</li>
+				</ul>
+			</div>
+			<div class="sixcol last">
+				<h4>Social Media:</h4>
+				<p>Keep up to date with The Poly:</p>
+				<ul class="socials">
+					<li><a href="https://twitter.com/PolyFalmouth"><img src="/ThePoly/tw.png"/></a></li>
+					<li><a href="https://www.facebook.com/polyfalmouth"><img src="/ThePoly/fb.png"/></a></li>
+					<li><a href="https://www.linkedin.com/company/2239341"><img src="/ThePoly/in.png"/></a></li>
+					<li><a href="https://www.instagram.com/the_poly_falmouth/"><img src="/ThePoly/li.png"/></a></li>
+				</ul>
+			</div>
+		</div>
+	</div>	
+	<div class="clearfix"></div>
+	<div class="row dotted">
+		<div class="content">
+			<div class="twelvecol">
+				<p> © The Poly - The Poly is the trading name of the Royal Cornwall Polytechnic Society Limited, a company limited by guarantee and incorporated in England and Wales with company registration number 03909555 and registered charity number 1081199, with its registered office at 24 Church Street, Falmouth TR11 3EG</p>				
+			</div>
+			<div class="sixcol">
+				<p>site: creativeedge</p>
+			</div>
+			<div class="sixcol last savoy">
+				<p>Powered by <a href="http://savoysystems.co.uk">Savoy Systems</a></p>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+(function() {
+   var o = document.createElement('script'); o.type = 'text/javascript';
+   var prefix = "http";
+   if (location.protocol === 'https:')
+     prefix = prefix + 's'; 
+
+   o.src = prefix + '://' + 'savoysystems.co.uk/globalbookingjs/oscar.js';
+   var s = document.getElementsByTagName('script')[0];
+   s.parentNode.insertBefore(o, s);
+})();
+</script>
+<div id="Overlay"></div><script>
+  function DoWebsiteTracking(){
+}
+DoWebsiteTracking();
+</script></body>
+</html>

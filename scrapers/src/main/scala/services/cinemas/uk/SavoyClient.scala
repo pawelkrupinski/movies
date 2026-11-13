@@ -7,7 +7,7 @@ import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import play.api.libs.json._
 import services.cinemas.CountryNames
-import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{AgeRating, CinemaScraper, OnlyMovieEventsFilter, ScraperParse, SlotsToMovies, VenueCategory}
 import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
@@ -34,9 +34,13 @@ import scala.util.Try
  * }}}
  *
  * One request is the venue's whole scrape, every date it sells (Phoenix: eight months
- * ahead). Savoy is cinema ticketing, so every event is a screening — opera and ballet
- * relays, NT Live, a silent film with a live score included; the
- * [[OnlyMovieEventsFilter]] still drops a stray live gig a venue sells through it.
+ * ahead). Savoy is cinema ticketing, and most of its venues' events are screenings —
+ * opera and ballet relays, NT Live, a silent film with a live score included — but a
+ * venue that is also its town's stage sells its tribute acts, pantos and talks through it
+ * too, and files each under its own category: `TypeDescription` ("Live Music", "Theatre"),
+ * which [[VenueCategory]] reads, dropping the live shows (Regal Stowmarket's "Sods
+ * Presents: Pinocchio", a Garth Brooks tribute act). The [[OnlyMovieEventsFilter]] still
+ * drops a stray live gig a venue files as a film.
  *
  * BOOKING-ONLY VENUES. Some venues keep their own site elsewhere and use Savoy only
  * to sell tickets (Ilkley Cinema's box office is `book.ilkleycinema.co.uk`). Their
@@ -54,7 +58,10 @@ import scala.util.Try
  * button's text ("16:00") or precedes it ("3:30pm <a>Book</a>"), so the page is read
  * in document order: each titled `TcsProgramme_` link — or, where a template links
  * none (Wetherby), the block's `title` heading — names the film the date rows after it
- * belong to. [[SavoyClient.BoxOffice]] picks that page.
+ * belong to. [[SavoyClient.BoxOffice]] picks that page. Such a box office files its
+ * events under category tabs ("Cinema", "Theatre", "Live Music" at The Beehive Honiton),
+ * each a page listing its own: a venue with a live performance's tab has its tabs read
+ * too, and the live shows dropped ([[VenueCategory]]).
  *
  * @param dllBase the venue's app root, ending in `.dll/`.
  * @param listing which page carries the programme: [[SavoyClient.WhatsOn]] on a full
@@ -74,7 +81,7 @@ class SavoyClient(
   override def sourceUrl: Option[String] = Some(pageUrl)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
-    listing.parse(HttpRead.page(http, pageUrl), dllBase, cinema, today)
+    listing.read(http, dllBase, cinema, today)
 }
 
 object SavoyClient {
@@ -83,6 +90,9 @@ object SavoyClient {
   sealed trait Listing {
     def page: String
     def parse(html: String, dllBase: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie]
+    /** The venue's programme, read off its pages. */
+    def read(http: HttpFetch, dllBase: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] =
+      parse(HttpRead.page(http, s"$dllBase$page"), dllBase, cinema, today)
   }
 
   /** A full venue site: `WhatsOn`, the programme in its `var Events` literal. */
@@ -97,6 +107,28 @@ object SavoyClient {
     val page = ""
     def parse(html: String, dllBase: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] =
       parseBoxOffice(html, dllBase, cinema, today)
+    /** The root page's programme, less the live shows its category tabs file ([[liveShowsFiled]]). */
+    override def read(http: HttpFetch, dllBase: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
+      val html  = HttpRead.page(http, dllBase)
+      val shows = liveShowsFiled(html, dllBase, url => Try(HttpRead.page(http, url)).toOption)
+      parseBoxOffice(html, dllBase, cinema, today).filterNot(movie => shows.get(movie.movie.title).exists(VenueCategory.filedAsLiveShow(_, movie)))
+    }
+  }
+
+  /** Each title the box office's category tabs list, with the tabs listing it — read only where one tab files live
+   *  performances ([[VenueCategory.namesLiveShow]]), and then only the tabs naming a performance or the screen, the rest
+   *  ("Family", "External Events", "Buy Vouchers") telling nothing. A tab that cannot be read lists nothing: its events
+   *  stay listed. */
+  private[uk] def liveShowsFiled(root: String, dllBase: String, fetch: String => Option[String]): Map[String, Seq[String]] = {
+    val tabs = Jsoup.parse(root, dllBase).select("a[href*=TcsWebTab_]").asScala.toSeq
+      .map(a => a.text.collapsedSpaces -> a.attr("abs:href"))
+      .filter { case (name, url) => url.nonEmpty && !url.contains("TcsProgramme_") && (VenueCategory.namesLiveShow(name) || VenueCategory.namesScreen(name)) }
+      .distinct
+    if (!tabs.exists { case (name, _) => VenueCategory.namesLiveShow(name) }) Map.empty
+    else tabs.flatMap { case (name, url) =>
+      fetch(url).toSeq.flatMap(tab => Jsoup.parse(tab, dllBase).select(s"a[href*=TcsProgramme_], $LinklessTitle").asScala.flatMap(programmeOf))
+        .map(_.title -> name)
+    }.groupMap(_._1)(_._2)
   }
 
   /** The script literal holding the programme. */
@@ -124,6 +156,8 @@ object SavoyClient {
       format     = if ((perf \ "SU").asOpt[String].contains("Y")) List("SUB") else Nil
     ))
 
+    // the venue's own filing of each event: "Live Music", "Theatre" mark the live shows a mixed venue sells beside its films
+    val filed = events.flatMap(event => titleOf(event).map(_ -> jsonText(event \ "TypeDescription").getOrElse(""))).groupMap(_._1)(_._2)
     SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
       val event = group.head.event
       def text(field: String): Option[String] =
@@ -148,7 +182,7 @@ object SavoyClient {
         externalIds = (event \ "ID").asOpt[Long].map(id => "savoy" -> id.toString).toMap,
         ageRating   = text("Rating").flatMap(BbfcAlt.findFirstMatchIn(_)).flatMap(m => AgeRating.normalize(m.group(1)))
       )
-    }
+    }.filterNot(movie => VenueCategory.filedAsLiveShow(filed.getOrElse(movie.movie.title, Nil), movie))
   }
 
   /** An event's credits, read by what each field holds. A venue types its credits into the template's own

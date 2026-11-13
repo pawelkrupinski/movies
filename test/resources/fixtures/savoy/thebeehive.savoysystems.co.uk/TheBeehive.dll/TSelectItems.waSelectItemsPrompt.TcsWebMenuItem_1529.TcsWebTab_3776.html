@@ -1,0 +1,3916 @@
+<!DOCTYPE html>
+<html lang="en" id="HTMLBooking">
+<head><title>The Beehive</title><!DOCTYPE html>
+<html lang="en" id="HTMLBooking">
+<head><title>The Beehive</title><script>
+  function showOverlayAndPopup(aPopupElementID) { 
+    document.getElementById(aPopupElementID).style.display = "block";
+    document.getElementById("Overlay").style.display = "block";
+  }
+  function hideOverlayAndPopup(aPopupElementID) {
+    document.getElementById(aPopupElementID).style.display = "none";
+    document.getElementById("Overlay").style.display = "none";
+  }
+</script>
+<link rel="apple-touch-icon" sizes="180x180" href="/TheBeehive/favicons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/TheBeehive/favicons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/TheBeehive/favicons/favicon-16x16.png">
+<link rel="manifest" href="/TheBeehive/favicons/site.webmanifest">
+<link rel="mask-icon" href="/TheBeehive/favicons/safari-pinned-tab.svg" color="#24465c">
+<meta name="msapplication-TileColor" content="#ffc40d">
+<meta name="theme-color" content="#ffffff">
+
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script type="text/javascript" src="https://code.jquery.com/jquery-latest.js"></script>
+
+<link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<STYLE type="text/css">
+
+@import url(https://fonts.googleapis.com/css?family=Arimo:400,700,400italic,700italic);
+
+@font-face {
+  font-family: 'icomoon';
+  src:url('/TheBeehive/fonts/icomoon.eot?ls8bmp');
+  src:url('/TheBeehive/fonts/icomoon.eot?ls8bmp#iefix') format('embedded-opentype'),
+    url('/TheBeehive/fonts/icomoon.ttf?ls8bmp') format('truetype'),
+    url('/TheBeehive/fonts/icomoon.woff?ls8bmp') format('woff'),
+    url('/TheBeehive/fonts/icomoon.svg?ls8bmp#icomoon') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+    /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'icomoon' !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-home:before {
+  content: "\e900";
+}
+.icon-home2:before {
+  content: "\e901";
+}
+.icon-home3:before {
+  content: "\e902";
+}
+.icon-pencil:before {
+  content: "\e905";
+}
+.icon-pencil2:before {
+  content: "\e906";
+}
+.icon-quill:before {
+  content: "\e907";
+}
+.icon-droplet:before {
+  content: "\e90b";
+}
+.icon-paint-format:before {
+  content: "\e90c";
+}
+.icon-image:before {
+  content: "\e90d";
+}
+.icon-camera:before {
+  content: "\e90f";
+}
+.icon-headphones:before {
+  content: "\e910";
+}
+.icon-music:before {
+  content: "\e911";
+}
+.icon-play:before {
+  content: "\e912";
+}
+.icon-film:before {
+  content: "\e913";
+}
+.icon-video-camera:before {
+  content: "\e914";
+}
+.icon-dice:before {
+  content: "\e915";
+}
+.icon-pacman:before {
+  content: "\e916";
+}
+.icon-spades:before {
+  content: "\e917";
+}
+.icon-clubs:before {
+  content: "\e918";
+}
+.icon-diamonds:before {
+  content: "\e919";
+}
+.icon-bullhorn:before {
+  content: "\e91a";
+}
+.icon-connection:before {
+  content: "\e91b";
+}
+.icon-book:before {
+  content: "\e91f";
+}
+.icon-books:before {
+  content: "\e920";
+}
+.icon-library:before {
+  content: "\e921";
+}
+.icon-paste:before {
+  content: "\e92d";
+}
+.icon-price-tag:before {
+  content: "\e935";
+}
+.icon-price-tags:before {
+  content: "\e936";
+}
+.icon-ticket:before {
+  content: "\e939";
+}
+.icon-cart:before {
+  content: "\e93a";
+}
+.icon-coin-pound:before {
+  content: "\e93d";
+}
+.icon-credit-card:before {
+  content: "\e93f";
+}
+.icon-phone:before {
+  content: "\e942";
+}
+.icon-phone-hang-up:before {
+  content: "\e943";
+}
+.icon-address-book:before {
+  content: "\e944";
+}
+.icon-envelop:before {
+  content: "\e945";
+}
+.icon-pushpin:before {
+  content: "\e946";
+}
+.icon-location:before {
+  content: "\e947";
+}
+.icon-compass:before {
+  content: "\e949";
+}
+.icon-clock2:before {
+  content: "\e94f";
+}
+.icon-alarm:before {
+  content: "\e950";
+}
+.icon-calendar:before {
+  content: "\e953";
+}
+.icon-printer:before {
+  content: "\e954";
+}
+.icon-keyboard:before {
+  content: "\e955";
+}
+.icon-display:before {
+  content: "\e956";
+}
+.icon-laptop:before {
+  content: "\e957";
+}
+.icon-mobile:before {
+  content: "\e958";
+}
+.icon-mobile2:before {
+  content: "\e959";
+}
+.icon-undo2:before {
+  content: "\e967";
+}
+.icon-redo2:before {
+  content: "\e968";
+}
+.icon-bubble:before {
+  content: "\e96b";
+}
+.icon-bubbles:before {
+  content: "\e96c";
+}
+.icon-bubbles2:before {
+  content: "\e96d";
+}
+.icon-bubble2:before {
+  content: "\e96e";
+}
+.icon-bubbles3:before {
+  content: "\e96f";
+}
+.icon-bubbles4:before {
+  content: "\e970";
+}
+.icon-user:before {
+  content: "\e971";
+}
+.icon-users:before {
+  content: "\e972";
+}
+.icon-quotes-left:before {
+  content: "\e977";
+}
+.icon-quotes-right:before {
+  content: "\e978";
+}
+.icon-spinner:before {
+  content: "\e97a";
+}
+.icon-spinner3:before {
+  content: "\e97c";
+}
+.icon-spinner4:before {
+  content: "\e97d";
+}
+.icon-spinner6:before {
+  content: "\e97f";
+}
+.icon-spinner7:before {
+  content: "\e980";
+}
+.icon-binoculars:before {
+  content: "\e985";
+}
+.icon-zoom-in:before {
+  content: "\e987";
+}
+.icon-zoom-out:before {
+  content: "\e988";
+}
+.icon-enlarge2:before {
+  content: "\e98b";
+}
+.icon-shrink2:before {
+  content: "\e98c";
+}
+.icon-key:before {
+  content: "\e98d";
+}
+.icon-key2:before {
+  content: "\e98e";
+}
+.icon-hammer:before {
+  content: "\e996";
+}
+.icon-pie-chart:before {
+  content: "\e99a";
+}
+.icon-stats-dots:before {
+  content: "\e99b";
+}
+.icon-stats-bars:before {
+  content: "\e99c";
+}
+.icon-trophy:before {
+  content: "\e99e";
+}
+.icon-gift:before {
+  content: "\e99f";
+}
+.icon-glass:before {
+  content: "\e9a0";
+}
+.icon-glass2:before {
+  content: "\e9a1";
+}
+.icon-mug:before {
+  content: "\e9a2";
+}
+.icon-spoon-knife:before {
+  content: "\e9a3";
+}
+.icon-leaf:before {
+  content: "\e9a4";
+}
+.icon-fire:before {
+  content: "\e9a9";
+}
+.icon-lab:before {
+  content: "\e9aa";
+}
+.icon-magnet:before {
+  content: "\e9ab";
+}
+.icon-bin:before {
+  content: "\e9ac";
+}
+.icon-airplane:before {
+  content: "\e9af";
+}
+.icon-attachment:before {
+  content: "\e9cd";
+}
+.icon-eye:before {
+  content: "\e9ce";
+}
+.icon-star-empty:before {
+  content: "\e9d7";
+}
+.icon-star-half:before {
+  content: "\e9d8";
+}
+.icon-star-full:before {
+  content: "\e9d9";
+}
+.icon-heart:before {
+  content: "\e9da";
+}
+.icon-heart-broken:before {
+  content: "\e9db";
+}
+.icon-man:before {
+  content: "\e9dc";
+}
+.icon-man-woman:before {
+  content: "\e9de";
+}
+.icon-happy:before {
+  content: "\e9df";
+}
+.icon-smile:before {
+  content: "\e9e1";
+}
+.icon-cool:before {
+  content: "\e9eb";
+}
+.icon-plus:before {
+  content: "\ea0a";
+}
+.icon-minus:before {
+  content: "\ea0b";
+}
+.icon-volume-high:before {
+  content: "\ea26";
+}
+.icon-volume-medium:before {
+  content: "\ea27";
+}
+.icon-volume-low:before {
+  content: "\ea28";
+}
+.icon-volume-mute:before {
+  content: "\ea29";
+}
+.icon-volume-mute2:before {
+  content: "\ea2a";
+}
+.icon-volume-increase:before {
+  content: "\ea2b";
+}
+.icon-loop2:before {
+  content: "\ea2e";
+}
+.icon-table:before {
+  content: "\ea70";
+}
+.icon-google:before {
+  content: "\ea87";
+}
+.icon-google-plus:before {
+  content: "\ea88";
+}
+.icon-google-plus2:before {
+  content: "\ea89";
+}
+.icon-google-plus3:before {
+  content: "\ea8a";
+}
+.icon-facebook:before {
+  content: "\ea8c";
+}
+.icon-facebook2:before {
+  content: "\ea8d";
+}
+.icon-facebook3:before {
+  content: "\ea8e";
+}
+.icon-instagram:before {
+  content: "\ea90";
+}
+.icon-twitter:before {
+  content: "\ea91";
+}
+.icon-twitter2:before {
+  content: "\ea92";
+}
+.icon-twitter3:before {
+  content: "\ea93";
+}
+.icon-feed2:before {
+  content: "\ea94";
+}
+.icon-feed3:before {
+  content: "\ea95";
+}
+.icon-feed4:before {
+  content: "\ea96";
+}
+.icon-youtube:before {
+  content: "\ea97";
+}
+.icon-youtube2:before {
+  content: "\ea98";
+}
+.icon-youtube3:before {
+  content: "\ea99";
+}
+.icon-youtube4:before {
+  content: "\ea9a";
+}
+.icon-vimeo:before {
+  content: "\ea9c";
+}
+.icon-vimeo2:before {
+  content: "\ea9d";
+}
+.icon-vimeo3:before {
+  content: "\ea9e";
+}
+.icon-lanyrd:before {
+  content: "\ea9f";
+}
+.icon-flickr:before {
+  content: "\eaa0";
+}
+.icon-flickr2:before {
+  content: "\eaa1";
+}
+.icon-tumblr:before {
+  content: "\eabb";
+}
+.icon-tumblr2:before {
+  content: "\eabc";
+}
+.icon-svg:before {
+  content: "\eae3";
+}
+
+
+/* ! normalize.css v1.0.0 | MIT License | git.io/normalize */
+
+/* ==========================================================================
+HTML5 display definitions
+========================================================================== */
+
+/* * Corrects `block` display not defined in IE 6/7/8/9 and Firefox 3. */
+
+article, aside, details, figcaption, figure, footer, header, hgroup, nav, section, summary { display: block; }
+/* * Corrects `inline-block` display not defined in IE 6/7/8/9 and Firefox 3. */
+audio, canvas, video { display: inline-block; *display: inline; *zoom: 1; }
+/* * Prevents modern browsers from displaying `audio` without controls.
+* Remove excess height in iOS 5 devices. */
+audio:not([controls]) { display: none; height: 0; }
+/* * Addresses styling for `hidden` attribute not present in IE 7/8/9, Firefox 3, * and Safari 4.
+* Known issue:no IE 6 support. */
+[hidden] { display: none; }
+/* ==========================================================================
+Base
+========================================================================== */
+/* * 1. Corrects text resizing oddly in IE 6/7 when body `font-size` is set using
+*    `em` units.
+* 2. Prevents iOS text size adjust after orientation change, without disabling
+*    user zoom. */
+
+html { font-size: 100%; /* 1 */
+  -webkit-text-size-adjust: 100%; /* 2 */
+-ms-text-size-adjust: 100%; /* 2 */ }
+html, html a { -webkit-font-smoothing: antialiased; text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.004); }
+/* * Addresses `font-family` inconsistency between `textarea` and other form
+* elements. */
+html, button, input, select, textarea { font-family: 'Varela Round', sans-serif; }
+/* * Addresses margins handled incorrectly in IE 6/7. */
+body { margin: 0; font-family: 'Varela Round', sans-serif; background: #FFF; }
+/* ==========================================================================
+Links
+========================================================================== */
+/* * Addresses `outline` inconsistency between Chrome and other browsers. */
+
+a:focus { outline: thin dotted; }
+/* * Improves readability when focused and also mouse hovered in all browsers. */
+a:active, a:hover { outline: 0; }
+/* ==========================================================================
+Typography
+========================================================================== */
+/* * Addresses font sizes and margins set differently in IE 6/7.
+* Addresses font sizes within `section` and `article` in Firefox 4+, Safari 5, * and Chrome. */
+main {background: #FFF;}
+main h1 { font-size: 2em; margin: 0.67em 0; color: #353535; }
+main h2 { font-size: 1.5em; margin: 0.83em 0; }
+main h3 { font-size: 1.17em; margin: 1em 0; }
+main h4 { font-size: 1em; margin: 1.33em 0; }
+main h5 { font-size: 0.83em; margin: 1.67em 0; }
+main h6 { font-size: 0.75em; margin: 2.33em 0; }
+/* * Addresses styling not present in IE 7/8/9, Safari 5, and Chrome. */
+main abbr[title] { border-bottom: 1px dotted; }
+/* * Addresses style set to `bolder` in Firefox 3+, Safari 4/5, and Chrome. */
+main b, strong { font-weight: bold; }
+main blockquote { margin: 1em 40px; }
+/* * Addresses styling not present in Safari 5 and Chrome. */
+main dfn { font-style: italic; }
+/* * Addresses styling not present in IE 6/7/8/9. */
+main mark { background: #ff0; color: #000; }
+/* * Addresses margins set differently in IE 6/7. */
+main p, pre { margin: 1em 0; }
+/* * Corrects font family set oddly in IE 6, Safari 4/5, and Chrome. */
+code, kbd, pre, samp { font-family: monospace, serif; _font-family: 'courier new', monospace; font-size: 1em; }
+/* * Improves readability of pre-formatted text in all browsers. */
+pre { white-space: pre; white-space: pre-wrap; word-wrap: break-word; }
+/* * Addresses CSS quotes not supported in IE 6/7. */
+q { quotes: none; }
+/* * Addresses `quotes` property not supported in Safari 4. */
+q:before, q:after { content: ''; content: none; }
+small { font-size: 75%; }
+/* * Prevents `sub` and `sup` affecting `line-height` in all browsers. */
+sub, sup { font-size: 75%; line-height: 0; position: relative; vertical-align: baseline; }
+sup { top: -0.5em; }
+sub { bottom: -0.25em; }
+/* ==========================================================================
+Lists
+========================================================================== */
+/* * Addresses margins set differently in IE 6/7. */
+
+dl, menu, ol, ul { margin: 1em 0; }
+dd { margin: 0 0 0 40px; }
+/* * Addresses paddings set differently in IE 6/7. */
+menu, ol, ul { padding: 0 0 0 40px; }
+/* * Corrects list images handled incorrectly in IE 7. */
+nav ul, nav ol { list-style: none; list-style-image: none; }
+/* ==========================================================================
+Embedded content
+========================================================================== */
+/* * 1. Removes border when inside `a` element in IE 6/7/8/9 and Firefox 3.
+* 2. Improves image quality when scaled in IE 7. */
+
+img { border: 0; /* 1 */
+-ms-interpolation-mode: bicubic; /* 2 */ }
+/* * Corrects overflow displayed oddly in IE 9. */
+svg:not(:root) { overflow: hidden; }
+/* ==========================================================================
+Figures
+========================================================================== */
+/* * Addresses margin not present in IE 6/7/8/9, Safari 5, and Opera 11. */
+
+figure { margin: 0; }
+/* ==========================================================================
+Forms
+========================================================================== */
+/* * Corrects margin displayed oddly in IE 6/7. */
+
+form { margin: 0; }
+/* * Define consistent border, margin, and padding. */
+fieldset { border: 1px solid #c0c0c0; margin: 0 2px; padding: 0.35em 0.625em 0.75em; }
+/* * 1. Corrects color not being inherited in IE 6/7/8/9.
+* 2. Corrects text not wrapping in Firefox 3.
+* 3. Corrects alignment displayed oddly in IE 6/7. */
+legend { border: 0; /* 1 */
+  padding: 0; white-space: normal; /* 2 */
+*margin-left: -7px; /* 3 */ }
+/* * 1. Corrects font size not being inherited in all browsers.
+* 2. Addresses margins set differently in IE 6/7, Firefox 3+, Safari 5, *    and Chrome.
+* 3. Improves appearance and consistency in all browsers. */
+button, input, select, textarea { font-size: 100%; /* 1 */
+  margin: 0; /* 2 */
+  vertical-align: baseline; /* 3 */
+*vertical-align: middle; /* 3 */ }
+/* * Addresses Firefox 3+ setting `line-height` on `input` using ` !important` in
+* the UA stylesheet. */
+button, input { line-height: normal; }
+/* * 1. Avoid the WebKit bug in Android 4.0.* where (2) destroys native `audio`
+*    and `video` controls.
+* 2. Corrects inability to style clickable `input` types in iOS.
+* 3. Improves usability and consistency of cursor style between image-type
+*    `input` and others.
+* 4. Removes inner spacing in IE 7 without affecting normal text inputs.
+*    Known issue:inner spacing remains in IE 6. */
+button, html input[type="button"], /* 1 */
+input[type="reset"], input[type="submit"] { -webkit-appearance: button; /* 2 */
+  cursor: pointer; /* 3 */
+*overflow: visible; /* 4 */ }
+/* * Re-set default cursor for disabled elements. */
+button[disabled], input[disabled] { cursor: default; }
+/* * 1. Addresses box sizing set to content-box in IE 8/9.
+* 2. Removes excess padding in IE 8/9.
+* 3. Removes excess padding in IE 7.
+*    Known issue:excess padding remains in IE 6. */
+input[type="checkbox"], input[type="radio"] { box-sizing: border-box; /* 1 */
+  padding: 0; /* 2 */
+  *height: 13px; /* 3 */
+*width: 13px; /* 3 */ }
+/* * 1. Addresses `appearance` set to `searchfield` in Safari 5 and Chrome.
+* 2. Addresses `box-sizing` set to `border-box` in Safari 5 and Chrome
+*    (include `-moz` to future-proof). */
+input[type="search"] { -webkit-appearance: textfield; /* 1 */
+  -moz-box-sizing: content-box; -webkit-box-sizing: content-box; /* 2 */
+box-sizing: content-box; }
+/* * Removes inner padding and search cancel button in Safari 5 and Chrome
+* on OS X. */
+input[type="search"]::-webkit-search-cancel-button, input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; }
+/* * Removes inner padding and border in Firefox 3+. */
+button::-moz-focus-inner, input::-moz-focus-inner { border: 0; padding: 0; }
+/* * 1. Removes default vertical scrollbar in IE 6/7/8/9.
+* 2. Improves readability and alignment in all browsers. */
+textarea { overflow: auto; /* 1 */
+vertical-align: top; /* 2 */ }
+
+*, *:after, *:before { border-box; box-sizing: border-box; }
+.clearfix:before, .clearfix:after { content: ''; display: table; }
+.clearfix:after { clear: both; }
+
+.container {
+max-width: 1220px;
+width: 100%;
+margin: 0 auto;
+padding: 0 15px;
+}
+
+.row, #WizardSteps, #Content {
+width: 100%;
+margin: 0 auto;
+/*overflow: hidden;*/
+}
+
+.onecol, .twocol, .threecol, #SideBar, .fourcol, .fivecol, .sixcol, .sevencol, .eightcol, .ninecol, #Detail, .tencol, .elevencol {
+margin-right: 3.8%;
+float: left;
+min-height: 1px;
+}
+
+.onecol {
+width: 4.85%;
+}
+
+.twocol {
+width: 13.45%;
+}
+
+.threecol, #SideBar{
+width: 22.05%;
+}
+
+.fourcol {
+width: 30.75%;
+}
+
+.fivecol {
+width: 39.45%;
+}
+
+.sixcol {
+width: 48%;
+}
+
+.sevencol {
+width: 56.75%;
+}
+
+.eightcol {
+width: 65.4%;
+}
+
+.ninecol, #Detail{
+width: 74.05%;
+}
+
+.tencol {
+width: 82.7%;
+}
+
+.elevencol {
+width: 91.35%;
+}
+
+.twelvecol {
+width: 100%;
+float: left;
+}
+
+.last, #Detail {
+margin-right: 0px;
+}
+
+img, object, embed {
+max-width: 100%;
+}
+
+img {
+height: auto;
+}
+
+
+/* Smaller screens */
+
+@media only screen and (max-width: 1023px) {
+
+body {
+font-size: 0.8em;
+line-height: 1.625;
+}
+
+.row, body, .container, #WizardSteps, #Content  {
+width: 100%;
+min-width: 0;
+margin-left: 0px;
+margin-right: 0px;
+/*padding-left: 10px;*/
+padding-right: 10px;
+}
+
+}
+
+
+/* Mobile */
+
+@media handheld, only screen and (max-width: 767px) {
+
+body {
+font-size: 16px;
+-webkit-text-size-adjust: none;
+}
+
+.row, body, .container, #WizardSteps, #Content  {
+width: 100%;
+min-width: 0;
+margin-left: 0px;
+margin-right: 0px;
+padding-left: 0px;
+padding-right: 0px;
+}
+
+.onecol, .twocol, .threecol, #SideBar, .fourcol, .fivecol, .sixcol, .sevencol, .eightcol, .ninecol, #Detail, .tencol, .elevencol, .twelvecol {
+width: auto;
+float: none;
+margin-left: 0px;
+margin-right: 0px;
+padding-left: 0px;
+padding-right: 0px;
+}
+
+.hide-for-small{
+  display: none;
+}
+}
+
+
+/* ------------------------------------------------------
+  START HERE!
+-------------------------------------------------------*/
+
+
+html {
+
+}
+
+body{
+  background:#FFF;
+  color:#333333;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight:normal;
+  line-height: 1.42857;
+}
+
+#Main{
+  width: 100%;
+  max-width: 1220px;
+  margin: 0 auto;
+  background: #FFF;
+}
+
+@media (max-width: 767px) {
+  #Main{
+    padding: 0;
+  }
+}
+
+
+/* ------------------------------------------------------
+  HEADER
+-------------------------------------------------------*/
+
+#Header{
+  width: 100%;
+  z-index: 2;
+  z-index: 2;
+  background: #FFF;
+  border-bottom: 1px solid #f1f1f1
+}
+
+A:link       {color: #E35960; text-decoration: none;}
+A:visited    {color: #E35960;}
+A:hover      {color: #333333; text-decoration: none;}
+
+#Header .container{
+ padding: 0;
+}
+
+#TopHeader{
+  background: #4D4D4D;
+  color: #FFF;
+  text-align: left;
+  position: relative;
+  z-index: 2;
+  padding: 0 0 9px 0;
+}
+#TopHeader a, #TopHeader a:hover{
+  color: #FFF;
+}
+
+#TopHeader .container{
+  padding: 0 0 0 10px;
+}
+
+#TopHeaderContactContainer{
+  font-size: 0.86em;
+  line-height: 1em;
+}
+
+#TopHeaderContactContainer .topheadercontact{
+  display: inline-block;
+}
+
+#TopHeaderContactContainer ul{
+  list-style: none;
+  padding-left: 0px;
+}
+
+#TopHeaderContactContainer li{
+  float:left;
+}
+#TopHeaderContactContainer span{
+  color: #e28e94;
+  padding-left: 5px;
+}
+
+#TopHeaderContactContainer span:hover{
+  color: #FFF;
+}
+
+#TopHeaderContactContainer span a{
+  color: #e28e94;
+}
+
+#TopHeaderContactContainer span a:hover{
+  color: #FFF;
+}
+
+.social-box {
+    text-align: right;
+    padding-top: 8px;
+    font-size: 1em;
+  padding-right: 6px;
+}
+
+.social-box i.icon-facebook2 {
+    color: #FFF;
+    background: #4d4d4d;
+}
+
+.social-box i.icon-twitter {
+    color: #FFF;
+    background: #4d4d4d;
+}
+
+.social-box i {
+    padding: 2px !important;
+    border-radius: 100%;
+    vertical-align: middle;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    margin-left: 6px;
+    transition: background-color 0.25s ease-out, color 0.25s ease-out;
+  font-size: 18px;
+}
+
+.social-box i:hover {
+    color: #E28E94;
+}
+
+#Logo{
+  padding: 5px 0 0 10px;
+}
+
+#Logo img{
+  max-width: 158px;
+}
+
+
+@media (max-width: 767px) {
+  #Header{
+  position: relative;
+    width: 100%;
+    z-index: 2;
+  margin-top: 20px;
+  }
+  #TopHeader{
+  position: relative;
+  width: 100%;
+  z-index: 2;
+  height: 130px;
+  top: 30px;
+  padding-top: 5px;
+  }
+  
+  #TopHeaderContactContainer ul{
+  text-align: center;
+  display: grid;
+  }
+  #Logo{  text-align:left;
+  padding: 0;
+  padding-left: 15px;
+  }
+
+  #Logo img{
+    max-width: 158px;
+    width: 100%;
+    padding-top: 5px;
+
+  }
+  .social-box {
+  margin: 0;
+  text-align: center;
+  }
+  #Main{
+    width: 100%;
+    padding-left: 0px;
+    padding-right: 0px;
+    margin: 0;
+    
+  }
+
+}
+
+
+/* --------------------------------------------------------
+  MENU
+---------------------------------------------------------*/
+ul#Menu{
+  position: relative;
+  padding: 0;
+  display: block;
+  float: left;
+  z-index: 2;
+  text-decoration: none;
+  z-index: 9;
+  line-height: 3em;
+  margin-bottom: 0;
+}
+
+ul#Menu li{
+  padding-left: 0px;
+  padding-right: 31px;
+  padding-bottom: 5px;
+  position: relative;
+  display: block;
+  float: left;
+}
+
+ul#Menu li a{
+  padding: 0px 0px 12px;
+  font-size: 1em;
+  color: #8a8a8a;
+  position: relative;
+  display: block;
+  text-decoration: none;
+}
+ul#Menu > li a > span > img{
+  width: 16px;
+  padding: 3px;
+}
+
+ul#Menu li a:hover{
+  color: #13AB83;
+  text-decoration: none;
+}
+
+ul#Menu li a.submenu{
+  background-image: url('/TheBeehive/menu_arrow.png');
+  background-position: right 0px top 8px;
+  background-repeat: no-repeat;
+  padding-right: 18px;
+}
+
+
+/*dropdown*/
+  
+ul#Menu ul {
+  display:none; 
+  position:absolute;
+  top:60px;
+  left:-15px; 
+  right:auto;
+  width:230px;
+  background: #F2F2F2;
+  padding: 0; 
+  margin: 0; 
+  font-size: 0.95em;
+  border-top: 2px solid #e35960;
+}
+    
+ul#Menu ul li {
+  left:auto;
+  clear:left;
+  width:100%;
+  padding-right: 0;
+  line-height: 1em;
+}
+          
+ul#Menu ul li a {
+  margin:0; 
+  display: block;
+  padding: 12px !important;
+  color: #e35960;
+}
+
+ul#Menu ul li a:hover {
+  margin:0;
+  color: #FFF !important;
+  background: #13AB83;
+}
+
+/*the magic*/
+      
+ul#Menu li:hover ul, ul#Menu ul li:focus ul{
+  display: block
+}
+
+@media(max-width: 766px){
+  ul#Menu{
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------
+  WIZARD STEPS
+---------------------------------------------------------*/
+#WizardSteps > ul{
+  width: 100%;
+  display: flex;
+  display: -webkit-flex;
+  display: -ms-flexbox;
+  list-style: outside none none;
+  flex-flow: row wrap;
+  justify-content: center;
+  text-transform: uppercase;
+  padding: 30px 15px 30px 15px;
+  clear: both;
+  max-width: 1220px;
+  margin: 0 auto;
+}
+
+#WizardSteps > ul > li{
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: auto;
+  float: left; /* TODO Find a better fix for Safari */
+  text-align: center;
+  flex: 1 1 0%;
+  margin: 0px 2px;
+  background-color: #eff2f4;
+  color: #74777B;
+  transition: background-color 0.2s ease 0s, color 0.2s ease 0s;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 2.5;
+  font-size: 0.8em;
+}
+
+#WizardSteps > ul > li.CurrentWizardStep{
+  color: #FFF;
+  background: #13AB83;
+}
+
+#WizardSteps > ul > li > span.Order{
+ margin: 0 3px; 
+}
+#WizardSteps > ul > li > span.Number{
+  z-index: 10;
+  display: inline-block;
+  margin: 0px 0.4em 0px 0px;
+  vertical-align: middle;
+  text-transform: none;
+  font-weight: normal;
+  font-variant: normal;
+  font-size: 1.3em;
+  line-height: 1;
+  color: #CCC;
+}
+#WizardSteps > ul > li > span.Number:before{
+  font-family: 'icomoon';
+  margin-right: 5px;
+  color: #FFF;
+}
+#WizardSteps > ul > li.UnrequiredWizardStep {
+  color: #ccc;
+}
+#WizardSteps > ul > li.UnrequiredWizardStep > span.Number:before {
+  color: #ccc;
+}
+#WizardSteps > ul > li.RequiredWizardStep > span.Number:before {
+  color: #74777B;
+}
+#TSelectItems > span.Number:before{
+  content: "\e939";
+}
+#TDeliveryOptions > span.Number:before{
+  content: "\e945";
+}
+#TGiftAid > span.Number:before{
+  content: "\e971";
+}
+#TNameAndAddress > span.Number:before{
+  content: "\e905";
+}
+#TFurtherDetails > span.Number:before{
+  content: "\e905";
+}
+#TDiscounts > span.Number:before{
+  content: "\e99f";
+}
+#TPayment > span.Number:before{
+  content: "\e93a";
+}
+
+.UnrequiredWizardStep {
+    display: none !important;
+}
+#WizardSteps > ul > li > span.Order{
+ margin: 0 3px;
+   display: none;
+}
+
+
+
+@media (max-width: 767px) {
+#WizardSteps {
+  padding-top: 0;
+} 
+ #WizardSteps > ul{
+    padding: 30px 0 30px;
+    margin: 0;
+  }
+
+
+  #WizardSteps > ul > li {
+    float: left;
+    padding: 0 10px;
+    margin: 0;
+  }
+  #WizardSteps > ul > li {
+    display: none;
+  }
+
+
+  #WizardSteps > ul > li.CurrentWizardStep{
+    display: block;
+    width: 100%;
+  }
+}
+
+
+/* ---------------------------------------------------------
+  CONTENT
+----------------------------------------------------------*/
+
+#Content{
+  max-width: 1220px;
+  padding: 50px 15px;
+}
+
+/* ---------------------------------------------------------
+  SIDEBAR
+----------------------------------------------------------*/
+
+#SideBar{
+  margin-bottom: 20px;
+}
+
+#SideBarHeader {
+
+}
+
+.SideBarMenu {
+
+}
+
+.SideBarFirstHeading, .SideBarHeading {
+  font-size: 1.0em;
+  text-align: left;
+  font-weight: 500;
+  border-bottom: 1px dotted #5F6F79;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: #2D2D2D;
+}
+
+.SideBarHeading {
+  margin-top: 30px;
+}
+
+.SideBarItem {
+  margin-bottom: 10px;
+  line-height: 1;
+  padding-bottom: 10px;
+  font-size: 1em;
+  border-bottom: 1px dotted #5F6F79;
+  background: url(/TheBeehive/arrow.png) no-repeat 0 3px;
+}
+
+.SideBarItem a{
+  padding-bottom: 5px;
+  text-decoration: none;
+  margin-left: 10px;
+}
+
+.SideBarItem a:hover{
+  text-decoration: none;
+}
+
+.SideBarFirstHeading, DIV.SideBarHeading{
+
+}
+#SideBarFooter {
+
+}
+
+#SideBarToggleMenu{
+  display: none;
+}
+@media (min-width: 767px) {
+  #SideBar{
+    display: block !important;
+  }
+}
+@media (max-width: 767px) {
+  #SideBar{
+    display: none;
+    position: fixed;
+    top: 40px;
+    width: 100%;
+    left: 0px;
+    z-index: 9;
+    background: #000;
+  }
+  .SideBarFirstHeading, .SideBarHeading {
+    display: none;
+  }
+
+  .SideBarItem a{
+    text-indent: 5px;
+    display: block;
+    background: #000;
+    text-decoration: none;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    text-align: center;
+    line-height: 1em;
+    padding: 5px;
+  color: #FFF;
+  }
+
+  .SideBarItem a:hover {
+    background: #000;
+    color: #FFF;
+  }
+
+  .SideBarToggle{
+    display: block;
+    width: 100%;
+    position: relative;
+    margin: 0;
+    cursor: pointer;
+    padding: 10px;
+    background: #4D4D4D;
+    text-transform: uppercase;
+    color: #EFEFEF;
+  }
+  .SideBarToggle:hover{
+    background: #000;
+  }
+  .SideBarToggle span{
+    position: absolute;
+    right: 5px;
+    font-size: 2em;
+    line-height: 2em;
+    line-height: 0.6em;
+    color: #FFF;
+  }
+  #SideBarToggleMenu{
+    display: block;
+    position: fixed;
+    top: 0px;
+    width: 100%;
+    left: 0px;
+    z-index: 9;
+  }
+}
+
+/* ---------------------------------------------------------
+  DETAIL
+----------------------------------------------------------*/
+
+#Detail{
+  min-height: 40em;
+}
+
+.DetailHeading{
+  display: block;
+  margin: 0px 0px 0.5em;
+  color: #2D2D2D;
+  font-size: 1em;
+  font-size: 35px;
+  font-weight: 300;
+  line-height: 38.5px;
+}
+
+.WebTab, .SelectedWebTab{
+  position: relative;
+  padding: 5px;
+  z-index: 1;
+  text-align: center;
+  flex: 1 1 0%;
+  margin: 2px 5px 2px 0;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 2.5;
+}
+
+.SelectedWebTab{
+  background: #CCC;
+}
+
+.WebTab a, .SelectedWebTab a{
+  position: relative;
+  padding: 5px;
+  z-index: 1;
+  text-align: center;
+  flex: 1 1 0%;
+  font-weight: bold;
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 2.5;
+  text-decoration: none;
+}
+
+.LoyaltySchemeHeading {
+  font-weight: bold; margin-top: 20px;
+}
+.RegisteredCardHeading {
+  font-weight: bold; margin-top: 20px;
+}
+.RegisteredCardNumber {
+  font-style: italic;
+}
+
+.DiscountHeading {
+  font-weight: bold; margin-bottom: 2px;
+}
+.DiscountSection button {
+  margin-top: 10px; margin-bottom: 5px;
+}
+.DiscountSection {
+  margin-top: 20px;
+}
+.DiscountSubHeading {
+  font-weight: bold; margin: 10px 0;
+}
+
+.MembershipSaleHeading {
+  margin-left: 20px; 
+}
+.TicketMembershipPatron {
+  display: block; margin: 0 10px;
+}
+.TicketForMember {
+  font-weight: bold; margin-top: 10px; margin-left: 20px; margin-bottom: 5px;
+}
+.TicketMembershipPatrons {
+  display: flex; margin: 0; padding-left: 20px;
+}
+.OrGuest {
+  font-size: 8pt;
+}
+
+.ViewOrder table, .DiscountsPrompt table, .PaymentPrompt table {
+  width: 100%!important;
+  border-spacing:0; 
+  border-collapse:collapse; 
+  margin-top:10px;
+}
+.ViewOrder table td, .DiscountsPrompt table td, .PaymentPrompt table td {
+  vertical-align: top;
+  padding:5px 6px;
+}
+.ViewOrder TD.OrderDelete, .DiscountsPrompt TD.OrderDelete, .PaymentPrompt TD.OrderDelete {
+  vertical-align: top!important;
+}
+.ViewOrder table th, .DiscountsPrompt table th, .PaymentPrompt table th, .DiscountSubHeading {
+  padding:5px 6px;
+  background-color: #13AB83;
+  text-transform: uppercase; 
+  color: #FFF;
+}
+.ViewOrder table b, .DiscountsPrompt table b, .PaymentPrompt table b {
+  text-transform: uppercase;
+  font-size: 16px;
+}
+
+/* ---------------------------------------------------------
+  PROGRAMME TEMPLATE
+----------------------------------------------------------*/
+
+.programme{
+  margin: 20px;
+  margin: 20px 0;
+  border-bottom: dotted 1px #CCC;
+  position: relative;
+  padding: 20px 10px 40px 10px;
+}
+
+.programme img{
+  position: relative;
+  margin-bottom: 5px;
+  border-radius: 15px;
+}
+
+.programme h1.title{
+  box-sizing: border-box;
+  display: block;
+  font-size: 2em;
+  font-weight: 500;
+  padding-bottom: 10px;
+  font-weight: 300;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #5f6f79;
+  text-transform: uppercase;
+}
+
+.programme h1.title a{
+  text-decoration: none;
+}
+
+.programme .showtimes h2.subtitle{
+  font-size: 1.5em;
+  text-align: left;
+  font-weight: 500;
+  border-bottom: 1px dotted #CCC;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+  color: #5f6f79;
+}
+
+.programme .PerformanceListDate{
+  width: 100%;
+}
+
+.programme .StartTimeAndStatus a, .programme .StartTimeAndStatus b a{
+  font-size: 14px;
+  text-shadow: none;
+  color: #FFF !important;
+  border: medium none;
+  border-radius: 0px;
+  font-weight: 300;
+  letter-spacing: 0.7px;
+  border: none;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 10px 15px;
+  line-height: 3em;
+}
+
+
+@media(max-width: 766px){
+
+.programme {
+  text-align: center;
+  }
+.programme h1.title{
+  font-size: 1em;
+  line-height: 1.5em;
+  }
+ .programme > .showtimes > h2.subtitle{
+  font-size: 1em;
+}
+}
+
+
+/* ---------------------------------------------------------
+  FOOTER
+----------------------------------------------------------*/
+
+#Footer {
+  position: absolute;
+  left: 0;
+  background: #222;
+  width: 100%;
+  text-align: center;
+  padding-top: 10px;
+  color: #FFF;
+  line-height: 1.5;
+  height: 240px;
+}
+
+#Footer H4{
+  text-transform: uppercase;
+  text-align: left;
+}
+#Footer ul{
+  list-style: none;
+  padding-left: 0;
+  text-align: left;
+  margin-bottom: 50px;
+}
+
+#Footer h4 span{
+  color: #e35960;
+  padding-right: 10px;
+}
+#Footer ul li{
+  line-height: 1.7em;
+}
+#Footer ul li a{
+  color: #FFF;
+}
+
+#Footer #SocialFooter ul li{
+  display: inline-block;
+}
+.FooterIcons i:hover {
+  color: #E35960;
+}
+
+#FooterLink a:hover {
+  color: #E35960;
+}
+
+#Footer #SocialFooter ul li a{
+  font-size: 2em;
+  padding-right: 10px;
+}
+
+#Footer #FooterBottom{
+  background: #f7f7f7;
+  color: #595959;
+  padding-top: 10px;
+  font-size: 0.9em;
+}
+
+#Footer #FooterBottom p{
+  text-align: left;
+  margin: 5px;
+}
+
+#Footer #FooterBottom .savoy{
+  float:right;
+}
+
+#Footer #FooterBottom .savoy a{
+  color: #e35960;  
+}
+
+#Footer #FooterBottom .savoy a:hover{
+  color: #e35960;  
+}
+
+
+@media (max-width: 767px) {
+  #Footer{
+    height: auto;
+  }
+  #Footer .container{
+    padding-left: 30px;
+  }
+  #Footer #FooterBottom .container{
+    padding-left: 30px;
+  }
+}
+/* ---------------------------------------------------------
+  BUTTONS
+----------------------------------------------------------*/
+.PrevNext{
+  margin: 10px 0;
+  float: left;
+  width: 100%;
+}
+
+.Button{
+  font-size: 14px;
+  text-shadow: none;
+  color: #FFF !important;
+  border: medium none;
+  border-radius: 0px;
+  background: #e35960;
+  font-weight: 300;
+  letter-spacing: 0.7px;
+  border: none;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 10px 15px;
+}
+
+input[type="submit"]{
+  margin: 10px 0;
+}
+
+.Button:hover{
+  background: #333333;
+}
+
+.Button:active{
+  background: #333333;
+}
+
+.Button{
+  padding: 5px 15px;
+  overflow: hidden;
+  width: auto;
+}
+
+.Button:before{
+  left: auto;
+  right: 10px;
+  z-index: 2;
+}
+
+.Button:after{
+  width: 30%;
+  height: 200%;
+  background: rgba(255,255,255,0.1);
+  z-index: 1;
+  right: 0;
+  top: 0;
+  margin: -5px 0 0 -5px;
+  -webkit-transform-origin: 0 0;
+  -webkit-transform: rotate(-20deg);
+  -moz-transform-origin: 0 0;
+  -moz-transform: rotate(-20deg);
+  -ms-transform-origin: 0 0;
+  -ms-transform: rotate(-20deg);
+  transform-origin: 0 0;
+  transform: rotate(-20deg);
+}
+
+.OrderDelete a{
+  font-size: 0.8em;
+}
+
+.ContinueButton{
+  float: right;
+}
+.BackButton{
+  float: left;
+}
+
+.BackButton:hover{
+
+}
+
+.Edit.Button, .OrderDelete .Button{
+font-family: 'icomoon' !important;
+speak: none;
+font-style: normal;
+font-weight: normal;
+font-variant: normal;
+text-transform: none;
+line-height: 2;
+font-size: 0;
+background: none;
+background-image: none !important; 
+padding: 1px !important; 
+}
+.Edit.Button::before, .OrderDelete .Button::before {
+font-size: 1rem;
+font-weight: bold;
+background: #e35960;
+margin-left: 3px;
+padding: 10px; 
+}
+.Edit.Button:hover, .OrderDelete .Button:hover {
+  text-decoration: none;
+  color: #666 !important;
+}
+.OrderDelete .Button::before{
+content: "\e9ac";
+}
+.Edit.Button::before {
+content: "\e905";
+}
+
+/* ---------------------------------------------------------
+  POPUP MESSAGES
+----------------------------------------------------------*/
+
+#PopupException, .PopupDialogBox {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 120px;
+  width: 95%;
+    max-width: 500px;
+    margin: auto;
+    z-index: 10000;
+  background: #F0F0F0;
+  padding: 20px 20px 80px 20px;
+  line-height: 1.5em;
+  min-height: 180px;
+}
+
+#PopupException .Button.Close, .PopupDialogBox .Button.Close {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+}
+
+.PopupDialogHeading {
+  font-weight: bold; margin-bottom: 2px;
+}
+
+@media (max-width: 767px) {
+  #PopupException, .PopupDialogBox {
+    top: 10%;
+  }
+}
+
+#PopupException .EmailAddress{
+  font-weight: 600;
+  color: #333;
+  font-size: 1.2em;
+}
+#PopupException .Login, #PopupException .PasswordReset{
+  margin: 10px 0;
+}
+#PopupException .ExceptionMessage{
+  margin: 10px 0;
+  max-height: 10em;
+  overflow: hidden; /* or scroll? */
+  color: #990000;
+}
+
+#Overlay{
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9;
+  background: #333;
+  display: none;
+  /* IE 8 */
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=90)";
+  /* IE 5-7 */
+  filter: alpha(opacity=90);
+  /* Netscape */
+  -moz-opacity: 0.9;
+  /* Safari 1.x */
+  -khtml-opacity: 0.9;
+  /* Good browsers */
+  opacity: 0.9;
+}
+
+/* ---------------------------------------------------------
+  FORM ELEMENTS
+----------------------------------------------------------*/
+
+input[type=text], input[type=password], input[type=email]{
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  margin: 5px 0;
+  width: 100%;
+  vertical-align: top;
+  background: #F0F0F0;
+  border: solid 1px #CCC;;
+  padding: 0.5em;
+}
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus{
+  border: solid 1px #2672EC;
+  background: #EFEFEF;
+}
+select{
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  margin: 5px 0;
+  width: 100%;
+  vertical-align: top;
+  background: #F0F0F0;
+  border: solid 1px #CCC;;
+  padding: 0.5em;
+}
+::-webkit-input-placeholder, input:-moz-placeholder, ::-moz-placeholder, :-ms-input-placeholder {
+  color:#CCC;
+  font-style: italic;
+}
+label.SelectLabel, label.TextLabel {
+  display: block;
+  padding: 0;
+  width: 100%;
+  color: #696969;
+  font-weight: bold;
+  font-size: 70.25%;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+.PersonType select{
+  width: 100%;
+  max-width: 100px;
+}
+.DetailSubHeading, .EditPatronHeading{
+  clear: both;
+  display: inline-block;
+  border-bottom: 1px solid #E9E9E9;
+  padding-bottom: 10px;
+  color: #333333;
+  font-style: normal;
+  line-height: 1.17em;
+  margin: 5px 0px 10px;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  font-weight: 400;
+  margin-top: 20px;
+}
+.EditPatronHeading{
+  margin-top: 40px;
+}
+.InlineValidationMessage{
+  font-size: 0.8em;
+  color: #FFF;
+  background: #990000;
+  width: 100%;
+  position: relative;
+  top: -5px;
+  padding: 3px;
+}
+@media (max-width: 767px) {
+  label.SelectLabel, label.TextLabel {
+    text-align: right;
+    font-size: 1.2em;
+    line-height: 2.5em;
+    margin-right: 10px;
+  }
+#CardMMYY .sixcol{
+  float: left; width: 45%;
+}
+#CardMMYY .sixcol.last{
+  float: right; width: 45%;
+}
+}
+.DateInputLabel {
+  display: inline;
+}
+.PaymentHeading {
+  font-weight: bold; margin-bottom: 2px;
+}
+.PaymentPageSeparator {
+  margin-bottom: 10px; clear: both;
+}
+
+#PatronDetails .RadioGroup{
+    font-size: 0.8em;
+    border: none;
+    background: #F0F0F0;
+    margin: 2px;
+    border: solid 1px #CCC;
+    padding: 5px;
+    color: #060606;
+}
+#PatronDetails .RadioGroup input{
+    margin-left: 5px;
+  margin-right: 3px;
+}
+
+@media (min-width: 767px) {
+  .ToolTip {
+    visibility:hidden;
+    -webkit-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -moz-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -ms-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -o-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    opacity:0;
+    visibility:hidden;
+    position: absolute;
+    background: #333;
+    color: #FFF;
+    font-size: 10px;
+    border-radius: 5px;
+    padding: 5px;
+    width: 160px;
+    margin: 10px 0 0 3px;
+    z-index: 9;
+    line-height: 2em;
+  }
+  .ToolTip:before {
+     border:5px solid transparent;
+     border-right-color:#333;
+     content:"";
+     display:block;
+     width:0;
+     height:0;
+     position:absolute;
+     top:3px;
+     left:-10px;
+     z-index:2;
+  }
+  /*
+  .ClickPayOnce{
+    visibility:hidden;
+    -webkit-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -moz-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -ms-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    -o-transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    transition:visibility 0s linear 0.3s,opacity 0.3s linear;
+    opacity:0;
+    visibility:hidden;
+    position: absolute;
+    background: #333;
+    color: #FFF;
+    font-size: 10px;
+    border-radius: 5px;
+    padding: 5px;
+    width: 200px;
+    margin: 10px 0 0 3px;
+    z-index: 8;
+    line-height: 2em;
+  }
+  .ClickPayOnce:before {
+     border:5px solid transparent;
+     border-right-color:#333;
+     content:"";
+     display:block;
+     width:0;
+     height:0;
+     position:absolute;
+     top:3px;
+     left:-10px;
+     z-index:2;
+  }
+  .ConfirmAndPay{
+    margin-bottom: 20px;
+  }
+  */
+  input#confirm:hover + .ClickPayOnce, input#confirm:active + .ClickPayOnce, input#confirm:focus + .ClickPayOnce, input:focus + .ToolTip {
+    visibility:visible;
+    opacity:1;
+    -webkit-transition-delay:0s;
+    -moz-transition-delay:0s;
+    -ms-transition-delay:0s;
+    -o-transition-delay:0s;
+    transition-delay:0s;
+  }
+}
+@media (max-width: 766px) {
+  .ToolTip {
+    position: relative;
+    background: #333;
+    color: #FFF;
+    font-size: 10px;
+    border-radius: 0 0 5px 5px;
+    padding: 5px;
+    width: 100%;
+    margin: -5px 0 10px 0;
+    z-index: 9;
+    line-height: 2em;
+  }
+
+  input:focus + .ToolTip {
+    display: block;
+  }
+
+  .ClickPayOnce{
+    display: none;
+    position: relative;
+    background: #333;
+    color: #FFF;
+    font-size: 10px;
+    border-radius: 5px 5px;
+    padding: 5px;
+    width: 100%;
+    margin: -5px 0 10px 0;
+    z-index: 8;
+    line-height: 2em;
+  }
+}
+.MaestroSolo{
+  background: #F0F0F0;
+  padding: 10px;
+}
+.MaestroSolo input{
+
+}
+@media (max-width: 767px) {
+  label.SelectLabel, label.TextLabel {
+    display: none;
+  }
+  .ToolTip {
+    display: none;
+  }
+}
+.PersonType select{
+  max-width: 100px;
+}
+.PersonType .PersonTypeDescription{
+  font-size: 1em;
+  display: inline-block;
+  width: 50%;
+  line-height: 1.2em;
+  margin-left: 10px;
+  line-height: 3em;
+}
+@media (max-width: 767px) {
+  .PersonType select{
+    max-width: 100px;
+  }
+  .PersonType .PersonTypeDescription{
+    font-size: 1em;
+    display: inline-block;
+    width: 50%;
+    line-height: 1.2em;
+  }
+}
+.EditPatronHeading:before, .clearfix:after { content: ''; display: table; }
+.EditPatronHeading:after { clear: both; }
+
+.checkbox:focus, .radio:focus, input[type="checkbox"]:focus, input[type="radio"]:focus { outline:1px dotted #36393b; }
+
+DIV.ProgrammeLink{ font-size: 12pt; font-weight: bold; padding-top: 10px; }
+SPAN.Rating{ font-size: 12pt; font-weight: bold; }
+
+SPAN.PerformanceNotesSmall{
+  font-size: 8pt;
+  white-space: nowrap;
+  display: block;
+}
+
+SPAN.PerformanceStatusSmall{
+  font-size: 8pt;
+  white-space: nowrap;
+}
+
+SPAN.ConditionsOfEntry{
+  font-size: 8pt;
+  white-space: nowrap;
+}
+
+DIV.PersonType{ padding-top: 6px; }
+DIV.SeatType{ padding-top: 20px; font-size: 12pt; font-weight: bold; }
+
+DIV.PerformanceDate { padding-top: 5px; font-size: 12pt; font-weight: bold; }
+SPAN.PerformanceEndTime { font-size: 8pt; font-weight: normal; }
+SPAN.PerformanceSection { font-size: 12pt; font-weight: bold; }
+DIV.PerformanceStatus { padding-top: 15px; font-size: 12pt; font-weight: bold; }
+
+DIV.SaleItem{ min-height: 30px; padding: 5px; }
+TD.SaleItemDescription{ width: 150px;}
+TD.SaleItemPromptText{ padding-right: 5px; width: 30px; text-align: right; line-height:3em; }
+TD.SaleItemInput{ padding-right: 5px; line-height:3em;}
+TD.SaleItemPriceText{ line-height:3em;}
+
+/* ---------------------------------------------------------
+  CALENDAR
+----------------------------------------------------------*/
+
+DIV.CalendarViewDays {
+  padding-left: 110px;
+  padding-top: 5px;
+}
+
+SPAN.CalendarViewDays { padding-right: 20px; }
+  TD.NonDay {
+  background: #E9E9E9;
+  width: 30px;
+  text-align: center;
+  color: #fff;
+}
+
+TD.SelectedDay {
+  text-align: center;
+  width: 30px;
+  background: #333333;
+}
+
+TD.Day { background: #C2C2C2; text-align: center; width: 20px; }
+
+TD.OrderItem { width: 90px; }
+TD.OrderDetails { width: 450px; }
+TD.OrderPriceToPay { width: 45px; }
+TD.OrderDelete { width: 45px; }
+
+DIV.ConfirmationEmail { padding-top: 10px; }
+TABLE.MaestroSolo { background: #E9E9E9; border: 0; }
+TD.MaestroSolo { background: #E9E9E9; }
+
+DIV.RadioGroup{ }
+
+.Exception{
+  color: rgb(255, 0, 0);
+  font-weight: 600;
+  width: 100%;
+  display: block;
+  clear: both;
+  color: #99000;
+  margin-bottom: 10px;
+  line-height: 1.2em;
+  text-transform: uppercase;
+  -webkit-animation: bounce 1.2s ease-out;
+  -moz-animation: bounce 400ms ease-out;
+  -o-animation: bounce 400ms ease-out;
+  animation: bounce 1.2s ease-out;
+}
+
+SPAN.TicketReservationsExpired{ color:#FF0000; font-weight: bold; }
+
+#SynopsisBody { background: #EDE2A6; color: #5f6f79; font-family: Arial, Helvetica, sans-serif; font-style: normal; }
+#Synopsis { background: #EDE2A6; color: #5f6f79; height: 300px; padding: 10px; }
+DIV.SynopsisProgrammeTitle { font-size: 12pt; font-weight: bold; margin-bottom: 10px; }
+DIV.SynopsisRating { font-size: 12pt; font-weight: bold; margin-bottom: 10px; }
+DIV.SynopsisDetail { font-size: 10pt; font-weight: normal; }
+DIV.MembershipHistory { }
+TD.MembershipHistoryDescription { width: 150px; padding-right: 15px; }
+TD.MembershipHistoryValidity { width: 320px; }
+TD.MembershipHistoryRenew { }
+TD.ProgrammeImage img{ width: 136px; height: 184px; overflow: hidden; }
+ TD.ProgrammeImage { width: 136px; height: 184px; overflow: hidden; margin: 5px; background; #CCC;}
+DIV.MembershipAvailableForActivation { font-size: 12pt; font-weight: bold; margin-top: 10px; margin-bottom: 5px; }
+DIV.MembershipActivation { }
+SPAN.MembershipActivationDescription { width: 80px; padding-right: 15px; }
+SPAN.MembershipActivationFromTo { width: 180px; padding-right: 15px; }
+SPAN.MembershipActivationValidationCodePrompt { width: 100px; padding-right: 15px; }
+SPAN.MembershipActivationValidationCode { width: 100px; padding-right: 15px; }
+SPAN.MembershipActivationActivate { }
+DIV.DeliveryOptionsHeader { margin-bottom: 10px; }
+DIV.DeliveryOptionSaleItem{ float: left; width: 250px; font-weight: bold; line-height: 3em;}
+DIV.DeliveryOptionPrompt{ float: left; width: 150px; text-align: right; padding-right: 10px; line-height: 3em;}
+DIV.DeliveryOptionInput{ float: left; width: 155px;line-height: 3em;}
+DIV.DeliveryOptionInput SELECT { width: 150px; }
+DIV.DeliveryOptionSelected{ float: left; width: 155px; font-weight: bold; }
+DIV.DeliveryOptionSeparator{ clear: both; margin-top: 10px; }
+DIV.DeliveryOptionsFooter{}
+DIV.TransactionViewDeliveryOption{ font-size: 8pt; color: red; }
+DIV.DeliverTo { margin-top: 5px; margin-bottom: 5px; font-weight: normal; }
+DIV.DeliveryNameAndAddress { margin-left: 50px; margin-bottom: 5px; font-weight: bold; }
+DIV.PaymentMethod { margin-top: 5px; margin-bottom: 10px; }
+DIV.PaymentMethodPasswordLabel { float: left; margin-left: 20px; width: 140px; }
+DIV.PaymentMethodPasswordInput { }
+DIV.PaymentMethodSeparator { clear: both; }
+SPAN.DiscountDetail { color: red; }
+
+/* ---------------------------------------------------------
+  SEAT SELECTION
+----------------------------------------------------------*/
+
+.SeatAvailabilityGraph {
+  display: none;
+}
+.SAGSold { }
+.SAGReserved { }
+.SAGAvailable { }
+
+/* Price Table */
+
+.PriceGroup{
+  clear: both;
+  color: rgb(34, 34, 34);
+  font-weight: 300;
+}
+
+.PriceGroupSeatType{
+  float: left;
+  padding: 5px;
+  font-size: 0.8em;
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+.PriceGroupSeatType tr{
+  border-bottom: 1px solid #E9E9E9;
+}
+
+.PriceGroupSeatTypeHeading{
+  display: block;
+  color: #333333;
+  font-style: normal;
+  line-height: 1.17em;
+  margin: 0px 0px 10px;
+  text-transform: uppercase;
+}
+
+.PriceGroupPersonTypeQuantity{
+  text-align: center;
+  background: #CCC;
+}
+
+.PriceGroupPersonTypeDescription, .PriceGroupPersonTypePrice{
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+/* Seating Plan */
+
+.SelectPersonTypeOverlay {
+  background: white;
+  width: 350px;
+  padding: 10px;
+  border: 2px solid 333333;
+  -webkit-box-shadow: 1px 0px 5px 1px rgba(0,0,0,0.75);
+  -moz-box-shadow: 1px 0px 5px 1px rgba(0,0,0,0.75);
+  box-shadow: 1px 0px 5px 1px rgba(0,0,0,0.75);
+}
+
+.SelectPersonTypeOverlayPrompt {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.SelectPersonTypeOverlaySeatNumber {
+  padding: 5px;
+  border-top: none;
+  display: inline;
+  line-height: 2.8em;
+  background-color: #13ab83;
+  color: white;
+}
+
+.SelectPersonTypeOverlaySeatType {
+  display: block;
+  color: #333333;
+  font-style: normal;
+  line-height: 1.17em;
+  margin: 0px 0px 10px;
+  border-bottom: 1px solid #E9E9E9;
+  text-transform: uppercase;
+}
+
+.PersonTypeOverlayPersonTypeAndPrice {
+  line-height: 2em;
+  margin-bottom: 5px;
+}
+
+.PersonTypeOverlayPersonTypeAndPrice a {
+  text-indent: 5px;
+  display: inline-block;
+  padding: 0 10px;
+  background: #EFEFEF;
+  text-decoration: none;
+  font-weight: 600;
+  text-transform: uppercase;
+
+}
+
+.PersonTypeOverlayPersonTypeAndPrice a:hover {
+  background: #CCC;
+  color: #333333;
+}
+
+.PersonTypeOverlayConditionsOfEntry {
+  color: black;
+  font-size: 8pt;
+  margin-left: 10px;
+}
+
+.SelectPersonTypeOverlayCancel {
+  margin-top: 10px;
+  text-align: center;
+}
+
+DIV.SelectPersonTypeOverlayCancel a {
+  color: #FFF;
+  display: block;
+}
+
+DIV.SelectedSeat {
+  background: black;
+  color: white;
+  line-height: 1.2em;
+}
+
+DIV.SelectedSeat SPAN {
+  display: block;
+  margin-left: -1px;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  DIV.SelectPersonTypeOverlay {
+    position: fixed !important;
+  top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    font-size: 1.2em;
+    line-height: 1.5em;
+  }
+  #SeatingPlanDiv{
+    /*width: 100% !important;*/
+  }
+  .SeatingPlanProtector{
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    background: #333;
+    /* IE 8 */
+    -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+    /* IE 5-7 */
+    filter: alpha(opacity=50);
+    /* Netscape */
+    -moz-opacity: 0.5;
+    /* Safari 1.x */
+    -khtml-opacity: 0.5;
+    /* Good browsers */
+    opacity: 0.5;
+  }
+  .PersonTypeOverlayPersonTypeAndPrice a {
+    display: inline-block;
+    padding: 0 10px;
+  }
+}
+
+.UnsubscribeFromENewsDescription {font-size: 10pt; font-weight: bold; margin-top: 16px; margin-bottom: 6px;}
+.UnsubscribeFromENewsCheckBox {margin-bottom: 5px;}
+.UnsubscribeFromENewsError {}
+DIV.PatronGiftAidFormRow {font-weight: bold; margin-top: 3px; margin-bottom: 3px; float: left; clear: both;}
+DIV.PatronGiftAidFormDescription {width: 250px; float: left;}
+DIV.PatronGiftAidFormSignedDate {width: 150px; float: left;}
+DIV.PatronGiftAidFormViewHideSign {width: 150px; float: left;}
+DIV.SignedPatronGiftAidForm {width: 90%; border: 2px solid black; padding: 10px; margin-top: 5px; margin-bottom: 25px; clear: both;}
+DIV.PatronGiftAidFormToSign {width: 90%; border: 2px solid black; padding: 10px; margin-top: 5px; margin-bottom: 25px; clear: both;}
+/*----------------------------------------------------------------------
+APPLY MEMBERSHIP PAGE
+----------------------------------------------------------------------*/
+.MembershipSection{
+margin-bottom: 20px;
+font-size: 0.8em;
+background: #00000048;
+}
+.member{
+margin-bottom: 10px;
+}
+.MembershipSectionHeading{
+display: block;
+padding: 5px;
+font-weight: bold;
+background: #00000099;
+line-height: 2em;
+float: left;
+width: 100%;
+}
+.MembershipSectionHeading span{
+float: left;
+}
+.MembershipSectionHeading .Button{
+float: left;
+}
+.MembershipSection .Button{
+padding: 5px !important;
+margin: 0 !important;
+margin-right: 10px !important;
+line-height: 20px;
+text-align: center;
+display: inline-block;
+min-width: 30px;
+line-height: 1em;
+font-size: 1em;
+}
+.MembershipSectionHeading .minus.Button{
+display: none;
+}
+.MembershipSectionHeading.expanded .plus.Button{
+display: none;
+}
+.MembershipSectionHeading.expanded .minus.Button{
+display: inline-block;
+}
+.MembershipSectionHeading .plus.Button{
+display: inline-block;
+}
+.selectable_benefit_membership_details{
+display: inline-block;
+}
+.selectable_benefit_membership{
+display: inline-block;
+}
+.selectable_benefit_membership_info{
+display: inline-block;
+}
+.MembershipSectionContent{
+padding: 10px;
+}
+.member_name{
+font-weight: bold;
+margin-bottom: 5px;
+}
+.ticket_sale_heading{
+font-weight: bold;
+margin-bottom: 5px;
+}
+.selectable_benefit_heading{
+font-weight: bold;
+margin-bottom: 5px;
+}
+.membership_sale{
+padding: 5px 10px;
+margin: 0 0 10px 0;
+}
+.ticket_sale{
+padding: 5px 10px;
+margin: 0 0 10px 0;
+}
+.selectable_benefit{
+padding: 5px 10px;
+margin: 0 0 10px 0;
+}
+.membership_type{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_description{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_joint_with{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_period{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_renew{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_status{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_info{
+display: inline-block;
+float: left;
+margin-right: 10px;
+}
+.membership_status{font-weight: bold;}
+.membership_status_expired{color: red;}
+.membership_status_cancelled{color: red;}
+.membership_status_active{color: green;}
+.membership_status_expring_soon{color: orange;}
+.membership_status_not_yet_active{color: purple;}
+.info_non_member_has_been_assigned_to_ticket {}
+.info_member_has_been_assigned_to_ticket {color: green; font-weight: bold;}
+.error_member_has_not_been_assigned_to_ticket {color: red; font-weight: bold;}
+.MembershipSectionContent ul{
+list-style: none;
+margin: 0;
+padding: 0;
+}
+@media(max-width: 768px){
+.ticket_sale_heading{
+display: none;
+}
+.selectable_benefit_heading{
+display: none;
+}
+}
+.CreditCardPayment { font-style: italic; }
+.MiscPayment { font-style: italic; }
+.RedeemVoucher { font-style: italic; }
+
+/*----------------------------------------------------------------------
+HPP Iframe and Loader
+----------------------------------------------------------------------*/
+#CardstreamHPPIFRAME{
+border: none;
+width: 100%;
+max-width: 630px;
+height: 798px;
+visibility: hidden;
+overflow-y: hidden;
+display: block;
+margin-top: 10px;
+}
+
+#RealexHPPIFRAME{
+border: none;
+width: 100%;
+max-width: 600px;
+min-height: 550px;
+visibility: hidden;
+overflow-y: hidden;
+display: block;
+margin-top: 10px;
+}
+
+#HPPPaymentError {
+font-size: 1.2em;
+margin-top: 20px;
+font-weight: bold;
+padding: 20px;
+border: 1px solid red;
+}
+
+#HPPPaymentErrorMessage {
+color: red;
+}
+
+#HPPLoader {
+margin: 100px auto 0;
+width: 70px;
+text-align: center;
+}
+
+#HPPLoader > div {
+width: 18px;
+height: 18px;
+background-color: grey;
+border-radius: 100%;
+border: 1px solid white;
+display: inline-block;
+-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+}
+
+#HPPbounce1 {
+-webkit-animation-delay: -0.32s;
+animation-delay: -0.32s;
+}
+
+#HPPbounce2 {
+-webkit-animation-delay: -0.16s;
+animation-delay: -0.16s;
+}
+
+@-webkit-keyframes sk-bouncedelay {
+0%{
+-webkit-transform: scale(0)
+}
+80% {
+-webkit-transform: scale(0)
+}
+100% {
+-webkit-transform: scale(0)
+}
+
+40% {
+-webkit-transform: scale(1.0)
+}
+}
+
+@keyframes sk-bouncedelay {
+0% {
+-webkit-transform: scale(0);
+transform: scale(0);
+}
+
+80% {
+-webkit-transform: scale(0);
+transform: scale(0);
+}
+100% {
+-webkit-transform: scale(0);
+transform: scale(0);
+}
+40% {
+-webkit-transform: scale(1.0);
+transform: scale(1.0);
+}
+}
+
+#HPPEarmarkTimeoutPageOverlay {
+position: fixed;
+left: 0;
+top: 0;
+width: 100%;
+height: 100%;
+display: block;
+background: #333;
+opacity: 0.8;
+}
+#HPPTimeoutErrorMessageContainer {
+position: relative;
+width: 50%;
+height: auto;
+margin: 0 auto;
+display: block;
+margin-top: 50px;
+color: red;
+font-size: 1.2em;
+font-weight: bold;
+line-height: 1.5em;
+text-align: center;
+background: #FFF;
+opacity: 1;
+padding: 20px;
+}
+@media(max-width: 768px){
+#HPPTimeoutErrorMessageContainer {
+width: 80%;
+}
+}
+#HPPReturnToMyOrderButton {
+display: block;
+margin: auto;
+margin-top: 10px;
+}
+/*---------------------*/
+/*---- Month View -----*/
+/*---------------------*/
+
+.week, .days-of-week {
+  display: flex;
+}
+
+.day {
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0;
+}
+
+.calendar-nav {
+  margin: 1em;
+  text-align: center;
+  font-size: 2em;
+}
+.calendar-nav > div{
+  display: inline-block;
+}
+#current-month{
+  min-width: 8em;
+}
+.month {
+  margin-top: 0;
+  padding-top: 0;
+  display: none;
+}
+.month.active{
+  display: block;
+}
+.week {
+  min-height: 10em;
+}
+.day {
+  color: black;
+  font-weight: bold;
+  padding: 5px;
+  background-color: #eee;
+  border: solid 1px #000;
+}
+.day span.date {
+  display:block;
+}
+.date-display{
+  opacity: 0.6;
+}
+.day a {
+  font-size: 0.8em;
+  display: block;
+  background: rgba(0, 0, 0, 0.4);
+  margin: 2px;
+  padding: 5px 8px;
+  line-height: 1.2em;
+}
+
+#prev-month, #next-month {
+  cursor: pointer;
+  background: white;
+  line-height: 1.5em;
+  border-radius: 50%;
+  height: 1.5em;
+  width: 1.5em;
+  display: inline-block;
+  visibility: hidden;
+}
+#prev-month.active, #next-month.active {
+  visibility: visible !important;
+}
+.day-in-past {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(0,0,0,0),
+    rgba(0,0,0,0) 10px,
+    rgba(0,0,0,0.15) 10px,
+    rgba(0,0,0,0.15) 20px
+  );
+}
+
+.day-in-past span{
+  color: #aaa;
+}
+
+.day.non-day{
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.today {
+  background: rgba(255, 0, 0, 0.2);
+}
+
+.day .mobile{
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .days-of-week {
+    display: none;
+  }
+
+  .week {
+    display: block;
+    height: auto;
+    min-height: 0px;
+  }
+
+  .day {
+    margin: 0 auto 5px !important;
+    display: block;
+    font-size: 1.3em;
+  }
+
+  .day > span{
+    font-size: 0.8em;
+  }
+
+  .day-in-past {
+    display: none;
+  }
+
+  .month-view-nav {
+    margin-bottom: 10px;
+    font-size: 1.5em;
+  }
+
+  .day .mobile{
+    display: inline;
+  }
+}
+.SocialDistanceSeatInTheirBubble, .SocialDistanceSeatInMyBubble {
+  border-radius: 50%;
+  background-color: rgba(136, 201, 252, 0.3);
+}
+
+.SocialDistanceSeatInMyBubble {
+  position: absolute;
+  height: 20px;
+  width: 20px;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+DIV.SelectedSeat {
+  z-index: 2;
+}
+
+/*-----------------------------
+ONLINE RETAIL
+-----------------------------*/
+SPAN.WebTab{white-space: nowrap; cursor: pointer; font-weight: 300; padding-right: 15px; font-size: 1em; }
+SPAN.WebTab a{ color: rgb(51, 51, 51); }
+SPAN.WebTab a:hover{  }
+SPAN.SelectedWebTab{cursor: pointer;  padding-right: 15px; font-weight: 400; font-size: 1em;}
+SPAN.SelectedWebTab a{white-space: nowrap; color: #BB094D;}
+.DetailSubHeading{border-bottom: solid 1px #000;}
+
+.NewStyleWebTab {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.SaleItem{
+  position: relative;
+}
+
+.SaleItem.Retail{
+  margin-bottom: 10px;
+  border-bottom: solid 1px #000;
+  padding: 5px;
+  width: 100%;
+
+}
+
+.SaleItem.Retail .Button{
+  position: relative;
+  width: 20px;
+  text-align: center;
+  padding: 0.5em;
+  cursor: pointer;
+}
+
+.SaleItemInput input{
+  width: 60px;
+  padding: 4px;
+  text-align: center;
+  border: none;
+  cursor: default;
+  vertical-align: initial;
+}
+
+.SaleItem.Retail:nth-child(even){
+  margin-right: 0 !important;
+}
+
+.ViewOrder input[type="submit"]{
+clear: both;
+display: block;
+}
+
+
+@media (max-width: 767px) {
+  .SaleItem.Retail img{
+
+  }
+
+  .upsell-image{
+    width: 13.45% !important;
+    float:left !important;
+  }
+
+  .upsell-detail{
+    width: 82.7% !important;
+    float:left !important;
+  }
+}
+.upsell-detail{
+  font-size: 0.8em;
+  line-height: 1em;
+}
+
+.SaleMinus, .SalePlus{
+  padding: 0;
+  margin: 0;
+}
+
+@media(max-width: 767px){
+  .add_buttons {
+   line-height: inherit;
+   margin-top: 0px;
+   position: relative;
+   top: 0;
+   left: 0;
+  }
+
+  .upsell-image {
+     margin-right: 10px;
+  }
+
+}
+
+/*----------------------------------------------------------------------
+  ORDER DETAILS/TABLES
+----------------------------------------------------------------------*/
+label.SelectLabel, label.TextLabel {
+  display: none;
+  font-family: 'Fjalla One', sans-serif;
+  font-size: 0.8em;
+  line-height: 1.5em;
+  text-transform: uppercase;
+  margin-top:10px;
+}
+.ViewOrder table, .DiscountsPrompt table, .PaymentPrompt table {
+  width: 100%!important;
+  border-spacing:0; 
+    border-collapse:collapse; 
+  margin-top:10px;
+}
+.ViewOrder table td, .DiscountsPrompt table td, .PaymentPrompt table td {
+  vertical-align: top;
+  padding:5px 6px;
+}
+.ViewOrder TD.OrderDelete, .DiscountsPrompt TD.OrderDelete, .PaymentPrompt TD.OrderDelete {
+  vertical-align: top!important;
+}
+.ViewOrder table th, .DiscountsPrompt table th, .PaymentPrompt table th, .DiscountSubHeading {
+  padding:5px 6px;
+  background-color: #CCC;
+  text-transform: uppercase;
+}
+.ViewOrder table b, .DiscountsPrompt table b, .PaymentPrompt table b {
+  text-transform: uppercase;
+  font-size: 16px;
+}
+.ContinueButton {
+  float:right;
+  margin-left:5px;
+  margin-top:10px;
+}
+
+.PaymentHeading {
+  border-top:1px solid #aaa;
+  padding-top:20px;
+  margin-top:20px;
+  text-transform: uppercase;
+}
+
+.hidden {
+  display: none;
+}
+
+#dlgTurnOnAutoRenewMembership {
+  max-width: 600px;
+  top: 60px;
+  min-height: 400px;
+}
+
+.TurnOnAutoRenewMembershipVerifyCardIframe {
+  min-height: 300px;
+}
+
+#dlgTurnOnAutoRenewMembership iframe {
+  width: 100%;
+  height: 300px;
+}
+
+#btnVoucherPayment {
+  margin-top: 10px;
+}
+
+#AgreeToTerms, #ShouldRememberLogin {
+  margin-right: 2px;
+  vertical-align: middle;
+}
+
+ #MyOrderSimpleMenu { display: none; } 
+ 
+ #SkipThisStep > a {
+   color: #E35960;
+ }
+ 
+ .LoginToJoinWaitingList.ListNotFull.PatronLoggedIn { display: none; }
+.LoginToJoinWaitingList.ListNotFull.PatronNotLoggedIn { display: block; }
+.LoginToJoinWaitingList.ListFull { display: none; }
+.WaitingListIsFull.ListFull { display: block; }
+.WaitingListIsFull.ListNotFull { display: none; }
+</STYLE>
+<script>
+  function showOverlayAndPopup(aPopupElementID) { 
+    document.getElementById(aPopupElementID).style.display = "block";
+    if (document.getElementById("Overlay"))
+      document.getElementById("Overlay").style.display = "block";
+  }
+  function hideOverlayAndPopup(aPopupElementID) {
+    document.getElementById(aPopupElementID).style.display = "none";
+    if (document.getElementById("Overlay"))
+      document.getElementById("Overlay").style.display = "none";
+  }
+</script>
+<script>
+  function getXMLHttp() { 
+    if (window.XMLHttpRequest) 
+      return(new XMLHttpRequest()) // code for IE7+, Firefox, Chrome, Opera, Safari 
+    else 
+      return(new ActiveXObject("Microsoft.XMLHTTP")); // code for IE6, IE5 
+  }
+</script><script type="text/javascript">
+
+  function ShowSaleItemPrompt(itemid) {
+    var elem = document.getElementById("SaleItem" + itemid + "_Prompt");
+    var spans = elem.querySelectorAll("span");
+    for(var i = 0; i < spans.length; i++) {
+      if (spans[i].classList.contains("activeoption"))
+        spans[i].classList.remove("activeoption");
+      if (spans[i].getAttribute("_def") == "1")
+        spans[i].classList.add("activeoption");
+    }
+    var divs = elem.querySelectorAll("div.ProductComponents");
+    for(var i = 0; i < divs.length; i++) {
+      if (divs[i].getAttribute("_def") == "0")
+        divs[i].style.display = 'none';
+    }
+    var err = elem.querySelectorAll(".Error");
+    if (err.length > 0)
+      err[0].textContent = "";
+    elem.style.display = 'block';
+  }
+  function SaleItemQuantity(itemid, qty) {
+    var q = parseInt(document.getElementById(itemid).value);
+    q += qty;
+    if (q < 0) q = 0;
+    document.getElementById(itemid).value = q;
+  }
+  function PostbackBasketToServer() {
+  }
+
+  function RemoveSaleItem(itemid, inputid, itemnum, itemprice) {
+    var elem = document.getElementById("SaleItem" + itemid + "_" + itemnum);
+    if (elem != null) {
+      elem.parentNode.removeChild(elem);
+      var input = document.getElementById(inputid);
+      if (input)
+        input.parentNode.removeChild(input);
+      var bCounts = document.getElementsByClassName("basket-count");
+      for (i = 0; i < bCounts.length; i++)
+        bCounts[i].textContent = parseInt(bCounts[i].textContent) - 1;
+      var bTotal = document.getElementById("basket-total");
+      if (bTotal)
+        bTotal.textContent = (parseFloat(bTotal.textContent) - itemprice).toFixed(2);
+      PostbackBasketToServer();
+    }
+  }
+
+  function AddSaleItemWithOptions(itemid, name, baseprice, shouldPostback) {
+    var values = "";
+    var options = [];
+    var prices = [];
+    var i = 0;
+    do {
+      var container = document.getElementById("SaleItem" + itemid + "_Option" + i);
+      if (container == null) break;
+      if (container.parentNode.style.display != 'none') {
+        var children = container.getElementsByClassName("option");
+        var selOptions = 0;
+        var minOptions = 0;
+        for (var j = 0; j < children.length; j++) {
+          minOptions = parseInt(children[j].getAttribute("_min"));
+          if (children[j].classList.contains("activeoption")) {
+            values += children[j].getAttribute("_value") + "_";
+            prices.push(parseFloat(children[j].getAttribute("_price")));
+            options.push(children[j].getAttribute("_name"));
+            selOptions++;
+          }
+        }
+        if (selOptions < minOptions) {
+          var errDiv = document.getElementById("SaleItem" + itemid + "_Error");
+          errDiv.textContent = "Error - please select at least " + minOptions + " option(s) before continuing";
+          container.classList.add("is-danger");
+          return;
+        }
+      }
+      i++;
+    } while (true);
+    values = values.substring(0, values.length - 1);
+    AddSaleItem(itemid, name, values, baseprice, prices, options, shouldPostback);
+  }
+
+  function AddSaleItem(itemid, name, optionvalues, baseprice, optionprices, optionnames, shouldPostback) {
+    var TheAddToOrderButton = document.getElementById("SaleItem" + itemid + "_button");
+    TheAddToOrderButton.classList.add("is-loading");
+    var parent = document.getElementById("basket-items");
+    var formParent = document.getElementById("SaleItemAddedItems" + itemid);
+    if (parent == null)
+      parent = formParent;
+
+    var itemCount = 1;
+    while (document.getElementById("SaleItem" + itemid + "_" + itemCount) != null)
+      itemCount++;
+
+    var itemDiv = document.createElement("div");
+    itemDiv.className = "SaleAddedItem";
+    itemDiv.id = "SaleItem" + itemid + "_" + itemCount;
+    var itemInput = document.createElement("input");
+    itemInput.id = "RetailItemPopup" + "_" + itemid + "_" + itemCount;
+    itemInput.name = itemInput.id;
+    itemInput.type = "hidden";
+    if (optionvalues == "")
+      itemInput.value = "_";
+    else
+      itemInput.value = optionvalues;
+    formParent.appendChild(itemInput);
+
+    var nameDiv = document.createElement("div");
+    nameDiv.className = "basketItemName";
+    itemDiv.appendChild(nameDiv);
+    var nameSpan = document.createElement("span");
+    nameSpan.textContent = name;
+    nameDiv.appendChild(nameSpan);
+    nameSpan = document.createElement("span");
+    nameSpan.textContent = String.fromCharCode(163) + baseprice.toFixed(2);
+    nameSpan.className = "itemPrice";
+    nameDiv.appendChild(nameSpan);
+
+    var descDiv = document.createElement("div");
+    descDiv.className = "basketItemOptions";
+    itemDiv.appendChild(descDiv);
+    var optDiv = document.createElement("div");
+    descDiv.appendChild(optDiv);
+    var price = baseprice;
+
+    var lastID = "";
+    var options = optionvalues.split('_');
+    for (var i = 0; i < optionprices.length; i++) {
+      var pID = options[i].split('-')[0];
+      if (lastID != "") {
+        if ((pID != lastID) && (lastID != "")) {
+          var optDiv = document.createElement("div");
+          descDiv.appendChild(optDiv);
+        }
+      }
+      lastID = pID;
+      var optSpan = document.createElement("span");
+      optDiv.appendChild(optSpan);
+      optSpan.textContent = optionnames[i];
+      if (optionprices[i] > 0) {
+        var priceSpan = document.createElement("span");
+        priceSpan.textContent += " (+" + String.fromCharCode(163) + optionprices[i].toFixed(2) + ") ";
+        priceSpan.className = "itemPrice";
+        optSpan.appendChild(priceSpan);
+      }
+      price += optionprices[i];
+    }
+    var optDiv = document.createElement("div");
+    optDiv.classList.add("totalPrice");
+    optDiv.textContent = "Total price "
+    descDiv.appendChild(optDiv);
+    var priceSpan = document.createElement("span");
+    priceSpan.textContent += String.fromCharCode(163) + price.toFixed(2);
+    priceSpan.className = "itemPrice";
+    optDiv.appendChild(priceSpan);
+    var span = document.createElement("span");
+    span.className = "basketItemRemove";
+    span.textContent = "X";
+    span.setAttribute("onclick", "RemoveSaleItem('" + itemid + "', '" + itemInput.id + "', '" + itemCount + "', " + price + ")");
+    span.className = "Button Close";
+    itemDiv.appendChild(span);
+
+    parent.appendChild(itemDiv);
+    setTimeout(function(){
+      TheAddToOrderButton.classList.add("complete");
+      TheAddToOrderButton.classList.remove("is-loading");
+      setTimeout(function(){
+        document.getElementById("SaleItem" + itemid + "_Prompt").style.display = 'none';
+        TheAddToOrderButton.classList.remove("complete");
+      }, 0);
+    }, 0);
+
+    var bCounts = document.getElementsByClassName("basket-count");
+    for (i = 0; i < bCounts.length; i++)
+      bCounts[i].textContent = parseInt(bCounts[i].textContent) + 1;
+
+    var bTotal = document.getElementById("basket-total");
+    if (bTotal)
+        bTotal.textContent = (parseFloat(bTotal.textContent) + price).toFixed(2);
+    if (shouldPostback)
+      PostbackBasketToServer();
+  }
+  function SetActiveTab(num) {
+    var x = document.getElementsByClassName("NewStyleWebTab");
+    for (var i = 0; i < x.length; i++) {
+      document.getElementById("span_tab" + i).classList.remove("SelectedWebTab");
+      document.getElementById("span_tab" + i).classList.remove("WebTab");
+
+      if (x[i].id == "div_tab" + num) {
+        x[i].style.display = "flex";
+        document.getElementById("span_tab" + i).classList.add("SelectedWebTab");
+      } else {
+        x[i].style.display = "none";
+        document.getElementById("span_tab" + i).classList.add("WebTab");
+      }
+    }
+  }
+
+  function SelectSaleItemOptionMulti(itemid, optnumber, optvalue, numoptions) {
+    var container = document.getElementById("SaleItem" + itemid + "_Option" + optnumber);
+    var children = container.getElementsByClassName("option");
+    var selected = 0;
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].classList.contains("activeoption")) {
+        selected++;
+        if (children[i].getAttribute("_value") == optvalue) {
+          //deselect
+          children[i].classList.remove("activeoption");
+          SetDisplay(children[i].getAttribute("_prompt"), false);
+          return;
+        }
+      }
+    }
+    if (selected < numoptions) {
+      for (var i = 0; i < children.length; i++)
+        if (children[i].getAttribute("_value") == optvalue) {
+          children[i].classList.add("activeoption");
+          SetDisplay(children[i].getAttribute("_prompt"), true);
+        }
+    }
+  }
+
+  function SetDisplay(which, isVisible) {
+      var elem = document.getElementById(which);
+      if (elem != null) {
+        if (isVisible)
+          elem.style.display = 'block';
+        else
+          elem.style.display = 'none';
+      }
+  }
+
+  function SelectSaleItemOption(itemid, optnumber, optvalue) {
+    var container = document.getElementById("SaleItem" + itemid + "_Option" + optnumber);
+    container.classList.remove("is-danger");
+    var children = container.getElementsByClassName("option");
+    for (var i = 0; i < children.length; i++) {
+      if (children[i].getAttribute("_value") == optvalue) {
+          children[i].classList.add("activeoption");
+          SetDisplay(children[i].getAttribute("_prompt"), true);
+      } else {
+          children[i].classList.remove("activeoption");
+          SetDisplay(children[i].getAttribute("_prompt"), false);
+      }
+    }
+  }
+  function ShowUpsellPopup() {
+    var theForm = document.getElementById("UpsellForm");
+    var popupContainer = document.getElementById("UpsellPopupFormContainer");
+    if (theForm && popupContainer) {
+      var placeholderDiv = document.createElement("div");
+      placeholderDiv.id = "UpsellFormPlaceholder";
+      theForm.parentElement.insertBefore(placeholderDiv, theForm);
+      popupContainer.appendChild(theForm);
+    }
+
+    showOverlayAndPopup("UpsellPopup");
+  }
+
+  function HideUpsellPopup() {
+    var theForm = document.getElementById("UpsellForm");
+    var placeholderDiv = document.getElementById("UpsellFormPlaceholder");
+    if (theForm && placeholderDiv) {
+      placeholderDiv.parentElement.replaceChild(theForm, placeholderDiv);
+    }
+
+    hideOverlayAndPopup("UpsellPopup");
+  }
+</script>
+<script type="text/javascript">
+
+function ValidateMembershipPatronDetails(aPatronNumberOrEmailAddress, aPatronPostcode, aOnComplete) { 
+  var xmlhttp = getXMLHttp(); 
+  xmlhttp.onreadystatechange = function () {
+      if ((xmlhttp.readyState == 4) && (xmlhttp.status == 200)) {
+        var TheResponse = JSON.parse(xmlhttp.responseText);
+        if (TheResponse.Response == "OK") 
+          aOnComplete(true, TheResponse.PatronFullName, TheResponse.PatronNumber);
+        else
+          aOnComplete(false, "", "");
+      }
+  }
+  xmlhttp.open("POST", "https://thebeehive.savoysystems.co.uk/TheBeehive.dll/ValidatePatronDetails");
+  xmlhttp.setRequestHeader('Content-type', 'application/x-www-form-urlencoded')
+  xmlhttp.send("PatronNumberOrEmailAddress=" + encodeURI(aPatronNumberOrEmailAddress) + "&PatronPostcode=" + encodeURI(aPatronPostcode), true);
+}
+            var membershipItem = {
+                isRenewal: null,
+                autoRenew: null,
+                priceToPay: null,
+                startDate: null,
+                isForMe: null,
+                otherPatronNumber: null,
+                otherPatronPostCode: null,
+                otherPatronFullName: null,
+                validationCode: null,
+                shouldCreatePatron: null
+            }
+
+            function AddMembershipDiv(aParentElement, aId, aClassName, aInnerHTML) {
+                var div = document.createElement('div');
+                div.id = aId;
+                div.className = aClassName
+                div.innerHTML = aInnerHTML;
+
+                aParentElement.appendChild(div);
+
+                return div;
+            }
+
+            function AddMembershipLabelledInput(aParentElement, aInputType, aId, aName, aLabelHTML, aValue) {
+                var div = document.createElement('div');
+                div.classList.add("field");
+
+                var label = document.createElement('label');
+                label.innerHTML = aLabelHTML;
+                label.classList.add("label");
+                label.setAttribute('for', aId);
+
+                var input = document.createElement('input');
+                if ((aInputType !== 'checkbox') && (aInputType !== 'radio')){
+                  input.classList.add("input");
+                  input.setAttribute("placeholder", aLabelHTML);
+                }
+                input.type = aInputType;
+                input.id = aId;
+                input.name = aName;
+                input.value = aValue;
+                var Control = document.createElement("div");
+                Control.classList.add("control");
+                if ((aInputType == 'checkbox') || (aInputType == 'radio')) {
+                    Control.appendChild(label);
+                    label.classList.add("checkbox");
+                    label.prepend(input);
+                }
+                else {
+                    div.appendChild(label);
+                    Control.appendChild(input);
+                }
+                div.appendChild(Control);
+
+                aParentElement.appendChild(div);
+
+                return input;
+            }
+
+            function AddMembershipButton(aParentElement, aCaption, aOnClick) {
+                var button = document.createElement('a');
+                button.innerHTML = aCaption;
+                button.classList.add("Button");
+                button.classList.add("button");
+                button.addEventListener('click', aOnClick);
+
+                var div = document.createElement('div');
+                div.appendChild(button);
+
+                aParentElement.appendChild(div);
+
+                return button;
+            }
+
+            function InitMembershipDialog(aDialogContentId, aHeading) {
+                divContent = document.getElementById(aDialogContentId);
+                divContent.innerHTML = '';
+
+                AddMembershipDiv(divContent, '', 'PopupDialogHeading', aHeading);
+                AddMembershipDiv(divContent, aDialogContentId + 'dialogErrorMessage', 'DialogErrorMessage', '');
+
+                return divContent;
+            }
+
+            function SetMembershipDialogErrorMessage(aDialogContentId, aErrorMessageHTML) {
+                document.getElementById(aDialogContentId + 'dialogErrorMessage').innerHTML = aErrorMessageHTML;
+            }
+
+
+            function ShowMembershipPageOne(aDialogContentId, aMembershipType, aIsRenewal, aStartDate, aIsForMe, aOtherPatronNumber, aOtherPatronPostCode, aOtherPatronFullName) {
+                // Reset everything
+                membershipItem.isRenewal = aIsRenewal;
+                membershipItem.autoRenew = null;
+                membershipItem.priceToPay = null;
+                membershipItem.startDate = aStartDate;
+                membershipItem.isForMe = aIsForMe;
+                membershipItem.otherPatronNumber = aOtherPatronNumber;
+                membershipItem.otherPatronPostCode = aOtherPatronPostCode;
+                membershipItem.otherPatronFullName = aOtherPatronFullName;
+                membershipItem.validationCode = "";
+                membershipItem.shouldCreatePatron = null;
+
+                var divContent = InitMembershipDialog(aDialogContentId, '');
+
+                // Start Date (if editable)
+                if (aMembershipType.allowEditStartDate) {
+                    var inputStartDate = AddMembershipLabelledInput(divContent, 'date', 'Membership_StartDate', '', 'Start Date');
+                    inputStartDate.addEventListener('input', () => UpdateDuration(aMembershipType));
+                    inputStartDate.value = membershipItem.startDate;
+                }
+
+                // Duration
+                AddMembershipDiv(divContent, 'Membership_Duration', 'duration', MembershipDurationFmt(aMembershipType, membershipItem, ''));
+
+                // Auto-Renew (if allowed)
+                if (aMembershipType.allowAutoRenew) {
+
+                    chkAutoRenew = AddMembershipLabelledInput(divContent, 'checkbox', 'Membership_AutoRenew', '',  'Automatically Renew');
+
+                }
+
+                // Overpaymnet (if allowed)
+                if (aMembershipType.allowOverpayment) {
+                    inputPriceToPay = AddMembershipLabelledInput(divContent, 'input', 'Membership_PriceToPay', '',  'Price to Pay', aMembershipType.currentPrice.toFixed(2));
+                }
+
+                // Validation Code (if required)
+                if (aMembershipType.isValidationCodeRequired) {
+                    inputValidationCode = AddMembershipLabelledInput(divContent, 'input', 'Membership_ValidationCode', '',  aMembershipType.validationCodePromptText, '');
+                }
+
+                var shouldSkipPrompts =   !aMembershipType.allowEditStartDate &&   !aMembershipType.allowOverpayment &&   !aMembershipType.isValidationCodeRequired &&   !membershipItem.isRenewal &&   !aMembershipType.isJoint &&   !aMembershipType.allowPurchaseForSomeoneElse &&   !aMembershipType.allowAutoRenew; 
+                // Next button
+                var doNext = () => {
+                    if (aMembershipType.isValidationCodeRequired && (inputValidationCode.value.trim() == '')) {
+                        SetMembershipDialogErrorMessage(aDialogContentId, aMembershipType.validationCodePromptText + ' is required');
+                        return;
+                    }
+                    if (aMembershipType.allowEditStartDate && (inputStartDate.value == '')) {
+                        SetMembershipDialogErrorMessage(aDialogContentId, 'Start Date is required');
+                        return;
+                    }
+                    membershipItem.autoRenew = aMembershipType.allowAutoRenew && chkAutoRenew.checked;
+
+                    if (aMembershipType.allowEditStartDate)
+                        membershipItem.startDate = inputStartDate.value;
+
+                    if (aMembershipType.allowOverpayment) 
+                        membershipItem.priceToPay = parseFloat(inputPriceToPay.value);
+
+                    if (aMembershipType.isValidationCodeRequired) 
+                        membershipItem.validationCode = inputValidationCode.value;
+
+                    if (membershipItem.isRenewal) 
+                        ShowMembershipPage_Summary(aDialogContentId, aMembershipType, false);
+                    else if (!aMembershipType.isJoint && membershipItem.autoRenew) {
+                        membershipItem.isForMe = true;
+                        ShowMembershipPage_Summary(aDialogContentId, aMembershipType, false);
+                    }
+                    else if (aMembershipType.isJoint) {
+                        membershipItem.isForMe = true;
+                        ShowMembershipPage_SelectPatron(aDialogContentId, aMembershipType);
+                    }
+                    else {
+                      if (aMembershipType.allowPurchaseForSomeoneElse)
+                        ShowMembershipPage_SelectForMeOrSomeoneElse(aDialogContentId, aMembershipType);
+                      else {
+                        membershipItem.isForMe = true;
+                        ShowMembershipPage_Summary(aDialogContentId, aMembershipType, shouldSkipPrompts);
+                      }
+                    }
+                };
+                if (shouldSkipPrompts) 
+                  doNext();
+                else 
+                  AddMembershipButton(divContent, 'Next', doNext);
+            }
+
+            function ShowMembershipPage_SelectForMeOrSomeoneElse(aDialogContentId, aMembershipType) {
+                var divContent = InitMembershipDialog(aDialogContentId, 'Who is the Membership for?');
+
+                // Membership is for me
+                rdoForMe = AddMembershipLabelledInput(divContent, 'radio', 'ForMe', 'ForWhom', 'Membership is for me', 'Y');
+                // Membership is for someone else
+                rdoForSomeoneElse = AddMembershipLabelledInput(divContent, 'radio', 'ForSomeoneElse', 'ForWhom', 'Membership is for someone else', 'N');
+
+                // Next button
+                AddMembershipButton(divContent, 'Next', () => {
+                    if (!rdoForMe.checked && !rdoForSomeoneElse.checked) {
+                        SetMembershipDialogErrorMessage(aDialogContentId, 'Please choose who the Membership is for');
+                        return;
+                    }
+
+                    membershipItem.isForMe = rdoForMe.checked;
+
+                    if (rdoForMe.checked)
+                        ShowMembershipPage_Summary(aDialogContentId, aMembershipType, false)
+                    else
+                        ShowMembershipPage_SelectPatron(aDialogContentId, aMembershipType);
+                });
+            }            
+
+            function ShowMembershipPage_SelectPatron(aDialogContentId, aMembershipType) {
+
+                var divContent = InitMembershipDialog(aDialogContentId, aMembershipType.isJoint ? 'Choose Joint Member' : 'Choose Member');
+
+                var blurb = document.createElement('div');
+                blurb.classList.add('SelectOtherPatronBlurb');
+                divContent.appendChild(blurb);
+
+                if (aMembershipType.isJoint)
+                  blurb.innerHTML = 'NB: The Patron with whom you are becoming a joint member must already have an Account on the system';
+                else
+                  blurb.innerHTML = 'NB: The Patron for whom you are purchasing this membership must already have an Account on the system';
+
+                var inputPatronNumberOrEmailAddress = AddMembershipLabelledInput(divContent, 'text', '', '', 'Patron Number / Email Address', '');
+                var inputPostCode = AddMembershipLabelledInput(divContent, 'text', '', '', 'Post Code', '');
+
+                var divProgress = AddMembershipDiv(divContent, '', '', 'Please wait...');
+                divProgress.style.visibility = 'hidden';
+
+                // Next button
+                AddMembershipButton(divContent, 'Check Details', () => {
+                    if (inputPatronNumberOrEmailAddress.value == '') {
+                        SetMembershipDialogErrorMessage(aDialogContentId,
+                            'Please specify the ' + (aMembershipType.isJoint ? 'Joint ' : '') + 'Member\'s Patron Number / Email Address');
+                        return;
+                    }
+
+                    if (inputPostCode.value == '') {
+                        SetMembershipDialogErrorMessage(aDialogContentId,
+                            'Please specify the ' + (aMembershipType.isJoint ? 'Joint ' : '') + 'Member\'s Post Code');
+                        return;
+                    }
+
+                    divProgress.style.visibility = 'visible';
+
+                    ValidateMembershipPatronDetails(inputPatronNumberOrEmailAddress.value, inputPostCode.value,   (aDoesPatronExist, aPatronFullName, aPatronNumber) => {
+                         if (aDoesPatronExist) {
+                            membershipItem.otherPatronNumber = aPatronNumber;
+                            membershipItem.otherPatronPostCode = inputPostCode.value;
+                            membershipItem.otherPatronFullName = aPatronFullName;
+
+                            ShowMembershipPage_Summary(aDialogContentId, aMembershipType, false);
+                        }
+                        else {
+                            ShowMembershipPage_TryAgainSelectPatronOrCreateNew(aDialogContentId, aMembershipType);
+                        }
+                    });
+                });
+            }
+
+            function ShowMembershipPage_TryAgainSelectPatronOrCreateNew(aDialogContentId, aMembershipType) {
+                var divContent = InitMembershipDialog(aDialogContentId, 'Check Failed');
+
+                AddMembershipDiv(divContent, '', '', 'We were unable to find a match in the system');
+
+                AddMembershipButton(divContent, 'Try Again', () => {
+                    ShowMembershipPage_SelectPatron(aDialogContentId, aMembershipType);
+                });
+
+            }
+
+            function ShowMembershipPage_Summary(aDialogContentId, aMembershipType, aAddAndGoToBasketImmediately) {
+                var divContent = InitMembershipDialog(aDialogContentId, 'Summary');
+
+                AddMembershipDiv(divContent, '', '', MembershipItemFmt(aMembershipType, membershipItem, '<br/>'))
+                if (membershipItem.autoRenew){
+                  var blurb = document.createElement('div');
+                  blurb.classList.add('AutoRenewMembershipBlurb');
+                  blurb.classList.add('notification');
+                  divContent.appendChild(blurb);
+                  blurb.innerHTML = 'By selecting Automatically Renew I accept that the Credit/Debit Card I use to complete this purchase will be charged again every time my Membership expires';
+                }
+
+                // Add to Order button
+                var doAdd = () => {
+                    aMembershipType.doAddMembership(aMembershipType, membershipItem);
+                    hideOverlayAndPopup(aMembershipType.popupId);
+                };
+                if (aAddAndGoToBasketImmediately) 
+                  doAdd();
+                else 
+                  AddMembershipButton(divContent, 'Add to Order', doAdd); 
+            }
+   function ForCommaText(aString) {
+            return (aString == null ? null : '"' + aString.replace('"', '""') + '"');
+        }
+   function DateToStr_(aDate) {
+       var d = new Date(aDate),
+           month = '' + (d.getMonth() + 1),
+           day = '' + d.getDate(),
+           year = d.getFullYear();
+
+       if (month.length < 2)
+           month = '0' + month;
+       if (day.length < 2)
+           day = '0' + day;
+       return [year, month, day].join('-');
+   }
+   function DateFmtDMMMYYYY(aDate) {
+     var ShortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+     return aDate.getDate() + ' ' + ShortMonths[aDate.getMonth()] + ' ' + aDate.getFullYear();
+   }
+   function getAutoRenewPrice(aDate, aMembershipType) {
+     var theDate = new Date(aDate);
+     for (var i = 0; i < aMembershipType.autoRenewPricingRules.length; i++) {
+       var startDate = new Date(aMembershipType.autoRenewPricingRules[i].start);
+       var endDate = new Date(aMembershipType.autoRenewPricingRules[i].end);
+       if ((theDate >= startDate) && (theDate <= endDate))
+         return aMembershipType.autoRenewPricingRules[i].price;
+     }
+     return aMembershipType.autoRenewPricingRules[0].price;
+   }
+   function IntDiv(a,b) {
+     var result = a/b;
+     if(result >= 0)
+       return Math.floor(result);
+     else
+       return Math.ceil(result);
+   }
+   function IsLeapYear(aYear) {
+     return (aYear % 4 == 0) && ((aYear % 100 != 0) || (aYear % 400 == 0));
+   }
+   function IncMonths(aDate, aNumberOfMonths) {
+     var sign = aNumberOfMonths >= 0 ? 1 : -1;
+     var year = aDate.getFullYear() + IntDiv(aNumberOfMonths, 12);
+     var month = aDate.getMonth() + aNumberOfMonths % 12;
+     if (month > 11) {
+       year = year + sign;
+       month = month -12 * sign;
+     }
+    var MonthDays;
+    if (IsLeapYear(year))
+   	   MonthDays = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+     else
+       MonthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+     var day = aDate.getDate();
+     if (day > MonthDays[month])
+       day = MonthDays[month];
+     return new Date(year, month, day);
+   }
+   function getEndDate(aStartDate, aMembershipType) {
+     var result = new Date(aStartDate);
+     if (aMembershipType.validityType == 'DAYS')
+       result.setDate(result.getDate() + aMembershipType.validityNumPeriods);
+     else if (aMembershipType.validityType == 'WEEKS')
+       result.setDate(result.getDate() + 7 * aMembershipType.validityNumPeriods);
+     else if (aMembershipType.validityType == 'MONTHS')
+       result = IncMonths(result, aMembershipType.validityNumPeriods);
+     else if (aMembershipType.validityType == 'YEARS')
+       result = IncMonths(result, aMembershipType.validityNumPeriods * 12);
+     result.setDate(result.getDate() - 1);
+     return result;
+   }
+function MembershipDurationFmt(aMembershipType, aMembershipItem, aDelimiter) {
+    details = aMembershipType.durationIfFixedFmt;
+    if (aMembershipType.allowEditStartDate) {
+        if (aMembershipItem.startDate != '') {
+            var startDate = new Date(aMembershipItem.startDate);
+            details += DateFmtDMMMYYYY(startDate) + ' to ' + DateFmtDMMMYYYY(getEndDate(startDate, aMembershipType));
+        } else {
+            details += '&nbsp;';
+        }
+    }
+    if (details != '') details = aDelimiter + details;
+    return details;
+}
+function UpdateDuration(aMembershipType) {
+    membershipItem.startDate =  document.getElementById('Membership_StartDate').value;
+    document.getElementById('Membership_Duration').innerHTML = MembershipDurationFmt(aMembershipType, membershipItem, '');
+}
+function MembershipItemFmt(aMembershipType, aMembershipItem, aDelimiter) {
+    var details = "Price: \xA3";
+    if (aMembershipType.allowOverpayment)
+        details += aMembershipItem.priceToPay.toFixed(2);
+    else if (aMembershipItem.autoRenew)
+        details += getAutoRenewPrice(aMembershipItem.startDate, aMembershipType).toFixed(2);
+    else
+        details += aMembershipType.currentPrice.toFixed(2);
+    details += aDelimiter + "For ";
+    if (aMembershipItem.isForMe && !aMembershipType.isJoint) details += "me";
+    if (aMembershipItem.isForMe && aMembershipType.isJoint) details += "me and " + aMembershipItem.otherPatronFullName;
+    if (!aMembershipItem.isForMe) details += aMembershipItem.otherPatronFullName;
+    details += MembershipDurationFmt(aMembershipType, aMembershipItem, aDelimiter);
+    if (aMembershipItem.autoRenew) details += " (Auto-renew)";
+    return details;
+}
+function EncodeAddMembershipRenewalParameters(aMembershipType, aMembershipItem) {
+    details = '.';
+    details += (aMembershipItem.autoRenew ? 'Y' : 'N');
+    details += DateToStr_(aMembershipItem.startDate);
+    details += '.';
+    if (aMembershipType.allowOverpayment)
+        details += (aMembershipItem.priceToPay * Math.pow(10, 2)).toFixed(0);
+    else if (aMembershipItem.autoRenew)
+        details += (getAutoRenewPrice(aMembershipItem.startDate, aMembershipType) * Math.pow(10, 2)).toFixed(0);
+    else
+        details += (aMembershipType.currentPrice * Math.pow(10, 2)).toFixed(0);
+    details += '.';
+    details += encodeURI(aMembershipItem.validationCode);
+    return details;
+}
+function AddMembershipItemToPageAndCreateHiddenInput(aMembershipType, aMembershipItem) {
+    const MEMBERSHIP_ITEMS_FOR_MEMBERSHIP_TYPE_ID_PREFIX = 'MembershipItemsForType';
+
+    var parent = document.getElementById(MEMBERSHIP_ITEMS_FOR_MEMBERSHIP_TYPE_ID_PREFIX + aMembershipType.membershipTypeUniqueId);
+
+    var itemIndex = 1;
+    while (document.getElementById(aMembershipType.membershipItemUniqueIDPrefix + itemIndex) != null)
+        itemIndex++;
+
+    var divMembershipItem = document.createElement("div");
+    divMembershipItem.className = "MembershipSaleAddedItem SaleAddedItem";
+    divMembershipItem.id = aMembershipType.membershipItemUniqueIDPrefix + itemIndex;
+
+    var hiddenInput = document.createElement("input");
+    hiddenInput.type = "hidden";
+    hiddenInput.name = aMembershipType.membershipItemUniqueIDPrefix + itemIndex;
+    hiddenInput.value =
+        "AutoRenew=" + (aMembershipItem.autoRenew ? "Y" : "N") +
+        ",IsForMe=" + (aMembershipItem.isForMe ? "Y" : "N") +
+        ",OtherPatronNumber=" + aMembershipItem.otherPatronNumber +
+        ",OtherPatronPostCode=" + ForCommaText(aMembershipItem.otherPatronPostCode) +
+        ",PriceToPay=" + aMembershipItem.priceToPay +
+        ",ValidationCode=" + ForCommaText(aMembershipItem.validationCode) +
+        ",StartDate=" + DateToStr_(aMembershipItem.startDate);
+    divMembershipItem.appendChild(hiddenInput);
+
+    parent.appendChild(divMembershipItem);
+}
+
+</script>
+</head>
+<body  class="loggedout"  onload="">	<div id="TopHeader" class="twelvecol">	
+		<div class="container">
+			<div id="TopHeaderContactContainer" class="ninecol">
+				<ul>
+					<li>Box Office : </li>
+					<li><span style="color: #e28e94;"> 01404 384050</span></li>
+					<li>/ Email: </li>
+					<li><span><a href="mailto:manager@beehivehoniton.co.uk"> manager@beehivehoniton.co.uk</a></span></li>
+				</ul>
+			</div>
+			<div class="threecol last">
+				<div class="social-box">
+					<a href="https://twitter.com/BeehiveHoniton" title="twitter">
+						<i class="icon-twitter" aria-hidden="true"></i> 
+					</a>
+					<a href="https://www.facebook.com/BeehiveHoniton" title="facebook">
+						<i class="icon-facebook2" aria-hidden="true"></i>
+					</a>
+					<a href="https://www.instagram.com/beehivehoniton/" title="instagram">
+						<i class="icon-instagram" aria-hidden="true"></i>
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>	
+
+<div id="Header" class="row">
+	<div class="container">
+	<div id="Logo" class="threecol">
+		<a href="http://www.beehivehoniton.co.uk/"><img src="/TheBeehive/logo-2017.png" border="none"/></a>
+	</div>
+	<div  class="ninecol last">
+		<ul id="Menu">
+				<li><a href="https://beehivehoniton.co.uk/">Home</a></li>
+				<li><a href="https://beehivehoniton.co.uk/whats-book-tickets/">What's On & Book Tickets</a></li>
+				<li><a href="https://beehivehoniton.co.uk/community-activities/">Take Part</a></li>				
+				<li><a class ="submenu" href="#">Hire</a>
+					<ul>
+						<li><a href="https://beehivehoniton.co.uk/venue-hire/">Room Hire</a></li>
+						<li><a href="https://beehivehoniton.co.uk/technical/">Technical Equipment</a></li>
+						<li><a href="https://beehivehoniton.co.uk/downloads/">Downloads</a></li>		
+						<li><a href="https://beehivehoniton.co.uk/exhibiting-at-the-beehive/">The Gallery</a></li>
+
+					</ul>
+				</li>
+				<li><a class ="submenu" href="#">About</a>
+					<ul>
+						<li><a href="https://beehivehoniton.co.uk/who-we-are/">The Beehive Charity</a></li>
+						<li><a href="https://beehivehoniton.co.uk/donate/">Donate: Keep The Beehive Buzzing</a></li>
+						<li><a href="https://beehivehoniton.co.uk/funders-sponsors/">Funders &#038; Sponsors</a></li>
+						<li><a href="https://beehivehoniton.co.uk/the-advisory-board/">Advisory Board</a></li>
+						<li><a href="https://beehivehoniton.co.uk/the-directors/">Directors</a></li>
+						<li><a href="https://beehivehoniton.co.uk/volunteers/">Volunteers</a></li>
+					</ul>
+				</li>
+				<li><a class ="submenu" href="#">Visit</a>
+					<ul>
+						<li><a href="https://beehivehoniton.co.uk/find-us/">Find Us</a></li>
+						<li><a href="https://beehivehoniton.co.uk/booking-tickets/">Booking Tickets</a></li>
+						<li><a href="http://beehivehoniton.co.uk/access/">Access</a></li>
+						<li><a href="https://beehivehoniton.co.uk/cafe-bar/">Caf&eacute; Bar</a></li>
+					</ul>
+				</li>
+				<li><a href="https://beehivehoniton.co.uk/blog/">News</a></li>
+				<li><a href="http://beehivehoniton.co.uk/contact-us/">Contact Us</a></li>
+				
+		</ul>	
+	</div>
+	<div class="clearfix"></div>
+</div>
+</div>
+<div id="Main">
+
+<div  id="WizardSteps"  ><ul><li class="CurrentWizardStep" id="TSelectItems"><span class="Number"></span><span class="Order">1</span><span class="Caption">Select Items</span></li><li class="UnrequiredWizardStep" id="TDeliveryOptions"><span class="Number"></span><span class="Order">2</span><span class="Caption">Delivery Options</span></li><li class="UnrequiredWizardStep" id="TGiftAid"><span class="Number"></span><span class="Order">3</span><span class="Caption">Gift Aid</span></li><li class="RequiredWizardStep" id="TNameAndAddress"><span class="Number"></span><span class="Order">4</span><span class="Caption">Name & Address</span></li><li class="UnrequiredWizardStep" id="TFurtherDetails"><span class="Number"></span><span class="Order">5</span><span class="Caption">Further Details</span></li><li class="UnrequiredWizardStep" id="TDiscounts"><span class="Number"></span><span class="Order">6</span><span class="Caption">Discounts</span></li><li class="RequiredWizardStep" id="TPayment"><span class="Number"></span><span class="Order">7</span><span class="Caption">Payment</span></li></ul></div><div class="clearfix"></div>
+<div id="Content"><div  id="SideBarToggleMenu"  ><div id="opener" class="SideBarToggle"  onclick="return showSideBar('SideBar');">Menu<span class="icon icon-menu"></span></div>
+<div id="closer" class="SideBarToggle" style="display: none;"  onclick="return hideSideBar('SideBar');">Menu<span class="icon icon-menu"></span></div>
+<script type="text/javascript">
+function showSideBar(DivID) {
+  document.getElementById(DivID).style.display='block';
+  document.getElementById('opener').style.display='none';
+  document.getElementById('closer').style.display='block';
+}
+function hideSideBar(DivID) {
+  document.getElementById(DivID).style.display='none';
+  document.getElementById('opener').style.display='block';
+  document.getElementById('closer').style.display='none';
+}
+</script>
+</div><div  id="SideBar"  ><div  id="SideBarHeader"  ></div><div  ID="UserDefinedMenu"  class="SideBarMenu"><div   class="SideBarFirstHeading " >What's On & Book Tickets</div><div   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_1530">Buy Tickets</a></div></div><div  class="SideBarMenu"><div   class="SideBarHeading " >Gift Vouchers</div><div   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_54996.TcsWebTab_54997">Buy Gift Vouchers</a></div></div><div  class="SideBarMenu"><div   class="SideBarHeading " >Support Us</div><div   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_3881.TcsWebTab_3882">Make A Donation</a></div></div><div  class="SideBarMenu"><div   class="SideBarHeading " >Policy</div><div   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1537.TcsWebTab_1538">Privacy Policy</a></div><div   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1539.TcsWebTab_1540">Terms & Conditions</a></div><div   class="SideBarItem hidden" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_737819.TcsWebTab_737832">Bar Items</a></div></div><div  ID="MyOrderMenu"  class="SideBarMenu"><div   class="SideBarHeading " >My Order</div><div   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsSummary">Basket is Empty</a></div><div  id="MyOrderSimpleMenu"   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsSummary">Basket (0)</a></div></div><div  ID="MyAccountMenu"  class="SideBarMenu"><div  id="AccountNotLoggedIn"   class="SideBarHeading " >My Account</div><div  id="AccountLogIn"   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waLoginPrompt">Log In</a></div><div  id="AccountPasswordReset"   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waPasswordResetRequestPrompt">Password Reset</a></div><div  id="AccountCreateAnAccount"   class="SideBarItem" ><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waRegisterPrompt">Create an Account</a></div></div><div  ID="PoweredByMenu"  class="SideBarMenu"><div   class="SideBarHeading " >Powered By</div><div   class="SideBarItem" ><a href="http://www.savoysystems.co.uk" target="_blank">Savoy Systems Ltd</a></div></div><div  id="SideBarFooter"  ></div></div> <div  id="Detail"   class="PerformanceList" ><div   class="DetailHeading" >What's On & Book Tickets</div><div   class="DetailSubHeading" ><span class="WebTab "><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_1530">All Shows</a></span><span class="WebTab "><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_3769">Theatre</a></span><span class="WebTab "><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_3772">Cinema</a></span><span class="WebTab "><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_3773">Live Music</a></span><span class="WebTab "><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_3775">Comedy</a></span><span class="SelectedWebTab "><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_3776">Dining and Dancing</a></span><span class="WebTab "><a href="https://thebeehive.savoysystems.co.uk/TheBeehive.dll/TSelectItems.waSelectItemsPrompt.TcsWebMenuItem_1529.TcsWebTab_3777">Calendar</a></span></div></div><div id="PageTrackingStageElementId" style="display:none;">waSelectItemsPrompt</div></div>
+<div class="clearfix"></div>
+<div id="Footer" class="row">
+	<div class="container">
+		<div class="threecol">
+			<h4><span>| </span> Find Us</h4>			
+				<ul> 
+					<li>The Beehive</li>
+					<li>Dowell Street</li>
+					<li>Honiton</li>
+					<li>Devon</li>
+					<li>EX14 1LZ</li>
+				</ul>
+		</div>
+		<div class="threecol">
+			<h4><span>| </span> Box Office</h4>
+				<ul>
+					<li><b>Tel</b> 01404 384050</li>
+					<li id="FooterLink"><b>E</b> <a href="mailto:manager@beehivehoniton.co.uk">manager@beehivehoniton.co.uk</a></li>
+					<li>Mon-Fri: 9am – 5.30pm, Sat </li>
+					<li>9.30am-1pm and 1 hour before</li>
+					<li>performances</li>
+				</ul>
+		</div>
+		<div class="threecol">
+			<h4><span>| </span> Company Information</h4>
+				<ul>
+					<li>Charity no 1162412</li>
+					<li>Company no 08409289</li>
+				</ul>
+		</div>
+		<div id ="SocialFooter" class="threecol last">
+			<h4><span>| </span> Follow Us</h4>
+			<ul class="FooterIcons">
+				<li><a href="https://twitter.com/BeehiveHoniton" title="twitter">
+					<i class="icon-twitter" aria-hidden="true"></i></a></li>
+				<li><a href="https://www.facebook.com/BeehiveHoniton" title="facebook">
+					<i class="icon-facebook2" aria-hidden="true"></i></a></li>
+				<li><a href="https://www.instagram.com/beehivehoniton/" title="instagram">
+					<i class="icon-instagram" aria-hidden="true"></i></a></li>
+			</ul>
+		</div>
+	</div>
+	<div class="clearfix"></div>
+	<div id ="FooterBottom">
+		<div class="container">
+			<div class="eightcol">
+				<p>© Copyright Beehive Honiton 2023.</p>
+				<p>The information on the website is correct at the time of publication.</p>
+			</div>
+			<div class="fourcol savoy last">Powered by <a href="https://savoysystems.co.uk">Savoy Systems</a></div>
+		</div>
+			
+	</div>
+</div>
+</div>
+<script type="text/javascript">
+
+function addCustomField(aName, aElement) {
+  if (aElement)
+     _CustomFields.push([aName + '=' + aElement.innerHTML]);
+}
+
+var WebTrackAccountName="";
+
+var _CustomFields = _CustomFields || [];
+
+addCustomField('Stage', document.getElementById("PageTrackingStageElementId"));
+addCustomField('BasketTotal', document.getElementById("PageTrackingBasketTotalElementId"));
+addCustomField('TotalPaid', document.getElementById("PageTrackingTotalPaidElementId"));
+
+ (function() {
+   var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+   var prefix = "http";
+   if (location.protocol === 'https:')
+     prefix = prefix + 's'; 
+
+   ga.src = prefix + '://' + '$$WEB_TRACKING_JAVASCRIPT_WITHOUT_PROTOCOL$$';
+   var s = document.getElementsByTagName('script')[0];
+s.parentNode.insertBefore(ga, s);
+ })();
+</script>
+
+<script type="text/javascript">
+(function() {
+   var o = document.createElement('script'); o.type = 'text/javascript';
+   var prefix = "http";
+   if (location.protocol === 'https:')
+     prefix = prefix + 's'; 
+
+   o.src = prefix + '://' + 'savoysystems.co.uk/globalbookingjs/oscar.js';
+   var s = document.getElementsByTagName('script')[0];
+   s.parentNode.insertBefore(o, s);
+})();
+</script><div id="Overlay"></div><script>
+  function DoWebsiteTracking(){
+}
+DoWebsiteTracking();
+</script></body>
+</html>
