@@ -202,25 +202,30 @@ final class CardSpacingTuningUITests: XCTestCase {
         finishWithSteps(slider)
     }
 
-    /// Taps the slider row's "+" until the slider reports its maximum, for as long as every tap
-    /// advances it: a fixed tap budget (four, before run 41446876159) fails whenever a drag stops
-    /// further short than the budget, while a "+" that does not move the slider (unwired, or
-    /// clamped short of the end) still stops here at once and fails the assertion
-    /// (testMaxOutRecoversFromADragThatStopsStepsShort).
+    /// Taps the slider row's "+" until the slider reports its maximum: ONE tap and read first, which both measures a
+    /// step and proves the "+" moves the slider (an unwired or clamped "+" stops there and fails the assertion,
+    /// testMaxOutRecoversFromADragThatStopsStepsShort), then every remaining step without reading the slider between
+    /// taps, then one read to assert on. Reading after each tap cost Order independence #67 its 3-minute allowance:
+    /// the drag left the Sekcje slider where it started (8 of 0-24, 32 steps short), and each tap plus its read took
+    /// ~4 s on that runner -- 203.8 s in all. Taps past the end are clamped by the row and change nothing.
     private func finishWithSteps(_ slider: XCUIElement) {
         let stepUp = app.buttons[A11y.Tuning.stepUp(of: slider.identifier)]
+        let start = slider.normalizedSliderPosition
         var taps = 0
-        var position = slider.normalizedSliderPosition
-        while position < 0.99, stepUp.exists {
+        if start < 0.99, stepUp.exists {
             stepUp.tap()
-            taps += 1
-            let next = slider.normalizedSliderPosition
-            if next <= position { break }
-            position = next
+            taps = 1
+            let step = slider.normalizedSliderPosition - start
+            if step > 0 {
+                let remaining = max(0, Int(((1 - start) / step - 0.01).rounded(.up)) - 1)
+                for _ in 0..<remaining { stepUp.tap() }
+                taps += remaining
+            }
         }
         XCTAssertGreaterThanOrEqual(
             slider.normalizedSliderPosition, 0.99,
-            "\(slider) stayed at \(slider.normalizedSliderPosition) after a drag to its maximum and \(taps) \"+\" step(s)"
+            "\(slider) stayed at \(slider.normalizedSliderPosition) after a drag to its maximum left it at \(start) "
+            + "and \(taps) \"+\" step(s)"
         )
     }
 
