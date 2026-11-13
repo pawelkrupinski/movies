@@ -303,6 +303,15 @@ object StageRelays {
       ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
       oneHouseRenamed(ownA.toSet, ownB.toSet)
   }
+  /** Do two house names name one house by a word they share, initials or two names of one house ([[namesOneHouse]]) — not
+   *  by one word merely opening the other ("Met" of "Metropolitan")? */
+  private[identity] def nameOneHouseAlike(a: Seq[String], b: Seq[String]): Boolean = {
+    def own(name: Seq[String]) = particularWords(services.movies.StageHouse.initialsJoined(name))
+    def initials(name: Seq[String]) = services.movies.StageHouse.initialsOf(name)
+    val (ownA, ownB) = (own(a), own(b))
+    ownA.exists(ownB.contains) || ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
+      oneHouseRenamed(ownA.toSet, ownB.toSet)
+  }
   /** Each multi-named house's names ([[services.movies.StageHouse]]) as the words that say which house ([[particularWords]]). */
   private lazy val housesByName: Seq[Set[Set[String]]] =
     services.movies.StageHouse.namedWithInitials.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
