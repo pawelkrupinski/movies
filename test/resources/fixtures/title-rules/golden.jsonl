@@ -7697,10 +7697,10 @@
 {"text":"KKL: Vaterland"}
 {"text":"KLANGRAUM"}
 {"text":"KLAPS + BABSKI WIECZÓR Czas, który nie nadszedł","pl,uk,de,us,es":{"query":"KLAPS"}}
-{"text":"KLAPS! - Rozważna i romantyczna"}
-{"text":"KLAPS! Spa Weekend"}
-{"text":"KLAPS: Czas, który nie nadszedł"}
-{"text":"KLAPS: Jak żyć, żeby nie zwariować"}
+{"text":"KLAPS! - Rozważna i romantyczna","pl,uk,de,us,es":{"query":"Rozważna i romantyczna","programme":"KLAPS! - ","bannerEnd":9}}
+{"text":"KLAPS! Spa Weekend","pl,uk,de,us,es":{"query":"Spa Weekend","programme":"KLAPS! ","bannerEnd":7}}
+{"text":"KLAPS: Czas, który nie nadszedł","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł","programme":"KLAPS: ","bannerEnd":7}}
+{"text":"KLAPS: Jak żyć, żeby nie zwariować","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować","programme":"KLAPS: ","bannerEnd":7}}
 {"text":"KLARA I SŁOŃCE"}
 {"text":"KLARA I SŁOŃCE 2 D"}
 {"text":"KLARA UND DIE SONNE"}
@@ -7974,7 +7974,7 @@
 {"text":"Kino Kaarst: Das gewisse Etwas","pl,uk,de,us,es":{"query":"Das gewisse Etwas","programme":"Kino Kaarst: ","bannerEnd":13}}
 {"text":"Kino Kaarst: Die Camino Therapie – Finde deinen Weg","pl,uk,de,us,es":{"query":"Die Camino Therapie – Finde deinen Weg","programme":"Kino Kaarst: ","bannerEnd":13}}
 {"text":"Kino Kaarst: Eine Krankheit wie ein Gedicht","pl,uk,de,us,es":{"query":"Eine Krankheit wie ein Gedicht","programme":"Kino Kaarst: ","bannerEnd":13}}
-{"text":"Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"","pl,uk,de,us,es":{"query":"KLAPS! \"Jak żyć żeby nie zwariować\"","programme":"Kino Kobiet - ","bannerEnd":14,"venue":{"kino-alternatywy":"Kino Kobiet - KLAPS! Jak żyć żeby nie zwariować"}}}
+{"text":"Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"","pl,uk,de,us,es":{"query":"\"Jak żyć żeby nie zwariować\"","programme":"Kino Kobiet - ","bannerEnd":14,"venue":{"kino-alternatywy":"Kino Kobiet - KLAPS! Jak żyć żeby nie zwariować"}}}
 {"text":"Kino Kobiet CZAS,KTÓRY NIE NADSZEDŁ"}
 {"text":"Kino Kobiet: Jak żyć, żeby nie zwariować","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować","programme":"Kino Kobiet: ","bannerEnd":13}}
 {"text":"Kino Konesera - Vivaldi i ja","pl,uk,de,us,es":{"query":"Vivaldi i ja","programme":"Kino Konesera - ","bannerEnd":16}}
@@ -8084,7 +8084,7 @@
 {"text":"KitKatClub - Kinks of BerlinOmU-Nachtstudio  dtOmeU","pl,uk,de,us,es":{"query":"KitKatClub - Kinks of Berlin"}}
 {"text":"KitKatClub – Kinks of Berlin"}
 {"text":"KitKatClub: Kinks of Berlin"}
-{"text":"Klaps - Czas, który nie nadszedł"}
+{"text":"Klaps - Czas, który nie nadszedł","pl,uk,de,us,es":{"query":"Czas, który nie nadszedł","programme":"Klaps - ","bannerEnd":8}}
 {"text":"Klara & The Sun","pl":{"key":"Klara i The Sun","display":"Klara i The Sun"}}
 {"text":"Klara And The Sun"}
 {"text":"Klara And The Sun (12A)","pl,uk,de,us,es":{"query":"Klara And The Sun"}}
@@ -11704,10 +11704,10 @@
 {"text":"Planes, Trains and Automobiles (Dementia Friendly Screening)","pl,uk,de,us,es":{"query":"Planes, Trains and Automobiles"}}
 {"text":"Planet der Affen (1968)","pl,uk,de,us,es":{"key":"Planet der Affen","venue":{"kino-kinematograf":"Planet der Affen"}}}
 {"text":"Planet of the Apes"}
-{"text":"Planeta Kobiet - Jak żyć, żeby nie zwariować"}
-{"text":"Planeta Kobiet - Przepis na święta"}
-{"text":"Planeta Kobiet: Jak żyć, żeby nie zwariować"}
-{"text":"Planeta Kobiet: Przepis na Święta"}
+{"text":"Planeta Kobiet - Jak żyć, żeby nie zwariować","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować","programme":"Planeta Kobiet - ","bannerEnd":17}}
+{"text":"Planeta Kobiet - Przepis na święta","pl,uk,de,us,es":{"query":"Przepis na święta","programme":"Planeta Kobiet - ","bannerEnd":17}}
+{"text":"Planeta Kobiet: Jak żyć, żeby nie zwariować","pl,uk,de,us,es":{"query":"Jak żyć, żeby nie zwariować","programme":"Planeta Kobiet: ","bannerEnd":16}}
+{"text":"Planeta Kobiet: Przepis na Święta","pl,uk,de,us,es":{"query":"Przepis na Święta","programme":"Planeta Kobiet: ","bannerEnd":16}}
 {"text":"Plastusiowy pamiętnik _50na51"}
 {"text":"Platoon"}
 {"text":"Plattfuss am Nil"}

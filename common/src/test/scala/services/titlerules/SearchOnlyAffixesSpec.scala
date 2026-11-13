@@ -65,6 +65,31 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
     n.preferredDisplay(Seq("(re-release)")) shouldBe Some("(re-release)")
   }
 
+  "A KLAPS or Planeta kobiet women's-strand banner" should "come off the lookup query, the screening keeping its title" in {
+    // Prod mirror 2026-11-13: Kino Światowid Czarnków's "KLAPS! Violetta Villas" searched as billed, found nothing
+    // and stood apart from the film every other venue bills (Kino w Ratuszu: "Kino kobiet- klaps!").
+    n.apiQuery("KLAPS! Violetta Villas") shouldBe "Violetta Villas"
+    n.apiQuery("KLAPS! - Przepis na święta") shouldBe "Przepis na święta"
+    n.apiQuery("KLAPS: Przepis na święta") shouldBe "Przepis na święta"
+    n.apiQuery("Planeta kobiet: violetta villas") shouldBe "violetta villas"
+    n.apiQuery("Planeta kobiet - violetta villas") shouldBe "violetta villas"
+    n.preferredDisplay(Seq("KLAPS! Violetta Villas")) shouldBe Some("KLAPS! Violetta Villas")
+    // The bare word is no banner.
+    n.apiQuery("Klaps") shouldBe "Klaps"
+  }
+
+  "A German 'Film \"<title>\"' billing" should "show and merge as the quoted film" in {
+    // Kino am Forum Wasserturm (Cineamo) bills every film as 'Film "<title>"'; "Der perfekte Urlaub" carried no
+    // Cineamo film link and stood as a web film of its own beside the one 731 venues bill (prod mirror 2026-11-13).
+    val de = services.movies.TitleNormalizer.forCountry(models.Country.Germany)
+    de.preferredDisplay(Seq("Film \"Der perfekte Urlaub\"")) shouldBe Some("Der perfekte Urlaub")
+    de.sanitize("Film \"Der perfekte Urlaub\"") shouldBe de.sanitize("Der perfekte Urlaub")
+    de.sanitize("Film „Alte Liebe“") shouldBe de.sanitize("Alte Liebe")
+    // Only a quote wrapping the whole rest: a screening of a quoted film with more after it keeps its words.
+    de.sanitize("Filmvorführung \"Würdevoll\" mit Regiegespräch") should not be de.sanitize("Würdevoll")
+    de.sanitize("Film \"Alte Liebe\" mit Gespräch") should not be de.sanitize("Alte Liebe")
+  }
+
   "A film titled by the word" should "keep it" in {
     // A title that is only the word is the film's own, however it reads.
     n.apiQuery("Premiera") shouldBe "Premiera"
