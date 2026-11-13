@@ -17762,8 +17762,8 @@
 {"text":"Świetlana przyszłość"}
 {"text":"Świst wiatru pomiędzy żurawiami"}
 {"text":"Świst wiatru pomiędzy żurawiami | Festiwal Kina Krajów Portugalskojęzycznych Maré","pl,uk,de,us,es":{"query":"Świst wiatru pomiędzy żurawiami","venue":{"bok":"Świst wiatru pomiędzy żurawiami: Festiwal Kina Krajów Portugalskojęzycznych Maré"}}}
-{"text":"Świąteczna zabawa z Peppą - Kinowe przeżycie"}
-{"text":"Świąteczna zabawa z Peppą – seanse z konkursami HDD","pl":{"key":"Świąteczna zabawa z Peppą"}}
+{"text":"Świąteczna zabawa z Peppą - Kinowe przeżycie","pl":{"query":"Festive Fun with Peppa","bannerEnd":44},"uk,de,us,es":{"query":"Świąteczna zabawa z Peppą"}}
+{"text":"Świąteczna zabawa z Peppą – seanse z konkursami HDD","pl":{"query":"Festive Fun with Peppa","key":"Świąteczna zabawa z Peppą","bannerEnd":51}}
 {"text":"Święty piotr i inne papieskie bazyliki rzymu"}
 {"text":"ŻYWIA..."}
 {"text":"ŻYWOT BRIANA"}
