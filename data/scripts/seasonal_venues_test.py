@@ -62,11 +62,9 @@ def test_every_declared_summer_screen_names_its_evidence_and_no_pattern_already_
             assert name not in sv.NOT_SEASONAL[country], name
 
 
-def test_renders_the_sorted_seasonal_names_as_a_scala_set():
+def test_seasonal_names_are_the_sorted_seasonal_ones():
     names = sv.seasonal_names("de", ["Sommerkino Klöden", "Kino Central Berlin", "Freiluftkino Rehberge"])
     assert names == ["Freiluftkino Rehberge", "Sommerkino Klöden"]
-    out = "\n".join(sv.render_scala(names, lambda s: '"' + s + '"'))
-    assert '  val seasonal: Set[String] = Set(\n    "Freiluftkino Rehberge",\n    "Sommerkino Klöden",\n  )' in out
 
 
 def main():

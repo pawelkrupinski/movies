@@ -13,7 +13,7 @@ films all year. A venue whose name does not say so is seasonal when it is listed
 `SEASONAL`: a hall or garden whose only films are summer open-air nights. Each of
 those is a judgement on evidence, so each carries it.
 
-The generators emit the matches as `seasonal` beside their pages; `models.*Roster`
+The generators write the matches as each roster's `seasonal.tsv` table; `models.*Roster`
 gives those venues `Opening.Seasonal`. Poland's hand-declared venues are marked in
 `Cinema.scala` instead, and the UK's by a `"seasonal": true` on their data/uk/roster.json row.
 """
@@ -94,14 +94,3 @@ def seasonal_names(country: str, names) -> list[str]:
     """The seasonal ones among `names`, sorted — what a generator emits."""
     return sorted({name for name in names if is_seasonal(country, name)})
 
-
-def render_scala(names: list[str], scala_string) -> list[str]:
-    """The generated `seasonal` member: the display names `models.Opening.Seasonal` is given to."""
-    lines = [
-        "  /** The venues that screen only in season — open-air, summer and drive-in screens, by name",
-        "   *  (data/scripts/seasonal_venues.py): their display names as generated above. */",
-        "  val seasonal: Set[String] = Set(",
-    ]
-    lines.extend(f"    {scala_string(name)}," for name in names)
-    lines.append("  )")
-    return lines
