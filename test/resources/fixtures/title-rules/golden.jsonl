@@ -2450,7 +2450,7 @@
 {"text":"Centre Stage"}
 {"text":"Chainsaw Man – The Movie: Reze Arc"}
 {"text":"Chaos im Kopf - ADHS IM ERWACHSENENENALTER"}
-{"text":"Chaplin`s The Gold Rush with LIVE Orchestra"}
+{"text":"Chaplin`s The Gold Rush with LIVE Orchestra","pl,uk,de,us,es":{"query":"Chaplin`s The Gold Rush"}}
 {"text":"Chapter Moviemaker"}
 {"text":"Charade"}
 {"text":"Charade (1963)","pl,uk,de,us,es":{"key":"Charade","venue":{"kino-kinematograf":"Charade"}}}
@@ -2659,7 +2659,7 @@
 {"text":"Citizen Ruth"}
 {"text":"Citizen Toxie: The Toxic Avenger IV"}
 {"text":"City Lights"}
-{"text":"City Lights live mit Babylon Orchester Berlin"}
+{"text":"City Lights live mit Babylon Orchester Berlin","pl,uk,de,us,es":{"query":"City Lights"}}
 {"text":"Clapton Experience - Die ultimative Eric Clapton Hommage"}
 {"text":"Clare Teal 2027"}
 {"text":"Clarissa (18 CTBA)","pl,uk,de,us,es":{"query":"Clarissa"}}
@@ -4270,7 +4270,7 @@
 {"text":"Disney Junior Club 2026"}
 {"text":"Disney's Hexed"}
 {"text":"Disney's Snow White"}
-{"text":"Disney’s Muppet Christmas Carol in Concert - Live to Film"}
+{"text":"Disney’s Muppet Christmas Carol in Concert - Live to Film","pl,uk,de,us,es":{"query":"Disney’s Muppet Christmas Carol"}}
 {"text":"District 9"}
 {"text":"Diuna. Część trzecia"}
 {"text":"Diuna: Chastyna Tretia - UA"}
@@ -9873,7 +9873,7 @@
 {"text":"Metropolis (2001)","pl,uk,de,us,es":{"key":"Metropolis","venue":{"kino-kinematograf":"Metropolis"}}}
 {"text":"Metropolis (rest. Fassung 2010)"}
 {"text":"Metropolis (restaurierte Fassung)"}
-{"text":"Metropolis LIVE Babylon Orchester Berlin"}
+{"text":"Metropolis LIVE Babylon Orchester Berlin","pl,uk,de,us,es":{"query":"Metropolis"}}
 {"text":"Metropolitan"}
 {"text":"Metropolitan Opera: Macbeth","pl,uk,de,us,es":{"key":"The Metropolitan Opera: Macbeth","display":"The Metropolitan Opera: Macbeth","properName":"The Metropolitan Opera: Macbeth"}}
 {"text":"Metrópolis"}
@@ -10060,7 +10060,7 @@
 {"text":"Moana (PG)","pl,uk,de,us,es":{"query":"Moana"}}
 {"text":"Moana."}
 {"text":"Moby Dick (1956)","pl,uk,de,us,es":{"key":"Moby Dick","venue":{"kino-kinematograf":"Moby Dick"}}}
-{"text":"Modern Times LIVE mit Babylon Orchester Berlin"}
+{"text":"Modern Times LIVE mit Babylon Orchester Berlin","pl,uk,de,us,es":{"query":"Modern Times"}}
 {"text":"Modesty Blaise"}
 {"text":"Modesty Blaise (12A)","pl,uk,de,us,es":{"query":"Modesty Blaise"}}
 {"text":"Modoteka: Rozważna i romantyczna"}
@@ -10789,10 +10789,10 @@
 {"text":"Nosferatu - Eine Symphonie des Grauens"}
 {"text":"Nosferatu - symfonia grozy z muzyką Jozefa van Wissema na żywo"}
 {"text":"Nosferatu - symfonia grozy z muzyką na żywo"}
-{"text":"Nosferatu Live mit Babylon Orchester Berlin"}
+{"text":"Nosferatu Live mit Babylon Orchester Berlin","pl,uk,de,us,es":{"query":"Nosferatu"}}
 {"text":"Nosferatu live score by Hugo Max"}
 {"text":"Nosferatu the Vampyre"}
-{"text":"Nosferatu with Live Quarkestra Orchestra"}
+{"text":"Nosferatu with Live Quarkestra Orchestra","pl,uk,de,us,es":{"query":"Nosferatu"}}
 {"text":"Nosferatu – The Journal Of A Broken Man"}
 {"text":"Nosferatu: A Symphony of Horror"}
 {"text":"Nosferatu: with live music"}
@@ -14269,7 +14269,7 @@
 {"text":"Stowarzyszenie umarłych poetów | Lato z Robinem Williamsem","pl,uk,de,us,es":{"query":"Stowarzyszenie umarłych poetów","venue":{"bok":"Stowarzyszenie umarłych poetów: Lato z Robinem Williamsem"}}}
 {"text":"Straight Outta Compton"}
 {"text":"Straight Talk: A Tribute to Dolly Parton"}
-{"text":"Strange Case Of Dr Jekyll & Mr Hyde Live To Film - In Concert With The FB Pocket Orchestra","pl":{"key":"Strange Case Of Dr Jekyll i Mr Hyde Live To Film - In Concert With The FB Pocket Orchestra","display":"Strange Case Of Dr Jekyll i Mr Hyde Live To Film - In Concert With The FB Pocket Orchestra"}}
+{"text":"Strange Case Of Dr Jekyll & Mr Hyde Live To Film - In Concert With The FB Pocket Orchestra","pl":{"query":"Strange Case Of Dr Jekyll & Mr Hyde","key":"Strange Case Of Dr Jekyll i Mr Hyde Live To Film - In Concert With The FB Pocket Orchestra","display":"Strange Case Of Dr Jekyll i Mr Hyde Live To Film - In Concert With The FB Pocket Orchestra"},"uk,de,us,es":{"query":"Strange Case Of Dr Jekyll & Mr Hyde"}}
 {"text":"Strange Days"}
 {"text":"Strange Evidence"}
 {"text":"Strange Harvest"}
