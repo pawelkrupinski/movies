@@ -183,7 +183,20 @@ votes on its own evidence and the grouping moves no take (a pooled vote took a f
 many spellings had arrived: UK "Romeo and Juliet" relays, PopulationMonotonicitySpec). PL "André Rieu. Pada śnieg!" (2026-11-12): three
 venues took the concert's record by its original title, Cinema City's 30 venues denied it, and every
 bare spelling at ~60 other venues reached both; each was left a component of its own, and the
-projection drew each as a web film of its own (20 for one concert). Because the solver reads its
+projection drew each as a web film of its own (20 for one concert). The sides themselves were two
+thin readings of the record (2026-11-13): Cinema City's denial was the probability cut on its facts,
+a country mismatch (billed Holandia, TMDB's US: -4.31) outweighing the year (+3.40); and Kino Muza
+Myślenice's original title "André Rieu's Christmas Concert: Let It Snow" read as an overlap of the
+record's "Andre Rieu's 2026 Christmas Concert Let It Snow". A concert's record crediting no director
+(`Film.concertRecord`: TMDB fetched its credits and they name none, and it files it under Music or
+its title calls it a concert) dates it by its uploader's or distributor's country, so a mismatch
+against it is `concert-mismatch`, weighed half (-2.16) and read by every learned rule a mismatch is;
+a stage relay's record names no concert and keeps the full weight. And an original title matches a
+record whose title adds only the record's own year as a bare word. With both, no listing denies the
+record and the 109 listings of the slice take it as one cluster (recording 43331601375; 6 web films
+left, each a billing whose own title names no searchable work). Option A, an ambiguous node joining
+the film's side past a cut-only denial, was measured and dropped
+(`docs/identity-experiments/2026-11-13-thin-denial-joins-film.md`). Because the solver reads its
 input only through sorts under a total order, the partition is a function of the set.
 
 **Must-links that are not edges.** Today's bare-listing rule
