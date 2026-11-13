@@ -56,6 +56,37 @@ class Draw(unittest.TestCase):
         self.assertEqual(sorted(t["film"] for t, _, _ in drawn), ["tmdb:2", "tmdb:3"])
 
 
+class DrawBillings(unittest.TestCase):
+    def billed(self):
+        wide = [{"venue": f"V{i}", "rawTitle": "Avatar" if i % 2 else "AVATAR ", "film": "tmdb:1", "showtimes": 50}
+                for i in range(40)]
+        tail = [{"venue": f"W{i}", "rawTitle": f"Rare {i}", "film": f"tmdb:{100 + i}", "showtimes": 1} for i in range(9)]
+        return wide + tail
+
+    def test_a_billing_is_one_unit_however_many_venues_and_showtimes_bill_it(self):
+        units = ps.billings(self.billed())
+        self.assertEqual(len(units), 10)
+        self.assertEqual(len(units[("avatar", "tmdb:1")]), 40)
+
+    def test_every_billing_is_drawn_equally_often_and_the_seed_reproduces_the_draw(self):
+        counts, runs = collections.Counter(), 6000
+        for i in range(runs):
+            drawn = ps.draw_billings(self.billed(), 3, random.Random(i))
+            self.assertEqual(len({(t["rawTitle"].strip().lower(), t["film"]) for t, _, _ in drawn}), 3)
+            self.assertTrue(all(abs(pi - 0.3) < 1e-9 and not certain for _, pi, certain in drawn))
+            counts.update(t["film"] for t, _, _ in drawn)
+        for film in ["tmdb:1", "tmdb:100", "tmdb:108"]:
+            self.assertAlmostEqual(counts[film] / runs, 0.3, delta=0.03, msg=film)
+        first = [t["venue"] for t, _, _ in ps.draw_billings(self.billed(), 5, random.Random("s"))]
+        self.assertEqual(first, [t["venue"] for t, _, _ in ps.draw_billings(self.billed(), 5, random.Random("s"))])
+
+    def test_n_beyond_the_billings_draws_each_once_and_unshown_takes_never(self):
+        population = self.billed() + [{"venue": "X", "rawTitle": "Gone", "film": "tmdb:9", "showtimes": 0}]
+        drawn = ps.draw_billings(population, 50, random.Random(0))
+        self.assertEqual(len(drawn), 10)
+        self.assertTrue(all(pi == 1.0 for _, pi, _ in drawn))
+
+
 class Estimate(unittest.TestCase):
     def test_the_drawn_share_scales_to_the_showtimes_not_drawn_with_certainty(self):
         rows = [row(100, "wrong", 1.0, True), row(5, "wrong"), row(5, "right"), row(5, "right"), row(5, "right")]
@@ -123,6 +154,22 @@ class Files(unittest.TestCase):
                 f.write(HEADER + "\npl\tKino\tLalka\ttmdb:1\twrong\topen\t\t\t\t2026-11-13\te\n")
             text = ps.report(d, path, ["pl"])
         self.assertIn("100.00%", text.splitlines()[2])
+
+    def test_a_billing_sample_reports_the_share_of_billings_wrong_not_of_showtimes(self):
+        with tempfile.TemporaryDirectory() as d:
+            rows = [ps.sample_row(i, "pl", {"venue": "Kino", "rawTitle": t, "film": "tmdb:1", "showtimes": s}, 0.5, False,
+                                  None) for i, (t, s) in enumerate([("Lalka", 99), ("Faraon", 1)], 1)]
+            ps.write_sample(os.path.join(d, "sample-pl.tsv"), rows)
+            with open(os.path.join(d, "sample.json"), "w") as f:
+                f.write('{"seed": "s", "n": 2, "now": "t", "unit": "billing", '
+                        '"countries": {"pl": {"showtimes": 100, "billings": 4}}}')
+            path = os.path.join(d, "j.tsv")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(HEADER + "\npl\tKino\tLalka\ttmdb:1\twrong\topen\t\t\t\t2026-11-13\te\n"
+                        "pl\tKino\tFaraon\ttmdb:1\tright\topen\t\t\t\t2026-11-13\te\n")
+            text = ps.report(d, path, ["pl"])
+        self.assertIn("billings-wrong", text.splitlines()[1])
+        self.assertIn("50.00%", text.splitlines()[2])
 
 
 if __name__ == "__main__":

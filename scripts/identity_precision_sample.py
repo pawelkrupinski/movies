@@ -7,6 +7,7 @@ the takes prod SERVES now, with probability proportional to their upcoming showt
 on wrong films is estimated without bias once every sampled take is judged.
 
     scripts/identity-precision-sample sample   [--countries pl,uk] [--n 150] [--seed S] [--out DIR] [--now ISO]
+                                               [--unit showtimes|billing]
     scripts/identity-precision-sample estimate [--out DIR] [--judgements TSV] [--countries ...]
 
 `sample` exports each country's served takes from the LOCAL prod mirror (mongodb://127.0.0.1:28017, read-only, after
@@ -29,6 +30,16 @@ sum(certain wrong showtimes) + (remaining total / n') * (wrong draws); its varia
 replacement sampling's (conservative for a shuffled systematic draw), the interval a Wilson score interval on the
 drawn share. The per-take rate weights each draw by 1 / pi (a ratio estimate). Re-run monthly; a seed reproduces a draw
 of the same population.
+
+THE TAIL (--unit billing). The showtime-weighted draw is a blockbuster's: one wide release fills a country's screens,
+so the rare titles where the resolver is least sure are almost never drawn (2026-11-13: 0 wrong in 750, nearly all of
+them chain releases). `--unit billing` draws uniformly over BILLINGS -- a country's served (raw title, normalised as
+the judgements key it, case aside; TMDB film) pairs -- and for each drawn billing one of its venues, uniformly. A
+billing, not a take (venue, title, film), is the unit because a wide release is billed alike at hundreds of venues and
+decided once: uniform by take is still ~98% chain releases in the US (83k takes, under 2k of films billed at <= 3
+venues), while each billing is one decision, a one-venue retrospective as likely as Avatar. It estimates the share of
+served billings on a wrong film (simple random sampling without replacement, a Wilson interval), not the share of
+showtimes.
 """
 
 import argparse
@@ -43,7 +54,7 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
-from identity_judgements import COUNTRIES, label_of, labels_by_country, read  # noqa: E402
+from identity_judgements import COUNTRIES, label_of, labels_by_country, normalise, read  # noqa: E402
 
 EXPORT = os.path.join(HERE, "identity-precision-export.js")
 JUDGEMENTS = os.path.join(HERE, "..", "test", "resources", "fixtures", "identity-judgements.tsv")
@@ -85,6 +96,38 @@ def draw(takes, n, rng):
             picks.append(t)
             i += 1
     return [(t, 1.0, True) for t in certain] + [(t, k * t["showtimes"] / total, False) for t in picks]
+
+
+def billings(takes):
+    """{(normalised lower-cased raw title, film): [its takes with upcoming showtimes]} -- the units of a billing draw."""
+    units = {}
+    for t in takes:
+        if t["showtimes"] > 0:
+            units.setdefault((normalise(t["rawTitle"]).lower(), t["film"]), []).append(t)
+    return units
+
+
+def draw_billings(takes, n, rng):
+    """[(take, inclusion probability, False)] of a uniform draw of n billings without replacement, each represented by
+    one of its takes drawn uniformly; the takes are ordered first, so the seed alone decides the draw."""
+    units = billings(takes)
+    keys = sorted(units)
+    k = min(n, len(keys))
+    picks = rng.sample(keys, k)
+    by_venue = lambda t: (t["venue"], t["rawTitle"])  # noqa: E731
+    return [(rng.choice(sorted(units[key], key=by_venue)), k / len(keys), False) for key in picks]
+
+
+def estimate_billings(rows, population_billings):
+    """A billing draw's estimate: the drawn share judged wrong, its Wilson interval, in estimate()'s shape (the pool
+    weighs each country by its billings)."""
+    judged = [r for r in rows if r["verdict"] in ("right", "wrong")]
+    wrong = sum(1 for r in judged if r["verdict"] == "wrong")
+    low, high = wilson(wrong, len(judged))
+    share = wrong / len(judged) if judged else 0.0
+    return {"share": share, "low": low, "high": high, "takeRate": share, "n": len(rows), "judged": len(judged),
+            "wrong": wrong, "unjudged": len(rows) - len(judged), "_rest": population_billings, "_judged": len(judged),
+            "_certainWrong": 0}
 
 
 # ── the estimate ────────────────────────────────────────────────────────────────────────────────
@@ -209,19 +252,22 @@ def cmd_sample(a):
         raise SystemExit("the local prod mirror is not fresh (scripts/local-mirror/freshness): not sampling a stale corpus")
     os.makedirs(a.out, exist_ok=True)
     labels = labels_by_country(read(a.judgements))
-    meta = {"seed": a.seed, "n": a.n, "now": a.now, "countries": {}}
+    meta = {"seed": a.seed, "n": a.n, "now": a.now, "unit": a.unit, "countries": {}}
     for cc in a.countries:
         takes = export(cc, a.now)
         takes.sort(key=lambda t: (t["venue"], t["rawTitle"], t["film"]))  # the seed alone decides the draw
         with open(os.path.join(a.out, f"population-{cc}.jsonl"), "w", encoding="utf-8") as f:
             f.writelines(json.dumps(t, ensure_ascii=False) + "\n" for t in takes)
         rng = random.Random(f"{a.seed}:{cc}")
-        rows = [sample_row(i, cc, t, pi, certain, None) for i, (t, pi, certain) in enumerate(draw(takes, a.n, rng), 1)]
+        drawn = (draw_billings if a.unit == "billing" else draw)(takes, a.n, rng)
+        rows = [sample_row(i, cc, t, pi, certain, None) for i, (t, pi, certain) in enumerate(drawn, 1)]
         write_sample(os.path.join(a.out, f"sample-{cc}.tsv"), judge(rows, labels))
-        meta["countries"][cc] = {"takes": len(takes), "showtimes": sum(t["showtimes"] for t in takes), "drawn": len(rows),
+        meta["countries"][cc] = {"takes": len(takes), "showtimes": sum(t["showtimes"] for t in takes),
+                                 "billings": len(billings(takes)), "drawn": len(rows),
                                  "certain": sum(1 for r in rows if r["certain"])}
         print(f"{cc}: {len(takes)} served takes, {meta['countries'][cc]['showtimes']} upcoming showtimes; drew {len(rows)}"
-              f" ({meta['countries'][cc]['certain']} certain), {sum(1 for r in rows if r['verdict'])} already judged")
+              f" ({meta['countries'][cc]['certain']} certain, {meta['countries'][cc]['billings']} billings),"
+              f" {sum(1 for r in rows if r['verdict'])} already judged")
     with open(os.path.join(a.out, "sample.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=1)
     print(f"wrote {a.out}")
@@ -232,14 +278,16 @@ def report(out, judgements, countries):
         meta = json.load(f)
     labels = labels_by_country(read(judgements))
     per, totals, lines = {}, {}, []
-    lines.append(f"seed {meta['seed']}, n {meta['n']}, served at {meta['now']}")
-    lines.append("country  showtimes-wrong  95% CI            per-take  judged  wrong  unjudged")
+    by_billing = meta.get("unit") == "billing"
+    lines.append(f"seed {meta['seed']}, n {meta['n']}, served at {meta['now']}, unit {meta.get('unit', 'showtimes')}")
+    lines.append(f"country  {'billings-wrong' if by_billing else 'showtimes-wrong'}  95% CI            per-take  judged  "
+                 "wrong  unjudged")
     for cc in countries:
         if cc not in meta["countries"]:
             continue
         rows = judge(read_sample(os.path.join(out, f"sample-{cc}.tsv")), labels)
-        totals[cc] = meta["countries"][cc]["showtimes"]
-        e = per[cc] = estimate(rows, totals[cc])
+        totals[cc] = meta["countries"][cc]["billings" if by_billing else "showtimes"]
+        e = per[cc] = (estimate_billings if by_billing else estimate)(rows, totals[cc])
         lines.append(f"{cc:<8} {e['share']:>14.2%}  [{e['low']:.2%}, {e['high']:.2%}]  {e['takeRate']:>8.2%}  "
                      f"{e['judged']:>6}  {e['wrong']:>5}  {e['unjudged']:>8}")
     if len(per) > 1:
@@ -254,6 +302,9 @@ def main(argv=None):
     s = sub.add_parser("sample")
     s.add_argument("--n", type=int, default=150)
     s.add_argument("--seed", default=datetime.date.today().isoformat())
+    s.add_argument("--unit", choices=("showtimes", "billing"), default="showtimes",
+                   help="showtimes: a take drawn in proportion to its upcoming showtimes; billing: every served (title, "
+                        "film) billing alike, the tail")
     s.add_argument("--now", default=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))
     e = sub.add_parser("estimate")
     for q in (s, e):
