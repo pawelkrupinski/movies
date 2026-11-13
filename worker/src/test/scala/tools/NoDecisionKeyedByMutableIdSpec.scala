@@ -157,6 +157,7 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${I}CandidateScoring.scala#piecesOf"   -> Pass(PerResolve),
     s"${I}CandidateScoring.scala#placesOfVenue" -> Pass(PerResolve),
     s"${I}ConstraintEdges.scala#apart"       -> Pass("its owner is built per ResolverRun"),
+    s"${I}ConstraintEdges.scala#eventOfNode" -> Pass("its owner is built per ResolverRun; a node's event read off its own listings' titles"),
     s"${I}UnifiedEvidence.scala#ids"         -> Pass("a field of Building, built per contenders call"),
     s"${I}TitleLinks.scala#sanitizedOf"      -> Content("by the title text"),
     s"${I}TitleLinks.scala#searchFormOf"     -> Content("by the title text"),
