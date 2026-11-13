@@ -242,7 +242,8 @@ def read_sample(path):
 
 def judge(rows, labels):
     for r in rows:
-        r["verdict"] = label_of(labels.get(r["country"], {}), r["venue"], r["rawTitle"], r["film"]) or ""
+        # a venue as the judgements key it (ES "Ateneu Cinema " has a trailing space prod keeps)
+        r["verdict"] = label_of(labels.get(r["country"], {}), normalise(r["venue"]), r["rawTitle"], r["film"]) or ""
     return rows
 
 

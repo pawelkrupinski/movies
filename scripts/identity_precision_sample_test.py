@@ -150,8 +150,9 @@ class Files(unittest.TestCase):
         rows = ps.judge([{"country": "pl", "venue": "Iluzjon", "rawTitle": "Lalka", "film": "tmdb:1"},
                          {"country": "pl", "venue": "Muza", "rawTitle": "Lalka", "film": "tmdb:1"},
                          {"country": "pl", "venue": "Muza", "rawTitle": "Lalka", "film": "tmdb:2"},
-                         {"country": "uk", "venue": "Muza", "rawTitle": "Lalka", "film": "tmdb:2"}], labels)
-        self.assertEqual([r["verdict"] for r in rows], ["right", "wrong", "right", ""])
+                         {"country": "uk", "venue": "Muza", "rawTitle": "Lalka", "film": "tmdb:2"},
+                         {"country": "pl", "venue": "Iluzjon ", "rawTitle": "Lalka", "film": "tmdb:1"}], labels)
+        self.assertEqual([r["verdict"] for r in rows], ["right", "wrong", "right", "", "right"])
 
     def test_the_report_reads_the_samples_back_with_the_judgements_of_now(self):
         with tempfile.TemporaryDirectory() as d:
