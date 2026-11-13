@@ -267,6 +267,30 @@ class EveryReversalTest(unittest.TestCase):
         counts = self.table(fixture("all-uk-sinners"))
         self.assertEqual((counts["LATE-ANSWER"], counts["DEPLOY/RESTART"], sum(counts.values())), (22, 2, 24))
 
+    def test_us_game_restored_when_a_new_candidates_poster_was_filed_is_a_late_answer(self):
+        # prod 2026-11-09 and 11-12, 12 Alamo venues each: fill:venues.current -> the model's no film -> the fill again,
+        # restored by the projection the late poster of a new search candidate («I'm Game», «Blind Game») triggered;
+        # no ask names «Game», so without the cluster's poster asks all 24 read UNCLASSIFIED
+        rows = timeline.analyse_all(fixture("all-us-game"))
+        self.assertEqual({r["class"] for r in rows}, {"LATE-ANSWER"})
+        self.assertEqual(len(rows), 24)
+        self.assertEqual(sum("poster film «1755818»" in r["why"] for r in rows), 12)
+        self.assertEqual(sum("poster film «1250502»" in r["why"] for r in rows), 12)
+
+    def test_a_late_poster_ask_counts_only_for_the_reversal_whose_cluster_compares_it(self):
+        raw = buddies_lattice()
+        for take in raw["history"]["takes"]:
+            take["after"]["members"] = [L]
+        raw["history"]["siblings"] = raw["history"]["listings"] = []
+        raw["projections"][1]["projection_trigger"] = raw["projections"][2]["projection_trigger"] = "answer"
+        late = {"at": DAY + 7_300_000, "id": "unanswered|poster|film|1629957", "outcome": "answered", "failures": 0}
+        raw["history"]["asks"] = [dict(late, **{"for": ["N\x00Elsewhere\x00https://x\x00Other"]})]
+        self.assertEqual({r["class"] for r in timeline.analyse_all(raw)}, {"UNCLASSIFIED"})
+        raw["history"]["asks"] = [dict(late, **{"for": [L]})]
+        restored = [r for r in timeline.analyse_all(raw) if r["from"] == 1629957]
+        self.assertEqual([r["class"] for r in restored], ["LATE-ANSWER"])
+        self.assertIn("poster film «1629957»", restored[0]["why"])
+
     def test_the_count_table_and_a_tsv_row_per_reversal(self):
         tsv = io.StringIO()
         out = timeline.render_all(fixture("all-de-geister"), summary=True, tsv=tsv)
@@ -326,6 +350,10 @@ class EveryReversalTest(unittest.TestCase):
             self.assertEqual(again.getvalue(), printed.getvalue())
         self.assertEqual(len(mirror.scripts("takes")), 2)
         self.assertEqual(len(mirror.scripts("all-asks")), 1)
+        # each window names the cluster whose poster asks it reads: the reversal's key, members and the films it moved between
+        window = json.loads(re.search(r"(\[\{.*?\}\])\.forEach", mirror.scripts("all-asks")[0]).group(1))[0]
+        self.assertEqual((window["key"], window["members"], window["films"]), (L, [L], [1629957]))
+        self.assertIn("poster|venue|", mirror.scripts("all-asks")[0])
         self.assertEqual(mirror.scripts("siblings"), [])
         self.assertIn("RULE", printed.getvalue())
 

@@ -78,12 +78,40 @@ const found = db.identity_history.find({kind: 'take', at: {$gte: since}, id: {$i
 print(JSON.stringify(found.map(t => ({at: t.at.getTime(), id: t.id, members: (t.after || {}).members || []}))));
 """
 
+# The posters a cluster's decision compares -- each candidate film's (`poster|film|<tmdb>`: the members' traces' candidates
+# and the films the reversal moved between) and each member's own venue poster (`poster|venue|<url>`, from the venues'
+# listings now) -- as the question ids their asks are filed under. Poster answers (`poster|...`) are the one ask a
+# candidate set leads to that names no title: a reversal restored when one was filed late (US «Game», 2026-11-12: «Blind
+# Game»'s poster, a new search candidate) read as UNCLASSIFIED without them.
+POSTER_SUBJECTS_JS = """
+const posterSubject = id => { const i = id.indexOf('poster|'); return i < 0 ? '' : id.slice(i); };
+const posterSubjects = (members, films) => {
+  const subjects = new Set(films.map(f => 'poster|film|' + f));
+  members.slice(0, 20).forEach(m => {
+    const parts = m.split('\\u0000'), venue = parts[1], raw = parts[parts.length - 1] || parts[parts.length - 2];
+    const trace = db.identity_traces.findOne({_id: m}, {candidates: 1});
+    ((trace || {}).candidates || []).forEach(c => { const id = String(c).split(' ')[0]; if (/^[0-9]+$/.test(id)) subjects.add('poster|film|' + id); });
+    const venueListings = db.identity_listings.findOne({_id: venue}, {films: 1});
+    ((venueListings || {}).films || []).forEach(f => {
+      if (f.posterUrl && (((f.movie || {}).title || '') === raw || (parts.length > 3 && f.filmUrl === parts[2]))) subjects.add('poster|venue|' + f.posterUrl);
+    });
+  });
+  return subjects;
+};
+"""
+
 ASKS_QUERY = """// asks
+""" + POSTER_SUBJECTS_JS + """
 const since = new Date(SINCE), H = db.identity_history;
 const near = WINDOWS.map(w => ({at: {$gte: new Date(w[0]), $lte: new Date(w[1])}}));
 const askTitle = TITLE ? new RegExp('\\|title\\|.*' + TITLE, 'i') : null;
 const clauses = (askTitle ? [{id: askTitle}] : []).concat(near.length ? [{id: /\\|record\\|/, $or: near}] : []);
 const asks = clauses.length ? H.find({kind: 'answer:identity_question_markers', at: {$gte: since}, $or: clauses}).sort({at: 1}).limit(2000).toArray() : [];
+// the posters its decisions compare (its candidates', its members' own), filed around its takes
+const subjects = near.length ? posterSubjects(MEMBERS, FILMS) : new Set();
+if (near.length) H.find({kind: 'answer:identity_question_markers', id: /\\|poster\\|/, $or: near}).sort({at: 1}).limit(500)
+  .forEach(a => { if (subjects.has(posterSubject(a.id)) && !asks.some(b => b.at.getTime() === a.at.getTime() && b.id === a.id)) asks.push(a); });
+asks.sort((a, b) => a.at - b.at);
 const readIds = READ_IDS;
 const answers = readIds.length && near.length ? H.find({kind: {$in: ['answer:tmdb_queries', 'answer:tmdb_films']},
   id: {$in: readIds}, $or: near}, {kind: 1, id: 1, at: 1}).sort({at: 1}).limit(500).toArray() : [];
@@ -101,16 +129,23 @@ print(JSON.stringify(found.map(l => ({at: l.at.getTime(), id: l.id}))));
 # --all: the question-marker asks filed in each reversal's window whose subject is its (cleaned) title; and the member
 # listings re-published inside a window, for the reversals nothing else explained
 ALL_ASKS_QUERY = """// all-asks
-const H = db.identity_history, seen = new Set(), out = [];
-const add = a => { const k = a.at.getTime() + a.id; if (!seen.has(k)) { seen.add(k);
-  out.push({at: a.at.getTime(), id: a.id, outcome: (a.after || {}).outcome || '', failures: (a.after || {}).failures || 0}); } };
+const H = db.identity_history, seen = new Map(), out = [];
+const add = (a, owner) => { const k = a.at.getTime() + a.id; let row = seen.get(k);
+  if (!row) { row = {at: a.at.getTime(), id: a.id, outcome: (a.after || {}).outcome || '', failures: (a.after || {}).failures || 0};
+    seen.set(k, row); out.push(row); }
+  if (owner) row.for = Array.from(new Set((row.for || []).concat([owner]))); };
+""" + POSTER_SUBJECTS_JS + """
 WINDOWS.forEach(w => {
   const titled = H.find({kind: 'answer:identity_question_markers', at: {$gte: new Date(w.lo), $lte: new Date(w.hi)}, id: new RegExp(w.needle, 'i')})
     .sort({at: 1}).limit(200).toArray();
-  titled.forEach(add);
+  titled.forEach(a => add(a));
   // the record asks its family filed after its first title ask (candidates found by the title answers)
   if (titled.length) H.find({kind: 'answer:identity_question_markers', id: /\\|record\\|/, at: {$gte: titled[0].at, $lte: new Date(w.hi)}})
-    .sort({at: 1}).limit(300).forEach(add);
+    .sort({at: 1}).limit(300).forEach(a => add(a));
+  // the posters its decision compares (its candidates', its members' own), each tagged with the reversal it belongs to
+  const subjects = posterSubjects(w.members, w.films);
+  H.find({kind: 'answer:identity_question_markers', id: /\\|poster\\|/, at: {$gte: new Date(w.lo), $lte: new Date(w.hi)}})
+    .sort({at: 1}).limit(300).forEach(a => { if (subjects.has(posterSubject(a.id))) add(a, w.key); });
 });
 print(JSON.stringify(out));
 """
@@ -291,7 +326,9 @@ def gather(args, run, now):
             chunk = takes[start:start + CHUNK]
             windows = [[t["at"] - 30000, t["at"] + 2000] for t in chunk]
             read_ids = sorted({r for t in chunk for r in t["readIds"]})
-            found = _mongo(run, raw, args, _header(args, since, WINDOWS=windows, READ_IDS=read_ids), ASKS_QUERY) or {}
+            films = sorted({f for t in chunk for f in (t["after"].get("tmdb_before"), t["after"].get("tmdb_after")) if f})
+            found = _mongo(run, raw, args, _header(args, since, WINDOWS=windows, READ_IDS=read_ids, MEMBERS=sorted(members),
+                                                   FILMS=films), ASKS_QUERY) or {}
             history["asks"].extend(a for a in found.get("asks", []) if a not in history["asks"])
             history["answers"].extend(a for a in found.get("answers", []) if a not in history["answers"])
         for take in takes:
@@ -653,10 +690,12 @@ def cluster_asks(asks, first, second):
     lo = ((first.projection or {}).get("start") or first.at - 30) - 5
     hi = second.at + 2
     titled = [a for a in asks if lo <= a["at"] / 1000 <= hi and needle.search(a["id"])]
+    posters = [a for a in asks if first.key in a.get("for", ()) and lo <= a["at"] / 1000 <= hi]
     if not titled:
-        return []
+        return posters
     start = min(a["at"] for a in titled) / 1000 - 0.001
-    return titled + [a for a in asks if "|record|" in a["id"] and start <= a["at"] / 1000 <= hi and a not in titled]
+    return sorted(titled + [a for a in asks if "|record|" in a["id"] and start <= a["at"] / 1000 <= hi and a not in titled]
+                  + [a for a in posters if a not in titled], key=lambda a: a["at"])
 
 
 def analyse_all(raw, within=REVERSAL_WITHIN):
@@ -713,7 +752,8 @@ def gather_all(args, run, now):
     for take in takes:
         take.projection = projection_of(take.at, projections)
     windows = [{"lo": int((((a.projection or {}).get("start") or a.at - 30) - 5) * 1000), "hi": int((b.at + 2) * 1000),
-                "needle": ask_needle(a.listing)} for a, b in pairs]
+                "needle": ask_needle(a.listing), "key": a.key, "members": sorted(set(a.members) | set(b.members) or {a.key}),
+                "films": sorted({f for f in (a.before, a.after) if f})} for a, b in pairs]
     for batch in _chunks(windows, 50):
         history["asks"].extend(_mongo(run, raw, args, "", ALL_ASKS_QUERY.replace("WINDOWS", json.dumps(batch))) or [])
     explained = analyse_all(raw)
