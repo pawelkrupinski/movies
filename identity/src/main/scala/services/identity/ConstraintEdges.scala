@@ -50,21 +50,20 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     // as each node's scope reads its facts: an overruled feed link's copied facts keep no listing apart ([[FeedLink]])
     val (firstListing, secondListing) = (titled(families.scopeOf(first).evidenceOf(first).published), titled(families.scopeOf(second).evidenceOf(second).published))
     lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
-    // Two billings of one house's relay of one work in one season ([[oneRelay]]) are kept apart by a fact they disagree
-    // on — two directors, years further apart than one season's two — never by how each venue spells the house's banner
-    // beside the work, the interval's minutes one adds to its running time, or the original title a feed files it under:
-    // UK "Opéra De Paris Ballet - La Bayadère" (125 min) and "The Opéra National de Paris: La Bayadère" were kept apart on
-    // the titles' overlap alone.
-    def factsApart = measures.get("director").contains(IdentityMeasures.Category("different")) ||
+    ListingConstraints.seasonsApart(firstListing.seasonYear, secondListing.seasonYear, secondListing.year)
+      .orElse(ListingConstraints.seasonsApart(secondListing.seasonYear, firstListing.seasonYear, firstListing.year))
+      .orElse(Option.when(!RelayStage.oneRelaySpeltAlike(first.evidence.measured, second.evidence.measured) || relayFactsApart(measures))(
+        LearnedCannotLinks.learnedListingListing(calibration, measures)).flatten)
+      .map(_.toString)
+  }
+
+  /** Do two billings of one relay disagree on a fact — two directors, years further apart than one season's two? */
+  private def relayFactsApart(measures: Map[String, IdentityMeasures.Measure]): Boolean =
+    measures.get("director").contains(IdentityMeasures.Category("different")) ||
       Seq("year.delta", "titleYear.delta", "season.delta").exists(fact => measures.get(fact).exists {
         case IdentityMeasures.Number(delta) => delta > 1 || (fact == "season.delta" && delta > 0)
         case _                              => false
       })
-    ListingConstraints.seasonsApart(firstListing.seasonYear, secondListing.seasonYear, secondListing.year)
-      .orElse(ListingConstraints.seasonsApart(secondListing.seasonYear, firstListing.seasonYear, firstListing.year))
-      .orElse(Option.when(!oneRelay(first, second) || factsApart)(LearnedCannotLinks.learnedListingListing(calibration, measures)).flatten)
-      .map(_.toString)
-  }
 
   /** Do two nodes bill one house's relay of one stage work in one season ([[RelayStage.oneRelay]]), as their venues
    *  published them? */

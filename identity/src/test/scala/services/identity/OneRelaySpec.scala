@@ -60,6 +60,17 @@ class OneRelaySpec extends AnyFlatSpec with Matchers {
     RelayStage.oneRelay(season, last) shouldBe false
   }
 
+  "A billing naming two houses" should "be neither's relay" in {
+    // UK recording 573: The Flavel's "RBO/MET presents MACBETH", Northallerton's "RBO: MACBETH (MET)" and Cardigan's
+    // "Met Opera in Association with RBO: Macbeth" screen the Met's 2026/27 Macbeth; keyed as the RBO's they formed a
+    // relay of their own, apart from the Met's record, and four right takes beside both were left alone
+    val day = LocalDate.of(2026, 11, 7)
+    for (title <- Seq("RBO/MET presents MACBETH", "RBO: MACBETH (MET)", "Met Opera in Association with RBO: Macbeth (12A)"))
+      withClue(title)(RelayStage.relayKeys(measured(on(listing(KinoMuza, title), day))) shouldBe empty)
+    RelayStage.relayKeys(measured(on(listing(KinoMuza, "Met Opera 2026-27: Macbeth"), day))) should not be empty
+    RelayStage.relayKeys(measured(on(listing(KinoMuza, "Royal Ballet & Opera 2026/27: The Nutcracker"), day))) should not be empty
+  }
+
   "A billing naming no house" should "be no house's relay" in {
     val bare  = measured(on(listing(KinoMuza, "La Bayadère"), ParisDay))
     val paris = measured(on(listing(Helios, "Opéra de Paris: La Bayadère"), ParisDay))
@@ -95,7 +106,7 @@ class OneRelaySpec extends AnyFlatSpec with Matchers {
     val films = Seq(F(11594, "Notre-Dame de Paris", 1956, "Jean Delannoy", 115, 3.0), F(790330, "La Scala Ballet: Notre-Dame de Paris", 2013, "", 105, 0.5),
       F(973305, "Notre-Dame de Paris (Opéra Bastille)", 2021, "", 0, 0.4))
     val paris = Seq[(models.Cinema, (String, Option[Int]))](KinoMuza -> ("Opéra De Paris Ballet - Notre-Dame de Paris", Some(90)), Helios -> ("Opéra De Paris Ballet - Notre-Dame de Paris", Some(90)),
-      KinoPalacowe -> ("Opéra national de Paris: Notre-Dame de Paris", Some(88)), Kinoteka -> ("The Opéra National de Paris: Notre-Dame De Paris", None),
+      KinoPalacowe -> ("Opéra de Paris: Notre-Dame De Paris", Some(90)), Kinoteka -> ("The Opéra National de Paris: Notre-Dame De Paris", None),
       Multikino -> ("Notre-Dame De Paris - Opera de Paris", None))
       .map { case (venue, (title, runtime)) => on(listing(venue, title, runtime = runtime), day) }
     val bare = Seq(on(listing(KinoApollo, "Notre-Dame De Paris", runtime = Some(105)), day),
