@@ -10,7 +10,7 @@ import services.movies.{ListingConstraints, ListingKey}
  *  title alone joining them; a reused page's copied facts denying the other's feed-linked film). */
 private[identity] final class ConstraintEdges(scoring: CandidateScoring, families: Families, links: TitleLinks) {
   import scoring.{calibration, pins}
-  import scoring.generation.{nodeById, nodes}
+  import scoring.generation.{candidateOf, nodeById, nodes}
   import links.{sanitized, searchForm, segmentOf, titlesBeside}
 
 
@@ -50,11 +50,32 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     // as each node's scope reads its facts: an overruled feed link's copied facts keep no listing apart ([[FeedLink]])
     val (firstListing, secondListing) = (titled(families.scopeOf(first).evidenceOf(first).published), titled(families.scopeOf(second).evidenceOf(second).published))
     lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
+    // Two billings of one house's relay of one work in one season ([[oneRelay]]) are kept apart by a fact they disagree
+    // on — two directors, years further apart than one season's two — never by how each venue spells the house's banner
+    // beside the work, the interval's minutes one adds to its running time, or the original title a feed files it under:
+    // UK "Opéra De Paris Ballet - La Bayadère" (125 min) and "The Opéra National de Paris: La Bayadère" were kept apart on
+    // the titles' overlap alone.
+    def factsApart = measures.get("director").contains(IdentityMeasures.Category("different")) ||
+      Seq("year.delta", "titleYear.delta", "season.delta").exists(fact => measures.get(fact).exists {
+        case IdentityMeasures.Number(delta) => delta > 1 || (fact == "season.delta" && delta > 0)
+        case _                              => false
+      })
     ListingConstraints.seasonsApart(firstListing.seasonYear, secondListing.seasonYear, secondListing.year)
       .orElse(ListingConstraints.seasonsApart(secondListing.seasonYear, firstListing.seasonYear, firstListing.year))
-      .orElse(LearnedCannotLinks.learnedListingListing(calibration, measures))
+      .orElse(Option.when(!oneRelay(first, second) || factsApart)(LearnedCannotLinks.learnedListingListing(calibration, measures)).flatten)
       .map(_.toString)
   }
+
+  /** Do two nodes bill one house's relay of one stage work in one season ([[RelayStage.oneRelay]]), as their venues
+   *  published them? */
+  private def oneRelay(first: EvidenceNode, second: EvidenceNode): Boolean =
+    RelayStage.oneRelay(first.evidence.measured, second.evidence.measured)
+  /** Does `other` hold a record naming another house than the relay `node` bills ([[StageRelays.billsAnotherHouse]])? One
+   *  relay's billings are one relay, not one house's record another took: PL Multikino's "Balet z Opery Paryskiej
+   *  2026-2027: Jezioro łabędzie" took the Royal Ballet & Opera's 2026/27 "Swan Lake" record (judged wrong, another
+   *  house's), and Kino 1410's "Jezioro łabędzie | Paris Opera Ballet In Cinemas" is no reason to take it too. */
+  private def holdsAnotherHousesRecord(node: EvidenceNode, otherFilm: Option[Int]): Boolean =
+    otherFilm.flatMap(candidateOf).exists(candidate => StageRelays.billsAnotherHouse(node.evidence.measured, candidate.film))
 
   // The pins' own edges between `members`, and the derived edges they leave standing.
   private val nodeOfListing: Map[ListingKey, EvidenceNode] = nodes.flatMap(node => node.listings.map(_.key -> node)).toMap
@@ -214,7 +235,11 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         // ambiguity rule leaves a spelling whose segment names two films apart, as it does one whose rest names a film of
         // its own (`namesBeside`).
         links.tier(first, second).filter { case (tier, _) => tier != 4 ||
-          (segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)) }
+          (segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)) },
+        // One house's relay of one work in one season, however each venue spells the house beside the work: what no title
+        // form says when no record joins them (UK "Opéra De Paris Ballet - La Bayadère", "La Bayadère (Opéra de Paris)").
+        Option.when(oneRelay(first, second) && !holdsAnotherHousesRecord(first, secondFilm) && !holdsAnotherHousesRecord(second, firstFilm))(
+          (3, ConstraintEdges.SameRelay))
       ).flatten.filterNot { case (_, reason) => RuleAblation.disables("join:" + reason) }
       cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
     }.filter(admitted)
@@ -227,6 +252,8 @@ private[identity] object ConstraintEdges {
   val SameSearchForm   = "same-search-form"
   val TitleSegment     = "title-segment"
   val OriginalTitle    = "original-title"
+  /** The must-link of two billings of one house's relay of one stage work in one season ([[RelayStage.oneRelay]]). */
+  val SameRelay        = "same-relay"
   /** The cannot-link of two nodes a feed's copied original title alone joins, one's feed linking a film the other's is not. */
   val CopiedOriginalApart = "copied-original-apart"
   /** The cannot-link of a node a feed links to a film and one whose reused page's copied facts deny it. */

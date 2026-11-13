@@ -28,9 +28,11 @@ object TitleRelation {
    *  @param groupKey   the title group it is filed under for backing ([[IdentityMeasures.key]] of its title)
    *  @param groups     the title groups its backing reads ([[groups]])
    *  @param cleanTitle its cleaned title, its `originalTitle` and its delimited `shapes` as published: what its family
-   *                    block keys are cut from ([[Cut]]) */
+   *                    block keys are cut from ([[Cut]])
+   *  @param relays     the keys of the one stage house's relay it bills ([[RelayStage.relayKeys]]), a block key each */
   final case class Forms(whole: String, searchForm: String, originals: Set[String], segments: Set[String], groupKey: String,
-                         groups: Set[String], cleanTitle: String, originalTitle: Option[String], shapes: Seq[String]) {
+                         groups: Set[String], cleanTitle: String, originalTitle: Option[String], shapes: Seq[String],
+                         relays: Set[String] = Set.empty) {
     /** The title block keys its family is grown by ([[Cut]]), against a corpus's whole titles and banners. */
     def keys(normalizer: TitleNormalizer, wholeTitle: String => Boolean, bannerSegment: String => Boolean): Set[String] =
       new Cut(this, normalizer, wholeTitle, bannerSegment).blocked
@@ -54,7 +56,8 @@ object TitleRelation {
     val shapes = evidence.published.shapes
     Forms(whole, searchQuery(evidence.cleanTitle), evidence.originalTitle.map(sanitize).filter(_.nonEmpty).toSet,
       (shapes.map(sanitize).toSet - whole).filter(_.exists(_.isLetter)),
-      IdentityMeasures.key(evidence.title), groups(evidence.measured).toSet, evidence.cleanTitle, evidence.originalTitle, shapes)
+      IdentityMeasures.key(evidence.title), groups(evidence.measured).toSet, evidence.cleanTitle, evidence.originalTitle, shapes,
+      RelayStage.relayKeys(evidence.measured))
   }
 
   /** A listing's forms read off the listing alone -- no venue page, the resolver's decorations: what retention relates
@@ -147,7 +150,8 @@ object TitleRelation {
         .orElse(Option.when(besideTheForm(key))(s"banner beside the work '$form', its title's search form"))
         .orElse(Option.when(bannerSegment(key))("banner: no listing's whole title, and carried by many titles"))
     val (keptPieces, droppedPieces) = pieces.partition { case (_, key) => reasonToDrop(key).isEmpty }
+    // one house's relay of one work in one season, however its banner is spelt: a family with its other spellings
     val blocked: Set[String] = FamilyClosure.blockKeys(forms.cleanTitle, forms.originalTitle, normalizer,
-      segments = keptPieces.map(_._1) :+ forms.cleanTitle)
+      segments = keptPieces.map(_._1) :+ forms.cleanTitle) ++ forms.relays
   }
 }

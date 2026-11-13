@@ -274,7 +274,7 @@ object StageRelays {
 
   /** A relay's own words, which a house's name is billed WITH but never abbreviated by ("NT Live" of "National Theatre
    *  Live" is "NT"). ES taquilla's "(Cine)" tags how a relay screens ("Ópera Cosi fan tutte (Cine)"), and names no work. */
-  private val RelayWords = Set("live", "hd", "kino", "cinema", "cine", "im", "in", "aus", "at", "from", "presents", "season", "saison", "sezon", "kinowy")
+  private val RelayWords = Set("live", "hd", "kino", "cinema", "cinemas", "cine", "im", "in", "aus", "at", "from", "presents", "season", "saison", "sezon", "kinowy")
   /** Words a house's name shares with any other's — the art form in each language, the kind of institution ("National",
    *  "Staatsoper", "Opera House", "Theatre", "Company": English National Ballet is not Dutch National Ballet, nor the Wiener
    *  Staatsoper the Bayerische), articles, prepositions and a relay's own words ("Live", "im Kino", "Season") — which say

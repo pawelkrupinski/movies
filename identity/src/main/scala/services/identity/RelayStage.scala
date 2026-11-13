@@ -61,6 +61,29 @@ private[identity] object RelayStage {
     }
   }
 
+  /** The keys of the ONE relay `l` bills, whatever banner its venue puts on it: `r:<stage work>:<season>`, for each stage
+   *  work its title names ([[StageRelays.Relay.workIds]], in any language) in the season it names, else the season its
+   *  screenings fall in — when its title names a house in particular ([[StageRelays.namesAHouseInParticular]]), and dates
+   *  no other season's performance ([[of]]: "Royal Ballet: The Nutcracker (2021)", screening in 2026/27, bills the 2021
+   *  recording, a production of its own). UK "Opéra De Paris Ballet - La Bayadère" ×7, "La Bayadère (Opéra de Paris)" ×6,
+   *  "Opéra de Paris: La Bayadère" and "The Opéra National de Paris: La Bayadère" are one relay, which TMDB holds no record
+   *  of: no film joined them, and their titles share no form, so each was a film of its own. The house is no part of the
+   *  key, which names no house; [[oneRelay]] asks the two houses. A billing naming no house ("La Bayadère", screening in
+   *  a season both the Royal Ballet and the Paris Opera relay it in) is keyed by none. */
+  def relayKeys(l: Listing): Set[String] = {
+    val season = l.seasonYear.orElse(l.screeningsSeason).filter(season => l.relayBilled.forall(_.seasons(season)))
+    if (particularHouses(l).isEmpty || season.isEmpty) Set.empty
+    // a work the house's own fragment carries ("Jezioro łabędzie z opéra national de paris") is billed all the same
+    else (l.relay.workIds ++ StageRelays.stageWorksBilled(l.ownTitles, seasonNamed = true)).map(work => s"r:$work:${season.get}")
+  }
+  /** Do `a` and `b` bill one house's relay of one stage work in one season ([[relayKeys]]): one relay, however each venue
+   *  spells the house's banner beside the work ([[StageRelays.namesOneHouse]]: "Opéra de Paris", "The Opéra National de
+   *  Paris", PL "Balet z Opery Paryskiej")? Two houses' relays of one work in one season stay two (the Royal Ballet's
+   *  "La Bayadère" of 9 February 2027 and the Paris Opera's of 31 January), as do two seasons' of one house's. */
+  def oneRelay(a: Listing, b: Listing): Boolean =
+    (relayKeys(a) & relayKeys(b)).nonEmpty && particularHouses(a).exists(house => particularHouses(b).exists(StageRelays.namesOneHouse(house, _)))
+  private def particularHouses(l: Listing): Seq[Seq[String]] = l.relay.houses.filter(StageRelays.namesAHouseInParticular)
+
   /** Is `l` a relay searched with the season its screenings fall in ([[Listing.screenedSeason]],
    *  [[StageRelays.stageWorkQueries]]) — its title billing a stage house or a relay series' banner
    *  ([[services.movies.TitleWords.Concept.HouseBanner]]) beside its work? A house's season record carries the work and

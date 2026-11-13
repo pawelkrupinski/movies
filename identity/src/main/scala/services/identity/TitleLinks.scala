@@ -85,6 +85,7 @@ private[identity] object TitleLinks {
     val searchForm = normalizer.searchQuery(node.evidence.cleanTitle)
     def why(key: String): String =
       if (key == "t:" + whole) "its title"
+      else if (key.startsWith("r:")) "the stage house's relay of a work in a season it bills"
       else if (key == "q:" + searchForm) "its title's search form"
       else if (node.evidence.originalTitle.exists(original => key == "t:" + normalizer.sanitize(original) || key == "q:" + normalizer.searchQuery(original)))
         "its original title"
