@@ -72,7 +72,7 @@ private[identity] object RelayStage {
    *  a season both the Royal Ballet and the Paris Opera relay it in) is keyed by none. */
   def relayKeys(l: Listing): Set[String] = {
     val season = l.seasonYear.orElse(l.screeningsSeason).filter(season => l.relayBilled.forall(_.seasons(season)))
-    if (particularHouses(l).isEmpty || season.isEmpty) Set.empty
+    if (particularHouses(l).isEmpty || season.isEmpty || namesTwoHouses(l)) Set.empty
     // a work the house's own fragment carries ("Jezioro łabędzie z opéra national de paris") is billed all the same
     else (l.relay.workIds ++ StageRelays.stageWorksBilled(l.ownTitles, seasonNamed = true)).map(work => s"r:$work:${season.get}")
   }
@@ -82,7 +82,27 @@ private[identity] object RelayStage {
    *  "La Bayadère" of 9 February 2027 and the Paris Opera's of 31 January), as do two seasons' of one house's. */
   def oneRelay(a: Listing, b: Listing): Boolean =
     (relayKeys(a) & relayKeys(b)).nonEmpty && particularHouses(a).exists(house => particularHouses(b).exists(StageRelays.namesOneHouse(house, _)))
+  /** Do `a` and `b` bill one relay ([[oneRelay]]) under one house's name spelt alike ([[StageRelays.nameOneHouseAlike]]:
+   *  "Opéra de Paris" and "The Opéra National de Paris"; "Swan Lake The Royal Ballet" and "RBO Cinema Season 2026-27: Swan
+   *  Lake") — not "The Metropolitan Opera" and "Met Opera", one word opening the other? Between such billings the learned
+   *  listing-listing cut reads only a fact they disagree on ([[ConstraintEdges]]): lifted between "The Metropolitan Opera-
+   *  Manon" and the Met's "Met Opera 2026-27: Manon" spellings, it moved UK Stowmarket's and Corby's takes (recording 573). */
+  def oneRelaySpeltAlike(a: Listing, b: Listing): Boolean =
+    oneRelay(a, b) && particularHouses(a).exists(house => particularHouses(b).exists(StageRelays.nameOneHouseAlike(house, _)))
   private def particularHouses(l: Listing): Seq[Seq[String]] = l.relay.houses.filter(StageRelays.namesAHouseInParticular)
+  /** Does `l` bill two houses that are not one — its houses, and each word naming one alone: a relay series' banner word
+   *  ("MET": no house as a word of its own, [[searchedInItsSeason]]) or a house's initials ("RBO")? Whose relay it is the banner does not say: UK The Flavel's "RBO/MET
+   *  presents MACBETH", Northallerton's "RBO: MACBETH (MET)" and Cardigan's "Met Opera in Association with RBO: Macbeth"
+   *  screen the Met's 2026/27 Macbeth; keyed as the RBO's, they joined one another away from the Met's record and left
+   *  the spellings beside both alone (recording 573: four right takes lost). */
+  private def namesTwoHouses(l: Listing): Boolean = {
+    val banners = l.ownTitles.flatMap(title => services.movies.StageHouse.initialsJoined(services.movies.TitleContainment.tokens(title).toSeq))
+      .filter(word => ParticularBannerWords(word) || services.movies.StageHouse.initials(word)).distinct.map(Seq(_))
+    val houses  = particularHouses(l) ++ banners
+    houses.exists(a => houses.exists(b => !StageRelays.namesOneHouse(a, b)))
+  }
+  /** The banner words naming a relay series in particular ("Met", "Metropolitan", "NT"), never a season's word. */
+  private lazy val ParticularBannerWords: Set[String] = HouseBannerWords.filter(word => StageRelays.namesAHouseInParticular(Seq(word)))
 
   /** Is `l` a relay searched with the season its screenings fall in ([[Listing.screenedSeason]],
    *  [[StageRelays.stageWorkQueries]]) — its title billing a stage house or a relay series' banner
