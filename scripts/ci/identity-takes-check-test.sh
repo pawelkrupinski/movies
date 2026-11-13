@@ -34,6 +34,8 @@ mkdir -p "$work/bin"
 cat > "$work/bin/gh" <<EOF
 #!/usr/bin/env bash
 [ -n "\${HISTORY_FAILS:-}" ] && { echo "HTTP 502" >&2; exit 1; }
+# HISTORY_FAILS_ONCE=<file>: the first read answers an HTML error page, as github.com's GraphQL did for Identity takes #82
+[ -n "\${HISTORY_FAILS_ONCE:-}" ] && [ ! -f "\$HISTORY_FAILS_ONCE" ] && { : > "\$HISTORY_FAILS_ONCE"; echo "invalid character '<' looking for beginning of value" >&2; exit 1; }
 [ -n "\${HISTORY_HANGS:-}" ] && { echo \$\$ >> "\$HISTORY_HANGS"; exec sleep 86400; } # never answers: blocks until killed
 state() { cat "$work/status-\$1" 2>/dev/null || echo -; }
 case "\$*" in
@@ -47,7 +49,7 @@ esac
 EOF
 chmod +x "$work/bin/gh"
 
-run() { rm -rf "$work/out"; (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$c3 RUNNER_TEMP=$work \
+run() { rm -rf "$work/out"; (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$c3 RUNNER_TEMP=$work IDENTITY_TAKES_HISTORY_BACKOFF=0 \
   spec_bounded "$script" pl "$work/out" > "$work/log" 2>&1); }
 
 echo SUCCESS > "$work/status-$c1"
@@ -68,8 +70,14 @@ echo SUCCESS > "$work/status-$c2"
 check "a base named by hand overrides the newest green commit" "$c1" "$(cat "$work/out/base.txt")"
 rm "$work/status-$c2"
 
+rm -f "$work/failed-once"; echo SUCCESS > "$work/status-$c1"
+run_code=0; HISTORY_FAILS_ONCE="$work/failed-once" run || run_code=$?
+check "a history read GitHub answers once with an error page is asked again, and names the base" "$c1" "$(cat "$work/out/base.txt" 2>/dev/null)"
+check "...and goes on to judge (no could-not-run exit)" 1 "$([ "$run_code" != 2 ] && echo 1 || echo 0)"
+check "...saying the first read failed" 1 "$(grep -c 'history read 1 of 3 failed' "$work/log")"
+rm "$work/status-$c1"
 code=0; HISTORY_FAILS=1 run || code=$?
-check "a failed history read stops the check" 2 "$code"
+check "a history read failing every time stops the check" 2 "$code"
 # The stub never answers: the check stops only by its bound cutting the read off (shell-spec.sh's HUNG STUBS).
 : > "$work/hung"
 code=0; HISTORY_HANGS="$work/hung" IDENTITY_TAKES_GH_TIMEOUT=1 run || code=$?

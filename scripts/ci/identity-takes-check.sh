@@ -112,7 +112,19 @@ fi
 
 # One page of the head's history before it, a line a commit: `<sha> <state of $context, or -> <parent sha>`, then
 # `NEXT <cursor>` when there is more. GraphQL hands a commit's statuses with it: a page is one call, not 100.
+# A page of history, asked up to three times: github.com's GraphQL answers an HTML error page now and then ("invalid
+# character '<' looking for beginning of value"), and Identity takes #82's Spain row lost its base -- and with it its
+# verdict -- to one such answer, read once. Each failed read is said; IDENTITY_TAKES_HISTORY_BACKOFF (10 s) apart.
 history_page() { # [cursor]
+  local attempt page
+  for attempt in 1 2 3; do
+    page=$(history_query "$@") && { printf '%s\n' "$page"; return 0; }
+    echo "identity takes ($cc): history read $attempt of 3 failed (gh's error above)" >&2
+    [ "$attempt" = 3 ] || sleep $(( ${IDENTITY_TAKES_HISTORY_BACKOFF:-10} * attempt ))
+  done
+  return 1
+}
+history_query() { # [cursor]
   local after=${1:+, after: \$cursor}
   bounded "$gh_read" gh api graphql -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" -f expr="$head~1" \
     ${1:+-f cursor="$1"} -f query="query(\$owner: String!, \$name: String!, \$expr: String!${1:+, \$cursor: String}) {
