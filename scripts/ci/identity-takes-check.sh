@@ -125,14 +125,18 @@ history_page() { # [cursor]
   return 1
 }
 history_query() { # [cursor]
+  # Only the check's own status context (Status.context(name:)), never every context of every commit: a page of 100
+  # commits with all of theirs ran past github.com's 10 s GraphQL budget and came back an HTML error page on every
+  # attempt (Identity takes #114); the one context answers the same page in under a second.
   local after=${1:+, after: \$cursor}
   bounded "$gh_read" gh api graphql -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" -f expr="$head~1" \
-    ${1:+-f cursor="$1"} -f query="query(\$owner: String!, \$name: String!, \$expr: String!${1:+, \$cursor: String}) {
+    -f context="$context" ${1:+-f cursor="$1"} \
+    -f query="query(\$owner: String!, \$name: String!, \$expr: String!, \$context: String!${1:+, \$cursor: String}) {
       repository(owner: \$owner, name: \$name) { object(expression: \$expr) { ... on Commit {
         history(first: 100$after) { pageInfo { hasNextPage endCursor }
-          nodes { oid parents(first: 1) { nodes { oid } } status { contexts { context state createdAt } } } } } } } }" \
+          nodes { oid parents(first: 1) { nodes { oid } } status { context(name: \$context) { state createdAt } } } } } } } }" \
     --jq ".data.repository.object.history | (.nodes[] | .oid + \" \" +
-            ([(.status.contexts // [])[] | select(.context == \"$context\" and (.createdAt // \"\") >= \"$history_floor\") | .state][0] // \"-\") + \" \" +
+            ([.status.context // empty | select((.createdAt // \"\") >= \"$history_floor\") | .state][0] // \"-\") + \" \" +
             (.parents.nodes[0].oid // \"-\")),
           (if .pageInfo.hasNextPage then \"NEXT \" + .pageInfo.endCursor else empty end)"
 }

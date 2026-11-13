@@ -34,6 +34,9 @@ mkdir -p "$work/bin"
 cat > "$work/bin/gh" <<EOF
 #!/usr/bin/env bash
 [ -n "\${HISTORY_FAILS:-}" ] && { echo "HTTP 502" >&2; exit 1; }
+# Every status context of every commit costs github.com more than its 10 s GraphQL budget on a page of 100 (Identity takes
+# #114: three reads, each an HTML error page): a query still asking for all of them is answered as GitHub answers it
+case "\$*" in *"contexts {"*) echo "invalid character '<' looking for beginning of value" >&2; exit 1 ;; esac
 # HISTORY_FAILS_ONCE=<file>: the first read answers an HTML error page, as github.com's GraphQL did for Identity takes #82
 [ -n "\${HISTORY_FAILS_ONCE:-}" ] && [ ! -f "\$HISTORY_FAILS_ONCE" ] && { : > "\$HISTORY_FAILS_ONCE"; echo "invalid character '<' looking for beginning of value" >&2; exit 1; }
 [ -n "\${HISTORY_HANGS:-}" ] && { echo \$\$ >> "\$HISTORY_HANGS"; exec sleep 86400; } # never answers: blocks until killed
