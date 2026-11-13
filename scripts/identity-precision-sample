@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# An unbiased random sample of the identity takes prod SERVES, weighted by upcoming showtimes, and the estimate of the
+# share of showtimes on wrong films once its takes are judged. Usage and design: scripts/identity_precision_sample.py.
+#
+#   scripts/identity-precision-sample sample   [--countries pl,uk] [--n 150] [--seed S] [--out DIR] [--now ISO]
+#   scripts/identity-precision-sample estimate [--out DIR] [--judgements TSV] [--countries ...]
+set -euo pipefail
+exec python3 -I "$(dirname "$0")/identity_precision_sample.py" "$@"
