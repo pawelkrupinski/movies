@@ -45,6 +45,21 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
     items.find(_.rawTitle == "Blade").get.shown shouldBe FilmFacts(FilmRef.tmdb(36647), Some("Blade"), Some(1998))
   }
 
+  it should "put the agent's least sure judgements first: low, then medium, then those it judged by an alternative title only" in {
+    def agent(raw: String, evidence: String) = row("Kino", raw, "tmdb:1", "right", s"AGENT-JUDGED 2026-11-13 (precision-sample, $evidence")
+    val sure     = agent("Avatar", "confidence high): billing agrees with the record")
+    val medium   = agent("Rozważna i romantyczna", "confidence medium): title only, the 1995 film shares it")
+    val low      = agent("KunstKino: Munch", "confidence low): an art documentary is as likely")
+    val byAlt    = agent("W tym kraju nie ma dobrych mężczyzn", "confidence high): record's alternative title No Good Men")
+    val byAltToo = agent("Elf. Świąteczne życzenie", "confidence high): Tonttu (2025, alt 'The Elf and the Christmas Wonder')")
+    val unstated = row("Abaton", "Blade", "tmdb:2", "right", "AGENT-JUDGED 2026-10-22: the venue's Cineamo id")
+    val items = ReviewDigest.pending(Seq(sure, unstated, byAlt, medium, low, byAltToo), Seq(dads))
+    items.map(_.rawTitle) shouldBe Seq("KunstKino: Munch", "Rozważna i romantyczna", "Elf. Świąteczne życzenie",
+      "W tym kraju nie ma dobrych mężczyzn", "Avatar", "Blade", "The Dads")
+    items.map(i => (i.doubt.confidence, i.doubt.byAlternativeTitle)) shouldBe Seq((Some("low"), false), (Some("medium"), false),
+      (Some("high"), true), (Some("high"), true), (Some("high"), false), (None, false), (None, false))
+  }
+
   it should "give one listing's two films two items, each answered on its own" in {
     val items = ReviewDigest.pending(Seq(agentRose, agentRoseNo), Nil)
     items.map(_.id).distinct should have size 2

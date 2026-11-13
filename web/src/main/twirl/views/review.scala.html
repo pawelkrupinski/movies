@@ -120,7 +120,9 @@
   <div class="summary">
     @view.cards.size shown of @view.total@if(view.answeredHidden > 0){ · @view.answeredHidden answered hidden (<a href="@view.link("answered" -> Some("true"))">show</a>)}
     @if(view.showAnswered){ · <a href="@view.link("answered" -> None)">hide answered</a>}
-    @if(view.total > view.cards.size){ · <a href="@view.link("limit" -> Some((view.limit * 2).toString))">show more</a>}
+    @if(view.total > view.cards.size){ · <strong>@(view.total - view.cards.size) more beyond the limit</strong>
+      (<a href="@view.link("limit" -> Some((view.limit * 2).toString))">show @(view.limit * 2)</a> ·
+      <a href="@view.link("limit" -> Some(view.total.toString))">show all</a>)}
   </div>
 
   <div class="list" id="list">
@@ -142,6 +144,8 @@
             case Some(v) => {<span class="said @v">agent judged @v · @item.flagged</span>}
             case None    => {<span class="said flag">flagged · @item.flagged</span>}
           }
+          @for(c <- item.doubt.confidence if c != "high"){<span class="doubt @c">confidence @c</span>}
+          @if(item.doubt.byAlternativeTitle){<span class="doubt alt" title="judged by a title TMDB files beside the film's own, not the billing's own facts">by alternative title</span>}
           · <a class="explain" href="@routes.ReviewController.listing(item.country, Option.when(item.venue != "*")(item.venue), item.rawTitle).url">explain this listing</a>
           @if(item.venue == "*"){· every venue billing it}
           @if(item.film.tmdb.isEmpty){· the film: @item.film.render}

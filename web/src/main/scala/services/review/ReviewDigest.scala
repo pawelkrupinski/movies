@@ -28,6 +28,9 @@ final case class DigestItem(country: String, venue: String, rawTitle: String, fi
     case other                                     => FilmFacts(film, other)
   }
 
+  /** How sure the agent said it was: the page lists its least sure judgements first. */
+  def doubt: ReviewDigest.Doubt = ReviewDigest.Doubt.of(evidence)
+
   /** As a judgement row keys it: venue (or `*`), billing and film. */
   def asLabel: LabelRow = LabelRow(country, venue, LabelsTsv.normalise(rawTitle), film.render, "", "")
 
@@ -59,6 +62,28 @@ object ReviewDigest {
   /** An agent's judgement the user has not confirmed or overruled yet. */
   def agentJudged(evidence: String): Boolean = AgentMarker.findFirstIn(evidence).isDefined && !userJudged(evidence)
 
+  /** How sure an agent said it was of a judgement: the `confidence <word>` its evidence states (`AGENT-JUDGED 2026-11-13
+   *  (precision-sample, confidence medium): …`), and whether it judged the film by an alternative title alone (the
+   *  record's "alternative title", an "alt '…'" one) — a billing judged by a title TMDB files beside the film's own, not
+   *  by the billing's own facts. */
+  final case class Doubt(confidence: Option[String], byAlternativeTitle: Boolean) {
+    /** Its place on the page: low, then medium, then judged by an alternative title, then the rest (high, or unstated). */
+    def rank: Int = confidence match {
+      case Some("low")             => 0
+      case Some("medium")          => 1
+      case _ if byAlternativeTitle => 2
+      case _                       => 3
+    }
+  }
+
+  object Doubt {
+    private val Confidence       = """(?i)\bconfidence[: ]+([a-z]+)""".r
+    private val AlternativeTitle = """(?i)\balternative[- ]titles?\b|\balt ['"‘“]""".r
+
+    def of(evidence: String): Doubt = Doubt(Confidence.findFirstMatchIn(evidence).map(_.group(1).toLowerCase(java.util.Locale.ROOT)),
+      AlternativeTitle.findFirstIn(evidence).isDefined)
+  }
+
   def readCandidates(path: Path): Seq[DigestItem] =
     if (!Files.exists(path)) Nil
     else Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq
@@ -72,13 +97,15 @@ object ReviewDigest {
       }
 
   /** Every item awaiting the user: each agent-judged row, and each candidate no row judges yet (an agent's row for the
-   *  same take stands for it, any other row has judged it) — by country, then billing. One answered but not yet exported
+   *  same take stands for it, any other row has judged it) — the agent's least sure first ([[Doubt.rank]]: with ~150 of
+   *  one country's judgements at high confidence, the few medium ones sorted by title sank past the page's limit), then
+   *  by country, then billing. One answered but not yet exported
    *  is still here: the page shows it answered ([[ReviewAnswers.Index.answerFor]]). */
   def pending(labels: Seq[LabelRow], candidates: Seq[DigestItem]): Seq[DigestItem] = {
     val agents = labels.filter(r => agentJudged(r.note)).flatMap(r => FilmRef.formed(r.film).map(f =>
       DigestItem(r.country, r.venue, r.rawTitle, f, Option(r.filmTitle).filter(_.nonEmpty), Some(r.verdict), r.judged, r.note)))
     val open   = candidates.filterNot(c => labels.exists(_.sameJudgement(c.asLabel)))
-    (agents ++ open).sortBy(i => (i.country, i.rawTitle.toLowerCase(java.util.Locale.ROOT), i.venue, i.film.render))
+    (agents ++ open).sortBy(i => (i.doubt.rank, i.country, i.rawTitle.toLowerCase(java.util.Locale.ROOT), i.venue, i.film.render))
   }
 
   /** The items of one kind: `agent` (an agent's judgement) or `candidate` (flagged, not judged); any other value (or none) is all. */

@@ -151,7 +151,8 @@ class ReviewController(cc: ControllerComponents,
       val open      = awaiting.filterNot(i => index.answerFor(i.id, Nil).isDefined)
       val shownKind = kind.filter(Set(ReviewDigest.Kinds.Agent, ReviewDigest.Kinds.Candidate))
       val countryOrder = Country.all.map(_.code).zipWithIndex.toMap
-      val items     = nameFilms(ReviewDigest.ofKind(awaiting, shownKind)).sortBy(i => countryOrder.getOrElse(i.country, Int.MaxValue))
+      // the agent's least sure first across every country, then the countries in their order (pending's own order within)
+      val items     = nameFilms(ReviewDigest.ofKind(awaiting, shownKind)).sortBy(i => (i.doubt.rank, countryOrder.getOrElse(i.country, Int.MaxValue)))
       val byCountry = items.groupBy(_.country)
       val read      = perCountry(byCountry.keys.toSeq.flatMap(Country.byCode)) { c =>
         val decisions = sourceOf(c).decisions(unmatchedOnly = false)

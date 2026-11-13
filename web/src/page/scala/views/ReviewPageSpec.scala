@@ -114,7 +114,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
         "agent judged 2026-10-22 (prodreg-peppa, flagged for the user): the PL billing of the 2026 cinema event",
         filmTitle = "Festive Fun with Peppa (2026)", judged = "2026-10-22"),
       LabelRow("de", "Metropolis Kino", "KIRSCHBLÜTEN - HANAMI", "tmdb:6461", "right",
-        "agent judged 2026-10-22 (flagged for the user): Doris Dörrie's 2008 film, the venue's Cineamo id names it",
+        "agent judged 2026-10-22 (flagged for the user, confidence medium): Doris Dörrie's 2008 film, the venue's Cineamo id names it",
         filmTitle = "Kirschblüten – Hanami (2008)", judged = "2026-10-22")))
     Files.writeString(ReviewDigest.candidatesPath(digestLabels), ReviewDigest.CandidatesHeader + "\n" + Seq(
       "de\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short's record takes a famous feature's billing; Gatlif's Latcho Drom (1993) is tmdb:47105",
@@ -571,7 +571,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     def item(raw: String) = s"document.querySelector('.card[data-cluster=\"${digestItems.find(_.rawTitle == raw).get.id}\"]')"
     onPage("/digest/review") { page =>
       page.evalString("Array.from(document.querySelectorAll('.card .raw-title')).map(t => t.textContent).join('|')") shouldBe
-        "Świąteczna zabawa z Peppą|KIRSCHBLÜTEN - HANAMI|Latcho Drom|Snake Eyes"
+        "KIRSCHBLÜTEN - HANAMI|Świąteczna zabawa z Peppą|Latcho Drom|Snake Eyes" // the agent's least sure first
       page.evalString("document.getElementById('count').textContent") shouldBe "0 / 4 answered"
       page.evalString("document.querySelector('.review-nav a.is-active').textContent") shouldBe "Agent-judged"
       page.evalString("Array.from(document.querySelectorAll('.kinds a')).map(a => a.textContent.trim()).join('|')") shouldBe "All 4|Agent-judged 2|Candidates 2"
@@ -581,6 +581,8 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
       page.evalString(s"$hanami.querySelector('.listing .meta').textContent") should include("Metropolis Kino")
       page.evalString(s"$hanami.querySelector('.agent-note .said').textContent") shouldBe "agent judged right · 2026-10-22"
       page.evalString(s"$hanami.querySelector('.agent-note .evidence').textContent") should include("Doris Dörrie's 2008 film")
+      page.evalString(s"$hanami.querySelector('.agent-note .doubt').textContent") shouldBe "confidence medium"
+      page.evalInt(s"${item("Świąteczna zabawa z Peppą")}.querySelectorAll('.agent-note .doubt').length") shouldBe 0
       page.evalString(s"$hanami.querySelector('.lead .cand .t b').textContent") shouldBe "Kirschblüten – Hanami"
       page.evalString(s"$hanami.querySelector('.lead .cand .s').textContent") should include("2008")
       page.evalString(s"$hanami.querySelector('.lead .cand .s a').getAttribute('href')") shouldBe "https://www.themoviedb.org/movie/6461"

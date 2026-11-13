@@ -132,6 +132,19 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     html should include("agent judged wrong · 2026-10-22")
   }
 
+  it should "say how many takes lie beyond its limit, the least sure first, with links to show more and all" in {
+    val labels = tempDirectory("agent-judged-limit").resolve("identity-judgements.tsv")
+    LabelsTsv.write(labels, (1 to 5).map(i => LabelRow("pl", "Kino Opalenica", s"Film $i", s"tmdb:$i", "right",
+      s"AGENT-JUDGED 2026-11-13 (test, confidence ${if (i == 5) "medium" else "high"}): x", judged = "2026-11-13")))
+    val html = contentAsString(controller(Mode.Dev, labels = labels).agentJudged(Some("pl"), None, 2, false)(FakeRequest()))
+    html should include("2 shown of 5")
+    html should include("3 more beyond the limit")
+    html should include("limit=4")
+    html should include("limit=5")
+    html.indexOf("Film 5") should (be > -1 and be < html.indexOf("Film 1"))
+    html should include("""<span class="doubt medium">confidence medium</span>""")
+  }
+
   "a candidate's TMDB poster" should "redirect to the poster TMDB names for it, and be not found when TMDB names none or no key is set" in {
     val looked = controller(Mode.Dev, tmdbPosters = Some(howlsLookup)).tmdbPoster(4935, Some("pl"))(FakeRequest())
     status(looked) shouldBe SEE_OTHER
