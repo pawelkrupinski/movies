@@ -198,8 +198,13 @@ class EnrichDetailsHandler(
     // re-keyed between enqueue and pickup — and then the page is not landed, so its next read still overrules.
     // Nor is it landed when no slot names the page (`targets` empty): the row is there, but nothing took the
     // read, and recording it as taken would make the change look landed once a slot names the page again.
+    val prior = cache.get(rowKey)
     val onRow = targets.nonEmpty && cache.putSlotsIfPresent(rowKey, targets)((_, held) =>
       detail.mergeInto(changed.refreshInto(held.getOrElse(SourceData()), screeningTokens), screeningTokens))
+    // A detail page brings facts the rating sites search by (a director, an original title: MergeRetrigger), so what it
+    // changed is asked again, as a merge's is -- Verify scrape recording #26's "Afrykanska Przygoda" was asked of Filmweb
+    // before Cinema City's network page brought "Ben Stassen", missed, and only the next day's pass asked again.
+    if (onRow) for (before <- prior; after <- cache.get(rowKey)) cache.retriggerAfterEnrichment(rowKey, before, after)
     // Landed against what the rows took alone: compared with the last read, a page read before `landed` was kept
     // and unchanged since was never landed, and paid this check's find on every task for ever.
     if (onRow && !before.landed.contains(read)) pages.land(pageKey, read)

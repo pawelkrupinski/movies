@@ -123,4 +123,23 @@ class MergeRetriggerSpec extends AnyFlatSpec with Matchers {
     // a row no film is resolved for has nothing to rate yet
     decide(rec(tmdbId = None), k("Foo"), rec(tmdbId = None, original = Some("Shadows")), k("Foo")) should not contain FilmwebRating
   }
+
+  it should "re-ask every rating site for a film TMDB has no record of when what its cinemas publish of it changes" in {
+    // Verify scrape recording #26: "Afrykanska Przygoda" (2007), no TMDB film, searched on Filmweb by its cinemas' facts
+    // before they were all in, missed; only the next day's pass asked again and found its page.
+    val noMatch = Some(services.resolution.TmdbAttempt.Legacy)
+    def listed(director: Seq[String], original: Option[String]) = rec(tmdbId = None, tmdbAttempt = noMatch).copy(data =
+      Map(models.Kinoteka -> SourceData(title = Some("Afrykanska Przygoda"), releaseYear = Some(2007), director = director, originalTitle = original)))
+    val before = listed(Nil, None)
+    decide(before, k("Afrykanska Przygoda", Some(2007)), listed(Seq("Rob Bausch"), None), k("Afrykanska Przygoda", Some(2007))) should
+      contain allOf (FilmwebRating, RtRating, McRating)
+    decide(before, k("Afrykanska Przygoda", Some(2007)), listed(Nil, Some("African Adventure: Safari in the Okavango")),
+      k("Afrykanska Przygoda", Some(2007))) should contain allOf (FilmwebRating, RtRating, McRating)
+    // the same facts: nothing to ask again
+    decide(before, k("Afrykanska Przygoda", Some(2007)), before, k("Afrykanska Przygoda", Some(2007))) shouldBe empty
+    // a row TMDB was not asked about yet is no rating site's to search
+    val unasked = rec(tmdbId = None).copy(data = before.data)
+    decide(unasked, k("Afrykanska Przygoda", Some(2007)), unasked.copy(data = listed(Seq("Rob Bausch"), None).data),
+      k("Afrykanska Przygoda", Some(2007))) should not contain FilmwebRating
+  }
 }

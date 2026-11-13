@@ -107,9 +107,19 @@ object MergeRetrigger {
     // the miss while a whole resolve, all of it there from the start, took the page: Verify scrape recording #23's
     // "Cienie zapomnianych przodków" (Filmweb 1964, TMDB 1965) and "Plemię", asked under TMDB's spellings alone,
     // found once Filmweb's own ("Siergiej Paradżanow") had come in.
-    val filmwebInputChanged = before.originalTitle != after.originalTitle || before.evidence.directors != after.evidence.directors
+    val (beforeFacts, afterFacts) = (before.evidence, after.evidence)
+    val filmwebInputChanged = before.originalTitle != after.originalTitle || beforeFacts.directors != afterFacts.directors
     if (filmwebInputChanged && after.tmdbId.isDefined)
       builder += RetriggerKind.FilmwebRating
+    // A film TMDB has no record of is searched on every rating site by what its cinemas publish alone
+    // (services.enrichment.TmdbLessRatingLinks: their original titles, directors and years), never cached, and asked
+    // once: Verify scrape recording #26's "Afrykanska Przygoda" (2007, no TMDB film), asked before those facts were all
+    // in, missed, and only the next day's pass, asking again, found Filmweb's "Afrykańska przygoda 3D - safari nad
+    // Okavango". So each site is asked again when one of them changes.
+    val cinemaFactsChanged = beforeFacts.directors != afterFacts.directors ||
+      beforeFacts.originalTitles != afterFacts.originalTitles || beforeFacts.years != afterFacts.years
+    if (cinemaFactsChanged && after.tmdbId.isEmpty && services.enrichment.TmdbLessRatingLinks.eligible(after))
+      builder ++= RetriggerKind.titleRatings
     builder.result()
   }
 }

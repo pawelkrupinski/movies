@@ -179,6 +179,33 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
       row.data.get(tea).flatMap(_.runtimeMinutes) shouldBe Some(131))
   }
 
+  it should "re-ask the rating sites a landed page's director feeds, and nothing when it changes nothing they read" in {
+    // Verify scrape recording #26: "Afrykanska Przygoda" (2007), no TMDB film, was asked of Filmweb by its cinema's facts
+    // before Cinema City's network page brought its director, missed, and only the next day's pass asked again.
+    val asked = scala.collection.mutable.ListBuffer.empty[Set[services.movies.RetriggerKind]]
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer,
+      clock = _root_.tools.SpecClock.Pinned, retrigger = (_, _, kinds) => { asked += kinds; () })
+    val bare = CinemaMovie(Movie("Afrykanska Przygoda", releaseYear = Some(2007)), CinemaCityPoznanPlaza, posterUrl = None,
+      filmUrl = Some("http://ref"), synopsis = None, cast = Seq.empty, director = Seq.empty,
+      showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
+    services.movies.ListingSeed.land(cache, CinemaCityPoznanPlaza, Seq(bare))
+    val key = cache.keyOf("Afrykanska Przygoda", Some(2007))
+    cache.putIfPresent(key, _.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))) shouldBe true
+    def land(detail: FilmDetail) = {
+      val enricher = new FakeDetailEnricher(CinemaCityPoznanPlaza, "cinema-city", Some(detail), target = Some(CinemaCityChain),
+        uptimeOverride = Some("Cinema City Enrichment"))
+      new EnrichDetailsHandler(Map("cinema-city" -> enricher), cache, new InMemoryFreshnessStore, new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned),
+        noBus, dueWindow, clock = specClock, enrichmentLanguage = polish).handle(taskFor("cinema-city", cache, "Afrykanska Przygoda", enricher, Some(2007)))
+    }
+    asked.clear()
+    land(FilmDetail(synopsis = Some("Safari"), director = Seq("Ben Stassen"))) shouldBe Done
+    asked.flatten.toSet should contain allOf (services.movies.RetriggerKind.FilmwebRating, services.movies.RetriggerKind.RtRating,
+      services.movies.RetriggerKind.McRating)
+    asked.clear()
+    land(FilmDetail(synopsis = Some("Safari, the longer cut"), director = Seq("Ben Stassen"))) shouldBe Done
+    asked.flatten shouldBe empty   // a new synopsis is nothing a rating site searches by
+  }
+
   it should "write a chain enricher's detail into its shared network source, leaving venue slots untouched, so every venue shows it" in {
     // Two Cinema City venues scrape the same film (bare: showtimes only, no detail).
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
