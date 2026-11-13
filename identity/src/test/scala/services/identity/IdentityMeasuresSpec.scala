@@ -574,6 +574,17 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.originalTitleRelation(Some("Your Name"), Seq("Your Name: Director's Cut (2016)")) should not be Category("match")
   }
 
+  it should "read the record's own year, written as a bare word of its title, as no word of it" in {
+    // PL Kino Muza Myślenice bills "André Rieu's Christmas Concert: Let It Snow" for TMDB's 2026 record "Andre Rieu's
+    // 2026 Christmas Concert Let It Snow": the dated record of an annual concert. As an overlap (−3.11) it denied the
+    // record and held the concert's 99 other listings apart from the three venues that took it.
+    val letItSnow = Seq("Andre Rieu's 2026 Christmas Concert Let It Snow")
+    IdentityMeasures.originalTitleRelation(Some("André Rieu's Christmas Concert: Let It Snow"), letItSnow, Some(2026)) shouldBe Category("match")
+    // another year is another concert's, and a number in the title is no year of the record's
+    IdentityMeasures.originalTitleRelation(Some("André Rieu's Christmas Concert: Let It Snow"), letItSnow, Some(2025)) should not be Category("match")
+    IdentityMeasures.originalTitleRelation(Some("Blade Runner"), Seq("Blade Runner 2049"), Some(2017)) should not be Category("match")
+  }
+
   "own agreement" should "count a bracketed year that matches, and deny only on a published year" in {
     IdentityMeasures.ownAgreement(measures(Listing("It (1990)"), Film("It", year = Some(1990))))._1 should contain ("year")
     IdentityMeasures.ownAgreement(measures(Listing("Toy Story (2026)"), Film("Toy Story", year = Some(1995))))._2 should not contain ("year")

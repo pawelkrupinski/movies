@@ -248,6 +248,12 @@ private[identity] object TitleRelationMeasures {
     written.isEmpty || filmYear.exists(y => written.exists(FactRelations.yearsNear(_, y)))
   }
 
+  /** `words` without the film's own `year` written as a bare word of its title: TMDB dates an annual concert's record in
+   *  its title ("Andre Rieu's 2026 Christmas Concert Let It Snow"), a venue's original title of it may not. Only the
+   *  record's own year, so "Blade Runner 2049" (2017) keeps its number. */
+  private def withoutOwnYear(words: Seq[String], year: Option[Int]): Seq[String] =
+    year.fold(words)(y => words.filterNot(_ == y.toString))
+
   /** The listing's own ORIGINAL title against every title of the other side: the same title (or the same once its closing
    *  version tag is dropped, [[BillingParse.versionless]]: "Your Name (re-release)" is "Your Name."), a decorated or delimited
    *  spelling of one ([[containment]], as the title relation reads it), a shared long word, or nothing. */
@@ -283,7 +289,8 @@ private[identity] object TitleRelationMeasures {
         else if (others.exists(t => t.key == o.form.key || t.unglossedKey.contains(o.form.key) || o.versionlessKey.contains(t.key)) ||
                  others.exists(t => oneTypoApart(o.form.words, t.words)) ||
                  others.exists(_.latinKey == o.form.latinKey) ||
-                 (yearAgrees(o.text, filmYear) && others.exists(t => t.yearlessWords.nonEmpty && t.yearlessWords == o.form.yearlessWords)))
+                 (yearAgrees(o.text, filmYear) && others.exists(t => t.yearlessWords.nonEmpty &&
+                   (t.yearlessWords == o.form.yearlessWords || withoutOwnYear(t.yearlessWords, filmYear) == o.form.yearlessWords))))
           Category("match")
         else containment(Seq(o.form), o.shapeKeys, others, undecorated = o.segmentWords).getOrElse {
           if (others.exists(t => (t.words.filter(_.length >= 4).toSet intersect o.longWords).nonEmpty)) Category("overlap")
