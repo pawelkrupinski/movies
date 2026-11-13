@@ -247,26 +247,11 @@ object SequelMarker {
     Map("ii" -> 2, "iii" -> 3, "iv" -> 4, "v" -> 5, "vi" -> 6, "vii" -> 7,
         "viii" -> 8, "ix" -> 9, "x" -> 10, "xi" -> 11, "xii" -> 12)
 
-  /** Spelled-out ordinals, English and the catalogue's other languages, sanitized
-   *  (no diacritics) the way `TitleContainment.tokens` hands them over. */
-  private val WordOrdinals: Set[String] =
-    Set("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-        "second", "third", "fourth", "fifth",
-        "druga", "trzecia", "czwarta", "piata", "drugi", "trzeci", "czwarty",
-        "zwei", "drei", "vier", "zweiter", "dritter",
-        "dos", "tres", "cuatro", "segunda", "tercera")
-
-  /** The number each spelled-out ordinal above names, so a comparison across
-   *  languages ("Part Two" vs "Część druga") and across notations (below) means
-   *  the same thing as comparing the digits. */
-  private val WordOrdinalValues: Map[String, Int] =
-    Map("one" -> 1, "two" -> 2, "three" -> 3, "four" -> 4, "five" -> 5,
-        "six" -> 6, "seven" -> 7, "eight" -> 8, "nine" -> 9, "ten" -> 10,
-        "second" -> 2, "third" -> 3, "fourth" -> 4, "fifth" -> 5,
-        "druga" -> 2, "trzecia" -> 3, "czwarta" -> 4, "piata" -> 5,
-        "drugi" -> 2, "trzeci" -> 3, "czwarty" -> 4,
-        "zwei" -> 2, "drei" -> 3, "vier" -> 4, "zweiter" -> 2, "dritter" -> 3,
-        "dos" -> 2, "tres" -> 3, "cuatro" -> 4, "segunda" -> 2, "tercera" -> 3)
+  /** Spelled-out numbers, in every language a country bills in, and the number each names, so a comparison across
+   *  languages ("Part Two" vs "Część druga") and across notations means the same thing as comparing the digits: the
+   *  billing grammar's own ([[services.billing.NumberedTitles.SpelledInstalments]]). */
+  private val WordOrdinalValues: Map[String, Int] = services.billing.NumberedTitles.SpelledInstalments
+  private val WordOrdinals: Set[String] = WordOrdinalValues.keySet
 
   /** Sequels that don't NUMBER themselves — a subtitle change instead of an
    *  ordinal/part-marker, so neither `ordinalRightAfterBase` nor

@@ -46,11 +46,33 @@ object NumberedTitles {
         TitleContainment.tokens(m.group(3)).filter(_.length >= StemLetters))
     }.toSeq
 
-  /** A part's number however it is spelled — "2", "II", "two", "zwei" — so "Dune: Part 2 - …" is "Dune: Part Two". */
+  /** A part's number however it is spelled — "2", "II", "two", "zwei", "druga" — so "Dune: Part 2 - …" is "Dune: Part Two". */
   def partNumber(token: String): String = PartNumbers.getOrElse(token, token)
-  private val PartNumbers: Map[String, String] = Map(
-    "i" -> "1", "one" -> "1", "eins" -> "1", "ii" -> "2", "two" -> "2", "zwei" -> "2", "iii" -> "3", "three" -> "3",
-    "drei" -> "3", "iv" -> "4", "v" -> "5", "vi" -> "6", "vii" -> "7", "viii" -> "8", "ix" -> "9", "x" -> "10")
+  private lazy val PartNumbers: Map[String, String] =
+    Map("i" -> "1", "ii" -> "2", "iii" -> "3", "iv" -> "4", "v" -> "5", "vi" -> "6", "vii" -> "7", "viii" -> "8", "ix" -> "9",
+      "x" -> "10") ++ SpelledInstalments.view.mapValues(_.toString)
+
+  /** The numbers a title spells out where it numbers a part ("Part Two", "Część trzecia", "Teil zwei", "Parte tres"), in
+   *  every language a country bills in, folded as [[TitleContainment.tokens]] hands them over: each one's value. A number
+   *  only after a [[PartWordTokens]] word ([[spelledPartNumbers]]): "The Three Musketeers" numbers nothing. */
+  val SpelledInstalments: Map[String, Int] = Map(
+    "one" -> 1, "two" -> 2, "three" -> 3, "four" -> 4, "five" -> 5, "six" -> 6, "seven" -> 7, "eight" -> 8, "nine" -> 9,
+    "ten" -> 10, "first" -> 1, "second" -> 2, "third" -> 3, "fourth" -> 4, "fifth" -> 5,
+    "pierwsza" -> 1, "pierwszy" -> 1, "druga" -> 2, "drugi" -> 2, "trzecia" -> 3, "trzeci" -> 3, "czwarta" -> 4,
+    "czwarty" -> 4, "piata" -> 5, "piaty" -> 5,
+    "eins" -> 1, "zwei" -> 2, "drei" -> 3, "vier" -> 4, "erster" -> 1, "erste" -> 1, "zweiter" -> 2, "zweite" -> 2,
+    "dritter" -> 3, "dritte" -> 3,
+    "dos" -> 2, "tres" -> 3, "cuatro" -> 4, "primera" -> 1, "segunda" -> 2, "tercera" -> 3, "cuarta" -> 4)
+  /** The words a title numbers a part after, folded: "Part", "Teil", "Część" ("czesc", "cz"), "Parte", "Chapter". */
+  val PartWordTokens: Set[String] = Set("teil", "part", "pt", "czesc", "cz", "parte", "partie", "kapitel", "chapter", "capitulo")
+  /** `tokens` (a title's, folded) with every number a part word spells out ([[SpelledInstalments]]) written in digits:
+   *  "diuna czesc trzecia" is "diuna czesc 3", as "Diuna: część 3" bills it. */
+  def spelledPartNumbers(tokens: Seq[String]): Seq[String] =
+    if (!tokens.exists(PartWordTokens)) tokens
+    else tokens.indices.map(at => tokens(at) match {
+      case word if at > 0 && PartWordTokens(tokens(at - 1)) => SpelledInstalments.get(word).fold(word)(_.toString)
+      case word                                             => word
+    })
 
   /** A break between a title's series and the subtitle it gives an instalment: "The Lord of the Rings: The Two Towers",
    *  "Terminator 2 - Judgment Day", "Der Herr der Ringe – Die zwei Türme". */
@@ -91,7 +113,6 @@ object NumberedTitles {
   /** Numbers a slash joins — a date ("10/19/26", "02/12/2026"), a short season ("RB&O 26/27"), a fraction ("Nine 1/2
    *  Weeks") — no instalment's number. */
   private val SlashedNumbers = """\d+(?:\s*/\s*\d+)+""".r
-  private val PartWords   = Set("teil", "part", "parte", "partie", "kapitel", "chapter")
   /** The instalment a title numbers: the number closing its first piece, after at least one word and not after a number
    *  opening it, a date's and a season's numbers aside — an Arabic one of at
    *  most three digits, a Roman one of two letters or more, or a number spelled after a part word ("… Part Two"). A year
@@ -101,7 +122,7 @@ object NumberedTitles {
     val dateless = SlashedNumbers.replaceAllIn(ElidedYear.replaceAllIn(withoutYears(title), " "), " ")
     val series   = SeriesBreak.split(dateless).headOption.map(TitleContainment.tokens).getOrElse(Nil)
     series.lastOption.filter(_ => series.sizeIs >= 2).flatMap { last =>
-      if (series.init.lastOption.exists(PartWords) && PartNumbers.contains(last)) PartNumbers(last).toIntOption
+      if (series.init.lastOption.exists(PartWordTokens) && PartNumbers.contains(last)) PartNumbers(last).toIntOption
       // a series opening with a number as well as closing on one is named by its numbers: "13 Going on 30", "9 to 5"
       else if (series.head.forall(_.isDigit)) None
       // an Arabic number of ASCII digits only: another script's digits ("٢") number nothing

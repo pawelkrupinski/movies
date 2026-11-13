@@ -4326,7 +4326,7 @@
 {"text":"Dune Double Feature","marker":"double feature"}
 {"text":"Dune Part I + II","instalment":2,"segments":{"parts":["Dune Part I","II"],"breaks":["+"]},"shape":["joinsWorks"],"billPieces":["Dune Part I","II"],"marker":"part i ii"}
 {"text":"Dune Part I + II (engl.) - Vision","instalment":2,"subtitle":{"words":["vision"],"spellsNumber":false},"pieces":["Dune Part I + II (engl.)","Vision"],"segments":{"parts":["Dune Part I","II","","Vision"],"breaks":["+","|","-"]},"shape":["joinsWorks"],"billPieces":["Dune Part I","II (engl.) - Vision"],"marker":"part i ii"}
-{"text":"Dune Parte Tres"}
+{"text":"Dune Parte Tres","instalment":3}
 {"text":"Dune Trilogie Part 1 - 3","instalment":1,"pieces":["Dune Trilogie Part 1","3"],"segments":{"parts":["Dune Trilogie Part 1","3"],"breaks":["-"]},"shape":["dashedPair"],"marker":"trilogie"}
 {"text":"Dune: Double Feature","subtitle":{"words":["double","feature"],"spellsNumber":false},"pieces":["Dune","Double Feature"],"segments":{"parts":["Dune","Double Feature"],"breaks":[":"]},"banner":"Dune","marker":"double feature"}
 {"text":"Dune: Part 3","pieces":["Dune","Part 3"],"segments":{"parts":["Dune","Part 3"],"breaks":[":"]},"banner":"Dune"}

@@ -35,8 +35,15 @@ private[identity] object NumeralMeasures {
     case GluedNumber(word, number) => Seq(word, number)
     case _                         => Seq(token)
   }
+  /** `tokens` without a print's gauge ("70 mm", "35 mm"): its number is the film stock's, no instalment's — DE Schauburg
+   *  Karlsruhe's "Dune: Part Two 70 mm" numbered 2 and 70, and was denied Part Two as another instalment. */
+  private def withoutGauges(tokens: Seq[String]): Seq[String] =
+    if (!tokens.contains("mm")) tokens
+    else tokens.indices.filterNot(at => tokens(at) == "mm" && at > 0 && tokens(at - 1).forall(_.isDigit) ||
+      tokens.lift(at + 1).contains("mm") && tokens(at).nonEmpty && tokens(at).forall(_.isDigit)).map(tokens)
   private[identity] def numbered(title: String): Numbered = {
-    val pieces = NumberedPieceBreak.split(withoutYears(title)).map(p => TitleContainment.tokens(p).flatMap(unglued)).filter(_.nonEmpty).toSeq
+    val pieces = NumberedPieceBreak.split(withoutYears(title))
+      .map(p => withoutGauges(services.billing.NumberedTitles.spelledPartNumbers(TitleContainment.tokens(p).flatMap(unglued)))).filter(_.nonEmpty).toSeq
     val arabic = (t: String) => t.lengthIs <= 3 && t.forall(c => c >= '0' && c <= '9')
     val numbers = pieces.flatMap(p => p.filter(arabic).map(_.toInt) ++ services.billing.NumberedTitles.romanValue(p.last)).toSet
     val words = pieces.flatMap(p => p.zipWithIndex.filterNot { case (t, i) => arabic(t) || (i == p.size - 1 && services.billing.NumberedTitles.romanValue(t).isDefined) }.map(_._1))

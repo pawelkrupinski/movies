@@ -205,6 +205,11 @@ private[identity] object TitleTextMeasures {
     lazy val sharpS: Boolean        = text.indexOf('ß') >= 0
     lazy val spellingKey: String    = TitleTextMeasures.spellingKey(text)
     lazy val sharpSKey: String      = TitleTextMeasures.sharpSKey(text)
+    /** Its words with the numbers a part word spells out in digits, run together — "diunaczesc3" of "Diuna: Część
+     *  trzecia", as "Diuna: część 3" bills it ([[services.billing.NumberedTitles.spelledPartNumbers]]); empty for a title
+     *  numbering no part, whose [[key]] says all. */
+    lazy val partKey: String        =
+      if (!words.exists(services.billing.NumberedTitles.PartWordTokens)) "" else services.billing.NumberedTitles.spelledPartNumbers(words).mkString
     /** Its words after a leading article ([[LeadingArticles]]), when it has one — what a venue that drops the article lists. */
     lazy val afterArticle: Option[Seq[String]] = Some(withoutLeadingArticle(words)).filter(_.sizeIs < words.size)
     /** The title before a trailing bracketed gloss, keyed — "TKT (T'inquiète)" is "TKT" too. */

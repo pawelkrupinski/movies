@@ -69,14 +69,17 @@ private[identity] object TitleRelationMeasures {
     // "Spookies" is no more "The Spookies" than any other — and never the other way: a listing's own article is its title's.
     // A plain title, not a banner's: "Royal Ballet: Swan Lake" is not thereby "The Royal Ballet: Swan Lake" (2024), the
     // house's earlier recording, over the 2026/27 broadcast its banner names.
+    // The film's title with the part it numbers spelled otherwise: "Diuna: część 3" is "Diuna: Część trzecia" (PL Kino
+    // ODEON's billing measured an `overlap` of it, and was denied as another instalment).
+    val partSpelled = (t: TitleForm) => t.partKey.nonEmpty && ls.exists(_.partKey == t.partKey)
     val articleless = (t: TitleForm) => !t.text.contains(':') && t.afterArticle.exists(rest => rest.sizeIs >= 3 &&
       ls.exists(a => !a.text.contains(':') && a.words == rest))
     if (own.contains(titleForm.key) || articleless(titleForm) || ls.exists(a => oneTypoApart(a.words, titleForm.words)) ||
         (titleForm.latinKey.nonEmpty && ls.exists(_.latinKey == titleForm.latinKey)) ||
         ls.exists(a => a.ampersand && a.spellingKey.nonEmpty && a.spellingKey == titleForm.spellingKey) ||
-        titleForm.sharpS && ls.exists(a => a.sharpSKey.nonEmpty && a.sharpSKey == titleForm.sharpSKey)) Category("exact")
-    else if (originalForms.map(_.key).exists(own) || originalForms.exists(articleless)) Category("original")
-    else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless)) Category("alternative")
+        titleForm.sharpS && ls.exists(a => a.sharpSKey.nonEmpty && a.sharpSKey == titleForm.sharpSKey) || partSpelled(titleForm)) Category("exact")
+    else if (originalForms.map(_.key).exists(own) || originalForms.exists(articleless) || originalForms.exists(partSpelled)) Category("original")
+    else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless) || alternativeForms.exists(partSpelled)) Category("alternative")
     else (if (fs.isEmpty) None
           else containment(ls, l.shapeKeys, fs,
             houses.isDefined && StageRelays.namesSeasonProduction(l, f) || StageRelays.billing(l, f).exists(houses.getOrElse(StageRelays.Houses.Unknown).same) ||

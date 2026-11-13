@@ -1456,6 +1456,26 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     numeral("Rambo3", Film("Rambo III")) shouldBe Category("same")
   }
 
+  it should "read a number spelled after a part word as that number, and the title so spelled as the film's own" in {
+    // PL Kino ODEON, prod 2026-11-13: "DIUNA: CZĘŚĆ 3 - 2D DUB" ×15 beside TMDB's "Diuna: Część trzecia" -- numbered
+    // `listing_only` (the record's "trzecia" no number) and measured an `overlap`, it was denied as another instalment.
+    val partThree = Film("Diuna: Część trzecia", originalTitle = Some("Dune: Part Three"))
+    IdentityMeasures.numeralRelation(Listing("Diuna: część 3"), partThree) shouldBe Category("same")
+    IdentityMeasures.titleRelation(Listing("Diuna: część 3"), partThree) shouldBe Category("exact")
+    IdentityMeasures.titleRelation(Listing("Dune: Part 3"), partThree) shouldBe Category("original")
+    IdentityMeasures.numeralRelation(Listing("Dune: Part Two"), Film("Dune: Part 2")) shouldBe Category("same")
+    IdentityMeasures.numeralRelation(Listing("Dune: Parte tres"), Film("Dune: Parte 3")) shouldBe Category("same")
+    // another instalment still is: the number differs, or the series alone is the film's
+    IdentityMeasures.numeralRelation(Listing("Diuna: część 2"), partThree) shouldBe Category("different")
+    IdentityMeasures.titleRelation(Listing("Diuna: część 2"), partThree) should not be Category("exact")
+    IdentityMeasures.numeralRelation(Listing("Diuna: część 3"), Film("Diuna")) shouldBe Category("listing_only")
+    // a print's gauge numbers no instalment: DE Schauburg Karlsruhe's "Dune: Part Two 70 mm" is Part Two (what-if 2026-11-13)
+    IdentityMeasures.numeralRelation(Listing("Dune: Part Two 70 mm"), Film("Dune: Part Two")) shouldBe Category("same")
+    IdentityMeasures.numeralRelation(Listing("Dune 2 (35 mm)"), Film("Dune: Part Two")) shouldBe Category("same")
+    // a spelled number is a number only after a part word: "The Three Musketeers" names no instalment
+    IdentityMeasures.numeralRelation(Listing("The Three Musketeers"), Film("The Three Musketeers")) shouldBe Missing("none")
+  }
+
   it should "have nothing to compare in a remake, a title whose number is its name, or a decoration's number" in {
     def numeral(listing: String, film: String) = IdentityMeasures.numeralRelation(Listing(listing), Film(film))
     numeral("Suspiria", "Suspiria") shouldBe Missing("none")
