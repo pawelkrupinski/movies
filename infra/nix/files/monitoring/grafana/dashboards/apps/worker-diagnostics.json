@@ -4425,6 +4425,74 @@
       ]
     },
     {
+      "id": 89,
+      "title": "Identity unmatched listings — real misses vs film-less events",
+      "description": "Listings the identity projection left without a film, split by why (`kinowo_worker_identity_take_listings`): `misses` — NoCandidate, NoEvidence, Vetoed, BelowThreshold, Withdrawn: a billing that may be a film no rule took; `events` — Event: every listing of the cluster bills an event no film database holds (`agreement.NonFilmEvents`: a concert, a class, a marathon, a secret screening, an esports final, a series' episodes, a gaming session, a panto), handled without a film. Track misses as the identity quality figure; events are not misses.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 426
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (kinowo_worker_identity_take_listings{country=~\"$country\", basis=~\"NoCandidate|NoEvidence|Vetoed|BelowThreshold|Withdrawn\"})",
+          "legendFormat": "{{country}} misses"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (kinowo_worker_identity_take_listings{country=~\"$country\", basis=\"Event\"})",
+          "legendFormat": "{{country}} events"
+        }
+      ]
+    },
+    {
       "id": 76,
       "title": "Identity match changes per bar (at least an hour) — decided, joined, gained, lost, changed",
       "description": "`kinowo_worker_identity_take_changes_total{kind,basis}` per bar (at least an hour): each written projection's change list, by listing — a listing new to the films `decided` (a new cluster, matched or not) or `joined` (a cluster already on the films), or one whose film was `gained` (had none), `lost` (has none now) or `changed` — by the basis that holds it after. The same changes, by cluster, are listed on the local /debug/identity/staging page; `staging events dropped` (`kinowo_worker_identity_staging_dropped_total`) counts any that page was never told, and is 0.",
@@ -4437,7 +4505,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 426
+        "y": 435
       },
       "fieldConfig": {
         "defaults": {
@@ -4502,7 +4570,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 435
+        "y": 444
       },
       "fieldConfig": {
         "defaults": {
@@ -4558,7 +4626,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 444
+        "y": 453
       },
       "fieldConfig": {
         "defaults": {
@@ -4621,7 +4689,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 444
+        "y": 453
       },
       "fieldConfig": {
         "defaults": {
@@ -4684,7 +4752,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 453
+        "y": 462
       },
       "fieldConfig": {
         "defaults": {
@@ -4748,7 +4816,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 461
+        "y": 470
       },
       "fieldConfig": {
         "defaults": {
@@ -4811,7 +4879,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 470
+        "y": 479
       },
       "fieldConfig": {
         "defaults": {
@@ -4952,7 +5020,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 479
+        "y": 488
       },
       "fieldConfig": {
         "defaults": {
@@ -5092,7 +5160,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 488
+        "y": 497
       },
       "interval": "2m",
       "fieldConfig": {
@@ -5230,7 +5298,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 497
+        "y": 506
       },
       "fieldConfig": {
         "defaults": {
