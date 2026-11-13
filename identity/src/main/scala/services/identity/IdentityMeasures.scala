@@ -294,6 +294,13 @@ object IdentityMeasures {
     /** Every word of its titles, the stage works and houses they name, and their keys ([[StageRelays.Relay]]), once per record:
      *  a stage house's relay reads them of every candidate ([[StageRelays.namesAnotherWork]]). */
     private[identity] lazy val titleWords: Set[String] = titles.flatMap(TitleContainment.tokens).toSet
+    /** Is it a CONCERT's record crediting no director: TMDB fetched its credits and they name none, and it files it under
+     *  Music or a title calls it a concert? Such a record's country is usually its uploader's or its cinema distributor's,
+     *  not the production's (PL "André Rieu. Pada śnieg!", billed Holandia: TMDB's 1707785 dates the Dutch concert in the
+     *  US), so a country mismatch against it weighs for less ([[ConcertMismatch]]). A stage relay's record names no
+     *  concert: its country is the house's, which tells look-alike productions apart. */
+    private[identity] lazy val concertRecord: Boolean =
+      directors.exists(_.isEmpty) && (hasGenre(Film.Music) || titleWords.exists(w => Film.ConcertStems.exists(w.contains)))
     private[identity] lazy val stageWorkIds: Set[String] =
       StageRelays.stageWorks(this) ++ StageRelays.stageWorksBilled(titles, seasonNamed = true)
     private[identity] lazy val wholeKeys: Set[String] = titles.map(StageRelays.wholeKey).toSet
@@ -341,6 +348,10 @@ object IdentityMeasures {
       titles.map(_.trim).filter(_.nonEmpty).distinct.map(IdentityMeasures.numbered)
   }
   object Film {
+    /** TMDB's Music genre id. */
+    private[identity] val Music = 10402
+    /** The stems a concert's title carries ("Christmas Concert", "Konzert", "Koncert noworoczny"). */
+    private[identity] val ConcertStems: Seq[String] = Seq("concert", "konzert", "koncert", "concierto")
     /** TMDB's movie genre ids (`/genre/movie/list`), each a bit of [[Film.genreBits]] by its place here: an id TMDB adds
      *  later is not kept until it is added (at the end — a stored record's bits name the places). */
     val Genres: IndexedSeq[Int] = IndexedSeq(28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 10770, 53, 10752, 37)
@@ -558,6 +569,13 @@ object IdentityMeasures {
                   houses: StageRelays.Houses = StageRelays.Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown, country: Option[String] = None): Map[String, Measure] =
     listingFilmTitled(l, f, searchRank, rivals, corroboratingVenues, titleRelation(l, f, houses, qualifiers), country)
 
+  /** The `country` measure's category against a concert's director-less record ([[Film.concertRecord]]): its own
+   *  calibrated weight, weaker than a mismatch's, and every learned rule reading a mismatch reads it too. */
+  val ConcertMismatch: Category = Category("concert-mismatch")
+
+  private def concertCountry(f: Film, country: Measure): Measure =
+    if (country == Category("mismatch") && f.concertRecord) ConcertMismatch else country
+
   /** [[listingFilm]] with the title relation already read — `titleRelation(l, f, houses, qualifiers)` —
    *  by a caller that relates the listing to the film anyway (`FamilyScope.score`). `country`: the venue's (ISO-3166-1),
    *  whose cinema releases of the film its year is read against first ([[Film.closestYear]]). */
@@ -582,7 +600,7 @@ object IdentityMeasures {
                     CreditRelation.of(if (persons.size == l.directors.size) l.directorCredits else new CreditRelation.Credits(persons), _))
                 }
     slots(8)  = runtimeDelta(l, f, country)
-    slots(9)  = countryRelation(l.countries, f.countries)
+    slots(9)  = concertCountry(f, countryRelation(l.countries, f.countries))
     slots(10) = searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble))
     slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))
     slots(12) = Number(rivals.toDouble)

@@ -228,6 +228,30 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     filmDenied(Listing("Martwe zło 2", runtime = Some(200)), evilDead, corroborating = 4) shouldBe defined
   }
 
+  // PL Cinema City's "André Rieu. Pada śnieg!" (2026, 170 min, billed Holandia, "André Rieu Studios"): TMDB's 1707785
+  // "Andre Rieu's 2026 Christmas Concert Let It Snow" (2026, 165) credits no director and dates it in the US, its
+  // distributor's country, not the production's. The full mismatch (-4.31) outweighed the year (+3.40) and the
+  // probability cut denied the film to all 30 venues, keeping them apart from the three that took it.
+  private val letItSnow = Film("Andre Rieu's 2026 Christmas Concert Let It Snow", Some("Andre Rieu's 2026 Christmas Concert Let It Snow"),
+    year = Some(2026), runtime = Some(165), directors = Some(Nil), countries = Some(Seq("US")), popularity = Some(0.375))
+  private val cinemaCityRieu = Listing("André Rieu. Pada śnieg!", year = Some(2026), runtime = Some(170),
+    directors = Seq("André Rieu Studios"), countries = Seq("Holandia"))
+  private def countryAgainst(f: Film) = IdentityMeasures.listingFilm(cinemaCityRieu, f, None, 0, 3)("country")
+
+  it should "weigh a country mismatch for less against a concert's record that credits no director" in {
+    filmDenied(cinemaCityRieu, letItSnow, corroborating = 3) shouldBe None
+    countryAgainst(letItSnow) shouldBe Category("concert-mismatch")
+  }
+
+  it should "still weigh a country mismatch whole against a record that credits a director, or is no concert's" in {
+    countryAgainst(letItSnow.copy(directors = Some(Seq("Michael Hayes")))) shouldBe Category("mismatch")
+    // a stage relay's record crediting no director: its country is the house's, which tells look-alike productions apart
+    countryAgainst(Film("Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", year = Some(2026), directors = Some(Nil),
+      countries = Some(Seq("GB")))) shouldBe Category("mismatch")
+    // credits not fetched is not crediting nobody
+    countryAgainst(letItSnow.copy(directors = None)) shouldBe Category("mismatch")
+  }
+
   it should "still deny it when a compared fact weighs against the film" in {
     val whale = Film("The Last Whale Singer", runtime = Some(91), year = Some(2026), directors = Some(Seq("Reza Memari")))
     filmDenied(Listing("Vincent. Legenda oceanu", runtime = Some(9), directors = Seq("Pavel Hrubas")), whale, corroborating = 0) shouldBe defined
