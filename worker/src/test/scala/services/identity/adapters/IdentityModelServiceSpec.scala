@@ -101,6 +101,8 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     var clock: java.time.Clock = _root_.tools.SpecClock.Pinned
     /** The families' answers as the input gate reads them: a listing waits on one question per title not answered yet. */
     val families = new Families
+    /** The gate's readiness: [[families]], or a spec's own -- the worker's [[AgreementReadiness]] over a question memory. */
+    var readiness: ListingReadiness = families
     /** The held listings' store, which outlives a service as `identity_pending` outlives a worker. */
     var pendingStore: PendingListingStore = new PendingListingStore.InMemory
     var newWhilePending: IdentityModelService.NewWhilePending = IdentityModelService.NewWhilePending.Shown
@@ -112,7 +114,7 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     def service(): IdentityModelService = new IdentityModelService(
       () => new IncrementalResolver(new TrackedLookups(lookups, reads), normalizer, calibration, store = store),
       reads, () => listingsOf(scrapes), normalizer, 1.second, scheduler(), pageWait = pageWait,
-      clock = clock, retainedStore = retained, readiness = families, pendingStore = pendingStore, newWhilePending = newWhilePending,
+      clock = clock, retainedStore = retained, readiness = readiness, pendingStore = pendingStore, newWhilePending = newWhilePending,
       metrics = gate, retentionWindow = retentionWindow)
     def scrape(service: IdentityModelService, cinema: Cinema, films: Seq[CinemaMovie]): Unit = {
       scrapes += cinema -> films; service.venueScraped(cinema, films)
@@ -819,6 +821,114 @@ class IdentityModelServiceSpec extends AnyFlatSpec with Matchers with LoneElemen
     service.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.poster shouldBe Some("https://example.org/p.jpg")
     world.families.asked shouldBe empty
     world.pendingStore.read() shouldBe empty
+  }
+
+  /** The worker's own readiness over a listing's venue poster, as `IdentityProjectionWiring` builds it: the question
+   *  memory's record of each ask, a poster a question until it is filed (hashed, or known gone), and the queue -- which
+   *  queues only what is past the wait a failed ask left it ([[AgreementQuestions.enqueue]]) -- recorded. */
+  private final class PosterAsks(clock: java.time.Clock) {
+    val memory = new QuestionMemory(new InMemoryTmdbDocuments, "pl-PL", clock)
+    var filed  = Set.empty[String]
+    val queued = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
+    val readiness = new AgreementReadiness(
+      listing => listing.poster.filterNot(filed).map(url => Question.Poster(agreement.AgreementStage.PosterQuestion.Venue(url))).toSet,
+      memory.admits, questions => { val due = memory.due(questions); if (due.nonEmpty) queued += due }, retrying = memory.attempted)
+  }
+
+  /** `world` gating on [[PosterAsks]], its clock movable, and Multikino's "Lalka" taken in with no poster, then re-published
+   *  with `poster` alone: held on it, the version the model holds served. */
+  private def republishedWithPoster(poster: String): (World, IdentityModelService, PosterAsks, _root_.tools.MutableClock) = {
+    val world = new World
+    val clock = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-13T10:00:00Z"))
+    world.clock = clock
+    val asks  = new PosterAsks(clock)
+    world.readiness = asks.readiness
+    val service = world.service()
+    service.takeUp()
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025))))
+    service.drain()
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)).copy(posterUrl = Some(poster))))
+    service.drain()
+    (world, service, asks, clock)
+  }
+  private def multikinoPoster(service: IdentityModelService) =
+    service.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.poster
+  private def venuePoster(url: String): Question = Question.Poster(agreement.AgreementStage.PosterQuestion.Venue(url))
+
+  // The owner, 2026-11-13 ("yes" to: should a listing whose replacement poster fails to download stay held until a retry
+  // succeeds, within the 10-minute cap?): a failed fetch was an attempt the gate took the listing in on, so it was decided
+  // as if it had no poster -- for a poster replacing an old one, a take that could move for the minutes until the retry.
+  it should "keep holding a listing whose new poster failed to download, ask it again once its backoff ends, and take it in once hashed" in {
+    val poster = "https://example.org/new-poster.jpg"
+    val (world, service, asks, clock) = republishedWithPoster(poster)
+    multikinoPoster(service) shouldBe None                                       // held on the poster
+    asks.queued.toSeq shouldBe Seq(Set(venuePoster(poster)))
+    asks.memory.failed(Seq(venuePoster(poster)))                                 // its fetch failed (a 5xx, a timeout)
+    service.drain()
+    multikinoPoster(service) shouldBe None                                       // still held: the version it holds stands
+    world.pendingStore.read().map(_.key) shouldBe Seq(service.peek(10.seconds).get.listings.filter(_.venue == Multikino.displayName).loneElement.key)
+    asks.queued.size shouldBe 1                                                  // inside its backoff: not asked again yet
+    clock.advance(java.time.Duration.ofMillis(QuestionPolicies.FirstFailureWait.toMillis).plusSeconds(1))
+    service.drain()
+    multikinoPoster(service) shouldBe None
+    // its backoff over: asked again -- at each drain until the retry's outcome is filed (a woken drain may run one more)
+    asks.queued.size should be >= 2
+    asks.queued.toSet shouldBe Set(Set(venuePoster(poster)))
+    asks.filed = Set(poster); asks.memory.answered(Seq(venuePoster(poster)))     // the retry hashed it
+    service.drain()
+    multikinoPoster(service) shouldBe Some(poster)                               // taken in on the filing
+    world.pendingStore.read() shouldBe empty
+    world.gate.bounds shouldBe empty
+  }
+
+  it should "hold a listing new to the model on its own poster's failed download too, until the poster is hashed" in {
+    val world = new World
+    val clock = new _root_.tools.MutableClock(java.time.Instant.parse("2026-11-13T10:00:00Z"))
+    world.clock = clock
+    val asks  = new PosterAsks(clock)
+    world.readiness = asks.readiness
+    val service = world.service()
+    service.takeUp()
+    val poster = "https://example.org/first-poster.jpg"
+    world.scrape(service, Multikino, Seq(movie(Multikino, "Lalka", Some(2025)).copy(posterUrl = Some(poster))))
+    service.drain()
+    asks.memory.failed(Seq(venuePoster(poster)))
+    service.drain()
+    world.pendingStore.read().map(_.key.rawTitle) shouldBe Seq("Lalka")          // held, shown on its own at most
+    asks.filed = Set(poster); asks.memory.answered(Seq(venuePoster(poster)))
+    service.drain()
+    world.pendingStore.read() shouldBe empty
+    multikinoPoster(service) shouldBe Some(poster)
+  }
+
+  it should "take a listing held on a poster that keeps failing in at the bound, and count it" in {
+    val poster = "https://example.org/flaky.jpg"
+    val (world, service, asks, clock) = republishedWithPoster(poster)
+    asks.memory.failed(Seq(venuePoster(poster)))
+    service.drain()
+    multikinoPoster(service) shouldBe None
+    clock.advance(ModelInputGate.MaxHold.plusSeconds(1))
+    service.drain()
+    multikinoPoster(service) shouldBe Some(poster)                               // decided on what is known
+    world.gate.bounds.map(_.size) shouldBe Seq(1)
+    world.pendingStore.read() shouldBe empty
+  }
+
+  it should "take a listing in at once on a poster known gone or given up on: a broken link holds no re-publish" in {
+    for (outcome <- Seq("filed unread", "given up on")) withClue(outcome) {
+      val poster = s"https://example.org/${outcome.replace(' ', '-')}.jpg"
+      val (world, service, asks, _) = republishedWithPoster(poster)
+      outcome match {
+        // its link fetches nothing (a 404), the origin refused it, no decoder reads it: answered, filed with no hash
+        case "filed unread" => asks.memory.answered(Seq(venuePoster(poster)))
+        // failed its give-up count in a row
+        case _ => (1 to QuestionPolicies.PosterGiveUpAttempts).foreach(_ => asks.memory.failed(Seq(venuePoster(poster))))
+      }
+      service.drain()
+      multikinoPoster(service) shouldBe Some(poster)
+      world.pendingStore.read() shouldBe empty
+      world.gate.bounds shouldBe empty
+    }
   }
 
   it should "name a held listing in its log lines by venue and title, with no NUL a log reader takes for binary" in {

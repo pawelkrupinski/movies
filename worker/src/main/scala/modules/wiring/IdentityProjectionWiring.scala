@@ -138,11 +138,13 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   private def enqueueAgreementQuestions(questions: Set[services.identity.Question]): services.tasks.Enqueued =
     services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock, agreementQuestionMetrics)
   /** The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing's version is taken in once the
-   *  questions its own facts put to the families were each attempted once, asked ahead of the agreement's own. */
+   *  questions its own facts put to the families were each attempted once (a poster: hashed, known gone or given up on, a
+   *  failed one asked again on its backoff), asked ahead of the agreement's own. */
   lazy val identityListingReadiness: services.identity.ListingReadiness =
-    new services.identity.adapters.AgreementReadiness(listing => agreementStage.questionsOf(listing), identityQuestionMemory.attempted,
+    new services.identity.adapters.AgreementReadiness(listing => agreementStage.questionsOf(listing), identityQuestionMemory.admits,
       questions => { services.identity.adapters.AgreementQuestions.enqueue(taskQueue, questions, identityQuestionMemory, clock,
-        agreementQuestionMetrics, claimAhead = scala.concurrent.duration.Duration.Zero); () })
+        agreementQuestionMetrics, claimAhead = scala.concurrent.duration.Duration.Zero); () },
+      retrying = identityQuestionMemory.attempted)
   /** The questions the live stage waits on that a lost task left unattempted, or that failed and are due again, queued
    *  again: under the settle rule an unattempted question holds its cluster. */
   lazy val outstandingQuestions: services.identity.adapters.OutstandingQuestions =

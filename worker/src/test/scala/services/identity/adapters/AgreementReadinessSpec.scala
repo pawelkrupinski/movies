@@ -42,4 +42,26 @@ class AgreementReadinessSpec extends AnyFlatSpec with Matchers {
     ready.awaiting(geister) shouldBe empty                                 // attempted: taken in, Pending on it as before
     memory.failedPastGiveUp(title) shouldBe false                          // and not given up on: asked again on its backoff
   }
+
+  // The owner, 2026-11-13: a poster is the exception -- a failed or turned-away fetch keeps the listing held while the
+  // poster is asked again on its backoff (the bound, ModelInputGate.MaxHold, ends the hold); hashed, known gone or given up
+  // on, it admits it
+  it should "hold a listing on its poster while the poster's fetch fails, asking it again once each backoff ends" in {
+    val clock   = new MutableClock(Instant.parse("2026-11-13T10:00:00Z"))
+    val memory  = new QuestionMemory(new InMemoryTmdbDocuments, "de-DE", clock)
+    val poster  = Question.Poster(agreement.AgreementStage.PosterQuestion.Venue("https://example.org/p.jpg"))
+    val asked   = scala.collection.mutable.ArrayBuffer.empty[Set[Question]]
+    val ready   = new AgreementReadiness(_ => Set(title, poster), memory.admits, asked += memory.due(_), retrying = memory.attempted)
+    memory.failed(Seq(title, poster))
+    ready.awaiting(geister) shouldBe Set(poster)                           // the title's failure admits, the poster's not
+    ready.retry(geister, Set(poster)); asked.toSeq shouldBe Seq(Set.empty) // inside its backoff: nothing queued
+    clock.advance(java.time.Duration.ofMillis(QuestionPolicies.FirstFailureWait.toMillis))
+    ready.retry(geister, Set(poster)); asked.last shouldBe Set(poster)
+    memory.turnedAway(Seq(poster), Some("example.org"))
+    ready.awaiting(geister) shouldBe Set(poster)                           // turned away: held too
+    (1 to QuestionPolicies.PosterGiveUpAttempts).foreach(_ => memory.failed(Seq(poster)))
+    ready.awaiting(geister) shouldBe empty                                 // given up on
+    memory.answered(Seq(poster))
+    ready.awaiting(geister) shouldBe empty                                 // hashed, or known gone (filed unread)
+  }
 }

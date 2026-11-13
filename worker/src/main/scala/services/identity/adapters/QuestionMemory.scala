@@ -123,6 +123,20 @@ final class QuestionMemory(docs: TmdbDocuments, language: String, clock: Clock) 
   /** Has `question` been asked and come to an answer, a durable non-answer or a failure — not merely queued? */
   def attempted(question: Question): Boolean = outcome(question).isDefined
 
+  /** Has `question` come to what the model's input gate takes a listing in on ([[AgreementReadiness]]): attempted -- but a
+   *  POSTER whose fetch or hash failed (or was turned away) only once given up on ([[QuestionPolicies.PosterGiveUpAttempts]]).
+   *  Until then the listing stays held, the version the model holds served, while the poster is asked again on its backoff
+   *  (the owner, 2026-11-13: a replacement poster that fails to download keeps the listing held until a retry succeeds,
+   *  within [[ModelInputGate.MaxHold]]); taken in on a failed poster, its take briefly read no poster at all. A poster
+   *  known gone -- its link fetches nothing, the origin refused it, no decoder reads it -- is filed unread and answered:
+   *  admitted at once, so a broken link holds no re-publish. Every other kind admits on its first attempt, a failure or a
+   *  turn-away included (the owner, 2026-11-07): held while a source is broken, every new version of its listings would
+   *  stall until it came back. */
+  def admits(question: Question): Boolean = outcome(question) match {
+    case Some(failed: Outcome.Failed) if question.kind == QuestionKind.Poster => pastGiveUp(question, failed)
+    case known                                                                 => known.isDefined
+  }
+
   /** Given up on, as the settle rule reads it (`AgreementStage.givenUp`): anything but a failure still inside its
    *  retries -- failed fewer than its kind's [[QuestionPolicies.giveUpFailures]] times in a row, asked again on its
    *  backoff -- which leaves a take settled past it Pending. Answered, durably unanswered, given up on, or held nothing of

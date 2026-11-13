@@ -13,6 +13,10 @@ trait ListingReadiness {
   def awaiting(listing: Listing): Set[Question]
   /** Ask `questions` (those [[awaiting]] named), ahead of the queue's other questions: a listing waits on them. */
   def ask(listing: Listing, questions: Set[Question]): Unit
+  /** Ask again those of `waiting` (what [[awaiting]] names of a listing still held) whose last ask failed, once their
+   *  backoff ended: a listing held on a failed poster waits on its retry, which no other asker reaches -- the stage's
+   *  outstanding questions are its clusters', and a held version is in none. */
+  def retry(listing: Listing, waiting: Set[Question]): Unit = ()
 }
 
 object ListingReadiness {
@@ -28,6 +32,7 @@ object ListingReadiness {
   def all(parts: ListingReadiness*): ListingReadiness = new ListingReadiness {
     def awaiting(listing: Listing): Set[Question]               = parts.iterator.flatMap(_.awaiting(listing)).toSet
     def ask(listing: Listing, questions: Set[Question]): Unit = parts.foreach(_.ask(listing, questions))
+    override def retry(listing: Listing, waiting: Set[Question]): Unit = parts.foreach(_.retry(listing, waiting))
   }
 
   /** Every listing ready at once: a model run that asks nothing (specs, offline harnesses, replays). */

@@ -167,9 +167,11 @@ backtest's definition): DE 134 reversals, 67 LATE-ANSWER (Geister's 56 among the
    `PageWait.unattempted`). A function of the listing and the answers filed: the same whatever else is billed (R4).
 2. **The gate** (`ModelInputGate`, `ListingReadiness`, `AgreementReadiness`): a listing billed otherwise than the model
    holds it (new, or its facts moved) is taken in only once each of its questions was ATTEMPTED once by the question
-   memory's record (`QuestionMemory.attempted`: answered, durably unanswered or failed alike; never one merely queued).
+   memory's record (`QuestionMemory.admits`: answered, durably unanswered or failed alike -- a poster only once hashed,
+   known gone or given up on; never one merely queued).
    A question a host's open breaker or the fleet's pace turned away is attempted too, by design (the owner, 2026-11-07):
-   held while a source is broken, every new version of its listings would stall until it came back.
+   held while a source is broken, every new version of its listings would stall until it came back. **Except a poster**
+   (the owner, 2026-11-13; below): a failed or turned-away fetch/hash keeps the listing held (`QuestionMemory.admits`).
    Until then the model keeps the version it holds; the questions are
    asked through the queue claimed ahead of the agreement's own (`AgreementQuestions.enqueue(claimAhead = 0)`), and
    every filing wakes the model, whose next drain promotes each held listing whose questions closed -- no new scrape.
@@ -206,8 +208,8 @@ poster asked inline).
 **So are the posters of the films the listing's own searches find** (2026-11-11, the owner: "make it event based -- when
 poster ready then calculate, fetch / hash with retry"): once its venue poster is hashed, `questionsOf` reads the posters as
 the vote and veto do, `posterDistances` over the listing alone with its own searched films as the candidates, and each
-unhashed one is a question. The listing is taken in on the filing (the event), a failed hash is attempted and retried on
-its backoff, `MaxHold` bounds the rest. Without them the take waited on a candidate's poster while the model's "no film"
+unhashed one is a question. The listing is taken in on the filing (the event), a failed hash is retried on its backoff
+(held meanwhile since 2026-11-13, below), `MaxHold` bounds the rest. Without them the take waited on a candidate's poster while the model's "no film"
 was served (11-08..11-10: US "Parkway Drive: Home" x83 on the agreed film's own poster, the drop logged `veto:denied`,
 the model's probability cut on facts not yet filed; UK "Touché" x5 on build 903b634, a rival's). The alternative weighed and
 dropped: serving the families' film Pending while the poster is out -- a candidate's poster can pick ANOTHER film (a
@@ -221,8 +223,22 @@ in, the agreement read the unhashed poster off the model's listing, waited on it
 "no film" until its filing restored the take (2026-11-11, image 4061cc3, as Odeon's posters arrived: UK "Disco" x5 for
 3 s, "Touché" x5 for 10 s). The gate now lets through unasked only a listing billed alike in those fields too
 (`ModelInputGate.billedAlike`); any other is read for its questions like a changed one, the version the model holds --
-and with it the take -- served until they are attempted, then decided once. A move whose questions are all answered (most
+and with it the take -- served until they are attempted (a poster: hashed, known gone or given up on, below), then
+decided once. A move whose questions are all answered (most
 screening-day moves) is taken in at once, as before.
+
+**A poster that fails to download keeps the listing held** (2026-11-13; the owner, "yes" to: "should a listing whose
+replacement poster fails to download stay held until a retry succeeds (within the 10-minute cap)?"). Under the 11-07 rule
+a failed fetch or hash was an attempt, so the listing was taken in at once and decided as if it had no poster -- for a
+poster REPLACING an old one, a take that could move until the retry filed it. Now a poster question admits its listing
+only once hashed, known gone (its link fetches nothing, the origin refuses it, no decoder reads it: filed unread and
+answered, so a broken link holds no re-publish) or given up on (`QuestionPolicies.PosterGiveUpAttempts`); a failed or
+turned-away one keeps the listing held, the version the model holds -- and its take -- served, and the gate asks it again
+on each pass once its backoff ends (`ListingReadiness.retry`: a held version is in no cluster, so the stage's
+`OutstandingQuestions` never reached it). `MaxHold` still bounds the hold, counted as every bound promotion
+(`IdentityInputGateWaitsLong` pages on three an hour: a poster host down shows there). The same for a listing new to the
+model and its first poster (hidden while held). A version taken in at the bound is the model's, so its next scrape,
+billed alike, passes unasked: a poster that keeps failing holds each version once, never every scrape.
 
 **Not in the gate** (cluster-level, the stage's waits as before): the posters of candidates only other members' searches
 find, the find of an agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) STAY (1c

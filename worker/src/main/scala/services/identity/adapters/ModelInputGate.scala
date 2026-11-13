@@ -12,7 +12,8 @@ import scala.util.control.NonFatal
 /**
  * The model's input gate (docs/design/identity-structural-fixes.md, fix 1): a listing VERSION is taken into the model only
  * once each question its own facts lead to ([[ListingReadiness]]) was attempted -- one a broken host turned away
- * included, by design ([[AgreementReadiness]]); until then the model keeps the version it
+ * included, by design, but a poster only once hashed, known gone or given up on ([[AgreementReadiness]],
+ * [[QuestionMemory.admits]]: a failed one retried meanwhile); until then the model keeps the version it
  * holds (none, for a new one) and the questions are asked. The held listings are persisted in `store`, so a take-up resumes
  * them ([[resume]]); a listing held [[ModelInputGate.MaxHold]] is taken in regardless, and counted.
  *
@@ -141,7 +142,8 @@ final class ModelInputGate(
       .toSeq.sortBy(l => ListingKey.serialised(l.key)).headOption
 
   /** The held listings, but those `skip` names, whose questions were all attempted: taken in now -- how long each waited
-   *  told to the metrics. */
+   *  told to the metrics. One still waiting has its failed questions asked again once their backoff ended
+   *  ([[ListingReadiness.retry]]). */
   private def promote(skip: ListingKey => Boolean): Seq[Listing] = {
     val promotedAfter = mutable.ArrayBuffer.empty[Double]
     val bounded       = mutable.ArrayBuffer.empty[Double]
@@ -153,7 +155,12 @@ final class ModelInputGate(
         if (waits.isEmpty) {
           pending.remove(h.newest.key); (if (late) bounded else promotedAfter) += held; releasedStandIns ++= h.standIn; Some(h.newest)
         }
-        else { if (waits != h.waits) { askLedTo(h, waits); pending.put(h.newest.key, h.copy(waits = waits)) }; None }
+        else {
+          if (waits != h.waits) { askLedTo(h, waits); pending.put(h.newest.key, h.copy(waits = waits)) }
+          // a failed poster holds the listing (QuestionMemory.admits): asked again here once its backoff ends
+          readiness.retry(h.newest, waits)
+          None
+        }
       }
     if (promotedAfter.nonEmpty) metrics.promoted(promotedAfter.toSeq, atBoot = false)
     if (bounded.nonEmpty) { metrics.bounded(bounded.toSeq); logger.warn(s"identity model: ${bounded.size} held listing(s) taken in past the ${maxHold.toMinutes} min bound") }
