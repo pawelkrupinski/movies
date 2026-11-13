@@ -98,12 +98,8 @@ private[identity] object BilledPiece {
       ListingShape.billedBeside(listing, Seq(film), piece => !staging(piece),
         bannerSlot = !tokens(evidence.rawTitle).exists(ListingShape.ShowWords))).flatten
       .map(Piece(_, staging = true))
-    // a pantomime's OWN record — a record titled as the staged show the billing names ("Cbeebies Panto: Treasure Island", TMDB
-    // 1785679, beside BEAM Hertford's "CBeebies Panto: Treasure Island") — is the show's, an event's, whatever facts the
-    // billing shares with it: no film the venue screens (the user's review 10-21)
-    lazy val showsOwn = tokens(evidence.rawTitle).exists(word => ListingShape.ShowWords(word) && !venues(word)) &&
-      film.titles.exists(title => tokens(title).exists(ListingShape.ShowWords))
-    if (showsOwn) Some(Piece("the record is the staged show's own: a pantomime is an event, no film", staging = true))
+    // a pantomime's OWN record ([[ListingShape.showsOwnRecord]]) is the show's, an event's: no film the venue screens
+    if (ListingShape.showsOwnRecord(evidence.rawTitle, film, venues)) Some(Piece("the record is the staged show's own: a pantomime is an event, no film", staging = true))
     else if (stated) None
     // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
     // World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads it as one film's

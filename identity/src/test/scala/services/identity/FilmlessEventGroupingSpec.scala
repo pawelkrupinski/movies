@@ -64,6 +64,23 @@ class FilmlessEventGroupingSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "One panto's billings beside the panto's own TMDB record" should "take none of it alone, and be one film-less film" in {
+    // UK, prod 2026-11-13: Lonsdale Alhambra Penrith's, BEAM Hertford's and Hebden Bridge's "Cbeebies Panto: Treasure Island"
+    // each took the staged show's own record (1785679, judged wrong 10-21) alone by favoured-calibrated, which the
+    // billed-as-one-piece veto withdrew only after the assignment: holding it, they never joined the event's other
+    // spellings by the same-event must-link (the 313 venues' "CBeebies Panto 2026: …" hold none by the cast veto, which
+    // this table's listings carry no cast for: the spelling stating the edition is left out)
+    val own   = F(1785679, "Cbeebies Panto: Treasure Island", 2026, "", 75, 0.4, original = Some("Cbeebies Panto: Treasure Island"))
+    val event = Seq[(models.Cinema, (String, Option[Int]))](Helios -> ("Cbeebies Panto: Treasure Island", Some(75)),
+      KinoPalacowe -> ("The CBeebies Panto 2026: Treasure Island", Some(75)), Kinoteka -> ("Cbeebies Panto : Treasure Island", None))
+      .map { case (venue, (title, runtime)) => on(listing(venue, title, runtime = runtime)) }
+    val r = IdentityResolver.resolve(event, new FilmTable(films :+ own, normalizer), normalizer, ResolveInputs.Unpinned)
+    withClue(rendered(r, event)) {
+      event.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(None)
+      event.map(l => r.decisionOf(l.key)).distinct should have size 1
+    }
+  }
+
   "Two editions of one event" should "stay two" in {
     val now  = on(listing(KinoMuza, "League of Legends Worlds 26 | Finals in Cinema", runtime = Some(420)))
     val last = on(listing(Multikino, "League of Legends Worlds 2025 | Finals in Cinema", runtime = Some(300)))

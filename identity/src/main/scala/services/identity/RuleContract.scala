@@ -75,6 +75,7 @@ object RuleContract {
     Declared("rule:another-piece-of-its-billing-is-a-performance-the-film-is-not", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala:235): own billing"),
     Declared("rule:its-billing-credits-its-work-to-an-author-who-made-no-such-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala:235): own billing credit"),
     Declared("rule:its-billing-is-a-name-alone-which-the-record-s-longer-title-only-leads-and-no-fact-agrees", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala:235): aNameAlone"),
+    Declared("rule:the-record-is-the-staged-show-s-own-a-pantomime-is-an-event-no-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala:235): own billing against the record's titles (ListingShape.showsOwnRecord)"),
     Declared("rule:the-billing-reads-as-no-film", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala:235): readsAsNoFilm: event words"),
     Declared("rule:a-double-bill", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala:235): MultiFilmBill.billsTwoWorks(listing)"),
     Declared("rule:the-title-joins-another-work-to-it", "refusal why (rule:<DecisionTrace.id(why)>, Decision.scala:235): joinsAnotherWork"),

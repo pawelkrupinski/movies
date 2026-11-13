@@ -74,6 +74,13 @@ object ListingShape {
   /** The words naming a staged show itself ("CBeebies Panto 2026: Treasure Island"): a staging wherever it is billed, the
    *  banner's slot too — unlike a stage word a strand names itself by ("Musical Monday: Grease"). */
   val ShowWords: Set[String] = TitleWords.tokens(TitleWords.Concept.StageShow)
+  /** Is `film` the staged show's OWN record — titled as a staged show ([[ShowWords]]) where the billing names one, a word
+   *  `venueWord` says is not the venue's own name: the show's, an event's, whatever facts the two share, no film the
+   *  venue screens (UK "CBeebies Panto: Treasure Island" beside TMDB's "Cbeebies Panto: Treasure Island", 1785679; the
+   *  user's review 10-21). Read by the acceptance rules and [[BilledPiece]] alike. */
+  def showsOwnRecord(billed: String, film: IdentityMeasures.Film, venueWord: String => Boolean = _ => false): Boolean =
+    film.titles.exists(title => TitleContainment.tokens(title).exists(ShowWords)) &&
+      TitleContainment.tokens(billed).exists(word => ShowWords(word) && !venueWord(word))
 
   /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …"), or a
    *  house's initials as [[StageRelays.billsAStageHouse]] reads them ("Tosca (ROH)", never "Jin-Roh")? */

@@ -28,7 +28,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
   private[identity] final case class Rule(name: String, why: Seq[Scored] => Verdict) {
     def accepts(ranked: Seq[Scored]): Verdict =
       ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked)).flatMap(notPerformedBeside).flatMap(notAnAuthorsNamesake)
-        .flatMap(notANameAlone) match {
+        .flatMap(notANameAlone).flatMap(notAStagedShowsOwn) match {
         case Right(accepted) if readsAsNoFilm(accepted._1) => Left(refusedAsNoFilm(accepted._1))
         case verdict                                       => verdict
       }
@@ -63,6 +63,19 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     if (!aNameAlone(scored)) Right(accepted)
     else Left(Acceptance.Refused("its billing is a name alone, which the record's longer title only leads, and no fact agrees",
       Some(scored.candidate.tmdbId), Acceptance.named(scored)))
+  }
+  /** Refuses the staged show's OWN record for a billing naming a staged show ([[ListingShape.showsOwnRecord]]): a
+   *  pantomime is an event, whatever facts its billing shares with the record TMDB files of it. Held here, where a
+   *  listing takes a film ALONE, and not only after the assignment ([[BilledPiece]]): a listing holding the record would
+   *  join no other spelling of the event (`ConstraintEdges`' same-event must-link joins two holding no film). UK, prod
+   *  2026-11-13: 15 "Cbeebies Panto: Treasure Island" billings (Lonsdale Alhambra Penrith, BEAM Hertford, Showcase's
+   *  sensory-friendly ones) took 1785679 by favoured-calibrated, then lost it to the billed-as-one-piece veto alone. */
+  private[identity] def notAStagedShowsOwn(accepted: Accepted): Verdict = {
+    val scored  = accepted._1
+    val listing = scored.listing
+    if (!ListingShape.showsOwnRecord(listing.rawTitle.getOrElse(listing.title), scored.candidate.film)) Right(accepted)
+    else Left(Acceptance.Refused("the record is the staged show's own: a pantomime is an event, no film", Some(scored.candidate.tmdbId),
+      Acceptance.named(scored)))
   }
   /** Refuses the older namesake of a work a billing credits to its author ([[ListingShape.creditDenies]]): DE Cineplex's
    *  "Fallen Angels by Noël Coward", the 2026 capture of Coward's play, is not Wong Kar-wai's 1995 "Fallen Angels". A
