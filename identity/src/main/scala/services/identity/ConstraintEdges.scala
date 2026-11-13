@@ -52,10 +52,26 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
     ListingConstraints.seasonsApart(firstListing.seasonYear, secondListing.seasonYear, secondListing.year)
       .orElse(ListingConstraints.seasonsApart(secondListing.seasonYear, firstListing.seasonYear, firstListing.year))
-      .orElse(Option.when(!RelayStage.oneRelaySpeltAlike(first.evidence.measured, second.evidence.measured) || relayFactsApart(measures))(
-        LearnedCannotLinks.learnedListingListing(calibration, measures)).flatten)
+      // Two billings of one film-less event ([[oneEvent]]) are kept apart, as one relay's are, by a fact a film would be
+      // told by -- never by the running time each venue books the event for (UK "League of Legends Worlds 26": Odeon's
+      // 420 minutes, Cineworld's 300) or its spelling beside the event's name ("The CBeebies Panto 2026", 75 minutes,
+      // beside the 60 of "CBeebies Panto 2026"). Two that state another edition, other episodes or a session's length
+      // are weighed as ever.
+      .orElse(Option.when((!RelayStage.oneRelaySpeltAlike(first.evidence.measured, second.evidence.measured) && !oneEvent(first, second)) ||
+        relayFactsApart(measures))(LearnedCannotLinks.learnedListingListing(calibration, measures)).flatten)
       .map(_.toString)
   }
+
+  /** The event each node's listings bill ([[agreement.NonFilmEvents.facts]]), once a node. */
+  private val eventOfNode = scala.collection.mutable.HashMap.empty[String, Option[agreement.NonFilmEvents.Facts]]
+  private def eventOf(node: EvidenceNode) = eventOfNode.getOrElseUpdate(node.id, agreement.NonFilmEvents.facts(node.listings))
+  /** Do both nodes name their event alike ([[agreement.NonFilmEvents.Facts.name]])? */
+  private def sameEventName(first: EvidenceNode, second: EvidenceNode): Boolean =
+    eventOf(first).exists(a => a.name.nonEmpty && eventOf(second).exists(_.name == a.name))
+  /** Do both nodes bill one film-less event ([[agreement.NonFilmEvents.Facts.filmless]]: of a kind no film record is),
+   *  their own facts agreeing on it ([[agreement.NonFilmEvents.Facts.apartFrom]])? */
+  private def oneEvent(first: EvidenceNode, second: EvidenceNode): Boolean =
+    (for (a <- eventOf(first); b <- eventOf(second)) yield a.filmless && b.filmless && !a.apartFrom(b)).contains(true)
 
   /** Do two billings of one relay disagree on a fact — two directors, years further apart than one season's two? */
   private def relayFactsApart(measures: Map[String, IdentityMeasures.Measure]): Boolean =
@@ -238,7 +254,12 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         // One house's relay of one work in one season, however each venue spells the house beside the work: what no title
         // form says when no record joins them (UK "Opéra De Paris Ballet - La Bayadère", "La Bayadère (Opéra de Paris)").
         Option.when(oneRelay(first, second) && !holdsAnotherHousesRecord(first, secondFilm) && !holdsAnotherHousesRecord(second, firstFilm))(
-          (3, ConstraintEdges.SameRelay))
+          (3, ConstraintEdges.SameRelay)),
+        // One film-less event, however each venue spells it beside its name ([[oneEvent]], the same words an article and
+        // the edition aside), while neither holds a film: no record joins them, and their titles share no form
+        // (UK "CBeebies Panto 2026: Treasure Island", "Cbeebies Panto: Treasure Island", "The CBeebies Panto 2026: …").
+        Option.when(firstFilm.isEmpty && secondFilm.isEmpty && oneEvent(first, second) && sameEventName(first, second))(
+          (3, ConstraintEdges.SameEvent))
       ).flatten.filterNot { case (_, reason) => RuleAblation.disables("join:" + reason) }
       cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
     }.filter(admitted)
@@ -251,6 +272,8 @@ private[identity] object ConstraintEdges {
   val SameSearchForm   = "same-search-form"
   val TitleSegment     = "title-segment"
   val OriginalTitle    = "original-title"
+  /** The must-link of two billings of one film-less event, its name spelt alike ([[agreement.NonFilmEvents.Facts]]). */
+  val SameEvent        = "same-event"
   /** The must-link of two billings of one house's relay of one stage work in one season ([[RelayStage.oneRelay]]). */
   val SameRelay        = "same-relay"
   /** The cannot-link of two nodes a feed's copied original title alone joins, one's feed linking a film the other's is not. */

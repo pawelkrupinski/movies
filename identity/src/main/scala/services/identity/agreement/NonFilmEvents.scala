@@ -33,9 +33,21 @@ object NonFilmEvents {
    *  trip it: a "Maraton" film needs the bare word, so `maraton` counts only as the marathon of a genre or a night
    *  ("Maraton Horrorów", "Halloweenowy Maraton", "Maraton Halloween"). */
   private val Markers: Seq[(String, scala.util.matching.Regex)] = Seq(
+    // a TV series' episodes or season screened ("Heated Rivalry: Season 01 - Epi 05 & 06", "… Season 1 Marathon"): TMDB
+    // files a series apart from its films; a house's "Cinema Season 2026-27" names a year, never a season's number
+    "tv episodes"       -> """\bseason\s*0?\d{1,2}\s*(?:marathon\b|[-–—:]\s*ep(?:i|isode)?s?\.?\s*\d)""".r,
     // a night of several films sold as one ticket
     "marathon"          -> """\bmaraton\s+(horror|hallow|grozy|film)|\bhalloween\p{L}*\s+maraton|\bhorror\s+marathon|\bnoc\s+(horror|grozy)|wiecz[oó]r\s+grozy""".r,
+    // a franchise's films back to back, billed by the night's word before the franchise ("Maraton Diuny", "Maraton Saga
+    // Zmierzch") or after it in English ("The Hunger Games Marathon") — never "<film> - maraton", one film's marathon
+    // screening ("Inna Mamusia - maraton", judged right)
+    "franchise marathon" -> """^maraton\s+\p{L}|\S\s+marathon\s*$""".r,
     "esports"           -> """\bleague\s+of\s+legends|\bworlds\s+\d\d\b.*\bfinals""".r,
+    // a console session on the big screen ("Gaming im Kino - 3 Stunden", "Gaming im Lumos")
+    "gaming"            -> """\bgaming\s+im\b""".r,
+    // a pantomime staged for the cinemas (the BBC's "CBeebies Panto 2026: Treasure Island": the owner, 10-21, an event
+    // that stays unmatched, whatever record TMDB files under its name)
+    "panto"             -> """\bpanto\b""".r,
     // classes and evenings sold through the same ticketing
     "class"             -> """\bmedytacj|\bneurojog|\bmilong|\bslajd""".r,
     // a festival or season pass, never one screening
@@ -95,6 +107,54 @@ object NonFilmEvents {
       val first   = reasons.next()
       first.filter(_ => reasons.forall(_.isDefined))
     }
+
+  /** What an event's billing states of itself beyond its kind ([[of]]): the edition its title dates (a year, "2026/27"'s
+   *  first; an esports final's "Worlds 26"), the series season and episodes it screens ("Season 01 - Epi 05 & 06": `s1e5-6`,
+   *  "Season 1 Marathon": `s1`) and the hours a session runs ("Gaming im Kino - 3 Stunden": 180 minutes). Two billings of
+   *  one event agree on each they both state; one stating another is another event ([[Facts.apartFrom]]). `name`: the
+   *  title's words, an article and the edition however spelt aside — what two venues' spellings of one event share ("The
+   *  CBeebies Panto 2026: Treasure Island", "Cbeebies Panto: Treasure Island"). */
+  final case class Facts(kind: String, edition: Option[Int], episodes: Option[String], minutes: Option[Int], name: Seq[String] = Nil) {
+    /** Whether its kind is one no film record ever is — a marker's ([[Markers]]) or a withheld film's — unlike a live
+     *  show, a concert or a festival's slot, whose billing can be a relay or a concert film TMDB holds (UK "Berliner
+     *  Philharmoniker LIVE: New Year's Eve Concert 2026" is tmdb 1711927). */
+    def filmless: Boolean = FilmlessKinds(kind)
+    /** Another edition, other episodes or a session of another length: each a fact both state and disagree on. */
+    def apartFrom(other: Facts): Boolean = {
+      def differ[A](a: Option[A], b: Option[A]) = a.isDefined && b.isDefined && a != b
+      kind != other.kind || differ(edition, other.edition) || differ(episodes, other.episodes) || differ(minutes, other.minutes)
+    }
+  }
+
+  private val FilmlessKinds: Set[String] = Markers.map(_._1).toSet + "mystery screening"
+
+  private val EditionYear    = """(?<![\p{N}])(20\d\d)(?![\p{N}])""".r
+  private val EsportsEdition = """\bworlds\s*(\d\d)\b""".r
+  private val SeriesSeason   = """\bseason\s*0*(\d{1,2})\b""".r
+  private val Episodes       = """\bep(?:i|isode)?s?\.?\s*0*(\d{1,3})(?:\s*(?:&|and|-|–)\s*0*(\d{1,3}))?""".r
+  private val SessionHours   = """\b(\d{1,2})\s*(?:stunden|hours|hrs)\b""".r
+
+  /** `listing`'s event and what its title states of it ([[Facts]]), or `None` when it bills no event ([[of]]). */
+  def facts(listing: Listing): Option[Facts] = of(listing).map { kind =>
+    val title    = listing.rawTitle.toLowerCase(Locale.ROOT)
+    val edition  = EditionYear.findFirstMatchIn(title).map(_.group(1).toInt)
+      .orElse(EsportsEdition.findFirstMatchIn(title).map(2000 + _.group(1).toInt))
+    val episodes = SeriesSeason.findFirstMatchIn(title).map { season =>
+      s"s${season.group(1).toInt}" + Episodes.findFirstMatchIn(title.substring(season.end)).fold("") { m =>
+        s"e${m.group(1).toInt}" + Option(m.group(2)).fold("")(last => s"-${last.toInt}")
+      }
+    }
+    // the edition however spelt: "Worlds 2026" and "Worlds 26" are one final's
+    val editionWords = edition.toSeq.flatMap(year => Seq(year.toString, f"${year % 100}%02d"))
+    val name = TitleContainment.tokens(listing.rawTitle).filterNot(word => word == "the" || EditionYear.matches(word) || editionWords.contains(word))
+    Facts(kind, edition, episodes, SessionHours.findFirstMatchIn(title).map(_.group(1).toInt * 60), name)
+  }
+
+  /** The event every one of `listings` bills, as the first states it — `None` unless each bills one of one kind. */
+  def facts(listings: Seq[Listing]): Option[Facts] = {
+    val all = listings.map(facts)
+    all.headOption.flatten.filter(first => all.forall(_.exists(_.kind == first.kind)))
+  }
 
   /** Why `listing` is an event no film database holds, or `None`. */
   def of(listing: Listing): Option[String] =

@@ -102,7 +102,7 @@ object ResolverDecision {
      *  (`agreement.Correction`): the cluster takes that one instead. Only on the way to the projection. */
     case Corrected
     /** Unmatched, and not a film at all: every listing of the cluster bills an event no film database holds — a concert,
-     *  a class, a marathon, a secret screening ([[agreement.NonFilmEvents]]) — so the agreement stage asked none of
+     *  a class, a marathon, a secret screening, a series' episodes, a gaming session, a panto ([[agreement.NonFilmEvents]]) — so the agreement stage asked none of
      *  them about it. Like [[Agreed]], only on the way to the projection; its card is shown as any no-match's is. */
     case Event
 

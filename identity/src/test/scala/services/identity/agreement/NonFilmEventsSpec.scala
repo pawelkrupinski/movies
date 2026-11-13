@@ -81,6 +81,58 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
     NonFilmEvents.of(titled("Koncert").copy(year = Some(2009))) shouldBe Some("live event")
   }
 
+  it should "be an event when it bills a series' episodes, a franchise marathon, a gaming session or a panto" in {
+    // the 2026-11-13 corpus audit's film-less events, each left unmatched and counted as a miss
+    Map(
+      "Heated Rivalry: Season 01 - Epi 05 & 06"      -> "tv episodes",
+      "Heated Rivalry: Season 1 Marathon"            -> "tv episodes",
+      "Maraton Diuny"                                -> "franchise marathon",
+      "Maraton Saga Zmierzch"                        -> "franchise marathon",
+      "The Hunger Games Marathon"                    -> "franchise marathon",
+      "Gaming im Kino - 3 Stunden"                   -> "gaming",
+      "Gaming im Lumos"                              -> "gaming",
+      "CBeebies Panto 2026: Treasure Island"         -> "panto",
+      "The CBeebies Panto 2026: Treasure Island"     -> "panto",
+      "CBeebies Panto Treasure Island – Sensory Friendly Screening" -> "panto"
+    ).foreach { case (title, why) => withClue(title) { NonFilmEvents.of(titled(title)) shouldBe Some(why) } }
+    // one film's marathon screening (judged right), a house's season, a series' film
+    Seq("Inna Mamusia - maraton", "RBO Cinema Season 2026-27: La Fanciulla Del West", "Marathon Man", "Świąteczna zabawa z Peppą")
+      .foreach(title => withClue(title) { NonFilmEvents.of(titled(title)) shouldBe None })
+  }
+
+  "an event's billing" should "state its edition, episodes and session length as facts" in {
+    def facts(title: String) = NonFilmEvents.facts(titled(title))
+    facts("League of Legends Worlds 26 | Finals in Cinema") shouldBe
+      Some(NonFilmEvents.Facts("esports", Some(2026), None, None, Seq("league", "of", "legends", "worlds", "finals", "in", "cinema")))
+    facts("League of Legends Worlds 2026 - Finals in Cinema").map(_.edition) shouldBe Some(Some(2026))
+    // DE: "Worlds 2026" and "Worlds 26" billed apart as two films
+    facts("League of Legends Worlds 2026 - Finals in Cinema").map(_.name) shouldBe facts("League of Legends Worlds 26 - Finals in Cinema").map(_.name)
+    facts("CBeebies Panto 2026: Treasure Island") shouldBe Some(NonFilmEvents.Facts("panto", Some(2026), None, None, Seq("cbeebies", "panto", "treasure", "island")))
+    facts("The CBeebies Panto 2026: Treasure Island").map(_.name) shouldBe facts("Cbeebies Panto: Treasure Island").map(_.name)
+    facts("Heated Rivalry: Season 01 - Epi 05 & 06").flatMap(_.episodes) shouldBe Some("s1e5-6")
+    facts("Heated Rivalry: Season 1 Marathon").flatMap(_.episodes) shouldBe Some("s1")
+    facts("Gaming im Kino - 3 Stunden").flatMap(_.minutes) shouldBe Some(180)
+    facts("Interstellar") shouldBe None
+  }
+
+  it should "tell two events apart only by a fact both state otherwise" in {
+    def facts(title: String) = NonFilmEvents.facts(titled(title)).get
+    facts("CBeebies Panto 2026: Treasure Island").apartFrom(facts("Cbeebies Panto: Treasure Island")) shouldBe false
+    facts("League of Legends Worlds 26 | Finals in Cinema").apartFrom(facts("League Of Legends Worlds 26 - Finals In Cinema")) shouldBe false
+    facts("League of Legends Worlds 26 | Finals in Cinema").apartFrom(facts("League of Legends Worlds 2025 - Finals in Cinema")) shouldBe true
+    facts("Heated Rivalry: Season 01 - Epi 01 & 02").apartFrom(facts("Heated Rivalry: Season 01 - Epi 03 & 04")) shouldBe true
+    facts("Heated Rivalry: Season 1 Marathon").apartFrom(facts("Heated Rivalry: Season 01 - Epi 03 & 04")) shouldBe true
+    facts("Gaming im Kino - 3 Stunden").apartFrom(facts("Gaming im Kino - 4 Stunden")) shouldBe true
+  }
+
+  it should "be film-less only of a kind no film record is: never a live show or a concert, which TMDB may hold" in {
+    NonFilmEvents.facts(titled("League of Legends Worlds 26 | Finals in Cinema")).map(_.filmless) shouldBe Some(true)
+    NonFilmEvents.facts(titled("Secret Screening - 12th October")).map(_.filmless) shouldBe Some(true)
+    // UK what-if 2026-11-13: tmdb 1711927 at Kavanagh Cinema Herne Bay, prod's take
+    NonFilmEvents.facts(titled("Berliner Philharmoniker LIVE: New Year’s Eve Concert 2026")).exists(_.filmless) shouldBe false
+    NonFilmEvents.facts(titled("Koncert: Leszek Możdżer - solo")).map(_.filmless) shouldBe Some(false)
+  }
+
   "a cluster" should "be an event only when every listing of it is" in {
     NonFilmEvents.of(Seq(titled("Maraton Halloween"), titled("MARATON HALLOWEEN"))) shouldBe Some("marathon")
     NonFilmEvents.of(Seq(titled("Maraton Halloween"), titled("Halloween"))) shouldBe None
