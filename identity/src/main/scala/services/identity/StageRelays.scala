@@ -233,9 +233,9 @@ object StageRelays {
    *  - A banner naming a house in particular ([[Relay.houses]]) is not the record's: UK Savoy's "Opéra De Paris Ballet -
    *    Notre-Dame de Paris" ×6, screening in March 2027, is no 2013 "La Scala Ballet: Notre-Dame de Paris", and PL
    *    Multikino's "Balet z Opery Paryskiej 2026-2027: Romeo i Julia" ×16 no Royal Ballet & Opera "Romeo and Juliet" of its
-   *    own season. Only under a CINEMA's season banner ([[services.movies.StageHouse.seasonBanners]]) does another house's
-   *    record of the screenings' own season stay a candidate: UK's "RBO Cinema Season" relays the Met's productions of
-   *    that season (the owner, 2026-11-13).
+   *    own season. Only under a CINEMA SEASON's banner ([[services.movies.StageHouse.seasonBanners]]) does another house's
+   *    record of the screenings' own season stay a candidate: the Royal Ballet & Opera's UK cinema season relays the
+   *    Met's productions of that season (the owner, 2026-11-13).
    *  - A banner naming no house in particular ("Ballet - Notre-Dame de Paris") may be the record's house, so only a record
    *    from long before or after ([[datedAway]]), on a listing dating it by no year of its own and billing the stage work
    *    apart from its banner ([[Relay.workIds]]), is another production: UK Film Theatre Leiston's, screening in March
@@ -258,8 +258,9 @@ object StageRelays {
   /** Is `f` ANOTHER HOUSE's record of the season the relay names or screens in, under a banner naming a real house? A
    *  house's banner is its own relay: PL Multikino's "Balet z Opery Paryskiej 2026-2027: Romeo i Julia" ×16 is the Paris
    *  Opera Ballet's, never the Royal Ballet & Opera's 2026/27 "Romeo and Juliet" its season and work alone reached. Only a
-   *  CINEMA's season banner ([[services.movies.StageHouse.seasonBanners]]) bills more than one house's productions: UK
-   *  Flicks' "RBO Cinema Season 2026-27: Macbeth" is the Met's (the owner, 2026-11-13). */
+   *  CINEMA SEASON's banner ([[services.movies.StageHouse.seasonBanners]]) bills more than one house's productions: the
+   *  Royal Ballet & Opera's UK cinema season carries the Met's, UK Flicks' "RBO Cinema Season 2026-27: Macbeth" and
+   *  Pocklington's "Royal Ballet & Opera: Macbeth" (the owner, 2026-11-13). */
   private def anotherHousesRelay(listing: Listing, film: Film): Boolean =
     listing.seasonYear.orElse(listing.screenedSeason).isDefined && billsAHouseInParticular(listing) &&
       !listing.relay.houses.exists(services.movies.StageHouse.isSeasonBanner) && billsAnotherHouse(listing, film)

@@ -1,8 +1,11 @@
-# A CINEMA's season banner over stage relays — a chain's or a distributor's name for its season of relays, which it puts on
-# more than one house's productions — one banner a line, `banner<TAB>where<TAB>why`. Read by `services.movies.StageHouse`
-# (`seasonBanners`) for the identity model: a relay billed under one of these may take another house's record of the
-# season its screenings fall in; a relay whose banner names a real house never does
-# (`services.identity.StageRelays.anotherProduction`, the owner 2026-11-13). Its words as a title spells them, a season's
-# numbers aside; a banner naming a house's name or initials still names that house for its own records.
+# A CINEMA SEASON's banner over stage relays — a name under which venues bill MORE THAN ONE house's productions — one
+# banner a line, `banner<TAB>where<TAB>why`. Read by `services.movies.StageHouse` (`seasonBanners`) for the identity model:
+# a relay billed under one of these may take another house's record of the season its screenings fall in; a relay whose
+# banner names any other house never does (`services.identity.StageRelays.anotherProduction`, the owner 2026-11-13).
+# Matched as a run of the banner's words, a season's numbers, "the", "and" and a house's split initials ("RB&O") aside.
+# Found on the local prod mirror's five corpora (2026-11-13): PL "Royal Ballet and Opera Sezon Kinowy", DE "RBO Kino
+# Saison" and UK "Opéra de Paris Ballet Season" bill only their own house's relays; the Royal Ballet & Opera's UK cinema
+# season carries the Met's too.
 banner	where	why
-RBO Cinema Season	UK Flicks, Cineworld	the Royal Ballet & Opera's cinema season, under which UK chains bill the Met's 2026/27 productions too ("RBO Cinema Season 2026-27: Macbeth", the Met's)
+Royal Ballet and Opera	UK venues	the Royal Ballet & Opera's UK cinema season carries the Met's 2026/27 productions under the house's name: Pocklington's "Royal Ballet & Opera: Macbeth", Acton's "ROYAL BALLET & OPERA LIVE: MACBETH" and Northallerton's "RBO: MACBETH (MET)" screen the Met's Macbeth
+RBO	UK Flicks, Cineworld; US Flicks	"RBO Cinema Season 2026-27: Macbeth" and "… La Fanciulla Del West" are the Met's productions

@@ -897,6 +897,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     another(named("Balet z Opery Paryskiej 2026-2027: Romeo i Julia"), rboRomeo) shouldBe true
     another(named("RBO Cinema Season 2026-27: Macbeth"), Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe false
     another(named("Royal Ballet and Opera Sezon Kinowy 2026-27: Romeo i Julia"), rboRomeo) shouldBe false
+    // the Royal Ballet & Opera's UK cinema season carries the Met's productions under the house's own name: Pocklington's
+    // "Royal Ballet & Opera: Macbeth", Acton's "ROYAL BALLET & OPERA LIVE: MACBETH" (measure run 43460614501: four right takes
+    // of the Met's Macbeth lost without it)
+    val metMacbeth = Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))
+    another(relay("Royal Ballet & Opera: Macbeth"), metMacbeth) shouldBe false
+    another(relay("ROYAL BALLET & OPERA LIVE: MACBETH"), metMacbeth) shouldBe false
+    another(relay("RB&O: Macbeth"), metMacbeth) shouldBe false
     // the Paris Opera's 2024 recording is what its 2026/27 cinema season screens: DE Passage's and Traumpalast's "Opera de Paris:
     // Schwanensee (2026/27)" ×7, 13 December 2026, beside every other venue's "Paris Opera: Schwanensee" on that day. Kept off
     // the Royal Ballet & Opera's record above, they must not split the house's relay from its recording: a season the title
