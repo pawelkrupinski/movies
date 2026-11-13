@@ -1269,6 +1269,30 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.directorRelation(Seq("Rajeesh Parmeswaran"), Seq("Ramesh Parameswaran")) should not be Category("same_person")
   }
 
+  "a one-word director's name spelt with or without an aspirate's h or a doubled letter" should "be the same person" in {
+    // UK Cineworld's "John Doe" ×8 credits "Madhumitha"; Odeon's ×8 and TMDB's 1655020 "Madhumita". Read as
+    // different directors, the credit kept Cineworld's apart (credit-apart) and vetoed the very film.
+    IdentityMeasures.directorRelation(Seq("Madhumitha"), Seq("Madhumita")) shouldBe Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Madhumita"), Seq("Madhumitha")) shouldBe Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Siddharth"), Seq("Sidharth")) shouldBe Category("same_person")
+    FactRelations.samePerson(Seq("Madhumitha"), Seq("Madhumita")) shouldBe true
+    // within a name of more words, a four-letter word too ("a letter apart" asks five)
+    IdentityMeasures.directorRelation(Seq("Amith Kumar"), Seq("Amit Kumar")) shouldBe Category("same_person")
+  }
+
+  it should "keep a mononym's other letters, and short ones, as other names" in {
+    // No surname anchors a one-word credit: any other slip is another name.
+    IdentityMeasures.directorRelation(Seq("Shankar"), Seq("Sankar")) should not be Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Madhumita"), Seq("Madhumati")) should not be Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Madhumita"), Seq("Madhumitas")) should not be Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Bala"), Seq("Balla")) should not be Category("same_person")
+    IdentityMeasures.directorRelation(Seq("Atlee"), Seq("Atlie")) should not be Category("same_person")
+    // one word against two is a first name shared, not one person respelled
+    IdentityMeasures.directorRelation(Seq("Madhumitha"), Seq("Madhumita Sundararaman")) should not be Category("same_person")
+    // short words stay other names, h or no h
+    IdentityMeasures.directorRelation(Seq("Tom Kowal"), Seq("Thom Kowal")) should not be Category("same_person")
+  }
+
   it should "still tell different people apart, as a disagreement across scripts of its own" in {
     // A mismatch after transliteration is weaker than a Latin-to-Latin one (a Japanese reading of
     // Kanji is not its pinyin), so the calibration weighs it apart from `different`.
