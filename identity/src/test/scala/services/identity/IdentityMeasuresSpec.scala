@@ -885,6 +885,27 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // that season — and so does its own house's of any season, a house encoring its recordings for years (UK "NT Live: A
     // Streetcar Named Desire" is the 2014 broadcast, "Royal Ballet: La Bayadère" the 2018 recording)
     another(relay("RBO Cinema Season 2026-27: Tosca"), Film("The Metropolitan Opera: Tosca", year = Some(2027))) shouldBe false
+    // only under a cinema's season banner (cinema-season-banners.tsv): a banner naming a real house is that house's relay,
+    // never another's record of the season (the owner, 2026-11-13) — PL Multikino's Paris Opera "Romeo i Julia" ×16 took the
+    // Royal Ballet & Opera's 2026/27 "Romeo and Juliet" (1702789) by the work and the season alone (recording 43331601375)
+    val rboRomeo = Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027))
+    another(relay("Balet z Opery Paryskiej 2026-2027: Romeo i Julia"), rboRomeo) shouldBe true
+    another(relay("Met Opera 2026-27: Tosca"), Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027))) shouldBe true
+    another(relay("RBO Cinema Season 2026-27: Romeo and Juliet"), rboRomeo) shouldBe false
+    // as a billing naming its season reads it (no screened season then: [[Listing.screenedSeason]])
+    def named(title: String) = Listing(title, screeningsSeason = Some(2026))
+    another(named("Balet z Opery Paryskiej 2026-2027: Romeo i Julia"), rboRomeo) shouldBe true
+    another(named("RBO Cinema Season 2026-27: Macbeth"), Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe false
+    another(named("Royal Ballet and Opera Sezon Kinowy 2026-27: Romeo i Julia"), rboRomeo) shouldBe false
+    // the Paris Opera's 2024 recording is what its 2026/27 cinema season screens: DE Passage's and Traumpalast's "Opera de Paris:
+    // Schwanensee (2026/27)" ×7, 13 December 2026, beside every other venue's "Paris Opera: Schwanensee" on that day. Kept off
+    // the Royal Ballet & Opera's record above, they must not split the house's relay from its recording: a season the title
+    // names is no season apart from its own house's recording a year or two before — never another house's, nor a season's
+    val parisSwan = Film("Opéra national de Paris 2024: Schwanensee", year = Some(2024))
+    StageRelays.itsHousesRecording(named("Opera de Paris: Schwanensee (2026/27)"), parisSwan) shouldBe true
+    StageRelays.itsHousesRecording(named("Opera de Paris: Schwanensee (2026/27)"), Film("Opéra national de Paris 2021: Schwanensee", year = Some(2021))) shouldBe false
+    StageRelays.itsHousesRecording(named("RBO 2026/27: Schwanensee (Royal Ballet)"), parisSwan) shouldBe false
+    StageRelays.itsHousesRecording(named("RBO 2026/27: Schwanensee (Royal Ballet)"), Film("RBO 2025/26: Swan Lake (The Royal Ballet)", year = Some(2025))) shouldBe false
     another(paris, Film("Paris Opera Ballet: Notre-Dame de Paris", year = Some(2013))) shouldBe false
     another(relay("Royal Ballet: La Bayadère"), Film("La Bayadère (Royal Ballet)", year = Some(2018))) shouldBe false
     another(relay("NT Live: A Streetcar Named Desire"), Film("National Theatre Live: A Streetcar Named Desire", year = Some(2014))) shouldBe false

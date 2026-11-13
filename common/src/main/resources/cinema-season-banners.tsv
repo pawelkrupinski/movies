@@ -1,0 +1,8 @@
+# A CINEMA's season banner over stage relays — a chain's or a distributor's name for its season of relays, which it puts on
+# more than one house's productions — one banner a line, `banner<TAB>where<TAB>why`. Read by `services.movies.StageHouse`
+# (`seasonBanners`) for the identity model: a relay billed under one of these may take another house's record of the
+# season its screenings fall in; a relay whose banner names a real house never does
+# (`services.identity.StageRelays.anotherProduction`, the owner 2026-11-13). Its words as a title spells them, a season's
+# numbers aside; a banner naming a house's name or initials still names that house for its own records.
+banner	where	why
+RBO Cinema Season	UK Flicks, Cineworld	the Royal Ballet & Opera's cinema season, under which UK chains bill the Met's 2026/27 productions too ("RBO Cinema Season 2026-27: Macbeth", the Met's)

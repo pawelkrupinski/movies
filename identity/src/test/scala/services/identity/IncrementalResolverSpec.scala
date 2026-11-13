@@ -384,12 +384,14 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
 
   "a season production another venue's search reaches later" should "re-learn the banner's house and move the broadcasts it names" in {
     // Kino 1410's Met broadcasts arrive first and learn Royal Ballet & Opera; the venue whose search
-    // reaches the Met's record arrives after, and must move them as the whole resolve does.
+    // reaches the Met's record arrives after, and must move them as the whole resolve does. A banner naming
+    // the Met ("metropolitan opera: live in hd") never takes the Royal Ballet & Opera's record, learned house
+    // or not (the owner, 2026-11-13: only a cinema's season banner may), so Carmen takes none from the start.
     import MetSeasonHouseCase.*
     val seasonLookups = lookups(normalizer)
     val model = new IncrementalResolver(seasonLookups, normalizer, calibration, decorations = TitleDecorations.None)
     model.batch(seen = Seq(cosi, carmen))
-    model.decisions.find(_.listings(carmen.key)).flatMap(_.film) shouldBe Some(RboCarmen)
+    model.decisions.find(_.listings(carmen.key)).flatMap(_.film) shouldBe None
     model.batch(seen = Seq(other))
     ResolutionSignature.of(model) shouldBe ResolutionSignature.of(
       IdentityResolver.resolveWith(Seq(cosi, carmen, other), seasonLookups, normalizer, calibration, IdentityResolver.Mutation.None))

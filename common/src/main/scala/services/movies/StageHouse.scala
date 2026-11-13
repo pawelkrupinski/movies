@@ -21,6 +21,26 @@ object StageHouse {
       try parse(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
     }
 
+  val SeasonBannersResource = "cinema-season-banners.tsv"
+
+  /** `cinema-season-banners.tsv`'s rows (`banner<TAB>where<TAB>why`, a header and `#` comments aside): each banner's words. */
+  def parseSeasonBanners(lines: Iterator[String]): Seq[Seq[String]] =
+    lines.filterNot(line => line.trim.isEmpty || line.startsWith("#") || line.startsWith("banner\t"))
+      .map(line => TitleContainment.tokens(line.split('\t').head).toSeq.filterNot(_.forall(_.isDigit))).filter(_.nonEmpty).toSeq
+
+  /** A CINEMA's season banners over stage relays (`cinema-season-banners.tsv`): "RBO Cinema Season", under which UK chains
+   *  bill the Met's productions too. A relay under one may be another house's record of its season; under a real house's
+   *  name, never. */
+  lazy val seasonBanners: Seq[Seq[String]] =
+    Option(getClass.getClassLoader.getResourceAsStream(SeasonBannersResource)).fold(Seq.empty[Seq[String]]) { in =>
+      try parseSeasonBanners(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
+    }
+
+  /** Does a house fragment's words (a relay's banner, numbers out) carry a cinema's season banner ([[seasonBanners]]) as a
+   *  run of its words? */
+  def isSeasonBanner(house: Seq[String]): Boolean =
+    seasonBanners.exists(banner => house.containsSlice(banner))
+
   /** Words a house's initials skip ("RBO" of "The Royal Ballet and Opera"). */
   val UninitialledWords: Set[String] = Set("the", "and", "und", "of")
 

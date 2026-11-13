@@ -231,9 +231,11 @@ object StageRelays {
    *  than the one its screenings fall in ([[Listing.screenedSeason]]): another house's, or any house's season record? Nothing but the work's name then
    *  ties the record to the listing.
    *  - A banner naming a house in particular ([[Relay.houses]]) is not the record's: UK Savoy's "Opéra De Paris Ballet -
-   *    Notre-Dame de Paris" ×6, screening in March 2027, is no 2013 "La Scala Ballet: Notre-Dame de Paris". Another
-   *    house's record of the screenings' own season stays a candidate: UK's "RBO Cinema Season" relays the Met's
-   *    productions of that season.
+   *    Notre-Dame de Paris" ×6, screening in March 2027, is no 2013 "La Scala Ballet: Notre-Dame de Paris", and PL
+   *    Multikino's "Balet z Opery Paryskiej 2026-2027: Romeo i Julia" ×16 no Royal Ballet & Opera "Romeo and Juliet" of its
+   *    own season. Only under a CINEMA's season banner ([[services.movies.StageHouse.seasonBanners]]) does another house's
+   *    record of the screenings' own season stay a candidate: UK's "RBO Cinema Season" relays the Met's productions of
+   *    that season (the owner, 2026-11-13).
    *  - A banner naming no house in particular ("Ballet - Notre-Dame de Paris") may be the record's house, so only a record
    *    from long before or after ([[datedAway]]), on a listing dating it by no year of its own and billing the stage work
    *    apart from its banner ([[Relay.workIds]]), is another production: UK Film Theatre Leiston's, screening in March
@@ -247,11 +249,29 @@ object StageRelays {
    *  KNOWN GAP: so US "NT Live: Hamlet", screening November 2026 — the National Theatre's 2026 Hamlet, which no search of
    *  it reaches — keeps the 2015 broadcast the shared Flicks page dates it by. */
   def anotherProduction(listing: Listing, film: Film): Boolean =
-    listing.billsAStageHouse && listing.screenedSeason.exists(season =>
+    listing.billsAStageHouse && (anotherHousesRelay(listing, film) || listing.screenedSeason.exists(season =>
       anotherSeasonsRelay(film, season) || billsAnotherHouse(listing, film) && (
-        if (listing.relay.houses.exists(house => particularWords(services.movies.StageHouse.initialsJoined(house)).nonEmpty))
-          services.movies.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
-        else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season)))
+        if (billsAHouseInParticular(listing)) services.movies.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
+        else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season))))
+  /** Does the listing's banner name a house in particular ([[namesAHouseInParticular]])? */
+  private def billsAHouseInParticular(listing: Listing): Boolean = listing.relay.houses.exists(namesAHouseInParticular)
+  /** Is `f` ANOTHER HOUSE's record of the season the relay names or screens in, under a banner naming a real house? A
+   *  house's banner is its own relay: PL Multikino's "Balet z Opery Paryskiej 2026-2027: Romeo i Julia" ×16 is the Paris
+   *  Opera Ballet's, never the Royal Ballet & Opera's 2026/27 "Romeo and Juliet" its season and work alone reached. Only a
+   *  CINEMA's season banner ([[services.movies.StageHouse.seasonBanners]]) bills more than one house's productions: UK
+   *  Flicks' "RBO Cinema Season 2026-27: Macbeth" is the Met's (the owner, 2026-11-13). */
+  private def anotherHousesRelay(listing: Listing, film: Film): Boolean =
+    listing.seasonYear.orElse(listing.screenedSeason).isDefined && billsAHouseInParticular(listing) &&
+      !listing.relay.houses.exists(services.movies.StageHouse.isSeasonBanner) && billsAnotherHouse(listing, film)
+  /** Is `f` its own house's RECORDING of the work, dated by a year alone at most [[RecordingLag]] years before the season
+   *  the relay's title names — what a cinema season screens of a house's staging, released years after it was filmed? DE
+   *  Passage's and Traumpalast's "Opera de Paris: Schwanensee (2026/27)", screening 13 December 2026 with every other
+   *  venue's "Paris Opera: Schwanensee", is the Paris Opera's "Opéra national de Paris 2024: Schwanensee" that Kinostar
+   *  bills by its own title: the season the title names dates the screening, not the staging. Never a SEASON's record
+   *  ([[Film.season]]: another season's relay) nor another house's. */
+  private[identity] def itsHousesRecording(listing: Listing, f: Film): Boolean =
+    f.season.isEmpty && billsAHouseInParticular(listing) && billsItsHouse(listing, f) &&
+      listing.seasonYear.exists(season => f.year.exists(year => year < season && season - year <= RecordingLag))
   /** Is the record a SEASON's relay ([[Film.season]]: its title names the season, "Royal Ballet & Opera 2024/25: …") from
    *  two seasons or more before or after `season`, whatever house it bills? A season's record is the broadcast of that
    *  season's staging, encored the next season at most: a house restaging a work relays it anew, under the new season's
