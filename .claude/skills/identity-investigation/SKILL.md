@@ -450,11 +450,14 @@ the take changes are paged in whole (400 a call), a family's siblings are read a
 backtest's definition (a listing's change that goes back to the film its previous change left, restored within 24 h),
 then reads projections, asks and member publications around those only (~1–2 min). It prints the per-class count table
 and a line per reversal (`--summary`: the table only; `--tsv [FILE]`: a row per reversal). Asks are matched by the
-listing's clean title (brackets dropped) and the record asks its family filed after the first of those; a class beyond
+listing's clean title (brackets dropped), the record asks its family filed after the first of those, and the poster asks
+its decision compares (its members' trace candidates' `poster|film|N`, their own venue posters); a class beyond
 the four above is **UNCLASSIFIED**, always with its reason: no projection line found, or an answer-triggered restore
 with no ask naming the title (asks are keyed by the resolver's search title, which the listing's text may not spell).
 Validated 2026-11-06: DE 132 reversals (70 LATE-ANSWER, 50 DEPLOY/RESTART, 9 SIBLING/POPULATION), Geister's 56 all
 LATE-ANSWER; UK 105 (49 LATE-ANSWER), «(IMAX) Sinners» 22 LATE-ANSWER and 2 DEPLOY/RESTART (a boot restored them).
+2026-11-13: US 107 reversals, all UNCLASSIFIED until the poster asks were read, then all LATE-ANSWER (a candidate's
+poster filed after the projection gave up: «Parkway Drive: Home» x83, «Game» x24 on «I'm Game» / «Blind Game»).
 
 ## identity-slice --explain
 
