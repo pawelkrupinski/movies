@@ -61,34 +61,54 @@ private[identity] object RelayStage {
     }
   }
 
-  /** The keys of the ONE relay `l` bills, whatever banner its venue puts on it: `r:<stage work>:<season>`, for each stage
-   *  work its title names ([[StageRelays.Relay.workIds]], in any language) in the season it names, else the season its
-   *  screenings fall in — when its title names a house in particular ([[StageRelays.namesAHouseInParticular]]), and dates
-   *  no other season's performance ([[of]]: "Royal Ballet: The Nutcracker (2021)", screening in 2026/27, bills the 2021
-   *  recording, a production of its own). UK "Opéra De Paris Ballet - La Bayadère" ×7, "La Bayadère (Opéra de Paris)" ×6,
-   *  "Opéra de Paris: La Bayadère" and "The Opéra National de Paris: La Bayadère" are one relay, which TMDB holds no record
-   *  of: no film joined them, and their titles share no form, so each was a film of its own. The house is no part of the
-   *  key, which names no house; [[oneRelay]] asks the two houses. A billing naming no house ("La Bayadère", screening in
-   *  a season both the Royal Ballet and the Paris Opera relay it in) is keyed by none. */
-  def relayKeys(l: Listing): Set[String] = {
-    val season = l.seasonYear.orElse(l.screeningsSeason).filter(season => l.relayBilled.forall(_.seasons(season)))
-    if (particularHouses(l).isEmpty || season.isEmpty || namesTwoHouses(l)) Set.empty
-    // a work the house's own fragment carries ("Jezioro łabędzie z opéra national de paris") is billed all the same
-    else (l.relay.workIds ++ StageRelays.stageWorksBilled(l.ownTitles, seasonNamed = true)).map(work => s"r:$work:${season.get}")
+  /** The PRODUCTION a stage house's relay billing names, read off its title as data rather than dropped as decoration:
+   *  @param houses the houses its banner names in particular ("Opéra de Paris", "Royal Ballet & Opera", PL "Balet z Opery
+   *                Paryskiej" — [[StageRelays.Relay.houses]], [[StageRelays.namesAHouseInParticular]])
+   *  @param works  the stage works its title names, in any language ([[StageRelays.Relay.workIds]])
+   *  @param season the season of the performance it screens: the one its title names ("2026/27", "26/27"), else the one
+   *                its screenings fall in, unless its title dates another season's performance ([[of]])
+   *  @param encore whether it bills an ENCORE ("… ENCORE (2026)"): its year then dates the encore, not the performance
+   *  @param live   whether it bills the relay as live ("Royal Ballet & Opera LIVE:", "Live from the Met")
+   *  One house, one work, one season is one production (one film, [[oneRelay]]); another season of the work is another
+   *  production. Encore and live are how the venue screens it, no part of which production it is. */
+  final case class Production(houses: Seq[Seq[String]], works: Set[String], season: Int, encore: Boolean, live: Boolean) {
+    /** Its keys, `r:<stage work>:<season>`: what joins its billings' families, whatever banner each venue spells. */
+    def keys: Set[String] = works.map(work => s"r:$work:$season")
   }
-  /** Do `a` and `b` bill one house's relay of one stage work in one season ([[relayKeys]]): one relay, however each venue
-   *  spells the house's banner beside the work ([[StageRelays.namesOneHouse]]: "Opéra de Paris", "The Opéra National de
-   *  Paris", PL "Balet z Opery Paryskiej")? Two houses' relays of one work in one season stay two (the Royal Ballet's
-   *  "La Bayadère" of 9 February 2027 and the Paris Opera's of 31 January), as do two seasons' of one house's. */
-  def oneRelay(a: Listing, b: Listing): Boolean =
-    (relayKeys(a) & relayKeys(b)).nonEmpty && particularHouses(a).exists(house => particularHouses(b).exists(StageRelays.namesOneHouse(house, _)))
-  /** Do `a` and `b` bill one relay ([[oneRelay]]) under one house's name spelt alike ([[StageRelays.nameOneHouseAlike]]:
+
+  /** The production `l` bills ([[Production]]), when its title names one house in particular (not two: [[namesTwoHouses]]),
+   *  a stage work and a season. UK "Opéra De Paris Ballet - La Bayadère" ×7, "La Bayadère (Opéra de Paris)" ×6, "Opéra de
+   *  Paris: La Bayadère" and "The Opéra National de Paris: La Bayadère" bill one production TMDB holds no record of: no
+   *  film joined them, and their titles share no form, so each was a film of its own. A billing naming no house ("La
+   *  Bayadère", screening in a season both the Royal Ballet and the Paris Opera relay it in) bills none; nor does
+   *  "Royal Ballet: The Nutcracker (2021)", screening in 2026/27: the 2021 recording, a production of its own season. */
+  def production(l: Listing): Option[Production] = {
+    val houses = particularHouses(l)
+    val season = l.seasonYear.orElse(l.screeningsSeason).filter(season => l.relayBilled.forall(_.seasons(season)))
+    // a work the house's own fragment carries ("Jezioro łabędzie z opéra national de paris") is billed all the same
+    lazy val works = l.relay.workIds ++ StageRelays.stageWorksBilled(l.ownTitles, seasonNamed = true)
+    Option.when(houses.nonEmpty && season.nonEmpty && !namesTwoHouses(l) && works.nonEmpty)(
+      Production(houses, works, season.get, billsAnEncore(l), l.ownTitles.exists(title => services.movies.TitleContainment.tokens(title).contains("live"))))
+  }
+
+  /** The keys of the production `l` bills ([[Production.keys]]), none when it bills none. */
+  def relayKeys(l: Listing): Set[String] = l.production.fold(Set.empty[String])(_.keys)
+  /** Do `a` and `b` bill one production ([[Production]]): one house's relay of one stage work in one season, however each
+   *  venue spells the house's banner beside the work ([[StageRelays.namesOneHouse]]: "Opéra de Paris", "The Opéra
+   *  National de Paris", PL "Balet z Opery Paryskiej")? Two houses' relays of one work in one season stay two (the Royal
+   *  Ballet's "La Bayadère" of 9 February 2027 and the Paris Opera's of 31 January), as do two seasons' of one house's. */
+  def oneRelay(a: Listing, b: Listing): Boolean = oneProduction(a, b, StageRelays.namesOneHouse)
+  /** Do `a` and `b` bill one production ([[oneRelay]]) under one house's name spelt alike ([[StageRelays.nameOneHouseAlike]]:
    *  "Opéra de Paris" and "The Opéra National de Paris"; "Swan Lake The Royal Ballet" and "RBO Cinema Season 2026-27: Swan
    *  Lake") — not "The Metropolitan Opera" and "Met Opera", one word opening the other? Between such billings the learned
    *  listing-listing cut reads only a fact they disagree on ([[ConstraintEdges]]): lifted between "The Metropolitan Opera-
    *  Manon" and the Met's "Met Opera 2026-27: Manon" spellings, it moved UK Stowmarket's and Corby's takes (recording 573). */
-  def oneRelaySpeltAlike(a: Listing, b: Listing): Boolean =
-    oneRelay(a, b) && particularHouses(a).exists(house => particularHouses(b).exists(StageRelays.nameOneHouseAlike(house, _)))
+  def oneRelaySpeltAlike(a: Listing, b: Listing): Boolean = oneProduction(a, b, StageRelays.nameOneHouseAlike)
+  private def oneProduction(a: Listing, b: Listing, sameHouse: (Seq[String], Seq[String]) => Boolean): Boolean =
+    (a.production, b.production) match {
+      case (Some(x), Some(y)) => x.season == y.season && (x.works & y.works).nonEmpty && x.houses.exists(house => y.houses.exists(sameHouse(house, _)))
+      case _                  => false
+    }
   private def particularHouses(l: Listing): Seq[Seq[String]] = l.relay.houses.filter(StageRelays.namesAHouseInParticular)
   /** Does `l` bill two houses that are not one — its houses, and each word naming one alone: a relay series' banner word
    *  ("MET": no house as a word of its own, [[searchedInItsSeason]]) or a house's initials ("RBO")? Whose relay it is the banner does not say: UK The Flavel's "RBO/MET
@@ -163,5 +183,5 @@ private[identity] object RelayStage {
     if (!billsAnEncore(l)) l else l.copy(title = cut(l.title), rawTitle = l.rawTitle.map(cut))
   }
   /** Does the billing bill an ENCORE ("… ENCORE (2026)", "(2026 ENCORE)")? Its year is the encore's. */
-  private def billsAnEncore(l: Listing): Boolean = l.ownTitles.exists(Encore.findFirstIn(_).isDefined)
+  private[identity] def billsAnEncore(l: Listing): Boolean = l.ownTitles.exists(Encore.findFirstIn(_).isDefined)
 }

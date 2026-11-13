@@ -23,6 +23,26 @@ class OneRelaySpec extends AnyFlatSpec with Matchers {
   private val RoyalDay = LocalDate.of(2027, 2, 9)
   private def measured(l: Listing) = Evidence.of(l, None, TitleDecorations.resolver).measured
 
+  "A relay billing" should "carry its house, work, season, encore and live as data, not decoration" in {
+    def production(title: String, day: LocalDate) = measured(on(listing(KinoMuza, title), day)).production
+    val paris = production("Opéra De Paris Ballet - La Bayadère", ParisDay).get
+    paris.houses.map(StageRelays.namesOneHouse(_, Seq("paris", "opera"))) should contain (true)
+    paris.works should contain allElementsOf StageWorks.resolver.named(StageRelays.wholeKey("La Bayadère"))
+    paris.season shouldBe 2026
+    (paris.encore, paris.live) shouldBe ((false, false))
+    // the season its title names, over the one its screenings fall in; live as billed
+    val live = production("Royal Ballet & Opera Live 2025/26: Tosca", LocalDate.of(2026, 11, 3)).get
+    (live.season, live.live, live.encore) shouldBe ((2025, true, false))
+    // an encore: the encore's year dates the encore, the performance is its screenings' season or the one before
+    val encore = production("The Metropolitan Opera: Samson et Dalila ENCORE (2026)", LocalDate.of(2026, 12, 9)).get
+    (encore.season, encore.encore) shouldBe ((2026, true))
+    // a title dating another season's performance names no production of its screenings' season
+    production("Royal Ballet: The Nutcracker (2021)", LocalDate.of(2026, 12, 5)) shouldBe None
+    // no house, or two
+    production("La Bayadère", ParisDay) shouldBe None
+    production("RBO/MET presents MACBETH", LocalDate.of(2026, 11, 7)) shouldBe None
+  }
+
   "One house's relay of one work in one season" should "be one relay whatever banner each venue spells the house by" in {
     val spellings = Seq("Opéra De Paris Ballet - La Bayadère", "La Bayadère (Opéra de Paris)", "Opéra de Paris: La Bayadère",
       "The Opéra National de Paris: La Bayadère", "Opera National De Paris Ballet: La Bayadere", "La Bayadère - Opéra De Paris Ballet Season")
