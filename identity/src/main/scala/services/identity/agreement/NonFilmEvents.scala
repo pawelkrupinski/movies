@@ -119,6 +119,10 @@ object NonFilmEvents {
      *  show, a concert or a festival's slot, whose billing can be a relay or a concert film TMDB holds (UK "Berliner
      *  Philharmoniker LIVE: New Year's Eve Concert 2026" is tmdb 1711927). */
     def filmless: Boolean = FilmlessKinds(kind)
+    /** Whether its kind is one production billed alike at many venues — an esports final, a panto, a series' episodes, a
+     *  franchise's marathon — so two venues' billings of it are one event; a horror night, a class or a secret screening
+     *  is each venue's own, whatever both call it ("Maraton Horrorów" at two venues is two nights' films). */
+    def distributed: Boolean = DistributedKinds(kind)
     /** Another edition, other episodes or a session of another length: each a fact both state and disagree on. */
     def apartFrom(other: Facts): Boolean = {
       def differ[A](a: Option[A], b: Option[A]) = a.isDefined && b.isDefined && a != b
@@ -127,6 +131,7 @@ object NonFilmEvents {
   }
 
   private val FilmlessKinds: Set[String] = Markers.map(_._1).toSet + "mystery screening"
+  private val DistributedKinds: Set[String] = Set("esports", "panto", "tv episodes", "franchise marathon")
 
   private val EditionYear    = """(?<![\p{N}])(20\d\d)(?![\p{N}])""".r
   private val EsportsEdition = """\bworlds\s*(\d\d)\b""".r

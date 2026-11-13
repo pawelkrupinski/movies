@@ -65,6 +65,16 @@ class LateInputEquivalenceSpec extends AnyFlatSpec with Matchers {
     LateInputs.takes(new LateInputs.Run(s).whole()).flatMap(_._2) shouldBe empty
     Restart.values.foreach(restart => LateInputs.takes(new LateInputs.Run(s).incremental(restart)).flatMap(_._2) shouldBe empty)
   }
+
+  it should "be an event whether or not TMDB's record has arrived: no late input moves it any more" in {
+    // a production drift row (2026-10-25) until a panto became an event no film database holds (NonFilmEvents, 2026-11-13):
+    // the record's arrival moved its basis (none found -> vetoed), and the case had its teeth from that alone
+    val s = cbeebies.head
+    LateInputs.matters(s) shouldBe false
+    LateInputs.takes(new LateInputs.Run(s).whole()).map(_._4).distinct shouldBe Seq(services.identity.ResolverDecision.Basis.Event)
+    Restart.values.foreach(restart =>
+      LateInputs.takes(new LateInputs.Run(s).incremental(restart)).map(_._4).distinct shouldBe Seq(services.identity.ResolverDecision.Basis.Event))
+  }
 }
 
 object LateInputEquivalenceSpec {
@@ -156,10 +166,9 @@ object LateInputEquivalenceSpec {
       late = { case Input.NewFilm(id) => id == panto.id; case _ => false }, absence = Absence.Missing))
   }
 
-  /** A TMDB search answered late, and a film new in TMDB (US-shaped "CBeebies Panto", filled by venues.current). */
+  /** A TMDB search answered late. (A film new in TMDB was the CBeebies panto's, until a panto became an event: [[cbeebies]].) */
   val searches: Seq[Scenario] = everyAbsence(Scenario("Lalka's searches", Kind.Search,
-    Seq(FilmTable.listing(Multikino, "Lalka", year = Some(2026), director = Some("Maciej Kawalski"))), lalkas, silent, late = of(Kind.Search))) ++
-    cbeebies
+    Seq(FilmTable.listing(Multikino, "Lalka", year = Some(2026), director = Some("Maciej Kawalski"))), lalkas, silent, late = of(Kind.Search)))
 
   // ── the synopsis refusing an agreement: Binti (AgreementStageSpec) ─────────────────────────────────────────────
 
@@ -268,8 +277,6 @@ object LateInputEquivalenceSpec {
       agreedFindLate("Karmele", "Karmele", 2025, "tt8690422", 1495245, 1, Seq(VoterFamily.Imdb, VoterFamily.RottenTomatoes, VoterFamily.Filmweb, VoterFamily.Wiki)) ++
       agreedFindLate("I.K.U", "IKU", 2001, "tt0255233", 37982, 1, Seq(VoterFamily.Wiki, VoterFamily.RottenTomatoes, VoterFamily.Imdb))
 
-    val cbeebies: Seq[Scenario] = LateInputEquivalenceSpec.cbeebies
-
     /** PL "Festiwal Pięć Smaków: Ostrze" ×2: prod kept a take of TMDB 42845 a fresh stage refuses — evidence against the
      *  take that arrived after it was decided: here the venue's poster, hashed late, matching the other Ostrze, which
      *  IMDb and Wikidata take. */
@@ -286,6 +293,7 @@ object LateInputEquivalenceSpec {
         late = of(Kind.Poster)).withAbsence(absence))
     }
 
-    val all: Seq[Scenario] = noTmdbLink ++ cbeebies ++ ostrze
+    // UK "CBeebies Panto" ×11 was one, until a panto became an event whatever TMDB holds: held apart above
+    val all: Seq[Scenario] = noTmdbLink ++ ostrze
   }
 }

@@ -133,6 +133,14 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
     NonFilmEvents.facts(titled("Koncert: Leszek Możdżer - solo")).map(_.filmless) shouldBe Some(false)
   }
 
+  it should "be one production at many venues only of a kind billed alike everywhere, never a venue's own night" in {
+    NonFilmEvents.facts(titled("League of Legends Worlds 26 | Finals in Cinema")).map(_.distributed) shouldBe Some(true)
+    NonFilmEvents.facts(titled("CBeebies Panto 2026: Treasure Island")).map(_.distributed) shouldBe Some(true)
+    // FilmScheduleEndToEndSpec, 2026-11-13: two venues' "Maraton Horrorów" joined as one film when it was
+    NonFilmEvents.facts(titled("Maraton Horrorów")).map(_.distributed) shouldBe Some(false)
+    NonFilmEvents.facts(titled("Secret Screening - 12th October")).map(_.distributed) shouldBe Some(false)
+  }
+
   "a cluster" should "be an event only when every listing of it is" in {
     NonFilmEvents.of(Seq(titled("Maraton Halloween"), titled("MARATON HALLOWEEN"))) shouldBe Some("marathon")
     NonFilmEvents.of(Seq(titled("Maraton Halloween"), titled("Halloween"))) shouldBe None

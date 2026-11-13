@@ -68,10 +68,12 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   /** Do both nodes name their event alike ([[agreement.NonFilmEvents.Facts.name]])? */
   private def sameEventName(first: EvidenceNode, second: EvidenceNode): Boolean =
     eventOf(first).exists(a => a.name.nonEmpty && eventOf(second).exists(_.name == a.name))
-  /** Do both nodes bill one film-less event ([[agreement.NonFilmEvents.Facts.filmless]]: of a kind no film record is),
-   *  their own facts agreeing on it ([[agreement.NonFilmEvents.Facts.apartFrom]])? */
+  /** Do both nodes bill one film-less event ([[agreement.NonFilmEvents.Facts.filmless]]: of a kind no film record is, one
+   *  production billed alike at many venues, [[agreement.NonFilmEvents.Facts.distributed]]), their own facts agreeing on
+   *  it ([[agreement.NonFilmEvents.Facts.apartFrom]])? */
   private def oneEvent(first: EvidenceNode, second: EvidenceNode): Boolean =
-    (for (a <- eventOf(first); b <- eventOf(second)) yield a.filmless && b.filmless && !a.apartFrom(b)).contains(true)
+    (for (a <- eventOf(first); b <- eventOf(second))
+      yield a.filmless && a.distributed && b.filmless && b.distributed && !a.apartFrom(b)).contains(true)
 
   /** Do two billings of one relay disagree on a fact — two directors, years further apart than one season's two? */
   private def relayFactsApart(measures: Map[String, IdentityMeasures.Measure]): Boolean =
