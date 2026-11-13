@@ -201,8 +201,19 @@ def cell(value):
     return "" if value is None else LINE_BREAKS.sub(" ", str(value))
 
 
+def billing_of(take):
+    """The venue's billing of a take: of every film the venue bills under its raw title, the one its trace listing names
+    by year and directors (ES Ocimax bills a «Dune» of 1984 and of 2021), else the first."""
+    if "billings" not in take:
+        return take.get("billing") or {}
+    listing, billed = take.get("listing") or {}, take["billings"]
+    named = [b for b in billed if listing and b.get("year") == listing.get("year")
+             and sorted(b.get("directors") or []) == sorted(listing.get("directors") or [])]
+    return (named or billed or [{}])[0]
+
+
 def sample_row(i, cc, take, inclusion, certain, verdict):
-    billing, record = take.get("billing") or {}, take.get("record") or {}
+    billing, record = billing_of(take), take.get("record") or {}
     return {"draw": i, "country": cc, "venue": take["venue"], "rawTitle": take["rawTitle"], "film": take["film"],
             "showtimes": take["showtimes"], "inclusion": round(inclusion, 6), "certain": certain, "verdict": verdict or "",
             "recordTitle": record.get("title"), "recordOriginalTitle": record.get("originalTitle"),

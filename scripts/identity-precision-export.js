@@ -26,18 +26,22 @@ db.screenings.aggregate([
   const listing = s.t ? {venue: s.t.listing.venue, rawTitle: s.t.listing.rawTitle} : fromKey(s.listingKey);
   const key = [listing.venue, listing.rawTitle, s.tmdb].join("\u0000");
   const take = takes.get(key) || {venue: listing.venue, rawTitle: listing.rawTitle, film: "tmdb:" + s.tmdb, tmdb: s.tmdb,
-                                  showtimes: 0, basis: s.t ? s.t.basis : null, traceFilm: s.t ? s.t.film : null};
+                                  showtimes: 0, basis: s.t ? s.t.basis : null, traceFilm: s.t ? s.t.film : null,
+                                  listing: s.t ? {year: s.t.listing.year || null, directors: s.t.listing.directors || []} : null};
   take.showtimes += s.n;
   takes.set(key, take);
 });
 
-// The billing as the venue scraped it: the first film entry of the venue's identity listing titled so.
+// The billings as the venue scraped them: every film entry of the venue's identity listing titled so -- a venue may bill
+// two films under one title (ES Ocimax's «Dune» of 1984 and of 2021); identity_precision_sample.billing_of picks the
+// one the take's trace listing names by year and directors.
 const billings = new Map();
 db.identity_listings.find({}, {"films.movie": 1, "films.director": 1, "films.synopsis": 1, "films.externalIds": 1,
                                "films.filmUrl": 1, "films.posterUrl": 1}).forEach(d =>
   (d.films || []).forEach(f => {
     const key = d._id + "\u0000" + f.movie.title;
-    if (!billings.has(key)) billings.set(key, {
+    if (!billings.has(key)) billings.set(key, []);
+    billings.get(key).push({
       year: f.movie.releaseYear || null, runtime: f.movie.runtimeMinutes || null, originalTitle: f.movie.originalTitle || null,
       directors: f.director || [], synopsis: (f.synopsis || "").slice(0, 300), ids: f.externalIds || {},
       url: f.filmUrl || null, poster: f.posterUrl || null});
@@ -50,7 +54,7 @@ db.tmdb_films.find({_id: {$in: ids}}, {record: 1}).forEach(f => records.set(f._i
 for (const t of takes.values()) {
   const r = records.get(String(t.tmdb)) || {};
   w(Object.assign(t, {
-    billing: billings.get(t.venue + "\u0000" + t.rawTitle) || null,
+    billings: billings.get(t.venue + "\u0000" + t.rawTitle) || [],
     record: {title: r.title || null, originalTitle: r.originalTitle || null, year: r.year || null, runtime: r.runtime || null,
              directors: r.directors || []}}));
 }

@@ -129,6 +129,16 @@ class Files(unittest.TestCase):
         self.assertEqual((back[0]["synopsis"], back[0]["billedDirectors"], back[0]["showtimes"]), ("a b c d e", "X; Y", 7))
         self.assertEqual((back[0]["inclusion"], back[0]["certain"]), (0.25, False))
 
+    def test_a_venue_billing_two_films_under_one_title_shows_the_one_the_trace_names(self):
+        lynch = {"year": 1984, "directors": ["David Lynch"], "runtime": 137}
+        villeneuve = {"year": 2021, "directors": ["Denis Villeneuve"], "runtime": 156}
+        take = {"venue": "Cines Ocimax", "rawTitle": "Dune", "film": "tmdb:841", "showtimes": 9,
+                "listing": {"year": 1984, "directors": ["David Lynch"]}, "billings": [villeneuve, lynch]}
+        self.assertEqual(ps.sample_row(1, "es", take, 0.1, False, None)["billedRuntime"], 137)
+        self.assertEqual(ps.billing_of(dict(take, listing=None)), villeneuve)
+        self.assertEqual(ps.billing_of({"billing": lynch}), lynch)  # a population exported before the list
+        self.assertEqual(ps.billing_of({}), {})
+
     def test_judge_reads_the_venue_row_over_every_venues_and_infers_wrong_from_another_right_film(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "j.tsv")
