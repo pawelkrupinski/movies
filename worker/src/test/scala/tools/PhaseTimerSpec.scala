@@ -40,9 +40,13 @@ class PhaseTimerSpec extends AnyFlatSpec with Matchers {
     val out = new java.io.ByteArrayOutputStream()
     Console.withOut(out) {
       PhaseTimer.timed("xx", "busy") {
-        val until = System.nanoTime() + 300_000_000L
-        var spins = 0L
-        while (System.nanoTime() < until) spins += 1
+        // Spin until THIS thread has used 0.3 s of CPU, not for 0.3 s of wall time: on a loaded machine
+        // a wall-time spin is scheduled for a fraction of it, and the process's CPU (what the line
+        // reports) is never less than one of its threads'.
+        val threads = java.lang.management.ManagementFactory.getThreadMXBean
+        val until   = threads.getCurrentThreadCpuTime + 300_000_000L
+        var spins   = 0L
+        while (threads.getCurrentThreadCpuTime < until) spins += 1
         spins
       }
     }
@@ -59,14 +63,22 @@ class PhaseTimerSpec extends AnyFlatSpec with Matchers {
     val out = new java.io.ByteArrayOutputStream()
     Console.withOut(out) {
       PhaseTimer.timed("xx", "churn") {
-        var kept = List.empty[Array[Byte]]
-        (1 to 2000).foreach { i => kept = new Array[Byte](256 * 1024) :: kept.take(8); if (i % 500 == 0) System.gc() }
+        // Churn until the collectors have logged 0.15 s, not for a fixed count: the line rounds to 0.1 s,
+        // and a fixed churn on an idle machine collects in a few milliseconds (reads "gc 0.0s").
+        val started = PhaseTimer.collectorMillis()
+        var kept    = List.empty[Array[Byte]]
+        var i       = 0
+        while (PhaseTimer.collectorMillis() - started < 150 && i < 200_000) {
+          kept = new Array[Byte](256 * 1024) :: kept.take(8)
+          if (i % 50 == 0) System.gc()
+          i += 1
+        }
         kept.size
       }
     }
     val gc = """, cpu [0-9.]+s, gc ([0-9.]+)s""".r.findFirstMatchIn(out.toString).map(_.group(1).toDouble)
     withClue(s"no GC time in the phase line: ${out.toString}") { gc should not be empty }
-    gc.get should be > 0.0
+    gc.get should be >= 0.1
   }
 
   "the GC note" should "read in seconds to one place" in {

@@ -75,7 +75,7 @@ object PhaseTimer {
    *  the question a phase sitting near its `-Xmx` raises and its heap note alone cannot answer. */
   private[tools] def gcNote(collectorMillis: Long): String = f", gc ${collectorMillis / 1e3}%.1fs"
 
-  private def collectorMillis(): Long =
+  private[tools] def collectorMillis(): Long =
     java.lang.management.ManagementFactory.getGarbageCollectorMXBeans.asScala.map(_.getCollectionTime.max(0L)).sum
 
   private def processCpuNanos(): Long = java.lang.management.ManagementFactory.getOperatingSystemMXBean match {
