@@ -28,7 +28,9 @@ import services.identity.adapters.{IdentityModelMetrics, ModelBatch}
  *    stuck shows here and pages, `IdentityGateStuck`); `kinowo_worker_identity_model_promoted_total{at}` — held listings
  *    taken in, at a drain or by a take-up (`at="boot"`: answered while the worker was down), or past the hold's bound
  *    (`at="bound"`: the backstop -- something the queue does not reach);
- *    `kinowo_worker_identity_model_hold_seconds` — how long each waited.
+ *    `kinowo_worker_identity_model_hold_seconds` — how long each waited. The agreement stage's previous takes standing
+ *    while their cluster's take waits on a refreshed answer's questions ([[standing]]) count in the same series: their
+ *    listings held, their oldest wait, one past the same bound at `at="bound"`.
  *
  * Every country's series exist from boot: the counters at 0, the gauges at NaN until the first drain measures
  * them (a 0 would claim an empty model). A country whose model is off keeps them so.
@@ -156,6 +158,28 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     holdSeconds.labelValues(c)
   }
 
+  /** Each country's two holds of a take on its answers -- the input gate's listings ([[forCountry]]'s `held`) and the
+   *  agreement stage's previous takes standing ([[standing]]) -- whose sum and oldest the held gauges draw: one bound
+   *  (10 minutes), one pair of alerts (IdentityInputGateStuck / IdentityInputGateWaitsLong) for both. */
+  private val holding = new java.util.concurrent.ConcurrentHashMap[(String, String), (Int, Double)]()
+  private val Gate  = "gate"
+  private val Stage = "stage"
+  private def heldBy(country: String, by: String, count: Int, oldestSeconds: Double): Unit = synchronized {
+    holding.put((country, by), (count, oldestSeconds))
+    val parts = Seq(Gate, Stage).flatMap(part => Option(holding.get((country, part))))
+    held.labelValues(country).set(parts.map(_._1).sum.toDouble)
+    heldOldest.labelValues(country).set(parts.map(_._2).max)
+  }
+
+  /** The agreement stage's previous takes standing while their cluster's take waits (`AgreementStage.standing`), after
+   *  each apply that read anything: their listings and oldest wait join the gate's in the held gauges; one past the bound
+   *  counts as a listing taken in at it (`promoted_total{at="bound"}`); how long each stood, in the hold histogram. */
+  def standing(country: String): services.identity.agreement.AgreementStage.Metrics = applied => {
+    heldBy(country, Stage, applied.held.listings, applied.held.oldestSeconds)
+    if (applied.holdsBounded.nonEmpty) promoted.labelValues(country, "bound").inc(applied.holdsBounded.size.toDouble)
+    (applied.holdsEnded ++ applied.holdsBounded).foreach(holdSeconds.labelValues(country).observe)
+  }
+
   def forCountry(country: String): IdentityModelMetrics = new IdentityModelMetrics {
     def batch(batch: ModelBatch): Unit = {
       families.labelValues(country).set(batch.families.toDouble)
@@ -169,10 +193,7 @@ final class IdentityModelGauges(countryCodes: Seq[String], registry: PrometheusR
     }
     def rebuilt(): Unit = rebuilds.labelValues(country).inc()
     def takeUpFailed(): Unit = takeUpFailures.labelValues(country).inc()
-    override def held(count: Int, oldestSeconds: Double): Unit = {
-      IdentityModelGauges.this.held.labelValues(country).set(count.toDouble)
-      heldOldest.labelValues(country).set(oldestSeconds)
-    }
+    override def held(count: Int, oldestSeconds: Double): Unit = heldBy(country, Gate, count, oldestSeconds)
     override def twinsDeleted(count: Int, atBoot: Boolean): Unit =
       IdentityModelGauges.this.twinsDeleted.labelValues(country, if (atBoot) "boot" else "drain").inc(count.toDouble)
     override def retention(present: Int, kept: Int, departed: Int): Unit = {

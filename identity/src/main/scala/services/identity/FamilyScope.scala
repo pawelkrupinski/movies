@@ -14,7 +14,8 @@ import scala.collection.mutable
  *  A film whose record is not answered yet is in the pool as its hits carry it, its record's facts unknown -- neither
  *  for it nor against it (the owner, 2026-10-31, identity-flips-structural step 6: decide from the inputs as they stand,
  *  unanswered questions treated as unknown). The decision is the same as on any other input, and Pending on the record
- *  ([[ResolverDecision.awaits]]): provisional until it is filed, never held to a previous take nor to none. It replaces
+ *  ([[ResolverDecision.awaits]]): provisional until it is filed, never held to a previous take nor to none here (the agreement stage may serve a
+ *  cluster that stood settled on a film that take, Pending, meanwhile: `agreement.AgreementStage.standing`). It replaces
  *  AGREE OR NONE (2026-10-29), which took no film where the pool with and without the pending films disagreed: UK
  *  flicks.co.uk "Rose (2023)" now serves "Rose Parade 2023", its search's one hit, provisionally until the parade's record
  *  denies it, and the pending tally (IdentityDrift) counts how often such a take differs from the final one. */

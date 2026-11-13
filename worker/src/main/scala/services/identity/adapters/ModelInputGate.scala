@@ -214,8 +214,10 @@ object ModelInputGate {
   def billedAlike(was: Listing, now: Listing): Boolean = was == now && !Listing.movedOutsideEquality(was, now)
 
   /** How long the input gate holds a listing at most: its questions are asked ahead of the queue and wait one attempt each,
-   *  so a hold past this is a question the queue does not reach -- taken in, counted, and paged on by the alert's count. */
-  val MaxHold: java.time.Duration = java.time.Duration.ofMinutes(10)
+   *  so a hold past this is a question the queue does not reach -- taken in, counted, and paged on by the alert's count.
+   *  The one bound of a take held on its answers: the agreement stage's previous take standing while a refreshed answer's
+   *  questions are checked has it too ([[agreement.AgreementStage.HoldAtMost]]). */
+  val MaxHold: java.time.Duration = agreement.AgreementStage.HoldAtMost
 
   /** A listing whose newest version (`newest`, billed at `venue`) the gate holds on `waits` since `since`; the model reads
    *  `ready` meanwhile -- none for a listing new to it. */

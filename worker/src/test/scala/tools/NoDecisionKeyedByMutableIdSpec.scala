@@ -72,6 +72,8 @@ class NoDecisionKeyedByMutableIdSpec extends AnyFlatSpec with Matchers {
     s"${A}AgreementStage.scala#shapes"         -> Pass(PerApply),
     s"${A}AgreementStage.scala#waiting"        -> Digested("listings", "Waiting.listings: a wait for another shape is dropped (verdictOf) and never read"),
     s"${A}AgreementStage.scala#candidateFilms" -> Digested("digest", "a Memo: CandidateFilms.digest compared, its receipt checked"),
+    s"${A}AgreementStage.scala#settledTakes"   -> Digested("members", "ResolverDecision.members: a take settled for other listings under the key stands for none (standing)"),
+    s"${A}AgreementStage.scala#holds"          -> Digested("members", "Hold.members: outcomeOf and waitingOn read a hold only for the members it was made for; standing drops a reshaped one"),
     s"${A}AgreementStage.scala#correctionWaits" -> Digested("listings", "Waiting.listings: a correction's waits for another shape of its take are dropped (corrected)"),
     s"${A}AgreementStage.scala#takeWaits"       -> Digested("listings", "Waiting.listings: what an agreed take pending asked, read only for the cluster shape it was asked for (outcomeOf compares the decision's digest)"),
     s"${A}AgreementStage.scala#recordsReading" -> Content("TMDB ids the apply read"),

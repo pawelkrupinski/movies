@@ -240,8 +240,26 @@ on each pass once its backoff ends (`ListingReadiness.retry`: a held version is 
 model and its first poster (hidden while held). A version taken in at the bound is the model's, so its next scrape,
 billed alike, passes unasked: a poster that keeps failing holds each version once, never every scrape.
 
+**A refreshed answer's new questions keep the previous take** (2026-11-13; the owner approved extending 11-12's "they
+should stay the same until all is resolved for the new one" to one more trigger). The gate holds a listing whose own
+facts moved; it holds nothing when the listings stand still and an ANSWER moves: US Alamo Drafthouse "Game" x12, billed
+alike since 11-04, stood on tmdb 1547524 by `fill:venues.current`, and on 11-09 15:41 (build 1cdb8ec) and 11-12 15:45
+(511987c) a TMDB search filed again with a new candidate ("I'm Game" 1250502, then "Blind Game" 1755818). The fill waited
+on that candidate's poster through the queue and the projection served the model's `pooled:no-film` for 4.9 s / 6.9 s
+until the poster was filed (`scripts/flip-timeline us --venue Alamo --title Game`: two LATE-ANSWER reversals). Now the
+stage (`AgreementStage.standing`) serves a cluster whose take waits -- the model's awaits, its families' questions, its
+take's or its correction's -- and takes no film meanwhile its LAST SETTLED take (a film or an IMDb fallback served with
+nothing open), typed Pending (`outcomeOf`), until its answers are in, then decides once. Only over the same listings (a
+member joined or left is another cluster, decided on what it has); never a film the cluster was not served settled (the
+dropped Option B: no new film early); a restart keeps no previous take. `AgreementStage.HoldAtMost` -- the gate's
+`MaxHold`, one value -- bounds it: past it the take is served as it stands, still Pending, and counted. Its listings and
+oldest wait join the gate's in `kinowo_worker_identity_model_held_listings` / `_held_oldest_seconds`, a bound one counts
+in `promoted_total{at="bound"}` and each hold's length in `hold_seconds`: `IdentityInputGateStuck` /
+`IdentityInputGateWaitsLong` page on both. Test: `SearchRefreshHoldReplaySpec` (the Game sequence replayed).
+
 **Not in the gate** (cluster-level, the stage's waits as before): the posters of candidates only other members' searches
-find, the find of an agreed IMDb id, the fill's TMDB answers -- questions only a population leads to. The inline asks (`askNow`) STAY (1c
+find, the find of an agreed IMDb id, the fill's TMDB answers -- questions only a population leads to; a cluster losing
+its film to one of them keeps its previous take (above). The inline asks (`askNow`) STAY (1c
 dropped, below): they ask what a reshaped cluster leads to, which no listing's own questions name.
 
 **Measured by:**

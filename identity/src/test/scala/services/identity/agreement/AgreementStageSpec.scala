@@ -783,9 +783,13 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val stage = new AgreementStage(agreeing(rtAnswered = false), NoVenueDetails, normalizer, IdentityCalibration.resolver,
       tmdbOf = _ => Answer.Known(Some(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned, metrics = applied => left += applied.incomplete,
       backfillPerApply = 1)
-    val takes = (1 to 3).map(_ => stage.apply(model, byKey.get, version = 1).decisions.count(_.film.isDefined))
+    val applies = (1 to 3).map(_ => stage.apply(model, byKey.get, version = 1).decisions)
     left shouldBe Seq(2, 1, 0)
-    takes shouldBe Seq(2, 1, 0)   // one waiting is never taken by its old verdict again
+    // one waiting is never DECIDED by its old verdict again: the film it served stands Pending, for at most the hold's
+    // bound, until its answers are in ([[AgreementStage.standing]]); the first, decided again before any apply had served
+    // it, has no previous take
+    applies.map(_.count(_.film.isDefined)) shouldBe Seq(2, 2, 2)
+    applies.map(_.count(d => stage.outcomeOf(d).isInstanceOf[services.identity.TakeOutcome.Taken])).last shouldBe 0
     stage.backlog shouldBe false
     verdicts.all().filter(_.correction.isEmpty) shouldBe empty
   }

@@ -124,7 +124,11 @@ trait IdentityProjectionWiring { self: WorkerWiring =>
   lazy val agreementStage: services.identity.agreement.AgreementStage = {
     val stage = newAgreementStage(agreementVerdicts, clock,
       ask = questions => { enqueueAgreementQuestions(questions); () },
-      metrics = workerMetrics.identityAgreement.stage(country.code),
+      metrics = {
+        // the stage's series, and its previous takes standing beside the input gate's held listings: one bound, one alert
+        val stage = workerMetrics.identityAgreement.stage(country.code); val standing = workerMetrics.identityModel.standing(country.code)
+        applied => { stage.applied(applied); standing.applied(applied) }
+      },
       askNow = new services.identity.adapters.InlineFamilyAsks(agreementAsker,
         managedResources.executor("identity inline family asks")(tools.DaemonExecutors.boundedPool(s"identity-inline-asks-${country.code}",
           threads = InlineFamilyAskThreads, queueCapacity = 256, tools.WhenFull.WaitForRoom, virtual = true)),

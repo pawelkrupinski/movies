@@ -49,7 +49,9 @@ groups:
       # working (11-06, the gate's first day: 3.6 h, before the bound held) -- and more than 1,000 held at once (a day's
       # arrivals in DE) is a queue not served. Either way listings are shown on their old version, or a new one not at
       # all, for as long as it lasts. `max_over_time(...[10m])` bridges a restart's gap and skips the NaN a restart seeds
-      # these gauges with until the gate first measures them.
+      # these gauges with until the gate first measures them. The agreement stage's previous takes standing while a
+      # refreshed answer's questions are checked (AgreementStage.standing, the same 10-minute bound) count in the same
+      # gauges and in promoted_total{at="bound"}: this alert and IdentityInputGateWaitsLong page on both.
       - alert: IdentityInputGateStuck
         expr: |
           max by (country) (max_over_time(kinowo_worker_identity_model_held_oldest_seconds[10m])) > 900

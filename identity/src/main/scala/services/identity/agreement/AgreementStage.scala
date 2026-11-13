@@ -134,11 +134,13 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       val id         = keyOf(decision)
       val cluster    = waiting.get(id)
       val correction = correctionWaits.get(AgreementStage.correctionId(id))
-      if (cluster.isEmpty && correction.isEmpty) WaitingOn.model(decision)
+      val hold       = holds.get(id).filter(h => !h.expired && h.members == decision.members)
+      if (cluster.isEmpty && correction.isEmpty && hold.isEmpty) WaitingOn.model(decision)
       else WaitingOn(
         decision.unanswered,
         // a question attempted is waited on no more: asked still, the take decided without it
-        (cluster.fold(Set.empty[Question])(_.gaps) ++ correction.fold(Set.empty[Question])(_.gaps)).filterNot(tried),
+        (cluster.fold(Set.empty[Question])(_.gaps) ++ correction.fold(Set.empty[Question])(_.gaps) ++
+          hold.fold(Set.empty[Question])(_.waits)).filterNot(tried),
         onTmdb = cluster.exists(_.blindAt.isDefined))
     }
 
@@ -153,6 +155,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     // correction may move it (the property "refine each take as answers are only filed": Lalka 1001 -> 1002)
     val stage = if (decision.members.isEmpty) Set.empty[Question] else {
       val id = keyOf(decision)
+      // a previous take standing while the cluster's take waits ([[standing]]): Pending on what it waits on
+      holds.get(id).filter(h => !h.expired && h.members == decision.members).fold(Set.empty[Question])(_.waits) ++
       waiting.get(id).fold(Set.empty[Question])(_.gaps) ++ correctionWaits.get(AgreementStage.correctionId(id)).fold(Set.empty[Question])(_.gaps) ++
         // a correction standing unread -- the apply's budget spent, or stored and trusted at boot -- while an answer its
         // receipt read was filed otherwise since: served as last decided, pending on its re-read (P3, a budget decides
@@ -336,6 +340,11 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
    *  ([[outcomeOf]]). UK "Hocus Pocus", PL "Siostry (1972)" (drift slices): agreed, then after a restart pending on the
    *  posters of the candidates it read again, the model's no film served. */
   private[agreement] val takeWaits = TrieMap.empty[String, AgreementStage.Waiting]
+  /** Each cluster's last take served with nothing open -- a film or an IMDb fallback -- by cluster key: what stands, typed
+   *  Pending, while the same listings' take waits on questions an answer filed since opened ([[standing]]). */
+  private[agreement] val settledTakes = TrieMap.empty[String, ResolverDecision]
+  /** The clusters whose last settled take stands while their take waits ([[standing]]), since when and on what. */
+  private[agreement] val holds = TrieMap.empty[String, AgreementStage.Hold]
 
   /** The last resolution applied to, at which `version`, and what it came to: a tick handed the same decisions while
    *  no answer was filed gets those again, nothing re-read. */
@@ -361,12 +370,19 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     val reread = republished.fold { digested.clear(); true }(forgetRead(resolution, _))
     val waited = attemptedSince
     if (waited) uncheckAttempted()
-    last.collect { case (was, at, came) if !reread && !waited && !unread && at == version && sameDecisions(was, resolution) =>
+    last.collect { case (was, at, came) if !reread && !waited && !unread && !holdDue && at == version && sameDecisions(was, resolution) =>
       resolution.copy(decisions = came.decisions) }.getOrElse {
       val came = applied(resolution, listingOf, version)
       last = Some((resolution, version, came))
       came
     }
+  }
+
+  /** Has a previous take stood its bound ([[AgreementStage.HoldAtMost]])? Then the next apply reads again, though nothing
+   *  moved, and serves the take as it stands. */
+  private[agreement] def holdDue: Boolean = {
+    val now = clock.millis()
+    holds.valuesIterator.exists(h => !h.expired && now - h.since >= AgreementStage.HoldAtMost.toMillis)
   }
 
   /** An attempt marked since the last apply: the verdicts whose receipt read a question's attempt as it no longer reads
@@ -433,6 +449,7 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     keyedBefore = keyed
     keyed = pass.keys
     forgetGone(resolution, pass)
+    val served = standing(resolution, decisions, pass)
     staging.zip(waitedBefore).foreach { case (tell, before) => tellWaits(tell, before, pass) }
     recordsNow = recordsReading; findsNow = findsReading; queriedNow = queriedReading
     wantedNow = pass.wanted(correctionPostersAtOnce, tried)
@@ -442,8 +459,8 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
     awaiting = wantedNow.filterNot(tried)
     unread = pass.spent
     familyVerdicts.applied()
-    report(decisions, pass, started)
-    resolution.copy(decisions = decisions)
+    report(served, pass, started)
+    resolution.copy(decisions = served)
   }
 
   /** Makes every `fullValidationEvery`th apply that reads anything, unless the heap is `pressed`, a FULL VALIDATION: up to
@@ -620,6 +637,58 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       if (now eq decision) decision else takenAsBefore(decision, now)
     }
 
+  /** The takes served: each as decided (`took`, the model's `resolution` read by [[decide]]), but one that lost its film to
+   *  a wait. A cluster whose take now waits on a question -- a candidate's poster or record, a family's answer, a search,
+   *  opened by an answer filed since (US Alamo "Game" x12, 2026-11-09 and 11-12: a TMDB search refreshed with "I'm Game",
+   *  then "Blind Game", the fill waited on the new candidate's poster and the cluster was served the model's "no film" for
+   *  5-7 s) -- and takes no film meanwhile is served its LAST SETTLED take over the same listings, typed Pending
+   *  ([[outcomeOf]]), until its answers are in: the owner, 2026-11-12/13, "they should stay the same until all is resolved
+   *  for the new one", the input gate's rule ([[services.identity.ListingReadiness]]) for one more trigger. Never a film
+   *  the cluster was not served settled (the dropped Option B: no new film early), never across a change of its listings,
+   *  and for at most [[AgreementStage.HoldAtMost]], the gate's bound: past it the take is served as it stands, and counted.
+   *  A restart holds nothing: what stood before it is not kept. */
+  private[agreement] def standing(resolution: Resolution, took: Seq[ResolverDecision], pass: AgreementStage.Pass): Seq[ResolverDecision] = {
+    val now  = clock.millis()
+    val live = mutable.Set.empty[String]
+    def filmed(d: ResolverDecision) = d.film.isDefined || d.fallback.isDefined
+    val served = resolution.decisions.iterator.zip(took).map { case (model, take) =>
+      val id = pass.keys.get(model)
+      if (id == null || model.members.isEmpty) take
+      else {
+        live += id
+        // what the take waits on, as [[outcomeOf]] reads it: the model's awaits, the cluster's, its take's, its correction's
+        val cluster    = waiting.get(id).filter(_.gaps.nonEmpty)
+        val taking     = takeWaits.get(id).filter(_.gaps.nonEmpty)
+        lazy val fixes = correctionWaits.get(AgreementStage.correctionId(id)).filter(_.gaps.nonEmpty)
+        if (take.awaits.isEmpty && cluster.isEmpty && taking.isEmpty && fixes.isEmpty) {
+          holds.remove(id).filterNot(_.expired).foreach(h => pass.holdsEnded += (now - h.since).max(0L) / 1000.0)
+          if (!filmed(take)) settledTakes -= id else if (!settledTakes.get(id).exists(_ eq take)) settledTakes(id) = take
+          take
+        }
+        else settledTakes.get(id).filter(before => !filmed(take) && before.members == take.members) match {
+          case None         => holds -= id; take
+          case Some(before) =>
+            val waits = take.awaits ++ Seq(cluster, taking, fixes).flatten.flatMap(_.gaps)
+            val hold  = holds.getOrElse(id, AgreementStage.Hold(now, waits, take.members))
+            if (hold.expired) take
+            else if (now - hold.since >= AgreementStage.HoldAtMost.toMillis) {
+              holds(id) = hold.copy(expired = true)
+              pass.holdsBounded += (now - hold.since) / 1000.0
+              take
+            }
+            else {
+              holds(id) = hold.copy(waits = waits)
+              pass.keys.put(before, id)
+              before
+            }
+        }
+      }
+    }.toVector
+    settledTakes.filterInPlace((id, _) => live(id))
+    holds.filterInPlace((id, _) => live(id))
+    served
+  }
+
   /** A cluster the stage meets in this SHAPE (its listings digesting to `digest`) for the first time since it started —
    *  no verdict, wait or inline ask of that shape held, under ANY key: found by the digest, as a verdict is ([[heldFor]]),
    *  never by the key naming the cluster now — past its first pass, which meets every cluster:
@@ -714,7 +783,15 @@ final class AgreementStage(private[agreement] val families: Map[VoterFamily, Fam
       withdrawn = taken(ResolverDecision.Basis.Withdrawn), corrected = taken(ResolverDecision.Basis.Corrected),
       correcting = pass.correcting.size, correctionPosters = pass.correctionPosters.size,
       events = taken(ResolverDecision.Basis.Event),
-      incomplete = held.values.count(_.rules != decidedUnder), validated = pass.validated.read, drifted = pass.validated.drifted))
+      incomplete = held.values.count(_.rules != decidedUnder), validated = pass.validated.read, drifted = pass.validated.drifted,
+      held = heldNow(), holdsEnded = pass.holdsEnded.toSeq, holdsBounded = pass.holdsBounded.toSeq))
+  }
+
+  /** The previous takes standing now ([[standing]]): how many listings they hold, and how long the oldest has stood. */
+  private[agreement] def heldNow(): AgreementStage.Held = {
+    val now      = clock.millis()
+    val standing = holds.valuesIterator.filterNot(_.expired).toSeq
+    AgreementStage.Held(standing.map(_.members.size).sum, standing.map(_.since).minOption.fold(0.0)(since => (now - since).max(0L) / 1000.0))
   }
 
   /** `d` taken on `basis`, `line` explaining it — with the `film`, `fallback` and `agreed` ids it takes, where they move. */
@@ -1176,6 +1253,9 @@ object AgreementStage {
     /** How many clusters the resolver was asked about again — the apply's cost — and how many agreed films a poster vetoed. */
     var resolves     = 0
     var posterVetoed = 0
+    /** How long each previous take that stopped standing this apply stood ([[standing]]): its answers in, or its bound. */
+    val holdsEnded   = mutable.ArrayBuffer.empty[Double]
+    val holdsBounded = mutable.ArrayBuffer.empty[Double]
     private val freshReads    = new Budget(corrections)
     private val backfillReads = new Budget(backfills)
     /** May one more model take be read afresh ([[CorrectionsPerApply]])? Each asking spends one of the budget. */
@@ -1255,6 +1335,14 @@ object AgreementStage {
 
   /** A model take's correction's id among the stored verdicts. */
   def correctionId(cluster: String): String = s"$CorrectionPrefix$cluster"
+
+  /** How long a cluster's previous take stands at most while its take waits ([[AgreementStage.standing]]): the input
+   *  gate's bound (`ModelInputGate.MaxHold`), one bound for every hold of a take on its answers. */
+  val HoldAtMost: java.time.Duration = java.time.Duration.ofMinutes(10)
+  /** A cluster's previous take standing since `since` (by the stage's clock) while its take waits on `waits`, over its
+   *  `members` (what a reader compares: a reshaped cluster under the key is no hold of this one); `expired` once it stood
+   *  [[HoldAtMost]] -- the take served as it stands until it settles. */
+  private[agreement] final case class Hold(since: Long, waits: Set[Question], members: Seq[ListingKey], expired: Boolean = false)
   /** What a correction's stored id is its cluster's id behind. */
   val CorrectionPrefix = "correction|"
   /** How many model takes with a decided correction standing — decided under a deploy's previous rules, or before an
@@ -1342,7 +1430,12 @@ object AgreementStage {
                            finds: Int, resolves: Int, seconds: Double, takenPoster: Int = 0, posterVetoed: Int = 0, posters: Int = 0,
                            takenBroadcast: Int = 0, takenFilled: Int = 0, takenCatalogue: Int = 0, catalogue: Int = 0, undated: Int = 0,
                            withdrawn: Int = 0, corrected: Int = 0, correcting: Int = 0, correctionPosters: Int = 0,
-                           events: Int = 0, incomplete: Int = 0, validated: Int = 0, drifted: Int = 0)
+                           events: Int = 0, incomplete: Int = 0, validated: Int = 0, drifted: Int = 0,
+                           held: Held = Held.None, holdsEnded: Seq[Double] = Nil, holdsBounded: Seq[Double] = Nil)
+  /** The previous takes standing after an apply ([[AgreementStage.standing]]): the `listings` they hold, the oldest's
+   *  `oldestSeconds` (0 with none). */
+  final case class Held(listings: Int, oldestSeconds: Double)
+  object Held { val None: Held = Held(0, 0.0) }
   trait Metrics { def applied(applied: Applied): Unit }
   object Metrics { val Silent: Metrics = _ => () }
 

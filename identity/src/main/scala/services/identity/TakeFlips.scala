@@ -19,7 +19,10 @@ import scala.collection.mutable
  * answer it reads was PENDING ([[Served.pending]], [[TakeOutcome.Pending]]: a search unanswered, a record awaited, a page
  * unread) is provisional -- the decision on the inputs as they stand, its film or none -- and no take: the owner,
  * 2026-10-31 (identity-flips-structural step 6), "decide from the inputs as they stand, unanswered questions treated as
- * unknown", never a previous take substituted. How often a provisional take differs from the final one is measured
+ * unknown", never a previous take substituted -- but for one trigger the owner since approved (2026-11-13): a cluster whose
+ * listings stand still and whose take loses its film to questions an answer filed since opened is served its last settled
+ * take, Pending, for at most the input gate's bound (`agreement.AgreementStage.standing`). Either way the step is
+ * provisional and no take here. How often a provisional take differs from the final one is measured
  * (IdentityDrift's pending tally), not failed. A first take of none is no film left, so it counts only where no input
  * moved it. A `none` with nothing pending is a take dropped and given back: A -> none -> A leaves A and goes back to it
  * (the review of 58ea51d22, 2026-10-30: counting every `none` alike left the check blind to a take dropping out and back
