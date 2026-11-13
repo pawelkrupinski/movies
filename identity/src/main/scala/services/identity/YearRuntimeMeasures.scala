@@ -65,9 +65,10 @@ private[identity] object YearRuntimeMeasures {
    *  extended edition 263), so the longer cut is neutral. A shorter one still counts: an edition never makes a film shorter.
    *  So is a slot LONGER than the film by more than [[Corroboration.RuntimeBand]] beside an event its billing joins
    *  ([[runsAnEvent]]: "It's Nice Up North + Q&A" at 120 minutes is the 80-minute film and its Q&A): the event's minutes
-   *  are no fact about the film. Within the band it still agrees: ICA's 92-minute "… A Jason Molina Story + Q&A" is the
+   *  are no fact about the film; and the record's own relay billed ([[relaysTheRecord]]): its interval's minutes are
+   *  no fact about the record. Within the band it still agrees: ICA's 92-minute "… A Jason Molina Story + Q&A" is the
    *  91-minute film. */
-  private[identity] def runtimeDelta(l: Listing, f: Film, country: Option[String]): Measure = l.statedRuntime match {
+  private[identity] def runtimeDelta(l: Listing, f: Film, country: Option[String], title: Category = Unrelated): Measure = l.statedRuntime match {
     case None => MissingListing
     case Some(stated) =>
       // walked in place, not as a collection: every listing is measured against every candidate
@@ -82,9 +83,34 @@ private[identity] object YearRuntimeMeasures {
       if (f.alternativeRuntimes.nonEmpty) f.alternativeRuntimes.foreach(against)
       FilmCuts.of(f.imdbNumber).foreach(cut => against(cut.runtime))  // a billed cut runs as the film ([[FilmCuts]])
       if (longest == 0) MissingFilm
-      else if (stated > longest && (billsAnEdition(l, f, country) || (off > Corroboration.RuntimeBand && runsAnEvent(l)))) MissingListing
+      else if (stated > longest && (billsAnEdition(l, f, country) || (off > Corroboration.RuntimeBand && (runsAnEvent(l) || ((title ne Unrelated) && relaysTheRecord(l, f, title))))))
+        MissingListing
       else Number(off.toDouble)
   }
+
+  /** The title relation a caller of [[runtimeDelta]] that read none passes: no relay of the record is then read (a value,
+   *  not a by-name test: the measure runs for every listing against every candidate, and a thunk a call is its allocation). */
+  private val Unrelated = Category("unrelated")
+
+  /** Does the listing bill the record's own RELAY: a stage house's relay of the record's work under the record's own house
+   *  ([[StageRelays.billsItsHouse]], no other work named: [[StageRelays.namesAnotherWork]]), or, its `title` naming the
+   *  record ([[NamingRelations]]), a relay's banner ([[services.movies.RelayBanner]]: "NT Live", "Exhibition on Screen")
+   *  that the record's title bills too? The
+   *  venue bills the performance with its interval and introduction, which TMDB's record of the relay leaves out, or
+   *  states only as a placeholder: UK Cineworld's, Everyman's and Showcase's "National Theatre Live: Hay Fever" [160′]
+   *  ×134 beside the 120-minute record (1791571), whose 40 minutes kept their node under the cut and every bare spelling
+   *  between it and the record's other venues apart. Only the screened season's record ([[recordsTheScreenedSeason]]); read
+   *  only of a listing running longer than it. */
+  private[identity] def relaysTheRecord(l: Listing, f: Film, title: Category): Boolean =
+    recordsTheScreenedSeason(l, f) && (
+      (l.billsAStageHouse && StageRelays.billsItsHouse(l, f) && !StageRelays.namesAnotherWork(l, f)) ||
+        (NamingRelations(title.value) && services.movies.RelayBanner.billed(l.ownTitles) && services.movies.RelayBanner.billed(f.titles)))
+
+  /** Is the record dated in the performing season the listing's screenings fall in, or the year it closes in: the
+   *  season's own relay, not the house's earlier recording of the work, whose shorter running time still tells it apart
+   *  (UK "Royal Ballet: La Bayadère" [170′], screening in 2026/27, is no 2018 recording of 128 minutes, 555004). */
+  private def recordsTheScreenedSeason(l: Listing, f: Film): Boolean =
+    l.screeningsSeason.exists(season => f.year.exists(year => year == season || year == season + 1))
 
   /** Does the listing's billing join an event to its film ([[joinedEvents]]: "+ Q&A", "+ Recorded Q&A", "+ Interval"),
    *  whose minutes its running time may hold beside the film's? A second feature ("Panem-Mockingjay 1+2") is no event. */

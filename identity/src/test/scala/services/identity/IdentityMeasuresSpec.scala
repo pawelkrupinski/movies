@@ -1169,6 +1169,35 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("The Final Cut", runtime = Some(150)), Film("The Final Cut", runtime = Some(95)))("runtime.delta") shouldBe Number(55)
   }
 
+  "a relay billed as the record's own" should "be neutral when it runs longer than the season's record, and still count when shorter" in {
+    // UK Cineworld's, Everyman's and Showcase's "National Theatre Live: Hay Fever" [160′] {Emily Burns} ×134, screening in
+    // January 2027 (the 2026/27 season): the performance with its interval and introduction, beside TMDB's 120-minute
+    // record of the relay (1791571, 2027). The 40 minutes weighed -4.26 and left the one node of their shared boxoffice id
+    // at 37.1%, under the cut.
+    val record = Film("National Theatre Live: Hay Fever", year = Some(2027), runtime = Some(120), directors = Some(Seq("Emily Burns")))
+    def relay(title: String, runtime: Int) = Listing(title, runtime = Some(runtime), screeningsSeason = Some(2026))
+    val billed = measures(relay("National Theatre Live: Hay Fever", 160), record)
+    billed("runtime.delta") shouldBe Missing("listing")
+    IdentityMeasures.runtimeContradicts(billed) shouldBe false
+    measures(relay("NT Live: Hay Fever", 160), record)("runtime.delta") shouldBe Missing("listing")
+    // an opera or ballet house's relay of the work under the record's own house, whatever its title's spelling
+    measures(relay("Royal Ballet: Swan Lake (2026)", 200), Film("The Royal Ballet: Swan Lake", year = Some(2026), runtime = Some(150)))("runtime.delta") shouldBe
+      Missing("listing")
+    // within the band it still agrees, and a relay never runs shorter than its record
+    measures(relay("National Theatre Live: Hay Fever", 125), record)("runtime.delta") shouldBe Number(5)
+    measures(relay("National Theatre Live: Hay Fever", 60), record)("runtime.delta") shouldBe Number(-60)
+    // the house's recording of another season: its running time still tells it apart (UK "Royal Ballet: La Bayadère"
+    // [170′] screening in 2026/27 beside the 2018 recording's 128 minutes); and so with no screenings to date it by
+    measures(relay("Royal Ballet: La Bayadère", 170), Film("The Royal Ballet: La Bayadère", year = Some(2018), runtime = Some(128)))("runtime.delta") shouldBe
+      Number(42)
+    measures(Listing("National Theatre Live: Hay Fever", runtime = Some(160)), record)("runtime.delta") shouldBe Number(40)
+    // a record of no relay, another house's, or another work of the house's: its minutes count as ever
+    measures(relay("National Theatre Live: Hay Fever", 160), Film("Hay Fever", year = Some(2027), runtime = Some(120)))("runtime.delta") shouldBe Number(40)
+    measures(relay("Royal Ballet: Hay Fever", 160), record)("runtime.delta") shouldBe Number(40)
+    measures(relay("National Theatre Live: Hamlet", 160), record)("runtime.delta") shouldBe Number(40)
+    measures(relay("Hay Fever", 160), record)("runtime.delta") shouldBe Number(40)
+  }
+
   "a runtime billed beside a joined event" should "be neutral when longer than the film's, and still count when shorter" in {
     // UK Forum Hexham's "It's Nice Up North + Q&A" runs 120 minutes: the 80-minute film and its Q&A. The slot's length
     // is no fact against the film (its learned runtime denial withdrew three siblings' credited match as they arrived).

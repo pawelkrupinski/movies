@@ -599,7 +599,7 @@ object IdentityMeasures {
                   f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
                     CreditRelation.of(if (persons.size == l.directors.size) l.directorCredits else new CreditRelation.Credits(persons), _))
                 }
-    slots(8)  = runtimeDelta(l, f, country)
+    slots(8)  = runtimeDelta(l, f, country, title)
     slots(9)  = concertCountry(f, countryRelation(l.countries, f.countries))
     slots(10) = searchRank.fold[Measure](Missing("not-returned"))(r => Number(r.toDouble))
     slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))
