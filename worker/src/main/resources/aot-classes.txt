@@ -8808,6 +8808,8 @@ services.cinemas.common.SourceFallbackScraper$PrimaryOutcome$Threw
 services.cinemas.common.SourceFallbackScraper$PrimaryOutcome$Threw$
 services.cinemas.common.UptimeRecordingScraper
 services.cinemas.common.UptimeRecordingScraper$
+services.cinemas.common.VenueCategory
+services.cinemas.common.VenueCategory$
 services.cinemas.common.VenueCredits
 services.cinemas.common.VenueCredits$
 services.cinemas.common.VenueCredits$$anon$1
