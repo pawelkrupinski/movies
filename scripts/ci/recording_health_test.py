@@ -63,8 +63,8 @@ class RecordingHealthTest(unittest.TestCase):
         self.tree.failure("https://www.metacritic.com/movie/x", 404, BEFORE, 3)
         self.tree.failure("https://www.metacritic.com/movie/y", 404, DURING, 2)
         origins = self.manifest()["origins"]
-        self.assertEqual(origins["api.themoviedb.org"], {"tree": 57, "answered": 7, "notFound": 0, "refused": 0, "refusals": {}, "proxyDown": 0})
-        self.assertEqual(origins["www.metacritic.com"], {"tree": 0, "answered": 0, "notFound": 2, "refused": 0, "refusals": {}, "proxyDown": 0})
+        self.assertEqual(origins["api.themoviedb.org"], {"tree": 57, "answered": 7, "notFound": 0, "refused": 0, "refusals": {}, "proxyDown": 0, "originDown": 0})
+        self.assertEqual(origins["www.metacritic.com"], {"tree": 0, "answered": 0, "notFound": 2, "refused": 0, "refusals": {}, "proxyDown": 0, "originDown": 0})
 
     def test_an_entry_whose_compressed_body_is_damaged_is_skipped_as_undecodable(self):
         self.tree.failure("https://www.cineworld.co.uk/api/movies", 403, DURING)
@@ -211,6 +211,33 @@ class RecordingHealthTest(unittest.TestCase):
                      "  proxy: HttpStatusException: HTTP 403 for GET https://www.cineworld.co.uk/api/movies")
         self.tree.failure("https://www.cineworld.co.uk/api/movies", "", DURING, 66, message=composite)
         self.assertEqual([(f.origin, f.reason) for f in health.judge(self.manifest(), None)], [("www.cineworld.co.uk", "refusing")])
+        self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE)]), 1)
+
+    def test_an_origin_answering_5xx_on_every_route_is_down_for_everyone_unknown_and_no_red(self):
+        # Record scrape fixtures #186 (the owner, 2026-11-14): www.kinomuza.pl answered 503 to all 22 of the recording's
+        # asks, direct AND through production's proxy, and to every request for hours after -- the site's own outage.
+        url = "https://www.kinomuza.pl/movie/buty-nieboszczyka/"
+        both = ("tools.AllBackendsFailedException: All 2 backends failed for getBytes " + url + ":\n"
+                "  direct: HttpStatusException: HTTP 503 for GET " + url + "\n  proxy: HttpStatusException: HTTP 503 for GET " + url)
+        self.tree.response("www.kinomuza.pl", BEFORE, 72)
+        self.tree.failure(url, "", DURING, 22, message=both)
+        manifest = self.manifest()
+        self.assertEqual(manifest["origins"]["www.kinomuza.pl"]["originDown"], 22)
+        self.assertEqual([(f.origin, f.reason) for f in health.judge(manifest, None)], [("www.kinomuza.pl", "origin-down")])
+        summary, written = pathlib.Path(self.dir.name) / "summary.md", pathlib.Path(self.dir.name) / "manifest.json"
+        code = health.main([str(self.tree.root), "--since", str(SINCE), "--summary", str(summary), "--write", str(written), "--title", "pl"])
+        self.assertEqual(code, health.UNKNOWN_EXIT)
+        self.assertIn("UNKNOWN: down for everyone", summary.read_text())
+        self.assertEqual(json.loads(written.read_text())["flags"], {"www.kinomuza.pl": "origin-down"})
+
+    def test_a_block_on_us_stays_refusing_a_403_or_a_5xx_on_our_direct_path_alone(self):
+        url = "https://www.kinomuza.pl/movie/x/"
+        blocked = ("tools.AllBackendsFailedException: All 2 backends failed:\n  direct: HttpStatusException: HTTP 403 for GET " + url +
+                   "\n  proxy: HttpStatusException: HTTP 403 for GET " + url)
+        direct_only = ("tools.AllBackendsFailedException: All 2 backends failed:\n  direct: HttpStatusException: HTTP 503 for GET " + url +
+                       "\n  proxy: HttpStatusException: HTTP 429 for GET " + url)
+        self.tree.failure(url, "", DURING, 15, message=blocked).failure(url, "", DURING, 15, message=direct_only)
+        self.assertEqual([(f.origin, f.reason) for f in health.judge(self.manifest(), None)], [("www.kinomuza.pl", "refusing")])
         self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE)]), 1)
 
     def test_a_real_refusal_beside_a_proxy_outage_is_still_a_red(self):

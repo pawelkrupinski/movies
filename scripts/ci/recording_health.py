@@ -34,12 +34,20 @@ code red (Record scrape fixtures #2238: Decodo answered `Tunnel failed, got: 503
 Cineworld, which 403s CI's own address, was booked as refusing 66/66; in #2265 the same outage's silent ports hung up
 on 53 of Cineworld's 156 asks, `HTTP/1.1 header parser received no bytes`).
 
+AN ORIGIN DOWN FOR EVERYONE is no verdict on our route either (the owner, 2026-11-14, deciding Record scrape fixtures
+#186): a refusal whose `direct:` AND `proxy:` legs both got an HTTP 5xx -- the origin failing for CI and for production's
+route alike, as www.kinomuza.pl answered 503 to all 22 of #186's asks and to every request for hours after -- is the
+site's outage. An origin flagged `refusing` with most of its refusals so is `origin-down`: UNKNOWN, exit 3, a warning
+and no red, and the leg keeps that origin's previous recording in the tree it publishes rather than an empty one
+(keep-previous-origins.sh). A 403 / 429, or a 5xx on our direct path alone, is still `refusing`: we are being blocked.
+
 BEST-EFFORT origins (BEST_EFFORT) are judged the same way but only WARN: OMDb is the one optional
 source, whose free key runs out of its daily quota and then answers 401 to everything (run 469,
 2026-10-20); the user chose to have recordings pass without it. Every other origin still fails the leg.
 
 Exits 1 when any origin other than a best-effort one is flagged refusing or gone, after writing the manifest and the
-table; 3 when the only such flags are proxy-unreachable (UNKNOWN: the proxy, not the origin, is what to fix); 2 when the tree (or the
+table; 3 when the only such flags are proxy-unreachable or origin-down (UNKNOWN: the proxy, or the origin's own outage,
+not the code; the manifest's `flags` says which); 2 when the tree (or the
 `--previous` manifest) cannot be read, or holds no origin at all: no verdict. A missing `--previous`
 file is the absolute floor alone (a country's first recording, or the manifest not yet published).
 Tests: recording_health_test.py beside it.
@@ -69,7 +77,11 @@ BEST_EFFORT = {"www.omdbapi.com": "OMDb"}
 PROXY_DOWN = re.compile(r"^\s*proxy: (?:[\w.]*\.)?(?:IOException: (?:Tunnel failed|HTTP/1\.1 header parser received no bytes)|"
                         r"HttpTimeoutException: proxy tunneling CONNECT request timed out|HttpConnectTimeoutException|"
                         r"ConnectException|NoRouteToHostException|UnknownHostException)", re.M)
+# A composite failure whose every route reached the origin and got a server error: the origin down for everyone.
+DIRECT_5XX = re.compile(r"^\s*direct: (?:[\w.]*\.)?HttpStatusException: HTTP 5\d\d\b", re.M)
+PROXY_5XX = re.compile(r"^\s*proxy: (?:[\w.]*\.)?HttpStatusException: HTTP 5\d\d\b", re.M)
 UNKNOWN_EXIT = 3
+UNKNOWN_REASONS = ("proxy-unreachable", "origin-down")
 
 
 def _origin(key):
@@ -87,7 +99,7 @@ def _refusal(status, message):
 
 
 def _origin_counts():
-    return {"tree": 0, "answered": 0, "notFound": 0, "refused": 0, "refusals": {}, "proxyDown": 0}
+    return {"tree": 0, "answered": 0, "notFound": 0, "refused": 0, "refusals": {}, "proxyDown": 0, "originDown": 0}
 
 
 def manifest(tree, since):
@@ -123,6 +135,8 @@ def manifest(tree, since):
                 counts["refused"] += 1
                 if PROXY_DOWN.search(message):
                     counts["proxyDown"] = counts.get("proxyDown", 0) + 1
+                elif DIRECT_5XX.search(message) and PROXY_5XX.search(message):
+                    counts["originDown"] = counts.get("originDown", 0) + 1
                 label = _refusal(status, message)
                 counts["refusals"][label] = counts["refusals"].get(label, 0) + 1
     return {"since": since, "origins": origins}
@@ -135,7 +149,7 @@ def asked(counts):
 @dataclass
 class Flag:
     origin: str
-    reason: str   # `refusing` | `gone` | `proxy-unreachable`
+    reason: str   # `refusing` | `gone` | `proxy-unreachable` | `origin-down`
 
     @property
     def blocking(self):
@@ -144,8 +158,8 @@ class Flag:
 
     @property
     def unknown(self):
-        """The residential proxy, not the origin, failed most of it: no verdict on the origin (exit 3)."""
-        return self.reason == "proxy-unreachable"
+        """The residential proxy failed most of it, or the origin was down on every route: no verdict (exit 3)."""
+        return self.reason in UNKNOWN_REASONS
 
 
 def judge(this, previous):
@@ -156,7 +170,8 @@ def judge(this, previous):
         counts = this["origins"].get(origin, _origin_counts())
         if asked(counts) >= MIN_REQUESTS and counts["refused"] > REFUSING_SHARE * asked(counts):
             proxy_down = counts.get("proxyDown", 0) > REFUSING_SHARE * counts["refused"]
-            flags.append(Flag(origin, "proxy-unreachable" if proxy_down else "refusing"))
+            down = counts.get("originDown", 0) > REFUSING_SHARE * counts["refused"]
+            flags.append(Flag(origin, "proxy-unreachable" if proxy_down else "origin-down" if down else "refusing"))
         elif before.get(origin, {}).get("tree", 0) >= MIN_REQUESTS and counts["tree"] == 0:
             flags.append(Flag(origin, "gone"))
     return flags
@@ -180,7 +195,7 @@ def table(this, previous, flags):
         counts = this["origins"].get(origin, _origin_counts())
         was = before.get(origin)
         refusals = ", ".join(f"{label}×{n}" for label, n in sorted(counts["refusals"].items(), key=lambda kv: -kv[1]))
-        verdict = (f"**{flagged[origin].upper()}{' (UNKNOWN)' if flagged[origin] == 'proxy-unreachable' else ''}"
+        verdict = (f"**{flagged[origin].upper()}{' (UNKNOWN)' if flagged[origin] in UNKNOWN_REASONS else ''}"
                    f"{' (BEST EFFORT)' if origin in BEST_EFFORT else ''}**"
                    if origin in flagged else "ok")
         lines.append(f"| {origin} | {verdict} | {_share(counts)} | {refusals or '—'} | {counts['tree']} | "
@@ -224,17 +239,24 @@ def main(argv):
     unknown = [f for f in flags if f.blocking and f.unknown]
     if args.write:
         with open(args.write, "w") as handle:
-            json.dump(this, handle, indent=1, sort_keys=True)
+            json.dump({**this, "flags": {f.origin: f.reason for f in flags}}, handle, indent=1, sort_keys=True)
     heading = f"### Recording health{f' ({args.title})' if args.title else ''}"
     basis = "against the last green recording" if previous else "absolute floor only — no previous manifest"
     verdict = (f"**{len(blocking)} origin(s) flagged:** " + ", ".join(f"{f.origin} ({f.reason})" for f in blocking)
                if blocking else "No origin refused most of what it was asked, and none vanished.")
-    if unknown:
+    unreachable = [f for f in unknown if f.reason == "proxy-unreachable"]
+    down = [f for f in unknown if f.reason == "origin-down"]
+    if unreachable:
         verdict += ("\n\n**UNKNOWN: the residential proxy was unreachable** for " +
                     ", ".join(f"{f.origin} ({this['origins'][f.origin].get('proxyDown', 0)} of {this['origins'][f.origin]['refused']} "
-                              "refusals)" for f in unknown) +
+                              "refusals)" for f in unreachable) +
                     " -- production's route to them was not there to ask, so their health is not judged: fix the proxy, "
                     "not the code")
+    if down:
+        verdict += ("\n\n**UNKNOWN: down for everyone** -- " +
+                    ", ".join(f"{f.origin} ({this['origins'][f.origin].get('originDown', 0)} of {this['origins'][f.origin]['refused']} "
+                              "refusals a 5xx both direct and through the proxy)" for f in down) +
+                    ": the site's own outage, not a block on us; its previous recording is kept")
     for flag in flags:
         if not flag.blocking:
             refused = this["origins"].get(flag.origin, _origin_counts())["refused"]
@@ -250,9 +272,11 @@ def main(argv):
         counts = this["origins"].get(flag.origin, _origin_counts())
         what = (f"refused {_share(counts)} of what this recording asked it" if flag.reason == "refusing"
                 else f"refused {_share(counts)} of what this recording asked it, {counts.get('proxyDown', 0)} with the residential "
-                     "proxy unreachable -- proxy unreachable, the origin not judged" if flag.unknown
+                     "proxy unreachable -- proxy unreachable, the origin not judged" if flag.reason == "proxy-unreachable"
+                else f"answered {counts.get('originDown', 0)} of {counts['refused']} refusals with a 5xx both direct and through the "
+                     "proxy -- down for everyone, its previous recording kept" if flag.reason == "origin-down"
                 else "held responses in the last green recording and holds none now")
-        level = "error" if flag.blocking else "warning"
+        level = "error" if flag.blocking and flag.reason != "origin-down" else "warning"
         print(f"::{level}::{'UNKNOWN: ' if flag.unknown and flag.blocking else ''}{args.title + ': ' if args.title else ''}"
               f"{flag.origin} {what}{'' if flag.blocking else ' (best effort: not failing the recording)'}", file=sys.stderr)
     return 1 if blocking else UNKNOWN_EXIT if unknown else 0

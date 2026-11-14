@@ -156,6 +156,7 @@ scripts/ci/jdk-pin.sh
 scripts/ci/jfr-every-jvm.sh
 scripts/ci/job_metrics.py
 scripts/ci/job_metrics_test.py
+scripts/ci/keep-previous-origins.sh
 scripts/ci/memory-guard.sh
 scripts/ci/order-passes-present.sh
 scripts/ci/recording_health.py

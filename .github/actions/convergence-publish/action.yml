@@ -101,6 +101,8 @@ outputs:
     description: >-
       'proxy-unreachable' when the only origins flagged were refused with the residential proxy unreachable
       (recording_health.py's exit 3): the proxy is down, the origins not judged -- an UNKNOWN, not a code red.
+      'origin-down' when the only ones flagged answered a 5xx both direct and through the proxy: the site's own
+      outage -- UNKNOWN, no red, its previous recording kept in the published tree.
     value: ${{ steps.health.outputs.unknown }}
 
 runs:
@@ -130,41 +132,6 @@ runs:
       env:
           GH_TOKEN: ${{ inputs.token }}
       run: .github/scripts/convergence-publish.sh dead "${{ inputs.code }}"
-
-    - name: Pack the enrichment fixtures this leg recorded
-      if: inputs.mode == 'record'
-      shell: bash
-      run: |
-          .github/scripts/pack-enrichment-tree.sh \
-              "test/resources/fixtures/enrichment-${{ inputs.code }}" \
-              "enrichment-upload/enrichment-${{ inputs.code }}.tar.zst"
-
-    # Replaces the country's asset IN PLACE, so the release holds one copy per country
-    # and never a history — the newest capture is the only one anyone reads, and
-    # keeping the rest was pure storage.
-    #
-    # Called under `always()`, because a leg that failed or was cancelled
-    # has usually still enriched most of the corpus, and that capture is exactly what
-    # stops the next run repeating the work. Today's two largest captures (301 MB and
-    # 434 MB) both came from CANCELLED legs.
-    #
-    # `create ... || true` because the country legs race to create the release on the
-    # very first run and exactly one of them can win; the others find it already there,
-    # which is the outcome they wanted anyway.
-    #
-    # MAIN ONLY. A branch dispatched to verify a fix still packs (so the log shows what
-    # it recorded) but never overwrites the tree every main run restores with a capture
-    # made by code main has not run. (ConvergencePublishMainOnlySpec)
-    - name: Publish the tree to the rolling release
-      if: github.ref == 'refs/heads/main' && inputs.mode == 'record'
-      shell: bash
-      env:
-          GH_TOKEN: ${{ inputs.token }}
-          CODE:     ${{ inputs.code }}
-          COMPLETE: ${{ inputs.complete }}
-          LOG:      ${{ inputs.log }}
-      # FIXTURE_RELEASE_TAG comes from the calling workflow's `env`, exported into every step's shell.
-      run: .github/scripts/convergence-publish.sh tree "$CODE" "$COMPLETE" "$LOG"
 
     # WHICH ORIGINS REFUSED THIS RECORDING. From 2026-10-07 to 10-13 Cineworld's API answered 403 to every
     # detail read every recording made (~350 a run: the recorder had no residential-proxy fallback until
@@ -203,12 +170,70 @@ runs:
           # 3: the origins it flagged were refused with the residential proxy unreachable -- UNKNOWN, the proxy to fix, not
           # the code (Record scrape fixtures #2238). Still not healthy: no baseline is published from it.
           # 2: it could not judge the tree (unreadable, or holding nothing) — no verdict, never a healthy one: failed as unjudged.
+          # 3 is UNKNOWN for one of two reasons, read off the manifest's flags: the proxy unreachable (a red still, the proxy
+          # to fix), or an origin down for everyone -- a 5xx direct AND through the proxy (the owner, 2026-11-14, Record scrape
+          # fixtures #186: no red, its previous recording kept by the step below).
           case "$verdict" in
               0|1) ;;
-              3) echo "unknown=proxy-unreachable" >> "$GITHUB_OUTPUT" ;;
+              3) if python3 -c 'import json,sys; sys.exit(0 if "proxy-unreachable" in json.load(open(sys.argv[1]))["flags"].values() else 1)' "$manifest"; then
+                     echo "unknown=proxy-unreachable" >> "$GITHUB_OUTPUT"
+                 else
+                     echo "unknown=origin-down" >> "$GITHUB_OUTPUT"
+                 fi ;;
               *) echo "::error::recording_health.py could not judge $CODE's recording ($verdict) — failing it unjudged" ;;
           esac
+          # The origins down for everyone, whatever else was flagged: their previous recording is kept either way.
+          echo "down=$(python3 -c 'import json,sys; print(" ".join(o for o, r in json.load(open(sys.argv[1])).get("flags", {}).items() if r == "origin-down"))' "$manifest" 2>/dev/null)" >> "$GITHUB_OUTPUT"
           echo "healthy=$([ "$verdict" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+    # An origin DOWN FOR EVERYONE keeps its previous recording in the tree published below rather than whatever the 5-day
+    # prune left of it (the owner, 2026-11-14, Record scrape fixtures #186: www.kinomuza.pl answered 503 on every route).
+    # The previous recording is the archive setup restored the tree from (restore-enrichment-tree.sh, <stage>.archive);
+    # nothing this recording wrote is replaced.
+    - name: Keep a down origin's previous recording
+      if: inputs.mode == 'record' && steps.health.outputs.down != ''
+      shell: bash
+      env:
+          CODE: ${{ inputs.code }}
+          DOWN: ${{ steps.health.outputs.down }}
+      run: |
+          read -ra hosts <<< "$DOWN"
+          scripts/ci/keep-previous-origins.sh "$RUNNER_TEMP/tree-stage.archive" "test/resources/fixtures/enrichment-$CODE" "${hosts[@]}"
+
+    - name: Pack the enrichment fixtures this leg recorded
+      if: inputs.mode == 'record'
+      shell: bash
+      run: |
+          .github/scripts/pack-enrichment-tree.sh \
+              "test/resources/fixtures/enrichment-${{ inputs.code }}" \
+              "enrichment-upload/enrichment-${{ inputs.code }}.tar.zst"
+
+    # Replaces the country's asset IN PLACE, so the release holds one copy per country
+    # and never a history — the newest capture is the only one anyone reads, and
+    # keeping the rest was pure storage.
+    #
+    # Called under `always()`, because a leg that failed or was cancelled
+    # has usually still enriched most of the corpus, and that capture is exactly what
+    # stops the next run repeating the work. Today's two largest captures (301 MB and
+    # 434 MB) both came from CANCELLED legs.
+    #
+    # `create ... || true` because the country legs race to create the release on the
+    # very first run and exactly one of them can win; the others find it already there,
+    # which is the outcome they wanted anyway.
+    #
+    # MAIN ONLY. A branch dispatched to verify a fix still packs (so the log shows what
+    # it recorded) but never overwrites the tree every main run restores with a capture
+    # made by code main has not run. (ConvergencePublishMainOnlySpec)
+    - name: Publish the tree to the rolling release
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'record'
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+          CODE:     ${{ inputs.code }}
+          COMPLETE: ${{ inputs.complete }}
+          LOG:      ${{ inputs.log }}
+      # FIXTURE_RELEASE_TAG comes from the calling workflow's `env`, exported into every step's shell.
+      run: .github/scripts/convergence-publish.sh tree "$CODE" "$COMPLETE" "$LOG"
 
     - name: Publish this healthy recording's manifest as the next one's baseline
       if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && steps.health.outputs.healthy == 'true'

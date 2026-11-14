@@ -1370,13 +1370,19 @@ jobs:
 
             # A RECORDING whose per-origin health failed (convergence-publish's "Judge this recording's per-origin
             # health", its table in the log): red here, after every publish, so the tree
-            # is saved either way.
+            # is saved either way. Not red when the only flags were origins down for everyone -- a 5xx both direct and
+            # through production's proxy, the site's own outage (the owner, 2026-11-14, Record scrape fixtures #186):
+            # warned, their previous recording kept in the published tree.
             - name: Fail the leg on the recording's health
               if: always() && inputs.mode == 'record' && steps.publish.outputs.recording-healthy == 'false'
               shell: bash
               env:
                   UNKNOWN: ${{ steps.publish.outputs.recording-health-unknown }}
               run: |
+                  if [ "$UNKNOWN" = origin-down ]; then
+                      echo "::warning::UNKNOWN: down for everyone — an origin of ${{ inputs.country }}'s recording answered a 5xx both direct and through the proxy: the site's own outage, not a block on us; its previous recording was kept — see the Recording health table in this job's log"
+                      exit 0
+                  fi
                   if [ "$UNKNOWN" = proxy-unreachable ]; then
                       echo "::error::UNKNOWN: proxy unreachable — ${{ inputs.country }}'s recording met the residential proxy down, so the origins it routes through it were not judged; fix the proxy (the Decodo probe workflow says whether it answers), not the code — see the Recording health table in this job's log"
                   else
