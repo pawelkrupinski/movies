@@ -335,6 +335,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(bounded.copy(year = Some(2005)), Film("King Kong", year = Some(2005)))("year.delta") shouldBe Number(0)
   }
 
+  // DE Kommunales Kino im Künstlerhaus' and Schaubühne Lindenfels' "Close": the operator linked Cineamo's 148857m, whose
+  // 2004 premiere rode as the bound, and Lukas Dhont's 2022 film -- the one Passage Kinos Leipzig bills, dated 2022 and
+  // 104 minutes, from its own source -- was 18 years past it (year.delta -6.85, the cannot-link cut at 16.5%).
+  "a year upper bound" should "state nothing against a film another venue's own facts back" in {
+    val close = Film("Close", year = Some(2022))
+    def corroborated(venues: Int) = IdentityMeasures.listingFilm(Listing("Close", yearUpperBound = Some(2004)), close, None, 0, venues)
+    corroborated(0)("year.delta") shouldBe Number(-18)
+    corroborated(1)("year.delta") shouldBe Missing("listing")
+    corroborated(1)("year.distance") shouldBe Missing("listing")
+    // the year a listing states is its own fact, whoever backs another film
+    IdentityMeasures.listingFilm(Listing("Close", year = Some(2004)), close, None, 0, 1)("year.delta") shouldBe Number(-18)
+  }
+
   // ES Cines Bulevar's "Drácula. 30 Aniversario" (review answer: Coppola's 1992 film), its original title "Bram Stoker's
   // Dracula 30th Anniversary": the anniversary and the possessive credit are searched without in the original title too
   "an anniversary re-release's original title" should "be searched without its anniversary" in {
