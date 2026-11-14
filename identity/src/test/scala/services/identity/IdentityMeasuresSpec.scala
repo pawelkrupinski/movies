@@ -1409,6 +1409,34 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("Pink Floyd: The Final Cut"), Film("Pink Floyd"))("title") should not be Category("exact")
   }
 
+  "an original title carrying the showing's language version" should "be measured without it" in {
+    // DE Moviemento bills "Die Blutgräfin - The Blood Countess", its original-title field "… (OmeU)": the tag is the
+    // screening's English-subtitled version, not a word of the film's title. Read with it, the original was a `segment`
+    // of Ottinger's "Die Blutgräfin" (-2.52) and the cannot-link cut denied the film every other venue takes.
+    def billed(original: String) = Listing("Die Blutgräfin - The Blood Countess", originalTitle = Some(original))
+    val countess = Film("Die Blutgräfin", Some("Die Blutgräfin"), year = Some(2026))
+    measures(billed("Die Blutgräfin - The Blood Countess (OmeU)"), countess)("originalTitle") shouldBe
+      measures(billed("Die Blutgräfin - The Blood Countess"), countess)("originalTitle")
+    measures(billed("Die Blutgräfin - The Blood Countess (OmeU)"), countess)("originalTitle") should not be Category("segment")
+    measures(billed("Die Blutgräfin - The Blood Countess (OmeU)"), countess)("originalTitle") shouldBe Missing("listing")
+    measures(Listing("Rocky", originalTitle = Some("OmU: Rocky")), Film("Rocky", year = Some(1976)))("originalTitle") shouldBe Missing("listing")
+    // beside a film the title does not name, the copy stays what it measures (it kept SpongeBob's stage record off
+    // Metropolis Bochum's Starlight Express relay, and so the segment link to Cineplex Baden-Baden's bare spelling)
+    measures(Listing("Andrew Lloyd Webbers Starlight Express - Live on Stage", originalTitle = Some("Andrew Lloyd Webbers Starlight Express - Live on Stage (OmeU)")),
+      Film("The SpongeBob Musical: Live on Stage!", year = Some(2019)))("originalTitle") should not be Missing("listing")
+    // a note that is no showing's badge stays the field's text: Viktoria's re-release mark
+    measures(Listing("DAS BOOT (DIRECTOR'S CUT)", originalTitle = Some("DAS BOOT (DIRECTOR'S CUT)(WA:2023)")),
+      Film("Das Boot: Director's Cut", year = Some(1997)))("originalTitle") should not be Missing("listing")
+    // nor is the copy an agreement: ZOO PALAST's "In Memoriam" ("In Memoriam – Gegen ihren Willen", its original-title
+    // field "OmU: In Memoriam") is no 1977 "In memoriam" by its tag-stripped copy matching that film's original
+    measures(Listing("In Memoriam", originalTitle = Some("OmU: In Memoriam")), Film("Erinnerungen an Paulina", Some("In memoriam"),
+      year = Some(1977)))("originalTitle") shouldBe Missing("listing")
+    // two listings' originals compare as the films' titles they are
+    IdentityMeasures.listingListing(Listing("Rocky", originalTitle = Some("Rocky (OmU)")), Listing("Rocky", originalTitle = Some("Rocky")),
+      sameVenue = false, None)("originalTitle") shouldBe IdentityMeasures.listingListing(Listing("Rocky", originalTitle = Some("Rocky")),
+      Listing("Rocky", originalTitle = Some("Rocky")), sameVenue = false, None)("originalTitle")
+  }
+
   "an original title copying the listing's own title" should "repeat it whether whole or a truncation" in {
     // UK BTS relays: the venue's original-title field is its own title cut short ("…: Live").
     val bts = "BTS WORLD TOUR 'ARIRANG' IN BUENOS AIRES: LIVE VIEWING"

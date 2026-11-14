@@ -199,9 +199,23 @@ object IdentityMeasures {
     private[identity] lazy val directorTokens: Seq[Seq[String]] = directors.map(TitleContainment.tokens)
     private[identity] lazy val creditsBesideYear: CreditRelation.Credits =
       if (yearCredits.isEmpty) directorCredits else new CreditRelation.Credits(creditedBesideYear)
-    /** The original title, trimmed, as a comparison form, once per listing (`originalTitleRelation`). */
-    private[identity] lazy val originalForm: Option[IdentityMeasures.OriginalForm] =
-      originalTitle.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.OriginalForm(_))
+    /** The original title as the `originalTitle` measures read it: without the screen-format and language-version tags
+     *  a feed bills in it -- the tags that are a showing's badge ([[services.movies.FormatTags.extractFormatTags]]'s
+     *  tokens: OmU, OmeU, OV, 3D, IMAX, …), read off as the title's own are. DE Moviemento's "Die Blutgräfin - The Blood
+     *  Countess (OmeU)" bills the showing's English-subtitled version, no word of the film's title; read with it, the
+     *  original was a `segment` of Ottinger's "Die Blutgräfin" and the cannot-link cut denied the film. A note that is
+     *  no badge stays the field's text: Viktoria's "DAS BOOT (DIRECTOR'S CUT)(WA:2023)" re-release mark, read off, left
+     *  a copy of the title and the stub record of the cut (1794076) took it. Searches still ask the original as
+     *  published. */
+    private[identity] lazy val measuredOriginal: Option[String] =
+      originalTitle.map(_.trim).filter(_.nonEmpty).flatMap { original =>
+        services.movies.FormatTags.extractFormatTags(original) match {
+          case (clean, tokens) if tokens.nonEmpty => Some(clean.trim).filter(_.nonEmpty)
+          case _                                  => Some(original)
+        }
+      }
+    /** [[measuredOriginal]] as a comparison form, once per listing (`originalTitleRelation`). */
+    private[identity] lazy val originalForm: Option[IdentityMeasures.OriginalForm] = measuredOriginal.map(IdentityMeasures.OriginalForm(_))
   }
 
   /** What TMDB says about a candidate film. `directors`/`countries` are `None` when the film's
@@ -690,9 +704,15 @@ object IdentityMeasures {
    *  in the score and a veto alike. Counted, a truncated copy ("…: Live") read as a fragment of the
    *  very record the title names exactly. Beside a film the title does NOT name, the repeat stays
    *  what it measures: Everyman's "Dracula (4K Restoration)" is not The Mummy its cinematographer
-   *  directed. */
+   *  directed. A field that is the title with the showing's version tag ([[measuredOriginal]]: ZOO PALAST's "OmU: In
+   *  Memoriam") is the title again beside a film the title names, agreeing or not: absent, its tag no more a mismatch
+   *  than its copy an agreement (read as a match, it took the venue's "In Memoriam – Gegen ihren Willen" as Brasó's 1977
+   *  "In memoriam"). Beside a film the title does not name it stays what it measures, as the plain repeat does:
+   *  Metropolis Bochum's "… Starlight Express - Live on Stage (OmeU)" is no "SpongeBob Musical: Live on Stage!". */
   private def ownOriginalTitle(l: Listing, f: Film, title: Category): Measure =
-    originalFormRelation(l.originalForm, f.trimmedForms, f.year) match {
+    if (NamingRelations(title.value) && l.measuredOriginal != l.originalTitle.map(_.trim).filter(_.nonEmpty) &&
+        originalTitleRelation(l.measuredOriginal, l.rawTitle.toSeq :+ l.title).match { case Category(c) => CopiesOfTheTitle(c); case _ => false }) MissingListing
+    else originalFormRelation(l.originalForm, f.trimmedForms, f.year) match {
       case m if NamingRelations(title.value) && repeatsItsTitle(l) && m != Category("match") => MissingListing
       case m                                                                                 => m
     }
@@ -719,8 +739,8 @@ object IdentityMeasures {
     }
     Map(
       "title"         -> title,
-      "originalTitle" -> ((a.originalTitle.filter(_.trim.nonEmpty), b.originalTitle.filter(_.trim.nonEmpty)) match {
-                           case (Some(_), Some(ob)) => originalTitleRelation(a.originalTitle, Seq(ob))
+      "originalTitle" -> ((a.measuredOriginal, b.measuredOriginal) match {
+                           case (Some(oa), Some(ob)) => originalTitleRelation(Some(oa), Seq(ob))
                            case (None, _)           => MissingListing
                            case (_, None)           => MissingFilm
                          }),
