@@ -1,0 +1,16 @@
+# One case-insensitive regex a line: a cluster any of whose titles matches is an event, set aside before judging.
+# Broad on purpose (wider than NonFilmEvents); it can swallow a real film, so spot-check what it takes.
+\b(live|encore|relay|broadcast|screening of|streamed)\b.*\b(opera|ballet|met|nt live|royal)\b
+\b(nt live|national theatre|met opera|the met\b|royal (ballet|opera)|bolshoi|rbo)\b
+\b(concert|koncert|konzert|live (in|at)|tour\b|orchestra|symphon|recital|gig)\b
+\b(q ?& ?a|q and a|panel|talk|lecture|discussion|workshop|warsztat|masterclass|class\b|seminar|rozmow|spotkanie|gespräch|vortrag|podium)\b
+\b(marathon|maraton|all[- ]?nighter|double bill|triple bill|triple feature|double feature)\b
+\b(secret|mystery|niespodzian|überraschung|sneak|premiere night)\b
+\b(shorts?|short films?|krótkie|kurzfilm|kurzfilme|shorts programme|short film programme)\b
+\b(pass|karnet|bilet|festival|festiwal|przegląd|retrospektyw|season ticket|membership|gift|voucher|gutschein)\b
+\b(stand-?up|comedy night|comedy club|open mic|quiz|bingo|karaoke)\b
+\b(pckul|kino pckul)\b
+\b(episode|series\b|season \d|staffel|folge)\b
+\b(kids'? club|kinderkino|toddler|bambini|storytime|rhyme time|sensory|autism|dementia|silver screen|cinema for kids)\b
+\b(game|gaming|esports|playstation|tournament|panto|pantomime|christmas show)\b
+\b(screen hire|private hire|private screening|party|birthday)\b

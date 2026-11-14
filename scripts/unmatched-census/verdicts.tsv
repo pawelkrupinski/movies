@@ -1,0 +1,229 @@
+# Hand verdicts for scripts/unmatched_census.py; first round 2026-11-14 (judged from the trace candidates, no TMDB lookup).
+country	filmId	title	verdict	cause	tmdbId	note
+US	operanationaldeparislafanciulladelwest|	Opéra National de Paris: La fanciulla del West	relay			stage-house relay, no TMDB record found
+US	f3b14c62a59d702e	League of Legends Worlds 26 - Finals in Cinema	not-film			esports event
+US	f2554ae424ae063b	Ek Onkar	no-candidate			no candidate at all: event/local title/not on TMDB; default
+US	f9c4aa9303f60a73	Prince 3121 Las Vegas Live	no-candidate			no candidate at all: event/local title/not on TMDB; default
+US	fea743b9b17d1ed8	Billy Joel Tonight	no-candidate			no candidate at all: event/local title/not on TMDB; default
+US	f7a1fbc3c80dbffe	The Host: 20th Anniversary	real	banner	1255	banner/strand text (20th Anniversary); The Host (2006)
+US	jeopardyinteractive|	JEOPARDY! INTERACTIVE	no-candidate			no candidate at all: event/local title/not on TMDB; default
+US	ff4bdcd2477fe5d9	The Arrival + Unarius Mixtape	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+US	f0701c9a9fd6583c	It (1990)	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+US	metoperamedea202223|	MetOpera: Medea (2022–23)	relay			stage-house relay, no TMDB record found
+US	f4e799ea698c7f9e	Satan Claus Is Coming to Town	real	rating-cut	566008	rating-cut refusal; Satan Claus Is Coming to Town
+US	fbc32c05ae5f2f38	Great Bear Rainforest 3D	real	learned-veto	592402	learned cannot-link veto; Great Bear Rainforest 3D
+US	f959b1bc844a07ec	Dune: Part One Reissue (2026)	real	banner	438631	banner/strand text (Reissue (2026)); Dune 2021
+US	f37903aa3b1406f3	Dune: Part Two Reissue (2026)	real	banner	693134	banner/strand text (Reissue (2026)); Dune: Part Two
+US	f38a4c194d7c9643	A/V Geeks Present: Were You Scared?	no-candidate			no candidate at all: event/local title/not on TMDB; default
+US	f1f011ef16ff61e3	The 23rd Annual Animation Show of Shows	not-on-tmdb			edition not on TMDB; 23rd Animation Show of Shows
+US	f57abf3289d202f1	Long Days Journey Into Night	real	venue-typo	1086037	venue typo; Long Days Journey -> Day's
+US	f404b5f42d2b1d9b	Film Up!	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+US	f04acbc07bdcefa0	Hanksgiving	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f7ccc0c2a6d85b10	Ek Onkar	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f7395062670141ed	CHUBBY BROWN 2026	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f68ebbba1279be20	EFF26 - Electric Awards: Screenings, Talks, & Networking	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f7bde75c4af4ff9d	League of Legends Worlds 26 | Finals in Cinema	not-film			esports event
+UK	fcccd32e2b498467	Bad Moms X-mas (Mums Night Off)	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f31f974dfb34700a	The Comic Strip Presents…	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	fbecf9799a66bb75	Scream Unseen (24 November)	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	fdde5b038f7e8649	Doctor Who Day: The Impossible Planet & The Satan Pit - The Cinematic Event	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	fa1e9be5627f2120	Arts Society - The History of London in Stained Glass	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f52aa0d3facb4c8d	Homicide & Midrashic Intro by Prof. Nathan Abrams	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	weregoingonabearhuntthetigerwhocametotea|2016	We're Going on a Bear Hunt + The Tiger Who Came to Tea	double-bill			"two real films billed as one; two TMDB films, ""alone: bills several works"""
+UK	f62e944ed5062695	Heated Rivalry: Season 01 - Epi 05 & 06	not-film			TV episodes; Heated Rivalry
+UK	f8d045dd83e33671	THE SNOWMAN™ & THE SNOWMAN™ AND THE SNOWDOG	double-bill			"two real films billed as one; two TMDB films, ""alone: bills several works"""
+UK	f480f40763653ac2	FiFF: Come Into My (Dressing) Room: A Post-Punk Trio	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f2d07d7d0e4a8137	Drum Devon - West African Drumming	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f3301a0a0c9aecf6	D’eux (Malayalam)	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	roomonthebroom|2012	Tabby McTat + The Room on the Broom	double-bill			"two real films billed as one; two TMDB films, ""alone: bills several works"""
+UK	fddcebd5172a76bb	The Turn of the Screw (2026)	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f92ddb112fa0add4	Dramatically Different 2026	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	ffd929b17052e895	Ebeneezer	real	imdb-only		IMDb-only; Ebeneezer, per census Fix D out of scope (one word)
+UK	paddington|2014	Paddington Bear: Winter Warmers	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f71687ed540cd2dd	The Long Farewell (1987)	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f3e1ebd09b1b29ea	Seriously Collins	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	fcb68a01fb8c3264	Track Dogs	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f5c0d4daad8df440	La Bayadère	relay			stage-house relay, no TMDB record found
+UK	f978f97b75af0ce6	Autumnal Linocut Printmaking for Beginners	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f57ee0ba291b8b51	Marcel, Le Pere Noel	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f8276a22398566e6	War of “The War of the Worlds”: The Martian Invasion in Print, Radio, Stage and Screen	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f7d7a68375eda9bd	Film School	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	faa4bd11e944966b	Oye Santana 2027	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	ffa913bdb5f45510	Heated Rivalry: Season 01 - Epi 03 & 04	not-film			TV episodes; Heated Rivalry
+UK	ff05044931f3c493	Dead Calm & Vanchango	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f9611b0c526960bc	Opéra De Paris Ballet - La Bayadère	relay			stage-house relay, no TMDB record found
+UK	f2fddaf8a9e7c63f	Pulse Dance : 1st Year Anniversary showcase	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f8e382c9216674b4	Heated Rivalry: Season 01 - Epi 01 & 02	not-film			TV episodes; Heated Rivalry
+UK	f79088b3d0777f7f	The Fall of the House of Usher (18 CTBA)	real	other	106394	namesake/not-released-in-GB veto; Fall of the House of Usher
+UK	fcf94f175b424d0c	Buffy Studies	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f52767524ebf22a0	Disco!	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	fd27895b9b896335	BIFA Presents Tender Loving Care	real	banner	1370191	banner/strand text (BIFA Presents); Tender Loving Care; year unclear
+UK	f09017b79b1f9bb2	Arts Society - Architecture + Photography = Art	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	fc7d520c8443ea66	In One Brief Moment All Eternity with Elif Shafak	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	fb67bdde53289f08	Pitchblack Playback: My Bloody Valentine 'Loveless' (35th Anniversary)	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f2d823ec6eb8f143	Glenn Veness' Christmas Films	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	fc9b1973dac1cb12	THE COUNTERFEIT 60s SHOW	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	fd58cd09985bc5fe	Cafe Philo (in English)	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f2cf9dd5b566aa65	Victor and Albert	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f85eb21d28c51edf	Opéra national de Paris: Notre-Dame de Paris	relay			stage-house relay, no TMDB record found
+UK	f52fb6562b0a69e7	NEW JERSEY BOYS	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f7f47551b681aa64	Friday Night is Music Night - The Dyfies	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f37b82ebc833bbac	Our House | Preview Screening	real	banner	414191	banner/strand text (| Preview Screening); Our House (2018)
+UK	f1934f0d26225cb1	The Brittas Empire	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	fb177c9e907775b2	Flavel Café presents BRNC Pre-show Supper	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f903b4940d39dae4	Pottery: 6wk Throwing	no-candidate			no candidate at all: event/local title/not on TMDB; default
+UK	f4b65fc96e16d927	Colectivo Film Hub presents: The Lost Pussy of the Incas	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+UK	f54f4b3b4d15865a	Kino KILN: Born in Flames	real	banner	36832	banner/strand text (Kino KILN:); Born in Flames (1983)
+DE	f66bf6615710cfdb	Tabaluga und Leo - Die Weihnachtsgeschichte	real	learned-veto	68030	learned/feed-title veto; Tabaluga und Leo
+DE	f7afab719bf5533b	Dietlinde Ellsässer und Jakob Nacken - Lieblingslieder - Weihnachtsspecial	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f85764aaea346d89	"""Local Kino Helden"": Best of ""Filmisches Klassenzimmer"" (Bavaria)"	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f4b02cb371cd1602	Kurzfilmprogramm Wandelbar	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fc7fd37a53197e0c	Die TWILIGHT SAGA - Alle fünf Filme	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	ff60e68a85725291	HomeTales Von Brake auf die große Bühne Lampenfieber, Leidenschaft und große Träume	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	ff3cc027bc5e6f3c	KINO-VARIETÉ	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fde1f00f3ab5a51c	65! Leben	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f93c6797bafff922	Dune Triple	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f4807e0ec30a4328	La Bayadere (Opera national de Paris)	relay			stage-house relay, no TMDB record found
+DE	f557a4797acf3d72	STUMMFILM MIT TOBIAS RANK:NOSFERATU (Freie Platzwahl)	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	ff2f1091ee8717af	CLOSE	real	learned-veto	901563	learned cannot-link veto; Close (2022)
+DE	f08560cdce38d149	GUT FÜR ALLE	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fb36b08b133720e4	League of Legends Worlds 2026 - Finals in Cinema	not-film			esports event
+DE	f6a9264829ba0a55	ULI BÖTTCHER	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	ff2e4ef308654e3d	Klassik verstehen und genießen mit Thomas Sander: 125 Marlene Dietrich	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f488d353f1e9a82f	#HockeyDeutschland. Durch Liebe zum Titel	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f5a0287982f84981	Wieder Drei	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f75f0cf46348eb8d	NOSFERATU – PHANTOM DER NACHT – Ballett Extra	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f4f923dd72525fea	Helge Thun - Zickzack zum Zenit	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fbfebe1cb94c4201	Patagonien	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fe38445630c99bcc	DJ BOBO - UNEXPECTED	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fb2d695c5a16cf81	Lieblingsmenschen	real	namesake-runner-up	1185542	namesake runner-up / feed link overruled; Lieblingsmenschen 2026 vs 2021 namesake 788385
+DE	fee713bfdbb52574	Severin Groebner – ICH BIN DAS VOLK	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f751d5ab1279a8e5	KILMINISTER - A Tribute to Motörhead | SUPPORT: MAAMUUT	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fb43b2aa46cbd240	DONNERSTAGSKNEIPE + X	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fcbe9425a971ed40	Lucy van Kuhl - Geschickt verpackt	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	ff3296a4ea6ec2c3	LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!	real	banner	1689091	banner/strand text (date + guest suffix); LEICA - Ein Jahrhundert in Bildern
+DE	f383d7c1d35ce3c9	„Musik war meine erste Liebe“ – Hommage an Udo Jürgens	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fa507c81e39733f4	THEATER: ACHTSAM MORDEN - SPIELART	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fbb5e47840cae99a	Nur für Verrückte	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f183b0cf903b6c26	Kathrin Achtelik: Splash - Experimentierfeld Tusche	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f7bde75c4af4ff9d	League of Legends Worlds 26 | Finals in Cinema	not-film			esports event
+DE	f8a14e46262a1981	Das Geld liegt auf der Fensterbank, Marie - GLORREICH VERSIEBEN	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f373d092add1c179	Hiob	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f1338eb023a784a4	Kurzfilom Block C	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fa91e853d83dc629	Da, wo ich Dich sehen kann	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	ff0c286ca3634958	WIE GEHT NATUR?!	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fa8a78c9fb00a9ef	SÜDAMERIKA – 100.000 KM BIKE ABENTEUER	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f0ebbf596d6cb1a1	Los geht s Maxi: Wir erleben Kino mit allen Sinnen	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fc47362f0c19f886	Nepal Grenzenlos	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f10da9dc13a1e084	Ungesehene ADHS - Die Frauenvariante	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fd7d2b4d2209ef33	Rolf Miller „Ich sag nix“	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f257ca9f8f81506c	Vom Skript zur Leinwand	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f7e74c7aec9c7b7d	Überraschungspremiere	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f978e2e1ff54a3ea	In a Rocking Mood	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f9c92215b205675d	DUMMY 120	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	feae222865138ffb	AB NACH RIO	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f8b3839fca315984	Daphne de Luxe - „Bei aller Liebe…“	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fc72137fda627de9	Campy Queery Night	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fc9449c4ac19afec	Gypsy-Jazz 05: Joscho Stephan trifft Tony Lakatos	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f1e5c753e686f25e	STUMMFILM MIT TOBIAS RANK:CHARLIE CHAPLIN (Freie Platzwahl)	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f134b4bad0ec8a2f	Die Blutgräfin - The Blood Countess	real	learned-veto	1251608	learned cannot-link veto; Die Blutgräfin
+DE	ff943e928bad0299	Hinnerk Köhn - NOIR	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fb2c4a04c8cbc116	Die Bremer Stadtmusikanten Theater Laboratorium SA	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fd7b5411601f0600	L’homme qui plante des Baobabs	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f5a72ef00d3f16e5	Fantasy	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f94961798b165b62	Dune 1 & 2 Double-Feature	double-bill			"two real films billed as one; two TMDB films, ""alone: bills several works"""
+DE	fd6ac730bc74b903	Demnächst: Es muss ja nicht gleich Santiago de Compostela sein	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f20f16de3ecd3cb7	Feels like Home | Osteuropäische Filmtage 2026	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fddf1fbd7b381cab	Oberhausen trifft Paderborn: 17. Kurzfilmnacht	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fad1d5125866455b	Father | Osteuropäische Filmtage 2026	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f83c160e0144798c	SCHÖNE BESCHERUNG - KAMINERS WEIHNACHTEN	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f647398ddf0177a9	Spirit of Soul	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fdf52a9d52951198	POPCORN & PUNCHLINES	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fa487f8ffb6e9b40	Weihnachtsmarkt der Vereine Masserberg	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fad77359273d1171	St. Nicholas and the Lost Letter	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	f63da209c6bb5204	Axel Zwingenberger: Blues und Boogie Woogie	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f8ade23898fc4137	Herbstbasteln	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f5ca732474e657a7	Am Wege stehn und nicht wissen wohin sich drehnAnna, eine junge Bäuerin	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f0c4d4f5ac24ea01	Poreia Theatre: Sophokles' Elektra	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	f904b0b7671d7f14	Hard Boiled	real	learned-veto	11782	learned cannot-link veto; Hard Boiled (1992)
+DE	fc38efd955cf4a99	DEUTSCHER KURZFILMPREIS UNTERWEGS	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fcd058432e371d1e	S.A.D. - A Tribute to Metallica + SinCrown	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fad2cc576e524823	Repariertreff	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fe9d86dca79a09f8	STEFAN JÜRGENS live im Beluga Kino: DRACULA - Eine Literaturperformance	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+DE	fa79cdc6235658be	Vereinigtes Lachwerk Süd: Ernst Mantel und Werner Koczwara - The Dark Side of the Huhn	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fcb24faa9884abfc	Dune 1 & 2 (DE)	double-bill			"two real films billed as one; two TMDB films, ""alone: bills several works"""
+DE	f4df50d8c58397a1	Moving with Movies - Benefiz-Gala für Exil e.V.	no-candidate			no candidate at all: event/local title/not on TMDB; default
+DE	fedf623f9c880854	MISERICORDIA	real	learned-veto	1063574	learned/feed-title veto; Misericordia
+PL	f4e7db16f2fe7841	On the Images of Defeat, Loss and Mourning	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f76974423e611346	CINE POLACO	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	fbcc64714cd2105a	League of Legends Worlds 26 | Finals in Cinema w Helios Sport	not-film			esports event
+PL	f78bc45636948a42	CINEVERSO I	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	fbeafbaf65afc56c	SZTUKA W CENTRUM | Munch: Miłość, duchy i wampirzyce	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f3f1df09e40c9c24	Jedna kobieta, jeden stanik	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	fe63973d8f1e7096	Intymnie Dorota Wroblewska Maciej Bąk	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	fcc43f455027930d	„Hauser symfonicznie” z londyńskiej Royal Albert Hall w Helios na Scenie	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f253cf2bb9ed4fe5	Wąpierzyce | AfryKamera	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f4d0892c56eccca3	Filmowe popołudnie dla dzieci: Fajer i pult + warsztaty	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	ff018208eb8f056e	Dziś nie gramy, wybierz inną datę.	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f986e61d06daa86b	Hauser symfonicznie z londyńskiej Royal	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f514dff9b2de91e8	AFRYKAMERA: 1 KOBIETA, 1 STANIK	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f570366490f4f597	"Akademia Polskiego Filmu: Strachy + W kopalni węgla | W kręgu kina ""społecznie użytecznego"""	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f77a4a10749ad1f2	Baranki w niemym kinie: Baśnie Lotte Reiniger	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f3550e112fbf8051	Żar	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	romeoijulia|1996	Balet z Opery Paryskiej 2026-2027: Romeo i Julia	relay			stage-house relay, no TMDB record found
+PL	f0d9c7d433eab431	Balet z Opery Paryskiej 2026-2027: Bajadera	relay			stage-house relay, no TMDB record found
+PL	f0f49f48e0820b9d	Jesienne bajki SFR 2	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f7bde75c4af4ff9d	League of Legends Worlds 26 - Finals in Cinema	not-film			esports event
+PL	fc9cca11aa7ae7c9	KINO NA NIEDZIELE:PRZEDPREMIEROWY POKAZ CARLO ACUTIS. ŚWIĘTY NASTOLATEK	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f5d584859bcb6a31	21. AfryKamera: AfryZigh - blok krótkich metraży	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f8675e7a4d865a2b	Diuna: Część pierwsza	real	local-title	438631	local title TMDB lacks / title miss (Część pierwsza); Diuna: Część pierwsza = Dune 2021
+PL	f9c86be6c175b792	Jak powiedzieć „ja”? - Zestaw filmów krótkometrażowych | TransFest 2026	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f8499d4b817535ae	Balet z Opery Paryskiej 2026-2027: Notre-Dame de Paris	relay			stage-house relay, no TMDB record found
+PL	f1d596a54880f256	ZAKLĘTE REWIRY | NARRACJA: MALCOLM XD	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f1dd02398a91f9dd	AFRYKAMERA: OCZY GHANY	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f2bff2c3291aa727	Okładka „Love Yourself & Show”	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f93ab5d179f02117	Szwedy. Pluton strzelców piechoty | WATCH DOCS	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	fabeb19cb8c382d9	Superbohater	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f009e4af6a059bf8	Best of Annecy 2026	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	fcc514a7513a1d6b	Hauser symfonicznie z Royal Albert Hall	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f56cd81d8f1935e9	"10 Tenorów ""Dziesięć głosów, jedna scena"""	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	fcaaeb457aaf1ba8	Dolina Issy - Filmowe Obrazy: Jerzy Łukaszewicz	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	fb6d87ddae08869e	"LADIES FOR LADIES z przedpremierowym seansem filmu ""Violeta Villas"""	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	ff3b419907cccb35	Okładka Wojtek Pilichowski Jericho Brass Collective	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	fc32fefb84a5469c	Pierniczek okrutniczek | Gliwicki Jarmark Bożonarodzeniowy	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f37771db8d466431	Theory of Seeing	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	fea08e9d6678a693	Recepta na szczęście 2	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f2acaa280522046b	Hej, Duggee: Klub Zucha - zestaw odcinków	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f6962cc33ef45ba2	Papużka	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f1bf9f7e07f006c1	Okładka „Na żaglach radości”	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f2ad68a5c80dc1a6	Zestaw krótkometrażowych filmów animowanych z lat 1935–2025	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f59ea473fbc9f918	Okładka Seminarium Ursynowskie	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f651f03ed17aeaa5	Misiowe Poranki: MIKOŁAJKOWA PRZYGODA	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f52fc84b7451fd5c	CINEPHILE II – kino Pere Portabelli	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	szczesciarze|2022	Szczęściarze	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	fe2917dbfe8c0542	Akademia Polskiego Filmu: Wobec Zagłady | Ostatni etap + Majdanek – cmentarzysko Europy	relay			stage-house relay, no TMDB record found
+PL	f70614e566a7c4b1	JEZIORO ŁABĘDZIE	relay			stage-house relay, no TMDB record found
+PL	f76e2867e3434e5d	Ekstremalna Pogoda	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+PL	f87a02a95f1e38ea	Niesamowite przygody skarpetek: Do roboty! PREMIERA 2D dubbing	real	banner	1735319	banner/strand text (PREMIERA 2D dubbing); Niesamowite przygody skarpetek 4
+PL	fa5bae6caf9ffbd1	MEDYTACJE/NEUROJOGA	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f59eb0b31bc4c779	22 WPFG: K2 1976 - Leszek Cichy	no-candidate			no candidate at all: event/local title/not on TMDB; default
+PL	f329bd83e0949599	FOKUS: GRANICE - Głupcy	real	banner	908327	banner/strand text (FOKUS: GRANICE); Głupcy
+PL	f49a7633d89262fc	Dni Kina Niemego - Buster Keaton dla dzieci	no-candidate			no candidate at all: event/local title/not on TMDB; default
+ES	f42e71f11607817f	El cielo es para siempre	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	f58ff9b46106c580	Hamlet - Ópera (Cine)	relay			stage-house relay, no TMDB record found
+ES	f7691a521d963045	Christmas in Versailles – Sonya Yoncheva	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	ffbcbbf2857b9008	Pavarotti 90th – the Grand Tribute 26-27	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	f5c0d4daad8df440	La Bayadère (Cine)	relay			stage-house relay, no TMDB record found
+ES	fe2dcf3eaaa6e305	Don Quijote - Ballet de l'Opéra National de Bordeaux	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	fa4be2aac2ed7d27	La Verbena de la Paloma 26-27	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	fcbebd16891182cd	Le Corsaire (Cine)	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	f6f9d14576961740	EVENTOS 26-27  EL CASCANUECES	no-candidate			no candidate at all: event/local title/not on TMDB; default
+ES	f8ed951d60644b3a	Concierto de fin de año - Berliner Philharmoniker (Cine)	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	ffc575be4a722bf5	Pavarotti 90th, the Grand Tribute	no-candidate			no candidate at all: event/local title/not on TMDB; default
+ES	f93e4406ed02c865	Don Quijote, Grand Palais des Champs-elyseess	no-candidate			no candidate at all: event/local title/not on TMDB; default
+ES	f832d07c78fab00b	El gigante mudo	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	f7a56e92b4721fd7	Tarántula	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	f1577d969b2bc0fc	Infortunio	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	f2ea0f1daede451b	La Biblia: Moisés	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	fd4d4956104728ab	Diarios de Ozu	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
+ES	f994a7644a972d72	Leonas	real	rating-cut	1661011	rating-cut refusal; Leonas, no year

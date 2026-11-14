@@ -196,3 +196,37 @@ wrong. DE model 2 gained right (Caspar und Emma, La Vie de château); UK model l
 (a cure, judged known-wrong in the rows); PL, US, ES unmoved; final takes unmoved. Drift 42051731189 clean on all ten
 rows. The what-if over prod's mirror also moved UK Cinebowl Uttoxeter's Hunger Games and Gala Durham's "The MET
 Opera: La Fancuilla del West" (the Met's 2026/27 relay), both judged right.
+
+## 7. Re-running the census: `scripts/unmatched_census.py`
+
+The census is a script now: `scripts/unmatched_census.py` over the local mirror (after `scripts/local-mirror/freshness
+<cc>`), about 5 seconds for all five countries. It prints the unmatched listings by trace basis (step 1), the
+clusters the event pattern sets aside (step 2), the hand verdicts' buckets over the rest (step 3), and a watch list of
+this notebook's examples (step 4). Its data files are in `scripts/unmatched-census/`: `event-patterns.txt`, `watch.tsv`,
+and `verdicts.tsv`, which holds every hand verdict. A verdict is found by film id, else by title, so a later run
+only asks for the clusters nobody has judged. `--emit-sample N --sample-out F` draws a listing-weighted sample of
+them to judge next. Step 3 is exact where every cluster is judged and extrapolated where only a sample is.
+
+**Round of 2026-11-14** (mirror fresh to the second). The verdicts were judged from the traces' candidates, with no
+TMDB lookup.
+
+| Country | Unmatched listings (11-01) | Clusters | Events by pattern | Judged |
+|---|---:|---:|---:|---|
+| PL | 762 (931) | 376 | 245 | 55 of 307 clusters, a sample |
+| DE | 1,946 (2,157) | 1,366 | 271 | 81 of 1,224, a sample |
+| UK | 1,620 (1,920) | 661 | 680 | 55 of 470, a sample |
+| US | 744 (476) | 40 | 346 | all 19 |
+| ES | 93 (51) | 19 | 5 | all 18 |
+
+- The total fell from 5,535 to 5,165 listings. US grew on two events: a Paris Opera relay (186 listings) and the
+  League of Legends finals (101).
+- Every pattern event sits under a miss basis. The `Event` basis is projection-only (`Decision.scala`), so no
+  stored trace shows it, and this census cannot tell which events the projection already handles.
+- Real films come to about 300 listings (~6%), against ~230 (4%) on 11-01. Most of that is extrapolated, and one
+  68-listing cluster moves DE by about 21. The biggest groups are a learned cannot-link veto (~125, DE "Hard Boiled",
+  "Tabaluga und Leo"), banner text (~110, US "Dune: Part One Reissue (2026)", UK "Our House | Preview Screening",
+  PL "FOKUS: GRANICE - Głupcy") and a namesake runner-up (DE "Lieblingsmenschen", 68 listings).
+- Double bills of two real films: about 90 listings (UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea").
+- Of section 2's examples, "The Assassin + Q&A", "The Odyssey + Interval", the Hunger Games slip, "Sinn &
+  Sinnlichkeit" and "Touch of Evil" are matched now. "Here Lived", "Kult-Special: Blade Runner - The Final Cut" and
+  the bare "Mein Sommer mit Nonna" and "Wielki żar" are still unmatched. The rest are no longer billed.
