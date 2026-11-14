@@ -297,7 +297,11 @@ pl/uk/us) was CLEAN:
 - UK gained 5 model takes, all of Magic Lantern Tywyn's BIFA season. 2 of them are new final takes (Tender Loving
   Care 1370191, The Incomer 1554956); prod already served the other 3.
 - US gained "Dune: Part Two Reissue (2026)" (693134), model and final.
-- PL moved nothing.
+- PL moved nothing. Prod's trace for "FOKUS: GRANICE - Głupcy" (`identity_traces`) shows that identity already
+  searched "Głupcy". It gave its weight to 908327, but the take is vetoed:
+  `its-title-names-it-only-by-a-programme-tag-billed-beside-many-titles` reads the identity title, which the row does
+  not change. The first hit is also a namesake, 577874 "Głupcy" (2022), and the billing gives no year. So the strip
+  only fixes the lookup query; gaining the take needs identity work on that veto.
 
 All 6 moved takes are judged right. "Dune: Part One Reissue" still takes nothing, because TMDB titles that film "Dune"
 (438631) and `IdentityMeasures.shapes` deliberately does not search a bare "Dune".
