@@ -197,7 +197,43 @@ wrong. DE model 2 gained right (Caspar und Emma, La Vie de château); UK model l
 rows. The what-if over prod's mirror also moved UK Cinebowl Uttoxeter's Hunger Games and Gala Durham's "The MET
 Opera: La Fancuilla del West" (the Met's 2026/27 relay), both judged right.
 
-## 7. Re-running the census: `scripts/unmatched_census.py`
+## 7. Fix E: a feed link overruled by a rival that could not be taken
+
+**Cause.** DE "Lieblingsmenschen" (95 traces, 68 venues) ended Vetoed with no film. Cineamo links the bare title to
+Hufnagel's 2026 release (1185542m, year 2026, original title "Agnes & Amir" copied). The bare title names a 65-minute
+2021 "Lieblingsmenschen" (788385) exactly and the release's long TMDB title not at all, so `FeedLink.TitledRival`
+overruled the link: the node was read on its titles alone and 1185542 was denied. The 2021 film was refused too (a
+learned cannot-link, the namesake veto, 5.8% against a 37.5% cut), so nothing was taken. Webedia's 213 listings at
+~40 venues took the release. The rule's origin, Yorck's "Jin-Roh - Die Wolfsbrigade" linked to the 2018 remake
+"Illang", was right to be overruled, and it links an older film.
+
+**Change.** `FamilyScope.titledRival` no longer overrules a link to a current release in favour of an older rival when
+the venue's title is one edge of the release's title (relation `fragment`). A current release is dated at most
+`IdentityResolver.CurrentRelease` years before the node's first screening. Releases are billed under the head of
+their title, and an old namesake's record may carry that head whole. The rule reads only the node's titles and
+screenings and the two films, so arrival order cannot move it.
+
+The first draft used the listing's stated year instead of the title. It turned the pinned slice case Bundesplatz-Studio
+"Der Diplomat" wrong: Cineamo links that listing to the 2025 Indian "The Diplomat" and copies its year, but the venue
+screens the 1995 Hessel documentary. A year the feed copied says nothing. The "rival could not be taken anyway"
+variant was not built, because it needs the node's own scoring inside `overrule`, and that scoring reads `overrule`.
+
+**Tests.** `IdentityResolverCasesSpec`, "A feed's TMDB link the venue's own title contradicts": the link stands for the
+2026 release and is still overruled when it links a 2018 record. Slice case
+`de-albrecht-kino-waldshut-lieblingsmenschen-0da39147` took none before and takes 1185542 after. The Jin-Roh, Der
+Diplomat and CineStar Lieblingsmenschen cases still pass.
+
+**What-if** (DE mirror, snapshot 2026-11-14T20:07Z, model and final takes):
+
+- 69 takes moved, all gained-right: 68 "Lieblingsmenschen" and Cineworld Lünen's "Komplizinnen" [2027]. The latter now
+  takes Heiss's 2027 "Komplizinnen - Vernunft ist keine Lösung", its link, rather than none against Czenki's 1987 film.
+- right-lost 0, right→wrong 0, new-wrong 0.
+- No other country's mirror holds a link this rule overrules.
+
+Astor Grand Cinema's "Arabeske" is unmoved. Cineamo links it to Bensmaïl's 2026 "The Arab", a title it does not
+carry, and it is a review candidate.
+
+## 8. Re-running the census: `scripts/unmatched_census.py`
 
 The census is a script now: `scripts/unmatched_census.py` over the local mirror (after `scripts/local-mirror/freshness
 <cc>`), about 5 seconds for all five countries. It prints the unmatched listings by trace basis (step 1), the

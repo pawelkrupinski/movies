@@ -3051,6 +3051,36 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // DE "Lieblingsmenschen" [2026], prod 2026-11-14: Cineamo links Hufnagel's 2026 release (1185542m), copying its
+  // original title "Agnes & Amir"; the bare title names a 65-minute 2021 namesake exactly, and the link was overruled
+  // (FeedLink.TitledRival) -- 95 listings at 68 venues took none, while Webedia's 213 at ~40 venues took the release.
+  // The rule's origin, Yorck's "Jin-Roh - Die Wolfsbrigade" linked to the 2018 remake "Illang" (a slice case,
+  // de-neues-off-jin-roh-die-wolfsbrigade), links an older film: overruled still, as the 2018 variant below; and
+  // Bundesplatz-Studio's "Der Diplomat" [2025], linked to the 2025 Indian "The Diplomat", a current release its title
+  // does not carry (the slice case de-bundesplatz-studio-der-diplomat).
+  private val november = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 19)))
+  private def lieblingsmenschenFilms(year: Int) = Seq(F(1185542, "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes & Amir", year,
+      "Helena Hufnagel", 108, 2.9, alternatives = Seq("Agnes & Amir")),
+    F(788385, "Lieblingsmenschen", 2021, "Somebody Indie", 65, 0.3))
+  private def linkedLieblingsmenschen(year: Int) = Seq(KinoMikro, KinoOaza, KinoPalacowe).map(v =>
+    fed(listing(v, "Lieblingsmenschen", Some(year)), "cineamo", "1185542m").copy(originalTitle = Some("Agnes & Amir"), screenings = november))
+
+  "A feed's TMDB link the venue's own title contradicts" should "be overruled where the title names another film exactly and the link an older one" in {
+    val linked = linkedLieblingsmenschen(2018)
+    val r = shipped(linked, lieblingsmenschenFilms(2018))
+    withClue(linked.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      r.decisionOf(linked.head.key).explanation.exists(_.contains("its title names 788385 exactly and 1185542 not at all")) shouldBe true)
+  }
+
+  it should "stand where it links a current release whose title carries the venue's, against an older namesake the title names" in {
+    val linked = linkedLieblingsmenschen(2026)
+    val r = shipped(linked, lieblingsmenschenFilms(2026))
+    withClue(linked.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(linked.head.key).explanation.exists(_.contains("overruled")) shouldBe false
+      linked.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1185542))
+    }
+  }
+
   "A feed's TMDB link to one film" should "deny the listing a short its copied original title names" in {
     // DE "L`Estive" ×3, recording 38363428661: Cineamo links 1729636m, Lenoir's 2026 feature documentary, copying its
     // English title "Summer Meadow" — which TMDB's 3-minute 2024 short carries, with "L'Estive" among its other titles.

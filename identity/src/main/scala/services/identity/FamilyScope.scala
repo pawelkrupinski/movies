@@ -250,7 +250,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         .map { case (rival, count) => FeedLink(id, film, rival.tmdbId, count) }
         .orElse(currentRelease(node, film, rivals.collect { case (rival, count) if count > 0 => rival })
           .map { case (rival, venues) => FeedLink(id, film, rival, 1, venues) })
-        .orElse(titledRival(node.evidence.titlesOnly.measured, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
+        .orElse(titledRival(node, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
     }
   }
   /** The one current release among `backed` (the rivals a source backs, fewer than [[FeedLink.OverrulingSources]]) that
@@ -261,8 +261,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  Berlin", which Cineamo links to Herzog's 1979 film, is no 2025 "Nosferatu"), nor against a link the listing dates by
    *  its film's year (Melodie's one-night "Spider-Man" [2002] is Raimi's, not the 2026 "Spider-Man: Brand New Day"). */
   private def currentRelease(node: EvidenceNode, film: Int, backed: Seq[Candidate]): Option[(Int, Int)] = {
-    val firstYear = node.listings.flatMap(_.screenings.firstYear).minOption
-    def current(candidate: Candidate) = candidate.film.year.exists(year => firstYear.exists(year >= _ - IdentityResolver.CurrentRelease))
+    val current = currentAt(node)
     val listing = node.evidence.measured
     val older   = pool.find(_.tmdbId == film).exists(linked => !current(linked) &&
       linked.film.year.exists(year => !node.evidence.statedYear.contains(year)))
@@ -277,13 +276,31 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   /** The title groups whose venues back `candidate` for `listing`, by the one title relation ([[TitleRelation.backingGroups]]). */
   private def backingGroups(listing: IdentityMeasures.Listing, candidate: Candidate): Seq[String] =
     TitleRelation.backingGroups(listing, candidate.film)
-  /** The one film of the pool `titles` (a node's titles alone) name exactly, when they name the linked `film` not at all. */
-  private def titledRival(titles: IdentityMeasures.Listing, film: Int): Option[Int] = {
+  /** Is a candidate a current release where `node` screens: dated [[IdentityResolver.CurrentRelease]] or fewer years
+   *  before its first screening's year? */
+  private def currentAt(node: EvidenceNode): Candidate => Boolean = {
+    val firstYear = node.listings.flatMap(_.screenings.firstYear).minOption
+    candidate => candidate.film.year.exists(year => firstYear.exists(year >= _ - IdentityResolver.CurrentRelease))
+  }
+  /** The one film of the pool `node`'s titles alone name exactly, when they name the linked `film` not at all — never
+   *  an older film against a link to a current release whose title carries the venue's whole, as one edge of it
+   *  (`fragment`: [[IdentityMeasures.ContainingRelations]]). A release is billed under the head of its title, which an
+   *  old namesake's record may carry whole: DE Cineamo's bare "Lieblingsmenschen", linked to Hufnagel's 2026
+   *  "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes & Amir", is not the 65-minute 2021
+   *  "Lieblingsmenschen" — overruled, 95 listings at 68 venues took none, the namesake refused and the release denied.
+   *  A link whose film the title does not carry is still overruled, current or not: Yorck's "Jin-Roh - Die
+   *  Wolfsbrigade", linked to the 2018 remake "Illang", and Bundesplatz-Studio's "Der Diplomat", linked to Shivam Nair's
+   *  2025 "The Diplomat" (its year copied: a feed's copy dates nothing), the 1995 Hessel documentary. */
+  private def titledRival(node: EvidenceNode, film: Int): Option[Int] = {
+    val titles = node.evidence.titlesOnly.measured
     def relation(candidate: Candidate) = IdentityMeasures.titleRelation(titles, candidate.film, houses, qualifiers).value
-    if (!pool.exists(_.tmdbId == film) || pool.exists(candidate => candidate.tmdbId == film && IdentityMeasures.NamingRelations(relation(candidate)))) None
-    else pool.filter(candidate => candidate.tmdbId != film && relation(candidate) == "exact").map(_.tmdbId) match {
-      case Seq(rival) => Some(rival)
-      case _          => None
+    val current = currentAt(node)
+    def carriedRelease(linked: Candidate) = current(linked) && IdentityMeasures.ContainingRelations(relation(linked))
+    val linked = pool.filter(_.tmdbId == film)
+    if (linked.isEmpty || linked.exists(candidate => IdentityMeasures.NamingRelations(relation(candidate)))) None
+    else pool.filter(candidate => candidate.tmdbId != film && relation(candidate) == "exact") match {
+      case Seq(rival) if !(linked.exists(carriedRelease) && !current(rival)) => Some(rival.tmdbId)
+      case _                                                                 => None
     }
   }
 
