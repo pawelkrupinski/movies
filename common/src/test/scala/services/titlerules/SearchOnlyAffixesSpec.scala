@@ -128,4 +128,35 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
     // the screening keeps its own row
     n.sanitize("Debiut Klarnet") should not be n.sanitize("Klarnet")
   }
+
+  // docs/investigations/2026-11-01-unmatched-real-films.md, "Fix F" (prod mirror 2026-11-14)
+  "Kino CK Lublin's FOKUS: GRANICE feature strand" should "be looked up as its film" in {
+    n.apiQuery("FOKUS: GRANICE - Głupcy") shouldBe "Głupcy"
+    n.apiQuery("FOKUS: GRANICE - Wczoraj nikt nie zmrużył oka") shouldBe "Wczoraj nikt nie zmrużył oka"
+    n.sanitize("FOKUS: GRANICE - Głupcy") should not be n.sanitize("Głupcy")
+  }
+
+  it should "leave the shorts competitions' programme names whole: a block called 'Rodzina' is no film 'Rodzina'" in {
+    n.apiQuery("FOKUS: WSPÓLNOTA – Rodzina") should not be "Rodzina"
+    n.apiQuery("FOKUS: TRANSGRESJE - Bariery") should not be "Bariery"
+  }
+
+  "BIFA's nominee season" should "be looked up as its film" in {
+    val uk = services.movies.TitleNormalizer.forCountry(models.Country.UnitedKingdom)
+    uk.apiQuery("BIFA Presents Tender Loving Care") shouldBe "Tender Loving Care"
+    uk.apiQuery("BIFA Presents The Incomer") shouldBe "The Incomer"
+    // only BIFA's: another "<host> Presents" billing is as often an event as a film
+    uk.apiQuery("Red Rock A Capella presents Christmas") shouldBe "Red Rock A Capella presents Christmas"
+  }
+
+  "A \"Reissue (YYYY)\" edition tail" should "come off the title it shows and the key it merges by, the instalment kept" in {
+    // Showcase Springdale (US) bills "Dune: Part One Reissue (2026)": the reissue's year, not the film's
+    val us = services.movies.TitleNormalizer.forCountry(models.Country.UnitedStates)
+    us.preferredDisplay(Seq("Dune: Part One Reissue (2026)")) shouldBe Some("Dune: Part One")
+    us.sanitize("Dune: Part Two Reissue (2026)") shouldBe us.sanitize("Dune: Part Two")
+    us.apiQuery("Dune: Part Two Reissue (2026)") shouldBe "Dune: Part Two"
+    us.sanitize("Alien Re-issue") shouldBe us.sanitize("Alien")
+    // a title that IS the word keeps it
+    us.preferredDisplay(Seq("Reissue")) shouldBe Some("Reissue")
+  }
 }

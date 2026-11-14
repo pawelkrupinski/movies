@@ -230,3 +230,38 @@ TMDB lookup.
 - Of section 2's examples, "The Assassin + Q&A", "The Odyssey + Interval", the Hunger Games slip, "Sinn &
   Sinnlichkeit" and "Touch of Evil" are matched now. "Here Lived", "Kult-Special: Blade Runner - The Final Cut" and
   the bare "Mein Sommer mit Nonna" and "Wielki żar" are still unmatched. The rest are no longer billed.
+
+## 8. Fix F: banners Fix C missed
+
+**Cause.** The 2026-11-14 census's banner group (section 7) left four shapes around a real film's title.
+
+**Change.** Three `title-rules.tsv` rows were extended, with an example each. One canonical row was added. Every pattern
+is anchored to its own words.
+
+- `xtra-pp-cycle-banners` gains `FOKUS: GRANICE - `, Kino CK Lublin's feature strand. The festival's WSPÓLNOTA,
+  TRANSGRESJE and ANIMACJA entries are shorts blocks with programme names ("Rodzina", "Bariery"), so they keep their
+  banner. A generic `FOKUS: <strand> - ` row would have searched "Rodzina" as a film.
+- `xtra-pp-us-uk-strands` gains `BIFA Presents `, Magic Lantern Tywyn's BIFA-nominee season. It does not cover
+  "<host> presents" in general, since many of those billings are events (KFC Presents, Red Rock A Capella presents
+  Christmas).
+- A "Reissue [(YYYY)]" tail now comes off at both tiers. The query tier extends `xtra-rerelease-paren-suffix`, and the
+  key tier adds `xtra-canonical-reissue-suffix`, so the reissue shows and merges as its film. The year goes with the
+  word because it is the reissue's own year.
+
+Two shapes were skipped:
+- "The Host: 20th Anniversary" already searches "The Host" at HEAD (`structural-anniversary-suffix` plus the colon
+  re-peel). The title names two films and the billing gives no year. A year hint (screening year − N) would need
+  identity code, because `IdentityMeasures.anniversaryYear` only relaxes a published year. So the listing stays
+  ambiguous.
+- "Kino KILN: Born in Flames" and "Our House | Preview Screening" already search the bare title at HEAD.
+
+**Measure.** The `--footprint` measure found nothing to replay: 0 of ~870k stored readings read otherwise, because
+the pinned recording bills none of these titles. `scripts/identity-what-if` against prod's mirror (2026-11-14T20:05Z,
+pl/uk/us) was CLEAN:
+- UK gained 5 model takes, all of Magic Lantern Tywyn's BIFA season. 2 of them are new final takes (Tender Loving
+  Care 1370191, The Incomer 1554956); prod already served the other 3.
+- US gained "Dune: Part Two Reissue (2026)" (693134), model and final.
+- PL moved nothing.
+
+All 6 moved takes are judged right. "Dune: Part One Reissue" still takes nothing, because TMDB titles that film "Dune"
+(438631) and `IdentityMeasures.shapes` deliberately does not search a bare "Dune".
