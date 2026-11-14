@@ -19,13 +19,18 @@ let
   # every ordinary login is a person escalating as themselves, so `sudo` in the journal names
   # somebody.
   #
-  # The operator Mac's Secure Enclave key (non-exportable): pawel-mbp-se, served by the `secrets` vault
-  # daemon's agent (one Touch ID per session, not per use). It replaced Secretive's key on 2026-10-09,
-  # after a login with it was verified on every host. If this key is ever rotated,
+  # The operator Macs' Secure Enclave keys (non-exportable), each served by its Mac's `secrets` vault
+  # daemon's agent (one Touch ID per session, not per use). Two Macs, two keys, both live:
+  #   - pawel-mbp-se: the original Mac. It replaced Secretive's key on 2026-10-09, after a login
+  #     with it was verified on every host. It STAYS -- that Mac is still in use.
+  #   - pawel-Pawes-MacBook-Pro-2-se: the second (restored) Mac, ADDED on 2026-11-14, not a
+  #     rotation; nothing was removed. infra/test/test_operator_keys.sh holds both on every host.
+  # If either key is ever rotated,
   # the ONLY safe order is: add the new key here, deploy, verify a login with it, and only then
   # delete the old line -- because the deploy that removes a key is applied by that same key.
   operatorKeys = [
     "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBO3WMjnDl0nbOhu9fggw2z/nU7ySqHwkzzuV8SElZpv+LdCkxfeajz09nG+vMxaDUUKmGyolYBYRjS5HCVcA7mY= pawel-mbp-se"
+    "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBCThjT17hrCBvxIV05Lqr66JVjE7mQ744yYDsNd1nz7GWrtrAC4N6w5xahLhLRhvuxkCgK3BCVzh1bZjh4DklVg= pawel-Pawes-MacBook-Pro-2-se"
   ];
 in
 {
