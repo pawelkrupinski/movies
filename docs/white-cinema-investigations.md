@@ -360,7 +360,7 @@ the checked-in script, unchanged. All five mirrors were fresh (newest bucket 04:
 Against Monday 11-09: UK 52 → 40, DE 288 → 285, US 1,001 → 876, ES 166 → 149. Every country is down, which fits a
 Saturday (weekend programmes published). No client clusters.
 
-### The one real cause: a THIRD Certum root the JDK lacks (Kino Ikar), `fixed` @f333cdf67a3
+### The one real cause: a THIRD Certum root the JDK lacks (Kino Ikar), `fixed` @b704e39030d
 
 **Kino Ikar (Jarosław, MSI `kinoikar.mok-jar.pl`)** entered the Filmweb fallback on 11-12 20:44 UTC with
 `SSLHandshakeException … PKIX path building failed`. The host renewed on **11-12 04:35** onto a leaf `CN=*.mok-jar.pl`
@@ -383,7 +383,7 @@ already handled, and all verify. (`bilety.kino.swiebodzin.pl` showed no answer o
 
 | Venue | Since | Last reason | Verdict |
 |---|---|---|---|
-| **Kino Ikar (Jarosław)** | 11-12 20:44 | `CircuitOpenException … SSLHandshakeException … PKIX` | **`fixed` @f333cdf67a3** (above) |
+| **Kino Ikar (Jarosław)** | 11-12 20:44 | `CircuitOpenException … SSLHandshakeException … PKIX` | **`fixed` @b704e39030d** (above) |
 | **Kino Muza (Poznań)** | 11-14 04:46 | `HTTP 503` site-wide | **upstream outage, covered** (see the red table) |
 | Wybrzeże (Kołobrzeg) | 10-23 14:57 | primary returned no screenings | **intentionally-dormant (closed; Filmweb covers DKF)**, the standing decision |
 | Kino Warszawa (Przeworsk) | 11-01 01:18 | primary returned no screenings | **intentionally-dormant** (as 11-03, 11-06, 11-09) |
