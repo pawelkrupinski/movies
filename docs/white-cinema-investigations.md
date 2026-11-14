@@ -1,13 +1,13 @@
 # White-cinema investigations
 
-> **Summary.** An append-only log, newest run first (33 runs, 2026-06-25 → 2026-11-09). Before
+> **Summary.** An append-only log, newest run first (34 runs, 2026-06-25 → 2026-11-14). Before
 > investigating a white (parsed-but-empty) or red venue, search this file for the venue's name: its last verdict
 > (`fixed` / `unfixable` / `intentionally-dormant` / `needs-human` / `recovered` / `transient`) is in the newest run
 > that names it. The [methodology](#how-to-find-the-white-list-methodology) section is current; run entries are
 > dated records — those before 2026-08-29 mention a `flyctl proxy` on `:27017` that no longer exists, and those
 > before 2026-10-23 read prod Mongo directly, which is user-only now (runs read the local prod mirror).
 >
-> **Runs:** [2026-11-09](#2026-11-09) · [2026-11-06](#2026-11-06) · [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
+> **Runs:** [2026-11-14](#2026-11-14) · [2026-11-09](#2026-11-09) · [2026-11-06](#2026-11-06) · [2026-11-03](#2026-11-03) · [2026-10-30](#2026-10-30) · [2026-10-27](#2026-10-27) · [2026-10-23](#2026-10-23) · [2026-10-07](#2026-10-07) · [2026-09-29](#2026-09-29) · [2026-09-27](#2026-09-27) · [2026-09-26](#2026-09-26) · [2026-09-19](#2026-09-19) · [2026-09-15](#2026-09-15) · [2026-09-12](#2026-09-12) · [2026-09-08](#2026-09-08) · [2026-09-04](#2026-09-04) · [2026-08-24](#2026-08-24) · [2026-08-21](#2026-08-21) · [2026-08-15](#2026-08-15) · [2026-08-12](#2026-08-12) · [2026-08-08](#2026-08-08) · [2026-08-04](#2026-08-04) · [2026-07-31](#2026-07-31) · [2026-07-31 follow-up](#2026-07-31--follow-up-pass-fix-everything-outstanding) · [2026-07-28](#2026-07-28) · [2026-07-24](#2026-07-24) · [2026-07-21](#2026-07-21) · [2026-07-18](#2026-07-18) · [2026-07-14](#2026-07-14) · [2026-07-11](#2026-07-11) · [2026-07-07](#2026-07-07) · [2026-07-03](#2026-07-03) · [2026-06-28](#2026-06-28) · [2026-06-25](#2026-06-25)
 
 Durable cross-run log for the recurring (~every 3 days) "white cinema"
 investigation. A **white** uptime bar = the scrape *fetch succeeded* but the
@@ -208,7 +208,9 @@ them with the same verdicts as white, plus `transient`.
     DE/ES/US, check for closure and for a re-listing under a new aggregator id,
     then follow the retire precedent (`data/scripts/retire_venues.py`, 09-26/27 entries).
   - 403: an IP block; see the proxy memories.
-  - TLS: probe plain `http://` first.
+  - TLS: probe plain `http://` first. Then read the chain (`openssl s_client -showcerts`): an expired leaf is a pin
+    (`TlsTrust.PinnedExpiredLeafResources`), while a valid leaf whose top issuer is a root the JDK lacks is a bundled
+    root (`BundledRootResources`). Certum has three so far (2026-11-14: `Certum TLS RSA Root CA`, cyber_Folks' G3 sub-CA).
 - **Log** a red table per country: venue, host, error class, red since,
   covered?, verdict.
 
@@ -338,6 +340,113 @@ print(JSON.stringify(out));
 A venue with a `filmwebFallback` doc reading `UNCOVERED` and `fallbackRef: null`
 has NO Filmweb cover. Before 2026-09-29 that was every venue outside the five
 big cities (see that entry). It is now only venues Filmweb itself doesn't list.
+
+---
+
+## 2026-11-14
+
+**Eighteenth all-five-country sweep**, read from the local prod mirror at 04:25 UTC on a **Saturday morning**. The sweep is
+the checked-in script, unchanged. All five mirrors were fresh (newest bucket 04:15 UTC, log tailing normally, no
+`supervisor … is gone` since 11-09).
+
+| DB | services | white | white % | red | green→white | seasonal | `thin` | fallback venues | probed |
+|---|---|---|---|---|---|---|---|---|---|
+| `kinowo` (PL) | 542 | **11** | 2.0% | **1** | 1 | 0 | 39 | 4 (Filmweb), 4 active | all 11 + 1 red + 4 active |
+| `kinowo_uk` | 856 | **40** | 4.7% | 0 | 0 | 2 | 24 | 1 | 9 (all `noScheduleListed`) |
+| `kinowo_de` | 1,541 | **285** | 18.5% | 0 | 0 | 114 | 28 | 27 (kinoprogramm.com) | 13 (11 `noScheduleListed`, 2 probed) |
+| `kinowo_us` | 5,010 | **876** | 17.5% | 0 | 3 | 245 | 0 | 0 | 12 (11 `noScheduleListed`, 1 probed) |
+| `kinowo_es` | 607 | **149** | 24.5% | 0 | 1 | 23 | 13 | 0 | 4 (all `noScheduleListed`) |
+
+Against Monday 11-09: UK 52 → 40, DE 288 → 285, US 1,001 → 876, ES 166 → 149. Every country is down, which fits a
+Saturday (weekend programmes published). No client clusters.
+
+### The one real cause: a THIRD Certum root the JDK lacks (Kino Ikar), `fixed` @05384069279
+
+**Kino Ikar (Jarosław, MSI `kinoikar.mok-jar.pl`)** entered the Filmweb fallback on 11-12 20:44 UTC with
+`SSLHandshakeException … PKIX path building failed`. The host renewed on **11-12 04:35** onto a leaf `CN=*.mok-jar.pl`
+issued by **`cyber_Folks DV TLS G3 R31 CA`**, a sub-CA cut on **2026-09-16** under **`Certum TLS RSA Root CA`** (2023).
+That is neither of the two Certum roots `TlsTrust` already bundled, and neither JDK 27's `cacerts` nor macOS's OpenSSL
+store has it (`openssl s_client`: verify code 20). The host sends the complete leaf+intermediate chain, so the root alone
+closes it, as with case 3 (nazwa.pl). A live JVM `HttpClient` against the host failed PKIX on the default store and got
+`HTTP 302` with the root added. The root is fetched from Certum's repository (`subca.repository.certum.pl`, http and
+https agree): SHA-256 `ED12A6E9…C4458D`. Test: `TlsTrustSpec` pins the fingerprint and checks that Ikar's captured
+intermediate verifies under it. `scripts/fail-before`: FAIL-BEFORE yes, PASS-AFTER yes. `http/Test` 95/95 green. Filmweb 1707
+covered it meanwhile (one film, 11-17, `thin`); its MSI portal sells the same 11-17 screening (`event_id=13534`).
+
+**Who else shares this path:** cyber_Folks hosts many PL venue sites (the 11-06 DNS outage was their zones). Every
+cyber_Folks site that renews onto the G3 sub-CA would have failed the same way; this root covers them in advance. A TLS
+probe of all 86 hosts in `PolishScraperCatalog` found only Ikar on the new root today. 45 chain to the three Certum roots
+already handled, and all verify. (`bilety.kino.swiebodzin.pl` showed no answer on :443 only because its MSI runs on :4433.)
+**Next run: confirm Ikar is green off its primary once the fix is deployed.**
+
+### Filmweb-fallback sweep (PL only): 4 active (5 with Muza at 04:46), 1 fixed
+
+| Venue | Since | Last reason | Verdict |
+|---|---|---|---|
+| **Kino Ikar (Jarosław)** | 11-12 20:44 | `CircuitOpenException … SSLHandshakeException … PKIX` | **`fixed` @05384069279** (above) |
+| **Kino Muza (Poznań)** | 11-14 04:46 | `HTTP 503` site-wide | **upstream outage, covered** (see the red table) |
+| Wybrzeże (Kołobrzeg) | 10-23 14:57 | primary returned no screenings | **intentionally-dormant (closed; Filmweb covers DKF)**, the standing decision |
+| Kino Warszawa (Przeworsk) | 11-01 01:18 | primary returned no screenings | **intentionally-dormant** (as 11-03, 11-06, 11-09) |
+| Kino Tatry (Łódź) | 11-01 05:01 | primary returned no screenings | **intentionally-dormant**, closed until 2027-04-01 |
+
+ENTER→RECOVERED / UNCOVERED since 11-09:
+- **Cinema Lumiere (Szczytno): `recovered`** on 11-09 17:25 UTC, off its own MSI portal, after the expired-leaf pin
+  (@8097c629ba) was deployed. 11-09's open question is closed.
+- **Kozienicki DK:** flapped 11-10 05:05 → 09:05 and 11-13 03:05 → 09:05, both `CircuitOpenException` / connect timeout
+  on bilety.dkkozienice.pl, Filmweb 1913 covering. **transient (recurring, covered).**
+- **Kino Kultura Bełchatów** (11-13 05:51 → 11:41, "no screenings") and **Cinema N 3D** (11-13 01:09 → 10:10, "no
+  screenings"): overnight empties, both covered. **transient.**
+- **Kino MDK Myszków:** UNCOVERED 11-11 07:16, PKIX. Its Let's Encrypt leaf had expired, and the venue renewed at 11-11
+  22:26 (`YE1` → `Root YE` → `ISRG Root X2` → `ISRG Root X1`, a complete chain that Java accepts). Green since.
+  **transient (venue renewed).**
+- **Wawerska Strefa Kultury:** UNCOVERED 11-12 02:51, a biletyna 8 s budget timeout. It is dormant anyway (below).
+
+### Red: 1 PL venue, 0 elsewhere
+
+| Venue | Host | Error class | Red since | Covered? | Verdict |
+|---|---|---|---|---|---|
+| **Kino Muza (Poznań)** | www.kinomuza.pl | `HTTP 503` (the hoster's generic "503 Service Unavailable" page, site-wide, http and https) | 11-13 21:45 UTC | Filmweb 75, by the 6 h grace | **upstream outage, covered: `needs-human` only if it lasts for days** |
+
+Muza's own site is down. Its fallback doc had `failedRuns: 7` but `active: false` at 03:46 UTC. That is by design:
+PL's `FallbackAfter.FailingFor(6 h)` rides out a blip on last-good data, and the 03:46 probe came 5 h 59 m into the
+spell. The next run **ENTERed the fallback at 04:46:02 UTC**, exactly 6 h in, and Filmweb 75 serves it (the 04:45 bucket
+is `fallback: true`, green). The site still 503s live at 04:50. Muza was never dark: last-good data held for the grace,
+then Filmweb took over.
+
+### Poland: 11 white
+
+| Venue | Source | Verdict |
+|---|---|---|
+| **DKF Politechnika (Wrocław)** | Filmweb 1645 | **intentionally-dormant** (the green→white). Its only screening was 11-12 19:00 UTC; Filmweb's `showtimes/cinema/1645` lists no date at all. |
+| **Wawerska Strefa Kultury** | biletyna | **intentionally-dormant** (new). Its only screening was 11-10 18:30 UTC. Its place page holds 7 `MusicEvent` + 2 `TheaterEvent` and no `ScreeningEvent`. |
+| MDK Opoczno | biletyna | **intentionally-dormant** (as 11-09; archive 5.5 d, 1 film) |
+| Wybrzeże, Kino Warszawa, Kino Tatry | see the fallback table | **intentionally-dormant** |
+| Teatr Gryphiusa, Nowotomyski OK, Drawieński OK, Kino na Szekspirowskim | biletyna | **intentionally-dormant** (as 11-06, 11-09; archives 12–62 days old, 1 film each) |
+| Kino Wisła Brzeszcze | bilety24 1539 | **intentionally-dormant** (never an archive) |
+
+OK Jastrowie, GOK Lipka, MGOK Recz and Choszczeński DK, white on 11-09, are not white now. **PL `thin`: 39** (92 on
+Monday 11-09; a Saturday has its weekend shows inside 72 h). Not re-probed this run; 11-09 probed all 87 and found 0 bugs.
+
+### UK / DE / ES / US: 38 candidates, 0 parser bugs
+
+The cut is unchanged from 11-09. UK/DE/ES take non-seasonal whites with an archive of 10 days or less, plus every
+green→white (9 / 13 / 4). US takes an archive of 3 days or less **and at least 3 films**, plus green→white (12).
+**35 of the 38 carry `lastBarren.noScheduleListed: true`**, so they are empty or lagging and were not hand-probed. The 3
+without it:
+- **DE Luna Filmtheater (Ludwigslust, A1732): empty at source.** filmstarts' `data-showtimes-dates="[]"`; the
+  kinoprogramm.com fallback page says "keine Vorstellungen vorhanden". **intentionally-dormant.**
+- **DE Stattkino (kinoheld 3609):** **intentionally-dormant**, as 11-06 and 11-09 (`programShows` 0 then). Not re-probed.
+- **US Three Star Cinema McMinnville: `recovered`.** Its 04:15 bucket is green, with a content-bearing scrape at 04:29
+  (it landed after the sweep read the window).
+
+The DE kinoprogramm.com fallback count is **27** (24 on 11-09).
+
+### Left for next run
+- **Kino Ikar:** is it green off its MSI portal after deploy (no `fallback: true` buckets, and the doc RECOVERED)?
+- **Kino Muza:** see the red table. Has kinomuza.pl come back, and did the Filmweb fallback cover the gap?
+- **Kozienice nightly flaps:** two more this run, all covered. The suggestion to quiet the alert stands.
+- **Carried over:** the own-site re-check for Krobia, Harmonia and Książka; Kino Sokół Strzyżów; Kino Tatry after 2027-04-01;
+  the `command sleep` heads-up from 11-09; whether an all-past scrape (Rumcajs, Łapy) should classify white.
 
 ---
 
