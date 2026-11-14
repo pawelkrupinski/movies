@@ -305,3 +305,53 @@ pl/uk/us) was CLEAN:
 
 All 6 moved takes are judged right. "Dune: Part One Reissue" still takes nothing, because TMDB titles that film "Dune"
 (438631) and `IdentityMeasures.shapes` deliberately does not search a bare "Dune".
+
+## 9. Fix G: a feed's untrusted facts
+
+**Cause.** A real film falls below the learned listing-film cannot-link cut because ONE fact a feed published is not the
+film's, and the measure reads it as if it were:
+
+- DE "Close" (Kommunales Kino im Künstlerhaus, Schaubühne Lindenfels): Cineamo's premiere rides as the year UPPER BOUND
+  (`IdentityMeasures.yearBound`), but it is the premiere of the record the operator linked (148857m, 2004). Lukas
+  Dhont's 2022 film read 18 years past it (`year.delta` -6.85), 16.5%. Passage Kinos Leipzig, from its own source,
+  dates it 2022 at 104 minutes.
+- DE "Die Blutgräfin - The Blood Countess" (Moviemento): the original-title field "… (OmeU)" carries the showing's
+  English-subtitled version; read with it the original was a `segment` (-2.52) of Ottinger's film, 8.2%.
+- DE "Hard Boiled" (Kino im Schafstall): the listing's 2018 is a re-release year (Filmstarts' separate entry 135766).
+
+**Change.**
+
+- (b) `IdentityMeasures.Listing.measuredOriginal`: the `originalTitle` measures (listing-film, listing-listing) read
+  the original without the tags that are a showing's badge (`FormatTags.extractFormatTags`' tokens: OmU, OmeU, OV, 3D,
+  IMAX, …), as the title is read. A note that is no badge stays: Viktoria's "DAS BOOT (DIRECTOR'S CUT)(WA:2023)", its
+  re-release mark read off, left a copy of the title and the cut's stub record (1794076, judged wrong) took it. A field
+  that is then the title again is MISSING beside a film the title names, never a match: ZOO PALAST's "OmU: In
+  Memoriam" (booking slug "In Memoriam – Gegen ihren Willen") otherwise took Brasó's 1977 "In memoriam". Beside a film
+  the title does not name it still measures, as a plain repeat does: made missing there, Metropolis Bochum's
+  "… Live on Stage (OmeU)" no longer denied "The SpongeBob Musical: Live on Stage!", whose undenied rest
+  (`ConstraintEdges.namesBeside`) then cut the segment link that gives Cineplex Baden-Baden's bare "Andrew Lloyd
+  Webber's Starlight Express" its film (pinned as a slice case). `repeatsItsTitle` (whether a listing states a fact)
+  and the searches still read the original as published, so no new lookups.
+- (a) `yearBound`: the bound is MISSING against a film another venue's own facts back (`venues.corroborating` > 0:
+  its exact year or its director). The bound is a copy of the link, the corroboration the venues' own claim. King
+  Kong's 1933 bound, which no venue contradicts, still rules out the 2005 remake (slice case kept green).
+- (c) left out: no principled signal. Schafstall's "Hard Boiled" bills no re-release mark and TMDB dates no 2018 DE
+  release (its DE re-release is 2026). Lifting a stated later year because other venues back an older film would lift
+  a reboot's own year just the same (Rocky beside its namesakes).
+
+No weight changed; the weekly refit re-tunes them.
+
+**Slices** (pinned as cases): Moviemento's Blutgräfin → 1251608 and Kommunales Kino's Close → 901563 (recording
+43588197349), Cineplex Baden-Baden's Starlight Express → 1748001 (recording 573), all judged right.
+
+**What-if** over prod's mirror (all five countries, base a7e0f57d9): CLEAN. DE model 46 moved: 30 off Lynch's "Dune" (841m,
+bound 1984) onto Villeneuve's 438631, which the Traumpalast venues bill dated 2021 and credited -- 29 judged cures, the
+Cineamo billings of the Dec 4-5 IMAX/OV run; Atelier Kino's Dec 19 OmU "DUNE" left unjudged (the hermetic fixture,
+lacking the corroborating venues, keeps it on 841), 15 gained right (Close ×2, Blutgräfin,
+Katyn ×3, All That Jazz, Moulin Rouge, Babel, Blade Runner Final Cut, Die drei ??? ×4, No Good Men), 1 gained unjudged
+(Filmforum's "Les Misérables (OmU)" → Cavayé's 2026 film). PL, UK, ES, US unmoved.
+
+**Measure.** LANDABLE, run 43647686064 (all five countries, base a7e0f57d9, head cd0c97112, recording 573): DE model 13
+gained right (All That Jazz, Katyn, Blutgräfin, Close, Catching Fire ×2, Die drei ??? …), nothing lost, changed or
+wrong; final takes and PL, UK, ES, US unmoved. An earlier head (run 43643114687) that read every tag off and every
+tagged copy as missing lost Baden-Baden's Starlight Express and gained the Das Boot stub: the two narrowings above.
