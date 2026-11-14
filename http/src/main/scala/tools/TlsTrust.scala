@@ -66,6 +66,12 @@ import scala.util.{Try, Using}
  *      leaf: expired 2026-09-26, and that host doesn't answer plain http at all.
  *      `bilety.kinoszczytno.pl` (Cinema Lumiere, Szczytno) is the third: a RapidSSL
  *      leaf expired 2026-11-05, and its plain http 302s straight back to https.
+ *   6. `kinoikar.mok-jar.pl` (Kino Ikar, Jarosław) renewed on 2026-11-12 onto a
+ *      cyber_Folks leaf issued by `cyber_Folks DV TLS G3 R31 CA`, a sub-CA cut on
+ *      2026-09-16 under `Certum TLS RSA Root CA` — a THIRD Certum root (2023, RSA),
+ *      distinct from case (1)'s and case (3)'s, and also missing from the JDK. The
+ *      host sends the complete chain, so, as in case (3), only the root is needed:
+ *      bundling it recovers every cyber_Folks-hosted venue as each one renews.
  *
  * The extra roots are ADDED to the defaults, never a replacement: well-behaved
  * APIs (TMDB, IMDb, Filmweb, …) keep validating against the standard store. The
@@ -78,8 +84,9 @@ import scala.util.{Try, Using}
 object TlsTrust extends Logging {
 
   /** Classpath-absolute paths of PEM certs to add as trust anchors on top of the
-   *  default store: the two Certum roots the JDK omits (RSA `Certum Trusted Root
-   *  CA` for case 1, ECC `Certum EC-384 CA` for case 3), plus the two issuing
+   *  default store: the three Certum roots the JDK omits (RSA `Certum Trusted Root
+   *  CA` for case 1, ECC `Certum EC-384 CA` for case 3, RSA `Certum TLS RSA Root
+   *  CA` for case 6), plus the two issuing
    *  intermediates whose servers omit them — artmuseum.pl's (point 2b) and
    *  ec1lodz.pl's (point 4) — so those chains validate without a per-handshake
    *  AIA network fetch. */
@@ -87,7 +94,8 @@ object TlsTrust extends Logging {
     "/certs/certum-trusted-root-ca.pem",
     "/certs/home-pl-dv-tls-g2-r35-ca.pem",
     "/certs/certum-ec-384-ca.pem",
-    "/certs/certum-ov-tls-g2-r39-ca.pem"
+    "/certs/certum-ov-tls-g2-r39-ca.pem",
+    "/certs/certum-tls-rsa-root-ca.pem"
   )
 
   /** The bundled extra roots, parsed. Empty if a resource is missing (logged). */

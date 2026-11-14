@@ -4,6 +4,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.security.MessageDigest
+import java.security.cert.{CertificateFactory, X509Certificate}
+import scala.util.Using
 
 class TlsTrustSpec extends AnyFlatSpec with Matchers {
 
@@ -29,6 +31,13 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
   // the path builder has nothing to bridge leaf -> Certum Trusted Root CA with.
   private val CertumOvR39IntermediateSha256 =
     "F54CE21EA0F79548F1201A619049CA15F065E49A69F26FB9CF1282C7EECF9C4C"
+
+  // Published SHA-256 of Certum TLS RSA Root CA (2023) — a THIRD Certum root the
+  // JDK omits. cyber_Folks' `cyber_Folks DV TLS G3 R31 CA` sub-CA (issued
+  // 2026-09-16) chains to it, so every cyber_Folks-hosted venue that renews onto
+  // that sub-CA fails PKIX; the first was kinoikar.mok-jar.pl (Kino Ikar), 2026-11-12.
+  private val CertumTlsRsaRootSha256 =
+    "ED12A6E9289239D66CA1D244CE90C623AC305AD05602DA352BCFC5FEF2C4458D"
 
   // SHA-256 of each expired leaf pinned per case 5 of the class doc, by the
   // host it was captured from. Asserting it proves the exact right cert is
@@ -88,6 +97,19 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
     // It's a self-signed root: it verifies under its own public key. Proves we
     // bundled the genuine anchor, not an intermediate masquerading as one.
     noException should be thrownBy c.verify(c.getPublicKey)
+  }
+
+  it should "bundle the Certum TLS RSA Root CA so cyber_Folks' G3 R31 sub-CA validates" in {
+    val root = bySubject("Certum TLS RSA Root CA")
+      .getOrElse(fail("Certum TLS RSA Root CA not bundled"))
+    sha256(root.getEncoded) shouldBe CertumTlsRsaRootSha256
+    noException should be thrownBy root.verify(root.getPublicKey)
+    // The intermediate kinoikar.mok-jar.pl serves (captured 2026-11-14) is signed
+    // by this root, so its complete leaf+intermediate chain now closes on an anchor.
+    val intermediate = Using.resource(getClass.getResourceAsStream("/certs/cyber-folks-dv-tls-g3-r31-ca.pem")) { in =>
+      CertificateFactory.getInstance("X.509").generateCertificate(in).asInstanceOf[X509Certificate]
+    }
+    noException should be thrownBy intermediate.verify(root.getPublicKey)
   }
 
   it should "expose a trust manager that accepts the Certum root AND keeps the JDK defaults" in {
