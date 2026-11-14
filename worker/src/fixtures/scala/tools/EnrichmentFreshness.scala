@@ -2,7 +2,7 @@ package tools
 
 import play.api.Logging
 
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, StandardCopyOption}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.{Try, Using}
@@ -38,8 +38,13 @@ object EnrichmentFreshness extends Logging {
   val Ttl: FiniteDuration = 5.days
 
   /**
-   * Delete recorded responses older than their [[lifetimeOf]] (at most [[Ttl]]) from a
-   * fixture tree, and report how many went.
+   * Move recorded responses older than their [[lifetimeOf]] (at most [[Ttl]]) out of a
+   * fixture tree onto its [[shelfOf]], and report how many went. The shelf is emptied
+   * first, so it holds only this run's expiries. Shelved, not deleted: the live leg
+   * refetches them, and when the site fails that refetch [[ExpiredFixtureFallback]] puts the
+   * shelved answer back (Record scrape fixtures #186: Kino Muza answered 503 to everything,
+   * and its expired pages, deleted here, left the published tree without them). A shelved
+   * answer nothing asks again is gone with the next run's shelf, as it went before.
    *
    * The `.enrichment-cache` directory is left alone: those entries carry their own
    * `fetchedAt` inside the file and are expired on read by
@@ -66,9 +71,15 @@ object EnrichmentFreshness extends Logging {
     (ttl.toMillis - (ttl.toMillis / 2 * spread).toLong).millis
   }
 
+  /** Where [[prune]] puts a tree's expired responses: beside the tree, never in it, so nothing packs or replays it. */
+  def shelfOf(root: Path): Path = root.toAbsolutePath.resolveSibling(s"${root.getFileName}.expired")
+
   def prune(root: Path, ttl: FiniteDuration = Ttl): Int =
     if (!Files.isDirectory(root)) 0
     else {
+      val shelf = shelfOf(root)
+      if (Files.exists(shelf))
+        Using(Files.walk(shelf))(_.iterator().asScala.toList.reverse.foreach(path => Try(Files.deleteIfExists(path))))
       val now   = System.currentTimeMillis()   // file mtimes are wall-clock stamps, so they are aged against the wall
       val stale = Using(Files.walk(root)) { walk =>
         walk.iterator().asScala
@@ -82,10 +93,13 @@ object EnrichmentFreshness extends Logging {
         Nil
       }
 
-      val removed = stale.count(path => Try(Files.deleteIfExists(path)).getOrElse(false))
+      val removed = stale.count { path =>
+        val shelved = shelf.resolve(root.relativize(path))
+        Try { Files.createDirectories(shelved.getParent); Files.move(path, shelved, StandardCopyOption.REPLACE_EXISTING) }.isSuccess
+      }
       if (removed > 0)
         logger.info(s"Expired $removed recorded enrichment response(s) past their lifetime (at most ${ttl.toDays}d) from $root — " +
-          "they will be re-fetched and recorded fresh")
+          s"they will be re-fetched and recorded fresh, or kept from $shelf where the site fails the refetch")
       removed
     }
 }

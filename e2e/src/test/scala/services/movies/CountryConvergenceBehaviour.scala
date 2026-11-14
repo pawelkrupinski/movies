@@ -267,7 +267,8 @@ abstract class CountryConvergenceBehaviour(
 
   /** Age the recorded responses out before anything reads them, so a rating captured
    *  once isn't replayed for ever. The verdict cache expires itself on read; this is the
-   *  half nothing used to expire at all. */
+   *  half nothing used to expire at all. Shelved, not deleted: a site that fails the refetch
+   *  keeps its previous answer ([[tools.ExpiredFixtureFallback]]). */
   private lazy val expireStaleFixtures: Int =
     // Never in a hermetic run, for the reason the store above never expires: the tree it
     // replays is the one the recorder left, whole, however old.
@@ -298,7 +299,7 @@ abstract class CountryConvergenceBehaviour(
     val expired = expireStaleFixtures
     if (expired > 0)
       info(s"${country.displayName}: expired $expired recorded response(s) past their lifetime (at most " +
-           s"${EnrichmentFreshness.Ttl.toDays}d) — they refetch and record fresh")
+           s"${EnrichmentFreshness.Ttl.toDays}d) — they refetch and record fresh, or come back where the site fails")
     // Successes are never persisted here: `RecordingHttpFetch` already writes every
     // response into the fixture tree and the tree is consulted first, so a copy in the
     // cache could not be read — it only made the artifact three times larger. What the

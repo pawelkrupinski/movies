@@ -19,8 +19,8 @@ class EnrichmentFreshnessSpec extends AnyFlatSpec with Matchers with ScratchDire
   private def withTree(body: Path => Unit): Unit = {
     val root = tempDirectory("enrichment-freshness-spec")
     try body(root)
-    finally Files.walk(root).sorted(java.util.Comparator.reverseOrder())
-      .forEach(path => Files.deleteIfExists(path))
+    finally Seq(root, EnrichmentFreshness.shelfOf(root)).filter(Files.exists(_)).foreach(
+      Files.walk(_).sorted(java.util.Comparator.reverseOrder()).forEach(path => Files.deleteIfExists(path)))
   }
 
   private def write(root: Path, relative: String, ageInDays: Int): Path = {

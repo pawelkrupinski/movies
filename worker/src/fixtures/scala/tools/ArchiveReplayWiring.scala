@@ -154,7 +154,8 @@ class ArchiveReplayWiring(
   override lazy val httpFetch: HttpFetch =
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
       live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Scrape)), "detail-fixtures", "detail-live",
-      replayedFailure = hermetic.fold[CachingEnrichmentFetch.Replayed => Unit](_ => ())(MissingFixtures.listingPassingFailures))
+      replayedFailure = hermetic.fold[CachingEnrichmentFetch.Replayed => Unit](_ => ())(MissingFixtures.listingPassingFailures),
+      keepsExpiredOnFailure = hermetic.isEmpty)
   // Every cinema-egress route (Multikino, biletyna, ck105's Zyte, Flicks, Vue, Odeon) is this chain
   // too, with no override of its own: `TestWiring` refuses their paid legs, and a route with
   // neither a proxy nor a Zyte leg IS its direct leg.
@@ -196,7 +197,8 @@ class ArchiveReplayWiring(
     // exactly like one re-fetching every one of them.
     ArchiveReplayWiring.recordedChain(fixtureDirectory, fixtureRoot, enrichmentCache,
       live(phaseFetch(services.metrics.WorkerHttpMetrics.Phase.Enrich)), "enrichment-fixtures", "remembered-or-live",
-      replayedFailure = hermetic.fold[CachingEnrichmentFetch.Replayed => Unit](_ => ())(MissingFixtures.listingPassingFailures))
+      replayedFailure = hermetic.fold[CachingEnrichmentFetch.Replayed => Unit](_ => ())(MissingFixtures.listingPassingFailures),
+      keepsExpiredOnFailure = hermetic.isEmpty)
 
   /** The real key and the country's own language — the enrichment is meant to be the one
    *  production would do. Overridden because `TestWiring` pins a stub key and the DEFAULT
@@ -376,12 +378,20 @@ object ArchiveReplayWiring {
    * One definition, because the recorder is load-bearing for what a verdict is keyed by: it
    * fetches BYTES to write them, so every verdict it remembers is filed under the BYTES request.
    * A chain built without it (the identity gate's first draft) reads none of them.
+   *
+   * `keepsExpiredOnFailure` (recording runs only): a response [[EnrichmentFreshness.prune]] expired whose refetch fails
+   * comes back from the shelf ([[ExpiredFixtureFallback]]), so a site down for the night keeps its previous answers.
    */
   def recordedChain(fixtureDirectory: String, root: settings.FixtureRoot, cache: Option[EnrichmentCache], live: HttpFetch,
                     fixturesLabel: String, liveLabel: String,
-                    replayedFailure: CachingEnrichmentFetch.Replayed => Unit = _ => ()): HttpFetch =
+                    replayedFailure: CachingEnrichmentFetch.Replayed => Unit = _ => (),
+                    keepsExpiredOnFailure: Boolean = false): HttpFetch = {
+    val recorded = new clients.tools.RecordingHttpFetch(
+      fixtureDirectory, cache.fold(live)(new CachingEnrichmentFetch(_, live, replayedFailure)), foldYear = false, root = root)
+    val tree     = java.nio.file.Paths.get(root.of(fixtureDirectory))
     new FallbackHttpFetch(Seq(
       fixturesLabel -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false, root = root),
-      liveLabel     -> new clients.tools.RecordingHttpFetch(
-        fixtureDirectory, cache.fold(live)(new CachingEnrichmentFetch(_, live, replayedFailure)), foldYear = false, root = root)), Stopwatch.System)
+      liveLabel     -> (if (keepsExpiredOnFailure) new ExpiredFixtureFallback(recorded, EnrichmentFreshness.shelfOf(tree), tree)
+                        else recorded)), Stopwatch.System)
+  }
 }

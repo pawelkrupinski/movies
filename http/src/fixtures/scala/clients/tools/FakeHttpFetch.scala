@@ -58,6 +58,19 @@ class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear:
     }
 
   private def readBytes(url: String, body: Option[String]): Array[Byte] = {
+    val (uri, path, candidates) = candidatesFor(url, body)
+    candidates
+      .map(Paths.get(_))
+      .find(existsCaseExact)
+      .map(p => Files.readAllBytes(p))
+      .getOrElse(missingFixture(uri.getHost, path, url, candidates))
+  }
+
+  /** The recorded file this fetch would answer `url` (and a POST's `body`) from, if the tree holds one. */
+  def fileFor(url: String, body: Option[String] = None): Option[Path] =
+    candidatesFor(url, body)._3.map(Paths.get(_)).find(existsCaseExact)
+
+  private def candidatesFor(url: String, body: Option[String]): (URI, String, Seq[String]) = {
     val uri  = new URI(url)
     val path = uri.getPath.stripPrefix("/")
     val base = s"$fixtureRoot/${uri.getHost}/$path"
@@ -116,11 +129,7 @@ class FakeHttpFetch(fixtureDirectory: String, strict: Boolean = false, foldYear:
       s"$trimmedBase.json",
       s"$trimmedBase.content"
     ).distinct
-    candidates
-      .map(Paths.get(_))
-      .find(existsCaseExact)
-      .map(p => Files.readAllBytes(p))
-      .getOrElse(missingFixture(uri.getHost, path, url, candidates))
+    (uri, path, candidates)
   }
 
   /** macOS APFS is case-insensitive, so `Files.exists` happily resolves a
