@@ -414,6 +414,9 @@ abstract class CountryConvergenceBehaviour(
    *  the next-day test moves it, as production's clock moves between two days' scrapes. */
   private lazy val clock = new tools.MutableClock(TestWiring.FixedInstant)
 
+  /** Day one's input-changing writes and enrichment asks, in order (`NextDayReask`). */
+  private lazy val dayOneAsks = new NextDayReask.Recorder(using services.movies.LatestTitleYear(clock))
+
   private lazy val shared: (ArchiveReplayWiring, ScrapeArchiveRepository) = {
     // In-memory archive: the leg no longer needs a Mongo at all.
     //
@@ -430,9 +433,12 @@ abstract class CountryConvergenceBehaviour(
     val seeded   = seedArchive(archive)
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
+      override lazy val freshnessStore = dayOneAsks.asking(storage.freshness)
       override def recordedRetained: Seq[services.identity.Listing] = CountryConvergenceBehaviour.this.recordedRetained
       override def recordedTmdbAnswers: Option[tools.ProdLookupInputs.Captured] = CountryConvergenceBehaviour.this.recordedTmdbAnswers
     }
+    // Before the boot: the next-day leg names, for an unchanged film it finds rewritten, the day-one write no re-ask followed.
+    w.movieCache.onResident(dayOneAsks.resident)
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded
     }
@@ -1891,6 +1897,7 @@ abstract class CountryConvergenceBehaviour(
           case question => println(s"[${country.code}] day-one await: $question")
         }
       }
+      val dayOneEnds = dayOneAsks.mark()
       clock.advance(java.time.Duration.between(clock.instant(),
         cutoff.atZone(CorpusCoverage.zoneOf(country)).toInstant))
       step("nextDay") {
@@ -1939,7 +1946,11 @@ abstract class CountryConvergenceBehaviour(
       val churn = Option.when(rewritten.nonEmpty)(
         s"${rewritten.size} film(s) whose listings did not change were rewritten or lost:\n" +
           CorpusDiff.records(unchanged.sortBy(_.title), unchanged.flatMap(r => afterBy.get(r.id)).sortBy(_.title),
-            "first day", "next day"))
+            "first day", "next day") +
+          "\nwhat moved, and what day one should have re-asked:\n" +
+          rewritten.sortBy(_.title).take(40).flatMap(r => afterBy.get(r.id).toSeq.flatMap(a =>
+            NextDayReask.explain(r.record, a.record, dayOneAsks.dayOne(r.id, dayOneEnds)).map(line => s"  '${r.title}': $line")))
+            .mkString("\n"))
       val all = renameLost ++ problems ++ churn
       withClue(s"${country.displayName}'s next day did not land cleanly:\n${all.mkString("\n")}\n") {
         all shouldBe empty

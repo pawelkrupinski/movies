@@ -53,14 +53,8 @@ class QueueEnrichmentRetrigger(
 
   // The task type a rating retrigger kind maps to, for the country gate above. The
   // non-rating kinds (resolve) apply in every country and aren't listed.
-  private val ratingTaskTypeOf: Map[RetriggerKind, TaskType] = Map(
-    RetriggerKind.ImdbRating    -> TaskType.ImdbRating,
-    RetriggerKind.FilmwebRating -> TaskType.FilmwebRating,
-    RetriggerKind.RtRating      -> TaskType.RtRating,
-    RetriggerKind.McRating      -> TaskType.McRating)
-
   private def enabled(kind: RetriggerKind): Boolean =
-    ratingTaskTypeOf.get(kind).forall(enabledRatingTaskTypes.contains)
+    QueueEnrichmentRetrigger.ratingOf.get(kind).forall(rating => enabledRatingTaskTypes.contains(rating._1))
 
   override def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = {
     val (applicable, dropped) = kinds.partition(enabled)
@@ -74,10 +68,9 @@ class QueueEnrichmentRetrigger(
           EnrichTaskKeys.resolveImdbIdDedup(key.cleanTitle, key.year),
           EnrichTaskKeys.resolveImdbIdPayload(key.cleanTitle, key.year, searchTitleOf(key, record)),
           submittedAt = clock.instant())
-      case RetriggerKind.ImdbRating    => refreshRating(key, record, TaskType.ImdbRating,    FreshnessKind.ImdbRating)
-      case RetriggerKind.FilmwebRating => refreshRating(key, record, TaskType.FilmwebRating, FreshnessKind.FilmwebRating)
-      case RetriggerKind.RtRating      => refreshRating(key, record, TaskType.RtRating,      FreshnessKind.RtRating)
-      case RetriggerKind.McRating      => refreshRating(key, record, TaskType.McRating,      FreshnessKind.McRating)
+      case rating =>
+        val (taskType, kind) = QueueEnrichmentRetrigger.ratingOf(rating)
+        refreshRating(key, record, taskType, kind)
     }
     if (applicable.nonEmpty)
       logger.info(s"Merge retrigger for '${key.cleanTitle}' (${key.year.getOrElse("—")}): ${applicable.map(_.toString).toSeq.sorted.mkString(", ")}")
@@ -94,4 +87,14 @@ class QueueEnrichmentRetrigger(
    *  TMDB original title, else the api-query form of the clean title. */
   private def searchTitleOf(key: CacheKey, record: MovieRecord): String =
     record.searchTitle.orElse(record.originalTitle).getOrElse(normalizer.searchQuery(key.cleanTitle))
+}
+
+object QueueEnrichmentRetrigger {
+  /** The task a rating retrigger kind enqueues and the freshness stamp its handler writes on each ask. The
+   *  non-rating kind (IMDb-id resolve) applies in every country, is not freshness-gated, and isn't listed. */
+  val ratingOf: Map[RetriggerKind, (TaskType, FreshnessKind)] = Map(
+    RetriggerKind.ImdbRating    -> (TaskType.ImdbRating,    FreshnessKind.ImdbRating),
+    RetriggerKind.FilmwebRating -> (TaskType.FilmwebRating, FreshnessKind.FilmwebRating),
+    RetriggerKind.RtRating      -> (TaskType.RtRating,      FreshnessKind.RtRating),
+    RetriggerKind.McRating      -> (TaskType.McRating,      FreshnessKind.McRating))
 }
