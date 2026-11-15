@@ -74,7 +74,7 @@ UK	fb177c9e907775b2	Flavel Café presents BRNC Pre-show Supper	not-film			[1 lis
 UK	f903b4940d39dae4	Pottery: 6wk Throwing	not-film			[2 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 UK	f4b65fc96e16d927	Colectivo Film Hub presents: The Lost Pussy of the Incas	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 UK	f54f4b3b4d15865a	Kino KILN: Born in Flames	real	banner	36832	banner/strand text (Kino KILN:); Born in Flames (1983)
-DE	f66bf6615710cfdb	Tabaluga und Leo - Die Weihnachtsgeschichte	real	learned-veto	68030	learned/feed-title veto; Tabaluga und Leo
+DE	f66bf6615710cfdb	Tabaluga und Leo - Die Weihnachtsgeschichte	real	other	68030	learned/feed-title veto; Tabaluga und Leo; 2026-11-15: denied by the feed-title veto (named only by the title its feed copied), no learned rule
 DE	f7afab719bf5533b	Dietlinde Ellsässer und Jakob Nacken - Lieblingslieder - Weihnachtsspecial	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 DE	f85764aaea346d89	"Local Kino Helden: Best of ""Filmisches Klassenzimmer"" (Bavaria)"	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 DE	f4b02cb371cd1602	Kurzfilmprogramm Wandelbar	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
@@ -153,7 +153,7 @@ DE	fe9d86dca79a09f8	STEFAN JÜRGENS live im Beluga Kino: DRACULA - Eine Literatu
 DE	fa79cdc6235658be	Vereinigtes Lachwerk Süd: Ernst Mantel und Werner Koczwara - The Dark Side of the Huhn	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 DE	fcb24faa9884abfc	Dune 1 & 2 (DE)	double-bill			"two real films billed as one; two TMDB films, ""alone: bills several works"""
 DE	f4df50d8c58397a1	Moving with Movies - Benefiz-Gala für Exil e.V.	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
-DE	fedf623f9c880854	MISERICORDIA	real	learned-veto	1063574	learned/feed-title veto; Misericordia
+DE	fedf623f9c880854	MISERICORDIA	real	other	1063574	learned/feed-title veto; Misericordia; 2026-11-15: denied by the feed-title veto (named only by the title its feed copied), no learned rule
 PL	f4e7db16f2fe7841	On the Images of Defeat, Loss and Mourning	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 PL	f76974423e611346	CINE POLACO	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 PL	fbcc64714cd2105a	League of Legends Worlds 26 | Finals in Cinema w Helios Sport	not-film			esports event
@@ -200,7 +200,7 @@ PL	f2ad68a5c80dc1a6	Zestaw krótkometrażowych filmów animowanych z lat 1935–
 PL	f59ea473fbc9f918	Okładka Seminarium Ursynowskie	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 PL	f651f03ed17aeaa5	Misiowe Poranki: MIKOŁAJKOWA PRZYGODA	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 PL	f52fc84b7451fd5c	CINEPHILE II – kino Pere Portabelli	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
-PL	szczesciarze|2022	Szczęściarze	real	learned-veto	757999	[1 listings] Szczesciarze = Presque (2022), top candidate denied by learned cannot-link (re-judged 2026-11-14 with TMDB lookups)
+PL	szczesciarze|2022	Szczęściarze	unclear		757999	[1 listings] Kino PCKul credits Iwona Jamka, Tadeusz Kuta and a scenographer: a stage show more likely than Presque (2022); re-judged 2026-11-15 (learned-veto census)
 PL	fe2917dbfe8c0542	Akademia Polskiego Filmu: Wobec Zagłady | Ostatni etap + Majdanek – cmentarzysko Europy	relay			stage-house relay, no TMDB record found
 PL	f70614e566a7c4b1	JEZIORO ŁABĘDZIE	relay			stage-house relay, no TMDB record found
 PL	f76e2867e3434e5d	Ekstremalna Pogoda	unclear			[3 listings] Ekstremalna Pogoda: Cinema City /filmy page, likely an IMAX doc, TMDB lacks it under any spelling tried (re-judged 2026-11-14 with TMDB lookups)
@@ -227,3 +227,21 @@ ES	f1577d969b2bc0fc	Infortunio	unclear			event, person-name listing, or no film 
 ES	f2ea0f1daede451b	La Biblia: Moisés	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
 ES	fd4d4956104728ab	Diarios de Ozu	unclear			event, person-name listing, or no film found among candidates; default for sampled clusters not judged a real film
 ES	f994a7644a972d72	Leonas	real	rating-cut	1661011	rating-cut refusal; Leonas, no year
+DE	f1b02d90ce8ab961	Happy Together	real	learned-veto	18329	learned cannot-link census 2026-11-15: Wong Kar-wai's 1997 film (probable), denied by the probability cut
+DE	f281fc8601a04b15	I, Pastafari A Flying Spaghetti Monster Story (2019)	real	learned-veto	584756	learned cannot-link census 2026-11-15: title and year agree; the venue credits Eden Shaw (director=different), probability cut
+DE	f38ab78b7ceb8edd	Helter Skelter - Die Nacht der langen Messer	real	learned-veto	17200	learned cannot-link census 2026-11-15: Tom Gries 1976; the venue runtime 91+ minutes off (runtime.gap rule)
+DE	fc266914ed908ad6	Silent Night - Leise rieselt das Blut	real	learned-veto	139455	learned cannot-link census 2026-11-15: 2012 remake; bare title, probability cut
+DE	f84570af429c5d71	YI YI (25TH ANNIVERSARY)	real	learned-veto	25538	learned cannot-link census 2026-11-15: Yang 2000; the anniversary dated it a year early (year.delta 1), probability cut
+DE	fbe86788d68e3d1c	LA HAINE (30TH ANNIVERSARY)	real	learned-veto	406	learned cannot-link census 2026-11-15: Kassovitz 1995; the anniversary dated it a year early (year.delta 1), probability cut
+DE	f3c1b25aee7a7153	Nostalgiekino im Kastell: "Der Polarexpress"	real	learned-veto	5255	learned cannot-link census 2026-11-15: the feed credits Michael Stocks (director different AND originalTitle disjoint); feed-title veto too
+DE	f808fd0406936a7e	Dead Snow	real	learned-veto	14451	learned cannot-link census 2026-11-15: Wirkola 2009; bare title, probability cut
+DE	f0f2ddf974b8c990	THE KILLER (OmU)	unclear			learned cannot-link census 2026-11-15: Fincher 2023 or Woo 1989: nothing tells
+PL	ff1718108768d1cc	Wszystko jest iluminacją	real	learned-veto	340	learned cannot-link census 2026-11-15: 2005 film, the venue states its 2007 Polish release (year.delta 2), probability cut
+PL	f592b7cc3cdfe2c9	„Zaklęte Rewiry” z autorską narracją Malcolma XD	real	learned-veto	208309	learned cannot-link census 2026-11-15: 1975 film with live narration, dated 2026 (year.distance >= 27)
+PL	fefec914343ee6f4	Lepszy model	unclear			learned cannot-link census 2026-11-15: credits Dorota Kondraciuk and a runtime far off the 2014 record: maybe another work
+UK	glastonburythemovie|1995	Glastonbury The Movie	real	learned-veto	115964	learned cannot-link census 2026-11-15: Robin Mahoney 1995, dated 2026 by the venue (year.distance >= 27)
+UK	f14d795bf97bbba9	Rocky	real	learned-veto	1366	learned cannot-link census 2026-11-15: 1976, dated 2026 by the venue, no director (year rule + rating cut)
+UK	f7d4edb9a9693741	Monday Night Classic: The Warriors (1978)	real	learned-veto	11474	learned cannot-link census 2026-11-15: Hill 1979; runtime 24-35 minutes off, probability cut
+UK	fd2ac8fced14e8ed	Daisies	real	learned-veto	46919	learned cannot-link census 2026-11-15: Chytilová 1966; country mismatch AND runtime.gap >= 16
+UK	fc2967f87037596e	My Movie: The Miner + Introduction	real	learned-veto	1704931	learned cannot-link census 2026-11-15: Mykola But 2026 (Hirnyk); English title unknown to TMDB, runtime 6-10 off (runtime AND title none)
+UK	f4345904f1f17980	Monday Night Classic: Great Expectations (1947)	real	learned-veto	14320	learned cannot-link census 2026-11-15: Lean 1946; runtime 35-50 off and title year 1947, probability cut

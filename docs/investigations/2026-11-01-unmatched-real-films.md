@@ -439,3 +439,53 @@ right (Nonna ×2, Immer verkehrt); PL, UK, US, ES unmoved. None of the census' w
 "Royal Ballet: The Nutcracker", moves. Precision 3/3; recall is low by design: Drei Abschiede (4 carrying venues of 6)
 misses the bound, Komplizinnen and Godzilla Minus Zero (Quadroscope, its own evidence vetoes) the namesake and denial
 guards.
+## 11. The learned cannot-link bucket, counted (2026-11-15)
+
+**Question.** Section 8's round extrapolated ~125 listings of real films refused by a LEARNED cannot-link
+(`LearnedCannotLinks`: a rule of `identity-weights.json`, or the listing-film probability below its certified cut). The
+sample's clusters were drawn listing-weighted, and a 68-listing cluster or a three-listing one moved a country's estimate
+by tens, so the bucket was counted exactly instead.
+
+**Count.** Every unmatched listing (mirror 2026-11-15 05:19Z, screenings from 11-01) whose stored trace denies a
+candidate `Learned(...)`: 891 listings, 336 clusters, nearly all events and their stray candidates. Those whose denied
+candidate shares the listing's title (event pattern set aside): 96 listings, 82 clusters, each judged from the trace's
+candidates and evidence. **18 listings (18 clusters, one listing each) are real films the right record of which a
+learned rule refused**: DE 9, PL 2, UK 6, US 1. Judged into `scripts/unmatched-census/verdicts.tsv`. Re-judged on the
+way: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" (3) and "MISERICORDIA" are refused by the feed-title veto, no
+learned rule; PL Kino PCKul's "Szczęściarze" credits a scenographer, a stage show more likely than Presque (unclear).
+The census still extrapolates this bucket from the judged clusters (they are not a random sample now), so read its
+step 3 row for it as the judged counts, not the `~` estimate.
+
+| What weighs against the right film | Listings | Examples |
+|---|---:|---|
+| A stated year that is the screening's or the local release's | 5 | UK "Glastonbury The Movie" [2026], "Rocky" [2026], DE "Hard Boiled" [2018], PL "Wszystko jest iluminacją" [2007], "„Zaklęte Rewiry” z autorską narracją" [2026] |
+| The venue's runtime (ads, an introduction, a different cut) | 4 | DE "Helter Skelter" (91+ off), UK "The Warriors (1978)", "Great Expectations (1947)", "Daisies" |
+| A director credit the record lacks (a producer, a feed's copied credit) | 3 | DE "I, Pastafari …" {Eden Shaw}, "Der Polarexpress" {Michael Stocks}, US "Great Bear Rainforest 3D" |
+| A bare title and nothing else, below the probability cut | 3 | DE "Silent Night - Leise rieselt das Blut", "Dead Snow", "Happy Together" |
+| An anniversary dating the film a year early | 2 | DE "LA HAINE (30TH ANNIVERSARY)", "YI YI (25TH ANNIVERSARY)" |
+| An English title TMDB lacks | 1 | UK "My Movie: The Miner" (Hirnyk) |
+
+**Cause.** No common one. Each refusal is a published fact weighing against the film, the calibration doing its job by
+the owner's rule, except the anniversary pair: Fix I's anniversary date is meant as evidence for a film, never against
+it, yet a film a year before (first screening year − N) read as `year.delta` 1, which weighs -1.24 (a stated year a
+year after the film is rare: 19 of 522 such pairs are the film). In prod's matched anniversary billings stating no year,
+1199 took a film of that date, 45 one a year before, 1 one a year after: a re-release tours into the year after its
+anniversary. The stated-year group is not one mechanism: `screeningYearAbsent` already drops a screening's year where
+the title is the film's and the director is credited, and each of the five misses one of those two guards for a reason
+the guard exists for (no director, or a fragment title).
+
+**Fix J.** `IdentityMeasures.anniversaryFilmDated` reads a film released the year before the anniversary's date as of
+that year (delta 0). The window stays "within a year of the date"; a film two years off is still not read.
+Test: `IdentityMeasuresSpec`, "date a listing stating no year by the year it screens in less the anniversary's"
+(fails before: `Number(1.0) was not equal to Number(0.0)`).
+
+**What-if** (`scripts/identity-what-if`, all five countries, base b50bcb58c, head b850a6203, every family re-resolved):
+CLEAN. DE model gained 1 right (Filmpalette "LA HAINE (30TH ANNIVERSARY)" → 406), DE final gained 2 right (also
+Filmrauschpalast "YI YI (25TH ANNIVERSARY)" → 25538, judged right); PL, UK, US, ES moved nothing. right-lost 0,
+right→wrong 0, new-wrong 0. The other 16 listings of the bucket stay unmatched by design: each has a published fact
+against its film.
+
+**Heads-up (not done).** UK "Daisies" is refused partly as a country mismatch: TMDB codes Chytilová's film XC
+(Czechoslovakia), which the JDK-backed `YearRuntimeMeasures.isoByName` knows no successor of, so "Czech Republic"
+mismatches it. A dissolved state's successors (XC → CZ, SK; SU → RU, UA, …; YU; DD/XG → DE) would be a measure
+change of its own, measured on its own.
