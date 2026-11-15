@@ -791,6 +791,28 @@ tests:
               summary: "pl: restapi.helios.pl has had its circuit breaker open for over an hour -- cinema listings for that host are being held incomplete (nothing pruned)"
               description: "Every call to restapi.helios.pl (scrape leg) has been fast-failing for an hour: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25 Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then the \"Circuit OPEN for restapi.helios.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."
 
+  # ONE OUTAGE ACROSS A BOOT (Kino Ikar, 2026-11-12..14). The host's breaker is open from t=10m;
+  # at 90m the worker restarts and forgets it, and the series returns only at 150m, when the
+  # parked venue's next hourly scrape trips the breaker again. Still firing at 165m: the alert
+  # holds through the hour's gap instead of resolving and paging again an hour after. Once the
+  # host heals (its series ends at 270m) it resolves after the 2h hold.
+  - interval: 1m
+    name: a breaker forgotten by a worker restart keeps its alert firing until the host trips again
+    input_series:
+      - series: 'kinowo_worker_http_circuit_open{country="pl",leg="scrape",host="kinoikar.mok-jar.pl",job="kinowo-worker"}'
+        values: '_x9 1x80 stale _x58 1x120 stale _x200'
+    alert_rule_test:
+      - eval_time: 165m
+        alertname: WorkerHttpHostCircuitOpen
+        exp_alerts:
+          - exp_labels: { domain: third-party, severity: warning, country: pl, leg: scrape, host: kinoikar.mok-jar.pl }
+            exp_annotations:
+              summary: "pl: kinoikar.mok-jar.pl has had its circuit breaker open for over an hour -- cinema listings for that host are being held incomplete (nothing pruned)"
+              description: "Every call to kinoikar.mok-jar.pl (scrape leg) has been fast-failing for an hour: the breaker tripped and each half-open probe since has failed. Cinemas scraped from that host return incomplete listings, which the ScrapeHealth breadth guard rejects, so their listings go stale rather than wrong and nothing is pruned (the 2026-10-25 Helios outage: restapi.helios.pl, 8h, 52 cinemas). Check the host itself first, then the \"Circuit OPEN for kinoikar.mok-jar.pl\" WARN lines for the last failure reason; the breadth-reject rate on worker-diag panel 25 shows the listings being held."
+      - eval_time: 420m
+        alertname: WorkerHttpHostCircuitOpen
+        exp_alerts: []
+
   # MANY BREAKERS OPEN AT ONCE (the 2026-11-05 DNS outage, 42 pl hosts for 29h). Ten pl hosts open
   # from t=10m across a worker-restart gap at 40m: pending at 30m, firing once 30m is held, and held
   # through the gap. Nine uk hosts for 100 minutes stay under the bar; twelve de hosts for 15
