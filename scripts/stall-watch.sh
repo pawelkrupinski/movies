@@ -19,7 +19,7 @@
 #       (scripts/stall-report.sh, on stderr), then ends their processes alone, never the root's own group -- whose
 #       `bounded` then returns the step's status as for any other end.
 #   . scripts/stall-watch.sh          the helpers: stall_tree_pids <pid>, stall_cpu_centis [<pid>...],
-#                                     stall_any_runnable [<pid>...]
+#                                     stall_any_runnable [<pid>...], stall_any_ended <before> <after>
 #
 # THE STALL SIGNAL, for any caller (agentctl land among them): a stalled step's tool exits 75 (EX_TEMPFAIL) with a
 # line `<tool> STALLED: <step> ...` on stderr -- scripts/sbt-warm (`sbt-warm STALLED: <sbt command> ...`) and the
@@ -63,6 +63,16 @@ stall_cpu_centis() { # [<pid>...]
 stall_any_runnable() { # [<pid>...]
   [ $# -gt 0 ] || return 1
   ps -o stat= -p "$(echo "$@" | tr ' ' ',')" 2> /dev/null | grep -q '^R'
+}
+
+# Whether one of the pids of <before> (whitespace-separated) is not in <after>: a process of the watched tree ended
+# between two polls. sbt-warm's client watch counts it as progress: the CPU of a process that ended leaves the sum,
+# and a client winding down on a loaded machine (its sbt done, the wrapper reaping it) otherwise reads as quiet.
+stall_any_ended() { # <before> <after>
+  local p
+  # shellcheck disable=SC2086 # whitespace-separated pids, newlines folded
+  for p in $1; do case " $(echo $2) " in *" $p "*) ;; *) return 0 ;; esac; done
+  return 1
 }
 
 # Whether <file> was modified since the watchdog's mark <mark> (a file whose mtime is the previous poll)

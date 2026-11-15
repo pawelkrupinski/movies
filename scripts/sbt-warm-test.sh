@@ -528,14 +528,22 @@ cat > "$scratch/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
 end=$((SECONDS + 4)); while [ "$SECONDS" -lt "$end" ]; do :; done; echo done
 STUB
-# Order independence #74 once read "0 done done" here (the stub ran twice: the first run retried after it printed), not
-# reproduced on the laptop under load: a failure shows what sbt-warm said, which names the path and the processes seen.
-out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 KINOWO_STALL_CPU_CENTIS=10 KINOWO_PROGRESS_FILE="$scratch/progress" \
-  spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>"$scratch/busy.err"); rc=$?
-busy="$rc $out"
-[ "$busy" = "0 done" ] || busy="$busy | sbt-warm said: $(tr '\n' ' ' < "$scratch/busy.err")"
-check "a command busy past the stall bound is no stall" "0 done" "$busy"
+# busy_call <stall seconds> [<env>...] -> "<status> <output>" of a call of the busy stub, and what sbt-warm said when that
+# is not "0 done" (it names the processes it watched)
+busy_call() {
+  local bound=$1 out rc; shift
+  # shellcheck disable=SC2163 # the <env> assignments
+  out=$(cd "$scratch/stall" && export KINOWO_SBT_WARM_STALL_SECONDS="$bound" KINOWO_STALL_CPU_CENTIS=10 "$@" &&
+    spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>"$scratch/busy.err"); rc=$?
+  if [ "$rc $out" = "0 done" ]; then echo "0 done"; else echo "$rc $out | sbt-warm said: $(tr '\n' ' ' < "$scratch/busy.err")"; fi
+}
+check "a command busy past the stall bound is no stall" "0 done" "$(busy_call 2 KINOWO_PROGRESS_FILE="$scratch/progress")"
 check "...and it touched KINOWO_PROGRESS_FILE as it went" "yes" "$([ -f "$scratch/progress" ] && echo yes || echo no)"
+# A CLIENT'S OWN END IS NO STALL, even under a bound of one quiet poll: the poll that finds the client ended (its tree's
+# CPU gone from the sum) judges nothing, and its processes ending as it winds down are progress. Order independence #74
+# read "0 done done" just above (the stub ran twice, retried after it had printed): the poll after the client's end and
+# one poll of its wind-down on a loaded runner made the 2 s bound.
+check "a client ending is no stall, the bound one quiet poll" "0 done" "$(busy_call 1)"
 
 # ONE COMMAND AT A TIME: a --serve marks the server serving; a call meeting a live serve fails at once, BLOCKED, instead
 # of queueing behind it; the serve's owner gone, the server is stopped; a serve gone, the next call restarts the server
