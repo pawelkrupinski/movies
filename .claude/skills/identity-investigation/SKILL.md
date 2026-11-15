@@ -203,7 +203,10 @@ not hold, judged wrong since); counts differ by corpus (today's billings, not th
 CI's capture-only replay. `--bisect 5622777d~4 5622777d --listing 'Institute of Contemporary Arts|Pereda: Perpetual
 Motion' uk` named 5622777d in 2 steps, 320 s cold. Wall on the laptop, JVM phases of a whole side (corpus, context,
 resolve, settle, prod) on a quiet machine: PL 29 s, US 31 s, UK 26-40 s, DE 40-75 s, ES ~45 s; a ref compiles once (~1-3 min) and JVM slots are often the
-wait (the tool names who holds them). A head rerun through its kept JVM: UK 24 s (head 14 s); DE 13 s. The stage settle was
+wait (the tool names who holds them). A head rerun through its kept JVM: UK 24 s (head 14 s); DE 13 s. DE, 2026-11-15
+(31k listings): a cold ref pair 89-96 s (layout 3 s a ref, compile 14 s a ref -- the head's now beside the base's
+resolve --, base JVM 34 s, head 25 s); a `.` change reaching no take 1 s (was 79-87 s); a `.` code change in a fresh
+worktree 42 s (seeded compile 12 s, was 66-72 s unseeded), its rerun 14 s. The stage settle was
 254 s on ES until the mirror's family answers were read in one batch (now 5-24 s a country).
 
 ## poster-eval
