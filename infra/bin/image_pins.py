@@ -72,8 +72,9 @@ class Pin:
 PINS = [
     Pin("eclipse-temurin", ["Dockerfile"], DOCKER_HUB, "library/eclipse-temurin", "digest", tag_key=r"(\d+)-jdk",
         note="JdkVersionParitySpec holds the major to CI's JDK: a new major is listed, never taken"),
-    Pin("ubuntu", ["Dockerfile", "scripts/run-script-tests"], DOCKER_HUB, "library/ubuntu", "report",
-        tag_key=r"(\d\d)\.(04)", note="LTS releases only; the runtime base, and CI's script-test container"),
+    Pin("ubuntu", ["Dockerfile", "scripts/run-script-tests"], DOCKER_HUB, "library/ubuntu", "digest",
+        tag_key=r"(\d\d)\.(04)", note="LTS releases only; the runtime base, and CI's script-test container: "
+        "the digest is refreshed, a new release (`later`) only listed"),
     Pin("moby/buildkit", [".github/actions/setup-buildx/action.yml"], DOCKER_HUB, "moby/buildkit", "minor"),
     Pin("swift", [".github/workflows/ios.yml", "scripts/ios-compile-check.sh"], DOCKER_HUB, "library/swift", "report",
         tag_key=r"(\d+)\.(\d+)(?:\.(\d+))?", note="moves with ci.yml's Xcode/Swift pins (ActionPinningSpec)"),

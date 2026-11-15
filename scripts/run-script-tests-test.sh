@@ -275,7 +275,9 @@ NO_IMAGE=1 linux scripts/ci > /dev/null
 check "...built once when it is missing" "1" "$(grep -c '^build ' "$work/docker-calls")"
 NO_IMAGE=1 MIRROR_LOST="failed to copy: could not fetch content descriptor sha256:edaf (application/vnd.oci.image.layer.v1.tar+gzip) from remote: not found" \
   linux scripts/ci > /dev/null
-check "...a blob the mirror lost: built again, from Docker Hub" "2 FROM docker.io/library/ubuntu:26.04" \
+# The recipe's own base (tag and digest, which infra/bin/image_pins.py refreshes), from Docker Hub instead.
+hub_base="$(sed -n "s#^LinuxImageRecipe='FROM mirror.gcr.io/#FROM docker.io/#p" "$REPO_ROOT/scripts/run-script-tests")"
+check "...a blob the mirror lost: built again, from Docker Hub" "2 ${hub_base:-a recipe FROM mirror.gcr.io}" \
   "$(grep -c '^build ' "$work/docker-calls") $(grep '^FROM' "$work/docker-calls" | tail -1)"
 check "...any other build failure fails, built once" "2 1" \
   "$(NO_IMAGE=1 MIRROR_LOST="no space left on device" linux scripts/ci) $(grep -c '^build ' "$work/docker-calls")"

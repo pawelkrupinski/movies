@@ -26,13 +26,15 @@
 # The image's JAVA_HOME is /opt/java/openjdk, so the link goes to /opt/jre (jlink refuses an existing
 # directory) and lands at /opt/java/openjdk in the runtime stage.
 # JdkVersionParitySpec holds JAVA_VERSION's major to the JDK CI builds the stage with, and to this tag.
+# Both stages' base is pinned by its manifest-list digest, which infra/bin/nix-update's weekly PR refreshes for the
+# same tag (infra/bin/image_pins.py's `digest` pins; image_pins_test.py fails a FROM without one).
 # Both stages' base comes through mirror.gcr.io, Docker Hub's pull-through cache: CI's anonymous
 # pulls from Docker Hub hit its rate limit and its token endpoint's 504s (CiImageMirrorSpec).
 FROM mirror.gcr.io/library/eclipse-temurin:27-jdk@sha256:473d02d477a8152a05dc42fde10b965754f1863d45e586a97763ef298965c48b AS jdk
 RUN $JAVA_HOME/bin/jlink --output /opt/jre --no-man-pages --no-header-files \
       --add-modules java.base,java.compiler,java.datatransfer,java.desktop,java.instrument,java.logging,java.management,java.management.rmi,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.se,java.security.jgss,java.security.sasl,java.smartcardio,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.accessibility,jdk.charsets,jdk.crypto.cryptoki,jdk.dynalink,jdk.httpserver,jdk.incubator.vector,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.management.jfr,jdk.naming.dns,jdk.naming.rmi,jdk.net,jdk.nio.mapmode,jdk.sctp,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.xml.dom,jdk.zipfs,jdk.jcmd,jdk.attach
 
-FROM mirror.gcr.io/library/ubuntu:26.04
+FROM mirror.gcr.io/library/ubuntu:26.04@sha256:065aa8626841f16057b78b027b464cd59c4fac36c204c72dcbf48d66f5fa8a96
 # The OS side of Temurin's own JRE image (adoptium/containers, ubuntu/noble, jre) reproduced on 26.04:
 # the same OS packages, locale, JAVA_HOME and CDS archive, over the runtime the `jdk` stage linked.
 ENV JAVA_HOME=/opt/java/openjdk

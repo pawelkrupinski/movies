@@ -237,6 +237,18 @@ class RealPins(unittest.TestCase):
     def test_this_repository(self):
         self.shapes("repo")
 
+    def test_every_dockerfile_base_is_a_digest_pin(self):
+        """A base by tag alone is whatever the registry serves that day: the runtime's ubuntu:26.04 was, beside a
+        digest-pinned JDK stage (2026-11-15 review). Each FROM carries its @sha256, refreshed by a digest pin."""
+        text = (image_pins.ROOT / "Dockerfile").read_text()
+        bases = image_pins.re.findall(r"(?m)^FROM\s+(\S+)", text)
+        self.assertTrue(bases)
+        for base in bases:
+            self.assertRegex(base, r"@sha256:[0-9a-f]{64}$", f"{base}: pin it by digest")
+            owners = [p.name for p in image_pins.PINS
+                      if p.policy == "digest" and "Dockerfile" in p.files and p.pattern.search(base)]
+            self.assertTrue(owners, f"{base}: no digest pin in image_pins.PINS refreshes it")
+
     @unittest.skipUnless((image_pins.GITOPS / ".git").exists(), "no movies-gitops checkout (infra/bin/fetch-gitops)")
     def test_movies_gitops(self):
         self.shapes("gitops")
