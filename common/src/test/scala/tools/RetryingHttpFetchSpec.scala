@@ -15,8 +15,8 @@ class RetryingHttpFetchSpec extends AnyFlatSpec with Matchers {
   private def retrying(delegate: HttpFetch) = new RetryingHttpFetch(delegate, sleeps += _)
 
   /** Fails with `failure` the first `times` requests, then answers. */
-  private def failing(times: Int, failure: String => Throwable): RecordingHttpFetch = {
-    lazy val delegate: RecordingHttpFetch = new RecordingHttpFetch(u => if (delegate.calls <= times) throw failure(u) else "answer")
+  private def failing(times: Int, failure: String => Throwable): RequestLoggingHttpFetch = {
+    lazy val delegate: RequestLoggingHttpFetch = new RequestLoggingHttpFetch(u => if (delegate.calls <= times) throw failure(u) else "answer")
     delegate
   }
 
@@ -52,7 +52,7 @@ class RetryingHttpFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be asked through the breaker each time, so a host down for good trips it and is asked no more" in {
-    val wire    = new RecordingHttpFetch(_ => throw new HttpTimeoutException("timed out"))
+    val wire    = new RequestLoggingHttpFetch(_ => throw new HttpTimeoutException("timed out"))
     val breaker = new HostCircuitBreakerHttpFetch(wire, failureThreshold = 4, openDuration = 60.seconds,
       clock = new MutableClock(Instant.parse("2026-10-24T00:00:00Z")))
     val fetch   = retrying(breaker)

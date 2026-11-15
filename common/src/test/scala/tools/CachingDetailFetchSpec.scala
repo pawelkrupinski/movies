@@ -9,7 +9,7 @@ import scala.concurrent.duration._
 class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
 
   /** Each URL maps to a thunk so a response can flip. */
-  private def countingFetch(responses: Map[String, () => String]) = new RecordingHttpFetch(url => responses(url)())
+  private def countingFetch(responses: Map[String, () => String]) = new RequestLoggingHttpFetch(url => responses(url)())
 
   "CachingDetailFetch" should "fetch once and serve the cached body on repeat within the TTL" in {
     val under = countingFetch(Map("u" -> (() => "BODY")))

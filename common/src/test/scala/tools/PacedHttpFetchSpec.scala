@@ -16,7 +16,7 @@ class PacedHttpFetchSpec extends AnyFlatSpec with Matchers {
   private val FlicksUs = "https://www.flicks.us/cinema/sessions/x/2026-07-31/"
 
   private def fixture(interval: Option[FiniteDuration] = Some(250.millis)) = {
-    val delegate = new RecordingHttpFetch(_ => "body")
+    val delegate = new RequestLoggingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
     val clock    = new MutableClock(Instant.EPOCH)   // advanced by hand: pacing is asserted on the recorded sleeps
     val paced    = PacedHttpFetch.perProcess(
@@ -33,7 +33,7 @@ class PacedHttpFetchSpec extends AnyFlatSpec with Matchers {
   /** Like [[fixture]] but paced by the REAL HostPolicies table, so the Flicks
    *  rows decide the intervals rather than a stub — the wiring under test. */
   private def flicksFixture() = {
-    val delegate = new RecordingHttpFetch(_ => "body")
+    val delegate = new RequestLoggingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
     val clock    = new MutableClock(Instant.EPOCH)   // advanced by hand: pacing is asserted on the recorded sleeps
     val paced    = PacedHttpFetch.perProcess(
@@ -60,7 +60,7 @@ class PacedHttpFetchSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "wait for a slot however far off it is, never turning the request back (no horizon)" in {
-    val delegate = new RecordingHttpFetch(_ => "body")
+    val delegate = new RequestLoggingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
     // The clock never moves: every call queues behind the last, an hour of slots deep.
     val paced    = PacedHttpFetch.perProcess(delegate, _ => Some(10.minutes), new MutableClock(Instant.EPOCH),

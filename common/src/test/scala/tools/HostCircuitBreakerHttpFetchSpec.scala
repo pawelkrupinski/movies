@@ -23,7 +23,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = clock)
 
   "the breaker" should "open after the failure threshold and then fast-fail WITHOUT touching the wire" in {
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = breaker(delegate)
     // The first 4 calls all reach the delegate and time out; the 4th trips it open.
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
@@ -43,7 +43,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   it should "carry the failure that opened it, so a blocked host still says why" in {
     val expiredCert: String => String = _ =>
       throw new javax.net.ssl.SSLHandshakeException("PKIX path validation failed: validity check failed")
-    val delegate = new RecordingHttpFetch(expiredCert)
+    val delegate = new RequestLoggingHttpFetch(expiredCert)
     val cb = breaker(delegate)
     (1 to 4).foreach(_ => a[javax.net.ssl.SSLHandshakeException] should be thrownBy cb.get(urlA))
 
@@ -59,7 +59,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   // open" above the leaf that names what is missing (run 37597662228).
   it should "neither trip nor reset on a request that was never sent" in {
     val neverSent: String => String = url => throw new java.io.IOException(s"refused $url") with NeverSent
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = breaker(delegate)
     (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     delegate.respond = neverSent
@@ -77,7 +77,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   // either. Taken as one, it cleared the failures already counted, and an interrupted half-open probe closed the
   // breaker on a host that had not answered at all.
   it should "neither trip nor reset on a call its caller interrupted, sync or async" in {
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = breaker(delegate)
     (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     delegate.respond = _ => throw new InterruptedException()
@@ -93,14 +93,14 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   }
 
   it should "stay closed below the threshold" in {
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = breaker(delegate)
     (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     cb.openRemainingMillis(hostA) shouldBe 0L
   }
 
   it should "reset the failure count on a successful round-trip" in {
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = breaker(delegate)
     (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     delegate.respond = _ => "ok"
@@ -111,11 +111,11 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   }
 
   it should "trip on 5xx but NOT on a 404 (the host answering, not host trouble)" in {
-    val notFoundCb = breaker(new RecordingHttpFetch(notFound))
+    val notFoundCb = breaker(new RequestLoggingHttpFetch(notFound))
     (1 to 8).foreach(_ => a[HttpStatusException] should be thrownBy notFoundCb.get(urlA))
     notFoundCb.openRemainingMillis(hostA) shouldBe 0L // 8 × 404 never opens
 
-    val serverErrCb = breaker(new RecordingHttpFetch(serverError))
+    val serverErrCb = breaker(new RequestLoggingHttpFetch(serverError))
     (1 to 4).foreach(page => a[HttpStatusException] should be thrownBy serverErrCb.get(s"$urlA/$page"))
     serverErrCb.openRemainingMillis(hostA) should be > 0L // 503 on 4 pages opens
   }
@@ -126,7 +126,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   // behind it. A server error is the host ANSWERING about that page: a page counts once until the host answers.
   it should "count a page's repeating server error once, so one broken page never opens the host" in {
     val broken   = s"$urlA/1757"
-    val delegate = new RecordingHttpFetch(url => if (url == broken) throw new HttpStatusException(500, "GET", url, None) else "ok")
+    val delegate = new RequestLoggingHttpFetch(url => if (url == broken) throw new HttpStatusException(500, "GET", url, None) else "ok")
     val cb       = breaker(delegate)
     (1 to 10).foreach(_ => a[HttpStatusException] should be thrownBy cb.get(broken))
     cb.openRemainingMillis(hostA) shouldBe 0L
@@ -141,7 +141,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   }
 
   it should "still open on server errors from as many pages as its threshold, a repeat between them not counted" in {
-    val cb = breaker(new RecordingHttpFetch(serverError))
+    val cb = breaker(new RequestLoggingHttpFetch(serverError))
     Seq(1, 1, 2, 2, 3, 3).foreach(page => a[HttpStatusException] should be thrownBy cb.get(s"$urlA/$page"))
     cb.openRemainingMillis(hostA) shouldBe 0L
     a[HttpStatusException] should be thrownBy cb.get(s"$urlA/4")
@@ -152,7 +152,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // Filmstarts (2026-07-18) answered every request 429 for hours. Without this
     // the breaker never opened (429 is a 4xx) and the worker kept firing ~14k
     // guaranteed-rejected requests an hour at a host that had said stop.
-    val cb = breaker(new RecordingHttpFetch(tooManyRequests))
+    val cb = breaker(new RequestLoggingHttpFetch(tooManyRequests))
     (1 to 4).foreach(_ => a[HttpStatusException] should be thrownBy cb.get(urlA))
     cb.openRemainingMillis(hostA) should be > 0L
   }
@@ -161,7 +161,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // TMDB throttles a burst then serves the retry; ThrottledHttpFetch's gate
     // handles that, and the success must clear the accrued 429s so an ordinary
     // rate-limit blip never costs the host a 60s blackout.
-    val delegate = new RecordingHttpFetch(tooManyRequests)
+    val delegate = new RequestLoggingHttpFetch(tooManyRequests)
     val cb = breaker(delegate)
     (1 to 3).foreach(_ => a[HttpStatusException] should be thrownBy cb.get(urlA))
     delegate.respond = _ => "ok"
@@ -172,7 +172,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   }
 
   it should "go half-open after the cooldown and close again on a success" in {
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = clock)
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
@@ -190,7 +190,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   // which needs the breaker to say so: until then a close was a log line only.
   it should "tell its listener once that a host opened, and once that it closed after a successful half-open probe" in {
     import HostCircuitBreakerHttpFetch.Transition
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val heard    = scala.collection.mutable.Buffer.empty[(String, Transition)]
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = clock,
@@ -208,7 +208,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
 
   it should "tell its listener a host answered after failures too few to open it, and nothing for a clean answer" in {
     import HostCircuitBreakerHttpFetch.Transition
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val heard    = scala.collection.mutable.Buffer.empty[(String, Transition)]
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
       clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z")), onTransition = (host, transition) => { heard += host -> transition; () })
@@ -222,7 +222,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
 
   // A timeout names no host: an ask that has to say which host it failed against reads the one it requested.
   it should "note each request's host for a recording open on the calling thread, and for none other" in {
-    val cb        = breaker(new RecordingHttpFetch(timeout))
+    val cb        = breaker(new RequestLoggingHttpFetch(timeout))
     val recording = new RequestedHost.Recording
     RequestedHost.within(recording) {
       a[HttpTimeoutException] should be thrownBy cb.get(urlB)
@@ -234,7 +234,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   }
 
   it should "keep a request's answer when its listener throws" in {
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
       clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z")), onTransition = (_, _) => throw new IllegalStateException("listener"))
     a[HttpTimeoutException] should be thrownBy cb.get(urlA)
@@ -247,7 +247,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // plain read: once the window elapsed EVERY caller saw 0 remaining and went to
     // the wire together. Re-entering the breaker from inside the probe's own call
     // is the deterministic stand-in for that second queued thread.
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val cb       = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds, clock = clock)
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
@@ -269,7 +269,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // then nothing: `onFailure` re-armed the window silently whenever the breaker
     // was already open. Filmstarts' ~5min 429 blocks therefore read as 60s ones.
     val said     = scala.collection.mutable.ListBuffer.empty[String]
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
       clock = clock, report = Some(message => { said += message; () }))
@@ -288,7 +288,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   // 2,480 in two weeks. A host whose probes keep failing is probed ever less often, doubling to a ceiling; one
   // success puts it straight back to the first cooldown.
   it should "back off its probes while they keep failing, up to a ceiling, and start over once the host answers" in {
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
       maxOpenDuration = 5.minutes, clock = clock)
@@ -313,7 +313,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
 
   it should "announce the recovery too, so a blackout has an end in the log" in {
     val said     = scala.collection.mutable.ListBuffer.empty[String]
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val clock    = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
       clock = clock, report = Some(message => { said += message; () }))
@@ -332,7 +332,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // either — otherwise every transient blip pairs a silent failure with a
     // "CLOSED" line that has no "OPEN" to match.
     val said     = scala.collection.mutable.ListBuffer.empty[String]
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = new HostCircuitBreakerHttpFetch(delegate, failureThreshold = 4, openDuration = 60.seconds,
       clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z")), report = Some(message => { said += message; () }))
 
@@ -344,7 +344,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
   }
 
   it should "isolate hosts — one open breaker never blocks a healthy host" in {
-    val delegate = new RecordingHttpFetch(url => if (url.contains("helios")) throw new HttpTimeoutException("t") else "ok")
+    val delegate = new RequestLoggingHttpFetch(url => if (url.contains("helios")) throw new HttpTimeoutException("t") else "ok")
     val cb = breaker(delegate)
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
     cb.openRemainingMillis(hostA) should be > 0L
@@ -360,7 +360,7 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     // and the failure branch — so the one reply that proves recovery bought another 60s of
     // fast-fail, and a host answering 404s could never be re-probed back to life.
     val clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
-    val delegate = new RecordingHttpFetch(timeout)
+    val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = breaker(delegate, clock)
 
     (1 to 4).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))

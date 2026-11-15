@@ -14,7 +14,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
   // suppression pass the set explicitly; the rest use the empty default.
   private def fixture(cinemaHosts: Set[String] = Set.empty) = {
     val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
-    val delegate = new RecordingHttpFetch(_ => "ok")
+    val delegate = new RequestLoggingHttpFetch(_ => "ok")
     val fetch = new MonitoringHttpFetch(delegate, monitor, cinemaHosts)
     (fetch, delegate, monitor)
   }
@@ -75,7 +75,7 @@ class MonitoringHttpFetchSpec extends AnyFlatSpec with Matchers {
   it should "force the by-name cinemaHosts thunk only once across many calls" in {
     var evaluations = 0
     val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
-    val fetch = new MonitoringHttpFetch(new RecordingHttpFetch(_ => "ok"), monitor, {
+    val fetch = new MonitoringHttpFetch(new RequestLoggingHttpFetch(_ => "ok"), monitor, {
       evaluations += 1; Set("kinomuranow.pl")
     })
     fetch.classify("https://kinomuranow.pl/a")
