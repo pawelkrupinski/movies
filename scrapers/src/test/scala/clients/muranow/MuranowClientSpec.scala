@@ -61,6 +61,13 @@ class MuranowClientSpec extends AnyFlatSpec with Matchers {
       .runtimeMinutes shouldBe Some(170)
   }
 
+  it should "read a bill of two films' running times as the screening's, their sum, not the first film's" in {
+    // "36 min + 93 min": the short "Przechodzień" (1984) before "Jak daleko stąd, jak blisko" (1971), the page as captured by 2026-06-06
+    MuranowClient.parseDetail(FixtureFile.read(
+      "test/resources/fixtures/kino-muranow/kinomuranow.pl/film/100-rocznica-urodzin-tadeusza-konwickiego-przechodzien-jak-daleko-stad-jak-blisko.html"))
+      .runtimeMinutes shouldBe Some(129)
+  }
+
   it should "read cast, original title and the YouTube trailer off the detail page" in {
     val d = detailFor("Milcząca przyjaciółka")
     d.cast shouldBe Seq("Tony Leung", "Luna Wedler", "Enzo Brumm", "Sylvester Groth",
