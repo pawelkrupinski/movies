@@ -787,4 +787,24 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     second.identityTmdbStore.get(services.identity.adapters.TmdbKind.Query, Seq(question)) shouldBe empty
     second.familyAnswerStore should not be theSameInstanceAs(first.familyAnswerStore)
   }
+
+  // A replay's pipeline files the TMDB bodies its tree holds, asked at another moment than prod's store kept its answer:
+  // Verify scrape recording 43657707448's tree ranked "Dziki Robot" first for "Dziki", prod's store the 2026 "Dziki" its
+  // model took, and the replay rejected the take. The model reads the answer prod's model read, whatever the tree files.
+  it should "answer its model from prod's recorded TMDB store ahead of what the tree files over it" in {
+    import services.identity.adapters.{TmdbKind, TmdbStore}
+    val question = TmdbStore.titleSearchId("pl-PL", "Dziki")
+    val dziki    = services.identity.Hit(1536001, "Dziki", None, Some(2026), 1.0)
+    val recorded = ProdLookupInputs.Captured(answers = Map(
+      TmdbKind.Query -> Map(question -> new org.bson.BsonDocument("ids", new org.bson.BsonArray(java.util.List.of(new org.bson.BsonInt32(1536001))))),
+      TmdbKind.Film  -> Map("1536001" -> new org.bson.BsonDocument("hit", TmdbStore.hitDoc(dziki)))), whole = Map.empty, pages = Nil)
+    val replay = new ArchiveReplayWiring(Country.Poland, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage,
+        fixtureTree, settings.FixtureRoot.RepositoryRelative) {
+      override def recordedTmdbAnswers: Option[ProdLookupInputs.Captured] = Some(recorded)
+    }
+    replay.identityTmdbNormalizer.filed("GET", "https://api.themoviedb.org/3/search/movie?query=Dziki&language=pl-PL",
+      scala.util.Success("""{"results":[{"id":1184918,"title":"Dziki robot","original_title":"The Wild Robot","release_date":"2024-09-12","popularity":23.0},""" +
+        """{"id":1536001,"title":"Dziki","original_title":"Dziki","release_date":"2026-01-01","popularity":1.0}]}"""))
+    replay.storedLookups().candidates(services.identity.CandidateQuery.Title("Dziki")).answered.map(_.map(_.tmdbId)) shouldBe Some(Seq(1536001))
+  }
 }

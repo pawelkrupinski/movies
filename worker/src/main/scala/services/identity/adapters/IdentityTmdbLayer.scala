@@ -19,14 +19,15 @@ import java.time.Clock
  * database.
  *
  * Over Mongo, the documents are coalesced in front of a cache in front of the collections ([[CoalescedTmdbDocuments]],
- * [[CachedTmdbDocuments]]); without one, in memory.
+ * [[CachedTmdbDocuments]]); without one, in `memory` — an empty store unless a harness hands it one already holding
+ * answers (a replay's of the store its recording captured).
  */
 final class IdentityTmdbLayer(database: Option[MongoDatabase], clock: Clock, history: IdentityHistory = IdentityHistory.Discard,
-                              build: String = "") {
+                              build: String = "", memory: => TmdbDocuments & TmdbDocumentRetention = new InMemoryTmdbDocuments) {
   /** Where the documents are kept, under the coalescing: what the retention sweep scans and deletes through — every
    *  answer a write or a delete moves kept in `history` ([[HistoryTmdbDocuments]]). */
   lazy val backend: TmdbDocuments & TmdbDocumentRetention =
-    new HistoryTmdbDocuments(cached.getOrElse(new InMemoryTmdbDocuments), history, clock, build)
+    new HistoryTmdbDocuments(cached.getOrElse(memory), history, clock, build)
   private lazy val cached: Option[CachedTmdbDocuments] = database.map(db => new CachedTmdbDocuments(new MongoTmdbDocuments(db)))
   /** The document cache's occupancy by cache name, for `kinowo_worker_cache_*`; none in memory, where there is no cache. */
   lazy val cacheOccupancies: Seq[(String, () => CacheOccupancy)] = cached.toSeq.flatMap(_.occupancies)

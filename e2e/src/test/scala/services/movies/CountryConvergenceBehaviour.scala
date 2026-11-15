@@ -431,6 +431,7 @@ abstract class CountryConvergenceBehaviour(
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), storage, fixtureDirectory, fixtureRoot, missingFixtures, configuration.env, sharedLive) {
       override lazy val clock: java.time.Clock = CountryConvergenceBehaviour.this.clock
       override def recordedRetained: Seq[services.identity.Listing] = CountryConvergenceBehaviour.this.recordedRetained
+      override def recordedTmdbAnswers: Option[tools.ProdLookupInputs.Captured] = CountryConvergenceBehaviour.this.recordedTmdbAnswers
     }
     withClue(s"the archive round-trip lost cinemas: seeded $seeded, replayed ${w.cinemaScrapers.size}\n") {
       w.cinemaScrapers.size shouldBe seeded
@@ -754,6 +755,18 @@ abstract class CountryConvergenceBehaviour(
       val kept = tools.ProdRetained.readIn(CorpusFixture.pathFor(corpusKey).getParent, country.code)
       info(s"${country.displayName}: ${kept.size} kept listing(s) recorded beside the corpus")
       kept
+    }
+
+  /** The recording's capture of prod's TMDB store, beside its corpus ([[tools.ProdLookupInputs]]): what a leg replaying a
+   *  recording answers its model from first, as prod's model answered it. A recording leg asks the tree alone, so the
+   *  tree it writes holds every answer its own model read. None for a generated corpus, or a recording made before the
+   *  capture. */
+  private lazy val recordedTmdbAnswers: Option[tools.ProdLookupInputs.Captured] =
+    if (!replaysRecording || !CorpusFixture.exists(corpusKey)) None
+    else {
+      val captured = tools.ProdLookupInputs.readFrom(CorpusFixture.pathFor(corpusKey).getParent.getParent, country.code)
+      info(s"${country.displayName}: prod's TMDB store " + captured.fold("not recorded beside the corpus")(c => s"recorded beside the corpus: ${c.render}"))
+      captured
     }
 
   private lazy val realScrapeRows: Seq[services.scrapes.ArchivedScrape] =
@@ -1095,6 +1108,7 @@ abstract class CountryConvergenceBehaviour(
         tmdbBodies = passBodies) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
       override def recordedRetained: Seq[services.identity.Listing] = CountryConvergenceBehaviour.this.recordedRetained
+      override def recordedTmdbAnswers: Option[tools.ProdLookupInputs.Captured] = CountryConvergenceBehaviour.this.recordedTmdbAnswers
     }
     // A cut-over pass lands and projects through the identity model (see `rescrapeCutover`); a replayed
     // corpus has nothing that may legitimately fail to land, so a venue that throws fails the pass.

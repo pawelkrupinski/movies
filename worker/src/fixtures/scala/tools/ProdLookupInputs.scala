@@ -6,8 +6,8 @@ import org.bson.json.{JsonMode, JsonWriterSettings}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
 import services.identity._
-import services.identity.adapters.{LiveAsks, MongoTmdbDocuments, QuestionMemory, StoredFirstLookups, StoredTmdbLookups, TmdbDocuments, TmdbKind,
-  TmdbStore, VenueDetailLookups, VenuePageIndex}
+import services.identity.adapters.{InMemoryTmdbDocuments, LiveAsks, MongoTmdbDocuments, QuestionMemory, StoredFirstLookups, StoredTmdbLookups, TmdbDocuments, TmdbKind,
+  TmdbDocumentRetention, TmdbStore, VenueDetailLookups, VenuePageIndex}
 import services.movies.TitleNormalizer
 import services.venuepages.CapturedVenuePages
 
@@ -132,17 +132,26 @@ object ProdLookupInputs {
     }
   }
 
-  /** A capture's documents, as prod's store held them: an answer read as captured, else projected from a whole document
-   *  held; a write (the question memory's) kept beside them. */
-  final class Held(captured: Captured) extends TmdbDocuments {
-    private val wholes = TmdbKind.values.map(kind => kind -> new ConcurrentHashMap[String, BsonDocument](captured.whole.getOrElse(kind, Map.empty).asJava)).toMap
-    def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] =
-      ids.flatMap(id => Option(wholes(kind).get(id)).map(id -> _.clone())).toMap
-    override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = {
-      val (whole, rest) = ids.distinct.partition(wholes(kind).containsKey)
-      super.answers(kind, whole) ++ rest.flatMap(id => captured.answers.get(kind).flatMap(_.get(id)).map(id -> _.clone()))
+  /** A capture's documents, as prod's store held them, over `inner`, which keeps every write. An ANSWER prod's resolve
+   *  read is prod's, whatever is filed over it: a replay's pipeline files the TMDB bodies its recording's tree holds,
+   *  asked at another moment than the one prod's store kept (Verify scrape recording 43657707448: the tree's search for
+   *  "Dziki" ranked 1184918 first, prod's store 1536001, and the replay rejected the take prod's model made). Any other
+   *  answer, and every whole document, is `inner`'s, else projected from the whole document captured — so the question
+   *  memory reads the markers it writes, prod's until it writes one. */
+  final class Held(captured: Captured, inner: TmdbDocuments & TmdbDocumentRetention = new InMemoryTmdbDocuments)
+      extends TmdbDocuments with TmdbDocumentRetention {
+    def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = {
+      val own = inner.get(kind, ids)
+      own ++ ids.distinct.filterNot(own.contains).flatMap(id => captured.whole.get(kind).flatMap(_.get(id)).map(id -> _.clone()))
     }
-    def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = docs.foreach { case (id, d) => wholes(kind).put(id, d.clone()) }
+    override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = {
+      val distinct = ids.distinct
+      val prods    = distinct.flatMap(id => captured.answers.get(kind).flatMap(_.get(id)).map(id -> _.clone())).toMap
+      prods ++ super.answers(kind, distinct.filterNot(prods.contains))
+    }
+    def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit = inner.put(kind, docs)
+    def fetchedBefore(kind: TmdbKind, cutoff: Long): Seq[(String, Long)] = inner.fetchedBefore(kind, cutoff)
+    def deleteIfStill(kind: TmdbKind, stamped: Seq[(String, Long)]): Int = inner.deleteIfStill(kind, stamped)
   }
 
   private val Exact = JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build()

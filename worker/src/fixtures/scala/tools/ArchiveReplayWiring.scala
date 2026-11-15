@@ -235,7 +235,16 @@ class ArchiveReplayWiring(
    *  peaked at 8.63 of its 10 GB with them (8.04-8.10 before; run 41964526286), so a pinned US recording ~15% larger
    *  than 573 would need the heap raised or these answers bounded. */
   override protected lazy val identityTmdbLayer: services.identity.adapters.IdentityTmdbLayer =
-    new services.identity.adapters.IdentityTmdbLayer(None, clock, identityHistory, configuration.commit.value)
+    new services.identity.adapters.IdentityTmdbLayer(None, clock, identityHistory, configuration.commit.value,
+      recordedTmdbAnswers.fold[services.identity.adapters.TmdbDocuments & services.identity.adapters.TmdbDocumentRetention](
+        new services.identity.adapters.InMemoryTmdbDocuments)(new ProdLookupInputs.Held(_)))
+
+  /** The recording's capture of prod's TMDB store as prod's model read it ([[ProdLookupInputs]]): the answers the model
+   *  reads first, prod's wherever prod held one, so the replay's model weighs what prod's weighed — never the tree's
+   *  answer to the same question, asked at another moment. None unless the replay names its recording's (the convergence
+   *  rows replaying one), and a store as empty as before for a recording made before the capture. Read as a def, as
+   *  [[recordedRetained]] is. */
+  def recordedTmdbAnswers: Option[ProdLookupInputs.Captured] = None
 
   // Production's storage SHAPE either way — showtimes in `screenings`, slots in
   // `movie_slots`, neither inlined on the `movies` row. A fake that inlined everything
