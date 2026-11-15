@@ -34,7 +34,7 @@ private[identity] object RelayStage {
         airDays.exists(day => math.abs(java.time.temporal.ChronoUnit.DAYS.between(aired, day)) <= StageRelays.AirDayWindow))
   }
 
-  /** The relay `l` bills, when it names a stage house, a stage work and a season:
+  /** The relay `l` bills, when it names a stage house (or a relay series' banner, "The Met"), a stage work and a season:
    *  - the season its title names;
    *  - else the year its title brackets, the performance's ("MetOpera: Carmen (2009)", aired January 2010; "Royal Ballet:
    *    The Nutcracker (2021)", its 2021 recording): that season or the one before;
@@ -45,7 +45,9 @@ private[identity] object RelayStage {
    *  performance its synopsis names ([[Listing.performanceYear]]), else its screenings' season or the one before. */
   def of(listing: Listing): Option[Billed] = {
     val l = camelSplit(listing)
-    if (!l.billsAStageHouse) None
+    // a relay series' banner beside its work bills the house as a house word does ([[searchedInItsSeason]]): UK The
+    // Beehive Honiton's "The Met: La Fanciulla del West 27" is the Met's relay, whose record TMDB titles with no season
+    if (!searchedInItsSeason(l)) None
     else {
       val works   = unencored(unclosed(l)).billedStageWorks
       val stated  = l.year.orElse(StageRelays.bannerYear(l)).orElse(closingYear(l)).filter(year => l.screeningsSeason.forall(year >= _))
@@ -160,7 +162,9 @@ private[identity] object RelayStage {
       .orElse(f.released.map(day => Set(if (day.getMonthValue >= ScreeningDays.SeasonOpens) day.getYear else day.getYear - 1)))
       .orElse(f.year.map(year => Set(year - 1, year))).getOrElse(Set.empty)
 
-  private val ClosingYear = """(?<![\p{N}/–—-])(20\d{2})\s*$""".r
+  /** A year a title closes on: four digits, or the two a box office shortens it to after a space ("Tosca 27", "Tosca '27")
+   *  — never a season's end ("RB&O 26/27"). */
+  private val ClosingYear = """(?:(?<![\p{N}/–—-])(20\d{2})|(?<=\s)['’]?(\d{2}))\s*$""".r
   /** The listing with the year its titles close on cut off, its work read before it: "THE NUTCRACKER 2026" bills "THE
    *  NUTCRACKER". */
   private def unclosed(l: Listing): Listing = {
@@ -168,9 +172,11 @@ private[identity] object RelayStage {
     if (closingYear(l).isEmpty) l else l.copy(title = cut(l.title), rawTitle = l.rawTitle.map(cut))
   }
   /** The year a title closes on, unbracketed, after its work: UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026"
-   *  (1 December 2026) dates the 2026/27 relay by it. Read only where it is not before its screenings' season ([[of]]). */
+   *  (1 December 2026) dates the 2026/27 relay by it, as The Beehive Honiton's "The Met: La Fanciulla del West 27" (26
+   *  January 2027) dates the Met's 2026/27 relay, whose record TMDB titles with no season. Read only where it is not
+   *  before its screenings' season ([[of]]). */
   private def closingYear(l: Listing): Option[Int] =
-    l.ownTitles.flatMap(title => ClosingYear.findFirstMatchIn(title.trim).map(_.group(1).toInt)).distinct match {
+    l.ownTitles.flatMap(title => ClosingYear.findFirstMatchIn(title.trim).map(m => Option(m.group(1)).fold(2000 + m.group(2).toInt)(_.toInt))).distinct match {
       case Seq(one) => Some(one)
       case _        => None
     }

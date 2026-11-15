@@ -124,6 +124,20 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // its venue states no year: the one its title closes on dates the relay (recording 573)
     val gorlestonAsBilled = Listing("RBO: THE NUTCRACKER 2026", searchTitles = Seq("Royal Ballet & Opera: THE NUTCRACKER 2026"), screeningsSeason = Some(2026))
     acceptance.byRule("relay-record")(ranked(gorlestonAsBilled, season2025, nutcracker2026)).map(_._1.candidate.tmdbId) shouldBe Some(1702761)
+    // ...and so does a year it closes on shortened to two digits: UK The Beehive Honiton's "The Met: La Fanciulla del West
+    // 27" (26 January 2027, UK mirror 2026-11-15) is the Met's 2026/27 relay aired 23 January 2027, whose record TMDB
+    // titles with no season; its "The Met: Samson and Delilah 26" (December 2026) the 2026/27 Samson
+    val fanciulla   = Listing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))
+    val fanciulla27 = (1703629, Film("The Metropolitan Opera: La Fanciulla del West", year = Some(2027),
+      released = Some(java.time.LocalDate.of(2027, 1, 23))), None)
+    val fanciulla18 = (552397, Film("The Metropolitan Opera: La Fanciulla del West", year = Some(2018),
+      released = Some(java.time.LocalDate.of(2018, 10, 27))), Some(1))
+    acceptance.byRule("relay-record")(ranked(fanciulla, fanciulla18, fanciulla27)).map(_._1.candidate.tmdbId) shouldBe Some(1703629)
+    val samsonShort   = Listing("The Met: Samson and Delilah 26", screeningsSeason = Some(2026))
+    val samsonSeason  = (1703624, Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026)), None)
+    acceptance.byRule("relay-record")(ranked(samsonShort, samsonSeason)).map(_._1.candidate.tmdbId) shouldBe Some(1703624)
+    // two digits before its screenings' season date nothing, as four do not
+    acceptance.byRule("relay-record")(ranked(Listing("The Met: La Fanciulla del West 18", screeningsSeason = Some(2026)), fanciulla18, fanciulla27)) shouldBe None
     // a record of its screenings' season aired on a day it screens is the broadcast, whatever older year its title dates
     // the staging by: UK Ilkley's "The Royal Ballet: The Nutcracker (2025)" (1 December 2026, recording 573) is the 2026/27
     // relay aired 29 November -- 112 Flicks venues bill it "RBO Cinema Season 2026-27: The Nutcracker (2025)"
