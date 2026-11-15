@@ -1,6 +1,6 @@
 package services.cinemas.uk
 
-import tools.{HttpFetch, HttpRead}
+import tools.{HttpFetch, HttpRead, HttpStatusException}
 import models._
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
@@ -15,10 +15,12 @@ import java.time.LocalDate
  * That JWT is global (one token covers every venue), lives in the Cloudflare-served
  * page HTML as `window.initialData.api.authToken`, and expires in ~12h. So the
  * token is harvested OUT OF BAND (production: a Zyte `browserHtml` fetch of a
- * www page, ~2×/day) and injected here via `authToken` — this client never
+ * www page, ~2×/day) and injected here as its `bearer` — this client never
  * touches the www page or Zyte, keeping the harvest seam wired separately
  * (see the composition root). Every ocapi call is plain HTTP over the injected
- * `http`, carrying `Authorization: Bearer <token>`.
+ * `http`, carrying `Authorization: Bearer <token>`. A 401 says the token was revoked
+ * before its expiry: the call tells the bearer ([[OdeonBearer.refused]]) and asks ONCE
+ * more with the fresh token it then hands out, if it hands out another.
  *
  * The bearer is not sufficient on its own: ocapi is ALSO behind Cloudflare, which
  * gates on egress-IP reputation. It answered our Fly datacenter IP, but 403s the
@@ -42,7 +44,7 @@ class OdeonClient(
   // its estate then fails the build rather than 400ing in production unnoticed.
   val siteId:          String,
   override val cinema: Cinema,
-  authToken:           () => Option[String],
+  bearer:              OdeonBearer,
   today:               => LocalDate
 ) extends ChunkedCinemaScraper {
 
@@ -64,14 +66,14 @@ class OdeonClient(
    *  THROWS, failing the whole scrape as a normal recorded outcome, which keeps
    *  the venue's last-known listing rather than narrowing it to a guess. */
   def planChunks(): Seq[String] =
-    OdeonParser.parseScreeningDates(HttpRead.page(http, datesUrl, authHeaders()))
+    OdeonParser.parseScreeningDates(authorisedPage(datesUrl))
       .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
       .map(_.toString)
 
   /** Fetch + parse ONE business date's showtimes into that day's films. Throws
    *  on failure so only this date's chunk task reschedules (the per-day retry). */
   def fetchChunk(dateKey: String): Seq[CinemaMovie] =
-    OdeonParser.parseShowtimes(HttpRead.page(http, showtimesUrl(dateKey), authHeaders()), cinema)
+    OdeonParser.parseShowtimes(authorisedPage(showtimesUrl(dateKey)), cinema)
 
   private def datesUrl: String =
     s"$ApiBase/ocapi/v1/film-screening-dates?siteIds=$siteId"
@@ -86,14 +88,26 @@ class OdeonClient(
    *  FAILURE instead, so `MovieCache.recordCinemaScrape` keeps the last-known
    *  listing and /uptime shows a red row (a real problem) rather than a
    *  white "empty" one (a lie). */
-  private def authHeaders(): Map[String, String] =
-    authToken() match {
-      case Some(token) if token.nonEmpty =>
-        Map("Authorization" -> s"Bearer $token", "Accept" -> "application/json")
-      case _ =>
-        throw new IllegalStateException(
-          s"Odeon bearer token not available for siteId=$siteId (harvest not yet run)")
+  private def currentToken(): String =
+    bearer.token().filter(_.nonEmpty).getOrElse(throw new IllegalStateException(
+      s"Odeon bearer token not available for siteId=$siteId (harvest not yet run)"))
+
+  private def page(url: String, token: String): String =
+    HttpRead.page(http, url, Map("Authorization" -> s"Bearer $token", "Accept" -> "application/json"))
+
+  /** The page under the current bearer; on a 401, once more under the fresh one the refusal makes the bearer hand
+   *  out — never more, and not at all when it hands out the refused token again (the 401 then stands). */
+  private def authorisedPage(url: String): String = {
+    val token = currentToken()
+    try page(url, token)
+    catch {
+      case refusal: HttpStatusException if refusal.code == Unauthorised =>
+        bearer.refused(token)
+        val fresh = currentToken()
+        if (fresh == token) throw refusal
+        page(url, fresh)
     }
+  }
 }
 
 object OdeonClient {
@@ -101,6 +115,11 @@ object OdeonClient {
   /** The Vista WebClient base the ocapi endpoints hang off — no browser challenge,
    *  but Cloudflare-gated on egress IP, so production reaches it over `odeonFetch`. */
   val ApiBase = "https://vwc.odeon.co.uk/WSVistaWebClient"
+
+  /** ocapi's answer to a bearer it does not accept. Only this status, not a 403: through the proxy a 403 is
+   *  Cloudflare refusing the egress IP (see `odeonFetch`), which a fresh token cannot cure but a paid harvest
+   *  would be spent on. */
+  private val Unauthorised = 401
 
   /** Vista's media CDN on the same host — the films' posters ([[OdeonParser.posterUrl]]). */
   val MediaCdn = "https://vwc.odeon.co.uk/CDN"

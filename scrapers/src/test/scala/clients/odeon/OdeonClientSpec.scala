@@ -1,11 +1,12 @@
 package clients.odeon
 
 import clients.tools.{FakeHttpFetch, FixtureFile}
+import tools.{GetOnlyHttpFetch, HttpStatusException}
 import models.UkRoster
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.uk.{OdeonClient, OdeonParser}
+import services.cinemas.uk.{OdeonBearer, OdeonClient, OdeonParser}
 
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -118,7 +119,7 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   // ── chunked scrape over the recorded corpus ───────────────────────────────
 
   private val fake  = new FakeHttpFetch("odeon")
-  private val token = () => Some("test-bearer")
+  private val token = OdeonBearer.fixed(Some("test-bearer"))
 
   private def client(today: LocalDate = date) =
     new OdeonClient(fake, siteId, cinema, token, today = today)
@@ -155,11 +156,56 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   "planChunks" should "throw when no bearer token has been harvested" in {
     an[IllegalStateException] should be thrownBy
-      new OdeonClient(fake, siteId, cinema, () => None, today = date).planChunks()
+      new OdeonClient(fake, siteId, cinema, OdeonBearer.fixed(None), today = date).planChunks()
   }
 
   "fetchChunk" should "throw when the harvested token is empty" in {
     an[IllegalStateException] should be thrownBy
-      new OdeonClient(fake, siteId, cinema, () => Some(""), today = date).fetchChunk("2026-07-27")
+      new OdeonClient(fake, siteId, cinema, OdeonBearer.fixed(Some("")), today = date).fetchChunk("2026-07-27")
+  }
+
+  // ── a token revoked before its expiry ────────────────────────────────────
+  // ocapi answers a bearer it no longer accepts with a 401 (the leaf's HttpStatusException); the recorded corpus
+  // answers every other request.
+
+  /** The recorded ocapi, refusing the bearers in `revoked` with a 401; counts the requests it was sent. */
+  private final class RevokingOcapi(revoked: Set[String]) extends GetOnlyHttpFetch {
+    var requests = 0
+    override def get(url: String): String = fake.get(url)
+    override def get(url: String, headers: Map[String, String]): String = {
+      requests += 1
+      if (headers.get("Authorization").exists(h => revoked(h.stripPrefix("Bearer ")))) throw new HttpStatusException(401, "GET", url, None)
+      fake.get(url, headers)
+    }
+  }
+
+  /** A bearer serving `tokens` in turn, the next one only after the current one is refused. */
+  private final class RotatingBearer(tokens: String*) extends OdeonBearer {
+    private var served = 0
+    var refusals       = 0
+    def token(): Option[String] = Some(tokens(served))
+    def refused(token: String): Unit = { refusals += 1; if (token == tokens(served) && served < tokens.size - 1) served += 1 }
+  }
+
+  "a 401" should "drop the revoked bearer and ask once more under the fresh one" in {
+    val ocapi  = new RevokingOcapi(Set("revoked"))
+    val bearer = new RotatingBearer("revoked", "fresh")
+    new OdeonClient(ocapi, siteId, cinema, bearer, today = date).fetchChunk("2026-07-27").map(_.movie.title) should contain("Toy Story 5")
+    (ocapi.requests, bearer.refusals) shouldBe ((2, 1))
+  }
+
+  it should "stand when the bearer has no other token, after one request" in {
+    val ocapi  = new RevokingOcapi(Set("revoked"))
+    val bearer = new RotatingBearer("revoked")
+    the[HttpStatusException] thrownBy new OdeonClient(ocapi, siteId, cinema, bearer, today = date).planChunks() should
+      have(Symbol("code")(401))
+    (ocapi.requests, bearer.refusals) shouldBe ((1, 1))
+  }
+
+  it should "be asked again once, not again and again, when the fresh bearer is refused too" in {
+    val ocapi  = new RevokingOcapi(Set("revoked", "also-revoked"))
+    val bearer = new RotatingBearer("revoked", "also-revoked", "third")
+    an[HttpStatusException] should be thrownBy new OdeonClient(ocapi, siteId, cinema, bearer, today = date).planChunks()
+    (ocapi.requests, bearer.refusals) shouldBe ((2, 1))
   }
 }

@@ -18,7 +18,7 @@ final class UkScraperCatalog(egress: CinemaEgress, venueClock: VenueClock, flick
   private val flicksFetch    = egress.flicks
   private val vueFetch       = egress.vue
   private val odeonFetch     = egress.odeon
-  private val odeonAuthToken = egress.odeonAuthToken
+  private val odeonBearer    = egress.odeonBearer
 
   /** Today in the UK, asked afresh at every read. */
   private def today: LocalDate = venueClock.today(TimeZones.UnitedKingdom)
@@ -51,7 +51,7 @@ final class UkScraperCatalog(egress: CinemaEgress, venueClock: VenueClock, flick
       // Hetzner egress the worker moved to on 2026-08-29 — so the data fetch goes over
       // the residential `odeonFetch`, not direct `http`. A missing token, or a proxy
       // that can't get through either, throws → flicks fallback.
-      case UkFeed.Odeon(id) => new OdeonClient(odeonFetch, id, cinema, odeonAuthToken, today = today)
+      case UkFeed.Odeon(id) => new OdeonClient(odeonFetch, id, cinema, odeonBearer, today = today)
       // UK independents whose own box office (Savoy Systems, Spektrix, Ticketsolve — and
       // the single-venue clients below) lists what Flicks does not — the same own-site
       // PRIMARY + flicks FALLBACK arrangement as the chains above (see

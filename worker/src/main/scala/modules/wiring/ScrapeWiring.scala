@@ -38,7 +38,7 @@ trait ScrapeWiring { self: WorkerWiring =>
     // → a permanent white /uptime bar. Only Zyte's true-residential network
     // reaches it, so route it straight through Zyte (the Decodo proxy can't help).
     services.cinemas.CinemaEgress(httpFetch, multikino = multikinoFetch, biletyna = biletynaFetch, zyte = zyteFetch,
-      flicks = flicksFetch, vue = vueFetch, odeon = odeonFetch, odeonAuthToken = odeonAuthHarvester.token),
+      flicks = flicksFetch, vue = vueFetch, odeon = odeonFetch, odeonBearer = odeonAuthHarvester),
     venueClock,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
     // across worker servers, not just within one process: one `detail_cache` collection for

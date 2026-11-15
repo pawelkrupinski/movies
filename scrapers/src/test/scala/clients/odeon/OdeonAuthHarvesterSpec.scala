@@ -88,6 +88,39 @@ class OdeonAuthHarvesterSpec extends AnyFlatSpec with Matchers {
     h.token() shouldBe None
   }
 
+  // A token Odeon revokes before its exp used to be served until that exp, every venue riding flicks meanwhile.
+  "refused" should "drop the refused token, so the next token() harvests a fresh one, once" in {
+    var calls  = 0
+    val nowMs  = 1_000_000_000_000L
+    val tokens = Iterator(jwt(nowMs / 1000 + 12 * 3600), jwt(nowMs / 1000 + 11 * 3600))
+    val h = new OdeonAuthHarvester(fetchPage = () => { calls += 1; Some(s"""x"authToken":"${tokens.next()}"x""") },
+      now = () => nowMs)
+    val revoked = h.token().get
+    h.refused(revoked)
+    val fresh = h.token().get
+    fresh should not be revoked
+    calls shouldBe 2
+    // every chunk that sent the revoked token is refused too: their refusals leave the fresh token alone
+    (1 to 20).foreach(_ => h.refused(revoked))
+    h.token() shouldBe Some(fresh)
+    calls shouldBe 2
+  }
+
+  it should "count a harvest that reads the refused token again as failed, and not harvest again until the cooldown has run out" in {
+    var calls = 0
+    var nowMs = 1_000_000_000_000L
+    val token = jwt(nowMs / 1000 + 12 * 3600)
+    val h = new OdeonAuthHarvester(fetchPage = () => { calls += 1; Some(s"""x"authToken":"$token"x""") }, now = () => nowMs)
+    h.token(); h.refused(token)
+    h.token() shouldBe None
+    (1 to 20).foreach { _ => h.refused(token); h.token() shouldBe None }
+    calls shouldBe 2
+
+    nowMs += OdeonAuthHarvester.FailureCooldown.toMillis
+    h.token() shouldBe None
+    calls shouldBe 3
+  }
+
   // The token harvest is a paid Zyte request like any other, and was the one Zyte
   // call the paid-egress counter could not see.
   "zyteFetchPage's metering" should "record each browserHtml call's outcome on the paid-egress meter" in {

@@ -58,7 +58,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
                       odeonToken: Option[String] = None): CinemaScraperCatalog =
     new CinemaScraperCatalog(
       CinemaEgress(direct, multikino = direct, biletyna = new FakeHttpFetch(biletyna), zyte = new FakeHttpFetch(zyte),
-        flicks = flicks, vue = vue, odeon = odeon, odeonAuthToken = () => odeonToken),
+        flicks = flicks, vue = vue, odeon = odeon, odeonBearer = services.cinemas.uk.OdeonBearer.fixed(odeonToken)),
       venueClock = models.VenueClock.fixedOn(today),
       chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl), titles = titleNormalizer, lastListing = _ => scala.util.Success(Nil)
     )

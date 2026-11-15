@@ -9574,6 +9574,9 @@ services.cinemas.uk.NovaCinemaClient$Slot
 services.cinemas.uk.NovaCinemaClient$Slot$
 services.cinemas.uk.OdeonAuthHarvester
 services.cinemas.uk.OdeonAuthHarvester$
+services.cinemas.uk.OdeonBearer
+services.cinemas.uk.OdeonBearer$
+services.cinemas.uk.OdeonBearer$$anon$1
 services.cinemas.uk.OdeonClient
 services.cinemas.uk.OdeonClient$
 services.cinemas.uk.OdeonParser

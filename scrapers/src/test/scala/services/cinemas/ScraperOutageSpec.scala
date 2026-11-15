@@ -44,7 +44,7 @@ class ScraperOutageSpec extends AnyFlatSpec with Matchers {
     new CinemaScraperCatalog(
       // A token, so Odeon reaches its (dead) upstream rather than throwing on the
       // missing token before any fetch — that throw would pass for the wrong reason.
-      CinemaEgress.direct(down).copy(odeonAuthToken = () => Some("token")), venueClock = models.VenueClock.fixedOn(today),
+      CinemaEgress.direct(down).copy(odeonBearer = services.cinemas.uk.OdeonBearer.fixed(Some("token"))), venueClock = models.VenueClock.fixedOn(today),
       chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl), titles = titleNormalizer, lastListing = _ => scala.util.Success(Nil))
 
   private sealed trait Verdict

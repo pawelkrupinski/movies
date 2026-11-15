@@ -36,6 +36,11 @@ import scala.util.matching.Regex
  * showing a false "nothing on". `fetchPage` is injected so the token logic is
  * tested without live Zyte (the fake just returns a captured page).
  *
+ * A token ocapi refuses (401) before its `exp` is dropped ([[refused]]), so the next `token()` harvests
+ * once more instead of serving the revoked token until it expires while every venue rides flicks. Bounded: a
+ * refusal of a token already replaced changes nothing, the failure cooldown still holds, and a harvest that
+ * reads the refused token again counts as failed.
+ *
  * Cheap by construction: ~2 browser fetches/day/machine — single-digit dollars/mo —
  * versus fetching the ocapi DATA through a browser (~150k calls/mo), which is
  * pointless since ocapi needs only the Bearer, not a browser.
@@ -44,13 +49,15 @@ class OdeonAuthHarvester(
   fetchPage:     () => Option[String],
   now:           () => Long,
   refreshMargin: FiniteDuration = 2.hours
-) extends Logging {
+) extends OdeonBearer with Logging {
   import OdeonAuthHarvester._
 
   private val lock = new Object
   private var cached: Option[(String, Long)] = None // (token, exp epoch millis)
   // Until when a failed harvest is not tried again (epoch millis): every harvest is a paid Zyte call.
   private var failedUntil: Long = Long.MinValue
+  // The token ocapi last refused: the page may still carry it, and serving it again would only be refused again.
+  private var refusedToken: Option[String] = None
 
   /** The current Bearer, harvesting a fresh one when the cache is empty or within
    *  `refreshMargin` of expiry. A failed harvest is not retried for [[FailureCooldown]]; meanwhile a token
@@ -66,15 +73,22 @@ class OdeonAuthHarvester(
     }
   }
 
+  def refused(token: String): Unit = lock.synchronized {
+    if (cached.exists(_._1 == token)) {
+      cached = None; refusedToken = Some(token)
+      logger.warn("Odeon refused the cached JWT before its expiry; the next token harvests a fresh one.")
+    }
+  }
+
   private def harvest(at: Long): Option[String] = {
     val fresh = for {
       html  <- fetchPage()
-      token <- extractToken(html)
+      token <- extractToken(html) if !refusedToken.contains(token)
       exp   <- jwtExpiryMillis(token)
     } yield (token, exp)
     fresh match {
       case Some((t, exp)) =>
-        cached = Some((t, exp)); failedUntil = Long.MinValue
+        cached = Some((t, exp)); failedUntil = Long.MinValue; refusedToken = None
         logger.info(s"Odeon JWT harvested; it expires at ${java.time.Instant.ofEpochMilli(exp)}.")
         Some(t)
       case None =>

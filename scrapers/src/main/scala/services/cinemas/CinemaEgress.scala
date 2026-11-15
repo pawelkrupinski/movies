@@ -1,6 +1,7 @@
 package services.cinemas
 
 import services.cinemas.pl.MultikinoClient
+import services.cinemas.uk.OdeonBearer
 import tools.{HttpFetch, ProxyChain, Stopwatch}
 
 import java.time.Clock
@@ -27,7 +28,7 @@ import java.time.Clock
  * @param odeon     residential egress for Odeon's Vista ocapi backend, which 403s the Hetzner egress the
  *                  worker moved to on 2026-08-29. Its own route so an Odeon venue keeps its flicks
  *                  FALLBACK on the flicks route while its own-site primary rides this one.
- * @param odeonAuthToken Odeon's short-lived Vista JWT (harvested via Zyte in production, see
+ * @param odeonBearer Odeon's short-lived Vista JWT (harvested via Zyte in production, see
  *                  [[services.cinemas.uk.OdeonAuthHarvester]]); without one an Odeon client throws, and
  *                  its venue falls back to flicks.
  */
@@ -39,13 +40,13 @@ final case class CinemaEgress(
   flicks:         HttpFetch,
   vue:            HttpFetch,
   odeon:          HttpFetch,
-  odeonAuthToken: () => Option[String]
+  odeonBearer:    OdeonBearer
 )
 
 object CinemaEgress {
 
   /** Every route `http`, and no Odeon token: a fixture wiring's or a spec's. */
-  def direct(http: HttpFetch): CinemaEgress = CinemaEgress(http, http, http, http, http, http, http, () => None)
+  def direct(http: HttpFetch): CinemaEgress = CinemaEgress(http, http, http, http, http, http, http, OdeonBearer.fixed(None))
 
   /** A diagnostic's routes (`FilmwebDiff`, `RosterAudit`, specs): every paid route — Multikino's API,
    *  biletyna's venue pages, the venue behind `zyte` — is the residential proxy over `proxyShards`
