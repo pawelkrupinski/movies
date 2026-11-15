@@ -97,8 +97,8 @@ object SamePerson {
    *  simply DELETE them: "Fatih Akın" became "fatih ak" and read as a different
    *  person from "Fatih Akin". Folded here rather than in `deburr`, which is frozen —
    *  `TitleRuleKey` derives stored rule keys from it, and widening it re-keys every
-   *  title rule in prod. */
-  private def foldUndecomposed(s: String): String =
+   *  title rule in prod. `MixedFilmDetector`'s strict director key folds by it too. */
+  private[movies] def foldUndecomposed(s: String): String =
     s.replace('ı', 'i').replace('İ', 'i')
       .replace('ø', 'o').replace('Ø', 'o')
       .replace('đ', 'd').replace('Đ', 'd')

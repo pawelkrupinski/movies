@@ -337,8 +337,11 @@ object MixedFilmDetector {
   private def directorKeys(names: Iterable[String], normalizer: TitleNormalizer): Set[String] =
     names.iterator.flatMap(_.split(",")).map(nameKey(_, normalizer)).filter(_.nonEmpty).toSet
 
+  /** The fold reads letters NFD leaves alone the way [[SamePerson]] does: `sanitize` deletes
+   *  them, and "Ozan Açıktan" keyed as "acktan" denied the "Ozan Aciktan" a German venue prints
+   *  (Verify scrape recording #31). */
   private def nameKey(name: String, normalizer: TitleNormalizer): String =
-    name.split("[^\\p{L}\\p{N}]+").map(normalizer.sanitize).filter(_.nonEmpty).sorted.mkString(" ")
+    SamePerson.foldUndecomposed(name).split("[^\\p{L}\\p{N}]+").map(normalizer.sanitize).filter(_.nonEmpty).sorted.mkString(" ")
 
   /** Does something OTHER than the title agree that these are two films?
    *

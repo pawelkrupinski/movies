@@ -282,6 +282,19 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
     MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
   }
 
+  /** Verify scrape recording #31, kinowo_de: Capitol Lichtspiele Kornwestheim lists "2 Aile
+   *  Arasinda" as 2017 by "Ozan Aciktan"; TMDB 1301248 is the 2026 sequel by "Ozan Açıktan".
+   *  The year alone is a venue's slip — the director is one man, so the venue does NOT deny the
+   *  film. The dotless "ı" is its own letter, not an accented "i": NFD leaves it alone, and a key
+   *  that folds by decomposition deleted it ("acktan"), reading one director as two. */
+  it should "read a director spelt with a dotless i as the one spelt without it" in {
+    val venue = SourceData(title = Some("2 Aile Arasinda"), releaseYear = Some(2017), director = Seq("Ozan Aciktan"))
+    val tmdb  = SourceData(title = Some("2 Aile Arasında"), releaseYear = Some(2026), director = Seq("Ozan Açıktan"))
+
+    MixedFilmDetector.creditSamePerson(Seq("Ozan Aciktan"), Seq("Ozan Açıktan"), titleNormalizer) shouldBe true
+    MixedFilmDetector.deniesFilm(venue, tmdb, titleNormalizer) shouldBe false
+  }
+
   /** The veto is whole-name, not per-word: two directors sharing a given name are
    *  still two directors, and matching the way `titleWords` does would fuse them. */
   it should "still split when the two directors merely share a given name" in {
