@@ -152,6 +152,16 @@ class BuildNetLost(unittest.TestCase):
         self.assertIn('kinowo_identity_build_net_lost{country="pl",build="dbee52416",cause="evidence",tmdb="41153",title="T"} 10', text)
         self.assertIn('kinowo_identity_build_net_lost{country="pl",build="dbee52416",cause="code",tmdb="5",title="T"} 2', text)
 
+    def test_a_loss_taken_back_within_the_window_owes_nothing_whatever_cause_took_it_back(self):
+        # US "Game", 2026-11-09 15:41Z: build 1cdb8ec's take-up left 12 Alamo listings BelowThreshold (cause code) and
+        # the agreement stage Filled them 5 s later (cause evidence); the code's 12 stood as a day-long net loss.
+        recs = [line(10, "lost", f"alamo{i}", "Game", before="1547524", country="us", build="1cdb8ec") for i in range(12)]
+        recs += [line(15, "gained", f"alamo{i}", "Game", after="1547524", country="us", build="1cdb8ec", cause="evidence")
+                 for i in range(12)]
+        recs += [line(20, "lost", "gone", "Other", before="5", country="us", build="1cdb8ec")]
+        out = ir.build_net_lost(recs, now=100)
+        self.assertEqual(out, {("us", "1cdb8ec", "code"): {"count": 1, "tmdb": "5", "title": "T"}})
+
     def test_a_build_that_gained_more_than_it_lost_is_not_published(self):
         recs = [line(10, "lost", "a", "X", before="1"), line(10, "gained", "b", "Y", after="2"),
                 line(10, "gained", "c", "Z", after="3")]

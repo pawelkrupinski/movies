@@ -172,12 +172,19 @@ def film_net_lost(records, now, window=FILM_WINDOW):
 
 def build_net_lost(records, now, window=BUILD_WINDOW):
     """{(country, build, cause): {"count", "tmdb", "title"}} for builds that unmatched more than they matched, per
-    cause: a gain offsets only a loss of its own cause."""
+    cause: a gain offsets only a loss of its own cause. A listing that holds a film again by the window's end owes
+    nothing, its loss and the gain undoing it alike: US "Game" (12 Alamo listings) went BelowThreshold at every take-up
+    of builds 1cdb8ec and 511987c (cause code) and was Filled again 5 s later (cause evidence), so the code's loss stood
+    uncancelled and IdentityBuildNetLosses fired for a day over listings that never stayed unmatched (2026-11-09)."""
     lost, gained = collections.defaultdict(set), collections.defaultdict(set)
     films = collections.defaultdict(collections.Counter)
     titles = {}
-    for r in records:
-        if not (now - window < r["t"] <= now):
+    inside = sorted((r for r in records if now - window < r["t"] <= now), key=lambda r: r["t"])
+    last = {_key(r): r for r in inside}
+    once_lost = {_key(r) for r in inside if r["kind"] == "lost"}
+    retaken = {k for k in once_lost if last[k].get("tmdb_after")}
+    for r in inside:
+        if _key(r) in retaken:
             continue
         bk = (r.get("country", ""), r.get("build", ""), r.get("cause") or UNSTATED_CAUSE)
         if r["kind"] == "lost":
