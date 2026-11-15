@@ -489,3 +489,39 @@ against its film.
 (Czechoslovakia), which the JDK-backed `YearRuntimeMeasures.isoByName` knows no successor of, so "Czech Republic"
 mismatches it. A dissolved state's successors (XC → CZ, SK; SU → RU, UA, …; YU; DD/XG → DE) would be a measure
 change of its own, measured on its own.
+## 11. Fix J: the banners Fix F left (2026-11-15)
+
+**Cases.** The census's "real/banner" bucket on the 2026-11-15 mirror: DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU (Freie
+Platzwahl)", "LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!", "Feels like Home | Osteuropäische
+Filmtage 2026"; PL "ZAKLĘTE REWIRY | NARRACJA: MALCOLM XD", "Niesamowite przygody skarpetek: Do roboty! PREMIERA 2D
+dubbing"; UK "Our House | Preview Screening", "Kino KILN: Born in Flames"; US "Dune: Part One Reissue (2026)". A sweep for
+the same shapes in all five countries found 6 "| Preview Screening" (5 matched), 7 director-visit tails in the golden
+corpus, 4 "(Freie Platzwahl)", 4 "| NARRACJA:" (Pionier: Rejs, Zaklęte rewiry, Zemsta, Ślesicki), 12 "- Osteuropa" and
+13 "| Osteuropäische Filmtage" (most matched).
+
+**Finding.** The banner was no longer what held most of them. Each search already asked for the bare film. They stop at
+scoring:
+- Our House: four TMDB films of that title, no year. Kino KILN Born in Flames: 3.1%, no corroborating venue.
+- Feels like Home, Father, Fantasy, Home Sweet Home (Osteuropa): bare titles that name a better-known film. Feels
+  like Home is the Hungarian "Itt érzem magam otthon" (1395661), and stripping the festival banner would only invite
+  the 2018 namesake. No row was added.
+- Zaklęte rewiry (Rialto, Luna): learned year and runtime vetoes, which another agent owns. Skarpetki: the billing
+  drops the "4." its record carries.
+- Nosferatu: the silent-film denial and the programme-tag denial. A "STUMMFILM MIT <x>:" banner row moved nothing and
+  sent "CHARLIE CHAPLIN" to search, so it was dropped.
+- Leica: the slice over the pinned recording takes 1689091 at base and head alike. Prod's miss is the family's state,
+  not its title.
+- Dune: Part One: prod runs b81577148, which holds 6db813fa2's Reissue rule, so this is no deploy lag. A "Dune: Part
+  One" → "Dune" rename took Dune: Part Three (1170608) in the what-if, a new wrong take, and was dropped. The instalment
+  guard needs the "Part One".
+
+**Change.** Three `title-rules.tsv` query rows. Each one's search title is now the bare film, which the IMDb
+suggestions and the venues corroborating by search group read:
+- `xtra-de-regie-guest-suffix`: "- [LETsDOK|Premiere] [am DD.MM.] mit Regie-Besuch / Regiegespräch / in Anwesenheit
+  des Regisseurs …" (7 golden billings).
+- `xtra-de-freie-platzwahl-suffix`.
+- `xtra-pl-pipe-narracja-suffix`.
+
+**Measure.** what-if over prod's mirror (05:13-05:17Z, all five countries, base b50bcb58c): CLEAN. PL model gained 4
+"Zemsta" takes (Pafawag, Kika, Spektrum, MOK Głogów → 19721), all judged right, and prod's final already served them.
+DE, UK, US and ES did not move. Footprint (pl): 57,557 readings, 0 read otherwise. DE has no stored base trace.
