@@ -143,9 +143,10 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
    *  The `instance` labels (`kinowo-web-<cc>`) survive rollouts, so a 7d window spans the ~15
    *  deploys a day this fleet does rather than one pod's lifetime. */
   private val MeasuredPeakMib = Map(
-    ("web", "pl") ->  881, ("worker", "pl") ->  800,
+    // worker-pl DERIVED 2026-11-15: its 7d RSS peak was 1006 MiB on -Xmx512m, plus the 80 MiB the heap grew (-Xmx592m).
+    ("web", "pl") ->  881, ("worker", "pl") -> 1086,
     ("web", "de") ->  813, ("worker", "de") -> 1058,   // worker re-measured 2026-10-12 on its 640m heap, before -Xmx832m
-    ("web", "uk") ->  816, ("worker", "uk") -> 1073,   // worker re-measured 2026-09-29: the 640m heap the identity take-up needs
+    ("web", "uk") ->  816, ("worker", "uk") -> 1205,   // worker DERIVED 2026-11-15: 7d RSS peak 1109 MiB on -Xmx640m, plus the 96 MiB the heap grew
     ("web", "es") ->  762, ("worker", "es") ->  757,
     // web-us DERIVED, not measured: its 7d RSS peak to 2026-10-03 was 1524 MiB on -Xmx1024m, less the
     // 256 MiB its heap then gave back (-Xmx768m). Replace with a measured 7d peak after 2026-10-10.
@@ -254,7 +255,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
   /** Floors bought by a measured heap exhaustion, per tier+country. See the test
    *  below for what each one cost. */
-  private val HeapFloorsMib = Map(("worker", "us") -> 1152, ("web", "us") -> 768, ("worker", "pl") -> 512, ("worker", "uk") -> 640)
+  private val HeapFloorsMib = Map(("worker", "us") -> 1152, ("web", "us") -> 768, ("worker", "pl") -> 592, ("worker", "uk") -> 736)
 
   // The MIRROR of the test above, and the failure it missed. That one stops a heap
   // outgrowing its container; this one stops a heap the container has already paid
@@ -280,7 +281,8 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // renders an 18.9MB page, which is why it is the country that runs out first.
   // worker-pl's 512 and worker-uk's 640 were bought by GC, not by an OOM, on 2026-10-07: on 448m PL ran 24 full
   // GCs an hour with no boot among them (2.1% of wall time, 14:25-16:40 UTC); UK's 512m, cut from 640m on
-  // 09-29, packed a 308 MB live-set max into 341-412 MB of old gen.
+  // 09-29, packed a 308 MB live-set max into 341-412 MB of old gen. Both went up again on 2026-11-15 (PL 592, UK 736), again
+  // bought by GC: the identity model's retained listings (below, at MeasuredLiveSetMaxMib) grew their live sets past them.
   "the deployments with a measured heap floor" should "claim the container limit they were already given" in {
     HeapFloorsMib.foreach { case ((tier, cc), floor) =>
       val heap  = flagMib(javaOpts(tier, cc), "-Xmx", tier, cc)
@@ -309,8 +311,15 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // reclaiming nothing (JvmOldGenNearCap, and the queue it stopped draining). A tenured pool that full
   // cannot read its live set off, so this is a forced full GC's histogram total (scripts/ops/dumpheap.py
   // --histo): 423 MB, with the corpus still filling in.
+  // PL and UK re-measured 2026-11-15 (the same max, pods past 10 min up, the 8 days to 21:30 UTC): PL 329 (daily max 303-329,
+  // p95 291-317), UK 448 (413-448). Since 2026-11-03 the identity model keeps every listing that left as an input for the
+  // retention window (bdadf277f; 7 days since 5690da082): ~4,800 kept beside PL's ~10,100 billed, ~6,500 beside UK's ~30,700
+  // (`kinowo_worker_identity_model_kept_listings`). PL's daily live-set max went from ~265 MB in mid-October to 305-329 from
+  // 11-05, its old gen sat 0.86-0.94 full after every collection (JvmOldGenNearCap, eleven episodes 11-09..14), and its full
+  // GCs outside a boot went from ~5 an hour (10-29..11-02) to 35-43 at the kept set's peak (11-09..11) and 11-21 once the
+  // window capped it (JvmFullGcRateHigh: 28 episodes PL, 10 UK). The corpus itself did not grow (~1,100-1,270 PL movies).
   private val MeasuredLiveSetMaxMib = Map(
-    ("worker", "pl") -> 244, ("worker", "uk") -> 308, ("worker", "de") -> 423, ("worker", "es") -> 107, ("worker", "us") -> 605)
+    ("worker", "pl") -> 329, ("worker", "uk") -> 448, ("worker", "de") -> 423, ("worker", "es") -> 107, ("worker", "us") -> 605)
   private val OldGenHeadroom        = 1.25
 
   "a measured worker's old generation" should "leave a quarter of headroom over its measured live set" in {
