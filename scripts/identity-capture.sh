@@ -111,7 +111,7 @@ if ! $dry; then
     # Under its own name, NOT MONGODB_URI: the capture JVMs inherit this environment, and a
     # MONGODB_URI there replaces each one's local throwaway database (IdentityCapture.environment).
     $reads_prod && needed+=(KINOWO_PROD_MONGODB_URI=MONGODB_URI)
-    ensure_vault_env "${needed[@]}" -- "$BASH" "$self" "${original_args[@]}" || exit 2
+    ensure_vault_env "${needed[@]}" -- "$BASH" "$self" ${original_args[@]+"${original_args[@]}"} || exit 2
 fi
 
 work=${KINOWO_IDENTITY_CAPTURE_WORK:-target/identity-capture}

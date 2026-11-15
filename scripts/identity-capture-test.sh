@@ -100,6 +100,17 @@ check "prod reaches the capture only as the family export's route, through the t
 check "the capture JVM is handed the newest recording (by creation time), found by the shared helper" "43" \
   "$(sed -n 's/^java .* NEWEST=\(.*\)$/\1/p' "$CALLS")"
 
+# No arguments at all (every country): the vault re-exec hands on an EMPTY argument list, which bash 3.2's `set -u`
+# refuses to expand as "${arr[@]}" ("unbound variable").
+rm -f "$CALLS" "$TUNNEL_UP"
+( cd "$REPO_ROOT" && env -u MONGODB_URI -u KINOWO_IDENTITY_FAMILY_URI -u KINOWO_IDENTITY_FAMILY_SEED \
+    -u KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY -u KINOWO_PROD_MONGODB_URI -u KINOWO_MONGO_SSH \
+    PATH="$FAKE:$PATH" KINOWO_IDENTITY_CAPTURE_WORK="$SCRATCH/work" \
+    scripts/identity-capture.sh > "$SCRATCH/out" 2>&1 )
+check "a capture with no arguments (every country) exits clean, under bash 3.2 too" "0 0" \
+  "$? $(grep -c 'unbound variable' "$SCRATCH/out")"
+check "...and reaches the capture JVM" "1" "$(grep -c '^java MONGODB_URI' "$CALLS")"
+
 # ── --offline: the family answers from the local prod mirror, the recording from the cache, a mongod of its own ──
 CACHE="$SCRATCH/cache"; RUN=38713274617
 for cc in uk pl; do
