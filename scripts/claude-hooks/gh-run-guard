@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Steer `gh run ...` calls to the tools that already answer them, and refuse `gh run rerun`.
+
+2026-11: agents made ~450 `gh run` Bash calls a week (~1.5 h): ~36% `gh run view <id> --json jobs` to see which jobs and
+steps failed, ~19% `--log`/`--log-failed` to read a failure, ~17% `gh run list --workflow Main --branch main` for the
+newest run, and a few `gh run watch`. Each already has an answer: `scripts/ci-status` (one line per gating workflow,
+or `--run <id>` for a run's failed jobs and steps; cached 30 s), `~/bin/agentctl ci-why [<run id>]` (the failure's
+log, tailed), `scripts/ci-wait` / `~/bin/agentctl wait run <id>` (waiting, in the background).
+
+PreToolUse on Bash (.claude/settings.json). `gh run list|view|watch` is ADVISED (exit 0, the advice as additional
+context: the call still runs, a one-off query the tools do not cover is legitimate). `gh run rerun` is DENIED (exit 2):
+a rerun is never a fix here -- a red is investigated to its root cause (CLAUDE.md, "Investigate every red"). `gh run
+download` and `cancel` pass silently. It reads the command, not the shell, through masked-exit-guard's tokenizer; a
+command it cannot tokenize is allowed, and a broken guard never blocks.
+"""
+import importlib.machinery
+import importlib.util
+import json
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+KEYWORDS = {"then", "do", "else", "elif", "if", "while", "until", "!"}
+
+DENY = ("gh-run-guard: `gh run rerun` is not a fix. A red is investigated to its root cause and the cause fixed "
+        "(CLAUDE.md, \"Investigate every red; never rerun to green\"). Read why it failed: `~/bin/agentctl ci-why "
+        "<run id>` or `scripts/ci-status --run <run id>`.")
+ADVICE = {
+    "list": "`scripts/ci-status` prints one line per gating workflow (newest run on main; `--sha <commit>`, "
+            "`--workflow <w>`), cached 30 s; `~/bin/agentctl status` shows what the reconciler holds.",
+    "view": "`scripts/ci-status --run <id>` prints a run's failed jobs and failing steps; `~/bin/agentctl ci-why "
+            "<id>` reads the failure's log (tail per failed job). A raw `--log` grep is for a question those do not answer.",
+    "watch": "wait with `scripts/ci-wait --run <id>` or `~/bin/agentctl wait run <id>`, in the background "
+             "(run_in_background) -- never a foreground `gh run watch`.",
+}
+
+
+def load_tokenizer():
+    path = os.path.join(HERE, "masked-exit-guard")
+    loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
+    spec = importlib.util.spec_from_loader("masked_exit_guard", loader)
+    module = importlib.util.module_from_spec(spec)
+    loader.exec_module(module)
+    return module
+
+
+def gh_run_verbs(command):
+    """The verbs of the `gh run <verb>` calls in `command` (list, view, ...), in order."""
+    guard = load_tokenizer()
+    words = guard.tokens(guard.without_heredoc_bodies(command))
+    verbs = []
+    for i, word in enumerate(words[:-2]):
+        if os.path.basename(word) == "gh" and words[i + 1] == "run" and not guard.is_punctuation(words[i + 2]):
+            verbs.append(words[i + 2])
+    return verbs
+
+
+def main():
+    try:
+        event = json.load(sys.stdin)
+        command = event.get("tool_input", {}).get("command", "")
+        verbs = gh_run_verbs(command) if isinstance(command, str) and "gh" in command else []
+    except Exception:  # a broken guard must not wedge every session
+        return 0
+    if "rerun" in verbs:
+        print(DENY, file=sys.stderr)
+        return 2
+    advice = [ADVICE[v] for v in dict.fromkeys(verbs) if v in ADVICE]
+    if advice:
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": "gh-run-guard: this CI question has a tool. " + " ".join(advice)}}))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

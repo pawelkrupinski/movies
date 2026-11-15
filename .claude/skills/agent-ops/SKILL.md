@@ -94,7 +94,11 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 - **Your own long run** (slice batch, local measure, sbt suite, capture): `scripts/wait-for <log> <pattern>
   [--pid P] [--timeout S]` with `run_in_background`, then act on its notification. Never a foreground
   `until grep; sleep` loop.
-- **CI:** `scripts/ci-wait`, never a hand-written `gh run view`/`sleep` loop. `--run <id>`; `--workflow <w> --sha
+- **CI status, before any `gh run ...`:** `scripts/ci-status` (one line per gating workflow, newest run on main;
+  `--sha <commit>`; `--run <id>` = that run's failed jobs and steps), then `~/bin/agentctl ci-why [<id>]` for the
+  failure's log. ~450 hand-written `gh run list/view --json jobs/--log` calls a week (2026-11) asked exactly these.
+  `gh run rerun` is denied by `scripts/claude-hooks/gh-run-guard` (a rerun is never a fix); list/view/watch are advised.
+- **CI wait:** `scripts/ci-wait`, never a hand-written `gh run view`/`sleep` loop. `--run <id>`; `--workflow <w> --sha
   <commit>` (waits for the run to appear, then to finish); several `--workflow`s for a set; `--or-later` (a green run
   at that commit or later), `--until-green` (wait through reds), `--any-completed` (each workflow's newest verdict).
   A cancelled run is followed to the run that superseded it (`--no-follow`: exit 3). Exit 0 green, 1 red,

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# One line per workflow: where CI stands for main (or a commit) -- the question agents otherwise asked with a
+# hand-written `gh run list --workflow Main --branch main --json ...` (~80 calls a week, 2026-11). One `gh api` call,
+# cached 30 s, so asking again is free. Waiting is scripts/ci-wait; WHY a run is red is `~/bin/agentctl ci-why`.
+#
+#   scripts/ci-status                          THE GATE's workflows (main.yml, identity-model-convergence.yml,
+#                                              identity-takes.yml), each one's newest run on main
+#   scripts/ci-status --sha <commit>           each one's run at that commit (a prefix; HEAD, origin/main resolve by git)
+#   scripts/ci-status --workflow <file|name>   those workflows instead (repeatable)
+#   scripts/ci-status --branch <b>             another branch than main
+#   scripts/ci-status --run <id>               one run: its jobs that did not succeed, with the failing steps (what
+#                                              `gh run view <id> --json jobs --jq ...` was written for), then the
+#                                              `agentctl ci-why <id>` that reads the failure's log
+#   --no-cache                                 ask GitHub again (the cache: ~/.cache/ci-status, CI_STATUS_CACHE_DIR)
+#
+# Output, tab-separated: <workflow> <run id> <sha10> <status> <conclusion> <created>; "-" for a workflow with no run.
+# Exit 0 every line answered (red or not: the verdict is in the line), 2 gh unreachable. KINOWO_GH_REPO, KINOWO_GH.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
+exec python3 -I "$(dirname "$0")/ci_status.py" "$@"
