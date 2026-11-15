@@ -1145,33 +1145,12 @@ check_dashboards() {
         || { sed -n '/^FAIL\|^ERROR\|AssertionError/,+3p' "$tmp/dashboards.log" | head -40 >&2; return 1; }
 }
 
-check_scripttests() {
-    # Beside them, in the background, the same tests on Linux (`--linux`: CI's ubuntu-26.04, in Docker) -- GNU tools a
-    # Mac's BSD ones hide (03b3a6825). Warm, it adds ~4 s to a run the native one outlasts: ~0 s of wall time.
-    local linux_pid=""
-    if ! skipped linux && grep -q -e '--linux' scripts/run-script-tests 2>/dev/null; then
-        scripts/run-script-tests --linux --changed "$base_sha" > "$tmp/scripttests-linux.log" 2>&1 &
-        linux_pid=$!
-    fi
-    scripts/run-script-tests --changed "$base_sha" > "$tmp/scripttests.log" 2>&1 \
-        || { grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; [ -z "$linux_pid" ] || wait "$linux_pid"; return 1; }
-    tail -1 "$tmp/scripttests.log"
-    if [ -n "$linux_pid" ]; then
-        if wait "$linux_pid"; then
-            echo "on Linux: $(tail -1 "$tmp/scripttests-linux.log")"
-        elif grep -q -- '--linux needs a running Docker' "$tmp/scripttests-linux.log"; then
-            echo "on Linux: SKIPPED (Docker is not running -- start Rancher/Docker Desktop to run them as CI does)"
-        else
-            echo "on Linux (scripts/run-script-tests --linux; PREPUSH_SKIP=linux skips it):" >&2
-            grep -v '^PASS\|✓' "$tmp/scripttests-linux.log" | head -80 >&2
-            return 1
-        fi
-    fi
-    # Again under the floor the tools promise, bash 3.2 (scripts/floor-bash: a Mac's /bin/bash, elsewhere the GNU 3.2.57
-    # it builds): a bash-4-only construct is caught at the push, not by the nightly macOS job. Wherever the hook runs --
-    # ci-runner's Linux landing checks too, whose missing bash 3 once passed this in silence (ed160b94b, Order
-    # independence #72). No floor bash BLOCKS, as any missing tool does; PREPUSH_FLOOR_BASH names one (the hook's test).
-    # The hook is the working tree's, the runner the pushed commit's: one from before --bash existed runs once.
+# The floor the tools promise, bash 3.2 (scripts/floor-bash: a Mac's /bin/bash, elsewhere the GNU 3.2.57 it builds), its
+# path printed; nothing printed when there is no floor run (PREPUSH_SKIP=floor, or a pushed runner from before --bash:
+# the hook is the working tree's, the runner the pushed commit's). No floor bash BLOCKS, as any missing tool does:
+# ci-runner's Linux landing checks, whose missing bash 3 once passed it in silence, let ed160b94b land a construct 3.2
+# cannot parse (Order independence #72). PREPUSH_FLOOR_BASH names one (the hook's test).
+scripttests_floor() {
     grep -q -e '--bash' scripts/run-script-tests 2>/dev/null || return 0
     if skipped floor; then warn "scripttests under the floor bash 3.2 SKIPPED (PREPUSH_SKIP=floor)"; return 0; fi
     local floor major
@@ -1186,13 +1165,53 @@ check_scripttests() {
     # shellcheck disable=SC2016 # expanded by that bash
     major=$([ -x "$floor" ] && "$floor" -c 'echo "${BASH_VERSINFO[0]}"' 2>/dev/null) || major=""
     case "$major" in
-        3) ;;
+        3) echo "$floor" ;;
         *) missing_tool floor "bash 3.2 (the floor; $floor is ${major:+bash }${major:-no bash})" \
-               "scripts/floor-bash --install, or PREPUSH_FLOOR_BASH=<a bash 3.2>"; return 1 ;;
+               "scripts/floor-bash --install, or PREPUSH_FLOOR_BASH=<a bash 3.2>" ;;
     esac
-    scripts/run-script-tests --changed "$base_sha" --bash "$floor" > "$tmp/scripttests-floor.log" 2>&1 \
-        || { echo "under $floor (bash $major):" >&2; grep -v '^PASS\|✓' "$tmp/scripttests-floor.log" | head -80 >&2; return 1; }
-    echo "under $floor: $(tail -1 "$tmp/scripttests-floor.log")"
+}
+
+check_scripttests() {
+    # Beside them, in the background: the same tests under the floor bash 3.2 (scripttests_floor), so a bash-4-only
+    # construct is caught at the push, not by the nightly macOS job -- beside, not after, so it costs a landing check
+    # little wall time; and on Linux (`--linux`: CI's ubuntu-26.04, in Docker) -- GNU tools a Mac's BSD ones hide
+    # (03b3a6825). Warm, that adds ~4 s to a run the native one outlasts: ~0 s of wall time.
+    local floor floor_pid="" linux_pid="" rc=0
+    floor=$(scripttests_floor) || return 1
+    if [ -n "$floor" ]; then
+        scripts/run-script-tests --changed "$base_sha" --bash "$floor" > "$tmp/scripttests-floor.log" 2>&1 &
+        floor_pid=$!
+    fi
+    if ! skipped linux && grep -q -e '--linux' scripts/run-script-tests 2>/dev/null; then
+        scripts/run-script-tests --linux --changed "$base_sha" > "$tmp/scripttests-linux.log" 2>&1 &
+        linux_pid=$!
+    fi
+    if scripts/run-script-tests --changed "$base_sha" > "$tmp/scripttests.log" 2>&1; then
+        tail -1 "$tmp/scripttests.log"
+    else
+        grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; rc=1
+    fi
+    if [ -n "$linux_pid" ]; then
+        if wait "$linux_pid"; then
+            echo "on Linux: $(tail -1 "$tmp/scripttests-linux.log")"
+        elif grep -q -- '--linux needs a running Docker' "$tmp/scripttests-linux.log"; then
+            echo "on Linux: SKIPPED (Docker is not running -- start Rancher/Docker Desktop to run them as CI does)"
+        else
+            echo "on Linux (scripts/run-script-tests --linux; PREPUSH_SKIP=linux skips it):" >&2
+            grep -v '^PASS\|✓' "$tmp/scripttests-linux.log" | head -80 >&2
+            rc=1
+        fi
+    fi
+    if [ -n "$floor_pid" ]; then
+        if wait "$floor_pid"; then
+            echo "under $floor: $(tail -1 "$tmp/scripttests-floor.log")"
+        else
+            echo "under the floor bash $floor (scripts/floor-bash; PREPUSH_SKIP=floor skips it):" >&2
+            grep -v '^PASS\|✓' "$tmp/scripttests-floor.log" | head -80 >&2
+            rc=1
+        fi
+    fi
+    return $rc
 }
 
 # actionlint over changed workflows; a composite action's `run:` blocks, which actionlint does not

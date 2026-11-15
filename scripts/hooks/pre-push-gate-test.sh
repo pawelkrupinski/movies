@@ -221,18 +221,18 @@ check "a script push runs the self-tests its changes select, from the push's bas
 check "...and a failing one blocks the push" "1 1" "$(script_push STUB_RUNNER_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
 floor=$(floor_bash 3)
 check "on a Mac (a /bin/bash 3) they run under it too, the floor the tools promise" "0 --changed $runner_base|--changed $runner_base --bash $floor" \
-  "$(script_push) $(paste -sd'|' - < "$gate/args")"
+  "$(script_push) $(LC_ALL=C sort "$gate/args" | paste -sd'|' -)"
 check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_FLOOR_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
 # Linux -- ci-runner's landing checks: no bash 3 there used to pass the floor in silence (ed160b94b, Order independence #72).
 floor=$(floor_bash 5)
-check "a floor bash 4 or newer BLOCKS the push, naming the fix, never runs them once in silence" "1 --changed $runner_base 1 1" \
-  "$(script_push) $(cat "$gate/args") $(grep -c 'BLOCKED' "$gate/err") $(grep -c 'scripts/floor-bash --install' "$gate/err")"
+check "a floor bash 4 or newer BLOCKS the push before any test runs, naming the fix, never runs them once in silence" "1 0 1 1" \
+  "$(script_push) $(cat "$gate/args" 2>/dev/null | wc -l | tr -d ' ') $(grep -c 'BLOCKED' "$gate/err") $(grep -c 'scripts/floor-bash --install' "$gate/err")"
 floor=$gate/no-such-bash
 check "...and so does no floor bash at all" "1 1" "$(script_push) $(grep -c 'is no bash' "$gate/err")"
 floor=found
 printf '#!/bin/sh\necho "%s"\n' "$(floor_bash 3)" > "$grepo/scripts/floor-bash"; chmod +x "$grepo/scripts/floor-bash"
 check "with no PREPUSH_FLOOR_BASH, the bash scripts/floor-bash finds is the floor" "0 --changed $runner_base|--changed $runner_base --bash $gate/bash3" \
-  "$(script_push) $(paste -sd'|' - < "$gate/args")"
+  "$(script_push) $(LC_ALL=C sort "$gate/args" | paste -sd'|' -)"
 printf '#!/bin/sh\necho "floor-bash: no bash 3.2.57 here" >&2; exit 1\n' > "$grepo/scripts/floor-bash"
 check "...and none found BLOCKS the push with what it said" "1 1 1" \
   "$(script_push) $(grep -c 'no bash 3.2.57 here' "$gate/err") $(grep -c 'scripts/floor-bash --install' "$gate/err")"
