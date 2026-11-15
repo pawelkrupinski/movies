@@ -72,8 +72,9 @@ whichever unrelated commit drew its seed (`~/Desktop/claude docs/convergence-red
   `PopulationMonotonicitySpec` as neither new nor owed. The explorer files no row for one, and a drift row that replays
   one says `struck` with its decision (`drift_explorer.py`, `drift_diff.py`). A row goes when no slice or pinned
   recording holds its artefact any more.
-- **The explorer.** `.github/workflows/identity-drift-explorer.yml` dispatches main's drift rows nightly on random seeds
-  off the gate (`drift-explore: auto`: DE 4, UK 6, US 6, PL 8, ES 24 seeds a night), the head alone, never red, and
+- **The explorer.** `.github/workflows/identity-drift-explorer.yml` runs main's drift rows nightly -- Identity takes,
+  CALLED inside its own run, so no run of a gate workflow is ever this replay (2026-11-15: dispatched, it was a red NO
+  VERDICT run every night, failing only `verdict complete`) -- on random seeds off the gate (`drift-explore: auto`: DE 4, UK 6, US 6, PL 8, ES 24 seeds a night), the head alone, never red, and
   publishes the flips no backlog row names as `new-flips.tsv` on the release `identity-flip-explorer`. Actions cannot
   push main, so agentctl adopts the asset: one item per flip, and one landed commit adding its backlog row and its seed
   to the gate (`scripts/ci/drift_explorer.py file`), the only commit `commit_rules.py` lets add a drift row freely.

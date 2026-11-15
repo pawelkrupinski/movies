@@ -8,12 +8,18 @@ name: Identity drift explorer
 # PL 8, ES 24 seeds a night, beyond the gate's), the head alone, NEVER RED (scripts/ci/identity-drift-check.sh's
 # DRIFT_EXPLORE).
 #
+# IN THIS RUN, OUTSIDE THE GATE (2026-11-15): the rows are Identity takes' own, CALLED (`drift`, identity-takes.yml's
+# `workflow_call`), not dispatched -- so they run under this workflow's name, and no run of Identity takes on main is ever
+# this drift-only replay. Dispatched, it was one: a red run every night, failing only `verdict complete` (no takes row ran),
+# that THE GATE's readers had to pass over as NO VERDICT (Identity takes 42697734861, 42900211334, 43640167303). Inside
+# the call that job and Identity takes' `timings` are skipped; this run's own `workflow_run` reports its timings.
+#
 # FILING. Actions cannot push main (the ruleset's bypass is the owner and agentctl's lander app). So the explorer only
-# PUBLISHES (scripts/ci/drift-explorer-publish.sh): it waits for the run it dispatched (a `workflow_run` never fires for a GITHUB_TOKEN dispatch) and merges the rows' explore-<cc>.tsv (the flips no backlog row names; columns venue
-# rawTitle country seed firstSeen slice takes, `slice` naming the artifact the replay's output is in) into the asset
-# `new-flips.tsv` on the release `identity-flip-explorer` (and a dated copy), and never commits. AGENTCTL ADOPTS it: its
-# tick reads the newest asset and, for each flip no backlog row names, files one item and lands one commit made by
-# `scripts/ci/drift_explorer.py file` -- the backlog row (kind drift) and the seed onto the gate -- which
+# PUBLISHES (`publish`, scripts/ci/drift-explorer-publish.sh): it merges the rows' explore-<cc>.tsv (the flips no backlog
+# row names; columns venue rawTitle country seed firstSeen slice takes, `slice` naming the artifact the replay's output is
+# in) into the asset `new-flips.tsv` on the release `identity-flip-explorer` (and a dated copy), and never commits. AGENTCTL
+# ADOPTS it: its tick reads the newest asset and, for each flip no backlog row names, files one item and lands one commit
+# made by `scripts/ci/drift_explorer.py file` -- the backlog row (kind drift) and the seed onto the gate -- which
 # scripts/ci/commit_rules.py lets in (explorer_filing). From then on every change is judged on that seed too.
 on:
     schedule:
@@ -37,27 +43,49 @@ env:
     LANG: C.UTF-8
 
 jobs:
-    explore:
-        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-26.04' }}
-        # the drift rows' 85-minute ceiling, behind main's queued convergence runs in the lane
-        timeout-minutes: 300
+    # Main's takes-drift rows, every country, on random seeds off the gate: Identity takes' preflight, legs and all, in
+    # this run (its lane on main, as a dispatched run's was; the leg's own ceilings bound each row).
+    drift:
+        uses: ./.github/workflows/identity-takes.yml
         permissions:
             actions: write
             contents: write
+            checks: write
+            statuses: write
+        with:
+            drift-only: true
+            drift-explore: auto
+        # TMDB_API_KEY, the proxy's credentials and the GITHUB_TOKEN the setup and publish actions read.
+        secrets: inherit
+
+    # The rows' flips, published whatever the rows ended (a row that failed may still have written its explore-<cc>.tsv):
+    # what fails it is a run that wrote none.
+    publish:
+        needs: [drift]
+        if: ${{ !cancelled() }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 15
+        permissions:
+            # the rows' artifacts (./.github/actions/download-artifacts)
+            actions: read
+            contents: write
         steps:
             - uses: actions/checkout@v5
-            - name: Explore main's takes-drift rows on random seeds off the gate, and publish the flips no backlog row names
+            - uses: ./.github/actions/download-artifacts
+              with:
+                  pattern: identity-drift-*
+                  path: ${{ runner.temp }}/explore
+            - name: Publish the flips no backlog row names
               env:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
-              # the dispatched drift-only run ends failure by design (G7); the script publishes its rows anyway
-              run: scripts/ci/drift-explorer-publish.sh
+              run: scripts/ci/drift-explorer-publish.sh "$RUNNER_TEMP/explore"
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
         name: report (scheduled run)
-        needs: [explore]
+        needs: [drift, publish]
         if: always() && !cancelled() && (github.event_name == 'schedule' || github.event_name == 'repository_dispatch')
         runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
         timeout-minutes: 5

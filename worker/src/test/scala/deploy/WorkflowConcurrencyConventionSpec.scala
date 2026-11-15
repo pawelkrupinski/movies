@@ -25,7 +25,10 @@ import org.scalatest.matchers.should.Matchers
  *  fixed choice is Main's: it never cancels (below).
  *
  *  A reusable workflow (`workflow_call`) declares none: the caller owns the lane, and a group named in the callee
- *  is shared by every call of it in one run, which then cancel each other (country-convergence-leg.yml).
+ *  is shared by every call of it in one run, which then cancel each other (country-convergence-leg.yml). The one
+ *  exception is a workflow that is a DISPATCHED workflow first and called besides: Identity takes, whose runs need its
+ *  lane, called by the drift explorer from one job, never a matrix (2026-11-15) -- so its one call sits in that lane as
+ *  its dispatched run did, under a group that is not its caller's (no deadlock).
  *
  *  A NON-CANCELLING group (`cancel-in-progress` anything but a literal `true`: `false`, or an expression that can come
  *  out false) relies on the CI server to keep at most one running and one pending run, a newer pending run replacing
@@ -44,6 +47,9 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
   /** Not reusable, and no lane — unreviewed as of 2026-10-15; giving one a lane is a change of its own. */
   private val LaneLess = Set("discover-cinemas", "country-fixture-artifact", "filmweb-diff", "order-independence",
     "renovate", "roster-audit", "security-headers", "scala-steward", "decodo-probe")
+
+  /** Dispatched on their own (a lane of their own) AND called -- once a caller run, from one job. */
+  private val DispatchedAndCalled = Set("identity-takes")
 
   private val Key = """(-\$\{\{ github\.ref \}\}|-\$\{\{ inputs\.[a-z-]+ \}\}|\$\{\{ github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.ref_name\) \|\| '' \}\}|\$\{\{ \(github\.event_name != 'schedule' && github\.event_name != 'repository_dispatch'\) && format\('-\{0\}', github\.ref_name\) \|\| '' \}\})?"""
 
@@ -108,7 +114,24 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
   }
 
   "a reusable workflow" should "declare no group, leaving the lane to its caller" in {
-    workflows.collect { case (stem, yml) if yml.contains("workflow_call:") && groupOf(yml).isDefined => stem } shouldBe empty
+    workflows.collect { case (stem, yml) if yml.contains("workflow_call:") && groupOf(yml).isDefined => stem }
+      .toSet shouldBe DispatchedAndCalled
+  }
+
+  "a dispatched workflow also called" should "be called from one job, never a matrix, by a caller in a lane of its own" in {
+    for (stem <- DispatchedAndCalled) {
+      val callers = for {
+        (caller, yml) <- workflows
+        (job, body)   <- RepoFile.jobs(yml)
+        if body.contains(s"uses: ./.github/workflows/$stem.yml")
+      } yield (caller, job, body, yml)
+      callers should not be empty
+      callers.foreach { case (caller, job, body, yml) =>
+        withClue(s"$caller/$job: ")(body should not include "matrix:")
+        withClue(s"$caller: ")(groupOf(yml) should not be groupOf(workflows.collectFirst { case (`stem`, y) => y }.get))
+        withClue(s"$caller: ")(groupOf(yml) shouldBe defined)
+      }
+    }
   }
 
   "every other workflow" should "have a lane, or be named lane-less here" in {

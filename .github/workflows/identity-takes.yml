@@ -13,8 +13,14 @@
 #
 # WHO STARTS IT: Identity model convergence's preflight, for EVERY run it makes (scripts/ci/dispatch-takes.sh: the same ref,
 # its inputs, `parent-run` -- the title below), so whatever kicks off convergence kicks off this; and the takes-only and
-# drift-only requests that ask for no convergence row: scripts/identity-measure (takes-only), scripts/identity-drift-ci and
-# the drift explorer (drift-only). Nothing else dispatches it, and it has no other trigger (IdentityTakesWiringSpec).
+# drift-only requests that ask for no convergence row: scripts/identity-measure (takes-only) and scripts/identity-drift-ci
+# (drift-only). Nothing else dispatches it (IdentityTakesWiringSpec).
+#
+# AND ONE CALLER, OUTSIDE THE GATE: the nightly drift explorer (identity-drift-explorer.yml) CALLS it (`workflow_call`,
+# drift-only, `drift-explore: auto`), so its rows run inside the explorer's own run, under the explorer's name. A run of
+# this workflow on main is then always a gate verdict: the explorer's drift-only replay, which no `verdict complete` can
+# call complete, is never one (it was a red NO VERDICT run every night, 2026-11-15). Inside a call `verdict complete` and
+# `timings` are skipped -- the run is not THE GATE's, and Report run timings reports the explorer's run itself.
 #
 # A VERDICT ALREADY PROVEN IS NOT RUN AGAIN: Main's kick hands convergence a landing check's convergence run (`reuse-run`),
 # and convergence hands it here; this preflight judges the takes run THAT run dispatched (convergence_reuse.py verify
@@ -32,6 +38,18 @@ name: Identity takes
 run-name: ${{ inputs.parent-run != '' && format('Identity takes (convergence run {0})', inputs.parent-run) || 'Identity takes' }}
 
 on:
+    # Only the drift explorer (IdentityTakesWiringSpec): what it hands on. Every other input is the dispatch's alone and
+    # reads empty in a call -- its default (convergence_reuse.py inputs), as an undispatched input would.
+    workflow_call:
+        inputs:
+            drift-only:
+                description: Run only each leg's takes-drift rows (the explorer always does).
+                required: true
+                type: boolean
+            drift-explore:
+                description: Each takes-drift row replays N (or `auto`) random seeds off the gate, head alone, never red.
+                required: true
+                type: string
     workflow_dispatch:
         inputs:
             # The Identity model convergence run whose preflight dispatched this one (scripts/ci/dispatch-takes.sh); empty
@@ -107,8 +125,8 @@ on:
                 required: false
                 type: boolean
                 default: false
-            # THE EXPLORER (identity-drift-explorer.yml): each takes-drift row replays main alone on seeds the gate does not
-            # hold -- `auto` (each country's count, scripts/ci/drift_explorer.py) or N a row -- never red; drift-only.
+            # THE EXPLORER (identity-drift-explorer.yml calls it): each takes-drift row replays main alone on seeds the gate
+            # does not hold -- `auto` (each country's count, scripts/ci/drift_explorer.py) or N a row -- never red; drift-only.
             drift-explore:
                 description: Explore -- each takes-drift row replays N (or `auto`) random seeds off the gate, head alone, never red.
                 required: false
@@ -185,6 +203,10 @@ jobs:
             runner: ${{ inputs.runner || (vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies-measure') || 'ubuntu-22.04' }}
             light-runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && github.ref != 'refs/heads/main' && 'movies' || 'ubuntu-26.04' }}
             on-main: ${{ github.ref == 'refs/heads/main' }}
+            # THE DRIFT EXPLORER'S CALL (identity-drift-explorer.yml): `github` is the CALLER's context in a called workflow,
+            # so this names the explorer's run -- no gate verdict, no in-run timings. Matched on the explorer by name, never
+            # on "not this workflow": a context read otherwise keeps `verdict complete` running (red noise, never a false green).
+            explorer: ${{ contains(github.workflow_ref, '/.github/workflows/identity-drift-explorer.yml@') }}
         steps:
             # Blobless history: the reuse check keys commits by their trees and walks back to main's takes base.
             - uses: actions/checkout@v5
@@ -359,7 +381,7 @@ jobs:
             takes-base:                    ${{ needs.preflight.outputs.takes-base }}
             takes-only:                    ${{ needs.preflight.outputs.takes-only == 'true' }}
             takes-countries:               ${{ needs.preflight.outputs.takes-countries }}
-            # Only the takes-drift rows (scripts/identity-drift-ci, the drift explorer): the incremental = whole replay.
+            # Only the takes-drift rows (scripts/identity-drift-ci, the drift explorer's call): the incremental = whole replay.
             drift-only:                    ${{ needs.preflight.outputs.drift-only == 'true' }}
             drift-seed-1:                  ${{ needs.preflight.outputs.drift-seed-1 }}
             drift-seed-2:                  ${{ needs.preflight.outputs.drift-seed-2 }}
@@ -437,10 +459,11 @@ jobs:
     # green for THE GATE only when every `takes` and `takes-drift-<n>` row of every country ran to a verdict, or the
     # preflight proved a reuse (`reused-from`). Run 1747 went green with its takes rows skipped and split one 18-hour red
     # episode in two. A row skipped, cancelled or missing fails this job -- and with it the run: no verdict is no green.
+    # Not inside the drift explorer's call: that run is the explorer's, never one of this workflow's that THE GATE reads.
     verdict-complete:
         name: verdict complete
         needs: [ preflight, leg ]
-        if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' }}
+        if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' && needs.preflight.outputs.explorer != 'true' }}
         runs-on: ${{ needs.preflight.outputs.light-runner }}
         timeout-minutes: 5
         permissions:
@@ -482,10 +505,11 @@ jobs:
                   job-status: ${{ job.status }}
 
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml), DISPATCHED as a run of its own that waits for this
-    # one to end: this run's end is THE GATE's verdict (RunTimingsWiringSpec).
+    # one to end: this run's end is THE GATE's verdict (RunTimingsWiringSpec). Not inside the drift explorer's call: its
+    # run's `workflow_run` reports it whole, these jobs with it.
     timings:
         needs: [ preflight, leg, takes-drift-aa, verdict-complete ]
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && needs.preflight.outputs.explorer != 'true' }}
         runs-on: ${{ needs.preflight.outputs.light-runner }}
         timeout-minutes: 5
         permissions:

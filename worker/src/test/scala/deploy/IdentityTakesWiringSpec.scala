@@ -17,7 +17,37 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
   "Identity takes" should "be started only by a dispatch: convergence's preflight's, or a takes-only or drift-only request" in {
     val triggers = RepoFile.block(workflow, "on")
     triggers should include("workflow_dispatch:")
-    Seq("schedule:", "push:", "pull_request:", "workflow_run:", "workflow_call:").foreach(triggers should not include _)
+    Seq("schedule:", "push:", "pull_request:", "workflow_run:").foreach(triggers should not include _)
+  }
+
+  /** THE DRIFT EXPLORER, OUTSIDE THE GATE (2026-11-15): its drift-only replay was a dispatched run of this workflow on
+   *  main, red every night in `verdict complete` alone (no takes row ran) -- a NO VERDICT every gate reader had to pass
+   *  over (Identity takes 42697734861, 42900211334, 43640167303). Now the explorer CALLS the workflow, so the rows run in
+   *  the explorer's run, under its name; the call skips `verdict complete` and `timings`, keyed on the explorer's own
+   *  workflow file (`github` is the caller's in a call), so a context read any other way keeps the verdict job running:
+   *  red noise at worst, never a false green. */
+  it should "be called by the drift explorer alone, drift-only exploring, its verdict and in-run timings skipped there" in {
+    val call = RepoFile.block(workflow, "workflow_call")
+    call should include("drift-only:")
+    call should include("drift-explore:")
+    val callers = RepoFile.workflows().map(_.getPath)
+      .filter(p => RepoFile.read(p).contains("uses: ./.github/workflows/identity-takes.yml")).toSet
+    callers shouldBe Set(".github/workflows/identity-drift-explorer.yml")
+    val explorer = RepoFile.read(".github/workflows/identity-drift-explorer.yml")
+    val drift    = RepoFile.jobs(explorer)("drift")
+    drift should include("uses: ./.github/workflows/identity-takes.yml")
+    drift should include("drift-only: true")
+    drift should include("drift-explore: auto")
+    drift should include("secrets: inherit")
+    RepoFile.jobs(explorer)("publish") should include("needs: [drift]")
+    RepoFile.jobs(explorer)("publish") should include("scripts/ci/drift-explorer-publish.sh \"$RUNNER_TEMP/explore\"")
+    RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs") should include(
+      "explorer: ${{ contains(github.workflow_ref, '/.github/workflows/identity-drift-explorer.yml@') }}")
+    RepoFile.jobs(workflow)("timings") should include(
+      "if: ${{ !cancelled() && needs.preflight.outputs.explorer != 'true' }}")
+    withClue("the explorer dispatches no run of a gate workflow any more: ") {
+      RepoFile.read("scripts/ci/drift-explorer-publish.sh") should not include "dispatch_workflow"
+    }
   }
 
   /** WHATEVER STARTS CONVERGENCE STARTS TAKES: the first step after checkout and telemetry, with no `if:` (a reuse, a
@@ -68,8 +98,7 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
       }
     }
     val takesDispatchers = sources.filter(p => dispatchedBy(p).contains("identity-takes.yml")).toSet
-    takesDispatchers shouldBe Set("scripts/ci/dispatch-takes.sh", "scripts/identity-measure", "scripts/identity-drift-ci",
-      "scripts/ci/drift-explorer-publish.sh")
+    takesDispatchers shouldBe Set("scripts/ci/dispatch-takes.sh", "scripts/identity-measure", "scripts/identity-drift-ci")
     (takesDispatchers - "scripts/ci/dispatch-takes.sh").foreach { path =>
       withClue(s"$path dispatches identity-takes.yml itself, so it must ask for takes rows alone: ") {
         RepoFile.read(path) should (include("takes-only=true") or include("drift-only=true"))
@@ -114,7 +143,7 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
   it should "fail a main run whose takes or takes-drift rows did not all decide, a proven reuse aside" in {
     val job = RepoFile.jobs(workflow)("verdict-complete")
     job should include("needs: [ preflight, leg ]")
-    job should include("if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' }}")
+    job should include("if: ${{ !cancelled() && needs.preflight.outputs.on-main == 'true' && needs.preflight.outputs.explorer != 'true' }}")
     job should include("REUSED_FROM: ${{ needs.preflight.outputs.reused-from }}")
     job should include("convergence_reuse.py complete --run \"$RUN_ID\" --sha \"$GITHUB_SHA\" --reused-from \"$REUSED_FROM\"")
   }

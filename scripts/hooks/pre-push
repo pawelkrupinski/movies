@@ -793,8 +793,8 @@ check_redgate() {
             [ -n "$verdict" ] || { gate_state="$gate_state $i:none"; continue; }
             read -r conclusion id url episode <<< "$verdict"
             # AN INCOMPLETE RUN IS NO VERDICT (the owner, 2026-11-08: read main's verdict as agentctl does). A red run whose
-            # failed jobs are aggregates alone (.github/gating-checks.tsv; failed_jobs drops them) -- the drift explorer's
-            # drift-only dispatch failing only `verdict complete`, by design (Identity model convergence #1063) -- is passed
+            # failed jobs are aggregates alone (.github/gating-checks.tsv; failed_jobs drops them) -- a run whose takes rows did
+            # not all decide, failing only `verdict complete` (Identity model convergence #1063) -- is passed
             # over, and the complete run before it decides. Jobs gh cannot say: it stays red (the gate fails closed).
             passed=()
             while [ "$conclusion" != success ] && [ "${#passed[@]}" -lt 3 ] \

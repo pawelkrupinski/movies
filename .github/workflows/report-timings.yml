@@ -10,9 +10,9 @@ name: Report run timings
 # A cancelled run is not reported (the in-run job's `!cancelled()`, kept).
 #
 # THE EXCEPTIONS: a run another workflow DISPATCHES with its GITHUB_TOKEN completes with no `workflow_run` event
-# (GitHub's rule against token-triggered chains), so the three workflows only ever started that way report from inside:
-#   * Identity model convergence (Main's kick, the daily run, the drift explorer) -- its `timings` job DISPATCHES this
-#     workflow with the run's id (a dispatch is the one token event GitHub lets through) and the run this starts waits
+# (GitHub's rule against token-triggered chains), so the workflows only ever started that way report from inside:
+#   * Identity model convergence (Main's kick, the daily run) and Identity takes (its preflight's) -- their `timings`
+#     job DISPATCHES this workflow with the run's id (a dispatch is the one token event GitHub lets through) and the run this starts waits
 #     for that one to end and reports it; THE GATE's verdict is that run's end (2026-11-06).
 #   * Verify scrape recording (Record scrape fixtures' dispatch) and Convergence bisect (the convergence's) -- a call
 #     of this workflow as their last `timings` job. Nothing waits on either run's end.

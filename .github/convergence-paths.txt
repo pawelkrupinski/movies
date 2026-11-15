@@ -104,6 +104,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/actions/job-telemetry/action.yml
 .github/actions/mark-grafana-deploy/action.yml
 .github/actions/order-compare/action.yml
+.github/actions/report-scheduled-run/action.yml
 .github/actions/run-page-test/action.yml
 .github/actions/setup-buildx/action.yml
 .github/actions/setup-sbt-build/action.yml
@@ -121,6 +122,7 @@ test/resources/fixtures/identity-judgements.tsv
 .github/scripts/unpack-fixture-archive.sh
 .github/workflows/ci.yml
 .github/workflows/country-convergence-leg.yml
+.github/workflows/identity-drift-explorer.yml
 .github/workflows/identity-model-convergence.yml
 .github/workflows/identity-takes.yml
 .github/workflows/main.yml
@@ -137,6 +139,7 @@ scripts/ci/corpus_shape_diff.py
 scripts/ci/dispatch-takes.sh
 scripts/ci/dispatch.sh
 scripts/ci/download-run-artifacts.sh
+scripts/ci/drift-explorer-publish.sh
 scripts/ci/drift-replays-compare.sh
 scripts/ci/drift_diff.py
 scripts/ci/drift_explorer.py
@@ -161,6 +164,7 @@ scripts/ci/keep-previous-origins.sh
 scripts/ci/memory-guard.sh
 scripts/ci/order-passes-present.sh
 scripts/ci/recording_health.py
+scripts/ci/scheduled-failure-issue.sh
 scripts/ci/shellcheck-action-runs.sh
 scripts/ci/tree-unchanged.sh
 scripts/identity-judge-cards

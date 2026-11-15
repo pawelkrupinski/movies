@@ -159,8 +159,8 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
    (`identity-takes.yml`: the takes rows, split off on 2026-11-08, dispatched by every convergence run's preflight;
    unproven in the registry, so reporting, until its first green run on main) — it reads the newest *decided* run on main (success or failure; cancelled,
    skipped and unfinished runs say nothing; nor does an INCOMPLETE run, red only in aggregates of
-   `.github/gating-checks.tsv` such as Identity takes' `verdict complete` -- the drift explorer's drift-only dispatch is one
-   -- which agentctl reads as NO VERDICT: the complete run before it decides, the owner 2026-11-08), one bounded read each (`PREPUSH_GH_SECONDS`, 15 s). A gate gh
+   `.github/gating-checks.tsv` such as Identity takes' `verdict complete` -- the drift explorer's replay is none: it calls
+   Identity takes inside its own run, under its own name, since 2026-11-15 -- which agentctl reads as NO VERDICT: the complete run before it decides, the owner 2026-11-08), one bounded read each (`PREPUSH_GH_SECONDS`, 15 s). A gate gh
    cannot read refuses a production push (it fails closed; a tools-only push still lands). If any is red, every pushed commit touching a **production path** (`*/src/main/`, `conf/`,
    `*/conf/`, `build.sbt`, `project/`, `infra/nix/`, `infra/kubernetes/`, `Dockerfile`) must carry a
    `Fixes-Red: <run>` trailer naming any red run of the current episode — its number in the run URL or its API run
