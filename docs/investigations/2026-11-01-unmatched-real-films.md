@@ -411,3 +411,31 @@ and its fixes, the other relay session's work).
   not read as one), UK "The Royal Ballet Romeo and Juliet (Filmed live 2025)" ×2 (the 2019 record outranks the 2025 one),
   US "MetOpera: Medea (2022–23)" ×1 (no Met record found by any search), PL "Carmen | metropolitan opera: live in hd
   2026/27" (no 2026/27 Carmen record found).
+## 11. Fix K: a bare billing beside a unanimous title family
+
+**Cause.** A billing that publishes nothing but its title stays unmatched while every decorated sibling of its family
+takes one film: DE Kino im Filmhaus' and Méliès Göttingen's "Mein Sommer mit Nonna" beside eleven venues' "Gioia mia -
+Mein Sommer mit Nonna" (Milani's 1510325, TMDB's German title "Mein Sommer bei Nonna", so the bare search finds
+nothing). `ClusterVoting.familyMajority`, the only lending path, needed siblings split across two films or more; and the
+round's segment must-link is cut (`ConstraintEdges.namesBeside`) when the rest of the decorated title names its film.
+A census (2026-11-15, read-only) found 123 such listings / 38 titles: ~20 right by eye, ~11 season relays, 5 clearly
+wrong (DE "Musik", "Bruder", "Die andere", UK "Rocky", ES "Cecilia"), 4-5 namesake-risky ("Glaube", "Les Misérables",
+"Blood Money", ES "Dune").
+
+**Change.** `ClusterVoting.unanimous`, beside the majority: a facts-free cluster takes the one film when (1) every sibling
+that took a film alone -- the round's title-linked members and those whose titles CARRY its title as a whole delimited
+piece -- took it, seasons apart; (2) the carrying siblings, a stage house's relay apart, bill it at two venues or more;
+(3) the majority's bound (one-sided 95% Wilson of their venue share, the bare venues counted against) clears the
+show-ratings cut; (4) no member of the cluster nor sibling denies it; (5) the bare title names no OTHER film its own
+searches found (Komplizinnen, Rocky, Lalka: namesake-ambiguous by the bare title alone); (6) a one-word title only as the
+film's whole title. Every input is the family's content or the bare listing's own searches; nothing reads arrival order.
+Typo siblings (UK "Ebeneezer" beside "Ebenezer") do not fall out of it and are left out.
+
+**Slices** (pinned): Kino im Filmhaus' "Mein Sommer mit Nonna" → 1510325, Lumière's "Immer verkehrt" → 1520507
+(recording 43654865568), both judged right; their population walks and 12 arrival orders take one film.
+
+**What-if** over prod's mirror (all five countries, snapshot 2026-11-15 ~02:2xZ): CLEAN. DE model and final +3 gained
+right (Nonna ×2, Immer verkehrt); PL, UK, US, ES unmoved. None of the census' wrong or risky titles, nor UK Pershore's
+"Royal Ballet: The Nutcracker", moves. Precision 3/3; recall is low by design: Drei Abschiede (4 carrying venues of 6)
+misses the bound, Komplizinnen and Godzilla Minus Zero (Quadroscope, its own evidence vetoes) the namesake and denial
+guards.
