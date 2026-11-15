@@ -89,6 +89,10 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
       "Maraton Diuny"                                -> "franchise marathon",
       "Maraton Saga Zmierzch"                        -> "franchise marathon",
       "The Hunger Games Marathon"                    -> "franchise marathon",
+      // the corpora's franchise marathons, 2026-11-15 (the local prod mirror)
+      "Twilight Saga Marathon"                       -> "franchise marathon",
+      "Die Tribute von Panem - Marathon"             -> "franchise marathon",
+      "Der Herr der Ringe Extended Edition Marathon" -> "franchise marathon",
       "Gaming im Kino - 3 Stunden"                   -> "gaming",
       "Gaming im Lumos"                              -> "gaming",
       "CBeebies Panto 2026: Treasure Island"         -> "panto",
@@ -98,6 +102,11 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
     // one film's marathon screening (judged right), a house's season, a series' film
     Seq("Inna Mamusia - maraton", "RBO Cinema Season 2026-27: La Fanciulla Del West", "Marathon Man", "Świąteczna zabawa z Peppą")
       .foreach(title => withClue(title) { NonFilmEvents.of(titled(title)) shouldBe None })
+    // no franchise's marathon: a marathon of a kind of film, each venue's own, and the films whose own title closes on the
+    // word -- one name before it, an article, a subtitle (the unmatched captures' TMDB titles)
+    Seq("Maraton Bajek", "Maraton Dla Dzieci", "Horror Movie Marathon", "Christmas Movie Marathon", "Samurai Marathon",
+      "Autumn Marathon", "Brittany Runs a Marathon", "Spirit of the Marathon", "Kelton's Dark Corner 4: The Kelton Marathon")
+      .foreach(title => withClue(title) { NonFilmEvents.of(titled(title)).filter(_ == "franchise marathon") shouldBe None })
   }
 
   "an event's billing" should "state its edition, episodes and session length as facts" in {

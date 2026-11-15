@@ -27,6 +27,11 @@ import java.util.Locale
  */
 object NonFilmEvents {
 
+  /** The stems of a KIND of film a marathon screens — a genre, an audience, a form, a night — in the languages venues
+   *  bill: what no franchise is named by ("Maraton Bajek", "Horror Movie Marathon", "Maraton Filmów Oscarowych"). */
+  private val MarathonKinds =
+    """(?:horror|grozy|hallow|film|movie|kino|kina|mystery|bajk|bajek|kresk|cartoon|animac|animow|krótk|short|famil|rodzin|dla\s|dzieci|kids|nocn|night|świą|christmas|komedi|comed|dokument|documentar|oscar)"""
+
   /** What makes a title an event the families hold no record of, beyond the scrape filter's performances
    *  ([[NonMovieEventClassifier.isPerformance]]: its talks and workshops are a film's companion too often) —
    *  language-neutral, as a venue bills its programme in whatever language. Each anchored so a film's own name does not
@@ -38,10 +43,16 @@ object NonFilmEvents {
     "tv episodes"       -> """\bseason\s*0?\d{1,2}\s*(?:marathon\b|[-–—:]\s*ep(?:i|isode)?s?\.?\s*\d)""".r,
     // a night of several films sold as one ticket
     "marathon"          -> """\bmaraton\s+(horror|hallow|grozy|film)|\bhalloween\p{L}*\s+maraton|\bhorror\s+marathon|\bnoc\s+(horror|grozy)|wiecz[oó]r\s+grozy""".r,
-    // a franchise's films back to back, billed by the night's word before the franchise ("Maraton Diuny", "Maraton Saga
-    // Zmierzch") or after it in English ("The Hunger Games Marathon") — never "<film> - maraton", one film's marathon
-    // screening ("Inna Mamusia - maraton", judged right)
-    "franchise marathon" -> """^maraton\s+\p{L}|\S\s+marathon\s*$""".r,
+    // a franchise's films back to back, one production billed alike at many venues ([[Facts.distributed]]): the night's
+    // word opening the title before the franchise ("Maraton Diuny", "Maraton Saga Zmierzch") or closing it after a name
+    // of two words or more ("The Hunger Games Marathon", "Twilight Saga Marathon", "Die Tribute von Panem - Marathon").
+    // Never a marathon of a KIND of film ([[MarathonKinds]]: "Maraton Bajek" is each venue's own cartoons), "<film> -
+    // maraton" (one film's marathon screening, "Inna Mamusia - maraton", judged right), nor a film's own title closing
+    // on the word: one name before it ("Samurai Marathon", "Autumn Marathon"), an article ("Brittany Runs a Marathon",
+    // "Spirit of the Marathon") or a subtitle ("Kelton's Dark Corner 4: The Kelton Marathon"). KNOWN GAP: a film
+    // titled by two words and the word ("Skid Row Marathon", 2017) reads as one, unless it states its director and year.
+    "franchise marathon" -> (s"""(?U)^maraton\\s+(?!$MarathonKinds)\\p{L}""" +
+      s"""|^(?![^:]*\\b$MarathonKinds)[^:]*\\S\\s+\\S+\\s+(?<!\\b(?:a|an|the|der|die|das)\\s)marathon\\s*$$""").r,
     "esports"           -> """\bleague\s+of\s+legends|\bworlds\s+\d\d\b.*\bfinals""".r,
     // a console session on the big screen ("Gaming im Kino - 3 Stunden", "Gaming im Lumos")
     "gaming"            -> """\bgaming\s+im\b""".r,
