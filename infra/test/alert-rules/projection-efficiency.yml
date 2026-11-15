@@ -156,18 +156,19 @@ tests:
               country: "us"
             exp_annotations:
               summary: "us's read-model projections spend 40ms writing per call"
-              description: "The write half of a change-stream read-model projection in \"us\" has averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the 2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
+              description: "The write half of a change-stream read-model projection in \"us\" has averaged over 30 ms per call for the last 3h, for an hour. Since the 2026-09-23 venue-scoping fix the stream's calls run at ~9 ms (p99 13-28) in every country and ~13 ms (p99 21) in the US; before it the US ran at 27-47 ms across all triggers, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
 
-  # TODAY: US 7 ms per call (it read 6.2-7.5 ms since the fix), UK 10.8 ms -- the worst any
-  # country read all week, pre-fix US aside. Both quiet.
+  # TODAY, THE STREAM ALONE: the US's worst 3h mean of 10-13..11-15, 23.1 ms (2026-11-10 04:30Z,
+  # a thin night of its widest films; at the old 20 ms bar it paged six times in 11-08..11-15),
+  # and the UK at 28 ms, its p99. Both quiet.
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="us",job="kinowo-worker",trigger="stream"}'
-        values: '0+0.42x400'
+        values: '0+1.386x400'
       - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="us",job="kinowo-worker",trigger="stream"}'
         values: '0+60x400'
       - series: 'kinowo_worker_readmodel_write_burst_seconds_sum{country="uk",job="kinowo-worker",trigger="stream"}'
-        values: '0+0.162x400'
+        values: '0+0.42x400'
       - series: 'kinowo_worker_readmodel_write_burst_seconds_count{country="uk",job="kinowo-worker",trigger="stream"}'
         values: '0+15x400'
     alert_rule_test:
@@ -238,7 +239,7 @@ tests:
               country: "us"
             exp_annotations:
               summary: "us's read-model projections spend 40ms writing per call"
-              description: "The write half of a change-stream read-model projection in \"us\" has averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the 2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
+              description: "The write half of a change-stream read-model projection in \"us\" has averaged over 30 ms per call for the last 3h, for an hour. Since the 2026-09-23 venue-scoping fix the stream's calls run at ~9 ms (p99 13-28) in every country and ~13 ms (p99 21) in the US; before it the US ran at 27-47 ms across all triggers, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
 
   # THROUGH A RESTART. The pre-fix shape, with the worker restarting at 2h: 2 minutes absent and
   # both counters back to zero. The 3h window absorbs it and the page does not drop.
@@ -258,7 +259,7 @@ tests:
               country: "us"
             exp_annotations:
               summary: "us's read-model projections spend 40ms writing per call"
-              description: "The write half of a change-stream read-model projection in \"us\" has averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the 2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
+              description: "The write half of a change-stream read-model projection in \"us\" has averaged over 30 ms per call for the last 3h, for an hour. Since the 2026-09-23 venue-scoping fix the stream's calls run at ~9 ms (p99 13-28) in every country and ~13 ms (p99 21) in the US; before it the US ran at 27-47 ms across all triggers, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
       - eval_time: 2h30m
         alertname: ReadModelProjectionWritePerCallHigh
         exp_alerts:
@@ -268,7 +269,7 @@ tests:
               country: "us"
             exp_annotations:
               summary: "us's read-model projections spend 40ms writing per call"
-              description: "The write half of a change-stream read-model projection in \"us\" has averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the 2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
+              description: "The write half of a change-stream read-model projection in \"us\" has averaged over 30 ms per call for the last 3h, for an hour. Since the 2026-09-23 venue-scoping fix the stream's calls run at ~9 ms (p99 13-28) in every country and ~13 ms (p99 21) in the US; before it the US ran at 27-47 ms across all triggers, when every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves -- the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid compute line), a slow mongod, or a film's city fan-out."
 
   # ---------------------------------------------------------------------------------------------
   # APPLY THREAD FALLING BEHIND. A full stall from minute 31: the oldest event's wait climbs one

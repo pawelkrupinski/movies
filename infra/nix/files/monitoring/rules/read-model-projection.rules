@@ -1041,12 +1041,25 @@ groups:
       # and the stream's share alone is read, whatever else runs in the window. `=~"stream|"` also
       # matches the unlabelled series of the builds before it, so `bin/backtest-alerts` still
       # replays the 09-08..09-23 US incident against the history that has no `trigger`.
+      #
+      # 30 MS, NOT 20 (2026-11-15). The 3-7 ms above and the 20 ms bar were read off the
+      # UNLABELLED series, i.e. every trigger together -- and most calls then were `content` and
+      # `derivation` writes at ~1 ms each (still so: 7 days to 11-15, US content 1.0 ms x 14,182,
+      # derivation 0.9 ms x 1,930). The stream's OWN share has run at 8-14 ms in every country and
+      # 11-14 ms in the US from the first labelled minute (10-12 09:00Z), so the switch to
+      # `trigger="stream"` moved the baseline under the bar, not the code. 10-13..11-15, stream
+      # only, 3h means, with the volume floor: US p50 13.4 ms, p99 21.3, max 23.1 (daily means
+      # 10-20 ms, no step); DE/ES/PL/UK p50 ~9, p99 13-28, max 14-35 (UK 10-23 and 10-28, half an
+      # hour each). At 20 ms the US paged 6 times in 11-08..11-15 on ordinary nights (its widest
+      # films and thin night volume) and PL once. 30 ms is 1.3x the US's worst month and still
+      # under the pre-fix incident: those 3h means were 78% over 30 ms even DILUTED by the cheap
+      # triggers, and the stream alone ran dearer still.
       - alert: ReadModelProjectionWritePerCallHigh
         expr: >-
           (
             sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_sum{trigger=~"stream|"}[3h]))
             / sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_count{trigger=~"stream|"}[3h]))
-          ) > 0.020
+          ) > 0.030
           and on (country) sum by (country) (rate(kinowo_worker_readmodel_write_burst_seconds_count{trigger=~"stream|"}[3h])) > 0.02
         for: 1h
         labels:
@@ -1056,9 +1069,10 @@ groups:
           summary: "{{ $labels.country }}'s read-model projections spend {{ $value | humanizeDuration }} writing per call"
           description: >-
             The write half of a change-stream read-model projection in "{{ $labels.country }}" has
-            averaged over 20 ms per call for the last 3h, for an hour. Every country runs at 3-7 ms since the
-            2026-09-23 venue-scoping fix; the US ran at 27-47 ms before it, when every venue change
-            rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt
+            averaged over 30 ms per call for the last 3h, for an hour. Since the 2026-09-23
+            venue-scoping fix the stream's calls run at ~9 ms (p99 13-28) in every country and
+            ~13 ms (p99 21) in the US; before it the US ran at 27-47 ms across all triggers, when
+            every venue change rebuilt and re-diffed the film's whole screenings set. Check panel 33 first: a rebuilt
             line tracking reused means scoping broke again (ReadModelVenueRebuildShareHigh fires
             too, 3h after a boot). If rebuilt is low, the cost moved into the writes themselves --
             the Mongo round-trips of `diffScreenings` (panel 8 dashed line against the solid
