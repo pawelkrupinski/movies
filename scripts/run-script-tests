@@ -27,6 +27,13 @@
 # self-test at all; any other tag (`own-job`, ...) for one a workflow runs by name where its toolchain
 # is (ScriptSelfTestsRunInCiSpec holds those to it). `--tag <tag>` runs them; `--all` lists everything.
 #
+# LONGEST FIRST. A run lasts as long as its slowest slot, and a few tests take minutes where most take seconds, so a slow
+# one started last stretches the run. Tests start in descending order of the seconds their last PASS took, kept in
+# $RUN_SCRIPT_TESTS_DURATIONS (default ~/.cache/kinowo-script-tests/durations.tsv, `path<TAB>seconds`, merged and
+# replaced by temp file + mv, so concurrent runs lose at worst one another's update). A test with no recorded time
+# (new, or no cache: CI's container, --linux) starts FIRST, the larger file first -- it may be a slow one, and size
+# is the only proxy there is. Only the order changes, never which tests run nor their verdicts.
+#
 # Each test runs from the checkout's root, `bash` for .sh and `python3` for .py, stdin closed, in a
 # process group of its own (tool-conventions.sh's `bounded`: the whole group ended, and a Ctrl-C
 # reaching it, which GNU timeout's own process group would not).
@@ -355,8 +362,16 @@ run_one() { # <index> <path>: its log, exit status and seconds land in $work/<in
 # how often the no-progress bound looks: a tenth of it, 1-30 s
 stall_poll() { local p=$((stall_s / 10)); [ "$p" -lt 1 ] && p=1; [ "$p" -gt 30 ] && p=30; echo "$p"; }
 
+durations_file=${RUN_SCRIPT_TESTS_DURATIONS:-$HOME/.cache/kinowo-script-tests/durations.tsv}
+durations=$durations_file; [ -f "$durations" ] || durations=/dev/null
+sizes="$work/sizes"; : > "$sizes"
+while IFS="$(printf '\t')" read -r path _; do printf '%s\t%s\n' "$path" "$(wc -c < "$path" | tr -d ' ')" >> "$sizes"; done < "$work/selected"
+# <rank 0 unknown / 1 known> <seconds, or size when unknown> <path>, the largest first within a rank
+awk -F'\t' 'FILENAME == ARGV[1] { if ($2 ~ /^[0-9]+$/) secs[$1] = $2; next }
+  { if ($1 in secs) print "1\t" secs[$1] "\t" $1; else print "0\t" $2 "\t" $1 }' "$durations" "$sizes" \
+  | LC_ALL=C sort -t "$(printf '\t')" -k1,1n -k2,2nr -k3,3 | cut -f3 > "$work/order"
 paths=()
-while IFS="$(printf '\t')" read -r path _; do paths+=("$path"); done < "$work/selected"
+while IFS= read -r path; do paths+=("$path"); done < "$work/order"
 total=${#paths[@]}
 started=$SECONDS
 printf '\033[36m▸\033[0m %s script test(s), %s at a time\n' "$total" "$jobs"
@@ -371,6 +386,7 @@ report() { # <index>
   else status=FAIL
   fi
   printf '%-7s %4ss  %s\n' "$status" "$secs" "${paths[$i]}" >> "$work/table"
+  [ "$status" = PASS ] && printf '%s\t%s\n' "${paths[$i]}" "$secs" >> "$work/seconds.tsv"
   if [ "$status" != PASS ]; then
     failed=$((failed + 1))
     { printf '\n── %s %s (exit %s) ──\n' "$status" "${paths[$i]}" "$code"
@@ -398,6 +414,12 @@ while [ "$done_count" -lt "$total" ]; do
   [ "$done_count" -lt "$total" ] && sleep 0.2
 done
 
+# keep this run's times: the cache's other rows stay, these replace theirs; written aside and renamed into place
+if [ -s "$work/seconds.tsv" ] && mkdir -p "$(dirname "$durations_file")" 2>/dev/null; then
+  { awk -F'\t' 'FILENAME == ARGV[1] { seen[$1] = 1; print; next } !($1 in seen)' "$work/seconds.tsv" "$durations_file" 2>/dev/null \
+      || cat "$work/seconds.tsv"; } > "$work/durations.new" 2>/dev/null
+  tmp=$(mktemp "$durations_file.XXXXXX" 2>/dev/null) && cp "$work/durations.new" "$tmp" && mv "$tmp" "$durations_file" || true
+fi
 LC_ALL=C sort -k3 "$work/table"
 cat "$work/failures"
 echo

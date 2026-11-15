@@ -139,6 +139,27 @@ for jobs in 1 2; do
   check "--jobs $jobs: at most $jobs at once" "$jobs" "$(sort -n "$work/running.max" | tail -1 | tr -d ' ')"
 done
 
+# Longest first: tests start in descending order of their last recorded seconds; one with none starts first, the larger
+# file before the smaller. --jobs 1 makes the start order the run order; each test appends its own name. Recorded
+# seconds are seeded, never waited for.
+mkdir -p "$tree/scripts/ord"
+for n in a b c; do
+  # shellcheck disable=SC2016 # expanded by the fake test, not here
+  put "scripts/ord/$n-test.sh" 'echo "$0" | sed "s|.*/||" >> "$ORD_LOG"'
+done
+# shellcheck disable=SC2016 # expanded by the fake test, not here
+put scripts/ord/d-test.sh "$(printf '%s\n' 'echo "$0" | sed "s|.*/||" >> "$ORD_LOG"' '# padding that makes d the larger file')"
+order() { : > "$work/ord.log"; ORD_LOG="$work/ord.log" run --jobs 1 scripts/ord > /dev/null; paste -sd' ' - < "$work/ord.log"; }
+export RUN_SCRIPT_TESTS_DURATIONS="$work/durations.tsv"
+rm -f "$RUN_SCRIPT_TESTS_DURATIONS"
+check "no recorded times: the larger file first, then by path" "d-test.sh a-test.sh b-test.sh c-test.sh" "$(order)"
+printf '%s\t%s\n' scripts/ord/a-test.sh 5 scripts/ord/b-test.sh 90 scripts/ord/c-test.sh 40 scripts/ord/gone-test.sh 7 > "$RUN_SCRIPT_TESTS_DURATIONS"
+check "recorded times: the slowest first, a test with none before them all" "d-test.sh b-test.sh c-test.sh a-test.sh" "$(order)"
+check "...a run records what its tests took, keeping the rows of tests it did not run" "4 1 1" \
+  "$(grep -c 'scripts/ord/.-test.sh' "$RUN_SCRIPT_TESTS_DURATIONS" | tr -d ' ') $(grep -c 'gone-test.sh	7' "$RUN_SCRIPT_TESTS_DURATIONS") $(grep -c 'ord/b-test.sh	[0-9]$' "$RUN_SCRIPT_TESTS_DURATIONS")"
+check "...and no temporary file is left beside it" "0" "$(ls "$work" | grep -c '^durations.tsv.')"
+rm -rf "$tree/scripts/ord"; unset RUN_SCRIPT_TESTS_DURATIONS
+
 # The Python floor: a python3 older than every script supports fails the run, loudly, before any test.
 mkdir -p "$work/oldpy"
 printf '%s\n' '#!/bin/sh' 'case "$1" in -V|--version) echo "Python 3.8.10" ;; -c) exit 1 ;; *) exit 0 ;; esac' > "$work/oldpy/python3"
