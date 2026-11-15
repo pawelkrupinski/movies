@@ -411,6 +411,7 @@ and its fixes, the other relay session's work).
   not read as one), UK "The Royal Ballet Romeo and Juliet (Filmed live 2025)" ×2 (the 2019 record outranks the 2025 one),
   US "MetOpera: Medea (2022–23)" ×1 (no Met record found by any search), PL "Carmen | metropolitan opera: live in hd
   2026/27" (no 2026/27 Carmen record found).
+  Followed up in §15: the Met's "… 27" landed (Fix M); the others stay unmatched, with the reasons.
 ## 12. Fix K: a bare billing beside a unanimous title family
 
 **Cause.** A billing that publishes nothing but its title stays unmatched while every decorated sibling of its family
@@ -525,3 +526,55 @@ suggestions and the venues corroborating by search group read:
 **Measure.** what-if over prod's mirror (05:13-05:17Z, all five countries, base b50bcb58c): CLEAN. PL model gained 4
 "Zemsta" takes (Pafawag, Kika, Spektrum, MOK Głogów → 19721), all judged right, and prod's final already served them.
 DE, UK, US and ES did not move. Footprint (pl): 57,557 readings, 0 read otherwise. DE has no stored base trace.
+## 15. Fix M: the small relay groups §11 left (2026-11-15)
+
+**Cases** (UK/US mirror 2026-11-15, the four "small, not tried" groups of §11):
+- UK "MetOpera: Carmen (2023-24)" ×3 (+ US Lark ×1, prod-taken): `relay-record` refuses the Met's 2023/24 record
+  (1143037, Cracknell) because the venue credits Georges Bizet, the composer. **No rule.** A sweep of every listing
+  in all five countries for a composer's name as its director (60 composers' surnames) finds this one Flicks page
+  (flicks:20812) alone, 4 listings, screening once each on 15-18 November. TMDB credits no composer on the record
+  (its crew holds directors only), so the exception would need a composer catalogue for one page.
+- UK The Beehive Honiton's "The Met: La Fanciulla del West 27" (26 January 2027) and "The Met: Samson and Delilah 26"
+  (5 December 2026): **landed, Fix M below.**
+- UK Ilkley's and Wetherby's "The Royal Ballet Romeo and Juliet (Filmed live 2025)" (25 May 2027, "AS LIVE", encore
+  30 May): **no change, the owner's call.** The synopsis says "Filmed live 20th March 2025": 1451897's release day.
+  The screenings are on 1702789's air day, the 2026/27 season's "as live" broadcast of that same capture, which 24
+  judged rows take for the 25 May screenings (e.g. "Royal Ballet Recorded Live: Romeo and Juliet"). TMDB holds two
+  records of one performance. Which one is right is the question the parked
+  [relay-stale-season-airday](../identity-experiments/2026-11-15-relay-stale-season-airday.md) review candidate puts
+  to the owner. Dating it by "Filmed live 2025" would take 1451897 and go against those rows. Taking 1702789 needs
+  `namesAnotherWork` to stop reading "Filmed live" as the work. Neither is done until that call is made.
+- US Cinema Art Theater's "MetOpera: Medea (2022–23)" (June 2027): **stays unmatched.** TMDB does hold the Met's
+  record, 987694 "The Metropolitan Opera: Medea" (aired 22 October 2022, McVicar / Halvorson). But only a search for
+  "(The) Metropolitan Opera: Medea" returns it. "Medea" has 74 results and it is not on the first page; "Met Opera:
+  Medea", "MetOpera: Medea" and "Medea 2022" return nothing. Reached, `relay-record` would still refuse it: the venue
+  credits Jo Meredith. That leaves one listing, and its fix (the `xtra-canonical-met-opera` row read as `Met\s*Opera`)
+  would re-key ~540 US/UK Flicks "MetOpera:" listings (Tosca (2024-25) ×506). Not tried.
+
+**Fix M: the cause.** The Beehive bills the Met's relays "The Met: <work> <yy>". Its yy is the year the relay screens
+in. Its Otello and Parsifal took their records because those records carry the season in their titles ("The Metropolitan
+Opera 2026/27: Otello"), which is what `season-record` reads. TMDB now titles Fanciulla's and Samson's records with no
+season, and `relay-record` never read The Beehive's billings for three reasons:
+- "Met" alone is no stage-house word (it is a relay series' banner word, `RelayStage.searchedInItsSeason`).
+- "27" was no year: `closingYear` read four digits only.
+- Fanciulla's record was reached only by IMDb's suggestion. TMDB finds it by "La Fanciulla del West" and by nothing
+  carrying the "27" or a season year.
+
+**Change.** In `RelayStage`:
+- `of` reads a relay series' banner beside its work as it reads a house word.
+- `ClosingYear` reads a year shortened to two digits after a space ("Tosca 27", "Tosca '27"), never a season's end
+  ("26/27"). It is still held to the season its screenings fall in or later.
+- `shortYearCut` gives a relay's titles with that year cut off, which `SearchMeasures.searchQueries` searches as shapes.
+
+Tests: `AcceptanceSpec` "a relay billing its house and no season" (Fanciulla 27 → 1703629 over the 2018 staging,
+Samson 26 → 1703624, "… 18" → none). `IdentityMeasuresSpec` (searched "La Fanciulla del West"; "Apollo 13" keeps its
+digits).
+
+**What-if** over prod's mirror (all five countries, base 892c88ffa, snapshots 09:46-10:13Z): CLEAN.
+- UK model and final gained 2 (The Beehive's Fanciulla → 1703629, Samson → 1703624, both by `relay-record`, judged
+  right).
+- DE model gained 8 right: "MET 2026/27 Giacomo Puccini: LA FANCIULLA DEL WEST" → 1703629, which prod's final already
+  serves through agreement. DE final did not move.
+- US, PL and ES did not move.
+
+Not covered: UK "MET: La Fanciulle del West" (a misspelt work) and "MET: Silent Night" ×2 (below the cut, no year).
