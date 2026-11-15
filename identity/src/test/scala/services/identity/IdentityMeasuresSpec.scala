@@ -400,6 +400,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(host, bong)("year.delta") shouldBe Number(0)
     measures(host, bong)("year.distance") shouldBe Number(0)
     measures(host, bong.copy(year = Some(2007)))("year.delta") shouldBe Number(-1)
+    // a re-release tours into the year after its anniversary: DE Filmpalette's "LA HAINE (30TH ANNIVERSARY)", screening
+    // in 2026, is Kassovitz's 1995 film, read as dated, not as a year early (a `year.delta` of 1 weighs against a film)
+    val laHaine = Listing("LA HAINE (30TH ANNIVERSARY)", anniversaryScreeningYear = Some(2026))
+    measures(laHaine, Film("La Haine", year = Some(1995)))("year.delta") shouldBe Number(0)
+    measures(laHaine, Film("La Haine", year = Some(1995)))("year.distance") shouldBe Number(0)
+    measures(laHaine, Film("La Haine", year = Some(1996)))("year.delta") shouldBe Number(0)
+    measures(laHaine, Film("La Haine", year = Some(1997)))("year.delta") shouldBe Number(-1)
+    measures(laHaine, Film("La Haine", year = Some(1994)))("year.delta") shouldBe Missing("listing")
     // a film further off is not denied by it: a venue's anniversary may count from another release
     measures(host, Film("The Host", year = Some(2013)))("year.delta") shouldBe Missing("listing")
     // a year the listing states is its own fact, and a listing billing no anniversary is dated by nothing

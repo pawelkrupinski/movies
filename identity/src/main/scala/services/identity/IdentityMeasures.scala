@@ -640,11 +640,16 @@ object IdentityMeasures {
    *  20th Anniversary", screening in 2026, names Bong Joon-ho's 2006 film and Niccol's 2013 one alike, and the anniversary
    *  is the one fact telling them apart. A film further off stays as a listing stating no year weighs it: a venue's
    *  anniversary may count from another release (DE "SATURDAY NIGHT FEVER 40TH ANNIVERSARY", screening in 2026, is the
-   *  1977 film), so the hint is evidence for a film, never against one. */
+   *  1977 film), so the hint is evidence for a film, never against one. A re-release tours into the year after its
+   *  anniversary, so a film released a year before the date is read as of it: DE Filmpalette's "LA HAINE (30TH
+   *  ANNIVERSARY)", screening in 2026, is Kassovitz's 1995 film, and a `year.delta` of 1 weighs against a film (of the
+   *  matched anniversary billings stating no year in prod, 2026-11-15, 1199 took a film of the date, 45 one a year
+   *  before it, 1 one a year after). */
   private def anniversaryFilmDated(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
     l.anniversaryFilmYear match {
       case Some(dated) if m("year.delta") == MissingListing && f.year.exists(FactRelations.yearsNear(dated, _)) =>
-        m ++ Map("year.delta" -> delta(Some(dated), f.year), "year.distance" -> absDelta(Some(dated), f.year))
+        val anniversary = if (f.year.contains(dated - 1)) dated - 1 else dated
+        m ++ Map("year.delta" -> delta(Some(anniversary), f.year), "year.distance" -> absDelta(Some(anniversary), f.year))
       case _ => m
     }
 
