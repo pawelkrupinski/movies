@@ -24,10 +24,17 @@ run=$(sed -n 's/^run=//p' "$work/seen")
 check "the database is the program's MONGODB_DB" "db=kinowo" "$(sed -n 1p "$work/seen")"
 check "a run id is exported" "yes" "$([ -n "$run" ] && echo yes)"
 check "...and named to the program, which refuses an environment without it" \
-  "worker/Test/runMain scripts.EnqueueSourceRefresh --run $run tmdb-films 1525208 1517105 --apply" "$(sed -n 4p "$work/seen")"
+  'worker/Test/runMain scripts.EnqueueSourceRefresh --run '"$run"' "tmdb-films" "1525208" "1517105" "--apply"' "$(sed -n 4p "$work/seen")"
 check "...through sbt-warm, so its KINOWO_ setting starts a server for the call" "$REPO_ROOT/scripts/sbt-warm" "$(sed -n 3p "$work/seen")"
 refresh kinowo tmdb-films 1 > /dev/null
 check "a new id every call" "no" "$([ "$(sed -n 's/^run=//p' "$work/seen")" = "$run" ] && echo yes || echo no)"
+# sbt splits its command line at spaces and reads quotes: each key reaches the program as one token, as it was given
+touch "$work/a-file-a-glob-would-name"
+(cd "$work" && refresh kinowo imdb 'two words' '*' 'say "hi"' 'back\slash' > /dev/null)
+check "a key holding a space, a glob, a quote or a backslash: one quoted, escaped sbt token each, never split or globbed" \
+  "\"imdb\" \"two words\" \"*\" \"say \\\"hi\\\"\" \"back\\\\slash\"" "$(sed -n 4p "$work/seen" | sed 's/^.* --run [^ ]* //')"
+check "a key holding a line break is refused, nothing run" "2 no" \
+  "$(rm -f "$work/seen"; refresh kinowo imdb "$(printf 'a\nb')") $([ -f "$work/seen" ] && echo yes || echo no)"
 check "too few arguments is a usage error, nothing run" "2" "$(rm -f "$work/seen"; refresh kinowo tmdb-films)"
 check "...nothing handed on" "no" "$([ -f "$work/seen" ] && echo yes || echo no)"
 

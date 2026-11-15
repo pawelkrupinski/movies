@@ -16,6 +16,13 @@ here="$(cd "$(dirname "$0")" && pwd)"
 database=$1; shift
 # unique per call without uuidgen, which a Linux runner lacks
 run="$(date +%s)-$$-$RANDOM$RANDOM"
+# Each argument one sbt token whatever it holds: double-quoted, its `\` and `"` escaped (sbt's StringEscapable), so
+# sbt neither splits a space inside it nor reads a quote as the token's end. A line break cannot go in a command line.
+arguments=""
+for argument in "$@"; do
+  case "$argument" in *$'\n'*|*$'\r'*) echo "source-refresh: an argument holds a line break: $argument" >&2; exit 2 ;; esac
+  arguments="$arguments \"$(printf '%s' "$argument" | sed 's/[\\"]/\\&/g')\""
+done
 export KINOWO_SOURCE_REFRESH_RUN="$run" MONGODB_DB="$database"
 exec "${SOURCE_REFRESH_PROD:-$here/with-prod-mongo.sh}" "$here/sbt-warm" \
-  "worker/Test/runMain scripts.EnqueueSourceRefresh --run $run $*"
+  "worker/Test/runMain scripts.EnqueueSourceRefresh --run $run$arguments"
