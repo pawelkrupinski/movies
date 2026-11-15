@@ -490,6 +490,8 @@ out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 KINOWO_STALL_FILE="
 check "a call making no progress fails with the stall signal: exit 75 and a STALLED line naming the command" "75 yes" \
   "$rc $(grep -q '^sbt-warm STALLED: common/Test/compile' <<<"$out" && echo yes || echo "no: $out")"
 check "...after one retry in a fresh server" "yes" "$(grep -q 'once more, in a fresh server' <<<"$out" && echo yes || echo "no: $out")"
+check "...naming the processes it watched, each with its state and CPU time" "yes" \
+  "$(grep -qE '^\[sbt-warm\].* \.\.\.its processes: *[0-9]+ [A-Z][^ ]* [0-9:.]+ ' <<<"$out" && echo yes || echo "no: $out")"
 check "...the stalled server stopped, recorded with why" "stopped yes" \
   "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(grep -q "pid=$server .*no progress for" "$KINOWO_SBT_WARM_STATE/stops.log" && echo yes || echo no)"
 check "...its thread dump written beside the keeper's log" "yes" \
@@ -526,9 +528,13 @@ cat > "$scratch/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
 end=$((SECONDS + 4)); while [ "$SECONDS" -lt "$end" ]; do :; done; echo done
 STUB
+# Order independence #74 once read "0 done done" here (the stub ran twice: the first run retried after it printed), not
+# reproduced on the laptop under load: a failure shows what sbt-warm said, which names the path and the processes seen.
 out=$(cd "$scratch/stall" && KINOWO_SBT_WARM_STALL_SECONDS=2 KINOWO_STALL_CPU_CENTIS=10 KINOWO_PROGRESS_FILE="$scratch/progress" \
-  spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>/dev/null); rc=$?
-check "a command busy past the stall bound is no stall" "0 done" "$rc $out"
+  spec_bounded "$REPO_ROOT/scripts/sbt-warm" compile 2>"$scratch/busy.err"); rc=$?
+busy="$rc $out"
+[ "$busy" = "0 done" ] || busy="$busy | sbt-warm said: $(tr '\n' ' ' < "$scratch/busy.err")"
+check "a command busy past the stall bound is no stall" "0 done" "$busy"
 check "...and it touched KINOWO_PROGRESS_FILE as it went" "yes" "$([ -f "$scratch/progress" ] && echo yes || echo no)"
 
 # ONE COMMAND AT A TIME: a --serve marks the server serving; a call meeting a live serve fails at once, BLOCKED, instead

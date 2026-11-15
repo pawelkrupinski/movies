@@ -607,6 +607,14 @@ client_and_server_cpu() {
   # shellcheck disable=SC2046 # one pid per word
   stall_cpu_centis $(client_and_server_pids)
 }
+# The client's and server's processes as one line (pid, state, CPU time, command), logged whenever the call ends a client
+# for want of progress or of a server: Order independence #74 retried a client whose stub had already printed its
+# output, and nothing said which processes the watch had seen.
+client_tree_state() {
+  # shellcheck disable=SC2046 # one pid per word
+  ps -o pid=,stat=,time=,args= -p "$(client_and_server_pids | tr '\n' ',' | sed 's/,$//')" 2> /dev/null \
+    | cut -c1-160 | tr -s ' ' | paste -sd ';' -
+}
 # Ends the client: TERM, then KILL 5 s later. A bare TERM-then-`wait` hung a call for good on a client that did not end
 # (2026-11-07: an sbtn client of a vanished server, the laptop in swap); a process that survives even KILL (uninterruptible)
 # is abandoned, never waited for.
@@ -650,6 +658,7 @@ watch_client() {
       nextlive=$((SECONDS + live))
       if server_gone $((SECONDS - started)); then
         log "the server of $root is gone, and the client of \`$command\` waits on it: ending the client"
+        log "...its processes: $(client_tree_state)"
         end_client
         rm -f "$root/project/target/active.json"
         StallDump=""; StallWhy="its server vanished"
@@ -679,6 +688,7 @@ watch_client() {
     else
       log "no progress for ${quiet}s on \`$command\`, and no server of $root runs: the client waits on nothing"
     fi
+    log "...its processes: $(client_tree_state)"
     end_client
     stop_servers_of "$root" "no progress for ${quiet}s on \`$command\` (thread dump: ${spid:+$dump})"
     for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
