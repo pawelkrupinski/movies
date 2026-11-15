@@ -39,13 +39,13 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
    *  withdrew. Such a cluster votes no film it was withdrawn from. A denial by the sibling's own facts or billing (another
    *  year, the director its title names) says only that the sibling is another film: DE "Glaube" ×7 (withdrawn from the
    *  2025 film by 'Glaube' [1998]) and "ES - Kapitel 1" (by 'ES (ULRICH SCHAMONI)') still vote theirs — every withdrawal
-   *  read so lost 242 DE takes on prod-latest 1622 (run 1777). A cluster holding members that took nothing alone votes the
-   *  film only on THEIR pooled evidence, the withdrawn members left out. Nor a node whose own feed links the film (a TMDB-keyed feed's id names it): DE Bali-Kino's
+   *  read so lost 242 DE takes on prod-latest 1622 (run 1777). Nor is a node withdrawn whose own feed links the film (a TMDB-keyed feed's id names it): DE Bali-Kino's
    *  and PUSCHKINO's "Nosferatu", Cineamo-linked to Eggers' 2024 film, beside the "Eine Symphonie des Grauens – Ballett
    *  Extra" billing that denies it as a screen namesake. Prod-latest 1622: UK Magic Lantern Tywyn's and Riverside Woodbridge's "Notre-Dame de
    *  Paris" (the Paris Opera Ballet's relay) re-took the 1956 Hunchback, a screen namesake of the ballet billings' work,
    *  and DE Mal seh'n Kino's "THE THING WITH FEATHERS" re-took Oelofse's 24-minute short (kinoheld's copied credit) beside
-   *  the Cineamo link of "Das Ding mit den Federn" to Southern's feature. */
+   *  the Cineamo link of "Das Ding mit den Federn" to Southern's feature. A cluster holding members that took nothing alone
+   *  votes the film only on THEIR pooled evidence, the withdrawn members left out. */
   private def onlyWithdrawn(cluster: Seq[EvidenceNode], film: Int): Boolean = {
     // a member publishing no fact brings no evidence of its own to answer the denial: its title is the others' already,
     // so it neither keeps the vote nor withdraws it (DE Filmwelt Grünstadt's "TITANS AWAKENING" re-took 1690206 whenever
