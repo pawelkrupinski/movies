@@ -182,7 +182,8 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.block(workflow, "on") should include("drift-seeds:")
     val outputs = RepoFile.block(RepoFile.jobs(workflow)("preflight"), "outputs")
     outputs should include("drift-only: ${{ steps.legs.outputs.drift-only }}")
-    outputs should include("drift-seeds: ${{ steps.legs.outputs.drift-seeds }}")
+    // the pins reach the rows as each row's seed (below), never as the raw input
+    outputs should not include("drift-seeds:")
     RepoFile.jobs(workflow)("preflight") should include("INPUT_DRIFT_ONLY: ${{ inputs.drift-only }}")
     val call = RepoFile.jobs(workflow)("leg")
     call should include("drift-only:                    ${{ needs.preflight.outputs.drift-only == 'true' }}")

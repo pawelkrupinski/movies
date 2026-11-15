@@ -184,7 +184,6 @@ jobs:
             takes-base: ${{ steps.legs.outputs.takes-base }}
             takes-only: ${{ steps.legs.outputs.takes-only }}
             drift-only: ${{ steps.legs.outputs.drift-only }}
-            drift-seeds: ${{ steps.legs.outputs.drift-seeds }}
             # FIXED SEEDS (scripts/ci/drift_seeds.py): each takes-drift row's pin -- empty: the row replays its fixed set.
             drift-seed-1: ${{ steps.legs.outputs.drift-seed-1 }}
             drift-seed-2: ${{ steps.legs.outputs.drift-seed-2 }}
