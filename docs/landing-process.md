@@ -195,7 +195,7 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
 | `drift` | `*/src/main/scala/models/*`, `data/`, the City models, the drift script | `scripts/ci/generated-artefacts-drift.sh` | seconds |
 | `snapshot` | `test/resources/fixtures/08-06-2026/`, its inputs script | `scripts/read-model-snapshot-inputs.sh check` | seconds |
 | `dashboards` | `infra/nix/files/monitoring/`, `infra/test/test_dashboards.py` | `infra/test/test_dashboards.py` | < 1 s |
-| `scripttests` | `scripts/`, `.github/scripts`, `.github/actions`, `android/scripts`, `ios/scripts`, `infra/bin`, `data/` | `scripts/run-script-tests --changed <base>`; beside it the same on Linux in Docker (`linux`); on a Mac again under `/bin/bash` 3.2 | seconds to minutes |
+| `scripttests` | `scripts/`, `.github/scripts`, `.github/actions`, `android/scripts`, `ios/scripts`, `infra/bin`, `data/` | `scripts/run-script-tests --changed <base>`; beside it the same on Linux in Docker (`linux`); again under the floor bash 3.2 (`scripts/floor-bash`: a Mac's `/bin/bash`, on Linux -- ci-runner -- the GNU 3.2.57 `--install` builds; none BLOCKS, `PREPUSH_SKIP=floor`) | seconds to minutes |
 | `actionlint` | workflow files, composite actions | actionlint (+ shellcheck on `run:` blocks) | seconds |
 | `schedules` | workflow files, `infra/nix/files/scheduled-workflows.json`, `infra/nix/files/scheduled_dispatch.py` | `infra/nix/files/scheduled_dispatch.py check`: monitoring-1's dispatch timers match the workflows' own crons, and every covered workflow treats the external scheduler's `repository_dispatch` as its schedule | < 1 s |
 | `shellcheck` | `*.sh`, `scripts/hooks/*` | shellcheck; fails only on warnings the push adds | seconds |

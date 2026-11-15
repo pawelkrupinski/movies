@@ -144,6 +144,8 @@ jobs:
             - name: The hook's tools
               if: steps.share.outputs.checks != ''
               uses: ./.github/actions/hook-tools
+              with:
+                  checks: ${{ steps.share.outputs.checks }}
             - name: The pre-push hook's checks of the change
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
@@ -261,6 +263,8 @@ jobs:
             - name: The hook's tools
               if: steps.share.outputs.checks != ''
               uses: ./.github/actions/hook-tools
+              with:
+                  checks: ${{ steps.share.outputs.checks }}
             # THE POPULATION WALK'S ROWS KEPT (scripts/hooks/pre-push, PopulationMonotonicitySpec.Cached): rows per digest of
             # the walk's code and data and per slice content, as precheck-build-cache.yml's walk on main wrote them (a check/
             # branch reads the default branch's caches, never another check's): restore-only.
@@ -376,6 +380,8 @@ jobs:
             - name: The hook's tools
               if: steps.share.outputs.checks != ''
               uses: ./.github/actions/hook-tools
+              with:
+                  checks: ${{ steps.share.outputs.checks }}
             - name: Restore identity-slice's compiled old refs
               if: steps.share.outputs.checks != ''
               uses: actions/cache/restore@v5
@@ -491,6 +497,8 @@ jobs:
             - name: The hook's tools
               if: steps.share.outputs.checks != ''
               uses: ./.github/actions/hook-tools
+              with:
+                  checks: ${{ steps.share.outputs.checks }}
             - name: The pre-push hook's checks of the change
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}

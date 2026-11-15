@@ -25,9 +25,11 @@
 #   `scripttests` scripts/run-script-tests --changed <base>, on any change under the script-test roots (scripts/,
 #                 .github/scripts|actions, android/scripts, ios/scripts, infra/bin, data): only the self-tests whose test,
 #                 tool, or a file they name the push changed -- this hook's own test among them (it names
-#                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans; on a Mac, run
-#                 again under its /bin/bash 3.2 (`--bash /bin/bash`), the bash the tools promise to run on; and,
-#                 Docker running, beside them on Linux (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it)
+#                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans; run again
+#                 under the floor bash 3.2 the tools promise to run on (`--bash "$(scripts/floor-bash)"`: a Mac's
+#                 /bin/bash, on Linux -- ci-runner's landing checks -- the GNU 3.2.57 `scripts/floor-bash --install`
+#                 builds; none BLOCKS, PREPUSH_SKIP=floor skips it); and, Docker running, beside them on Linux
+#                 (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it)
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
 #   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
@@ -1165,15 +1167,29 @@ check_scripttests() {
             return 1
         fi
     fi
-    # On a Mac, again under its /bin/bash 3.2, the floor the tools promise: a bash-4-only construct is caught at the push,
-    # not by the nightly macOS job (PREPUSH_FLOOR_BASH stands in for /bin/bash in the hook's test)
-    local floor=${PREPUSH_FLOOR_BASH:-/bin/bash} major
-    [ -x "$floor" ] || return 0
-    # shellcheck disable=SC2016 # expanded by that bash
-    major=$("$floor" -c 'echo "${BASH_VERSINFO[0]}"' 2>/dev/null) || return 0
-    case "$major" in [0-3]) ;; *) return 0 ;; esac
+    # Again under the floor the tools promise, bash 3.2 (scripts/floor-bash: a Mac's /bin/bash, elsewhere the GNU 3.2.57
+    # it builds): a bash-4-only construct is caught at the push, not by the nightly macOS job. Wherever the hook runs --
+    # ci-runner's Linux landing checks too, whose missing bash 3 once passed this in silence (ed160b94b, Order
+    # independence #72). No floor bash BLOCKS, as any missing tool does; PREPUSH_FLOOR_BASH names one (the hook's test).
     # The hook is the working tree's, the runner the pushed commit's: one from before --bash existed runs once.
     grep -q -e '--bash' scripts/run-script-tests 2>/dev/null || return 0
+    if skipped floor; then warn "scripttests under the floor bash 3.2 SKIPPED (PREPUSH_SKIP=floor)"; return 0; fi
+    local floor major
+    if [ -n "${PREPUSH_FLOOR_BASH:-}" ]; then
+        floor=$PREPUSH_FLOOR_BASH
+    elif [ -x scripts/floor-bash ]; then
+        floor=$(scripts/floor-bash 2> "$tmp/floor-bash.err") \
+            || { missing_tool floor "bash 3.2 ($(tr '\n' ' ' < "$tmp/floor-bash.err"))" "scripts/floor-bash --install"; return 1; }
+    else
+        floor=/bin/bash # a pushed tree from before scripts/floor-bash
+    fi
+    # shellcheck disable=SC2016 # expanded by that bash
+    major=$([ -x "$floor" ] && "$floor" -c 'echo "${BASH_VERSINFO[0]}"' 2>/dev/null) || major=""
+    case "$major" in
+        3) ;;
+        *) missing_tool floor "bash 3.2 (the floor; $floor is ${major:+bash }${major:-no bash})" \
+               "scripts/floor-bash --install, or PREPUSH_FLOOR_BASH=<a bash 3.2>"; return 1 ;;
+    esac
     scripts/run-script-tests --changed "$base_sha" --bash "$floor" > "$tmp/scripttests-floor.log" 2>&1 \
         || { echo "under $floor (bash $major):" >&2; grep -v '^PASS\|✓' "$tmp/scripttests-floor.log" | head -80 >&2; return 1; }
     echo "under $floor: $(tail -1 "$tmp/scripttests-floor.log")"

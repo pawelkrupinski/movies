@@ -51,6 +51,9 @@ jobs:
                       sbt-target-unit-worker-identity-${{ runner.os }}-
                   # Only this job writes the family, from a key over every source it compiles.
                   target-cache-exact-hit-is-current: 'true'
+            # The floor bash the landing check's scripttests runs the self-tests under, saved for it from main
+            # (.github/actions/install-floor-bash; a check/ branch reads the default branch's caches only).
+            - uses: ./.github/actions/install-floor-bash
             - name: Compile what a landing check compiles
               run: |
                   : > "$RUNNER_TEMP/no-changes"

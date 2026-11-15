@@ -207,10 +207,14 @@ chmod +x "$grepo/scripts/run-script-tests"
 runner_base="$(scratch_git "$grepo" rev-parse HEAD)"
 scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a runner stub"
 runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
-# the Mac's /bin/bash, faked: a bash reporting the major version given
+# the floor bash, faked: a bash reporting the major version given. $floor unset: the floor run skipped (PREPUSH_SKIP=floor)
+# for the checks about something else; `floor=found` leaves PREPUSH_FLOOR_BASH unset, for scripts/floor-bash to find one.
 floor_bash() { printf '#!/bin/sh\necho %s\n' "$1" > "$gate/bash$1"; chmod +x "$gate/bash$1"; echo "$gate/bash$1"; }
-script_push() { rm -f "$gate/args"; (cd "$grepo" && all_green env PREPUSH_SKIP="${pathchecks/scripttests/}" STUB_RUNNER_ARGS="$gate/args" \
-  PREPUSH_FLOOR_BASH="${floor:-$gate/no-such-bash}" "$@" \
+script_push() {
+  local floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/} floor")
+  case "${floor:-}" in '') ;; found) floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/}") ;;
+    *) floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/}" PREPUSH_FLOOR_BASH="$floor") ;; esac
+  rm -f "$gate/args"; (cd "$grepo" && all_green env "${floor_env[@]}" STUB_RUNNER_ARGS="$gate/args" "$@" \
   bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$runner_base..$runner_head" >/dev/null 2>"$gate/err"); echo $?; }
 check "a script push runs the self-tests its changes select, from the push's base" "0 --changed $runner_base" \
   "$(script_push) $(cat "$gate/args")"
@@ -219,8 +223,22 @@ floor=$(floor_bash 3)
 check "on a Mac (a /bin/bash 3) they run under it too, the floor the tools promise" "0 --changed $runner_base|--changed $runner_base --bash $floor" \
   "$(script_push) $(paste -sd'|' - < "$gate/args")"
 check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_FLOOR_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
+# Linux -- ci-runner's landing checks: no bash 3 there used to pass the floor in silence (ed160b94b, Order independence #72).
 floor=$(floor_bash 5)
-check "a /bin/bash 4 or newer (Linux) runs them once" "0 --changed $runner_base" "$(script_push) $(cat "$gate/args")"
+check "a floor bash 4 or newer BLOCKS the push, naming the fix, never runs them once in silence" "1 --changed $runner_base 1 1" \
+  "$(script_push) $(cat "$gate/args") $(grep -c 'BLOCKED' "$gate/err") $(grep -c 'scripts/floor-bash --install' "$gate/err")"
+floor=$gate/no-such-bash
+check "...and so does no floor bash at all" "1 1" "$(script_push) $(grep -c 'is no bash' "$gate/err")"
+floor=found
+printf '#!/bin/sh\necho "%s"\n' "$(floor_bash 3)" > "$grepo/scripts/floor-bash"; chmod +x "$grepo/scripts/floor-bash"
+check "with no PREPUSH_FLOOR_BASH, the bash scripts/floor-bash finds is the floor" "0 --changed $runner_base|--changed $runner_base --bash $gate/bash3" \
+  "$(script_push) $(paste -sd'|' - < "$gate/args")"
+printf '#!/bin/sh\necho "floor-bash: no bash 3.2.57 here" >&2; exit 1\n' > "$grepo/scripts/floor-bash"
+check "...and none found BLOCKS the push with what it said" "1 1 1" \
+  "$(script_push) $(grep -c 'no bash 3.2.57 here' "$gate/err") $(grep -c 'scripts/floor-bash --install' "$gate/err")"
+rm -f "$grepo/scripts/floor-bash"
+floor=""
+check "PREPUSH_SKIP=floor skips only the floor run" "0 --changed $runner_base" "$(script_push) $(cat "$gate/args")"
 # A pushed commit from before the runner took --bash: the hook is the working tree's, the runner the commit's.
 printf '#!/usr/bin/env bash\necho "$*" >> "$STUB_RUNNER_ARGS"\nexit 0\n' > "$grepo/scripts/run-script-tests"
 scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "an older runner"

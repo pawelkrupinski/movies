@@ -8,7 +8,8 @@
 #                                                  # source or import (transitively) changed
 #   scripts/run-script-tests --list [--all]        # what would run: path, tag, reason (tab-separated)
 #   scripts/run-script-tests --tag manual          # only the tests tagged so (see TAGS)
-#   scripts/run-script-tests --bash /bin/bash      # every self-test under that bash (macOS's 3.2: the floor)
+#   scripts/run-script-tests --bash "$(scripts/floor-bash)"  # every self-test under the floor bash 3.2 (macOS's
+#                                                  # /bin/bash; elsewhere scripts/floor-bash --install builds it)
 #   scripts/run-script-tests --linux [<names>]     # the selected tests in an ubuntu-26.04 container, as CI runs
 #                                                  # them (default: those --changed origin/main selects); Docker
 #

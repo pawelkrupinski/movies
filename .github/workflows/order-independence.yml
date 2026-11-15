@@ -307,7 +307,7 @@ jobs:
               if: ${{ !cancelled() }}
               run: |
                   /bin/bash --version | head -1
-                  scripts/run-script-tests --bash /bin/bash
+                  scripts/run-script-tests --bash "$(scripts/floor-bash)"
                   /usr/bin/python3 scripts/ci/python_floor_lint.py
 
     ios:

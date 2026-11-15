@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# THE FLOOR BASH: the oldest bash every script tool promises to run under -- macOS's /bin/bash, GNU bash 3.2.57 --
+# found or built, its path printed. The pre-push hook's `scripttests` runs the self-tests again under it
+# (`scripts/run-script-tests --bash "$(scripts/floor-bash)"`), and so does the nightly macOS job (order-independence.yml).
+#
+#   scripts/floor-bash              # the floor's path, or exit 1 saying how to get one
+#   scripts/floor-bash --install    # the same, building it first where there is none (~1 min once; cc, make, bison, curl)
+#
+# Found, in order: macOS's /bin/bash (a bash 3); the build kept in $FLOOR_BASH_DIR (default
+# ~/.cache/kinowo-floor-bash/bash-3.2.57), which --install makes from GNU's bash-3.2.57 tarball, sha256-pinned. A Linux
+# host has no bash 3 of its own: before this, the hook's floor run passed there in silence, and ci-runner's landing
+# checks let a `case … in pat)` inside `$( )` through that 3.2 cannot parse (ed160b94b; Order independence #72).
+# A build that does not report 3.2.57 is no floor: it is removed and --install fails. Tested by scripts/floor-bash-test.sh.
+set -euo pipefail
+
+FloorVersion=3.2.57
+FloorTarballSha256=3fa9daf85ebf35068f090ce51283ddeeb3c75eb5bc70b1a4a7cb05868bfe06a4
+FloorTarballUrl="https://ftp.gnu.org/gnu/bash/bash-$FloorVersion.tar.gz"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+dir="${FLOOR_BASH_DIR:-$HOME/.cache/kinowo-floor-bash/bash-$FloorVersion}"
+system_bash="${FLOOR_BASH_SYSTEM:-/bin/bash}" # the test's stand-in for macOS's
+
+# shellcheck disable=SC2016 # expanded by that bash
+version_of() { "$1" -c 'echo "${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}.${BASH_VERSINFO[2]}"' 2> /dev/null; }
+is_bash3() { [ -x "$1" ] && case "$(version_of "$1")" in 3.*) return 0 ;; *) return 1 ;; esac; }
+
+install=0
+case "${1:-}" in
+  '') ;;
+  --install) install=1 ;;
+  -h | --help) sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+  *) echo "floor-bash: unknown argument $1" >&2; exit 64 ;;
+esac
+
+if is_bash3 "$system_bash"; then echo "$system_bash"; exit 0; fi
+if [ "$(version_of "$dir/bin/bash" || true)" = "$FloorVersion" ]; then echo "$dir/bin/bash"; exit 0; fi
+if [ $install = 0 ]; then
+  echo "floor-bash: no bash $FloorVersion here ($system_bash is bash $(version_of "$system_bash" || echo '?'), none built in $dir)" \
+    "-- build it once: scripts/floor-bash --install (~1 min; cc, make, bison, curl)" >&2
+  exit 1
+fi
+
+# ── --install: GNU's tarball, verified, built with the flags a C23 compiler needs for 2006 C ──
+# bison: the shipped y.tab.c predates the 57 patches' parse.y, so the parser is generated again
+for tool in cc make bison curl; do
+  command -v "$tool" > /dev/null || { echo "floor-bash: --install needs $tool" >&2; exit 1; }
+done
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+"$root/scripts/ci/fetch-verified.sh" "$work/bash.tar.gz" "$FloorTarballUrl" "$FloorTarballSha256" >&2
+tar -C "$work" -xzf "$work/bash.tar.gz"
+rm -rf "$dir"
+# K&R definitions and implicit declarations are errors from GCC 14 / C23 on: build it as the C it was written in.
+# bash's own malloc misbehaves on 64-bit glibc; the system one is what macOS's build uses too.
+# Its 2006 config.sub knows no aarch64: the build type is the compiler's own, in config.sub's four parts, taken as it
+# is where the old script rejects it.
+(
+  cd "$work/bash-$FloorVersion"
+  machine="$(cc -dumpmachine)"
+  case "$machine" in *-*-*-*) ;; *-linux-*) machine="${machine%%-*}-unknown-${machine#*-}" ;; esac
+  mv support/config.sub support/config.sub.2006
+  # shellcheck disable=SC2016 # expanded by that config.sub
+  printf '#!/bin/sh\n"%s/support/config.sub.2006" "$@" 2> /dev/null || case "$1" in *-*-*-*) echo "$1" ;; *) exit 1 ;; esac\n' \
+    "$PWD" > support/config.sub
+  chmod +x support/config.sub
+  cc89="cc -std=gnu89 -w" # in CC, not CFLAGS: the build-time tools (mkbuiltins) compile with CC_FOR_BUILD's flags alone
+  CC="$cc89" CC_FOR_BUILD="$cc89" CFLAGS="-O2" \
+    ./configure --quiet --prefix="$dir" --build="$machine" --without-bash-malloc --disable-nls > "$work/configure.log" 2>&1 \
+    || { tail -30 "$work/configure.log" >&2; exit 1; }
+  make -s -j"$(getconf _NPROCESSORS_ONLN 2> /dev/null || echo 2)" > "$work/make.log" 2>&1 || { tail -30 "$work/make.log" >&2; exit 1; }
+  make -s install > "$work/install.log" 2>&1 || { tail -30 "$work/install.log" >&2; exit 1; }
+) || { rm -rf "$dir"; echo "floor-bash: building bash $FloorVersion failed" >&2; exit 1; }
+built="$(version_of "$dir/bin/bash" || true)"
+if [ "$built" != "$FloorVersion" ]; then
+  rm -rf "$dir"
+  echo "floor-bash: the build reports bash ${built:-nothing}, not $FloorVersion -- removed" >&2
+  exit 1
+fi
+echo "$dir/bin/bash"
