@@ -10,14 +10,19 @@ printf '\033[36m▸\033[0m start-mongo-replset.sh\n'
 stub_dir="$(mktemp -d)"
 trap 'rm -rf "$stub_dir"' EXIT
 # STUB_MONGO: `healthy` answers ping and reports PRIMARY after rs.initiate; `down` never answers
-# a ping; `secondary` answers but never becomes PRIMARY. STUB_MIRROR=down refuses every pull from
+# a ping (and its container cannot be inspected); `exited` is a container whose mongod died at start, its log's
+# fatal line saying why; `secondary` answers but never becomes PRIMARY. STUB_MIRROR=down refuses every pull from
 # mirror.gcr.io. STUB_DAEMON_MIRROR is the daemon's own Docker Hub mirror (`docker info`), none when
 # empty. A `login` records what it read on stdin in $STUB_LOGIN.
 cat > "$stub_dir/docker" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$STUB_LOG"
 case "$1" in
-  run|logs) exit 0 ;;
+  run) exit 0 ;;
+  logs) [ "$STUB_MONGO" = exited ] && printf '%s\n' '{"t":{},"s":"I","msg":"starting"}' \
+          '{"t":{},"s":"F","c":"CONTROL","msg":"MongoDB cannot start: Linux kernel versions 6.19 and newer has a known incompatibility"}'
+        exit 0 ;;
+  inspect) case "$STUB_MONGO" in exited) echo "false 14" ;; healthy|secondary) echo "true 0" ;; *) exit 1 ;; esac; exit 0 ;;
   pull) [ "${STUB_MIRROR:-up}" = down ] && [[ "$*" == *mirror.gcr.io* ]] && exit 1
         [ "${STUB_MIRROR:-up}" = stalls ] && [[ "$*" == *mirror.gcr.io* ]] && exec sleep 600; exit 0 ;;
   info) [ -n "${STUB_DAEMON_MIRROR:-}" ] && echo "$STUB_DAEMON_MIRROR"; exit 0 ;;
@@ -81,6 +86,14 @@ check "every probe keeps mongosh's state out of the data directory" "0" \
   "$(start healthy >/dev/null; grep '^exec ' "$STUB_LOG" | grep -vc '^exec -e HOME=/tmp mongo mongosh ')"
 check "a mongod that never answers fails, bounded, instead of waiting forever" "1" "$(start down)"
 check "...and says why" "1" "$(grep -c 'did not become reachable' "$stub_dir/out")"
+# Convergence #523 (run 41199223125): every leg waited out its 180 s for a mongod that died in its first second.
+check "a container whose mongod exited fails at once, not at the bound" "1" "$(MONGO_START_TIMEOUT_SECONDS=60 start exited)"
+check "...on its first probe, not one a second for the 60 s bound" "1" "$(grep -c 'ping:1' "$STUB_LOG")"
+check "...naming the exit and mongod's own fatal line in the error" "1" \
+  "$(grep -c '^::error::MongoDB.s container exited (status 14) .*"msg":"MongoDB cannot start: Linux kernel versions 6.19' "$stub_dir/out")"
+check "a mongod that times out names its log's last word in the error" "1" \
+  "$(start down >/dev/null; grep -c '^::error::MongoDB did not become reachable within 2s: ' "$stub_dir/out")"
+check "a healthy start says how long each wait took" "2" "$(start healthy >/dev/null; grep -c '^MongoDB \(reachable\|PRIMARY\) after [0-9]*s' "$stub_dir/out")"
 check "a mongod that never becomes PRIMARY fails too" "1" "$(start secondary)"
 check "...naming what it waited for" "1" "$(grep -c 'did not become PRIMARY' "$stub_dir/out")"
 
@@ -132,7 +145,7 @@ check "the native data directory on a RAM-backed tmpfs of the size asked for" "1
 check "...a tmpfs that will not mount leaves it on disk, and says so" "0 1" \
   "$(STUB_MOUNT=1 MONGO_TMPFS=6g start healthy) $(grep -c 'could not mount a 6g tmpfs' "$stub_dir/out")"
 check "a native mongod that never answers fails, bounded" "1" "$(start down)"
-check "...with its own log's tail" "1" "$(grep -c 'mongod: the log says why' "$stub_dir/out")"
+check "...with its own log's tail" "1" "$(grep -c '^mongod: the log says why' "$stub_dir/out")"
 check "MONGO_NO_NATIVE=1 runs the container regardless" "1" \
   "$(MONGO_NO_NATIVE=1 start healthy >/dev/null; grep -c '^run -d --name mongo ' "$STUB_LOG")"
 check "...leaving no marker behind" "0" "$([ -e "$stub_dir/marker" ] && echo 1 || echo 0)"

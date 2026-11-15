@@ -51,6 +51,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 timeout_seconds="${MONGO_START_TIMEOUT_SECONDS:-180}"
 majority_journal="${MONGO_MAJORITY_JOURNAL:-true}"
 deadline=$((SECONDS + timeout_seconds))
+started=$SECONDS
 
 # HOME outside /data/db: the image's HOME is the data directory, so a probe's mongosh would write its
 # lock files there while the entrypoint's `find /data/db ... -exec chown` walks it -- and a lock file
@@ -68,17 +69,45 @@ native=""
 mongosh_eval() { "$here/mongo-exec.sh" mongosh --quiet --eval "$1"; }
 log_tail() { if [ -n "$native" ]; then tail -n 50 "$log" 2>&1; else docker logs --tail 50 mongo 2>&1; fi; }
 
-# wait_for <what> <command...>: retry once a second until it succeeds or the deadline passes.
+# A CONTAINER THAT HAS EXITED never becomes reachable: say so at once, with mongod's own fatal line, instead of polling it
+# for the whole bound. Every leg of convergence #523 (run 41199223125, 2026-10-31) waited out its 180 s for a mongod that
+# had died in its first second ("MongoDB cannot start: Linux kernel versions 6.19 and newer has a known incompatibility",
+# SERVER-121912; fixed by running those jobs on ubuntu-22.04, c85592243), and the log said only "did not become
+# reachable". A `docker inspect` that cannot answer says nothing either way: the wait goes on. The native mongod
+# needs no such check: `--fork` returns only once the child is up, and fails when it is not.
+container_exited() {
+    [ -z "$native" ] || return 1
+    local state
+    state=$(docker inspect -f '{{.State.Running}} {{.State.ExitCode}}' mongo 2>/dev/null) || return 1
+    [ "${state%% *}" = false ] || return 1
+    echo "::error::MongoDB's container exited (status ${state#* }) $((SECONDS - started))s after it started, before it became $1: $(fatal_line)"
+}
+# mongod's first fatal ("s":"F") log line, else its last line: the reason a start failed, for the error line itself.
+fatal_line() {
+    local tail_text fatal
+    tail_text=$(log_tail 2>/dev/null)
+    fatal=$(grep -m1 '"s":"F"' <<< "$tail_text" | grep -o '"msg":"[^"]*"' | head -1)
+    [ -n "$fatal" ] || fatal=$(tail -n 1 <<< "$tail_text")
+    printf '%s' "${fatal:-no log}" | cut -c1-300
+}
+
+# wait_for <what> <command...>: retry once a second until it succeeds, the deadline passes or the container exits.
+# Each wait says how long it took: a start that is slow (a cold pull, a loaded runner) shows where its time went.
 wait_for() {
-    local what="$1"; shift
+    local what="$1" waited=$SECONDS; shift
     until "$@"; do
+        if container_exited "$what"; then
+            log_tail || true
+            return 1
+        fi
         if [ "$SECONDS" -ge "$deadline" ]; then
-            echo "::error::MongoDB did not become $what within ${timeout_seconds}s"
+            echo "::error::MongoDB did not become $what within ${timeout_seconds}s: $(fatal_line)"
             log_tail || true
             return 1
         fi
         sleep 1
     done
+    echo "MongoDB $what after $((SECONDS - waited))s ($((SECONDS - started))s since the start)"
 }
 
 is_up()      { mongosh_eval 'db.runCommand({ping:1})' >/dev/null 2>&1; }
@@ -115,8 +144,10 @@ hub_image=docker.io/library/mongo:8.3.13
 # the run. A pull is ~300 MB: MONGO_PULL_SECONDS (default 120) is several times a slow one, not a race with a good one.
 pull() {
     echo "pulling $1 (at most ${MONGO_PULL_SECONDS:-120}s)"
+    local status pulled=$SECONDS
     timeout -k 10 "${MONGO_PULL_SECONDS:-120}" docker pull -q "$1"
-    local status=$?
+    status=$?
+    echo "the pull of $1 ended (status $status) after $((SECONDS - pulled))s"
     [ "$status" -eq 124 ] && echo "::warning::the pull of $1 stalled past ${MONGO_PULL_SECONDS:-120}s"
     return "$status"
 }
