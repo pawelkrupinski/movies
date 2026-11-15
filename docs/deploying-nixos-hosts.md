@@ -100,3 +100,20 @@ stayed stopped (owed in `/run/nixos/start-list`).
   5 min) says so; finish it with `infra/bin/deploy <host> --apply`.
 
 Cases: `SwitchFailedMidway` in `infra/test/test_auto_apply_classify.py`.
+
+## A forgiven oneshot that runs for hours is never restarted by a switch (2026-11-15)
+
+`roles/scheduled-dispatch.nix`'s `scheduled-dispatch-*` oneshots wait 3-14 h for GitHub's late run, and
+were in `restartableUnits` with the default `restartIfChanged`. switch-to-configuration stops a changed
+running unit, starts it again and waits on a oneshot's start job -- its whole run -- so any closure
+touching them held the switch past the applier's 3600 s bound (`switch_failed`). They now carry
+`restartIfChanged = false` (a running guard finishes on its old definition) and are `routineUnits`,
+the one rule that forgives their changed-but-skipped state; `fleet-container-image-gc` (1 h) got the
+same flag.
+
+`auto-apply.nix` asserts it fleet-wide: a oneshot forgiven by `restartableUnits`/`routineUnits` whose
+declared `TimeoutStartSec` exceeds 30 min (or is unbounded or unreadable) must set
+`restartIfChanged = false`, or the host does not evaluate. `routineUnits`' four built-ins are now a
+definition rather than the option default, so a module adding its own entries merges with them
+instead of dropping them (`lib.mkForce` replaces the list). Case: `Leniency` in
+`infra/test/test_auto_apply_classify.py`.

@@ -161,6 +161,10 @@ in
       after = [ "k3s.service" ];
       requires = [ "k3s.service" ];
 
+      # NOT RESTARTED BY A SWITCH: a collection may run its full hour, and a switch restarting it
+      # waits on the oneshot's whole run (auto-apply.nix's long-forgiven-oneshot assertion).
+      restartIfChanged = false;
+
       serviceConfig = {
         Type = "oneshot";
         User = "root";

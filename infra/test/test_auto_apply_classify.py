@@ -527,6 +527,20 @@ class Leniency(unittest.TestCase):
                          "a direct invocation, where dry-activate is silent about the unit")
         self.assertEqual(self._both(changes, line, routine=("*.timer",)), (False, False))
 
+    def test_a_running_long_guard_left_alone_applies_only_as_routine(self):
+        """roles/scheduled-dispatch.nix (2026-11-15): its oneshots run for hours. With the default
+        restartIfChanged the switch restarted a running guard and waited on its whole run, past the
+        one-hour switch bound; with `restartIfChanged = false` dry-activate says changed-but-skipped,
+        which the ROUTINE rule forgives and `restartable` never does."""
+        changes = {"scheduled-dispatch-nightly.service": "/nix/store/n2",
+                   "scheduled-dispatch-nightly.timer": "/nix/store/nt2"}
+        line = ("would NOT restart the following changed units: scheduled-dispatch-nightly.service\n"
+                "would restart the following units: scheduled-dispatch-nightly.timer")
+        self.assertEqual(self._both(changes, line, routine=("scheduled-dispatch-*",)), (True, True))
+        restartable = ("scheduled-dispatch-nightly.service", "scheduled-dispatch-nightly.timer")
+        dry = applier.classify_output(line, restartable, (), leniency=applier.Leniency())
+        self.assertEqual(dry.disruptive, ["changed-but-skipped scheduled-dispatch-nightly.service"])
+
     def test_routine_star_cannot_restart_a_database(self):
         self.assertEqual(self._both({"mongodb.service": "/nix/store/m2"},
                                     "would restart the following units: mongodb.service",

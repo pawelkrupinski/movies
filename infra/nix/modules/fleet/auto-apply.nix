@@ -58,6 +58,41 @@ let
     # own.
     (lib.concatStringsSep "\n"
       (lib.drop 1 (lib.splitString "\n" (builtins.readFile ../../files/nixos-auto-apply.py))));
+
+  matchesUnit = import ../../lib/unit-glob.nix { inherit lib; };
+
+  # A forgiven oneshot whose run may outlast this, restarted by a switch, holds the switch for its
+  # whole run (the applier bounds a switch at 3600 s: nixos-auto-apply.py). Half of it, for headroom.
+  maxRestartedOneshotSeconds = 30 * 60;
+
+  # systemd's TimeoutStartSec in seconds, or null for unbounded (`infinity`, `0`) or anything this
+  # does not read (`1h 30min`) -- which the assertion counts as long, the direction that refuses.
+  timeoutSeconds = value:
+    let
+      text = toString (if builtins.isList value then lib.last value else value);
+      parsed = builtins.match "([1-9][0-9]*) *(s|sec|m|min|h|hr)?" text;
+      factor = { s = 1; sec = 1; m = 60; min = 60; h = 3600; hr = 3600; };
+      unit = builtins.elemAt parsed 1;
+    in
+    if parsed == null then null
+    else lib.toInt (builtins.elemAt parsed 0) * (if unit == null then 1 else factor.${unit});
+
+  forgiven = unit:
+    !(lib.any (matchesUnit unit) cfg.neverDisturbUnits)
+    && lib.any (matchesUnit unit) (cfg.restartableUnits ++ cfg.routineUnits);
+
+  longForgivenOneshots = lib.sort lib.lessThan (lib.attrNames (lib.filterAttrs
+    (name: service:
+      let
+        serviceConfig = service.serviceConfig or { };
+        timeout = if serviceConfig ? TimeoutStartSec then timeoutSeconds serviceConfig.TimeoutStartSec else 0;
+      in
+      (service.enable or true)
+      && (service.restartIfChanged or true)
+      && (serviceConfig.Type or "simple") == "oneshot"
+      && (timeout == null || timeout > maxRestartedOneshotSeconds)
+      && forgiven "${name}.service")
+    config.systemd.services));
 in
 {
   options.fleet.autoApply = {
@@ -231,12 +266,12 @@ in
 
     routineUnits = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [
-        "*.timer"
-        "*-exporter.service"
-        "nixos-auto-apply.service"
-        "nixos-auto-apply.path"
-      ];
+      # THE BUILT-IN FOUR ARE A DEFINITION BELOW (`config`), NOT THIS DEFAULT: an option's default is
+      # DROPPED the moment any module defines the option, so a role adding its own units here
+      # (roles/scheduled-dispatch.nix) would silently have taken `*.timer`, the exporters and the
+      # applier's own unit off every host it is imported on. Definitions merge; a host that wants the
+      # list replaced outright says so with `lib.mkForce`.
+      default = [ ];
       description = ''
         Glob patterns naming units whose stop/start/restart -- or changed-but-skipped state, which
         is how this applier's own `restartIfChanged = false` unit arrives -- disturbs nothing
@@ -247,7 +282,9 @@ in
         STATEFUL_UNITS floor (mongodb, k3s, sshd, prometheus, alertmanager, mounts, ...)
         outrank it, so `[ "*" ]` here still cannot restart a database. Naming
         `nixos-auto-apply.service` is what lets a change to `fleet.autoApply.*` roll itself out;
-        drop it to restore the old "the applier never applies itself" rule on a host.
+        drop it (`lib.mkForce` a list without it) to restore the old "the applier never applies
+        itself" rule on a host. Built in, merged with every module's own entries: `*.timer`,
+        `*-exporter.service`, `nixos-auto-apply.service`, `nixos-auto-apply.path`.
       '';
     };
 
@@ -314,7 +351,35 @@ in
     })
 
     (lib.mkIf cfg.enable {
+      fleet.autoApply.routineUnits = [
+        "*.timer"
+        "*-exporter.service"
+        "nixos-auto-apply.service"
+        "nixos-auto-apply.path"
+      ];
+
       assertions = [
+        {
+          # A FORGIVEN ONESHOT THAT RUNS FOR HOURS MUST NOT BE RESTARTED BY A SWITCH. Forgiving a unit
+          # (restartableUnits / routineUnits) lets the applier switch while it is running, and
+          # switch-to-configuration stops a changed active unit and then WAITS on its start job --
+          # for a oneshot, its whole run. roles/scheduled-dispatch.nix's guards run up to 14 h: any
+          # closure touching them held the switch past the applier's 3600 s bound and ended
+          # `switch_failed` (2026-11-15 review). `restartIfChanged = false` makes the switch leave
+          # the running unit alone; its next start reads the new definition.
+          #
+          # Measured against the unit's DECLARED TimeoutStartSec (a longer one, or one this cannot
+          # read, counts as long). A oneshot that declares none is not judged here.
+          assertion = longForgivenOneshots == [ ];
+          message = ''
+            ${config.networking.hostName}: these oneshot services are forgiven by
+            fleet.autoApply.restartableUnits/routineUnits, may run longer than
+            ${toString (maxRestartedOneshotSeconds / 60)} minutes (TimeoutStartSec), and keep the default
+            restartIfChanged = true: ${lib.concatStringsSep ", " longForgivenOneshots}.
+            A switch that changes one while it runs waits for the whole run, past the applier's
+            one-hour switch bound. Set `restartIfChanged = false` on them.
+          '';
+        }
         {
           assertion = cfg.attribute != "";
           message = "fleet.autoApply.attribute must name this host's entry in nixosConfigurations.";

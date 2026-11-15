@@ -115,17 +115,8 @@ let
   # nothing anywhere; that is why it is gone rather than kept "in case".
   grafanaProvisioning = ../../files/monitoring/grafana;
 
-  # `restartableUnits` and `neverDisturbUnits` are fnmatch GLOBS -- the applier matches them with
-  # Python's fnmatch, so `*` and `?` are the two wildcards and a host may well write `grafana.*` or
-  # `*`. A plain `elem` would read those as literals and report a host that HAS forgiven Grafana as
-  # one that has not, which is the worst direction for the assertion below to be wrong in. This is
-  # the same translation, kept to the two wildcards fnmatch and Nix's regexes agree on.
-  matchesUnit = unit: pattern:
-    let
-      escaped = lib.escapeRegex pattern;
-      wildcarded = lib.replaceStrings [ "\\*" "\\?" ] [ ".*" "." ] escaped;
-    in
-    builtins.match wildcarded unit != null;
+  # `restartableUnits` and `neverDisturbUnits` are fnmatch GLOBS: ../../lib/unit-glob.nix.
+  matchesUnit = import ../../lib/unit-glob.nix { inherit lib; };
 in
 {
   options.fleet.grafana = {

@@ -66,6 +66,13 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       path = [ pkgs.openssl ];
+      # NEVER RESTARTED BY A SWITCH. A run lasts the grace plus the guard -- up to 14 h -- and
+      # switch-to-configuration stops a changed running unit, starts it again and waits on that
+      # oneshot's start job: a closure touching these held every switch for hours and past
+      # nixos-auto-apply's one-hour bound (`switch_failed`). Left alone, a running guard finishes on
+      # its old definition and the next slot's run reads the new one. auto-apply.nix asserts this
+      # of every long forgiven oneshot.
+      restartIfChanged = false;
       serviceConfig = {
         Type = "oneshot";
         ExecStart = lib.escapeShellArgs [
@@ -97,9 +104,10 @@ in
       };
     }) workflows;
 
-    # A restart mid-guard is harmless (the restarted run finds its own dispatch: `dispatched-earlier`), so a
-    # changed schedule or script rolls out unattended even while a guard is running.
-    fleet.autoApply.restartableUnits = lib.concatMap (name: [ "${unit name}.service" "${unit name}.timer" ])
-      (lib.attrNames workflows);
+    # ROUTINE, NOT RESTARTABLE: with `restartIfChanged = false` a changed service arrives as
+    # changed-but-skipped, which only the routine rule forgives (and only the routine rule is fenced
+    # by the applier's STATEFUL_UNITS floor). Its timers would be routine anyway (`*.timer`). A
+    # changed schedule or script so rolls out unattended even while a guard is running.
+    fleet.autoApply.routineUnits = [ "scheduled-dispatch-*" ];
   };
 }
