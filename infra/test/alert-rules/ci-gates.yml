@@ -1,8 +1,9 @@
 # UNIT TESTS FOR THE LANDING GATE ALERT.
 #
 # Each run is ONE sample, stamped at its start, as scripts/ci/ci_timings.py pushes it. LandingGateRed fires for Main
-# red since its 30-minute run with nothing green after it, and stays quiet for Identity model convergence, whose red
-# run was followed by a green one, and for a workflow outside the gate.
+# red since its 30-minute run with nothing green after it, and for Identity takes, red the same way; it stays quiet for
+# Identity model convergence, whose red run was followed by a green one, and for workflows outside the gate -- Verify
+# scrape recording among them (it gates nothing since 2026-10-27, yet this rule watched it until 2026-11-15).
 rule_files:
   - ../../nix/files/monitoring/rules/ci-gates.rules
 
@@ -21,6 +22,12 @@ tests:
         values: '_x12 2800 _x48'
       - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Nightly stress",ref="main",measure="wall",conclusion="failure"}'
         values: '_x6 600 _x54'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Verify scrape recording",ref="main",measure="wall",conclusion="failure"}'
+        values: '_x6 1800 _x54'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Identity takes",ref="main",measure="wall",conclusion="success"}'
+        values: '1800 _x60'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Identity takes",ref="main",measure="wall",conclusion="failure"}'
+        values: '_x6 2400 _x54'
     alert_rule_test:
       - eval_time: 1h
         alertname: LandingGateRed
@@ -32,3 +39,7 @@ tests:
             exp_annotations:
               summary: "Main has been red on main for 2 hours"
               description: "The newest finished Main run on main failed and no later one has passed, for two hours. Every production push now needs a `Fixes-Red:` trailer naming that run, or waits for green. `~/bin/agentctl ci-why` names the run, its failed jobs and whether the failure is a test or the CI itself."
+          - exp_labels: { domain: ci, severity: warning, workflow: Identity takes }
+            exp_annotations:
+              summary: "Identity takes has been red on main for 2 hours"
+              description: "The newest finished Identity takes run on main failed and no later one has passed, for two hours. Every production push now needs a `Fixes-Red:` trailer naming that run, or waits for green. `~/bin/agentctl ci-why` names the run, its failed jobs and whether the failure is a test or the CI itself."

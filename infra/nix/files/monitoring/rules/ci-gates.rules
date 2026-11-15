@@ -1,8 +1,15 @@
-# IS A LANDING GATE RED ON MAIN? -- the three workflows the pre-push red gate reads (`check_redgate`, `agentctl
-# ci-why`): Main, Identity model convergence, and the scrape recording's verdict, which is the verify phase
-# (`Verify scrape recording`, gated since daceaa602; the capture, `Record scrape fixtures`, is not a gate any more and
-# was red for 17-37 h stretches on live data). While one is red, every production push needs a `Fixes-Red:` trailer or waits; a red nobody is fixing
-# blocks everyone, and nothing said so but the next refused push. (CI build-time regressions are not this file's.)
+# IS A LANDING GATE RED ON MAIN? -- THE GATE's three workflows, exactly what the pre-push red gate reads
+# (scripts/hooks/pre-push `GatingWorkflows`, `agentctl ci-why`, .github/gating-checks.tsv): Main, Identity model
+# convergence, and Identity takes (the takes rows, split from convergence into a gating workflow of their own on
+# 2026-11-08). The scrape recording gates nothing since 2026-10-27 (97bb6d835): neither its capture (Record scrape
+# fixtures) nor its hermetic replay (Verify scrape recording), whose reds are information (`agentctl ci-why`). Until
+# 2026-11-15 this rule still watched Verify scrape recording and not Identity takes: 6 of its 8 episodes in the week to
+# 2026-11-15 were the recording's verify, which holds no push, and a red Identity takes, which does, said nothing.
+# While one is red, every production push needs a `Fixes-Red:` trailer or waits; a red nobody is fixing blocks
+# everyone, and nothing said so but the next refused push. (CI build-time regressions are not this file's.)
+# The gate's finer reading -- a run red only in an aggregate (`verdict complete`) or in an `unproven` job holds no push --
+# is not in the run's series, which carries only its conclusion: such a run fires here too, and ci-why says why it does
+# not gate.
 #
 # THE SERIES: `kinowo_ci_run_seconds{workflow,ref,measure,conclusion}`, which every workflow's last job (`timings`,
 # `if: !cancelled()`, scripts/ci/ci_timings.py) pushes over OTLP once per run, stamped at the RUN'S START, with the
@@ -17,12 +24,12 @@ groups:
       # The 3-day window bounds the subquery; a gate red for longer than that is long past an alert.
       - alert: LandingGateRed
         expr: |
-          max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="failure",workflow=~"Main|Identity model convergence|Verify scrape recording"})[3d:5m]))
+          max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="failure",workflow=~"Main|Identity model convergence|Identity takes"})[3d:5m]))
             >
           (
-            max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success",workflow=~"Main|Identity model convergence|Verify scrape recording"})[3d:5m]))
+            max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="success",workflow=~"Main|Identity model convergence|Identity takes"})[3d:5m]))
             or
-            0 * max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="failure",workflow=~"Main|Identity model convergence|Verify scrape recording"})[3d:5m]))
+            0 * max by (workflow) (max_over_time(timestamp(kinowo_ci_run_seconds{ref="main",measure="wall",conclusion="failure",workflow=~"Main|Identity model convergence|Identity takes"})[3d:5m]))
           )
         for: 2h
         labels:
