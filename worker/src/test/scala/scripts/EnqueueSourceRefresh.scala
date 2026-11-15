@@ -13,26 +13,36 @@ import tools.CommandLine
  * (Poland only; each a rating source's rows by TMDB film id). The run's outcome is on the `/tasks` page ("lastResults",
  * `RefreshSource`) and in the worker log ("refresh <source> for N keys").
  *
- * Dry run by DEFAULT — pass `--apply` to enqueue. Against prod (Poland's database), through the vault and the tunnel:
- *
- *   scripts/sbt-warm --stop
- *   MONGODB_DB=kinowo scripts/with-prod-mongo.sh scripts/sbt-warm "worker/Test/runMain scripts.EnqueueSourceRefresh tmdb-films 1525208 1517105 --apply"
- *   scripts/sbt-warm --stop
- *
- * Stop the checkout's kept sbt server before and after: a kept server reads the environment it STARTED with (only
- * KINOWO_* settings are compared), so without the first stop the run reads an older server's database, and without the
- * second a later run in this checkout reads prod's.
+ * Dry run by DEFAULT — pass `--apply` to enqueue. Run it through `scripts/source-refresh <database> <source> <keys...>
+ * [--apply]` (the vault, the tunnel, and a sbt server started for the call): it refuses to run unless the environment it
+ * reads carries the call's own run id (`--run`, [[refusal]]), so a kept sbt server started for another call — another
+ * database's environment — can never enqueue.
  */
 object EnqueueSourceRefresh {
 
   val commandLine: CommandLine = CommandLine("EnqueueSourceRefresh",
     "Enqueues RefreshSource tasks for one source and the keys given; a dry run unless --apply.",
-    Seq(CommandLine.Flag("apply", "enqueue, rather than say what would be")),
+    Seq(CommandLine.Flag("apply", "enqueue, rather than say what would be"),
+        CommandLine.Value("run", "id", "the call's run id, as scripts/source-refresh exports it in KINOWO_SOURCE_REFRESH_RUN")),
     Seq(CommandLine.Positional("source", s"the source: ${RefreshableSources.Names.mkString(", ")}"),
         CommandLine.Positional("keys", "its keys (TMDB film ids)", repeatable = true)))
 
+  /** The environment variable scripts/source-refresh names its call's run id in. */
+  val RunVariable = "KINOWO_SOURCE_REFRESH_RUN"
+
+  /** Why this process must not run for the call that named `run`: its environment was not started for that call (a kept
+   *  sbt server's, another call's database in it). None when it was. */
+  def refusal(environment: Map[String, String], run: Option[String]): Option[String] = (run, environment.get(RunVariable)) match {
+    case (None, _)                                    => Some("no --run: start it with scripts/source-refresh")
+    case (Some(asked), Some(seen)) if asked == seen   => None
+    case (Some(asked), seen)                          =>
+      Some(s"this JVM's environment was not started for run $asked (it carries ${seen.getOrElse("none")}): a kept sbt server " +
+        "from another call, whose database is not this call's; start it with scripts/source-refresh")
+  }
+
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
+    refusal(sys.env, arguments.get("run")).foreach { why => println(s"REFUSED: $why"); sys.exit(2) }
     val source    = arguments.requiredPositional("source")
     val keys      = arguments.positionalsFrom("keys").distinct
     if (!RefreshableSources.Names.contains(source)) arguments.fail(s"no source '$source': ${RefreshableSources.Names.mkString(", ")}")

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Ask a country's PROD worker to fetch again what one stored external source holds for given keys
+# (scripts.EnqueueSourceRefresh: RefreshSource tasks; sources tmdb-films, imdb, metacritic, rt, filmweb).
+#
+#   scripts/source-refresh <database> <source> <keys...> [--apply]
+#   e.g. scripts/source-refresh kinowo tmdb-films 1525208 1517105 --apply     # Poland; a dry run without --apply
+#
+# Through the vault and the tunnel (scripts/with-prod-mongo.sh), in a sbt server started FOR THIS CALL: the call's
+# KINOWO_SOURCE_REFRESH_RUN, a fresh id, is a setting sbt-warm restarts a kept server for (a kept server reads the
+# environment it started with, so it would read another call's database), and the program refuses to run unless the
+# environment it reads carries that same id (`--run`). A later call without it restarts the server again.
+set -euo pipefail
+case "${1:-}" in -h|--help|"") sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+[ $# -ge 3 ] || { echo "usage: scripts/source-refresh <database> <source> <keys...> [--apply]" >&2; exit 2; }
+here="$(cd "$(dirname "$0")" && pwd)"
+database=$1; shift
+run="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+export KINOWO_SOURCE_REFRESH_RUN="$run" MONGODB_DB="$database"
+exec "${SOURCE_REFRESH_PROD:-$here/with-prod-mongo.sh}" "$here/sbt-warm" \
+  "worker/Test/runMain scripts.EnqueueSourceRefresh --run $run $*"
