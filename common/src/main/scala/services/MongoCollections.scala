@@ -159,6 +159,7 @@ object MongoCollections {
     RegisteredCollection("identity_traces", Corpus, Sweep("MongoIdentityTraceStore"), Set(Worker))
       .mirror("Review pages: each listing's trace (the evidence for and against the film it weighed, every " +
         "rule's refusal), read when a card's Why fold-out opens.")
+      .record // each screening listing's model film: which stage made a prod take (ProdFilm.modelTook)
       .resolveState("the decisions' explanations, only written by the path"),
     RegisteredCollection("identity_agreements", Corpus, Sweep("MongoAgreementVerdicts"), Set(Worker))
       .mirror("Backs no page: the agreement stage's stored verdicts (the film each cluster's families agreed " +

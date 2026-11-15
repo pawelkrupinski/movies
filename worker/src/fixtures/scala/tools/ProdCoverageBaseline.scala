@@ -65,6 +65,11 @@ case class ProdCoverageBaseline(
       filmwebRating = less("filmwebRating", filmwebRating), metascore = less("metascore", metascore),
       rottenTomatoes = less("rottenTomatoes", rottenTomatoes))
   }
+
+  /** This baseline without `withdrawn` at all: neither films nor coverage on any axis — production's side of a
+   *  population the band leaves out on both sides ([[ProdFilms.takenPastTheModel]]). */
+  def without(withdrawn: Seq[ProdFilm]): ProdCoverageBaseline =
+    withdrawing(withdrawn).copy(films = films - withdrawn.size)
 }
 
 /**

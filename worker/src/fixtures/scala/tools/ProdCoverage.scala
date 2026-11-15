@@ -47,16 +47,19 @@ object ProdCoverage {
              *  not: prod strips a listing's decoration before storing it, so a corpus
              *  "The Room [dubbing]" never equalled the "The Room" on prod's slot. */
             onlySlotKeys: Option[Set[String]] = None): Seq[ProdFilm] = {
-    val slotsOf: Map[String, Seq[String]] = Await.result(
+    val screeningGroups = Await.result(
       database.getCollection("screenings")
         .aggregate(Seq(
           Aggregates.filter(Filters.gte("showtimes.dateTime", now)),
-          Aggregates.group("$filmId", Accumulators.addToSet("slots", "$slotKey"))))
+          Aggregates.group("$filmId", Accumulators.addToSet("slots", "$slotKey"), Accumulators.addToSet("listings", "$listingKey"))))
         .allowDiskUse(true)
         .toFuture(), SpecTimeouts.Run)
-      .flatMap(group => group.get("_id").map(_.asString().getValue -> group.get("slots").fold(Seq.empty[String])(
-        _.asArray().getValues.asScala.toSeq.map(_.asString().getValue).sorted)))
-      .toMap
+    def strings(group: org.mongodb.scala.Document, field: String): Seq[String] =
+      group.get(field).fold(Seq.empty[String])(_.asArray().getValues.asScala.toSeq.filter(_.isString).map(_.asString().getValue).sorted)
+    val slotsOf: Map[String, Seq[String]] =
+      screeningGroups.flatMap(group => group.get("_id").map(_.asString().getValue -> strings(group, "slots"))).toMap
+    val listingsOf: Map[String, Seq[String]] =
+      screeningGroups.flatMap(group => group.get("_id").map(_.asString().getValue -> strings(group, "listings"))).toMap
     val screeningNow = slotsOf.keys.toSeq
 
     // Exact-match the sampled slot keys — an `$in` on the keys prod already stores, so
@@ -102,6 +105,21 @@ object ProdCoverage {
     }
     val screening = sampled.fold(screeningNow)(keep => screeningNow.filter(keep.contains))
 
+    // The film prod's identity MODEL decided for each of those films' listings (its stored per-listing decision, keyed
+    // by the listing's serialised key as the screening names it): what tells a take the model made from one a later
+    // stage made ([[ProdFilm.modelTook]]). By `_id`, the film alone projected.
+    val modelFilmOf: Map[String, Option[Int]] = {
+      val keys = screening.flatMap(listingsOf.getOrElse(_, Nil)).distinct
+      if (keys.isEmpty) Map.empty
+      else Await.result(
+        database.getCollection(services.identity.MongoIdentityTraceStore.Collection)
+          .find(Filters.in("_id", keys*))
+          .projection(Projections.include("film"))
+          .toFuture(), SpecTimeouts.Run)
+        .flatMap(trace => trace.get("_id").map(_.asString().getValue -> trace.get("film").filter(_.isNumber).map(_.asNumber().intValue())))
+        .toMap
+    }
+
     Await.result(
       database.getCollection("movies")
         .find(Filters.in("_id", screening*))
@@ -109,16 +127,23 @@ object ProdCoverage {
         .toFuture(), SpecTimeouts.Run)
       .map { row =>
         def present(field: String) = row.get(field).exists(value => !value.isNull)
-        val id = row.get("_id").fold("")(_.asString().getValue)
+        val id     = row.get("_id").fold("")(_.asString().getValue)
+        val tmdbId = row.get("tmdbId").filter(_.isNumber).map(_.asNumber().intValue())
         ProdFilm(
           id        = id,
           key       = row.get("key").filter(_.isString).fold(id)(_.asString().getValue),
-          tmdbId    = row.get("tmdbId").filter(_.isNumber).map(_.asNumber().intValue()),
+          tmdbId    = tmdbId,
           tmdbBasis = row.get("tmdbBasis").filter(_.isString).map(_.asString().getValue),
           imdbId    = row.get("imdbId").filter(_.isString).map(_.asString().getValue),
           covered   = ProdFilms.Axes.filter(present).toSet,
-          slots     = slotsOf.getOrElse(id, Nil))
+          slots     = slotsOf.getOrElse(id, Nil),
+          modelTook = modelTookOf(tmdbId, listingsOf.getOrElse(id, Nil).flatMap(modelFilmOf.get)))
       }
       .sortBy(_.id)
   }
+
+  /** Whether the model took a film's TMDB id `tmdbId`, given its decisions at the film's listings it holds: unknown
+   *  without an id or without a decision the model holds. */
+  def modelTookOf(tmdbId: Option[Int], decided: Seq[Option[Int]]): Option[Boolean] =
+    tmdbId.filter(_ => decided.nonEmpty).map(id => decided.contains(Some(id)))
 }

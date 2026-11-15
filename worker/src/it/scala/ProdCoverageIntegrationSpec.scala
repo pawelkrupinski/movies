@@ -10,7 +10,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
+import services.movies.{ListingKey, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository}
 import tools.ProdCoverage
 
 import java.time.{Instant, LocalDateTime, ZoneOffset}
@@ -55,6 +55,8 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
    *  stored: one migrated to `movie_slots`, one still embedded on the row. */
   private val sideKey     = CinemaShowing.keyFor(KinoPionier, "Ktoś całkiem obcy", titleNormalizer)
   private val embeddedKey = CinemaShowing.keyFor(KinoPionier, "Rambo: Pierwsza krew", titleNormalizer)
+  private val sideListing     = ListingKey.Published(KinoPionier.displayName, "Ktoś całkiem obcy", None, Nil)
+  private val embeddedListing = ListingKey.Published(KinoPionier.displayName, "Rambo: Pierwsza krew", None, Nil)
 
   override def beforeAll(): Unit = {
     val soon = LocalDateTime.ofInstant(Instant.now().plusSeconds(3600), ZoneOffset.UTC)
@@ -69,9 +71,14 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
       data   = Map[Source, SourceData](embeddedKey -> SourceData(title = Some("Rambo: Pierwsza krew")))))
 
     // Both are SCREENING — the baseline counts only films with a future showtime.
-    Seq("side|2024" -> sideKey, "embedded|1982" -> embeddedKey).foreach { case (filmId, key) =>
-      screenings.upsertSlot(filmId, key.displayName, ListedShowtimes(Seq(Showtime(dateTime = soon, bookingUrl = None)), None))
+    Seq("side|2024" -> sideKey -> sideListing, "embedded|1982" -> embeddedKey -> embeddedListing).foreach { case ((filmId, key), listing) =>
+      screenings.upsertSlot(filmId, key.displayName, ListedShowtimes(Seq(Showtime(dateTime = soon, bookingUrl = None)), Some(listing)))
     }
+    // The model's own decision at each listing: it took the first film itself; the second's take a later stage made.
+    Await.result(database.getCollection(services.identity.MongoIdentityTraceStore.Collection).insertMany(Seq(
+      org.mongodb.scala.Document("_id" -> ListingKey.serialised(sideListing), "film" -> 1),
+      org.mongodb.scala.Document("_id" -> ListingKey.serialised(embeddedListing), "film" -> org.mongodb.scala.bson.BsonNull()))).toFuture(),
+      SpecTimeouts.Io)
   }
 
   override def afterAll(): Unit = {
@@ -97,5 +104,12 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
 
     films("side|2024") shouldBe ((Some(1), Set("tmdbId"), Seq(sideKey.displayName)))
     films("embedded|1982") shouldBe ((Some(2), Set("tmdbId"), Seq(embeddedKey.displayName)))
+  }
+
+  // Which stage took each film's TMDB id: the model's own decision at its listings, read beside the screenings.
+  it should "record whether production's model itself took each film, from its decisions at the film's listings" in {
+    val films = ProdCoverage.films(database, Instant.now()).map(film => film.id -> film.modelTook).toMap
+
+    films shouldBe Map("side|2024" -> Some(true), "embedded|1982" -> Some(false))
   }
 }

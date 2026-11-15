@@ -1320,20 +1320,33 @@ abstract class CountryConvergenceBehaviour(
       // Poland, "Przemytnicy" served as the 1985 film at three venues, judged wrong the day before — tmdbId 5.1%
       // under production (Verify scrape recording #2602) on main's deliberate withdrawal alone.
       val prodFilms   = ProdFilms.read(corpusKey)
-      val judgedWrong = prodFilms.fold(Seq.empty[ProdFilm])(ProdFilms.judgedWrong(_, screening.map(RunFilm.of), w.judged))
+      // Over the films both sides can take. A take a stage after production's model made (the agreement's, a poster
+      // vote's, a fill's, a correction's: ProdFilms.takenPastTheModel) reads what a hermetic leg never replays, so it
+      // is left out of BOTH sides — production's films and the run's at the same slots — and the shares compare one
+      // population: Verify scrape recording #31's Poland read tmdbId 5.4% under production, most of it on 19 such takes.
+      val pastModel   = prodFilms.fold(Seq.empty[ProdFilm])(ProdFilms.takenPastTheModel)
+      val runSide     = ProdFilms.runSideOf(pastModel, screening.map(RunFilm.of))
+      val compared    = screening.filterNot(film => runSide(film.id.value))
+      if (pastModel.nonEmpty)
+        info(s"${country.displayName}: ${pastModel.size} of production's take(s) a stage after its model made, which a " +
+             s"hermetic replay cannot make, are left out of both sides (with the run's ${runSide.size} film(s) at their slots) — " +
+             pastModel.map(film => s"'${film.key}' tmdb ${film.tmdbId.mkString}").mkString(", "))
+      val comparedMine = CorpusCoverage.of(compared.map(_.record))
+      val judgedWrong = prodFilms.fold(Seq.empty[ProdFilm])(prod =>
+        ProdFilms.judgedWrong(prod.diff(pastModel), compared.map(RunFilm.of), w.judged))
       if (judgedWrong.nonEmpty)
         info(s"${country.displayName}: ${judgedWrong.size} of production's take(s) a hand judgement calls wrong, " +
              s"which the replay withdraws, are not counted as its coverage — " +
              judgedWrong.map(film => s"'${film.key}' tmdb ${film.tmdbId.mkString}").mkString(", "))
-      val judgedBaseline = baseline.withdrawing(judgedWrong)
+      val judgedBaseline = baseline.without(pastModel).withdrawing(judgedWrong)
 
       // Printed whether or not it passes. A band that only speaks when it breaks hides
       // an axis drifting TOWARDS the line — Poland's identification sat at 5.0% of a 5%
       // band while the rating axes it feeds were the ones failing.
       info(s"${country.displayName}: coverage against production${if (againstShadow.isDefined) "'s pipeline (reported only)" else ""} —\n  " +
-           ProdCoverageBaseline.report(mine, judgedBaseline, ProdTolerance).mkString("\n  "))
+           ProdCoverageBaseline.report(comparedMine, judgedBaseline, ProdTolerance).mkString("\n  "))
 
-      val offBand = againstShadow.fold(ProdCoverageBaseline.divergences(mine, judgedBaseline, ProdTolerance))(
+      val offBand = againstShadow.fold(ProdCoverageBaseline.divergences(comparedMine, judgedBaseline, ProdTolerance))(
         _.divergences(CorpusCoverage.of(corpus), ProdTolerance))
 
       // WHICH films, on every run: the counts above say how far the run sits from production, this says on

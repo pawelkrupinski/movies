@@ -167,4 +167,58 @@ class ProdCoverageBaselineSpec extends AnyFlatSpec with Matchers with ScratchDir
     coverage(films = 1249, tmdb = 813, imdb = 790, imdbRating = 760).withdrawing(Seq(wrong)) shouldBe
       coverage(films = 1249, tmdb = 812, imdb = 789, imdbRating = 759)
   }
+
+  /**
+   * Comparing like with like. Production's films include takes a stage AFTER its model made — the agreement over the
+   * families' answers, a poster vote, a fill — which a hermetic replay never makes, so the run lacked every one of them
+   * and the band read that as the pipeline identifying less: Verify scrape recording #31's Poland, tmdbId 64.0% against
+   * production's 67.6%, 5.4% off a 5% band, most of it on 19 such takes. Left out of BOTH sides, the shares compare the
+   * one population both can take.
+   */
+  "The band over production's takes a stage after its model made" should "leave them out of both sides" in {
+    def film(n: Int, modelTook: Option[Boolean]) =
+      ProdFilm(s"p$n", s"film$n|", Some(n), None, None, Set("tmdbId"), Seq(s"Kino␟film$n"), modelTook)
+    val modelTakes = (1 to 260).map(film(_, Some(true)))
+    val pastModel  = (261 to 280).map(film(_, Some(false)))
+    val untaken    = (281 to 400).map(n => ProdFilm(s"p$n", s"film$n|", None, None, None, Set.empty, Seq(s"Kino␟film$n")))
+    val prod       = modelTakes ++ pastModel ++ untaken
+    // the replay takes every model take and two of the untaken, but none of the agreement's
+    val run = (1 to 400).map(n => RunFilm(s"r$n", s"film$n", Option.when(n <= 260 || n > 398)(n), None,
+      if (n <= 260 || n > 398) Set("tmdbId") else Set.empty, Seq(RunListing(s"Kino␟film$n", "Kino", s"film$n"))))
+    def counted(films: Seq[RunFilm]) = coverage(films = films.size, tmdb = films.count(_.covered("tmdbId")))
+
+    ProdFilms.takenPastTheModel(prod) shouldBe pastModel
+    ProdCoverageBaseline.divergences(counted(run), ProdCoverageBaseline.of(java.time.Instant.EPOCH, prod), Band).mkString should
+      include ("tmdbId")
+
+    val leftOut = ProdFilms.runSideOf(pastModel, run)
+    leftOut shouldBe (261 to 280).map(n => s"r$n").toSet
+    val baseline = ProdCoverageBaseline.of(java.time.Instant.EPOCH, prod).without(pastModel)
+    (baseline.films, baseline.tmdbId) shouldBe ((380, 260))
+    ProdCoverageBaseline.divergences(counted(run.filterNot(f => leftOut(f.id))), baseline, Band) shouldBe empty
+  }
+
+  it should "keep a run film that bills another production film's slot too, and withdraw a split's every part" in {
+    val agreed = ProdFilm("p-zniknięcie", "znikniecie|1988", Some(8740), None, None, Set("tmdbId"),
+      Seq("Kino Amondo␟znikniecie", "Kino Muza␟znikniecie"), modelTook = Some(false))
+    def runFilm(id: String, slots: String*) = RunFilm(id, id, None, None, Set.empty, slots.map(slot => RunListing(slot, "", "")))
+    ProdFilms.runSideOf(Seq(agreed), Seq(
+      runFilm("amondo", "Kino Amondo␟znikniecie"), runFilm("muza", "Kino Muza␟znikniecie"),
+      runFilm("merged", "Kino Muza␟znikniecie", "Kino Muza␟werdykt"), runFilm("unlisted"))) shouldBe Set("amondo", "muza")
+  }
+
+  "Whether production's model took a film" should "be told from its decisions at the film's listings, unknown without one" in {
+    ProdCoverage.modelTookOf(Some(8740), Seq(None, Some(8740))) shouldBe Some(true)
+    ProdCoverage.modelTookOf(Some(8740), Seq(None, Some(1)))    shouldBe Some(false)
+    ProdCoverage.modelTookOf(Some(8740), Nil)                   shouldBe None
+    ProdCoverage.modelTookOf(None, Seq(Some(1)))                shouldBe None
+    ProdFilms.takenPastTheModel(Seq(ProdFilm("p", "p|", Some(1), None, None, Set("tmdbId"), Nil))) shouldBe empty
+  }
+
+  "A production film recorded before its take's stage was" should "read with none, and so be withdrawn from nothing" in {
+    import play.api.libs.json.Json
+    val film = ProdFilm("p", "p|", Some(1), None, None, Set("tmdbId"), Seq("Kino␟p"), modelTook = Some(false))
+    Json.toJson(film).as[ProdFilm] shouldBe film
+    (Json.toJson(film).as[play.api.libs.json.JsObject] - "modelTook").as[ProdFilm].modelTook shouldBe None
+  }
 }
