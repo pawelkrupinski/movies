@@ -164,6 +164,7 @@ scripts/ci/keep-previous-origins.sh
 scripts/ci/memory-guard.sh
 scripts/ci/order-passes-present.sh
 scripts/ci/recording_health.py
+scripts/ci/release-store-prune.sh
 scripts/ci/scheduled-failure-issue.sh
 scripts/ci/shellcheck-action-runs.sh
 scripts/ci/tree-unchanged.sh

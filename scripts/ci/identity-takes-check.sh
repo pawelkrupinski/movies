@@ -338,6 +338,13 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
   # Measurements running side by side resolve one base at once and race to store it: a refused upload of an asset the
   # release holds by then is the race lost to an equal result (the key names every input), not a store missing.
   store_release
+  # ROOM FIRST (scripts/ci/release-store-prune.sh: GitHub refuses every upload past 1000 assets, which filled the drift
+  # store on 2026-11-12; this one stood at ~725 on 11-15). Only the newest of a kind are ever a base again: 24 a kind
+  # and country, not 8 -- with ~10 agents measuring against main heads hours apart, 8 held about two hours of bases and
+  # the next measurement of an older base resolved it again (2026-10-22); the largest, the US's decisions, is ~13 MB --
+  # and TAKES_STORE_ASSETS (900) in all.
+  local kind=${2#takes-}; kind=${kind%%-*}
+  RELEASE_PRUNE_TIMEOUT=$gh_read "$here/scripts/ci/release-store-prune.sh" "$store" "takes-$kind-$cc-" 24 "${TAKES_STORE_ASSETS:-900}"
   if ! { gzip -c "$1" > "$RUNNER_TEMP/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null; }; then
     # allow-silenced: a read that fails is no proof the asset is there, and falls through to the warning below.
     if bounded "$gh_read" gh release view "$store" --json assets --jq ".assets[] | select(.name == \"$2\") | .name" 2> /dev/null | grep -x "$2" > /dev/null; then # all of it: -q would leave gh a broken pipe, which pipefail counts
@@ -347,14 +354,6 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
     fi
     return 0
   fi
-  # Only the newest of a kind are ever a base again; the rest go (best effort -- one left is pruned next time). 24 a kind
-  # and country, not 8: with ~10 agents measuring against main heads hours apart, 8 held about two hours of bases and
-  # the next measurement of an older base resolved it again (2026-10-22). The largest, the US's decisions, is ~13 MB.
-  local kind=${2#takes-}; kind=${kind%%-*}
-  # allow-silenced: pruning is housekeeping -- a listing that fails to read prunes nothing now and everything next time.
-  bounded "$gh_read" gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"takes-$kind-$cc-\"))) \
-      | sort_by(.createdAt) | reverse | .[24:][] | .name" 2>/dev/null \
-    | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null || true; done
 }
 # <decisions|final|shape> <key>: none for a result over the recording when no recording is pinned -- its key would name
 # no data, and match another unpinned run's over other data. The final takes read only the checked-in capture.

@@ -160,7 +160,7 @@ rm -rf "$work/job" && mkdir -p "$work/job" && scratch_git "$work/job" clone -q -
 mkdir -p "$work/job/test/resources/fixtures" "$work/job/scripts/ci"
 printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n' > "$work/job/test/resources/fixtures/identity-judgements.tsv"
 cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/report_fields.py" "$(dirname "$script")/harness_aa.py" \
-   "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
+   "$(dirname "$script")/gh-release.sh" "$(dirname "$script")/release-store-prune.sh" "$work/job/scripts/ci/"
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
 # Every argument not a flag is an sbt command, run in order as sbt runs them: "[success]" after each, and the first that
@@ -217,7 +217,15 @@ case "\$1 \$2" in
   "release upload")   [ -n "\${UPLOAD_RACES:-}" ] && { mkdir -p "$work/release" && cp "\$4" "$work/release/"; exit 1; }
                       mkdir -p "$work/release" && cp "\$4" "$work/release/" ;;
   "release create")   echo "\$3" >> "$work/creates"; mkdir -p "$work/release" ;;
+  "release delete-asset") rm -f "$work/release/\$4" ;;
   "release view")     case "\$*" in
+                        # the store's prune (release-store-prune.sh): its --jq through jq over the release, createdAt
+                        # the files' age order
+                        *sort_by*) filter=; while [ \$# -gt 0 ]; do [ "\$1" = --jq ] && filter=\$2; shift; done
+                                   ls -tr "$work/release" 2> /dev/null | jq -R . | jq -s '{assets: [to_entries[] | {name: .value, createdAt: ("2026-01-01T" + (.key | tostring | (("0" * (6 - length)) + .)))}]}' \
+                                     | jq -r "\$filter"; exit 0 ;;
+                      esac
+                      case "\$*" in
                         *--json*) ;;
                         *) [ -d "$work/release" ] || { echo "release not found" >&2; exit 1; } ;;
                       esac
@@ -263,6 +271,15 @@ check "...the head resolving and replaying with the tools" "dump-tool ratchet-to
 check "...the resolve in the checkout, the final takes beside it in one of their own (two sbt runs at once)" \
   "identity-takes-head-final job" "$(for c in ratchet dump; do grep -v identity-takes-base "$work/sbt-calls" | grep " $c-" | cut -d' ' -f1 | xargs basename; done | xargs)"
 check "...its base, from before them, with the specs they were" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
+# A FULL STORE (the drift store at GitHub's 1000 assets on 2026-11-12, every upload refused; this one at ~725 on 11-15):
+# each store makes room first, the oldest going whatever their kind or country, so every result of the run is stored.
+rm -rf "$work/release"; mkdir -p "$work/release"
+for i in $(seq 1 12); do touch -t "202601010000.$(printf %02d "$i")" "$work/release/takes-decisions-us-old$i.gz"; done
+code=0; TAKES_STORE_ASSETS=10 TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a store over its budget makes room before storing: the run passes, every result of it stored" "0 6" \
+  "$code $(find "$work/release" -name 'takes-*' ! -name 'takes-decisions-us-*' ! -name 'takes-full-*' | wc -l | tr -d ' ')"
+check "...the store under its budget (and the daily marker beside it), the oldest gone, never the newest" "1 0 1" \
+  "$([ "$(find "$work/release" -type f | wc -l)" -le 11 ] && echo 1) $(find "$work/release" -name 'takes-decisions-us-old1.gz' | wc -l | tr -d ' ') $(find "$work/release" -name 'takes-decisions-us-old12.gz' | wc -l | tr -d ' ')"
 # outside Actions: no RUNNER_TEMP (the same run, nothing stored)
 rm -rf "$work/release"; mkdir -p "$work/tmp"
 code=0; NO_RUNNER_TEMP=1 TMPDIR="$work/tmp" TAKES_BASE=$c4 store_run "$c5" || code=$?

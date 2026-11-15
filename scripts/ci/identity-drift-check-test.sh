@@ -203,7 +203,7 @@ check "...and the verdict says so" "1" "$(grep -c '^not deterministic' "$work/ou
 # answers `--json assets --jq` through jq over it (createdAt: the files' modification order), and refuses an upload past
 # FAKE_STORE_CAP assets, as GitHub refuses one past 1000.
 export FAKE_STORE="$work/store"; mkdir -p "$FAKE_STORE"
-cp "$REPO_ROOT/scripts/ci/gh-release.sh" "$repo/scripts/ci/"
+cp "$REPO_ROOT/scripts/ci/gh-release.sh" "$REPO_ROOT/scripts/ci/release-store-prune.sh" "$repo/scripts/ci/"
 cat > "$work/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 [ "$1" = release ] || exit 1
