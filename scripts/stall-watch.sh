@@ -19,7 +19,8 @@
 #       (scripts/stall-report.sh, on stderr), then ends their processes alone, never the root's own group -- whose
 #       `bounded` then returns the step's status as for any other end.
 #   . scripts/stall-watch.sh          the helpers: stall_tree_pids <pid>, stall_cpu_centis [<pid>...],
-#                                     stall_any_runnable [<pid>...], stall_any_ended <before> <after>
+#                                     stall_any_runnable [<pid>...], stall_any_ended <before> <after>,
+#                                     stall_any_gone [<pid>...]
 #
 # THE STALL SIGNAL, for any caller (agentctl land among them): a stalled step's tool exits 75 (EX_TEMPFAIL) with a
 # line `<tool> STALLED: <step> ...` on stderr -- scripts/sbt-warm (`sbt-warm STALLED: <sbt command> ...`) and the
@@ -73,6 +74,13 @@ stall_any_ended() { # <before> <after>
   # shellcheck disable=SC2086 # whitespace-separated pids, newlines folded
   for p in $1; do case " $(echo $2) " in *" $p "*) ;; *) return 0 ;; esac; done
   return 1
+}
+
+# Whether one of the <pid>s has ended (gone, or a zombie not yet waited for). Asked after a measure of their CPU, it
+# says whether that measure missed one: a process that ended before it is out of the sum, one alive after it was in it.
+stall_any_gone() { # [<pid>...]
+  [ $# -gt 0 ] || return 1
+  [ "$(ps -o stat= -p "$(echo "$@" | tr ' ' ',')" 2> /dev/null | grep -cv '^Z')" -lt $# ]
 }
 
 # Whether <file> was modified since the watchdog's mark <mark> (a file whose mtime is the previous poll)

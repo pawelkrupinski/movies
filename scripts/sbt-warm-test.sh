@@ -544,6 +544,33 @@ check "...and it touched KINOWO_PROGRESS_FILE as it went" "yes" "$([ -f "$scratc
 # read "0 done done" just above (the stub ran twice, retried after it had printed): the poll after the client's end and
 # one poll of its wind-down on a loaded runner made the 2 s bound.
 check "a client ending is no stall, the bound one quiet poll" "0 done" "$(busy_call 1)"
+# ...NOR ONE ENDING WHILE A POLL MEASURES IT: a client alive when the poll listed its processes and gone by the time
+# their CPU was summed left the sum at 0, nothing runnable and nothing ended since the listing, so the poll read quiet
+# (4 of 60 busy calls under a load of 3x the cores; one in 118 sbt-warm-test runs). A `ps` that holds every CPU measure
+# made once the stub winds down until the processes it names have ended makes that race on every such poll.
+cat > "$scratch/bin/sbt" <<STUB
+#!/usr/bin/env bash
+end=\$((SECONDS + 2)); while [ "\$SECONDS" -lt "\$end" ]; do :; done
+touch "$scratch/winding-down"
+end=\$((SECONDS + 3)); while [ "\$SECONDS" -lt "\$end" ]; do :; done; echo done
+STUB
+mkdir -p "$scratch/slow-ps"
+cat > "$scratch/slow-ps/ps" <<SHIM
+#!/usr/bin/env bash
+measure=0 pids="" previous=""
+for argument in "\$@"; do
+  [ "\$previous \$argument" = "-o time=" ] && measure=1
+  [ "\$previous" = -p ] && pids=\$argument
+  previous=\$argument
+done
+if [ "\$measure" = 1 ] && [ -n "\$pids" ] && [ -e "$scratch/winding-down" ]; then
+  for _ in \$(seq 1 100); do "$(command -v ps)" -o stat= -p "\$pids" 2> /dev/null | grep -qv '^Z' || break; sleep 0.1; done
+fi
+exec "$(command -v ps)" "\$@"
+SHIM
+chmod +x "$scratch/slow-ps/ps"
+check "a client ending while a poll measures it is no stall" "0 done" "$(busy_call 1 PATH="$scratch/slow-ps:$PATH")"
+rm -f "$scratch/winding-down"
 
 # ONE COMMAND AT A TIME: a --serve marks the server serving; a call meeting a live serve fails at once, BLOCKED, instead
 # of queueing behind it; the serve's owner gone, the server is stopped; a serve gone, the next call restarts the server
