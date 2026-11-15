@@ -24,7 +24,8 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
     StageRelays.namesSeasonProduction(listing, film) && !StageRelays.billing(listing, film).exists(houses.other)
 
   /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
-   *  probability below the certified cut, a season its title names that the film is not of,
+   *  probability below the certified cut, a season its title names that the film is not of (but its house's recording
+   *  of it, [[StageRelays.itsHousesRecording]], or the relay its screenings air, [[RelayStage.airsItsRelay]]),
    *  its season's production of its work by ANOTHER house than its banner's (`houses`), a screen
    *  namesake of the work its stage house's banner bills ([[StageRelays.screenNamesake]]), a record of
    *  another work than that banner's relay names ([[StageRelays.namesAnotherWork]]), a house's record of another
@@ -40,7 +41,8 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
 
   /** [[evidenceDenies]], saying which of its reasons rules the film out. */
   def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[Denial] =
-    ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year).filterNot(_ => StageRelays.itsHousesRecording(listing, film))
+    ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year)
+      .filterNot(_ => StageRelays.itsHousesRecording(listing, film) || RelayStage.airsItsRelay(listing, film))
       .map(link => Denial(link.toString))
       .orElse(Option.when(StageRelays.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))(
         Denial(CandidateScoring.AnotherHousesSeason, Denial.Kind.AnotherHousesSeason)))

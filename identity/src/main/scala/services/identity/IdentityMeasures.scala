@@ -106,6 +106,10 @@ object IdentityMeasures {
     def creditedBesideYear: Seq[String] = yearCredits.getOrElse(directors)
     /** The season the title names ("2026/27"), by its first year. */
     lazy val seasonYear: Option[Int] = TitleSeason.of(titles, screeningsSeason)
+    /** Does the title name a season further back than a season's record is encored ([[services.identity.Listing.SeasonEncoreLag]])
+     *  before the one it screens in — a page kept from that season, its own facts as old as its title ([[Listing.airDays]])? */
+    lazy val billsAStaleSeason: Boolean =
+      seasonYear.exists(named => screeningsSeason.exists(_ - named > services.identity.Listing.SeasonEncoreLag))
     /** The word the title bills several films by ([[MultiFilmBill.marker]]), once per listing: every rule asks. */
     private[identity] lazy val billMarker: Option[String] = MultiFilmBill.marker(titles)
     /** The one title a marathon billed after a dash names ([[MultiFilmBill.billedOne]]), once per listing. */

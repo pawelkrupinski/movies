@@ -129,10 +129,11 @@ final case class Listing(
   /** Its screening days where its stated year is more than [[Listing.StagingPredatesSeason]] before the season it
    *  screens in ([[screenedSeason]]): a year that old dates the staging only when a screening falls on the season
    *  record's air day ([[StageRelays.screenedSeasonRecord]]) — the Met's 2014 "Macbeth" revival relayed on 17 October
-   *  2026 — and an encore of an old capture, on no air day, keeps its year. Empty for every other listing. */
+   *  2026 — and an encore of an old capture, on no air day, keeps its year. So are those of a relay whose title names a
+   *  season further back than a season's record is encored ([[namesAStaleSeason]]). Empty for every other listing. */
   lazy val airDays: Seq[java.time.LocalDate] =
     screenedSeason.filter(season => year.exists(stated => season - stated > Listing.StagingPredatesSeason)).orElse(titleDatesItsStaging)
-      .fold(Seq.empty[java.time.LocalDate])(_ => screenings.days)
+      .orElse(namesAStaleSeason).fold(Seq.empty[java.time.LocalDate])(_ => screenings.days)
   /** The year its first screening falls in, where its title bills an anniversary ("The Host: 20th Anniversary", screening
    *  in 2026): what dates the film that many years before when it states no year ([[IdentityMeasures.anniversaryFilmYear]]).
    *  None for every other listing, so no other listing's evidence moves with its days. */
@@ -147,6 +148,17 @@ final case class Listing(
     val titles = Seq(title, rawTitle)
     screenings.season.filter(season => year.isEmpty && IdentityMeasures.titleYearOf(titles).exists(_ < season) &&
       StageRelays.stageWorksBilled(titles, seasonNamed = false).nonEmpty)
+  }
+  /** The season it screens in, when its title bills a stage work under a season more than [[Listing.SeasonEncoreLag]]
+   *  before it: a season's record is encored the next season at most, so a venue billing an older one may screen its
+   *  house's capture of it, or the new season's relay under the page it copied — its days tell
+   *  ([[RelayStage.Billed.airedOn]]). UK Flicks' "Royal Ballet & Opera 2024-25: Romeo and Juliet" ×16, screening on 25
+   *  May 2027, the day the house's 2026/27 relay of it airs, is that relay; DE "Royal Opera House 2017/18: Alice im
+   *  Wunderland", on no air day, stays its season's capture. */
+  private[identity] lazy val namesAStaleSeason: Option[Int] = {
+    val titles = Seq(title, rawTitle)
+    screenings.season.filter(season => TitleSeason.of(titles, Some(season)).exists(named => season - named > Listing.SeasonEncoreLag) &&
+      StageRelays.stageWorksBilled(titles, seasonNamed = true).nonEmpty)
   }
 
   override def equals(other: Any): Boolean = other match {
@@ -268,6 +280,8 @@ object Listing {
   /** How many seasons before the one it screens in a relay's stated year dates its staging with no further test
    *  ([[Listing.airDays]]): UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025] screening in the 2026/27 season. */
   val StagingPredatesSeason = 1
+  /** How many seasons after its own a season's record is still encored ([[Listing.airDays]]): the next one. */
+  val SeasonEncoreLag = 1
 
   /** Does `now` publish what the stages after the model read differently from `was` — its poster, its screening days, the
    *  names and words its venue's text gives — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
@@ -506,7 +520,9 @@ object Evidence {
     broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screeningsSeason = listing.screenings.season,
-    airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty),
+    // ...but for a season named too far back, whose page is as old as its title (UK Flicks' "Royal Ballet & Opera
+    // 2024-25: Romeo and Juliet", its page dated 2025, screening on the 2026/27 relay's air day)
+    airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty || listing.namesAStaleSeason.isDefined),
     certificate     = listing.certificate.map(_.trim).filter(_.nonEmpty),
     yearUpperBound  = listing.yearUpperBound,
     performanceYear = listing.performanceYear,

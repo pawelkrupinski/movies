@@ -154,6 +154,11 @@ private[identity] object RelayStage {
    *  either season its year is in — or it airs on a day the relay screens ([[Billed.airedOn]])? */
   def recordOf(relay: Billed, f: Film): Boolean =
     f.stageWorkIds.exists(relay.works) && relay.itsHouse(f) && (seasonsOf(f).exists(relay.seasons) || relay.airedOn(f))
+  /** Is `f` the broadcast the relay `l` bills airs on one of its days ([[Billed.airedOn]]): its house's record of its
+   *  work from the season its screenings fall in? A season its title names apart from it is the page a venue copied, not
+   *  the relay it screens: no [[services.movies.ListingConstraints.seasonsApart]] denies it. */
+  def airsItsRelay(l: Listing, f: Film): Boolean =
+    l.relayBilled.exists(relay => relay.airedOn(f) && f.stageWorkIds.exists(relay.works) && relay.itsHouse(f))
 
   /** The seasons a record can be of: the one its title names, else the one its air day falls in, else either its year is
    *  in. */

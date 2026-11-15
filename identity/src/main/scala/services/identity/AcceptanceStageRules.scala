@@ -59,7 +59,9 @@ private[identity] trait AcceptanceStageRules { this: Acceptance =>
                     else Some(records.filter(scored => relay.year.exists(scored.candidate.film.year.contains))).filter(_.sizeIs == 1).getOrElse(records),
                   "no record of its house's relay of its work from its season", "two records of its house's relay of its work from its season",
                   s"works ${relay.works.toSeq.sorted.mkString(",")}, seasons ${relay.seasons.toSeq.sorted.mkString(",")}")
-      _      <- needOf(!record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency), "a published year contradicts it", record, contradiction(record))
+      // a page kept from a season too far back dates its staging, not the relay it airs on its day ([[Listing.airDays]])
+      _      <- needOf(!record.number("year.distance").exists(_ > YearWindow.PublishedAdjacency) || any.listing.billsAStaleSeason && relay.airedOn(record.candidate.film),
+                  "a published year contradicts it", record, contradiction(record))
       _      <- needOf(!record.category("director").exists(Set("different", "different_script")) || creditsAnotherWorksRecord(ranked, relay),
                   "it credits another director", record)
     } yield atOwn(record)

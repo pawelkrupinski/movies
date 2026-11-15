@@ -405,7 +405,8 @@ and its fixes, the other relay session's work).
   screening on the 2026/27 relay's air day (25 May 2027) and its encore. Tried as
   [2026-11-15-relay-stale-season-airday](../identity-experiments/2026-11-15-relay-stale-season-airday.md): what-if UK
   model and final 12 gained (all → 1702789), US/DE/PL/ES 0 moved, but the 2026-10-08 review page judges 1702789 wrong
-  for this title, so all 12 count as new-wrong. **Parked**, filed as a review candidate for the owner.
+  for this title, so all 12 count as new-wrong. **Parked**, filed as a review candidate for the owner. The owner
+  re-judged it right on 2026-11-15, and it landed (§17).
 - Small, not tried: UK "MetOpera: Carmen (2023-24)" ×3 (`relay-record` refused: the venue credits Bizet, the composer, as
   director; the catalogue holds no composers), UK "The Met: La Fanciulla del West 27" ×1 (a two-digit trailing season
   not read as one), UK "The Royal Ballet Romeo and Juliet (Filmed live 2025)" ×2 (the 2019 record outranks the 2025 one),
@@ -601,3 +602,29 @@ CLEAN. UK model and final gained 1 right (MAC's "Daisies" → 46919: its page cr
 minutes hold an introduction). PL, DE, US, ES moved nothing. right-lost 0, right→wrong 0, new-wrong 0. Rio Dalston's
 "Rio Film Feminists: DAISIES" still takes nothing (not traced): its country now matches, so another fact or its banner
 holds it.
+
+## 17. Fix O: a relay billing a stale season takes the relay aired on its day (2026-11-15)
+
+**The owner's call.** §11 parked UK Flicks' "Royal Ballet & Opera 2024-25: Romeo and Juliet" (16 UK venues, 1 US)
+because the 2026-10-08 review page judged 1702789 wrong for it. The owner re-judged it right on 2026-11-15: the "2024-25"
+is a stale Flicks page, and the screening day decides the relay record. Every screening is on 25 May 2027, the day
+TMDB's "Royal Ballet & Opera 2026/27: Romeo and Juliet" (1702789) airs, or on its 30 May encore. The judgement row was
+edited in place and the review candidate removed.
+
+**Change.** The parked experiment
+([2026-11-15-relay-stale-season-airday](../identity-experiments/2026-11-15-relay-stale-season-airday.md)), rebased onto
+main without conflicts. A title naming a season more than `SeasonEncoreLag` (1) before its screenings' season gets air
+days (`Listing.namesAStaleSeason`). Its house's record of the work that airs on one of those days (`RelayStage.airsItsRelay`)
+is no longer denied by `SeasonsApart`, or by the published year its stale page states. Test: `OneRelaySpec`, "A relay
+billing an older season…" (`scripts/fail-before`: yes/yes).
+
+**What-if** over prod's mirror (all five countries, base d7bad6100, snapshots 20:46-20:52Z): CLEAN. UK model and final
+gained 12 right, the air-day listings, all → 1702789. US, DE, PL and ES did not move.
+
+**Not covered:**
+- The 4 encore-only listings (30 May, 5 days after the air day) stay unmatched. TMDB records the relay's air day only,
+  with no encore day. Widening `AirDayWindow` (3 days) would also read any other encore of an old capture as that
+  season's broadcast, which `Listing.airDays` leaves to the year it states on purpose.
+- Ilkley's and Wetherby's "The Royal Ballet Romeo and Juliet (Filmed live 2025)" (§15) did not move. Under the owner's
+  rule its 25 May screenings are 1702789's too, but "Filmed live" is still read as another work (`namesAnotherWork`).
+  That is a separate change.

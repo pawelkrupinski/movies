@@ -137,4 +137,25 @@ class OneRelaySpec extends AnyFlatSpec with Matchers {
       paris.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(None)
     }
   }
+
+  "A relay billing an older season than a season's record is encored" should "take its house's relay of the season it screens in, on that relay's air day" in {
+    // Prod UK 2026-11-15: Flicks' "Royal Ballet & Opera 2024-25: Romeo and Juliet" ×16, a page kept from the 2024/25
+    // season, screens on 25 May 2027 -- the day the house's 2026/27 relay of the ballet airs, which every other venue bills
+    // "Royal Ballet & Opera 2026/27" -- and its season denied that relay's record (SeasonsApart): no film
+    val airs   = LocalDate.of(2027, 5, 25)
+    val films  = Seq(F(1702789, "Royal Ballet & Opera 2026/27: Romeo and Juliet", 2027, "", 0, 0.75, released = Some(airs)),
+      F(1451897, "The Royal Ballet: Romeo and Juliet", 2025, "Ross MacGibbon", 175, 1.5, released = Some(LocalDate.of(2025, 3, 20))),
+      F(578824, "The Royal Ballet: Romeo and Juliet", 2019, "Michael Nunn", 170, 1.2))
+    // and its page as old: dated 2025, 210 minutes, crediting the choreographer
+    def billed(day: LocalDate) = on(listing(KinoMuza, "Royal Ballet & Opera 2024-25: Romeo and Juliet", year = Some(2025),
+      director = Some("Kenneth MacMillan"), runtime = Some(210)), day)
+    def taken(l: Listing) = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, ResolveInputs.Unpinned).decisionOf(l.key).film
+    withClue(measured(billed(airs)).airDays)(taken(billed(airs)) shouldBe Some(1702789))
+    // a screening on no air day of it keeps the season its title names: never the 2026/27 relay
+    taken(billed(LocalDate.of(2027, 1, 10))) should not be Some(1702789)
+    // a season a record is still encored in reads as billed: last season's, screening on the new relay's day
+    measured(on(listing(KinoMuza, "Royal Ballet & Opera 2025-26: Romeo and Juliet"), airs)).airDays shouldBe empty
+    // and a season billed with no stage work is no relay's
+    measured(on(listing(KinoMuza, "Berliner Philharmoniker 2017/18"), airs)).airDays shouldBe empty
+  }
 }
