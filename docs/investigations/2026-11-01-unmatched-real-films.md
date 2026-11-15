@@ -387,3 +387,27 @@ prod's final already served it). DE, ES and UK did not move.
 **Measure.** LANDABLE, run 43665225491 (full, all five countries, base 58bf39767, head b95cb49ea): PL model gained 1 right
 (Skrzypek na dachu 14811), nothing lost, changed or wrong; the pinned recording bills no "The Host: 20th Anniversary".
 No weight was refit: only anniversary billings stating no year gain a `year.delta`, and the weekly refit re-tunes it.
+
+## 11. The relay bucket: what a right take is (2026-11-15) — parked
+
+**What a right take is.** A relay's right film is its house's TMDB record of that season's broadcast (the Met's
+"The Metropolitan Opera: Carmen" (2024) for its 2023/24 Carmen), never a screen namesake of the work, another house's
+record or another season's (`StageRelays.anotherProduction`, `ListingConstraints.seasonsApart`). Where TMDB holds no
+record, the right answer is NO take, with the house's spellings joined into one film (the same-relay link, 2a3a2ddbe
+and its fixes, the other relay session's work).
+
+**The census bucket on the mirror (2026-11-15T05:13Z), by that rule:**
+- No record, no take is right: the Paris Opera's 2026/27 relays (US "Opéra National de Paris: La fanciulla del West"
+  ×186, UK Bayadère ×19 and Notre-Dame ×19, PL "Balet z Opery Paryskiej 2026-2027: …" ×49, DE "La Bayadere (Opera
+  national de Paris)", ES "La Bayadère (Cine)"), ES "Hamlet - Ópera (Cine)", DE "Poreia Theatre: Sophokles' Elektra",
+  "NOSFERATU – … Ballett Extra". About 90% of the bucket.
+- A record exists: UK "Royal Ballet & Opera 2024-25: Romeo and Juliet" ×16 (+1 US), a Flicks page kept from 2024/25
+  screening on the 2026/27 relay's air day (25 May 2027) and its encore. Tried as
+  [2026-11-15-relay-stale-season-airday](../identity-experiments/2026-11-15-relay-stale-season-airday.md): what-if UK
+  model and final 12 gained (all → 1702789), US/DE/PL/ES 0 moved, but the 2026-10-08 review page judges 1702789 wrong
+  for this title, so all 12 count as new-wrong. **Parked**, filed as a review candidate for the owner.
+- Small, not tried: UK "MetOpera: Carmen (2023-24)" ×3 (`relay-record` refused: the venue credits Bizet, the composer, as
+  director; the catalogue holds no composers), UK "The Met: La Fanciulla del West 27" ×1 (a two-digit trailing season
+  not read as one), UK "The Royal Ballet Romeo and Juliet (Filmed live 2025)" ×2 (the 2019 record outranks the 2025 one),
+  US "MetOpera: Medea (2022–23)" ×1 (no Met record found by any search), PL "Carmen | metropolitan opera: live in hd
+  2026/27" (no 2026/27 Carmen record found).
