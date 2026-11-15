@@ -225,7 +225,7 @@ class MovieController( cc: ControllerComponents,
       val query = request.queryString.toSeq.sortBy(_._1).flatMap { case (key, values) =>
         values.map(v => s"${enc(key)}=${enc(if (genreKeys(key)) canonical(v) else v)}")
       }.mkString("&")
-      MovedPermanently(s"${c.country.pathPrefix}/${c.slug}/$tail?$query")
+      MovedPermanently(s"${CityPath(c)}/$tail?$query")
     }
   }
 

@@ -56,7 +56,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
       (SfFilm, Some(2024), filmIn(sfCinema, SfFilm, "tt102")),
     ),
     // A US host renders English — asserted on below — for free from
-    // `servingCountry` now (`MovieController` derives its `Messages` from it).
+    // `servingCountry` now (`CityRequests` derives the page's `Messages` from it).
     servingCountry = Country.UnitedStates,
   )
 

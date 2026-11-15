@@ -64,7 +64,7 @@ class LegacyRedirectController(cc: ControllerComponents,
    *  wrong content — the failure mode nobody reports. */
   private def movedToCityPath(city: String, tail: String, request: RequestHeader): Result =
     withCity(city, request) { c =>
-      val path = s"${c.country.pathPrefix}/${c.slug}/$tail"
+      val path = s"${models.CityPath(c)}/$tail"
       MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}")
     }
 
