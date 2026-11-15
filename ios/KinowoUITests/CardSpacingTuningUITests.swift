@@ -1,6 +1,6 @@
 import XCTest
 
-/// Gate for the card-spacing tuning levers: dragging a spacing slider on the
+/// Gate for the card-spacing tuning levers: maxing a spacing slider on the
 /// non-prod `ShowtimeTuningScreen` must actually move the gaps in the real
 /// `FilmCardView` it renders.
 ///
@@ -65,28 +65,6 @@ final class CardSpacingTuningUITests: XCTestCase {
         )
     }
 
-    /// `maxOut` still reaches the maximum from a slider a drag left short of it, as every drag of
-    /// run 41305616620 left the Sekcje slider (47 of 48 steps), of run 41424660878 the Film title's
-    /// (39 of 40) and of run 41446876159 the Dzień → kino slider six steps short (21.0 of 24.0, its
-    /// four "+" taps then reaching only 23.0): from close to the end a drag does not move the thumb,
-    /// and the row's "+" must finish it, however many steps remain. The row's own "−" sets that
-    /// state exactly, which a drag cannot.
-    func testMaxOutRecoversFromADragThatStopsStepsShort() throws {
-        let card = firstCard()
-        XCTAssertTrue(card.waitForExistence(timeout: 20), "Tuning screen never showed its first card")
-
-        let slider = app.sliders[A11y.Tuning.sectionSpacingSlider]
-        XCTAssertTrue(slider.waitForExistence(timeout: 5), "Section-spacing slider missing")
-        maxOut(slider)
-        let stepDown = app.buttons[A11y.Tuning.stepDown(of: A11y.Tuning.sectionSpacingSlider)]
-        XCTAssertTrue(stepDown.waitForExistence(timeout: 5), "Section-spacing slider's − step missing")
-        for _ in 0..<6 { stepDown.tap() }
-        XCTAssertLessThan(slider.normalizedSliderPosition, 0.9, "six − steps left the slider near its maximum")
-        let stepUp = app.buttons[A11y.Tuning.stepUp(of: A11y.Tuning.sectionSpacingSlider)]
-        XCTAssertTrue(stepUp.waitForExistence(timeout: 5), "Section-spacing slider's + step missing")
-        finishWithSteps(slider)
-    }
-
     func testDayToCinemaSliderWidensDayHeaderToCinemaGap() throws {
         let card = firstCard()
         XCTAssertTrue(card.waitForExistence(timeout: 20), "Tuning screen never showed its first card")
@@ -102,7 +80,6 @@ final class CardSpacingTuningUITests: XCTestCase {
 
         let slider = app.sliders[A11y.Tuning.dayToCinemaSlider]
         XCTAssertTrue(slider.waitForExistence(timeout: 5), "dayToCinema slider missing")
-        if !slider.isHittable { app.scrollViews[A11y.Tuning.controlsScroll].swipeUp() }
         maxOut(slider) // 6 → 24pt
         let gapAfter = reading(beyond: gapBefore + 8) { cinema.frame.minY - dayLabel.frame.maxY }
         XCTAssertGreaterThan(
@@ -145,7 +122,6 @@ final class CardSpacingTuningUITests: XCTestCase {
 
         let slider = app.sliders[A11y.Tuning.detailTitleFontSlider]
         XCTAssertTrue(slider.waitForExistence(timeout: 5), "Detail-title font slider missing on the Film page")
-        if !slider.isHittable { app.scrollViews[A11y.Tuning.controlsScroll].swipeUp() }
         maxOut(slider) // 22 → 34pt
         let heightAfter = reading(beyond: heightBefore + 4) { title.frame.height }
         XCTAssertGreaterThan(
@@ -185,47 +161,25 @@ final class CardSpacingTuningUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.4) // let the pager settle on the new page
     }
 
-    /// Drags `slider` to its maximum, finishes with the row's own "+" step when the drag
-    /// stops short, and confirms the slider itself reports the maximum. Run 38278405182 read the
-    /// Film page's detail title at the same height before and after "maxing" its font: the drag
-    /// either never moved the slider or was measured before the title re-laid out, and the test
-    /// blamed the lever's wiring. Checking the slider's own position separates the two: a slider
-    /// that cannot reach its end fails here, an unwired lever still fails the caller's measurement.
+    /// Sets `slider` to its maximum with the row's "to the end" button and confirms the slider itself
+    /// reports it, so an unmoved slider fails here and an unwired lever fails the caller's measurement
+    /// (run 38278405182 read the Film title unchanged and blamed the wiring).
     ///
-    /// A synthesized drag to the end of the track can stop short of it, and drags again do not
-    /// cure it: run 41305616620 read 47 of 48 steps three times even with each retry starting from
-    /// the minimum, run 41424660878 39 of 40, and run 41446876159 the Dzień → kino slider at 21.0
-    /// of 24.0, six steps short. The "+" sets the value exactly, one step at a time, so the drag
-    /// is finished by `finishWithSteps`, however many steps it left.
+    /// Never a drag: `adjust(toNormalizedSliderPosition:)` synthesizes one, and on CI's simulators it
+    /// stopped short of the end at random -- 47 of 48 steps (run 41305616620), 39 of 40 (41424660878),
+    /// 21.0 of 24.0 (41446876159), not at all (Order independence #67) -- and each of four retunes
+    /// finishing it with "+" taps traded one red for another, the last a 3-minute allowance spent on
+    /// taps. The button sets the value exactly in one tap.
     private func maxOut(_ slider: XCUIElement) {
-        slider.adjust(toNormalizedSliderPosition: 1.0)
-        finishWithSteps(slider)
-    }
-
-    /// Taps the slider row's "+" until the slider reports its maximum: ONE tap and read first, which both measures a
-    /// step and proves the "+" moves the slider (an unwired or clamped "+" stops there and fails the assertion,
-    /// testMaxOutRecoversFromADragThatStopsStepsShort), then every remaining step without reading the slider between
-    /// taps, then one read to assert on. Reading after each tap cost Order independence #67 its 3-minute allowance:
-    /// the drag left the Sekcje slider where it started (8 of 0-24, 32 steps short), and each tap plus its read took
-    /// ~4 s on that runner -- 203.8 s in all. Taps past the end are clamped by the row and change nothing.
-    private func finishWithSteps(_ slider: XCUIElement) {
-        let stepUp = app.buttons[A11y.Tuning.stepUp(of: slider.identifier)]
-        let start = slider.normalizedSliderPosition
-        var taps = 0
-        if start < 0.99, stepUp.exists {
-            stepUp.tap()
-            taps = 1
-            let step = slider.normalizedSliderPosition - start
-            if step > 0 {
-                let remaining = max(0, Int(((1 - start) / step - 0.01).rounded(.up)) - 1)
-                for _ in 0..<remaining { stepUp.tap() }
-                taps += remaining
-            }
-        }
-        XCTAssertGreaterThanOrEqual(
-            slider.normalizedSliderPosition, 0.99,
-            "\(slider) stayed at \(slider.normalizedSliderPosition) after a drag to its maximum left it at \(start) "
-            + "and \(taps) \"+\" step(s)"
+        let toMaximum = app.buttons[A11y.Tuning.toMaximum(of: slider.identifier)]
+        XCTAssertTrue(toMaximum.waitForExistence(timeout: 5), "\(slider.identifier)'s to-the-end button missing")
+        if !toMaximum.isHittable { app.scrollViews[A11y.Tuning.controlsScroll].swipeUp() }
+        toMaximum.tap()
+        let atMaximum = XCTNSPredicateExpectation(predicate: NSPredicate(format: "normalizedSliderPosition >= 0.99"),
+                                                  object: slider)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [atMaximum], timeout: 5), .completed,
+            "\(slider.identifier) stayed at \(slider.normalizedSliderPosition) after its to-the-end button's tap"
         )
     }
 

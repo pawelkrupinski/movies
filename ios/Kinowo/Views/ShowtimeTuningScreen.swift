@@ -421,14 +421,19 @@ struct ShowtimeTuningScreen: View {
                 value.wrappedValue = min(range.upperBound, value.wrappedValue + step)
             }
             .accessibilityIdentifier(id.map(A11y.Tuning.stepUp(of:)) ?? "")
+            stepButton(systemName: "arrow.right.to.line") {
+                value.wrappedValue = range.upperBound
+            }
+            .accessibilityIdentifier(id.map(A11y.Tuning.toMaximum(of:)) ?? "")
             Text(String(format: "%.1f", value.wrappedValue))
                 .font(.system(size: 12, weight: .medium).monospacedDigit())
                 .frame(width: 34, alignment: .trailing)
         }
     }
 
-    /// Small −/+ button flanking a slider, nudging it by one 0.5 step (clamped
-    /// to the slider's range) for precise dialling without dragging.
+    /// Small −/+/to-the-end button flanking a slider: −/+ nudge it by one 0.5 step
+    /// (clamped to the slider's range) for precise dialling without dragging, the
+    /// last jumps to the maximum.
     private func stepButton(systemName: String, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
