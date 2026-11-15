@@ -140,8 +140,10 @@ matched no name pattern and turned Main red 7 times. A new repo-reading spec nee
   failure rejects only that change, with the output; the others stay. Otherwise `WAITING <sha> (n changes queued on
   waiting)`, the lock is released, and land waits for its change's verdict.
 - **Landing it**: one processor per repo (detached, locked) polls the gate. Once main is green it rebuilds `waiting` on
-  the current origin/main change by change (one that no longer applies is rejected alone), runs the hook's `--range`
-  dry run, pushes the whole branch in ONE push through the hook, and deletes the branch. Each waiting land then prints
+  the current origin/main change by change (one that no longer applies is rejected alone), runs the hook's
+  `--fast-only` check over the combined tip (the `sbt` check, the touched files' lints, and every check a touched
+  union-merged file selects, e.g. `judgements`: the rebase wrote that file and no change's own check saw it), pushes the
+  whole branch in ONE push through the hook, and deletes the branch. Each waiting land then prints
   `LANDED <sha>` and goes on to its watch (stage 4). A failing batch is searched prefix by prefix and only the first
   failing change rejected.
 - **Not for**: tools-only changes and `Fixes-Red:` fixes (they land while red), or anything while main is green.

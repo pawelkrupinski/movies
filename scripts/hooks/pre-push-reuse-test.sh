@@ -149,6 +149,40 @@ check "a push whose hook ran past PREPUSH_LONG_SECONDS says to re-push, and to c
 check "...a quick one does not" "0" "$(long_push 3600 "$checkfirst")"
 check "...nor does a dry run, which holds no connection" "0 0" \
   "$(greens reuse_push "or/main..$checkfirst" PREPUSH_NO_REUSE=1 PREPUSH_LONG_SECONDS=0 | cut -d' ' -f1) $(grep -c 'run the same git push again' "$gate/err")"
+# THE COMBINED FILES: a file git merges by union (.gitattributes) is written by the batch's rebase from two members'
+# edits without a conflict, so no member's own check judged what the batch holds. 2026-11-05: 81469b9c1 moved Lowther's
+# Nutcracker judgements, 2a4ac45c4 (checked on the older main, `judgements` consistent) re-added them, the rebase of
+# batch 957f4776f kept both, its --fast-only pass ran `sbt` alone, and the push reused that pass: Tool self-tests
+# #74-#76 red on "a second row". The batch's fast pass lints such a file (its own consistency: no served takes).
+scratch_git "$grepo" reset -q --hard "$rbase"
+mkdir -p "$grepo/scripts/ci" "$grepo/test/resources/fixtures"
+printf 'test/resources/fixtures/identity-judgements.tsv merge=union\n' > "$grepo/.gitattributes"
+printf '%s\n' 'import os, sys' \
+  'open(os.environ["STUB_LINT_ARGS"], "a").write(" ".join(sys.argv[1:]) + "\n")' \
+  'rows = open("test/resources/fixtures/identity-judgements.tsv").read().splitlines()' \
+  'sys.exit(1 if len(rows) != len(set(rows)) else 0)' > "$grepo/scripts/ci/identity_judgements_lint.py"
+printf 'uk\tLowther\tNUTCRACKER\ttmdb:1\tright\n' > "$grepo/test/resources/fixtures/identity-judgements.tsv"
+scratch_git "$grepo" add -A && scratch_git "$grepo" commit -qm "the judgements, a union-merged file, and their lint"
+jbase="$(scratch_git "$grepo" rev-parse HEAD)"
+printf 'uk\tLowther\tNUTCRACKER\ttmdb:1\tright\n' >> "$grepo/test/resources/fixtures/identity-judgements.tsv"
+jdup="$(scratch_git "$grepo" commit -qam "the batch's rebase keeps both members' row" && scratch_git "$grepo" rev-parse HEAD)"
+fast_judge() { # <range> [<env>...] -> "<exit> <lint runs>"; the lint's arguments in $gate/lint-args
+  local range=$1; shift
+  (cd "$grepo" && env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cache" PREPUSH_SKIP="${pathchecks/judgements/}" \
+    STUB_LINT_ARGS="$gate/lint-args" GH_IMC="[$red]" "$@" bash "$REPO_ROOT/scripts/hooks/pre-push" --fast-only "$range" \
+    >/dev/null 2>"$gate/err"); echo "$? $(cat "$gate/lint-args" 2>/dev/null | wc -l | tr -d ' ')"; }
+check "--fast-only lints a union-merged file the batch touches: a second row its rebase kept fails the batch" "1 1" \
+  "$(fast_judge "$jbase..$jdup")"
+check "...its own consistency only: no served takes fetched, no replay (each member's own check judged those)" "0" \
+  "$(grep -s -c -e '--served' -e '--replay-head' -e '--before' "$gate/lint-args")"
+jfixed="$(scratch_git "$grepo" reset -q --hard "$jbase" && printf 'uk\tLowther\tSWAN LAKE\ttmdb:2\tright\n' \
+  >> "$grepo/test/resources/fixtures/identity-judgements.tsv" && scratch_git "$grepo" commit -qam "a sound batch" \
+  && scratch_git "$grepo" rev-parse HEAD)"
+check "...a sound batch passes it" "0 2" "$(fast_judge "$jbase..$jfixed")"
+check "...and the batch push with PREPUSH_REUSE_FAST=1 reuses that pass (the same selection keys it)" "0 2 1" \
+  "$(cd "$grepo" && all_green env PREPUSH_NO_REUSE= PREPUSH_REUSE_DIR="$reuse/cache" PREPUSH_SKIP="${pathchecks/judgements/}" \
+       STUB_LINT_ARGS="$gate/lint-args" PREPUSH_REUSE_FAST=1 bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$jbase..$jfixed" \
+       >/dev/null 2>"$gate/err"; echo "$? $(wc -l < "$gate/lint-args" | tr -d ' ') $(grep -c "the waiting batch's fast check passed" "$gate/err")")"
 rm -rf "$gate"
 
 spec_summary
