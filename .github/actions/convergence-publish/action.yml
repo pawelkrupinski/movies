@@ -38,24 +38,17 @@ inputs:
   mode:
     description: >-
       `hermetic` publishes no tree — a verdict leg fills nothing, so it has nothing to add and
-      must not replace the pair other legs replay. `record` publishes the working tree, and
-      pins it as the hermetic pair when `complete`.
+      must not replace the pair other legs replay. `record` publishes the working tree, and its
+      pinned copy when `complete`.
     required: false
     default: record
   complete:
     description: >-
-      'true' when a RECORDING full leg's suite ran to the end; the tree is then pinned as the
-      pair hermetic legs replay — if the log also shows the boot finished.
+      'true' when a RECORDING full leg's suite ran to the end; the tree's pinned copy (`enrichment-<code>-<run>`) is then
+      published and marked `prod-latest-<code>.txt` — if the log also shows the boot finished. It becomes the hermetic
+      pair every verdict leg replays only through its verify (`Verify scrape recording`'s `pin` job, `pin-hermetic`).
     required: false
     default: 'false'
-  pin:
-    description: >-
-      'false' keeps a complete recording OUT of the hermetic pair: its tree is still published under its run
-      (`enrichment-<code>-<run>`) and marked `prod-latest-<code>.txt`, so tools can replay it, but the pair every
-      verdict leg and identity measure replays stays as it was. The nightly recording runs with 'false' until
-      prod-latest has proven stable as a landing bar (record-scrape-fixtures.yml, `pin-hermetic`).
-    required: false
-    default: 'true'
   log:
     description: The suite log, read for the boot-complete line.
     required: false
@@ -350,32 +343,12 @@ runs:
           scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber
 
     # THE HERMETIC PAIR — what every verdict leg replays, and the reason a verdict no longer
-    # depends on the network.
+    # depends on the network — is NOT pinned here. A recording leg publishes its tree's pinned copy
+    # (`enrichment-<code>-<run>`, in "Publish the tree": only once its boot finished, so every request the corpus
+    # makes is in it) and marks it prod-latest below; it becomes the pair only through THE PIN GUARD
+    # (verify-scrape-recording.yml's `pin` job, convergence-publish.sh `verified-pin`), once its hermetic verify on
+    # main's code is green with no served-corpus finding — so a recording can never turn the gate red by itself.
     #
-    # Pinned only by a RECORDING full leg whose boot finished: by then every request the
-    # corpus makes has been answered live and recorded, or failed and been remembered as the
-    # failure it was (`EnrichmentCache.Transients.Recorded`), so a hermetic replay of this
-    # corpus asks the tree nothing it cannot answer. A leg that ran out of time before that
-    # leaves the previous pin alone — a hermetic leg must never replay a half-recorded pair.
-    #
-    # A COPY under a name carrying the corpus run, never the working asset: the recorder
-    # keeps extending `enrichment-<code>.tar.zst` (a leg that ran out of time publishes it
-    # half-recorded), and a hermetic leg reading that mid-recording would replay a
-    # tree the other half of its pair was never recorded into. The pin is written LAST, so a
-    # reader sees either the old pair or the new one, and the previous pair's tree is kept
-    # so a leg (or a bisect) that read the old pin a moment ago can still download it.
-    #
-    # The pinned tree itself went up beside the working one in "Publish the tree", which
-    # decided — boot complete in the log, a packed archive — and named it in
-    # KINOWO_PINNED_TREE; this step writes the marker that makes it the pair, and prunes.
-    - name: Pin this recording as the pair hermetic legs replay
-      if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && inputs.complete == 'true' && inputs.pin == 'true' && env.KINOWO_CONVERGENCE_CORPUS_RUN != ''
-      shell: bash
-      env:
-          GH_TOKEN: ${{ inputs.token }}
-          CODE:     ${{ inputs.code }}
-      run: .github/scripts/convergence-publish.sh pin "$CODE"
-
     # PROD-LATEST — the freshest COMPLETE recording, whether or not it became the hermetic pair: the
     # production-shaped recording `scripts/identity-repro` and `--recording prod-latest` replay, so a prod
     # listing can be reproduced on the corpus prod scraped last night rather than on a pair weeks old.

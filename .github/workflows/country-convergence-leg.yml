@@ -365,14 +365,6 @@ on:
                 required: false
                 type: boolean
                 default: false
-            # A complete RECORDING becomes the hermetic pair only when this is true; false still publishes its tree
-            # under its run and marks it prod-latest (`convergence-publish`'s `pin`). Record scrape fixtures passes
-            # false unless a dispatch asks, while prod-latest proves itself as a landing bar.
-            pin-hermetic:
-                description: A complete `record` leg pins its recording as the hermetic pair (else prod-latest only).
-                required: false
-                type: boolean
-                default: true
             # THE RECORDING'S OWN SUITE AS A VERIFY'S BASE (Verify scrape recording): the `Record scrape fixtures` run whose
             # convergence row's served-corpus findings (tools.ServedFindings, in its `convergence-diagnostics-<code>-convergence`)
             # this hermetic leg's suite judges its own against -- a finding that suite found too is the recording's, reported,
@@ -693,7 +685,7 @@ jobs:
                   # on a nightly job: one failed run over a weekend and every country's corpus
                   # expires at once. The tarballs together are ~12 MB, so the margin costs nothing.
                   # A PINNED recording's corpus outlives this: the pin archives it to the permanent
-                  # identity-recordings release (convergence-publish.sh `pin`), which every reader falls back to.
+                  # identity-recordings release (convergence-publish.sh `verified-pin`), which every reader falls back to.
                   retention-days: 14
                   overwrite: true
                   if-no-files-found: warn
@@ -1371,7 +1363,6 @@ jobs:
                   green: ${{ steps.suite.outcome == 'success' && steps.suite.outputs.failed != 'true' }}
                   mode: ${{ inputs.mode }}
                   complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}
-                  pin: ${{ inputs.pin-hermetic }}
                   # A hermetic row's fetchable gaps, for the next leg's pre-suite fill (MissingFixtures.writeRefetches).
                   # Its own fill went up before its suite ("publish-fill").
                   refetch-list: ${{ inputs.mode == 'hermetic' && format('test/resources/fixtures/enrichment-{0}.refetch.tsv', inputs.code) || '' }}
@@ -1429,7 +1420,7 @@ jobs:
 
             # THE CAPTURE'S OWN VERDICT: a recording's convergence row is red only when it captured nothing usable -- no
             # `[<code>] boot complete` in its log means the boot never answered every request the corpus makes, so no
-            # complete recording exists for verify to replay (convergence-publish.sh pins and marks prod-latest on the same
+            # complete recording exists for verify to replay (convergence-publish.sh publishes its pinned copy on the same
             # line). A suite that failed after a complete boot is reported, not failed: Verify scrape recording judges it.
             - name: Fail the capture unless its boot completed
               if: always() && inputs.mode == 'record' && matrix.phase == 'convergence'

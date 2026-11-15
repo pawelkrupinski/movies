@@ -4,8 +4,8 @@
 #
 # The enrichment capture follows it in the SAME job: each country's convergence leg runs
 # in RECORDING mode (the `enrichment` jobs below), records that country's corpus as its
-# first step, then fills its enrichment tree live over that exact corpus and pins corpus +
-# tree as the pair the hermetic verdict legs replay. The two only mean anything together,
+# first step, then fills its enrichment tree live over that exact corpus and publishes corpus +
+# tree as a pair the hermetic legs can replay (the gate's pair only through its verify, `pin-hermetic`). The two only mean anything together,
 # which is why they are recorded in one run rather than on two schedules that drift.
 #
 # The corpus used to be five `scrapes (<country>)` jobs ahead of the legs, and all five had
@@ -70,9 +70,10 @@ on:
             pin-hermetic:
                 description: >-
                     Also make this recording the HERMETIC PAIR every verdict leg and identity measure replays
-                    (the landing bar). Off by default and always off on the nightly cron: a complete recording is
-                    published under its run and marked prod-latest (`--recording prod-latest`,
-                    scripts/identity-repro) without moving the landing bar (573) until prod-latest has proven stable.
+                    (the landing bar) -- once its verify on main's code is green with no served-corpus finding, per
+                    country (Verify scrape recording's `pin` job; refused, the pair stays). Off by default and always
+                    off on the nightly cron: a complete recording is published under its run and marked prod-latest
+                    (`--recording prod-latest`, scripts/identity-repro) without moving the landing bar.
                 required: false
                 type: boolean
                 default: false
@@ -107,7 +108,8 @@ jobs:
             # Every scheduled run records the resolver's query set too (a schedule has no inputs, so it cannot read
             # the dispatch default): the gate is kept met, not met once.
             identity-lookups: ${{ (github.event_name == 'schedule' || github.event_name == 'repository_dispatch') || inputs.identity-lookups == true }}
-            # Off on the cron (a schedule has no inputs): nightlies become prod-latest, not the hermetic pair.
+            # Off on the cron (a schedule has no inputs): nightlies become prod-latest, not the hermetic pair. Handed to
+            # the verify this run dispatches, which pins only what it proved; the legs never pin.
             pin-hermetic: ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}
             # The capture's legs on ci-runner's measurement slots (the owner, 2026-11-06: off main's critical path, so
             # off GitHub's 20); ubuntu-22.04 (mongod's kernel, MongoServerVersionParitySpec) while ci-runner is off.
@@ -146,8 +148,8 @@ jobs:
     # this: the same leg in `record` mode, which first captures its country's corpus from prod
     # (and uploads it as the `scrape-fixtures-<code>` artifact every later leg reads), then
     # over that corpus — expire what is past its lifetime, fill every gap live, remember every
-    # failure, publish the working tree, and once the full leg's boot is complete pin
-    # corpus + tree as the PAIR the hermetic legs replay from then on.
+    # failure, publish the working tree, and once the full leg's boot is complete publish
+    # corpus + tree as a pair (prod-latest; the gate's PAIR only through the verify's pin guard).
     #
     # Here rather than on the convergence schedule, because a recording belongs with the
     # corpus it records against: pinned to this run's corpus, a new corpus and its tree
@@ -199,7 +201,6 @@ jobs:
             # No `corpus-run`: a `with:` is baked before the run has an id (run 408), so a recording leg names its own
             # run inside the leg (`inputs.mode == 'record' && github.run_id`). The rest is the plan's (preflight).
             identity-lookups: ${{ needs.preflight.outputs.identity-lookups == 'true' }}
-            pin-hermetic:   ${{ needs.preflight.outputs.pin-hermetic == 'true' }}
             country:        ${{ matrix.country }}
             code:           ${{ matrix.code }}
             command:        ${{ matrix.cmd }}
@@ -239,6 +240,9 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
                   GH_REPO: ${{ github.repository }}
                   FIXTURE_RELEASE_TAG: convergence-fixtures
+                  # THE PIN GUARD: a dispatch asking for the hermetic pair is handed to the verify, which pins each
+                  # country only once its replay of this recording on main's code is green with no finding.
+                  PIN_HERMETIC: ${{ needs.preflight.outputs.pin-hermetic }}
               run: |
                   set -euo pipefail
                   countries=$(scripts/ci/recorded-countries.sh "$GITHUB_RUN_ID")
@@ -246,8 +250,9 @@ jobs:
                       echo "::warning::no country captured complete in run $GITHUB_RUN_ID -- no verify dispatched"
                       exit 0
                   fi
-                  gh workflow run verify-scrape-recording.yml --ref main -f recording="$GITHUB_RUN_ID" -f countries="$countries"
-                  echo "dispatched Verify scrape recording on recording $GITHUB_RUN_ID for: $countries" | tee -a "$GITHUB_STEP_SUMMARY"
+                  gh workflow run verify-scrape-recording.yml --ref main -f recording="$GITHUB_RUN_ID" -f countries="$countries" \
+                      -f pin-hermetic="$PIN_HERMETIC"
+                  echo "dispatched Verify scrape recording on recording $GITHUB_RUN_ID for: $countries (pin-hermetic: $PIN_HERMETIC)" | tee -a "$GITHUB_STEP_SUMMARY"
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec). This is the AGGREGATE,

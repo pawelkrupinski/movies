@@ -51,21 +51,38 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
       "Publish the tree to the rolling release",
       "Publish this healthy recording's manifest as the next one's baseline",
       "Record the corpus this green leg replayed",
-      "Pin this recording as the pair hermetic legs replay",
       "Mark this recording as prod-latest").foreach { name =>
       withClue(s"$name: ") { RepoFile.step(action, name) should include(s"if: $MainOnly && ") }
     }
   }
 
-  // The nightly recording becomes prod-latest, never the hermetic pair (the landing bar), unless a dispatch asks.
-  "a nightly recording" should "be marked prod-latest without moving the hermetic pair" in {
-    RepoFile.step(action, "Pin this recording as the pair hermetic legs replay") should include("inputs.pin == 'true'")
+  // A recording becomes prod-latest, never the hermetic pair (the landing bar), in its own run: the pair moves only through
+  // THE PIN GUARD, once the recording's verify on main's code is green with no served-corpus finding -- so new data can
+  // never turn the gate red by itself.
+  "a recording" should "be marked prod-latest, and pinned only by its verify's pin guard" in {
+    action should not include "Pin this recording as the pair hermetic legs replay"
+    action should not include "inputs.pin "
     RepoFile.step(action, "Mark this recording as prod-latest") should include("""convergence-publish.sh latest "$CODE"""")
-    RepoFile.step(action, "Mark this recording as prod-latest") should not include "inputs.pin"
-    RepoFile.read(".github/workflows/country-convergence-leg.yml") should include("pin: ${{ inputs.pin-hermetic }}")
+    val leg = RepoFile.read(".github/workflows/country-convergence-leg.yml")
+    leg should not include "pin-hermetic"
     val recorder = RepoFile.read(".github/workflows/record-scrape-fixtures.yml")
-    // Decided in the recorder's plan job (WorkflowPlanSpec), handed to the legs as its output.
+    // Decided in the recorder's plan job (WorkflowPlanSpec), handed to the verify it dispatches -- never to its legs.
     recorder should include("pin-hermetic: ${{ github.event_name == 'workflow_dispatch' && inputs.pin-hermetic == true }}")
-    recorder should include("pin-hermetic:   ${{ needs.preflight.outputs.pin-hermetic == 'true' }}")
+    RepoFile.block(recorder, "enrichment") should not include "pin-hermetic"
+    RepoFile.step(recorder, "Dispatch the hermetic verify of this recording") should include("-f pin-hermetic=\"$PIN_HERMETIC\"")
+    val verify = RepoFile.read(".github/workflows/verify-scrape-recording.yml")
+    val pin = RepoFile.block(verify, "pin")
+    pin should include("needs: [ preflight, leg, order-independence-p01, order-independence-p12 ]")
+    pin should include("needs.preflight.outputs.pin-hermetic == 'true'")
+    pin should include("needs.leg.result == 'success'")
+    pin should include(".github/scripts/convergence-publish.sh verified-pin")
+    pin should include("contents: write")
+    // The only writer of the hermetic marker.
+    val writers = Seq(".github/actions/convergence-publish/action.yml", ".github/scripts/convergence-publish.sh",
+      ".github/workflows/verify-scrape-recording.yml", ".github/workflows/record-scrape-fixtures.yml",
+      ".github/workflows/country-convergence-leg.yml", ".github/workflows/identity-model-convergence.yml")
+      .filter(path => RepoFile.read(path).linesIterator.filterNot(_.trim.startsWith("#")).exists(_.contains("> \"hermetic-")))
+    writers shouldBe Seq(".github/scripts/convergence-publish.sh")
+    RepoFile.read(".github/scripts/convergence-publish.sh") should include("""echo "$run ${recorded:-unknown} $tree" > "hermetic-$code.txt"""")
   }
 }

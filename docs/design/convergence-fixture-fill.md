@@ -156,5 +156,11 @@ of them held every production landing. Now each phase owns one question:
   finding a commit landed before the capture brings counts as standing from that night on: it is triaged from the
   findings report (overdue after three days), not left red. A second replay at a chosen base would cost one
   convergence row a country on a red night (10-30 min) and a base compile, for that difference only.
+- **The pin guard (2026-11-15).** The pinned pair is the one path from new data into THE GATE, so a recording becomes
+  it only through its verify: `pin-hermetic` on the capture is handed to the verify it dispatches, whose `pin` job
+  (after every leg and order comparison) pins each country only when all of them succeeded AND that country's
+  diagnostics show no served-corpus finding -- standing ones included, since the gate's strict legs would fail every
+  push on them (`convergence-publish.sh verified-pin`). The takes and takes-drift rows judge base against head over one
+  pair, so a pair alone moves none of them; no extra run: the verify is the measurement. The capture's legs never pin.
 - **Left in the capture:** the UK's record-mode order row (a gap-filled replay with no capture purpose, now
   non-failing) — verify runs the UK's order passes hermetically, so it can go.

@@ -58,9 +58,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val resolve = setupFunction("pair")
     resolve should include("exit 1")
     resolve should include("hermetic-$code.txt")
-    RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include(
-      """convergence-publish.sh pin "$CODE"""")
-    publishFunction("pin_pair") should include("hermetic-$code.txt")
+    publishFunction("verified_pin") should include("hermetic-$code.txt")
   }
 
   // ...nor when the pinned pair has EXPIRED. The rolling release keeps the two newest trees, so an
@@ -158,15 +156,14 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // Only a leg that got through the boot has recorded every request the corpus makes; the
   // spec prints the line, the publish reads it (CountryConvergenceBehaviour.BootComplete).
   it should "pin a pair only from a full recording leg whose boot completed" in {
-    val pinStep  = RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay")
     val treeStep = RepoFile.step(publish, "Publish the tree to the rolling release")
-    pinStep should include("inputs.mode == 'record' && inputs.complete == 'true'")
     treeStep should include("COMPLETE: ${{ inputs.complete }}")
     treeStep should include("""convergence-publish.sh tree "$CODE" "$COMPLETE" "$LOG"""")
     // The decision is taken where the pinned tree is uploaded, and handed to the marker's step.
     publishFunction("publish_tree") should include("""boot complete""")
     publishFunction("publish_tree") should include("""[ "$complete" = "true" ]""")
-    publishFunction("pin_pair") should include("""pinned="${KINOWO_PINNED_TREE:-}"""")
+    // The pinned copy is published only then, and the pin guard pins nothing that has none.
+    publishFunction("verified_pin") should include("""grep -E "^enrichment-$code-$run\.tar\.(zst|gz)$"""")
     RepoFile.block(leg, "convergence") should include("complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}")
   }
 
@@ -175,7 +172,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // recording's critical path (run 37071880312). One call carries both; the marker stays last.
   "the publish action" should "upload the pinned tree in the same call as the working tree, not after it" in {
     val tree = publishFunction("publish_tree")
-    val pin  = publishFunction("pin_pair")
+    val pin  = publishFunction("verified_pin")
     // `${pin[@]+…}`: an empty pin under `set -u` on macOS bash 3.2 is otherwise an unbound variable.
     tree should include(""""$RELEASE" upload "$TAG" "$ARCHIVE" ${pin[@]+"${pin[@]}"} --clobber""")
     withClue("the pin step must not upload the tree a second time: ") {

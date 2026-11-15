@@ -32,7 +32,7 @@
 name: Verify scrape recording
 # Its inputs as name=value: GitHub serves no run's inputs, and agentctl re-dispatches a red run's recording from its
 # title to verify a fix (VerifyRecordingRunNameSpec).
-run-name: Verify scrape recording recording=${{ inputs.recording }} countries=${{ inputs.countries }}
+run-name: Verify scrape recording recording=${{ inputs.recording }} countries=${{ inputs.countries }} pin-hermetic=${{ inputs.pin-hermetic }}
 
 on:
     workflow_dispatch:
@@ -46,6 +46,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            pin-hermetic:
+                description: >-
+                    Then make the recording the HERMETIC PAIR the gate replays, for each country whose verify here is green
+                    with no served-corpus finding (the `pin` job; Record scrape fixtures' `pin-hermetic` hands it on).
+                required: false
+                type: boolean
+                default: false
 
 concurrency:
     group: verify-scrape-recording-${{ github.ref }}
@@ -84,6 +91,7 @@ jobs:
             order-matrix: ${{ steps.plan.outputs.order-matrix || '{"country":[],"include":[]}' }}
             any-order: ${{ steps.plan.outputs.any-order || 'false' }}
             recording: ${{ inputs.recording }}
+            pin-hermetic: ${{ inputs.pin-hermetic == true }}
             # ci-runner's measurement slots, as the recorder's legs (the owner, 2026-11-06); ubuntu-22.04 while it is off.
             runner: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies-measure' || 'ubuntu-22.04' }}
         steps:
@@ -268,9 +276,42 @@ jobs:
                   status: ${{ job.status }}
                   token:  ${{ secrets.GITHUB_TOKEN }}
 
+    # THE PIN GUARD (`pin-hermetic`): the only way a recording becomes the hermetic pair THE GATE replays. After every leg
+    # and order comparison, and only when all of them succeeded: then each country is pinned unless its diagnostics show a
+    # served-corpus finding -- even a standing one this run passed, since the gate's legs judge with no base and would fail
+    # every push on it (convergence-publish.sh verified-pin). The takes and takes-drift rows need no run here: they judge
+    # base against head over one pair, so a pair alone moves none of them. No extra replay: this run is the measurement.
+    pin:
+        needs: [ preflight, leg, order-independence-p01, order-independence-p12 ]
+        if: ${{ !cancelled() && needs.preflight.result == 'success' && needs.preflight.outputs.pin-hermetic == 'true' }}
+        runs-on: ${{ vars.MOVIES_CI_RUNNERS == 'self-hosted' && 'movies' || 'ubuntu-26.04' }}
+        timeout-minutes: 10
+        permissions:
+            contents: write
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      .github/scripts
+                      scripts
+            - uses: actions/download-artifact@v6
+              with:
+                  pattern: convergence-diagnostics-*
+                  path: ${{ runner.temp }}/verify-diagnostics
+            - name: Pin each verified country's recording as the hermetic pair
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  # Every leg and comparison succeeded (an order comparison a country has none of is skipped), or nothing pins.
+                  VERDICT: ${{ needs.leg.result == 'success' && needs.order-independence-p01.result != 'failure' && needs.order-independence-p12.result != 'failure' && needs.order-independence-p01.result != 'cancelled' && needs.order-independence-p12.result != 'cancelled' && 'success' || 'failure' }}
+              run: >-
+                  .github/scripts/convergence-publish.sh verified-pin "${{ needs.preflight.outputs.recording }}"
+                  "${{ needs.preflight.outputs.countries }}" "$VERDICT" "$RUNNER_TEMP/verify-diagnostics"
+
     # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job.
     timings:
-        needs: [ preflight, leg, order-independence-p01, order-independence-p12 ]
+        needs: [ preflight, leg, order-independence-p01, order-independence-p12, pin ]
         if: ${{ !cancelled() }}
         permissions:
             actions: read
