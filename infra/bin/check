@@ -280,6 +280,16 @@ else
   failed=1
 fi
 
+step "dashboard read-only keys"
+# Every operator Mac's dashboard key reaches monitoring-1's root under the forced Prometheus read
+# (the second Mac's added beside the first, 2026-11-16). See test_dashboard_readonly_keys.sh.
+if out="$(bash test/test_dashboard_readonly_keys.sh 2>&1)"; then
+  echo "$out" | tail -1 | sed 's/^/  /'
+else
+  echo "$out" | sed 's/^/  /'
+  failed=1
+fi
+
 step "host memory safety"
 # zram, vm.swappiness and the k3s kubelet's reserves, read back out of each host's evaluated config.
 # The toplevel eval below proves nix/modules/fleet/host-memory.nix evaluates; it cannot notice a host

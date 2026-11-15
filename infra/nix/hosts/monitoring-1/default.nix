@@ -465,11 +465,19 @@ in
 
   system.stateVersion = "26.05";
 
-  # THE 8788 DASHBOARD'S PROMETHEUS READ (infra/version-dashboard/src/fleet/prometheus.ts, promArgv).
-  # A plain file key on the operator Mac (no Touch ID), so the local dashboard service can poll
+  # THE 8788 DASHBOARD'S PROMETHEUS READ (bitcashier fleetkit/dashboard/src/fleet/prometheus.ts).
+  # A plain file key on each operator Mac (no Touch ID), so the local dashboard service can poll
   # without prompting. `restrict` + a forced command: no shell, no forwarding, and this one read
-  # whatever the client asks for -- a leaked copy reads metrics and nothing else. Added 2026-10-08.
-  users.users.root.openssh.authorizedKeys.keys = [
-    "restrict,command=\"curl -sS --max-time 15 'http://10.20.0.11:9090/api/v1/query?query=%7B__name__%3D~%22nixos_.%2A%7Cnode_os_info%22%7D'\" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFPLz9aUrwhj93QLY1twe3Q3UURoxWftoDKVXqKMbBUS dashboards-readonly"
-  ];
+  # whatever the client asks for -- a leaked copy reads metrics and nothing else. Added 2026-10-08;
+  # the restored second Mac's own key beside the first 2026-11-16 (the old Mac is still in use).
+  # The options are built once and prefixed to every key, so no key can carry looser restrictions.
+  # infra/test/test_dashboard_readonly_keys.sh holds both, each under exactly these options.
+  users.users.root.openssh.authorizedKeys.keys =
+    let
+      dashboardReadOptions = "restrict,command=\"curl -sS --max-time 15 'http://10.20.0.11:9090/api/v1/query?query=%7B__name__%3D~%22nixos_.%2A%7Cnode_os_info%22%7D'\"";
+    in
+    map (key: "${dashboardReadOptions} ${key}") [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFPLz9aUrwhj93QLY1twe3Q3UURoxWftoDKVXqKMbBUS dashboards-readonly"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFNA6gtHzJuLLUIcrGirZWot47std7zKTH5gDZAAg3+i dashboards-readonly@pawel-mbp-2"
+    ];
 }
