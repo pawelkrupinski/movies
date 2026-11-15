@@ -269,6 +269,9 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "scrapers/src/main/scala/tools/ParallelDetailFetch.scala" ->
       ("FetchClock.System: a fetch timeout's deadline, read on the time its blocking get waits on (a spec swaps both through " +
         "`timed`), and reached from every client of that same diagnostic door"),
+    "http/src/main/scala/tools/AddressFailover.scala"               ->
+      ("a composition root: the JDK's resolver SPI loads FailoverAddressResolverProvider by ServiceLoader, with no wiring " +
+        "to hand it a clock, and the JVM's one failover state is built there"),
     "worker/src/main/scala/services/tasks/TaskWorker.scala"         -> WaitPrimitive,
     "worker/src/main/scala/services/readmodel/ReadModelSweeper.scala" -> WaitPrimitive
   )

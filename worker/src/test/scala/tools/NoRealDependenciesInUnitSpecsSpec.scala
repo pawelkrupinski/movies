@@ -152,6 +152,8 @@ object NoRealDependenciesInUnitSpecsSpec {
       "http/src/test/scala/tools/RealHttpFetchSpec.scala" ->
         "RealHttpFetch IS the code under test; every exchange is with a server the spec starts in-process",
       "common/src/test/scala/tools/HostPoliciesSpec.scala" -> "builds a request with RealHttpFetch and reads it; sends nothing",
+      "worker/src/test/scala/tools/AddressFailoverSpec.scala" ->
+        "builds two addresses from their bytes (InetAddress.getByAddress): no lookup, no connection",
       "scrapers/src/test/scala/services/cinemas/AdaptiveTimeoutScraperSpec.scala" ->
         "cuts a scrape stalled in a real RealHttpFetch read against a loopback listener the spec opens and never answers",
       "scrapers/src/test/scala/clients/zyte/ZyteFetchSpec.scala" ->

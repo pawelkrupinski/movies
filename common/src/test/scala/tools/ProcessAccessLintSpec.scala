@@ -49,6 +49,9 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
       "writes a policy the JDK itself reads (jdk.http.auth.tunneling.disabledSchemes); applied once by each main",
     "http/src/main/scala/tools/IssuerCertificateFetching.scala" ->
       "writes a policy the JDK itself reads (com.sun.security.enableAIAcaIssuers + allowedAIALocations); applied once by each main",
+    "http/src/main/scala/tools/AddressFailover.scala" ->
+      ("reads the policy the JDK itself keeps lookups by (networkaddress.cache.ttl, sun.net.inetaddr.ttl), as " +
+        "InetAddressCachePolicy does, for the resolver SPI provider the JDK loads with no composition root to hand it one"),
     "worker/src/test/scala/tools/NoRuntimeLookupsInIdentitySpec.scala" ->
       "a lint's own fixtures: process reads quoted in strings it feeds its checker, never executed",
   )

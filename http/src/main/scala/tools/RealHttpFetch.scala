@@ -22,7 +22,10 @@ class RealHttpFetch(
   // The host's connect budget (TCP and TLS handshake) — HostPolicies' table. A spec whose handshake is the thing under
   // test, in a cold JVM on a loaded machine, passes its own (IssuerCertificateFetchingSpec): the 5 s a live host needs
   // is no bound on a starved runner's class loading and path building.
-  connectTimeoutFor: String => Duration = HostPolicies.connectTimeoutFor
+  connectTimeoutFor: String => Duration = HostPolicies.connectTimeoutFor,
+  // Which of a host's addresses the JVM connects to (AddressFailover): the JVM's resolver consults this one instance,
+  // so a connect failure reported here moves the next connect onto the host's next address.
+  addresses: AddressFailover = FailoverAddressResolverProvider.failover
 ) extends HttpFetch with Logging {
   // Connect + per-request timeouts so a hung upstream (MC search HTML
   // sometimes streams forever, Filmweb soft-blocks by holding the socket
@@ -157,13 +160,28 @@ class RealHttpFetch(
   /** Send `request`, following its redirects through [[RedirectGuard]]; each hop goes
    *  out on the client whose connect budget its own host's policy names, and within
    *  that host's [[exchangeDeadline]]. */
-  private def sendAsync(request: HttpRequest, hops: Int): CompletableFuture[HttpResponse[Array[Byte]]] = {
-    val url = request.uri().toString
-    withinDeadline(url, clientFor(url).sendAsync(request, HttpResponse.BodyHandlers.ofByteArray()))
-      .thenCompose { response =>
+  private def sendAsync(request: HttpRequest, hops: Int): CompletableFuture[HttpResponse[Array[Byte]]] =
+    toNextAddress(request, tried = 1).thenCompose { response =>
         RedirectGuard.next(request, response, hops) match {
           case Some(next) => sendAsync(next, hops + 1)
           case None       => CompletableFuture.completedFuture(response)
+        }
+      }
+
+  /** One hop's exchange; when its connect fails and the host has another address ([[AddressFailover]]: the JDK's
+   *  client tries only the first), the same request again on the next, [[AddressFailover.MostAddressesTried]] at most.
+   *  Through a proxy the proxy resolves the host, so a failed connect is the proxy's and is not retried here. */
+  private def toNextAddress(request: HttpRequest, tried: Int): CompletableFuture[HttpResponse[Array[Byte]]] = {
+    val url     = request.uri().toString
+    val started = addresses.now()
+    withinDeadline(url, clientFor(url).sendAsync(request, HttpResponse.BodyHandlers.ofByteArray()))
+      .exceptionallyCompose { failure =>
+        unwrap(failure) match {
+          case connect @ (_: java.net.ConnectException | _: HttpConnectTimeoutException)
+              if proxy.isEmpty && tried < AddressFailover.MostAddressesTried && addresses.connectFailed(request.uri().getHost, started) =>
+            logger.info(s"${RedactedUrl(url)}: connect to one of its host's addresses failed (${connect.getClass.getSimpleName}), trying the next")
+            toNextAddress(request, tried + 1)
+          case other => CompletableFuture.failedFuture(other)
         }
       }
   }
