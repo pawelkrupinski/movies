@@ -390,12 +390,6 @@ private fun SwipeHintOverlay(modifier: Modifier = Modifier) {
     }
 }
 
-// Floating search pill, pinned bottom-centre and overlaid on the grid —
-// the Android counterpart to the iOS `SearchBar` (SearchBar.swift). A
-// translucent capsule with a leading magnifier, an inline text field, and
-// a trailing clear glyph that appears once there's a query. `imePadding`
-// (applied by the caller) lifts it above the soft keyboard on focus; the
-// grids reserve `SearchBarBottomInset` so their last row clears the pill.
 // The pill's clear-glass blur. Enough blur to visibly distort the cards
 // underneath, but no tint and no noise grain — so it reads as clear,
 // see-through glass (like the iOS `.ultraThinMaterial`) rather than a frosty
@@ -408,6 +402,13 @@ private val SearchPillGlass = HazeBlurStyle {
     noiseFactor(0f)
 }
 
+// Floating search pill, pinned bottom-centre and overlaid on the grid —
+// the Android counterpart to the iOS `SearchBar` (SearchBar.swift). A
+// translucent capsule with a leading magnifier, an inline text field, and
+// a trailing clear glyph that appears once there's a query. `imePadding`
+// (applied by the caller) lifts it above the soft keyboard on focus; the
+// grids reserve `SearchBarBottomInset` so their last row clears the pill.
+//
 // Internal (not private) so FloatingSearchBarBlurTest can render it over a
 // known backdrop and pixel-sample the blur.
 @Composable

@@ -54,14 +54,6 @@ final class WindowFillsScreenUITests: XCTestCase {
                        "a \(Int(window.width))pt-wide grid should hold \(expectedColumns) columns")
     }
 
-    /// The iPhone Duo keeps its status bar in an 84 pt column down the screen's
-    /// right edge — a one-sided trailing safe-area inset, in portrait, that no
-    /// other iPhone has. The grid used to bleed under it as under a landscape
-    /// phone's sensor-housing insets, and the top bar scaled itself for that
-    /// bled width, overflowed its safe-area slot and dragged the grid 57 pt off
-    /// the left edge. In portrait the bar and the grid share the safe-area
-    /// width: the grid starts inside the screen and ends where the bar does
-    /// (Filtry's right edge, a couple of points apart), neither in the column.
     /// The top bar fits the window by itself (portrait has no horizontal
     /// insets, so the window is the safe area): its leading pill and Filtry lie
     /// inside it. On the unfolded iPhone Duo's 669 pt portrait the bar was
@@ -80,6 +72,14 @@ final class WindowFillsScreenUITests: XCTestCase {
             "Filtry ends at x=\(Int(filtry.frame.maxX)), past the \(Int(window.width))pt window's right edge")
     }
 
+    /// The iPhone Duo keeps its status bar in an 84 pt column down the screen's
+    /// right edge — a one-sided trailing safe-area inset, in portrait, that no
+    /// other iPhone has. The grid used to bleed under it as under a landscape
+    /// phone's sensor-housing insets, and the top bar scaled itself for that
+    /// bled width, overflowed its safe-area slot and dragged the grid 57 pt off
+    /// the left edge. In portrait the bar and the grid share the safe-area
+    /// width: the grid starts inside the screen and ends where the bar does
+    /// (Filtry's right edge, a couple of points apart), neither in the column.
     func testGridStaysWithinTheTopBarInPortrait() throws {
         let filtry = app.buttons[A11y.TopBar.filtryButton]
         XCTAssertTrue(filtry.waitForExistence(timeout: 10), "Filtry button never appeared")

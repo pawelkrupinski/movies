@@ -1,7 +1,7 @@
 import XCTest
 
 /// A source we hold a link for but no score yet (a new release) still gets its
-/// IMDb / Filmweb pill: the source's short name in the score slot and an accessible
+/// IMDb / Filmweb pill: its coloured label tab alone, no score tab, and an accessible
 /// "no rating yet" label, translated per app language. Driven by the
 /// `KINOWO_UITEST_PENDING_RATINGS` fixture: every card carries an IMDb page and a
 /// Filmweb page and no scores, so the pills can only come from the rating-less path.
