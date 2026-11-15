@@ -83,13 +83,13 @@ struct ListingFilters: Equatable {
     /// that didn't reset), plus any cinema the listing shows that the catalogue
     /// doesn't name yet. A cinema unticked in another city stays unticked: the
     /// excluded set is global and it narrows nothing here. The hidden films are
-    /// un-hidden. The same reset as Android's `clearFilters`
-    /// (`FilterFacets.clearedDisabledCinemas`) and the web's `resetFormatFilter`
-    /// (which re-ticks `ALL_CINEMAS`, the city's catalogue).
+    /// un-hidden by the caller (`UserPreferences.unhideAll`). The same reset as
+    /// Android's `clearFilters` (`FilterFacets.clearedDisabledCinemas`) and the
+    /// web's `resetFormatFilter` (which re-ticks `ALL_CINEMAS`, the city's
+    /// catalogue).
     struct Cleared: Equatable {
         let filters = ListingFilters.empty
         let disabledCinemas: Set<String>
-        let hidden: Set<String> = []
 
         init(disabledCinemas: Set<String>, catalog: CinemaCatalog, films: [Film]) {
             self.disabledCinemas = disabledCinemas.subtracting(catalog.cinemas).subtracting(films.allCinemas())

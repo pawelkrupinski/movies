@@ -128,9 +128,8 @@ final class ListingFiltersTests: XCTestCase {
         let cleared = ListingFilters.Cleared(disabledCinemas: ["Muza", "Elsewhere"], catalog: .empty, films: films)
 
         XCTAssertEqual(cleared.disabledCinemas, ["Elsewhere"])
-        XCTAssertEqual(cleared.hidden, [])
         XCTAssertFalse(cleared.filters.isActive(over: films, cityCinemas: films.allCinemas(),
-                                                disabledCinemas: cleared.disabledCinemas, hidden: cleared.hidden))
+                                                disabledCinemas: cleared.disabledCinemas, hidden: []))
     }
 
     /// Wyczyść resets EVERYTHING (the owner, 2026-11-15): a catalogue cinema
