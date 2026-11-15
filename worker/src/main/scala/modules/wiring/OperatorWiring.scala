@@ -30,6 +30,19 @@ trait OperatorWiring { self: WorkerWiring =>
   lazy val bulkTaskResultStore: BulkTaskResultStore =
     new MongoBulkTaskResultStore(mongoConnection.database)
 
+  // The stored sources an operator can have fetched again for given keys (`RefreshSource`, enqueued by
+  // scripts.EnqueueSourceRefresh): the identity model's TMDB films, and each rating source's rows by TMDB id, its
+  // memoised links forgotten first as its `/tasks` button forgets them all. Filmweb only where this country enables it.
+  lazy val refreshableSources: services.refresh.RefreshableSources = {
+    import services.refresh.{RatingRefreshSource, RefreshableSources}
+    new RefreshableSources(Seq(
+      identityTmdbFilmRefresh,
+      new RatingRefreshSource(RefreshableSources.Imdb,       imdbRatings,           movieCache, imdbIdCache),
+      new RatingRefreshSource(RefreshableSources.Metacritic, metascoreRatings,      movieCache, mcLinkCache),
+      new RatingRefreshSource(RefreshableSources.Rt,         rottenTomatoesRatings, movieCache, rtLinkCache)) ++
+      Option.when(filmwebEnabled)(new RatingRefreshSource(RefreshableSources.Filmweb, filmwebRatings, movieCache, filmwebLinkCache)))
+  }
+
   // Operator-triggered handlers — ALWAYS registered (not gated by queueEnrichment):
   // the web `/tasks` buttons enqueue a corpus-wide refresh, regardless of which
   // enrichment mode the worker runs. Each bulk handler calls its source's refreshAll.
@@ -47,7 +60,8 @@ trait OperatorWiring { self: WorkerWiring =>
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
     // EnrichmentReaper then enqueues the now-eligible IMDb rating on its next pass.
-    new ResolveImdbIdHandler(imdbIdResolver)
+    new ResolveImdbIdHandler(imdbIdResolver),
+    new services.refresh.RefreshSourceHandler(refreshableSources, bulkTaskResultStore, clock)
   ) ++
     // The Filmweb bulk-refresh button only when this country's Filmweb path is on.
     Option.when(filmwebEnabled)(

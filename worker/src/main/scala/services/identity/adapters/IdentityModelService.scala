@@ -177,6 +177,13 @@ final class IdentityModelService(
     model.map(_.familyOf)
   }
 
+  /** Each family's questions, the films its decisions name and its listings' titles, the model caught up as [[peek]]
+   *  catches it up — never a take-up: what an operator's [[TmdbFilmRefresh]] reaches. `None` as [[peek]]'s. */
+  def families(timeout: FiniteDuration): Option[Seq[TmdbFilmRefresh.Family]] = onModel(timeout) {
+    catchUp()
+    model.map(engine => TmdbFilmRefresh.Family.of(engine.familyQuestions, engine.listings))
+  }
+
   /** The model caught up with what queued, if it has been taken up — never a take-up: what the
    *  fill reads, which must not wait on one. */
   def peek(timeout: FiniteDuration): Option[ModelSnapshot] = onModel(timeout) {

@@ -213,6 +213,12 @@ A take waits on a model question by the lookup fill's rounds, and on every agree
   TMDB's 14 days of history, or an edit read as irrelevant) left them stale for good. Since step 3 the lookup fill
   also fetches again, last in its round and at most `QuestionRenewals.PerRound` (50) a round, every record and person
   the model reads that TMDB last gave over 30 days ago (`QuestionRenewals`), oldest first.
+- **No asking again on demand**: an edit made on TMDB today (a Polish title added for films whose listings stay
+  unmatched) reached the model only the next day, when the changes sweep read the day's list and the renewals found the
+  families' searches aged. Since 2026-11-15 an operator names the films (`scripts.EnqueueSourceRefresh tmdb-films`, a
+  `RefreshSource` task over the worker's `RefreshableSources`, which also holds the rating sources): `TmdbFilmRefresh` fetches their records again, then asks again every question of the
+  families they reach (a decision naming the film, or a listing billing a title its record now carries), and what moved
+  wakes the model as any filing does.
 - **Separate askers, separate pacing**: the fill's rate, the task queue's `Behind` and the sweep's own pace. The `path`
   label now splits them on the counter.
 

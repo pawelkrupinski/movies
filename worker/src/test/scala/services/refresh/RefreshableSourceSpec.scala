@@ -1,0 +1,99 @@
+package services.refresh
+
+import models.MovieRecord
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import services.enrichment.CacheRefresher
+import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository, MovieCache, TitleNormalizer}
+import services.resolution.ResolutionCache
+import services.tasks.{BulkRefreshResult, HandlerOutcome, InMemoryBulkTaskResultStore, Task, TaskType}
+
+import scala.collection.mutable
+
+/** An operator's refresh of one stored source for given keys (`RefreshSource` task): the task names the source and its
+ *  keys, the handler runs exactly that source over exactly those keys and records what it came to; a source the worker
+ *  does not wire fails, never retried. A rating source refreshes the rows of the films named — their memoised links
+ *  forgotten first — and no other row. */
+class RefreshableSourceSpec extends AnyFlatSpec with Matchers {
+
+  private final class Recording(val name: String, fails: Boolean = false) extends RefreshableSource {
+    val keys = "ids"
+    val asked = mutable.Buffer.empty[Seq[String]]
+    def refresh(keys: Seq[String]): BulkRefreshResult = {
+      asked += keys
+      if (fails) throw new IllegalStateException("TMDB down")
+      BulkRefreshResult.message(s"${keys.size} refreshed")
+    }
+  }
+
+  private def task(source: String, keys: String*) =
+    Task("t", TaskType.RefreshSource, RefreshableSources.dedupKey(source, keys), RefreshableSources.payload(source, keys), attempts = 1)
+
+  "a RefreshSource task" should "carry its source and keys, a repeat of the same request collapsing into one" in {
+    val t = task("tmdb-films", "2", "1", "2")
+    RefreshableSources.sourceOf(t) shouldBe "tmdb-films"
+    RefreshableSources.keysOf(t) shouldBe Seq("1", "2")
+    RefreshableSources.dedupKey("imdb", Seq("2", "1")) shouldBe RefreshableSources.dedupKey("imdb", Seq("1", "2"))
+    RefreshableSources.dedupKey("imdb", Seq("1")) should not be RefreshableSources.dedupKey("rt", Seq("1"))
+    TaskType.byName("RefreshSource") shouldBe Some(TaskType.RefreshSource)
+  }
+
+  "the handler" should "run the named source over the task's keys, and only that source, recording what it did" in {
+    val (tmdb, rt) = (new Recording("tmdb-films"), new Recording("rt"))
+    val results    = new InMemoryBulkTaskResultStore
+    new RefreshSourceHandler(new RefreshableSources(Seq(tmdb, rt)), results, tools.SpecClock.Pinned).handle(task("tmdb-films", "7", "8")) shouldBe
+      HandlerOutcome.Done
+    tmdb.asked shouldBe Seq(Seq("7", "8"))
+    rt.asked shouldBe empty
+    val recorded = results.latest()(TaskType.RefreshSource)
+    (recorded.succeeded, recorded.message) shouldBe (true, "tmdb-films: 2 refreshed")
+  }
+
+  it should "fail a source this worker does not wire, done rather than retried" in {
+    val results = new InMemoryBulkTaskResultStore
+    new RefreshSourceHandler(new RefreshableSources(Seq(new Recording("imdb"))), results, tools.SpecClock.Pinned).handle(task("filmweb", "1")) shouldBe
+      HandlerOutcome.Done
+    results.latest()(TaskType.RefreshSource).succeeded shouldBe false
+    results.latest()(TaskType.RefreshSource).message should include("no such source")
+  }
+
+  it should "record a refresh that threw and hand it back to the queue's retry" in {
+    val results = new InMemoryBulkTaskResultStore
+    an[IllegalStateException] should be thrownBy
+      new RefreshSourceHandler(new RefreshableSources(Seq(new Recording("imdb", fails = true))), results, tools.SpecClock.Pinned).handle(task("imdb", "1"))
+    results.latest()(TaskType.RefreshSource).message shouldBe "imdb: failed: TMDB down"
+  }
+
+  "the registry" should "refuse two sources under one name" in {
+    an[IllegalArgumentException] should be thrownBy new RefreshableSources(Seq(new Recording("imdb"), new Recording("imdb")))
+  }
+
+  private val normalizer = TitleNormalizer.forCountry(models.Country.Poland)
+
+  /** A rating source whose every refresh moves its row's badge, recording each row it was asked. */
+  private final class Refresher(rows: MovieCache) extends CacheRefresher(rows) {
+    val refreshed = mutable.Buffer.empty[String]
+    protected def sourceName: String = "RT"
+    protected def refreshOne(key: CacheKey): Option[String] = { refreshed += key.cleanTitle; Some("91%") }
+    private[services] def refreshAll(): BulkRefreshResult = BulkRefreshResult.message("unused")
+  }
+  private final class Links extends ResolutionCache {
+    val forgotten = mutable.Buffer.empty[String]
+    def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] = resolve
+    override def forget(cleanTitle: String): Unit = forgotten += cleanTitle
+  }
+
+  "a rating source" should "forget the links of the named films' rows and refresh exactly those rows" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
+      ("Oczy Ghany", Some(2025), MovieRecord(tmdbId = Some(1525208))),
+      ("Żar", Some(2025), MovieRecord(tmdbId = Some(1658185))),
+      ("Lalka", Some(2026), MovieRecord(tmdbId = Some(42)))), normalizer = normalizer), normalizer = normalizer, clock = tools.SpecClock.Pinned)
+    val (refresher, links) = (new Refresher(cache), new Links)
+    val result = new RatingRefreshSource("rt", refresher, cache, links).refresh(Seq("1525208", "1658185", "999"))
+    // the rows as the cache keys them: the two films', never Lalka's
+    refresher.refreshed.map(_.toLowerCase(java.util.Locale.ROOT)).sorted shouldBe Seq("oczyghany", "zar")
+    links.forgotten shouldBe refresher.refreshed
+    (result.walked, result.changed) shouldBe (Some(2), Some(2))
+    result.message should include("no row holds 999")
+  }
+}

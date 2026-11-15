@@ -89,6 +89,12 @@ trait IdentityModelWiring { self: WorkerWiring =>
     new services.tasks.ClaimedPeriodicTask("tmdb-changes-sweep", () => identityTmdbChanges.tick().run,
       services.identity.adapters.TmdbChangesSweep.TickInterval,
       configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock, ticks))
+  /** An operator's TMDB films just edited, fetched again with the questions of the families they reach
+   *  (`TmdbFilmRefresh`, the `tmdb-films` source of a `RefreshSource` task), through the lookup chain (`enrichmentFetch`). */
+  lazy val identityTmdbFilmRefresh: services.identity.adapters.TmdbFilmRefresh =
+    new services.identity.adapters.TmdbFilmRefresh(
+      new services.identity.adapters.NormalizingHttpFetch(enrichmentFetch, identityTmdbNormalizer), tmdbClientOver,
+      families = () => identityModel.families(WorkerWiring.IdentityModelPeek), fold = titleNormalizer.sanitize)
   /** The model's answers due to be asked again for their age (`QuestionRenewals`): its questions, then the records and
    *  people it reads, while it is taken up. */
   lazy val identityRenewals: services.identity.adapters.QuestionRenewals =

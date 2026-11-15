@@ -32,6 +32,10 @@ object TaskType {
   // Operator-triggered identity projection, the same work the periodic SettleReaper
   // schedules, on demand from the `/tasks` page's "settle" button.
   case object SettleNow            extends TaskType { val name = "SettleNow"            }
+  // Operator-triggered: one stored external source (the payload's `source`: TMDB films, a rating source) fetched again
+  // for the payload's keys, and what moved kicked downstream (`services.refresh.RefreshableSource`): an identity
+  // re-resolve, a row's projection — now, rather than when the periodic paths reach it.
+  case object RefreshSource        extends TaskType { val name = "RefreshSource"        }
 
   // Chunked (map-reduce) scrape: a cinema whose listing fans out over many
   // independent units (per-day pages, per-event pages) is scraped as one
@@ -70,7 +74,7 @@ object TaskType {
 
   val all: Seq[TaskType] =
     Seq(ScrapeCinema, EnrichDetails, ReadVenuePage, ResolveImdbId, ImdbRating, FilmwebRating, RtRating, McRating,
-        RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow,
+        RefreshAllImdb, RefreshAllFilmweb, RefreshAllMetacritic, RefreshAllRt, RefreshAllOmdb, SettleNow, RefreshSource,
         ScrapeChunk, ScrapeChunkReduce,
         RenderShareCard, PruneShareCards, ReleaseShareCardHold, RenderCityCard,
         AuditReadModelContent, AuditShareCards, AskQuestion, AgreementQuestion, AgreementFind, AgreementPoster, AgreementCatalogue)
