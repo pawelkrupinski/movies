@@ -15,7 +15,13 @@ import tools.CommandLine
  *
  * Dry run by DEFAULT — pass `--apply` to enqueue. Against prod (Poland's database), through the vault and the tunnel:
  *
+ *   scripts/sbt-warm --stop
  *   MONGODB_DB=kinowo scripts/with-prod-mongo.sh scripts/sbt-warm "worker/Test/runMain scripts.EnqueueSourceRefresh tmdb-films 1525208 1517105 --apply"
+ *   scripts/sbt-warm --stop
+ *
+ * Stop the checkout's kept sbt server before and after: a kept server reads the environment it STARTED with (only
+ * KINOWO_* settings are compared), so without the first stop the run reads an older server's database, and without the
+ * second a later run in this checkout reads prod's.
  */
 object EnqueueSourceRefresh {
 
