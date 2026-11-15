@@ -104,33 +104,36 @@ class PosterEvidenceSpec extends AnyFlatSpec with Matchers {
     PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Siostry"), IdentityMeasures.Film("Siostry", year = Some(2005))) shouldBe false
   }
 
+  /** Does a year the listing's title bills date it away from the film ([[PosterEvidence.datingApart]])? */
+  private def datedApart(listing: Listing, film: IdentityMeasures.Film): Boolean = PosterEvidence.datingApart(listing, film).isDefined
+
   it should "date a listing away from a film only by a year its title bills, never by an anniversary's number" in {
     // DE "Weihnachten mit den Drei Herren 2026", a band's Christmas show, agreed as Epstein's 1927 "The Three-Sided Mirror"
     val show = FilmTable.listing(Multikino, "Weihnachten mit den Drei Herren 2026")
-    PosterEvidence.datedApart(show, IdentityMeasures.Film("The Three-Sided Mirror", year = Some(1927))) shouldBe true
-    PosterEvidence.datedApart(show, IdentityMeasures.Film("Weihnachten mit den Drei Herren", year = Some(2026))) shouldBe false
+    datedApart(show, IdentityMeasures.Film("The Three-Sided Mirror", year = Some(1927))) shouldBe true
+    datedApart(show, IdentityMeasures.Film("Weihnachten mit den Drei Herren", year = Some(2026))) shouldBe false
     // UK "Manhunter - 40th Anniversary": a family's record titled with its own year numbers what editionsApart reads apart
     // from the 40th — no year dates the listing away
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Manhunter - 40th Anniversary"), IdentityMeasures.Film("Manhunter (1986)", year = Some(1986))) shouldBe false
+    datedApart(FilmTable.listing(Multikino, "Manhunter - 40th Anniversary"), IdentityMeasures.Film("Manhunter (1986)", year = Some(1986))) shouldBe false
     // a festival's year beside the work dates the festival: only the pieces naming the film date it
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "O vecech nadprirozených - Von übernatürlichen Dingen | Tschechischer Filmmittwoch | TDKT 2026"),
+    datedApart(FilmTable.listing(Multikino, "O vecech nadprirozených - Von übernatürlichen Dingen | Tschechischer Filmmittwoch | TDKT 2026"),
       IdentityMeasures.Film("O vecech nadprirozených", year = Some(1958))) shouldBe false
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Toddler Club: Disney Junior Cinema Club 2026"),
+    datedApart(FilmTable.listing(Multikino, "Toddler Club: Disney Junior Cinema Club 2026"),
       IdentityMeasures.Film("Disney Junior Cinema Club", year = Some(2024))) shouldBe true
     // a year the film's own title carries is its own, however its record dates it
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "1984"), IdentityMeasures.Film("1984", year = Some(1956))) shouldBe false
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Weihnachten"), IdentityMeasures.Film("Weihnachten", year = Some(1927))) shouldBe false
+    datedApart(FilmTable.listing(Multikino, "1984"), IdentityMeasures.Film("1984", year = Some(1956))) shouldBe false
+    datedApart(FilmTable.listing(Multikino, "Weihnachten"), IdentityMeasures.Film("Weihnachten", year = Some(1927))) shouldBe false
   }
 
   it should "read a whole title as its pieces are read, a bracketed year out, and keep an anniversary's year with its film" in {
     val casablanca = IdentityMeasures.Film("Casablanca", year = Some(1942))
     // the year a screening is billed in, bracketed, alone as within a title in pieces
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Casablanca (2026)"), casablanca) shouldBe false
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Casablanca (2026) | Klassiker"), casablanca) shouldBe false
+    datedApart(FilmTable.listing(Multikino, "Casablanca (2026)"), casablanca) shouldBe false
+    datedApart(FilmTable.listing(Multikino, "Casablanca (2026) | Klassiker"), casablanca) shouldBe false
     // the year the film's fiftieth anniversary falls in
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Jaws 50th Anniversary 2025"), IdentityMeasures.Film("Jaws", year = Some(1975))) shouldBe false
+    datedApart(FilmTable.listing(Multikino, "Jaws 50th Anniversary 2025"), IdentityMeasures.Film("Jaws", year = Some(1975))) shouldBe false
     // …but no other year an anniversary bills
-    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Jaws 50th Anniversary 2025"), IdentityMeasures.Film("Jaws", year = Some(1995))) shouldBe true
+    datedApart(FilmTable.listing(Multikino, "Jaws 50th Anniversary 2025"), IdentityMeasures.Film("Jaws", year = Some(1995))) shouldBe true
     PosterEvidence.datingApart(FilmTable.listing(Multikino, "Weihnachten mit den Drei Herren 2026"),
       IdentityMeasures.Film("The Three-Sided Mirror", year = Some(1927))) shouldBe Some(2026)
   }

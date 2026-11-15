@@ -110,8 +110,7 @@ sealed abstract class City(
   def country: Country                         = Country.of(this)
   lazy val cinemaSet: Set[Cinema]              = cinemas.toSet
   def cinemaDisplayNames: Seq[String]          = cinemas.map(_.displayName)
-  /** Display-name → pill-name for this city's cinemas — the per-city
-   *  counterpart of `Cinema.pillMap`, for `_sharedJsConfig`. */
+  /** Display-name → pill-name for this city's cinemas, for `_sharedJsConfig`. */
   def cinemaPillMap: Map[String, String]       = cinemas.map(c => c.displayName -> c.pillName).toMap
 }
 

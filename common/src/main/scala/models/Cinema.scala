@@ -1050,8 +1050,6 @@ object Cinema {
 
   lazy val all: Seq[Cinema] = byCity.flatMap(_._2)
 
-  lazy val pillMap: Map[String, String] = all.map(c => c.displayName -> c.pillName).toMap
-
   /** Resolve a cinema from the `displayName` it is stored under — the wire key
    *  every per-cinema row uses (`movie_slots`, `screenings`, `cinema_scrapes`).
    *  Unambiguous by construction: `GermanRoster` qualifies any generated venue

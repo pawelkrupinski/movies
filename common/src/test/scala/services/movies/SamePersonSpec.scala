@@ -80,23 +80,4 @@ class SamePersonSpec extends AnyFlatSpec with Matchers {
     SamePerson.tokens("王家衛") shouldBe empty
     SamePerson("王家衛", "Wong Kar Wai") shouldBe false
   }
-
-  "withoutMiddleNames" should "drop the middle names of a three-token credit" in {
-    SamePerson.withoutMiddleNames("David Kerrick Hand") shouldBe Some("David Hand")
-  }
-
-  it should "drop a generational suffix before taking first and last" in {
-    SamePerson.withoutMiddleNames("David G. Derrick Jr.") shouldBe Some("David Derrick")
-  }
-
-  it should "not shorten a two-name credit, with or without a suffix" in {
-    // "Robert Downey Jr." minus its suffix is his father.
-    SamePerson.withoutMiddleNames("Robert Downey Jr.") shouldBe None
-    SamePerson.withoutMiddleNames("Robert Downey") shouldBe None
-  }
-
-  it should "not shorten across a nobiliary particle" in {
-    SamePerson.withoutMiddleNames("Lars von Trier") shouldBe None
-    SamePerson.withoutMiddleNames("Lars Von Trier") shouldBe None
-  }
 }

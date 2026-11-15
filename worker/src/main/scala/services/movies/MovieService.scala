@@ -167,8 +167,8 @@ class MovieService(
     // TMDB's English release title (en-US `title`, via the same `details` call
     // MC/RT use). For a non-Latin-original film whose Polish `title` and
     // `originalTitle` both differ from the English title a cinema lists it under
-    // ("Left-Handed Girl"), this is the alias that folds the English-keyed
-    // duplicate onto the Polish-titled row — see `MovieRecord.tmdbTitleAliases`.
+    // ("Left-Handed Girl"), this is the title a cinema's English listing names it by
+    // (see `SourceData.englishTitle`).
     val englishTitle = tmdb.englishTitle(tmdbId).orElse(existingTmdbSlot.englishTitle)
     // Where the film stands in each of the row's listing titles' own yearless TMDB searches —
     // the identity evidence the rating gate scores (`StoredIdentityConfidence`). Kept while the

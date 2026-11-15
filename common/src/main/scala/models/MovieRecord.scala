@@ -205,25 +205,6 @@ case class MovieRecord(
     )
   }
 
-  /** This record reduced to ONLY what the cinemas scraped — every TMDB/IMDb/Filmweb
-   *  slot dropped and every resolved-identity / rating / external-URL field cleared.
-   *  The operator's forced re-enrich resets to this BEFORE re-resolving so the TMDB
-   *  lookup runs off scraped data alone (the cinema-reported year + titles), never the
-   *  previously-resolved data — escaping a row self-locked on a wrong film whose
-   *  TMDB-derived year (and id) keep re-confirming the same wrong match. `releaseYear`
-   *  then falls back to the cinema slot (TMDB's `tmdbYear` is gone), so the row re-keys
-   *  onto the scraped year. The `EnrichmentReaper` re-runs every rating refresher after,
-   *  so the cleared ratings repopulate against the now-correct identity. Cinema-side
-   *  state (the cinema slots, their retained synopses) is preserved. */
-  def scrapedOnly: MovieRecord = copy(
-    imdbId = None, imdbRating = None, metascore = None,
-    filmwebUrl = None, filmwebRating = None, rottenTomatoes = None,
-    tmdbId = None, metacriticUrl = None, rottenTomatoesUrl = None,
-    searchTitle = None, tmdbAttempt = None,
-    data             = data.filter { case (source, _) => Source.cinemaOf(source).isDefined },
-    retainedSynopses = retainedSynopses.filter { case (source, _) => Source.cinemaOf(source).isDefined }
-  )
-
   /** Cities whose cinemas currently screen this film, in `City.all` order.
    *  Empty when no listed cinema maps to a city (a stored row with no live
    *  showtimes). The debug page lists the global corpus but the /film page is
@@ -317,21 +298,6 @@ case class MovieRecord(
   /** TMDB-resolved original (production-language) title. None when TMDB
    *  hasn't filled this row yet. */
   def originalTitle: Option[String] = data.get(Tmdb).flatMap(_.originalTitle)
-
-  /** The titles by which TMDB knows this film: its Polish title, its original
-   *  (production-language) title, and its English release title. A film a cinema
-   *  lists under its original/English title ("Tangled", "Left-Handed Girl") is
-   *  the SAME film as the Polish-keyed row ("Zaplątani") — its key matches one of
-   *  these aliases — so the identity projection folds the two
-   *  onto one row. The English title matters when `originalTitle` is non-Latin
-   *  (Taiwanese, Korean, …) and so doesn't itself match the cinema's English
-   *  listing. A decorated edition (dub / "+ Kinoteka dla rodziców") adds words
-   *  beyond any alias, so it never matches HERE; it reaches the film's row through
-   *  `TitleContainment` instead (the settle edge and the scrape-time gate), keeping
-   *  its own slot title for the read model to render as its own card. Empty until
-   *  TMDB resolves. */
-  def tmdbTitleAliases: Set[String] =
-    data.get(Tmdb).toSet.flatMap((sd: SourceData) => Set(sd.title, sd.originalTitle, sd.englishTitle).flatten)
 
   /** Every poster URL we know about, de-duplicated, in source-priority order
    *  — Multikino, the rest of `Cinema.all`, then `Tmdb`, then `Imdb` — except

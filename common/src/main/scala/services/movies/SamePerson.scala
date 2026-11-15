@@ -66,31 +66,9 @@ object SamePerson {
     joinedMatch(a.mkString, b.mkString) || covers(a, b) || covers(b, a) ||
       sameFamiliarForm(a, b) || DirectorAliases.sameDirector(a.mkString, b.mkString)
 
-  /** Honorific / generational suffixes, dropped before a credit is compared or
-   *  shortened so they cannot pose as the surname. */
+  /** Honorific / generational suffixes, dropped before a credit is compared so they
+   *  cannot pose as the surname. */
   val Suffixes: Set[String] = Set("jr", "sr", "ii", "iii", "iv")
-
-  /** Nobiliary and patronymic particles: a middle word that belongs to the SURNAME
-   *  rather than being a middle name, so shortening across it renames the person. */
-  val Particles: Set[String] = Set(
-    "von", "van", "de", "del", "della", "der", "den", "di", "da", "dos", "das",
-    "du", "la", "le", "el", "al", "bin", "ibn", "ben", "af", "av", "ter", "te", "zu")
-
-  /** "David Kerrick Hand" as "David Hand" — the first and last of three or more
-   *  SUFFIX-FREE tokens, the working form TMDB tends to hold where a venue writes
-   *  the name in full. Fewer than three has no middle name to drop, and MUST not be
-   *  shortened: "Robert Downey Jr." minus its suffix is "Robert Downey", his FATHER,
-   *  whom TMDB ranks first because he is a director. Never across a nobiliary
-   *  particle either: "Lars von Trier" shortened to "Lars Trier" is a different
-   *  person if TMDB has one at all. None when there is nothing safe to drop. */
-  def withoutMiddleNames(name: String): Option[String] = {
-    val words = name.split("\\s+").filter(_.nonEmpty)
-    val core  = words.filterNot(w => Suffixes.contains(foldWord(w)))
-    Option.when(core.length >= 3)(s"${core.head} ${core.last}")
-      .filterNot(_ => core.tail.dropRight(1).exists(w => Particles.contains(foldWord(w))))
-  }
-
-  private def foldWord(word: String): String = word.toLowerCase(Locale.ROOT).stripSuffix(".")
 
   /** Letters NFD leaves alone because they are distinct letters rather than an
    *  accented base, so `deburr` passes them through and the ASCII split would

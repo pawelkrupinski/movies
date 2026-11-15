@@ -219,10 +219,7 @@ object PosterEvidence {
    *  pieces are ([[services.billing.BillingParse.pieces]]), its seasons and bracketed years out: "Casablanca (2026)" brackets the
    *  year it is screened, as "Casablanca (2026) | Klassiker" does. Nor does the year an anniversary the title bills
    *  falls in ("Jaws 50th Anniversary 2025", the 1975 film's fiftieth) date it away. The agreement's guard
-   *  ([[services.identity.agreement.Agreement.agreed]]); [[editionsApart]] is the fill's. */
-  def datedApart(listing: Listing, film: IdentityMeasures.Film): Boolean = datingApart(listing, film).isDefined
-
-  /** The year the listing's title bills that dates it away from the film ([[datedApart]]), if one does. */
+   *  ([[services.identity.agreement.Agreement.agreed]]); [[editionsApart]] is the fill's. That year, if one does. */
   def datingApart(listing: Listing, film: IdentityMeasures.Film): Option[Int] = film.year.flatMap { released =>
     val named = film.titles.map(TitleContainment.tokens).filter(_.nonEmpty)
     lazy val anniversary = IdentityMeasures.anniversaryOf(Seq(listing.rawTitle, listing.title) ++ listing.originalTitle)

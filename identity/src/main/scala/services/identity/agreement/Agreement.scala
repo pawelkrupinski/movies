@@ -258,7 +258,7 @@ object Agreement {
    *  names it ([[namesIt]]) — and, where leans or corroboration complete the quorum, is no other film's own
    *  ([[anothersOwnTitle]]); its billing names no namesake's director instead of its own ([[billsAnothersDirector]]); the
    *  listing bills one work ([[ListingShape.billsSeveral]]) and no stage work ([[ListingShape.stagesAWork]]); and no year its
-   *  title bills dates it away from a taker's record ([[PosterEvidence.datedApart]]: DE "Weihnachten mit den Drei Herren
+   *  title bills dates it away from a taker's record ([[PosterEvidence.datingApart]]: DE "Weihnachten mit den Drei Herren
    *  2026", a band's Christmas show, is no 1927 "The Three-Sided Mirror" its feed's original title searched), nor does
    *  the venue's own running time run well short of it ([[runsShort]]). The
    *  experiment's one wrong without the title guard: "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor"

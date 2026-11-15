@@ -27,10 +27,11 @@ case class SourceData(
   rawTitle:       Option[String]  = None,
   originalTitle:  Option[String]  = None,
   // TMDB's English release title (the en-US `title`, via `TmdbClient.englishTitle`).
-  // Tmdb slot only; `None` on cinema/Imdb slots. Captured so a film whose Polish
+  // Tmdb slot only; `None` on cinema/Imdb slots. Captured for a film whose Polish
   // `title` and non-Latin `originalTitle` both differ from the English title a
-  // cinema lists it under ("Left-Handed Girl") still folds onto one row — see
-  // `MovieRecord.tmdbTitleAliases`.
+  // cinema lists it under ("Left-Handed Girl"): one of the titles its resolved
+  // candidate is known by (`Candidate.fromSlot`), a spelling the read model
+  // searches it by, and what the English rating sites are searched with.
   englishTitle:   Option[String]  = None,
   synopsis:       Option[String]  = None,
   cast:           Seq[String]     = Seq.empty,
