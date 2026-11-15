@@ -467,8 +467,12 @@ done
 
 # keep this run's times: the cache's other rows stay, these replace theirs; written aside and renamed into place
 if [ -s "$work/seconds.tsv" ] && mkdir -p "$(dirname "$durations_file")" 2>/dev/null; then
-  { awk -F'\t' 'FILENAME == ARGV[1] { seen[$1] = 1; print; next } !($1 in seen)' "$work/seconds.tsv" "$durations_file" 2>/dev/null \
-      || cat "$work/seconds.tsv"; } > "$work/durations.new" 2>/dev/null
+  # (no cache yet: this run's alone -- awk printing them and then failing on the missing file wrote each row twice)
+  if [ -f "$durations_file" ]; then
+    awk -F'\t' 'FILENAME == ARGV[1] { seen[$1] = 1; print; next } !($1 in seen)' "$work/seconds.tsv" "$durations_file"
+  else
+    cat "$work/seconds.tsv"
+  fi > "$work/durations.new" 2>/dev/null
   tmp=$(mktemp "$durations_file.XXXXXX" 2>/dev/null) && cp "$work/durations.new" "$tmp" && mv "$tmp" "$durations_file" || true
 fi
 LC_ALL=C sort -k3 "$work/table"

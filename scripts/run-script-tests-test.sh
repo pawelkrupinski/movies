@@ -191,6 +191,8 @@ order() { : > "$work/ord.log"; ORD_LOG="$work/ord.log" run --jobs 1 scripts/ord 
 export RUN_SCRIPT_TESTS_DURATIONS="$work/durations.tsv"
 rm -f "$RUN_SCRIPT_TESTS_DURATIONS"
 check "no recorded times: the larger file first, then by path" "d-test.sh a-test.sh b-test.sh c-test.sh" "$(order)"
+check "...and the first run's record holds each test once (no cache file to merge with yet)" "4 4" \
+  "$(wc -l < "$RUN_SCRIPT_TESTS_DURATIONS" | tr -d ' ') $(cut -f1 "$RUN_SCRIPT_TESTS_DURATIONS" | sort -u | wc -l | tr -d ' ')"
 printf '%s\t%s\n' scripts/ord/a-test.sh 5 scripts/ord/b-test.sh 90 scripts/ord/c-test.sh 40 scripts/ord/gone-test.sh 7 > "$RUN_SCRIPT_TESTS_DURATIONS"
 check "recorded times: the slowest first, a test with none before them all" "d-test.sh b-test.sh c-test.sh a-test.sh" "$(order)"
 check "...a run records what its tests took, keeping the rows of tests it did not run" "4 1 1" \
