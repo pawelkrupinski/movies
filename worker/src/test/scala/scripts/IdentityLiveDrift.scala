@@ -22,7 +22,11 @@ import java.nio.file.{Files, Path}
  *    own whole resolve), answered as the worker answers its model: prod's TMDB store, venue pages and question memory
  *    first, the recording's live answers only where the worker would ask live ([[tools.ProdLookupInputs.lookups]]). All
  *    of it as the recording captured it at its moment ([[tools.ProdIdentityInputs]], [[tools.ProdListings]],
- *    [[tools.ProdLookupInputs]]); the capture (`--families`) lends only what prod's answers lack.
+ *    [[tools.ProdLookupInputs]]); the capture (`--families`) lends only what prod's answers lack. Then, as prod's projection
+ *    does last ([[modules.wiring.IdentityProjectionWiring]]), every take a hand judgement calls wrong is withdrawn
+ *    ([[services.identity.TakeJudgements.withdraw]], [[asServed]]): prod serves no film there, so a whole resolve that
+ *    takes the judged-wrong film is no drift (2026-11-14: ES's five mk2 "Pavarotti 90th" listings, withdrawn in prod the
+ *    day the judgement landed, held IdentityIncrementalDrift on for days; DE's Lauras Stern, The Jailbreakers, ...).
  *
  * What the whole side still reads otherwise than the worker did is named in the TSV's header and the JSON's `inputs`
  * ([[Differences]]), never left implicit. A recording without prod's inputs, or a `--families` file that is not there,
@@ -111,6 +115,11 @@ object IdentityLiveDrift {
                  normalizer: TitleNormalizer): Seq[services.identity.Listing] =
     billed ++ services.identity.ListingRetention.retained(recorded, billed, normalizer)
 
+  /** The decisions prod's projection serves of `resolution`: each take a hand judgement in `judged` calls wrong withdrawn,
+   *  the projection's own last step (`TakeJudgements.withdraw` over `BundledJudgements`, IdentityProjectionWiring). */
+  def asServed(resolution: Resolution, judged: TakeJudgements.Index): Map[ListingKey, ResolverDecision] =
+    TakeJudgements.withdraw(resolution, judged).decisionOf
+
   def compare(listings: Seq[(ListingKey, Seq[String])], live: Map[String, Option[Int]], whole: Map[ListingKey, ResolverDecision]): Report = {
     val joined = listings.flatMap { case (key, slots) =>
       for { slot <- slots.find(live.contains); decision <- whole.get(key) } yield (key, slot, decision)
@@ -145,7 +154,8 @@ object IdentityLiveDrift {
       "live asks" -> ("the recording's answer where the worker would ask TMDB or IMDb live (prod's store holding none, its question " +
         "memory having the question due), and a candidate's cast and overview, which only the agreement stage reads whole"),
       "agreement questions" -> "a family question prod filed no answer to is asked of the recording's sites until the stage settles, not after the queue's backoff",
-      "clock" -> "the recording's moment, the capture's within minutes of it")
+      "clock" -> "the recording's moment, the capture's within minutes of it",
+      "judgements" -> "this checkout's identity-judgements.tsv withdraws the takes it calls wrong, prod's worker its build's")
   }
 
   def main(args: Array[String]): Unit = {
@@ -186,9 +196,11 @@ object IdentityLiveDrift {
     val answering = IdentityDrift.WholeLookups(
       ProdLookupInputs.lookups(held, prodLookups.pages, reads.enrichers, IdentityDrift.memo(reads), country, clock), new TmdbStore(held, clock).foundFirst)
     // prod's filed answers alone first: the asking resolve files what it asks, which this one must not read
-    val filedOnly = IdentityDrift.whole(reads, listings, clock, answering, ask = false).decisionOf
-    val whole     = IdentityDrift.whole(reads, listings, clock, answering)
-    val compared  = compare(slots, liveBySlot(ProdFilms.readFrom(prodFilms)), whole.decisionOf)
+    // both served as prod's projection serves a resolve: the takes a hand judgement calls wrong withdrawn
+    val judged    = modules.wiring.BundledJudgements.index(country.code)
+    val filedOnly = asServed(IdentityDrift.whole(reads, listings, clock, answering, ask = false), judged)
+    val whole     = asServed(IdentityDrift.whole(reads, listings, clock, answering), judged)
+    val compared  = compare(slots, liveBySlot(ProdFilms.readFrom(prodFilms)), whole)
     val report    = compared.copy(drifted = compared.drifted.map(d => d.copy(filedOnly = filedOnly.get(d.listing))))
     Files.createDirectories(o.out)
     Files.writeString(o.out.resolve(s"live-drift-${country.code}.tsv"),

@@ -54,6 +54,27 @@ class IdentityLiveDriftSpec extends AnyFlatSpec with Matchers with ScratchDirect
       .drifted shouldBe empty
   }
 
+  // 2026-11-14..15: ES's five mk2 "Pavarotti 90th – the Grand Tribute 26-27" listings, judged wrong as tmdb 1767032 on
+  // 11-13 and withdrawn by prod's projection that day, held IdentityIncrementalDrift on as "gained" for days: the whole
+  // resolve took the judged-wrong film and the check never withdrew it as the projection does.
+  "asServed" should "withdraw a take a hand judgement calls wrong, as prod's projection serves it, and leave the others" in {
+    val cadiz   = key("mk2 Bahía de Cádiz", "Pavarotti 90th – the Grand Tribute 26-27")
+    val ingenio = key("mk2 El Ingenio", "Pavarotti 90th – the Grand Tribute 26-27")
+    val resolved = services.identity.Resolution(Seq(
+      ResolverDecision(Seq(cadiz, ingenio), Some(1767032), 0.99, ResolverDecision.Basis.OwnMatch, Seq("segment-top-hit"))(),
+      decision(muza, Some(238))), 2, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val judged = new services.identity.TakeJudgements.Index(Seq(
+      services.identity.TakeJudgements.Judgement("es", "*", "Pavarotti 90th – the Grand Tribute 26-27", "tmdb:1767032", right = false)))
+    val served = IdentityLiveDrift.asServed(resolved, judged)
+    served(cadiz).film shouldBe None
+    served(ingenio).basis shouldBe ResolverDecision.Basis.Withdrawn
+    served(muza).film shouldBe Some(238)
+    val slots = Seq(cadiz -> Seq("cadiz|pavarotti"), ingenio -> Seq("ingenio|pavarotti"), muza -> Seq("muza|oc"))
+    val prod  = Map("cadiz|pavarotti" -> None, "ingenio|pavarotti" -> None, "muza|oc" -> Some(238))
+    IdentityLiveDrift.compare(slots, prod, served).drifted shouldBe empty
+    IdentityLiveDrift.compare(slots, prod, resolved.decisionOf).drifted.map(_.kind).distinct shouldBe Seq(TakeChange.Kind.Gained.label)
+  }
+
   "liveBySlot" should "keep a slot only while one of prod's films names it" in {
     val films = Seq(ProdFilm("a", "rose|", Some(1176962), None, None, Set.empty, Seq("helios|rose", "muza|rose")),
       ProdFilm("b", "rose|2025", None, None, None, Set.empty, Seq("muza|rose")))
