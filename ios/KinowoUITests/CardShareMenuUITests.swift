@@ -8,6 +8,14 @@ import XCTest
 /// a hold anywhere — including on a pill — popped the share menu over the room.
 ///
 /// Mirrors the Android `FilmCardShareMenuTest`.
+///
+/// The hold is `holdSeconds`, well past the context menu's ~0.5 s threshold:
+/// the long-press recognizer fails when the touch-up is handled before its
+/// timer fires, so a main-thread stall at touch-down longer than the hold's
+/// margin over 0.5 s turns the hold into a TAP, which opens the film detail.
+/// A 0.7 s hold left 0.2 s: the first touch on a just-booted Simulator stalled
+/// longer (Order independence #74, the class run alone and first after the
+/// boot: the grid stayed ~6 s after the press, then the detail opened).
 @MainActor
 final class CardShareMenuUITests: XCTestCase {
     var app: XCUIApplication!
@@ -32,7 +40,7 @@ final class CardShareMenuUITests: XCTestCase {
         // `PosterFullScreenUITests` uses to hit the poster region.
         firstFilmCard()
             .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.18))
-            .press(forDuration: 0.7)
+            .press(forDuration: Self.holdSeconds)
 
         XCTAssertTrue(shareMenuItem().waitForExistence(timeout: 5),
                       "Long-pressing the poster should open the share menu")
@@ -44,13 +52,16 @@ final class CardShareMenuUITests: XCTestCase {
         // region is for the pills' own room tooltip / booking links.
         firstFilmCard()
             .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.78))
-            .press(forDuration: 0.7)
+            .press(forDuration: Self.holdSeconds)
 
         XCTAssertFalse(shareMenuItem().waitForExistence(timeout: 2),
                        "Long-pressing the showtimes must not open the card share menu")
     }
 
     // MARK: - helpers
+
+    /// See the class doc: a hold that survives a 1.5 s stall at touch-down.
+    private static let holdSeconds: TimeInterval = 2.0
 
     /// The share entry of the card's `.contextMenu`, surfaced as a button while
     /// the menu is open. Addressed by identifier, not label — the label is
