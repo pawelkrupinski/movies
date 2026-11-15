@@ -85,6 +85,8 @@
 		DD00000000000000005EA2 /* SearchDayUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000005EA2 /* SearchDayUITests.swift */; };
 		DD00000000000000000F01 /* LocalizationUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000F01 /* LocalizationUITests.swift */; };
 		DD00000000000000000F02 /* FixtureLaunch.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000F02 /* FixtureLaunch.swift */; };
+		DD00000000000000000F40 /* FixtureServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000F40 /* FixtureServer.swift */; };
+		DD00000000000000000F41 /* repertoire-warszawa.json in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000F41 /* repertoire-warszawa.json */; };
 		DD00000000000000000D01 /* DeepLinkUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000D01 /* DeepLinkUITests.swift */; };
 		DD00000000000000000C01 /* CardsVisibleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000C01 /* CardsVisibleUITests.swift */; };
 		DD00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift */; };
@@ -220,6 +222,8 @@
 		CC00000000000000005EA2 /* SearchDayUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchDayUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000F01 /* LocalizationUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000F02 /* FixtureLaunch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureLaunch.swift; sourceTree = "<group>"; };
+		CC00000000000000000F40 /* FixtureServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixtureServer.swift; sourceTree = "<group>"; };
+		CC00000000000000000F41 /* repertoire-warszawa.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "repertoire-warszawa.json"; sourceTree = "<group>"; };
 		CC00000000000000000D01 /* DeepLinkUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000C01 /* CardsVisibleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardsVisibleUITests.swift; sourceTree = "<group>"; };
 		CC00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaySwipeCardsVisibleUITests.swift; sourceTree = "<group>"; };
@@ -450,6 +454,8 @@
 				CC00000000000000005EA2 /* SearchDayUITests.swift */,
 				CC00000000000000000F01 /* LocalizationUITests.swift */,
 				CC00000000000000000F02 /* FixtureLaunch.swift */,
+				CC00000000000000000F40 /* FixtureServer.swift */,
+				CC00000000000000000F41 /* repertoire-warszawa.json */,
 				CC00000000000000000D01 /* DeepLinkUITests.swift */,
 				CC00000000000000000C01 /* CardsVisibleUITests.swift */,
 				CC00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift */,
@@ -505,6 +511,7 @@
 			buildPhases = (
 				AA00000000000000000021 /* Sources */,
 				AA00000000000000000022 /* Frameworks */,
+				AA00000000000000000F42 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -558,6 +565,14 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		AA00000000000000000F42 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DD00000000000000000F41 /* repertoire-warszawa.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		AA00000000000000000005 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -673,6 +688,7 @@
 				DD00000000000000005EA2 /* SearchDayUITests.swift in Sources */,
 				DD00000000000000000F01 /* LocalizationUITests.swift in Sources */,
 				DD00000000000000000F02 /* FixtureLaunch.swift in Sources */,
+				DD00000000000000000F40 /* FixtureServer.swift in Sources */,
 				DD00000000000000000D01 /* DeepLinkUITests.swift in Sources */,
 				DD00000000000000000C01 /* CardsVisibleUITests.swift in Sources */,
 				DD00000000000000000C02 /* DaySwipeCardsVisibleUITests.swift in Sources */,

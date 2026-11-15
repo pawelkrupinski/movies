@@ -1,0 +1,1506 @@
+[
+ {
+  "title": "Nasza rewolucja",
+  "slug": "nasza-rewolucja",
+  "searchTitles": [
+   "Our Revolution"
+  ],
+  "fallbackPosterURLs": [],
+  "runtimeMinutes": 126,
+  "releaseYear": 2026,
+  "genres": [
+   "Dramat",
+   "Historyczny",
+   "Romans"
+  ],
+  "ageRating": "13",
+  "ratings": {
+   "imdb": 6.5,
+   "imdbURL": "https://www.imdb.com/title/tt35571123/",
+   "metacriticURL": "https://www.metacritic.com/search/Nasza+rewolucja/?category=2",
+   "rottenTomatoesURL": "https://www.rottentomatoes.com/m/our_revolution",
+   "filmweb": 6.3,
+   "filmwebURL": "https://www.filmweb.pl/film/Nasza+rewolucja-2026-10065018"
+  },
+  "countries": [
+   "Polska"
+  ],
+  "directors": [
+   "Piotr Domalewski"
+  ],
+  "cast": [
+   "Arkadiusz Jakubik",
+   "Magdalena Popławska",
+   "Jacek Koman",
+   "Jakub Jakubik",
+   "Andrzej Andrzejewski",
+   "Agnieszka Przepiórska",
+   "Anna Ilczuk",
+   "Krzysztof Zarzecki"
+  ],
+  "showings": [
+   {
+    "date": "DAY+0",
+    "label": "DAY+0",
+    "cinemas": [
+     {
+      "cinema": "Multikino Młociny",
+      "cinemaURL": "https://www.multikino.pl/filmy/nasza-rewolucja",
+      "showtimes": [
+       {
+        "time": "11:50",
+        "format": "2D",
+        "room": "Sala 4",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0040/HO00002790/115332"
+       },
+       {
+        "time": "14:40",
+        "format": "2D",
+        "room": "Sala 4",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0040/HO00002790/116131"
+       }
+      ]
+     },
+     {
+      "cinema": "Multikino Targówek",
+      "cinemaURL": "https://www.multikino.pl/filmy/nasza-rewolucja",
+      "showtimes": [
+       {
+        "time": "11:50",
+        "format": "2D",
+        "room": "Sala 11",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0024/HO00002790/125238"
+       },
+       {
+        "time": "14:40",
+        "format": "2D",
+        "room": "Sala 11",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0024/HO00002790/125241"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+1",
+    "label": "DAY+1",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D",
+        "room": "Sala 3 - McDonald’s",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808319?lang=pl"
+       },
+       {
+        "time": "12:50",
+        "format": "2D",
+        "room": "Sala 3 - McDonald’s",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808301?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Multikino Targówek",
+      "cinemaURL": "https://www.multikino.pl/filmy/nasza-rewolucja",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D",
+        "room": "Sala 11",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0024/HO00002790/124641"
+       },
+       {
+        "time": "14:30",
+        "format": "2D",
+        "room": "Sala 11",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0024/HO00002790/125237"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+2",
+    "label": "DAY+2",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D",
+        "room": "Sala 3 - McDonald’s",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808320?lang=pl"
+       },
+       {
+        "time": "12:50",
+        "format": "2D",
+        "room": "Sala 3 - McDonald’s",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808302?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Cinema City Arkadia",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r",
+      "showtimes": [
+       {
+        "time": "10:30",
+        "format": "2D",
+        "room": "Sala 6 - BNP Paribas",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1815608?lang=pl"
+       },
+       {
+        "time": "13:20",
+        "format": "2D",
+        "room": "Sala 6 - BNP Paribas",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1815590?lang=pl"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+3",
+    "label": "DAY+3",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D",
+        "room": "Sala 3 - McDonald’s",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808321?lang=pl"
+       },
+       {
+        "time": "12:50",
+        "format": "2D",
+        "room": "Sala 3 - McDonald’s",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808303?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Cinema City Arkadia",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r",
+      "showtimes": [
+       {
+        "time": "10:30",
+        "format": "2D",
+        "room": "Sala 6 - BNP Paribas",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1815609?lang=pl"
+       },
+       {
+        "time": "13:20",
+        "format": "2D",
+        "room": "Sala 6 - BNP Paribas",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1815591?lang=pl"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+4",
+    "label": "DAY+4",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D",
+        "room": "Sala 3 - McDonald’s",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808322?lang=pl"
+       },
+       {
+        "time": "12:50",
+        "format": "2D",
+        "room": "Sala 3 - McDonald’s",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808304?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Cinema City Arkadia",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/nasza-rewolucja/8607o2r",
+      "showtimes": [
+       {
+        "time": "10:30",
+        "format": "2D",
+        "room": "Sala 6 - BNP Paribas",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1815610?lang=pl"
+       },
+       {
+        "time": "13:20",
+        "format": "2D",
+        "room": "Sala 6 - BNP Paribas",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1815592?lang=pl"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+5",
+    "label": "DAY+5",
+    "cinemas": [
+     {
+      "cinema": "Kino na Boku",
+      "cinemaURL": "https://bok.waw.pl/kino-na-boku/nasza-rewolucja",
+      "showtimes": [
+       {
+        "time": "18:00",
+        "format": "",
+        "bookingURL": "https://iframe17.biletyna.pl/event/view/id/715218"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino Świt",
+      "cinemaURL": "https://dkswit.com.pl/wydarzenia/nasza-rewolucja/",
+      "showtimes": [
+       {
+        "time": "19:00",
+        "format": "",
+        "bookingURL": "https://biletyna.pl/film/Nasza-rewolucja/Warszawa?utm_source=dkswit.com.pl&utm_medium=APIv2&utm_campaign=general"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+6",
+    "label": "DAY+6",
+    "cinemas": [
+     {
+      "cinema": "Kino Cytadela",
+      "cinemaURL": "https://muzhp.pl/kino-film/nasza-rewolucja",
+      "showtimes": [
+       {
+        "time": "12:45",
+        "format": "",
+        "bookingURL": "https://sklep.muzhp.pl/rezerwacja/rezerwacja/numerowane.html?id=19299&idt=bd69f9fa19c9dfaa45b0a6e1edd18328"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino na Boku",
+      "cinemaURL": "https://bok.waw.pl/kino-na-boku/nasza-rewolucja",
+      "showtimes": [
+       {
+        "time": "17:00",
+        "format": "",
+        "bookingURL": "https://iframe17.biletyna.pl/event/view/id/715220"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "genreIds": [
+   "drama",
+   "history",
+   "romance"
+  ]
+ },
+ {
+  "title": "Dziki Koń Dziewięć",
+  "slug": "dziki-kon-dziewiec",
+  "searchTitles": [
+   "Wild Horse Nine"
+  ],
+  "fallbackPosterURLs": [],
+  "runtimeMinutes": 118,
+  "releaseYear": 2026,
+  "genres": [
+   "Komedia",
+   "Kryminał",
+   "Thriller"
+  ],
+  "ageRating": "15",
+  "ratings": {
+   "imdb": 8.1,
+   "imdbURL": "https://www.imdb.com/title/tt15799564/",
+   "metascore": 77,
+   "metacriticURL": "https://www.metacritic.com/movie/wild-horse-nine",
+   "rottenTomatoes": 94,
+   "rottenTomatoesURL": "https://www.rottentomatoes.com/m/wild_horse_nine",
+   "filmweb": 8,
+   "filmwebURL": "https://www.filmweb.pl/film/Dziki+Ko%C5%84+Dziewi%C4%99%C4%87-2026-10075493"
+  },
+  "countries": [
+   "Wielka Brytania",
+   "USA"
+  ],
+  "directors": [
+   "Martin McDonagh"
+  ],
+  "cast": [
+   "Sam Rockwell",
+   "John Malkovich",
+   "Steve Buscemi",
+   "Parker Posey",
+   "Tom Waits",
+   "Mariana di Girolamo"
+  ],
+  "showings": [
+   {
+    "date": "DAY+0",
+    "label": "DAY+0",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Promenada",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "11:20",
+        "format": "2D NAP",
+        "room": "Sala 4",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808229?lang=pl"
+       },
+       {
+        "time": "14:00",
+        "format": "2D NAP",
+        "room": "Sala 4",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1808253?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Cinema City Bemowo",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "11:30",
+        "format": "2D NAP",
+        "room": "Sala 5",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1807654?lang=pl"
+       },
+       {
+        "time": "14:10",
+        "format": "2D NAP",
+        "room": "Sala 5",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1807656?lang=pl"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+1",
+    "label": "DAY+1",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 6 - Komputronik",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1812999?lang=pl"
+       },
+       {
+        "time": "12:40",
+        "format": "2D NAP",
+        "room": "Sala 6 - Komputronik",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1813005?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Cinema City Bemowo",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "11:10",
+        "format": "2D NAP",
+        "room": "Sala 5",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1807720?lang=pl"
+       },
+       {
+        "time": "14:00",
+        "format": "2D NAP",
+        "room": "Sala 5",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1807721?lang=pl"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+2",
+    "label": "DAY+2",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 6 - Komputronik",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1813000?lang=pl"
+       },
+       {
+        "time": "12:40",
+        "format": "2D NAP",
+        "room": "Sala 6 - Komputronik",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1813006?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Cinema City Bemowo",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "11:10",
+        "format": "2D NAP",
+        "room": "Sala 5",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1807790?lang=pl"
+       },
+       {
+        "time": "14:00",
+        "format": "2D NAP",
+        "room": "Sala 5",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1807793?lang=pl"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+3",
+    "label": "DAY+3",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 6 - Komputronik",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1813001?lang=pl"
+       },
+       {
+        "time": "12:40",
+        "format": "2D NAP",
+        "room": "Sala 6 - Komputronik",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1813007?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/dziki-kon-dziewiec/",
+      "showtimes": [
+       {
+        "time": "11:00",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=151b8b0b-56b9-4299-8ff7-46dc38479700&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       },
+       {
+        "time": "17:30",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=ef13701b-2fb5-4dd3-a949-838920beb182&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+4",
+    "label": "DAY+4",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 6 - Komputronik",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1813002?lang=pl"
+       },
+       {
+        "time": "12:40",
+        "format": "2D NAP",
+        "room": "Sala 6 - Komputronik",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1813008?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Cinema City Bemowo",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/dziki-kon-dziewiec/8161s2r",
+      "showtimes": [
+       {
+        "time": "11:10",
+        "format": "2D NAP",
+        "room": "Sala 5",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1807792?lang=pl"
+       },
+       {
+        "time": "14:00",
+        "format": "2D NAP",
+        "room": "Sala 5",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1807795?lang=pl"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+5",
+    "label": "DAY+5",
+    "cinemas": [
+     {
+      "cinema": "Kino Iluzjon",
+      "cinemaURL": "https://www.iluzjon.fn.org.pl/filmy/info/7984/dziki-kon-dziewiec.html",
+      "showtimes": [
+       {
+        "time": "17:30",
+        "format": "",
+        "room": "Mała Czarna"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+6",
+    "label": "DAY+6",
+    "cinemas": [
+     {
+      "cinema": "Kino Iluzjon",
+      "cinemaURL": "https://www.iluzjon.fn.org.pl/filmy/info/7984/dziki-kon-dziewiec.html",
+      "showtimes": [
+       {
+        "time": "15:30",
+        "format": "",
+        "room": "Stolica"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "genreIds": [
+   "comedy",
+   "crime",
+   "thriller"
+  ]
+ },
+ {
+  "title": "Zobaczysz wszystko",
+  "slug": "zobaczysz-wszystko",
+  "searchTitles": [
+   "You Can See Everything"
+  ],
+  "fallbackPosterURLs": [],
+  "runtimeMinutes": 174,
+  "releaseYear": 2026,
+  "genres": [
+   "Dokumentalny"
+  ],
+  "ageRating": "15",
+  "ratings": {
+   "imdb": 9,
+   "imdbURL": "https://www.imdb.com/title/tt45368240/",
+   "metascore": 97,
+   "metacriticURL": "https://www.metacritic.com/movie/you-can-see-everything",
+   "rottenTomatoes": 96,
+   "rottenTomatoesURL": "https://www.rottentomatoes.com/m/you_can_see_everything",
+   "filmweb": 8.3,
+   "filmwebURL": "https://www.filmweb.pl/film/Zobaczysz+wszystko-2026-10133825"
+  },
+  "countries": [
+   "USA"
+  ],
+  "directors": [
+   "Nathan Fielder"
+  ],
+  "cast": [
+   "Elizabeth Holmes",
+   "Nathan Fielder",
+   "Billy Evans",
+   "Amanda Seyfried",
+   "Christopher Abbott"
+  ],
+  "showings": [
+   {
+    "date": "DAY+0",
+    "label": "DAY+0",
+    "cinemas": [
+     {
+      "cinema": "Multikino Młociny",
+      "cinemaURL": "https://www.multikino.pl/filmy/zobaczysz-wszystko",
+      "showtimes": [
+       {
+        "time": "12:20",
+        "format": "2D NAP",
+        "room": "Sala  1",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0040/HO00002997/116069"
+       },
+       {
+        "time": "14:25",
+        "format": "2D NAP",
+        "room": "Sala 3",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0040/HO00002997/116327"
+       }
+      ]
+     },
+     {
+      "cinema": "Multikino Reduta",
+      "cinemaURL": "https://www.multikino.pl/filmy/zobaczysz-wszystko",
+      "showtimes": [
+       {
+        "time": "12:20",
+        "format": "2D NAP",
+        "room": "Sala 6",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0052/HO00002997/80587"
+       },
+       {
+        "time": "16:00",
+        "format": "2D NAP",
+        "room": "Sala 6",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0052/HO00002997/80589"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+1",
+    "label": "DAY+1",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/zobaczysz-wszystko/8661s2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 1 - Sizeer",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1805921?lang=pl"
+       },
+       {
+        "time": "13:40",
+        "format": "2D NAP",
+        "room": "Sala 1 - Sizeer",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1805926?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino Muranów",
+      "cinemaURL": "https://kinomuranow.pl/film/zobaczysz-wszystko",
+      "showtimes": [
+       {
+        "time": "11:00",
+        "format": "",
+        "bookingURL": "https://kinomuranow.pl/tickets/29571/buy"
+       },
+       {
+        "time": "13:00",
+        "format": "",
+        "bookingURL": "https://kinomuranow.pl/tickets/29572/buy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+2",
+    "label": "DAY+2",
+    "cinemas": [
+     {
+      "cinema": "Multikino Reduta",
+      "cinemaURL": "https://www.multikino.pl/filmy/zobaczysz-wszystko",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 2",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0052/HO00002997/80544"
+       },
+       {
+        "time": "12:20",
+        "format": "2D NAP",
+        "room": "Sala 6",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0052/HO00002997/80604"
+       }
+      ]
+     },
+     {
+      "cinema": "Multikino Wola Park",
+      "cinemaURL": "https://www.multikino.pl/filmy/zobaczysz-wszystko",
+      "showtimes": [
+       {
+        "time": "10:15",
+        "format": "2D NAP",
+        "room": "Sala 1",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0025/HO00002997/61949"
+       },
+       {
+        "time": "13:55",
+        "format": "2D NAP",
+        "room": "Sala 1",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0025/HO00002997/61952"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+3",
+    "label": "DAY+3",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/zobaczysz-wszystko/8661s2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 1 - Sizeer",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1805923?lang=pl"
+       },
+       {
+        "time": "13:40",
+        "format": "2D NAP",
+        "room": "Sala 1 - Sizeer",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1805928?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Multikino Reduta",
+      "cinemaURL": "https://www.multikino.pl/filmy/zobaczysz-wszystko",
+      "showtimes": [
+       {
+        "time": "10:05",
+        "format": "2D NAP",
+        "room": "Sala 2",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0052/HO00002997/80519"
+       },
+       {
+        "time": "16:05",
+        "format": "2D NAP",
+        "room": "Sala 6",
+        "bookingURL": "https://www.multikino.pl/rezerwacja-biletow/podsumowanie/0052/HO00002997/80585"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+4",
+    "label": "DAY+4",
+    "cinemas": [
+     {
+      "cinema": "Cinema City Arkadia",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/zobaczysz-wszystko/8661s2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 13 - HBO Max",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1815844?lang=pl"
+       },
+       {
+        "time": "13:10",
+        "format": "2D NAP",
+        "room": "Sala 8 - Tarczyński",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1816865?lang=pl"
+       }
+      ]
+     },
+     {
+      "cinema": "Cinema City Mokotów",
+      "cinemaURL": "https://www.cinema-city.pl/filmy/zobaczysz-wszystko/8661s2r",
+      "showtimes": [
+       {
+        "time": "10:00",
+        "format": "2D NAP",
+        "room": "Sala 1 - Sizeer",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1805924?lang=pl"
+       },
+       {
+        "time": "13:40",
+        "format": "2D NAP",
+        "room": "Sala 1 - Sizeer",
+        "bookingURL": "https://tickets.cinema-city.pl/api/order/1805929?lang=pl"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+5",
+    "label": "DAY+5",
+    "cinemas": [
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/zobaczysz-wszystko/",
+      "showtimes": [
+       {
+        "time": "20:35",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=6f69fe29-c7ea-4892-b517-5e50e56e2280&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+6",
+    "label": "DAY+6",
+    "cinemas": [
+     {
+      "cinema": "KINOMUZEUM",
+      "cinemaURL": "https://artmuseum.pl/wydarzenia/zobaczysz-wszystko",
+      "showtimes": [
+       {
+        "time": "20:00",
+        "format": "",
+        "bookingURL": "https://sklep.artmuseum.pl/rezerwacja/rezerwacja/nienumerowane.html?id=26739&idt=6da7dddc45cee7a38eef9458fe233122"
+       }
+      ]
+     },
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/zobaczysz-wszystko/",
+      "showtimes": [
+       {
+        "time": "20:15",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=ff3a7a7a-88a4-4662-9692-fecd0bd87c8e&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "genreIds": [
+   "documentary"
+  ]
+ },
+ {
+  "title": "Najlepsza owsianka na świecie",
+  "slug": "najlepsza-owsianka-na-swiecie",
+  "searchTitles": [
+   "The Golden Spurtle"
+  ],
+  "fallbackPosterURLs": [],
+  "runtimeMinutes": 75,
+  "releaseYear": 2025,
+  "genres": [
+   "Dokumentalny"
+  ],
+  "ageRating": "13",
+  "ratings": {
+   "imdb": 7.5,
+   "imdbURL": "https://www.imdb.com/title/tt35932869/",
+   "metacriticURL": "https://www.metacritic.com/search/The+Golden+Spurtle/?category=2",
+   "rottenTomatoes": 93,
+   "rottenTomatoesURL": "https://www.rottentomatoes.com/m/the_golden_spurtle",
+   "filmweb": 7.5,
+   "filmwebURL": "https://www.filmweb.pl/film/Najlepsza+owsianka+na+%C5%9Bwiecie-2025-10110275"
+  },
+  "countries": [
+   "Australia",
+   "Wielka Brytania"
+  ],
+  "directors": [
+   "Constantine Costi"
+  ],
+  "cast": [
+   "Ian Bishop",
+   "Adam Kiani",
+   "Charlie Miller",
+   "Lisa Williams",
+   "Toby Wilson"
+  ],
+  "showings": [
+   {
+    "date": "DAY+0",
+    "label": "DAY+0",
+    "cinemas": [
+     {
+      "cinema": "Kino Muranów",
+      "cinemaURL": "https://kinomuranow.pl/film/najlepsza-owsianka-na-swiecie",
+      "showtimes": [
+       {
+        "time": "15:30",
+        "format": "",
+        "bookingURL": "https://kinomuranow.pl/tickets/29649/buy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+1",
+    "label": "DAY+1",
+    "cinemas": [
+     {
+      "cinema": "Kino Muranów",
+      "cinemaURL": "https://kinomuranow.pl/film/najlepsza-owsianka-na-swiecie",
+      "showtimes": [
+       {
+        "time": "15:45",
+        "format": "",
+        "bookingURL": "https://kinomuranow.pl/tickets/29624/buy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+2",
+    "label": "DAY+2",
+    "cinemas": [
+     {
+      "cinema": "Kino Muranów",
+      "cinemaURL": "https://kinomuranow.pl/film/najlepsza-owsianka-na-swiecie",
+      "showtimes": [
+       {
+        "time": "17:30",
+        "format": "",
+        "bookingURL": "https://kinomuranow.pl/tickets/29171/buy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+3",
+    "label": "DAY+3",
+    "cinemas": [
+     {
+      "cinema": "Kino Muranów",
+      "cinemaURL": "https://kinomuranow.pl/film/najlepsza-owsianka-na-swiecie",
+      "showtimes": [
+       {
+        "time": "15:30",
+        "format": "",
+        "bookingURL": "https://kinomuranow.pl/tickets/29174/buy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+4",
+    "label": "DAY+4",
+    "cinemas": [
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/najlepsza-owsianka-na-swiecie/",
+      "showtimes": [
+       {
+        "time": "13:00",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=233ebfe3-27eb-4962-9620-ddb07934fc49&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino U-jazdowski",
+      "cinemaURL": "https://u-jazdowski.pl/kino/repertuar/najlepsza-owsianka-na-swiecie",
+      "showtimes": [
+       {
+        "time": "14:00",
+        "format": "",
+        "bookingURL": "https://u-jazdowski.pl/kino/repertuar/najlepsza-owsianka-na-swiecie-621440022"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+5",
+    "label": "DAY+5",
+    "cinemas": [
+     {
+      "cinema": "Helios Blue City",
+      "cinemaURL": "https://helios.pl/warszawa/kino-helios-blue-city/wydarzenie/najlepsza-owsianka-na-swiecie-kino-konesera-2889",
+      "showtimes": [
+       {
+        "time": "18:00",
+        "format": "2D NAP",
+        "room": "SALA 8",
+        "bookingURL": "https://bilety.helios.pl/screen/4f5695e5-a726-4a12-a82a-f39bb5b9b5f8?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+6",
+    "label": "DAY+6",
+    "cinemas": [
+     {
+      "cinema": "Kino Iluzjon",
+      "cinemaURL": "https://www.iluzjon.fn.org.pl/filmy/info/7990/najlepsza-owsianka-na-swiecie.html",
+      "showtimes": [
+       {
+        "time": "16:00",
+        "format": "",
+        "room": "Stolica"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino U-jazdowski",
+      "cinemaURL": "https://u-jazdowski.pl/kino/repertuar/najlepsza-owsianka-na-swiecie",
+      "showtimes": [
+       {
+        "time": "16:15",
+        "format": "",
+        "bookingURL": "https://u-jazdowski.pl/kino/repertuar/najlepsza-owsianka-na-swiecie"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "genreIds": [
+   "documentary"
+  ]
+ },
+ {
+  "title": "Służący",
+  "slug": "sluzacy",
+  "searchTitles": [
+   "The Servant"
+  ],
+  "fallbackPosterURLs": [],
+  "runtimeMinutes": 115,
+  "releaseYear": 1963,
+  "genres": [
+   "Dramat"
+  ],
+  "ageRating": "16+",
+  "ratings": {
+   "imdb": 7.7,
+   "imdbURL": "https://www.imdb.com/title/tt0057490/",
+   "metascore": 94,
+   "metacriticURL": "https://www.metacritic.com/movie/the-servant",
+   "rottenTomatoes": 90,
+   "rottenTomatoesURL": "https://www.rottentomatoes.com/m/servant",
+   "filmweb": 7.6,
+   "filmwebURL": "https://www.filmweb.pl/film/S%C5%82u%C5%BC%C4%85cy-1963-32557"
+  },
+  "countries": [
+   "Wielka Brytania"
+  ],
+  "directors": [
+   "Joseph Losey"
+  ],
+  "cast": [
+   "Dirk Bogarde",
+   "Sarah Miles",
+   "Wendy Craig",
+   "James Fox",
+   "Catherine Lacey",
+   "Richard Vernon"
+  ],
+  "showings": [
+   {
+    "date": "DAY+0",
+    "label": "DAY+0",
+    "cinemas": [
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/sluzacy/",
+      "showtimes": [
+       {
+        "time": "14:30",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=347abb50-e47f-45c4-8145-ad58815b5507&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino U-jazdowski",
+      "cinemaURL": "https://u-jazdowski.pl/kino/repertuar/sluzacy",
+      "showtimes": [
+       {
+        "time": "20:15",
+        "format": "",
+        "bookingURL": "https://u-jazdowski.pl/kino/repertuar/sluzacy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+1",
+    "label": "DAY+1",
+    "cinemas": [
+     {
+      "cinema": "Kino U-jazdowski",
+      "cinemaURL": "https://u-jazdowski.pl/kino/repertuar/sluzacy",
+      "showtimes": [
+       {
+        "time": "16:15",
+        "format": "",
+        "bookingURL": "https://u-jazdowski.pl/kino/repertuar/sluzacy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+2",
+    "label": "DAY+2",
+    "cinemas": [
+     {
+      "cinema": "Kino U-jazdowski",
+      "cinemaURL": "https://u-jazdowski.pl/kino/repertuar/sluzacy",
+      "showtimes": [
+       {
+        "time": "20:15",
+        "format": "",
+        "bookingURL": "https://u-jazdowski.pl/kino/repertuar/sluzacy"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+3",
+    "label": "DAY+3",
+    "cinemas": [
+     {
+      "cinema": "Kino Muranów",
+      "cinemaURL": "https://kinomuranow.pl/film/sluzacy",
+      "showtimes": [
+       {
+        "time": "17:00",
+        "format": "",
+        "bookingURL": "https://kinomuranow.pl/tickets/29419/buy"
+       }
+      ]
+     },
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/sluzacy/",
+      "showtimes": [
+       {
+        "time": "20:15",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=7f4b2a87-4aa5-4e2a-ba88-d6d03327cf9a&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+4",
+    "label": "DAY+4",
+    "cinemas": [
+     {
+      "cinema": "KINOMUZEUM",
+      "cinemaURL": "https://artmuseum.pl/wydarzenia/sluzacy-2",
+      "showtimes": [
+       {
+        "time": "14:30",
+        "format": "",
+        "bookingURL": "https://sklep.artmuseum.pl/rezerwacja/rezerwacja/nienumerowane.html?id=26713&idt=d63c97a2cbfa477a73f471696f914162"
+       }
+      ]
+     },
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/sluzacy/",
+      "showtimes": [
+       {
+        "time": "15:15",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=0899f9dd-a8f5-4719-91f3-a7eb8b4b7f7b&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+5",
+    "label": "DAY+5",
+    "cinemas": [
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/sluzacy/",
+      "showtimes": [
+       {
+        "time": "15:15",
+        "format": "",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=4d09831b-3dce-49e2-b058-d7c424c43236&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino Iluzjon",
+      "cinemaURL": "https://www.iluzjon.fn.org.pl/filmy/info/1906/sluzacy.html",
+      "showtimes": [
+       {
+        "time": "21:00",
+        "format": "",
+        "room": "Mała Czarna"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+6",
+    "label": "DAY+6",
+    "cinemas": [
+     {
+      "cinema": "Kino Muranów",
+      "cinemaURL": "https://kinomuranow.pl/film/sluzacy",
+      "showtimes": [
+       {
+        "time": "17:00",
+        "format": "",
+        "bookingURL": "https://kinomuranow.pl/tickets/29420/buy"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "genreIds": [
+   "drama"
+  ]
+ },
+ {
+  "title": "Naza",
+  "slug": "naza",
+  "searchTitles": [],
+  "fallbackPosterURLs": [],
+  "runtimeMinutes": 80,
+  "releaseYear": 2026,
+  "genres": [
+   "Dokumentalny"
+  ],
+  "ageRating": "16+",
+  "ratings": {
+   "imdb": 8.4,
+   "imdbURL": "https://www.imdb.com/title/tt44766123/",
+   "metascore": 93,
+   "metacriticURL": "https://www.metacritic.com/movie/naza",
+   "rottenTomatoes": 100,
+   "rottenTomatoesURL": "https://www.rottentomatoes.com/m/naza",
+   "filmweb": 8.1,
+   "filmwebURL": "https://www.filmweb.pl/film/Naza-2026-10133039"
+  },
+  "countries": [
+   "USA",
+   "Wielka Brytania"
+  ],
+  "directors": [
+   "Yuval Abraham"
+  ],
+  "cast": [
+   "Yuval Abraham"
+  ],
+  "showings": [
+   {
+    "date": "DAY+0",
+    "label": "DAY+0",
+    "cinemas": [
+     {
+      "cinema": "KINOkawiarnia Stacja Falenica",
+      "cinemaURL": "https://stacjafalenica.pl/filmy/naza/",
+      "showtimes": [
+       {
+        "time": "16:00",
+        "format": "",
+        "bookingURL": "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=35245"
+       }
+      ]
+     },
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/naza/",
+      "showtimes": [
+       {
+        "time": "19:00",
+        "format": "NAP",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=de9ece4f-40ed-4a8e-a198-b9bb939df6f4&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+1",
+    "label": "DAY+1",
+    "cinemas": [
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/naza/",
+      "showtimes": [
+       {
+        "time": "11:00",
+        "format": "NAP",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=a76a65d4-78d9-44f5-9367-b2d472c98926&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino Luna",
+      "cinemaURL": "https://kinoluna.bilety24.pl/wydarzenie/?id=168194",
+      "showtimes": [
+       {
+        "time": "17:15",
+        "format": "2D NAP",
+        "bookingURL": "https://kinoluna.bilety24.pl/kup-bilety/?id=1017841"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+2",
+    "label": "DAY+2",
+    "cinemas": [
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/naza/",
+      "showtimes": [
+       {
+        "time": "12:00",
+        "format": "NAP",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=d44b7365-013e-4d20-bb34-2177999ee7e2&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       },
+       {
+        "time": "16:30",
+        "format": "NAP",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=627c2b26-8fdf-4312-b134-b12b43103034&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     },
+     {
+      "cinema": "Kino Luna",
+      "cinemaURL": "https://kinoluna.bilety24.pl/wydarzenie/?id=168194",
+      "showtimes": [
+       {
+        "time": "16:30",
+        "format": "2D NAP",
+        "bookingURL": "https://kinoluna.bilety24.pl/kup-bilety/?id=1017848"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+3",
+    "label": "DAY+3",
+    "cinemas": [
+     {
+      "cinema": "Kino Luna",
+      "cinemaURL": "https://kinoluna.bilety24.pl/wydarzenie/?id=168194",
+      "showtimes": [
+       {
+        "time": "13:00",
+        "format": "2D NAP",
+        "bookingURL": "https://kinoluna.bilety24.pl/kup-bilety/?id=1017852"
+       }
+      ]
+     },
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/naza/",
+      "showtimes": [
+       {
+        "time": "13:30",
+        "format": "NAP",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=7219c39f-1906-4297-90c1-00a1ec4f312b&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+4",
+    "label": "DAY+4",
+    "cinemas": [
+     {
+      "cinema": "Kino Luna",
+      "cinemaURL": "https://kinoluna.bilety24.pl/wydarzenie/?id=168194",
+      "showtimes": [
+       {
+        "time": "13:30",
+        "format": "2D NAP",
+        "bookingURL": "https://kinoluna.bilety24.pl/kup-bilety/?id=1017855"
+       }
+      ]
+     },
+     {
+      "cinema": "Kinoteka",
+      "cinemaURL": "https://kinoteka.pl/film/naza/",
+      "showtimes": [
+       {
+        "time": "14:00",
+        "format": "NAP",
+        "bookingURL": "https://bilety.kinoteka.pl/#/screen?screeningId=4e5d0958-28d0-411a-866d-b445bbef4a07&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+5",
+    "label": "DAY+5",
+    "cinemas": [
+     {
+      "cinema": "Kino U-jazdowski",
+      "cinemaURL": "https://u-jazdowski.pl/kino/repertuar/naza",
+      "showtimes": [
+       {
+        "time": "18:30",
+        "format": "",
+        "bookingURL": "https://u-jazdowski.pl/kino/repertuar/naza"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "date": "DAY+6",
+    "label": "DAY+6",
+    "cinemas": [
+     {
+      "cinema": "Kino Iluzjon",
+      "cinemaURL": "https://www.iluzjon.fn.org.pl/filmy/info/7946/naza.html",
+      "showtimes": [
+       {
+        "time": "20:30",
+        "format": "",
+        "room": "Mała Czarna"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "genreIds": [
+   "documentary"
+  ]
+ }
+]

@@ -63,10 +63,23 @@ struct Country: Codable, Hashable {
          timeZone: TimeZone = warsawZone, versionTokens: VersionTokens = .poland) {
         self.code = code
         self.displayName = displayName
-        self.baseURL = baseURL
+        self.baseURL = Self.uiTestServer ?? baseURL
         self.languageCode = languageCode
         self.timeZone = timeZone
         self.versionTokens = versionTokens
+    }
+
+    /// UI-test seam: `KINOWO_UITEST_SERVER` (DEBUG builds only) stands in for EVERY deployment's
+    /// `baseURL`, so the app's real network path -- catalog, repertoire, details -- runs against
+    /// the test runner's own local server instead of production (RepertoireLaunchUITests). Read
+    /// here because every `Country` the app holds is built by this init, from `all` or from a
+    /// catalog row (`CountryDTO.toCountry`). Release builds never read it.
+    static var uiTestServer: URL? {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["KINOWO_UITEST_SERVER"].flatMap(URL.init(string:))
+        #else
+        nil
+        #endif
     }
 
     /// Compile-time FALLBACK registry, used only until the bundled/fetched
