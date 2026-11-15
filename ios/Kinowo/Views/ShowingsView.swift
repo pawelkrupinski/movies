@@ -217,11 +217,15 @@ private struct ShowtimeBadge: View {
     /// Set when the long-press succeeds (≥0.3s) and cleared on release, so
     /// a quick tap never flashes the tooltip.
     ///
-    /// `KINOWO_UITEST_PIN_ROOM_TOOLTIPS=1` starts every pill held, so a UI test
-    /// can read the tooltips' frames: XCUITest only queries after a press ends,
-    /// and the tooltip goes with it. Only this gesture state is stood in for;
-    /// the measuring and clamping are the production path.
+    /// `KINOWO_UITEST_PIN_ROOM_TOOLTIPS=1` (DEBUG builds only) starts every pill
+    /// held, so a UI test can read the tooltips' frames: XCUITest only queries
+    /// after a press ends, and the tooltip goes with it. Only this gesture state
+    /// is stood in for; the measuring and clamping are the production path.
+    #if DEBUG
     @State private var holding = ProcessInfo.processInfo.environment["KINOWO_UITEST_PIN_ROOM_TOOLTIPS"] == "1"
+    #else
+    @State private var holding = false
+    #endif
 
     /// This pill's horizontal centre within the card's content box (the
     /// `cardCoordinateSpace` set on `ShowingsView`). Measured continuously so

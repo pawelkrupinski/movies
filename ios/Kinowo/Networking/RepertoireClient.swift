@@ -233,12 +233,18 @@ final class RepertoireStore {
 
 // MARK: - UI-test fixture hook
 
+// Every `KINOWO_UITEST_*` hook below is compiled into DEBUG builds only, like
+// `Country.uiTestServer`: a release build has no way to swap its listing for a
+// fixture, whatever its launch environment says — the hooks' names are not even
+// in its binary. The release half (the `#else` at the end) is the two members the
+// production path reads, fixed off.
+#if DEBUG
 extension RepertoireStore {
-    /// When `KINOWO_UITEST_FIXTURE=1`, the store serves a deterministic
-    /// in-memory repertoire instead of the network — the grid mounts at first
-    /// paint like a warm cache, independent of real network timing (the live
-    /// repertoire is empty late at night). `false` in every normal run, so the
-    /// production code path is untouched.
+    /// When `KINOWO_UITEST_FIXTURE=1` (DEBUG builds only), the store serves a
+    /// deterministic in-memory repertoire instead of the network — the grid
+    /// mounts at first paint like a warm cache, independent of real network
+    /// timing (the live repertoire is empty late at night). `false` in every
+    /// normal run, so the production code path is untouched.
     static var uiTestFixtureEnabled: Bool {
         ProcessInfo.processInfo.environment["KINOWO_UITEST_FIXTURE"] == "1"
     }
@@ -364,3 +370,10 @@ extension RepertoireStore {
         ]
     }
 }
+#else
+extension RepertoireStore {
+    /// Release builds read no UI-test hook: the network always serves the listing.
+    static let uiTestFixtureEnabled = false
+    static var uiTestFixture: [Film] { [] }
+}
+#endif
