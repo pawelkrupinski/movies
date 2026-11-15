@@ -135,11 +135,14 @@ object ReviewDigest {
 
   private val CardLimit = 3000
 
-  /** The cards (`## ` blocks) of `cards` that name the item's billing and film, joined, as far as a page should show. */
+  /** The cards (`## ` blocks) of `cards` whose header names the item's billing and film, joined, as far as a page should
+   *  show. `scripts/identity-judge-cards` heads each `## <cc> · «<billing>» → <film> <TMDB title>`: the billing whole
+   *  between its guillemets and the film ref whole after the arrow, so «Rose» never takes «Rosemary»'s card nor
+   *  tmdb:846864 tmdb:8468641's, and a body naming the film elsewhere is no match. */
   def judgeCard(cards: String, item: DigestItem): String = {
-    val title = LabelsTsv.normalise(item.rawTitle)
-    val filmId = item.film.render.split(':').last
-    cards.split("\n## ").map(_.trim).filter(b => b.contains(title) && b.contains(filmId)).mkString("\n\n").take(CardLimit)
+    val header = s"«${LabelsTsv.normalise(item.rawTitle)}» → ${item.film.render} "
+    cards.split("\n## ").map(_.trim).filter(_.linesIterator.nextOption().exists(line => (line + " ").contains(header)))
+      .mkString("\n\n").take(CardLimit)
   }
 
   /** The cluster the item's card shows: the item's listing (its venue and billing alone, so an answer labels that listing and

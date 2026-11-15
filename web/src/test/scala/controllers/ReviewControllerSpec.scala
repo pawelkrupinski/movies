@@ -85,7 +85,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
       "\nde\tRaststätte\tLatcho Drom\ttmdb:1247239\tLatcho Drom - Good Road (2024)\t2026-10-23\tlooks wrong: a 19′ short\n")
     val cards = ReviewDigest.judgeCardsPath(labels)
     Files.createDirectories(cards.getParent)
-    Files.writeString(cards, "# cards\n\n## Ruchomy zamek Hauru x tmdb:4935\nsuggested: right, decisive\n\n## Other x tmdb:1\nnot this\n")
+    Files.writeString(cards, "# cards\n\n## pl · «Ruchomy zamek Hauru» → tmdb:4935 Howl's Moving Castle\nsuggested: right, decisive\n\n## pl · «Other» → tmdb:1 Other\nnot this\n")
     val dev = controller(Mode.Dev, labels = labels)
     val agent = contentAsString(dev.agentJudged(None, Some("agent"), 20, false)(FakeRequest()))
     agent should (include("Ruchomy zamek Hauru") and not include "Latcho Drom")

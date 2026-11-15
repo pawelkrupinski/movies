@@ -115,10 +115,16 @@ class ReviewDigestSpec extends AnyFlatSpec with Matchers with tools.ScratchDirec
   }
 
   it should "take from the judge cards the blocks naming its billing and film" in {
-    val cards = "# cards\n\n## Rose x tmdb:846864\nright\n\n## Rose x tmdb:1176962\nwrong\n\n## Blade x tmdb:846864\nother billing"
+    // `scripts/identity-judge-cards`' header: `## <cc> · «<billing>» → <film> <TMDB title>`
+    val cards = "# cards\n\n## de · «Rose» → tmdb:846864 Rose\nright\n\n## de · «Rose» → tmdb:1176962 Rose\nwrong\n\n" +
+      "## de · «Blade» → tmdb:846864 Rose\nother billing, ids tmdb:846864"
     val item  = ReviewDigest.pending(Seq(agentRose), Nil).head
-    ReviewDigest.judgeCard(cards, item) shouldBe "Rose x tmdb:846864\nright"
+    ReviewDigest.judgeCard(cards, item) shouldBe "de · «Rose» → tmdb:846864 Rose\nright"
     ReviewDigest.judgeCard("", item) shouldBe ""
+    // the billing and the film are whole ones of the card's header, never part of a longer one, nor named in its body
+    val lookalikes = cards + "\n\n## de · «Rose» → tmdb:8468641 Rosie\nanother film\n\n## de · «Rosemary» → tmdb:846864 Rose\nanother billing" +
+      "\n\n## de · «Rose» → tmdb:99 Other\nanother film, beside tmdb:846864"
+    ReviewDigest.judgeCard(lookalikes, item) shouldBe "de · «Rose» → tmdb:846864 Rose\nright"
     ReviewDigest.judgeCardsPath(Paths.get("/w/test/resources/fixtures/identity-judgements.tsv")) shouldBe Paths.get("/w/target/identity-judge/cards.md")
     // a labels file near the filesystem root has no checkout above it: no failure, only no cards there
     ReviewDigest.judgeCardsPath(Paths.get("/tmp/identity-judgements.tsv")) shouldBe Paths.get("/target/identity-judge/cards.md")
