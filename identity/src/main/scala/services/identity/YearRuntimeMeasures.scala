@@ -23,21 +23,29 @@ private[identity] object YearRuntimeMeasures {
     }.toMap
   }
 
-  def countryCode(name: String): Option[String] = isoCountryOfKey(key(name))
+  /** The ISO code of a country as a venue spells it: the JDK's table, else a dissolved state's code under one of the
+   *  spellings [[CountryLineage]] names ("Czechoslovakia" → XC, TMDB's own code for it). */
+  def countryCode(name: String): Option[String] = {
+    val k = key(name)
+    isoCountryOfKey(k).orElse(CountryLineage.codeOfKey(k))
+  }
 
   /** The ISO code of a country spelling already turned into a comparison key — what a frozen
    *  measure (`PinnedGateMeasures`) looks a spelling up by under its own key function. */
   private[identity] def isoCountryOfKey(spellingKey: String): Option[String] = isoByName.get(spellingKey)
 
-  /** How a listing's countries relate to the film's, the listing's read through `code`. */
-  def countryRelation(listing: Seq[String], film: Option[Seq[String]], code: String => Option[String] = countryCode): Measure = {
+  /** How a listing's countries relate to the film's, the listing's read through `code`: a match when they `share` one,
+   *  by default a country or its dissolved predecessor or successor ([[CountryLineage.share]]: a venue's "Czechia"
+   *  against TMDB's XC). */
+  def countryRelation(listing: Seq[String], film: Option[Seq[String]], code: String => Option[String] = countryCode,
+                      share: (Set[String], Set[String]) => Boolean = CountryLineage.share): Measure = {
     val own = listing.flatMap(code).toSet
     if (listing.isEmpty) MissingListing
     else if (own.isEmpty) Missing("unmapped")
     else film.map(_.toSet) match {
       case None                => MissingFilm
       case Some(fc) if fc.isEmpty => MissingFilm
-      case Some(fc)            => Category(if ((own intersect fc).nonEmpty) "match" else "mismatch")
+      case Some(fc)            => Category(if (share(own, fc)) "match" else "mismatch")
     }
   }
 

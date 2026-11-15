@@ -1346,6 +1346,30 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     PinnedGateMeasures.countryRelation(Seq("Atlantis"), Some(Seq("FR"))) shouldBe Missing("unmapped")
   }
 
+  "a dissolved state" should "be one country with its successors, never two successors with each other" in {
+    // TMDB codes Chytilová's 1966 "Daisies" XC (Czechoslovakia); MAC Birmingham bills it "Czechia", Rio Dalston
+    // "Czechoslovakia", which the JDK names no code for. Neither is another country than the film's.
+    val daisies = Film("Sedmikrásky", year = Some(1966), countries = Some(Seq("XC")))
+    def country(countries: String*) = IdentityMeasures.listingFilm(Listing("Daisies", countries = countries), daisies, None, 0, 0)("country")
+    country("Czechia") shouldBe Category("match")
+    country("Czechoslovakia") shouldBe Category("match")
+    country("Słowacja") shouldBe Category("match")
+    country("France") shouldBe Category("mismatch")
+    IdentityMeasures.countryRelation(Seq("ZSRR"), Some(Seq("RU"))) shouldBe Category("match")
+    IdentityMeasures.countryRelation(Seq("Ukraine"), Some(Seq("SU"))) shouldBe Category("match")
+    IdentityMeasures.countryRelation(Seq("DDR"), Some(Seq("XG"))) shouldBe Category("match")
+    IdentityMeasures.countryRelation(Seq("Deutschland"), Some(Seq("XG"))) shouldBe Category("match")
+    IdentityMeasures.countryRelation(Seq("Croatia"), Some(Seq("YU"))) shouldBe Category("match")
+    IdentityMeasures.countryRelation(Seq("Serbia"), Some(Seq("CS"))) shouldBe Category("match")
+    // two successors of one state are two countries
+    IdentityMeasures.countryRelation(Seq("Slovakia"), Some(Seq("CZ"))) shouldBe Category("mismatch")
+    IdentityMeasures.countryRelation(Seq("Ukraine"), Some(Seq("RU"))) shouldBe Category("mismatch")
+    IdentityMeasures.countryRelation(Seq("Croatia"), Some(Seq("RS"))) shouldBe Category("mismatch")
+    // the pinned gate's measure, frozen with its artefact, reads no lineage
+    PinnedGateMeasures.countryRelation(Seq("Czechia"), Some(Seq("XC"))) shouldBe Category("mismatch")
+    PinnedGateMeasures.countryRelation(Seq("Czechoslovakia"), Some(Seq("XC"))) shouldBe Missing("unmapped")
+  }
+
   "a director credited in another script" should "be compared in Latin letters, not read as incomparable" in {
     // TMDB credits a film's director in the deployment language's name for them, which is often
     // the native one ("毕赣", "Яков Протазанов"); the venue prints the Latin spelling.

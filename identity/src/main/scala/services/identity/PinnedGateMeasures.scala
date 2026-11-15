@@ -106,8 +106,10 @@ object PinnedGateMeasures {
    *  possessive the live key drops); a spelling's key need not be, so the lookup stays pinned. */
   def countryCode(name: String): Option[String] = YearRuntimeMeasures.isoCountryOfKey(key(name))
 
+  /** The pinned gate's relation: a country in common, no dissolved state's lineage (the live one's
+   *  [[CountryLineage]] came after its artefact was pinned). */
   def countryRelation(listing: Seq[String], film: Option[Seq[String]]): Measure =
-    YearRuntimeMeasures.countryRelation(listing, film, countryCode)
+    YearRuntimeMeasures.countryRelation(listing, film, countryCode, (own, fc) => (own intersect fc).nonEmpty)
 
   private def delta(a: Option[Int], b: Option[Int]): Measure = YearRuntimeMeasures.delta(a, b)
 

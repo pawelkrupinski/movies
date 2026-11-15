@@ -1,0 +1,14 @@
+# A dissolved state and the states that succeeded it — read by services.identity.CountryLineage. Hand-kept.
+# TMDB codes a film made before a dissolution by the state it was made in (Chytilová's 1966 "Daisies" is XC,
+# Czechoslovakia); a venue writes the country it knows today ("Czechia"), or the old state under a name the JDK has no
+# entry for ("Czechoslovakia", "ZSRR", "DDR"). A listing's country and a film's match when one is the other's
+# predecessor or successor — never two successors of one state (CZ is not SK). Columns, tab-separated:
+#   defunct code (TMDB's, else ISO 3166-3)	successor codes (ISO 3166-1, comma-separated)	spellings a venue writes it in (comma-separated)
+# Add a row only for a state that ceased to exist; a region of a living state (TMDB's XI, Northern Ireland) is none.
+XC	CZ,SK	Czechoslovakia,Czechosłowacja,Tschechoslowakei,Checoslovaquia,Tchécoslovaquie,Cecoslovacchia,ČSSR,ČSRS
+SU	RU,UA,BY,GE,AM,AZ,MD,KZ,UZ,KG,TJ,TM,LT,LV,EE	Soviet Union,USSR,ZSRR,Związek Radziecki,Związek Socjalistycznych Republik Radzieckich,Sowjetunion,UdSSR,Unión Soviética,Unión Soviética (URSS),URSS,Union soviétique,Unione Sovietica,CCCP
+YU	RS,HR,SI,BA,MK,ME,XK,CS	Yugoslavia,Jugosławia,Jugoslawien,Yougoslavie,Jugoslavia,SFRJ,SFRY
+CS	RS,ME,XK	Serbia and Montenegro,Serbia i Czarnogóra,Serbien und Montenegro,Serbia y Montenegro,Serbie-et-Monténégro,Serbia e Montenegro
+XG	DE	East Germany,German Democratic Republic,NRD,Niemiecka Republika Demokratyczna,DDR,Deutsche Demokratische Republik,Alemania Oriental,República Democrática Alemana,RDA,Allemagne de l'Est,Germania Est
+DD	DE	
+AN	CW,SX,BQ	Netherlands Antilles,Antyle Holenderskie,Niederländische Antillen,Antillas Neerlandesas,Antilles néerlandaises,Antille olandesi
