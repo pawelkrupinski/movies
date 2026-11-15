@@ -1,0 +1,4 @@
+{
+  "generated": "by `sbt 'worker/Test/runMain deploy.MongoGrantsList'` from models.Country.all; do not edit",
+  "databases": ["kinowo", "kinowo_uk", "kinowo_de", "kinowo_us", "kinowo_es"]
+}

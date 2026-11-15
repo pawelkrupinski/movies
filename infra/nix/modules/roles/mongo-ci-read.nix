@@ -26,7 +26,7 @@
 # outright, exactly as k8s-deploy.nix's comment insists it must.
 #
 # WHAT BOUNDS THE READ ITSELF is not this key but the Mongo user in the credential it hands out:
-# `read` on the three country databases and nothing else. The key opens a pipe to mongod; the
+# `read` on the country databases and nothing else. The key opens a pipe to mongod; the
 # credential decides what may be said down it. Both halves have to be wrong for CI to be able to
 # write to production.
 #
@@ -36,6 +36,8 @@
 
 let
   cfg = config.fleet.mongoCiRead;
+  # Every country's corpus, generated from models.Country.all (MongoGrantsListSpec keeps it current).
+  countryDatabases = (lib.importJSON ../../files/country-databases.json).databases;
 
   endpoint = pkgs.writeShellScript "mongo-ci-read-endpoint" ''
     set -euo pipefail
@@ -116,24 +118,22 @@ in
           db.getSiblingDB("admin").createUser({
             user: "kinowo-ci-corpus",
             pwd: "<the sops value>",
-            roles: [ { role: "read", db: "kinowo"    },
-                     { role: "read", db: "kinowo_uk" },
-                     { role: "read", db: "kinowo_de" },
-                     { role: "read", db: "kinowo_us" },
-                     { role: "read", db: "kinowo_es" } ] })
+            roles: [ ${lib.concatMapStringsSep ", " (db: "{ role: \"read\", db: \"${db}\" }") countryDatabases} ] })
 
-        ONE ROLE PER COUNTRY, and the list has to grow with `Country.all`. It did not when
-        the United States was added, and the failure is quiet in the worst way: the other
-        three countries record fine, the US leg dies with `not authorized on kinowo_us`,
-        and the recorder — correctly — refuses to write a fixture from a read that failed,
-        so what you see is "read came back empty across all 5031 catalogue cinemas". An
-        already-created user is amended rather than recreated:
+        ONE ROLE PER COUNTRY, rendered above from ../../files/country-databases.json, which
+        `sbt 'worker/Test/runMain deploy.MongoGrantsList'` generates from `Country.all`. It once
+        was a hand-written list here, and it did not grow when the United States was added: the
+        other three countries recorded fine, the US leg died with `not authorized on kinowo_us`,
+        and the recorder -- correctly -- refused to write a fixture from a read that failed, so
+        what you saw was "read came back empty across all 5031 catalogue cinemas". An
+        already-created user is amended rather than recreated (scripts/mongo-grants --check
+        lists what prod's users lack):
 
           db.getSiblingDB("admin").grantRolesToUser(
-            "kinowo-ci-corpus", [ { role: "read", db: "kinowo_us" } ])
+            "kinowo-ci-corpus", [ { role: "read", db: "<the new country's database>" } ])
 
-        `ConvergenceLegWiringSpec` pins this list against `Country.all` so a missing grant
-        fails a test rather than a nightly job.
+        `MongoGrantsListSpec` holds the file to `Country.all`, so a missing grant fails a test
+        rather than a nightly job.
       '';
     };
 

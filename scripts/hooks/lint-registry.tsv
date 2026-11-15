@@ -52,7 +52,7 @@ worker:deploy.ConvergenceBisectPermissionsSpec	@repo
 worker:deploy.ConvergenceBisectTriggerSpec	@repo
 worker:deploy.ConvergenceConcurrencyConfigSpec	@repo
 worker:deploy.ConvergenceFillWiringSpec	@repo
-worker:deploy.ConvergenceLegWiringSpec	@repo *.scala infra/nix/modules/roles/mongo-ci-read.nix
+worker:deploy.ConvergenceLegWiringSpec	@repo *.scala
 worker:deploy.ConvergencePublishMainOnlySpec	@repo
 worker:deploy.ConvergenceReuseSpec	@repo
 worker:deploy.ConvergenceRunnerMemorySpec	@repo
@@ -99,7 +99,7 @@ worker:deploy.KickConvergenceWiringSpec	@repo
 worker:deploy.LandingCheckSplitSpec	@repo
 worker:deploy.LegVerdictWiringSpec	@repo
 worker:deploy.MainAfterRedCiSpec	@repo
-worker:deploy.MongoGrantsListSpec	@repo
+worker:deploy.MongoGrantsListSpec	@repo infra/nix/*
 worker:deploy.MongoServerVersionParitySpec	@repo infra/nix/modules/roles/mongodb.nix
 worker:deploy.NoExitStatusReadUnderErrexitSpec	@repo
 worker:deploy.NoSettingFallbackSpec	@repo infra/bin/*

@@ -19,10 +19,27 @@ import services.{CollectionDatabase, FleetDatabase, MongoCollections}
  *    corpus), and nothing else.
  *
  *  Checked in as `scripts/mongo-grants.tsv` so the tool needs no JVM; [[MongoGrantsListSpec]] fails when the
- *  file and the model disagree. Regenerate: `sbt 'worker/Test/runMain deploy.MongoGrantsList'`. */
+ *  file and the model disagree. Regenerate: `sbt 'worker/Test/runMain deploy.MongoGrantsList'`.
+ *
+ *  The same run writes [[CountryDatabasesPath]], every country's corpus database, which the NixOS fleet reads
+ *  (`roles/mongodb-exporter.nix`'s collstats list, `roles/mongo-ci-read.nix`'s grant command): the flake root is
+ *  `infra/`, so it cannot read this file or the model, and its two hand-written copies were the lists a new country
+ *  would silently miss (the US's `not authorized on kinowo_us`). */
 object MongoGrantsList {
 
   val Path = "scripts/mongo-grants.tsv"
+
+  val CountryDatabasesPath = "infra/nix/files/country-databases.json"
+
+  /** Every country's corpus database, in `Country.all`'s order. */
+  val countryDatabases: Seq[String] = Country.all.map(_.mongoDb)
+
+  val renderedCountryDatabases: String =
+    s"""{
+       |  "generated": "by `sbt 'worker/Test/runMain deploy.MongoGrantsList'` from models.Country.all; do not edit",
+       |  "databases": [${countryDatabases.map(db => s"\"$db\"").mkString(", ")}]
+       |}
+       |""".stripMargin
 
   /** The prod databases a registry home stands for: every country's corpus, the fleet's own database. The accounts
    *  database is a corpus one (`MONGODB_USERS_DB`, else the deployment's own), and the review pages' is the local
@@ -53,5 +70,7 @@ object MongoGrantsList {
   def main(args: Array[String]): Unit = {
     Files.write(Paths.get(Path), rendered.getBytes(StandardCharsets.UTF_8))
     println(s"wrote $Path (${grants.size} grants)")
+    Files.write(Paths.get(CountryDatabasesPath), renderedCountryDatabases.getBytes(StandardCharsets.UTF_8))
+    println(s"wrote $CountryDatabasesPath (${countryDatabases.size} databases)")
   }
 }
