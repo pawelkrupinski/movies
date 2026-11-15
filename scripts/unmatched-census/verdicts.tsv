@@ -12,7 +12,7 @@ US	f0701c9a9fd6583c	It (1990)	unclear			event, person-name listing, or no film f
 US	metoperamedea202223|	MetOpera: Medea (2022–23)	relay			stage-house relay, no TMDB record found
 US	f4e799ea698c7f9e	Satan Claus Is Coming to Town	real	rating-cut	566008	rating-cut refusal; Satan Claus Is Coming to Town
 US	fbc32c05ae5f2f38	Great Bear Rainforest 3D	real	learned-veto	592402	learned cannot-link veto; Great Bear Rainforest 3D
-US	f959b1bc844a07ec	Dune: Part One Reissue (2026)	real	banner	438631	banner/strand text (Reissue (2026)); Dune 2021 — 2026-11-15: prod holds the Reissue rule; a "Part One" → "Dune" rename took Part Three, dropped (Fix J)
+US	f959b1bc844a07ec	Dune: Part One Reissue (2026)	real	banner	438631	banner/strand text (Reissue (2026)); Dune 2021 — 2026-11-15: prod holds the Reissue rule; a "Part One" → "Dune" rename took Part Three, dropped (Fix L)
 US	f37903aa3b1406f3	Dune: Part Two Reissue (2026)	real	banner	693134	banner/strand text (Reissue (2026)); Dune: Part Two
 US	f38a4c194d7c9643	A/V Geeks Present: Were You Scared?	no-candidate			no candidate at all: event/local title/not on TMDB; default
 US	f1f011ef16ff61e3	The 23rd Annual Animation Show of Shows	not-on-tmdb			edition not on TMDB; 23rd Animation Show of Shows
@@ -101,7 +101,7 @@ DE	fee713bfdbb52574	Severin Groebner – ICH BIN DAS VOLK	not-film			[1 listings
 DE	f751d5ab1279a8e5	KILMINISTER	not-film			[3 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 DE	fb43b2aa46cbd240	DONNERSTAGSKNEIPE + X	real	companion-event	760104	"[2 listings] ""Donnerstagskneipe + X"": pub night with film X (2022) 50.7% rank 1; likely, unverified (re-judged 2026-11-14 with TMDB lookups)"
 DE	fcbe9425a971ed40	Lucy van Kuhl - Geschickt verpackt	not-film			[2 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
-DE	ff3296a4ea6ec2c3	LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!	real	banner	1689091	banner/strand text (date + guest suffix); LEICA - Ein Jahrhundert in Bildern — 2026-11-15: searches the bare film now (xtra-de-regie-guest-suffix); the recording takes it, prod's family does not (Fix J)
+DE	ff3296a4ea6ec2c3	LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!	real	banner	1689091	banner/strand text (date + guest suffix); LEICA - Ein Jahrhundert in Bildern — 2026-11-15: searches the bare film now (xtra-de-regie-guest-suffix); the recording takes it, prod's family does not (Fix L)
 DE	f383d7c1d35ce3c9	„Musik war meine erste Liebe“ – Hommage an Udo Jürgens	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 DE	fa507c81e39733f4	Achtsam Morden	not-film			[4 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 DE	fbb5e47840cae99a	NUR FÜR VERRÜCKTE	not-on-tmdb			[17 listings] Nur fuer Verrueckte (film club, director present); IMDb has 1 film, TMDB none (re-judged 2026-11-14 with TMDB lookups)
@@ -133,7 +133,7 @@ DE	fd7b5411601f0600	L’homme qui plante des Baobabs	not-on-tmdb			[1 listings] 
 DE	f5a72ef00d3f16e5	Fantasy	unclear			[2 listings] Fantasy - Osteuropa: strand name, Fantasy (2026) is a rank-3 namesake (re-judged 2026-11-14 with TMDB lookups)
 DE	f94961798b165b62	Dune 1 & 2 Double-Feature	double-bill			"two real films billed as one; two TMDB films, ""alone: bills several works"""
 DE	fd6ac730bc74b903	Demnächst: Es muss ja nicht gleich Santiago de Compostela sein	not-film			[2 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
-DE	f20f16de3ecd3cb7	Feels like Home	real	banner	1395661	"[1 listings] Itt erzem magam otthon (HU 2026) under ""| Osteuropaische Filmtage 2026"" banner (re-judged 2026-11-14 with TMDB lookups) — 2026-11-15: banner left on purpose: bare ""Feels like Home"" invites the 2018 namesake (Fix J)"
+DE	f20f16de3ecd3cb7	Feels like Home	real	banner	1395661	"[1 listings] Itt erzem magam otthon (HU 2026) under ""| Osteuropaische Filmtage 2026"" banner (re-judged 2026-11-14 with TMDB lookups) — 2026-11-15: banner left on purpose: bare ""Feels like Home"" invites the 2018 namesake (Fix L)"
 DE	fddf1fbd7b381cab	Oberhausen trifft Paderborn: 17. Kurzfilmnacht	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 DE	fad1d5125866455b	Father	unclear			[1 listings] Father | Osteuropaische Filmtage: TMDB The Father (2020) is not obviously it (re-judged 2026-11-14 with TMDB lookups)
 DE	f83c160e0144798c	SCHÖNE BESCHERUNG - KAMINERS WEIHNACHTEN	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
@@ -179,7 +179,7 @@ PL	f5d584859bcb6a31	21. AfryKamera: AfryZigh - blok krótkich metraży	not-film	
 PL	f8675e7a4d865a2b	Diuna: Część pierwsza	real	local-title	438631	local title TMDB lacks / title miss (Część pierwsza); Diuna: Część pierwsza = Dune 2021
 PL	f9c86be6c175b792	Jak powiedzieć „ja”? - Zestaw filmów krótkometrażowych	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 PL	f8499d4b817535ae	Balet z Opery Paryskiej 2026-2027: Notre-Dame de Paris	relay			stage-house relay, no TMDB record found
-PL	f1d596a54880f256	ZAKLĘTE REWIRY	real	banner	208309	[1 listings] Zaklęte rewiry (1975, TMDB Hotel Pacific) with a narrator banner (re-judged 2026-11-14 with TMDB lookups) — 2026-11-15: Pionier searches the bare film now (xtra-pl-pipe-narracja-suffix), still unmatched (Fix J)
+PL	f1d596a54880f256	ZAKLĘTE REWIRY	real	banner	208309	[1 listings] Zaklęte rewiry (1975, TMDB Hotel Pacific) with a narrator banner (re-judged 2026-11-14 with TMDB lookups) — 2026-11-15: Pionier searches the bare film now (xtra-pl-pipe-narracja-suffix), still unmatched (Fix L)
 PL	f1dd02398a91f9dd	AFRYKAMERA: OCZY GHANY	real	local-title	1525208	[2 listings] The Eyes of Ghana (2026) (re-judged 2026-11-14 with TMDB lookups)
 PL	f2bff2c3291aa727	Okładka „Love Yourself & Show”	not-film			[1 listings] event/talk/concert/workshop/shorts block by title (re-judged 2026-11-14 with TMDB lookups)
 PL	f93ab5d179f02117	Szwedy. Pluton strzelców piechoty	not-on-tmdb			[2 listings] Polish documentary (Watch Docs), not on TMDB (re-judged 2026-11-14 with TMDB lookups)

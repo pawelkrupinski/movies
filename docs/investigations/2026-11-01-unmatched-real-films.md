@@ -411,7 +411,7 @@ and its fixes, the other relay session's work).
   not read as one), UK "The Royal Ballet Romeo and Juliet (Filmed live 2025)" ×2 (the 2019 record outranks the 2025 one),
   US "MetOpera: Medea (2022–23)" ×1 (no Met record found by any search), PL "Carmen | metropolitan opera: live in hd
   2026/27" (no 2026/27 Carmen record found).
-## 11. Fix K: a bare billing beside a unanimous title family
+## 12. Fix K: a bare billing beside a unanimous title family
 
 **Cause.** A billing that publishes nothing but its title stays unmatched while every decorated sibling of its family
 takes one film: DE Kino im Filmhaus' and Méliès Göttingen's "Mein Sommer mit Nonna" beside eleven venues' "Gioia mia -
@@ -439,7 +439,7 @@ right (Nonna ×2, Immer verkehrt); PL, UK, US, ES unmoved. None of the census' w
 "Royal Ballet: The Nutcracker", moves. Precision 3/3; recall is low by design: Drei Abschiede (4 carrying venues of 6)
 misses the bound, Komplizinnen and Godzilla Minus Zero (Quadroscope, its own evidence vetoes) the namesake and denial
 guards.
-## 11. The learned cannot-link bucket, counted (2026-11-15)
+## 13. The learned cannot-link bucket, counted (2026-11-15)
 
 **Question.** Section 8's round extrapolated ~125 listings of real films refused by a LEARNED cannot-link
 (`LearnedCannotLinks`: a rule of `identity-weights.json`, or the listing-film probability below its certified cut). The
@@ -489,7 +489,7 @@ against its film.
 (Czechoslovakia), which the JDK-backed `YearRuntimeMeasures.isoByName` knows no successor of, so "Czech Republic"
 mismatches it. A dissolved state's successors (XC → CZ, SK; SU → RU, UA, …; YU; DD/XG → DE) would be a measure
 change of its own, measured on its own.
-## 11. Fix J: the banners Fix F left (2026-11-15)
+## 14. Fix L: the banners Fix F left (2026-11-15)
 
 **Cases.** The census's "real/banner" bucket on the 2026-11-15 mirror: DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU (Freie
 Platzwahl)", "LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!", "Feels like Home | Osteuropäische
