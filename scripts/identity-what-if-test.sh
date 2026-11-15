@@ -63,7 +63,7 @@ mkdir -p "$work/bin"
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
 echo "sbt-start $(basename "$PWD")" >> "$STUB/calls"; sleep 1
-echo "$PWD/worker/target/scala-3.10.0/test-classes:/lib/a.jar"
+echo "$PWD/worker/target/scala-3.x/test-classes:/lib/a.jar"
 echo "sbt-end $(basename "$PWD")" >> "$STUB/calls"
 STUB
 cat > "$work/bin/java" <<'STUB'

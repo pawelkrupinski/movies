@@ -61,7 +61,7 @@ ThisBuild / scalacOptions ++= Seq(
   // Warnings are errors: a warning must be fixed (or explicitly silenced via a
   // `-Wconf` rule below), never merged. Keeps the build warning-clean over time.
   "-Werror",
-  // Scala 3.9.0 capped `-java-output-version` at 21 (higher values were rejected); kept at 21 on 3.10.0.
+  // Scala 3.9.0 capped `-java-output-version` at 21 (higher values were rejected); kept at 21 since.
   // JRE 27 loads Java 21 class files unchanged: build on JDK 27, emit 21, run 27.
   "-java-output-version", "21",
   // Twirl-generated warnings come out without a parseable category — filter by
@@ -79,11 +79,16 @@ ThisBuild / scalacOptions ++= Seq(
   "-Wnonunit-statement",
   "-Wvalue-discard",
   "-Wconf:msg=(?s)^(?!.*\\b(ScanOutcome|ReadOutcome|GuardedWrite)\\b).*(unused value|[dD]iscarded non-Unit value).*:silent",
-  // Scala 3.10.1 deprecates `Predef.ArrowAssoc` (a source `a -> b` now resolves to an extension method, unflagged), but
+  // Scala 3.10.0 deprecates `Predef.ArrowAssoc` (a source `a -> b` now resolves to an extension method, unflagged), but
   // a library macro compiled before 3.10 still splices the old conversion into our code: play-json 3.0.6's
   // `Json.format` (JsMacroImpl.scala:713, `nme -> writes`), reported at the `Json.format[...]` call site. No source of
   // ours names `ArrowAssoc`; drop this rule once play-json ships a build compiled with 3.10.
-  "-Wconf:cat=deprecation&msg=ArrowAssoc:silent"
+  "-Wconf:cat=deprecation&msg=ArrowAssoc:silent",
+  // Scala 3.10.1 warns on every `case _: Throwable` (E235, "Catching Throwable can lead to unexpected behavior").
+  // ~100 handlers catch Throwable on purpose -- a worker loop, a scrape attempt or a boot step that must outlive any
+  // failure, a fallback that turns every error into its outcome. Moving them to NonFatal changes which errors each
+  // survives (interrupts, StackOverflowError, LinkageError); that is a per-site decision, not a compiler bump's.
+  "-Wconf:id=E235:silent"
 )
 ThisBuild / javacOptions ++= Seq("--release", "21")
 
