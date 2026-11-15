@@ -93,7 +93,9 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 
 - **Your own long run** (slice batch, local measure, sbt suite, capture): `scripts/wait-for <log> <pattern>
   [--pid P] [--timeout S]` with `run_in_background`, then act on its notification. Never a foreground
-  `until grep; sleep` loop.
+  `until grep; sleep` loop, and never `wait-for` / `ci-wait` / `agentctl wait` itself in the foreground:
+  `scripts/claude-hooks/foreground-wait-guard` denies one bounded to more than a minute (a week of 2026-11 spent
+  7-11 agent-hours in ~170 s foreground `wait-for` slices).
 - **CI status, before any `gh run ...`:** `scripts/ci-status` (one line per gating workflow, newest run on main;
   `--sha <commit>`; `--run <id>` = that run's failed jobs and steps), then `~/bin/agentctl ci-why [<id>]` for the
   failure's log. ~450 hand-written `gh run list/view --json jobs/--log` calls a week (2026-11) asked exactly these.

@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""Refuse a long wait run in the foreground: start it with run_in_background and end the turn instead.
+
+scripts/wait-for, scripts/ci-wait and `agentctl wait` exist to be run in the background -- the Bash tool notifies the
+agent when they exit (each one's header says so, as do CLAUDE.md and the agent-ops skill). Run in the foreground they
+hold the agent in a tool call it cannot leave: a week of transcripts to 2026-11-15 shows ~180 foreground wait-for calls
+a week, median 173 s each (the Bash tool's timeout sliced into ~170 s polls, called again and again), 7-11 agent-hours
+a week spent watching a log.
+
+PreToolUse on Bash (.claude/settings.json): DENIES (exit 2, the reason on stderr) a call without run_in_background
+whose command runs one of them in command position -- unless it is bounded to a minute or less (`--timeout 60` for
+wait-for and agentctl wait, `--timeout 60s` / `--timeout 1` for ci-wait, whose bare number is minutes), a check that
+is answered at once. `--help` is allowed. A broken guard never blocks (exit 0).
+"""
+import json
+import os
+import re
+import sys
+import importlib.machinery
+import importlib.util
+
+
+def load_shell_reader():
+    """masked-exit-guard's tokenizer, which reads a command the way the shell does: shared, not copied."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "masked-exit-guard")
+    loader = importlib.machinery.SourceFileLoader("masked_exit_guard", path)
+    module = importlib.util.module_from_spec(importlib.util.spec_from_loader(loader.name, loader))
+    loader.exec_module(module)
+    return module
+
+
+shell = None
+
+SHORT_WAIT_SECONDS = 60
+COMMAND_START = {"then", "do", "else", "elif", "if", "while", "until", "!", "time", "nohup", "exec", "command"}
+
+ADVICE = (
+    "Start it with run_in_background=true and END YOUR TURN: the Bash tool notifies you when it exits, with its "
+    "output. A foreground wait holds you in a tool call you cannot leave and burns the Bash timeout in ~170 s slices "
+    "(7-11 agent-hours a week, 2026-11). For a check that should answer at once, bound it: --timeout 60 or less."
+)
+
+
+def seconds(value, bare_unit):
+    match = re.fullmatch(r"([0-9.]+)([smh]?)", value or "")
+    if not match:
+        return None
+    number, unit = float(match.group(1)), match.group(2) or bare_unit
+    return number * {"s": 1, "m": 60, "h": 3600}[unit]
+
+
+def waits(words):
+    """Each (tool, its arguments) a waiting tool runs with, in command position."""
+    found, position = [], True
+    for index, word in enumerate(words):
+        if shell.is_punctuation(word):
+            position = word not in ("<", ">", ">>", ">&", "<&", "&>", "&>>", "<<", "<<<", "<>", ">|")
+            continue
+        if not position:
+            continue
+        if word in COMMAND_START or shell.ASSIGNMENT.match(word) or word.startswith("-") or \
+                re.fullmatch(r"[0-9.]+[smhd]?", word) or word in ("timeout", "gtimeout", "env", "nice"):
+            continue  # a prefix, its option or duration: the command is still to come
+        name = os.path.basename(word)
+        rest = []
+        for later in words[index + 1:]:
+            if shell.is_punctuation(later):
+                break
+            rest.append(later)
+        if name in ("wait-for", "ci-wait"):
+            found.append((name, rest))
+        elif name == "agentctl" and rest[:1] == ["wait"]:
+            found.append(("agentctl wait", rest[1:]))
+        position = False
+    return found
+
+
+def unbounded_wait(command):
+    """The waiting tool `command` runs for longer than a short check, or None."""
+    try:
+        words = shell.tokens(shell.without_heredoc_bodies(command))
+    except ValueError:
+        return None
+    for name, arguments in waits(words):
+        if "-h" in arguments or "--help" in arguments:
+            continue
+        limit = None
+        for flag, value in zip(arguments, arguments[1:] + [""]):
+            if flag == "--timeout":
+                limit = seconds(value, "m" if name == "ci-wait" else "s")
+        if limit is None or limit > SHORT_WAIT_SECONDS:
+            return name
+    return None
+
+
+def main():
+    global shell
+    try:
+        shell = load_shell_reader()
+        event = json.load(sys.stdin)
+        tool_input = event.get("tool_input", {})
+        if tool_input.get("run_in_background") is True:
+            return 0
+        command = tool_input.get("command", "")
+        name = unbounded_wait(command) if isinstance(command, str) else None
+    except Exception:  # a broken guard must not wedge every session
+        return 0
+    if name:
+        print(f"foreground-wait-guard: `{name}` runs in the foreground. {ADVICE}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

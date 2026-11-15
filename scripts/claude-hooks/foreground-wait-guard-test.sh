@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Self-test for scripts/claude-hooks/foreground-wait-guard: the hook's JSON fed to it the way Claude Code does. A long
+# wait (wait-for, ci-wait, agentctl wait) without run_in_background is denied (exit 2); the same in the background, a
+# wait bounded to a minute, --help, and a command that only names the tool are allowed.
+set -uo pipefail
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+guard="$REPO_ROOT/scripts/claude-hooks/foreground-wait-guard"
+fails=0
+check() { # <what> <expected> <actual>
+  if [ "$2" = "$3" ]; then printf '  \033[32m✓\033[0m %s\n' "$1"
+  else printf '  \033[31m✗\033[0m %s\n      expected: %s\n      actual:   %s\n' "$1" "$2" "$3"; fails=$((fails + 1)); fi
+}
+verdict() { # <command> [background] -> the guard's exit code for a Bash call running it
+  python3 -c 'import json, sys
+tool_input = {"command": sys.argv[1]}
+if len(sys.argv) > 2: tool_input["run_in_background"] = True
+print(json.dumps({"tool_name": "Bash", "tool_input": tool_input}))' "$@" | python3 "$guard" 2>/dev/null
+  echo $?
+}
+
+printf '\033[36m▸\033[0m denied\n'
+check "wait-for in the foreground with its 170 s slice (the shape of 2026-11)" 2 \
+  "$(verdict 'scripts/wait-for "$log" "exit=" --timeout 170')"
+check "wait-for with no timeout (default 2 h)" 2 "$(verdict 'cd /x && scripts/wait-for /tmp/l "done"')"
+check "wait-for by absolute path after an env prefix" 2 "$(verdict 'FOO=1 /Users/p/movies/scripts/wait-for f x --poll 5')"
+check "ci-wait, its bare --timeout in minutes" 2 "$(verdict 'scripts/ci-wait 123 --timeout 5')"
+check "agentctl wait run" 2 "$(verdict '~/bin/agentctl wait run 4242 --until landable')"
+check "agentctl wait file with a long timeout" 2 "$(verdict 'agentctl wait file /x --timeout 600')"
+check "a wait after a timeout prefix" 2 "$(verdict "timeout 900 scripts/wait-for f x; echo done")"
+check "a wait after a heredoc" 2 "$(verdict $'cat > f <<\'EOF\'\nscripts/wait-for is text here\nEOF\nscripts/wait-for f x')"
+
+printf '\033[36m▸\033[0m allowed\n'
+check "the same wait in the background" 0 "$(verdict 'scripts/wait-for "$log" "exit=" --timeout 7200' background)"
+check "agentctl wait in the background" 0 "$(verdict '~/bin/agentctl wait run 4242' background)"
+check "wait-for bounded to a minute" 0 "$(verdict 'scripts/wait-for f x --timeout 60')"
+check "ci-wait bounded to 30 s" 0 "$(verdict 'scripts/ci-wait 1 --timeout 30s')"
+check "wait-for --help" 0 "$(verdict 'scripts/wait-for --help')"
+check "a command that only names the tool" 0 "$(verdict 'grep -n wait-for scripts/agent-time; cat scripts/ci-wait')"
+check "agentctl's other subcommands" 0 "$(verdict '~/bin/agentctl land && ~/bin/agentctl inbox --unread')"
+check "a broken event never blocks" 0 "$(printf 'not json' | python3 "$guard" 2>/dev/null; echo $?)"
+
+[ "$fails" -eq 0 ] && echo "foreground-wait-guard: all passed" || { echo "foreground-wait-guard: $fails failed"; exit 1; }

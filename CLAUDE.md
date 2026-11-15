@@ -141,7 +141,8 @@ Many agents work this repository at once (mechanics and tools: `agent-ops` skill
   `git add -A`, commit, stash or discard them.
 - **Never `pkill -f` / `killall` by pattern** — use `scripts/agent-procs kill --mine`.
 - Wait on long runs with `scripts/wait-for` and on CI with `scripts/ci-wait`, in the background, acting on the
-  notification — never a foreground sleep/poll loop. `scripts/agent-procs` audits worktrees; `scripts/agent-time`
+  notification — never a foreground sleep/poll loop (`scripts/claude-hooks/foreground-wait-guard` denies a foreground
+  wait of over a minute). `scripts/agent-procs` audits worktrees; `scripts/agent-time`
   shows where agents' time went.
 
 ## Agent tooling: `~/bin/agentctl` (laptop only; reference `~/bin/AGENTCTL.md`)
