@@ -130,6 +130,15 @@ check "--changed: an extensionless tool's edit selects the tests naming it by di
   "scripts/hooks/gate-plan-test.sh scripts/hooks/gate-test.sh" "$(listed --changed "$readers")"
 scratch_git "$tree" checkout -q -- scripts/hooks/gate
 
+# A test never sees the CI run it is in (GITHUB_SERVER_URL in fleetkit-access-test.sh, Tool self-tests #1-3; the push
+# event in commit-rules-ci-test.sh, #21; GITHUB_REF in identity-drift-check-test.sh, #172): what a laptop gives it.
+put scripts/runctx-test.sh 'for v in GITHUB_REF GITHUB_EVENT_NAME GITHUB_SERVER_URL GITHUB_SHA GITHUB_REPOSITORY GITHUB_RUN_ID GITHUB_ENV; do eval "[ -z \"\${$v+set}\" ]" || { echo "$v leaked"; exit 1; }; done'
+check "a test sees none of the CI run's ref, event, commit, forge or run" "0" \
+  "$(GITHUB_REF=refs/heads/feature GITHUB_EVENT_NAME=push GITHUB_SERVER_URL=https://github.com GITHUB_SHA=abc \
+     GITHUB_REPOSITORY=o/r GITHUB_RUN_ID=1 GITHUB_ENV=/dev/null run runctx-test)"
+check "...the variables a tool reads, the test's to set" "0" "$(grep -c leaked "$work/out")"
+rm "$tree/scripts/runctx-test.sh"
+
 # The timeout: a hung test is killed at its bound and FAILS as a timeout. The test never ends on its own (it records
 # its pid and blocks until killed), so the runner gets past it only by its bound: that, reported, and no test left
 # running prove it, never elapsed wall time (shell-spec.sh's HUNG STUBS).
