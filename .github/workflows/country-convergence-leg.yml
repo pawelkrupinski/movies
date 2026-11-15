@@ -683,6 +683,8 @@ jobs:
                   # silently replayed invented films instead). Three days is two nights of slack
                   # on a nightly job: one failed run over a weekend and every country's corpus
                   # expires at once. The tarballs together are ~12 MB, so the margin costs nothing.
+                  # A PINNED recording's corpus outlives this: the pin archives it to the permanent
+                  # identity-recordings release (convergence-publish.sh `pin`), which every reader falls back to.
                   retention-days: 14
                   overwrite: true
                   if-no-files-found: warn

@@ -8,7 +8,8 @@
 #       KINOWO_CONVERGENCE_CORPUS_RUN), its PINNED copy enrichment-<code>-<corpus run>.tar.zst in the same
 #       call, named to the next step in $GITHUB_ENV as KINOWO_PINNED_TREE. Retires the gzip working asset.
 #   convergence-publish.sh pin <code>
-#       Write hermetic-<code>.txt naming the pinned pair, then prune all but the newest five pairs and the
+#       Archive the pair's corpus (scrape-archive/scrapes-<code>.tar.gz) to the permanent RECORDING_ARCHIVE_TAG release as
+#       scrapes-<code>-<corpus run>.tar.gz, write hermetic-<code>.txt naming the pinned pair, then prune all but the newest five pairs and the
 #       fills / refetch / refused lists of the pairs it pruned.
 #   convergence-publish.sh latest <code>
 #       Write prod-latest-<code>.txt naming this complete recording's pinned copy (the hermetic marker's format)
@@ -72,6 +73,28 @@ Not a version of anything; do not treat as a release." || true
     fi
 }
 
+# A PINNED PAIR OUTLIVES ITS ARTIFACT. The corpus half of a pair is the recording run's scrape-fixtures-<code> artifact,
+# kept 14 days, while the pin names it until the next pin -- weeks: Identity takes #76's Spain takes-base (run
+# 43317254260) found recording 573's artifact long gone and stood on the archive alone, which a hand-dispatched
+# Archive recording had filled. So the pin archives the corpus itself, as scrapes-<code>-<run>.tar.gz on the permanent
+# RECORDING_ARCHIVE_TAG release (default identity-recordings), where convergence-setup.sh, convergence-preflight.sh and
+# scripts/identity-fetch-recording.sh read it once the artifact is gone; and a pin whose corpus could not be archived
+# is no pin: the marker is not written and the old pair stays.
+archive_corpus() {
+    local code="$1" corpus="scrape-archive/scrapes-$1.tar.gz" name dir archive=${RECORDING_ARCHIVE_TAG:-identity-recordings}
+    name="scrapes-$code-$KINOWO_CONVERGENCE_CORPUS_RUN.tar.gz"
+    [ -f "$corpus" ] || { echo "::error::no $corpus to archive as $name -- the pinned pair stays as it was"; return 1; }
+    dir=$(mktemp -d)
+    ln -f "$corpus" "$dir/$name" 2>/dev/null || cp "$corpus" "$dir/$name"
+    if ! "$RELEASE" upload "$archive" "$dir/$name" --clobber; then
+        rm -rf "$dir"
+        echo "::error::could not archive $name to release $archive -- the pinned pair stays as it was"
+        return 1
+    fi
+    rm -rf "$dir"
+    echo "archived $name to release $archive"
+}
+
 # The marker is written LAST, so a reader sees either the old pair or the new one.
 pin_pair() {
     local code="$1"
@@ -80,6 +103,7 @@ pin_pair() {
         echo "the boot did not finish, or nothing was packed — the pinned pair stays as it was"
         return 0
     fi
+    archive_corpus "$code" || return 1
     marker="hermetic-$code.txt"
     echo "$KINOWO_CONVERGENCE_CORPUS_RUN $KINOWO_CONVERGENCE_CORPUS_RECORDED_AT $pinned" > "$marker"
     "$RELEASE" upload "$FIXTURE_RELEASE_TAG" "$marker" --clobber || return 1
@@ -103,13 +127,16 @@ mark_latest() {
 }
 
 # The runs pruning must keep for a country: its hermetic pair's, its prod-latest's, and the kept landing recordings.
+# Status 1 when a marker could not be READ (a 5xx through every attempt, not an absent marker): the caller then prunes
+# nothing, since a keep-list missing the hermetic pair would delete the very tree every hermetic leg replays.
 kept_runs() {
-    local code="$1" dir marker
+    local code="$1" dir marker present
     dir=$(mktemp -d)
     for marker in "hermetic-$code.txt" "prod-latest-$code.txt"; do
-        # allow-silenced: an absent marker keeps nothing; the kept list below still holds.
-        gh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir "$dir" --clobber >/dev/null 2>&1 || true
-        [ -f "$dir/$marker" ] && cut -d' ' -f1 "$dir/$marker"
+        # an absent marker keeps nothing (the kept list below still holds); a failed read keeps everything
+        present=$(GH_OPTIONAL_TIMEOUT=120 "$here/../../scripts/ci/gh-optional.sh" release download "$FIXTURE_RELEASE_TAG" \
+                    --pattern "$marker" --dir "$dir" --clobber) || { rm -rf "$dir"; return 1; }
+        [ "$present" != present ] || cut -d' ' -f1 "$dir/$marker"
     done
     rm -rf "$dir"
     tr ' ' '\n' <<< "${KINOWO_KEPT_RECORDINGS-528 573}"
@@ -120,7 +147,11 @@ kept_runs() {
 # pinned before the move to zstd are gzip.
 prune_pairs() {
     local code="$1" names kept protected
-    protected=$(kept_runs "$code" | grep -E '^[0-9]+$' | sort -u)
+    if ! protected=$(kept_runs "$code"); then
+        echo "::warning::could not read $code's hermetic or prod-latest marker -- pruning nothing this time (the next pin prunes)"
+        return 0
+    fi
+    protected=$(grep -E '^[0-9]+$' <<< "$protected" | sort -u)
     # allow-silenced: pruning old pairs is housekeeping; one that fails to delete is pruned next time.
     gh release view "$FIXTURE_RELEASE_TAG" --json assets \
             --jq ".assets[] | select(.name | test(\"^enrichment-$code-[0-9]+\\\\.tar\\\\.(gz|zst)$\")) | [.createdAt, .name] | @tsv" \

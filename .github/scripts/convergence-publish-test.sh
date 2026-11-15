@@ -10,7 +10,7 @@ printf '\033[36m▸\033[0m convergence-publish.sh\n'
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 publish="$REPO_ROOT/.github/scripts/convergence-publish.sh"
-mkdir -p "$work/bin" "$work/leg"
+mkdir -p "$work/bin" "$work/leg" "$work/archive"
 
 # The release is $work/release (absent until created); an asset's createdAt is in $work/created/<name>,
 # else the upload's moment, which sorts after every seeded one. Every write is logged to $work/calls.
@@ -35,18 +35,20 @@ case "$verb" in
     files=(); for a in "$@"; do case "$a" in --*) ;; *) files+=("$a") ;; esac; done
     echo "upload $tag $*" >> "$root/calls"
     [ -z "${STUB_UPLOAD_FAILS:-}" ] || { echo "HTTP 422" >&2; exit 1; }
+    [ "$tag" != identity-recordings ] || release="$root/archive" # the permanent archive release
     for f in "${files[@]}"; do cp "$f" "$release/"; done ;;
   delete-asset) echo "delete $1" >> "$root/calls"; rm -f "$release/$1" ;;
   download)
+    [ -z "${STUB_DOWNLOAD_FAILS:-}" ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
     while [ "$#" -gt 0 ]; do case "$1" in --pattern) pattern=$2; shift ;; --dir) dir=$2; shift ;; esac; shift; done
-    [ -f "$release/$pattern" ] || { echo "no asset matches $pattern" >&2; exit 1; }
+    [ -f "$release/$pattern" ] || { echo "no assets match the file pattern" >&2; exit 1; }
     cp "$release/$pattern" "$dir/" ;;
   *) exit 1 ;;
 esac
 STUB
 chmod +x "$work/bin/gh"
 run() { (cd "$work/leg" && env PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures GITHUB_ENV="$work/github-env" \
-          GH_RELEASE_RETRY_DELAY=0 "$@" > "$work/out" 2>&1); echo $?; }
+          GH_RELEASE_RETRY_DELAY=0 GH_DOWNLOAD_BACKOFF=0 GH_DOWNLOAD_PUBLIC=0 GH_DOWNLOAD_TRANSIENT_ATTEMPTS=2 "$@" > "$work/out" 2>&1); echo $?; }
 calls() { grep -c "^$1" "$work/calls" 2>/dev/null || echo 0; }
 assets() { (cd "$work/release" && ls | tr '\n' ' ' | sed 's/ $//'); }
 
@@ -91,9 +93,19 @@ done
 : > "$work/release/enrichment-pl-0.tar.gz"; echo 2026-09-30T00:00:00Z > "$work/created/enrichment-pl-0.tar.gz"
 : > "$work/release/enrichment-uk-1.tar.zst"; : > "$work/release/fill-uk-1-900.tar.zst"
 : > "$work/release/enrichment-pl.tar.zst"
-check "a pinned tree is pinned" "0" "$(run env KINOWO_PINNED_TREE=enrichment-pl-7.tar.zst KINOWO_CONVERGENCE_CORPUS_RUN=7 \
-  KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=2026-10-07T00:00:00Z bash "$publish" pin pl)"
+# Identity takes #76 (run 43317254260): the pair's corpus is the recording's artifact, kept 14 days, while the pin names
+# it for weeks. A pin with no corpus to archive, or an archive that refuses it, is no pin.
+pin7() { run env KINOWO_PINNED_TREE=enrichment-pl-7.tar.zst KINOWO_CONVERGENCE_CORPUS_RUN=7 \
+  KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=2026-10-07T00:00:00Z "$@" bash "$publish" pin pl; }
+check "a pin with no corpus to archive fails, writing no marker" "1 absent 1" \
+  "$(pin7) $([ -e "$work/release/hermetic-pl.txt" ] && echo present || echo absent) $(grep -c '::error::no scrape-archive/scrapes-pl.tar.gz to archive' "$work/out")"
+mkdir -p "$work/leg/scrape-archive"; echo corpus7 > "$work/leg/scrape-archive/scrapes-pl.tar.gz"
+check "an archive that refuses the corpus fails the pin, writing no marker" "1 absent" \
+  "$(pin7 STUB_UPLOAD_FAILS=1) $([ -e "$work/release/hermetic-pl.txt" ] && echo present || echo absent)"
+check "a pinned tree is pinned" "0" "$(pin7)"
 check "as the marker naming the pair" "7 2026-10-07T00:00:00Z enrichment-pl-7.tar.zst" "$(cat "$work/release/hermetic-pl.txt")"
+check "its corpus archived for good under its run, before the marker" "corpus7|1" \
+  "$(cat "$work/archive/scrapes-pl-7.tar.gz")|$(grep -n '^upload' "$work/calls" | grep -A1 'identity-recordings .*scrapes-pl-7.tar.gz' | grep -c 'hermetic-pl.txt')"
 check "keeping the newest five pairs of either compressor, and only their fills and lists" \
   "enrichment-pl-3.tar.zst enrichment-pl-4.tar.zst enrichment-pl-5.tar.zst enrichment-pl-6.tar.zst enrichment-pl-7.tar.zst enrichment-pl.tar.zst enrichment-uk-1.tar.zst fill-pl-3-900.tar.zst fill-pl-4-900.tar.zst fill-pl-5-900.tar.zst fill-pl-6-900.tar.zst fill-pl-7-900.tar.zst fill-uk-1-900.tar.zst hermetic-pl.txt refetch-pl-3-900.tsv refetch-pl-4-900.tsv refetch-pl-5-900.tsv refetch-pl-6-900.tsv refetch-pl-7-900.tsv refused-pl-3-900-2-takes.tsv refused-pl-4-900-2-takes.tsv refused-pl-5-900-2-takes.tsv refused-pl-6-900-2-takes.tsv refused-pl-7-900-2-takes.tsv" \
   "$(assets)"
@@ -102,6 +114,7 @@ check "keeping the newest five pairs of either compressor, and only their fills 
 # which under pipefail failed the step after the pin was written (record run 161, Spain).
 rm -f "$work/release"/*
 : > "$work/release/enrichment-es-161.tar.zst"
+echo corpus > "$work/leg/scrape-archive/scrapes-es.tar.gz"
 check "a first pin, with no fills to prune, passes" "0" "$(run env KINOWO_PINNED_TREE=enrichment-es-161.tar.zst \
   KINOWO_CONVERGENCE_CORPUS_RUN=161 KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=2026-10-20T08:29:15Z bash "$publish" pin es)"
 
@@ -122,6 +135,13 @@ check "leaving the hermetic pair as it was" "2 2026-10-02T00:00:00Z enrichment-p
 check "pruning to the newest five, never the hermetic pair or a kept landing recording" \
   "enrichment-pl-1.tar.zst enrichment-pl-2.tar.zst enrichment-pl-4.tar.zst enrichment-pl-5.tar.zst enrichment-pl-6.tar.zst enrichment-pl-7.tar.zst enrichment-pl-8.tar.zst hermetic-pl.txt prod-latest-pl.txt" \
   "$(assets)"
+# A marker read that fails is no evidence the pair is unpinned: a keep-list without it would delete the hermetic tree.
+for n in 0 9; do : > "$work/release/enrichment-pl-$n.tar.zst"; echo "2026-09-0${n}T00:00:00Z" > "$work/created/enrichment-pl-$n.tar.zst"; done
+echo "2026-10-09T00:00:00Z" > "$work/created/enrichment-pl-9.tar.zst"
+before=$(assets)
+check "a marker that cannot be read prunes nothing, and says so" "0|$before|1" \
+  "$(run env STUB_DOWNLOAD_FAILS=1 KINOWO_PINNED_TREE=enrichment-pl-9.tar.zst KINOWO_CONVERGENCE_CORPUS_RUN=9 \
+       KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=2026-10-09T00:00:00Z KINOWO_KEPT_RECORDINGS= bash "$publish" latest pl)|$(assets)|$(grep -c 'pruning nothing' "$work/out")"
 
  # --- dead ---------------------------------------------------------------------------------------
 # Run 41351315090 found the release at GitHub's 1000-asset cap, 101 of them identity overlays published by a mode
