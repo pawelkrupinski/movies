@@ -932,6 +932,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "take the one film a unanimous family's titles carry it as a delimited piece of, at two venues or more" in {
+    // DE, Kino im Filmhaus' and Méliès Göttingen's bare "Mein Sommer mit Nonna" beside eleven venues' "Gioia mia - Mein
+    // Sommer mit Nonna" (nine here), each taking Milani's 2025 film by its original title: TMDB's German title says "bei", so the bare
+    // title's own search finds nothing, and with one film in the family no majority lent it.
+    val films = Seq(F(1510325, "Mein Sommer bei Nonna", 2025, "Riccardo Milani", 107, 5, original = Some("Gioia mia")))
+    val houses    = Seq(Multikino, Helios, KinoApollo, Rialto, CharlieMonroe, CinemaCityKinepolis, CinemaCityPoznanPlaza, CinemaCityWroclavia,
+      CinemaCityKorona)
+    val decorated = houses.map(listing(_, "Gioia mia - Mein Sommer mit Nonna", Some(2025)))
+    val bare      = Seq(KinoMuza, KinoBulgarska).map(listing(_, "Mein Sommer mit Nonna"))
+    val r = resolve(decorated ++ bare, films)
+    withClue((decorated.head +: bare).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      decorated.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1510325))
+      bare.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1510325))
+    }
+    // One venue's decorated billing is one venue's say.
+    val alone = resolve(decorated.take(1) ++ bare.take(1), films)
+    alone.decisionOf(bare.head.key).film shouldBe None
+    // A title of one word takes it only when that word is the film's very title.
+    val word = houses.map(listing(_, "Gioia mia - Nonnina", Some(2025)))
+    val nonna = listing(KinoMuza, "Nonnina")
+    val worded = resolve(word :+ nonna, films)
+    withClue(worded.decisionOf(nonna.key).render) {
+      worded.decisionOf(word.head.key).film shouldBe Some(1510325)
+      worded.decisionOf(nonna.key).film shouldBe None
+    }
+  }
+
   it should "not take a house's season production from siblings whose titles name the season it does not" in {
     // PL, Kino Amok's bare "Manon" (it lists the Met's broadcasts bare) beside 16 Multikino
     // venues' "Royal Ballet and Opera Sezon Kinowy 2026-27: Manon" and Kino Kijów's "OPERA

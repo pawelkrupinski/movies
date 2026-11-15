@@ -1897,6 +1897,7 @@ Re-run this section's commands once phase 1's recording pass is pinned and `iden
 | Two films named apart by PLACE: every naming piece of each placed in the title at spans that share no word | `IdentityMeasures.namedApart` | a structural relation of the title's words, no constant | none needed |
 | A venue's title for a record: its original title names exactly one candidate, unanimously | `IdentityMeasures.venueTitles` | structural; "one record" and "unanimous" are the only counts | none needed |
 | The confidence of a title family's "clear" majority: the one-sided 95% Wilson lower bound of its venue share, against the show-ratings cut | `ClusterVoting.familyMajority`, `RateBounds` | the same one-sided 95% the calibration certifies its thresholds at; the cut is the artefact's | none needed |
+| A UNANIMOUS title family lends a bare billing its one film: its title a delimited piece of decorated siblings' at two venues or more (relays and seasons apart), the same bound with the bare venues counted against, no member denying it, the bare title naming no other film its own searches found, one word only as the film's whole title | `ClusterVoting.unanimous` | structural; "two venues" is the least that is not one venue's say | none needed |
 
 The resolver has no per-title, per-venue, per-chain or per-franchise rule of its own. Every constant above is inherited from the constraint model or the normaliser, and a learned counterpart for it is pending.
 

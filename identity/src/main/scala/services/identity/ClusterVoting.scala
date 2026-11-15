@@ -118,21 +118,24 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
 
   /** The film a cluster of listings that publish NOTHING but their titles takes from its TITLE
    *  FAMILY — the siblings outside it a title must-link of round A joins it to (`titleEdges`,
-   *  [[ConstraintEdges.TitleTiers]]) that accepted a film on their own evidence — when those
-   *  siblings are split across films. A bare "Sense and Sensibility" beside 836 venues' "Sense and
-   *  Sensibility (2026) {Oakley}" and 9 venues' "(1995) {Ang Lee}" has no evidence of its own for
-   *  either: the database's ranking prefers the older, the listings around it the current release.
+   *  [[ConstraintEdges.TitleTiers]]) that accepted a film on their own evidence.
    *
-   *  It takes the family's majority film only when the majority is CLEAR: the one-sided 95%
-   *  Wilson lower bound ([[RateBounds.lower95]]) of that film's share of the family's venues —
-   *  venues, as the calibration counts units, and the cluster's own venues among them as NOT the
-   *  majority's, since nothing they publish says so — clears the calibration's show-ratings cut,
-   *  which is the probability it is filed at. A family too thin to outweigh the cluster decides
-   *  nothing, and the cluster votes on its pooled evidence as before: 78 Cineworld venues' bare
-   *  "The Omen" beside 2 venues' credited 1976 film and 4 venues' 2006 one is the 50th-anniversary
-   *  re-release, and 4 of 84 is no majority. Siblings whose titles name a season do not count
-   *  (Kino Amok's bare "Manon", a Met broadcast, beside 16 venues' "RBO Sezon Kinowy 2026-27:
-   *  Manon"). `None` also when a member publishes a fact or the siblings hold fewer than two films. */
+   *  When those siblings are split across films, it takes the family's majority film only when the majority is CLEAR:
+   *  the one-sided 95% Wilson lower bound ([[RateBounds.lower95]]) of that film's share of the family's venues —
+   *  venues, as the calibration counts units, and the cluster's own venues among them as NOT the majority's, since
+   *  nothing they publish says so — clears the calibration's show-ratings cut, which is the probability it is filed at.
+   *  A bare "Sense and Sensibility" beside 836 venues' "Sense and Sensibility (2026) {Oakley}" and 9 venues' "(1995)
+   *  {Ang Lee}" has no evidence of its own for either: the database's ranking prefers the older, the listings around it
+   *  the current release. A family too thin to outweigh the cluster decides nothing, and the cluster votes on its pooled
+   *  evidence as before: 78 Cineworld venues' bare "The Omen" beside 2 venues' credited 1976 film and 4 venues' 2006 one
+   *  is the 50th-anniversary re-release, and 4 of 84 is no majority.
+   *
+   *  When they all took ONE film, the family is unanimous ([[unanimous]]), and the cluster takes it only where the
+   *  siblings' titles carry its own title as a delimited piece: DE "Mein Sommer mit Nonna" beside eleven venues'
+   *  "Gioia mia - Mein Sommer mit Nonna".
+   *
+   *  Siblings whose titles name a season do not count (Kino Amok's bare "Manon", a Met broadcast, beside 16 venues'
+   *  "RBO Sezon Kinowy 2026-27: Manon"). `None` also when a member publishes a fact, or a member denies the film. */
   def familyMajority(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int],
                      titleEdges: Seq[ResolverEdge]): Option[(Int, Double, String)] =
     Option.when(!cluster.exists(_.evidence.measured.publishesAFact)) {
@@ -140,15 +143,65 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
       val linked   = titleEdges.flatMap(edge => if (inside(edge.a)) Seq(edge.b) else if (inside(edge.b)) Seq(edge.a) else Nil).toSet -- inside
       // A sibling whose title names a SEASON names a house's production of the work, which the
       // bare title does not: its venues say nothing about which house's the bare one is.
-      val venuesOf = members.filter(sibling => linked(sibling.id) && accepted.contains(sibling.id) && sibling.evidence.measured.seasonYear.isEmpty)
-        .groupMapReduce(sibling => accepted(sibling.id))(_.venues)(_ ++ _)
-      Option.when(venuesOf.sizeIs >= 2) {
+      val taking   = members.filter(sibling => linked(sibling.id) && accepted.contains(sibling.id) && sibling.evidence.measured.seasonYear.isEmpty)
+      val venuesOf = taking.groupMapReduce(sibling => accepted(sibling.id))(_.venues)(_ ++ _)
+      val own      = cluster.flatMap(_.venues).toSet
+      if (venuesOf.sizeIs >= 2) {
         val (film, venues) = venuesOf.toSeq.minBy { case (filmId, filmVenues) => (-filmVenues.size, filmId) }
-        val own   = cluster.flatMap(_.venues).toSet -- venues
-        val total = (venuesOf.values.flatten ++ own).toSet.size
+        val total = (venuesOf.values.flatten ++ (own -- venues)).toSet.size
         val bound = RateBounds.lower95(venues.size, total)
         Option.when(calibration.showsRatings(bound) && !cluster.exists(families.denies(_, film)))(
           (film, bound, s"title family's majority film $film: ${venues.size} of $total venue(s), at least ${ResolverDecision.percent(bound)}"))
-      }.flatten
+      } else unanimous(cluster, members, accepted, linked, own)
     }.flatten
+
+  /** The film a facts-free cluster takes from a UNANIMOUS title family ([[familyMajority]]). Its siblings here are the
+   *  members a title must-link of round A joins it to (`linked`) and those whose titles CARRY its own title as a whole
+   *  delimited piece (TitleRelation's segment: "Gioia mia - Mein Sommer mit Nonna" of "Mein Sommer mit Nonna"; "DIE
+   *  ANDERE" is no piece of "Die andere Seite") -- a piece the edges leave unlinked when the rest of the sibling's title
+   *  names its film ("Gioia mia", the original title of the film all eleven venues took). It takes `film` when
+   *
+   *  - every such sibling that took a film alone, a season's billing apart, took `film`;
+   *  - the carrying siblings took it at two venues or more beside the cluster's own: one venue's decorated billing is
+   *    one venue's say. A sibling billing one stage house's relay ("Royal Ballet: The Nutcracker") does not count: the
+   *    bare work may be another house's;
+   *  - their venues' share of the siblings' and the cluster's venues, the cluster's own counted AGAINST it as in the
+   *    majority, has a one-sided 95% lower bound clearing the show-ratings cut;
+   *  - no member of the cluster nor sibling denies the film (its own facts, its pin);
+   *  - the cluster's own title names no OTHER film its own searches found (`namesFilm`): "Lalka" beside "Lalka
+   *    (Dolly)", "Rocky" beside a decorated "Rocky", name films of their own the decorated title is not;
+   *  - a cluster titled by ONE word ("Musik", "Bruder") takes it only when that word is the film's very title (its
+   *    title, original or alternative, whole): one word carried in a longer title is a namesake's as often as the film's.
+   *
+   *  Read off the family's listings and the cluster's own searches alone, whatever order they arrived in. */
+  private def unanimous(cluster: Seq[EvidenceNode], members: Seq[EvidenceNode], accepted: Map[String, Int], linked: Set[String],
+                        own: Set[String]): Option[(Int, Double, String)] = {
+    val normalizer = scoring.generation.normalizer
+    val inside     = cluster.map(_.id).toSet
+    val forms      = (node: EvidenceNode) => TitleRelation.of(node.evidence, normalizer)
+    val bare       = cluster.map(forms)
+    def carries(sibling: EvidenceNode) = { val titled = forms(sibling); titled.relays.isEmpty && bare.exists(TitleRelation.segmentOf(_, titled)) }
+    val siblings   = members.filter(sibling => !inside(sibling.id) && (linked(sibling.id) || carries(sibling)))
+    val taking     = siblings.filter(sibling => accepted.contains(sibling.id) && sibling.evidence.measured.seasonYear.isEmpty)
+    taking.map(sibling => accepted(sibling.id)).distinct match {
+      case Seq(film) =>
+        val venues = taking.filter(carries).flatMap(_.venues).toSet -- own
+        val total  = (taking.flatMap(_.venues).toSet ++ own).size
+        val bound  = RateBounds.lower95(venues.size, total)
+        def oneWord = cluster.forall(_.titleWords.sizeIs <= 1)
+        def relation(node: EvidenceNode, id: Int) = scoring.generation.candidateOf(id).map(candidate => IdentityMeasures.titleRelation(node.evidence.measured, candidate.film).value)
+        def isItsTitle = cluster.forall(node => relation(node, film).exists(UnanimousTitles))
+        def namesAnother = cluster.exists { node =>
+          val reach = families.scopeOf(node).reach(node)
+          (reach.search.keySet ++ reach.imdbSuggested ++ reach.imdbTitled.keySet - film).exists(id => relation(node, id).exists(IdentityMeasures.NamingRelations))
+        }
+        Option.when(venues.sizeIs >= 2 && calibration.showsRatings(bound) && !(cluster ++ siblings).exists(families.denies(_, film)) &&
+          (!oneWord || isItsTitle) && !namesAnother)(
+          (film, bound, s"title family's unanimous film $film: carried by ${venues.size} of $total venue(s), at least ${ResolverDecision.percent(bound)}"))
+      case _ => None
+    }
+  }
+
+  /** The title relations under which a one-word title IS the film's title, whole ([[unanimous]]). */
+  private val UnanimousTitles: Set[String] = Set("exact", "original", "alternative")
 }
