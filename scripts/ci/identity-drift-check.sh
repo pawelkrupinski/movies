@@ -169,13 +169,18 @@ keep() { # <file> <asset>: store a result, never failing the check
   timeout 120 gh release view "$store" > /dev/null 2>&1 \
     || "$here/scripts/ci/gh-release.sh" create "$store" --prerelease --title "Identity drift store (rolling)" \
          --notes "The drift gate's flips per seed, keyed by identity code, recording and seed (scripts/ci/identity-drift-check.sh). A cache, not a version of anything." > /dev/null 2>&1 || true
-  gzip -c "$1" > "${RUNNER_TEMP:-/tmp}/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "${RUNNER_TEMP:-/tmp}/$2" --clobber > /dev/null 2>&1 \
-    || echo "identity drift ($cc): could not store $2 -- a later run resolves that base again"
-  # only the newest are ever a base again: 48 a kind and country (best effort)
-  local kind=${2#drift-}; kind=${kind%%-*}
+  # ROOM FIRST, then the upload. Only the newest are ever a base again: 48 a kind and country. And the whole store
+  # under GitHub's cap of 1000 assets a release, at which every upload fails: 48 x 5 kinds x 5 countries is 1200, so
+  # the store filled on 2026-11-12, nothing was stored after, and every drift row resolved its base again (the UK rows
+  # 15 -> 25 minutes, Identity takes 30 -> 45). The store keeps its newest DRIFT_STORE_ASSETS (900: the rest is room
+  # for the rows of the runs storing at once). Best effort: a missed prune is done by the next store.
+  local kind=${2#drift-}; kind=${kind%%-*} room=$(( ${DRIFT_STORE_ASSETS:-900} - 1 ))
   # allow-silenced: pruning old results is best effort; a missed prune only leaves the store larger
-  timeout 120 gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"drift-$kind-$cc-\"))) | sort_by(.createdAt) | reverse | .[48:][] | .name" 2> /dev/null \
+  timeout 120 gh release view "$store" --json assets --jq ".assets | sort_by(.createdAt) | reverse \
+      | ((map(select(.name | startswith(\"drift-$kind-$cc-\"))) | .[47:][]), .[$room:][]) | .name" 2> /dev/null | sort -u \
     | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null 2>&1 || true; done
+  gzip -c "$1" > "${RUNNER_TEMP:-/tmp}/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "${RUNNER_TEMP:-/tmp}/$2" --clobber > /dev/null 2>&1 \
+    || echo "::warning::identity drift ($cc): could not store $2 -- a later run resolves that base again"
 }
 
 # ---- THE HEAD'S REPLAY, or the stored replay of the same inputs (see the header) ----

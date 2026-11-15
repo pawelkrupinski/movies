@@ -199,16 +199,22 @@ check "two replays that differ fail" "1" "$(DRIFT_TWICE=true FAKE_VARY=1 FAKE_BA
 check "...and the verdict says so" "1" "$(grep -c '^not deterministic' "$work/out/verdict.txt")"
 
 # THE HEAD'S MEMO (DRIFT_STORE): a head whose inputs a run already replayed reads that replay, never runs it again; any
-# input the replay reads moved -- even one code_of does not see -- replays. A stand-in `gh` keeps the store in a directory.
+# input the replay reads moved -- even one code_of does not see -- replays. A stand-in `gh` keeps the store in a directory,
+# answers `--json assets --jq` through jq over it (createdAt: the files' modification order), and refuses an upload past
+# FAKE_STORE_CAP assets, as GitHub refuses one past 1000.
 export FAKE_STORE="$work/store"; mkdir -p "$FAKE_STORE"
 cp "$REPO_ROOT/scripts/ci/gh-release.sh" "$repo/scripts/ci/"
 cat > "$work/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 [ "$1" = release ] || exit 1
 case $2 in
-  view) case "$*" in *sort_by*) ;; *--json*) ls "$FAKE_STORE" ;; esac ;;
+  view) filter=; while [ $# -gt 0 ]; do [ "$1" = --jq ] && filter=$2; shift; done
+        [ -n "$filter" ] || exit 0
+        # shellcheck disable=SC2012 # the names are the stand-in's own, no odd characters
+        ls -tr "$FAKE_STORE" | jq -R . | jq -s '{assets: [to_entries[] | {name: .value, createdAt: ("2026-01-01T" + (.key | tostring | (("0" * (6 - length)) + .)))}]}' \
+          | jq -r "$filter" ;;
   create) ;;
-  upload) cp "$4" "$FAKE_STORE/" ;;
+  upload) [ "$(find "$FAKE_STORE" -type f | wc -l)" -lt "${FAKE_STORE_CAP:-1000}" ] || exit 1; cp "$4" "$FAKE_STORE/" ;;
   delete-asset) rm -f "$FAKE_STORE/$4" ;;
   download) name=$(grep -oE -- '-p [^ ]+' <<< "$*" | cut -d' ' -f2); to=$(grep -oE -- '-O [^ ]+' <<< "$*" | cut -d' ' -f2)
             cp "$FAKE_STORE/$name" "$to" ;;
@@ -256,5 +262,18 @@ check "...as does the check itself" "head 1,2" "$(DRIFT_STORE=s run > /dev/null;
 echo x > "$repo/test/x"; scratch_git "$repo" add test && scratch_git "$repo" commit -qm x
 heads=$(find "$FAKE_STORE" -name "drift-head-*" | wc -l | tr -d " ")
 check "a replay that wrote no verdict is never stored" "2 $heads" "$(FAKE_FLIPS=none DRIFT_STORE=s run) $(find "$FAKE_STORE" -name "drift-head-*" | wc -l | tr -d " ")"
+
+# A FULL STORE (2026-11-12: GitHub's 1000 assets, every upload refused, every base resolved again): a store makes room,
+# oldest first, before it uploads -- whatever kind or country the oldest are -- so the replay is stored and the next
+# run reads it.
+rm -f "$FAKE_STORE"/*
+for i in $(seq 1 12); do touch -t "202601010000.$(printf %02d "$i")" "$FAKE_STORE/drift-green-us-1-old$i.tsv.gz"; done
+echo y > "$repo/test/y"; scratch_git "$repo" add test && scratch_git "$repo" commit -qm y
+check "a store at its cap is pruned to make room, and the head's replay is stored" "0 1" \
+  "$(FAKE_STORE_CAP=12 DRIFT_STORE_ASSETS=10 DRIFT_STORE=s run) $(find "$FAKE_STORE" -name 'drift-head-pl-*' | wc -l | tr -d ' ')"
+check "...the store kept under its budget" "1" "$([ "$(find "$FAKE_STORE" -type f | wc -l)" -le 10 ] && echo 1)"
+check "...the oldest gone, never the newest" "0 1" \
+  "$(find "$FAKE_STORE" -name 'drift-green-us-1-old1.tsv.gz' | wc -l | tr -d ' ') $(find "$FAKE_STORE" -name 'drift-green-us-1-old12.tsv.gz' | wc -l | tr -d ' ')"
+check "...and the next run reads the stored replay" "" "$(FAKE_STORE_CAP=12 DRIFT_STORE_ASSETS=10 DRIFT_STORE=s run > /dev/null; paste -sd' ' "$FAKE_LOG")"
 
 spec_summary
