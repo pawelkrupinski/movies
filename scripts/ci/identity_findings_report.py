@@ -11,6 +11,10 @@ triaged from here instead. Each `Record scrape fixtures` run's convergence rows 
                                           (CountryConvergenceBehaviour's suspect audit; `catalogue`: one catalogue id
                                           whose listings were taken as two films, CatalogueSplits, a row per side)
   corpus-shape-recorded-<cc>-<spec>.txt   finding|stale <TAB> venue <TAB> listing <TAB> what (CorpusShapeSpec)
+  <cc>-served-<check>.txt                 `# corpus-run <run>`, then what <TAB> subject <TAB> line (tools.ServedFindings: the
+                                          served-corpus checks -- a card with nothing under it, a venue whose own year and
+                                          director deny its film; optional, a recording made before them has none). What
+                                          the recording's own suite finds a verify passes as the data's: it lands here.
 
 Per country this updates ONE issue, "Identity findings: <cc>", in place: every finding with its ready triage commands,
 when it was first seen, and its age. A suspect the identity judgements have judged (or tolerate in scope `served`) since the recording is
@@ -90,6 +94,16 @@ def read_findings(directory, cc):
                 kind, venue, listing = cols[:3]
                 out.append({"kind": f"shape-{kind}", "spec": spec, "venue": venue, "venues": venue, "rawTitle": listing,
                             "what": cols[3] if len(cols) > 3 else "", "id": f"shape|{spec}|{kind}|{normalise(listing)}"})
+    for path in sorted(glob.glob(os.path.join(directory, f"{cc}-served-*.txt"))):
+        check = os.path.basename(path)[len(f"{cc}-served-"):-len(".txt")]
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                cols = line.rstrip("\n").split("\t")
+                if line.startswith("#") or len(cols) < 3:
+                    continue
+                what, subject, said = cols[:3]
+                out.append({"kind": "served", "spec": check, "venue": "", "venues": "read model", "rawTitle": subject,
+                            "what": f"{what}: {said}", "id": f"served|{check}|{what}|{subject}"})
     return merged(out)
 
 
@@ -138,6 +152,8 @@ def commands(cc, finding, recording):
         return [" ".join(["scripts/identity-slice", cc] + [q(a) for a in at] + ["--title", q(raw), "--recording", recording]),
                 " ".join(["scripts/identity-slice", cc, "--explain"] + [q(a) for a in at] + ["--title", q(raw)]),
                 " ".join(["scripts/label-lookup", cc, "--title", q(raw)] + [q(a) for a in at])]
+    if finding["kind"] == "served":  # names a film and venue, not a listing to trace
+        return []
     trace = ["scripts/title-trace", q(raw), "--country", cc] + ([] if venue in ("", "*") else ["--venue", q(venue)])
     out = [" ".join(trace)]
     if venue not in ("", "*"):
@@ -161,6 +177,10 @@ SECTIONS = [
      "(CinemaSlotInvariants): fix the title rule or the parser, or allowlist the listing with why."),
     ("shape-stale", "Allowlist entries the recording no longer breaks",
      "Drop the entry from the spec's allowlist (the backlog only shrinks)."),
+    ("served", "Served-corpus findings",
+     "The recording's own suite and its verify both found it (tools.ServedFindings), so no commit made it: a venue's "
+     "own data -- a placeholder listing, a year or director that denies its film -- or a gap the code has always had "
+     "on it. Fix the rule or the parser that could avoid it; a re-pin refuses this recording while it stands."),
 ]
 
 
@@ -208,7 +228,8 @@ def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed
             where = f" · {f['spec']}" if f.get("spec") else ""
             facts = f"{f['venues']}{where} · first seen {seen[f['id']]} ({age(f)} d) · {f['what']}"
             if n < detailed:
-                lines += ["", f"### {flag}{f['rawTitle']}{film}", facts, "", "```sh"] + commands(cc, f, run) + ["```"]
+                triage = commands(cc, f, run)
+                lines += ["", f"### {flag}{f['rawTitle']}{film}", facts] + (["", "```sh"] + triage + ["```"] if triage else [])
             elif n < listed:
                 lines.append(f"- {flag}**{f['rawTitle']}**{film} -- {facts}")
             else:

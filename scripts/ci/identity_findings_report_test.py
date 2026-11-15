@@ -113,6 +113,20 @@ class FindingsReportTest(unittest.TestCase):
         self.assertEqual(["OPEN"] * 3, [self.gh.state(cc) for cc in ("pl", "uk", "de")])
         self.assertTrue(all("--assignee" in c for c in self.gh.calls if c[:2] == ["issue", "create"]))
 
+    def test_a_served_corpus_finding_the_recordings_own_suite_made_is_reported_as_the_datas(self):
+        # Verify #1 (2026-11-01): a "nieczynne" placeholder card -- the verify passes it as standing; it is triaged here.
+        served = self.recording("a", {("pl", "pl-suspect-unjudged.txt"): [], ("pl", "corpus-shape-recorded-pl-SearchQueryMarkers.txt"): [],
+                                      ("pl", "pl-served-served.txt"): ["# corpus-run 38625654132\n",
+                                          "served film(s) with NO screening — a card with nothing under it\t'Kino01112026nieczynne' (—) [k]\t"
+                                          "'Kino01112026nieczynne' (—) [k]\n"],
+                                      ("pl", "pl-served-emit.txt"): ["# corpus-run 38625654132\n"]})
+        self.assertEqual(0, self.run_report(served, "2026-11-01", countries="pl"))
+        pl = self.gh.body("pl")
+        self.assertIn("## Served-corpus findings (1)", pl)
+        self.assertIn("### 'Kino01112026nieczynne' (—) [k]", pl)
+        self.assertIn("read model · served · first seen 2026-11-01 (0 d) · served film(s) with NO screening", pl)
+        self.assertEqual("OPEN", self.gh.state("pl"))
+
     def test_a_country_whose_issue_gh_cannot_write_is_no_verdict_and_the_others_still_report(self):
         import subprocess
         fake = self.gh

@@ -17,7 +17,7 @@ import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, 
 import tools.{Alongside, ArchiveReplayWiring, ConvergenceDiagnostics, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance,
   CountryScrapeCorpus, IdentityLookupSweep, ChurnLedger, EnrichmentCache, EnrichmentFreshness, FileEnrichmentCacheStore, FilmCoverageDiff,
   FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline, ProdFilm, ProdFilms, RunFilm, SameThreadExecutionBudget, ServedCorpusInvariants,
-  TestWiring, ConvergenceKnownIssues}
+  ServedFinding, ServedFindings, TestWiring, ConvergenceKnownIssues}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -1555,6 +1555,18 @@ abstract class CountryConvergenceBehaviour(
     }
   }
 
+  /** A served-corpus check's findings judged against what the RECORDING'S OWN SUITE found over the same corpus
+   *  ([[tools.ServedFindings]]): the report of those the code added, to fail on. Those the recording's suite found too
+   *  are the data's -- told here and in the leg's summary, triaged from the Identity findings report, never failed.
+   *  With no base laid (every gate leg, a recording's own suite) every finding fails, as it always did. */
+  private def failingOf(check: String, findings: Seq[ServedFinding]): Seq[String] = {
+    val verdict = ServedFindings.judged(corpusKey, check, harness.corpusRunId.map(_.value), findings)
+    if (verdict.standing.nonEmpty)
+      info(s"${country.displayName} $check: ${verdict.standing.size} finding(s) the recording's own suite found too -- the " +
+           s"data's, not failed:\n${ServedFindings.report(verdict.standing).mkString("\n")}")
+    ServedFindings.report(verdict.failing)
+  }
+
   s"the ${country.displayName} read model" should
     "emit every cinema, showtime and film the archive holds" in {
     {
@@ -1581,16 +1593,7 @@ abstract class CountryConvergenceBehaviour(
       storedCinemas should not be empty
 
       val lostCinemas = storedCinemas -- shownCinemas
-      withClue(s"${lostCinemas.size} cinema(s) in cinema_scrapes never reach the read model: " +
-               s"${lostCinemas.toList.sorted.take(10).mkString(", ")}\n") {
-        lostCinemas shouldBe empty
-      }
-
       val lostScreenings = storedScreenings -- shownScreenings
-      withClue(s"${lostScreenings.size} of ${storedScreenings.size} screening(s) never reach the read model; " +
-               s"first: ${lostScreenings.toList.sortBy(p => (p._1, p._2)).take(8).mkString(", ")}\n") {
-        lostScreenings shouldBe empty
-      }
 
       // A scraped title need not survive VERBATIM — folding is the point, and
       // "Diuna (dubbing)" is meant to come out as "Diuna". What must survive is
@@ -1603,9 +1606,13 @@ abstract class CountryConvergenceBehaviour(
       val settled  = w.movieCache.snapshot().map(r => w.movieCache.normalizer.sanitize(r.title)).toSet
       val emitted  = shownTitles.map(w.movieCache.normalizer.sanitize)
       val homeless = settled -- emitted
-      withClue(s"${homeless.size} settled film(s) exist in the corpus but are emitted by nothing: " +
-               s"${homeless.toList.sorted.take(10).mkString(", ")}\n") {
-        homeless shouldBe empty
+      def named(what: String, offenders: Iterable[String]) = offenders.toSeq.map(o => ServedFinding(what, o, o))
+      val failing = failingOf("emit",
+        named("cinema(s) in cinema_scrapes never reach the read model", lostCinemas) ++
+        named(s"of ${storedScreenings.size} screening(s) never reach the read model", lostScreenings.toSeq.sorted.map { case (c, at) => s"$c at $at" }) ++
+        named("settled film(s) exist in the corpus but are emitted by nothing", homeless))
+      withClue(s"${country.displayName}'s read model does not emit what its archive holds:\n${failing.mkString("\n")}\n") {
+        failing shouldBe empty
       }
     }
   }
@@ -1629,8 +1636,8 @@ abstract class CountryConvergenceBehaviour(
       }
       val records  = w.movieRepository.findAll()
       val known    = ConvergenceKnownIssues.WrongMerges.getOrElse(country.code, Set.empty)
-      val problems = ServedCorpusInvariants.violations(ServedCorpusInvariants.listings(stored),
-        records, served, screenings, w.movieCache.normalizer, country = Some(country), knownWrongMerges = known)
+      val problems = failingOf("served", ServedCorpusInvariants.findings(ServedCorpusInvariants.listings(stored),
+        records, served, screenings, w.movieCache.normalizer, country = Some(country), knownWrongMerges = known))
       // A known wrong merge whose film this corpus holds must still be found, or its entry
       // is stale and would hide the next one.
       val present  = records.map(_.key(w.movieCache.normalizer)).toSet
@@ -1899,9 +1906,11 @@ abstract class CountryConvergenceBehaviour(
 
       val after    = w.movieRepository.findAll()
       val afterBy  = after.map(r => r.id -> r).toMap
-      val problems = ServedCorpusInvariants.violations(expected, after, w.readModelRepository.findAllMovies(),
+      // The served-corpus checks against the recording's own suite's (`failingOf`); the rename and the churn below
+      // stay strict: a film the next day rewrites is the re-ask gap a new day's data exposes, the check's whole point.
+      val problems = failingOf("next-day", ServedCorpusInvariants.findings(expected, after, w.readModelRepository.findAllMovies(),
         w.readModelRepository.findAllScreenings(), normalizer, from = cutoff, country = Some(country),
-        knownWrongMerges = ConvergenceKnownIssues.WrongMerges.getOrElse(country.code, Set.empty))
+        knownWrongMerges = ConvergenceKnownIssues.WrongMerges.getOrElse(country.code, Set.empty)))
       // A day passed, so the daily TMDB re-try asked again for every unmatched film and
       // re-dated its miss: the WHEN of a no-match moves, what it searched must not.
       def undated(r: StoredMovieRecord) = r.copy(record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_.copy(at = Instant.EPOCH))))

@@ -246,4 +246,19 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
       leg.linesIterator.map(_.trim).toList should not contain "bisect:"
     }
   }
+
+  // Verify #1 and #31: a venue's own data error turned a verify red though no commit made it. A verify's leg lays the
+  // recording's own suite's served-corpus findings as its base (tools.ServedFindings.BaseDirectory), so it fails only on
+  // what the code added; a gate leg lays none and stays strict.
+  "a verify's leg" should "lay the recording's own suite's findings as its base, and a gate leg none" in {
+    val lay = RepoFile.step(leg, "Lay the recording's own findings as this verify's base")
+    lay should include("inputs.mode == 'hermetic' && inputs.base-findings-run != ''")
+    lay should include("rm -rf target/convergence-base-findings")
+    lay should include("""--name "convergence-diagnostics-$CODE-convergence" --dir target/convergence-base-findings""")
+    leg.indexOf("Lay the recording's own findings as this verify's base") should be < leg.indexOf("- name: Run the ${{ inputs.country }} ${{ matrix.phase }} suite")
+    RepoFile.read("worker/src/fixtures/scala/tools/ServedFindings.scala") should include("""Paths.get("target", "convergence-base-findings")""")
+    RepoFile.read(".github/workflows/verify-scrape-recording.yml") should include("base-findings-run:             ${{ needs.preflight.outputs.recording }}")
+    for (gate <- Seq(".github/workflows/identity-model-convergence.yml", ".github/workflows/identity-takes.yml"))
+      withClue(s"$gate: ")(RepoFile.read(gate) should not include "base-findings-run")
+  }
 }

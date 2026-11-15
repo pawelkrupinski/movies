@@ -138,8 +138,23 @@ of them held every production landing. Now each phase owns one question:
   recording once the fix has landed (`gh workflow run verify-scrape-recording.yml --ref main -f
   recording=<capture run id>`), ~30 minutes rather than another night.
 - **Unchanged:** `prod-latest` and `scripts/identity-repro --recording prod-latest` still read the capture's
-  complete recordings; the landing bar (573) still moves only on a `pin-hermetic` dispatch. A verify run is the
+  complete recordings; the landing bar still moves only on a `pin-hermetic` dispatch. A verify run is the
   same leg `identity-measure --recording` replays, without the takes row (`takes-row: false`: a takes diff needs a
   base, a verify judges one commit against one recording).
+- **A verify fails only on what the code added (2026-11-15).** The served-corpus checks (`ServedCorpusInvariants`,
+  the no-loss and next-day checks of `CountryConvergenceBehaviour`) turned a single venue's own data error into a red
+  (#1: a "nieczynne" placeholder listing became an empty card; #31: a venue's wrong year beside a director spelled
+  otherwise). Each finding is now judged against the **recording's own suite's** (`tools.ServedFindings`): the
+  capture's convergence row runs this suite over the corpus it records, at the commit it recorded on, and the
+  recording holds every answer that suite read -- so it IS a replay of the recording at a base commit, already paid
+  for. The verify leg lays that row's `<cc>-served-<check>.txt` (diagnostics artifact) before its suite
+  (`base-findings-run`); a finding the base names too is **standing** -- the data's, reported on the leg's summary and
+  in the Identity findings report, never failed -- and one only the head names fails. No base (a recording made before
+  the files, a capture suite that died first, another recording's file) leaves every finding failing, and the gate's
+  hermetic legs lay none, so they stay strict. The next-day check's churn (a film rewritten although its listings did
+  not change: the re-ask gaps a new day exposes, #8-#26) stays strict. The base is the recording's commit, so a
+  finding a commit landed before the capture brings counts as standing from that night on: it is triaged from the
+  findings report (overdue after three days), not left red. A second replay at a chosen base would cost one
+  convergence row a country on a red night (10-30 min) and a base compile, for that difference only.
 - **Left in the capture:** the UK's record-mode order row (a gap-filled replay with no capture purpose, now
   non-failing) — verify runs the UK's order passes hermetically, so it can go.

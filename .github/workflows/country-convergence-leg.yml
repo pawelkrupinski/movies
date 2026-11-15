@@ -373,6 +373,15 @@ on:
                 required: false
                 type: boolean
                 default: true
+            # THE RECORDING'S OWN SUITE AS A VERIFY'S BASE (Verify scrape recording): the `Record scrape fixtures` run whose
+            # convergence row's served-corpus findings (tools.ServedFindings, in its `convergence-diagnostics-<code>-convergence`)
+            # this hermetic leg's suite judges its own against -- a finding that suite found too is the recording's, reported,
+            # not failed. Empty (every gate leg): every finding fails.
+            base-findings-run:
+                description: The recording run whose own suite's served-corpus findings are this leg's base (a verify's); empty judges strictly.
+                required: false
+                type: string
+                default: ''
             # A run whose verdict the caller proved this commit may reuse (identity-model-convergence.yml's `reuse-run`,
             # scripts/ci/convergence_reuse.py): every row skips. Empty on every run that judges the commit itself.
             reused-from:
@@ -866,6 +875,32 @@ jobs:
             # corpus and fills its tree live, and what it asserts over live fallbacks is no verdict on code. Whether the
             # capture worked is "Fail the capture unless its boot completed" below; whether the code holds on what it
             # captured is the hermetic replay of it, `Verify scrape recording`.
+            # A VERIFY'S BASE: the recording's own suite's served-corpus findings, laid where the suite reads them
+            # (tools.ServedFindings.BaseDirectory), so it fails only on what the code since the recording added -- the
+            # drift gate's differential rule over a recording, at no second replay: that suite ran this corpus at the
+            # recording's commit, and the recording holds every answer it read. Always emptied first, so no base from
+            # another run (a restored target/) is ever read; one the recorder never wrote (its suite died first, or it
+            # predates the files) leaves the suite strict, and the base's files name their recording, which the suite checks.
+            - name: Lay the recording's own findings as this verify's base
+              if: inputs.mode == 'hermetic' && inputs.base-findings-run != '' && (matrix.phase == 'convergence' || matrix.phase == 'next-day')
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO:  ${{ github.repository }}
+                  GH_OPTIONAL_TIMEOUT: 300
+                  RUN:      ${{ inputs.base-findings-run }}
+                  CODE:     ${{ inputs.code }}
+              run: |
+                  set -uo pipefail
+                  rm -rf target/convergence-base-findings
+                  present=$(scripts/ci/gh-optional.sh run download "$RUN" --name "convergence-diagnostics-$CODE-convergence" --dir target/convergence-base-findings) \
+                    || { echo "::warning::could not read recording $RUN's own findings -- every served-corpus finding fails"; exit 0; }
+                  if [ "$present" = present ]; then
+                      echo "base: recording $RUN's own suite's findings ($(find target/convergence-base-findings -name "$CODE-served-*.txt" | wc -l | tr -d ' ') file(s))"
+                  else
+                      echo "recording $RUN left no findings of its own -- every served-corpus finding fails"
+                  fi
+
             - name: Run the ${{ inputs.country }} ${{ matrix.phase }} suite
               id: suite
               if: "!startsWith(matrix.phase, 'takes')"

@@ -68,7 +68,21 @@ object ServedCorpusInvariants {
     from:       LocalDateTime = LocalDateTime.MIN,
     country:    Option[Country] = None,
     knownWrongMerges: Set[String] = Set.empty
-  )(using LatestTitleYear): Seq[String] = {
+  )(using LatestTitleYear): Seq[String] =
+    ServedFindings.report(findings(listings, records, served, screenings, normalizer, from, country, knownWrongMerges))
+
+  /** [[violations]], one [[ServedFinding]] an offence: what a verify judges against the recording's own suite's
+   *  (`ServedFindings.judge`). */
+  def findings(
+    listings:   Seq[(Cinema, CinemaMovie)],
+    records:    Seq[StoredMovieRecord],
+    served:     Seq[ResolvedMovie],
+    screenings: Seq[CityScreening],
+    normalizer: TitleNormalizer,
+    from:       LocalDateTime = LocalDateTime.MIN,
+    country:    Option[Country] = None,
+    knownWrongMerges: Set[String] = Set.empty
+  )(using LatestTitleYear): Seq[ServedFinding] = {
     def upcoming(times: Iterable[Showtime]): Set[LocalDateTime] = times.iterator.map(_.dateTime).filterNot(_.isBefore(from)).toSet
     def base(cardId: String): String = cardId.takeWhile(_ != '~')
     val label: Map[String, String] = records.map(r =>
@@ -102,18 +116,19 @@ object ServedCorpusInvariants {
     val servedAt: Map[(String, String), Set[LocalDateTime]] =
       screenings.groupMapReduce(s => (base(s.filmId), s.cinema))(s => upcoming(s.showtimes))(_ ++ _)
 
-    val problems = Seq.newBuilder[String]
-    def report(what: String, offenders: Seq[String]): Unit =
-      if (offenders.nonEmpty)
-        problems += s"${offenders.size} $what:\n  ${offenders.sorted.take(Shown).mkString("\n  ")}" +
-                    (if (offenders.size > Shown) s"\n  … and ${offenders.size - Shown} more" else "")
+    val problems = Seq.newBuilder[ServedFinding]
+    // Each offender as `subject -> line`: the subject is what a verify compares with the recording's own suite's
+    // findings, so it names the offence and never a count that moves while the same offence stands.
+    def reportBy(what: String, offenders: Seq[(String, String)]): Unit =
+      problems ++= offenders.map { case (subject, line) => ServedFinding(what, subject, line) }
+    def report(what: String, offenders: Seq[String]): Unit = reportBy(what, offenders.map(line => line -> line))
 
     val homes = listings.filter { case (_, cm) => upcoming(cm.showtimes).nonEmpty }.map { case (cinema, cm) =>
       val key = ScrapeListing.slotKey(cinema, cm.movie.title, normalizer)
       (cinema.displayName, cm, holdersOf(cinema.displayName, key, cm))
     }
-    report("archived listing(s) held by NO stored film — scraped, then lost before `movies`",
-      homes.collect { case (c, cm, Nil) => s"'${cm.movie.title}' at $c (${cm.showtimes.size} showtime(s))" })
+    reportBy("archived listing(s) held by NO stored film — scraped, then lost before `movies`",
+      homes.collect { case (c, cm, Nil) => s"'${cm.movie.title}' at $c" -> s"'${cm.movie.title}' at $c (${cm.showtimes.size} showtime(s))" })
     report("archived listing(s) held by SEVERAL stored films — one listing duplicated across films",
       homes.collect { case (c, cm, hs) if hs.sizeIs > 1 => s"'${cm.movie.title}' at $c held by ${hs.map(film).sorted.mkString(", ")}" })
 
@@ -122,19 +137,19 @@ object ServedCorpusInvariants {
       (id, c) -> upcoming(cm.showtimes)
     }.groupMapReduce(_._1)(_._2)(_ ++ _)
 
-    report("archived listing(s) whose showtimes are NOT served under the film that holds them",
+    reportBy("archived listing(s) whose showtimes are NOT served under the film that holds them",
       homes.collect { case (c, cm, Seq(id)) =>
         val wanted  = upcoming(cm.showtimes)
         val missing = wanted -- servedAt.getOrElse((id, c), Set.empty)
-        Option.when(missing.nonEmpty)(
-          s"'${cm.movie.title}' at $c → ${film(id)}: ${missing.size} of ${wanted.size} showtime(s) unserved, " +
-          s"first ${missing.toSeq.sorted.head}")
+        Option.when(missing.nonEmpty)(s"'${cm.movie.title}' at $c → ${film(id)}" ->
+          (s"'${cm.movie.title}' at $c → ${film(id)}: ${missing.size} of ${wanted.size} showtime(s) unserved, " +
+           s"first ${missing.toSeq.sorted.head}"))
       }.flatten)
 
-    report("served (film, cinema) pair(s) carrying showtimes no archived listing of that film gave it",
+    reportBy("served (film, cinema) pair(s) carrying showtimes no archived listing of that film gave it",
       servedAt.toSeq.flatMap { case ((id, c), times) =>
         val invented = times -- expected.getOrElse((id, c), Set.empty)
-        Option.when(invented.nonEmpty)(
+        Option.when(invented.nonEmpty)(s"${film(id)} at $c" ->
           s"${film(id)} at $c: ${invented.size} of ${times.size} showtime(s) unaccounted for, first ${invented.toSeq.sorted.head}")
       })
 
@@ -170,9 +185,9 @@ object ServedCorpusInvariants {
     report("venue slot(s) whose own year AND director both deny the film they are served under",
       wrongMerges(records, normalizer).filterNot { case (key, _) => knownWrongMerges.contains(key) }.map(_._2))
 
-    report("tmdbId(s) held by several stored films",
+    reportBy("tmdbId(s) held by several stored films",
       records.flatMap(r => r.record.tmdbId.map(_ -> r)).groupMap(_._1)(_._2).toSeq.collect {
-        case (tmdb, rs) if rs.sizeIs > 1 => s"tmdb $tmdb: ${rs.map(r => film(r.id.value)).sorted.mkString(", ")}"
+        case (tmdb, rs) if rs.sizeIs > 1 => s"tmdb $tmdb" -> s"tmdb $tmdb: ${rs.map(r => film(r.id.value)).sorted.mkString(", ")}"
       })
 
     problems.result()

@@ -160,6 +160,9 @@ jobs:
             corpus-run:                    ${{ needs.preflight.outputs.recording }}
             countries:                     ${{ needs.preflight.outputs.countries }}
             takes-row:                     false
+            # THE BASE: the recording's own suite (its recorder run's convergence row) over the same corpus -- a served-corpus
+            # finding it found too is the recording's, reported in the Identity findings report, not failed here.
+            base-findings-run:             ${{ needs.preflight.outputs.recording }}
             # The nightly pipeline's own runner, as the recorder's legs: verify runs right behind the capture it judges.
             runner: ${{ needs.preflight.outputs.runner }}
         # The GITHUB_TOKEN the setup and publish actions read; nothing here fetches, so no key is used.

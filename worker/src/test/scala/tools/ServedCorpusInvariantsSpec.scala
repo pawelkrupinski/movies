@@ -149,6 +149,44 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
       served = Seq(screening("f1", Helios, Seven, Nine), screening("f2", Helios, Seven, Nine)), from = Nine) shouldBe empty
   }
 
+  // Verify #1 (2026-11-01, PL): a "Kino 01.11.2026 nieczynne" placeholder a venue listed became a card with nothing under
+  // it, and Verify #31 (11-15, DE) a venue's wrong year beside a director spelled otherwise -- each the VENUE's error,
+  // each a red verify though no commit made it. A verify now judges each finding against the recording's own suite's.
+  "a finding" should "name its offence by a subject that holds while the offence stands, never a count" in {
+    def unserved(at: LocalDateTime*) = ServedCorpusInvariants.findings(Seq(listing(Helios, "Diuna", at*)),
+      records.take(1), cards.take(1), Seq(screening("f1", Helios)), titleNormalizer)
+    val (one, two) = (unserved(Seven), unserved(Seven, Nine))
+    one.map(_.line) should not equal two.map(_.line)              // "1 of 1 showtime(s)" against "2 of 2"
+    one.map(f => f.what -> f.subject) shouldBe two.map(f => f.what -> f.subject)
+    ServedFindings.report(one) shouldBe ServedCorpusInvariants.violations(Seq(listing(Helios, "Diuna", Seven)),
+      records.take(1), cards.take(1), Seq(screening("f1", Helios)), titleNormalizer)
+  }
+
+  "a verify's findings" should "fail only where the recording's own suite, over the same recording, did not find them" in {
+    val corpus = s"served-findings-spec-${java.util.UUID.randomUUID()}"
+    val empty  = ServedCorpusInvariants.findings(listings, records, cards, served.take(1), titleNormalizer)
+    val placeholder = empty.filter(_.what.contains("NO screening"))
+    placeholder should have size 1
+    val directory = ConvergenceDiagnostics.Directory
+    val file = directory.resolve(ServedFindings.fileOf(corpus, "served") + ".txt")
+    try {
+      // The recording's suite (recorder run 7) found the empty card too: standing, not failed.
+      ServedFindings.write(corpus, "served", Some("7"), placeholder)
+      val code = ServedFinding("tmdbId(s) held by several stored films", "tmdb 1", "tmdb 1: 'Diuna', 'Lalka'")
+      val verdict = ServedFindings.judge(placeholder :+ code, ServedFindings.read(directory, corpus, "served", Some("7")))
+      verdict.standing shouldBe placeholder
+      verdict.failing shouldBe Seq(code)
+      // Another recording's base, or none, is no base: everything fails, as on every gate leg.
+      ServedFindings.read(directory, corpus, "served", Some("8")) shouldBe None
+      ServedFindings.read(directory, corpus, "served", None) shouldBe None
+      ServedFindings.read(directory, corpus, "next-day", Some("7")) shouldBe None
+      ServedFindings.judge(placeholder, None).failing shouldBe placeholder
+      // An empty base file is a base that found nothing: every finding the head names is the code's.
+      ServedFindings.write(corpus, "served", Some("7"), Nil)
+      ServedFindings.judge(placeholder, ServedFindings.read(directory, corpus, "served", Some("7"))).failing shouldBe placeholder
+    } finally java.nio.file.Files.deleteIfExists(file)
+  }
+
   /** Found by `Identity model convergence` (runs 36722750256, UK and US): the resolver kept a lone
    *  "IT (2017)" apart from "It (2017)", and the projection stored the two under `it|2017` and
    *  `it~<counter>|2017` — the same title and year, as `IdentityProjectionPlan.finish` means. The cache
