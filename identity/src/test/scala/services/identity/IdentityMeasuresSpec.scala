@@ -243,6 +243,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("MET:Otello", runtime = Some(200), screenedSeason = Some(2026))) should contain ("Otello 2026")
     IdentityMeasures.searchQueries(Listing("Live from the Met: Manon", runtime = Some(240), screenedSeason = Some(2026))) should
       contain ("Manon 2026")
+    // a relay's title closing on a two-digit year is searched without it: UK The Beehive Honiton's "The Met: La Fanciulla
+    // del West 27" (UK mirror 2026-11-15) reaches the Met's 2026/27 record, which TMDB titles with no season, only by
+    // "La Fanciulla del West"; "La Fanciulla del West 27" and "La Fanciulla del West 2026" find nothing
+    IdentityMeasures.searchQueries(Listing("The Met: La Fanciulla del West 27", screeningsSeason = Some(2026))) should
+      contain ("La Fanciulla del West")
+    // a title naming no relay keeps its two digits: "Apollo 13" is no year
+    IdentityMeasures.searchQueries(Listing("Apollo 13", screeningsSeason = Some(2026))) should not contain "Apollo"
   }
 
   // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day

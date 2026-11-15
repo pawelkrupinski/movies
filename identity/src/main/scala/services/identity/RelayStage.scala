@@ -171,6 +171,15 @@ private[identity] object RelayStage {
     def cut(title: String) = ClosingYear.replaceFirstIn(title.trim, "").trim
     if (closingYear(l).isEmpty) l else l.copy(title = cut(l.title), rawTitle = l.rawTitle.map(cut))
   }
+  /** The titles of a relay ([[of]]) closing on a year shortened to two digits, searched without it: UK The Beehive
+   *  Honiton's "The Met: La Fanciulla del West 27" reaches the Met's 2026/27 record, which TMDB titles with no season, only
+   *  by "La Fanciulla del West" — neither "La Fanciulla del West 27" nor "… 2026" finds it. A title naming no relay keeps
+   *  its digits ("Apollo 13"). */
+  def shortYearCut(l: Listing): Seq[String] =
+    if (l.relayBilled.isEmpty) Nil
+    else l.ownTitles.flatMap(title => ShortClosingYear.findFirstMatchIn(title.trim).map(m => title.trim.take(m.start).trim)).filter(_.exists(_.isLetter))
+  private val ShortClosingYear = """(?<=\s)['’]?\d{2}\s*$""".r
+
   /** The year a title closes on, unbracketed, after its work: UK Palace Cinema Gorleston's "RBO: THE NUTCRACKER 2026"
    *  (1 December 2026) dates the 2026/27 relay by it, as The Beehive Honiton's "The Met: La Fanciulla del West 27" (26
    *  January 2027) dates the Met's 2026/27 relay, whose record TMDB titles with no season. Read only where it is not

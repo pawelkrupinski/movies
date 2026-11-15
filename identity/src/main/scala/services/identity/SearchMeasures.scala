@@ -14,7 +14,8 @@ private[identity] object SearchMeasures {
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
   def searchQueries(l: Listing): Seq[String] = {
-    val asked = l.shapes ++ l.originalTitle ++ StageRelays.seasonProductionQueries(l) ++ StageRelays.stageWorkQueries(l) ++ MultiFilmBill.billedWorks(l) ++ uncredited(l)
+    val asked = l.shapes ++ l.originalTitle ++ StageRelays.seasonProductionQueries(l) ++ StageRelays.stageWorkQueries(l) ++ MultiFilmBill.billedWorks(l) ++ uncredited(l) ++
+      IdentityMeasures.shapes(RelayStage.shortYearCut(l))
     (asked ++ asked.flatMap(beforeItsYear)).map(_.trim).filter(_.nonEmpty).distinct
   }
 
