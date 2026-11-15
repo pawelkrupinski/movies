@@ -71,11 +71,16 @@ class RefreshableSourceSpec extends AnyFlatSpec with Matchers {
   private val normalizer = TitleNormalizer.forCountry(models.Country.Poland)
 
   /** A rating source whose every refresh moves its row's badge, recording each row it was asked. */
-  private final class Refresher(rows: MovieCache, cadence: mutable.Buffer[(String, Option[Int], Option[String])] = mutable.Buffer.empty)
+  private final class Refresher(rows: MovieCache, cadence: mutable.Buffer[(String, Option[Int], Option[String])] = mutable.Buffer.empty,
+                                failing: Set[String] = Set.empty)
       extends CacheRefresher(rows, (key, tmdbId, value) => cadence += ((key.cleanTitle, tmdbId, value))) {
     val refreshed = mutable.Buffer.empty[String]
     protected def sourceName: String = "RT"
-    protected def refreshOne(key: CacheKey): Option[String] = { refreshed += key.cleanTitle; Some("91%") }
+    protected def refreshOne(key: CacheKey): Option[String] = {
+      refreshed += key.cleanTitle
+      if (failing(key.cleanTitle.toLowerCase(java.util.Locale.ROOT))) throw new IllegalStateException("RT answered 503")
+      Some("91%")
+    }
     private[services] def refreshAll(): BulkRefreshResult = BulkRefreshResult.message("unused")
   }
   private final class Links extends ResolutionCache {
@@ -108,5 +113,18 @@ class RefreshableSourceSpec extends AnyFlatSpec with Matchers {
     new RatingRefreshSource("rt", new Refresher(cache, cadence), cache, new Links).refresh(Seq("1658185"))
     cadence.map { case (title, tmdbId, value) => (title.toLowerCase(java.util.Locale.ROOT), tmdbId, value) } shouldBe
       Seq(("zar", Some(1658185), Some("91%")))
+  }
+
+  // One row's failure ended the task: the rows after it went unasked, the ratings already moved went unreported, and the
+  // queue's retry forgot and fetched every row again.
+  it should "count a row whose refresh throws as failed and refresh the rest" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(
+      ("Oczy Ghany", Some(2025), MovieRecord(tmdbId = Some(1525208))),
+      ("Żar", Some(2025), MovieRecord(tmdbId = Some(1658185)))), normalizer = normalizer), normalizer = normalizer, clock = tools.SpecClock.Pinned)
+    val refresher = new Refresher(cache, failing = Set("oczyghany"))
+    val result    = new RatingRefreshSource("rt", refresher, cache, new Links).refresh(Seq("1525208", "1658185"))
+    refresher.refreshed.map(_.toLowerCase(java.util.Locale.ROOT)).sorted shouldBe Seq("oczyghany", "zar")
+    (result.walked, result.changed, result.failed) shouldBe (Some(2), Some(1), Some(1))
+    result.message should include("1 failed")
   }
 }
