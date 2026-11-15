@@ -68,6 +68,8 @@ final class ProcessConfiguration(val env: Env) {
 
   /** `COMMIT_SHA`, or `unknown`. */
   def commit: CommitSha = CommitSha(fact("COMMIT_SHA").getOrElse("unknown"))
+  /** The run id `scripts/source-refresh` started this process for (`scripts.EnqueueSourceRefresh` refuses any other). */
+  def sourceRefreshRun: Option[SourceRefreshRun] = text("KINOWO_SOURCE_REFRESH_RUN").map(SourceRefreshRun(_))
 
   /** `GITHUB_SHA`, or `unknown`. */
   def githubCommit: GithubCommitSha = GithubCommitSha(fact("GITHUB_SHA").getOrElse("unknown"))

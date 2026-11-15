@@ -27,12 +27,9 @@ object EnqueueSourceRefresh {
     Seq(CommandLine.Positional("source", s"the source: ${RefreshableSources.Names.mkString(", ")}"),
         CommandLine.Positional("keys", "its keys (TMDB film ids)", repeatable = true)))
 
-  /** The environment variable scripts/source-refresh names its call's run id in. */
-  val RunVariable = "KINOWO_SOURCE_REFRESH_RUN"
-
-  /** Why this process must not run for the call that named `run`: its environment was not started for that call (a kept
-   *  sbt server's, another call's database in it). None when it was. */
-  def refusal(environment: Map[String, String], run: Option[String]): Option[String] = (run, environment.get(RunVariable)) match {
+  /** Why this process must not run for the call that named `run`: the run id its environment carries (`seen`,
+   *  KINOWO_SOURCE_REFRESH_RUN) is not that call's — a kept sbt server's, another call's database in it. None when it is. */
+  def refusal(seen: Option[String], run: Option[String]): Option[String] = (run, seen) match {
     case (None, _)                                    => Some("no --run: start it with scripts/source-refresh")
     case (Some(asked), Some(seen)) if asked == seen   => None
     case (Some(asked), seen)                          =>
@@ -42,12 +39,13 @@ object EnqueueSourceRefresh {
 
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
-    refusal(sys.env, arguments.get("run")).foreach { why => println(s"REFUSED: $why"); sys.exit(2) }
+    val configuration = _root_.settings.ProcessConfiguration.resolve()
+    refusal(configuration.sourceRefreshRun.map(_.value), arguments.get("run")).foreach { why => println(s"REFUSED: $why"); sys.exit(2) }
     val source    = arguments.requiredPositional("source")
     val keys      = arguments.positionalsFrom("keys").distinct
     if (!RefreshableSources.Names.contains(source)) arguments.fail(s"no source '$source': ${RefreshableSources.Names.mkString(", ")}")
     if (keys.isEmpty) arguments.fail("name at least one key")
-    val conn = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
+    val conn = MongoConnection.forProcess(configuration, required = services.MongoRequirement.Required)
     val db   = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
     try {
       val batches = keys.grouped(RefreshableSources.MaxKeys).toSeq

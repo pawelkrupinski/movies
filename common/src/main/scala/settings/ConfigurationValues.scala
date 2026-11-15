@@ -19,6 +19,8 @@ final case class UnknownCountryCode(value: String) extends AnyVal
 final case class MissingSetting(value: String) extends AnyVal
 /** `COMMIT_SHA` — the commit the running image was built from. */
 final case class CommitSha(value: String) extends AnyVal
+/** The run id `scripts/source-refresh` started a process for (`KINOWO_SOURCE_REFRESH_RUN`). */
+final case class SourceRefreshRun(value: String) extends AnyVal
 /** `GITHUB_SHA` — the commit a CI tool run is reporting on. */
 final case class GithubCommitSha(value: String) extends AnyVal
 /** `PORT` — the port the worker's /health + /metrics server listens on. */

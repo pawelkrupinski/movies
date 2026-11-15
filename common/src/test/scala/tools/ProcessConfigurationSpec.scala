@@ -53,6 +53,12 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("PORT" -> "not-a-port").healthPort(HealthPort(9000)) shouldBe HealthPort(9000)
   }
 
+  it should "resolve the run id scripts/source-refresh started the process for, none when unset or blank" in {
+    resolvedFrom("KINOWO_SOURCE_REFRESH_RUN" -> "a1").sourceRefreshRun shouldBe Some(settings.SourceRefreshRun("a1"))
+    resolvedFrom("KINOWO_SOURCE_REFRESH_RUN" -> " ").sourceRefreshRun shouldBe None
+    resolvedFrom().sourceRefreshRun shouldBe None
+  }
+
   it should "map APP_MODE onto the application modes, refusing one it does not know" in {
     resolvedFrom("APP_MODE" -> "prod").applicationMode shouldBe Some(ApplicationMode.Production)
     resolvedFrom("APP_MODE" -> "Development").applicationMode shouldBe Some(ApplicationMode.Development)
