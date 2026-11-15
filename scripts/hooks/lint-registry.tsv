@@ -19,6 +19,7 @@ common:services.PersistedCodecsLintSpec	@repo *.scala
 common:services.movies.ListingKeyWritePathLintSpec	@repo *.scala
 common:services.movies.SideCollectionDeleteOwnershipSpec	@repo *.scala
 common:testsupport.ModuleSourcesSpec	@repo *.scala
+common:tools.CatchThrowableLintSpec	@repo *.scala
 common:tools.DeepExpressionLintSpec	@repo *.scala
 common:tools.JvmDefaultsLintSpec	@repo *.scala
 common:tools.NoEnvLocalReadersSpec	@repo *.scala
