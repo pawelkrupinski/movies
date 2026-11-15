@@ -101,6 +101,35 @@ echo '# edited' >> "$tree/scripts/ci/takes_lib.py"
 check "--changed: a module a test or its tool imports selects it" "scripts/ci/m_test.py scripts/ci/n_test.py" "$(listed --changed "$libs")"
 scratch_git "$tree" checkout -q -- scripts/ci/takes_lib.py
 
+# READS: a test holding the repository's own files to a rule names none of them (download_artifact_layout_test.py over
+# every workflow, Tool self-tests #259-263), so it says what it reads; and an extensionless tool's edit selects a test
+# naming it by its directory and name (scripts/hooks/pre-push and pre-push-gate-test.sh, #71-72).
+put scripts/ci/layout_test.py "$(printf '%s\n' '"""Every workflow to a rule."""' '# script-test-reads: .github/workflows/* .github/actions/*' 'print(1)')"
+put scripts/ci/floor_test.py "$(printf '%s\n' '# script-test-reads: *.py' 'print(1)')"
+put scripts/ci/late_test.py "$(printf '%s\n' $(seq 1 40) '# script-test-reads: .github/workflows/*' 'print(1)')"
+put scripts/hooks/gate.sh 'exit 0'
+put scripts/hooks/gate-test.sh 'echo runs scripts/hooks/gate.sh'
+put scripts/hooks/gatekeeper-test.sh 'echo "the hooks/gatekeeper and a gate"'
+put scripts/hooks/gate-plan-test.sh 'echo "runs $REPO_ROOT/scripts/hooks/gate --plan"'
+put scripts/hooks/gate 'exit 0'
+put .github/workflows/main.yml 'on: push'
+scratch_git "$tree" add -A && scratch_git "$tree" commit -qm readers
+readers="$(scratch_git "$tree" rev-parse HEAD)"
+echo '# edited' >> "$tree/.github/workflows/main.yml"
+check "--changed: a workflow's edit selects the test declaring it reads every workflow" "scripts/ci/layout_test.py" \
+  "$(listed --changed "$readers")"
+check "...never one whose declaration is past its first 40 lines" "0" "$(grep -c late_test "$work/out")"
+scratch_git "$tree" checkout -q -- .github/workflows/main.yml
+mkdir -p "$tree/tools/x" && put tools/x/deep.py 'print(1)'
+check "--changed: a .py anywhere selects the test reading every .py" "scripts/ci/floor_test.py" "$(listed --changed "$readers")"
+rm -r "$tree/tools"
+check "--reads: every glob a test declares, once each, sorted" "*.py .github/actions/* .github/workflows/*" \
+  "$(run --reads > /dev/null; tr '\n' ' ' < "$work/out" | sed 's/ $//')"
+echo '# edited' >> "$tree/scripts/hooks/gate"
+check "--changed: an extensionless tool's edit selects the tests naming it by directory and name, not a longer name" \
+  "scripts/hooks/gate-plan-test.sh scripts/hooks/gate-test.sh" "$(listed --changed "$readers")"
+scratch_git "$tree" checkout -q -- scripts/hooks/gate
+
 # The timeout: a hung test is killed at its bound and FAILS as a timeout. The test never ends on its own (it records
 # its pid and blocks until killed), so the runner gets past it only by its bound: that, reported, and no test left
 # running prove it, never elapsed wall time (shell-spec.sh's HUNG STUBS).

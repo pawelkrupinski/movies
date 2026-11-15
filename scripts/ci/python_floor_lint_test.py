@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-reads: *.py
 """python_floor_lint.py: a Python file that would break on the floor fails, one within it passes, and the repository is
 within it."""
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-reads: .github/workflows/* .github/actions/*
 """No `actions/download-artifact` step downloads by `pattern` into a directory per artifact: that layout is not fixed.
 
 download-artifact@v6 extracts a pattern matching ONE artifact straight into its `path`, two or more each into

@@ -23,8 +23,9 @@
 #   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
 #                 the CI check `Stage NixOS closures` runs (well under a second)
 #   `scripttests` scripts/run-script-tests --changed <base>, on any change under the script-test roots (scripts/,
-#                 .github/scripts|actions, android/scripts, ios/scripts, infra/bin, data): only the self-tests whose test,
-#                 tool, or a file they name the push changed -- this hook's own test among them (it names
+#                 .github/scripts|actions, android/scripts, ios/scripts, infra/bin, data) or matching a glob a self-test
+#                 declares it reads (`run-script-tests --reads`: every workflow, .py and Scala spec): only the self-tests
+#                 whose test, tool, a file they name, or one they read the push changed -- this hook's own test among them (it names
 #                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans; run again
 #                 under the floor bash 3.2 the tools promise to run on (`--bash "$(scripts/floor-bash)"`: a Mac's
 #                 /bin/bash, on Linux -- ci-runner's landing checks -- the GNU 3.2.57 `scripts/floor-bash --install`
@@ -335,7 +336,11 @@ is_page_path() { # <path>
 plan() {
     local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
     local identity=0 page=0 allowlists=0 driftguards=0 newchecks=0 schedules=0
-    local tools
+    local tools script_test_reads glob
+    # What a repo-reading self-test declares it reads (run-script-tests' READS): a workflow, a .py or a spec edit runs
+    # the `scripttests` check, which selects that test (download_artifact_layout_test.py's workflow, Tool self-tests
+    # #259-263, landed without it).
+    script_test_reads="$("$(dirname "${BASH_SOURCE[0]}")/../run-script-tests" --reads 2>/dev/null)"
     tools=" $(tool_files | tr '\n' ' ') "
     local all_paths=""
     while IFS= read -r path; do
@@ -370,6 +375,12 @@ plan() {
         case "$path" in
             scripts/*|.github/scripts/*|.github/actions/*|android/scripts/*|ios/scripts/*|infra/bin/*|data/*) scripttests=1 ;;
         esac
+        if [ $scripttests = 0 ] && [ -n "$script_test_reads" ]; then
+            while IFS= read -r glob; do
+                # shellcheck disable=SC2254 # a declared glob is a pattern on purpose
+                case "$path" in $glob) scripttests=1; break ;; esac
+            done <<< "$script_test_reads"
+        fi
         case "$path" in
             .github/workflows/*.yml|.github/workflows/*.yaml|.github/actions/*/action.yml|.github/actions/*/action.yaml) actionlint=1 ;;
         esac

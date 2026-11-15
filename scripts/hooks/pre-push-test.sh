@@ -21,10 +21,14 @@ check "...and so does a generated table resource" "drift sbt" "$(plan geodata/sr
 check "the iOS City list runs the drift check and the iOS compile" "drift ios" "$(plan ios/Kinowo/Models/City.swift)"
 check "a recorded fixture runs the snapshot stamp check" "snapshot" \
   "$(plan test/resources/fixtures/08-06-2026/www.bilety24.pl/kino/organizator/x)"
-check "any Scala source runs the sbt lints" "sbt" "$(plan worker/src/test/scala/tools/FooSpec.scala)"
+check "any Scala source runs the sbt lints" "sbt" "$(plan web/src/main/scala/controllers/Foo.scala)"
+# what a repo-reading self-test declares it reads (run-script-tests' READS) runs the self-tests, which select it: a spec
+# for lint-registry-test.sh, a .py anywhere for python_floor_lint_test.py, a workflow for the workflow lints (#259-263)
+check "a Scala spec runs the self-tests reading every spec, and the sbt lints" "scripttests sbt" "$(plan worker/src/test/scala/tools/FooSpec.scala)"
+check "a Python file outside the script roots runs the self-tests reading every .py" "scripttests" "$(plan tools/devpanel/x.py)"
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
-check "a workflow runs the gating-checks registry lint, the schedules check, actionlint, and the silenced-read lint" "newchecks schedules actionlint sbt" "$(plan .github/workflows/ci.yml)"
+check "a workflow runs the gating-checks registry lint, the schedules check, the workflow lints' self-tests, actionlint, and the silenced-read lint" "newchecks schedules scripttests actionlint sbt" "$(plan .github/workflows/ci.yml)"
 check "the external scheduler's generated schedule runs the schedules check" "schedules" "$(plan infra/nix/files/scheduled-workflows.json)"
 check "a composite action runs actionlint (its run blocks' shellcheck), the self-tests, and the lint specs" "scripttests actionlint sbt" \
   "$(plan .github/actions/convergence-setup/action.yml)"
@@ -66,7 +70,7 @@ check "a title rule runs them" "driftguards sbt identity|driftguards sbt identit
   "$(plan common/src/main/resources/title-rules.tsv)|$(plan common/src/main/scala/services/titlerules/Rule.scala)"
 check "the title normalizer runs them (it applies the title rules: Main #2266, a dropped venue row a scraper spec caught)" \
   "driftguards sbt identity" "$(plan common/src/main/scala/services/movies/TitleNormalizer.scala)"
-check "an identity spec runs them" "driftguards sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
+check "an identity spec runs them (and, a spec, the self-tests reading every spec)" "driftguards scripttests sbt identity" "$(plan identity/src/test/scala/services/identity/agreement/MemoSpec.scala)"
 check "a template runs the page area's tests" "sbt page" "$(plan web/src/main/twirl/views/repertoire.scala.html)"
 check "a stylesheet runs them" "sbt page" "$(plan web/src/main/assets/css/main.css)"
 check "a Playwright spec runs ESLint and them" "eslint sbt page" "$(plan page-tests-playwright/tests/card-tap.spec.ts)"
@@ -82,7 +86,7 @@ check "an unmatched-cluster capture runs the identity area's tests, not the lint
 # A file identity-slice or title-trace drops into old refs (their TOOL_FILES) compiles into each tool's floor ref.
 check "a file identity-slice drops into old refs compiles the tools into their floors" "sbt oldrefs" \
   "$(plan worker/src/fixtures/scala/tools/MemoLookups.scala)"
-check "...and one title-trace drops in (an identity test: the identity area's tests too)" "driftguards sbt identity oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
+check "...and one title-trace drops in (an identity test: the identity area's tests too)" "driftguards scripttests sbt identity oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
 check "a fixtures-config file neither tool drops in does not" "sbt" "$(plan worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
 
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker

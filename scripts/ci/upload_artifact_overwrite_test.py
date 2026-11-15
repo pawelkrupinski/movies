@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-reads: .github/workflows/* .github/actions/*
 """Every `actions/upload-artifact` step in the workflows and composite actions sets `overwrite: true`.
 
 A `gh run rerun --failed` re-runs a failed job inside the SAME run: its artifacts from the first attempt still exist,

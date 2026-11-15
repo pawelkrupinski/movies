@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# script-test-reads: android/app/src/test/*
 """Pins the lockstep groups in /renovate.json: artifacts that must move in ONE Renovate PR share a packageRule's
 groupName, and each is declared in android/app/build.gradle.kts as a literal "group:artifact:version" coordinate,
 the shape Renovate's gradle manager reads (a version held in a variable or a script it would not see).

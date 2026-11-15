@@ -66,7 +66,9 @@ is that the local toolchain is missing (e.g. no full Xcode for
   infra/bin), found by name and run in parallel; ci.yml runs it whole.
   `scripts/run-script-tests scripts/ci identity-slice` narrows by path or
   name, `--changed origin/main` runs only the tests whose test, tool, a
-  file they name, or a library they source/import (transitively) changed
+  file they name, or a library they source/import (transitively) changed,
+  or a path matching a glob the test declares it reads (a repo-wide lint:
+  `# script-test-reads: .github/workflows/*` in its first 40 lines)
   (the pre-push hook's `scripttests`), `--list --all` shows the
   `# script-test: <tag>` ones kept out of the default run. `--bash /bin/bash`
   runs them under macOS's bash 3.2, the floor the tools promise: the pre-push

@@ -4,6 +4,7 @@
 # that let LoadIndependentTestsSpec and InMemoryStoresRoundTripSpec turn Main red 7 times (review 2026-11-06, D3) -- or
 # a row names a spec that does not exist, and checks the selection the hook makes from it.
 # Run: bash scripts/hooks/lint-registry-test.sh
+# script-test-reads: */src/test/scala/* scripts/hooks/lint-registry.tsv
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
