@@ -47,7 +47,90 @@ tests:
               severity: "critical"
             exp_annotations:
               summary: "de: every kinoheld.de poster probed from outside fails to load"
-              description: "blackbox_exporter on monitoring-1 cannot load any of the kinoheld.de posters it took from de's city page, as a browser is handed them, for ten minutes -- so cards drawing that host's poster are showing \"no poster\" (or their fallback) to every visitor. `probe_http_status_code{kind=\"poster\", poster_host=\"kinoheld.de\"}` and the `instance` URL say which kind: a weserv URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN. A direct CDN URL answering 403 here but 200 from a home connection is the CDN refusing a datacentre address (monitoring-1 is at Hetzner; Odeon, 2026-11-12): visitors are served, so add the host to `fleet.syntheticProbes.posterSkipHosts`. A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http:// poster a browser refuses on an https page."
+              description: "blackbox_exporter on monitoring-1 cannot load any of the kinoheld.de posters it took from de's city page, as a browser is handed them, for ten minutes -- so cards drawing that host's poster are showing \"no poster\" (or their fallback) to every visitor. `probe_http_status_code{kind=\"poster\", poster_host=\"kinoheld.de\"}` and the `instance` URL say which kind: a weserv URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN. The visitors' own browsers agree: their newest loads of this host's posters failed, or there were none in 72 hours (`kinowo_uptime_recent_failures{service=\"img: <host>\"}`); a CDN refusing only monitoring-1's datacentre address is held while visitors load it. A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http:// poster a browser refuses on an https page."
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # 2026-11-12, REPLAYED: ODEON'S CDN REFUSES THE PROBE'S DATACENTRE ADDRESS, NOT THE VISITORS.
+  # Both vwc.odeon.co.uk probes answer 403 from monitoring-1 throughout, while visitors' browsers
+  # report their primary loads of the same host as working (the beacon's `img: vwc.odeon.co.uk`
+  # row) -- the 93 hours this paged critical. Held while that is the newest evidence; at 3h the
+  # visitors' loads fail too (a half hour with failures and no success), and it pages 20m later.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    name: a poster host refusing only the probe's address is held while visitors load it, and pages once theirs fail
+    input_series:
+      - series: 'probe_success{instance="https://vwc.odeon.co.uk/a.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
+        values: '0x60'
+      - series: 'probe_http_uncompressed_body_length{instance="https://vwc.odeon.co.uk/a.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
+        values: '5000x60'
+      - series: 'probe_success{instance="https://vwc.odeon.co.uk/b.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
+        values: '0x60'
+      - series: 'probe_http_uncompressed_body_length{instance="https://vwc.odeon.co.uk/b.jpg",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
+        values: '5000x60'
+      # visitors' loads: two work in the first half hour, then none for two and a half hours (no
+      # visitors -- still served), then failures only from 3h
+      - series: 'kinowo_uptime_recent_successes{instance="kinowo-web-uk",job="kinowo-web",country="uk",service="img: vwc.odeon.co.uk"}'
+        values: '0 2x5 0x54'
+      - series: 'kinowo_uptime_recent_failures{instance="kinowo-web-uk",job="kinowo-web",country="uk",service="img: vwc.odeon.co.uk"}'
+        values: '0x35 3x24'
+      # the fallback row is not the primary's evidence: its successes never hold the alert
+      - series: 'kinowo_uptime_recent_successes{instance="kinowo-web-uk",job="kinowo-web",country="uk",service="img: vwc.odeon.co.uk · fallback"}'
+        values: '5x60'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: PosterProbeFailing
+        exp_alerts: []
+      - eval_time: 3h10m
+        alertname: PosterProbeFailing
+        exp_alerts: []
+      - eval_time: 3h30m
+        alertname: PosterProbeFailing
+        exp_alerts:
+          - exp_labels:
+              country: "uk"
+              poster_host: "odeon.co.uk"
+              severity: "critical"
+              domain: "serving"
+            exp_annotations:
+              summary: "uk: every odeon.co.uk poster probed from outside fails to load"
+              description: "blackbox_exporter on monitoring-1 cannot load any of the odeon.co.uk posters it took from uk's city page, as a browser is handed them, for ten minutes -- so cards drawing that host's poster are showing \"no poster\" (or their fallback) to every visitor. `probe_http_status_code{kind=\"poster\", poster_host=\"odeon.co.uk\"}` and the `instance` URL say which kind: a weserv URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN. The visitors' own browsers agree: their newest loads of this host's posters failed, or there were none in 72 hours (`kinowo_uptime_recent_failures{service=\"img: <host>\"}`); a CDN refusing only monitoring-1's datacentre address is held while visitors load it. A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http:// poster a browser refuses on an https page."
+    promql_expr_test:
+      # the origin host folds to its registrable domain, three labels under a `co` second level
+      - expr: country_poster_host:browser_loads_ok:last_time
+        eval_time: 1h
+        exp_samples:
+          - labels: 'country_poster_host:browser_loads_ok:last_time{country="uk",poster_host="odeon.co.uk"}'
+            value: 1800
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A HOST NO VISITOR LOADED: with no beacon evidence either way the probe's word stands, as before.
+  # Two labels under an ordinary second level (image.tmdb.org -> tmdb.org) hold the right host only.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 5m
+    name: visitors' loads of one host do not hold another host's failing probes
+    input_series:
+      - series: 'probe_success{instance="https://images.weserv.nl/?url=static.kinoheld.de%2Fa.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '0x12'
+      - series: 'probe_http_uncompressed_body_length{instance="https://images.weserv.nl/?url=static.kinoheld.de%2Fa.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="kinoheld.de"}'
+        values: '79x12'
+      - series: 'probe_success{instance="https://image.tmdb.org/a.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="tmdb.org"}'
+        values: '0x12'
+      - series: 'probe_http_uncompressed_body_length{instance="https://image.tmdb.org/a.jpg",job="blackbox-poster",country="de",kind="poster",poster_host="tmdb.org"}'
+        values: '5000x12'
+      - series: 'kinowo_uptime_recent_successes{instance="kinowo-web-de",job="kinowo-web",country="de",service="img: image.tmdb.org"}'
+        values: '4x12'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: PosterProbeFailing
+        exp_alerts:
+          - exp_labels:
+              country: "de"
+              poster_host: "kinoheld.de"
+              severity: "critical"
+              domain: "serving"
+            exp_annotations:
+              summary: "de: every kinoheld.de poster probed from outside fails to load"
+              description: "blackbox_exporter on monitoring-1 cannot load any of the kinoheld.de posters it took from de's city page, as a browser is handed them, for ten minutes -- so cards drawing that host's poster are showing \"no poster\" (or their fallback) to every visitor. `probe_http_status_code{kind=\"poster\", poster_host=\"kinoheld.de\"}` and the `instance` URL say which kind: a weserv URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN. The visitors' own browsers agree: their newest loads of this host's posters failed, or there were none in 72 hours (`kinowo_uptime_recent_failures{service=\"img: <host>\"}`); a CDN refusing only monitoring-1's datacentre address is held while visitors load it. A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http:// poster a browser refuses on an https page."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # THE PROBES' OWN PATH OUT FAILS (the Cloudflare control answering nothing) while both kinoheld
@@ -104,7 +187,7 @@ tests:
               severity: "critical"
             exp_annotations:
               summary: "uk: every savoysystems.co.uk poster probed from outside fails to load"
-              description: "blackbox_exporter on monitoring-1 cannot load any of the savoysystems.co.uk posters it took from uk's city page, as a browser is handed them, for ten minutes -- so cards drawing that host's poster are showing \"no poster\" (or their fallback) to every visitor. `probe_http_status_code{kind=\"poster\", poster_host=\"savoysystems.co.uk\"}` and the `instance` URL say which kind: a weserv URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN. A direct CDN URL answering 403 here but 200 from a home connection is the CDN refusing a datacentre address (monitoring-1 is at Hetzner; Odeon, 2026-11-12): visitors are served, so add the host to `fleet.syntheticProbes.posterSkipHosts`. A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http:// poster a browser refuses on an https page."
+              description: "blackbox_exporter on monitoring-1 cannot load any of the savoysystems.co.uk posters it took from uk's city page, as a browser is handed them, for ten minutes -- so cards drawing that host's poster are showing \"no poster\" (or their fallback) to every visitor. `probe_http_status_code{kind=\"poster\", poster_host=\"savoysystems.co.uk\"}` and the `instance` URL say which kind: a weserv URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN. The visitors' own browsers agree: their newest loads of this host's posters failed, or there were none in 72 hours (`kinowo_uptime_recent_failures{service=\"img: <host>\"}`); a CDN refusing only monitoring-1's datacentre address is held while visitors load it. A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http:// poster a browser refuses on an https page."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # THE HOURLY CACHE KEY: at 30m the kinoheld probe's URL changes (`&kinowo_probe=` the next hour),
@@ -152,7 +235,7 @@ tests:
               severity: "warning"
             exp_annotations:
               summary: "es's city page names no poster to probe"
-              description: "The synthetic probes found a film on es's city page but no poster host drawing ten or more of its cards' posters (synthetic-probe-targets.sh), so no poster is being watched from outside. Look at the page: if the cards show \"no poster\", the posters went missing before the browser (PosterPlaceholderShareJumped should agree); if they show posters, they all come from hosts in `fleet.syntheticProbes.posterSkipHosts` or under the floor -- `journalctl -u synthetic-probe-targets` and the page's `data-original-src` attributes say which."
+              description: "The synthetic probes found a film on es's city page but no poster host drawing ten or more of its cards' posters (synthetic-probe-targets.sh), so no poster is being watched from outside. Look at the page: if the cards show \"no poster\", the posters went missing before the browser (PosterPlaceholderShareJumped should agree); if they show posters, they all come from hosts under the floor -- `journalctl -u synthetic-probe-targets` and the page's `data-original-src` attributes say which."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A HOST LOST FROM SERVING. de serves 1,000 films: 400 draw kinoheld, 400 tmdb, 200 none. At 26h

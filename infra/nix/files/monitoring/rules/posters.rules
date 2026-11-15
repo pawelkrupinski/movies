@@ -30,10 +30,16 @@
 #             `wkrotce`, 2026-06-18), a not-found image (bilety24, 2026-09-24), a placeholder
 #             (Flicks, 2026-10-01). Each loads fine and is the wrong picture.
 #
-# NOT ON THE BROWSER BEACON. /uptime/img-event's per-host rows (`kinowo_uptime_recent_*{service=~
-# "img: .*"}`) are charted in the Posters row, not alerted: measured over 2026-10-07..21, a
-# country's real-user primary loads number 0-10 per half hour, and their failure share swings
-# 0..100% on a healthy day (uk 1.0 twice, pl 0.8 twice). There is no threshold in that.
+# THE BROWSER BEACON IS EVIDENCE, NOT A THRESHOLD. /uptime/img-event's per-host rows
+# (`kinowo_uptime_recent_*{service=~"img: .*"}`) are charted in the Posters row and never alerted on
+# by share: measured over 2026-10-07..21, a country's real-user primary loads number 0-10 per half
+# hour, and their failure share swings 0..100% on a healthy day (uk 1.0 twice, pl 0.8 twice). What
+# they do answer is the one question monitoring-1 cannot: does a host that refuses the PROBE serve
+# VISITORS? A CDN gated on the egress address (Odeon's vwc.odeon.co.uk 403s Hetzner since
+# 2026-11-12, Multikino and biletyna always have) answers every probe from here 403 while browsers
+# get images, so PosterProbeFailing holds while the newest real-user evidence for that host is a
+# load that worked (`country_poster_host:browser_loads_ok:last_time` below). There is no skip list:
+# such a host is probed like any other, and pages as soon as visitors' loads fail too.
 #
 # THRESHOLDS. Two comparisons are against the same hour yesterday: a country's served film count
 # moves by up to 21% day on day on its own (kinowo_web_movies_served, its biggest city, max over
@@ -62,6 +68,42 @@ groups:
         expr: >-
           sum by (country) (max by (country, poster_host) (last_over_time(kinowo_web_films_sharing_poster[10m])))
 
+      # WHEN VISITORS' BROWSERS LAST LOADED A HOST'S POSTER, AND WHEN THEY LAST ONLY FAILED TO.
+      # From the beacon's primary rows (`img: <origin host>`, not ` · fallback`), the origin host
+      # folded to its registrable domain exactly as `tools.PosterHost` and the probes' discovery
+      # fold it (`co|com|org|net|ac|gov|edu` second levels keep three labels), so the result lines up
+      # with a probe's `poster_host`. A subquery over the raw gauge, not a recording of a recording,
+      # so it is right from its first evaluation; stepped by the gauge's own half hour, which every load
+      # stays in for 30 minutes, so no step misses one. 72 hours: the sparsest refusing host's visitors
+      # (biletyna.pl, pl) went 59 hours between loads over 11-02..11-16; Odeon's 8.5, Multikino's 7.
+      - record: country_poster_host:browser_loads_ok:last_time
+        expr: >-
+          max by (country, poster_host) (max_over_time(timestamp(
+            label_replace(label_replace(
+              kinowo_uptime_recent_successes{service=~`img: [^ ]+[.][^ ]+`} > 0,
+              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.][^.]+)`),
+              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`)
+          )[72h:30m]))
+      # A half hour in which a host's primary loads failed and none worked.
+      - record: country_poster_host:browser_loads_failing:last_time
+        expr: >-
+          max by (country, poster_host) (max_over_time(timestamp(
+            label_replace(label_replace(
+              (
+                max by (country, service) (kinowo_uptime_recent_failures{service=~`img: [^ ]+[.][^ ]+`}) > 0
+                  unless on (country, service)
+                max by (country, service) (kinowo_uptime_recent_successes{service=~`img: [^ ]+[.][^ ]+`}) > 0
+              ),
+              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.][^.]+)`),
+              "poster_host", "$1", "service", `img: (?:.*[.])?([^.]+[.](?:co|com|org|net|ac|gov|edu)[.][^.]+)`)
+          )[72h:30m]))
+      # Visitors are being served the host's posters: their newest evidence is a load that worked.
+      - record: country_poster_host:browser_loads:served
+        expr: >-
+          country_poster_host:browser_loads_ok:last_time
+            > on (country, poster_host)
+          (country_poster_host:browser_loads_failing:last_time or 0 * country_poster_host:browser_loads_ok:last_time)
+
       # EVERY POSTER PROBED FOR A HOST HAS FAILED FOR TEN MINUTES. Two posters per host, probed
       # every five minutes, so this is both of them failing three probes running; `max` over the
       # host's probes is what lets one dead image (a cinema that never uploaded the poster it lists)
@@ -69,7 +111,9 @@ groups:
       # and the CDNs answer a refused image with a tiny placeholder body as often as with an error.
       # Held while the probes' own path out is failing (ProbeSourceDegraded, synthetic-probes.rules).
       # Read over 11 minutes, so the hourly change of the probes' cache key (a new `instance`) and
-      # a late scrape both stay bridged.
+      # a late scrape both stay bridged. Held, too, while visitors' browsers are loading the host's
+      # posters (`country_poster_host:browser_loads:served` above): then the failure is this
+      # vantage's, a CDN refusing a datacentre address, not the visitors'.
       - alert: PosterProbeFailing
         expr: >-
           max by (country, poster_host) (
@@ -77,6 +121,7 @@ groups:
               * (last_over_time(probe_http_uncompressed_body_length{kind="poster"}[11m]) >= bool 1024)
           ) == 0
           unless on () probe:control_failing:any
+          unless on (country, poster_host) country_poster_host:browser_loads:served
         # TWENTY MINUTES, not ten (2026-11-04): this pages critical and by email, and its one firing
         # in the week to 11-04 healed in five. A poster host down for 20 minutes is still news.
         for: 20m
@@ -94,16 +139,16 @@ groups:
             URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with
             and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one
             answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN.
-            A direct CDN URL answering 403 here but 200 from a home connection is the CDN refusing
-            a datacentre address (monitoring-1 is at Hetzner; Odeon, 2026-11-12): visitors are
-            served, so add the host to `fleet.syntheticProbes.posterSkipHosts`.
+            The visitors' own browsers agree: their newest loads of this host's posters failed, or
+            there were none in 72 hours (`kinowo_uptime_recent_failures{service="img: <host>"}`);
+            a CDN refusing only monitoring-1's datacentre address is held while visitors load it.
             A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http://
             poster a browser refuses on an https page.
 
       # THE COUNTRY'S PAGES LIST FILMS BUT NOT ONE PROBEABLE POSTER. The discovery found the
       # country's film (so the city page answered and lists films) and no poster host drawing ten
       # or more of its posters: the page's cards have stopped carrying posters at all -- or every
-      # one went to a skipped host. Either way PosterProbeFailing cannot fire for this country.
+      # one went to a host under the floor. Either way PosterProbeFailing cannot fire for this country.
       - alert: PosterProbesMissing
         expr: >-
           count by (country) (last_over_time(probe_success{kind="film"}[15m]))
@@ -120,9 +165,8 @@ groups:
             drawing ten or more of its cards' posters (synthetic-probe-targets.sh), so no poster is
             being watched from outside. Look at the page: if the cards show "no poster", the posters
             went missing before the browser (PosterPlaceholderShareJumped should agree); if they
-            show posters, they all come from hosts in `fleet.syntheticProbes.posterSkipHosts` or
-            under the floor -- `journalctl -u synthetic-probe-targets` and the page's
-            `data-original-src` attributes say which.
+            show posters, they all come from hosts under the floor -- `journalctl -u
+            synthetic-probe-targets` and the page's `data-original-src` attributes say which.
 
       # A POSTER HOST'S SHARE OF THE COUNTRY'S FILMS HALVED SINCE YESTERDAY, for a host that drew at
       # least fifty films then. A host that VANISHED (its series gone, or folded under `other`

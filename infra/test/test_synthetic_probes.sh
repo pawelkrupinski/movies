@@ -193,8 +193,9 @@ check "with no origin configured a refused film page is still probed (and reads 
 
 echo "discovery: one poster per poster host, as the city page hands it to a browser"
 # The 2026-10-21 page: kinoheld's posters handed to weserv SCHEME-LESS (the bug, 5a77a8867), TMDB's
-# with https, an Amazon poster direct, a Multikino one direct (skipped: it refuses datacentres),
-# and a venue site with a single poster (under the floor).
+# with https, an Amazon poster direct, a Multikino one direct (probed like any other: it refuses
+# datacentres, and PosterProbeFailing holds on visitors' loads, not a skip list), and a venue site
+# with a single poster (under the floor).
 wk='https://images.weserv.nl/?url='
 hints='&amp;w=480&amp;h=720&amp;fit=cover&amp;output=webp'
 de_page="$(
@@ -208,10 +209,10 @@ de_page="$(
 serve "https://showtimes.cc/de/berlin/" "$de_page"
 serve "https://showtimes.cc/de/berlin/movie/f1" '<meta property="og:image" content="https://showtimes.cc/share-cards/de/hf1.jpg"></html>'
 rm -f "$tmp/targets.json"
-PROBE_POSTER_MIN=3 PROBE_POSTER_SKIP="multikino.pl biletyna.pl" PROBE_HOUR=2026102117 \
+PROBE_POSTER_MIN=3 PROBE_HOUR=2026102117 \
   run "$tmp/targets.json" de=https://showtimes.cc/de/berlin/
-check "two poster targets per host drawing at least the floor, the skipped and the tail left out" \
-  "kinoheld.de kinoheld.de media-amazon.com media-amazon.com tmdb.org tmdb.org" \
+check "two poster targets per host drawing at least the floor, the tail left out" \
+  "kinoheld.de kinoheld.de media-amazon.com media-amazon.com multikino.pl multikino.pl tmdb.org tmdb.org" \
   "$(field '[.[] | select(.labels.kind == "poster") | .labels.poster_host] | sort | join(" ")')"
 check "the kinoheld posters are probed EXACTLY as served (the scheme-less weserv URL of the bug), with an hourly cache key" \
   "https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff1.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102117 https://images.weserv.nl/?url=static.kinoheld.de%2Fimages%2Ffilm%2Ff2.jpg&w=480&h=720&fit=cover&output=webp&kinowo_probe=2026102117" \
@@ -301,7 +302,7 @@ check "...pinned to both zones' origin certificates" "kinowo.net.crt showtimes.c
   "$(nix "${nix_flags[@]}" eval --json \
     "$flake#nixosConfigurations.monitoring-1.config.fleet.syntheticProbes.discoveryOrigin.certificates" 2>/dev/null |
     jq -r 'map(split("/") | last) | sort | join(" ")')"
-check "the discovery never picks a poster from a host that refuses datacentres" "multikino.pl biletyna.pl odeon.co.uk" \
+check "the discovery is given no list of poster hosts to leave unprobed" "null" \
   "$(jq -r '.PROBE_POSTER_SKIP' <<<"$discovery_env")"
 check "...bundled into the one file curl is told to trust" "synthetic-probe-origin-certificates.pem" \
   "$(jq -r '.PROBE_ORIGIN_CA | split("-") | .[1:] | join("-")' <<<"$discovery_env")"

@@ -48,8 +48,10 @@
 # started refusing weserv (Multikino, Amazon and AlloCine each did). A new key each hour makes weserv
 # go to the origin once an hour, as it does for every poster a visitor is the first to ask for.
 # STICKY like the film: a poster probed for a host is kept while the page still lists it.
-# PROBE_POSTER_SKIP names hosts not to probe from here: ones that refuse a datacentre address (this
-# host is at Hetzner) but serve visitors, so a probe could only ever report the refusal.
+# EVERY HOST IS PROBED, even one that refuses a datacentre address (this host is at Hetzner) and serves
+# visitors (Odeon, Multikino, biletyna): PosterProbeFailing holds while visitors' browsers report that
+# host's posters loading (posters.rules, `country_poster_host:browser_loads:served`), and pages once
+# theirs fail too -- which a list of hosts never probed could not.
 #
 # ALL OR NOTHING. If any country's discovery fails -- the city page did not answer, or listed no
 # film -- the previous document is left exactly as it was and the failure is logged. Replacing it
@@ -67,7 +69,6 @@
 #        PROBE_ORIGIN_CA      (with it: the PEM file of origin certificates to trust)
 #        PROBE_POSTER_MIN     (posters a host must draw on a city page to be probed; default 10)
 #        PROBE_POSTER_MAX     (poster hosts probed per country, the biggest first; default 8)
-#        PROBE_POSTER_SKIP    (space-separated poster hosts never probed from here)
 #        PROBE_HOUR           (the cache key's hour, YYYYMMDDHH; default the current UTC hour)
 set -uo pipefail
 
@@ -85,7 +86,6 @@ ua="${PROBE_USER_AGENT:-kinowo-synthetic-probe/1}"
 poster_min="${PROBE_POSTER_MIN:-10}"
 poster_max="${PROBE_POSTER_MAX:-8}"
 per_host=2
-poster_skip=" ${PROBE_POSTER_SKIP:-} "
 hour="${PROBE_HOUR:-$(date -u +%Y%m%d%H)}"
 
 work="$(mktemp -d)"
@@ -160,7 +160,7 @@ previous_posters() {
 }
 
 # This country's poster targets, as a JSON array: $per_host posters for each poster host drawing at
-# least $poster_min of the page's posters, the $poster_max biggest, minus the skipped hosts.
+# least $poster_min of the page's posters, the $poster_max biggest.
 #
 # TWO PER HOST, so one dead image is not a host outage: a cinema that lists a poster it never
 # uploaded (Cinema City, 2026-05-21) is one broken card whose fallback chain covers it, and
@@ -170,7 +170,6 @@ poster_targets() {
   local country="$1" posters="$work/posters" host url probe chosen list='[]'
   poster_urls > "$posters"
   while read -r _ host; do
-    case "$poster_skip" in *" $host "*) continue ;; esac
     chosen="$(
       { previous_posters "$country" "$host" | while IFS= read -r url; do
           grep -qxF "$host"$'\t'"$url" "$posters" && printf '%s\n' "$url"
