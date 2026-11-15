@@ -39,11 +39,11 @@ tests:
     promql_expr_test:
       # THE EXPRESSION, PINNED VERBATIM FROM alert-rules.yaml (test_alert_rule_coverage.py checks
       # a suite contains it character-for-character).
-      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) > 0)'
         eval_time: 1550m
         exp_samples:
           # ONLY "hadbug" — a listed sample and nothing else, so if "wentdark" ever reappeared
-          # (the pre-2026-09-13 behaviour, or a future regression that drops the `and on (city)`
+          # (the pre-2026-09-13 behaviour, or a future regression that drops the `and on (country, city)`
           # clause) this test fails on the extra, unlisted series.
           - labels: '{scope="all",city="hadbug",country="pl"}'
             value: 0
@@ -62,7 +62,7 @@ tests:
       - series: 'kinowo_worker_movies_served{scope="all",city="tiny",country="pl"}'
         values: '2x156'
     promql_expr_test:
-      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) > 0)'
         eval_time: 1550m
         exp_samples: []
 
@@ -81,10 +81,31 @@ tests:
         values: '4x1445 0x25'
     promql_expr_test:
       # Two minutes after the web went dark, the corpus still reading 4: silent.
-      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) > 0)'
         eval_time: 1443m
         exp_samples: []
       # Ten minutes on, the corpus has caught up and reads 0 as well: still silent.
-      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) > 0)'
         eval_time: 1455m
+        exp_samples: []
+
+  # ── ONE CITY NAME IN TWO COUNTRIES ──────────────────────────────────────────────────────────────
+  # 2026-11-13 03:20Z, ~15h of critical pages: us/potsdam (a one-venue New York town) went dark with
+  # its corpus at 0 as well -- cause (2), nothing to chase -- and the rule paged anyway, because the
+  # corpus gate joined `on (country, city)` and found de/potsdam's corpus of 109 films. 42 city names are
+  # shared between countries (london, birmingham, boston, toledo, stuttgart, potsdam, ...), so the
+  # gate must join on the country as well as the city.
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_web_movies_served{scope="all",city="potsdam",country="us"}'
+        values: '5x146 0x10'
+      - series: 'kinowo_worker_movies_served{scope="all",city="potsdam",country="us"}'
+        values: '5x146 0x10'
+      - series: 'kinowo_web_movies_served{scope="all",city="potsdam",country="de"}'
+        values: '110x156'
+      - series: 'kinowo_worker_movies_served{scope="all",city="potsdam",country="de"}'
+        values: '109x156'
+    promql_expr_test:
+      - expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+        eval_time: 1550m
         exp_samples: []

@@ -670,14 +670,14 @@ groups:
       # apart from cause (1) — a read-model defect where the corpus HELD its
       # count while the web craters — and pages `severity: warning` for both.
       #
-      # `unless on (city) (...)` computes the SAME relative-drop ratio against
+      # `unless on (country, city) (...)` computes the SAME relative-drop ratio against
       # `kinowo_worker_movies_served` and drops any city where the corpus swung
       # down by more than the same 50% — i.e. only a city whose corpus did NOT
       # also crater still fires. Set-difference (`unless`), not a threshold
       # AND-ed into `condition: C`, because query A's OUTPUT VALUE is still the
       # web-side ratio the page reports — the corpus term only decides which
       # cities survive the join, exactly as kinowo-movies-served-city-empty's own
-      # `and on (city) (... > 0)` decides membership without changing query A's
+      # `and on (country, city) (... > 0)` decides membership without changing query A's
       # value. A city that has NEVER had a corpus series in the last hour is
       # unaffected (`unless` finds nothing to exclude), which is the
       # conservative direction: it falls back to the pre-discriminant behaviour
@@ -687,7 +687,7 @@ groups:
       # raise, not this rule's.
       #
       # A PAGE THAT LEFT THE ROSTER, added 2026-09-24. The trailing
-      # `unless on (city) (max_over_time(worker[1h]) unless on (city) worker)`
+      # `unless on (country, city) (max_over_time(worker[1h]) unless on (country, city) worker)`
       # drops a city whose corpus series existed in the last hour and is gone
       # now. The Polish re-cluster (2026-09-23 18:22Z) retired `ketrzyn` and
       # `starogard-gdanski` (`PolishPages.retired`): the worker stopped counting
@@ -725,7 +725,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
+              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (country, city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5) unless on (country, city) ((max_over_time(kinowo_worker_movies_served{scope="all"}[1h]) unless on (country, city) kinowo_worker_movies_served{scope="all"}) and on (country) kinowo_worker_movies_served{scope="all"})'
               instant: true
               range: false
               intervalMs: 1000
@@ -821,10 +821,16 @@ groups:
       # goes missing fleet-wide (crashed, unwired from its registry),
       # `ReadModelServedGaugesAbsent` in read-model-projection.rules already pages
       # that separately — it is the better alert to read when the whole metric, not
-      # one city, has gone dark. `and on (city)` here only drops a city Prometheus has
+      # one city, has gone dark. `and on (country, city)` here only drops a city Prometheus has
       # no CORPUS sample for at all, inside an otherwise-healthy gauge, which is
       # exactly the cause-2 shape and never the whole-metric outage the sibling rule
       # already owns.
+      #
+      # JOINED ON (country, city), NOT city (2026-11-15). 42 city names exist in two countries
+      # (london, boston, toledo, potsdam, ...). Joined on the city alone, us/potsdam going dark with
+      # its own corpus at 0 (cause 2) found de/potsdam's corpus of 109 and paged critical for ~15h
+      # from 2026-11-13 03:20Z. The swing rule above had the same join and the mirror-image fault:
+      # one country's corpus thinning excused another's real web crash.
       - uid: kinowo-movies-served-city-empty
         title: City serving zero films (was active)
         condition: C
@@ -843,7 +849,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+              expr: '(max_over_time(kinowo_web_movies_served{scope="all"}[10m]) == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) > 0)'
               instant: true
               range: false
               intervalMs: 1000
@@ -855,7 +861,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: 'max by (city) (kinowo_worker_movies_served{scope="all"})'
+              expr: 'max by (country, city) (kinowo_worker_movies_served{scope="all"})'
               instant: true
               range: false
               intervalMs: 1000

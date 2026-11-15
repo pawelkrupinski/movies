@@ -18,12 +18,12 @@ import org.scalatest.matchers.should.Matchers
  *
  * The fix ports the discriminant `kinowo-movies-served-city-empty` already carries (since
  * 2026-09-13, see [[GrafanaCityEmptyQualifierSpec]]) onto this rule: query A now excludes
- * (`unless on (city) (...)`) any city whose corpus-side gauge swung down by the same >50% margin
+ * (`unless on (country, city) (...)`) any city whose corpus-side gauge swung down by the same >50% margin
  * over the same window, so a city whose corpus thinned in lockstep — cause (2), not a bug — stays
  * silent, and only a city whose corpus did NOT also crater still fires: cause (1), the read-model
  * defect this rule exists to catch. `unless` rather than an `and`-ed threshold, because query A's
  * OUTPUT VALUE must stay the web-side ratio the page reports — the corpus term only decides which
- * cities survive the join, exactly as the city-empty rule's own `and on (city) (... > 0)` decides
+ * cities survive the join, exactly as the city-empty rule's own `and on (country, city) (... > 0)` decides
  * membership without changing its query A's value.
  *
  * What the expression PRODUCES for both causes is pinned by feeding it series in
@@ -59,13 +59,13 @@ class GrafanaServedSwingCorpusDiscriminantSpec extends AnyFlatSpec with Matchers
     queryA.foreach { expr =>
       withClue(
         s"'$expr' no longer excludes on kinowo_worker_movies_served. Without " +
-          "`unless on (city) (... kinowo_worker_movies_served ... > 0.5)`, this alert pages for " +
+          "`unless on (country, city) (... kinowo_worker_movies_served ... > 0.5)`, this alert pages for " +
           "cause (2) as well as cause (1) — a single-venue city whose own corpus thinned between " +
           "scrapes (es/zamora, three times in September 2026: 09-03, 09-11, 09-17) is not a bug, " +
           "and this alert exists to catch cause (1): a corpus that HELD its count while the web " +
           "stopped serving it. "
       ) {
-        expr should include("unless on (city)")
+        expr should include("unless on (country, city)")
         expr should include("kinowo_worker_movies_served")
       }
     }

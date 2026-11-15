@@ -45,7 +45,7 @@ import org.scalatest.matchers.should.Matchers
  * legitimate depth-guard hold, none of them bugs — paged `severity: critical` every time regardless.
  *
  * The fix folds the discriminant into query A itself: it now requires the SAME city's corpus
- * reading to be nonzero (`and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) >
+ * reading to be nonzero (`and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope="all"}) >
  * 0)`) before the alert can fire at all, so a city whose corpus has also run dry — cause (2), not a
  * bug — stays silent, and only a site short of a nonzero corpus — cause (1), the read-model defect
  * this alert exists to catch — still pages. Safe against a corpus OUTAGE rather than merely a quiet
@@ -143,13 +143,13 @@ class GrafanaCityEmptyQualifierSpec extends AnyFlatSpec with Matchers {
     cityEmptyExpressions.foreach { expr =>
       withClue(
         s"'$expr' no longer gates on kinowo_worker_movies_served. Without " +
-          "`and on (city) (max by (city) (kinowo_worker_movies_served{scope=\"all\"}) > 0)`, this " +
+          "`and on (country, city) (max by (country, city) (kinowo_worker_movies_served{scope=\"all\"}) > 0)`, this " +
           "alert pages critical for cause (2) as well as cause (1) — a thin venue whose own " +
           "listing ran dry between scrapes (es/zamora, us/pueblo, us/havre, all 2026-09-11) is not " +
           "a bug, and this alert exists to catch cause (1): a corpus with films for a city that the " +
           "site is not serving. "
       ) {
-        expr should include("and on (city) (max by (city) (kinowo_worker_movies_served")
+        expr should include("and on (country, city) (max by (country, city) (kinowo_worker_movies_served")
         expr should include("> 0)")
       }
     }
