@@ -286,9 +286,8 @@ is anchored to its own words.
 
 Two shapes were skipped:
 - "The Host: 20th Anniversary" already searches "The Host" at HEAD (`structural-anniversary-suffix` plus the colon
-  re-peel). The title names two films and the billing gives no year. A year hint (screening year − N) would need
-  identity code, because `IdentityMeasures.anniversaryYear` only relaxes a published year. So the listing stays
-  ambiguous.
+  re-peel). The title names two films and the billing gives no year. A year hint (screening year − N) needed
+  identity code, because `IdentityMeasures.anniversaryYear` only relaxes a published year: Fix I below.
 - "Kino KILN: Born in Flames" and "Our House | Preview Screening" already search the bare title at HEAD.
 
 **Measure.** The `--footprint` measure found nothing to replay: 0 of ~870k stored readings read otherwise, because
@@ -355,3 +354,32 @@ Katyn ×3, All That Jazz, Moulin Rouge, Babel, Blade Runner Final Cut, Die drei 
 gained right (All That Jazz, Katyn, Blutgräfin, Close, Catching Fire ×2, Die drei ??? …), nothing lost, changed or
 wrong; final takes and PL, UK, ES, US unmoved. An earlier head (run 43643114687) that read every tag off and every
 tagged copy as missing lost Baden-Baden's Starlight Express and gained the Das Boot stub: the two narrowings above.
+
+## 10. Fix I: an anniversary dates its film
+
+**Cause.** US Alamo Drafthouse ×15 "The Host: 20th Anniversary" (BelowThreshold): the bare "The Host" names Bong
+Joon-ho's 2006 film (1255) and Niccol's 2013 one (72710) alike, and the billing states no year, no director.
+`favoured-calibrated` refused: "its own facts do not favour it over the runner-up". The anniversary was the one fact
+telling them apart, and nothing read it without a published year.
+
+**Precision check** (prod mirror, 2026-11-15, every country; `IdentityMeasures.AnniversaryYears` in every language
+`title-words.tsv` lists): 1678 listings bill an anniversary, 1654 matched and 24 unmatched. Of the 1364 matched ones whose
+first screening day could be read, 1360 (99.7%) took a film within a year of (first screening year − N). Of the 1239
+stating no year, 1238 (99.9%); the one off is DE Kino Lahnstein's "SATURDAY NIGHT FEVER 40TH ANNIVERSARY" (1977, 9 years
+off its implied 1986). Unmatched: The Host ×15 is the recoverable group; the other 9 are events (Snuff Box Q&A, a Trigger
+Happy TV tour, an album playback, a rap evening) or unmatched for other causes (Yi Yi, La Haine, The Fast and the Furious
+at one venue each).
+
+**Change.** `Listing.anniversaryScreeningYear` (the model's Listing, kept in the evidence and its key only where the
+title bills an anniversary, so no other listing's key moves) carries the year of its first screening.
+`IdentityMeasures.Listing.anniversaryFilmYear` is that year less the anniversary's, where the listing states no year.
+`anniversaryFilmDated`, the last step of `listingFilmTitled`, reads it as `year.delta` / `year.distance` against a film
+within a year of it, and only where nothing else dated the listing. It is evidence FOR a film and never against one,
+because a venue's anniversary may count from another release (the Saturday Night Fever above keeps its take). No new
+rule and no weight changed: the existing year measure reads it.
+
+**Slice** (pinned as a case): Alamo Drafthouse Yonkers' "The Host: 20th Anniversary" → 1255, judged right.
+
+**What-if** over prod's mirror (all five countries, base 58bf39767): CLEAN. US model and final takes gained 15 right
+(The Host ×15 → 1255). PL model gained 1 right (Kinoteka's "55 rocznica premiery „Skrzypka na dachu”" → 14811, 1971;
+prod's final already served it). DE, ES and UK did not move.
