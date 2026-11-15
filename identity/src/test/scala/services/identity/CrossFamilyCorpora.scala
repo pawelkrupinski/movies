@@ -19,7 +19,8 @@ object CrossFamilyCorpora {
     // Opera season "RBO Cinema Season 2026-27: …"; TMDB files RBO's Swan Lake and Alice, its Manon
     // only under the Met (`IdentityResolverCasesSpec`).
     {
-      def rbo(work: String) = Seq(Helios, KinoApollo).map(listing(_, s"RBO Cinema Season 2026-27: $work"))
+      // at UK venues: the banner is a cinema season there alone (cinema-season-banners.tsv)
+      def rbo(work: String) = Seq(models.UkRoster("CineworldFeltham"), models.UkRoster("OdeonNorwich")).map(listing(_, s"RBO Cinema Season 2026-27: $work"))
       def met(work: String) = Seq(Multikino, Rialto).map(listing(_, s"Met Opera 2026-27: $work"))
       Corpus("a banner's house learned from its other works (RBO's Manon)",
         rbo("Swan Lake") ++ rbo("Alice's Adventures in Wonderland") ++ rbo("Manon") ++ met("Manon") ++ met("Macbeth"),

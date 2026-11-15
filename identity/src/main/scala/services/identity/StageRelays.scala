@@ -247,9 +247,10 @@ object StageRelays {
    *  staged them (UK "NT Live: A Streetcar Named Desire" is the 2014 broadcast, "Royal Ballet: La Bayadère" the 2018 recording), and a
    *  title's banner shared by a film series reads as a house (DE "Der Herr der Ringe - Die Gefährten (Extended Version)").
    *  KNOWN GAP: so US "NT Live: Hamlet", screening November 2026 — the National Theatre's 2026 Hamlet, which no search of
-   *  it reaches — keeps the 2015 broadcast the shared Flicks page dates it by. */
-  def anotherProduction(listing: Listing, film: Film): Boolean =
-    listing.billsAStageHouse && (anotherHousesRelay(listing, film) || listing.screenedSeason.exists(season =>
+   *  it reaches — keeps the 2015 broadcast the shared Flicks page dates it by. `country`: the venue's (ISO-3166-1), where
+   *  a cinema season's banner is read ([[services.movies.StageHouse.isSeasonBanner]]). */
+  def anotherProduction(listing: Listing, film: Film, country: Option[String]): Boolean =
+    listing.billsAStageHouse && (anotherHousesRelay(listing, film, country) || listing.screenedSeason.exists(season =>
       anotherSeasonsRelay(film, season) || billsAnotherHouse(listing, film) && (
         if (billsAHouseInParticular(listing)) services.movies.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
         else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season))))
@@ -260,10 +261,11 @@ object StageRelays {
    *  Opera Ballet's, never the Royal Ballet & Opera's 2026/27 "Romeo and Juliet" its season and work alone reached. Only a
    *  CINEMA SEASON's banner ([[services.movies.StageHouse.seasonBanners]]) bills more than one house's productions: the
    *  Royal Ballet & Opera's UK cinema season carries the Met's, UK Flicks' "RBO Cinema Season 2026-27: Macbeth" and
-   *  Pocklington's "Royal Ballet & Opera: Macbeth" (the owner, 2026-11-13). */
-  private def anotherHousesRelay(listing: Listing, film: Film): Boolean =
+   *  Pocklington's "Royal Ballet & Opera: Macbeth" (the owner, 2026-11-13) — in the countries whose venues bill it so:
+   *  PL's "Royal Ballet and Opera Sezon Kinowy" and DE's "RBO Kino Saison" bill only the house's own relays. */
+  private def anotherHousesRelay(listing: Listing, film: Film, country: Option[String]): Boolean =
     listing.seasonYear.orElse(listing.screenedSeason).isDefined && billsAHouseInParticular(listing) &&
-      !listing.relay.houses.exists(services.movies.StageHouse.isSeasonBanner) && billsAnotherHouse(listing, film)
+      !listing.relay.houses.exists(services.movies.StageHouse.isSeasonBanner(_, country)) && billsAnotherHouse(listing, film)
   /** Is `f` its own house's RECORDING of the work, dated by a year alone at most [[RecordingLag]] years before the season
    *  the relay's title names — what a cinema season screens of a house's staging, released years after it was filmed? DE
    *  Passage's and Traumpalast's "Opera de Paris: Schwanensee (2026/27)", screening 13 December 2026 with every other

@@ -89,7 +89,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
           relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId))))
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = RuleAblation.live(deniedByNode(candidate.tmdbId))
-      Scored(candidate, probability, measures, byNode.orElse(RuleAblation.live(evidenceDenial(listing, candidate.film, measures))), listing, ranks.get(candidate.tmdbId),
+      Scored(candidate, probability, measures, byNode.orElse(RuleAblation.live(evidenceDenial(listing, candidate.film, measures, country))), listing, ranks.get(candidate.tmdbId),
         namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, StageRelays.billsUnderItsHouse(listing, candidate.film, houses),
         suggestedOnly = onlySuggested(candidate.tmdbId), ownReach = ownReach(candidate.tmdbId))
     }

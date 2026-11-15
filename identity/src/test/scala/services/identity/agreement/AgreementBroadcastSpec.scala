@@ -13,6 +13,9 @@ import java.time.LocalDate
  *  day one record of it was broadcast takes that record; an encore, only when its title bills the house or season. */
 class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
   private val normalizer = SingleCountryNormalizer.titleNormalizer
+  /** UK venues: the Royal Ballet & Opera's banners are a cinema season there alone (cinema-season-banners.tsv). */
+  private val Feltham = models.UkRoster("CineworldFeltham")
+  private val Acton   = models.UkRoster("ActOneActon")
 
   private val metSamson = FilmTable.F(1703624, "The Metropolitan Opera 2026/27: Samson et Dalila", 2026, "", 0, popularity = 1.0,
     released = Some(LocalDate.of(2026, 12, 5)))
@@ -105,7 +108,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
       clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table)).apply(resolution, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
   }
   private def rbo(work: String, director: Option[String], days: String*): Listing =
-    FilmTable.listing(Multikino, s"RBO Cinema Season 2026-27: $work", director = director).copy(screenings = ScreeningDays.of(days.map(LocalDate.parse)))
+    FilmTable.listing(Feltham, s"RBO Cinema Season 2026-27: $work", director = director).copy(screenings = ScreeningDays.of(days.map(LocalDate.parse)))
 
   "a title billing another house" should "take the production a film database credits with the very director the venue credits" in {
     // UK Flicks' "RBO Cinema Season 2026-27" relays the Met's 2026/27 productions (labels.tsv, the review page 10-06): the
@@ -130,16 +133,16 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
   // "Royal Ballet & Opera: Macbeth" credit nobody, in the cluster of Flicks' and Cineworld's "RBO Cinema Season 2026-27:
   // Macbeth" crediting Louisa Proske — and their one listing each withheld the Met's record from all 58 (82 right takes)
   "a relay crediting nobody in a cluster whose listings credit the production" should "take the production with them" in {
-    val poole       = FilmTable.listing(KinoMuza, "RBO: Macbeth - Cert TBC").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
-    val pocklington = FilmTable.listing(KinoMuza, "Royal Ballet & Opera: Macbeth").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
+    val poole       = FilmTable.listing(Acton, "RBO: Macbeth - Cert TBC").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
+    val pocklington = FilmTable.listing(Acton, "Royal Ballet & Opera: Macbeth").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
     // …and the encore's mark is the cluster's too: The Forum Northallerton's "RBO: MACBETH (MET)" spells its houses in no word a
     // banner reads, and alone, three days after the broadcast, says nothing of which staging it is
-    val northallerton = FilmTable.listing(KinoMuza, "RBO: MACBETH (MET)").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
+    val northallerton = FilmTable.listing(Acton, "RBO: MACBETH (MET)").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
     val taken = creditedAll(Seq(rbo("Macbeth", Some("Louisa Proske"), "2026-10-20"), poole, pocklington, northallerton))
     (taken.film, taken.basis) shouldBe ((Some(metMacbeth.id), ResolverDecision.Basis.Broadcast))
     creditedAll(Seq(northallerton)).film shouldBe None
     creditedAll(Seq(rbo("La Fanciulla Del West", Some("Richard Jones"), "2027-01-26"),
-      FilmTable.listing(KinoMuza, "RBO: La Fanciulla del West - Cert TBC").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2027, 1, 26))))))
+      FilmTable.listing(Acton, "RBO: La Fanciulla del West - Cert TBC").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2027, 1, 26))))))
       .film shouldBe Some(metFanciulla.id)
   }
 
@@ -152,7 +155,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
   "a cluster whose verdict was read blind" should "take the same at the same answers, whichever decision object holds it" in {
     val families = silentFamilies + (VoterFamily.RottenTomatoes -> new Productions(VoterFamily.RottenTomatoes, rtProductions))
     val flicks   = "https://www.flicks.co.uk/movie/rbo-cinema-season-2026-27-la-fanciulla-del-west/"
-    val listings = Seq(Multikino, KinoMuza).map(venue => FilmTable.listing(venue, "RBO Cinema Season 2026-27: La Fanciulla Del West",
+    val listings = Seq(Feltham, Acton).map(venue => FilmTable.listing(venue, "RBO Cinema Season 2026-27: La Fanciulla Del West",
       director = Some("Richard Jones")).copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2027, 1, 26))), page = Some(flicks)))
     // the listings site's page, not read yet: a gap to everything reading it, no fact to the catalogue-blind read
     val unread = new IdentityLookups {
@@ -173,10 +176,10 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
 
   it should "take none where no listing of the cluster credits it, or a listing credits another production's director" in {
     creditedAll(Seq(rbo("Macbeth", None, "2026-10-20"),
-      FilmTable.listing(KinoMuza, "Royal Ballet & Opera: Macbeth").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20)))))).film shouldBe None
+      FilmTable.listing(Acton, "Royal Ballet & Opera: Macbeth").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20)))))).film shouldBe None
     // a listing's own credit is its own: one crediting the Royal Opera's director borrows no sibling's
     creditedAll(Seq(rbo("Macbeth", Some("Louisa Proske"), "2026-10-20"),
-      FilmTable.listing(KinoMuza, "Royal Ballet & Opera: Macbeth", director = Some("Phyllida Lloyd"))
+      FilmTable.listing(Acton, "Royal Ballet & Opera: Macbeth", director = Some("Phyllida Lloyd"))
         .copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20)))))).film shouldBe None
   }
 

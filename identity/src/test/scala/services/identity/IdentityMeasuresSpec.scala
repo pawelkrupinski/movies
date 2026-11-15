@@ -919,7 +919,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   "a stage house's relay" should "deny another production of its work than the season its screenings fall in" in {
     def relay(title: String, year: Option[Int] = None) = Listing(title, year = year, screenedSeason = Some(2026))
-    def another(listing: Listing, film: Film) = StageRelays.anotherProduction(listing, film)
+    def another(listing: Listing, film: Film, country: String = "GB") = StageRelays.anotherProduction(listing, film, Some(country))
     // UK Savoy Boston's "Opéra De Paris Ballet - Notre-Dame de Paris" ×6, screening March 2027 (the Paris Opera's Dec 2025
     // recording), took La Scala's 2013 "La Scala Ballet: Notre-Dame de Paris" (790330) by the work's name alone
     val paris   = relay("Opéra De Paris Ballet - Notre-Dame de Paris")
@@ -948,6 +948,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     another(relay("Royal Ballet & Opera: Macbeth"), metMacbeth) shouldBe false
     another(relay("ROYAL BALLET & OPERA LIVE: MACBETH"), metMacbeth) shouldBe false
     another(relay("RB&O: Macbeth"), metMacbeth) shouldBe false
+    // a banner is a cinema season only in the countries its row names (cinema-season-banners.tsv's `where`): DE's "RBO Kino
+    // Saison" and PL's "Royal Ballet and Opera Sezon Kinowy" bill the house's own relays alone, never the Met's
+    another(named("RBO Kino Saison 2026/27: Macbeth"), metMacbeth, "DE") shouldBe true
+    another(named("Royal Ballet and Opera Sezon Kinowy 2026-27: Macbeth"), metMacbeth, "PL") shouldBe true
+    another(named("RBO Cinema Season 2026-27: Macbeth"), metMacbeth, "US") shouldBe false
+    another(relay("Royal Ballet & Opera: Macbeth"), metMacbeth, "US") shouldBe true
     // the Paris Opera's 2024 recording is what its 2026/27 cinema season screens: DE Passage's and Traumpalast's "Opera de Paris:
     // Schwanensee (2026/27)" ×7, 13 December 2026, beside every other venue's "Paris Opera: Schwanensee" on that day. Kept off
     // the Royal Ballet & Opera's record above, they must not split the house's relay from its recording: a season the title
@@ -994,6 +1000,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     services.movies.StageHouse.initials shouldBe Set("rbo", "roh")
     // any house of the table: three initialled words or more, its articles and conjunctions skipped
     services.movies.StageHouse.initialsOfHouses(names("The English National Opera|ENO Live") ++ names("Metropolitan Opera|The Met")) shouldBe Set("eno")
+  }
+
+  it should "read a cinema season's banner only in the countries its row names, and refuse a row naming none" in {
+    import services.movies.StageHouse.{SeasonBanner, parseSeasonBanners}
+    def banners(lines: String*) = parseSeasonBanners(lines.iterator)
+    banners("banner\twhere\twhy", "# a comment", "RBO\tuk us\twhy", "Royal Ballet and Opera\tuk\twhy") shouldBe
+      Seq(SeasonBanner(Seq("rbo"), Set("GB", "US")), SeasonBanner(Seq("royal", "ballet", "opera"), Set("GB")))
+    an[IllegalArgumentException] should be thrownBy banners("RBO\t\twhy")
+    an[IllegalArgumentException] should be thrownBy banners("RBO\tUK venues\twhy")
+    services.movies.StageHouse.isSeasonBanner(Seq("rbo", "kino", "saison"), Some("DE")) shouldBe false
+    services.movies.StageHouse.isSeasonBanner(Seq("rbo", "cinema", "season"), Some("GB")) shouldBe true
+    services.movies.StageHouse.isSeasonBanner(Seq("rbo", "cinema", "season"), None) shouldBe false
   }
 
   "a stage house's relay" should "know a record billing its house from one billing another's" in {

@@ -36,11 +36,11 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
    *  ([[IdentityMeasures.numbersAnotherSubtitle]]), or another year's edition of the series its title dates
    *  ([[IdentityMeasures.datesAnotherEdition]]). A learned cannot-link never denies a relay its own house's record of
    *  its work and season ([[RelayStage.particularRecordOf]]). */
-  def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
-    evidenceDenial(listing, film, measures).isDefined
+  def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure], country: Option[String]): Boolean =
+    evidenceDenial(listing, film, measures, country).isDefined
 
-  /** [[evidenceDenies]], saying which of its reasons rules the film out. */
-  def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[Denial] =
+  /** [[evidenceDenies]], saying which of its reasons rules the film out. `country`: the venue's (ISO-3166-1). */
+  def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure], country: Option[String]): Option[Denial] =
     ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year)
       .filterNot(_ => StageRelays.itsHousesRecording(listing, film) || RelayStage.airsItsRelay(listing, film))
       .map(link => Denial(link.toString))
@@ -52,7 +52,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
       // a credit or a running time never holds a record of another work: a screen director films many
       .orElse(Option.when(StageRelays.namesAnotherWork(listing, film))(
         Denial("a record of another work than its stage house's billing names")))
-      .orElse(Option.when(StageRelays.anotherProduction(listing, film))(
+      .orElse(Option.when(StageRelays.anotherProduction(listing, film, country))(
         Denial("another production of its work than the season its screenings fall in")))
       .orElse(Option.when(ListingShape.festivalsCatalogueNamesake(listing, film))(
         Denial("a catalogue namesake of a bare billing under a film festival's banner")))

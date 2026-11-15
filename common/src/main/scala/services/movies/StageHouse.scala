@@ -16,17 +16,35 @@ object StageHouse {
       .map(_.split('|').toSeq.map(name => TitleContainment.tokens(name).toSeq).filter(_.nonEmpty)).filter(_.sizeIs >= 2).toSeq
 
   /** Every house's names on the classpath. */
-  lazy val houses: Seq[Seq[Seq[String]]] =
-    Option(getClass.getClassLoader.getResourceAsStream(Resource)).fold(Seq.empty[Seq[Seq[String]]]) { in =>
-      try parse(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
-    }
+  lazy val houses: Seq[Seq[Seq[String]]] = readResource(Resource)(parse)
+
+  /** `path`'s lines read by `read`. A missing resource fails loudly, as every hand-kept table's does ([[TitleWords]]): an
+   *  empty table would silently read every banner as none. */
+  private def readResource[A](path: String)(read: Iterator[String] => A): A = {
+    val in = Option(getClass.getClassLoader.getResourceAsStream(path)).getOrElse(throw new IllegalStateException(s"no $path on the classpath"))
+    try read(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
+  }
 
   val SeasonBannersResource = "cinema-season-banners.tsv"
 
-  /** `cinema-season-banners.tsv`'s rows (`banner<TAB>where<TAB>why`, a header and `#` comments aside): each banner's words. */
-  def parseSeasonBanners(lines: Iterator[String]): Seq[Seq[String]] =
-    lines.filterNot(line => line.trim.isEmpty || line.startsWith("#") || line.startsWith("banner\t"))
-      .map(line => bannerWords(TitleContainment.tokens(line.split('\t').head).toSeq)).filter(_.nonEmpty).toSeq
+  /** A CINEMA SEASON's banner ([[seasonBanners]]): its words, and the countries (ISO-3166-1, as a listing's venue is
+   *  placed: `GB`, `US`) whose venues bill it so. */
+  final case class SeasonBanner(words: Seq[String], countries: Set[String])
+
+  /** `cinema-season-banners.tsv`'s rows (`banner<TAB>where<TAB>why`, a header and `#` comments aside): each banner's
+   *  words, and the countries `where` names by their codes (`uk us`, [[models.Country.code]]). A row naming no country,
+   *  or one no deployment serves, fails loudly: a banner read everywhere would let a house's own season ("RBO Kino
+   *  Saison") carry another house's records. */
+  def parseSeasonBanners(lines: Iterator[String]): Seq[SeasonBanner] =
+    lines.filterNot(line => line.trim.isEmpty || line.startsWith("#") || line.startsWith("banner\t")).map { line =>
+      val cells     = line.split('\t')
+      val banner    = cells.head
+      val codes     = cells.lift(1).toSeq.flatMap(_.split("[\\s,]+")).map(_.trim.toLowerCase(java.util.Locale.ROOT)).filter(_.nonEmpty)
+      val countries = codes.map(code => models.Country.all.find(_.code == code).map(_.language.getCountry)
+        .getOrElse(throw new IllegalArgumentException(s"$SeasonBannersResource: banner '$banner' names '$code', no country's code")))
+      require(countries.nonEmpty, s"$SeasonBannersResource: banner '$banner' names no country in its `where` column")
+      SeasonBanner(bannerWords(TitleContainment.tokens(banner).toSeq), countries.toSet)
+    }.filter(_.words.nonEmpty).toSeq
   /** A banner's words as [[isSeasonBanner]] matches them: its numbers and [[UninitialledWords]] out, split initials joined. */
   private def bannerWords(words: Seq[String]): Seq[String] =
     initialsJoined(words).filterNot(word => word.forall(_.isDigit) || UninitialledWords(word))
@@ -34,15 +52,14 @@ object StageHouse {
   /** A CINEMA SEASON's banners over stage relays (`cinema-season-banners.tsv`): names under which venues bill more than
    *  one house's productions — the Royal Ballet & Opera's UK cinema season, "RBO Cinema Season 2026-27: Macbeth" the
    *  Met's. A relay under one may be another house's record of its season; under any other house's name, never. */
-  lazy val seasonBanners: Seq[Seq[String]] =
-    Option(getClass.getClassLoader.getResourceAsStream(SeasonBannersResource)).fold(Seq.empty[Seq[String]]) { in =>
-      try parseSeasonBanners(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
-    }
+  lazy val seasonBanners: Seq[SeasonBanner] = readResource(SeasonBannersResource)(parseSeasonBanners)
 
-  /** Does a house fragment's words (a relay's banner, numbers out) carry a cinema's season banner ([[seasonBanners]]) as a
-   *  run of its words? */
-  def isSeasonBanner(house: Seq[String]): Boolean =
-    seasonBanners.exists(banner => bannerWords(house).containsSlice(banner))
+  /** Does a house fragment's words (a relay's banner, numbers out), billed at a venue in `country` (ISO-3166-1), carry a
+   *  cinema's season banner of that country ([[seasonBanners]]) as a run of its words? A banner is a season only where
+   *  its row says venues bill it so: DE "RBO Kino Saison" and PL "Royal Ballet and Opera Sezon Kinowy" bill the house's
+   *  own relays alone. */
+  def isSeasonBanner(house: Seq[String], country: Option[String]): Boolean =
+    country.exists(here => seasonBanners.exists(banner => banner.countries(here) && bannerWords(house).containsSlice(banner.words)))
 
   /** Words a house's initials skip ("RBO" of "The Royal Ballet and Opera"). */
   val UninitialledWords: Set[String] = Set("the", "and", "und", "of")
