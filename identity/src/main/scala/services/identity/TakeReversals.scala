@@ -87,8 +87,6 @@ object TakeReversals {
   private val Seeded: Long = -OscillationWindow.toLong
   /** The stage of a change no decision names (a listing no cluster holds). */
   val NoStage = "none"
-  /** Every [[Reversal.cause]]: `scripts/flip-timeline`'s classes. */
-  val Causes: Seq[String] = Seq("DEPLOY/RESTART", "LATE-ANSWER", "SIBLING/POPULATION", "RULE")
   /** Every [[Reversal.pattern]]. */
   val Patterns: Seq[String] = Seq("film-none-film", "none-film-none", "film-film-film")
 
