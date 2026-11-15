@@ -51,23 +51,18 @@ final class RepertoireLaunchUITests: XCTestCase {
                       "The grid came from somewhere else: the app asked the fixture server for \(server.requestedPaths).")
     }
 
-    func testEmptyStateIfNoNetwork() throws {
-        // TODO: needs a `KINOWO_FORCE_OFFLINE=1` hook in RepertoireClient
-        // that short-circuits the fetch with an error. Until the wiring
-        // agent adds it, skip so the suite stays green.
-        try XCTSkipIf(true, "needs KINOWO_FORCE_OFFLINE wiring in RepertoireClient")
+    /// A listing the server fails to serve shows the error state with its retry, not a spinner or an
+    /// empty grid. A fresh server's port is a deployment the app's disk cache has never seen
+    /// (`ConditionalPayloadCache` keys on it), so nothing cached stands in for the failed fetch.
+    func testErrorStateWhenTheListingFails() throws {
+        let failing = try FixtureServer(routes: [:])
+        FixtureLaunch.intoCity(app, city: "warszawa", environment: ["KINOWO_UITEST_SERVER": failing.baseURL.absoluteString])
 
-        app.launchEnvironment["KINOWO_FORCE_OFFLINE"] = "1"
-        FixtureLaunch.intoCity(app, city: "warszawa")
-
-        let emptyById = app.otherElements[A11y.EmptyState.repertoire]
-        let errorById = app.otherElements[A11y.EmptyState.error]
-
-        let predicate = NSPredicate { _, _ in
-            emptyById.exists || errorById.exists
-        }
-        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: nil)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed)
+        XCTAssertTrue(element(A11y.EmptyState.error).waitForExistence(timeout: 30),
+                      "Expected the error state after the listing failed. \(listingState()) "
+                      + "The app asked the failing server for \(failing.requestedPaths).")
+        XCTAssertTrue(failing.requestedPaths.contains("/warszawa/api/repertoire"),
+                      "The app never asked the failing server for the listing: \(failing.requestedPaths).")
     }
 
     /// Which of the listing's other states the app shows where the grid should be.
