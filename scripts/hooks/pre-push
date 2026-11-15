@@ -177,7 +177,8 @@
 #
 # DRY RUN / TEST: `scripts/hooks/pre-push --plan < paths` prints the checks a list of changed
 # paths selects, without running them (scripts/hooks/pre-push-test.sh). `--fast-only A..B` is the `waiting` batch's
-# combined check at green (each change in it passed its own full checks before it joined): the red gate is not judged
+# combined check at green (each change was checked alone, on an older main, before it joined; the rebase writes the
+# combined tree no member saw): the red gate is not judged
 # and only the `sbt` check runs -- every test config compiled, the lint specs, and local-tests.txt's `fast` set instead
 # of `basic`; no area tests -- with the touched files' shellcheck and actionlint checks, and the checks a touched
 # union-merged file selects (THE COMBINED FILES: the rebase wrote it, no member checked it; e.g. `judgements`). Its pass is stored like any (THE REUSE), and a push with PREPUSH_REUSE_FAST=1 (agentctl's
@@ -1088,7 +1089,7 @@ if [ -z "${PREPUSH_NO_REUSE:-}" ] && [ "${#ranges[@]}" -eq 1 ] && [ -n "${PREPUS
     # agentctl's push of the `waiting` batch: the batch's --fast-only pass of this tree on this base stands for it
     fast_key="$(gate_state=fast-only; checks="$(printf '%s\n' "$checks" | fast_select)"; compute_reuse_key)" || fast_key=""
     if [ -n "$fast_key" ] && [ -f "$reuse_dir/$fast_key" ]; then
-        log "the waiting batch's fast check passed for tree $(git rev-parse --short "$head_sha^{tree}") on this base $(cat "$reuse_dir/$fast_key"): reused (each change passed its own full checks before it joined)" >&2
+        log "the waiting batch's fast check passed for tree $(git rev-parse --short "$head_sha^{tree}") on this base $(cat "$reuse_dir/$fast_key"): reused (each change was checked alone before it joined, and this check covered the combined tree)" >&2
         exit 0
     fi
 fi
