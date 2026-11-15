@@ -261,7 +261,7 @@ TMDB lookup.
 - Real films come to about 300 listings (~6%), against ~230 (4%) on 11-01. Most of that is extrapolated, and one
   68-listing cluster moves DE by about 21. The biggest groups are a learned cannot-link veto (~125, DE "Hard Boiled",
   "Tabaluga und Leo"), banner text (~110, US "Dune: Part One Reissue (2026)", UK "Our House | Preview Screening",
-  PL "FOKUS: GRANICE - Głupcy") and a namesake runner-up (DE "Lieblingsmenschen", 68 listings).
+  PL "Niesamowite przygody skarpetek: Do roboty! PREMIERA 2D dubbing") and a namesake runner-up (DE "Lieblingsmenschen", 68 listings).
 - Double bills of two real films: about 90 listings (UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea").
 - Of section 2's examples, "The Assassin + Q&A", "The Odyssey + Interval", the Hunger Games slip, "Sinn &
   Sinnlichkeit" and "Touch of Evil" are matched now. "Here Lived", "Kult-Special: Blade Runner - The Final Cut" and
@@ -297,11 +297,11 @@ pl/uk/us) was CLEAN:
 - UK gained 5 model takes, all of Magic Lantern Tywyn's BIFA season. 2 of them are new final takes (Tender Loving
   Care 1370191, The Incomer 1554956); prod already served the other 3.
 - US gained "Dune: Part Two Reissue (2026)" (693134), model and final.
-- PL moved nothing. Prod's trace for "FOKUS: GRANICE - Głupcy" (`identity_traces`) shows that identity already
-  searched "Głupcy". It gave its weight to 908327, but the take is vetoed:
-  `its-title-names-it-only-by-a-programme-tag-billed-beside-many-titles` reads the identity title, which the row does
-  not change. The first hit is also a namesake, 577874 "Głupcy" (2022), and the billing gives no year. So the strip
-  only fixes the lookup query; gaining the take needs identity work on that veto.
+- PL moved nothing, and nothing was there to move. 908327 is "Frontières" (2023), titled "Granice" in Polish, so
+  `CandidateScoring.namesOnlyATag` rightly denies a film named only by the strand word GRANICE; it can never deny
+  a "Głupcy" candidate. The film Kino CK Lublin bills is most likely Wasilewski's "Głupcy" (577874, 2022), held
+  back by the rating cut (4.9%: one venue, no year). An earlier reading here blamed the veto; a count on
+  2026-11-15 (16 unmatched listings that veto denies, 14 of them rightly) showed it does not.
 
 All 6 moved takes are judged right. "Dune: Part One Reissue" still takes nothing, because TMDB titles that film "Dune"
 (438631) and `IdentityMeasures.shapes` deliberately does not search a bare "Dune".
