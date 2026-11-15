@@ -295,7 +295,8 @@ jobs:
                   sparse-checkout: |
                       .github/scripts
                       scripts
-            - uses: actions/download-artifact@v6
+            # each into a directory of its name, one artifact too (download_artifact_layout_test.py)
+            - uses: ./.github/actions/download-artifacts
               with:
                   pattern: convergence-diagnostics-*
                   path: ${{ runner.temp }}/verify-diagnostics
