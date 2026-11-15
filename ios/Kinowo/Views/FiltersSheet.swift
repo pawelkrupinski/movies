@@ -92,7 +92,7 @@ struct FiltersSheet: View {
                         // Reset everything that lights the Filtry button
                         // (`ListingFilters.Cleared`), then close the sheet.
                         let cleared = ListingFilters.Cleared(disabledCinemas: prefs.disabledCinemas,
-                                                             cityCinemas: store.films.allCinemas())
+                                                             catalog: store.catalog, films: store.films)
                         filters = cleared.filters
                         prefs.setDisabledCinemas(cleared.disabledCinemas)
                         if !prefs.hiddenFilms.isEmpty { prefs.unhideAll() }

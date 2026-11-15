@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
@@ -44,6 +45,19 @@ class FilterFacetsTest {
         val films = listOf(Film(title = "A", showings = playing("Muza", "Apollo")), Film(title = "B", showings = playing("Muza")))
         assertEquals(setOf("Muza", "Apollo"), FilterFacets.allCinemas(films).toSet())
         assertEquals(2, FilterFacets.allCinemas(films).size)
+    }
+
+    /** Wyczyść resets EVERYTHING (the owner, 2026-11-15): a catalogue cinema with no showings today, unticked,
+     *  is ticked again too — it is in the Kina list. Another city's pick stays: it narrows nothing here. */
+    @Test
+    fun wyczyscReticksEveryCatalogueCinemaNotOnlyThoseWithShowings() {
+        val films = listOf(Film(title = "A", showings = playing("Muza", "Apollo")))
+        val catalog = CinemaCatalog(listOf("Muza", "Kino Letnie"), emptyList())
+
+        val cleared = FilterFacets.clearedDisabledCinemas(setOf("Muza", "Apollo", "Kino Letnie", "Elsewhere"), catalog, films)
+
+        assertEquals(setOf("Elsewhere"), cleared)
+        assertEquals(CinemaCheck.ON, CinemaFilterSection(catalog, cleared).allCheck)
     }
 
     /** A cinema unticked in ANOTHER city lingers in the global set; it must not light the icon here. */

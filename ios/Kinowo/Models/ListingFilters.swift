@@ -76,19 +76,23 @@ struct ListingFilters: Equatable {
             || !excludedCast.isEmpty
     }
 
-    /// What Wyczyść leaves: every input `isActive` reads back at rest, so the
-    /// button is unlit once it closes. The session axes go back to `.empty`, the
-    /// hidden films are un-hidden, and this city's cinemas are ticked again; a
-    /// cinema unticked in another city stays unticked (it narrows nothing here).
-    /// The same reset as Android's `clearFilters` and the web's
-    /// `resetFormatFilter`.
+    /// What Wyczyść leaves: everything reset. The session axes go back to
+    /// `.empty` and EVERY cinema of this city is ticked again — the catalogue's
+    /// whole universe, venues with no showings today included (the owner,
+    /// 2026-11-15: a catalogue-only cinema left unticked by Wyczyść was a reset
+    /// that didn't reset), plus any cinema the listing shows that the catalogue
+    /// doesn't name yet. A cinema unticked in another city stays unticked: the
+    /// excluded set is global and it narrows nothing here. The hidden films are
+    /// un-hidden. The same reset as Android's `clearFilters`
+    /// (`FilterFacets.clearedDisabledCinemas`) and the web's `resetFormatFilter`
+    /// (which re-ticks `ALL_CINEMAS`, the city's catalogue).
     struct Cleared: Equatable {
         let filters = ListingFilters.empty
         let disabledCinemas: Set<String>
         let hidden: Set<String> = []
 
-        init(disabledCinemas: Set<String>, cityCinemas: [String]) {
-            self.disabledCinemas = disabledCinemas.subtracting(cityCinemas)
+        init(disabledCinemas: Set<String>, catalog: CinemaCatalog, films: [Film]) {
+            self.disabledCinemas = disabledCinemas.subtracting(catalog.cinemas).subtracting(films.allCinemas())
         }
     }
 

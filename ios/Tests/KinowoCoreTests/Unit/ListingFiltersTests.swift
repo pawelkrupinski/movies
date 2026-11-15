@@ -125,12 +125,26 @@ final class ListingFiltersTests: XCTestCase {
         XCTAssertTrue(filters.isActive(over: films, cityCinemas: films.allCinemas(),
                                        disabledCinemas: ["Muza", "Elsewhere"], hidden: ["Hidden"]))
 
-        let cleared = ListingFilters.Cleared(disabledCinemas: ["Muza", "Elsewhere"], cityCinemas: films.allCinemas())
+        let cleared = ListingFilters.Cleared(disabledCinemas: ["Muza", "Elsewhere"], catalog: .empty, films: films)
 
         XCTAssertEqual(cleared.disabledCinemas, ["Elsewhere"])
         XCTAssertEqual(cleared.hidden, [])
         XCTAssertFalse(cleared.filters.isActive(over: films, cityCinemas: films.allCinemas(),
                                                 disabledCinemas: cleared.disabledCinemas, hidden: cleared.hidden))
+    }
+
+    /// Wyczyść resets EVERYTHING (the owner, 2026-11-15): a catalogue cinema
+    /// with no showings today, unticked, is ticked again too — it is in the
+    /// Kina list, and a reset that leaves a box in it unticked is no reset.
+    func testWyczyscReticksEveryCatalogueCinemaNotOnlyThoseWithShowings() {
+        let films = [playing("A", at: "Muza")]
+        let catalog = CinemaCatalog(cinemas: ["Muza", "Kino Letnie"], areas: [])
+
+        let cleared = ListingFilters.Cleared(disabledCinemas: ["Muza", "Kino Letnie", "Elsewhere"],
+                                             catalog: catalog, films: films)
+
+        XCTAssertEqual(cleared.disabledCinemas, ["Elsewhere"])
+        XCTAssertEqual(CinemaFilterSection(catalog: catalog, disabled: cleared.disabledCinemas).allCheck, .on)
     }
 
     func testALinksScalarsSetSortAndFormatAndLeaveAbsentAxesAlone() {

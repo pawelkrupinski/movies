@@ -21,6 +21,14 @@ object FilterFacets {
         return seen.sortedBy { CinemaSection.pillName(it) }
     }
 
+    /** What Wyczyść leaves of the global [disabled] set: every cinema of this city ticked again — the whole
+     *  [catalog], venues with no showings today included (the owner, 2026-11-15: a reset that leaves a box in the
+     *  Kina list unticked is no reset), plus any cinema [films] show that the catalog doesn't name yet. A cinema
+     *  unticked in another city stays unticked: it narrows nothing here. iOS `ListingFilters.Cleared`; the web's
+     *  `resetFormatFilter` re-ticks `ALL_CINEMAS`, the city's catalogue. */
+    fun clearedDisabledCinemas(disabled: Set<String>, catalog: CinemaCatalog, films: List<Film>): Set<String> =
+        disabled - catalog.cinemas.toSet() - allCinemas(films).toSet()
+
     fun allCountries(all: List<Film>): List<NameCount> = countBy(all) { it.countries }
     fun allGenres(all: List<Film>): List<NameCount> = countBy(all) { it.genres }
     fun allDirectors(all: List<Film>): List<NameCount> = countBy(all) { it.directors }

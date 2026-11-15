@@ -11,6 +11,10 @@ import org.robolectric.annotation.Config
 import pl.kinowo.KinowoViewModelHarness
 import pl.kinowo.auth.StateSync
 import pl.kinowo.data.UserPreferences
+import pl.kinowo.model.CinemaShowings
+import pl.kinowo.model.DayShowings
+import pl.kinowo.model.Film
+import pl.kinowo.model.Showtime
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -73,7 +77,7 @@ class ViewModelDrivesStateSyncTest {
     /** Wyczyść resets everything that lights the Filtry icon: a hidden film un-hides (through the sync, like
      *  "show all") and this city's unticked cinemas come back, so the icon is neutral once the sheet closes. A
      *  cinema unticked in another city stays unticked: it narrows nothing here, so it never lit the icon. iOS
-     *  `ListingFilters.Cleared`, the web's `resetFormatFilter`. */
+     *  `ListingFilters.Cleared`, the web's `resetFormatFilter`; the catalogue-only cinemas: FilterFacetsTest. */
     @Test
     fun wyczyscUnhidesAndReticksThisCitysCinemasOnly() {
         val prefs = UserPreferences(harness.context)
@@ -85,7 +89,9 @@ class ViewModelDrivesStateSyncTest {
         val sync = RecordingStateSync()
         val vm = harness.viewModel(prefs = prefs, sync = sync)
 
-        harness.settle(vm.clearFilters(cityCinemas = listOf("Muza", "Apollo")))
+        val films = listOf(Film(title = "A", showings = listOf(DayShowings("2026-11-08", "",
+            listOf("Muza", "Apollo").map { CinemaShowings(it, null, listOf(Showtime("18:00"))) }))))
+        harness.settle(vm.clearFilters(films))
 
         assertEquals(listOf("start", "clear pl"), sync.calls)
         assertEquals(emptySet<String>(), runBlocking { prefs.hiddenFilms.first() })
