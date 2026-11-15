@@ -27,8 +27,9 @@ import org.scalatest.matchers.should.Matchers
  *  A reusable workflow (`workflow_call`) declares none: the caller owns the lane, and a group named in the callee
  *  is shared by every call of it in one run, which then cancel each other (country-convergence-leg.yml). The one
  *  exception is a workflow that is a DISPATCHED workflow first and called besides: Identity takes, whose runs need its
- *  lane, called by the drift explorer from one job, never a matrix (2026-11-15) -- so its one call sits in that lane as
- *  its dispatched run did, under a group that is not its caller's (no deadlock).
+ *  lane, called by the drift explorer from one job, never a matrix (2026-11-15) -- its one call in a lane keyed by the
+ *  caller's workflow file (`github` is the caller's in a call), apart from the dispatched runs' and from its caller's own
+ *  group (no deadlock).
  *
  *  A NON-CANCELLING group (`cancel-in-progress` anything but a literal `true`: `false`, or an expression that can come
  *  out false) relies on the CI server to keep at most one running and one pending run, a newer pending run replacing
@@ -51,7 +52,7 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
   /** Dispatched on their own (a lane of their own) AND called -- once a caller run, from one job. */
   private val DispatchedAndCalled = Set("identity-takes")
 
-  private val Key = """(-\$\{\{ github\.ref \}\}|-\$\{\{ inputs\.[a-z-]+ \}\}|\$\{\{ github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.ref_name\) \|\| '' \}\}|\$\{\{ \(github\.event_name != 'schedule' && github\.event_name != 'repository_dispatch'\) && format\('-\{0\}', github\.ref_name\) \|\| '' \}\})?"""
+  private val Key = """(\$\{\{ contains\(github\.workflow_ref, '/\.github/workflows/[a-z-]+\.yml@'\) && '-[a-z-]+' \|\| \(github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.ref_name\) \|\| ''\) \}\}|-\$\{\{ github\.ref \}\}|-\$\{\{ inputs\.[a-z-]+ \}\}|\$\{\{ github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.ref_name\) \|\| '' \}\}|\$\{\{ \(github\.event_name != 'schedule' && github\.event_name != 'repository_dispatch'\) && format\('-\{0\}', github\.ref_name\) \|\| '' \}\})?"""
 
   private lazy val workflows: Seq[(String, String)] =
     RepoFile.workflows().map(f => f.getName.replaceAll("""\.ya?ml$""", "") -> RepoFile.read(f.getPath))
@@ -130,6 +131,12 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
         withClue(s"$caller/$job: ")(body should not include "matrix:")
         withClue(s"$caller: ")(groupOf(yml) should not be groupOf(workflows.collectFirst { case (`stem`, y) => y }.get))
         withClue(s"$caller: ")(groupOf(yml) shouldBe defined)
+        // `github` is the caller's in a call: the callee's group keys on the caller's workflow file, so the call never
+        // queues in the dispatched runs' lane, where it would hold the gate's runs behind it for hours or replace the
+        // one pending there (cancelled: no verdict for that commit)
+        withClue(s"$stem's group, called by $caller: ")(
+          groupOf(workflows.collectFirst { case (`stem`, y) => y }.get).get should include(
+            s"contains(github.workflow_ref, '/.github/workflows/$caller.yml@') && '-$caller'"))
       }
     }
   }

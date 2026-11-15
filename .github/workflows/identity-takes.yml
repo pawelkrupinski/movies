@@ -31,7 +31,7 @@
 #
 # ONE LANE OF ITS OWN: the run in flight is never cancelled, at most one newer run waits behind it, each newer dispatch
 # replaces the waiting one -- convergence's newest-commit batching, in a group of its own, so neither suite waits on the
-# other's lane. A re-run of convergence dispatches another run here (harmless: it judges the ref's newest commit).
+# other's lane. The drift explorer's call runs in a lane apart, never queued among the gate's runs. A re-run of convergence dispatches another run here (harmless: it judges the ref's newest commit).
 # (IdentityTakesWiringSpec, WorkflowConcurrencyConventionSpec)
 #
 name: Identity takes
@@ -144,9 +144,11 @@ on:
 
 # Main's runs hold ONE lane, as convergence's do (a run in flight finishes, one newer waits, a newer dispatch replaces that
 # one), in a group of this workflow's own; every other branch -- a measurement's measure/* -- a lane of its own, keyed by
-# the branch. Never by github.run_id. (WorkflowConcurrencyConventionSpec)
+# the branch. Never by github.run_id. The drift explorer's call (`github` is the caller's there) a lane of its own too:
+# in main's it held the gate's runs behind its hours of rows, or replaced the one waiting (cancelled: that commit's
+# verdict never ran). (WorkflowConcurrencyConventionSpec)
 concurrency:
-    group: identity-takes${{ github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '' }}
+    group: identity-takes${{ contains(github.workflow_ref, '/.github/workflows/identity-drift-explorer.yml@') && '-identity-drift-explorer' || (github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '') }}
     cancel-in-progress: false
 
 # Least privilege by default: every job that needs more than reading the

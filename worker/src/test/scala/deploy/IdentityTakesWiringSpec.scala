@@ -113,7 +113,8 @@ class IdentityTakesWiringSpec extends AnyFlatSpec with Matchers {
   it should "hold a lane of its own, main's runs superseding only the run that waits, one per measurement" in {
     val concurrency = RepoFile.block(workflow, "concurrency")
     concurrency should include(
-      "group: identity-takes${{ github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '' }}")
+      "group: identity-takes${{ contains(github.workflow_ref, '/.github/workflows/identity-drift-explorer.yml@') && " +
+        "'-identity-drift-explorer' || (github.ref != 'refs/heads/main' && format('-{0}', github.ref_name) || '') }}")
     concurrency should include("cancel-in-progress: false")
   }
 
