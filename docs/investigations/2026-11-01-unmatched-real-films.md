@@ -383,3 +383,7 @@ rule and no weight changed: the existing year measure reads it.
 **What-if** over prod's mirror (all five countries, base 58bf39767): CLEAN. US model and final takes gained 15 right
 (The Host ×15 → 1255). PL model gained 1 right (Kinoteka's "55 rocznica premiery „Skrzypka na dachu”" → 14811, 1971;
 prod's final already served it). DE, ES and UK did not move.
+
+**Measure.** LANDABLE, run 43665225491 (full, all five countries, base 58bf39767, head b95cb49ea): PL model gained 1 right
+(Skrzypek na dachu 14811), nothing lost, changed or wrong; the pinned recording bills no "The Host: 20th Anniversary".
+No weight was refit: only anniversary billings stating no year gain a `year.delta`, and the weekly refit re-tunes it.
