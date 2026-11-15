@@ -41,7 +41,6 @@ class KinoBajkaClient(http: HttpFetch, override val cinema: Cinema, titles: Titl
 
   import KinoBajkaClient._
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     parseHtml(html)
 
   def parseHtml(html: String): Seq[CinemaMovie] = {

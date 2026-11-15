@@ -37,7 +37,6 @@ class KinoSpektrumClient(http: HttpFetch, override val cinema: Cinema) extends L
 
   import KinoSpektrumClient._
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     parseHtml(html)
 
   def parseHtml(html: String): Seq[CinemaMovie] = {

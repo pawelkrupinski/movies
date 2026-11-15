@@ -32,7 +32,6 @@ class DomKulturyLapyClient(http: HttpFetch, override val cinema: Cinema = DomKul
                  today: => LocalDate
 ) extends ListingPageScraper(http, DomKulturyLapyClient.RepertoireUrl, DomKulturyLapyClient.RepertoireUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     DomKulturyLapyClient.parse(html, cinema, today)
 }
 

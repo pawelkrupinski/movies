@@ -33,7 +33,6 @@ class CyfroweKinoClient(http: HttpFetch, override val cinema: Cinema = KinoCyfro
                         titles: TitleNormalizer)
     extends ListingPageScraper(http, CyfroweKinoClient.RepertoireUrl, CyfroweKinoClient.BaseUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     CyfroweKinoClient.parse(html, cinema, titles)
 }
 

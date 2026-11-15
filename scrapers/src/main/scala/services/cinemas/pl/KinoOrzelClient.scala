@@ -33,7 +33,6 @@ class KinoOrzelClient(http: HttpFetch, override val cinema: Cinema) extends List
 
   import KinoOrzelClient._
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     parse(html, cinema)
 }
 

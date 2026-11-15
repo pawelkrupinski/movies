@@ -42,7 +42,6 @@ class KinoSokolStrzyzowClient(
   today:               => LocalDate
 ) extends ListingPageScraper(http, KinoSokolStrzyzowClient.RepertoireUrl, KinoSokolStrzyzowClient.RepertoireUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     KinoSokolStrzyzowClient.parse(html, cinema, today)
 }
 

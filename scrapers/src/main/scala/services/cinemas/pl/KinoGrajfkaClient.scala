@@ -56,7 +56,6 @@ class KinoGrajfkaClient(
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     DetailFetchOutcome.page(http, ref).map(KinoGrajfkaClient.parseDetail)
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     KinoGrajfkaClient.parse(html, cinema)
 }
 

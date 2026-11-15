@@ -43,7 +43,6 @@ class KinoTomiClient(http: HttpFetch, override val cinema: Cinema = KinoTomi) ex
 
   import KinoTomiClient._
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     parse(html, cinema)
 
   override val detailGroup: String = "kino-tomi"

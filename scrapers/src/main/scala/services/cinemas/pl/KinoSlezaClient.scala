@@ -31,7 +31,6 @@ import scala.util.Try
 class KinoSlezaClient(http: HttpFetch, override val cinema: Cinema = KinoSleza)
     extends ListingPageScraper(http, KinoSlezaClient.RepertoireUrl, KinoSlezaClient.BaseUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     KinoSlezaClient.parse(html, cinema)
 }
 

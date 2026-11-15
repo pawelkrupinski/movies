@@ -35,7 +35,6 @@ class ArtKinoKrosnoClient(http: HttpFetch, override val cinema: Cinema = KinoArt
                           today: => LocalDate)
     extends ListingPageScraper(http, ArtKinoKrosnoClient.RepertoireUrl, ArtKinoKrosnoClient.RepertoireUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     ArtKinoKrosnoClient.parse(html, cinema, today)
 }
 

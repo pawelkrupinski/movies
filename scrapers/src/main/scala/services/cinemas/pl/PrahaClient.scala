@@ -42,7 +42,6 @@ class PrahaClient(http: HttpFetch,
                   today: => LocalDate)
     extends ListingPageScraper(http, PrahaClient.RepertoireUrl, PrahaClient.BaseUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     PrahaClient.parse(html, cinema, today)
 }
 

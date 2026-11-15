@@ -59,7 +59,6 @@ class KinematografLodzClient(
   import KinematografLodzClient._
   // The scraped page itself, so /uptime's link opens what the parser read.
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     parseHtml(html, today, cinema, titles)
 }
 

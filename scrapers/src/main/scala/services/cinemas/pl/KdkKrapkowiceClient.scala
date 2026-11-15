@@ -39,7 +39,6 @@ class KdkKrapkowiceClient(http: HttpFetch, override val cinema: Cinema = KinoKra
 
   import KdkKrapkowiceClient._
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     parse(html, cinema)
 }
 

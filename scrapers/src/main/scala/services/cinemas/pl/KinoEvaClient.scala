@@ -32,7 +32,6 @@ import scala.jdk.CollectionConverters._
  */
 class KinoEvaClient(http: HttpFetch, override val cinema: Cinema = KinoEva) extends ListingPageScraper(http, KinoEvaClient.RepertoireUrl, KinoEvaClient.RepertoireUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     KinoEvaClient.parse(html, cinema)
 }
 

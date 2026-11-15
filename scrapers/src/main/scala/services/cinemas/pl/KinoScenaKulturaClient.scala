@@ -36,7 +36,6 @@ class KinoScenaKulturaClient(
   override val cinema: Cinema = KinoScenaKultura
 ) extends ListingPageScraper(http, KinoScenaKulturaClient.RepertoireUrl, KinoScenaKulturaClient.RepertoireUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     KinoScenaKulturaClient.parse(html, cinema)
 }
 

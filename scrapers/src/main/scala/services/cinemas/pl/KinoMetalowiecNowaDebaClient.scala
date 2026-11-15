@@ -46,7 +46,6 @@ class KinoMetalowiecNowaDebaClient(
   today: => LocalDate
 ) extends ListingPageScraper(http, KinoMetalowiecNowaDebaClient.RepertoireUrl, KinoMetalowiecNowaDebaClient.RepertoireUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     KinoMetalowiecNowaDebaClient.parse(html, today, cinema)
 }
 

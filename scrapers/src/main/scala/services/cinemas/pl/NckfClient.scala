@@ -53,7 +53,6 @@ class NckfClient(
 
   import NckfClient._
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     parseHtml(html, today, cinema)
 }
 

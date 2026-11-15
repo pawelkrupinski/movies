@@ -88,17 +88,6 @@ class OdeonAuthHarvesterSpec extends AnyFlatSpec with Matchers {
     h.token() shouldBe None
   }
 
-  it should "re-harvest after invalidate() (mid-life 401)" in {
-    var calls = 0
-    val nowMs = 1_000_000_000_000L
-    val h = new OdeonAuthHarvester(
-      fetchPage = () => { calls += 1; Some(s"""x"authToken":"${jwt(nowMs / 1000 + 12 * 3600)}"x""") },
-      now = () => nowMs)
-    h.token(); calls shouldBe 1
-    h.invalidate()
-    h.token(); calls shouldBe 2
-  }
-
   // The token harvest is a paid Zyte request like any other, and was the one Zyte
   // call the paid-egress counter could not see.
   "zyteFetchPage's metering" should "record each browserHtml call's outcome on the paid-egress meter" in {

@@ -66,10 +66,6 @@ class OdeonAuthHarvester(
     }
   }
 
-  /** Drop the cached token so the next `token()` re-harvests — for a mid-life 401
-   *  (token revoked before its `exp`). */
-  def invalidate(): Unit = lock.synchronized { cached = None; failedUntil = Long.MinValue }
-
   private def harvest(at: Long): Option[String] = {
     val fresh = for {
       html  <- fetchPage()

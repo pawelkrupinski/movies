@@ -40,7 +40,6 @@ class KinoIkmClient(
   today: => LocalDate
 ) extends ListingPageScraper(http, KinoIkmClient.PageUrl, KinoIkmClient.PageUrl) {
   protected def parsePage(html: String): Seq[CinemaMovie] =
-
     parseHtml(html)
 
   def parseHtml(html: String): Seq[CinemaMovie] = {
