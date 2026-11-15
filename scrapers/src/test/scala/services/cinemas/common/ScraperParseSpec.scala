@@ -591,5 +591,17 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.imageUrl(firstImg("""<img src="/cmsUploads/tmdbimage/images/">""")) shouldBe None
     ScraperParse.namesAFile("https://rcks.pl") shouldBe false
     ScraperParse.namesAFile("https://images.savoysystems.co.uk/RSW/1835364.jpg") shouldBe true
+    ScraperParse.namesAFile("https://bilety.kinokika.pl/uploads/event/?v=2") shouldBe false
+    ScraperParse.namesAFile("/uploads/event/3567/a.jpg") shouldBe false
+  }
+
+  it should "read a file name holding spaces as a file, as the box offices print them unencoded" in {
+    // the posters' src on Kino Kika's, Kino Spektrum's and bilety.palac.art.pl's repertoire pages
+    // (test/resources/fixtures/kino-kika/bilety.kinokika.pl, kino-spektrum/…/index.php, kino-kadr/bilety.palac.art.pl/.0)
+    ScraperParse.namesAFile("https://bilety.kinokika.pl/uploads/event/3567/FMSB plakat PL_HQ.jpg") shouldBe true
+    ScraperParse.namesAFile("https://bilety.kinospektrum.pl/uploads/event/25/Tajemniczy świat.jpg") shouldBe true
+    ScraperParse.namesAFile("https://bilety.palac.art.pl/uploads/event//dobrydzien plakat.jpeg") shouldBe true
+    ScraperParse.imageUrl(Jsoup.parse("""<img class="list-repertoire-image" src="/uploads/event/3567/FMSB plakat PL_HQ.jpg" />""",
+      "https://bilety.kinokika.pl/").selectFirst("img")) shouldBe Some("https://bilety.kinokika.pl/uploads/event/3567/FMSB plakat PL_HQ.jpg")
   }
 }
