@@ -14,7 +14,8 @@ case "${1:-}" in -h|--help|"") sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'; exit 
 [ $# -ge 3 ] || { echo "usage: scripts/source-refresh <database> <source> <keys...> [--apply]" >&2; exit 2; }
 here="$(cd "$(dirname "$0")" && pwd)"
 database=$1; shift
-run="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+# unique per call without uuidgen, which a Linux runner lacks
+run="$(date +%s)-$$-$RANDOM$RANDOM"
 export KINOWO_SOURCE_REFRESH_RUN="$run" MONGODB_DB="$database"
 exec "${SOURCE_REFRESH_PROD:-$here/with-prod-mongo.sh}" "$here/sbt-warm" \
   "worker/Test/runMain scripts.EnqueueSourceRefresh --run $run $*"
