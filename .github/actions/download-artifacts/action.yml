@@ -3,7 +3,8 @@ description: >
     Every artifact of this run matching `pattern`, each into `path/<artifact name>` -- the only match too. Not
     actions/download-artifact@v6, which extracts a pattern matching ONE artifact straight into `path`, so a reader's
     `path/<name-pattern>/...` glob found nothing whenever one row ran (Identity rule ablation run 42377038878).
-    download_artifact_layout_test.py keeps every pattern download either merged or here. The job needs `actions: read`.
+    download_artifact_layout_test.py keeps every pattern download either merged or here. The job needs `actions: read`,
+    and a checkout holding scripts/ (scripts/ci/download-run-artifacts.sh, which asks a 5xx or a timeout again).
 inputs:
     pattern:
         description: The artifact names to download, a glob.
@@ -19,9 +20,6 @@ runs:
               GH_TOKEN: ${{ github.token }}
               PATTERN: ${{ inputs.pattern }}
               DEST: ${{ inputs.path }}
-          run: |
-              set -euo pipefail
-              mkdir -p "$DEST"
-              # `-p` always nests by artifact name; no match is a failure gh reports ("no artifact matches")
-              gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -p "$PATTERN" -D "$DEST"
-              ls -1 "$DEST" | sed "s/^/downloaded /"
+          # `-p` always nests by artifact name; no match is a failure; a 5xx or a timeout is asked again, said
+          # (scripts/ci/download-run-artifacts.sh: the job's checkout must hold scripts/)
+          run: '"$GITHUB_WORKSPACE/scripts/ci/download-run-artifacts.sh" "$PATTERN" "$DEST"'

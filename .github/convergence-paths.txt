@@ -136,6 +136,7 @@ scripts/ci/convergence_slots.py
 scripts/ci/corpus_shape_diff.py
 scripts/ci/dispatch-takes.sh
 scripts/ci/dispatch.sh
+scripts/ci/download-run-artifacts.sh
 scripts/ci/drift-replays-compare.sh
 scripts/ci/drift_diff.py
 scripts/ci/drift_explorer.py
