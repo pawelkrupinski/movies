@@ -192,7 +192,7 @@
           <div class="kind">@if(card.item.isDefined){The film @card.item.flatMap(_.agentVerdict).fold("flagged")("the agent judged " + _) · the model: @c.basis} else {@if(c.film.isDefined){Matched by @c.basis} else {The model leaned to · @c.basis}@for(at <- card.updatedAt){ · <span title="the latest movie_slots.updatedAt of a member: a proxy for the decision time">@at.toString.take(16).replace("T", " ") UTC</span>}}</div>
           <div class="cand">@filmBody(card, tmdb, if (c.film.isDefined) None else c.lead)</div>
           <div class="rb">
-            @card.item.flatMap(_.agentVerdict) match {
+            @card.item.flatMap(_.confirmableVerdict) match {
               case Some(v) => {
                 <button type="button" class="btn yes @v@if(isOn(card, v)){ on}" data-verdict="@v">Confirm @v</button>
                 <button type="button" class="btn none@if(isOn(card, if (v == "right") "wrong" else "right")){ on}" data-verdict="@{if (v == "right") "wrong" else "right"}">Reject</button>

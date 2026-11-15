@@ -12,7 +12,8 @@ import scala.jdk.CollectionConverters._
  * judging it (`identity-review-candidates.tsv`). The answer is a review answer like any other ([[payload]]): its export
  * writes the `review page:` row that takes the item off the digest.
  *
- * @param agentVerdict what the agent judged (`right` / `wrong`), none for a candidate
+ * @param agentVerdict what the agent judged (`right` / `wrong`, or `undecided` when it judged neither), none for a
+ *                     candidate
  * @param flagged      the date the agent judged or flagged it
  */
 final case class DigestItem(country: String, venue: String, rawTitle: String, film: FilmRef, filmTitle: Option[String],
@@ -27,6 +28,10 @@ final case class DigestItem(country: String, venue: String, rawTitle: String, fi
     case Some(ReviewDigest.TitleYear(title, year)) => FilmFacts(film, Some(title), Some(year.toInt))
     case other                                     => FilmFacts(film, other)
   }
+
+  /** The agent's verdict when it is one the user can confirm or reject: `right` or `wrong`. An `undecided` row (the
+   *  agent judged neither) has nothing to confirm, so its card asks for the verdict as a candidate's does. */
+  def confirmableVerdict: Option[String] = agentVerdict.filter(ReviewDigest.ConfirmableVerdicts.contains)
 
   /** How sure the agent said it was: the page lists its least sure judgements first. */
   def doubt: ReviewDigest.Doubt = ReviewDigest.Doubt.of(evidence)
@@ -48,6 +53,9 @@ object ReviewDigest {
   val CandidatesHeader = "country\tvenue\trawTitle\tfilm\tfilmTitle\tflagged\tevidence"
 
   def candidatesPath(labels: Path): Path = labels.resolveSibling(CandidatesFile)
+
+  /** The agent verdicts a card offers to confirm or reject ([[DigestItem.confirmableVerdict]]). */
+  val ConfirmableVerdicts: Set[String] = Set("right", "wrong")
 
   private[review] val FilmMember = "\u0002film"
   private[review] val TitleYear  = """^(.+) \((\d{4})\)$""".r

@@ -76,6 +76,27 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers with tools.ScratchD
     contentAsString(dev.agentJudged(None, None, 20, false)(FakeRequest())) should (not include "Ruchomy zamek Hauru" and include("Latcho Drom"))
   }
 
+  it should "offer to confirm or reject only a right or wrong verdict, and ask an undecided one for its verdict" in {
+    val labels = tempDirectory("digest-verdicts").resolve("identity-judgements.tsv")
+    LabelsTsv.write(labels, Seq(
+      LabelRow("pl", "Kino Opalenica", "Ruchomy zamek Hauru", "tmdb:4935", "right", "AGENT-JUDGED 2026-10-22 (test): Miyazaki's", judged = "2026-10-22"),
+      LabelRow("pl", "Kino Opalenica", "Psy 3", "tmdb:77", "wrong", "AGENT-JUDGED 2026-10-22 (test): another Psy", judged = "2026-10-22"),
+      LabelRow("pl", "Kino Opalenica", "Seans niespodzianka", "tmdb:88", "undecided", "AGENT-JUDGED 2026-10-22 (test): no facts either way", judged = "2026-10-22")))
+    val html = contentAsString(controller(Mode.Dev, labels = labels).agentJudged(None, Some("agent"), 20, false)(FakeRequest()))
+    // each card's verdict buttons, as (label, data-verdict) pairs, by billing
+    val Card    = """(?s)<article class="card.*?</article>""".r
+    val Button  = """<button type="button" class="btn (?:yes|none)[^"]*" data-verdict="(right|wrong)">([^<]+)</button>""".r
+    val titles  = Seq("Ruchomy zamek Hauru", "Psy 3", "Seans niespodzianka")
+    val buttons = Card.findAllIn(html).toSeq.map { card =>
+      titles.find(card.contains).get -> Button.findAllMatchIn(card).map(m => (m.group(2), m.group(1))).toSeq
+    }.toMap
+    buttons.keySet shouldBe titles.toSet
+    buttons("Ruchomy zamek Hauru") shouldBe Seq("Confirm right" -> "right", "Reject" -> "wrong")
+    buttons("Psy 3") shouldBe Seq("Confirm wrong" -> "wrong", "Reject" -> "right")
+    buttons("Seans niespodzianka") shouldBe Seq("Right film" -> "right", "Wrong film" -> "wrong")
+    html should not include "Confirm undecided"
+  }
+
   it should "filter by kind, and show the other judgements of a billing, the judge-cards evidence and an answer naming another film" in {
     val labels = Files.createDirectories(tempDirectory("agent-judged").resolve("test/resources/fixtures")).resolve("identity-judgements.tsv")
     LabelsTsv.write(labels, Seq(
