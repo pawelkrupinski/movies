@@ -27,6 +27,8 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
   /** The assertion harness the shell specs source: named like a spec, it tests nothing itself. */
   private val Harness = Set("scripts/shell-spec.sh")
   private val Pruned = Set("node_modules", "build", ".build", "target")
+  /** The nightly macOS step's floor run: the bash scripts/floor-bash finds, macOS's /bin/bash 3.2 there. */
+  private val FloorRun = """scripts/run-script-tests --bash "$(scripts/floor-bash)""""
 
   private def files(root: String): Seq[Path] = {
     val stream = Files.walk(Paths.get(root))
@@ -66,10 +68,10 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
     ScriptTests.ciRunsAll shouldBe true
   }
 
-  "the nightly macOS job" should "run every self-test under macOS's /bin/bash 3.2, the floor the tools promise" in {
+  "the nightly macOS job" should "run every self-test under the floor bash 3.2 (macOS's /bin/bash), the floor the tools promise" in {
     // ci.yml's Linux bash is 5: a bash-4-only construct passes there and breaks every Mac
     RepoFile.runSteps(RepoFile.read(".github/workflows/order-independence.yml"))
-      .exists(_.script.linesIterator.exists(_.trim == "scripts/run-script-tests --bash /bin/bash")) shouldBe true
+      .exists(_.script.linesIterator.exists(_.trim == FloorRun)) shouldBe true
   }
 
   it should "first give them GNU timeout and shellcheck, which the tools run with on Linux CI and the laptop" in {
@@ -80,7 +82,7 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
     provide should include("brew install coreutils shellcheck")
     provide should include("gtimeout")
     provide should include("$GITHUB_PATH")
-    RepoFile.positionOf(swift, "GNU timeout and shellcheck") should be < RepoFile.positionOf(swift, "scripts/run-script-tests --bash /bin/bash")
+    RepoFile.positionOf(swift, "GNU timeout and shellcheck") should be < RepoFile.positionOf(swift, FloorRun)
   }
 
   "a tagged self-test" should "say why it leaves the default run" in {
