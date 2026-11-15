@@ -489,7 +489,7 @@ against its film.
 **Heads-up (not done).** UK "Daisies" is refused partly as a country mismatch: TMDB codes Chytilová's film XC
 (Czechoslovakia), which the JDK-backed `YearRuntimeMeasures.isoByName` knows no successor of, so "Czech Republic"
 mismatches it. A dissolved state's successors (XC → CZ, SK; SU → RU, UA, …; YU; DD/XG → DE) would be a measure
-change of its own, measured on its own: done as Fix M (section 15).
+change of its own, measured on its own: done as Fix N (section 16).
 ## 14. Fix L: the banners Fix F left (2026-11-15)
 
 **Cases.** The census's "real/banner" bucket on the 2026-11-15 mirror: DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU (Freie
@@ -579,7 +579,7 @@ digits).
 
 Not covered: UK "MET: La Fanciulle del West" (a misspelt work) and "MET: Silent Night" ×2 (below the cut, no year).
 
-## 15. Fix M: a dissolved state is one country with its successors (2026-11-15)
+## 16. Fix N: a dissolved state is one country with its successors (2026-11-15)
 
 **Cause.** TMDB codes a film by the state it was made in: Chytilová's "Daisies" (46919) is XC, Czechoslovakia. A venue
 writes the country it knows today (MAC Birmingham: "Czechia"), or the old state under a name the JDK's country table
