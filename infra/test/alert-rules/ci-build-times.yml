@@ -1,7 +1,8 @@
 # UNIT TESTS FOR THE BUILD-TIME RULES. A CI sample is one point per run, stamped at the run's start, so every series
 # here is sparse: one value per run, six hours apart in the regression cases (index i is t = 6i hours), and the
 # eval_times are chosen against those indices. The noisy baseline cycles 20, 26, 33 and 25 minutes (Poland's takes,
-# 19-33 around a median of 25.5): what the rules must NOT call a regression. `kinowo_ci_run_number` counts 1000, 1001,
+# 19-33 around a median of 25.5): what the rules must NOT call a regression. A regression is the median of the
+# last two days' runs (eight, six hours apart) over the threshold. `kinowo_ci_run_number` counts 1000, 1001,
 # ... beside them, so the run at index i is #1000+i. The reporter's side (the ceiling, the run number, the runner wait
 # going out) is ci_timings_test.py.
 rule_files:
@@ -11,24 +12,27 @@ evaluation_interval: 30m
 
 tests:
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # A REGRESSION THAT LASTS: from run #1070 the job takes 45 minutes (1.76x, under the 2x jump) where the fortnight
-  # before took a median of 25.5. One slow run is not enough (420h); the second fires (426h), naming the last run at
-  # baseline and the first slow one. The step inside it fires the same way.
+  # A REGRESSION THAT LASTS: from run #1064 the job takes 45 minutes (1.76x) where the week before took a median of
+  # 25.5. Three slow runs of the last eight are not yet the median (396h); five are (408h), and it fires naming the last
+  # run at baseline and the first slow one. The step inside it fires the same way.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 6h
-    name: a job slow for two runs fires and names the runs it started between
+    name: a job slow for most of its last two days fires and names the runs it started between
     input_series:
       - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Identity model convergence",ref="main"}'
         values: '1000+1x72'
       - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (poland)",conclusion="success"}'
-        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 2700 2700 2700'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 2700x7'
       - series: 'kinowo_ci_step_seconds{job="kinowo-ci",workflow="Identity model convergence",ref="main",ci_job="takes (poland)",step="Run the poland takes suite"}'
-        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 2700 2700 2700'
+        values: '1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 1200 1560 1980 1500 2700x7'
     alert_rule_test:
-      - eval_time: 420h
+      - eval_time: 396h
         alertname: CiJobDurationRegressed
         exp_alerts: []
-      - eval_time: 426h
+      - eval_time: 396h
+        alertname: CiStepDurationRegressed
+        exp_alerts: []
+      - eval_time: 408h
         alertname: CiJobDurationRegressed
         exp_alerts:
           - exp_labels:
@@ -40,14 +44,14 @@ tests:
               ci_job: takes (poland)
               conclusion: success
             exp_annotations:
-              summary: 'Identity model convergence / takes (poland) on main got slower: 45m 0s'
+              summary: 'Identity model convergence / takes (poland) on main got slower: a median of 45m 0s'
               description: >-
-                The latest successful main run of takes (poland) (Identity model convergence) took 45m 0s, against a
-                median of 25m 30s over the fortnight before the last two days. Last run at baseline #1069, first slow
-                run after it #1070: the regression is in the commits between them. Steps regressed in it (their own alerts are inhibited by this one): none. Every job of a workflow slowing at
+                The successful main runs of takes (poland) (Identity model convergence) over the last two days took a
+                median of 45m 0s, against a median of 25m 30s over the week before the last two days. Last run at
+                baseline #1063, first slow run after it #1064: the regression is in the commits between them. Steps regressed in it (their own alerts are inhibited by this one): none. Every job of a workflow slowing at
                 once is the runner host, not a commit. A job that times out has no successful run to judge:
                 CiJobNearTimeout is the alert for that.
-      - eval_time: 426h
+      - eval_time: 408h
         alertname: CiStepDurationRegressed
         exp_alerts:
           - exp_labels:
@@ -59,11 +63,12 @@ tests:
               ci_job: takes (poland)
               step: Run the poland takes suite
             exp_annotations:
-              summary: 'Identity model convergence / takes (poland) step `Run the poland takes suite` on main got slower: 45m 0s'
+              summary: 'Identity model convergence / takes (poland) step `Run the poland takes suite` on main got slower: a median of 45m 0s'
               description: >-
-                The latest main run of the step `Run the poland takes suite` in takes (poland) (Identity model
-                convergence) took 45m 0s, against a median of 25m 30s over the fortnight before the last two days. Last
-                run at baseline #1069, first slow run after it #1070: the regression is in the commits between them.
+                The main runs of the step `Run the poland takes suite` in takes (poland) (Identity model convergence)
+                over the last two days took a median of 45m 0s, against a median of 25m 30s over the week before the
+                last two days. Last run at baseline #1063, first slow run after it #1064: the regression is in the
+                commits between them.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # NOISE: one 45-minute run among normal ones, then back to normal (quiet when it lands, at 408h, and after); the
@@ -100,22 +105,47 @@ tests:
         exp_alerts: []
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # A BIG JUMP FIRES ON ITS FIRST RUN: a recording's Germany leg from 18 minutes to 125 (over 2x and 10 minutes more).
-  # And Main's end to end from 28 minutes to 42 on two runs.
+  # A MIX OF TWO NORMALS IS NOT A REGRESSION (2026-11-15: 321 episodes in a week, nearly all this). A drift row whose
+  # replay is read from the store or run alternates 7 and 21 minutes; the latest run, at 21, is over the threshold of
+  # 19.6 and so was another in two days. Tool self-tests take 3.4 minutes but 15 when the ci-runner queue is busy, one
+  # run in four: over twice the baseline and ten minutes more. Neither median moved, and neither fires.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 6h
-    name: a jump fires at once, and Main's wall clock regresses over two runs
+    name: a job alternating between two normal times, and a run slow one time in four, stay quiet
+    input_series:
+      - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Identity takes",ref="main",runner="hosted",ci_job="leg (united-kingdom) / takes-drift-1 (united-kingdom)",conclusion="success"}'
+        values: '420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260'
+      - series: 'kinowo_ci_step_seconds{job="kinowo-ci",workflow="Identity takes",ref="main",runner="hosted",ci_job="leg (united-kingdom) / takes-drift-1 (united-kingdom)",step="Check that the incremental state ends where a whole resolve does"}'
+        values: '420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260 420 1260'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Tool self-tests",ref="main",runner="ci-runner",measure="wall",conclusion="success"}'
+        values: '204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900 204 204 204 900'
+    alert_rule_test:
+      - eval_time: 426h
+        alertname: CiJobDurationRegressed
+        exp_alerts: []
+      - eval_time: 426h
+        alertname: CiStepDurationRegressed
+        exp_alerts: []
+      - eval_time: 426h
+        alertname: CiRunWallClockRegressed
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A NIGHTLY JUMP FIRES ON ITS FIRST RUN: a recording's Germany leg from 18 minutes to 125, once a day, so its two
+  # runs in two days are 18 and 125, whose median is over the threshold of 25.2.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 24h
+    name: a nightly job's jump fires on its first run
     input_series:
       - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Record scrape fixtures",ref="main"}'
-        values: '1000+1x72'
+        values: '1000+1x21'
       - series: 'kinowo_ci_job_seconds{job="kinowo-ci",workflow="Record scrape fixtures",ref="main",ci_job="convergence (germany)",conclusion="success"}'
-        values: '1080x71 7500'
-      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Main",ref="main"}'
-        values: '1000+1x72'
-      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Main",ref="main",measure="wall",conclusion="success"}'
-        values: '1680x70 2520 2520'
+        values: '1080x20 7500'
     alert_rule_test:
-      - eval_time: 432h
+      - eval_time: 480h
+        alertname: CiJobDurationRegressed
+        exp_alerts: []
+      - eval_time: 504h
         alertname: CiJobDurationRegressed
         exp_alerts:
           - exp_labels:
@@ -127,13 +157,26 @@ tests:
               ci_job: convergence (germany)
               conclusion: success
             exp_annotations:
-              summary: 'Record scrape fixtures / convergence (germany) on main got slower: 2h 5m 0s'
+              summary: 'Record scrape fixtures / convergence (germany) on main got slower: a median of 1h 11m 30s'
               description: >-
-                The latest successful main run of convergence (germany) (Record scrape fixtures) took 2h 5m 0s, against
-                a median of 18m 0s over the fortnight before the last two days. Last run at baseline #1071, first slow
-                run after it #1072: the regression is in the commits between them. Steps regressed in it (their own alerts are inhibited by this one): none. Every job of a workflow slowing at
+                The successful main runs of convergence (germany) (Record scrape fixtures) over the last two days took
+                a median of 1h 11m 30s, against a median of 18m 0s over the week before the last two days. Last run at
+                baseline #1020, first slow run after it #1021: the regression is in the commits between them. Steps regressed in it (their own alerts are inhibited by this one): none. Every job of a workflow slowing at
                 once is the runner host, not a commit. A job that times out has no successful run to judge:
                 CiJobNearTimeout is the alert for that.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # MAIN'S END TO END from 28 minutes to 42, from run #1067: the median of its last eight runs moves once half of them
+  # took it.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 6h
+    name: Main's wall clock regresses once half its recent runs are slow
+    input_series:
+      - series: 'kinowo_ci_run_number{job="kinowo-ci",workflow="Main",ref="main"}'
+        values: '1000+1x72'
+      - series: 'kinowo_ci_run_seconds{job="kinowo-ci",workflow="Main",ref="main",measure="wall",conclusion="success"}'
+        values: '1680x66 2520x5'
+    alert_rule_test:
       - eval_time: 432h
         alertname: CiRunWallClockRegressed
         exp_alerts:
@@ -146,13 +189,13 @@ tests:
               measure: wall
               conclusion: success
             exp_annotations:
-              summary: 'Main on main got slower: 42m 0s end to end'
+              summary: 'Main on main got slower: a median of 42m 0s end to end'
               description: >-
-                The latest successful main run of Main took 42m 0s from its first job's start to its last job's end,
-                against a median of 28m 0s over the fortnight before the last two days. Last run at baseline #1070,
-                first slow run after it #1071: the regression is in the commits between them. Jobs regressed in it (their
-                own alerts are inhibited by this one): none. Compare the two runs' jobs on the "CI — build timings"
-                dashboard.
+                The successful main runs of Main over the last two days took a median of 42m 0s from their first job's
+                start to their last job's end, against a median of 28m 0s over the week before the last two days. Last
+                run at baseline #1066, first slow run after it #1067: the regression is in the commits between them.
+                Jobs regressed in it (their own alerts are inhibited by this one): none. Compare the two runs' jobs on
+                the "CI — build timings" dashboard.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # NEAR THE CEILING: US takes at 46.5 of 55 minutes fires (80% is 44); a landing check's takes row cancelled at its
