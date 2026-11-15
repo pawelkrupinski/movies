@@ -2,6 +2,8 @@
 # Self-test for scripts/claude-hooks/foreground-wait-guard: the hook's JSON fed to it the way Claude Code does. A long
 # wait (wait-for, ci-wait, agentctl wait) without run_in_background is denied (exit 2); the same in the background, a
 # wait bounded to a minute, --help, and a command that only names the tool are allowed.
+# The commands under test are literal text for the guard to read, never run here: nothing in them should expand.
+# shellcheck disable=SC2016,SC2088
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 guard="$REPO_ROOT/scripts/claude-hooks/foreground-wait-guard"
@@ -39,4 +41,5 @@ check "a command that only names the tool" 0 "$(verdict 'grep -n wait-for script
 check "agentctl's other subcommands" 0 "$(verdict '~/bin/agentctl land && ~/bin/agentctl inbox --unread')"
 check "a broken event never blocks" 0 "$(printf 'not json' | python3 "$guard" 2>/dev/null; echo $?)"
 
-[ "$fails" -eq 0 ] && echo "foreground-wait-guard: all passed" || { echo "foreground-wait-guard: $fails failed"; exit 1; }
+if [ "$fails" -ne 0 ]; then echo "foreground-wait-guard: $fails failed"; exit 1; fi
+echo "foreground-wait-guard: all passed"
