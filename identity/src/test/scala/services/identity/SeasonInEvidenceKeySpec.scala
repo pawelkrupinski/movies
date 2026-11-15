@@ -44,4 +44,15 @@ class SeasonInEvidenceKeySpec extends AnyFlatSpec with Matchers {
       listing(KinoPalacowe, "Paddington (2027)").copy(screenings = october.screenings))
     generation(films).nodes should have size 1
   }
+
+  // US Alamo Drafthouse "The Host: 20th Anniversary", screening in 2026: its year less 20 dates Bong Joon-ho's 2006 film
+  // ([[IdentityMeasures.Listing.anniversaryFilmYear]]), so it keys the evidence -- but only where an anniversary is billed
+  "a listing billing an anniversary" should "carry the year it first screens in, and a listing billing none no year of its days" in {
+    val host = listing(KinoMuza, "The Host: 20th Anniversary").copy(screenings = october.screenings)
+    Evidence.of(host, None).measured.anniversaryScreeningYear shouldBe Some(2027)
+    Evidence.of(host, None).key should include ("anniversaryScreened:2027")
+    val film = listing(KinoMuza, "The Host").copy(screenings = october.screenings)
+    Evidence.of(film, None).measured.anniversaryScreeningYear shouldBe None
+    Evidence.of(film, None).key shouldBe Evidence.of(film.copy(screenings = may.screenings), None).key
+  }
 }

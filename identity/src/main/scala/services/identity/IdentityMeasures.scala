@@ -56,7 +56,10 @@ object IdentityMeasures {
                            yearUpperBound: Option[Int] = None,
                            /** The year of the performance a stage relay's synopsis names ([[services.identity.Listing.performanceYear]]):
                             *  what dates an encore's relay ([[RelayStage.of]]), never measured. */
-                           performanceYear: Option[Int] = None) {
+                           performanceYear: Option[Int] = None,
+                           /** The year its first screening falls in, where its title bills an anniversary
+                            *  ([[services.identity.Listing.anniversaryScreeningYear]]): what [[anniversaryFilmYear]] dates the film by. */
+                           anniversaryScreeningYear: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** Its title, then the raw title the venue published — title first, as the title relations read them. */
     def ownTitles: Seq[String] = Seq(title) ++ rawTitle
@@ -140,6 +143,12 @@ object IdentityMeasures {
       titles.filter(IdentityMeasures.billsAPrint).map(BillingParse(_).formatless).filter(_.nonEmpty)
     /** How many years an anniversary the title or original title bills celebrates ("30th Anniversary"), once per listing. */
     private[identity] lazy val anniversary: Option[Int] = IdentityMeasures.anniversaryOf(ownTitles ++ originalTitle)
+    /** The year the film of an anniversary the title bills was released, when the listing states no year of its own: the
+     *  year it screens in less the anniversary's — US "The Host: 20th Anniversary", screening in 2026, bills Bong Joon-ho's
+     *  2006 film. Of the matched anniversary billings stating no year in prod (2026-11-15), 1238 of 1239 took a film within
+     *  a year of it. */
+    private[identity] lazy val anniversaryFilmYear: Option[Int] =
+      if (statedYear.isDefined) None else anniversary.zip(anniversaryScreeningYear).map((years, screened) => screened - years)
     /** The stage works its titles bill ([[StageRelays.stageWorksBilled]]), no season named. */
     private[identity] def billedStageWorks: Set[String] = StageRelays.stageWorksBilled(titles, seasonNamed = false)
     /** Does the title name an opera or ballet house ([[StageRelays.screenNamesake]]), once per listing: every candidate asks. */
@@ -623,8 +632,21 @@ object IdentityMeasures {
     slots(12) = Number(rivals.toDouble)
     slots(13) = Number(corroboratingVenues.toDouble)
     slots(14) = certificateRelation(l, f, country, title)
-    yearBound(l, f, country, corroboratingVenues, premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots)))))
+    anniversaryFilmDated(l, f, yearBound(l, f, country, corroboratingVenues, premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))))))
   }
+
+  /** `m` with the year an anniversary the title bills dates its film ([[Listing.anniversaryFilmYear]]) read as a published
+   *  year against a film released within a year of it — and only there, where nothing else dated the listing: US "The Host:
+   *  20th Anniversary", screening in 2026, names Bong Joon-ho's 2006 film and Niccol's 2013 one alike, and the anniversary
+   *  is the one fact telling them apart. A film further off stays as a listing stating no year weighs it: a venue's
+   *  anniversary may count from another release (DE "SATURDAY NIGHT FEVER 40TH ANNIVERSARY", screening in 2026, is the
+   *  1977 film), so the hint is evidence for a film, never against one. */
+  private def anniversaryFilmDated(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
+    l.anniversaryFilmYear match {
+      case Some(dated) if m("year.delta") == MissingListing && f.year.exists(FactRelations.yearsNear(dated, _)) =>
+        m ++ Map("year.delta" -> delta(Some(dated), f.year), "year.distance" -> absDelta(Some(dated), f.year))
+      case _ => m
+    }
 
   /** `m` with a listing's year UPPER BOUND ([[Listing.yearUpperBound]]: Cineamo's German premiere of an older film) read
    *  as its published year against a film released more than [[YearWindow.PublishedAdjacency]] after it — and only there.

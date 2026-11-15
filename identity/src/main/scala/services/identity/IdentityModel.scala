@@ -133,6 +133,12 @@ final case class Listing(
   lazy val airDays: Seq[java.time.LocalDate] =
     screenedSeason.filter(season => year.exists(stated => season - stated > Listing.StagingPredatesSeason)).orElse(titleDatesItsStaging)
       .fold(Seq.empty[java.time.LocalDate])(_ => screenings.days)
+  /** The year its first screening falls in, where its title bills an anniversary ("The Host: 20th Anniversary", screening
+   *  in 2026): what dates the film that many years before when it states no year ([[IdentityMeasures.anniversaryFilmYear]]).
+   *  None for every other listing, so no other listing's evidence moves with its days. */
+  lazy val anniversaryScreeningYear: Option[Int] =
+    screenings.firstYear.filter(_ => IdentityMeasures.anniversaryOf(Seq(title, rawTitle) ++ originalTitle).isDefined)
+
   /** The season it screens in, when it states no year and its title brackets one before it beside a stage work: that year
    *  may date the staging, not the broadcast (UK Ilkley's "The Royal Ballet: The Nutcracker (2025)", screening on the
    *  2026/27 relay's air day), or the performance an old capture screens ("MetOpera: Carmen (2009)") — its days tell
@@ -148,7 +154,8 @@ final case class Listing(
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
       countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && properTitle == that.properTitle && cinema == that.cinema &&
       screenedSeason == that.screenedSeason && listedCast == that.listedCast && certificate == that.certificate &&
-      yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear && kept == that.kept)
+      yearUpperBound == that.yearUpperBound && performanceYear == that.performanceYear && anniversaryScreeningYear == that.anniversaryScreeningYear &&
+      kept == that.kept)
     case _ => false
   }
   override def hashCode: Int = {
@@ -433,7 +440,9 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                           /** [[Listing.yearUpperBound]]: weighs against a film released after it, never a year it states. */
                           yearUpperBound: Option[Int] = None,
                           /** [[Listing.performanceYear]]: what dates an encore's relay. */
-                          performanceYear: Option[Int] = None) {
+                          performanceYear: Option[Int] = None,
+                          /** [[Listing.anniversaryScreeningYear]]: what dates the film of an anniversary it bills, never a year it states. */
+                          anniversaryScreeningYear: Option[Int] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
@@ -451,7 +460,9 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
       // only where a source bounds the year, so every other listing keeps its key
       yearUpperBound.fold("")(bound => s"\u0000yearUpTo:$bound") +
       // only where a synopsis names the performance, so every other listing keeps its key
-      performanceYear.fold("")(year => s"\u0000performed:$year")
+      performanceYear.fold("")(year => s"\u0000performed:$year") +
+      // only where its title bills an anniversary, so every other listing keeps its key
+      anniversaryScreeningYear.fold("")(year => s"\u0000anniversaryScreened:$year")
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
@@ -459,7 +470,7 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
       decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
       screeningsSeason = screeningsSeason, airDays = airDays, certificate = certificate, yearUpperBound = yearUpperBound,
-      performanceYear = performanceYear)
+      performanceYear = performanceYear, anniversaryScreeningYear = anniversaryScreeningYear)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
@@ -498,7 +509,8 @@ object Evidence {
     airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty),
     certificate     = listing.certificate.map(_.trim).filter(_.nonEmpty),
     yearUpperBound  = listing.yearUpperBound,
-    performanceYear = listing.performanceYear)
+    performanceYear = listing.performanceYear,
+    anniversaryScreeningYear = listing.anniversaryScreeningYear)
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself

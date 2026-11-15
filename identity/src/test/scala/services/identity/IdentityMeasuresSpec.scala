@@ -392,6 +392,22 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       sameVenue = false, None)("year.delta") shouldBe Number(35)
   }
 
+  // prod US 2026-11-15: Alamo Drafthouse ×15 "The Host: 20th Anniversary", screening in 2026 and stating no year, names
+  // Bong Joon-ho's 2006 film and Niccol's 2013 one alike: it stayed BelowThreshold, the anniversary unread
+  it should "date a listing stating no year by the year it screens in less the anniversary's, for its film only" in {
+    val host = Listing("The Host: 20th Anniversary", anniversaryScreeningYear = Some(2026))
+    val bong = Film("The Host", year = Some(2006))
+    measures(host, bong)("year.delta") shouldBe Number(0)
+    measures(host, bong)("year.distance") shouldBe Number(0)
+    measures(host, bong.copy(year = Some(2007)))("year.delta") shouldBe Number(-1)
+    // a film further off is not denied by it: a venue's anniversary may count from another release
+    measures(host, Film("The Host", year = Some(2013)))("year.delta") shouldBe Missing("listing")
+    // a year the listing states is its own fact, and a listing billing no anniversary is dated by nothing
+    measures(host.copy(year = Some(2013)), bong)("year.delta") shouldBe Number(7)
+    measures(Listing("The Host", anniversaryScreeningYear = Some(2026)), bong)("year.delta") shouldBe Missing("listing")
+    measures(Listing("The Host: 20th Anniversary"), bong)("year.delta") shouldBe Missing("listing")
+  }
+
   "a season a broadcast names" should "be read as its own measure, in every spelling, and never as a bracketed year" in {
     val film = Film("Samson et Dalila", year = Some(1949))
     Seq("Samson i dalila | metropolitan opera: live in hd 2026/27", "OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA",
