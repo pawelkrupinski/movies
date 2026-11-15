@@ -201,10 +201,13 @@ in
 
     posterSkipHosts = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      # Both refuse a datacentre address and serve a visitor's browser: PosterProxy sends their
+      # Each refuses a datacentre address and serves a visitor's browser: PosterProxy sends their
       # posters to the browser direct for the same reason (its SkipHosts), and the worker reaches
       # them only through the residential proxy. Probed from Hetzner they could only ever fail.
-      default = [ "multikino.pl" "biletyna.pl" ];
+      # odeon.co.uk (vwc.odeon.co.uk, Cloudflare-gated on egress IP) joined 2026-11-15: from
+      # 2026-11-12 its two probes read 403 from monitoring-1 while the same URLs answered
+      # 200 image/jpeg from a home connection, and PosterProbeFailing paged critical for 93 hours.
+      default = [ "multikino.pl" "biletyna.pl" "odeon.co.uk" ];
       description = ''
         Poster hosts (registrable domains, as `poster_host` names them) the discovery never picks
         a poster probe from.

@@ -301,7 +301,7 @@ check "...pinned to both zones' origin certificates" "kinowo.net.crt showtimes.c
   "$(nix "${nix_flags[@]}" eval --json \
     "$flake#nixosConfigurations.monitoring-1.config.fleet.syntheticProbes.discoveryOrigin.certificates" 2>/dev/null |
     jq -r 'map(split("/") | last) | sort | join(" ")')"
-check "the discovery never picks a poster from a host that refuses datacentres" "multikino.pl biletyna.pl" \
+check "the discovery never picks a poster from a host that refuses datacentres" "multikino.pl biletyna.pl odeon.co.uk" \
   "$(jq -r '.PROBE_POSTER_SKIP' <<<"$discovery_env")"
 check "...bundled into the one file curl is told to trust" "synthetic-probe-origin-certificates.pem" \
   "$(jq -r '.PROBE_ORIGIN_CA | split("-") | .[1:] | join("-")' <<<"$discovery_env")"

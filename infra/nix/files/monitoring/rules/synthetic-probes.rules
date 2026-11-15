@@ -139,8 +139,14 @@ groups:
       # CLOUDFLARE REFUSED THE PROBE. A WARNING WITH INSTRUCTIONS, NOT A PAGE: without the one-time
       # IP Access Rule this is every probe, and it says nothing about whether visitors are served.
       # Fifteen minutes so one rate-limited minute does not message.
+      #
+      # OUR PAGES ONLY, NOT POSTERS (2026-11-15). A poster probe fetches a third party's CDN (or
+      # weserv), not our zones, so a 403 there is never fixed by the Cloudflare rules this text
+      # names: Odeon's vwc.odeon.co.uk refused monitoring-1's address from 2026-11-12 and this
+      # warned for 93 hours with the wrong instructions. Poster hosts are PosterProbeFailing's
+      # (posters.rules), whose description covers a CDN refusing a datacentre address.
       - alert: ProbeBlockedByEdge
-        expr: last_over_time(probe_http_status_code[6m]) == 403
+        expr: last_over_time(probe_http_status_code{kind!="poster"}[6m]) == 403
         for: 15m
         labels:
           severity: warning

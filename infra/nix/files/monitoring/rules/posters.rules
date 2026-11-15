@@ -94,6 +94,9 @@ groups:
             URL answering 404 is weserv unable to fetch the origin -- curl the origin yourself, with
             and without https (2026-10-21: the scheme was stripped, kinoheld 403s plain http); one
             answering 400 is a URL PosterProxy built wrong; a direct CDN URL failing is the CDN.
+            A direct CDN URL answering 403 here but 200 from a home connection is the CDN refusing
+            a datacentre address (monitoring-1 is at Hetzner; Odeon, 2026-11-12): visitors are
+            served, so add the host to `fleet.syntheticProbes.posterSkipHosts`.
             A 200 that still failed is not an image (`Content-Type`) or under 1 KB, or an http://
             poster a browser refuses on an https page.
 

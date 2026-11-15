@@ -385,3 +385,22 @@ tests:
       - eval_time: 35m
         alertname: ProbeFailing
         exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A POSTER CDN REFUSING THIS HOST IS NOT CLOUDFLARE REFUSING OURS (2026-11-12..15). Odeon's
+  # vwc.odeon.co.uk answers monitoring-1's Hetzner address 403 and a home connection 200: for 93
+  # hours ProbeBlockedByEdge told the reader to add a Cloudflare IP Access Rule to OUR zones, which
+  # cannot help. A poster host's refusal is PosterProbeFailing's (posters.rules), whose
+  # description says what a direct-CDN 403 means; this warning is for our own pages only.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a poster CDN answering 403 is not reported as Cloudflare blocking our probe
+    input_series:
+      - series: 'probe_http_status_code{instance="https://vwc.odeon.co.uk/CDN/x",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
+        values: '403x40'
+      - series: 'probe_success{instance="https://vwc.odeon.co.uk/CDN/x",job="blackbox-poster",country="uk",kind="poster",poster_host="odeon.co.uk"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: ProbeBlockedByEdge
+        exp_alerts: []
