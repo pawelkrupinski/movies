@@ -1,4 +1,4 @@
-# 2026-11-15 — a relay billing a stale season takes the relay its screenings air on its day — LANDED (2026-11-15; parked as tag `experiment/relay-stale-season-airday`, `c5e911a81`, now deleted)
+# 2026-11-15 — a relay billing a stale season takes the relay its screenings air on its day — LANDED as 52b76992a (2026-11-15; parked as tag `experiment/relay-stale-season-airday`, `c5e911a81`, now deleted)
 
 - **Why:** the 2026-11-15 census's "relay" bucket (prod mirror, all five countries). Most of it is the Paris Opera's
   2026/27 relays (US "Opéra National de Paris: La fanciulla del West" ×186, UK/DE/PL/ES Bayadère, Notre-Dame, Romeo,
