@@ -96,6 +96,11 @@ what_if() { # <base> <head> <snapshot> [args...]
       --base "$b" --head "$h" --at "$s" --judgements "$REPO_ROOT/test/resources/fixtures/identity-judgements.tsv" "$@" uk 2> "$work/err" )
 }
 calls() { sed -e "s/$c0/base/" -e "s/$c1/head/" -e "s/$c4/head/" "$work/calls" 2>/dev/null | paste -sd'|' -; }
+# A function, not a `case` inside `$( )`: macOS /bin/bash 3.2 reads the pattern's `)` as the substitution's end.
+head_compiled_beside_base() {
+  local c; c=$(calls)
+  case "$c" in *"sbt-start head"*"java-end base"*) echo yes ;; *) echo "no: $c $(cat "$work/err")" ;; esac
+}
 
 # an inert change (nothing reaches a take) over a base side not yet kept: the base resolves in a JVM of its own (never a
 # kept one, which would hold a JVM slot idle for nothing), and the head is neither compiled nor started
@@ -108,7 +113,7 @@ check "...and the what-if is CLEAN, 0 moved" "yes" \
 # a change reaching every take over a base side not yet kept: the head compiles BESIDE the base's resolve, not after it
 out=$(what_if "$c0" "$c4" 2026-11-06T11:00:00Z --no-serve)
 check "a change the head resolves: its compile starts before the base's resolve ends" "yes" \
-  "$(c=$(calls); case "$c" in *"sbt-start head"*"java-end base"*) echo yes ;; *) echo "no: $c $(cat "$work/err")" ;; esac)"
+  "$(head_compiled_beside_base)"
 check "...and the head resolves once both are done" "java-start head|java-end head" \
   "$(calls | tr '|' '\n' | grep 'java-.* head' | paste -sd'|' -)"
 
