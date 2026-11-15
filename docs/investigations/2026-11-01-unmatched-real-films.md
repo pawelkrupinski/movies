@@ -489,7 +489,7 @@ against its film.
 **Heads-up (not done).** UK "Daisies" is refused partly as a country mismatch: TMDB codes Chytilová's film XC
 (Czechoslovakia), which the JDK-backed `YearRuntimeMeasures.isoByName` knows no successor of, so "Czech Republic"
 mismatches it. A dissolved state's successors (XC → CZ, SK; SU → RU, UA, …; YU; DD/XG → DE) would be a measure
-change of its own, measured on its own.
+change of its own, measured on its own: done as Fix M (section 15).
 ## 14. Fix L: the banners Fix F left (2026-11-15)
 
 **Cases.** The census's "real/banner" bucket on the 2026-11-15 mirror: DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU (Freie
@@ -578,3 +578,26 @@ digits).
 - US, PL and ES did not move.
 
 Not covered: UK "MET: La Fanciulle del West" (a misspelt work) and "MET: Silent Night" ×2 (below the cut, no year).
+
+## 15. Fix M: a dissolved state is one country with its successors (2026-11-15)
+
+**Cause.** TMDB codes a film by the state it was made in: Chytilová's "Daisies" (46919) is XC, Czechoslovakia. A venue
+writes the country it knows today (MAC Birmingham: "Czechia"), or the old state under a name the JDK's country table
+has no code for (Rio Dalston: "Czechoslovakia"; PL "Czechosłowacja", DE "DDR", ES "Unión Soviética (URSS)", one listing
+each on the 11-15 mirror). The `country` measure read the first as a `mismatch` and the second as `unmapped`. TMDB's
+records on the mirror carry such codes often: per country 190-750 XC, 60-730 SU, 20-230 YU, 10-890 XG (East Germany),
+plus CS and AN.
+
+**Change.** `identity-country-lineage.tsv` (hand-kept, read by `CountryLineage`) names each dissolved state (XC, SU,
+YU, CS, XG, DD, AN), its successors and the spellings venues write it in. The live `countryRelation` reads a country
+and its predecessor or successor as a `match`; two successors of one state stay apart (CZ is not SK, RU is not UA, HR
+is not RS). `countryCode` reads a defunct state's spelling as its code after the JDK's table. The pinned gate's frozen
+measure (`PinnedGateMeasures`) reads no lineage. No weight changed; the weekly refit re-tunes them.
+Test: `IdentityMeasuresSpec`, "a dissolved state" (fails before: `scripts/fail-before`), and
+`CountryLineageSpec` for the table.
+
+**What-if** (all five countries, base 892c88ffa, head 3d8dbc2ff, every family re-resolved since a resource changed):
+CLEAN. UK model and final gained 1 right (MAC's "Daisies" → 46919: its page credits Chytilová, 1966, Czechia; its 105
+minutes hold an introduction). PL, DE, US, ES moved nothing. right-lost 0, right→wrong 0, new-wrong 0. Rio Dalston's
+"Rio Film Feminists: DAISIES" still takes nothing (not traced): its country now matches, so another fact or its banner
+holds it.
