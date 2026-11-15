@@ -149,7 +149,7 @@ history_query() { # [cursor]
 pick_base() {
   local cursor="" page sha state parent first_judged="" head_parent="" pages=0
   while [ "$pages" -lt 20 ]; do
-    page=$(history_page "$cursor") || return 1
+    page=$(history_page "$cursor") || { local_base; return; }
     cursor=""
     while read -r sha state parent; do
       [ "$sha" = NEXT ] && { cursor="$state${parent:+ $parent}"; continue; } # a history cursor is "<sha> <offset>"
@@ -162,6 +162,38 @@ pick_base() {
   done
   if [ -n "$first_judged" ]; then echo "$first_judged"; return 0; fi
   echo "$head_parent" # never judged in the last 2,000 commits: the check's first run
+}
+
+# THE HISTORY FROM GIT, when GraphQL will not answer (every attempt of history_page failed): the commits come from git --
+# up to IDENTITY_TAKES_LOCAL_HISTORY (200) of the head's, commits only (--filter=tree:0: no trees, no blobs, seconds),
+# into a repository of their own, so the checkout's objects and shallow boundary stay exactly as the row fetched them --
+# and only each one's state of $context is asked of GitHub, one REST read a commit (`commits/<sha>/status`, a different
+# service from the GraphQL that failed), newest first, stopping at the first green. Identity takes #82 and #114 lost
+# their base, and their verdict, to GraphQL alone. It names only a GREEN commit: none in its window fails the pick as
+# before, never a guess the full walk could have answered otherwise (the 40-commit window that once absorbed a day's moves).
+local_base() {
+  local depth=${IDENTITY_TAKES_LOCAL_HISTORY:-200} history="$RUNNER_TEMP/takes-history.git" url sha state checked=0 key value
+  local auth=()
+  echo "identity takes ($cc): GraphQL gave no history; reading the head's from git, each commit's status by REST" >&2
+  url=$(git remote get-url origin) || return 1
+  # the checkout's own credentials (actions/checkout's, or the row checkout's, http.<server>/.extraheader)
+  while read -r key value; do auth+=(-c "$key=$value"); done < <(git config --get-regexp '^http\..*extraheader$' 2> /dev/null)
+  rm -rf "$history"
+  if ! { git init -q --bare "$history" &&
+         bounded "$gh_download" git ${auth[@]+"${auth[@]}"} -C "$history" fetch -q --no-tags --filter=tree:0 \
+           --depth="$((depth + 1))" "$url" "$head" >&2; }; then
+    echo "identity takes ($cc): could not fetch the head's history from git either" >&2
+    return 1
+  fi
+  while read -r sha; do
+    checked=$((checked + 1))
+    state=$(bounded "$gh_read" gh api "repos/$GITHUB_REPOSITORY/commits/$sha/status?per_page=100" \
+              --jq "[.statuses[] | select(.context == \"$context\" and (.created_at // \"\") >= \"$history_floor\") | .state][0] // \"-\" | ascii_upcase") \
+      || { echo "identity takes ($cc): could not read $sha's status by REST either" >&2; return 1; }
+    [ "$state" = SUCCESS ] && { echo "identity takes ($cc): $sha is green, $checked commit(s) back (history from git)" >&2; echo "$sha"; return 0; }
+  done < <(git -C "$history" rev-list --max-count="$depth" "$head~1" 2> /dev/null)
+  echo "identity takes ($cc): no green commit in the $checked commit(s) of the head's history git gave -- no base named" >&2
+  return 1
 }
 
 # THE NORMALIZER TRACE (scripts/identity-measure --footprint): every title reading a side's resolve and its ratchet made

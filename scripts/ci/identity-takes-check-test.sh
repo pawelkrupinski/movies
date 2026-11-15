@@ -23,6 +23,9 @@ for n in 1 2 3; do
   scratch_git "$work/src" commit -q -m "c$n"
 done
 scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
+# github.com serves a filtered fetch of any commit (the history-from-git fallback's)
+scratch_git "$work/origin.git" config uploadpack.allowFilter true
+scratch_git "$work/origin.git" config uploadpack.allowAnySHA1InWant true
 c1=$(scratch_git "$work/src" rev-parse HEAD~2) c2=$(scratch_git "$work/src" rev-parse HEAD~1) c3=$(scratch_git "$work/src" rev-parse HEAD)
 mkdir -p "$work/job"
 scratch_git "$work/job" clone -q --depth=1 --branch main "file://$work/origin.git" .
@@ -34,6 +37,8 @@ mkdir -p "$work/bin"
 cat > "$work/bin/gh" <<EOF
 #!/usr/bin/env bash
 [ -n "\${HISTORY_FAILS:-}" ] && { echo "HTTP 502" >&2; exit 1; }
+# GRAPHQL_FAILS: GraphQL answers only error pages; REST still reads a commit's status (the history-from-git fallback)
+case "\$*" in "api graphql"*) [ -n "\${GRAPHQL_FAILS:-}" ] && { echo "invalid character '<' looking for beginning of value" >&2; exit 1; } ;; esac
 # Every status context of every commit costs github.com more than its 10 s GraphQL budget on a page of 100 (Identity takes
 # #114: three reads, each an HTML error page): a query still asking for all of them is answered as GitHub answers it
 case "\$*" in *"contexts {"*) echo "invalid character '<' looking for beginning of value" >&2; exit 1 ;; esac
@@ -42,6 +47,7 @@ case "\$*" in *"contexts {"*) echo "invalid character '<' looking for beginning 
 [ -n "\${HISTORY_HANGS:-}" ] && { echo \$\$ >> "\$HISTORY_HANGS"; exec sleep 86400; } # never answers: blocks until killed
 state() { cat "$work/status-\$1" 2>/dev/null || echo -; }
 case "\$*" in
+  "api repos/o/r/commits/"*"/status"*) sha="\${2#repos/o/r/commits/}"; state "\${sha%%/*}"; exit 0 ;;
   "api repos/o/r/commits/"*) short="\${2##*/}"; for c in $c1 $c2 $c3; do [ "\${c#\$short}" != "\$c" ] && { echo "\$c"; exit 0; }; done
                             echo "No commit found for SHA: \$short" >&2; exit 1 ;;
   *"cursor=$c2 0"*) echo "$c1 \$(state $c1) $c0" ;;
@@ -81,6 +87,19 @@ check "...saying the first read failed" 1 "$(grep -c 'history read 1 of 3 failed
 rm "$work/status-$c1"
 code=0; HISTORY_FAILS=1 run || code=$?
 check "a history read failing every time stops the check" 2 "$code"
+# Identity takes #82 / #114: GraphQL answering error pages on every attempt cost the row its base. The history then
+# comes from git, only each commit's status from REST -- and the checkout itself is left as the row fetched it.
+echo FAILURE > "$work/status-$c2"; echo SUCCESS > "$work/status-$c1"
+code=0; GRAPHQL_FAILS=1 run || code=$?
+check "GraphQL failing every time: the newest green commit from git's history and REST's statuses" "$c1" "$(cat "$work/out/base.txt" 2>/dev/null)"
+check "...and goes on to judge (no could-not-run exit)" 1 "$([ "$code" != 2 ] && echo 1 || echo 0)"
+check "...saying where its history came from" 1 "$(grep -c "$c1 is green, 2 commit(s) back (history from git)" "$work/log")"
+check "...leaving the checkout one commit deep" 1 "$(scratch_git "$work/job" rev-list --count "$c3")"
+rm "$work/status-$c1"
+code=0; GRAPHQL_FAILS=1 run || code=$?
+check "...but with no green commit in git's window it names no base, never a guess" "2 1" \
+  "$code $(grep -c 'no green commit in the 2 commit(s)' "$work/log")"
+rm "$work/status-$c2"
 # The stub never answers: the check stops only by its bound cutting the read off (shell-spec.sh's HUNG STUBS).
 : > "$work/hung"
 code=0; HISTORY_HANGS="$work/hung" IDENTITY_TAKES_GH_TIMEOUT=1 run || code=$?
@@ -133,6 +152,9 @@ for n in 4 5; do
   scratch_git "$work/src" add common && scratch_git "$work/src" commit -q -m "c$n"
 done
 scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
+# github.com serves a filtered fetch of any commit (the history-from-git fallback's)
+scratch_git "$work/origin.git" config uploadpack.allowFilter true
+scratch_git "$work/origin.git" config uploadpack.allowAnySHA1InWant true
 c4=$(scratch_git "$work/src" rev-parse HEAD~1) c5=$(scratch_git "$work/src" rev-parse HEAD)
 rm -rf "$work/job" && mkdir -p "$work/job" && scratch_git "$work/job" clone -q --depth=1 --branch main "file://$work/origin.git" .
 mkdir -p "$work/job/test/resources/fixtures" "$work/job/scripts/ci"
@@ -370,6 +392,9 @@ check "...nor stored under one" 0 "$(find "$work/release" -name "*decisions*" | 
 echo 6 > "$work/src/README" && scratch_git "$work/src" add README && scratch_git "$work/src" commit -q -m c6
 echo 7 > "$work/src/common/src/main/Identity.scala" && scratch_git "$work/src" add common && scratch_git "$work/src" commit -q -m c7
 scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
+# github.com serves a filtered fetch of any commit (the history-from-git fallback's)
+scratch_git "$work/origin.git" config uploadpack.allowFilter true
+scratch_git "$work/origin.git" config uploadpack.allowAnySHA1InWant true
 c6=$(scratch_git "$work/src" rev-parse HEAD~1) c7=$(scratch_git "$work/src" rev-parse HEAD)
 at() { scratch_git "$work/job" fetch -q --depth=1 origin "$1" && scratch_git "$work/job" checkout -q "$1"; } # the head, as CI checks it out
 TAKES_BASE=$c4 store_run "$c5" || true
@@ -478,6 +503,9 @@ scratch_git "$work/src" add e2e && scratch_git "$work/src" commit -q -m c8
 echo '// allowlist edited' >> "$work/src/e2e/src/test/scala/services/movies/CorpusShapeSpec.scala"
 scratch_git "$work/src" add e2e && scratch_git "$work/src" commit -q -m c9
 scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
+# github.com serves a filtered fetch of any commit (the history-from-git fallback's)
+scratch_git "$work/origin.git" config uploadpack.allowFilter true
+scratch_git "$work/origin.git" config uploadpack.allowAnySHA1InWant true
 c8=$(scratch_git "$work/src" rev-parse HEAD~1) c9=$(scratch_git "$work/src" rev-parse HEAD)
 cp "$(dirname "$script")/corpus_shape_diff.py" "$work/job/scripts/ci/"
 mv "$work/bin/sbt" "$work/bin/sbt-takes"
