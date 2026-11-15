@@ -24,22 +24,31 @@ import XCTest
 @MainActor
 final class NavbarFadeUITests: XCTestCase {
     var app: XCUIApplication!
+    var server: FixtureServer!
 
     override func setUp() async throws {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = .portrait
         app = XCUIApplication()
-        FixtureLaunch.intoCity(app, city: "poznan")
+        // A served grid of striped posters, never production's: the band below the bar crosses
+        // vivid posters whatever the live listing holds tonight.
+        server = try PosterGridFixture.serve(today: Date())
+        FixtureLaunch.intoCity(app, city: "warszawa",
+                               environment: ["KINOWO_UITEST_SERVER": server.baseURL.absoluteString])
 
-        // "Wszystkie" guarantees a dense, multi-row poster grid at any hour.
+        // "Wszystkie" shows the served week: a dense, multi-row poster grid at any hour.
         let anytime = app.buttons[A11y.TopBar.datePillAnytime]
         XCTAssertTrue(anytime.waitForExistence(timeout: 30), "Top bar never appeared")
         anytime.tap()
         XCTAssertTrue(firstFilmCard().waitForExistence(timeout: 30),
                       "Grid never filled after switching to Wszystkie")
+        PosterGridFixture.assertServed(by: server)
     }
 
-    override func tearDown() async throws { app = nil }
+    override func tearDown() async throws {
+        app = nil
+        server = nil
+    }
 
     func testNoFadeScrimUnderNavbar() throws {
         let grid = app.scrollViews.firstMatch

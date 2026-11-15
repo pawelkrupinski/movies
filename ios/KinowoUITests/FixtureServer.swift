@@ -10,6 +10,7 @@ import os
 /// It answers `GET <path>` from `routes`; anything else is a 404, which the app treats as it
 /// treats an unreachable optional endpoint (the catalog and client-support checks keep what they
 /// have). One request per connection (`Connection: close`), so there is no keep-alive state.
+/// A `.png` path is served as `image/png` (a poster), anything else as JSON.
 final class FixtureServer: @unchecked Sendable {
     let baseURL: URL
     /// The paths the app asked for, in order -- so a test can tell "the app never fetched" from
@@ -17,12 +18,13 @@ final class FixtureServer: @unchecked Sendable {
     var requestedPaths: [String] { requested.withLock { $0 } }
 
     private let listener: NWListener
-    private let routes: [String: Data]
+    private let routes: OSAllocatedUnfairLock<[String: Data]>
     private let requested = OSAllocatedUnfairLock<[String]>(initialState: [])
     private let queue = DispatchQueue(label: "FixtureServer")
 
     /// Starts listening on an ephemeral loopback port and returns once it is ready.
-    init(routes: [String: Data]) throws {
+    init(routes: [String: Data] = [:]) throws {
+        let routes = OSAllocatedUnfairLock(initialState: routes)
         self.routes = routes
         let parameters = NWParameters.tcp
         parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: .any)
@@ -48,17 +50,24 @@ final class FixtureServer: @unchecked Sendable {
 
     deinit { listener.cancel() }
 
+    /// Adds (or replaces) routes once the server listens -- for a body that names the server's own
+    /// `baseURL`, such as a listing whose poster links point back here.
+    func addRoutes(_ more: [String: Data]) {
+        routes.withLock { $0.merge(more) { _, new in new } }
+    }
+
     enum ServerError: Error { case notReady }
 
-    private static func serve(_ connection: NWConnection, routes: [String: Data],
+    private static func serve(_ connection: NWConnection, routes: OSAllocatedUnfairLock<[String: Data]>,
                               requested: OSAllocatedUnfairLock<[String]>, queue: DispatchQueue) {
         connection.start(queue: queue)
         receiveHead(connection, buffer: Data()) { head in
             let path = head.flatMap(requestPath) ?? ""
             requested.withLock { $0.append(path) }
-            let body = routes[path]
+            let body = routes.withLock { $0[path] }
+            let type = path.hasSuffix(".png") ? "image/png" : "application/json; charset=utf-8"
             var response = Data("HTTP/1.1 \(body == nil ? "404 Not Found" : "200 OK")\r\n".utf8)
-            response += Data("Content-Type: application/json; charset=utf-8\r\n".utf8)
+            response += Data("Content-Type: \(type)\r\n".utf8)
             response += Data("Content-Length: \(body?.count ?? 0)\r\nConnection: close\r\n\r\n".utf8)
             response += body ?? Data()
             connection.send(content: response, completion: .contentProcessed { _ in connection.cancel() })

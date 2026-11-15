@@ -16,20 +16,27 @@ import XCTest
 @MainActor
 final class PosterOverlapUITests: XCTestCase {
     var app: XCUIApplication!
+    var server: FixtureServer!
 
     override func setUp() async throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        // The live repertoire, not the fixture: the overlap needs real, oddly shaped posters.
-        FixtureLaunch.intoCity(app, city: "poznan")
-        // Wait on app launch (the date-pill row), NOT on a film card —
-        // the default "Dziś" repertoire is empty late at night, so the
-        // grid only fills once we switch to "Wszystkie" in the test.
+        // A served grid, never production's: 24 cards whose posters include wide landscape and
+        // square sources -- the oddly shaped posters the overlap was reported under.
+        server = try PosterGridFixture.serve(today: Date())
+        FixtureLaunch.intoCity(app, city: "warszawa",
+                               environment: ["KINOWO_UITEST_SERVER": server.baseURL.absoluteString])
+        // Wait on app launch (the date-pill row), NOT on a film card: the
+        // default "Dziś" page may hold no showings late at night, so the grid
+        // only fills once we switch to "Wszystkie" in the test.
         XCTAssertTrue(anytimePill().waitForExistence(timeout: 30),
                       "App never launched (no date pills)")
     }
 
-    override func tearDown() async throws { app = nil }
+    override func tearDown() async throws {
+        app = nil
+        server = nil
+    }
 
     func testFilmCardsNeverOverlapWhileScrolling() throws {
         // "Wszystkie" (all dates) guarantees a dense, multi-row grid — the
@@ -41,6 +48,7 @@ final class PosterOverlapUITests: XCTestCase {
                       "Grid never filled after switching to Wszystkie")
         let grid = app.scrollViews.firstMatch
         XCTAssertTrue(grid.waitForExistence(timeout: 5), "No scroll view")
+        PosterGridFixture.assertServed(by: server)
 
         for _ in 0..<10 {
             if let hit = firstOverlap(cellFrames()) {
