@@ -157,7 +157,7 @@ printf '%s\t%s\n' scripts/ord/a-test.sh 5 scripts/ord/b-test.sh 90 scripts/ord/c
 check "recorded times: the slowest first, a test with none before them all" "d-test.sh b-test.sh c-test.sh a-test.sh" "$(order)"
 check "...a run records what its tests took, keeping the rows of tests it did not run" "4 1 1" \
   "$(grep -c 'scripts/ord/.-test.sh' "$RUN_SCRIPT_TESTS_DURATIONS" | tr -d ' ') $(grep -c 'gone-test.sh	7' "$RUN_SCRIPT_TESTS_DURATIONS") $(grep -c 'ord/b-test.sh	[0-9]$' "$RUN_SCRIPT_TESTS_DURATIONS")"
-check "...and no temporary file is left beside it" "0" "$(ls "$work" | grep -c '^durations.tsv.')"
+check "...and no temporary file is left beside it" "0" "$(find "$work" -maxdepth 1 -name 'durations.tsv.*' | wc -l | tr -d ' ')"
 rm -rf "$tree/scripts/ord"; unset RUN_SCRIPT_TESTS_DURATIONS
 
 # The Python floor: a python3 older than every script supports fails the run, loudly, before any test.
