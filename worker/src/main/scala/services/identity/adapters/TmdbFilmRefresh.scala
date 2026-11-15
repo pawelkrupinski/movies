@@ -14,8 +14,9 @@ import tools.{HttpFetch, HttpPath}
  * on, when `TmdbChangesSweep` reads the day's change list and `QuestionRenewals` finds the families' searches aged.
  *
  * A family is reached when one of its decisions takes, leans to or names as candidate one of the films, or one of its
- * listings bills (folded by `fold`, the country's title key) a title the film's fetched record carries: a Polish title
- * just added on TMDB reaches the listings billing it, whose searches found nothing before.
+ * listings bills, or one of its title searches asks (each folded by `fold`, the country's title key), a title the film's
+ * fetched record carries: a Polish title just added on TMDB reaches the listings billing it, whose searches found nothing
+ * before — a banner-decorated billing ("FOKUS: GRANICE - Bańki") through the search its peeled title asks.
  *
  * Every request goes through `fetch` (the normalizing lookup chain), so an answer that moved is filed and wakes the
  * model like any other (`TmdbStore.onChanged`), and one that did not writes nothing. `families` is the model's
@@ -42,7 +43,8 @@ final class TmdbFilmRefresh(fetch: HttpFetch, tmdb: HttpFetch => TmdbClient, fam
     }.filter(_.nonEmpty).toSet
     val ids     = films.toSet
     val held    = families()
-    val reached = held.getOrElse(Nil).filter(family => family.films.exists(ids) || family.titles.exists(title => titles(fold(title))))
+    val reached = held.getOrElse(Nil).filter(family => family.films.exists(ids) || family.titles.exists(title => titles(fold(title))) ||
+      family.queries.exists { case CandidateQuery.Title(text) => titles(fold(text)); case _ => false })
     val queries = reached.flatMap(_.queries).distinct.sortBy(_.sortKey)
     val asked   = queries.map(lookups.candidates)
     val result  = Refreshed(films.distinct.size, records.count(_._2.isAnswered), held.isDefined, reached.size, queries.size,

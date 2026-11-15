@@ -36,10 +36,12 @@ class TmdbFilmRefreshSpec extends AnyFlatSpec with Matchers {
   private val oczy  = listing("Oczy Ghany", Kinoteka)
   private val zar   = listing("Zar", KinoMuza)
   private val lalka = listing("Lalka", KinoMuza)
+  private val banner = listing("AfryKamera: Oczy Ghany", KinoMuza)   // billed under a banner, searched as its peeled title
   private val questions = Seq(
     Set[CandidateQuery](CandidateQuery.Title("Oczy Ghany"))     -> Seq(unmatched(oczy)),
     Set[CandidateQuery](CandidateQuery.Title("Zar"))            -> Seq(ResolverDecision(Seq(zar.key), None, 0.0, ResolverDecision.Basis.OwnMatch, Nil, leaning = Some(ResolverDecision.Leaning(heat, 0)))()),
-    Set[CandidateQuery](CandidateQuery.Title("Lalka"))          -> Seq(unmatched(lalka)))
+    Set[CandidateQuery](CandidateQuery.Title("Lalka"))          -> Seq(unmatched(lalka)),
+    Set[CandidateQuery](CandidateQuery.Title("AfryKamera: Oczy Ghany"), CandidateQuery.Title("OCZY GHANY")) -> Seq(unmatched(banner)))
 
   private final class World(modelUp: Boolean = true) {
     val tmdb    = new Edited
@@ -48,7 +50,7 @@ class TmdbFilmRefreshSpec extends AnyFlatSpec with Matchers {
     store.onChanged(changed += _)
     val refresh = new TmdbFilmRefresh(new NormalizingHttpFetch(tmdb, new TmdbNormalizer(store)),
       new TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k"))),
-      families = () => Option.when(modelUp)(TmdbFilmRefresh.Family.of(questions, Seq(oczy, zar, lalka))),
+      families = () => Option.when(modelUp)(TmdbFilmRefresh.Family.of(questions, Seq(oczy, zar, lalka, banner))),
       fold = services.movies.TitleNormalizer.forCountry(models.Country.Poland).sanitize)
     def filed(query: CandidateQuery): Boolean = store.get(TmdbKind.Query, Seq(TmdbStore.questionId("pl-PL", query))).nonEmpty
   }
@@ -57,9 +59,10 @@ class TmdbFilmRefreshSpec extends AnyFlatSpec with Matchers {
     val w = new World
     val r = w.refresh.refreshFilms(Seq(ghana, heat, ghana))
     w.tmdb.asked.map(u => new java.net.URI(u).getPath).filter(_.startsWith("/3/movie/")).toSet shouldBe Set(s"/3/movie/$ghana", s"/3/movie/$heat")
-    // "Oczy Ghany" bills the record's new Polish title; "Zar" leans to Heat; "Lalka" is reached by neither
-    w.tmdb.searched.toSet shouldBe Set("Oczy Ghany", "Zar")
-    r shouldBe TmdbFilmRefresh.Refreshed(films = 2, records = 2, modelUp = true, families = 2, questions = 2, answered = 2)
+    // "Oczy Ghany" bills the record's new Polish title; "Zar" leans to Heat; the banner's billing searches the title;
+    // "Lalka" is reached by none
+    w.tmdb.searched.toSet shouldBe Set("Oczy Ghany", "Zar", "AfryKamera: Oczy Ghany", "OCZY GHANY")
+    r shouldBe TmdbFilmRefresh.Refreshed(films = 2, records = 2, modelUp = true, families = 3, questions = 4, answered = 4)
   }
 
   it should "file what moved, so the model re-resolves the families that read it" in {
@@ -82,6 +85,6 @@ class TmdbFilmRefreshSpec extends AnyFlatSpec with Matchers {
   it should "be the tmdb-films source, its keys the films' ids" in {
     val w = new World
     w.refresh.name shouldBe services.refresh.RefreshableSources.TmdbFilms
-    w.refresh.refresh(Seq(ghana.toString, "not-an-id")).message should startWith("1 of 1 records fetched; 1 families reached")
+    w.refresh.refresh(Seq(ghana.toString, "not-an-id")).message should startWith("1 of 1 records fetched; 2 families reached")
   }
 }
