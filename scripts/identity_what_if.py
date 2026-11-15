@@ -27,8 +27,10 @@ elsewhere), bucketed by the judgements exactly as scripts/identity_measure.py bu
 _takes_diff's pairing and moves, identity_measure.bucket_of), plus prod's served take beside each.
 
 usage: identity_what_if.py select --repo DIR --base SHA --head SHA|. --takes base/takes.tsv --out keys.txt [--roots F]
+       identity_what_if.py reaches --repo DIR --base SHA --head SHA|. [--roots F]
        identity_what_if.py diff --cc CC --base DIR --head DIR --judgements F [--verify] [--tsv OUT] [--json]
-select exits 0 and prints `selected: N of M families (...)` or `selected: ALL (<why>)`.
+select exits 0 and prints `selected: N of M families (...)` or `selected: ALL (<why>)`; reaches prints `none` (no change
+reaches a take: the head need not be compiled or resolved), `rules` or `all`, from the code alone, before any side resolves.
 diff exits 0, or 1 when --verify finds a take the selection missed.
 """
 
@@ -288,10 +290,23 @@ def changes_between(repo, base, head):
     return hunks(git(repo, "diff", "-U0", "--no-color", "--no-ext-diff", base, head))
 
 
+def reach(args):
+    """The rule-id patterns the change can move (None: every family, with why; empty: none) -- the code alone decides
+    them, never the base's takes."""
+    changes = changes_between(args.repo, args.base, args.head)
+    return attribute(changes, Sources(args.repo, args.base, args.head), read_roots(args.roots))
+
+
+def run_reaches(args):
+    """`none` when no change reaches a take (the head need not be compiled or resolved), `all`, or `rules`."""
+    patterns, _ = reach(args)
+    print("all" if patterns is None else "rules" if patterns else "none")
+    return 0
+
+
 def run_select(args):
     rows = read_tsv(args.takes)
-    changes = changes_between(args.repo, args.base, args.head)
-    patterns, why = attribute(changes, Sources(args.repo, args.base, args.head), read_roots(args.roots))
+    patterns, why = reach(args)
     families = len({r["family"] for r in rows})
     if patterns is None:
         keys, line = [r["key"] for r in rows], f"selected: ALL {families} families ({why})"
@@ -486,6 +501,11 @@ def main(argv=None):
     s.add_argument("--takes", required=True)
     s.add_argument("--out", required=True)
     s.add_argument("--roots", default=ROOTS)
+    r = sub.add_parser("reaches")
+    r.add_argument("--repo", required=True)
+    r.add_argument("--base", required=True)
+    r.add_argument("--head", required=True)
+    r.add_argument("--roots", default=ROOTS)
     d = sub.add_parser("diff")
     d.add_argument("--cc", required=True)
     d.add_argument("--base", required=True)
@@ -501,6 +521,8 @@ def main(argv=None):
     if args.command == "take":
         print(side_take(args.side, args.listing))
         return 0
+    if args.command == "reaches":
+        return run_reaches(args)
     return run_select(args) if args.command == "select" else run_diff(args)
 
 

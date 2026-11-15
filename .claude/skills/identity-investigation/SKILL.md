@@ -135,7 +135,11 @@ take, or the corpus), `--recording RUN --head REF` (a CI recording through CI's 
   shared cache, `identity_tree`) replays the mirror's `identity_history` to `--at` (listings, venue pages, TMDB store,
   family answers) and resolves every family against the corpus's context. The base is KEPT per (base sha, tool files,
   answers mode, snapshot) under `$KINOWO_IDENTITY_CACHE/what-if/`; without `--at` a rerun takes the newest kept snapshot
-  under `--max-age` (6 h), so only the head resolves.
+  under `--max-age` (6 h), so only the head resolves. A base side resolves in a one-shot JVM (its answer is on disk; a
+  kept one only held a slot idle), with the head compiling beside it. A change reaching no take (`identity_what_if.py
+  reaches`: docs, tests, scripts, comments), or a selection naming no family, starts no head JVM and compiles nothing:
+  its takes are the base's. `.` in a never-compiled worktree is seeded by `sbt-warm --seed` first (72 s → 12 s). Each
+  log line carries `+Ns` since the start: the phase timings.
 - **Answers: asked, not refused** (since 2026-11-05). A question the mirror's store lacks — a head's new query text, a new
   shape's search, a record, a family question — is asked of the REAL service once (`WhatIfAnswers.live`: the worker's own
   TMDB / IMDb clients, normalizer and agreement family sources over production's paced wire, `HttpWiring.pacedWire`; each
@@ -166,7 +170,7 @@ take, or the corpus), `--recording RUN --head REF` (a CI recording through CI's 
   ALL; `--verify` then proves it.
 - **`--verify`** also resolves (and settles) every family at the head and fails (exit 1) on any listing whose model or
   final take differs from the what-if's — inside the selection or outside it (the selection missed it).
-- **Kept JVMs.** Each ref's tree runs in a kept JVM (`tools.KeptJvm` over a Unix socket, one per tree and code, a JVM slot
+- **Kept JVMs.** The head's tree runs in a kept JVM (`tools.KeptJvm` over a Unix socket, one per tree and code, a JVM slot
   held by a keeper; stops after `KINOWO_IDENTITY_WHAT_IF_IDLE_MINUTES`, 10) holding the corpus and context of its last two
   (country, snapshot, answers): a warm rerun of the head only resolves and settles. `--no-serve` runs a JVM per side.
 - **`--bisect GOOD BAD`** (one country): each step resolves one commit of `GOOD..BAD` (first parent) whole on one snapshot
@@ -199,7 +203,7 @@ not hold, judged wrong since); counts differ by corpus (today's billings, not th
 CI's capture-only replay. `--bisect 5622777d~4 5622777d --listing 'Institute of Contemporary Arts|Pereda: Perpetual
 Motion' uk` named 5622777d in 2 steps, 320 s cold. Wall on the laptop, JVM phases of a whole side (corpus, context,
 resolve, settle, prod) on a quiet machine: PL 29 s, US 31 s, UK 26-40 s, DE 40-75 s, ES ~45 s; a ref compiles once (~1-3 min) and JVM slots are often the
-wait (the tool names who holds them). A head rerun through its kept JVM: UK 24 s (head 14 s). The stage settle was
+wait (the tool names who holds them). A head rerun through its kept JVM: UK 24 s (head 14 s); DE 13 s. The stage settle was
 254 s on ES until the mirror's family answers were read in one batch (now 5-24 s a country).
 
 ## poster-eval

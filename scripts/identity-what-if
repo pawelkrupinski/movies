@@ -30,7 +30,7 @@
 #                  service; TMDB's key from the vault: `secrets run movies TMDB_API_KEY`) and filed into the LOCAL
 #                  what-if store, keyed as production's store keys it, so a repeat run asks nothing
 #   --answers-dir  that store (default $KINOWO_IDENTITY_CACHE/what-if-answers; one directory a country)
-#   --no-serve     a JVM per side; by default each ref's tree runs in a KEPT JVM (one per tree and code; stops after
+#   --no-serve     a JVM per side; by default the head's tree runs in a KEPT JVM (one per tree and code; stops after
 #                  $KINOWO_IDENTITY_WHAT_IF_IDLE_MINUTES, 10, idle minutes; --stop-served stops them all) holding the
 #                  corpus and its context of the last two (country, snapshot, answers): a warm rerun resolves only
 #   --bisect G B   the commit of G..B (first parent) whose code moved a take on one mirror snapshot: the listing's model
@@ -47,12 +47,15 @@
 #
 # HOW. Each ref's sources are laid out once under the shared cache (scripts/identity-tools.sh's identity_tree, this
 # checkout's WhatIfResolve.scala and MemoLookups.scala dropped in, so a ref from before the tool works) and compiled once.
-# The base resolves every family (services.identity.WhatIfResolve: takes, rule ids, block keys, prod's served take) and is
-# KEPT, keyed by the base's sha, the tool files and the snapshot moment: a repeat run resolves only the head.
+# The base resolves every family (services.identity.WhatIfResolve: takes, rule ids, block keys, prod's served take) in a
+# JVM of its own, and the side is KEPT on disk, keyed by the base's sha, the tool files and the snapshot moment: a repeat
+# run resolves only the head. While a base side resolves, the head compiles beside it (its own JVM slot).
 # scripts/identity_what_if.py selects: the changed code walked up its callers to the rule roots
 # (scripts/identity-what-if-roots.tsv), the families whose base trace names one of their rules re-resolved, widened while a
 # re-resolved family blocks under another's key; a change it cannot attribute (shared resolver code, scoring, lookups,
-# normalizer) re-resolves ALL, and says why. Then it diffs.
+# normalizer) re-resolves ALL, and says why. A change reaching no take (docs, tests, scripts, comments: `reaches`) or a
+# selection naming no family starts no head JVM and compiles no head: its takes are the base's. Then it diffs.
+# Every line it logs carries the seconds since it started (+Ns): the run's phase timings.
 #
 # A change to the agreement stage (identity/.../agreement/, or a definition its code calls) selects ALL: every family's
 # final take settled again at the head, and it says why.
@@ -73,6 +76,10 @@ IDENTITY_TOOL=identity-what-if
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"
 repo=$IDENTITY_REPO
+# every line it logs (the shared tools' too: layout, compile, slot waits) stamped with the seconds since it started, so a
+# run's log reads as its phase timings
+what_if_started=$SECONDS
+identity_log() { echo "[identity-what-if +$((SECONDS - what_if_started))s] $*" >&2; }
 self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
 serve_dir=$IDENTITY_CACHE/what-if-serve
 # A kept JVM's idle exit, as identity-slice's: each holds a JVM slot while idle
@@ -243,7 +250,9 @@ PY
 # whole_side <sha> <cc> <snapshot> -> the directory of <sha>'s every family resolved at <snapshot> (takes, families,
 # prod, final), KEPT per (sha, tool files, answers, snapshot): resolved here only when it is not
 whole_side() {
-  local sha=$1 cc=$2 snapshot=$3 dir tree
+  # a JVM of its own, never a kept one: the side it resolves is kept on disk and never asked of that JVM again, which
+  # would only have held a JVM slot idle for its 10 minutes (2026-11-15: a what-if queued 390 s behind two such)
+  local sha=$1 cc=$2 snapshot=$3 dir tree serve=0
   dir=$cache/$cc/$sha-$tools_hash-$side_answers/$snapshot
   if [ ! -f "$dir/prod.tsv" ] || { [ "$final" = 1 ] && [ ! -f "$dir/final.tsv" ]; }; then
       tree=$(tree_of "$sha") || return 2
@@ -309,6 +318,19 @@ identity_log "base $base_sha, head $head_label; laying out and compiling the ref
 tree_of "$base_sha" > /dev/null || exit 2
 head_tree=$(tree_of "$head_sha") || exit 2
 judgements=${judgements:-$head_tree/test/resources/fixtures/identity-judgements.tsv}
+# Whether the head resolves at all: the code alone says whether any change reaches a take (identity_what_if.py reaches).
+# None (docs, tests, scripts, comments) and no --all/--verify: the selection is empty, so the head is not compiled
+# beside the base -- and an empty selection (below) starts no head JVM at all.
+reach=$(python3 -I "$repo/scripts/identity_what_if.py" reaches --repo "$repo" --base "$base_sha" --head "$head_sha") || exit 2
+head_resolves=1; [ "$reach" != none ] || [ "$all" = 1 ] || [ "$verify" = 1 ] || head_resolves=0
+# The head's compile, started beside the base's resolve when the base side is not kept (it takes its own JVM slot);
+# waited for before the head resolves
+head_compile=""
+compile_head_beside() {
+  [ "$head_resolves" = 1 ] && [ -z "$head_compile" ] && ! identity_classpath_fresh "$head_tree" || return 0
+  identity_log "compiling the head beside the base's resolve"
+  identity_classpath "$head_tree" > /dev/null & head_compile=$!
+}
 status=0
 for cc in "${ccs[@]}"; do
   fresh_rc=0; scripts/local-mirror/freshness "$cc" --quiet >&2 || fresh_rc=$?
@@ -318,6 +340,7 @@ for cc in "${ccs[@]}"; do
   if [ -z "$snapshot" ]; then snapshot=$(date -u +%Y-%m-%dT%H:%M:00Z); fi
   base_state=$([ -f "$cache/$cc/$base_sha-$tools_hash-$side_answers/$snapshot/final.tsv" ] || { [ "$final" = 0 ] &&
     [ -f "$cache/$cc/$base_sha-$tools_hash-$side_answers/$snapshot/prod.tsv" ]; } && echo kept || echo resolved)
+  [ "$base_state" = kept ] || compile_head_beside
   base_dir=$(whole_side "$base_sha" "$cc" "$snapshot") || exit 2
   base_seconds=$(elapsed "$started")
   head_dir=$out/$cc
@@ -331,9 +354,19 @@ for cc in "${ccs[@]}"; do
   identity_log "$cc: $selected"
   head_started=$(seconds)
   more=(); [ "$verify" = 0 ] || more+=(--whole)
-  resolve "$head_tree" "$cc" "$head_dir" --at "$snapshot" --select "$head_dir/select.txt" --families "$base_dir/families.tsv" \
-    --base-takes "$base_dir/takes.tsv" --threads "$threads" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
-    ${more[@]+"${more[@]}"} || exit 2
+  if [ ! -s "$head_dir/select.txt" ] && [ "$verify" = 0 ]; then
+    # nothing to re-resolve: what WhatIfResolve writes for an empty selection, without a compile or a JVM
+    identity_log "$cc: no family to re-resolve: the head's takes are the base's (no head JVM)"
+    printf 'key\tvenue\trawTitle\tfamily\ttake\trules\n' > "$head_dir/takes.tsv"
+    printf 'selected\tre-resolved\tgroups\trounds\n0\t0\t0\t1\n' > "$head_dir/region.tsv"
+    [ "$final" = 0 ] || printf 'key\tfinal\tbasis\n' > "$head_dir/final.tsv"
+    echo > "$head_dir/answers.txt"
+  else
+    [ -z "$head_compile" ] || { wait "$head_compile" || true; head_compile=""; }
+    resolve "$head_tree" "$cc" "$head_dir" --at "$snapshot" --select "$head_dir/select.txt" --families "$base_dir/families.tsv" \
+      --base-takes "$base_dir/takes.tsv" --threads "$threads" "${answer_args[@]}" ${final_args[@]+"${final_args[@]}"} \
+      ${more[@]+"${more[@]}"} || exit 2
+  fi
   head_seconds=$(elapsed "$head_started")
   diff_args=(diff --cc "$cc" --base "$base_dir" --head "$head_dir" --judgements "$judgements" --tsv "$out/takes-diff-$cc.tsv")
   [ "$verify" = 0 ] || diff_args+=(--verify)

@@ -449,6 +449,9 @@ identity_classpath_compile() {
   local tree=$1 cp=$1/target/identity-tools/classpath log=$1/target/identity-tools/sbt.log
   identity_classpath_fresh "$tree" && return 0
   mkdir -p "$(dirname "$cp")"
+  # a checkout never compiled (a fresh worktree) gets sbt-warm's seed first -- the nearest local build of main, APFS
+  # clones: its first compile is incremental (2026-11-15: 72 s cold, 2 s seed + 10 s compile seeded)
+  if [ "$tree" = "$IDENTITY_REPO" ] && [ -x "$tree/scripts/sbt-warm" ]; then (cd "$tree" && scripts/sbt-warm --seed) >&2 || true; fi
   identity_log "compiling $tree (sbt; then cached until a source changes)"
   jvm_slot_take "${IDENTITY_TOOL:-identity}"
   # shellcheck disable=SC2046 # jvm_cpu_options: none, or one option

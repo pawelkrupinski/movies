@@ -87,6 +87,20 @@ touch -t 209901020000 "$tree/common/src/main/resources/title-rules.tsv"
 tools identity_classpath "$tree" > /dev/null
 check "...and again once a resource (title-rules.tsv, no .s* extension) changes" "1" "$(grep -c '^sbt' "$work/calls" 2>/dev/null || echo 0)"
 
+# This checkout never compiled (a fresh worktree): sbt-warm seeds it from the nearest local build before sbt compiles;
+# a ref's tree (seeded when it is laid out) is not
+mkdir -p "$repo/scripts"
+printf '#!/usr/bin/env bash\necho "sbt-warm $*" >> "$STUB/calls"\n' > "$repo/scripts/sbt-warm"
+chmod +x "$repo/scripts/sbt-warm"
+rm -f "$work/calls"
+tools identity_classpath "$repo" > /dev/null
+check "this checkout's first compile is seeded by sbt-warm, then compiled" "sbt-warm --seed|sbt" \
+  "$(cut -d' ' -f1-2 "$work/calls" 2>/dev/null | sed 's/^sbt -.*/sbt/' | paste -sd'|' -)"
+rm -f "$work/calls"
+touch -t 209901030000 "$tree/worker/src/A.scala"
+tools identity_classpath "$tree" > /dev/null
+check "...a ref's tree compiles unseeded" "1 0" "$(grep -c '^sbt -' "$work/calls") $(grep -c '^sbt-warm' "$work/calls")"
+
 # The default recording is the newest run holding the country's corpus: the newest run has no UK artifact, an older does.
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash

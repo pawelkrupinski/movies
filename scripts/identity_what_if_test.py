@@ -167,6 +167,24 @@ class AttributeTest(unittest.TestCase):
         self.assertIsNone(patterns)
         self.assertIn("reaches the agreement stage's agree", why)
 
+    def test_reaches_answers_from_the_code_alone_before_any_side_resolves(self):
+        def reaches():
+            out = io.StringIO()
+            with redirect_stdout(out):
+                w.main(["reaches", "--repo", self.repo.root, "--base", self.repo.base, "--head", self.repo.git("rev-parse", "HEAD"),
+                        "--roots", os.path.join(self.repo.root, "roots.tsv")])
+            return out.getvalue().strip()
+        self.repo.write("docs/notes.md", "more notes\n")
+        self.repo.commit("inert")
+        self.assertEqual(reaches(), "none")
+        self.repo.edit(ACC, "val cut = 3", "val cut = 4")
+        self.repo.commit("cut")
+        self.assertEqual(reaches(), "rules")
+        self.repo.edit("worker/src/main/scala/services/identity/Projection.scala", "Resolver.resolve(listings)",
+                       "Resolver.resolve(listings.distinct)")
+        self.repo.commit("worker")
+        self.assertEqual(reaches(), "all")
+
     def test_uncommitted_edits_of_the_checkout(self):
         self.repo.edit(ACC, "val cut = 3", "val cut = 5")
         self.assertEqual(self.repo.attribute(".")[0], {"accept:sole-work", "refused:sole-work:*"})
