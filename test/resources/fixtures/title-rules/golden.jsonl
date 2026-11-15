@@ -1332,7 +1332,7 @@
 {"text":"BECOMING KIM"}
 {"text":"BECOMING KIM + Filmgespräch mit Regisseurin Susanne Kim","pl,uk,de,us,es":{"query":"BECOMING KIM"}}
 {"text":"BECOMING KIM - LETsDOK"}
-{"text":"BECOMING KIM - LETsDOK mit Regiebesuch"}
+{"text":"BECOMING KIM - LETsDOK mit Regiebesuch","de":{"query":"BECOMING KIM"}}
 {"text":"BEFORE MIDNIGHT"}
 {"text":"BEGEGNUNGEN DER SEELE 2 D, ab 6"}
 {"text":"BELLA W BRZUSZKU. POSŁUCHAJ TEGO"}
@@ -2468,7 +2468,7 @@
 {"text":"Charlotte (2021)","pl,uk,de,us,es":{"key":"Charlotte","venue":{"kino-kinematograf":"Charlotte"}}}
 {"text":"Chasing Home"}
 {"text":"Chasing Hope"}
-{"text":"Chasing Hope - der andere Blick - Premiere in Anwesenheit der Regisseurin und des Protagonisten"}
+{"text":"Chasing Hope - der andere Blick - Premiere in Anwesenheit der Regisseurin und des Protagonisten","de":{"query":"Chasing Hope - der andere Blick"}}
 {"text":"Chasing Hope Der andere Blick"}
 {"text":"Chasing Hope – Der andere Blick"}
 {"text":"Chasing Millions"}
@@ -3082,7 +3082,7 @@
 {"text":"DER REGENBOGENFISCH"}
 {"text":"DER REGENMEISTER"}
 {"text":"DER RHEIN FLIESST INS MITTELMEER"}
-{"text":"DER RHEIN FLIESST INS MITTELMEER - mit Regiebesuch!"}
+{"text":"DER RHEIN FLIESST INS MITTELMEER - mit Regiebesuch!","de":{"query":"DER RHEIN FLIESST INS MITTELMEER"}}
 {"text":"DER RUF DER ANDEN D, ab 0"}
 {"text":"DER SALZPFAD"}
 {"text":"DER SCHWARZE KORSAR"}
@@ -3298,7 +3298,7 @@
 {"text":"DREI HASELNÜSSE FÜR ASCHENBRÖDEL"}
 {"text":"DREI KAMERADINNEN"}
 {"text":"DREI SCHWEDINNEN IN OBERBAYERN"}
-{"text":"DRIVING EUROPE - LETsDOK mit Regiebesuch"}
+{"text":"DRIVING EUROPE - LETsDOK mit Regiebesuch","de":{"query":"DRIVING EUROPE"}}
 {"text":"DRUGIE ŻYCIE"}
 {"text":"DRUNKEN NOODLES"}
 {"text":"DRY LEAF"}
@@ -8446,7 +8446,7 @@
 {"text":"LEGO® Friends: Heartlake the Musical"}
 {"text":"LEIBNIZ - Chronik eines verschollenen Bildes310. Todestag des hann. Gelehrten"}
 {"text":"LEICA - EIN JAHRHUNDERT IN BILDERN"}
-{"text":"LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!"}
+{"text":"LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!","de":{"query":"LEICA - EIN JAHRHUNDERT IN BILDERN"}}
 {"text":"LEICA – EIN JAHRHUNDERT IN BILDERN"}
 {"text":"LEINWAND FREI - POPCORN UND PUNCHLINES"}
 {"text":"LEIPZIGER PFEFFERMÜHLE \"Das Ei hängt schief\"-Loriot","pl,uk,de,us,es":{"venue":{"kino-alternatywy":"LEIPZIGER PFEFFERMÜHLE Das Ei hängt schief -Loriot"}}}
@@ -9251,7 +9251,7 @@
 {"text":"MASPALOMAS"}
 {"text":"MATADOR"}
 {"text":"MATERIA PRIMA"}
-{"text":"MATERIA PRIMA - LETsDOK mit Regiebesuch"}
+{"text":"MATERIA PRIMA - LETsDOK mit Regiebesuch","de":{"query":"MATERIA PRIMA"}}
 {"text":"MATERIA PRIMA - NEW ENERGY - OLD POWERS"}
 {"text":"MATRIX"}
 {"text":"MAX & TONI UTHOFF »Einer zuviel« - Live","pl":{"key":"MAX i TONI UTHOFF »Einer zuviel« - Live","display":"MAX i TONI UTHOFF »Einer zuviel« - Live"}}
@@ -16888,7 +16888,7 @@
 {"text":"WINTERSPELT 1944"}
 {"text":"WIR ERBEN"}
 {"text":"WIR, DIE WOLFS","pl,uk,de,us,es":{"venue":{"kino-kinematograf":"WIR"}}}
-{"text":"WISE WOMEN - mit Regiebesuch!"}
+{"text":"WISE WOMEN - mit Regiebesuch!","de":{"query":"WISE WOMEN"}}
 {"text":"WITAJCIE W HOPE"}
 {"text":"WITAJCIE W HOPE."}
 {"text":"WITH HASAN IN GAZA"}
