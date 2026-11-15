@@ -214,14 +214,14 @@ script_push() {
   local floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/} floor")
   case "${floor:-}" in '') ;; found) floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/}") ;;
     *) floor_env=(PREPUSH_SKIP="${pathchecks/scripttests/}" PREPUSH_FLOOR_BASH="$floor") ;; esac
-  rm -f "$gate/args"; (cd "$grepo" && all_green env "${floor_env[@]}" STUB_RUNNER_ARGS="$gate/args" "$@" \
+  rm -f "$gate/args"; (cd "$grepo" && all_green env -u PREPUSH_FLOOR_BASH "${floor_env[@]}" STUB_RUNNER_ARGS="$gate/args" "$@" \
   bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$runner_base..$runner_head" >/dev/null 2>"$gate/err"); echo $?; }
 check "a script push runs the self-tests its changes select, from the push's base" "0 --changed $runner_base" \
   "$(script_push) $(cat "$gate/args")"
 check "...and a failing one blocks the push" "1 1" "$(script_push STUB_RUNNER_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
 floor=$(floor_bash 3)
 check "on a Mac (a /bin/bash 3) they run under it too, the floor the tools promise" "0 --changed $runner_base|--changed $runner_base --bash $floor" \
-  "$(script_push) $(LC_ALL=C sort "$gate/args" | paste -sd'|' -)"
+  "$(script_push) $(LC_ALL=C sort "$gate/args" 2>/dev/null | paste -sd'|' -)"
 check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_FLOOR_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
 # Linux -- ci-runner's landing checks: no bash 3 there used to pass the floor in silence (ed160b94b, Order independence #72).
 floor=$(floor_bash 5)
@@ -232,7 +232,7 @@ check "...and so does no floor bash at all" "1 1" "$(script_push) $(grep -c 'is 
 floor=found
 printf '#!/bin/sh\necho "%s"\n' "$(floor_bash 3)" > "$grepo/scripts/floor-bash"; chmod +x "$grepo/scripts/floor-bash"
 check "with no PREPUSH_FLOOR_BASH, the bash scripts/floor-bash finds is the floor" "0 --changed $runner_base|--changed $runner_base --bash $gate/bash3" \
-  "$(script_push) $(LC_ALL=C sort "$gate/args" | paste -sd'|' -)"
+  "$(script_push) $(LC_ALL=C sort "$gate/args" 2>/dev/null | paste -sd'|' -)"
 printf '#!/bin/sh\necho "floor-bash: no bash 3.2.57 here" >&2; exit 1\n' > "$grepo/scripts/floor-bash"
 check "...and none found BLOCKS the push with what it said" "1 1 1" \
   "$(script_push) $(grep -c 'no bash 3.2.57 here' "$gate/err") $(grep -c 'scripts/floor-bash --install' "$gate/err")"
@@ -251,7 +251,7 @@ printf '#!/usr/bin/env bash\necho "$*" >> "$STUB_RUNNER_ARGS"\ncase "$*" in *--l
 scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a runner with --linux"
 runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
 check "with --linux, the same tests run on Linux too" "0 --changed $runner_base|--linux --changed $runner_base" \
-  "$(script_push) $(LC_ALL=C sort "$gate/args" | paste -sd'|' -)"
+  "$(script_push) $(LC_ALL=C sort "$gate/args" 2>/dev/null | paste -sd'|' -)"
 check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_LINUX_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
 check "...Docker not running: never blocking" "0 1" "$(script_push STUB_NO_DOCKER=1) $(grep -c -- '--linux' "$gate/args")"
 check "...and PREPUSH_SKIP=linux skips just that" "0 --changed $runner_base" \
