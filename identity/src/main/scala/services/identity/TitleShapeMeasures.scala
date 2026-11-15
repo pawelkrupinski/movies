@@ -10,8 +10,6 @@ import IdentityMeasures.*
  *  can stand for, delimited, quoted, or with its screening year dropped.
  *  Part of [[IdentityMeasures]], which exports it. */
 private[identity] object TitleShapeMeasures {
-  /** A part a title numbers by name — "Dune: Part Three", "Teil 2", "Episode VII" — not a bare number beside it. */
-  private val NamedPart = s"""(?iU)\\b(?:${NumberedTitles.PartWord}|${NumberedTitles.EpisodeWord})\\s*${NumberedTitles.PartNumber}""".r
   /** The parts the listing's own titles number and subtitle ([[BillingParse.titledParts]]): each one's number, if it has
    *  one, and its subtitle's words of four letters or more. */
   private[identity] def titledParts(titles: Seq[String]): Seq[(Option[String], Seq[String])] =
@@ -27,7 +25,7 @@ private[identity] object TitleShapeMeasures {
   def titlesAnotherPart(l: Listing, f: Film): Boolean = {
     val parts = titledParts(l.ownTitles)
     // a film its titles name as that part is that part, whatever note follows it: "Dune: Part Three - ERLY FAN PREVIEW"
-    lazy val numbered = f.titles.flatMap(t => NamedPart.findAllMatchIn(t).flatMap(m => TitleContainment.tokens(m.group(1)).headOption.map(NumberedTitles.partNumber))).toSet
+    lazy val numbered = f.titles.flatMap(NumberedTitles.namedPartNumbers).toSet
     parts.nonEmpty && parts.forall { case (number, words) => !number.exists(numbered) && !words.exists(f.titleWords) }
   }
 

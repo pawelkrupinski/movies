@@ -29,29 +29,6 @@ object NumberedTitles {
   /** A title word that is a Roman numeral ([[RomanNumeral]]) of two letters or more — "i" is the Polish "and". */
   def numbersAnInstalment(word: String): Boolean = word.length > 1 && RomanNumeral.pattern.matcher(word).matches()
 
-  /** A part a title numbers and the subtitle it gives that part, after a comma, a colon or a dash — or an episode and
-   *  the name it gives it, numbered or not: DE "DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)", UK "De Gaulle Part
-   *  Two: Liberté", DE "LOVE ISLAND - EPISODE NATURE", US "Star Wars: Episode VII - The Force Awakens". */
-  val PartWord    = """(?:teil|part|część|parte|partie|kapitel|chapter)"""
-  val PartNumber  = """(\d+|[ivx]+|one|two|three|eins|zwei|drei)\b"""
-  val EpisodeWord = """(?:episode|épisode|episodio|folge|odcinek)"""
-  private val TitledPart =
-    (s"""(?iU)\\b(?:$PartWord\\s*$PartNumber\\s*[,:–—-]""" +
-      s"""|$EpisodeWord\\b\\s*(?:(\\d+|[ivx]+)\\b)?\\s*[,:–—-]?)\\s*([^()\\[\\]|]+)""").r
-  /** The parts `title` numbers and subtitles ([[TitledPart]]): each one's number, if it has one, and its subtitle's
-   *  words of four letters or more. */
-  private[billing] def titledParts(title: String): Seq[(Option[String], Seq[String])] =
-    TitledPart.findAllMatchIn(title).map { m =>
-      (Option(m.group(1)).orElse(Option(m.group(2))).flatMap(TitleContainment.tokens(_).headOption).map(partNumber),
-        TitleContainment.tokens(m.group(3)).filter(_.length >= StemLetters))
-    }.toSeq
-
-  /** A part's number however it is spelled — "2", "II", "two", "zwei", "druga" — so "Dune: Part 2 - …" is "Dune: Part Two". */
-  def partNumber(token: String): String = PartNumbers.getOrElse(token, token)
-  private lazy val PartNumbers: Map[String, String] =
-    Map("i" -> "1", "ii" -> "2", "iii" -> "3", "iv" -> "4", "v" -> "5", "vi" -> "6", "vii" -> "7", "viii" -> "8", "ix" -> "9",
-      "x" -> "10") ++ SpelledInstalments.view.mapValues(_.toString)
-
   /** The numbers a title spells out where it numbers a part ("Part Two", "Część trzecia", "Teil zwei", "Parte tres"), in
    *  every language a country bills in, folded as [[TitleContainment.tokens]] hands them over: each one's value. A number
    *  only after a [[PartWordTokens]] word ([[spelledPartNumbers]]): "The Three Musketeers" numbers nothing. */
@@ -63,6 +40,43 @@ object NumberedTitles {
     "eins" -> 1, "zwei" -> 2, "drei" -> 3, "vier" -> 4, "erster" -> 1, "erste" -> 1, "zweiter" -> 2, "zweite" -> 2,
     "dritter" -> 3, "dritte" -> 3,
     "dos" -> 2, "tres" -> 3, "cuatro" -> 4, "primera" -> 1, "segunda" -> 2, "tercera" -> 3, "cuarta" -> 4)
+
+  /** A part a title numbers and the subtitle it gives that part, after a comma, a colon or a dash — or an episode and
+   *  the name it gives it, numbered or not: DE "DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)", UK "De Gaulle Part
+   *  Two: Liberté", DE "LOVE ISLAND - EPISODE NATURE", US "Star Wars: Episode VII - The Force Awakens". Matched on the title
+   *  with its accents folded ([[folded]]: "Część" is "czesc", "Épisode" "episode"), as the vocabulary is spelled. */
+  private val PartWord    = """(?:teil|part|czesc|parte|partie|kapitel|chapter)"""
+  /** The number after a [[PartWord]]: digits, a Roman numeral, or a number spelled out in the shared vocabulary
+   *  ([[SpelledInstalments]]: "Part Two", "Część trzecia", "Teil vier", "Parte tres"), the longest spelling first. */
+  private val PartNumber  = SpelledInstalments.keys.toSeq.sortBy(word => (-word.length, word)).mkString("""(\d+|[ivx]+|""", "|", """)\b""")
+  private val EpisodeWord = """(?:episode|episodio|folge|odcinek)"""
+  private val TitledPart =
+    (s"""(?iU)\\b(?:$PartWord\\s*$PartNumber\\s*[,:–—-]""" +
+      s"""|$EpisodeWord\\b\\s*(?:(\\d+|[ivx]+)\\b)?\\s*[,:–—-]?)\\s*([^()\\[\\]|]+)""").r
+  /** `title` with its accents folded, as [[TitleContainment.tokens]] folds a word: what [[PartWord]] and [[PartNumber]]
+   *  are matched on. */
+  private def folded(title: String): String = tools.TextNormalization.deburr(title)
+  /** The parts `title` numbers and subtitles ([[TitledPart]]): each one's number, if it has one, and its subtitle's
+   *  words of four letters or more. */
+  private[billing] def titledParts(title: String): Seq[(Option[String], Seq[String])] =
+    TitledPart.findAllMatchIn(folded(title)).map { m =>
+      (Option(m.group(1)).orElse(Option(m.group(2))).flatMap(TitleContainment.tokens(_).headOption).map(partNumber),
+        TitleContainment.tokens(m.group(3)).filter(_.length >= StemLetters))
+    }.toSeq
+
+  /** A part a title numbers by name — "Dune: Part Three", "Teil 2", "Episode VII" — not a bare number beside it. */
+  private val NamedPart = s"""(?iU)\\b(?:$PartWord|$EpisodeWord)\\s*$PartNumber""".r
+  /** The numbers of the parts `title` names ([[NamedPart]]), however each is spelled ([[partNumber]]): "Diuna: Część
+   *  trzecia" names part "3". */
+  def namedPartNumbers(title: String): Iterator[String] =
+    NamedPart.findAllMatchIn(folded(title)).flatMap(m => TitleContainment.tokens(m.group(1)).headOption.map(partNumber))
+
+  /** A part's number however it is spelled — "2", "II", "two", "zwei", "druga" — so "Dune: Part 2 - …" is "Dune: Part Two". */
+  def partNumber(token: String): String = PartNumbers.getOrElse(token, token)
+  private lazy val PartNumbers: Map[String, String] =
+    Map("i" -> "1", "ii" -> "2", "iii" -> "3", "iv" -> "4", "v" -> "5", "vi" -> "6", "vii" -> "7", "viii" -> "8", "ix" -> "9",
+      "x" -> "10") ++ SpelledInstalments.view.mapValues(_.toString)
+
   /** The words a title numbers a part after, folded: "Part", "Teil", "Część" ("czesc", "cz"), "Parte", "Chapter". */
   val PartWordTokens: Set[String] = Set("teil", "part", "pt", "czesc", "cz", "parte", "partie", "kapitel", "chapter", "capitulo")
   /** `tokens` (a title's, folded) with every number a part word spells out ([[SpelledInstalments]]) written in digits:

@@ -1823,6 +1823,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titlesAnotherPart(Listing("Dune: Part 3 - The IMAX Experience"), Film("Dune: Part Three", year = Some(2026))) shouldBe false
     IdentityMeasures.titlesAnotherPart(Listing("Der Pate Teil 2 - Restaurierte Fassung"),
       Film("The Godfather Part II", year = Some(1974), alternativeTitles = Seq("Der Pate – Teil II"))) shouldBe false
+    // in every spelling of the shared vocabulary (NumberedTitles.SpelledInstalments), accents folded: TMDB's Polish
+    // "Diuna: Część trzecia" names part 3, and "Teil vier" is part 4
+    IdentityMeasures.titlesAnotherPart(Listing("Dune: Part 3 - ERLY FAN PREVIEW"), Film("Diuna: Część trzecia", year = Some(2026))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(Listing("Dune: Part Three - ERLY FAN PREVIEW"), Film("Diuna: Część czwarta", year = Some(2026))) shouldBe true
+    IdentityMeasures.titlesAnotherPart(Listing("Der Pate Teil 4 - Restaurierte Fassung"), Film("Der Pate Teil vier", year = Some(2030))) shouldBe false
+    services.billing.BillingParse("Das Boot (Teil vier, Die Rückkehr)").titledParts shouldBe Seq((Some("4"), Seq("ruckkehr")))
     // an episode, named whether or not it is numbered
     IdentityMeasures.titlesAnotherPart(Listing("LOVE ISLAND - EPISODE NATURE"), Film("Love Island", year = Some(1952))) shouldBe true
     IdentityMeasures.titlesAnotherPart(Listing("Star Wars: Episode VII - The Force Awakens"),
