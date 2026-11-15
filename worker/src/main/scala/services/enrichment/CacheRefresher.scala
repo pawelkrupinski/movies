@@ -68,6 +68,17 @@ abstract class CacheRefresher(
   def refreshOneSync(title: String, year: Option[Int]): Option[String] =
     refreshOneSync(cache.keyOf(title, year))
 
+  /** The per-row refresh an operator asks for outside the queue (`services.refresh.RatingRefreshSource`):
+   *  [[refreshOneSync]], with a displayed value it moved reported to the adaptive cadence under the row's
+   *  `tmdbId`, as the full-corpus walk reports one. The queue's `RatingHandler` reports through its task; this
+   *  path has none, and a move the cadence never heard of is the gap a later per-row refresh mis-reads as a
+   *  fresh change. */
+  private[services] def refreshOneReported(key: CacheKey, tmdbId: Option[Int]): Option[String] = {
+    val moved = refreshOneSync(key)
+    moved.foreach(value => recordCadenceChange(key, tmdbId, Some(value)))
+    moved
+  }
+
   /** Subclass hook: the per-row work. Returns the new displayed value if it moved. */
   protected def refreshOne(key: CacheKey): Option[String]
 
