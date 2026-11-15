@@ -1851,6 +1851,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // a title its film names whole with its year, and a series the film names otherwise
     IdentityMeasures.datesAnotherEdition(Listing("Blade Runner 2049"), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
     IdentityMeasures.datesAnotherEdition(Listing("Blade Runner", year = Some(1982)), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
+    // a year the film's title closes on far off its release is no edition's: "Wonder Woman" [2020] may be the 2020
+    // "Wonder Woman 1984", and "Blade Runner" [2017] the 2017 "Blade Runner 2049"
+    IdentityMeasures.datesAnotherEdition(Listing("Wonder Woman", year = Some(2020)), Film("Wonder Woman 1984", year = Some(2020))) shouldBe false
+    IdentityMeasures.datesAnotherEdition(Listing("Blade Runner", year = Some(2017)), Film("Blade Runner 2049", year = Some(2017))) shouldBe false
+    // an edition TMDB dates a year after its title's is still that edition
+    IdentityMeasures.datesAnotherEdition(Listing("Disney Jr. Cinema Club", year = Some(2027)), club2025.copy(year = Some(2026))) shouldBe true
   }
 
   "a numbered title whose original title gives a subtitle" should "be another instalment only when none of the film's titles holds it" in {

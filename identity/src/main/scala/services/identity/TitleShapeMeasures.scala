@@ -60,9 +60,11 @@ private[identity] object TitleShapeMeasures {
    *  whole (Regal Stowmarket's "Disney Jr. Cinema Club" [2026]), against an earlier edition only. An annual programme's record is its year's: UK Film
    *  Theatre Leiston's and Nova Woking's 2026 club took the 2025 record whenever Regal Stowmarket's billing joined them,
    *  and lost it as the family grew (drift slice film-theatre-leiston-disney-jr-cinema-club-2026). A series the film
-   *  names otherwise ("Blade Runner 2049") is no edition of it. */
+   *  names otherwise ("Blade Runner 2049") is no edition of it, nor is a year its title closes on more than a year off
+   *  its release: "Wonder Woman 1984", released in 2020, is no 1984 edition that a billing of "Wonder Woman" [2020]
+   *  postdates. */
   def datesAnotherEdition(l: Listing, f: Film): Boolean = {
-    lazy val filed = f.ownTitles.flatMap(editionOf).distinct
+    lazy val filed = f.ownTitles.flatMap(editionOf).distinct.filter { case (_, edition) => f.year.forall(FactRelations.yearsNear(edition, _)) }
     val closed = l.ownTitles.flatMap(editionOf).distinct
     if (closed.nonEmpty) closed.forall { case (series, year) => filed.exists(_._1 == series) && !filed.contains(series -> year) }
     else l.year.exists { year =>
