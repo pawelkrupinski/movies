@@ -352,10 +352,10 @@ class HalfIdleCpusetsTest(unittest.TestCase):
     check 2.8 (the owner: "allow even more in parallel as long as mem and cpu are not maxed out"). A settled runner is
     in the reading; only one of them ramping up is charged past it."""
 
-    def at(self, check_busy, measure_busy, available, ci_free, measure_free, ours, demand, bc=0):
+    def at(self, check_busy, measure_busy, available, ci_free, measure_free, ours, demand, bc=0, cfg=CFG):
         r = rs.Readings(available, ci_free, {"measure": measure_free}, check_busy + measure_busy, CORES, (4.0,) * bc,
                         300, on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
-        return rs.decide(CFG, rs.Bitcashier(bc, 0), demand, ours, NOW, r)
+        return rs.decide(cfg, rs.Bitcashier(bc, 0), demand, ours, NOW, r)
 
     @staticmethod
     def settled(slot, cls, mem, cores):
@@ -390,10 +390,90 @@ class HalfIdleCpusetsTest(unittest.TestCase):
     def test_a_starved_check_names_its_own_cpus_not_the_idle_measure_ones(self):
         # 483 ticks of 2026-11-15/16 said "STARVED check: ... held by nothing named": the cause named was a
         # measurement's terms, and the measure cpuset had room while the check one was full
+        # (since 2026-11-16 that check borrows the idle measure CPUs: BorrowedCheckTest; here without borrowing)
         ours = [self.settled(1, "check", 6, 5.0), self.settled(2, "check", 6, 5.0)]
-        d = self.at(11, 2, 100, 95, 90, ours, queued(check=3))
+        d = self.at(11, 2, 100, 95, 90, ours, queued(check=3), cfg=dataclasses.replace(CFG, borrow_max_checks=0))
         self.assertEqual(rs.starved(CFG, d, queued(check=3), {"check": 1500}),
                          ["STARVED check: 3 queued, the oldest 25 min, held by cpu"])
+
+
+class BorrowedCheckTest(unittest.TestCase):
+    """The owner, 2026-11-16: landing checks borrow the measure cpuset's idle CPUs (4 / 7 / 10 of its 20 threads busy at
+    p10 / p50 / p90 over 2026-11-15/16) while their own 12 are full. The 2026-11-03 split stays the rule it was made
+    for: a check's test phase went 6 -> 16 min beside measurements on shared cores. So a check borrows only cores no
+    job of ours can grow into (every runner on the measure cpuset at its whole cap, plus the check's, within
+    cpu_start_below of it, and the live reading holding it too), only while no measurement waits without a runner,
+    never more than borrow_max_checks, and always leaving measure_reserve_jobs measurements' cores, memory, slice caps
+    and slots free."""
+
+    def at(self, ours, demand, check_busy=11, measure_busy=3, measure_free=80, cfg=CFG):
+        r = rs.Readings(100, 95, {"measure": measure_free}, check_busy + measure_busy, CORES, (), 300,
+                        on_cpusets(check_busy=check_busy, measure_busy=measure_busy), {"measure": 96})
+        return rs.decide(cfg, IDLE, demand, ours, NOW, r)
+
+    @staticmethod
+    def settled(slot, cls, cores, pool=""):
+        return rs.Instance(slot, cls, True, NOW, NOW - 900, mem_gib=6, cpu_cores=cores, cpu_seconds=cores * 900,
+                           slice_class=pool)
+
+    def two_full_checks(self):
+        # 12:42:39Z (2026-11-16): two settled checks at 5.2 cores each fill their 12 threads; a third waited 20 min
+        return [self.settled(1, "check", 5.2), self.settled(2, "check", 5.2)]
+
+    def test_a_check_its_cpus_cannot_hold_starts_on_the_idle_measure_cpus(self):
+        d = self.at(self.two_full_checks(), queued(check=3))
+        self.assertEqual((d.starts, d.borrowed), (((3, "check"), (4, "check")), (3, 4)))
+
+    def test_a_check_borrows_only_once_every_queued_measurement_has_its_runner(self):
+        # one measurement queued and started: one check borrows what is left past it and the kept measurement
+        d = self.at(self.two_full_checks(), queued(check=3, measure=1))
+        self.assertEqual((d.starts, d.borrowed), (((3, "measure"), (4, "check")), (4,)))
+        # one held by its slice (10.5 GiB past the margin: a check's 10 fit, a measurement's 11 not): no check takes
+        # its place, even with nothing kept for measurements
+        no_reserve = dataclasses.replace(CFG, measure_reserve_jobs=0)
+        d = self.at(self.two_full_checks(), queued(check=3, measure=1), measure_free=16.5, cfg=no_reserve)
+        self.assertEqual(d.starts, ())
+
+    def test_every_job_on_the_measure_cpus_is_counted_at_its_cap_for_a_borrow(self):
+        # two measurements reading 1 core each on a quiet cpuset: 2 x 4 + 4 for the check + 4 kept for a measurement
+        # = 16 of 17 holds one; three: 20 > 17, none, however idle the reading
+        two = [self.settled(s, "measure", 1.0) for s in (3, 4)]
+        self.assertEqual(self.at(self.two_full_checks() + two, queued(check=3)).borrowed, (5,))
+        three = two + [self.settled(5, "measure", 1.0)]
+        self.assertEqual(self.at(self.two_full_checks() + three, queued(check=3)).borrowed, ())
+
+    def test_a_busy_measure_reading_holds_a_borrow_back(self):
+        # nothing of ours there, but 10 of 20 busy (bitcashier, a light job): 17 - 10 - 4 kept = 3 < 4
+        self.assertEqual(self.at(self.two_full_checks(), queued(check=3), measure_busy=10).borrowed, ())
+
+    def test_never_more_than_borrow_max_checks(self):
+        borrowed = [self.settled(s, "check", 2.0, pool="measure") for s in (3, 4)]
+        self.assertEqual(self.at(self.two_full_checks() + borrowed, queued(check=3)).starts, ())
+
+    def test_a_borrowed_check_is_charged_its_whole_cap_to_measurements(self):
+        # one borrowed check reading 1 core on 4 busy: measurements see 17 - 4 - 3 (its rest of 4) = 10, two -- not
+        # 17 - 4 = 13, three
+        d = self.at([self.settled(3, "check", 1.0, pool="measure")], queued(measure=5), check_busy=2, measure_busy=4)
+        self.assertEqual(d.limits["cpu"], 2)
+
+    def test_a_measurement_queued_after_a_borrow_starts_on_the_next_tick(self):
+        # the bound: a borrow leaves one measurement's cores, memory, slice cap and slot, so the first measurement queued
+        # beside borrowed checks never waits for one to end
+        first = self.at(self.two_full_checks(), queued(check=3))
+        ours = self.two_full_checks() + [rs.Instance(s, "check", True, NOW, NOW - 30, mem_gib=2, cpu_cores=1,
+                                                     cpu_seconds=30, slice_class="measure") for s in first.borrowed]
+        d = self.at(ours, queued(check=1, measure=4), measure_busy=4, measure_free=60)
+        self.assertEqual(d.starts, ((5, "measure"),))
+
+    def test_an_idle_borrowed_runner_gives_way_to_a_queued_measurement(self):
+        idle = rs.Instance(3, "check", False, NOW, NOW - 60, slice_class="measure")
+        d = self.at(self.two_full_checks() + [idle], queued(check=1, measure=1))
+        self.assertIn(3, d.stops)
+
+    def test_no_borrow_where_the_classes_share_their_cpus(self):
+        r = readings(cpu_busy=0, cores=CORES)
+        d = rs.decide(CFG, IDLE, queued(check=5), self.two_full_checks() + [self.settled(3, "check", 5)], NOW, r)
+        self.assertEqual(d.borrowed, ())
 
 
 class DriftBurstTest(unittest.TestCase):
@@ -793,6 +873,23 @@ class HostTest(unittest.TestCase):
             self.assertEqual((), rs.decide(rs.Config(), rs.Bitcashier(0, 0), {"check": 1}, [i], NOW, ROOMY).starts)
             host.stop(2)  # nor is it stopped on doubt
         self.assertFalse([c for c in docker.calls if c[:2] == ["systemctl", "stop"]])
+
+    def test_a_borrowed_check_runs_in_the_measure_slice_and_is_read_back_there(self):
+        docker = FakeDocker(["Runner.Worker"])
+        host = self.host(docker)
+        host.start(5, "check", "measure")
+        with open(os.path.join(host.cfg.state_dir, "5.env")) as f:
+            env = f.read()
+        self.assertIn("RUNNER_LABELS=movies-check\n", env)
+        self.assertIn("RUNNER_SLICE=ci-movies-measure.slice\n", env)
+        d = os.path.join(host.cfg.class_cgroup.format(cls="measure"), "docker-c0ffee.scope")
+        os.makedirs(d)
+        with open(os.path.join(d, "memory.current"), "w") as f:
+            f.write(str(3 * GIB))
+        with open(os.path.join(d, "memory.stat"), "w") as f:
+            f.write("inactive_file 0\n")
+        borrowed = next(i for i in host.instances(NOW) if i.slot == 5)
+        self.assertEqual((borrowed.cls, borrowed.runs_in, borrowed.mem_gib), ("check", "measure", 3))
 
     def test_a_busy_runner_is_never_stopped(self):
         docker = FakeDocker(["Runner.Worker"])

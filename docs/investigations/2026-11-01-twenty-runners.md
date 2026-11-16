@@ -1190,5 +1190,39 @@ a time: measurement starts admitted 439 -> 665, check starts unchanged (the chec
 charge for the new job still hold a third check only below ~5 threads busy). At a quiet bitcashier the measure lane
 now fills to its slice's caps (96 GiB / 16 = 6), checks stay at 2-3.
 
-Not changed, for the owner: checks could spill onto the measure cpuset when theirs is full (the scheduler writes
+Not changed then, for the owner: checks could spill onto the measure cpuset when theirs is full (the scheduler writes
 `RUNNER_SLICE`), at the cost the 2026-11-03 split was made for -- a check's test phase 6 -> 16 min beside measurements.
+The owner chose it on 2026-11-16 (section 18).
+
+## 18. Landing checks borrow the idle measure CPUs (2026-11-16, owner's decision)
+
+The owner: "let landing checks borrow the idle measurement CPUs". The check cpuset's 12 threads held 2-3 checks while
+the measure cpuset's 20 read 4 / 7 / 10 busy at p10 / p50 / p90. The 2026-11-03 slowdown came from oversubscribed
+shared cores, so a check borrows only cores that no job of ours can grow into, and measurements keep priority
+(runner_scheduler.py `borrow_check`):
+
+- **Full share.** Every runner of ours on the measure CPUs is counted at its whole cap (4 cores; a light job 1). That
+  sum, plus the check's 4 and one kept measurement's 4, must fit `cpu_start_below` x 20 = 17. The live reading must
+  hold the check and the kept measurement as well. So a check borrows beside at most two measurements.
+- **Measurements first.** A check borrows only once every queued measurement has its runner, and at most
+  `borrow_max_checks` (2) are borrowed at once. An idle borrowed runner stops when a measurement queues. While it runs,
+  a borrowed check is charged to measurement admission at its whole cap.
+- **The bound.** A borrow leaves `measure_reserve_jobs` (1) measurement's cores, memory, slice cap and slot. The first
+  measurement queued beside borrowed checks starts on the next tick. Later ones may wait, each until one borrowed
+  check ends.
+
+Replaying ci-runner's journal (72 h to 2026-11-16 05:12Z, 8640 ticks) one tick at a time. Each tick's recorded state
+goes through d76c6b1b6 and this change. The new side carries the borrowed checks its earlier ticks started, each at a
+settled check's 2.8 cores and 6 GiB for a check runner's median life (3.5 min). A check that a borrow served leaves the
+queue:
+
+| | before | after | after, 15-min borrowed checks |
+|---|---|---|---|
+| ticks with a check waiting | 3576 | 2775 | 3567 |
+| check job-minutes waited | 8667 | 6127 (-29%) | 8423 |
+| borrowed check starts | - | 383 | 146 |
+| measurement starts deferred (ticks / jobs) | - | 28 / 39 of 2972 queued ticks | 72 / 85 |
+| longest run of deferring ticks | - | 2 (1 min) | 8 (4 min) |
+
+At most 2 checks were borrowed at once. Every deferred measurement was a second one beside the kept one (or the record's
+own later starts used up the kept room). None waited longer than 4 min, less than the borrowed check it waited on.
