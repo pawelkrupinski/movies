@@ -383,7 +383,7 @@ dependencies {
     // (already a debugImplementation) supplies the ComponentActivity that
     // createComposeRule launches.
     testImplementation(composeBom)
-    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("org.robolectric:robolectric:4.18")
     // The SDK 34 runtime every Robolectric test loads (@Config(sdk = [34])), at the
     // instrumentation level robolectric 4.17 expects: bump the two together.
     robolectricAndroidAll("org.robolectric:android-all-instrumented:14-robolectric-10818077-i7")
