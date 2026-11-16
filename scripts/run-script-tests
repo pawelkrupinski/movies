@@ -324,7 +324,7 @@ floor_findings() { # <bash files file> -> a `FLOOR <file>[:<line>]: <why>` row f
 # runner image ships that the tests reach for -- zstd (every recording/tree archive the convergence and restore tools
 # unpack), rsync (ios-release.sh pins /usr/bin/rsync) and node (local-mirror/rules-test.sh) among them: a tool the runner has and this image lacks fails
 # a test here that CI passes.
-LinuxImageRecipe='FROM mirror.gcr.io/library/ubuntu:26.04@sha256:065aa8626841f16057b78b027b464cd59c4fac36c204c72dcbf48d66f5fa8a96
+LinuxImageRecipe='FROM mirror.gcr.io/library/ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
       bash coreutils findutils sed gawk grep diffutils git jq python3 perl curl ca-certificates unzip zip xz-utils \
       file procps lsof bc tzdata shellcheck zstd rsync nodejs > /dev/null && rm -rf /var/lib/apt/lists/* \

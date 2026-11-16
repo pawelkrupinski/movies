@@ -58,7 +58,7 @@ started=$SECONDS
 # gone between the two fails the chown, which kills the container before mongod starts. A tmpfs data
 # directory starts root-owned, so the entrypoint walks it every time (run 37586335937, Poland: "chown:
 # cannot access '/data/db/.mongodb/mongosh/am-unknown.json.lock'", never reachable).
-native_home=${MONGO_NATIVE_HOME:-/opt/mongodb/8.3.13}
+native_home=${MONGO_NATIVE_HOME:-/opt/mongodb/8.3.17}
 marker=${MONGO_NATIVE_MARKER:-/tmp/kinowo-mongo-native}
 export MONGO_NATIVE_MARKER=$marker
 log=${MONGO_NATIVE_LOG:-/tmp/mongod.log}
@@ -136,8 +136,8 @@ fi
 
 storage=()
 [ -n "${MONGO_TMPFS:-}" ] && storage=(--tmpfs "/data/db:rw,size=${MONGO_TMPFS}")
-image=mirror.gcr.io/library/mongo:8.3.13
-hub_image=docker.io/library/mongo:8.3.13
+image=mirror.gcr.io/library/mongo:8.3.17
+hub_image=docker.io/library/mongo:8.3.17
 # EVERY PULL IS BOUNDED, and a stalled one falls through to the next source like a refused one. github.com convergence
 # 41216580092, `takes-drift-1 (united-states)`: the pull from mirror.gcr.io hung -- this script printed nothing for 9
 # minutes, so the leg's 240 s wait for it failed -- while the same image came down in 24-75 s on every other leg of
