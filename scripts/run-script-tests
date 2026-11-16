@@ -46,7 +46,7 @@
 # FLOOR. `--bash` with `--changed` is the pre-push hook's floor run, scoped to what a change can break under 3.2 (it
 # re-ran every selected test, ~+70 s a landing, 2026-11-16): every bash file the change touches (a .sh, or an
 # extensionless file with a bash shebang) parsed by that bash (`-n`: ed160b94b's `case ... in pat)` inside `$( )`,
-# Order independence #72), its ADDED lines held to the constructs bash 3.2 lacks (FLOOR_CONSTRUCTS: declare -A,
+# Order independence #72), its ADDED lines held to the constructs bash 3.2 lacks (scripts/floor-constructs.tsv: declare -A,
 # mapfile, ${x,,}, wait -n, ...; a line's comment is no code), each finding a `FLOOR <file>:<line>: <construct>` row
 # failing the run -- and, re-run under it, the self-tests of those bash files and of the scripts sourcing them, never a
 # test selected only by a name it mentions or a glob it reads (those run on today's bash: no bash the change touched
@@ -275,13 +275,15 @@ bash_sources() { # paths on stdin -> those that are bash: a .sh, or an extension
     esac
   done
 }
-# path<TAB>line<TAB>text of each line the change adds to these files (committed since the base, uncommitted, untracked)
+# path<TAB>line<TAB>text of each line the change adds to these files, as they are now: the working tree against where it
+# left the base (committed and uncommitted alike -- a line a commit added and the tree took out again is none), untracked
+# files whole
 added_lines() { # <bash files file>
   [ -s "$1" ] || return 0
-  local path
+  local path since
+  since="$(git merge-base "$changed_base" HEAD)" || return 0
   {
-    tr '\n' '\0' < "$1" | xargs -0 git diff -U0 --no-color --no-ext-diff "$changed_base...HEAD" --
-    tr '\n' '\0' < "$1" | xargs -0 git diff -U0 --no-color --no-ext-diff HEAD --
+    tr '\n' '\0' < "$1" | xargs -0 git diff -U0 --no-color --no-ext-diff "$since" --
     while IFS= read -r path; do
       git ls-files --error-unmatch -- "$path" > /dev/null 2>&1 || git diff -U0 --no-color --no-index /dev/null "$path"
     done < "$1"
@@ -290,34 +292,24 @@ added_lines() { # <bash files file>
     /^@@ / { split($3, plus, ","); line = substr(plus[1], 2) + 0; next }
     /^\+/ && path != "" { print path "\t" line "\t" substr($0, 2); line++ }'
 }
-# The constructs bash 3.2 lacks, as a line's ERE and what to say: a line naming one in code (not in its comment) fails.
-FLOOR_CONSTRUCTS='(^|[^A-Za-z0-9_-])(declare|typeset|local)[[:space:]]+-[A-Za-z]*A	an associative array, declare -A (bash 4.0)
-(^|[^A-Za-z0-9_-])(declare|typeset|local)[[:space:]]+-[A-Za-z]*n	a nameref, declare -n (bash 4.3)
-(^|[^A-Za-z0-9_-])(declare|typeset)[[:space:]]+-[A-Za-z]*g	declare -g (bash 4.2)
-(^|[^A-Za-z0-9_-])(mapfile|readarray)([^A-Za-z0-9_-]|$)	mapfile / readarray (bash 4.0)
-(^|[^A-Za-z0-9_-])wait[[:space:]]+-n	wait -n (bash 4.3)
-(^|[^A-Za-z0-9_-])coproc([[:space:]]|$)	coproc (bash 4.0)
-(\[|test)[[:space:]]+-v[[:space:]]	-v NAME, whether a variable is set (bash 4.2)
-\$\{[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?(,|\^)	case modification, ${x,,} / ${x^^} (bash 4.0)
-\$\{[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?@[QEPAaKkUuL]\}	a ${x@Q} transformation (bash 4.4)
-\$\{[A-Za-z_][A-Za-z0-9_]*\[-[0-9]	a negative array index (bash 4.3)
-(^|[^$A-Za-z0-9_])\{[A-Za-z_][A-Za-z0-9_]*\}[<>]	an allocated descriptor, {fd}> (bash 4.1)
-&>>	&>> (bash 4.0)
-[^|]\|&	|& (bash 4.0)
-(;;&|[^;&];&)	a case fall-through, ;& / ;;& (bash 4.0)
-shopt[[:space:]]+-s[[:space:]].*(globstar|lastpipe|autocd|checkjobs|dirspell|direxpand|globasciiranges|inherit_errexit|localvar_inherit)	a shopt option bash 3.2 lacks
-(^|[^A-Za-z0-9_])(EPOCHSECONDS|EPOCHREALTIME|SRANDOM|BASHPID|BASH_ARGV0)([^A-Za-z0-9_:]|$)	a variable bash 3.2 does not set
-%\([^)]*\)T	printf %(...)T (bash 4.2)'
+# The constructs bash 3.2 lacks, one ERE and what to say a row: data beside this script (scripts/floor-constructs.tsv),
+# so no bash file holds them as text. A file whose first 40 lines say `# bash-floor: <why>` names them as DATA (this
+# script's own test): it is parsed by the floor, its lines never held to the table.
+floor_constructs="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/floor-constructs.tsv"
 floor_findings() { # <bash files file> -> a `FLOOR <file>[:<line>]: <why>` row for each thing the floor cannot run
   local path
   while IFS= read -r path; do
     "$test_bash" -n "$path" > /dev/null 2> "$work/floor-parse.err" \
       || printf 'FLOOR   %s: bash 3.2 cannot parse it: %s\n' "$path" "$(head -3 "$work/floor-parse.err" | tr '\n' ' ')"
   done < "$1"
-  added_lines "$1" | FLOOR_CONSTRUCTS="$FLOOR_CONSTRUCTS" awk -F'\t' '
-    BEGIN { n = split(ENVIRON["FLOOR_CONSTRUCTS"], rows, "\n"); for (i = 1; i <= n; i++) { split(rows[i], f, "\t"); re[i] = f[1]; why[i] = f[2] } }
+  while IFS= read -r path; do
+    head -40 "$path" | grep -qE '^#[[:space:]]*bash-floor:' || echo "$path"
+  done < "$1" > "$work/floor-held"
+  added_lines "$work/floor-held" | awk -F'\t' '
+    FILENAME == ARGV[1] { if ($0 !~ /^#/ && NF >= 2) { re[++n] = $1; why[n] = $2 } next }
     { code = $3; sub(/^[[:space:]]*#.*/, "", code); sub(/[[:space:]]#.*$/, "", code)
-      for (i = 1; i <= n; i++) if (code ~ re[i]) { print "FLOOR   " $1 ":" $2 ": " why[i] ": " $3; break } }'
+      for (i = 1; i <= n; i++) if (code ~ re[i]) { print "FLOOR   " $1 ":" $2 ": " why[i] ": " $3; break } }' \
+    "$floor_constructs" -
 }
 
 # ── --linux: the selected tests in a container like CI's runner ───────────────────────────────────

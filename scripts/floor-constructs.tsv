@@ -1,0 +1,19 @@
+# The constructs bash 3.2 lacks (run-script-tests' FLOOR): a line's ERE (awk), a tab, what to say. A bash line the
+# change adds that names one in code (not in its comment) fails the floor run. Data, so no bash file names them.
+(^|[^A-Za-z0-9_-])(declare|typeset|local)[[:space:]]+-[A-Za-z]*A	an associative array, declare -A (bash 4.0)
+(^|[^A-Za-z0-9_-])(declare|typeset|local)[[:space:]]+-[A-Za-z]*n	a nameref, declare -n (bash 4.3)
+(^|[^A-Za-z0-9_-])(declare|typeset)[[:space:]]+-[A-Za-z]*g	declare -g (bash 4.2)
+(^|[^A-Za-z0-9_-])(mapfile|readarray)([^A-Za-z0-9_-]|$)	mapfile / readarray (bash 4.0)
+(^|[^A-Za-z0-9_-])wait[[:space:]]+-n	wait -n (bash 4.3)
+(^|[^A-Za-z0-9_-])coproc([[:space:]]|$)	coproc (bash 4.0)
+(\[|test)[[:space:]]+-v[[:space:]]	-v NAME, whether a variable is set (bash 4.2)
+\$\{[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?(,|\^)	case modification, ${x,,} / ${x^^} (bash 4.0)
+\$\{[A-Za-z_][A-Za-z0-9_]*(\[[^]]*\])?@[QEPAaKkUuL]\}	a ${x@Q} transformation (bash 4.4)
+\$\{[A-Za-z_][A-Za-z0-9_]*\[-[0-9]	a negative array index (bash 4.3)
+(^|[^$A-Za-z0-9_])\{[A-Za-z_][A-Za-z0-9_]*\}[<>]	an allocated descriptor, {fd}> (bash 4.1)
+&>>	&>> (bash 4.0)
+[^|]\|&	|& (bash 4.0)
+(;;&|[^;&];&)	a case fall-through, ;& / ;;& (bash 4.0)
+shopt[[:space:]]+-s[[:space:]].*(globstar|lastpipe|autocd|checkjobs|dirspell|direxpand|globasciiranges|inherit_errexit|localvar_inherit)	a shopt option bash 3.2 lacks
+(^|[^A-Za-z0-9_])(EPOCHSECONDS|EPOCHREALTIME|SRANDOM|BASHPID|BASH_ARGV0)([^A-Za-z0-9_:]|$)	a variable bash 3.2 does not set
+%\([^)]*\)T	printf %(...)T (bash 4.2)

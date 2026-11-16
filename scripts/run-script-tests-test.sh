@@ -3,6 +3,7 @@
 # `# script-test: <tag>` header keeps out of the default run), its exit status and table, a path
 # filter, --changed against a base commit, the per-test timeout, and the bound on how many tests run at once.
 # Run: bash scripts/run-script-tests-test.sh
+# bash-floor: names the constructs bash 3.2 lacks as data (the floor's own cases), never runs one
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
@@ -283,6 +284,9 @@ printf '%s\n' '# mapfile and ${x,,} need bash 4' 'echo "${BASHPID:-$$}" # on 3.2
   >> "$tree/scripts/fl/tool.sh"
 check "...never one only named in a comment, a guarded BASHPID, an indexed array or a 3.2 expansion" "0" "$(floor)"
 scratch_git "$tree" checkout -q -- scripts/fl/tool.sh
+printf '%s\n' '# bash-floor: a lint naming the constructs as data' 'echo "declare -A is 4.0"' > "$tree/scripts/fl/data.sh"
+check "...nor a line of a file that says it names them as data (bash-floor:), parsed all the same" "0" "$(floor)"
+rm "$tree/scripts/fl/data.sh"
 printf '%s\n' 'mapfile = 1' >> "$tree/scripts/fl/py.py"
 check "...nor a non-bash file's line" "0" "$(floor)"
 scratch_git "$tree" checkout -q -- scripts/fl/py.py
@@ -290,6 +294,11 @@ printf '%s\n' 'echo FLOOR_CANNOT_PARSE' >> "$tree/scripts/fl/user.sh"
 check "a changed bash file the floor cannot parse fails the run, saying so" "1 1" \
   "$(floor) $(grep -c '^FLOOR .*scripts/fl/user.sh: bash 3.2 cannot parse it' "$work/out")"
 scratch_git "$tree" checkout -q -- scripts/fl/user.sh
+printf '%s\n' 'readarray -t x < f' >> "$tree/scripts/fl/tool.sh"; scratch_git "$tree" commit -qam 'a construct committed'
+check "...a line committed is held" "1" "$(floor > /dev/null; grep -c '^FLOOR .*scripts/fl/tool.sh:2:' "$work/out")"
+printf '%s\n' 'echo tool' 'echo after' > "$tree/scripts/fl/tool.sh"
+check "...and none the tree has taken out again" "0" "$(floor > /dev/null; grep -c '^FLOOR' "$work/out")"
+scratch_git "$tree" checkout -q "$floorbase" -- scripts/fl/tool.sh; scratch_git "$tree" commit -qam 'the construct gone'
 put scripts/fl/new.sh 'readarray -t x < f'
 check "...an untracked bash file's lines are all added lines" "1" "$(floor > /dev/null; grep -c '^FLOOR .*scripts/fl/new.sh:1:' "$work/out")"
 rm "$tree/scripts/fl/new.sh"
