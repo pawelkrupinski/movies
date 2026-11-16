@@ -56,6 +56,32 @@ class PopulationWalkCacheSpec extends AnyFlatSpec with Matchers with tools.Scrat
     Cached.key(c) should not be a
   }
 
+  // The pre-push hook's flipbacklog check walks the slices a change brings through main, beside the identity area's spec
+  // walking every slice: given the same cache (`--cache <the digest's directory>`) a slice is walked once between them.
+  "The walk's main" should "read a slice kept under --cache back, the walk run once for two reports" in {
+    val root   = tempDirectory("population-walk-main")
+    val dir    = slice(root, "s", "m")
+    val walks  = new AtomicInteger
+    def walking(@annotation.unused d: Path) = { walks.incrementAndGet(); walked }
+    val digest = root.resolve("digest")
+    val first  = PopulationMonotonicitySpec.report(Seq("--cache", digest.toString, dir.toString), walking)
+    val second = PopulationMonotonicitySpec.report(Seq("--cache", digest.toString, dir.toString), walking)
+    walks.get shouldBe 1
+    second.filterNot(_.startsWith("# ")) shouldBe first.filterNot(_.startsWith("# "))
+    first.count(_.contains("BREACH")) shouldBe 2
+    Cached.walk(digest, dir, _ => fail("kept by main, read by the spec's walk")) shouldBe walked
+  }
+
+  it should "walk every time without --cache" in {
+    val root  = tempDirectory("population-walk-main-uncached")
+    val dir   = slice(root, "s", "n")
+    val walks = new AtomicInteger
+    def walking(@annotation.unused d: Path) = { walks.incrementAndGet(); walked }
+    PopulationMonotonicitySpec.report(Seq(dir.toString), walking)
+    PopulationMonotonicitySpec.report(Seq(dir.toString), walking)
+    walks.get shouldBe 2
+  }
+
   "A failed walk" should "not be kept" in {
     val root   = tempDirectory("population-walk-failed")
     val dir    = slice(root, "s", "z")

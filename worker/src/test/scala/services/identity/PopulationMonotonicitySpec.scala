@@ -409,21 +409,31 @@ object PopulationMonotonicitySpec {
       (latticeContract ++ chainContract ++ namesakes.asScala).distinct.sorted)
   }
 
-  /** `PopulationMonotonicitySpec [slice dir...]`: each slice's flips as TSV rows of the known file (every slice without
-   *  arguments) -- what a known row is written from. */
-  def main(args: Array[String]): Unit = {
-    val dirs = if (args.isEmpty) sliceDirs else args.toSeq.map(Path.of(_))
-    dirs.foreach { dir =>
+  /** `PopulationMonotonicitySpec [--cache <dir>] [slice dir...]`: each slice's flips as TSV rows of the known file (every
+   *  slice without arguments) -- what a known row is written from. `--cache` is the walk's row cache ([[Cached]], the
+   *  spec's [[CacheKey]]): the pre-push hook's flipbacklog check passes the identity area's, so a slice the change brings
+   *  is walked once between the two. */
+  def main(args: Array[String]): Unit = report(args.toSeq).foreach(println)
+
+  /** [[main]]'s lines, each slice walked by `walking` (read back from `--cache` when kept there). */
+  def report(args: Seq[String], walking: Path => Walked = walked(_)): Seq[String] = {
+    val (cache, rest) = args match {
+      case "--cache" +: at +: more => (Some(Path.of(at)), more)
+      case _                       => (None, args)
+    }
+    val walk = cache.fold(walking)(at => (dir: Path) => Cached.walk(at, dir, walking))
+    val dirs = if (rest.isEmpty) sliceDirs else rest.map(Path.of(_))
+    def name(dir: Path) = Try(relative(dir)).getOrElse(dir.toString)
+    dirs.flatMap { dir =>
       val started = System.nanoTime()
-      val result  = Try(walked(dir))
+      val result  = Try(walk(dir))
       val seconds = (System.nanoTime() - started) / 1e9
-      result.fold(e => println(s"# ${relative(dir)}: FAILED $e"), w => {
-        println(f"# ${relative(dir)}: ${w.rows.size} flip(s) in $seconds%.1fs")
-        w.rows.foreach(r => println(s"${relative(dir)}\t${r.venue}\t${r.rawTitle}\t${r.shape}: ${r.stage} ${r.path} [${r.where}]"))
-        // the rule contract's breaches (the spec's "A real family's rules" test): scripts/ci/population_walk_diff.py
-        // refuses them where it judges a slice on the known rows alone
-        w.breaches.foreach(b => println(s"# ${relative(dir)}: BREACH ${b.replace('\n', ' ')}"))
-      })
+      result.fold(e => Seq(s"# ${name(dir)}: FAILED $e"), w =>
+        f"# ${name(dir)}: ${w.rows.size} flip(s) in $seconds%.1fs" +:
+          (w.rows.map(r => s"${name(dir)}\t${r.venue}\t${r.rawTitle}\t${r.shape}: ${r.stage} ${r.path} [${r.where}]") ++
+            // the rule contract's breaches (the spec's "A real family's rules" test): scripts/ci/population_walk_diff.py
+            // refuses them where it judges a slice on the known rows alone
+            w.breaches.map(b => s"# ${name(dir)}: BREACH ${b.replace('\n', ' ')}")))
     }
   }
 }

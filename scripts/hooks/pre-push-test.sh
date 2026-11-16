@@ -536,6 +536,12 @@ grinch_walk='# drift-slices/de/grinch-05c3cfc6: 1 flip(s) in 3.1s\ndrift-slices/
 code="$(area_push "$grinch/slice.json" SBTWARM_WALK="$grinch_walk")"
 check "THE FLIP BACKLOG: a drift slice alone is walked, and a flip no population row names blocks the push with its row" "1 1 1 1" \
   "$code $(calls 'runMain services.identity.PopulationMonotonicitySpec test/resources/fixtures/drift-slices/de/grinch-05c3cfc6\]') $(grep -c 'blocked by: flipbacklog' "$testroot/area-out") $(grep -c "$(printf 'population\tde\t\tdrift-slices/de/grinch-05c3cfc6\tBurgtheater Ratzeburg')" "$testroot/area-out")"
+# beside the identity area (which walks every slice), walked once between the two: one walk digest asked, the flip
+# backlog's walk given the area's row cache, which the area's spec reads it back from
+echo "y $RANDOM" >> "$area/identity/src/main/scala/services/identity/Resolver.scala"
+code="$(area_push "$grinch/slice.json" SBTWARM_WALK="$grinch_walk" WALK_DIGEST=$walk_digest KINOWO_POPULATION_WALK_ROWS="$testroot/walk-rows")"
+check "...walked once beside the identity area: one walk digest asked, the walk given the area's row cache" "1 1 1" \
+  "$(calls '\[identityWalkDigest ') $(calls "runMain services.identity.PopulationMonotonicitySpec --cache $testroot/walk-rows/$walk_digest test/resources/fixtures/drift-slices/de/grinch-05c3cfc6\\]") $(calls "population.cache=$testroot/walk-rows/$walk_digest")"
 printf 'kind\tcountry\tseed\tslice\tvenue\trawTitle\ttakes\tfirstSeen\towner\tnote\npopulation\tde\t\tdrift-slices/de/grinch-05c3cfc6\tBurgtheater Ratzeburg\tAdventskino: Der Grinch\t\t2026-11-16\tidentity\tfilm-film-film\n' \
   > "$area/test/resources/fixtures/identity-flip-backlog.tsv"
 code="$(area_push "$grinch/slice.json" SBTWARM_WALK="$grinch_walk" PREPUSH_SKIP="eslint lintspecs sbt identity allowlists driftguards")"

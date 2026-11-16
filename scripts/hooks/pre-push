@@ -1548,18 +1548,7 @@ run_local_tests() { # <set>
     local popwalk="" walkcache=""
     if [ "$1" = identity ] && [ "${#cmds[@]}" -gt 0 ]; then
         popwalk="$tmp/population-walk"
-        local rows_root="${KINOWO_POPULATION_WALK_ROWS:-${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/population-walk-rows}" digest=""
-        if scripts/sbt-warm "identityWalkDigest $tmp/identity.walk-digest" > "$tmp/identity.walk-digest.log" 2>&1; then
-            digest="$(tr -cd '0-9a-f' < "$tmp/identity.walk-digest")"
-        fi
-        if [ "${#digest}" = 64 ]; then
-            walkcache="$rows_root/$digest"
-            mkdir -p "$walkcache" && touch "$walkcache"
-            find "$rows_root" -mindepth 1 -maxdepth 1 -type d -mtime +5 -exec rm -rf {} + 2> /dev/null
-            log "identity: the population walk's rows kept under digest ${digest:0:12} ($(find "$walkcache" -name '*.tsv' | wc -l | tr -d ' ') slice(s) kept)"
-        else
-            log "identity: no population walk digest ($(tail -1 "$tmp/identity.walk-digest.log" 2> /dev/null)): every slice walks"
-        fi
+        walkcache="$(population_walk_rows identity)"
         local i extra="-Didentity.population.candidates=$popwalk${walkcache:+ -Didentity.population.cache=$walkcache}"
         for i in "${!cmds[@]}"; do
             case "${cmds[$i]}" in
@@ -1590,6 +1579,26 @@ run_local_tests() { # <set>
         return 1
     fi
     grep -E 'Tests: succeeded|All tests passed|[0-9]+ passed' "$tmp/$1.log" | tail -3
+}
+# The walk's rows kept (THE WALK'S ROWS KEPT, above): <the rows root>/<identityWalkDigest>, printed (made, fresh); nothing
+# when sbt gives no digest (every slice walks); what it says goes to stderr. Asked once a run (its answer kept in $tmp): the identity area and the
+# flipbacklog check share it, so a slice the change brings is walked once between them, not by each (~3-10 s a slice).
+population_walk_rows() { # <the check asking>
+    local rows_root="${KINOWO_POPULATION_WALK_ROWS:-${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/population-walk-rows}" digest=""
+    if [ ! -f "$tmp/walk-digest.asked" ]; then
+        scripts/sbt-warm "identityWalkDigest $tmp/identity.walk-digest" > "$tmp/identity.walk-digest.log" 2>&1 \
+            || rm -f "$tmp/identity.walk-digest"
+        touch "$tmp/walk-digest.asked"
+    fi
+    [ -f "$tmp/identity.walk-digest" ] && digest="$(tr -cd '0-9a-f' < "$tmp/identity.walk-digest")"
+    if [ "${#digest}" != 64 ]; then
+        log "$1: no population walk digest ($(tail -1 "$tmp/identity.walk-digest.log" 2> /dev/null)): every slice walks" >&2
+        return 0
+    fi
+    mkdir -p "$rows_root/$digest" && touch "$rows_root/$digest"
+    find "$rows_root" -mindepth 1 -maxdepth 1 -type d -mtime +5 -exec rm -rf {} + 2> /dev/null
+    log "$1: the population walk's rows kept under digest ${digest:0:12} ($(find "$rows_root/$digest" -name '*.tsv' | wc -l | tr -d ' ') slice(s) kept)" >&2
+    echo "$rows_root/$digest"
 }
 # TEST-IMPACT SELECTION (scripts/ci/identity_impact.py, project/TestImpact.scala): of the identity set's sbt lines, only
 # the specs the pushed change can reach (the compiler's dependency record; the data's readers by name), each once, the
@@ -1689,8 +1698,10 @@ check_flipbacklog() {
     while IFS= read -r s; do [ -n "$s" ] && dirs+=("test/resources/fixtures/$s"); done < "$tmp/flipbacklog.slices"
     if [ "${#dirs[@]}" -eq 0 ]; then log "flipbacklog: no slice the change brings"; return 0; fi
     need_jvm flipbacklog || return 1
+    local walkcache
+    walkcache="$(population_walk_rows flipbacklog)"
     log "flipbacklog: ${#dirs[@]} slice(s) the change brings, walked (PopulationMonotonicitySpec)"
-    if ! scripts/sbt-warm "worker/Test/runMain services.identity.PopulationMonotonicitySpec ${dirs[*]}" > "$tmp/flipbacklog.log" 2>&1; then
+    if ! scripts/sbt-warm "worker/Test/runMain services.identity.PopulationMonotonicitySpec ${walkcache:+--cache $walkcache }${dirs[*]}" > "$tmp/flipbacklog.log" 2>&1; then
         tail -n 20 "$tmp/flipbacklog.log" >&2; warn "flipbacklog: the walk did not run (full log: $tmp/flipbacklog.log)"; return 1
     fi
     sed -nE 's/^\[info\] //; /^(# )?(drift|identity)-slices\//p' "$tmp/flipbacklog.log" > "$tmp/flipbacklog.walk"
