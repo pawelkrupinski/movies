@@ -29,6 +29,19 @@ class FallbackHttpFetchSpec extends AnyFlatSpec with Matchers {
     chain.get("https://example") shouldBe "from-secondary"
   }
 
+  // An interrupt is the caller stopping the call (a shutdown, an overrun scrape), and a fatal error is this JVM's:
+  // neither is a backend failing. Caught as Throwable, each rolled the chain over to the next backend -- an
+  // interrupted call went on to ask the next one, its interrupt spent.
+  it should "not roll over on an interrupt or a fatal error, which go to the caller as they came" in {
+    Seq[Throwable](new InterruptedException("stopping"), new StackOverflowError()).foreach { thrown =>
+      val secondary = new RequestLogHttpFetch(ok("from-secondary"))
+      val chain = new FallbackHttpFetch(Seq("primary" -> new FailingHttpFetch((_, _) => throw thrown), "secondary" -> secondary),
+        _root_.tools.SpecStopwatch.Frozen)
+      (the[Throwable] thrownBy chain.get("https://example")) should be theSameInstanceAs thrown
+      withClue(s"after ${thrown.getClass.getSimpleName}: ")(secondary.calls shouldBe empty)
+    }
+  }
+
   it should "keep rolling through every failing backend until one succeeds" in {
     val chain = new FallbackHttpFetch(Seq(
       "zyte"   -> boom("zyte 5xx"),

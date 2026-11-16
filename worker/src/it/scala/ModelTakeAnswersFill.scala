@@ -122,7 +122,7 @@ object ModelTakeAnswersFill {
     var round    = 0
     var asked    = 0
     var open     = java.util.concurrent.ConcurrentHashMap.newKeySet[(VoterFamily, String)]()
-    var verdicts = try verdictsOf(open) catch { case e: Throwable => pool.shutdown(); throw e }
+    var verdicts = _root_.tools.AnyThrowable.rethrownAfter(verdictsOf(open))(_ => pool.shutdown())
     try {
       while (!open.isEmpty && round < rounds) {
         round += 1

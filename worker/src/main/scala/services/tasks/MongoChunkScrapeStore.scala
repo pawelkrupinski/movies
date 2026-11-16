@@ -57,7 +57,7 @@ class MongoChunkScrapeStore(db: Option[MongoDatabase] = None) extends ChunkScrap
       //    race = no active run existed.
       val inserted = Try { Await.result(c.insertOne(doc).toFuture(), 10.seconds); true }.recover {
         case e: MongoWriteException if services.MongoErrors.isDuplicateKey(e) => false
-        case e: Throwable => logger.warn(s"startRun insert for $cinema failed: ${e.getMessage}"); false
+        case e => logger.warn(s"startRun insert for $cinema failed: ${e.getMessage}"); false
       }.getOrElse(false)
       if (inserted) Some(runId)
       else {

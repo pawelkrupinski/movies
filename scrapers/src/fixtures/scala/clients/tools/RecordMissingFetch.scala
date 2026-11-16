@@ -3,6 +3,7 @@ package clients.tools
 import tools.{HttpFetch, RealHttpFetch}
 
 import java.net.URI
+import scala.util.control.NonFatal
 
 /** Replay-first HTTP that fills only the GAPS — and only for hosts you name.
  *
@@ -37,10 +38,10 @@ class RecordMissingFetch(
   }
 
   override def get(url: String): String =
-    try fake.get(url) catch { case _: Throwable if recordable(url) => recorder.get(url) }
+    try fake.get(url) catch { case NonFatal(_) if recordable(url) => recorder.get(url) }
 
   override def post(url: String, body: String, contentType: String): String =
-    try fake.post(url, body, contentType) catch { case _: Throwable if recordable(url) => recorder.post(url, body, contentType) }
+    try fake.post(url, body, contentType) catch { case NonFatal(_) if recordable(url) => recorder.post(url, body, contentType) }
 
   // Binary fetches (posters) are never an external-metadata gap — serve from
   // fixtures only, so a stray miss surfaces instead of silently going live.

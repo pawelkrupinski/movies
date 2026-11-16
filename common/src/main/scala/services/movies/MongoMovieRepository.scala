@@ -506,7 +506,7 @@ class MongoMovieRepository(
               // defence for the residual race it cannot — a sibling document landing the same
               // key/tmdbId between that read and this write. Slots have already landed in that
               // narrow window, the accepted "one delayed row" trade `writeSlots` makes on this path.
-              case exception: Throwable if isDuplicateKey(exception) =>
+              case exception if isDuplicateKey(exception) =>
                 logIdentityHeld(label, e, s" (${exception.getMessage})")
                 false
             }.get

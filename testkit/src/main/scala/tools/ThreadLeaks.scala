@@ -14,7 +14,7 @@ object ThreadLeaks {
   def of(body: => Unit, grace: FiniteDuration = 5.seconds): Seq[String] = {
     val group   = new ThreadGroup("thread-leaks")
     var failure = Option.empty[Throwable]
-    val runner  = new Thread(group, () => try body catch { case e: Throwable => failure = Some(e) }, "thread-leaks-body")
+    val runner  = new Thread(group, () => failure = AnyThrowable.captured(body).left.toOption, "thread-leaks-body")
     runner.start()
     runner.join()
     failure.foreach(throw _)

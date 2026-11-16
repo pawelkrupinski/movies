@@ -147,10 +147,10 @@ class MongoConnection(
     // exists in every environment; an empty collection still
     // round-trips fine. The wait is `probeTimeout` (default 30s) rather
     // than the old hard-coded 10s — see `DefaultProbeTimeout`.
-    try {
+    tools.AnyThrowable.rethrownAfter {
       Await.result(db.getCollection("movies").countDocuments().toFuture(), probeTimeout.value)
       onConnected(db)
-    } catch { case e: Throwable => MongoWriteErrors.observeRead(dbName.value, e); if (sharedClient.isEmpty) client.close(); throw e }
+    } { e => MongoWriteErrors.observeRead(dbName.value, e); if (sharedClient.isEmpty) client.close() }
     logger.info(s"MongoConnection connected to ${dbName.value}")
     (client, db)
   }

@@ -4,6 +4,7 @@ import org.scalatest.Assertions.cancel
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
 /**
  * Tells "the upstream is not answering right now" apart from "the upstream changed its
@@ -80,7 +81,7 @@ object LiveUpstream {
           s"$upstream rate-limited the call under test (${limited.getMessage}) — cancelled rather than failed, " +
           "because a throttle cannot tell us whether the contract changed.",
           limited)
-      case failure: Throwable =>
+      case NonFatal(failure) =>
         Try(probe()) match {
           case Success(_) => throw failure
           case Failure(unreachable) =>

@@ -72,8 +72,7 @@ final class RefreshSourceHandler(sources: RefreshableSources, results: BulkTaskR
         HandlerOutcome.Done
       case Some(source) =>
         val result =
-          try source.refresh(keys)
-          catch { case e: Throwable => record(succeeded = false, s"$name: failed: ${e.getMessage}"); throw e }
+          tools.AnyThrowable.rethrownAfter(source.refresh(keys))(e => record(succeeded = false, s"$name: failed: ${e.getMessage}"))
         logger.info(s"refresh $name for ${keys.size} keys: ${result.message}")
         results.record(BulkTaskResult.from(taskType, clock.instant(), succeeded = true, result.copy(message = s"$name: ${result.message}")))
         HandlerOutcome.Done

@@ -99,7 +99,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         // must say so — reported as `Duplicate` it read as "already queued" and the
         // task was silently lost.
         case exception: MongoWriteException if services.MongoErrors.isDuplicateKey(exception) => EnqueueResult.Duplicate
-        case exception: Throwable =>
+        case exception =>
           logger.warn(s"TaskQueue.enqueue($dedupKey) failed: ${exception.getMessage}")
           EnqueueResult.Failed(exception.getMessage)
       }.get
@@ -117,7 +117,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         if (matched) Await.result(c.updateOne(Filters.and(filter, Filters.gt("nextEligibleAt", at)), Updates.set("nextEligibleAt", at)).toFuture(), 10.seconds)
         matched
       }.recover {
-        case exception: Throwable =>
+        case exception =>
           logger.warn(s"TaskQueue.raise($dedupKey) failed: ${exception.getMessage}")
           false
       }.get
@@ -133,7 +133,7 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         Filters.eq("state", TaskState.Waiting))
       val update = Updates.combine(fields.toSeq.map { case (k, v) => Updates.set(s"payload.$k", v) }*)
       Try(Await.result(c.updateOne(filter, update).toFuture(), 10.seconds).getMatchedCount > 0).recover {
-        case exception: Throwable =>
+        case exception =>
           logger.warn(s"TaskQueue.amendWaiting($dedupKey) failed: ${exception.getMessage}")
           false
       }.get

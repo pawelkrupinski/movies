@@ -65,8 +65,7 @@ class LogCaptureSpec extends AnyFlatSpec with Matchers {
       // A bare ArrayList throws ConcurrentModificationException within a handful of
       // passes; a weakly-consistent iterator simply returns a snapshot every time.
       (1 to Reads).foreach { _ =>
-        try collector.events should not be empty
-        catch { case t: Throwable => failure.compareAndSet(null, t) }
+        AnyThrowable.captured(collector.events should not be empty).left.foreach(t => failure.compareAndSet(null, t): Unit)
       }
     finally {
       running.set(false)

@@ -15,6 +15,10 @@ import scala.util.control.NonFatal
 object ParallelTasks {
   def all[A, B](items: Seq[A])(task: A => B)(using ExecutionContext): Seq[B] =
     Await.result(Future.traverse(items)(item => Future(
-      try task(item) catch { case NonFatal(e) => throw e; case fatal: Throwable => throw new ExecutionException(fatal) })),
+      tools.AnyThrowable.captured(task(item)) match {
+        case Right(done)        => done
+        case Left(NonFatal(e))  => throw e
+        case Left(fatal)        => throw new ExecutionException(fatal)
+      })),
       Duration.Inf)
 }

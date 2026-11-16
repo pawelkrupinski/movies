@@ -2,6 +2,7 @@ package scripts
 
 import tools.{RealHttpFetch, ResidentialProxy}
 import services.cinemas.pl.MultikinoClient
+import scala.util.control.NonFatal
 
 /**
  * Prod-faithful PRE-DEPLOY check for the Decodo residential-proxy egress.
@@ -42,6 +43,6 @@ object ProxyProbe {
       val body = fetch.get(url)
       println(f"$label%-11s OK   bytes=${body.length}%-8d ${summary(body)}")
     } catch {
-      case e: Throwable => println(f"$label%-11s FAIL ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")}")
+      case NonFatal(e) => println(f"$label%-11s FAIL ${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("")}")
     }
 }

@@ -11,6 +11,7 @@ import java.nio.file.Files
 import java.util.Base64
 import javax.imageio.stream.MemoryCacheImageOutputStream
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
+import scala.util.control.NonFatal
 
 /**
  * Regenerates a country's LANDING Open Graph card — `og-home.jpg` for Poland,
@@ -138,7 +139,7 @@ object OgCardGenerator {
         println(f"✓ $label%-20s ${t0.seconds}%4.1fs  $out")
         return true
       } catch {
-        case e: Throwable =>
+        case NonFatal(e) =>
           if (attempt < Attempts) {
             System.err.println(s"… $label: ${e.getMessage} (attempt $attempt/$Attempts, retrying)")
             Thread.sleep(1500)
@@ -261,7 +262,7 @@ object OgCardGenerator {
       val title = page.evalString("document.title")
       val body  = page.evalString("document.body ? document.body.innerText.slice(0,200) : '(no body)'")
       s"href=$href title=$title body=${body.replaceAll("\\s+", " ")}"
-    } catch { case _: Throwable => "diagnostic eval itself failed" }
+    } catch { case NonFatal(_) => "diagnostic eval itself failed" }
 
   /** Screenshot the live city page at desktop 2×, with every date shown so the
    *  grid is populated regardless of the hour. Returns Base64 PNG bytes.
@@ -295,7 +296,7 @@ object OgCardGenerator {
         "features" -> Json.arr(Json.obj("name" -> "prefers-reduced-motion", "value" -> "reduce"))))
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
       catch {
-        case _: Throwable =>
+        case NonFatal(_) =>
           throw new RuntimeException(s"repertoire page did not load (no pickDay) [${loadFailureDiagnostic(page)}]")
       }
       // A city split into cinema areas (e.g. London) opens the "Choose your
@@ -303,11 +304,11 @@ object OgCardGenerator {
       // all-areas default) so the card shows posters, not the modal. A no-op
       // on the flat cities that have no picker.
       try page.eval(DismissAreaPickerJs)
-      catch { case _: Throwable => () }
+      catch { case NonFatal(_) => () }
       // The date tabs are JS-only (`pickDay`); "anytime" shows all upcoming
       // days so a late-night "Dziś" empty view doesn't yield an empty card.
       try page.eval("pickDay('anytime')")
-      catch { case _: Throwable => () }
+      catch { case NonFatal(_) => () }
       // Wait for the in-viewport posters to load (see PostersReadyJs), then
       // for their async decode to reach the screen (see postersPaintedJs).
       // Capped so a genuinely broken poster can't hang the run. The cap was
@@ -322,7 +323,7 @@ object OgCardGenerator {
       // attempt fails it keeps the previous card.
       try page.waitFor(PostersReadyJs, timeoutMs = postersTimeoutMs, pollMs = 150)
       catch {
-        case _: Throwable =>
+        case NonFatal(_) =>
           throw new RuntimeException(s"posters did not load within ${postersTimeoutMs}ms")
       }
       if (!page.evalBool(postersPaintedJs(postersTimeoutMs)))

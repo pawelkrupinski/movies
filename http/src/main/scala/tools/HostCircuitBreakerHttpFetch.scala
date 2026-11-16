@@ -7,6 +7,7 @@ import java.util.concurrent.{CompletableFuture, CompletionException, ConcurrentH
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
+import scala.util.control.NonFatal
 
 /** Thrown — fast, with NO wire call — when a host's breaker is OPEN. An
  *  `IOException` so every caller that already degrades on a fetch failure (cinema
@@ -257,11 +258,12 @@ class HostCircuitBreakerHttpFetch(
       // through unrecorded used to be harmless when the open check was a pure read, but
       // `admit` now re-arms the window as it hands out the half-open probe: a probe that
       // came back 404 would leave the host blocked for another full `openDuration` on the
-      // strength of a reply that proves it recovered.
+      // strength of a reply that proves it recovered. A fatal error (an OutOfMemoryError, a LinkageError) is this
+      // JVM's, never the host's answer: it goes through unrecorded, as an interrupt does.
       catch {
-        case e: Throwable if saysNothing(e)  => throw e
-        case e: Throwable if isTripWorthy(e) => onFailure(host, url, e); throw e
-        case e: Throwable                    => onSuccess(host); throw e
+        case NonFatal(e) if saysNothing(e)  => throw e
+        case NonFatal(e) if isTripWorthy(e) => onFailure(host, url, e); throw e
+        case NonFatal(e)                    => onSuccess(host); throw e
       }
   }
 

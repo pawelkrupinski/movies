@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.time.LocalDateTime
 import java.util.concurrent.CountDownLatch
+import scala.util.control.NonFatal
 
 /**
  * Boots the same fixture corpus + Twirl-rendered routes that
@@ -286,8 +287,8 @@ object FixtureServerMain {
     val shutdown = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       System.err.println("[FixtureServerMain] shutting down")
-      try server.close() catch { case _: Throwable => () }
-      try Files.deleteIfExists(portFile) catch { case _: Throwable => () }
+      try server.close() catch { case NonFatal(_) => () }
+      try Files.deleteIfExists(portFile) catch { case NonFatal(_) => () }
       shutdown.countDown()
     }, "fixture-server-shutdown"))
 

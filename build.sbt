@@ -86,12 +86,10 @@ ThisBuild / scalacOptions ++= Seq(
   // a library macro compiled before 3.10 still splices the old conversion into our code: play-json 3.0.6's
   // `Json.format` (JsMacroImpl.scala:713, `nme -> writes`), reported at the `Json.format[...]` call site. No source of
   // ours names `ArrowAssoc`; drop this rule once play-json ships a build compiled with 3.10.
-  "-Wconf:cat=deprecation&msg=ArrowAssoc:silent",
-  // Scala 3.10.1 warns on every `case _: Throwable` (E235, "Catching Throwable can lead to unexpected behavior").
-  // ~100 handlers catch Throwable on purpose -- a worker loop, a scrape attempt or a boot step that must outlive any
-  // failure, a fallback that turns every error into its outcome. Moving them to NonFatal changes which errors each
-  // survives (interrupts, StackOverflowError, LinkageError); that is a per-site decision, not a compiler bump's.
-  "-Wconf:id=E235:silent"
+  "-Wconf:cat=deprecation&msg=ArrowAssoc:silent"
+  // Scala 3.10.1's E235 ("Catching Throwable can lead to unexpected behavior") is an error like any warning: a handler
+  // catches `NonFatal(e)` or the exception it means. The two shapes that mean to catch fatal errors too -- clean-up
+  // before a rethrow, a failure handed to another thread -- are `tools.AnyThrowable`'s, its two `@nowarn`s the only ones.
 )
 ThisBuild / javacOptions ++= Seq("--release", "21")
 

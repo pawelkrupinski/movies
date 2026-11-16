@@ -6,10 +6,11 @@ import org.mongodb.scala.MongoClient
 import play.api.Logging
 import services.{MongoConnection, MongoTuning}
 import settings.{HealthPort, HeapDumpDirectory, ProcessConfiguration}
-import tools.{ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
+import tools.{AnyThrowable, ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
 
 import java.net.InetSocketAddress
 import java.util.concurrent.CountDownLatch
+import scala.util.control.NonFatal
 
 /**
  * Entry point for the scrape/enrich worker. A plain `def main` (not `extends
@@ -75,7 +76,7 @@ object WorkerMain extends Logging {
     // Ensure the heap-dump volume dir exists so the JVM's HeapDumpOnOutOfMemoryError
     // (hard-OOM path) and the watchdog (death-spiral path) both have somewhere to write.
     try java.nio.file.Files.createDirectories(heapDumpDir.value)
-    catch { case e: Throwable => logger.warn(s"Could not create heap-dump dir ${heapDumpDir.value}: ${e.getMessage}") }
+    catch { case NonFatal(e) => logger.warn(s"Could not create heap-dump dir ${heapDumpDir.value}: ${e.getMessage}") }
 
     val done = new CountDownLatch(1)
     Runtime.getRuntime.addShutdownHook(new Thread(() => shutDown(shared, wirings, health, done)))
@@ -134,10 +135,11 @@ object WorkerMain extends Logging {
   }
 
   /** Build and start every country's wiring. A failure closes the shared client, stops /health and exits
-   *  non-zero. */
+   *  non-zero -- any failure, a fatal one included (a LinkageError off a stale class, an OutOfMemoryError): let
+   *  through, it would end the main thread and leave the process up, /health serving, with no country running. */
   private def startWirings(process: ProcessConfiguration, countries: Seq[Country], shared: SharedResources,
                            health: HttpServer): Seq[WorkerWiring] =
-    try {
+    AnyThrowable.captured {
       val boot = shared.boot
       val ws = boot.step("build wirings")(countries.map(c =>
         new WorkerWiring(c, shared.budget, shared.client, Some(shared.metrics), shared.posterShrinkGate, process.env)))
@@ -153,8 +155,9 @@ object WorkerMain extends Logging {
       shared.metrics.envGatedFeatures.recordIntegrations(integrations)
       services.metrics.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
       ws
-    } catch {
-      case e: Throwable =>
+    } match {
+      case Right(ws) => ws
+      case Left(e) =>
         logger.error(s"Worker failed to start — shutting down: ${e.getMessage}", e)
         shared.client.foreach(_.close())
         health.stop(0)
@@ -171,18 +174,18 @@ object WorkerMain extends Logging {
     addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir, clock = wirings.head.clock))
   }
 
+  /** One step of the drain, its failure logged and the drain going on, whatever the step threw -- a fatal error
+   *  included: the process is ending either way, and each later step still owes its own resources' release. */
+  private def drainStep(what: String)(step: => Unit): Unit =
+    AnyThrowable.captured(step).left.foreach(e => logger.warn(s"$what error on shutdown: ${e.getMessage}"))
+
   /** The SIGTERM drain: the process samplers, then each wiring, then the shared client — last, since each
    *  wiring's `stop()` closed only its own (per-country) resources; the borrowed client is owned here. */
   private def shutDown(shared: SharedResources, wirings: Seq[WorkerWiring], health: HttpServer, done: CountDownLatch): Unit = {
     logger.info("Worker received shutdown signal — draining the enrichment cascade…")
-    try shared.metrics.stop() // process-level samplers, once
-    catch { case e: Throwable => logger.warn(s"Metrics stop error on shutdown: ${e.getMessage}") }
-    wirings.foreach { w =>
-      try w.stop()
-      catch { case e: Throwable => logger.warn(s"Drain error on shutdown: ${e.getMessage}") }
-    }
-    try shared.client.foreach(_.close())
-    catch { case e: Throwable => logger.warn(s"Mongo client close error on shutdown: ${e.getMessage}") }
+    drainStep("Metrics stop")(shared.metrics.stop()) // process-level samplers, once
+    wirings.foreach(w => drainStep("Drain")(w.stop()))
+    try drainStep("Mongo client close")(shared.client.foreach(_.close()))
     finally {
       health.stop(0)
       done.countDown()

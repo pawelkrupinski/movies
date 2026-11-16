@@ -2,6 +2,7 @@ package tools
 
 import java.io.ByteArrayInputStream
 import java.util.zip.GZIPInputStream
+import scala.util.control.NonFatal
 
 /** Decompresses a gzipped byte payload, looping while the output still
  *  carries the gzip magic prefix `1F 8B`. TMDB (or its CDN) sometimes
@@ -28,7 +29,7 @@ object Gunzip {
         val out = try gz.readAllBytes() finally gz.close()
         decode(out, depth + 1)
       } catch {
-        case _: Throwable => bytes
+        case NonFatal(_) => bytes
       }
   }
 

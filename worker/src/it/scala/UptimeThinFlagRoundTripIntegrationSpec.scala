@@ -10,6 +10,7 @@ import services.UptimeMonitor
 import tools.Eventually
 
 import scala.concurrent.Await
+import scala.util.control.NonFatal
 
 /**
  * The web process learns that a worker's scrape was `thin` (screenings, but none
@@ -35,7 +36,7 @@ class UptimeThinFlagRoundTripIntegrationSpec extends AnyFlatSpec with Matchers w
       Await.result(db.drop().toFuture(), SpecTimeouts.Io)
       Await.result(db.listCollectionNames().toFuture(), SpecTimeouts.Io) shouldBe empty
     }, pollMs = 250)
-    catch { case _: Throwable => info(s"could not confirm ${db.name} was dropped; sweep kinowo_isolated_* if it lingers") }
+    catch { case NonFatal(_) => info(s"could not confirm ${db.name} was dropped; sweep kinowo_isolated_* if it lingers") }
     finally isolatedDb.drop()
     super.afterAll()
   }

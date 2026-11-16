@@ -101,7 +101,7 @@ class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepositor
       Await.result(c.deleteOne(Filters.eq("id", id)).toFuture(), 10.seconds)
       ()
     }.recover {
-      case exception: Throwable => logger.warn(s"UserRepository.delete($id) failed: ${exception.getMessage}")
+      case exception => logger.warn(s"UserRepository.delete($id) failed: ${exception.getMessage}")
     }
   }
 
@@ -111,7 +111,7 @@ class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepositor
         new FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.AFTER)).toFuture(), 10.seconds))
         .getOrElse(user)
     }.recover {
-      case exception: Throwable =>
+      case exception =>
         logger.warn(s"UserRepository.upsert(${user.id}) failed: ${exception.getMessage}")
         user
     }.get
@@ -120,7 +120,7 @@ class MongoUserRepository(database: Option[MongoDatabase]) extends UserRepositor
   def revokeSessions(id: String): Option[User] = coll.flatMap { c =>
     Try(Option(Await.result(c.findOneAndUpdate(Filters.eq("id", id), Updates.inc("sessionVersion", 1),
       new FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)).toFuture(), 10.seconds)))
-      .recover { case exception: Throwable =>
+      .recover { case exception =>
         logger.warn(s"UserRepository.revokeSessions($id) failed: ${exception.getMessage}")
         None
       }.get

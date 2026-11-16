@@ -5,6 +5,7 @@ import play.api.Logging
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
  * A shared, per-host rate-limit gate wrapping any `HttpFetch`.
@@ -185,7 +186,7 @@ class ThrottledHttpFetch(
           // host); the gate's only job is to keep the rest of the fleet off the host
           // in the meantime, so the calls that survive the block don't re-converge
           // into a burst the moment the breaker half-opens.
-          case e: Throwable if isOverload(e) =>
+          case NonFatal(e) if isOverload(e) =>
             gate(host, defaultPause.min(maxPause))
             logger.warn(s"${e.getMessage} — overload from $host; pausing all calls to it " +
               s"for ${defaultPause.min(maxPause).toMillis}ms.")

@@ -5,6 +5,7 @@ import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
+import scala.util.control.NonFatal
 
 /**
  * Minimal embedded HTTP server used by `PageJsBehaviourSpec` to serve
@@ -61,7 +62,7 @@ class TestHttpServer(
   server.createContext("/", new HttpHandler {
     override def handle(exception: HttpExchange): Unit = {
       Thread.currentThread.setContextClassLoader(ownerLoader)
-      try {
+      try AnyThrowable.captured {
         val path = exception.getRequestURI.getPath
         val rawQ = exception.getRequestURI.getRawQuery
         // Routes match on the path-plus-query, because several tests boot a
@@ -132,7 +133,7 @@ class TestHttpServer(
             exception.sendResponseHeaders(404, -1)
           }
         }
-      } catch {
+      }.left.foreach { t =>
         // A THROWING ROUTE USED TO LEAVE NO TRACE AT ALL, AND THAT COST HOURS.
         // Without this, the exception propagates into `com.sun.net.httpserver`,
         // which closes the connection with no headers written and logs the
@@ -143,13 +144,14 @@ class TestHttpServer(
         // mobile suite goes red pointing at a server that looks healthy. Hit on
         // 2026-08-30. The stack trace goes to stderr, which CI already uploads
         // as the `fixture-server-log-*` artifact.
-        case t: Throwable =>
-          System.err.println(s"[TestHttpServer] route ${exception.getRequestURI} threw:")
-          t.printStackTrace()
-          // Best-effort: if headers are already sent this throws in turn, and
-          // the client gets the truncated body it was always going to get. The
-          // trace above is the part that matters.
-          try exception.sendResponseHeaders(500, -1) catch { case _: Throwable => () }
+        // Caught whatever it is, a fatal error too (`AnyThrowable.captured`): a LinkageError off a stale class is
+        // just the kind that leaves no trace.
+        System.err.println(s"[TestHttpServer] route ${exception.getRequestURI} threw:")
+        t.printStackTrace()
+        // Best-effort: if headers are already sent this throws in turn, and
+        // the client gets the truncated body it was always going to get. The
+        // trace above is the part that matters.
+        try exception.sendResponseHeaders(500, -1) catch { case NonFatal(_) => () }
       } finally exception.close()
     }
   })

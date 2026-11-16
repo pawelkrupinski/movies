@@ -37,12 +37,8 @@ class CinemaScrapeRunner(
     // callers keep deciding what a failure means while the archive still records
     // that the cinema was tried and failed.
     val CinemaScraper.Scraped(movies, viaFallback, readsComplete) =
-      try scraper.fetchWithSource()
-      catch {
-        case failure: Throwable =>
-          archive(scraper, Seq.empty, listingComplete = true, Some(messageOf(failure)))
-          throw failure
-      }
+      tools.AnyThrowable.rethrownAfter(scraper.fetchWithSource())(failure =>
+        archive(scraper, Seq.empty, listingComplete = true, Some(messageOf(failure))))
     // The sink decides FIRST, then the scrape is archived — in a `finally`, so a sink that throws
     // still leaves the attempt archived. The intake reads the archive for a venue with no accepted
     // listing of its own: archived first, that "last scrape" was the very scrape being judged, so the

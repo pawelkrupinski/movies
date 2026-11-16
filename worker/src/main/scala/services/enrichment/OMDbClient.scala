@@ -11,6 +11,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.{Clock, Instant}
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
  * Feature-gated OMDb (omdbapi.com) client that recovers an IDENTIFIER, not a
@@ -124,7 +125,7 @@ class OMDbClient(http: HttpFetch, apiKey: Option[settings.OmdbApiKey], clock: Cl
       pausedUntil.set(None)
       read
     } catch {
-      case failure: Throwable if refusesKey(failure) =>
+      case NonFatal(failure) if refusesKey(failure) =>
         // OMDb says the day's quota is gone (its 401 or its "Request limit reached!" document): nobody in the fleet
         // asks again until its day turns. A bad key ("Invalid API key!") is the pause's alone.
         if (spentQuota(failure)) budget.markSpent(clock.instant())

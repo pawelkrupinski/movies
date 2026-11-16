@@ -143,10 +143,10 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "loaded = Try(loadScrape()).getOrElse(false)") ->
       "a boot retry loop: false is \"not loaded yet\" and is retried up to maxScrapeAttempts; readiness is released either way",
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "amendWaiting",
-      "case exception: Throwable =>") ->
+      "case exception =>") ->
       "false files the re-try as not upgraded — which a failed amend is (the mode never reached the task); logged at WARN",
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "raise",
-      "case exception: Throwable =>") ->
+      "case exception =>") ->
       "false leaves the queued task where it was -- the ask is still queued, only not moved up; logged at WARN, and the input gate's own bound takes the listing in",
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "claim",
       "case Failure(exception) =>") ->
@@ -154,7 +154,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "dropRetiredTypes", "Try {") ->
       "a failed sweep decides nothing: the retired rows wait for the next reaper pass, logged at WARN",
     ("common/src/main/scala/services/titlerules/TitleRule.scala", "compiled",
-      "try Some(new Regex(pattern)) catch { case _: Throwable => None }") ->
+      "try Some(new Regex(pattern)) catch { case NonFatal(_) => None }") ->
       "an invalid (half-typed) pattern disables only its own rule, and is surfaced to the editor through patternValid",
     ("common/src/main/scala/tools/MonitoringHttpFetch.scala", "classify",
       "case _: Exception => None") ->
@@ -166,7 +166,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "case _: CircuitOpenException               => false") ->
       "a classifier over an exception already caught, not a handler: a CircuitOpenException is not an overload signal",
     ("web/src/main/scala/services/users/UserRepository.scala", "revokeSessions",
-      ".recover { case exception: Throwable =>") ->
+      ".recover { case exception =>") ->
       "None is \"not revoked\", and the caller answers 503 (AuthController.revokeAllSessions)",
     ("worker/src/main/scala/modules/wiring/ScrapeWiring.scala", "filmwebFallbackIds",
       "else scala.util.Try(new FilmwebCinemaIdResolver(httpFetch).resolveAll())") ->
@@ -205,7 +205,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "Try(new String(Files.readAllBytes(Paths.get(\"/proc/self/status\")), StandardCharsets.UTF_8)).getOrElse(\"\")") ->
       "/proc and NMT exist only on Linux with -XX:NativeMemoryTracking; elsewhere the gauges stay unset",
     ("worker/src/main/scala/services/schedule/ScheduledRunStore.scala", "claim",
-      "case exception: Throwable =>") ->
+      "case exception =>") ->
       "fail-closed on purpose: an unclaimable occurrence is skipped rather than risk a double run; the next occurrence claims afresh",
     ("worker/src/main/scala/services/sharecards/PosterPipeline.scala", "vips",
       "if (VipsPosterShrinker.knownFormat(file)) Left(VipsPosterShrinker.failure(child.exitValue(), Try(Files.readString(log)).getOrElse(\"\")))") ->
@@ -261,7 +261,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
       "Try(Json.parse(body).as[JsArray]).map { array =>") ->
       "room/format enrichment of screenings the NUXT listing already carries: a malformed body loses rooms, not screenings",
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
-      "case e: Throwable => logger.warn(s\"startRun insert for $cinema failed: ${e.getMessage}\"); false") ->
+      "case e => logger.warn(s\"startRun insert for $cinema failed: ${e.getMessage}\"); false") ->
       "false is \"not inserted\"; the supersede step below then decides, and a run that cannot start is skipped this tick",
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
       "}.recover { case e => logger.warn(s\"startRun replace for $cinema failed: ${e.getMessage}\"); None }") ->

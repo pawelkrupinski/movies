@@ -5,6 +5,7 @@ import java.net.{ServerSocket, Socket, URI}
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicBoolean
+import scala.util.control.NonFatal
 
 /**
  * Minimal HTTP forward proxy requiring Basic `Proxy-Authorization`, used by
@@ -29,7 +30,7 @@ class TestProxyServer(user: String, pass: String) extends AutoCloseable {
         val t = new Thread(() => handle(client))
         t.setDaemon(true)
         t.start()
-      } catch { case _: Throwable => () } // includes the accept() that throws on close()
+      } catch { case NonFatal(_) => () } // includes the accept() that throws on close()
     }
   }, "test-proxy-accept")
   acceptThread.setDaemon(true)
@@ -84,12 +85,12 @@ class TestProxyServer(user: String, pass: String) extends AutoCloseable {
           while (n != -1) { out.write(buf, 0, n); n = targetIn.read(buf) }
         } finally target.close()
       }
-    } catch { case _: Throwable => () }
+    } catch { case NonFatal(_) => () }
     finally client.close()
   }
 
   override def close(): Unit = {
     running.set(false)
-    try serverSocket.close() catch { case _: Throwable => () }
+    try serverSocket.close() catch { case NonFatal(_) => () }
   }
 }

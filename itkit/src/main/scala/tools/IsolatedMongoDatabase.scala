@@ -3,6 +3,7 @@ package tools
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 
 import scala.concurrent.Await
+import scala.util.control.NonFatal
 
 /**
  * A throwaway database with a name nobody else can be using, for specs that need
@@ -36,7 +37,7 @@ final class IsolatedMongoDatabase private (val client: MongoClient, val database
     if (!dropped) {
       dropped = true
       try Await.result(database.drop().toFuture(), SpecTimeouts.Io)
-      catch { case _: Throwable => () }   // a suite that failed early must still close its client
+      catch { case NonFatal(_) => () }   // a suite that failed early must still close its client
       finally client.close()
     }
   }

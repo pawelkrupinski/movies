@@ -92,6 +92,28 @@ class HostCircuitBreakerHttpFetchSpec extends AnyFlatSpec with Matchers with Opt
     }
   }
 
+  // A fatal error (a StackOverflowError in a parse, a LinkageError off a stale class) is this JVM failing, not the host
+  // answering: caught as Throwable, it fell to the "the host answered" branch, cleared the counted failures and
+  // closed the breaker on a half-open probe the host had said nothing to.
+  it should "neither trip nor reset on a fatal error, which is the JVM's and no answer from the host" in {
+    val clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"))
+    val delegate = new RequestLoggingHttpFetch(timeout)
+    val cb = breaker(delegate, clock)
+    (1 to 3).foreach(_ => a[HttpTimeoutException] should be thrownBy cb.get(urlA))
+    delegate.respond = _ => throw new StackOverflowError()
+    a[StackOverflowError] should be thrownBy cb.get(urlA)
+    withClue("the fatal error must not have cleared the three real failures: ") {
+      delegate.respond = timeout
+      a[HttpTimeoutException] should be thrownBy cb.get(urlA)
+      cb.openRemainingMillis(hostA) should be > 0L
+    }
+    clock.advanceSeconds(61)          // cooldown elapsed → this call is the probe
+    delegate.respond = _ => throw new LinkageError("stale class")
+    a[LinkageError] should be thrownBy cb.get(urlA)
+    withClue("a probe ended by a fatal error has not seen the host answer: ")(
+      cb.openRemainingMillis(hostA) should be > 0L)
+  }
+
   it should "stay closed below the threshold" in {
     val delegate = new RequestLoggingHttpFetch(timeout)
     val cb = breaker(delegate)

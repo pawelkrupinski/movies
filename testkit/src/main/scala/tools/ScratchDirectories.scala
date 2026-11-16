@@ -32,13 +32,7 @@ trait ScratchDirectories extends SuiteMixin { this: Suite =>
   }
 
   abstract override def run(testName: Option[String], args: Args): Status = {
-    val status =
-      try super.run(testName, args)
-      catch {
-        case failure: Throwable =>
-          deleteOwned()
-          throw failure
-      }
+    val status = AnyThrowable.rethrownAfter(super.run(testName, args))(_ => deleteOwned())
     status.whenCompleted(_ => deleteOwned())
     status
   }

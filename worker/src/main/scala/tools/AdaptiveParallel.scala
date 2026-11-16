@@ -69,7 +69,7 @@ object AdaptiveParallel {
     }
 
     def guarded(worker: Int): Unit =
-      try work(worker) catch { case t: Throwable => fatal.compareAndSet(null, t) }
+      AnyThrowable.captured(work(worker)).left.foreach(t => fatal.compareAndSet(null, t): Unit)
 
     val threads = (0 until math.max(1, workers)).map { i =>
       val t = new Thread(() => guarded(i), s"adaptive-parallel-$i")

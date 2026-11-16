@@ -605,8 +605,7 @@ class ReadModelProjector(
     // the card, and nothing would retire its files again. Screenings left behind belong to no live
     // card; the prune removes them while it stays retired.
     shareCards.onRetired(filmId)
-    try screeningIds.foreach(writer.deleteScreening)
-    catch { case exception: Throwable => forgetCard(filmId); throw exception }
+    tools.AnyThrowable.rethrownAfter(screeningIds.foreach(writer.deleteScreening))(_ => forgetCard(filmId))
     // The point a film actually leaves the served site (web_movies + its
     // web_screenings). During a "cards vanish" episode this names every dropped
     // filmId, one INFO line each — the read-model half of the removal audit.

@@ -6,6 +6,7 @@ import tools.DaemonExecutors
 import java.time.Clock
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 /**
  * Handles an operator-triggered, corpus-wide refresh task (the `/tasks` page
@@ -51,7 +52,7 @@ class BulkRefreshHandler(
         val result =
           try BulkTaskResult.from(taskType, clock.instant(), succeeded = true, run())
           catch {
-            case e: Throwable =>
+            case NonFatal(e) =>
               logger.error(s"Bulk $label refresh failed", e)
               BulkTaskResult(taskType, clock.instant(), succeeded = false, s"failed: ${e.getMessage}")
           } finally running.set(false)

@@ -81,7 +81,7 @@ class MongoScheduledRunStore(coll: MongoCollection[Document], clock: java.time.C
       case exception: MongoWriteException if MongoErrors.isDuplicateKey(exception) =>
         // Another machine already claimed this occurrence — skip.
         false
-      case exception: Throwable =>
+      case exception =>
         // On any other failure, skip rather than risk a double-run; the next
         // occurrence gets a fresh claim. (A missed occurrence is recovered by the
         // reaper's freshness gating, which re-queues the same stale work later.)

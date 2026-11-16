@@ -201,7 +201,7 @@ class MongoUserStateRepository(
       services.MongoWriteErrors.counted(c)(Await.result(c.deleteOne(Filters.eq("userId", userId)).toFuture(), 10.seconds))
       ()
     }.recover {
-      case exception: Throwable => logger.warn(s"UserStateRepository.delete($userId) failed: ${exception.getMessage}")
+      case exception => logger.warn(s"UserStateRepository.delete($userId) failed: ${exception.getMessage}")
     }
   }
 

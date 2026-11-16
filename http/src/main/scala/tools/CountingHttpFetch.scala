@@ -25,15 +25,11 @@ class CountingHttpFetch(delegate: HttpFetch, recorder: HttpOutcomeRecorder) exte
 
   protected def around[T](url: String)(call: HttpFetch => T): T = {
     val attempt = recorderFor(url)
-    try {
+    AnyThrowable.rethrownAfter {
       val result = call(delegate)
       attempt.record(HttpOutcome.Success)
       result
-    } catch {
-      case t: Throwable =>
-        attempt.record(HttpOutcome.classify(t))
-        throw t
-    }
+    }(thrown => attempt.record(HttpOutcome.classify(thrown)))
   }
 
   /** The async fan-out records on completion. A `CompletableFuture` reports its

@@ -47,12 +47,7 @@ object MongoWriteErrors {
     /** `body`, a write to `collection`, with its failure counted and rethrown. */
     final def counting[A](database: String, collection: String)(body: => A): A = {
       touched(database, collection)
-      try body
-      catch {
-        case exception: Throwable =>
-          observe(database, collection, exception)
-          throw exception
-      }
+      tools.AnyThrowable.rethrownAfter(body)(observe(database, collection, _))
     }
 
     /** Count `exception`, thrown by a write to `collection`, if it is a Mongo failure ([[kindOf]]); a client closing

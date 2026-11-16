@@ -6,6 +6,7 @@ import tools.DaemonExecutors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
  * Renders the Prometheus exposition OFF the scrape request path.
@@ -47,7 +48,7 @@ class MetricsSnapshotCache(
     renderedAt = clock.millis()
     try latest.set(render().getBytes("UTF-8"))
     catch {
-      case e: Throwable =>
+      case NonFatal(e) =>
         logger.warn(s"/metrics snapshot refresh failed (serving last good): ${e.getMessage}")
     }
   }

@@ -4,6 +4,7 @@ import play.api.Logging
 import services.tasks.TaskType
 
 import java.util.concurrent.CopyOnWriteArrayList
+import scala.util.control.NonFatal
 
 /**
  * Domain-level events published by core services. Listeners subscribe by
@@ -68,7 +69,7 @@ class InProcessEventBus extends EventBus with Logging {
     while (it.hasNext) {
       val pf = it.next()
       try pf.applyOrElse(event, (_: DomainEvent) => ()) catch {
-        case exception: Throwable =>
+        case NonFatal(exception) =>
           logger.warn(s"Event listener failed for $event: ${exception.getMessage}")
       }
     }

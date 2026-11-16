@@ -12,6 +12,7 @@ import services.{ServiceTags, UptimeMonitor}
 import tools.Eventually
 
 import scala.concurrent.Await
+import scala.util.control.NonFatal
 
 /**
  * A tag write that Mongo REFUSES must not be recorded in memory as if it had landed.
@@ -69,7 +70,7 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
       Await.result(db.listCollectionNames().toFuture(), SpecTimeouts.Io) shouldBe empty
     }, pollMs = 250)
     catch {
-      case _: Throwable =>
+      case NonFatal(_) =>
         // Say so rather than leaving a stray database for someone to find by counting.
         info(s"could not confirm ${db.name} was dropped; sweep kinowo_isolated_* if it lingers")
     }

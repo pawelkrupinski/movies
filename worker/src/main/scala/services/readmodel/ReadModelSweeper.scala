@@ -437,8 +437,9 @@ class ReadModelSweeper(
   def pruneOrphans(): TickRun = {
     projection.exclusively { appliedSinceSweep = Some(scala.collection.mutable.Set.empty); sweepDrift.clear() }
     val (healed, complete, rewritten) =
-      try { val (healed, complete) = sweep(reproject = false); projection.exclusively((healed, complete, sweepDrift.toSeq)) }
-      catch { case exception: Throwable => projection.exclusively { appliedSinceSweep = None }; throw exception }
+      tools.AnyThrowable.rethrownAfter {
+        val (healed, complete) = sweep(reproject = false); projection.exclusively((healed, complete, sweepDrift.toSeq))
+      }(_ => projection.exclusively { appliedSinceSweep = None })
     verdictOnSweep(healed, rewritten)
     TickRun.completedWhen(complete)
   }

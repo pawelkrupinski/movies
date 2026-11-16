@@ -26,7 +26,7 @@ private[movies] object MovieIndexes extends Logging {
       if (backfilled.getModifiedCount > 0)
         logger.info(s"movies: backfilled `key` from `_id` on ${backfilled.getModifiedCount} document(s) written before film ids.")
     }.recover {
-      case exception: Throwable => logger.warn(s"movies `key` index/backfill failed: ${exception.getMessage}")
+      case exception => logger.warn(s"movies `key` index/backfill failed: ${exception.getMessage}")
     }
     // One document per film: `tmdbId` unique over the documents that HAVE one. The
     // write-time fold (`MovieCache.put`) already merges a duplicate before it is written;

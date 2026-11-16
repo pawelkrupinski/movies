@@ -31,7 +31,7 @@ final class SharedLiveAnswers {
     val mine  = new CompletableFuture[Any]()
     val first = answers.putIfAbsent(request, mine)
     if (first == null) {
-      try mine.complete(fetch) catch { case e: Throwable => mine.completeExceptionally(e) }
+      AnyThrowable.captured(fetch).fold(mine.completeExceptionally, mine.complete)
       ()
     }
     try Option(first).getOrElse(mine).join().asInstanceOf[A]

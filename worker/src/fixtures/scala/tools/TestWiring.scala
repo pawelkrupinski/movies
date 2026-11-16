@@ -390,10 +390,10 @@ trait TestWiring extends WorkerWiring {
       val workerId = s"$workerPrefix-$i"
       val thread   = new Thread(
         () =>
-          try Iterator.continually(taskQueue.claim(workerId, 5.minutes, clock.instant().plus(TestWiring.DrainHorizon)))
+          AnyThrowable.captured(Iterator.continually(taskQueue.claim(workerId, 5.minutes, clock.instant().plus(TestWiring.DrainHorizon)))
             .takeWhile(_ => failure.get == null).takeWhile(_.isDefined).flatten
-            .foreach { task => handle(task); taskQueue.complete(task.id, workerId) }
-          catch { case t: Throwable => failure.compareAndSet(null, t); () },
+            .foreach { task => handle(task); taskQueue.complete(task.id, workerId) })
+            .left.foreach(t => failure.compareAndSet(null, t): Unit),
         workerId)
       thread.start()
       thread

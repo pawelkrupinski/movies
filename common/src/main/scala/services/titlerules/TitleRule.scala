@@ -3,6 +3,7 @@ package services.titlerules
 import models.Country
 
 import scala.util.matching.Regex
+import scala.util.control.NonFatal
 
 /** One editable regex-replace step in the title-normalisation pipeline.
  *
@@ -52,7 +53,7 @@ case class TitleRule(
   // editor) is caught here and the rule becomes a no-op rather than throwing
   // inside the hot normalisation path and taking down every scrape.
   val compiled: Option[Regex] =
-    try Some(new Regex(pattern)) catch { case _: Throwable => None }
+    try Some(new Regex(pattern)) catch { case NonFatal(_) => None }
 
   val patternValid: Boolean = compiled.isDefined
 

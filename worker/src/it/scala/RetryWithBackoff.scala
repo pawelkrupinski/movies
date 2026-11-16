@@ -1,6 +1,7 @@
 package integration
 
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 object RetryWithBackoff {
 
@@ -21,7 +22,7 @@ object RetryWithBackoff {
     while (true) {
       try return block
       catch {
-        case t: Throwable =>
+        case NonFatal(t) =>
           val remaining = totalBudget.toMillis - started.millis
           if (remaining <= 0) throw t
           sleep(math.min(delayMs, remaining))

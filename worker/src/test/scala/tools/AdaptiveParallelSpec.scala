@@ -72,9 +72,9 @@ class AdaptiveParallelSpec extends AnyFlatSpec with Matchers {
     // A plain thread, not a Future: a Future never completes on a fatal error either.
     val thrown = new java.util.concurrent.atomic.AtomicReference[Throwable]()
     val run = new Thread(() =>
-      try { AdaptiveParallel.map(1 to 10, workers = 3, sleep = noSleep)(_ => false) { i =>
+      AnyThrowable.captured(AdaptiveParallel.map(1 to 10, workers = 3, sleep = noSleep)(_ => false) { i =>
         if (i == 4) throw new LinkageError("fatal") else i
-      }; () } catch { case t: Throwable => thrown.set(t) })
+      }).left.foreach(thrown.set))
     run.setDaemon(true)
     run.start()
     run.join(10.seconds.toMillis)

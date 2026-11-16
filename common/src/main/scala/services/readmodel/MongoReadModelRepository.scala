@@ -10,13 +10,14 @@ import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.{Aggregates, CountOptions, Filters, Indexes, Projections, ReplaceOneModel, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
-import services.movies.{KeysetScan, RepositoryWrite}
+import services.movies.{ChangeStreamCallback, KeysetScan, RepositoryWrite}
 
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
 /**
  * MongoDB-backed read model. Persists the denormalised projection to two
@@ -282,8 +283,8 @@ class MongoReadModelRepository(
   private def write(coll: MongoCollection[?], op: String, id: String)(body: => scala.concurrent.Future[?]): Unit =
     try { services.MongoWriteErrors.counted(coll)(Await.result(body, 10.seconds)); () }
     catch {
-      case exception: Throwable if RepositoryWrite.isClientClosed(exception) => ()
-      case exception: Throwable =>
+      case NonFatal(exception) if RepositoryWrite.isClientClosed(exception) => ()
+      case NonFatal(exception) =>
         logger.warn(s"ReadModelRepository.$op($id) failed: ${exception.getMessage}")
         throw exception
     }
@@ -337,10 +338,10 @@ class MongoReadModelRepository(
         override def onNext(change: ChangeStreamDocument[org.bson.BsonDocument]): Unit = change.getOperationType match {
           case OperationType.DELETE =>
             Option(change.getDocumentKey).flatMap(k => Option(k.getString("_id")))
-              .foreach(v => try onDelete(v.getValue) catch { case exception: Throwable => logger.warn(s"$label delete-apply failed: ${exception.getMessage}") })
+              .foreach(v => ChangeStreamCallback.guarded(e => logger.warn(s"$label delete-apply failed: ${e.getMessage}"))(onDelete(v.getValue)))
           case _ =>
             decoder.postImage(change).presentOption
-              .foreach(d => try onUpsert(d) catch { case exception: Throwable => logger.warn(s"$label upsert-apply failed: ${exception.getMessage}") })
+              .foreach(d => ChangeStreamCallback.guarded(e => logger.warn(s"$label upsert-apply failed: ${e.getMessage}"))(onUpsert(d)))
         }
         override def onError(e: Throwable): Unit = {
           alive.set(false)

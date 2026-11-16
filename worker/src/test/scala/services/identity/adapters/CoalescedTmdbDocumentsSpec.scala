@@ -119,7 +119,7 @@ class CoalescedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
       // Both queue behind the one slot the first batch holds, so the next batch takes them together.
       // (Caught whole: `Try` lets an InterruptedException through.)
       val others = Seq("b", "c").map(r => pool.submit((() =>
-        try Right(coalescer(r)) catch { case e: Throwable => Left(e) }): Callable[Either[Throwable, String]]))
+        tools.AnyThrowable.captured(coalescer(r))): Callable[Either[Throwable, String]]))
       // Waited for, not slept on: were "b" and "c" to run as two batches, each runner would answer
       // only itself and the test would pass whether or not the interrupted batch answers the others.
       tools.Eventually.eventually(coalescer.waiting shouldBe 2, pollMs = 5)

@@ -3,7 +3,7 @@ package services.tasks
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, OperationType}
 import org.mongodb.scala.{Document, Observer, Subscription}
 import play.api.Logging
-import services.movies.ChangeStreamReopen
+import services.movies.{ChangeStreamCallback, ChangeStreamReopen}
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicReference
@@ -47,8 +47,7 @@ final class TaskInsertStream(
       reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
       // The server-side `$match` already keeps this to inserts; the guard is defence-in-depth.
       if (change.getOperationType == OperationType.INSERT)
-        try onWaiting(heldUntil(change))
-        catch { case exception: Throwable => logger.warn(s"Task queue doorbell ring failed: ${exception.getMessage}") }
+        ChangeStreamCallback.guarded(e => logger.warn(s"Task queue doorbell ring failed: ${e.getMessage}"))(onWaiting(heldUntil(change)))
     }
     override def onError(e: Throwable): Unit = {
       logger.warn(s"Task queue change stream ended (${e.getMessage}) — reopening on a backoff; the worker pool's idle backstop covers the meantime.")

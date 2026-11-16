@@ -12,6 +12,7 @@ import java.time.Duration
 import java.util.Comparator
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CompletableFuture, ConcurrentHashMap, Executors, TimeUnit}
+import scala.util.control.NonFatal
 
 /**
  * Minimal headless-Chrome driver used by `PageJsBehaviourSpec` to run
@@ -139,7 +140,7 @@ object Chrome {
       try {
         var line = in.readLine()
         while (line != null) { output.add(line); line = in.readLine() }
-      } catch { case _: Throwable => () }
+      } catch { case NonFatal(_) => () }
     }, "chrome-stdout-drain")
     drain.start()
     activePort(process, userDirectory) match {
@@ -156,7 +157,7 @@ object Chrome {
         if (spoofHeadlessUserAgent)
           userAgentOverride = """"User-Agent":\s*"([^"]+)"""".r.findFirstMatchIn(info)
             .map(_.group(1).replace("HeadlessChrome", "Chrome"))
-      } catch { case _: Throwable => () }
+      } catch { case NonFatal(_) => () }
       Some(new Chrome(process, port, userDirectory, proxy, userAgentOverride, output))
     case None =>
       // Installed but not started is a FAILURE, not "Chrome not installed": callers
@@ -191,8 +192,8 @@ object Chrome {
 
   private[tools] def deleteProfile(profile: Path): Unit =
     try Files.walk(profile).sorted(Comparator.reverseOrder()).forEach(p =>
-      try Files.deleteIfExists(p) catch { case _: Throwable => () })
-    catch { case _: Throwable => () }
+      try Files.deleteIfExists(p) catch { case NonFatal(_) => () })
+    catch { case NonFatal(_) => () }
 
   /** The address DevTools listens on: an explicit IPv4 loopback, never `localhost`,
    *  which may resolve to `::1` — the family a Chrome falls back to when the IPv4 port
@@ -356,8 +357,8 @@ class Chrome private[tools] (
       page.waitFor("document.readyState === 'complete'")
       body(page)
     } finally {
-      try page.close() catch { case _: Throwable => () }
-      try Chrome.httpGet(s"http://${Chrome.Loopback}:$port/json/close/$tabId") catch { case _: Throwable => () }
+      try page.close() catch { case NonFatal(_) => () }
+      try Chrome.httpGet(s"http://${Chrome.Loopback}:$port/json/close/$tabId") catch { case NonFatal(_) => () }
     }
   }
 
@@ -372,7 +373,7 @@ class Chrome private[tools] (
   }
 
   override def close(): Unit = {
-    try process.destroy() catch { case _: Throwable => () }
+    try process.destroy() catch { case NonFatal(_) => () }
     if (!process.waitFor(3, TimeUnit.SECONDS)) process.destroyForcibly()
     // Best-effort cleanup of the temp user-data directory. Don't fail the
     // spec if a lock file lingers — Chrome occasionally holds one open
@@ -487,7 +488,7 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
                 // waiting for a reply that this same blocked thread is the
                 // only one able to deliver. Hit locally: `Fetch.continueWithAuth`
                 // from inside this callback timed out at 30s every time.
-                eventPool.execute(() => try handler(params) catch { case _: Throwable => () })
+                eventPool.execute(() => try handler(params) catch { case NonFatal(_) => () })
               }
           }
         }
@@ -701,9 +702,9 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
 
   override def close(): Unit =
     try ws.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)
-    catch { case _: Throwable => () }
+    catch { case NonFatal(_) => () }
     finally {
-      try ws.abort() catch { case _: Throwable => () }
+      try ws.abort() catch { case NonFatal(_) => () }
       eventPool.shutdownNow()
     }
 }

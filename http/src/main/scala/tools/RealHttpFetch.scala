@@ -258,11 +258,7 @@ class RealHttpFetch(
   /** `send`, logging a transport failure before it propagates. The response is
    *  returned unchecked — the caller runs [[checkStatus]]. */
   private def sendLogged(method: String, url: String, send: => HttpResponse[Array[Byte]]): HttpResponse[Array[Byte]] =
-    try send catch {
-      case exception: Throwable =>
-        logFailure(method, url, exception)
-        throw exception
-    }
+    AnyThrowable.rethrownAfter(send)(logFailure(method, url, _))
 
   private def checkStatus(method: String, url: String, response: HttpResponse[Array[Byte]]): String = {
     val code = response.statusCode()

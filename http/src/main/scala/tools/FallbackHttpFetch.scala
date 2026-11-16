@@ -3,6 +3,7 @@ package tools
 import play.api.Logging
 
 import scala.collection.mutable
+import scala.util.control.NonFatal
 
 /**
  * Tries each backend in order, returning the first successful body.
@@ -97,7 +98,7 @@ class FallbackHttpFetch(
         result = Some(answer)
         safeOutcome(name, None)
       } catch {
-        case t: Throwable =>
+        case NonFatal(t) =>
           lastFailure = Some(t)
           failuresSeen += t
           failedLegs += name
@@ -179,7 +180,7 @@ class FallbackHttpFetch(
 
   // A metering callback must never break the fetch it's observing.
   private def safeOutcome(name: String, error: Option[String]): Unit =
-    try onOutcome(name, error) catch { case _: Throwable => () }
+    try onOutcome(name, error) catch { case NonFatal(_) => () }
 }
 
 /** Every leg of a [[FallbackHttpFetch]] failed. Still the `RuntimeException` callers have always caught; typed so a

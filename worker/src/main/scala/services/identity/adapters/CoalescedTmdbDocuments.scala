@@ -97,12 +97,9 @@ object CoalescedTmdbDocuments {
     private def runBatch(): Unit = {
       val batch = Iterator.continually(queued.poll()).takeWhile(_ != null).take(maxBatch).toSeq
       if (batch.nonEmpty) {
-        val outcomes =
-          try run(batch.map(_._1))
-          catch {
-            case NonFatal(failed) => batch.map(_ => Failure(failed))
-            case fatal: Throwable => batch.foreach(_._2.completeExceptionally(fatal)); throw fatal
-          }
+        val outcomes = tools.AnyThrowable.rethrownAfter(
+          try run(batch.map(_._1)) catch { case NonFatal(failed) => batch.map(_ => Failure(failed)) }
+        )(fatal => batch.foreach(_._2.completeExceptionally(fatal)))
         batch.zip(outcomes).foreach { case ((_, result), outcome) =>
           outcome.fold(failed => result.completeExceptionally(failed), value => result.complete(value)) }
       }

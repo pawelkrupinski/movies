@@ -13,6 +13,7 @@ import _root_.tools.ToolMongoAddress
 import scala.concurrent.{Await, Promise}
 import scala.concurrent.duration._
 import services.movies.SingleCountryNormalizer.titleNormalizer
+import scala.util.control.NonFatal
 
 /**
  *  Measures every phase of the boot hydrate path against the live Mongo
@@ -194,7 +195,7 @@ object MeasureStartup {
       println(f"   per-row toDomain mapping:     ${(t5 - t4).toDouble / rows.size / 1e6}%6.3f ms")
       println(f"   per-row Caffeine populate:    ${(t6 - t5).toDouble / rows.size / 1e6}%6.3f ms")
     } catch {
-      case exception: Throwable =>
+      case NonFatal(exception) =>
         System.err.println(s"MeasureStartup aborted: ${exception.getClass.getSimpleName}: ${Option(exception.getMessage).getOrElse("")}")
         sys.exit(2)
     } finally {

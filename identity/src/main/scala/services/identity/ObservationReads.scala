@@ -155,11 +155,12 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
       try held.answer.join().asInstanceOf[Answer[A]]
       catch { case e: java.util.concurrent.CompletionException if e.getCause != null => throw e.getCause }
     } else if (held != null) reads.asking(question)(ask) // asked again within its own ask: no other thread's to share
-    else try {
+    // Every thread waiting on this ask is answered whatever it throws, an interrupt or a fatal error included.
+    else try tools.AnyThrowable.rethrownAfter {
       val answer = reads.asking(question)(ask)
       mine.answer.complete(answer)
       answer
-    } catch { case e: Throwable => mine.answer.completeExceptionally(e); throw e }
+    }(e => mine.answer.completeExceptionally(e): Unit)
     finally { val _ = inFlight.remove(question, mine) }
   }
 

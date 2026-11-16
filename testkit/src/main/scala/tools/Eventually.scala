@@ -1,5 +1,7 @@
 package tools
 
+import scala.util.control.NonFatal
+
 /** Tiny polling helpers for tests that exercise event-driven async work — a change
  *  stream, a cursor fan-out, a worker-pool dispatch — where the assertion needs a
  *  small window to settle rather than being true the instant the write returns. */
@@ -18,7 +20,7 @@ object Eventually {
       val startedAt = System.nanoTime() / 1000000
       try return check
       catch {
-        case t: Throwable =>
+        case NonFatal(t) =>
           if (startedAt >= deadline) throw t
           val remaining = deadline - System.nanoTime() / 1000000
           if (remaining > 0) Thread.sleep(math.min(pollMs, remaining))

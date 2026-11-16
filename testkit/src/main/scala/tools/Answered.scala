@@ -14,7 +14,7 @@ object Answered {
    *  [[SpecTimeouts.Io]], naming `what`, instead of hanging the suite. A positive wait's bound, never a timing. */
   def at[A](what: String)(block: => A): A = {
     val answer = new CompletableFuture[A]()
-    val caller = new Thread(() => { try answer.complete(block) catch { case t: Throwable => answer.completeExceptionally(t) }; () }, s"answered: $what")
+    val caller = new Thread(() => { AnyThrowable.captured(block).fold(answer.completeExceptionally, answer.complete); () }, s"answered: $what")
     caller.setDaemon(true)
     caller.start()
     try answer.get(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS)

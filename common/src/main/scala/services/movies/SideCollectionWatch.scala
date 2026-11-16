@@ -124,15 +124,11 @@ final class SideCollectionWatch[Dto: ClassTag](
       // late acknowledgement re-arming a token `clear()` has since thrown away.
       val applied = appliedPrefix.deliver(change.getResumeToken, resumeToken.generation)
       rowIdOf(change) match {
-        // Caught whatever it is, fatal included: this is the driver's `onNext`, which must not
-        // throw — a throw out of it ends the cursor. The event stays unacknowledged (a restart
-        // replays it) and its demand slot unreleased, since `onChange` may have queued it before
-        // throwing and releasing here too would release it twice; it throws only as the apply
-        // executor shuts down. An interrupt keeps its flag for whoever owns the thread.
-        case Some(id) => try onChange(id, applied)
-          catch { case e: Throwable =>
-            if (e.isInstanceOf[InterruptedException]) Thread.currentThread().interrupt()
-            logger.warn(s"$name watch onChange($id) failed: $e", e) }
+        // Caught whatever it is, fatal included: this is the driver's `onNext` ([[ChangeStreamCallback]]).
+        // The event stays unacknowledged (a restart replays it) and its demand slot unreleased, since
+        // `onChange` may have queued it before throwing and releasing here too would release it twice;
+        // it throws only as the apply executor shuts down.
+        case Some(id) => ChangeStreamCallback.guarded(e => logger.warn(s"$name watch onChange($id) failed: $e", e))(onChange(id, applied))
         // Nothing to hand the caller, so nothing will release this event's demand but us —
         // left unreleased, every skipped event narrowed the window until the cursor stalled.
         // Acknowledged at once: there is nothing to apply, and an event never acknowledged

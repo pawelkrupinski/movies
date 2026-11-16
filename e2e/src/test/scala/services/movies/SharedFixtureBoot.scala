@@ -74,8 +74,7 @@ object SharedFixtureBoot {
 
   /** `wiring`, booted; [[Shared]] stops it once no suite holds it. The marker [[E2eWiringsStoppedSpec]] reads. */
   private def stoppedWhenUnheld(wiring: FixtureTestWiring): FixtureTestWiring =
-    try { wiring.bootStartup(); wiring }
-    catch { case e: Throwable => wiring.stop(); throw e }
+    tools.AnyThrowable.rethrownAfter { wiring.bootStartup(); wiring }(_ => wiring.stop())
 
   def acquire(): FixtureTestWiring = boot.acquire()
   def release(): Unit = boot.release()

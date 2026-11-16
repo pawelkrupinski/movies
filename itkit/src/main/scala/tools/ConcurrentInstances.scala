@@ -119,7 +119,7 @@ object ConcurrentInstances {
       val thread = new Thread(() => {
         barrier.await()
         if (delay > 0) LockSupport.parkNanos(delay)
-        outcomes(i) = try Right(op()) catch { case e: Throwable => Left(e) }
+        outcomes(i) = AnyThrowable.captured(op())   // a fatal error too: the race's caller reports it
       }, s"race-${round.fold(0)(_.number)}-$i")
       thread.setDaemon(true)
       thread.start()

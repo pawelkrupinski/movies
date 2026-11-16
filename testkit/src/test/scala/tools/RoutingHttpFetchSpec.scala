@@ -34,10 +34,10 @@ class RoutingHttpFetchSpec extends AnyFlatSpec with Matchers {
 
     (1 to Threads).foreach { thread =>
       pool.execute { () =>
-        try {
+        try AnyThrowable.captured {
           start.await()
           (1 to CallsPerThread).foreach(i => fetch.get(s"https://example.test/film/$thread-$i") shouldBe "body")
-        } catch { case failure: Throwable => failures.add(failure) }
+        }.left.foreach(failure => failures.add(failure): Unit)
         finally done.countDown()
       }
     }
